@@ -115,22 +115,28 @@ one performed most often.
 
 1. Soft-delete: portal access revoked, sessions invalidated, projects archived.
 2. A 30-day window during which restore is one click.
-3. Hard delete purges work items, comments, attachments (including object storage), time
-   entries and notifications. `audit_log` rows are retained with the organisation
-   reference tombstoned, because deleting an audit trail on request defeats its purpose.
+3. Hard delete purges the **complete** list in [security-model.md § Data lifecycle](security-model.md#data-lifecycle)
+   — work items, comments, attachments and objects, time and cost entries, notifications,
+   sessions, API keys, webhooks, invitations, outbox rows, idempotency responses,
+   `metric_snapshot` rows for the organisation, search vectors and cached identities.
+   `audit_log` rows are retained with `organisation_id` set null as the tombstone, because
+   deleting an audit trail on request defeats its purpose. Backups retain deleted data for
+   their stated retention; [data-protection.md](../05-operations/data-protection.md) states
+   the position a customer's DPA will ask about.
 4. The whole sequence is audited and requires re-authentication.
 
 ## Limits and quotas
 
-Optional, configured per organisation in God Mode. Off by default for internal use;
-useful when reselling.
+Configured per organisation in God Mode, with **real defaults** — an internet-facing portal
+with unlimited storage and unlimited portal users is a denial-of-wallet path from a
+low-privilege actor. The internal organisation may raise them freely.
 
 | Quota | Default |
 | --- | --- |
-| Projects | unlimited |
-| Work items | unlimited |
-| Storage | unlimited |
-| Portal users | unlimited |
+| Projects | 200 |
+| Work items | 500,000 |
+| Storage | 20 GB |
+| Portal users | 500 |
 | API requests / minute | 600 |
 | Webhook endpoints | 10 |
 

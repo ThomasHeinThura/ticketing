@@ -6,7 +6,7 @@ Two kinds of configuration, and the distinction is the whole point of the archit
 | --- | --- | --- |
 | Where | Environment variables | God Mode, stored in the database |
 | Changing it needs | A restart | Nothing |
-| Amount | Eight variables | Everything else |
+| Amount | Five required, six optional — the table below is the **only** list | Everything else |
 | Why | Needed *to reach* the configuration | Varies per deployment and per customer |
 
 See [plugin architecture](../01-architecture/plugin-architecture.md) and
@@ -32,11 +32,18 @@ See [plugin architecture](../01-architecture/plugin-architecture.md) and
 | --- | --- | --- |
 | `TASKDESK_PORT` | `5173` | Bind port |
 | `TASKDESK_VALKEY_URL` | — | Required for multiple replicas |
-| `TASKDESK_FILES_URL` | — | Separate origin for attachment downloads |
-| `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` | — | First run only, on an empty database. Ignored thereafter |
-| `TASKDESK_LOG_LEVEL` | `info` | Overridable at runtime in God Mode |
-| `TASKDESK_TRUST_PROXY` | `true` | Behind Traefik |
-| `NODE_ENV` | `production` | |
+| `TASKDESK_ROLE` | `all` | `web` \| `jobs` \| `all`. Gates the in-process scheduler, so a replica can be dedicated to jobs — the escape hatch in [scaling.md](scaling.md). Inherently per-process; cannot live in the database |
+| `TASKDESK_ENCRYPTION_KEY_PREVIOUS` | — | Set only during key rotation: the old key, readable, while `secrets-rekey` re-encrypts under the new one. Key material — inherently env. See [runbook](runbook.md) |
+| `TASKDESK_TRUST_PROXY` | `1` | **Number of trusted reverse-proxy hops**, not a boolean: `1` = Traefik directly in front (the shipped compose); `2` = a load balancer in front of Traefik; `0` = no proxy, use the socket address. The client IP is read from `X-Forwarded-For` at exactly that hop, so a forged header moves no rate-limit bucket and satisfies no API-key IP allowlist. Must be known before the first request can be attributed to an IP. Meaningful only because the application port is **never published** in production — reachable from the proxy network alone ([traefik-and-domains.md](traefik-and-domains.md)) |
+| `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` | — | **Headless installs only.** The normal first run needs no variable: on an empty database the app serves a one-time **setup page**, unlocked by a token printed in the container log, where the first administrator is created (see [one-line-install.md](one-line-install.md)) |
+| `NODE_ENV` | `production` | In `development` only, HTTP webhook targets are permitted (`WH-12`) — there is no separate variable for that |
+
+**Removed 2026-09-05, moved into the application:** the files/attachment origin (part of the
+storage plugin's configuration — `storage.s3` knows its own bucket URL), the log level (God
+Mode → Observability), and the development webhook allowlist (a `NODE_ENV=development`
+behaviour). The rule is Thomas's: *only what the app needs to reach its own configuration
+goes in `.env` — the database, key material, its own public origins, and per-process
+operational switches. Everything else is a setting inside the app.*
 
 ### Postgres container
 
@@ -95,16 +102,9 @@ Plus: default preferences for new users, digest cadence
 
 ### Features
 
-Every `feature.*` flag with an enabled state and a **lock** switch.
-
-```
-feature.cycles           feature.modules          feature.estimates
-feature.intake           feature.sla              feature.approvals
-feature.time_tracking    feature.cost_tracking    feature.knowledge_base
-feature.service_catalogue feature.customer_portal feature.reports
-feature.automations      feature.gantt            feature.calendar
-feature.pages            feature.mcp
-```
+Every `feature.*` flag with an enabled state and a **lock** switch. The enumeration lives
+in exactly one place — [plugin-architecture.md § Feature toggles](../01-architecture/plugin-architecture.md#feature-toggles) —
+and is not restated here.
 
 ### Jobs
 

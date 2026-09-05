@@ -24,9 +24,11 @@ Collaboration is expressed by watchers, sub-tasks and comments.
 
 **Who may assign whom**
 
-- `AS-1` A manager or lead may assign work to anyone on the project roster.
-- `AS-2` A member may assign work to **themselves** and may unassign **themselves**.
-  They may not assign to another person.
+- `AS-1` `work_item:assign` permits assigning to anyone on the project roster. (Held by
+  the built-in `lead` and above — see the role matrix in [RBAC](../01-architecture/rbac.md).)
+- `AS-2` Without `work_item:assign`, `work_item:update` permits assigning or unassigning
+  **oneself only** — an ownership predicate on the new assignee, not a role-name check.
+  Assigning another person is refused with 403.
 - `AS-3` A member picking up work already held by someone else is asked to confirm, and
   the previous holder is notified. *(v1 shipped a reassign button with no confirmation and
   had to fix it.)*
@@ -57,8 +59,10 @@ Collaboration is expressed by watchers, sub-tasks and comments.
 
 - `AS-11` A project may set a default assignee, applied to work items created with none.
 - `AS-12` A request type may set a default assignee, overriding the project's.
-- `AS-13` A workflow transition may set or clear the assignee — for example, moving to
-  "Waiting on customer" may unassign.
+- `AS-13` A workflow transition may set or clear the assignee via the `set_assignee` /
+  `clear_assignee` **effects** defined in [workflows.md](workflows.md) `WF-19` — for
+  example, moving to "Waiting on customer" may unassign. This spec defines no effects of
+  its own.
 - `AS-14` Automations may assign, subject to the same roster constraint.
 - `AS-15` Round-robin and load-balanced assignment are **out of scope for v2**. They
   reward gaming and produce worse outcomes than a person looking at a queue.

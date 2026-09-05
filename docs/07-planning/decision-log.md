@@ -17,6 +17,78 @@ Newest first.
 
 ---
 
+### 2026-09-05 · Spec closure pass: the corpus was not buildable as written, and is now closer
+
+**Decision:** act on the [planning review](review-2026-09-05.md)'s findings before P0
+rather than discovering them in week three. The structural changes, each recorded in the
+document it affects:
+
+- **States are workspace-scoped**, with `project_state` for per-project ordering, default
+  and enablement — otherwise a workspace workflow could serve exactly one project and
+  [ADR 0011](../01-architecture/adr/0011-ticket-lifecycle-engine.md) was unbuildable.
+- **Transition `guards` and `effects` are closed vocabularies owned by
+  [workflows.md](../03-features/workflows.md)**; SLA pausing is an effect, not a policy
+  property; "open/closed" is defined once by `state.group`.
+- **Five route-policy kinds** in [rbac.md](../01-architecture/rbac.md) replace every
+  "(self)", "(portal session)", "(scoped)" and "A | B" in the specs; route coverage
+  enumerates Hono's router, not the OpenAPI document; the **built-in role × capability
+  matrix** is now written down and is the seed data and the test fixture.
+- **`data-model.md` is authoritative**: eight missing tables and ~25 missing columns added
+  (`work_item_sla_cache`, `metric_snapshot`, `workspace_feature_flag`, `idempotency_key`,
+  `automation`, `dashboard`, `satisfaction_rating`, `running_timer`, `api_key` extension,
+  `user_preference`, `canned_response`, `comment_version`, `request_participant`,
+  `organisation_request_type`, `backup_run`, …); `status` columns renamed `state` per the
+  glossary; priority is an ordered enum.
+- **Identifier lists are single-homed**: feature flags (plugin-architecture), jobs
+  (background-jobs), events ([events.md](../01-architecture/events.md), new), bootstrap
+  variables (configuration-reference), capabilities (rbac).
+- **Typed client is Hono RPC**, not spec-generated; **OpenAPI 3.1 is what the toolchain
+  emits today**, 3.2 when it can — the docs no longer claim a version the tools cannot
+  produce.
+- **GitHub Actions** is the CI platform; the PR pipeline is split fast/full; releases are
+  cut by manual dispatch; UAT pulls; the migration dry run is an operator step.
+- **Teams** has a spec ([teams.md](../03-features/teams.md)); the CAB is a flagged team.
+- New week-one documents: repository bootstrap, `packages/ui` extraction plan, migration
+  convention, container image, auth runtime reconfiguration, i18n, Helm values contract,
+  data protection, inherited-features register.
+- Storybook 10 (was 8); 18 locales (was 22); `Fifteen` God Mode screens → eighteen; screen
+  inventory recounted (133, with a `kind` column) and checked by CI.
+
+The remaining per-spec findings (~300 medium/low) are tracked in
+[reviews/2026-09-05/](reviews/2026-09-05/) and are closed at SDLC stage 2 of each feature,
+before its build — recorded as **P0 step 0** in [phases.md](phases.md).
+
+**Why:** four independent reviewers converged on the same diagnosis — prose written faster
+than the schema, the capability list and the screen register could keep up. Every item
+above was a place an implementer would have guessed, and guessed load-bearingly.
+
+**Decided by:** Thomas
+
+---
+
+### 2026-09-05 · Environment variables: five required, six optional, nothing else — and no bootstrap admin email by default
+
+**Decision:** on Thomas's instruction ("I don't like many env values… just db and object
+storage and others… we can edit inside the app settings"), the bootstrap surface is cut to
+what the app needs *to reach its own configuration*: `TASKDESK_DATABASE_URL`,
+`TASKDESK_ENCRYPTION_KEY`, `TASKDESK_AUTH_SECRET`, `TASKDESK_AGENT_URL`,
+`TASKDESK_PORTAL_URL`; optional per-process switches only (`PORT`, `VALKEY_URL`, `ROLE`,
+`TRUST_PROXY`, `ENCRYPTION_KEY_PREVIOUS` during rotation, `NODE_ENV`). Removed: the files
+origin (lives in the storage plugin's config), the log level (God Mode → Observability), the
+dev webhook allowlist (a `NODE_ENV=development` behaviour). **The first administrator is
+created on a one-time setup page** unlocked by a token printed in the container log, with
+`setup_completed_at` as a durable marker; `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` stays only for
+headless installs. Object storage stays in God Mode too — `storage.filesystem` works with
+no configuration, so a fresh install needs no storage variable at all.
+
+**Why:** everything that varies per deployment is a setting inside the app — that is the
+product's founding rule, and every variable that is not key material or a public origin is
+one more thing a customer must edit in a file.
+
+**Decided by:** Thomas
+
+---
+
 ### 2026-09-05 · Tech stack versions reviewed against current upstream status; MinIO dropped
 
 **Decision:** after checking every pin in [tech stack](../01-architecture/tech-stack.md)
@@ -67,6 +139,79 @@ it at implementation time.
 
 ---
 
+### 2026-09-05 · P0 produces an inherited-features register; inherited-but-unspecified features ship flagged off
+
+**Decision:** P0 step 1 ([phases.md](phases.md)) now includes a one-page
+**inherited-features register**: every kaneo feature and notable dependency, a verdict
+(*keep — spec exists* / *keep — write a spec* / *remove*), and the kaneo commit SHA taken.
+Any inherited feature without a v2 spec is feature-flagged **off** until its spec exists
+and it passes the UX gates. The starting table — GitHub/Gitea/Slack/Discord/Telegram
+integrations, `workflow-rule` automations, time entries, public project boards, gantt and
+calendar views, Planka importer, billing, `valibot`/`nanostores` — is in
+[review-2026-09-05.md](review-2026-09-05.md).
+
+**Why:** "copy kaneo, strip billing" named what to remove but not what was being kept.
+A listing of kaneo's feature folders showed it ships public anonymous boards, an
+automation engine, time tracking, five chat integrations and two code-host integrations
+that no v2 spec mentions — features we would otherwise ship without a spec, or dead code
+we would carry without a decision. It also showed the accelerated plan's deferral register
+overstated what was missing (calendar/gantt/time entries/automations are inherited in week
+1, not built in month three); that register is corrected.
+
+**Decided by:** Thomas
+
+---
+
+### 2026-09-05 · Release plan: versions start at 2.0.0-alpha.1; `latest` means stable; images are signed
+
+**Decision:** [release-plan.md](release-plan.md) is the release policy. Three points that
+change existing documents:
+
+- **Versioning starts at `2.0.0-alpha.1`**, not `0.x` and not a continuation of kaneo's
+  `2.22.x` — the product is TaskDesk v2 and [api-design.md](../01-architecture/api-design.md)
+  already anchors API stability to "when v2.0 ships". Pre-release identifiers
+  (`alpha` → `beta` → `rc`) are flipped on `main` at phase closes; no second long-lived
+  branch. `2.0.0` GA is the P4 close — "one image, any customer" — the first sellable
+  release; external paying customers and marketplace listing wait for the P7 penetration
+  test.
+- **`latest` means latest *stable*.** [ci-cd.md](../04-engineering/ci-cd.md) previously
+  tagged every merge `latest`; now every merge is `edge` + `sha-<gitsha>`, and `latest`
+  moves only when a digest is promoted through UAT. The one-line installer's stable
+  pointer follows the same rule. A customer running `docker compose pull` must never get
+  an untested build by default.
+- **Images are signed** (cosign, keyless) with a build-provenance attestation, and
+  `scripts/deploy.sh` verifies the signature before starting a new digest (opt-out flag for
+  air-gapped mirrors). Added to [security-model.md](../01-architecture/security-model.md)'s
+  dependency controls, alongside a note that the kaneo snapshot taken at P0 is itself a
+  supply-chain input to be scanned and pinned by SHA.
+
+**Why:** "we ship continuously" and "we sell a product" pull apart unless the seams are
+written down; a stable channel, a support window and a verifiable image are what a
+customer — and a marketplace scanner — actually need from a release process.
+
+**Alternatives:** `0.x` versioning (rejected — makes "TaskDesk v2 runs 0.4" a permanent
+explanation); a `next` branch for pre-releases (rejected — the second long-lived branch
+[ci-cd.md](../04-engineering/ci-cd.md) refuses to have).
+
+**Decided by:** Thomas
+
+---
+
+### 2026-09-05 · Inbound email is a candidate, not P5 — a contradiction corrected
+
+**Decision:** [intake-queue.md](../03-features/intake-queue.md) said inbound email parsing
+was "Phase 5"; [roadmap.md](roadmap.md) and [phases.md](phases.md) list it as a candidate,
+not scheduled. Two documents against one — intake-queue.md is corrected. `IQ-1` still
+names email as a possible source so the data model does not preclude it.
+
+**Why:** found by the 2026-09-05 cross-document review. Recorded because a phase
+assignment stated in one spec and denied in the roadmap is exactly how scope creeps in
+unnoticed.
+
+**Decided by:** Thomas
+
+---
+
 ### 2026-09-05 · CHANGELOG.md added; release notes formalised alongside the auto-generated log
 
 **Decision:** a `CHANGELOG.md` exists at the repo root from today, in Keep a Changelog
@@ -90,7 +235,7 @@ close, [SDLC](../04-engineering/sdlc.md) stage 8) is cheaper than reconciling th
 
 ### 2026-09-05 · The engine pattern generalises beyond the six plugin kinds; the calendar is allowed to move, the pattern is not
 
-**Decision:** [plugin-architecture.md § the engine pattern](../01-architecture/plugin-architecture.md#the-engine-pattern-making-any-feature-pluggable)
+**Decision:** [plugin-architecture.md § the engine pattern](../01-architecture/plugin-architecture.md#the-engine-pattern--making-any-feature-pluggable)
 states explicitly that every feature — not only the six current plugin kinds — is
 expected to follow the same shape (contract, registry or settings screen, generated
 configuration, a feature flag, a validate/test affordance) before its spec is considered
@@ -388,6 +533,87 @@ persistence, conflict resolution. Plane runs it, and it is genuinely nice. We ha
 evidence that people co-edit ticket descriptions.
 
 **Decided by:** Thomas
+
+---
+
+### 2026-09-05 · kaneo's `public-project` is deleted at fork, not feature-flagged
+
+**Decision:** the anonymous public-board router and screens are removed in P0 step 1. The
+flag name `feature.public_boards` is reserved with no code behind it.
+
+**Why:** the security review's point is right — a flag is a runtime toggle, not a deletion,
+and an unauthenticated read surface should not ship dormant inside a product whose whole
+thesis is that authorization omissions must be mechanically impossible. If public boards
+are wanted later they get a spec and their own security review first.
+
+**Decided by:** Claude Code (security checkpoint), for Thomas to confirm — reversible by
+deleting one row in the inherited-features register.
+
+---
+
+### 2026-09-05 · Reach-affecting project fields are `project:manage_members`
+
+**Decision:** `project.parent_id` and `project.owner_team_id` move off `PATCH
+/api/projects/{id}` onto `PATCH /api/projects/{id}/ownership`, governed by
+`project:manage_members`, audited as `project.reach_changed`.
+
+**Why:** both grant reach to people without any role changing; as `project:update` fields
+they were a silent reach grant available to a `lead`. Separate route so "one policy per
+route" stays true.
+
+**Decided by:** Claude Code (security checkpoint)
+
+---
+
+### 2026-09-05 · Service API keys are bounded by their creator
+
+**Decision:** a workspace service key's capability subset cannot exceed the creator's
+authority at creation (expanded closure), creating one is elevated, and the granted set is
+audited. On use the key is evaluated against its own stored subset.
+
+**Why:** the previous wording made `api_key:manage` an escalation primitive — a durable
+credential above its creator's authority, outliving their membership.
+
+**Decided by:** Claude Code (security checkpoint)
+
+---
+
+### 2026-09-05 · MCP destructive tools need out-of-band human approval
+
+**Decision:** `confirm: true` is replaced by a `pending_action_id` the key's owner approves
+in the UI; `is_mcp` keys are read-only by default; tool output is marked untrusted.
+
+**Why:** the model supplying `confirm` is the component under a prompt-injection attacker's
+influence. The MCP server reads customer-authored text with staff authority; this is the
+primary threat on that surface, not an edge case.
+
+**Decided by:** Claude Code (security checkpoint)
+
+---
+
+### 2026-09-05 · `TASKDESK_TRUST_PROXY` is a hop count; the app port is never published
+
+**Decision:** the variable is an integer number of trusted proxy hops (default `1`), not a
+boolean; production compose publishes no port on the application; the installer refuses
+to proceed if 5173 is bound on the host.
+
+**Why:** trusting the proxy unconditionally while the port is reachable makes the client
+IP attacker-controlled, defeating the auth rate limit, the API-key IP allowlist and the
+audit log's `actor_ip`.
+
+**Decided by:** Claude Code (security checkpoint)
+
+---
+
+### 2026-09-05 · Internal red-team pass at the go-live gate
+
+**Decision:** an independent Opus context runs a red-team pass over the authorization
+surface, the portal boundary and the inherited kaneo routes before real customer data
+lands — in addition to, not instead of, the external penetration test (R19).
+
+**Why:** the corpus's own thesis: a green suite proves only what someone thought to check.
+
+**Decided by:** Claude Code (security checkpoint)
 
 ---
 

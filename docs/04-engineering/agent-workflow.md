@@ -204,17 +204,18 @@ sufficient.
 
 ## Skills
 
-`skills/` carries agent skills taken from kaneo, extended for this project:
+`skills/` carries two agent skills inherited from kaneo and five we write in P0 — the
+review found the first draft listed all seven as inherited, which hid the work:
 
-| Skill | Use for |
-| --- | --- |
-| `review-ui` | Check a screen against the design system and the quality gates |
-| `improve-animations` | Apply the motion specs |
-| `find-animation-opportunities` | Identify where motion would explain something |
-| `write-feature-spec` | Draft a spec in the house format |
-| `port-domain-logic` | Reimplement v1 domain logic in TypeScript |
-| `add-route` | Add an API route with policy, schemas and tests |
-| `add-primitive` | Add a `packages/ui` primitive with story and tests |
+| Skill | Origin | Use for |
+| --- | --- | --- |
+| `improve-animations` | kaneo | Apply the motion specs |
+| `find-animation-opportunities` | kaneo | Identify where motion would explain something |
+| `add-route` | **ours, P0** | Add an API route with its policy (one of the five kinds), schemas, repository call and tests — the mechanism by which the policy-registry rule reaches agent output |
+| `add-primitive` | **ours, P0** | Add a `packages/ui` primitive with story, keyboard and axe tests |
+| `review-ui` | **ours, P0** | Check a screen against the design system and the quality gates |
+| `write-feature-spec` | **ours, P0** | Draft a spec in the house format, with every mandatory section |
+| `port-domain-logic` | **ours, P2** | Reimplement v1 domain logic in TypeScript from its tests |
 
 Prefer a skill over freehand work — it encodes decisions already made.
 

@@ -46,8 +46,11 @@ Unsure how something should look? Open `../kaneo` and look. It is the specificat
 We ship **one image to every customer**. Identity providers, storage, notifications,
 branding, features, roles — all runtime configuration in God Mode, stored in the database.
 
-Environment variables are for bootstrap only. There are eight of them. If you are about to
-add a ninth, or write `if (customer === …)`, stop and add a plugin or a feature flag.
+Environment variables are for bootstrap only — five required, a handful of optional
+operational switches, all listed in
+[`docs/05-operations/configuration-reference.md`](docs/05-operations/configuration-reference.md)
+and nowhere else. If you are about to add one, or write `if (customer === …)`, stop and add
+a plugin or a feature flag.
 
 ### 3 · Every route declares its permission
 
@@ -144,6 +147,9 @@ Full checklist:
 8. Refactor beyond the task
 9. Paste code from an unlicensed source
 10. Keep trying after three failed attempts — write down what you tried and ask
+11. Name a table, column, capability, feature flag, event key or job that is not in its
+    single authoritative document — `data-model.md`, `rbac.md`, `plugin-architecture.md`,
+    `events.md`, `background-jobs.md`. Add it there first, in the same change
 
 ---
 

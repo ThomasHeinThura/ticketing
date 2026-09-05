@@ -33,6 +33,8 @@ Inherited from kaneo unless noted. Versions are the floor, not a ceiling — kee
 | Email | **nodemailer** via `packages/email` | React Email templates |
 | Errors | **Sentry** (optional) | Configured in God Mode, not env-only |
 | Tracing | **OpenTelemetry** | Optional exporter; v1 never got this and regretted it |
+| Logging | **Pino** + `pino-http` | Structured JSON with `traceId`. Not in kaneo — added |
+| Metrics | **prom-client** | `/metrics`, bearer-guarded. Not in kaneo — added |
 
 ## Frontend
 
@@ -55,7 +57,7 @@ Inherited from kaneo unless noted. Versions are the floor, not a ceiling — kee
 | Charts | **Recharts** | Reports and dashboards |
 | Tables | **TanStack Table** | Table/spreadsheet view |
 | Dates | **date-fns** + **@internationalized/date** | Calendar primitives need the latter |
-| i18n | kaneo's `i18n/` structure | 22 locales inherited; `en-US` authoritative |
+| i18n | kaneo's `i18n/` structure | **18** locales inherited (not 22); `en-US` authoritative — [i18n.md](i18n.md) |
 
 ## Testing
 
@@ -69,7 +71,7 @@ Inherited from kaneo unless noted. Versions are the floor, not a ceiling — kee
 | Visual regression | **Playwright** screenshots | `tests/visual/` |
 | E2E | **Playwright** | `tests/e2e/`, agent and portal projects |
 | Accessibility | **@axe-core/playwright** | Runs inside E2E; zero critical/serious |
-| Component catalogue | **Storybook 8** | Required for every `packages/ui` primitive |
+| Component catalogue | **Storybook 10** (ESM-only; 8 was two majors stale) | Required for every `packages/ui` primitive. Not in kaneo — added |
 | Load | **k6** | Baseline before each release |
 
 Detail: [Testing strategy](../04-engineering/testing-strategy.md).
@@ -84,7 +86,7 @@ Detail: [Testing strategy](../04-engineering/testing-strategy.md).
 | Identity (optional) | **Keycloak 26** — a configurable OIDC provider, not a hard dependency |
 | Object storage | **SeaweedFS** (default self-hosted) or any real S3 — see below |
 | Mail (dev) | **Mailpit** |
-| CI | Azure Pipelines *(carried over from v1)* or GitHub Actions |
+| CI | **GitHub Actions** — decided 2026-09-05: the repository is on GitHub, and keyless cosign signing and `semantic-release`'s GitHub integration both assume it. v1's Azure Pipelines are not carried over |
 | Registry | Docker Hub / ACR |
 
 ## Why MinIO is not the default (2026-09-05)
@@ -115,6 +117,30 @@ replaces). Since `packages/ui` is taken from kaneo **once**, at P0 step 1
 ([ADR 0001](adr/0001-kaneo-as-foundation.md)), whichever mix of Radix and Base UI kaneo
 is using *at that moment* is what we inherit — this is not a separate decision to make
 now, and no action is needed ahead of that step beyond knowing it is coming.
+
+## Added to kaneo's stack — the honest P0 tooling list
+
+kaneo does **not** ship these; every one is installed, configured and wired into CI during
+P0. This is the input to the P0 estimate, not a footnote.
+
+| Added | Serves |
+| --- | --- |
+| **Storybook 10** | `G7` story coverage, `G8` visual baselines |
+| **Playwright** + `@axe-core/playwright` + `vitest-axe` | E2E, security, a11y (`G4`), reduced-motion (`G9`), viewport projects |
+| **Testcontainers** | Real-Postgres integration tests |
+| **dependency-cruiser** | Package boundaries and cycles (`check:deps`) |
+| **TanStack Table** | Table layout, tier 2 reports |
+| **Recharts** | Tier 1/3 reports, dashboards — wrapped as `chart` / `chart-table` primitives with a token colour ramp so `G3` applies |
+| **Pino**, **prom-client** | Logging and metrics ([observability.md](observability.md)) |
+| **Redocly CLI** + **oasdiff** | OpenAPI 3.1 validity and breaking-change diff in CI |
+| **k6** | Load baselines |
+| **cosign** | Image and release-archive signing |
+| **@vitest/coverage-v8** (present in kaneo, unused) | The 90 % `packages/domain` threshold, enforced per package |
+| A small AST script (`check:queries`) | The "no `db.select()` outside `repository.ts`" rule — Biome cannot express it |
+
+Also inherited and to be **consolidated**, per the [inherited-features register](../07-planning/review-2026-09-05.md):
+`valibot` → Zod only; `nanostores` → Zustand only; Radix + Base UI → one primitive library,
+decided at `packages/ui` extraction.
 
 ## Deliberate omissions
 

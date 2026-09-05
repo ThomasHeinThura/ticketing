@@ -13,9 +13,18 @@ The build pipeline **never deploys** and **never holds production secrets**. It 
 registry credentials and nothing else. This separation is deliberate: a compromised build
 pipeline should not be able to reach production.
 
+**Platform: GitHub Actions** (decided 2026-09-05 — the repository is on GitHub, keyless
+cosign and `semantic-release`'s GitHub integration both assume it; v1's Azure Pipelines are
+not carried over). Concurrency on `main` is
+`concurrency: { group: main, cancel-in-progress: false }`, so two merges cannot race a
+release.
+
 ## Pull request pipeline
 
-Runs on every pull request. Everything is required.
+Two required stages, so the fast one stays fast enough that nobody routes around it. **This
+is the single list of CI checks**; [testing-strategy.md](testing-strategy.md) links here.
+
+**Fast — required on every push, target under 15 minutes:**
 
 ```
 ┌─ Setup ──────────────────────────────────────────┐
@@ -28,27 +37,49 @@ Runs on every pull request. Everything is required.
 │ pnpm check:deps      no cycles, no boundary break│
 │ pnpm check:i18n      en-US complete              │
 │ pnpm audit           high/critical fails         │
+│ gitleaks             no secrets in the diff      │
+│ pnpm check:queries   no db.select() outside repo │
+│ pnpm check:inventory screen counts match rows    │
 ├─ Test ───────────────────────────────────────────┤
 │ pnpm test                unit + component        │
-│ pnpm test:integration    Testcontainers Postgres │
-│ pnpm test:permissions    G — route coverage,     │
-│                              role × route matrix │
+│ pnpm test:coverage       90 % on packages/domain │
+│ pnpm test:permissions    route coverage (Hono    │
+│                          router), role × route   │
+│                          matrix ×2, custom roles │
+│ pnpm test:contract       Redocly lint + oasdiff  │
+│ pnpm test:mcp            tool → route parity     │
 ├─ Build ──────────────────────────────────────────┤
 │ pnpm build               all apps and packages   │
 │ check:bundle-purity      G12 — portal is clean   │
 │ check:bundle-size        G11 — size budgets      │
+│ helm lint + helm template   charts/taskdesk      │
+└──────────────────────────────────────────────────┘
+```
+
+**Full — required before merge, runs on the merge queue (or on the `ready-for-review`
+label), target under 45 minutes, sharded four ways:**
+
+```
+├─ Integration ────────────────────────────────────┤
+│ pnpm test:integration    Testcontainers Postgres,│
+│                          lifecycle/, migrations  │
+│                          from empty, anonymiser  │
 ├─ Browser ────────────────────────────────────────┤
 │ pnpm test:e2e            agent + portal          │
 │ pnpm test:e2e --project=security                 │
 │ pnpm test:e2e --project=reduced-motion   G9      │
+│ pnpm test:e2e --project=mobile-320       H6      │
 │ pnpm test:a11y           G4 — axe                │
 │ pnpm test:visual         G8 — snapshots          │
 │ pnpm test:perf           G11 — budgets           │
 └──────────────────────────────────────────────────┘
 ```
 
-Runtime target: under 15 minutes. Beyond that people start working around it. Static and
-test stages run in parallel; browser stages shard across four workers.
+The fast stage exists because a required check that takes an hour gets worked around; the
+full stage exists because the things it checks cannot be made fast. Both block a merge.
+The Opus **security review** is a required PR-template section, checked non-empty by CI
+whenever the diff touches `apps/api/src/{middleware,plugins}/**`, `packages/permissions/**`
+or any `policy.ts` — see [agent-workflow.md](agent-workflow.md#model-tiers-within-claude-code).
 
 ## Main pipeline
 
@@ -60,13 +91,29 @@ On merge:
 4. Build the container image, multi-arch (amd64, arm64).
 5. Scan with Trivy — high or critical fails.
 6. Generate a CycloneDX SBOM.
-7. Push to the registry, tagged with the version, the git SHA, and `latest`.
-8. Commit the bumped version back to `main` with `[skip ci]`.
-9. Publish `@taskdesk/mcp` to npm if it changed.
-10. Deploy the documentation site.
+7. Push to the registry, tagged with the version, the git SHA (`sha-<gitsha>`) and
+   `edge`. **Not `latest`** — `latest` means latest *stable* and moves only at promotion;
+   see [release-plan.md](../07-planning/release-plan.md).
+8. **Sign the image** with cosign (keyless, using the CI job's OIDC identity) and publish a
+   build-provenance attestation alongside it, so anyone — a customer, the marketplace
+   scanner, our own deploy script — can verify the digest they pulled is the one this
+   pipeline built.
+9. Package and publish the Helm chart (`helm package`, pushed as an OCI artefact next to the
+   image).
+10. Publish `@taskdesk/mcp` to npm if it changed.
+11. Deploy the documentation site.
 
-`batch: true` — concurrent runs serialise, so two merges cannot race on the version bump.
-This is carried directly from v1, which learned it the hard way.
+**No version-bump commit on merge.** Stable and pre-release versions are cut by a
+**manually dispatched Release workflow** — kaneo's pattern — which computes the version,
+tags, signs, publishes the GitHub release with notes, and rewrites `get.taskdesk.dev/stable.txt`
+on a stable promotion. This keeps `main` protected without a CI bypass identity and matches
+[release-plan.md](../07-planning/release-plan.md)'s pinned pre-release numbering.
+
+**UAT delivery is pull, not push.** A small updater on the UAT host polls the registry for
+the `edge` tag's digest every few minutes, verifies its cosign signature, pulls, and runs
+`docker compose up -d --wait`. CI never holds UAT credentials and never deploys — the
+security boundary above is preserved, and "UAT: automatic on merge" in
+[environments.md](../05-operations/environments.md) means exactly this.
 
 ## Promotion
 
@@ -74,11 +121,15 @@ Manual, and **by digest, not by tag**.
 
 ```
 Select a version → verify it is running healthily in UAT
-                 → resolve its digest
+                 → resolve its digest, verify its signature
                  → deploy that digest to production
                  → smoke test
+                 → retag that digest `latest`; move the installer's stable pointer
                  → done
 ```
+
+Channels, cadence and the support policy behind this flow are in
+[release-plan.md](../07-planning/release-plan.md).
 
 Promoting by tag means the artefact you tested and the artefact you deployed are only
 probably the same. By digest, they are identical by construction.
@@ -125,6 +176,19 @@ traced to a commit.
 No production secret ever enters CI. Everything else that used to be a secret is now
 runtime configuration in God Mode — see
 [plugin architecture](../01-architecture/plugin-architecture.md).
+
+**Workflow hardening — because a compromised CI identity produces a *validly signed*
+image** ([security-model.md](../01-architecture/security-model.md#threat-model)):
+
+- Every workflow declares `permissions:` read-only at the top; `id-token: write` and
+  `packages: write` are granted to the single signing/publishing job only.
+- The Release workflow runs only on manual dispatch from `main` or `release/*`, behind
+  branch protection with no bypass actor; `pull_request` jobs never sign or publish, and
+  fork PRs run with no secrets.
+- Third-party actions are pinned by **commit SHA**, not tag; Renovate updates them.
+- `scripts/deploy.sh` and the installer verify the cosign signature against the **exact
+  workflow identity** — repository, workflow file and ref — not just the OIDC issuer.
+- gitleaks runs on every push (above); a hit fails the fast stage.
 
 ## Branching
 
@@ -184,7 +248,7 @@ done), and the changelog (when it happened and what it means).
 
 | | Local | UAT | Production |
 | --- | --- | --- | --- |
-| Deploy | `scripts/deploy.sh local` | Automatic on merge | Manual promotion |
+| Deploy | `scripts/deploy.sh local` | Pulled by the UAT host's updater on every `edge` digest | Manual promotion by digest |
 | Data | Seeded | Anonymised copy | Real |
 | Standard | — | **Held to production standard** | — |
 

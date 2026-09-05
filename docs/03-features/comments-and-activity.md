@@ -42,8 +42,16 @@ security-sensitive field in the product.
 
 - `CA-6` Every field change writes an `activity` row with the field, old value and new
   value. This is the journal, and it is what makes point-in-time reconstruction possible.
-- `CA-7` Activity rows have visibility too. State changes are usually public; assignee
-  changes are internal, because customers do not see staff names.
+- `CA-7` Activity rows have visibility too, decided by this table and nothing else. **An
+  unmapped verb or field is `internal`** — adding a field later fails closed.
+
+  | Verb / field | Visibility |
+  | --- | --- |
+  | `created`, `transitioned` (state change), `priority`, `due_date`, `title`, `description`, `attachment.added` (customer-visible attachment), `reopened`, `resolved`, `escalated` | `public` |
+  | `assignee`, `watcher`, `label`, `custom_field` (unless the field is `customer_visible`), `estimate`, `cycle`, `module`, `relation`, `parent`, `time_entry`, `sla_pause`, `attachment.added` (internal attachment), everything else | `internal` |
+
+  Customers therefore never see staff names as assignees; they do see the named author of a
+  public comment or approval decision ([RBAC](../01-architecture/rbac.md), customer rules).
 - `CA-8` Consecutive changes by the same actor within five minutes are grouped in the UI
   into one entry — "Jane changed priority, due date and 2 labels" — expandable.
 - `CA-9` System actions are attributed to the automation or job that made them, never to a

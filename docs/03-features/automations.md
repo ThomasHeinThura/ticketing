@@ -34,17 +34,22 @@ AND    post to Slack #incidents
 
 ## Triggers
 
+Every trigger except `schedule` is a domain event from the **canonical catalogue** in
+[events.md](../01-architecture/events.md) — the column marked **A** there is the exhaustive
+list of what may appear in this picker. This document does not maintain its own list.
+
 | Trigger | Fires on |
 | --- | --- |
 | `work_item.created` | Creation, including from intake acceptance |
 | `work_item.transitioned` | A state change |
-| `work_item.field_changed` | A named field changing |
+| `work_item.updated` with a field condition | A named field changing — shown in the picker as "a field changes", resolved to `work_item.updated` + a condition on `changes[].field` when saved |
 | `work_item.assigned` | Assignment change |
 | `work_item.commented` | A new comment, filterable by visibility |
+| `work_item.escalated` | A priority escalation |
 | `sla.at_risk` / `sla.breached` | SLA edge |
 | `approval.decided` | An approval decision |
 | `submission.received` | A new submission |
-| `schedule` | A cron expression, evaluated against a filter |
+| `schedule` | A cron expression, evaluated against a filter — a scheduler entry, not an event |
 
 ## Conditions
 
@@ -94,6 +99,17 @@ visibility, actor role.
 - `AU-9` A rule can be **dry-run** against recent history: "this rule would have fired 47
   times in the last 7 days, on these items."
 - `AU-10` New rules default to disabled. Enabling is a deliberate act.
+- `AU-11` **Placeholder expansion respects the destination's visibility.** A placeholder
+  that references an internal-only custom field, an internal note, or a staff-only value
+  (an assignee's email, an internal SLA breach note) is **refused at save time** when the
+  action's destination is customer-visible — a public comment, a notification to a
+  customer, a webhook whose owner lacks reach — with the offending field named; the same
+  check runs at execution, so a field made internal *after* the rule was saved is redacted
+  rather than leaked. The dry-run's validation panel lists every placeholder and its
+  visibility. `AU-3` governs what an action *may do*; `AU-11` governs what it may *say*.
+- `AU-12` "Call a webhook" delivers only what the webhook's owner may see — `WH-14` in
+  [webhooks-and-api-keys.md](webhooks-and-api-keys.md) — evaluated against the rule's
+  `effective_role_id`, never against the rule author's own reach.
 
 A rule that silently starts changing hundreds of work items is the worst possible outcome,
 and the dry-run is the guard.

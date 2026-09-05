@@ -15,6 +15,7 @@
 | Adding a feature | [Feature index](03-features/README.md) |
 | Deploying | [Deployment](05-operations/deployment.md) → [One-line install](05-operations/one-line-install.md) → [Configuration reference](05-operations/configuration-reference.md) |
 | Wondering "why is it like this?" | [ADR index](01-architecture/adr/README.md) and [Decision log](07-planning/decision-log.md) |
+| Releasing | [Release plan](07-planning/release-plan.md) → [CI/CD](04-engineering/ci-cd.md) → [CHANGELOG](../CHANGELOG.md) |
 
 ## The one-paragraph summary
 

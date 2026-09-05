@@ -47,7 +47,12 @@ does not require a restart.
 
 ## Metrics
 
-Prometheus exposition at `/metrics`, guarded by a bearer token configured in God Mode.
+Prometheus exposition at `/metrics`, guarded by a bearer token configured in God Mode →
+Observability, compared in constant time. Business metrics carry `{project, organisation}`
+labels — a cross-tenant inventory — so the token is treated as a secret and, where the
+operator can, `/metrics` is bound to a separate listener not exposed through Traefik. Log
+redaction is an **allowlist** — the log line serialises named fields only — because a
+denylist of secret patterns cannot catch a field nobody anticipated.
 
 **HTTP**
 ```
@@ -112,9 +117,9 @@ Sampling: 100% of errors, 100% of requests slower than 1 s, 1% of the rest.
 
 | Endpoint | Meaning | Used by |
 | --- | --- | --- |
-| `/api/health/live` | The process is running | Container liveness |
-| `/api/health/ready` | Database reachable, migrations applied | Load balancer readiness |
-| `/api/health/deep` | Also checks Valkey, storage, SMTP, each plugin | God Mode dashboard, monitoring |
+| `/api/public/health/live` | The process is running | Container liveness. Anonymous |
+| `/api/public/health/ready` | Database reachable, migrations applied | Load balancer readiness. Anonymous |
+| `/api/instance/health/deep` | Also checks Valkey, storage, SMTP, each plugin, backups | God Mode dashboard, monitoring. **`instance:admin` or the metrics bearer token** — it enumerates every dependency, which is reconnaissance if anonymous |
 
 `live` never touches a dependency — a liveness probe that fails when Postgres blips will
 restart a healthy container and make an outage worse.

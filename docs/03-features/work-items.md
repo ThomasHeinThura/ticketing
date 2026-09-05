@@ -53,7 +53,8 @@ whether it is an epic, and which custom fields apply.
   after deletion.
 - `WI-3` Title is required, 1–500 characters. Everything else is optional unless a custom
   field is marked required for that type.
-- `WI-4` Initial state is the project's default state for the type's workflow.
+- `WI-4` Initial state is the project's default state (`project_state.is_default`), which
+  must be a state the type's workflow can leave — validated when the default is set.
 - `WI-5` Creating from a template copies title, description, labels, custom field values
   and checklist, but never assignee or dates.
 
@@ -79,12 +80,15 @@ whether it is an epic, and which custom fields apply.
 **Hierarchy**
 
 - `WI-14` A work item may have one parent and any number of children.
-- `WI-15` Parent and child must be in the same project.
+- `WI-15` Parent and child must be in the same project. Moving a parent without its
+  children **detaches** them (`RH-12`) — the invariant never breaks.
 - `WI-16` Cycles are rejected — a work item cannot be its own ancestor.
 - `WI-17` Depth is capped at 5 levels.
 - `WI-18` Closing a parent does not close its children. Attempting to warns and lists the
   open children.
-- `WI-19` A parent shows rolled-up progress: children completed / total.
+- `WI-19` A parent shows rolled-up progress over its **whole subtree**: items whose
+  `state.group in ('completed', 'cancelled')` / total — defined once here; `RH-9` and
+  `RH-14` cite it.
 
 **Deletion and archiving**
 
@@ -148,7 +152,7 @@ POST   /api/work-items/{key}/assign               work_item:assign
 POST   /api/work-items/{key}/rank                 work_item:rank
 POST   /api/work-items/{key}/watch                work_item:read
 DELETE /api/work-items/{key}/watch                work_item:read
-POST   /api/work-items/bulk                       (per-item capability)
+POST   /api/work-items/bulk                       work_item:read  (workspace) — then each item is re-checked against its own capability; failures reported per WI-25
 GET    /api/work-items/{key}/activity             work_item:read
 ```
 

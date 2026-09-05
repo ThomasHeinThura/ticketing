@@ -34,7 +34,7 @@ layer never knows or cares how someone logged in.
 | Requirement | better-auth |
 | --- | --- |
 | Works with zero config | ✅ email + password out of the box |
-| Multi-organisation | ✅ organisation plugin — orgs, members, teams, invitations |
+| Multi-organisation | **Not used.** better-auth's organisation plugin is deliberately off — our own `organisation` / `membership` / `team` / `invitation` tables are the directory, because identity is always resolved from *our* database. better-auth does authentication only |
 | MFA | ✅ two-factor plugin — TOTP, backup codes |
 | Magic link | ✅ |
 | Email OTP | ✅ |
@@ -58,8 +58,11 @@ better-auth instance at boot and on change**.
 Implementation note: better-auth is configured once at construction. To support runtime
 changes we build the auth instance from database configuration and rebuild it when
 configuration changes, swapping the handler behind a stable reference. Config changes
-apply within seconds without a restart. In multi-replica deployments a Valkey pub/sub
-message triggers the rebuild on every replica.
+apply within seconds without a restart. **The full mechanism — build-validate-swap
+ordering, rollback when construction throws, what survives a swap, propagation to
+replicas with and without Valkey, and the test list — is designed in
+[auth-runtime-reconfiguration.md](auth-runtime-reconfiguration.md).** ADR 0006 calls this
+the most delicate code in the system; it is not left to a paragraph.
 
 ### The God Mode flow
 
@@ -98,7 +101,24 @@ God Mode → Authentication → [ Add provider ]
 
 The **Test connection** button is not optional polish. An administrator must be able to
 verify a provider before making it live, or the first person to discover it is broken
-will be a locked-out user.
+will be a locked-out user. It is an outbound connection with admin-supplied credentials,
+so it goes through the central egress client, is rate-limited, and is **audited even
+though nothing is saved** ([security model](security-model.md#input-handling)).
+
+### What every `auth.oidc` plugin must do — the protocol floor
+
+These are properties of the `auth.*` plugin contract, not per-provider options, and the
+auth reconfiguration suite asserts each of them against a mock IdP:
+
+- **PKCE with `S256`** on every authorization-code flow, including confidential clients.
+- A **`state`** value that is single-use, CSPRNG-generated, bound to the initiating
+  session *and* to the portal it was started from, and expired after ten minutes.
+- A **`nonce`** in the request, validated in the ID token; the ID token's `iss`, `aud`,
+  `exp` and signature (via the discovered JWKS, cached, with key rotation honoured) are
+  validated before any claim is read.
+- Redirect URIs are exact-match, per portal, and never taken from the request.
+- The domain mapping and the account-linking rules below apply **after** the token is
+  validated, never to raw claims.
 
 ### Per-portal binding
 
@@ -114,9 +134,16 @@ The login screen for each portal renders only the providers scoped to it.
 
 ## Sessions
 
-- HTTP-only, `Secure`, `SameSite=Lax` cookies. **No tokens in browser storage, ever.**
-- Cookie name and domain differ per portal, so an agent session and a customer session
-  cannot be confused for one another.
+- HTTP-only, `Secure`, `__Host-`-prefixed, `SameSite=Lax` cookies (`Strict` on the
+  elevated-action routes). **No tokens in browser storage, ever.** CSRF is *not* left to
+  `SameSite`: the full rule — no state-changing GET, `Origin` check on every unsafe
+  method, double-submit token — is in [security-model.md](security-model.md#sessions-csrf-and-step-up).
+- **One better-auth instance, two cookies.** The cookie is host-only (no `Domain`
+  attribute), so `ticket.<domain>` and `portal.<domain>` each hold their own; the cookie
+  *prefix* is chosen per request from the request host (`tdk_agent_` / `tdk_portal_`), and
+  every `session` row carries `portal` (`agent` | `customer`), set at issue time. The
+  portal-boundary middleware compares `session.portal` to the request host — that column
+  is the data the check runs on.
 - Server-side sessions in Postgres. Revocation is immediate.
 - Idle timeout and absolute lifetime configurable in God Mode.
 - Session rows record IP, user agent, and `impersonatedBy`.
@@ -153,32 +180,61 @@ id, on every request. Consequences:
   *provisioning* decision, and only at the moment of provisioning.
 - RBAC changes are safe to deploy; there are no in-flight tokens carrying stale rules.
 
-Resolution is cached in Valkey for a few seconds, keyed by user id, and invalidated
-explicitly on any membership or role change.
+Resolution is cached in Valkey for **30 seconds** (the revocation-latency budget, stated
+once here and in [scaling.md](../05-operations/scaling.md)), keyed by user id, and
+invalidated explicitly on any membership or role change — so in practice revocation is
+immediate and 30 s is only the worst case when the invalidation message is lost.
+
+**Placeholder people.** An import may create a `person` with `user_id = null` and
+`is_placeholder = true` so history has an author. A placeholder can never be assigned work
+or hold a membership. When that email later signs in through any provider, the new `user`
+is **linked to the existing placeholder row** (claimed, not duplicated) after the email is
+verified; the claim is audited. This is the only path by which a login attaches to a
+pre-existing directory record.
 
 ## Multi-factor authentication
 
 - TOTP and backup codes via better-auth's two-factor plugin. Passkeys as a second option.
 - Configurable in God Mode: **optional**, **required for staff**, **required for a
   specific role**, or **required for everyone**.
-- When an external IdP already enforces MFA, an administrator can mark that provider as
-  "MFA satisfied upstream" so users are not challenged twice.
+- When an external IdP already enforces MFA, TaskDesk prefers the token's `amr` / `acr`
+  claim **per login** and challenges locally when it is absent. A static "MFA satisfied
+  upstream" flag exists only for providers that emit neither claim; setting it is an
+  elevated, audited change and is shown in the God Mode Health security-posture panel.
+- **Resetting someone's second factor** (`POST /api/instance/users/{id}/reset-mfa`) is the
+  most socially-engineered path into an MFA-protected account. The screen requires the
+  administrator to record *how the requester's identity was verified* (a free-text reason
+  is mandatory, stored in the audit row); the affected person is emailed on every address
+  on file; and the reset revokes all of their sessions and API keys.
 - Enrolment is enforced at login: a user who must have MFA and does not is routed to
   enrolment before anything else.
 
 ## API keys and machine access
 
-- better-auth `apiKey` plugin. Keys are hashed; only a prefix is stored in the clear for
-  identification.
-- A key carries a role and an explicit capability subset — it can never exceed its
-  owner's authority.
-- Optional expiry, optional IP allowlist, per-key rate limit.
-- Used by the MCP server, importers and outbound integrations.
+- better-auth `apiKey` plugin for the credential; our `api_key` extension table
+  ([data model](data-model.md) §2) for everything else: capability subset, IP allowlist,
+  per-key rate limit, expiry, last-used, `is_mcp`, and the workspace-owned **service key**
+  with no person behind it. Keys are hashed; only a prefix is stored in the clear.
+- A personal key can never exceed its owner's authority — it is clamped to the owner's
+  *current* authority on every request. A **service key is bounded by its creator's
+  authority at creation** (you cannot mint a key carrying a capability you do not hold —
+  evaluated against the expanded closure, exactly like a role grant), is an **elevated
+  action** ([RBAC](rbac.md#elevated-and-audited-actions--the-single-list)), and its exact
+  capability set is written to the audit row. On use, a service key is evaluated against
+  its own stored subset, so it survives its creator leaving (`AK-7`) without ever having
+  been wider than that person was. `service-key-clamp.test.ts` mirrors the personal-key
+  clamping test.
+- Used by the MCP server, importers and outbound integrations. `feature.mcp` off ⇒ keys
+  flagged `is_mcp` are refused with 404.
 
 ## Invitations
 
 1. A staff member with `member:invite` invites an email into an organisation with a role.
-2. A token is generated; only its SHA-256 hash is stored. Default expiry 14 days.
+2. A token (≥ 128 bits, CSPRNG) is generated; only its SHA-256 hash is stored. Default
+   expiry **7 days**. Redemption is **bound to the invited email address** — the account
+   completing sign-up must verify that address — so an intercepted link is not bearer
+   access to a tenant. Pending invitations are revoked when the inviter loses
+   `member:invite`.
 3. The invitee follows the link and completes sign-up via **any enabled provider for that
    portal** — password, OTP or SSO.
 4. On acceptance, the directory record is created with the invitation's side, organisation
@@ -188,12 +244,19 @@ Invitations never grant instance-admin. That is deliberate and hard-coded.
 
 ## Break-glass
 
-`TASKDESK_BOOTSTRAP_ADMIN_EMAIL` creates the first instance administrator on an empty
-database, and only on an empty database. After that it is ignored.
+**First run needs no environment variable.** On an empty database the application serves a
+one-time **setup page** at the agent origin, unlocked by a 32-byte token printed once in
+the container log (the pattern Jenkins and Portainer use). It creates the first instance
+administrator, enrols MFA, and records completion in `instance_setting.setup_completed_at`
+— a durable marker, so the page can never be re-opened by deleting user rows. The setup
+token expires after one hour or one use. `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` remains as an
+optional override for **headless** installs (automation that cannot read a log) and is
+ignored once `setup_completed_at` is set.
 
-If every administrator is locked out, recovery is a documented CLI command executed
-against the database directly, which writes an audit row. See the
-[runbook](../05-operations/runbook.md).
+If every administrator is locked out, recovery is the CLI (`grant-instance-admin`,
+[runbook](../05-operations/runbook.md)), which must be run **inside the container**, writes
+an audit row with `actor_type = 'system'`, and emails every existing administrator that it
+was used. Break-glass is loud by design.
 
 ## Threat notes
 

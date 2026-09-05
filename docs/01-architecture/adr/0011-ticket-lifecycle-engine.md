@@ -37,8 +37,9 @@ mechanism is solving and what is — and is deliberately not — hardcoded.
 delivery alike. Its states and its transition graph are data. Only the state's `group` is
 fixed vocabulary, and it exists solely to make cross-cutting logic possible.**
 
-- A **state** (`state` table) belongs to a project, has an admin-supplied `name` and
-  `colour`, and is assigned to exactly one of five **groups**:
+- A **state** (`state` table) belongs to a **workspace** — so a workspace-scoped workflow
+  can reference it and serve every project — has an admin-supplied `name` and `colour`,
+  and is assigned to exactly one of five **groups**:
   `backlog · unstarted · started · completed · cancelled`. The five groups are the entire
   fixed vocabulary in the system — nowhere in the codebase does a literal state name like
   `"Resolved"` or `"Open"` appear in domain logic. SLA resolution, "is this done?" checks,
@@ -52,11 +53,22 @@ fixed vocabulary, and it exists solely to make cross-cutting logic possible.**
   Incident, service request, change, epic and bug all flow through the same `state` +
   `workflow` tables, exactly as [work-items.md](../../03-features/work-items.md) already
   argues for the work item table itself.
-- **Renaming, reordering, adding or removing states — and reshaping the transition graph
-  between them — is a God Mode / project-settings action**, per project and per work item
-  type, taking effect immediately, with the workflow editor's validation panel (see
+- **Renaming, adding or removing states — and reshaping the transition graph between
+  them — is a workspace-settings action**; **which states a project uses, in what order,
+  and which is its default is a project-settings action** (`project_state`). Both take
+  effect immediately, with the workflow editor's validation panel (see
   [workflows.md](../../03-features/workflows.md)) refusing a change that would strand
-  in-flight work items.
+  in-flight work items or enable a state the workflow cannot leave.
+- **Transitions carry `guards` and `effects`** — two closed vocabularies owned by
+  [workflows.md](../../03-features/workflows.md). Effects are how a transition sets or
+  clears an assignee, pauses or resumes the SLA clock, or schedules a follow-up transition
+  ("pending until Thursday"). There is no second place where lifecycle side-effects live:
+  [sla.md](../../03-features/sla.md) and [assignment.md](../../03-features/assignment.md)
+  cite the vocabulary, they do not define their own.
+
+*(Corrected 2026-09-05: the first draft made states project-scoped, which the
+[planning review](../../07-planning/review-2026-09-05.md) showed made a workspace workflow
+unable to serve a second project — the exact thing this ADR exists to guarantee.)*
 - The **noun** used to describe a work item, a project, a cycle and so on (`"Ticket"` vs
   `"Issue"` vs `"Case"`) is a *separate* concern, covered by
   [ADR 0012](0012-terminology-overlay.md). This ADR is about the **stages** a work item

@@ -24,7 +24,17 @@ Doing this first is the whole bet. Adding quality gates to an existing codebase 
 happens; building on top of them is easy.
 
 - Copy kaneo into `Ticketing.v2`; de-brand; strip billing, seats, trials and cloud abuse
-  mitigations
+  mitigations; **delete `public-project`** (anonymous boards — removed, not flagged)
+- **Retrofit kaneo's inherited routers into the five policy kinds** — the largest
+  security task in P0 and the reason the route-coverage test enumerates Hono's router. A
+  human-reviewed pass over the inherited code (the snapshot's scanner run detects known
+  CVEs, not a planted change), with its own Opus security review before P0 closes. See
+  [repository-bootstrap.md](../04-engineering/repository-bootstrap.md#3-inherited-features-register)
+- **Inherited-features register** — one page in `docs/01-architecture/` listing every
+  kaneo feature and notable dependency with a verdict (*keep — spec exists* / *keep —
+  write a spec* / *remove*) and the kaneo commit SHA taken. Anything kept without a v2
+  spec is feature-flagged **off** until the spec exists. Starting table and expected
+  verdicts: [review-2026-09-05.md](review-2026-09-05.md)
 - `THIRD-PARTY-NOTICES.md`, `NOTICE`, `LICENSE` (AGPL-3.0), `AGENTS.md`
 - Extract `packages/ui` from kaneo's `components/ui`; Tailwind preset; Storybook
 - Split `apps/web` into two entries: `entry.agent.tsx`, `entry.portal.tsx`
@@ -40,11 +50,31 @@ happens; building on top of them is easy.
   bootstrapper it is wrapped by — see [One-line install](../05-operations/one-line-install.md)
 - Observability: Pino, Prometheus, health endpoints
 - `apps/site` docs skeleton (Fumadocs)
-- ADRs 0001–0010 committed
+- ADRs 0001–0013 committed
 - Sign-in, MFA, not-found, error boundary
 
-**Done when:** the stack builds, deploys locally on three hostnames, and every CI gate runs
-green on an empty application.
+**P0 step 0 — spec closure (added 2026-09-05).** Before step 1, the
+[planning review](review-2026-09-05.md)'s prerequisites are finished, in this order, so
+nothing below is built on a guess:
+
+1. `data-model.md` authoritative for every table and column; identifier lists
+   single-homed (flags, jobs, events, env vars, capabilities) — **done in the review**.
+2. `rbac.md`: five policy kinds, implication graph, role × capability matrix — **done**.
+3. Week-one documents: [repository bootstrap](../04-engineering/repository-bootstrap.md),
+   [`packages/ui` extraction plan](../02-design/ui-extraction-plan.md),
+   [migration convention](../04-engineering/migrations.md),
+   [container image](../05-operations/container-image.md),
+   [auth runtime reconfiguration](../01-architecture/auth-runtime-reconfiguration.md),
+   [i18n](../01-architecture/i18n.md), [Helm values contract](../05-operations/kubernetes.md),
+   the threat model in [security-model.md](../01-architecture/security-model.md).
+4. Each feature spec's remaining findings in
+   [reviews/2026-09-05/](reviews/2026-09-05/) are closed at **SDLC stage 2 of that
+   feature**, before its build starts — not all at once now. A spec is not "specified"
+   until its section in those files is empty.
+
+**Done when:** the stack builds, deploys locally on three hostnames, every CI gate runs
+green **with kaneo's inherited routes present and each carrying a policy** (not on an
+empty application), and the P0 Opus security review has signed off the router retrofit.
 
 ---
 

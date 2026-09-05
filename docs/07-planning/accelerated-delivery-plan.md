@@ -31,15 +31,15 @@ silent redefinition of *what*.
 
 ## Why this is attemptable at all, on this calendar
 
-A from-scratch build of 109 screens and a full ITIL-depth service desk in four weeks would
+A from-scratch build of 133 screens and a full ITIL-depth service desk in four weeks would
 be fantasy. Three things make an aggressive attempt realistic rather than fantastical:
 
 1. **P1 is mostly already built.** [ADR 0001](../01-architecture/adr/0001-kaneo-as-foundation.md)
    takes kaneo — a working, tested, styled work-management application — as the starting
    point. Week 1 is de-branding and hardening a running product, not building one from a
    blank editor.
-2. **The specs already exist.** All 30 feature specs, the data model, the API design, the
-   RBAC model and ten ADRs are written. [SDLC](../04-engineering/sdlc.md) stage 2 (Specify)
+2. **The specs already exist.** All 29 feature specs, the data model, the API design, the
+   RBAC model and thirteen ADRs are written. [SDLC](../04-engineering/sdlc.md) stage 2 (Specify)
    — normally the slowest stage because it requires human judgement — is already done for
    the whole product. What is left is stages 3–9, which parallelise.
 3. **Heavy, model-tiered AI-agent parallelisation.** Independent workstreams (below) run
@@ -66,7 +66,7 @@ not:
 2. **Every feature — the ones listed here and any added later — is built as a pluggable
    engine, never a one-off.** Contract, registry, God-Mode-generated configuration, a
    feature flag to switch it off. See
-   [plugin-architecture.md § the engine pattern](../01-architecture/plugin-architecture.md#the-engine-pattern-making-any-feature-pluggable).
+   [plugin-architecture.md § the engine pattern](../01-architecture/plugin-architecture.md#the-engine-pattern--making-any-feature-pluggable).
    A workstream that ships something hardcoded to hit a date has not actually hit the
    target — it has produced the thing this whole rebuild exists to avoid.
 
@@ -105,7 +105,11 @@ set** (SLA, approvals, portal, 14 reports) — that would not be honest to promi
 - UAT environment stood up on real infrastructure (Postgres 18, Valkey 9, SeaweedFS,
   Traefik), seeded with realistic data.
 - **Exit:** UAT reachable, sign-in works, a work item can be created and moved on a board,
-  every route in the CI-generated OpenAPI document has a passing policy check.
+  **every route in Hono's router** (not only the OpenAPI document — `/auth/*`, `/ws`,
+  `/metrics` included) has a declared policy of one of the five kinds, and kaneo's
+  inherited routers have been retrofitted into those kinds with `public-project` removed
+  — the P0 security task named in [phases.md](phases.md#p0--foundation). An Opus security
+  pass over that retrofit is part of the exit, not a follow-up.
 
 ### Weeks 2–4 — parallel build-out to go-live (by Oct 3)
 
@@ -174,6 +178,15 @@ Everything deferred below, plus:
 This is the explicit register the "keep both documents" decision requires. Nothing in the
 left column is silently thinner without appearing here.
 
+> **Correction from the 2026-09-05 review** — several rows below understate what exists at
+> go-live, because kaneo *already ships* them and they arrive with the fork in week 1:
+> calendar and gantt/timeline views, basic time entries, an automation-rule engine
+> (`workflow-rule`), Slack/Discord/Telegram/GitHub/Gitea integrations, and public project
+> boards. For those, "deferred" means *inherited but feature-flagged off until the v2 spec
+> is aligned and the UX gates pass*, not "not present". Public boards are an unauthenticated
+> read surface and get the week-1 security review whether or not they are kept. See the
+> inherited-features register in [review-2026-09-05.md](review-2026-09-05.md).
+
 | Area | At go-live (end of week 4) | Deferred to weeks 6–17 |
 | --- | --- | --- |
 | **Reporting** | Tier 1 (a working subset of the fourteen, not all), tier 2 (selectable table reports) | The rest of the fourteen fixed reports; tier 3 customisable report builder; dashboards beyond a sensible default |
@@ -183,7 +196,7 @@ left column is silently thinner without appearing here.
 | **Knowledge base** | Not present | Articles, deflection during request creation |
 | **Import** | Not present | The entire [P6](phases.md) — Azure DevOps, Plane, Jira, CSV |
 | **Accessibility** | Automated gates (axe, zero critical/serious) run in CI as always — **not deferred** | The *manual* full audit and remediation pass across every screen |
-| **i18n** | `en-US` only | The other 21 locales kaneo carries |
+| **i18n** | `en-US` only | The other 17 locales kaneo carries |
 | **Load testing** | The baseline scenarios in [testing-strategy.md](../04-engineering/testing-strategy.md), run in week 5 | Load testing at realistic multi-tenant production scale over time |
 | **Penetration test** | Not performed | External penetration test — **explicitly required before this is handed to a real external paying customer**, see [risks.md](risks.md) **R4** |
 | **AWS Marketplace** | Not listed | Full packaging and seller registration |

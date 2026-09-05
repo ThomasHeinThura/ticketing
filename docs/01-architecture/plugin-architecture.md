@@ -96,10 +96,20 @@ instance_plugin_config
   created_at, updated_at, updated_by
 ```
 
-- Secrets are **encrypted at rest** and **never returned by the API**. Reads return
-  `"••••••••"`; writes accept a new value or the sentinel meaning "unchanged".
-- Every change writes an audit row with the actor, the plugin and the changed keys —
-  values excluded.
+- Secrets are **encrypted at rest** (per-row envelope with `key_id`, IV and the row id as
+  AAD — [security-model.md](security-model.md)) and **never returned by the API**. Reads
+  return `"••••••••"`; on write, **omitting** a secret field means "unchanged" — there is no
+  in-band sentinel string, and an omitted field is honoured only for the same plugin row.
+- Every change — and every `test()` call, even when nothing is saved — writes an audit row
+  with the actor, the plugin, the target host and the changed keys; values excluded.
+- `test()` and every outbound call a plugin makes go through the **one egress-checked HTTP
+  client** ([security-model.md](security-model.md)); a plugin never opens its own socket.
+- **A plugin is fully trusted code.** It runs in-process with the database handle and the
+  encryption key. Installing one is a supply-chain decision equivalent to a core commit; no
+  mechanism for untrusted third-party plugins exists, and none will without an ADR.
+- The storage plugin's configuration carries the **public files origin** (the bucket URL or
+  the `files.<domain>` router) — the CSP and presigned URLs read it from there; it is not
+  an environment variable.
 
 ## Plugin kinds
 
@@ -162,7 +172,25 @@ Only add the second if the first is measured to be insufficient.
 
 `ai.openai`, `ai.azure-openai`, `ai.ollama`, `ai.anthropic`.
 Used for suggested request classification, duplicate detection and summarisation.
-**Off by default**, because many customers will not permit it.
+**Off by default**, because many customers will not permit it — and "off by default" is a
+deployment default, not a control, so the kind carries its own rules
+([security model](security-model.md#ai-and-mcp-surfaces)):
+
+- Retrieval context (the tickets a duplicate-detection or summarisation call sees) is
+  assembled through the **same scoped repositories** as any read, for the identity that
+  triggered the feature — never a workspace-wide corpus. Cross-organisation duplicate
+  detection is a cross-tenant leak and does not exist.
+- Model output is **untrusted input**: sanitised on the same path as user rich text
+  before storage or render, never executed, never used as an instruction to another
+  component.
+- Each feature declares in the God Mode `ai` screen exactly which fields leave the
+  instance; per work item, an `ai.sent_externally` audit row records that it was sent, to
+  which provider. Prompts and completions are **not** logged by default.
+- Per-organisation monthly spend cap (tokens), enforced before the call; a
+  per-organisation opt-out that wins over the instance setting.
+- Calls go through the central egress client like every other outbound request;
+  `ai.ollama` is the one kind expected to point at a private address and is allowlisted
+  by the administrator explicitly, per host.
 
 ### `license` — marketplace entitlement and usage metering
 
@@ -191,24 +219,37 @@ Resolution: project → workspace → instance → built-in default.
 `locked` at instance level prevents lower levels from overriding — this is how a vendor
 sells tiers without shipping different images.
 
-| Flag | Hides |
-| --- | --- |
-| `feature.cycles` | Cycles/sprints |
-| `feature.modules` | Modules |
-| `feature.estimates` | Story points / estimates |
-| `feature.intake` | Intake queue |
-| `feature.sla` | SLA policies, SLA badges, SLA reports |
-| `feature.approvals` | Approvals and CAB |
-| `feature.time_tracking` | Timesheets, time entries |
-| `feature.cost_tracking` | Rates, budgets, cost reports |
-| `feature.knowledge_base` | KB |
-| `feature.service_catalogue` | Services, changes, releases |
-| `feature.customer_portal` | The whole portal origin |
-| `feature.gantt` · `feature.calendar` · `feature.pages` | Those views |
+**This table is the flag enumeration.** It is `packages/permissions/src/features.ts`,
+rendered; [configuration-reference.md](../05-operations/configuration-reference.md) and
+every feature spec link here rather than restating it, and a CI test asserts the code enum
+equals this list.
+
+| Flag | Hides | Phase |
+| --- | --- | --- |
+| `feature.cycles` | Cycles/sprints | P5 |
+| `feature.modules` | Modules | P5 |
+| `feature.estimates` | Story points / estimates | P5 |
+| `feature.intake` | Intake queue, request types, catalogue | P2 |
+| `feature.sla` | SLA policies, service calendars, SLA badges, SLA reports | P2 |
+| `feature.approvals` | Approvals and CAB | P2 |
+| `feature.time_tracking` | Timesheets, time entries, timer | P5 |
+| `feature.cost_tracking` | Rates, budgets, cost reports | P5 |
+| `feature.knowledge_base` | KB, deflection | P5 |
+| `feature.service_catalogue` | Services, changes, freezes, releases | P5 |
+| `feature.customer_portal` | The portal router returns 404 and the portal host serves a disabled notice — a flag cannot unbind a hostname from Traefik | P3 |
+| `feature.reports` | Reports index, dashboards, tier 2/3 reports | P5 |
+| `feature.automations` | Automation rules (the engine is inherited from kaneo; flagged off until spec-aligned) | P4 |
+| `feature.timeline` · `feature.calendar` · `feature.pages` | Those views. *(`feature.timeline` was `feature.gantt`; the UI says Timeline everywhere)* | P5 |
+| `feature.mcp` | MCP-flagged API keys are refused with 404 | P4 |
+| `feature.import` | Import runs and the import UI; locked on for administrators by default | P6 |
+| `feature.public_boards` | **Reserved, no code behind it.** kaneo's anonymous public boards are *removed* at fork ([inherited-features.md](inherited-features.md)); the flag exists so a future spec'd, security-reviewed re-implementation has its switch | reserved |
 
 The UI reads flags from a single `useFeature('cycles')` hook. Navigation, routes and
 API endpoints all respect them — a disabled feature returns `404` from the API, not just
-a hidden menu item.
+a hidden menu item. Resolution is `project → workspace → instance → built-in default`,
+with an instance `locked` flag short-circuiting the chain, over the three tables
+`instance_feature_flag`, `workspace_feature_flag`, `project_feature_flag`
+([data model](data-model.md)).
 
 ## Branding
 
@@ -220,7 +261,7 @@ because the login page needs it.
 
 ## The engine pattern — making any feature pluggable
 
-The six plugin kinds below (`auth`, `storage`, `notify`, `import`, `search`, `ai`, plus
+The seven plugin kinds above (`auth`, `storage`, `notify`, `import`, `search`, `ai`, and
 `license` from [ADR 0013](adr/0013-marketplace-metering-plugin.md)) are the plugin
 registry's current members, but the *pattern* is not limited to them. **Every feature in
 this product — the ones specified today and any added later — is expected to follow the
@@ -277,20 +318,14 @@ calendar looks like.
 The only things not configurable at runtime, because they are needed to reach the
 configuration:
 
-| Variable | Purpose |
-| --- | --- |
-| `TASKDESK_DATABASE_URL` | Where configuration lives |
-| `TASKDESK_ENCRYPTION_KEY` | Decrypts plugin secrets. 32-byte hex |
-| `TASKDESK_AUTH_SECRET` | Session signing |
-| `TASKDESK_AGENT_URL` | Public agent origin |
-| `TASKDESK_PORTAL_URL` | Public portal origin |
-| `TASKDESK_PORT` | Bind port |
-| `TASKDESK_VALKEY_URL` | Optional |
-| `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` | First-run only; creates the instance admin |
+Five are required — `TASKDESK_DATABASE_URL`, `TASKDESK_ENCRYPTION_KEY`,
+`TASKDESK_AUTH_SECRET`, `TASKDESK_AGENT_URL`, `TASKDESK_PORTAL_URL` — and the rest are
+optional operational switches. **The only list is in
+[Configuration reference](../05-operations/configuration-reference.md)**; this document
+deliberately does not restate it, because the last time two documents both held the list
+they disagreed on its length.
 
 Everything else — SMTP, OIDC, S3, Slack, branding, features — is God Mode.
-
-Full list: [Configuration reference](../05-operations/configuration-reference.md).
 
 ## Related
 

@@ -37,7 +37,7 @@ edited in God Mode by an administrator.
 **In practice:** if you are about to write `if (process.env.CUSTOMER === …)` or add a
 provider-specific code path, stop and add a registry entry instead. This is not limited to
 the plugin registry's current six kinds — it is a shape every feature follows. See
-[Plugin architecture § the engine pattern](../01-architecture/plugin-architecture.md#the-engine-pattern-making-any-feature-pluggable).
+[Plugin architecture § the engine pattern](../01-architecture/plugin-architecture.md#the-engine-pattern--making-any-feature-pluggable).
 
 ---
 

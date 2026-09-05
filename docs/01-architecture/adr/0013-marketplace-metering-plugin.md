@@ -92,6 +92,19 @@ require an environment variable to turn it off — both of which are exactly the
   webhooks — [data model](../data-model.md)), by the `test()` heartbeat, and by treating a
   failed metering send as a job-retry case rather than a silent drop.
 
+- **Metering integrity is contractual, not technical, in a self-hosted AGPL product.** The
+  buyer is the instance administrator and may lawfully modify the source, so AWS's
+  "buyer cannot bypass metering" requirement cannot be met structurally. Recorded as
+  **R18** in [risks.md](../../07-planning/risks.md); the recommended resolution is a BYOL /
+  contract listing where the plugin resolves entitlement only and meters nothing.
+- **AGPL §6 applies to the Marketplace image**, not only §13: shipping the image to a buyer
+  is distribution, so the corresponding source for that exact build is linked from the
+  listing — the same SHA the image's provenance attestation names.
+- If a metered dimension is ever chosen: `MeterUsage` (aggregate, seat-based) runs under a
+  lease on one replica like any other job; `RegisterUsage` (per running task) must run
+  **unleased on every replica** at start — the opposite of the lease model — and the plugin
+  says which it does.
+
 ### Neutral
 
 - Whether an AMI-based listing is pursued alongside, or instead of, a container-product

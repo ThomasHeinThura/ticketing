@@ -87,7 +87,7 @@ Tracked in [risks.md](risks.md).
 ## How progress is tracked
 
 - [status.md](status.md) — the live picture, updated at the end of every session
-- [screen-inventory.md](../02-design/screen-inventory.md) — 107 screens with status
+- [screen-inventory.md](../02-design/screen-inventory.md) — every screen with its phase and status
 - [03-features/README.md](../03-features/README.md) — feature status
 - Phase reviews — written at each phase close, **including what went wrong**
 

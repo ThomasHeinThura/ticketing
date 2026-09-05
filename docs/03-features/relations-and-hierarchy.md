@@ -40,13 +40,15 @@ and is right to.
 - `RH-6` Parent and child must be in the same project.
 - `RH-7` Maximum depth 5.
 - `RH-8` Cycles are rejected — a work item cannot be its own ancestor, at any distance.
-- `RH-9` A parent displays rolled-up progress: children completed / total, plus rolled-up
-  estimate and logged time where those features are enabled.
+- `RH-9` A parent displays rolled-up progress as defined once in `WI-19` — whole subtree,
+  "completed" meaning `state.group in ('completed', 'cancelled')` — plus rolled-up estimate
+  and logged time where those features are enabled. `RH-14` uses the same definition.
 - `RH-10` Closing a parent with open children warns and lists them. It does not cascade.
 - `RH-11` Deleting a parent orphans its children rather than deleting them. The user is
   told exactly this before confirming.
 - `RH-12` Moving a parent between projects offers to move its children too. Declining
-  breaks the hierarchy, which is stated plainly.
+  **detaches** the children — they stay in the old project with no parent, and the parent
+  link is removed — so `RH-6` always holds. This is stated plainly before confirming.
 
 ## Epics
 
@@ -58,8 +60,9 @@ and is right to.
 
 ## Blocking behaviour
 
-- `RH-16` A workflow guard may require that no `blocked_by` relation points at an open
-  work item.
+- `RH-16` A workflow guard (`no_open_blockers`, [workflows.md](workflows.md) `WF-15`) may
+  require that no `blocked_by` relation points at an open work item — "open" meaning
+  `state.group not in ('completed', 'cancelled')`, never a state name.
 - `RH-17` A blocked work item shows a badge and lists what is blocking it.
 - `RH-18` When the last blocker closes, the assignee of the blocked item is notified.
 - `RH-19` Blocking cycles — A blocks B, B blocks A — are permitted at creation but

@@ -14,7 +14,7 @@
 | Icons | lucide-react — the only icon source |
 | Typography | Geist Variable / Geist Mono Variable |
 | Motion | Framer Motion, tokenised |
-| Catalogue | Storybook 8 |
+| Catalogue | Storybook 10 |
 
 ## Package layout
 

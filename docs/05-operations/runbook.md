@@ -33,7 +33,7 @@ curl -sf localhost:5173/api/health/live
 ### Slow
 
 ```bash
-curl localhost:5173/metrics | grep -E 'duration|pool|eventloop'
+curl -H "Authorization: Bearer $TASKDESK_METRICS_TOKEN" localhost:5173/metrics | grep -E 'duration|pool|eventloop'
 ```
 
 | Cause | Fix |
@@ -61,7 +61,7 @@ curl localhost:5173/metrics | grep -E 'duration|pool|eventloop'
 ### Notifications not arriving
 
 ```bash
-curl localhost:5173/metrics | grep outbox
+curl -H "Authorization: Bearer $TASKDESK_METRICS_TOKEN" localhost:5173/metrics | grep outbox
 ```
 
 | Cause | Fix |
@@ -88,7 +88,7 @@ wrong — the inputs are wrong.
 ### Jobs not running
 
 ```bash
-curl localhost:5173/metrics | grep job_last_success
+curl -H "Authorization: Bearer $TASKDESK_METRICS_TOKEN" localhost:5173/metrics | grep job_last_success
 psql -c "select * from job_lease;"
 ```
 
@@ -115,6 +115,21 @@ Requires database access. Every step is audited.
 
 ```bash
 docker compose exec taskdesk node dist/cli.js grant-instance-admin you@example.com
+```
+
+The CLI is a build target of the image (`apps/api/src/cli.ts` → `dist/cli.js`,
+[container-image.md](container-image.md)). Every command writes an audit row with
+`actor_type = 'system'` and the invoking OS user. Commands:
+
+| Command | Does |
+| --- | --- |
+| `grant-instance-admin <email>` | Break-glass: grants `instance:admin` to an existing person |
+| `disable-auth-plugin <id>` | Disables an identity provider and bumps `config_version` so every replica reloads ([auth runtime reconfiguration](../01-architecture/auth-runtime-reconfiguration.md)) |
+| `verify-backup <file>` | `pg_restore --list` plus a decrypt check of one plugin secret against the current key |
+| `rekey-status` | Progress of `secrets-rekey`: rows on the new `key_id` vs total |
+
+```
+# (metrics token is in God Mode → Observability)
 ```
 
 The command writes an `audit_log` row recording that break-glass was used. If it appears in
@@ -164,7 +179,7 @@ migrations are two-phase, and why the pre-upgrade backup is mandatory.
 | Change SMTP | God Mode → Notifications, then **Test** |
 | Enable or disable a feature | God Mode → Features |
 | Trigger a job | God Mode → Jobs → Run now |
-| Rotate the encryption key | God Mode → General → Rotate, with re-authentication |
+| Rotate the encryption key | Operator-staged: set `TASKDESK_ENCRYPTION_KEY` (new) + `TASKDESK_ENCRYPTION_KEY_PREVIOUS` (old), restart, then God Mode → Plugins → Rotate secrets (elevated) runs `secrets-rekey`; remove the previous key when Health confirms every row carries the new `key_id`. `GM-12`–`GM-14` |
 | Export the audit log | God Mode → Audit → Export |
 
 **Almost nothing here needs a shell.** If a routine operation does, that is a gap in
@@ -178,7 +193,7 @@ God Mode and should be recorded as one.
 docker compose logs -f taskdesk
 docker compose exec postgres psql -U taskdesk
 curl -s localhost:5173/api/health/deep | jq
-curl -s localhost:5173/metrics | grep taskdesk_
+curl -s -H "Authorization: Bearer $TASKDESK_METRICS_TOKEN" localhost:5173/metrics | grep taskdesk_
 docker stats
 df -h && du -sh /var/lib/docker/volumes/*
 ```

@@ -56,9 +56,11 @@ Ticketing.v2/
 │   ├── e2e/                    Playwright — agent + portal projects
 │   └── visual/                 Playwright screenshot baselines
 │
-├── charts/taskdesk/            Helm chart (secondary deployment path)
+├── charts/taskdesk/            Helm chart — derived from kaneo's, rewritten for one image (05-operations/kubernetes.md)
+├── tests/fixtures/             seed datasets: minimal · realistic · hostile
 ├── deploy/                     compose files, Traefik config, env templates
-├── scripts/                    deploy.sh, seed, i18n checks, openapi export
+├── scripts/                    deploy.sh · install.sh · backup.sh · restore.sh · archive-wal.sh · anonymise.ts (tested — tests/anonymise/)
+│                               seed.ts · check-inventory.mjs · check-queries.mjs · i18n checks · openapi export
 ├── plans/                      motion & interaction design specs (from kaneo)
 ├── skills/                     agent skills for UI review, animation, etc.
 ├── docs/                       this documentation corpus
@@ -103,7 +105,9 @@ work-item/
 ├── index.ts          route definitions: createRoute + policy + middleware
 ├── schema.ts         Zod schemas for params, query, body
 ├── response.ts       Zod schemas for responses — nothing else reaches the wire
-├── policy.ts         the capability each route requires  (mandatory)
+├── policy.ts         the policy each route declares  (mandatory — one of the five kinds in rbac.md)
+├── repository.ts     the ONLY place db.select()/insert()/update() on this feature's tables may appear;
+│                     exposes forIdentity(identity) scoped queries (multi-tenancy.md). Enforced by check:queries
 ├── controllers/
 │   ├── create-work-item.ts
 │   ├── update-work-item.ts

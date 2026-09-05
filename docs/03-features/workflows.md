@@ -41,13 +41,18 @@ Jira has this and charges for it. Plane and kaneo do not have it at all.
 **Structure**
 
 - `WF-1` A workflow belongs to a workspace and is attached to one or more work item types.
-- `WF-2` A version contains a set of transitions. States themselves belong to the project.
+- `WF-2` A version contains a set of transitions. **States belong to the workspace**
+  (`state`); each project enables an ordered subset with its own default (`project_state`)
+  — see [ADR 0011](../01-architecture/adr/0011-ticket-lifecycle-engine.md). A project may
+  not enable a state its types' workflows have no transition out of; the validation panel
+  refuses it.
 - `WF-3` A transition is `(from_state, to_state, role_id?)`. A null `role_id` means all
   roles.
-- `WF-4` If no transition matches `(current_state, target_state, any of the actor's
-  roles)`, the transition is illegal and returns 409.
-- `WF-5` A transition from the special `*` source means "from any state" — used for
-  Cancel.
+- `WF-4` Without `work_item:transition` the request is **403**, naming the capability.
+  With it, if no transition matches `(current_state, target_state, any of the actor's
+  roles)`, the transition is illegal and returns **409** with the reason. The two are
+  never conflated — "you may not" and "not from here" are different errors.
+- `WF-5` A null `from_state_id` means "from any state" — used for Cancel.
 
 **Versioning**
 
@@ -69,23 +74,40 @@ Jira has this and charges for it. Plane and kaneo do not have it at all.
 
 **Guards and gates**
 
-- `WF-13` `requires_approval` blocks the transition until an approval is granted. See
+- `WF-13` `requires_approval` blocks the transition until an approval **raised against
+  this transition** (`approval.transition_id`) is `approved`; `approval_policy` (`any` |
+  `all`) says how many. An approval raised for another gate never satisfies this one. See
   [approvals](approvals.md).
-- `WF-14` `requires_cab` blocks until a CAB approval is granted. Change work items only.
-- `WF-15` A guard may require: all children closed; no blocking relations open; a
-  required custom field populated; assignee present.
+- `WF-14` `requires_cab` blocks until a CAB approval is granted. Only offered on types with
+  `work_item_type.is_change = true` — never matched by a type's name.
+- `WF-15` **Guards** — a closed vocabulary, stored as `workflow_transition.guards jsonb`:
+  `children_closed` · `no_open_blockers` · `assignee_present` · `field_required { field }`
+  (a native column, `cf.<key>`, or a satellite such as `change.rollback_plan`) ·
+  `change_risk_at_most { level }`. **"Closed" means `state.group in ('completed',
+  'cancelled')`; "open" means anything else** — never a state name.
 - `WF-16` Guards are evaluated server-side and the reason for a blocked transition is
-  returned in the problem detail so the UI can explain it.
+  returned in the problem detail as a reason code `guard.<type>` so the UI can explain it.
 
-**Effects**
+**Effects** — a closed vocabulary, stored as `workflow_transition.effects jsonb`. This is
+the **only** place lifecycle side-effects are defined; `sla.md` and `assignment.md` cite it.
 
-- `WF-17` Entering a `completed` state sets `resolved_at` and stops the resolution SLA.
-- `WF-18` Leaving a `completed` state clears `resolved_at` and resumes the SLA clock from
-  where it stopped, not from zero.
-- `WF-19` A transition may set the assignee — for example, moving to "Waiting on customer"
-  can unassign.
-- `WF-20` A transition emits `work_item.transitioned` for automations, webhooks and
-  notifications.
+- `WF-17` Entering a `completed`-group state sets `resolved_at` and writes an `sla_pause`
+  row with reason `resolved` for every metric — which is how the clock "stops" in a model
+  where SLA state is never stored.
+- `WF-18` Leaving a `completed`-group state clears `resolved_at` and closes that
+  `sla_pause` row, so the clock resumes from where it stopped, not from zero.
+- `WF-19` Effects available on any transition: `set_assignee { personId | 'default' }`,
+  `clear_assignee`, `pause_sla`, `resume_sla` (an open `waiting_customer` pause),
+  `set_field { field, value }`, and `schedule_transition { after_minutes, to_state_id }` —
+  the "pending until" pattern, fired by the scheduler and cancelled if the item leaves the
+  state first.
+- `WF-20` A transition emits `work_item.transitioned` ([events.md](../01-architecture/events.md))
+  for automations, webhooks and notifications, in the same transaction as the change.
+- `WF-21` A customer-initiated reopen ([customer-portal.md](customer-portal.md) `CP-8`, a
+  reply to a closed request, an upload to a resolved request) is executed as a **system
+  actor** through the workflow's transition marked `is_reopen`; if the active version has
+  none, the action is accepted, the item stays resolved, and a flagged activity row asks
+  staff to look. One mechanism for all three call sites.
 
 ## The state select
 
@@ -137,7 +159,8 @@ blocked. The UI never computes legality client-side.
 | Case | Behaviour |
 | --- | --- |
 | Actor holds two roles with different transitions | The union applies |
-| State deleted from a project | Refused while any work item is in it |
+| State disabled for a project | Refused while any work item in that project is in it |
+| Workspace state deleted | Refused while any project enables it |
 | Workflow reassigned to a different type | Allowed. Existing items keep their state; illegal states are reported |
 | Circular guard — A requires B closed, B requires A closed | Both blocked. The validation panel detects the cycle before publishing |
 | Bulk transition where some items are illegal | Per-item: legal ones succeed, illegal ones reported with reasons |
@@ -160,8 +183,14 @@ Unit tests in `packages/domain/src/workflow/`:
 - Reopen resumes rather than restarts the SLA clock.
 - Version selection and stuck-item detection.
 
-Integration: a transition without permission returns 409 with the reason; a transition
-with a required note but no note returns 422.
+Integration: a transition without `work_item:transition` returns **403** naming the
+capability; a transition with the capability but no legal edge returns **409** with the
+reason; a transition with a required note but no note returns 422; every guard type
+returns its `guard.<type>` reason code.
+
+Named tests: `wf-4-403-vs-409.spec.ts`, `wf-13-approval-gate-matches-transition.spec.ts`,
+`wf-17-completed-writes-sla-pause.spec.ts`, `wf-19-effects-vocabulary.spec.ts`,
+`wf-21-customer-reopen-system-actor.spec.ts`.
 
 E2E: a member cannot see the Resolve option; a lead can; a blocked transition shows its
 reason; a required note is captured and appears as a comment.

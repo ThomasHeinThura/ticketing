@@ -108,9 +108,13 @@ business actually cares about and they are where v1's real value lived.
 5. **Policy check** — the route's declared capability is evaluated against the resolved
    reach and authority. Out of reach ⇒ `404`. In reach, insufficient authority ⇒ `403`.
 6. Handler validates input with Zod, calls domain functions, persists via Drizzle.
-7. Mutations emit a domain event → audit row, WebSocket broadcast, notification fan-out,
-   webhook enqueue.
-8. Response, shaped by an explicit response schema. No ORM entities leak to the wire.
+7. **In the same transaction** as the change: the `activity` row, the `audit_log` row
+   where the action is security-relevant, and the `outbox` row carrying the domain event
+   ([events.md](events.md)).
+8. **After commit**, from the commit hook — never from the handler body: WebSocket
+   broadcast and in-app notification. Webhooks and email drain from the outbox. A rollback
+   therefore never produces a phantom update.
+9. Response, shaped by an explicit response schema. No ORM entities leak to the wire.
 
 ## Realtime
 
@@ -125,16 +129,9 @@ Detail: [Realtime](realtime.md).
 In-process, `croner`-scheduled, guarded by the `job_lease` table so only one replica runs
 a given job.
 
-| Job | Cadence | Purpose |
-| --- | --- | --- |
-| `sla-scan` | 5 min | Find work items crossing at-risk/breach; emit events |
-| `reminders` | 15 min | Due-date and prerequisite reminders |
-| `webhook-delivery` | 30 s | Drain the outbox with retry and backoff |
-| `snapshot-metrics` | hourly | Precompute report aggregates |
-| `audit-purge` | daily | Age out audit rows past retention |
-| `session-cleanup` | daily | Expire stale sessions and invitations |
-
-Detail: [Background jobs](background-jobs.md).
+The job list — names, cadences, lease TTLs — lives in exactly one place:
+[Background jobs](background-jobs.md). Job names are identifiers (`job_lease.name`,
+Prometheus labels) and are deliberately not restated here.
 
 ## Data
 

@@ -17,15 +17,22 @@ the rest.
 
 ### Events
 
+The deliverable events are the **W** column of the canonical catalogue in
+[events.md](../01-architecture/events.md) — this document does not keep its own list. As of
+2026-09-05 that is:
+
 ```
 work_item.created         work_item.updated        work_item.transitioned
-work_item.assigned        work_item.commented      work_item.deleted
+work_item.assigned        work_item.unassigned     work_item.commented
+work_item.escalated       work_item.overdue        work_item.deleted
 approval.requested        approval.decided         approval.expired
 sla.at_risk               sla.breached             sla.met
 submission.received       submission.accepted      submission.declined
-project.created           project.archived
-prerequisite.overdue
+submission.withdrawn      project.created          project.archived
+prerequisite.overdue      budget.threshold_reached
 ```
+
+`webhook.events[]` stores these keys; `EV-4` in the catalogue governs renames.
 
 ### Envelope
 
@@ -61,10 +68,26 @@ does with a webhook is build a link back.
 - `WH-5` Ten-second timeout. Only `2xx` is success.
 - `WH-6` Delivery history is visible per webhook: status code, duration, error, payload.
   An administrator must be able to see that their endpoint has been returning 500 for two
-  days.
+  days. **Payload bodies are shown only for deliveries whose referenced entity is in the
+  reader's reach** — otherwise the row shows status, duration and error with the body
+  redacted. Delivery history is not an export channel.
 - `WH-7` A webhook failing continuously for 24 hours is auto-disabled and the owner is
   notified. It does not retry forever into a void.
 - `WH-8` Redelivery of a specific event is available from the UI.
+- `WH-13` Secret rotation keeps the previous secret valid for **24 hours**; deliveries in
+  that window carry two signatures (`X-TaskDesk-Signature` and
+  `X-TaskDesk-Signature-Previous`) so a consumer can roll over without a gap. "Rotate all
+  webhook secrets" is a God Mode incident action.
+- `WH-14` **A webhook delivers only events within its owner's reach.** A workspace webhook
+  is stamped with the creator's identity; at delivery time the event's entity is checked
+  against that identity's reach, and an out-of-reach event is skipped (recorded as
+  `skipped_out_of_reach`, not failed). A webhook whose owner has `sees_all` or
+  `instance:admin` therefore receives everything; a manager's webhook receives their
+  projects. When the owner leaves, the webhook is **paused** and must be re-owned by
+  someone with `webhook:manage` — it does not silently inherit anyone's reach. The same
+  rule applies to the automation action "Call a webhook" ([automations.md](automations.md)),
+  which runs as the rule's `effective_role_id`. `webhook-delivery-reach.test.ts`: a manager
+  with membership in project A only never sees project B content via delivery or history.
 
 ### SSRF protection
 
@@ -88,7 +111,14 @@ does with a webhook is build a link back.
   revocable.
 - `AK-6` Revocation is immediate.
 - `AK-7` A service key belongs to a workspace, not a person, so it survives that person
-  leaving. Creating one requires `api_key:manage`.
+  leaving. Creating one requires `api_key:manage` **and is an elevated action**; its
+  capability subset is **bounded by the creator's authority at creation** (evaluated
+  against the expanded closure, like a role grant) and the exact set granted is written to
+  the audit row. On use it is evaluated against its own stored subset. A service key is
+  never a way to hold more authority than the person who created it held at the time.
+- `AK-9` Keys flagged `is_mcp` default to the **read** capabilities only; write
+  capabilities are an explicit opt-in at creation, shown with a warning
+  ([mcp-server.md](mcp-server.md) `MC-15`).
 - `AK-8` Keys authenticate as `Authorization: Bearer tdk_…`.
 
 ## Permissions
@@ -98,7 +128,7 @@ does with a webhook is build a link back.
 | Manage workspace webhooks | `webhook:manage` |
 | See delivery history | `webhook:manage` |
 | Create a personal API key | Self |
-| Create a workspace service key | `api_key:manage` |
+| Create a workspace service key | `api_key:manage` + elevated; bounded by the creator's authority |
 | Revoke anyone's key | `api_key:manage` |
 
 ## Screens

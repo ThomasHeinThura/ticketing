@@ -41,7 +41,13 @@ The script verifies the dump is restorable — `pg_restore --list` at minimum �
 uploading. A dump that cannot be listed will not restore, and finding that out during an
 incident is the worst possible time.
 
-**Object storage** — `mc mirror` incremental to a second bucket in a different location.
+**Object storage** — `rclone sync` (or `aws s3 sync`) incremental to a second bucket in a
+different location. Backend-neutral; works for SeaweedFS, Garage and real S3 alike.
+*(Not `mc` — that is the MinIO client, and MinIO is the dependency the stack dropped.)*
+
+Every successful run — database, objects, WAL — writes a `backup_run` row
+([data model](../01-architecture/data-model.md)), which is how God Mode → Health knows
+whether a backup has happened.
 
 **Both together** — the two must be restorable to a *consistent* point.
 
@@ -82,8 +88,9 @@ Not a glance. A checklist:
 - [ ] Audit log present
 - [ ] Row counts within expectation
 
-Items 5 to 7 are the ones a naive restore test misses, and they are precisely what breaks
-when the encryption key was not restored.
+The three items a naive restore test misses — **Health green**, **authentication secrets
+decrypt** (sign in through a configured OIDC provider), and **a notification channel test
+send succeeds** — are precisely what breaks when the encryption key was not restored.
 
 ## Monthly restore drill
 
@@ -91,6 +98,24 @@ when the encryption key was not restored.
 
 A backup you have never restored is a hypothesis. The drill produces a written record:
 date, backup used, time taken, checklist outcome, problems found.
+
+The drill copies production data — every organisation's tickets, the audit log's PII,
+password and API-key hashes — so the scratch environment is not exempt from controls:
+
+- It runs **behind the same access controls as production** (no public hostname, the
+  operator's network only, TLS), or against a dump anonymised by `scripts/anonymise-dump.sh`
+  (names, emails and free text replaced; structure and counts preserved) when the drill
+  does not need to exercise sign-in.
+- It is **destroyed within 24 hours**, and the destruction is part of the written record.
+- The backup archive itself is encrypted with a key (`age` recipient or a KMS key) held
+  **separately** from `TASKDESK_ENCRYPTION_KEY` and from the database credentials — a
+  backup should not be readable by the person who can already read the database.
+- The offsite target uses **write-only / append-only credentials** (S3 object lock or an
+  IAM policy with `PutObject` and no `DeleteObject`), so a compromised host cannot delete
+  the backups the disaster table depends on.
+- `scripts/restore.sh` is run by the operator, never from inside the application, and the
+  restore is recorded in the runbook log and — once the restored instance is up — as an
+  `instance.restored` audit row.
 
 v1 did one restore drill and documented it. That was better than most projects manage, and
 it is the floor here, not the ceiling.

@@ -15,6 +15,14 @@ No code has been released yet. Planning is complete — see
 [accelerated-delivery-plan.md](docs/07-planning/accelerated-delivery-plan.md) for the
 current target calendar.
 
+**Planning milestones** (not releases — recorded so the first release notes have a
+starting point):
+
+- 2026-09-05 — planning corpus complete: ADRs 0001–0013, authoritative data model, five
+  policy kinds, threat model, 133-screen inventory, release plan, one-line installer and
+  marketplace listing specified; six-reviewer audit run and every high-severity finding
+  closed in the documents; the corpus pushed as `docs/v2-planning-corpus` (PR #1).
+
 This file starts recording real entries from the first change merged in
 [P0](docs/07-planning/phases.md). Until then, treat
 [status.md](docs/07-planning/status.md)'s session log as the record of what happened, and
@@ -24,7 +32,7 @@ to log.
 <!--
 Entries from here on follow this shape, oldest section at the bottom:
 
-## [0.1.0] - YYYY-MM-DD
+## [2.0.0-alpha.1] - YYYY-MM-DD
 ### Added
 - What shipped, in user-facing language, not commit-message language.
 ### Changed

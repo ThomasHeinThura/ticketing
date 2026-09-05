@@ -27,8 +27,10 @@ P6 Import + cutover    ░░░░░░░░░░   0%
 P7 Polish              ░░░░░░░░░░   0%
 ```
 
-**Screens:** 0 of 109 complete — [inventory](../02-design/screen-inventory.md)
+**Screens:** 0 of **133** complete — [inventory](../02-design/screen-inventory.md)
+(recounted 2026-09-05 with a kind column: P0 6 · P1 32 · P2 18 · P3 20 · P4 27 · P5 28 · P6 2)
 **Features:** 0 of 29 shipped — [index](../03-features/README.md)
+**ADRs:** 0001–0013 accepted · **Docs:** ~125 files, link check clean · **Security review:** complete, all high items closed in the corpus
 **Target calendar:** UAT by 2026-09-12, go-live by 2026-10-03, full scope by end of
 December 2026 — see [accelerated-delivery-plan.md](accelerated-delivery-plan.md). **This
 is a target, not a deadline held under pressure** — the date is explicitly allowed to move;
@@ -111,10 +113,17 @@ limits, then GitHub Copilot too, then handed to Claude Code:**
 
 ## Next
 
-**P0 · Foundation.** Order matters — the gates go in before the features. Unchanged from
-before this session, since P0 itself was not the subject of today's revisions:
+**P0 · Foundation.** Order matters — the gates go in before the features. Two things
+changed today: a **step 0** (spec closure — done, see [phases.md](phases.md#p0--foundation))
+now precedes step 1, and the **kaneo router retrofit** is named as P0's largest security
+task with its own Opus review:
 
-1. Initialise the repository: copy kaneo, de-brand, strip billing and cloud-only pieces
+0. Spec closure — data model authoritative, five policy kinds, week-one documents,
+   threat model — **done 2026-09-05**
+1. Initialise the repository: copy kaneo, de-brand, strip billing and cloud-only pieces,
+   **delete `public-project`**; fill the inherited-features register with the SHA
+1b. **Retrofit every inherited kaneo router into the five policy kinds** — human-reviewed,
+   router by router; Opus security review before P0 closes
 2. `LICENSE`, `THIRD-PARTY-NOTICES.md`, `NOTICE`, `AGENTS.md`
 3. Extract `packages/ui`; Tailwind preset; Storybook running
 4. Split `apps/web` into agent and portal entries
@@ -132,8 +141,8 @@ before this session, since P0 itself was not the subject of today's revisions:
 If the [accelerated delivery plan](accelerated-delivery-plan.md) is being followed, this
 is also **week 1** of that calendar, targeting UAT-ready by 2026-09-12.
 
-**Exit criteria:** builds, deploys locally on three hostnames, every CI gate green on an
-empty application.
+**Exit criteria:** builds, deploys locally on three hostnames, every CI gate green **with
+kaneo's inherited routes present and each carrying a policy**, P0 security review signed off.
 
 ---
 
@@ -172,6 +181,48 @@ additions (**R15–R17**) specific to the accelerated calendar.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-05 · Fable session — parallel audit, closure pass, security fold-in, first push
+
+Model switched to Fable 5.1. Ran a six-reviewer parallel audit of the whole corpus (five
+Opus reviewers — core/service-desk specs, governance/design specs, architecture/engineering/
+ops, cross-document consistency, security — plus a Sonnet verifier for OpenProject/ITSM
+feature gaps), after a Workflow-tool attempt stalled twice and was replaced by plain
+background agents writing findings incrementally. Findings live in
+[reviews/2026-09-05/](reviews/2026-09-05/) and are summarised in
+[review-2026-09-05.md](review-2026-09-05.md).
+
+Then the **closure pass**: `data-model.md` rewritten as the single authoritative schema
+(workspace-scoped `state` + `project_state`, ~30 previously unmodelled tables added);
+`rbac.md` rewritten with five closed policy kinds, a capability implication graph, the
+built-in role × capability matrix and the one elevated-actions list; `api-design.md`,
+`background-jobs.md` (lease SQL corrected), `screen-inventory.md` (recounted: 133),
+`god-mode.md`, `settings-hierarchy.md`, `security-model.md` (threat model) rewritten; the
+canonical event catalogue ([events.md](../01-architecture/events.md)), teams spec,
+auth-runtime-reconfiguration, i18n, migrations, repository bootstrap, UI extraction plan,
+container image, Kubernetes values contract and data-protection documents written; the
+env file cut to five required variables with a first-run setup page replacing the
+bootstrap email, at Thomas's direction.
+
+**Security fold-in** (the review completed last): PKCE/`state`/`nonce` as the OIDC
+protocol floor; reach-affecting project fields moved to `project:manage_members`; service
+keys bounded by their creator; MCP destructive tools behind out-of-band human approval
+with tool output marked untrusted; AI plugin rules (scoped retrieval, output as untrusted
+input, audit, spend cap); `TASKDESK_TRUST_PROXY` as a hop count with the app port never
+published; webhook delivery and audit reads reach-scoped; placeholder visibility (`AU-11`);
+impersonation forbidden from creating durable authority; five new threat-model rows;
+`public-project` deleted at fork; the kaneo router retrofit named as P0's largest security
+task with its own Opus review; an internal red-team pass at the go-live gate; ten new
+negative security tests; R20 added. All high-severity findings are closed in the corpus;
+the medium/low items that are per-spec are listed in the review files and close at each
+spec's SDLC stage 2.
+
+Also: `.gitignore`, `CHANGELOG.md`, [release-plan.md](release-plan.md) (channels, `stable.txt`,
+`release/2.N` branches, migration matrix), first commit and push to `docs/v2-planning-corpus`,
+PR #1.
+
+Next session: **P0 step 1** — copy kaneo at a recorded SHA, delete `public-project`, fill
+the inherited-features register, then the router retrofit.
 
 ### 2026-09-05 · Continuation — ITSM review, three new ADRs, accelerated calendar
 

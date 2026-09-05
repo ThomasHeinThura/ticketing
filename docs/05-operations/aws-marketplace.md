@@ -62,11 +62,29 @@ throws `InvalidRegionException`) and must authenticate via an IAM role, never an
 key — consistent with the container-security policy above and with [security
 model](../01-architecture/security-model.md)'s existing secret-handling rules.
 
-**Anti-tamper requirement, worth designing for from the start:** a seller must ensure a
-buyer cannot bypass or substitute the metering call — for example by editing a Helm value
-or overriding the container entrypoint — and must not let a free product code stand in for
-a paid one. The `license` plugin's configuration should not be reachable or overridable
-through any Helm value a buyer would normally touch.
+**Anti-tamper — an open commercial risk, not a design task.** AWS's container policy says a
+seller must ensure a buyer cannot bypass or substitute the metering call. In this product
+that is **structurally unsatisfiable**: the buyer *is* the instance administrator who
+enables and configures every plugin, including `license.*`, in God Mode; and under AGPL
+the buyer may lawfully modify the source. Metering integrity in a self-hosted AGPL product
+is therefore **contractual, not technical**, and the listing has to be chosen with that
+understood. The options, recorded as **R18** in [risks.md](../07-planning/risks.md):
+
+1. **A BYOL / contract listing with no usage metering — recommended.** The buyer pays a
+   fixed price through AWS; the `license.aws-marketplace` plugin only resolves entitlement
+   (which tier) via License Manager. Removes the anti-tamper requirement entirely.
+2. Hourly `RegisterUsage` per running task, which AWS itself performs at the container
+   runtime — but it must then run **unleased on every replica** at start, the opposite of
+   the lease model every other job uses; write that into the plugin if chosen.
+3. Do not list.
+
+Position to be taken before P7 starts, with AWS Partner Business Development consulted.
+
+**AGPL §6 — corresponding source.** Distributing the image to a buyer through the
+Marketplace ECR repository is *distribution* under AGPL §6, not only network use under §13:
+the corresponding source for exactly that build must accompany or be offered with it. The
+listing links the tagged source release (the same SHA the image's provenance attestation
+names); the entitlement gate is contractual because the buyer may lawfully remove it.
 
 ## Helm chart requirements
 

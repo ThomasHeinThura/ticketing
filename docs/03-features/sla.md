@@ -80,9 +80,16 @@ an event once, and for list filtering. It is never the answer to "what is the st
 
 **Pausing**
 
-- `SLA-10` A policy declares which states pause the clock. Typically "Waiting on customer"
-  and "Waiting on third party".
-- `SLA-11` Entering a pausing state opens a `sla_pause` interval; leaving it closes it.
+- `SLA-10` Pausing is a **workflow transition effect**, not a policy property: the
+  transition into "Waiting on customer" carries `pause_sla`, the transition out carries
+  `resume_sla` — the vocabulary in [workflows.md](workflows.md) `WF-19`. A policy declares
+  goals and thresholds only. *(Corrected 2026-09-05: the first draft put the pausing-state
+  list on the policy, which cannot reference states and duplicated the workflow's effects.)*
+- `SLA-11` `pause_sla` opens an `sla_pause` row (reason `waiting_customer`) per metric;
+  `resume_sla` closes it. Entering a `completed`-group state opens one with reason
+  `resolved` (`WF-17`) and reopening closes it (`WF-18`). At most one open row per
+  `(work_item, metric, reason kind)`; a manual pause while an automatic one is open returns
+  409, and an automatic close never closes a manual pause.
 - `SLA-12` Paused intervals are subtracted from covered time.
 - `SLA-13` The UI shows "Paused — waiting on customer since Tuesday" rather than a
   frozen countdown with no explanation.

@@ -45,7 +45,7 @@ See [ADR 0004](../01-architecture/adr/0004-two-portals-two-origins.md).
 | **Request form** | The chosen request type's form |
 | **Approvals** | Decisions waiting on them |
 | **Projects** | Their engagements — progress, milestones, key contacts |
-| **Knowledge base** | Published articles for their organisation |
+| **Knowledge base** | Published articles for their organisation — **P5**, behind `feature.knowledge_base`; the portal ships without it in P3 |
 | **Account** | Name and job title. Email, organisation and role are server-owned |
 
 ## What a customer may do
@@ -76,9 +76,13 @@ misconfigured away through the role editor.
 - `CP-2` A request for another organisation's record returns **404**, never 403.
 - `CP-3` Internal comments are filtered server-side in the portal router. Never in the
   client.
-- `CP-4` Staff assignee names are not shown. The customer sees the team, not the
-  individual. *(v1's deliberate choice, and a good one — it prevents customers routing
-  around the process by emailing a named engineer.)*
+- `CP-4` The **assignee** is never exposed in any portal response shape — the customer sees
+  the team, not the individual. *(v1's deliberate choice, and a good one — it prevents
+  customers routing around the process by emailing a named engineer.)* Named staff **do**
+  appear where they act publicly: the author of a public comment, the approver on an
+  approval decision (`AP-17`), and the project's designated key contacts. The rule is
+  precise: *assignee hidden; public actors named.* A test asserts `assignee` is absent
+  from every portal response schema.
 - `CP-5` Terminology is customer-facing throughout: "request", not "work item";
   "In progress", not a state group name; "your team", not "assignee". The default English
   nouns are exactly the [terminology overlay](../01-architecture/adr/0012-terminology-overlay.md)'s
@@ -123,7 +127,41 @@ portal access enabled. The customer role is off the main rank ladder — see
 
 ## API
 
-A separate router, deliberately narrow:
+A separate router, deliberately narrow. **Every route carries policy kind 3** from
+[RBAC](../01-architecture/rbac.md) — `{ portal: 'customer', predicate }` — where the
+predicate is one of `own_request` (requester or participant; colleagues only when
+`customer_visibility = 'organisation'`), `own_organisation`, `addressed_approval`,
+`own_submission`. The predicate is written after each route; `self` means the caller's own
+person row. Nothing here is "(portal session)" — that is authentication, not a policy.
+
+```
+GET  /api/portal/me                                        self
+GET  /api/portal/home                                      own_organisation
+GET  /api/portal/requests                                  own_organisation (filtered by visibility)
+GET  /api/portal/requests/{ref}                            own_request
+POST /api/portal/requests/{ref}/comments                   own_request
+POST /api/portal/requests/{ref}/attachments/presign        own_request
+POST /api/portal/requests/{ref}/escalate                   own_request
+POST /api/portal/requests/{ref}/reopen                     own_request   (WF-21, system-actor transition)
+POST /api/portal/requests/{ref}/rate                       own_request
+POST /api/portal/requests/{ref}/participants               own_request   (requester only)
+POST /api/portal/requests/rank                             own_organisation
+GET  /api/portal/catalogue                                 own_organisation
+POST /api/portal/submissions                               own_organisation
+GET  /api/portal/submissions/{ref}                         own_submission
+POST /api/portal/submissions/{ref}/messages                own_submission
+POST /api/portal/submissions/{ref}/withdraw                own_submission (requester only)
+GET  /api/portal/approvals                                 addressed_approval
+POST /api/portal/approvals/{id}/decide                     addressed_approval
+GET  /api/portal/projects                                  own_organisation
+GET  /api/portal/projects/{key}                            own_organisation
+GET  /api/portal/kb                                        own_organisation  (P5)
+GET  /api/portal/kb/{id}                                   own_organisation  (P5)
+GET  /api/portal/kb/deflection?q=                          own_organisation  (P5)
+PATCH /api/portal/account                                  self
+```
+
+The former list, kept for the diff only:
 
 ```
 GET  /api/portal/me
@@ -187,7 +225,18 @@ approve, rate.
 
 ## Open questions
 
-None.
+- **Per-request visibility inside a customer organisation** *(raised in the 2026-09-05
+  review; decide before P3 starts — Thomas).* Reach is the whole organisation
+  ([RBAC](../01-architecture/rbac.md)), but "My requests" is defined as *what this person
+  raised*. Nothing says whether Alice at Customer A can see Bob's request at Customer A.
+  Jira Service Management makes this a per-request choice — private, or shared with the
+  organisation — with a portal-level default. **Recommended:** add `customer_visibility:
+  private | organisation` on `submission` and `work_item`, chosen by the requester at
+  submission time, defaulted per organisation in God Mode (default `organisation` — a
+  customer's colleagues usually *want* to see the printer ticket already exists), with a
+  request type able to force `private` (HR, access, anything sensitive). Adds one column,
+  one form control, one God Mode default, and one negative test: a private request is 404
+  to a colleague, exactly as a cross-organisation one is.
 
 ## Related
 

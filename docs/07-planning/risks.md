@@ -281,6 +281,106 @@ cherry-picked deliberately.
 
 ---
 
+## R15 · Workstream A cannot finish inside the accelerated window
+
+| | |
+| --- | --- |
+| Likelihood | **High** |
+| Impact | **High** |
+| Owner | Thomas |
+
+The service-desk domain port (SLA, lifecycle engine, approvals) is the critical path of
+[accelerated-delivery-plan.md](accelerated-delivery-plan.md) and the least compressible
+work in it. **Mitigations:** named as such on day one; go-live scope narrows *or* the date
+moves — a deliberate choice, never a silent slip.
+
+---
+
+## R16 · "Go-live" is treated as the final bar
+
+| | |
+| --- | --- |
+| Likelihood | **Medium** |
+| Impact | **High** |
+| Owner | Thomas |
+
+The accelerated plan's deferral register is read at the week-5 gate and again before any
+external customer is onboarded. `2.0.0` is self-hosted-only; external sales wait for the
+P7 penetration test — [release-plan.md](release-plan.md).
+
+---
+
+## R17 · Parallel workstreams reproduce R7 faster
+
+| | |
+| --- | --- |
+| Likelihood | **Medium** |
+| Impact | **Medium** |
+| Owner | Thomas |
+
+Cross-agent review stays mandatory under deadline pressure; the vocabulary in
+[coding-standards.md](../04-engineering/coding-standards.md) is enforced by CI, not by
+diligence.
+
+---
+
+## R18 · Marketplace metering integrity cannot be guaranteed technically
+
+| | |
+| --- | --- |
+| Likelihood | **High** (it is a property of the architecture) |
+| Impact | **Medium** — commercial, not security |
+| Owner | Thomas |
+| **Deadline** | **Before P7 starts** |
+
+AWS's anti-tamper requirement is unsatisfiable in a self-hosted AGPL product where the
+buyer administers the instance — see [aws-marketplace.md](../05-operations/aws-marketplace.md)
+and [ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md). **Mitigation:**
+choose a BYOL / contract listing (no usage metering) before P7; consult AWS Partner
+Business Development on the AGPL position.
+
+---
+
+## R19 · The penetration test has lead time the calendar does not
+
+| | |
+| --- | --- |
+| Likelihood | **High** |
+| Impact | **High** — it gates every external sale |
+| Owner | Thomas |
+| **Deadline** | **Book in accelerated week 1** |
+
+A third-party penetration test needs procurement, scoping, execution, remediation and a
+retest — realistically four to eight weeks from booking. **Mitigation:** book it in week 1
+for a scoped first pass (auth, tenancy, portal boundary) even if the product is not
+feature-complete, with a second pass before the marketplace listing. **Independent of the
+external test**, an internal red-team pass by a fresh Opus context over the authorization
+surface, the portal boundary and the inherited kaneo routes is part of the go-live gate
+([security-model.md](../01-architecture/security-model.md#testing-security)) — real customer
+data does not land on a stack proven only by its own suite.
+
+---
+
+## R20 · The kaneo router retrofit is under-estimated or skipped
+
+| | |
+| --- | --- |
+| Likelihood | **Medium** |
+| Impact | **High** — it is the one place v1's failure mode can re-enter through inherited code |
+| Owner | Thomas |
+
+Every security control in this corpus is specified for code that does not exist yet, and
+P0's first act is importing kaneo's existing routers. If the retrofit into the five policy
+kinds is done mechanically — a `public` policy stamped on anything that will not otherwise
+compile — the route-coverage test goes green and proves nothing. **Mitigation:** the
+retrofit is a named P0 task with a human-reviewed pass router by router
+([phases.md](phases.md#p0--foundation)); `public-project` is deleted rather than flagged; a
+`public` or `delegated` policy requires a written `reason`, and the P0 Opus security review
+reads every one of those reasons before P0 closes. The P0 exit criterion is green on the
+*inherited* surface, not on an empty application.
+
+---
+
 ## Review
 
 At every phase close:

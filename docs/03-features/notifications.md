@@ -28,24 +28,47 @@ which exist on this instance; each user decides which they use.
 
 ## Events
 
+The event keys are the **N** column of the canonical catalogue in
+[events.md](../01-architecture/events.md) — this document owns only the **default
+recipients** per event, never the list of events itself. `notification_preference.event_kind`
+stores these keys. *(The former `mention.in_comment` was a duplicate of
+`work_item.mentioned` and is removed; `work_item.mentioned` covers mentions in descriptions
+and comments alike.)*
+
 | Event | Default recipients |
 | --- | --- |
 | `work_item.assigned` | The new assignee |
 | `work_item.unassigned` | The previous assignee |
 | `work_item.mentioned` | The mentioned person |
-| `work_item.commented` | Watchers, assignee, requester (public comments only for customers) |
+| `work_item.commented` | Watchers, assignee, requester (public comments only for customers — `NO-19`) |
 | `work_item.transitioned` | Watchers, assignee, requester |
+| `work_item.escalated` | Assignee, project leads |
 | `work_item.due_soon` | Assignee |
-| `work_item.overdue` | Assignee, then the escalation path |
+| `work_item.overdue` | Assignee, then the escalation path (walked per `NO-22`) |
 | `sla.at_risk` | Assignee, project leads |
 | `sla.breached` | Assignee, project leads, then the escalation path |
 | `approval.requested` | The approver |
 | `approval.decided` | The requester, watchers |
 | `approval.expiring` | The approver |
+| `approval.expired` | The requester |
 | `submission.received` | The triage queue owners |
 | `submission.replied` | Whoever last handled it |
+| `submission.accepted` | The requester |
+| `submission.declined` | The requester, with the reason verbatim |
+| `submission.withdrawn` | The triage queue owners |
 | `prerequisite.overdue` | The prerequisite's owner |
-| `mention.in_comment` | The mentioned person |
+| `budget.threshold_reached` | Holders of `budget:manage` on the project, plus its default assignee |
+| `webhook.auto_disabled` | The webhook's creator, plus holders of `webhook:manage` |
+| `api_key.auto_disabled` | The key's owner |
+| `automation.run_failed` | The rule's creator |
+
+- `NO-22` **Escalation path.** Where a recipient list ends "then the escalation path", the
+  path is the project's `stakeholder` rows ordered by `escalation_order`: the first is
+  notified immediately; each next one is notified after the previous one's
+  `escalation_wait_minutes` has elapsed without the work item leaving the triggering
+  condition (still overdue, still breached). Acknowledgement is implicit — a state change,
+  an assignment change or a comment by any staff member stops the walk. The walk is a
+  scheduled job, not a chain of timers, so a restart never loses a step.
 
 ## Preferences
 

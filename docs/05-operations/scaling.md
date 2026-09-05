@@ -99,8 +99,10 @@ Mitigations, in order:
 1. Chunk, and `await` between chunks.
 2. Push aggregation into SQL.
 3. Reduce cadence for expensive jobs.
-4. Dedicate a replica to jobs — run one instance with request routing disabled at the
-   proxy. This is the escape hatch, and it needs no code change.
+4. Dedicate a replica to jobs — `TASKDESK_ROLE=jobs` on one replica (scheduler on, not in
+   the proxy's backend pool) and `TASKDESK_ROLE=web` on the rest (scheduler off). This is
+   the escape hatch; it needs a switch, not a code change, and the switch exists
+   ([configuration-reference.md](configuration-reference.md)).
 
 Monitor `taskdesk_nodejs_eventloop_lag_seconds`. Sustained lag above 100 ms means step 4.
 
@@ -108,6 +110,11 @@ Monitor `taskdesk_nodejs_eventloop_lag_seconds`. Sustained lag above 100 ms mean
 
 Attachments are uploaded and downloaded **directly** via presigned URLs, so bytes never
 pass through the application. This is why storage scales independently.
+
+**One exception, stated plainly:** the `storage.filesystem` backend — the single-node
+profile small customers run — has no presigned URLs, so bytes stream through the API with
+a bounded, back-pressured path and the same size limit. That profile is explicitly not the
+one this section is about; a deployment that outgrows it moves to an S3-compatible backend.
 
 At volume: a CDN in front of the files origin, and lifecycle rules moving old objects to
 infrequent-access tiers.

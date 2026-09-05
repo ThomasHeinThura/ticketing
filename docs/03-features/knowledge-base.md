@@ -97,7 +97,9 @@ GET    /api/kb/categories                      kb_article:read
 GET    /api/portal/kb                          (portal session)
 GET    /api/portal/kb/{id}                     (portal session)
 POST   /api/portal/kb/{id}/feedback            (portal session)
-GET    /api/kb/deflection?q=…                  (either session)
+GET    /api/kb/deflection?q=…                  kb_article:read           (agent — staff see the same suggestions, KB-12)
+GET    /api/portal/kb/deflection?q=…           { portal: 'customer', predicate: 'own_organisation' }
+       — two routes sharing one domain function, never one route serving "either session" (ADR 0004)
 ```
 
 ## Edge cases

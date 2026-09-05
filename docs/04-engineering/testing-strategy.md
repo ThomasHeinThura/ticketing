@@ -35,7 +35,14 @@
 **Tool** — Vitest.
 
 `packages/domain` carries the heaviest burden, because it is pure and because it encodes
-the rules the business cares about. **Target: 90% coverage on `packages/domain`.**
+the rules the business cares about. **Target: 90% coverage on `packages/domain`** —
+enforced by `pnpm test:coverage` in the PR pipeline with a per-package threshold
+(`@vitest/coverage-v8`), never a workspace-wide average.
+
+`scripts/anonymise.ts` has its own suite in `tests/anonymise/`: every PII-bearing column
+in the [data model](../01-architecture/data-model.md) is enumerated in a fixture, and the
+test fails if a column exists that the anonymiser does not touch. An anonymiser with a bug
+feeding a UAT held to production standard is a data breach, not a nit.
 
 The SLA suite is the most important in the product. It must cover every calendar type,
 every boundary to the minute, DST in both directions, holidays, pauses, reopen, and policy
@@ -77,8 +84,11 @@ This layer exists specifically because of v1's eleven authorization holes, and i
 one layer that tests the API surface itself rather than a feature behind it — see
 [RBAC](../01-architecture/rbac.md) and [Security model](../01-architecture/security-model.md).
 
-**`route-coverage.test.ts`** — enumerates every route in the OpenAPI document and fails if
-any lacks a policy entry. A public route must declare `public: true` *with a reason*.
+**`route-coverage.test.ts`** — enumerates every route in **Hono's router** (`app.routes`),
+not the OpenAPI document — so `/auth/*`, `/ws` and `/metrics` are covered too — and fails
+if any lacks a policy entry of one of the five kinds in [RBAC](../01-architecture/rbac.md).
+A public route must declare `public: true` *with a reason*; a delegated mount must say what
+it delegates to and why.
 
 **`matrix.test.ts`** — every built-in role against every route, asserted against a
 checked-in fixture. Changing access changes the fixture, which appears in the pull request
@@ -113,17 +123,19 @@ See [ADR 0010](../01-architecture/adr/0010-route-policy-registry.md).
 The OpenAPI document ([API design](../01-architecture/api-design.md)) is generated, not
 hand-written, but a generated contract can still silently change shape.
 
-- **Spec validity** — the generated `/openapi.json` is linted against the OpenAPI 3.2
-  meta-schema on every build. An invalid document fails CI before anything downstream
-  (the typed client, the Scalar docs, an MCP tool schema) has a chance to be wrong too.
-- **Breaking-change diff** — the spec generated on a pull request branch is diffed against
+- **Spec validity** — the generated `/openapi.json` is linted with **Redocly CLI** (the
+  `recommended` ruleset, OpenAPI 3.1 — the version `@hono/zod-openapi` emits; see
+  [API design](../01-architecture/api-design.md)) on every build. An invalid document fails
+  CI before anything downstream (the Scalar docs, an MCP tool schema, a third-party
+  integrator) has a chance to be wrong too.
+- **Breaking-change diff** — **`oasdiff breaking`** compares the pull request's spec against
   `main`'s. A removed field, a narrowed type, or a new required property fails the build
   unless the PR also bumps the version, per [API design](../01-architecture/api-design.md)'s
   versioning policy.
-- **Client-server drift** — `packages/libs`' typed client is generated from the same spec
-  the server publishes; a server change that is not reflected in the client fails
-  `pnpm typecheck`, not a runtime test, which is the point of generating both from one
-  source.
+- **Client-server drift** — there is nothing to drift: `packages/libs`' client is a **Hono
+  RPC client typed structurally from the server's `AppType`**, not generated from the spec,
+  so a server change the client does not reflect fails `pnpm typecheck`. The OpenAPI
+  document is the *published* contract for third parties; the in-repo client never reads it.
 
 ## MCP server tests
 
@@ -203,10 +215,23 @@ viewer-cannot-write.spec.ts
 revoked-session-cannot-act.spec.ts
 godmode-requires-instance-admin.spec.ts
 secrets-never-serialised.spec.ts
+csrf-rejected-on-elevated-route.spec.ts
+forged-x-forwarded-for-moves-no-bucket.spec.ts
+cross-origin-websocket-refused.spec.ts
+ws-revoked-membership-stops-events.spec.ts
+lead-cannot-change-owner-team-or-parent.spec.ts
+service-key-cannot-exceed-creator.spec.ts
+manager-webhook-sees-only-own-projects.spec.ts
+oidc-rejects-missing-pkce-state-nonce.spec.ts
+mcp-injected-ticket-cannot-write.spec.ts
+impersonator-cannot-create-durable-authority.spec.ts
+public-comment-placeholder-cannot-leak-internal-field.spec.ts
 ```
 
 **Every one of these asserts a failure.** A test suite made only of happy paths is how v1
-stayed green while being wrong.
+stayed green while being wrong. The last ten were added from the 2026-09-05 security
+review ([reviews/2026-09-05/security.md](../07-planning/reviews/2026-09-05/security.md));
+each names the finding it closes in its file header.
 
 ### Accessibility
 

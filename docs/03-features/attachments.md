@@ -61,10 +61,12 @@ blocked by default because it is a script vector; it can be enabled with sanitis
 | Action | Capability |
 | --- | --- |
 | See an attachment | `work_item:read` + visibility |
-| Upload | `work_item:update`, or portal session on own request |
+| Upload (agent) | `attachment:create` on the work item |
+| Upload (portal) | `{ portal: 'customer', predicate: 'own_request' }` — [RBAC](../01-architecture/rbac.md) policy kind 3 |
 | Change visibility | `work_item:update` (staff only) |
 | Delete own | `work_item:update` |
-| Delete anyone's | `comment:delete_any` |
+| Delete own | `attachment:delete_own` |
+| Delete anyone's | `attachment:delete_any` — an attachment capability, not a comment one |
 
 ## API
 
@@ -75,7 +77,7 @@ GET    /api/attachments/{id}                   work_item:read → 302 to presign
 PATCH  /api/attachments/{id}                   work_item:update   (visibility, filename)
 DELETE /api/attachments/{id}                   work_item:update
 GET    /api/work-items/{key}/attachments       work_item:read
-POST   /api/portal/requests/{ref}/attachments/presign   (portal session)
+POST   /api/portal/requests/{ref}/attachments/presign   { portal: 'customer', predicate: 'own_request' }
 ```
 
 ## Edge cases
@@ -88,7 +90,9 @@ POST   /api/portal/requests/{ref}/attachments/presign   (portal session)
 | Two files with the same name | Both kept. Display disambiguates with the upload time |
 | Declared MIME does not match magic bytes | Rejected at `complete`; the object is deleted |
 | Attachment on a work item moved to another project | Moves with it |
-| Customer uploads to a resolved request | Allowed within the reopen window; reopens the request |
+| Customer uploads to a resolved request | Allowed within the reopen window (`instance_setting.reopen_window_days`); reopens the request through the workflow's `is_reopen` transition as a system actor — `WF-21`, one mechanism shared with `CP-8` |
+| Presigned POST conditions | Always pin the exact object key, `content-length-range` up to the limit, and the declared content type — the credential cannot write another key or an unbounded object. The download path serves only `state = 'ready'` rows, never by raw key |
+| Malware | No scanner by default — a **stated residual risk**, mitigated by the separate origin and `Content-Disposition: attachment`. The `storage.antivirus` plugin (ClamAV or a hosted scanner) gates `pending → ready` when configured; archives (`zip`, `7z`, …) are an instance-configurable allowlist entry because they bypass the extension allowlist for the recipient |
 
 ## Testing
 

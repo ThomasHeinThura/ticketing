@@ -41,15 +41,18 @@ runs the one-liner and instead follows the manual `git clone` steps in
    [Deployment](deployment.md)'s "First run" — start dependencies, wait for health, apply
    migrations, create the bootstrap administrator, probe the API — happens exactly as
    documented, because it is the same script.
-6. **Prints the result**: the URL to sign in, the bootstrap administrator email it used,
-   and a reminder that everything else is configured in God Mode, not in a file.
+6. **Prints the result**: the one-time **setup URL** (with the token from the container
+   log) at which the first administrator is created, and a reminder that everything else —
+   storage, mail, identity providers, branding — is configured in God Mode, not in a file.
+   A fresh install works with **no storage configuration at all**: `storage.filesystem` is
+   the default until an administrator chooses otherwise.
 
 ## Flags
 
 | Flag | Effect |
 | --- | --- |
 | `--env local\|production` | Which Compose overlay to bring up. Default `local` |
-| `--domain <domain>` | Sets `TASKDESK_AGENT_URL` / `TASKDESK_PORTAL_URL` for `production` |
+| `--domain <domain>` | Derives the three hostnames — `ticket.<domain>`, `portal.<domain>`, `files.<domain>` — for `production`; `--agent-host` / `--portal-host` / `--files-host` override any of them. **Pre-flight:** the script resolves all three and refuses to continue, printing the exact DNS records to create, if any does not point at this host — ACME HTTP-01 needs them before the first `up`, and this is the most common first-run failure |
 | `--version <tag>` | Install a specific release instead of the latest stable one |
 | `--dir <path>` | Install directory. Default `~/taskdesk` |
 | `--yes` | Do not prompt before installing Docker or writing files |
@@ -69,9 +72,16 @@ built to make that decision an informed one rather than to paper over it.
   listed above.** All actual logic — secret generation, health waiting, migration,
   probing — lives in the versioned `scripts/deploy.sh` inside the release artefact, which
   anyone can read before running by downloading the same release from the repository.
-- **The release archive is checksummed.** The installer verifies the downloaded archive's
-  SHA-256 against a checksum published alongside the release before extracting anything.
-  A checksum mismatch aborts with no partial state left behind.
+- **The release archive is signed, not merely checksummed.** A checksum fetched from the
+  same origin over the same connection only defends against corruption — not against the
+  compromise of `get.taskdesk.dev`, which is the threat a `curl | bash` reader is actually
+  worried about. So CI signs the release archive and its checksum file with **cosign**
+  (keyless, the same identity that signs the container image — [ci-cd.md](../04-engineering/ci-cd.md)),
+  and the installer verifies the signature against the published identity before
+  extracting anything. There is no silent fallback: `--skip-verify` exists, prints a loud
+  warning, and is the operator's explicit choice. A verification failure aborts with no
+  partial state left behind. The installer's own SHA-256 is published in the docs so
+  `curl -o install.sh && sha256sum -c` is always possible.
 - **`--dry-run` prints the exact commands** the installer would execute, so a security-
   conscious operator can review the plan before committing to it — and can equally well
   just `curl -fsSL https://get.taskdesk.dev -o install.sh`, read it, and run it locally,
@@ -104,11 +114,13 @@ is no `git clone` — a release archive, not a repository, is what ships.
 
 ## Hosting
 
-`get.taskdesk.dev` is a static file, served from the same infrastructure as the
-documentation site (`apps/site`), not a dynamic service — nothing about the installer
-requires application code to be running anywhere. It resolves the "latest stable" tag at
-request time so the plain one-liner always installs the current recommended release, while
-`--version` pins explicitly.
+`get.taskdesk.dev` serves two static files from the same infrastructure as the
+documentation site (`apps/site`): the installer script, and `stable.txt` — a one-line file
+containing the current stable version tag, rewritten by the release pipeline only when a
+digest is promoted ([release-plan.md](../07-planning/release-plan.md)). The script reads
+`stable.txt` and installs that tag; `--version` overrides it. Nothing is resolved
+dynamically and nothing about the installer requires application code to be running
+anywhere.
 
 ## Related
 

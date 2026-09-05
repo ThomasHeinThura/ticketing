@@ -75,7 +75,10 @@ Backlog is a separate destination rather than a layout, because it has different
 - `VW-20` Sortable by any column. Multi-column sort with modifier-click.
 - `VW-21` Column widths are draggable and persist.
 - `VW-22` Inline editing where the field type allows.
-- `VW-23` Export the current view to CSV, respecting filters and column choice.
+- `VW-23` Export the current view to CSV (or XLSX), respecting filters and column choice,
+  through `POST /api/work-items/export` with `work_item:export` — a server-side route with a
+  policy, because a bulk-egress path with no declared capability is the class of hole the
+  route-coverage test exists to prevent. Exports are audited (`work_item.exported`).
 - `VW-24` Virtualised rows and columns.
 
 **Calendar**

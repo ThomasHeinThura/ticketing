@@ -7,12 +7,16 @@ Docker Compose behind Traefik. Same topology as v1, one fewer application contai
 | Service | Image | Purpose |
 | --- | --- | --- |
 | `traefik` | `traefik:v3` | TLS, routing by host, security headers |
-| `taskdesk` | `taskdesk:{version}` | API + agent bundle + portal bundle + jobs |
+| `taskdesk` | `ghcr.io/<org>/taskdesk:<version>` | API + agent bundle + portal bundle + jobs. Verified against its cosign signature before start |
 | `postgres` | `postgres:18-alpine` | All primary data. Bumped from 16 — see [tech stack](../01-architecture/tech-stack.md) |
 | `valkey` | `valkey/valkey:9-alpine` | Cache, pub/sub, rate limits |
-| `seaweedfs` | `chrislusf/seaweedfs` | Default self-hosted object storage. **Not MinIO** — see [tech stack](../01-architecture/tech-stack.md) |
-| `keycloak` | `keycloak:26` | **Optional.** Only if a deployment wants it |
-| `mailpit` | `axllent/mailpit` | Local development only |
+| `seaweedfs` | `chrislusf/seaweedfs:<pinned>` | Default self-hosted object storage. **Not MinIO** — see [tech stack](../01-architecture/tech-stack.md) |
+| `keycloak` | `quay.io/keycloak/keycloak:26.7` | **Optional.** Only if a deployment wants it. (There is no Docker Hub `keycloak` image) |
+| `mailpit` | `axllent/mailpit:<pinned>` | Local development only |
+
+**Every third-party image is pinned to a tag in `compose.yml`, never `latest`** — the same
+rule [release-plan.md](../07-planning/release-plan.md) applies to our own image. Renovate
+bumps the pins.
 
 One application container instead of v1's four (core-api, bff, worker, frontend). See
 [ADR 0002](../01-architecture/adr/0002-single-backend.md).
@@ -63,7 +67,9 @@ It:
 2. Generates a self-signed certificate (local only).
 3. Starts Postgres, Valkey and SeaweedFS, and waits for health.
 4. Starts the application, which applies migrations under an advisory lock.
-5. Creates the bootstrap administrator from `TASKDESK_BOOTSTRAP_ADMIN_EMAIL`.
+5. Prints the one-time **setup URL** (agent origin + the token from the container log) at
+   which the first administrator is created — or, for headless installs, creates it from
+   `TASKDESK_BOOTSTRAP_ADMIN_EMAIL`.
 6. Seeds demo data, if permitted.
 7. **Probes the API** — signs in, lists projects — and fails loudly if it cannot.
 8. Prints the URLs.
@@ -79,16 +85,19 @@ through the UI. **No further environment variables.** See
 
 | File | Purpose |
 | --- | --- |
-| `compose.yml` | Base — local development, ports published, no TLS |
-| `compose.prod.yml` | Overlay — no published ports, Traefik labels, resource limits |
-| `compose.uat.yml` | Overlay — as production, different hostnames |
-| `compose.traefik.yml` | Local Traefik, so production labels can be tested locally |
-| `compose.keycloak.yml` | Optional Keycloak |
-| `compose.observability.yml` | Optional Prometheus, Grafana, Loki |
+| `compose.yml` | Base — at the repository root. Local development, ports published, no TLS |
+| `deploy/compose.prod.yml` | Overlay — no published ports, Traefik labels, resource limits |
+| `deploy/compose.uat.yml` | Overlay — as production, different hostnames |
+| `deploy/compose.traefik.yml` | Local Traefik, so production labels can be tested locally |
+| `deploy/compose.keycloak.yml` | Optional Keycloak |
+| `deploy/compose.observability.yml` | Optional Prometheus, Grafana, Loki |
 
 ```bash
-docker compose -f compose.yml -f compose.prod.yml up -d
+docker compose -f compose.yml -f deploy/compose.prod.yml up -d --wait
 ```
+
+These are the paths; every command in [environments.md](environments.md),
+[one-line-install.md](one-line-install.md) and the [runbook](runbook.md) uses them.
 
 Base plus overlay, never a separate full file per environment — that is how they drift.
 
@@ -120,16 +129,24 @@ taskdesk:
 ```
 
 This requires `TASKDESK_VALKEY_URL` to be set, which switches the WebSocket adapter to
-Valkey pub/sub. Job leasing already ensures each scheduled job runs once across the set.
+Valkey pub/sub and makes rate limits shared rather than per-replica. Job leasing ensures
+each scheduled job runs once across the set; `TASKDESK_ROLE=web` on the request-serving
+replicas and `TASKDESK_ROLE=jobs` on one dedicated replica separates the two workloads
+when event-loop lag says it is time ([scaling.md](scaling.md)).
 
 Postgres is the vertical limit. Read replicas are a later problem, and one we would rather
 have than pre-solve.
 
 ## Kubernetes
 
-A Helm chart exists at `charts/taskdesk/`, inherited from kaneo. It is a **secondary**
-path — supported, tested at each release, but Compose behind Traefik is the primary
-target because that is what we and our customers actually run.
+A Helm chart lives at `charts/taskdesk/`. It is **derived from kaneo's chart but
+substantially rewritten**: kaneo ships separate `api` and `web` images, this product ships
+one image serving two bundles by `Host` header, so the chart needs three Ingress hosts, no
+web Deployment, a `TASKDESK_ROLE` split and a values contract of its own —
+[kubernetes.md](kubernetes.md). Compose behind Traefik remains the primary target because
+that is what we and our customers actually run; the chart is linted, templated and
+packaged in CI from P2 and is the artefact the [AWS Marketplace listing](aws-marketplace.md)
+validates in P7.
 
 ## Upgrades
 
@@ -138,8 +155,15 @@ docker compose pull
 docker compose up -d
 ```
 
-Migrations apply at start under an advisory lock, so concurrent replicas do not race. The
-old container stops after the new one reports ready.
+Migrations apply at start under an advisory lock, so concurrent replicas do not race
+([migrations.md](../04-engineering/migrations.md)).
+
+**Be honest about downtime.** Plain Compose does not do health-gated replacement: on a
+single-replica stack `up -d` stops the old container, then starts the new one — expect a
+short outage per upgrade (typically under a minute, longer if a migration is heavy), and
+plan the window. `--wait` makes the command block until the new container is healthy so a
+failed start is loud. With `replicas: 2+` behind Traefik, a scale-up/scale-down sequence
+gives a rolling upgrade; genuine zero-downtime rolling updates are the Kubernetes path.
 
 **Before any upgrade:** take a database backup and note the current digest, so rollback is
 one command. See [backup and restore](backup-and-restore.md).

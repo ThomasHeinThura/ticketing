@@ -30,11 +30,31 @@ labels:
   - traefik.http.routers.taskdesk-portal.middlewares=security-headers@file,compress@file
 
   - traefik.http.services.taskdesk.loadbalancer.server.port=5173
-  - traefik.http.services.taskdesk.loadbalancer.healthcheck.path=/api/health/ready
+  - traefik.http.services.taskdesk.loadbalancer.healthcheck.path=/api/public/health/ready
+
+  # files — on the storage container, not the application
+  - traefik.http.routers.taskdesk-files.rule=Host(`files.${DOMAIN}`)
+  - traefik.http.routers.taskdesk-files.tls.certresolver=letsencrypt
+  - traefik.http.routers.taskdesk-files.middlewares=files-headers@file
+  - traefik.http.services.taskdesk-files.loadbalancer.server.port=8333
 ```
+
+`files-headers@file` adds `Content-Disposition: attachment` for anything not an image and a
+restrictive `Content-Security-Policy: default-src 'none'; sandbox`, and the CORS allow-list
+is exactly the agent and portal origins. **On a real S3 backend the files host is the
+bucket's own origin** and this router is not deployed — `TASKDESK_FILES_URL` points at the
+bucket instead ([configuration-reference.md](configuration-reference.md)).
 
 Both hostnames reach the same container. The application selects the bundle from the
 `Host` header, and the portal boundary middleware rejects a session that does not match.
+
+**The application port is never published.** `deploy/compose.prod.yml` has no `ports:` on
+the `app` service; port 5173 is reachable only on the Docker network Traefik shares with
+it. This is what makes `TASKDESK_TRUST_PROXY=1` safe: the only way a request can arrive is
+through exactly one proxy hop, so `X-Forwarded-For` at that hop is the client and a forged
+header is discarded. In the **shared-Traefik** pattern below the same rule holds —
+TaskDesk attaches to the existing proxy network and publishes nothing — and the
+`install.sh` bootstrapper refuses to continue if it finds 5173 bound on the host.
 
 ## TLS
 
@@ -59,7 +79,14 @@ X-Frame-Options: DENY
 ```
 
 Content-Security-Policy is set by the application rather than by Traefik, because it needs
-to know the configured storage origin, which is runtime configuration.
+to know the configured storage origin, which is runtime configuration. The policy itself —
+per origin, with the nonce strategy and the report-only rollout — is written out in
+[security-model.md](../01-architecture/security-model.md).
+
+`preload` on `Strict-Transport-Security` is only meaningful once the **apex** domain is
+submitted to the browser preload list, and `includeSubDomains` on an apex that also serves
+unrelated services is a footgun. Both are **opt-in for the operator** (a `deploy/.env`
+switch), not something the product sets on someone else's domain by default.
 
 ## WebSocket
 
@@ -122,7 +149,8 @@ TaskDesk attaches to the existing network and contributes only its labels. The
 | Certificate not issued | HTTP-01 blocked, or DNS not yet propagated |
 | WebSocket disconnects every 60 s | Traefik idle timeout below the heartbeat |
 | Portal shows the agent application | `Host` header not forwarded, or `TASKDESK_PORTAL_URL` mismatched |
-| Redirect loop | `TASKDESK_TRUST_PROXY` unset behind TLS termination |
+| Redirect loop | `TASKDESK_TRUST_PROXY=0` behind TLS termination — set it to the real hop count (`1` for the shipped compose) |
+| Every request rate-limited as one client | `TASKDESK_TRUST_PROXY` too low — the proxy's address is being read as the client |
 
 ## Related
 
