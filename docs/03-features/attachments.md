@@ -26,7 +26,10 @@ This document covers behaviour and interface.
   a policy check. The bucket is never public.
 - `AT-6` Every download writes an audit row.
 - `AT-7` Deleting is soft; the object is removed the following night by `attachment-gc`,
-  so an accidental deletion is recoverable for a day.
+  so an accidental deletion is recoverable for a day. Like every deletion it is a pending
+  action approved by the requester — a click-level confirmation showing the file and its
+  parent ([pending-actions.md](../01-architecture/pending-actions.md)); the nightly
+  `attachment-gc` and `attachment-pending-cleanup` runs need no second approval (`PA-12`).
 - `AT-8` Images render inline as thumbnails with a lightbox. Everything else shows an icon,
   filename, size and uploader.
 - `AT-9` PDFs preview in a sandboxed viewer. Office documents do not preview — they
@@ -92,7 +95,7 @@ POST   /api/portal/requests/{ref}/attachments/presign   { portal: 'customer', pr
 | Attachment on a work item moved to another project | Moves with it |
 | Customer uploads to a resolved request | Allowed within the reopen window (`instance_setting.reopen_window_days`); reopens the request through the workflow's `is_reopen` transition as a system actor — `WF-21`, one mechanism shared with `CP-8` |
 | Presigned POST conditions | Always pin the exact object key, `content-length-range` up to the limit, and the declared content type — the credential cannot write another key or an unbounded object. The download path serves only `state = 'ready'` rows, never by raw key |
-| Malware | No scanner by default — a **stated residual risk**, mitigated by the separate origin and `Content-Disposition: attachment`. The `storage.antivirus` plugin (ClamAV or a hosted scanner) gates `pending → ready` when configured; archives (`zip`, `7z`, …) are an instance-configurable allowlist entry because they bypass the extension allowlist for the recipient |
+| Malware | **No scanner — a stated, accepted residual risk** (decided 2026-09-05: not built or installed in the current scope; revisit before unknown external users can upload). Mitigated by the allowlist, magic-byte check, separate files origin and `Content-Disposition: attachment`. A *future* `storage.antivirus` plugin (ClamAV or a hosted scanner) would gate `pending → ready`; the plugin id is reserved, nothing else ([roadmap.md](../07-planning/roadmap.md)). Archives (`zip`, `7z`, …) are an instance-configurable allowlist entry because they bypass the extension allowlist for the recipient |
 
 ## Testing
 

@@ -72,7 +72,9 @@ security-sensitive field in the product.
 - `CA-17` Editing is allowed for 15 minutes by the author, after which the comment shows
   "edited" with a hover-revealed history.
 - `CA-18` Deleting leaves a tombstone — "Comment deleted by Jane, 2 March" — never a
-  silent gap.
+  silent gap. Like every deletion it is a pending action approved by the requester — a
+  click-level confirmation showing the comment and its work item
+  ([pending-actions.md](../01-architecture/pending-actions.md)).
 
 ## Canned responses
 

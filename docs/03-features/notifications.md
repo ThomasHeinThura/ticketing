@@ -21,10 +21,10 @@ which exist on this instance; each user decides which they use.
 | Channel | Notes |
 | --- | --- |
 | **In-app** | Always on. Cannot be disabled |
-| **Email** | SMTP plugin |
-| **Webhook** | Generic signed JSON POST |
-| **Slack / Teams / Discord** | Incoming webhook |
-| **ntfy / Gotify** | Self-hosted push |
+| **Email** | SMTP plugin — core; sign-in codes and invitations depend on it |
+| **Webhook** | Generic signed JSON POST — core, P4 |
+| **Microsoft Teams → Slack → Telegram → Viber** | **Future, in that priority order** (decided 2026-09-05; not in the three-to-four-month scope). kaneo's inherited Slack/Discord/Telegram routers are removed at fork |
+| **Discord / ntfy / Gotify** | Future, unprioritised |
 
 ## Events
 

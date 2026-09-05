@@ -41,7 +41,7 @@ TaskDesk container   Hono API + two React bundles + in-process scheduled jobs
 PostgreSQL 18        all primary data, including runtime configuration
 Valkey 9             cache, pub/sub, rate limits          (optional)
 SeaweedFS / S3       attachment bytes                     (pluggable)
-Keycloak             one identity provider among many     (optional)
+Microsoft Entra      OIDC + SCIM — or any OIDC issuer     (plugin-configured)
 ```
 
 **One backend**, TypeScript end to end — replacing v1's .NET + Node + Go trio.
@@ -62,7 +62,7 @@ idempotent `scripts/deploy.sh` documented in
 [docs/05-operations/deployment.md](docs/05-operations/deployment.md) — see
 [docs/05-operations/one-line-install.md](docs/05-operations/one-line-install.md) for what
 it does, its trust model, and the offline alternative. Runs anywhere: a laptop, a bare
-host, Kubernetes via the Helm chart, or — planned for P7 —
+host, Kubernetes via the Helm chart, or — deferred, P7 at the earliest —
 [AWS Marketplace](docs/05-operations/aws-marketplace.md).
 
 ## Stack
@@ -70,7 +70,7 @@ host, Kubernetes via the Helm chart, or — planned for P7 —
 | | |
 | --- | --- |
 | Backend | Hono · Drizzle · PostgreSQL 18 · better-auth · Zod + OpenAPI 3.2 |
-| Frontend | React 19 · TanStack Router & Query · Tailwind v4 · Radix · dnd-kit · Tiptap |
+| Frontend | React 19 · TanStack Router & Query · Tailwind v4 · Base UI (`@taskdesk/ui`) · dnd-kit · Tiptap |
 | Tooling | pnpm · Turborepo · Biome · Vitest · Playwright · Storybook |
 | Runtime | Node 24 · Docker · Traefik |
 

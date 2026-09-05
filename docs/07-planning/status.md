@@ -12,9 +12,14 @@ GitHub Copilot both hit usage limits mid-session — see the session log)
 
 ## Where we are
 
-Planning complete, and substantially deepened in this session. The full documentation
-corpus exists, now including three new ADRs, a formal accelerated delivery calendar, and a
-changelog/release-notes convention. No application code written yet.
+Planning complete, audited, security-reviewed, and closed against Thomas's confirmed
+decision document of 2026-09-05 (sections A–N plus the core-identity update). The full
+documentation corpus exists — thirteen ADRs, an authoritative data model including the
+identity/SCIM and pending-action tables, a formal accelerated delivery calendar, a release
+plan, and a changelog convention. No application code written yet. **Time is governed by
+the operating rule at the top of [phases.md](phases.md):** the four-week plan is a flexible
+target, the program may take three to four months, some phases take days — finish on exit
+criteria, never skip a gate, move scope or dates and record it.
 
 ```
 P0 Foundation          ░░░░░░░░░░   0%   ← next
@@ -27,10 +32,12 @@ P6 Import + cutover    ░░░░░░░░░░   0%
 P7 Polish              ░░░░░░░░░░   0%
 ```
 
-**Screens:** 0 of **133** complete — [inventory](../02-design/screen-inventory.md)
-(recounted 2026-09-05 with a kind column: P0 6 · P1 32 · P2 18 · P3 20 · P4 27 · P5 28 · P6 2)
-**Features:** 0 of 29 shipped — [index](../03-features/README.md)
+**Screens:** 0 of **136** complete — [inventory](../02-design/screen-inventory.md)
+(recounted 2026-09-05 with a kind column: P0 6 · P1 33 · P2 18 · P3 21 · P4 28 · P5 28 · P6 2)
+**Features:** 0 of **31** shipped — [index](../03-features/README.md) (teams.md was missing from the index until 2026-09-05)
 **ADRs:** 0001–0013 accepted · **Docs:** ~125 files, link check clean · **Security review:** complete, all high items closed in the corpus
+**Readiness:** **Conditional GO → condition met.** The [external readiness review](reviews/2026-09-05/readiness-review-external.md)
+asked for one documentation-closure PR before P0 code; that PR is this branch's third commit
 **Target calendar:** UAT by 2026-09-12, go-live by 2026-10-03, full scope by end of
 December 2026 — see [accelerated-delivery-plan.md](accelerated-delivery-plan.md). **This
 is a target, not a deadline held under pressure** — the date is explicitly allowed to move;
@@ -65,7 +72,7 @@ limits, then GitHub Copilot too, then handed to Claude Code:**
   plugin, never a default, keeping the self-hosted/no-phone-home promise intact.
 - **Generalised the plugin pattern into "the engine pattern"** in
   [plugin-architecture.md](../01-architecture/plugin-architecture.md) — every feature, not
-  only the six current plugin kinds, is expected to follow the same shape: contract,
+  only the (then six, now seven) plugin kinds, is expected to follow the same shape: contract,
   registry or settings screen, generated configuration, a feature flag, a validate/test
   affordance.
 - **Reconfirmed and extended customer self-service**: customers already could raise,
@@ -83,6 +90,8 @@ limits, then GitHub Copilot too, then handed to Claude Code:**
   wound down through 2025–2026, replacing it with SeaweedFS (default) and Garage
   (AGPL-aligned alternative). Confirmed Node 24, Traefik v3 and Keycloak 26 remain correct
   as-is. Noted kaneo's emerging Base UI dependency for action at fork time, not before.
+  *(Later the same day: Base UI decided as the primary primitive standard — decision N;
+  Keycloak moved out of core scope, Microsoft Entra only.)*
 - **Specified the one-line installer** (`curl \| bash`) in
   [one-line-install.md](../05-operations/one-line-install.md) — a thin, checksum-verified
   bootstrapper around the existing `scripts/deploy.sh`, with a documented offline path.
@@ -90,7 +99,9 @@ limits, then GitHub Copilot too, then handed to Claude Code:**
   [aws-marketplace.md](../05-operations/aws-marketplace.md) — container-product listing
   type (not SaaS, not AMI), mandatory automatic security scanning, metering via AWS
   Marketplace Metering Service, Helm chart submission requirements, and the AGPL
-  buyer-obligation note, researched against AWS's current seller documentation.
+  buyer-obligation note, researched against AWS's current seller documentation. *(Later
+  the same day: the listing was deferred beyond the current scope and a BYOL/contract
+  model preferred over metering — see the decision log.)*
 - **Added RBAC/API, OpenAPI-contract and MCP test layers** to
   [testing-strategy.md](../04-engineering/testing-strategy.md), plus a named
   cross-feature "task and work-item lifecycle" test suite.
@@ -118,8 +129,10 @@ changed today: a **step 0** (spec closure — done, see [phases.md](phases.md#p0
 now precedes step 1, and the **kaneo router retrofit** is named as P0's largest security
 task with its own Opus review:
 
-0. Spec closure — data model authoritative, five policy kinds, week-one documents,
-   threat model — **done 2026-09-05**
+0. Spec closure — items 1–3 (data model authoritative, five policy kinds, week-one
+   documents, threat model) **done 2026-09-05**; item 4 — each spec's remaining findings in
+   [reviews/2026-09-05/](reviews/2026-09-05/) — is a **standing gate at that feature's SDLC
+   stage 2**, not a completed step ([AGENTS.md](../../AGENTS.md) do-not 15)
 1. Initialise the repository: copy kaneo, de-brand, strip billing and cloud-only pieces,
    **delete `public-project`**; fill the inherited-features register with the SHA
 1b. **Retrofit every inherited kaneo router into the five policy kinds** — human-reviewed,
@@ -167,7 +180,8 @@ Nothing.
 ## Watch list
 
 Risks currently most likely to bite. Full list in [risks.md](risks.md), now with three
-additions (**R15–R17**) specific to the accelerated calendar.
+additions — **R15–R17** for the accelerated calendar, **R18** marketplace integrity, **R19**
+pentest lead time, **R20** the kaneo router retrofit.
 
 | | Risk | Why now |
 | --- | --- | --- |
@@ -181,6 +195,49 @@ additions (**R15–R17**) specific to the accelerated calendar.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-05 · Decision document applied — identity/SCIM core, universal deletion approval, deferred scope
+
+Thomas supplied a confirmed decision document (sections A–N: flexible timeline as an
+operating rule; kaneo as a one-time snapshot; public boards deleted; reach-affecting project
+fields; service-key bounds; MCP on normal RBAC; MCP read-only default and prompt-injection
+posture; universal deletion approval with confirmation levels; no automation delete;
+trusted-proxy hop count; internal red-team gate; customer request visibility; Base UI as the
+primitive standard) plus an identity update making **Microsoft Entra OIDC + SCIM core P3
+delivery**, and an [external readiness review](reviews/2026-09-05/readiness-review-external.md)
+("Conditional GO — one documentation-closure PR first").
+
+Applied in one closure pass: new [pending-actions.md](../01-architecture/pending-actions.md)
+(`PA-1`–`PA-14`, `pending_action` table, `/api/me/pending-actions/*`, `202` semantics,
+session-only approval); new [identity-provisioning.md](../03-features/identity-provisioning.md)
+(`IP-1`–`IP-25`, six identity tables, `/scim/v2/*` as `delegated: scim`, 17 acceptance tests
+against a real Entra tenant); [auth-and-identity.md](../01-architecture/auth-and-identity.md)
+made the identity owner; `rbac.md` (MCP = same RBAC, session-only routes, elevated list),
+`security-model.md` (SCIM and deletion sections, evidence chain), `data-model.md`,
+`api-design.md`, `events.md`, `background-jobs.md`, `plugin-architecture.md` (flags
+`feature.scim`, `feature.dev_links`; notify/devlink future priorities), `mcp-server.md`
+(`MC-19`–`MC-22`, `delete_work_item`, no purge tool), `god-mode.md` (Organisation →
+Identity; nineteen screens), `customer-portal.md` (`CP-16` visibility, `CP-17` org SSO),
+`automations.md` (`AM-13`), `work-items.md`, `attachments.md`, `comments-and-activity.md`,
+`webhooks-and-api-keys.md` (`AK-10`, `AK-11`), `inherited-features.md` (integration routers
+removed at fork; Base UI), `ui-extraction-plan.md`, `tech-stack.md`, `ci-cd.md`,
+`testing-strategy.md` (four new test families), `screen-inventory.md` (136), `phases.md`
+(operating rule; P0/P1/P3/P4), `release-plan.md`, `accelerated-delivery-plan.md`,
+`roadmap.md` (deferred list with priorities), `aws-marketplace.md` + ADR 0013 addendum
+(BYOL/contract preferred), `data-protection.md`, `definition-of-done.md` + `sdlc.md`
+(review-section-empty gate), `AGENTS.md` (do-not 12–15), glossary, decision log, this file.
+
+Then a **four-lens consistency check** (identity/SCIM · pending actions · scope/timeline ·
+identifiers/counts) over the result, every finding re-verified against both files before
+being applied: ~70 fixes, mostly stale wording that pre-dated the decisions (Radix/Keycloak/
+Slack/marketplace mentions, "flagged off" for routers now deleted, "empty application" for
+the P0 exit), plus three real structural ones — `membership.scope` gained `organisation` so
+the customer role has a row to live in; `prev_hash`/`row_hash` added to `audit_log`; and the
+rule-id prefixes `AU`/`SV`/`RL` were each defined twice, so automations became `AM-n`,
+services `SVC-n`, releases `REL-n`, with a prefix registry in the features README.
+
+Next session: **P0 step 1** — copy kaneo at a recorded SHA, delete `public-project` and the
+integration routers, fill the inherited-features register, then the router retrofit.
 
 ### 2026-09-05 · Fable session — parallel audit, closure pass, security fold-in, first push
 
@@ -209,7 +266,7 @@ protocol floor; reach-affecting project fields moved to `project:manage_members`
 keys bounded by their creator; MCP destructive tools behind out-of-band human approval
 with tool output marked untrusted; AI plugin rules (scoped retrieval, output as untrusted
 input, audit, spend cap); `TASKDESK_TRUST_PROXY` as a hop count with the app port never
-published; webhook delivery and audit reads reach-scoped; placeholder visibility (`AU-11`);
+published; webhook delivery and audit reads reach-scoped; placeholder visibility (`AM-11`);
 impersonation forbidden from creating durable authority; five new threat-model rows;
 `public-project` deleted at fork; the kaneo router retrofit named as P0's largest security
 task with its own Opus review; an internal red-team pass at the go-live gate; ten new

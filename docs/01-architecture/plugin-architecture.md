@@ -27,7 +27,7 @@ edit beyond the database URL and a secret.
 │  packages/plugins-contracts                              │
 │  Interfaces only. No implementations.                    │
 │   AuthProvider · StorageBackend · NotificationChannel    │
-│   Importer · SearchBackend · AiProvider                  │
+│   Importer · SearchBackend · AiProvider · LicenseProvider│
 └──────────────────────────────────────────────────────────┘
               ▲                              ▲
    implements │                              │ implements
@@ -125,17 +125,21 @@ picture.
 | `auth.email-otp` | better-auth email OTP | |
 | `auth.totp` | better-auth two-factor | MFA, can be *required* per role |
 | `auth.passkey` | better-auth passkey | WebAuthn |
-| `auth.oidc` | better-auth genericOAuth | **multi-instance** — add as many as you like |
-| `auth.entra` | `auth.oidc` preset | Pre-filled endpoints, tenant id field |
-| `auth.keycloak` | `auth.oidc` preset | Pre-filled realm URL pattern |
-| `auth.google` / `auth.github` / `auth.gitlab` | better-auth social | |
-| `auth.saml` | later | Phase 5+ |
+| `auth.oidc` | better-auth genericOAuth | **multi-instance** — add as many as you like. Configured instances are `identity_connection` rows, not `instance_plugin_config` rows ([data-model.md](data-model.md) §2) |
+| `auth.entra` | `auth.oidc` preset **+ SCIM 2.0 provisioning** | **The first supported provider** — core P3 ([identity-provisioning.md](../03-features/identity-provisioning.md)). Pre-filled endpoints, tenant id field |
+| `auth.keycloak` | `auth.oidc` preset | Pre-filled realm URL pattern. Future — same architecture, not current core delivery |
+| `auth.okta` · `auth.google-workspace` | `auth.oidc` preset | Future |
+| `auth.google` / `auth.github` / `auth.gitlab` | better-auth social | Future; social sign-in is not a service-desk requirement |
+| `auth.saml` | later | Future — a beyond-P7 candidate, not scheduled ([roadmap.md](../07-planning/roadmap.md)) |
 
-Each auth plugin instance carries `portal_scope`, so an administrator can say
-"Entra for staff, email OTP for customers" **entirely in the UI**.
+Each identity connection carries a `portal_scope` of **`agent` or `customer`** — never
+both — and, for customers, exactly one organisation; non-OIDC auth plugins keep
+`portal_scope` including `both`. So an administrator can say "Entra for staff, Contoso's
+Entra for Contoso's customers, email OTP for everyone else" **entirely in the UI**.
 
-It also carries `jit_provisioning` rules: on first login, which organisation and which
-role does this person get? Without that, an OIDC provider is only half-configured.
+A connection also carries `jit_policy` (on first login, which role does this person get?)
+and, optionally, a SCIM connection so the directory creates and **deactivates** people
+without waiting for a login.
 
 ### `storage` — attachment backends
 
@@ -144,6 +148,7 @@ role does this person get? Without that, an OIDC provider is only half-configure
 | `storage.s3` | SeaweedFS (shipped default), AWS S3, Garage, Wasabi, Backblaze B2 — anything S3-compatible. Not MinIO — see [tech stack](tech-stack.md) |
 | `storage.azure-blob` | |
 | `storage.filesystem` | Single-node deployments |
+| `storage.antivirus` | **Reserved, not built** — a future scanner (ClamAV or hosted) gating `pending → ready`; deferred 2026-09-05 ([roadmap.md](../07-planning/roadmap.md)) |
 
 Contract: `put`, `get`, `delete`, `presignUpload`, `presignDownload`, `stat`.
 
@@ -151,16 +156,25 @@ Contract: `put`, `get`, `delete`, `presignUpload`, `presignDownload`, `stat`.
 
 | Plugin id | Notes |
 | --- | --- |
-| `notify.email` | SMTP. Config includes host, port, TLS, credentials, from-address |
-| `notify.webhook` | Generic JSON POST with HMAC signature. SSRF-guarded |
-| `notify.slack` · `notify.teams` · `notify.discord` | Incoming webhook URL |
-| `notify.ntfy` · `notify.gotify` | Self-hosted push |
+| `notify.email` | SMTP. Config includes host, port, TLS, credentials, from-address. **Core** — sign-in codes, invitations, setup and notification email all depend on it |
+| `notify.webhook` | Generic JSON POST with HMAC signature. SSRF-guarded. Core (P4) |
+| `notify.teams` → `notify.slack` → `notify.telegram` → `notify.viber` → others | **Future, in that order** (decided 2026-09-05). Not in the three-to-four-month core scope. kaneo's inherited Slack/Discord/Telegram routers are **removed at fork**, not kept dormant ([inherited-features.md](inherited-features.md)); the `notify.*` contract is the extension point they come back through |
+| `notify.discord` · `notify.ntfy` · `notify.gotify` | Future, unprioritised |
 
 Users choose per-channel preferences; administrators choose which channels exist.
 
+### `devlink` — developer-tool linking (future)
+
+`external_link` is the extension point; the kind is reserved. Priority when it is
+scheduled: **GitHub → GitLab → Gitea → Bitbucket → Azure DevOps**. kaneo's inherited
+GitHub/Gitea integration routers are removed at fork; `feature.dev_links` stays reserved.
+
 ### `import` — data importers
 
-`import.azure-devops`, `import.plane`, `import.jira`, `import.csv`.
+`import.azure-devops`, `import.plane`, `import.jira`, `import.csv` — and `import.mcp`, an
+**internal** importer with no UI of its own that the MCP `bulk_create_work_items` tool opens
+an `import_run` under ([mcp-server.md](../03-features/mcp-server.md)), so agent bulk
+creation goes through the same bulk write path and `import_record_link` ledger as any import.
 See [Import strategy](../06-data-import/import-strategy.md).
 
 ### `search` — search backends
@@ -241,8 +255,10 @@ equals this list.
 | `feature.automations` | Automation rules (the engine is inherited from kaneo; flagged off until spec-aligned) | P4 |
 | `feature.timeline` · `feature.calendar` · `feature.pages` | Those views. *(`feature.timeline` was `feature.gantt`; the UI says Timeline everywhere)* | P5 |
 | `feature.mcp` | MCP-flagged API keys are refused with 404 | P4 |
+| `feature.scim` | The `/scim/v2/*` endpoint answers; off ⇒ 404 for every SCIM call. Default **on** from P3; a connection must also be enabled ([identity-provisioning.md](../03-features/identity-provisioning.md)) | P3 |
 | `feature.import` | Import runs and the import UI; locked on for administrators by default | P6 |
 | `feature.public_boards` | **Reserved, no code behind it.** kaneo's anonymous public boards are *removed* at fork ([inherited-features.md](inherited-features.md)); the flag exists so a future spec'd, security-reviewed re-implementation has its switch | reserved |
+| `feature.dev_links` | **Reserved, no code behind it.** Developer-tool linking (GitHub → GitLab → Gitea → Bitbucket → Azure DevOps) is future scope; kaneo's GitHub/Gitea routers are removed at fork | reserved |
 
 The UI reads flags from a single `useFeature('cycles')` hook. Navigation, routes and
 API endpoints all respect them — a disabled feature returns `404` from the API, not just

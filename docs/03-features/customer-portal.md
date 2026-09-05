@@ -118,12 +118,31 @@ misconfigured away through the role editor.
 - `CP-13` An invitation cannot grant a staff role or `instance:admin`.
 - `CP-14` A first-time customer sees a brief, dismissible orientation — where to raise a
   request, where to find status — not a modal wall.
+- `CP-16` **Request visibility inside a customer organisation** (decided 2026-09-05). Every
+  submission and work item carries `customer_visibility`: **`private`** — visible only to
+  the requester and explicitly added participants; **`organisation`** — visible to permitted
+  colleagues in the same customer organisation. Default `organisation`, set per organisation
+  in God Mode (`organisation.default_customer_visibility`) and chosen by the requester at
+  submission time. A **request type may force `private`**; sensitive types — HR, finance,
+  legal, personal data, access requests, security-sensitive workflows — should. A colleague
+  outside the allowed scope receives the **same constant-shape 404** as a user from another
+  organisation ([rbac.md](../01-architecture/rbac.md#reach)).
+- `CP-17` **Organisation SSO.** A customer organisation may have its own identity
+  connection — Microsoft Entra first — bound to that organisation and to the customer
+  portal only ([identity-provisioning.md](identity-provisioning.md) `IP-1`, `IP-2`). Its
+  people sign in with their own SSO and land only in their organisation; its SCIM
+  deactivates them when they leave. Instance administrators configure it (God Mode →
+  Organisations → *org* → Identity); customers cannot configure their own IdP in the first
+  release (`IP-5`). Invitation (`CP-11`) remains the path for organisations without SSO.
 
 ## Permissions
 
-Portal access is granted by holding a role with `scope = customer` in an organisation with
-portal access enabled. The customer role is off the main rank ladder — see
-[RBAC](../01-architecture/rbac.md).
+Portal access is granted by being a **customer-side person** (`person.side = 'customer'`)
+holding the built-in `customer` role on an **organisation-scoped membership**
+(`membership.scope = 'organisation'`, [data-model.md](../01-architecture/data-model.md) §2)
+in an organisation with portal access enabled. That membership is created by invitation
+(`CP-11`), JIT provisioning or SCIM (`CP-17`). The customer role is off the main rank
+ladder — see [RBAC](../01-architecture/rbac.md).
 
 ## API
 
@@ -225,18 +244,7 @@ approve, rate.
 
 ## Open questions
 
-- **Per-request visibility inside a customer organisation** *(raised in the 2026-09-05
-  review; decide before P3 starts — Thomas).* Reach is the whole organisation
-  ([RBAC](../01-architecture/rbac.md)), but "My requests" is defined as *what this person
-  raised*. Nothing says whether Alice at Customer A can see Bob's request at Customer A.
-  Jira Service Management makes this a per-request choice — private, or shared with the
-  organisation — with a portal-level default. **Recommended:** add `customer_visibility:
-  private | organisation` on `submission` and `work_item`, chosen by the requester at
-  submission time, defaulted per organisation in God Mode (default `organisation` — a
-  customer's colleagues usually *want* to see the printer ticket already exists), with a
-  request type able to force `private` (HR, access, anything sensitive). Adds one column,
-  one form control, one God Mode default, and one negative test: a private request is 404
-  to a colleague, exactly as a cross-organisation one is.
+*(None. Per-request visibility was decided 2026-09-05 — `CP-16`; organisation SSO — `CP-17`.)*
 
 ## Related
 

@@ -54,7 +54,8 @@ See [RBAC](../01-architecture/rbac.md) for the capability list and the built-in 
 
 - `RL-7` The last role holding `workspace:manage_roles` cannot be deleted or stripped of
   that capability. The UI explains why rather than silently disabling the control.
-- `RL-8` Deleting a role requires reassigning every holder first. The dialog lists them
+- `RL-8` Deleting a role is a pending action ([pending-actions.md](../01-architecture/pending-actions.md),
+  click-level) and requires reassigning every holder first. The dialog lists them
   and offers a bulk reassignment.
 - `RL-9` Changing a role takes effect **immediately** for every holder, because authority
   is resolved from the database on every request. The save dialog says so, with the

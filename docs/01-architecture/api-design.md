@@ -38,6 +38,7 @@ claim a version the toolchain cannot produce.
 | `/auth/*` | better-auth handler | `delegated: better-auth` |
 | `/ws` | WebSocket upgrade | `delegated: websocket` (Origin-checked — [realtime.md](realtime.md)) |
 | `/metrics` | Prometheus scrape, bearer-guarded | `delegated: metrics` |
+| `/scim/v2/*` | Inbound SCIM 2.0 provisioning — Microsoft Entra first. `application/scim+json`. Authenticated by a per-connection bearer token that fixes the organisation, portal scope and allowed resources server-side ([identity-provisioning.md](../03-features/identity-provisioning.md)) | `delegated: scim` |
 | `/openapi.json` · `/docs` | Spec and Scalar reference UI | `public` |
 
 ### Why `/api/portal/*` is separate
@@ -97,7 +98,10 @@ GET    /api/work-items/{key}/sla             ← computed fresh, never stored
 ## Collections
 
 Cursor pagination. Offset pagination is not offered — it is wrong under concurrent
-writes and it is slow at depth.
+writes and it is slow at depth. The one exception is `/scim/v2/*`, where SCIM 2.0 mandates
+1-based `startIndex`/`count` and Microsoft Entra sends exactly that
+([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-13`); it is the
+only offset-paginated surface, and it is small.
 
 ```
 GET /api/projects/{projectId}/work-items
@@ -194,6 +198,10 @@ naming the winner.
 
 RFC 9457 `application/problem+json` — **every** error response, including validation.
 The media type is declared on every error response schema so Scalar renders it correctly.
+**One exception, because the protocol demands it:** `/scim/v2/*` answers with SCIM 2.0
+error objects (`urn:ietf:params:scim:api:messages:2.0:Error`, `application/scim+json`) —
+Microsoft Entra parses those, not problem documents
+([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-14`).
 
 ```json
 {
@@ -209,11 +217,12 @@ The media type is declared on every error response schema so Scalar renders it c
 
 | Status | Used for |
 | --- | --- |
-| 400 | Malformed request; missing workspace context |
+| **202** | **Accepted, not performed.** Every user-initiated `DELETE` and every destructive MCP call returns `202` with `{ pendingActionId, action, summary, confirmation, expiresAt, approveUrl }`; the requesting human approves in the UI and the server executes — [pending-actions.md](pending-actions.md). A retry while pending is `409 pending_approval` |
+| 400 | Malformed request; missing workspace context; a SCIM or OIDC payload carrying a forbidden tenant/role/capability attribute (`forbidden_attribute`) |
 | 401 | No or invalid session |
-| 403 | In reach, missing capability. `capability` names what is missing |
+| 403 | In reach, missing capability. `capability` names what is missing. Also `session_required` (an API/MCP key or impersonation session on a session-only route) and `no_approver` (a service key requesting a deletion) |
 | 404 | Not found **or out of reach** — deliberately indistinguishable |
-| 409 | Conflict: version mismatch, duplicate key, illegal transition (`reason`), in-flight idempotent duplicate |
+| 409 | Conflict: version mismatch, duplicate key, illegal transition (`reason`), in-flight idempotent duplicate, `pending_approval` (a retry while a pending action is open), `target_changed` (a target's version moved between a pending action's request and its approval) |
 | 422 | Validation failed. `errors[]` gives field-level detail |
 | 429 | Rate limited. `Retry-After` set; `quota` names which limit |
 | 500 | Unexpected. `traceId` correlates to logs. Never leaks internals |

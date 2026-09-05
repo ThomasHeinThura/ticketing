@@ -1,7 +1,8 @@
 # AWS Marketplace listing
 
-- **Status:** ⬜ Planned — P7
-- **Depends on:** [ADR 0013 — marketplace metering plugin](../01-architecture/adr/0013-marketplace-metering-plugin.md), a feature-complete product
+- **Status:** ⬜ Deferred — P7 at the earliest, outside the current three-to-four-month scope (decided 2026-09-05)
+- **Listing model preference:** a **BYOL / contract** listing rather than self-hosted usage metering — the metering path needs anti-tamper guarantees that an AGPL self-hosted image cannot honestly give ([risks.md](../07-planning/risks.md) R18); `license.aws-marketplace` metering stays an optional plugin per [ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md) if a metered tier is ever wanted
+- **Depends on:** a feature-complete product, the external penetration test (R19)
 
 Researched against AWS's current (2026-09-05) Marketplace seller documentation. AWS
 updates these pages on its own schedule with no version number — reconfirm the specifics
@@ -142,8 +143,10 @@ unfamiliar with AGPL to miss, and a support conversation is a bad place to disco
 This is packaging and seller-operations work layered on a finished product, not
 application-level engineering — it lands in [P7](../07-planning/phases.md), after the
 product is feature-complete and the Helm chart is already the release artefact for every
-other Kubernetes target. Registration itself (steps 1–6 above) has its own lead time and
-can start in parallel with the last weeks of P7 rather than waiting for it to close — see
+other Kubernetes target. Registration itself (steps 1–6 above) has its own lead time; the
+listing is **deferred** beyond the current three-to-four-month scope, so nothing starts
+until a P7 listing decision is taken — and when it is, registration starts before the
+product is feature-complete rather than after, per
 [roadmap.md](../07-planning/roadmap.md)'s deadline table.
 
 ## Related

@@ -27,6 +27,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 | My work | `/agent/my-work` | route | P1 | ⬜ |
 | Triage | `/agent/triage` | route | P2 | ⬜ |
 | Command palette | — | overlay | P1 | ⬜ |
+| Pending action approval (every deletion — [pending-actions.md](../01-architecture/pending-actions.md)) | — | dialog | P1 | ⬜ |
 | Global search results | `/agent/search` | route | P1 | ⬜ |
 | Not found | `*` | route | P0 | ⬜ |
 | Error boundary | — | overlay | P0 | ⬜ |
@@ -101,6 +102,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 | Profile — appearance | `/agent/settings/profile/appearance` | route | P1 | ⬜ |
 | Profile — notifications | `/agent/settings/profile/notifications` | route | P4 | ⬜ |
 | Profile — security & sessions | `/agent/settings/profile/security` | route | P3 | ⬜ |
+| Profile — pending actions (API/MCP-originated deletions awaiting my approval) | `/agent/settings/profile/pending-actions` | route | P4 | ⬜ |
 | Profile — API keys | `/agent/settings/profile/api-keys` | route | P4 | ⬜ |
 | Workspace — general | `/agent/settings` | route | P1 | ⬜ |
 | Workspace — terminology | `/agent/settings/terminology` | route | P4 | ⬜ |
@@ -153,6 +155,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 | **Provider editor** | `/agent/god-mode/authentication/{id}` | route | P3 | ⬜ |
 | Organisations | `/agent/god-mode/organisations` | route | P3 | ⬜ |
 | Organisation detail | `/agent/god-mode/organisations/{id}` | route | P3 | ⬜ |
+| **Organisation — Identity** (customer OIDC + SCIM connection) | `/agent/god-mode/organisations/{id}/identity` | route | P3 | ⬜ |
 | Storage | `/agent/god-mode/storage` | route | P4 | ⬜ |
 | Notification channels | `/agent/god-mode/notifications` | route | P4 | ⬜ |
 | Deliveries (outbox, dead letters) | `/agent/god-mode/deliveries` | route | P4 | ⬜ |
@@ -196,13 +199,13 @@ build if it drifts.
 | Phase | Screens |
 | --- | --- |
 | P0 Foundation | 6 |
-| P1 Core work | 32 |
+| P1 Core work | 33 |
 | P2 Service desk | 18 |
-| P3 Portal & identity | 20 |
-| P4 Governance | 27 |
+| P3 Portal & identity | 21 |
+| P4 Governance | 28 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **133** |
+| **Total** | **136** |
 
 For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a phase at a time — see

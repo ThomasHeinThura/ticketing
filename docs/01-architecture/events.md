@@ -24,7 +24,7 @@ interface DomainEvent<K extends EventKey, P> {
   scope: { organisationId?: string; workspaceId: string; projectId?: string };
   payload: P;               // per kind, below; always carries the entity's key and url
   causationId: string | null;   // the event that caused this one, if any
-  depth: number;                // automation chain depth — AU-5 caps it at 5
+  depth: number;                // automation chain depth — AM-5 caps it at 5
   originAutomationId: string | null;  // set when an automation's action produced this event
 }
 ```
@@ -102,6 +102,14 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 | --- | --- | :-: | :-: | :-: | --- |
 | `webhook.auto_disabled` | A webhook fails continuously for 24 h (`WH-7`) | — | — | ✅ | `webhookId`, `lastError` |
 | `api_key.auto_disabled` | A key exceeds its burst threshold (MCP edge case) | — | — | ✅ | `apiKeyId`, `reason` |
+| `pending_action.requested` | A deletion or destructive MCP call was requested and is awaiting human approval (`PA-2`) | — | — | ✅ (the requester, when `origin` is `api` or `mcp`) | `pendingActionId`, `action`, `origin`, `targetType`, `targetCount`, `expiresAt` |
+| `pending_action.decided` | Approved, denied, cancelled, expired or invalidated (`PA-6`–`PA-9`) | — | ✅ | — | `pendingActionId`, `outcome: approved\|denied\|cancelled\|expired\|invalidated` |
+| `pending_action.executed` | The approved action ran, or failed (`PA-6` step 5) | ✅ | ✅ | ✅ (on failure, the requester) | `pendingActionId`, `action`, `targetIds`, `outcome: executed\|failed`, `error?` |
+| `identity.provisioned` | SCIM or JIT created or reactivated a person (`IP-10`, `IP-16`, `IP-19`) | — | ✅ | — | `identityConnectionId`, `personId`, `via: scim\|jit`, `organisationId?` |
+| `identity.deprovisioned` | SCIM `active=false` or `DELETE /Users/{id}` deactivated a person (`IP-15`) | — | ✅ | ✅ (instance administrators) | `identityConnectionId`, `personId`, `sessionsRevoked`, `keysRevoked`, `membershipsEnded` |
+| `identity.request_denied` | A SCIM or OIDC request was refused — forbidden attribute, cross-organisation, failed auth (`IP-4`, `IP-14`, `IP-18`) | — | — | ✅ (instance administrators) | `identityConnectionId`, `reason`, `resource?` |
+| `identity_connection.changed` | A connection or its SCIM settings changed; a token was rotated or revoked (`IP-6`) | — | ✅ | ✅ (instance administrators) | `identityConnectionId`, `changes[]` (keys only, never values) |
+| `import.chunk_completed` | An `import-run` job finished one chunk ([background-jobs.md](background-jobs.md)); a progress frame on the `instance` WebSocket topic, never delivered outward | — | — | — | `importRunId`, `chunk`, `chunks`, `rowsDone`, `rowsTotal` |
 | `automation.run_failed` | An automation action throws | — | — | ✅ | `automationId`, `runId`, `error` |
 
 ### Not events
@@ -122,7 +130,7 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
   re-drained outbox row must not produce a second notification, a second automation run,
   or a second webhook side effect.
 - `EV-3` `depth` increments on every event an automation's action produces; a rule does not
-  fire on an event whose `originAutomationId` is itself (`AU-5`), and nothing fires past
+  fire on an event whose `originAutomationId` is itself (`AM-5`), and nothing fires past
   `depth = 5`.
 - `EV-4` Adding a key is additive and needs a decision-log entry; renaming or removing one
   is a breaking change under [api-design.md](api-design.md)'s versioning policy, because

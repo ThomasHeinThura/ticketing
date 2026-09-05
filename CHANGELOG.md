@@ -19,9 +19,16 @@ current target calendar.
 starting point):
 
 - 2026-09-05 — planning corpus complete: ADRs 0001–0013, authoritative data model, five
-  policy kinds, threat model, 133-screen inventory, release plan, one-line installer and
+  policy kinds, threat model, screen inventory (133 at that pass; 136 after the closure
+  pass below), release plan, one-line installer and
   marketplace listing specified; six-reviewer audit run and every high-severity finding
   closed in the documents; the corpus pushed as `docs/v2-planning-corpus` (PR #1).
+- 2026-09-05 (later) — documentation-closure pass: Thomas's confirmed decisions A–N
+  recorded; Microsoft Entra OIDC + SCIM made core P3 delivery with an authoritative data
+  model and a feature spec; universal deletion approval (`pending_action`) added as a
+  cross-cutting control; deferred-scope list (antivirus, RLS, marketplace, integrations)
+  recorded; external readiness review ("Conditional GO") filed and answered. P0 step 1 may
+  start when this merges.
 
 This file starts recording real entries from the first change merged in
 [P0](docs/07-planning/phases.md). Until then, treat

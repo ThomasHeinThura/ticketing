@@ -35,12 +35,14 @@ behaves at the edges, and how it is tested.
 | Feature | Phase | Status | Inspired by |
 | --- | :-: | :-: | --- |
 | [Customer portal](customer-portal.md) | P3 | ⬜ | JSM |
+| [Identity connections and SCIM provisioning](identity-provisioning.md) | P3 | ⬜ | Microsoft Entra, JSM |
 
 ## Governance and administration
 
 | Feature | Phase | Status | Inspired by |
 | --- | :-: | :-: | --- |
 | [Roles and permissions UI](roles-and-permissions-ui.md) | P4 | ⬜ | kaneo, OpenProject |
+| [Teams](teams.md) | P4 | ⬜ | kaneo, OpenProject |
 | [God Mode](god-mode.md) | P4 | ⬜ | Plane |
 | [Settings hierarchy](settings-hierarchy.md) | P4 | ⬜ | Plane |
 | [Custom fields](custom-fields.md) | P4 | ⬜ | OpenProject |
@@ -107,6 +109,37 @@ Unit, integration, E2E. Named tests.
 ## Open questions
 Anything genuinely undecided, with who decides and by when.
 ```
+
+## Rule-id prefixes — one per spec, never reused
+
+Every behaviour rule is `PREFIX-n` with an integer `n`; a prefix belongs to exactly one
+document, so a citation is unambiguous anywhere in the corpus. Added 2026-09-05 after a
+consistency check found `AU`, `SV` and `RL` each defined twice (automations moved to
+`AM`, services to `SVC`, releases to `REL`). Take the next free prefix from here before
+writing a spec.
+
+| Prefix | Spec | | Prefix | Spec |
+| --- | --- | --- | --- | --- |
+| `WI` | work-items | | `AU` | audit-trail |
+| `VW` | views | | `CP` | customer-portal |
+| `PR` | projects-and-engagements | | `IP` | identity-provisioning |
+| `RH` | relations-and-hierarchy | | `RL` | roles-and-permissions-ui |
+| `CA` | comments-and-activity | | `GM` | god-mode |
+| `AT` | attachments | | `ST` | settings-hierarchy |
+| `SV` | search-and-saved-views | | `CF` | custom-fields |
+| `AS` | assignment | | `NO` | notifications |
+| `WF` | workflows | | `AM` | automations |
+| `SLA` | sla | | `WH` `AK` | webhooks-and-api-keys |
+| `CAL` | service-calendars | | `MC` | mcp-server |
+| `RT` | request-types-and-catalogue | | `CY` `MO` `ES` | agile |
+| `IQ` | intake-queue | | `TC` | time-and-cost |
+| `AP` | approvals | | `RP` | reports-and-dashboards |
+| `TM` | teams | | `KB` | knowledge-base |
+| `PA` | ../01-architecture/pending-actions | | `SVC` `CH` `REL` | service-management |
+| `EV` | ../01-architecture/events | | | |
+
+Sub-ids (`IQ-16a`) are allowed only when inserting a rule between two existing ones would
+otherwise force a renumber; a checker treats `16a` as distinct from `16`.
 
 ## Rules
 

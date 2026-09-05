@@ -19,15 +19,15 @@ implement three, because the rest are process documents rather than software.
 
 A named thing we operate on behalf of customers.
 
-- `SV-1` A service has a name, description, category, owning team, support level (L1/L2/L3)
+- `SVC-1` A service has a name, description, category, owning team, support level (L1/L2/L3)
   and a service calendar.
-- `SV-2` A service links to documentation, to its projects and to its knowledge base
+- `SVC-2` A service links to documentation, to its projects and to its knowledge base
   articles.
-- `SV-3` A work item may reference the service it affects. This is what makes "which
+- `SVC-3` A work item may reference the service it affects. This is what makes "which
   service generates the most incidents?" answerable.
-- `SV-4` A service has a status — operational, degraded, outage — set by a person, not
+- `SVC-4` A service has a status — operational, degraded, outage — set by a person, not
   computed. Computed status from open incidents is appealing and always wrong.
-- `SV-5` Services may depend on other services, forming a graph used to show impact:
+- `SVC-5` Services may depend on other services, forming a graph used to show impact:
   "this change affects 3 services and 2 customers."
 
 Deliberately **not** a full CMDB. Configuration item discovery, asset inventory and
@@ -60,12 +60,12 @@ A change is a **work item** of a change type, with extra structure. Not a separa
 
 A grouping of changes deployed together.
 
-- `RL-1` A release has a name, a target service, a planned date, a status and notes.
-- `RL-2` Changes are associated with a release.
-- `RL-3` A release checklist can be defined per service and is instantiated per release.
-- `RL-4` Release notes are generated from the associated changes and are editable before
+- `REL-1` A release has a name, a target service, a planned date, a status and notes.
+- `REL-2` Changes are associated with a release.
+- `REL-3` A release checklist can be defined per service and is instantiated per release.
+- `REL-4` Release notes are generated from the associated changes and are editable before
   publication.
-- `RL-5` A release may be published to the customer portal, so customers can see what
+- `REL-5` A release may be published to the customer portal, so customers can see what
   changed. Off by default.
 
 ---

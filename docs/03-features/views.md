@@ -2,7 +2,7 @@
 
 - **Phase:** P1
 - **Status:** ⬜
-- **Feature flag:** per layout — `feature.calendar`, `feature.gantt`
+- **Feature flag:** per layout — `feature.calendar`, `feature.timeline` (was `feature.gantt`; the UI says Timeline)
 - **Depends on:** work items, states
 
 ## Purpose

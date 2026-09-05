@@ -159,7 +159,14 @@ POST /api/imports/{id}/dry-run                 instance:admin
 POST /api/imports/{id}/execute                 instance:admin
 POST /api/imports/{id}/pause                   instance:admin
 GET  /api/imports/{id}/report                  instance:admin
+POST /api/imports/{id}/records                 instance:admin   (bulk write path — the MCP `bulk_create_work_items` tool lands here under `import.mcp`)
+POST /api/imports/{id}/links                   instance:admin   (write `import_record_link` rows — MCP `create_import_link`)
+GET  /api/imports/{id}/links                   instance:admin   (read them — MCP `get_import_link`)
 ```
+
+The last three exist so the MCP server is a client of *this* API rather than a second import
+path ([mcp-server.md](../03-features/mcp-server.md)); an agent-driven import is an
+`import_run` like any other, with the same ledger, audit and chunked bulk path.
 
 ## Edge cases
 

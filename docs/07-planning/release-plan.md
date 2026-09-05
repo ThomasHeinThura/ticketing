@@ -65,10 +65,10 @@ What each phase close *is*, as a release, and who could honestly be sold it.
 
 | Release | Phase close | What it is | Sellable to |
 | --- | --- | --- | --- |
-| `2.0.0-alpha.1` | P0 | The gated skeleton: sign-in, policy registry, CI green on an empty app | Nobody. This is infrastructure |
+| `2.0.0-alpha.1` | P0 | The gated skeleton: sign-in, policy registry, CI green on the **inherited kaneo surface with every route carrying a policy** ([phases.md](phases.md#p0--foundation)) | Nobody. This is infrastructure |
 | `2.0.0-alpha.N` | P1 | A polished self-hosted work manager — kaneo-parity, hardened | Nobody *as a product*: kaneo itself is free. Usable internally; replaces Planner |
 | `2.0.0-beta.1` | P2 | + SLA, workflows, approvals, request types, intake — a real service desk | An internal IT or support team, as a pilot. Not yet multi-customer |
-| `2.0.0-beta.N` | P3 | + customer portal, pluggable identity | An MSP or agency with customers, as a pilot |
+| `2.0.0-beta.N` | P3 | + customer portal, **Microsoft Entra OIDC for both portals, organisation-bound SCIM provisioning and de-provisioning**, the God Mode identity screens. **Gate:** the 17 SCIM/Entra acceptance tests pass against a real Entra test tenant ([identity-provisioning.md](../03-features/identity-provisioning.md)) | An MSP or agency with customers, as a pilot — including one whose people sign in with their own Entra |
 | `2.0.0-rc.1` → **`2.0.0`** | **P4** | + God Mode, editable roles, feature flags: **"one image, any customer" becomes true** | **The first genuinely sellable release.** Self-hosted customers who configure it themselves |
 | `2.1.0` | P5 | + cycles/modules/estimates, time & cost, three-tier reporting, knowledge base, service catalogue | Delivery teams; leadership who need "how are we doing?" |
 | `2.2.0` | P6 | + importers (Azure DevOps, Plane, Jira, CSV) | Anyone migrating off another tool — the release that closes deals stuck on "but our history" |

@@ -32,6 +32,12 @@ half of the DPA.
   is forever" against "the right to be forgotten": identity is erased, history is not.
 - Both are audited and elevated ([rbac.md](../01-architecture/rbac.md)).
 
+**SCIM de-provisioning is not erasure.** When Microsoft Entra sends `active=false`, the
+person is deactivated, sessions and personal keys are revoked and memberships end — but
+name, email and authored content remain ([identity-provisioning.md](../03-features/identity-provisioning.md)
+`IP-15`). Erasure is the separate elevated *Anonymise* action above, and it checks legal
+hold first.
+
 ## Legal hold
 
 A per-organisation or per-person **legal hold** (God Mode → Organisations / Users → *Place

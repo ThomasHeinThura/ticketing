@@ -46,7 +46,7 @@ Inherited from kaneo unless noted. Versions are the floor, not a ceiling — kee
 | Server state | **TanStack Query 5** | The only place server data lives |
 | Client state | **Zustand** | UI-only state: selection, preferences, panel sizes |
 | Styling | **Tailwind CSS v4** | `@tailwindcss/vite`, CSS variables |
-| Primitives | **Radix UI**, wrapped in `packages/ui` | shadcn `new-york`, zinc base. kaneo has begun adding **Base UI** (`@base-ui/react`) alongside Radix, following shadcn/ui's July 2026 default switch — see below |
+| Primitives | **Base UI** (`@base-ui/react`) as the primary standard, wrapped in `packages/ui`; Radix only as documented exceptions | shadcn `new-york`, zinc base. Decided 2026-09-05: migrate each inherited Radix primitive when Base UI has an adequate equivalent; retained Radix primitives are listed in `packages/ui/KNOWN-RADIX.md` and enforced by `check:ui`; feature code imports only `@taskdesk/ui` — see below and [ui-extraction-plan.md](../02-design/ui-extraction-plan.md) |
 | Variants | **class-variance-authority** | |
 | Icons | **lucide-react** | The only icon source |
 | Fonts | **Geist Variable** / **Geist Mono Variable** | |
@@ -83,7 +83,7 @@ Detail: [Testing strategy](../04-engineering/testing-strategy.md).
 | Container | Multi-stage Dockerfile, Node 24 Alpine, single image |
 | Orchestration | Docker Compose + **Traefik** (primary); Helm chart (secondary) |
 | Reverse proxy | **Traefik** — TLS, routing by host, security headers |
-| Identity (optional) | **Keycloak 26** — a configurable OIDC provider, not a hard dependency |
+| Identity | **Microsoft Entra** — OIDC + SCIM, the one provider in core delivery ([identity-provisioning.md](../03-features/identity-provisioning.md)). Any standards-compliant OIDC issuer works through `auth.oidc`; a **Keycloak 26** preset is future scope, kept here only as a compatibility note |
 | Object storage | **SeaweedFS** (default self-hosted) or any real S3 — see below |
 | Mail (dev) | **Mailpit** |
 | CI | **GitHub Actions** — decided 2026-09-05: the repository is on GitHub, and keyless cosign signing and `semantic-release`'s GitHub integration both assume it. v1's Azure Pipelines are not carried over |
@@ -108,15 +108,17 @@ lightweight alternative for small single-tenant installs. Real AWS S3 remains th
 recommended production choice for anyone who wants it, unaffected either way, because
 `storage.s3` speaks the S3 API and nothing vendor-specific.
 
-## Base UI, alongside Radix (2026-09-05)
+## Base UI as the primary primitive standard (decided 2026-09-05)
 
 kaneo has begun depending on `@base-ui/react` alongside its existing Radix primitives,
 following shadcn/ui's July 2026 switch to Base UI as the default for new projects (Base
 UI is production-stable, MUI-backed, API-compatible with the Radix components it
-replaces). Since `packages/ui` is taken from kaneo **once**, at P0 step 1
-([ADR 0001](adr/0001-kaneo-as-foundation.md)), whichever mix of Radix and Base UI kaneo
-is using *at that moment* is what we inherit — this is not a separate decision to make
-now, and no action is needed ahead of that step beyond knowing it is coming.
+replaces). `packages/ui` is taken from kaneo **once**, at P0 step 1
+([ADR 0001](adr/0001-kaneo-as-foundation.md)), so we inherit a mixed set — and **the
+inherited mix is converged on Base UI during that extraction**: each Radix primitive with
+an adequate Base UI equivalent migrates; the rest are listed in `packages/ui/KNOWN-RADIX.md`
+with a reason and a revisit date, enforced by `check:ui`; feature code imports only
+`@taskdesk/ui` ([ui-extraction-plan.md](../02-design/ui-extraction-plan.md)).
 
 ## Added to kaneo's stack — the honest P0 tooling list
 
@@ -138,9 +140,9 @@ P0. This is the input to the P0 estimate, not a footnote.
 | **@vitest/coverage-v8** (present in kaneo, unused) | The 90 % `packages/domain` threshold, enforced per package |
 | A small AST script (`check:queries`) | The "no `db.select()` outside `repository.ts`" rule — Biome cannot express it |
 
-Also inherited and to be **consolidated**, per the [inherited-features register](../07-planning/review-2026-09-05.md):
-`valibot` → Zod only; `nanostores` → Zustand only; Radix + Base UI → one primitive library,
-decided at `packages/ui` extraction.
+Also inherited and to be **consolidated**, per the [inherited-features register](inherited-features.md):
+`valibot` → Zod only; `nanostores` → Zustand only; Radix + Base UI → **Base UI**, converged
+at `packages/ui` extraction (decided 2026-09-05), with retained Radix in `KNOWN-RADIX.md`.
 
 ## Deliberate omissions
 

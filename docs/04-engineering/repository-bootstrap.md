@@ -1,7 +1,7 @@
 # Repository bootstrap — from kaneo to a green, empty TaskDesk
 
 The most-used document of the project's first fortnight: exactly how `../kaneo` becomes
-`Ticketing.v2` with CI green on an empty application. This is P0 step 1 made concrete
+`Ticketing.v2` with CI green on the inherited kaneo surface, every route carrying a policy — no features written yet, but not an empty application either. This is P0 step 1 made concrete
 ([phases.md](../07-planning/phases.md)). Written 2026-09-05.
 
 ## 0. Before copying anything
@@ -47,14 +47,17 @@ A scripted sweep, committed as one change so it is reviewable:
 
 ## 3. Inherited-features register
 
-Fill `docs/01-architecture/inherited-features.md` from the table in
-[review-2026-09-05.md](../07-planning/review-2026-09-05.md): every kaneo feature folder and
-notable dependency, a verdict, the SHA. Anything **kept without a v2 spec** gets a feature
-flag defaulting **off** (GitHub/Gitea/Telegram integrations, `workflow-rule` until
-[automations.md](../03-features/automations.md) is aligned). `public-project` is
-**deleted**, not flagged — an unauthenticated read surface does not ship dormant
-([inherited-features.md](../01-architecture/inherited-features.md)). Consolidate
-`valibot` → Zod, `nanostores` → Zustand.
+Complete `docs/01-architecture/inherited-features.md` — **the verdicts are already
+decided** (2026-09-05); against the actual snapshot, fill in the kaneo commit SHA, confirm
+every feature folder and notable dependency has a row, and record the Radix/Base UI
+primitive counts. Then act on the verdicts: **delete** `public-project` and the
+`github-integration`, `gitea-integration`, `slack-integration`, `discord-integration`,
+`telegram-integration` and `generic-webhook-integration` routers, handlers, screens and
+dependencies — removed, not flagged (the `notify.*` / `devlink` contracts and
+`external_link` are the way back). Anything **kept without a v2 spec** gets a feature flag
+defaulting **off** — today that is `workflow-rule` until
+[automations.md](../03-features/automations.md) is aligned, and the gantt/calendar views
+until their UX gates pass. Consolidate `valibot` → Zod, `nanostores` → Zustand.
 
 **Then the largest security task of P0:** retrofit every inherited kaneo router into the
 five policy kinds ([rbac.md](../01-architecture/rbac.md#route-policies--the-anti-v1-mechanism))
@@ -93,7 +96,7 @@ open https://ticket.localhost    # the one-time setup page; token is in the cont
 
 ## 7. Exit — P0 step 1 is done when
 
-- `pnpm test:all` is green on the empty application, including route coverage (which
+- `pnpm test:all` is green with kaneo's inherited routes present, including route coverage (which
   will list every inherited kaneo route with a policy — writing those policies is the
   first real security work of the project).
 - Both bundles build; the portal bundle contains no agent module.

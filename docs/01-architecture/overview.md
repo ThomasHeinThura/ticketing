@@ -24,9 +24,8 @@ graph TB
     end
 
     subgraph opt["Optional, plugin-configured"]
-        KC[Keycloak]
         SMTP[SMTP relay]
-        OIDC[Entra ID / any OIDC]
+        OIDC[Microsoft Entra — OIDC + SCIM / any OIDC issuer]
     end
 
     B1[Staff browser] --> TR
@@ -39,7 +38,6 @@ graph TB
     API --> PG
     API --> VK
     API --> S3
-    API -.-> KC
     API -.-> SMTP
     API -.-> OIDC
 ```

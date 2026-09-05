@@ -31,14 +31,14 @@ silent redefinition of *what*.
 
 ## Why this is attemptable at all, on this calendar
 
-A from-scratch build of 133 screens and a full ITIL-depth service desk in four weeks would
+A from-scratch build of 136 screens and a full ITIL-depth service desk in four weeks would
 be fantasy. Three things make an aggressive attempt realistic rather than fantastical:
 
 1. **P1 is mostly already built.** [ADR 0001](../01-architecture/adr/0001-kaneo-as-foundation.md)
    takes kaneo — a working, tested, styled work-management application — as the starting
    point. Week 1 is de-branding and hardening a running product, not building one from a
    blank editor.
-2. **The specs already exist.** All 29 feature specs, the data model, the API design, the
+2. **The specs already exist.** All 31 feature specs, the data model, the API design, the
    RBAC model and thirteen ADRs are written. [SDLC](../04-engineering/sdlc.md) stage 2 (Specify)
    — normally the slowest stage because it requires human judgement — is already done for
    the whole product. What is left is stages 3–9, which parallelise.
@@ -85,7 +85,7 @@ Today is **2026-09-05** (Saturday).
 | **1** | Sep 5 – Sep 12 | **UAT ready.** v1-level core running: de-branded kaneo, sign-in, RBAC/policy registry, CI security gates live |
 | **2–4** | Sep 12 – Oct 3 | Parallel build-out of service desk, portal, governance and reduced insight/agile scope. **Go-live** at the end of week 4 |
 | **5** | Oct 3 – Oct 10 | **Production testing week** — soak test, load test, security pass, bug bash, no new features |
-| **6–17** | Oct 10 – Dec 31 | The 3-month window: import/cutover, full polish and hardening, AWS Marketplace packaging, requested features, ongoing bug-fixing, and **paying down everything deferred below** |
+| **6–17** | Oct 10 – Dec 31 | The 3-month window: import/cutover, full polish and hardening, requested features, ongoing bug-fixing, and **paying down everything deferred below**. (AWS Marketplace is deferred beyond this window — decided 2026-09-05) |
 
 ### Week 1 — v1-level core, UAT ready (by Sep 12)
 
@@ -104,6 +104,9 @@ set** (SLA, approvals, portal, 14 reports) — that would not be honest to promi
   capability, rebranded and gated by the policy registry rather than rebuilt.
 - UAT environment stood up on real infrastructure (Postgres 18, Valkey 9, SeaweedFS,
   Traefik), seeded with realistic data.
+- **Book the scoped external penetration test** — auth, tenancy, portal boundary — this
+  week: it has four to eight weeks of lead time ([risks.md](risks.md) **R19**,
+  [release-plan.md](release-plan.md)). Booking is a week-1 task even though the test runs later.
 - **Exit:** UAT reachable, sign-in works, a work item can be created and moved on a board,
   **every route in Hono's router** (not only the OpenAPI document — `/auth/*`, `/ws`,
   `/metrics` included) has a declared policy of one of the five kinds, and kaneo's
@@ -121,7 +124,7 @@ split, not serial.
 | Workstream | Scope this window | Ports from |
 | --- | --- | --- |
 | **A — Service desk domain** | SLA engine, workflow/lifecycle engine ([ADR 0011](../01-architecture/adr/0011-ticket-lifecycle-engine.md)), approvals, assignment rules, service calendars, request types, intake queue | v1's `.NET` domain logic, reimplemented — **the highest-risk stream**, see below |
-| **B — Portal & identity** | Portal origin/bundle, core portal screens, better-auth provider presets (OIDC/Entra/Keycloak), MFA/session policy | v1's portal spec (design only — its code is discarded), JSM's permission model |
+| **B — Portal & identity** | Portal origin/bundle, core portal screens, identity connections (Microsoft Entra OIDC for the agent portal and organisation-bound for the customer portal), **SCIM provisioning/de-provisioning for Entra** with its 17 acceptance tests against a real test tenant, God Mode identity screens, MFA/session policy — the P3 scope in [phases.md](phases.md#p3--portal-and-identity), unchanged in content, placed in this window | v1's portal spec (design only — its code is discarded), JSM's permission model |
 | **C — Governance / God Mode** | Roles editor, feature flags, plugin registry UI, organisations, branding, terminology overlay ([ADR 0012](../01-architecture/adr/0012-terminology-overlay.md)) | Plane's instance-admin model |
 | **D — Reduced insight** | Cycles, tier 1 fixed reports (a working subset, not all fourteen), tier 2 selectable reports | Reduced [P5](phases.md) scope — see deferrals |
 | **E — Realtime, notifications, webhooks** | WebSocket fan-out, notification channels, outbound webhooks with signing | P1/P4 scope, pulled forward because the other streams depend on it |
@@ -167,9 +170,10 @@ Everything deferred below, plus:
 - **P7 — Full polish and hardening**, including the external penetration test, the full
   accessibility audit, i18n beyond `en-US`, and load baselines at realistic multi-tenant
   scale.
-- **AWS Marketplace packaging** — [aws-marketplace.md](../05-operations/aws-marketplace.md)
-  — seller registration (which has its own lead time) starts as soon as week 6, running
-  alongside the engineering work, not after it.
+- **AWS Marketplace** — **deferred beyond this window** (decided 2026-09-05;
+  [aws-marketplace.md](../05-operations/aws-marketplace.md)). Nothing starts before a P7
+  listing decision is taken; the only thing noted here is that seller registration has its
+  own lead time and, when the decision comes, starts before the product is feature-complete.
 - Requested features, ongoing maintenance, and bug-fixing against real production usage.
 - **Paying down every deferral below to its original Definition of Done.**
 
@@ -180,12 +184,13 @@ left column is silently thinner without appearing here.
 
 > **Correction from the 2026-09-05 review** — several rows below understate what exists at
 > go-live, because kaneo *already ships* them and they arrive with the fork in week 1:
-> calendar and gantt/timeline views, basic time entries, an automation-rule engine
-> (`workflow-rule`), Slack/Discord/Telegram/GitHub/Gitea integrations, and public project
-> boards. For those, "deferred" means *inherited but feature-flagged off until the v2 spec
-> is aligned and the UX gates pass*, not "not present". Public boards are an unauthenticated
-> read surface and get the week-1 security review whether or not they are kept. See the
-> inherited-features register in [review-2026-09-05.md](review-2026-09-05.md).
+> calendar and gantt/timeline views, basic time entries, and an automation-rule engine
+> (`workflow-rule`). For those, "deferred" means *inherited but feature-flagged off until
+> the v2 spec is aligned and the UX gates pass*, not "not present". kaneo's
+> Slack/Discord/Telegram/GitHub/Gitea integration routers and its public project boards
+> are **deleted in P0 step 1**, not flagged off — decided 2026-09-05; see the
+> [inherited-features register](../01-architecture/inherited-features.md) and the deferral
+> table in [roadmap.md](roadmap.md).
 
 | Area | At go-live (end of week 4) | Deferred to weeks 6–17 |
 | --- | --- | --- |
@@ -198,10 +203,10 @@ left column is silently thinner without appearing here.
 | **Accessibility** | Automated gates (axe, zero critical/serious) run in CI as always — **not deferred** | The *manual* full audit and remediation pass across every screen |
 | **i18n** | `en-US` only | The other 17 locales kaneo carries |
 | **Load testing** | The baseline scenarios in [testing-strategy.md](../04-engineering/testing-strategy.md), run in week 5 | Load testing at realistic multi-tenant production scale over time |
-| **Penetration test** | Not performed | External penetration test — **explicitly required before this is handed to a real external paying customer**, see [risks.md](risks.md) **R4** |
+| **Penetration test** | Not performed — but **booked in week 1** because of its 4–8-week lead time | External penetration test — **explicitly required before this is handed to a real external paying customer**, see [risks.md](risks.md) **R19** (and R4 for why); the internal red-team pass at the go-live gate is separate and is not deferred |
 | **AWS Marketplace** | Not listed | Full packaging and seller registration |
 | **Mobile / portal polish** | Functional, gated by the same UX quality gates as everything else | The dedicated refinement pass |
-| **God Mode plugin surface** | Auth, storage, notify plugin kinds live | `ai` and `license` plugin kinds (AWS Marketplace metering, [ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md)) |
+| **God Mode plugin surface** | Auth, storage, notify plugin kinds live | `ai` and `license` plugin kinds (AWS Marketplace — deferred; BYOL/contract preferred over metering, [ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md)) |
 | **Collaborative editing, SAML, LDAP, AI features** | Not present | Already "candidates, not commitments" in [roadmap.md](roadmap.md) — unaffected by this plan either way |
 
 **Nothing in the "at go-live" column skips a security gate, a route policy, or a
@@ -224,7 +229,7 @@ deadline, precisely so this choice can be made deliberately rather than discover
 
 ## Risk register additions specific to this plan
 
-Beyond the standing risks in [risks.md](risks.md) (**R1–R14**, all still active and now
+Beyond the standing risks in [risks.md](risks.md) (**R1–R14 and R18–R20** — R19's pentest lead time and R20's router retrofit are calendar-critical — all still active and now
 under more pressure, not less):
 
 | | Risk | Mitigation |

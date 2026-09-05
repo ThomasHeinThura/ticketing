@@ -96,7 +96,7 @@ path style · max file size · max files per work item · allowed extensions
 ### Notifications
 
 Per channel: SMTP host, port, TLS, credentials, from-address, reply-to · webhook defaults ·
-Slack, Teams, Discord, ntfy, Gotify endpoints
+further `notify.*` channel endpoints as they are built (Teams → Slack → Telegram → Viber — future scope)
 
 Plus: default preferences for new users, digest cadence
 

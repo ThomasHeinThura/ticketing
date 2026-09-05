@@ -112,6 +112,13 @@ Customer visibility is off by default.
 - `PR-18` Feature flags are per project, so a simple project shows a simple interface.
 - `PR-19` A project serves exactly one customer organisation, which determines who can see
   it in the portal.
+- `PR-20` **Deleting a project is a pending action**
+  ([pending-actions.md](../01-architecture/pending-actions.md)): `DELETE /api/projects/{key}`
+  returns `202`; the dialog shows the affected work items, members, attachments and
+  integrations and the 30-day recovery / purge behaviour (`PR-16`); the requester approves
+  with the **typed project key + step-up**. The same applies from the API and from MCP; a
+  service key cannot request it (`PA-5`). Archiving (`PR-15`) is not a deletion and needs no
+  pending action.
 
 ## Permissions
 
@@ -123,7 +130,7 @@ Customer visibility is off by default.
 | Manage members | `workspace:manage_members` |
 | Manage stakeholders, milestones, prerequisites | `project:update` |
 | Archive | `project:archive` |
-| Delete | `project:delete` + typed confirmation |
+| Delete | `project:delete` — a **pending action**: typed project key + step-up, approved by the requester in the browser ([pending-actions.md](../01-architecture/pending-actions.md)) |
 
 ## Screens
 
@@ -142,7 +149,7 @@ POST   /api/projects                              project:create
 GET    /api/projects/{key}                        project:read
 PATCH  /api/projects/{key}                        project:manage_settings
 POST   /api/projects/{key}/archive                project:archive
-DELETE /api/projects/{key}                        project:delete
+DELETE /api/projects/{key}                        project:delete  E  → 202 pending action (typed key + step-up; PR-20)
 GET    /api/projects/{key}/members                project:read
 POST   /api/projects/{key}/members                workspace:manage_members
 GET    /api/projects/{key}/stakeholders           project:read

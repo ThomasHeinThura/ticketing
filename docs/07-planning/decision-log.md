@@ -17,6 +17,85 @@ Newest first.
 
 ---
 
+### 2026-09-05 · Confirmed decisions A–N, and Microsoft Entra SCIM/OIDC as core delivery
+
+**Decision:** Thomas's confirmed decision document of 2026-09-05 is **product policy**.
+Each section is recorded in the document it governs; this entry is the index.
+
+| § | Decision | Recorded in |
+| --- | --- | --- |
+| A | The four-week plan is a **flexible target**; the whole program may take **three to four months**; a phase or task may finish in **one to three days** where kaneo already provides it. Finish when exit criteria are met; never remove security/quality/test/review gates to hit a date; narrow scope, move work later or move the date, and record it. **An operating rule, not a decision to reopen** | [phases.md](phases.md) (top), [accelerated-delivery-plan.md](accelerated-delivery-plan.md), [status.md](status.md) |
+| B | kaneo is a one-time, SHA-pinned source snapshot; inherited code is not trusted TaskDesk code; every inherited router is retrofitted into the five policy kinds before P0 closes | [phases.md](phases.md) P0, [inherited-features.md](../01-architecture/inherited-features.md), [security-model.md](../01-architecture/security-model.md#the-inherited-kaneo-surface--the-p0-seam) |
+| C | `public-project` deleted at P0 — routes, handlers, screens, access paths, dormant code; `feature.public_boards` reserved with no implementation | [inherited-features.md](../01-architecture/inherited-features.md), [plugin-architecture.md](../01-architecture/plugin-architecture.md) |
+| D | `parent_id` and `owner_team_id` are reach-affecting: own route, `project:manage_members`, audited `project.reach_changed`, both sides authorised, no cross-organisation re-parenting, owner team in the same workspace | [rbac.md](../01-architecture/rbac.md#reach), [teams.md](../03-features/teams.md) |
+| E | Service API keys bounded by the creator's expanded authority at creation; elevated; granted set audited; evaluated against their own subset; never an escalation path | [webhooks-and-api-keys.md](../03-features/webhooks-and-api-keys.md) `AK-7`, [auth-and-identity.md](../01-architecture/auth-and-identity.md) |
+| F | **MCP uses normal TaskDesk RBAC** — same identity, reach, capabilities, policies, audit, limits, revocation; no `mcp:*` capabilities; personal keys owned by a named human, evaluated against current authority every request; service keys not for MCP (schema `CHECK`) | [rbac.md](../01-architecture/rbac.md#mcp--the-same-rbac-not-a-second-one), [mcp-server.md](../03-features/mcp-server.md) `MC-19`–`MC-22`, [data-model.md](../01-architecture/data-model.md) |
+| G | MCP keys read-only by default; writes an explicit, warned, capability-scoped opt-in with stricter limits; all returned content untrusted; no model-supplied approval | [mcp-server.md](../03-features/mcp-server.md) `MC-15`–`MC-18`, `AK-9` |
+| H, I, J | **Universal deletion approval**: every user-initiated deletion from any client is a server-held `pending_action` approved by the requesting human in a browser session; bound, single-use, 15-minute expiry, re-authorised at execution; confirmation levels by target; no automation delete action before P4; no MCP hard-purge tool; retention purge of an approved soft delete needs no second prompt | **New:** [pending-actions.md](../01-architecture/pending-actions.md) `PA-1`–`PA-14`; `pending_action` in [data-model.md](../01-architecture/data-model.md) §11; `202` in [api-design.md](../01-architecture/api-design.md); `WI-23`, `AT-7`, `AK-11`, `AM-13` |
+| K | `TASKDESK_TRUST_PROXY` is an integer hop count (`0`/`1`/`2`); app port never published; forged `X-Forwarded-For` changes nothing | [configuration-reference.md](../05-operations/configuration-reference.md), [traefik-and-domains.md](../05-operations/traefik-and-domains.md) |
+| L | Independent internal red-team pass before internal go-live / real data, covering the listed surfaces; does not replace the external penetration test | [security-model.md](../01-architecture/security-model.md#testing-security), [risks.md](risks.md) R19 |
+| M | Customer request visibility `private` / `organisation`, default `organisation`, request types may force `private` (HR, finance, legal, personal data, access, security); out-of-scope colleague gets the constant-shape 404 | [customer-portal.md](../03-features/customer-portal.md) `CP-16`, `organisation.default_customer_visibility` |
+| N | **Base UI is the primary primitive standard**; migrate Radix where an adequate equivalent exists; retained Radix in `KNOWN-RADIX.md`, enforced by `check:ui`; feature code imports only `@taskdesk/ui` | [ui-extraction-plan.md](../02-design/ui-extraction-plan.md), [tech-stack.md](../01-architecture/tech-stack.md), [ci-cd.md](../04-engineering/ci-cd.md) |
+
+**And the updated deferred-scope and identity decisions of the same day:**
+
+- **SCIM is core delivery, not a candidate.** Microsoft Entra OIDC for the agent portal
+  and organisation-bound Entra OIDC for the customer portal; SCIM 2.0 user
+  provisioning/de-provisioning (`active=false` revokes sessions and personal API/MCP keys,
+  preserves history); allowlisted group→role mapping only; no `/Bulk` unless Entra
+  interoperability proves it necessary; **no other provider in core** (Okta, Keycloak,
+  Google Workspace, generic OIDC are future). **Placement:** P0 defines the model, rules and
+  acceptance tests (done here); P1/P2 prove identity/membership/RBAC/audit/revocation; **P3
+  implements** Entra OIDC both portals, SCIM, the God Mode identity UI and the organisation
+  identity UI, and runs the 17 acceptance tests against a real Entra tenant before the
+  identity gate closes; P4 hardens operations. Customer connections are configured by
+  **instance administrators only** in the first release. Authoritative model:
+  `identity_connection`, `scim_connection`, `external_identity`, `scim_group_mapping`,
+  `scim_group_member`, `provisioning_event` ([data-model.md](../01-architecture/data-model.md) §2);
+  spec [identity-provisioning.md](../03-features/identity-provisioning.md); owner
+  [auth-and-identity.md](../01-architecture/auth-and-identity.md).
+- **Deferred beyond the current three-to-four-month scope**, with extension points kept and
+  nothing else: antivirus (not built or installed); PostgreSQL RLS; AWS Marketplace (prefer
+  BYOL/contract when it comes); notification/chat integrations (**Email is core**; then
+  Teams → Slack → Telegram → Viber); developer-tool integrations (GitHub → GitLab → Gitea →
+  Bitbucket → Azure DevOps); public boards removed completely. Inherited kaneo integration
+  routers are **removed at fork**, never kept dormant. Recorded in
+  [roadmap.md](roadmap.md#explicitly-deferred-beyond-the-current-three-to-four-month-scope-decided-2026-09-05).
+
+- **Counts after this pass:** screen inventory **136** (was 133 after the first audit; the
+  pending-action dialog, Organisation → Identity and Profile → Pending actions added; a
+  portal dialog first added then removed because customers cannot delete anything); God
+  Mode **nineteen** screens; **31** feature specs (teams.md and identity-provisioning.md
+  added to the index).
+
+**Why:** the [external readiness review](reviews/2026-09-05/readiness-review-external.md)
+and our own audit agreed: the approved scope was not yet in the repository, and an
+implementation agent would have invented a tenancy model for SCIM and a per-client
+confirmation for deletion. Both are now first-class models with one authoritative home.
+
+**Decided by:** Thomas
+
+---
+
+### 2026-09-05 · Rule-id prefixes are unique per spec; three collisions renumbered
+
+**Decision:** every behaviour-rule prefix belongs to exactly one document, registered in
+[03-features/README.md](../03-features/README.md#rule-id-prefixes--one-per-spec-never-reused).
+The consistency check found `AU-1`…`AU-13` defined in both audit-trail and automations,
+`SV-1`…`SV-5` in both search-and-saved-views and service-management, and `RL-1`…`RL-5` in
+both roles-and-permissions-ui and service-management. **Automations → `AM-n`; services →
+`SVC-n`; releases → `REL-n`**; audit-trail, search and roles keep theirs. Every citation was
+retargeted (`AM-3`, `AM-5`, `AM-11`, `AM-13`). Two rules the security model cited but nobody
+had numbered were added: `AU-14` (audit write failure — mutation succeeds, alert fires) and
+`AU-15` (the `prev_hash`/`row_hash` chain, now also columns in `data-model.md`).
+
+**Why:** tests and code comments cite rule ids; a duplicated id makes the citation, and the
+test named after it, ambiguous.
+
+**Decided by:** Thomas (convention), applied by Claude Code
+
+---
+
 ### 2026-09-05 · Spec closure pass: the corpus was not buildable as written, and is now closer
 
 **Decision:** act on the [planning review](review-2026-09-05.md)'s findings before P0
@@ -114,6 +193,9 @@ newer major). **OpenAPI 3.1 → 3.2** — see the entry below. Noted for later, 
 only when kaneo is actually forked in P0: kaneo has begun adding **Base UI**
 (`@base-ui/react`) alongside Radix, following shadcn/ui's mid-2026 default switch; we
 inherit whatever mix kaneo is using at fork time, per [ADR 0001](../01-architecture/adr/0001-kaneo-as-foundation.md).
+**Superseded the same day by section N of the confirmed decisions (above):** the inherited
+mix is *converged on Base UI* during `packages/ui` extraction, with retained Radix
+primitives registered in `KNOWN-RADIX.md` and enforced by `check:ui`.
 
 **Why:** an explicit requirement to use "all updated and most secure" versions, and
 because a stale pin recorded in a planning document is worse than no pin — it reads as
@@ -149,6 +231,10 @@ and it passes the UX gates. The starting table — GitHub/Gitea/Slack/Discord/Te
 integrations, `workflow-rule` automations, time entries, public project boards, gantt and
 calendar views, Planka importer, billing, `valibot`/`nanostores` — is in
 [review-2026-09-05.md](review-2026-09-05.md).
+**Partly superseded the same day** (confirmed decisions, sections B and C, and the
+deferred-scope list): the integration routers and `public-project` are **removed at
+fork**, not flagged off; the authoritative register with the final verdicts is
+[inherited-features.md](../01-architecture/inherited-features.md).
 
 **Why:** "copy kaneo, strip billing" named what to remove but not what was being kept.
 A listing of kaneo's feature folders showed it ships public anonymous boards, an
@@ -236,7 +322,7 @@ close, [SDLC](../04-engineering/sdlc.md) stage 8) is cheaper than reconciling th
 ### 2026-09-05 · The engine pattern generalises beyond the six plugin kinds; the calendar is allowed to move, the pattern is not
 
 **Decision:** [plugin-architecture.md § the engine pattern](../01-architecture/plugin-architecture.md#the-engine-pattern--making-any-feature-pluggable)
-states explicitly that every feature — not only the six current plugin kinds — is
+states explicitly that every feature — not only the seven current plugin kinds — is
 expected to follow the same shape (contract, registry or settings screen, generated
 configuration, a feature flag, a validate/test affordance) before its spec is considered
 done. Paired with this: the [accelerated delivery plan](accelerated-delivery-plan.md)'s
@@ -546,8 +632,9 @@ and an unauthenticated read surface should not ship dormant inside a product who
 thesis is that authorization omissions must be mechanically impossible. If public boards
 are wanted later they get a spec and their own security review first.
 
-**Decided by:** Claude Code (security checkpoint), for Thomas to confirm — reversible by
-deleting one row in the inherited-features register.
+**Decided by:** Thomas — confirmed in the 2026-09-05 decision document, section C: delete
+the routes, handlers, screens, access paths and any dormant code; no feature flag; a future
+version needs a dedicated spec, separate public routes and a security review first.
 
 ---
 
@@ -561,7 +648,7 @@ deleting one row in the inherited-features register.
 they were a silent reach grant available to a `lead`. Separate route so "one policy per
 route" stays true.
 
-**Decided by:** Claude Code (security checkpoint)
+**Decided by:** Thomas — confirmed in the 2026-09-05 decision document (drafted by Claude Code at the security checkpoint)
 
 ---
 
@@ -574,7 +661,7 @@ audited. On use the key is evaluated against its own stored subset.
 **Why:** the previous wording made `api_key:manage` an escalation primitive — a durable
 credential above its creator's authority, outliving their membership.
 
-**Decided by:** Claude Code (security checkpoint)
+**Decided by:** Thomas — confirmed in the 2026-09-05 decision document (drafted by Claude Code at the security checkpoint)
 
 ---
 
@@ -587,7 +674,7 @@ in the UI; `is_mcp` keys are read-only by default; tool output is marked untrust
 influence. The MCP server reads customer-authored text with staff authority; this is the
 primary threat on that surface, not an edge case.
 
-**Decided by:** Claude Code (security checkpoint)
+**Decided by:** Thomas — confirmed in the 2026-09-05 decision document (drafted by Claude Code at the security checkpoint)
 
 ---
 
@@ -601,7 +688,7 @@ to proceed if 5173 is bound on the host.
 IP attacker-controlled, defeating the auth rate limit, the API-key IP allowlist and the
 audit log's `actor_ip`.
 
-**Decided by:** Claude Code (security checkpoint)
+**Decided by:** Thomas — confirmed in the 2026-09-05 decision document (drafted by Claude Code at the security checkpoint)
 
 ---
 
@@ -613,7 +700,7 @@ lands — in addition to, not instead of, the external penetration test (R19).
 
 **Why:** the corpus's own thesis: a green suite proves only what someone thought to check.
 
-**Decided by:** Claude Code (security checkpoint)
+**Decided by:** Thomas — confirmed in the 2026-09-05 decision document (drafted by Claude Code at the security checkpoint)
 
 ---
 

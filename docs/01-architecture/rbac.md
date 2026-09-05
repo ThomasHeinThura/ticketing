@@ -123,7 +123,8 @@ This is a headline feature, inherited from kaneo's `workspace_role` design and e
 ```
 role
   id            text pk
-  scope         text        -- "instance" | "workspace" | "project"
+  scope         text        -- "instance" | "organisation" | "workspace" | "project"
+                            --   "organisation" exists for exactly one system role: customer
   workspace_id  text null
   key           text        -- server-generated kebab slug, unique per (scope, workspace_id), immutable
   name          text        -- display name, editable
@@ -149,7 +150,10 @@ Guardrails:
   cannot rewrite a peer, and nobody can mint a role they could never edit.
 - At least one **active** person must hold `workspace:manage_roles` after any save —
   otherwise the workspace becomes unadministrable.
-- `instance:admin` is not grantable through workspace roles at all.
+- `instance:admin` is not grantable through workspace roles at all — nor through any
+  identity connection, OIDC claim, SCIM attribute or group mapping
+  ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-3`, `IP-21`).
+  The same is true of `sees_all`.
 - **Project-scope roles** exist as per-project overrides on the project Members screen —
   a membership at `scope = project` may carry a role whose `scope = project`. They are
   created from the same editor with the project as context; P4.
@@ -269,7 +273,7 @@ type Policy =
   | { authenticated: true; self: true }                                  // 2. the caller's own records only (/api/me/*)
   | { portal: 'customer'; predicate: PortalPredicate }                   // 3. a customer session on /api/portal/*, scoped by predicate
   | { public: true; reason: string }                                     // 4. unauthenticated, with a stated reason
-  | { delegated: 'better-auth' | 'websocket' | 'metrics'; reason: string } // 5. mounts outside zod-openapi, allowlisted explicitly
+  | { delegated: 'better-auth' | 'websocket' | 'metrics' | 'scim'; reason: string } // 5. mounts outside the session model, allowlisted explicitly
 
 type Scope = 'instance' | 'workspace' | 'project' | 'work_item' | 'organisation';
 type OwnerPredicate = 'row.person_id === identity.personId' | 'row.created_by === identity.personId' | 'row.requester_id === identity.personId';
@@ -345,18 +349,53 @@ list**; God Mode, the security model and the feature specs cite it rather than r
 
 | Action | Route |
 | --- | --- |
-| Changing an identity provider's configuration | `POST/PATCH /api/instance/plugins/{id}` for `auth.*` |
+| Creating or changing an identity connection (OIDC) or a non-OIDC auth plugin | `POST /api/instance/identity-connections`, `PATCH /api/instance/identity-connections/{id}`; `POST/PATCH /api/instance/plugins/{id}` for `auth.*` |
+| Creating, rotating or revoking a **SCIM token** | `POST /api/instance/identity-connections/{id}/scim`, `…/scim/rotate-token`, `…/scim/revoke-token` |
+| A group→role mapping that grants staff access, a role above `member`, or changes reach — **conditionally**: `PATCH …/scim` is elevated only when the change does one of those ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`) | `PATCH /api/instance/identity-connections/{id}/scim` |
 | Granting `instance:admin` | `POST /api/instance/users/{id}/grant-admin` |
 | Resetting another person's second factor | `POST /api/instance/users/{id}/reset-mfa` — with a mandatory verification note |
 | Creating a workspace **service** API key | `POST /api/workspaces/{id}/api-keys` — bounded by the creator's authority |
 | Granting `sees_all` on a membership | `PATCH /api/workspaces/{id}/members/{personId}` with `sees_all: true` — never self-grantable; audited as a reach change |
-| Marking a provider "MFA satisfied upstream", or a JIT rule that provisions `side = staff` or a role above `member` | `POST/PATCH /api/instance/plugins/{id}` for `auth.*` |
-| Deleting a workspace or a project | `DELETE /api/workspaces/{id}`, `DELETE /api/projects/{projectId}` |
+| Marking a provider "MFA satisfied upstream", or a JIT rule that provisions `side = staff` or a role above `member` | `PATCH /api/instance/identity-connections/{id}` |
+| Deleting a workspace, organisation, project, API key, webhook or identity connection — **typed exact name/key + step-up**, through a pending action | `DELETE /api/workspaces/{id}`, `DELETE /api/instance/organisations/{id}`, `DELETE /api/projects/{projectId}`, `DELETE /api/me/api-keys/{id}`, `DELETE /api/workspaces/{id}/api-keys/{id}`, `DELETE /api/webhooks/{id}`, `DELETE /api/instance/identity-connections/{id}`, `DELETE /api/instance/plugins/{id}` for `auth.*` ([pending-actions.md](pending-actions.md)) |
+| Hard purge | `POST /api/instance/purge` (`PA-13`) |
 | Starting an impersonation session | `POST /api/instance/users/{id}/impersonate` |
 | Rotating the encryption key | `POST /api/instance/rotate-encryption-key` (operator-staged — see [runbook](../05-operations/runbook.md)) |
 | Exporting instance data — audit CSV, configuration export, full export | `POST /api/instance/audit/export`, `GET /api/instance/config-export`, `POST /api/instance/export` |
 | Rotating a webhook secret | `POST /api/webhooks/{id}/rotate-secret` |
 | Overriding a change freeze | `POST /api/work-items/{key}/change/override-freeze` |
+
+### Session-only routes
+
+Elevated actions, and the approval/denial of a **pending action**
+([pending-actions.md](pending-actions.md)), are accepted only from a **browser session**:
+an API key, an `is_mcp` key or an impersonation session is refused `403 session_required`.
+This is a credential check in the auth middleware, applied before the route's policy, and
+`tests/permissions/session-only.test.ts` enumerates the routes it covers.
+
+### Deletion is never immediate
+
+Every user-initiated `DELETE` — from the web UI, the REST API, a personal API key or an
+MCP tool — returns `202` with a pending action that the requesting human approves in the
+UI; the server re-runs the route policy at approval time and executes exactly the approved
+targets. The confirmation level (click, typed name, typed count, step-up) is decided by the
+server from the target type. Rules, table and routes: [pending-actions.md](pending-actions.md).
+
+## MCP — the same RBAC, not a second one
+
+The MCP server is an **alternate client** of the API, owned by a named human through a
+personal API key ([mcp-server.md](../03-features/mcp-server.md)). There are no MCP
+capabilities — no `mcp:admin`, `mcp:read`, `mcp:write` — and there never will be.
+Effective MCP authority on every request is
+
+```
+current owner RBAC  ∩  key capability subset  ∩  current reach  ∩  route policy  ∩  feature availability
+```
+
+evaluated against the owner's *current* identity, so deactivation, membership removal,
+role change or key revocation take effect on the next call. An `is_mcp` key defaults to
+the read capabilities; writes are an explicit, warned opt-in. Workspace service keys
+cannot be MCP keys (a schema `CHECK`, [data-model.md](data-model.md) §2).
 
 ## Anti-patterns
 

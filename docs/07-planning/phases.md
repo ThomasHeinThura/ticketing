@@ -9,6 +9,18 @@ parallel rather than sequentially — with every resulting trade-off named — s
 [accelerated-delivery-plan.md](accelerated-delivery-plan.md). This document still answers
 "what does done mean"; that one answers "what ships by which date."
 
+**The operating rule for time (Thomas, 2026-09-05 — settled, not a question):** the
+four-week accelerated plan is a **flexible target** for fast internal progress, not a
+promise that the whole product, a marketplace launch or external-customer readiness lands
+in four weeks. The complete program may take **three to four months**. A phase, feature or
+P0 task may finish in **one to three days** where kaneo already provides a working
+foundation and the policy/security retrofit is straightforward; other work takes longer
+because it changes security, identity, tenancy or deployment behaviour. For every phase:
+finish it when its exit criteria are met; do not delay finished work to match a calendar;
+**never skip a security, quality, test or review gate to match a calendar**; if needed,
+narrow optional scope, move an unfinished feature later, or move the target date — and
+record the change in [status.md](status.md), here, and in [release-plan.md](release-plan.md).
+
 A phase is finished when every feature in it meets the
 [Definition of Done](../04-engineering/definition-of-done.md), including the UX gates, and
 the phase gate in the [SDLC](../04-engineering/sdlc.md) has been passed and written up.
@@ -52,6 +64,15 @@ happens; building on top of them is easy.
 - `apps/site` docs skeleton (Fumadocs)
 - ADRs 0001–0013 committed
 - Sign-in, MFA, not-found, error boundary
+- **Identity and deletion models fixed in the documents, not yet built** (decided
+  2026-09-05): the authoritative `identity_connection` / `scim_connection` /
+  `external_identity` / `scim_group_mapping` / `scim_group_member` / `provisioning_event`
+  tables, the
+  agent/customer portal boundary for identity connections, the OIDC and SCIM security
+  rules, and the 17 SCIM/Entra acceptance tests and fixtures
+  ([identity-provisioning.md](../03-features/identity-provisioning.md)); the
+  `pending_action` model and route family ([pending-actions.md](../01-architecture/pending-actions.md)).
+  **No production SCIM endpoint is built in P0.**
 
 **P0 step 0 — spec closure (added 2026-09-05).** Before step 1, the
 [planning review](review-2026-09-05.md)'s prerequisites are finished, in this order, so
@@ -95,6 +116,10 @@ hardened and extended.
 - Labels, relations
 - Search, command palette, saved views
 - Assignment rules
+- **Pending actions** — the server-enforced deletion approval
+  ([pending-actions.md](../01-architecture/pending-actions.md)) lands here with work-item,
+  comment, attachment, **project and workspace** deletion from the web UI (the two danger
+  zones ship in P1, so step-up exists in P1 too); API-key and MCP origins join in P4
 - Realtime over WebSocket
 - Profile settings: general, appearance
 - Workspace and project settings: general, members, states, labels
@@ -137,15 +162,28 @@ this is v1's domain logic reimplemented in TypeScript.
   account
 - Escalate-only priority, own-backlog ranking, public-only comments
 - Satisfaction rating, reopen window
-- Invitations and onboarding
-- **God Mode → Authentication**: pluggable OIDC, Entra and Keycloak presets, per-portal
-  scoping, JIT provisioning, group-to-role mapping, Test connection
+- Invitations and onboarding; per-request visibility `private` / `organisation` (`CP-16`)
+- **Microsoft Entra OIDC for the agent portal** — an `agent` identity connection
+- **Organisation-bound Microsoft Entra OIDC for the customer portal** — a `customer`
+  identity connection per organisation (`CP-17`)
+- **Microsoft Entra SCIM provisioning and de-provisioning** — `/scim/v2/*`, users, and
+  allowlisted group→role mapping; `active=false` revokes sessions and personal API/MCP keys
+  ([identity-provisioning.md](../03-features/identity-provisioning.md) — **core delivery,
+  decided 2026-09-05**)
+- **God Mode → Authentication**: identity connections (Entra first; Keycloak and others
+  are future), per-portal scoping, JIT policy, domain bindings, the SCIM panel, Test OIDC,
+  Test SCIM
+- **God Mode → Organisations → Identity**: the customer organisation's connection —
+  instance-administrator configured, no customer self-service
 - MFA policy, session policy
 - **God Mode → Organisations**: tenants, catalogues, quotas, portal access
 - Profile security and sessions
 
 **Done when:** a real customer raises, tracks and approves a request without emailing
-anyone, and a second identity provider can be added in the UI without a deploy.
+anyone; a customer organisation's people sign in with their own Entra and land only in
+their organisation; Entra deactivating a person ends their access within a minute; and
+**the 17 SCIM/Entra acceptance tests pass against a real Microsoft Entra test tenant** —
+the identity gate does not close on a mock alone.
 
 ---
 
@@ -163,9 +201,13 @@ anyone, and a second identity provider can be added in the UI without a deploy.
 - Notification channels and preferences, digests, quiet hours
 - Automations with dry-run
 - Webhooks with signing, retry, delivery history, SSRF protection
-- API keys
-- MCP server published
+- API keys — personal and workspace service keys (bounded by their creator)
+- MCP server published — read-only keys by default; destructive tools through pending
+  actions; the **Profile → Pending actions** page for API/MCP-originated requests
 - Impersonation, audited
+- **Identity operations hardening**: provisioning-event visibility, identity health on the
+  Health screen, SCIM token-rotation UX, connection config in the config export, role
+  management maturity for group mappings
 
 **Done when:** a fresh container can be turned into a customer's own service desk without
 touching a file.

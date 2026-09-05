@@ -28,10 +28,12 @@ audit trail; session and API-key material; the image and release artefacts.
 | **Compromised CI identity** (a malicious PR job, a leaked repository secret) | Produce a *validly signed* malicious image every deployment accepts | Release workflow runs only from `main`/`release/*` on manual dispatch, behind branch protection with no bypass; `id-token: write` granted to that one job only; `permissions:` read-only by default on every workflow; the cosign verification in `deploy.sh` pins the **workflow identity** (`repo`, `workflow`, `ref`), not just the issuer; third-party actions pinned by SHA ([ci-cd.md](../04-engineering/ci-cd.md)) |
 | **Malicious MCP client / runaway agent / typosquatted `@taskdesk/mcp`** | Exfiltrate via a key; amplify writes; harvest `TASKDESK_API_KEY` | Key capability subset ∩ owner authority; `is_mcp` keys read-only by default; `is_mcp` ceiling; burst auto-disable; idempotency; no MCP-only data path; `@taskdesk` scope reserved, provenance + 2FA on publish, internal packages `private` |
 | **Hostile content read by a model** (prompt injection through ticket text) | Make a staff agent or an AI feature act with staff authority | Tool output marked untrusted (`MC-15`); destructive/bulk tools need out-of-band human approval (`MC-7`); AI retrieval scoped to the triggering identity; model output sanitised as user input — [AI and MCP surfaces](#ai-and-mcp-surfaces) |
-| **Rogue automation / job** | Act beyond the rule author's authority | Automations run as their `effective_role_id` (clamped, `AU-3`); placeholder expansion checked against the destination's visibility (`AU-11`); jobs carry `actor_type = 'system'` and still write through scoped repositories; manual job triggers are `instance:manage_jobs`, audited, rate-limited; per-organisation job workload caps |
+| **Rogue automation / job** | Act beyond the rule author's authority | Automations run as their `effective_role_id` (clamped, `AM-3`); placeholder expansion checked against the destination's visibility (`AM-11`); jobs carry `actor_type = 'system'` and still write through scoped repositories; manual job triggers are `instance:manage_jobs`, audited, rate-limited; per-organisation job workload caps |
 | **Account-recovery social engineering** ("please reset my MFA") | Get an administrator to remove a second factor | `reset-mfa` is elevated, requires a recorded verification note, emails every address on file, revokes all sessions and keys ([auth-and-identity.md](auth-and-identity.md#multi-factor-authentication)) |
+| **Compromised SCIM token, or a hostile customer's own IdP** | Create staff, reach another organisation, grant authority, enumerate users | Organisation and portal are fixed by the connection the token belongs to, never by the request (`IP-4`); a customer connection can create only customer-side people in its own organisation with the customer role (`IP-2`); no connection can grant `instance:admin` or `sees_all`; token hashed, rotatable with immediate invalidation, rate-limited; every denial is a provisioning event — [SCIM](#scim--an-inbound-privileged-management-api) |
+| **A deletion nobody meant** (mis-click, scripted key, injected agent) | Destroy data faster than anyone can stop it | Every user-initiated deletion is a `pending_action` approved by the requesting human in a browser session; bound to exact targets and payload; single-use; 15-minute expiry; re-authorised at execution; no model, key or automation can approve — [Deletion approval](#deletion-approval) |
 | **Anonymous internet** | Enumerate users/providers; bomb mail; DoS; distinguish "not found" from "not yours" | Anonymous rate-limit class; constant-time auth responses; **constant-shape 404** (same body, same lookup path, same bucket); minimal `/api/public/*`; `health/deep` authenticated; quotas with real defaults; event-loop lag alerting |
-| **Legal hold / e-discovery** (not an adversary — an obligation) | Delete what must be retained; fail to produce what must be produced | A per-organisation or per-person **legal hold** flag suspends `audit-purge`, `retention` and hard delete for that scope; the per-tenant export already required for subject rights ([data-protection.md](../05-operations/data-protection.md)) is the discovery export |
+| **Legal hold / e-discovery** (not an adversary — an obligation) | Delete what must be retained; fail to produce what must be produced | A per-organisation or per-person **legal hold** flag suspends `audit-purge`, the soft-delete purge in `session-cleanup`, `attachment-gc` and hard delete for that scope ([background-jobs.md](background-jobs.md)); the per-tenant export already required for subject rights ([data-protection.md](../05-operations/data-protection.md)) is the discovery export |
 
 Residual risks accepted, and where they are recorded: no malware scanning by default
 ([attachments.md](../03-features/attachments.md)); metering integrity is contractual
@@ -129,6 +131,9 @@ constrained hard:
   signature, `iss`, `aud` and `exp` are checked before any claim is read
   ([auth-and-identity.md](auth-and-identity.md#what-every-authoidc-plugin-must-do--the-protocol-floor)).
   Nothing below applies to an unvalidated token.
+- **The durable identity key is `(connection, issuer, subject)` plus the SCIM `externalId`**
+  — never the email address, which is a changeable attribute. Organisation and portal are
+  properties of the connection, resolved server-side.
 - A domain mapping is honoured only when the token carries `email_verified = true`.
 - **Each email domain is bound to exactly one provider.** A token asserting `@contoso.com`
   from any other enabled provider is refused, so no second provider can be used to walk into
@@ -143,6 +148,45 @@ constrained hard:
 - "MFA satisfied upstream" prefers the token's `amr`/`acr` claim (challenge when absent);
   the static per-provider flag remains for providers that emit neither, and setting it is
   elevated and shown in a security-posture panel.
+
+## SCIM — an inbound privileged management API
+
+Decided 2026-09-05: Microsoft Entra SCIM is core P3 delivery
+([identity-provisioning.md](../03-features/identity-provisioning.md)). It is the one API
+through which an external system creates and deactivates people, so it is treated as a
+privileged surface, not an integration:
+
+- **Scope comes from the credential, never the request.** The bearer token identifies one
+  `scim_connection`, therefore one identity connection, one portal scope, at most one
+  organisation, the allowed resource types and the allowed mappings. A body carrying
+  `organisation_id`, `workspace_id`, a role, a capability or a portal scope is refused
+  `400 forbidden_attribute` and logged (`IP-4`).
+- **A customer connection cannot cross the customer boundary**: customer-side people, own
+  organisation, customer role only; never staff, never instance authority, never `sees_all`,
+  never another organisation, never keys/webhooks/automations (`IP-2`).
+- **Nothing provisions `instance:admin`**, from any claim, attribute, group or connection
+  (`IP-3`, `IP-21`).
+- HTTPS only; `application/scim+json`; strict schema validation; body-size cap;
+  per-connection rate limit; failed authentication counted in the anonymous class; token
+  stored as a hash, shown once, rotation **invalidates the old token immediately**; raw
+  token values never appear in logs, responses, exports or audit detail (`IP-12`, `IP-14`).
+- **De-provisioning is immediate and complete**: `active=false` deactivates the person,
+  revokes every session and every personal API/MCP key, ends memberships per policy, keeps
+  history, and writes a provisioning event (`IP-15`). It is never a hard delete.
+- `/scim/v2/*` is `delegated: scim` in the policy registry and is inside the IDOR-fuzz and
+  tenant-isolation suites like any other scoped surface.
+
+## Deletion approval
+
+Every user-initiated deletion — web UI, REST API, personal API key, MCP — is a
+`pending_action` that the requesting human approves in a browser session; the server
+re-runs the route policy at approval, verifies the payload hash and target versions, and
+executes exactly the approved targets. Confirmation levels rise with blast radius (click →
+typed name → typed count → typed name + step-up). No model-supplied field, API key,
+impersonation session or automation can approve; automations have no delete action before
+P4; there is no MCP purge tool; hard purge is retention lifecycle or an elevated
+`instance:admin` operation that checks legal hold first. The whole mechanism, table, routes
+and tests: [pending-actions.md](pending-actions.md).
 
 ## Portal boundary
 
@@ -184,7 +228,7 @@ session happened.
 | Injection | Drizzle parameterises everything. No string-built SQL, no exceptions. Filter grammar whitelists fields and compiles to parameters |
 | Filter as an oracle | Filterable fields carry their own read capability; the filter is evaluated **after** identity scoping; `meta.total` counts only rows in reach |
 | XSS | React escapes by default. Rich text is a Tiptap **JSON document, never raw HTML**; sanitised against an allowlist on write **and** normalised on render; importers write through the same domain-layer sanitiser as the API. `dangerouslySetInnerHTML` is banned by lint |
-| Uploads | Extension and MIME allowlist, magic-byte sniff at `complete`, size cap; presigned POST pins key, `content-length-range` and content type; served from a separate origin with `Content-Disposition: attachment`; only `state = 'ready'` rows are served; optional `storage.antivirus` plugin |
+| Uploads | Extension and MIME allowlist, magic-byte sniff at `complete`, size cap; presigned POST pins key, `content-length-range` and content type; served from a separate origin with `Content-Disposition: attachment`; only `state = 'ready'` rows are served. No malware scanner — accepted residual risk; a future `storage.antivirus` plugin is reserved, not built ([roadmap.md](../07-planning/roadmap.md)) |
 | SSRF / egress | **One HTTP client for every outbound call** — webhooks, OIDC discovery, SMTP, S3/Azure endpoints, AI providers, OTLP, Sentry, marketplace APIs, and plugin `test()` — resolves and checks the target against private, link-local and metadata ranges (`169.254.169.254`, `fd00:ec2::254`) before connecting and again at connect time; never follows redirects to a new host; optional egress allowlist in God Mode. Plugin `test()` is rate-limited and **audited even when nothing is saved** |
 | Path traversal | Object keys are generated, never derived from user filenames |
 | Mass assignment | Zod schemas are strict; unknown keys rejected, not stripped |
@@ -217,6 +261,7 @@ list:
 
 | Rule | Where |
 | --- | --- |
+| **MCP is an alternate client, not a second authorization system.** Effective authority = owner's current RBAC ∩ key subset ∩ current reach ∩ route policy ∩ feature availability; no `mcp:*` capabilities exist; a personal MCP key is owned by a named human; service keys are never MCP keys (schema `CHECK`) | [rbac.md](rbac.md#mcp--the-same-rbac-not-a-second-one), [mcp-server.md](../03-features/mcp-server.md) |
 | Tool output and retrieved content are **untrusted, attacker-controlled data**, marked as such in the response envelope and in tool descriptions | `MC-15`, [mcp-server.md](../03-features/mcp-server.md) |
 | Destructive and bulk operations need an **out-of-band human approval** (`pending_action_id` approved in the UI) — never a model-supplied `confirm: true` | `MC-7`, `MC-17` |
 | `is_mcp` keys are **read-only by default**; write capabilities are an explicit, warned opt-in | `MC-16`, `AK-9` |
@@ -294,7 +339,7 @@ workspace administrator sees rows with their `workspace_id` **and** whose entity
 their reach — a manager with two projects does not read a third project's `before`/`after`
 payloads through the workspace audit screen; instance-wide reads need `instance:read_audit`.
 An **audit write failure alerts** (a metric and a notification to every instance
-administrator), because the deliberate trade in `AU-16` — the mutation still succeeds — is
+administrator), because the deliberate trade in `AU-14` — the mutation still succeeds — is
 only acceptable if someone finds out. Rows contain PII deliberately; the erasure position
 is in [data-protection.md](../05-operations/data-protection.md).
 
@@ -367,6 +412,27 @@ Quotas ship with **real defaults** (storage 20 GB, portal users 500, webhooks 10
 | Dependency audit | CI | Every PR |
 | Container scan, SBOM, signing | CI | Every release |
 | Service-key clamp, owner-team reach, webhook delivery reach, OIDC PKCE/`state`/`nonce`, MCP injection | `tests/permissions/`, `tests/api-integration/auth/`, `tests/mcp/` | Every PR |
+| SCIM/Entra acceptance tests 01–17 ([identity-provisioning.md](../03-features/identity-provisioning.md#testing)) — against a **real Entra test tenant** before the P3 identity gate | `tests/api-integration/identity/` | Every PR (mock IdP); P3 gate (real tenant) |
+| Pending-action suite ([pending-actions.md](pending-actions.md#testing)) — 202-not-performed, no self-approval from API/MCP/impersonation, target/payload binding, single use, expiry, re-authorisation, step-up | `tests/api-integration/pending-actions/`, `tests/e2e/security/` | Every PR |
+| Session-only routes refuse API and MCP keys | `tests/permissions/session-only.test.ts` | Every PR |
+
+### The evidence chain
+
+A control in this document is an *intention* until its test runs green. The P0 and P3
+exit criteria cite this table, not the prose above:
+
+| Planned control | Evidence |
+| --- | --- |
+| Every route has a policy | `route-coverage.test.ts` green on the inherited kaneo surface |
+| No cross-tenant reads | `idor-fuzz.test.ts`, tenant-isolation suite green |
+| No forged proxy IP | `forged-x-forwarded-for-moves-no-bucket.spec.ts` green |
+| MCP cannot approve a deletion | `approval-rejected-from-api-key-and-mcp-key.test.ts` green |
+| Customer session cannot reach agent routes | `portal-session-rejected-on-agent-origin.spec.ts` green |
+| WebSocket drops revoked access | `ws-revoked-membership-stops-events.spec.ts` green |
+| Service key cannot exceed creator | `service-key-cannot-exceed-creator.spec.ts` green |
+| Entra SCIM is tenant-bound | `04-scim-token-cannot-touch-other-organisation.test.ts`, `06-customer-connection-cannot-create-staff-or-authority.test.ts` green against a real Entra tenant |
+| OIDC is safe | `15-oidc-protocol-failures-block-sign-in.test.ts` green |
+| Deletion is never immediate | `delete-returns-202-and-deletes-nothing.test.ts` green |
 | Opus security review | PR template, phase gate | Every PR touching security surfaces; every phase; **the P0 router retrofit explicitly** |
 | Independent red-team pass — authorization surface, portal boundary, inherited kaneo routes | Internal (a fresh Opus context with the hostile seed, not the authoring session) | **At the go-live gate**, before real customer data — the calendar does not move this |
 | Penetration test | External | Before first external customer, then annually ([risks.md](../07-planning/risks.md) R19) |
@@ -388,5 +454,6 @@ Full procedure: [runbook](../05-operations/runbook.md).
 ## Related
 
 - [RBAC](rbac.md) · [Auth and identity](auth-and-identity.md) · [Auth runtime reconfiguration](auth-runtime-reconfiguration.md)
+- [Pending actions](pending-actions.md) · [Identity provisioning — SCIM/Entra](../03-features/identity-provisioning.md)
 - [Multi-tenancy](multi-tenancy.md) · [Realtime](realtime.md) · [Plugin architecture](plugin-architecture.md)
 - [Testing strategy](../04-engineering/testing-strategy.md) · [Data protection](../05-operations/data-protection.md)

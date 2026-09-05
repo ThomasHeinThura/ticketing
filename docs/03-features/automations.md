@@ -57,7 +57,7 @@ Field comparisons using the same grammar as filters: type, state, state group, p
 assignee, requester, label, organisation, project, age, custom field, SLA state, comment
 visibility, actor role.
 
-- `AU-1` Conditions combine with AND. An OR is expressed by writing two rules — which is
+- `AM-1` Conditions combine with AND. An OR is expressed by writing two rules — which is
   simpler to read than nested logic, and reads better in a list.
 
 ## Actions
@@ -77,39 +77,45 @@ visibility, actor role.
 
 ## Behaviour
 
-- `AU-2` Automations run **after** the triggering change is committed, from the event bus.
+- `AM-2` Automations run **after** the triggering change is committed, from the event bus.
   They never block the request.
-- `AU-3` An automation acts as a **system actor** with an explicit effective role,
+- `AM-3` An automation acts as a **system actor** with an explicit effective role,
   configured per rule. It cannot exceed that role. This prevents "the automation can do
   anything" — which is how privilege escalation happens through configuration.
-- `AU-4` Every action taken writes an activity entry attributed to the automation by name,
+- `AM-4` Every action taken writes an activity entry attributed to the automation by name,
   never to a person.
-- `AU-5` **Loop protection.** An automation's own changes do not re-trigger it. A chain of
+- `AM-5` **Loop protection.** An automation's own changes do not re-trigger it. A chain of
   automations is capped at depth 5, after which the chain is abandoned and an error is
   recorded and surfaced.
-- `AU-6` Rules are ordered and run in order. A rule may be marked "stop processing further
+- `AM-6` Rules are ordered and run in order. A rule may be marked "stop processing further
   rules".
-- `AU-7` A failing action does not abort the remaining actions in the rule. Each result is
+- `AM-7` A failing action does not abort the remaining actions in the rule. Each result is
   recorded.
-- `AU-8` Every execution writes a run record: trigger, matched or not, each action's
+- `AM-8` Every execution writes a run record: trigger, matched or not, each action's
   outcome. Retained 30 days.
 
 ## Testing before enabling
 
-- `AU-9` A rule can be **dry-run** against recent history: "this rule would have fired 47
+- `AM-9` A rule can be **dry-run** against recent history: "this rule would have fired 47
   times in the last 7 days, on these items."
-- `AU-10` New rules default to disabled. Enabling is a deliberate act.
-- `AU-11` **Placeholder expansion respects the destination's visibility.** A placeholder
+- `AM-10` New rules default to disabled. Enabling is a deliberate act.
+- `AM-11` **Placeholder expansion respects the destination's visibility.** A placeholder
   that references an internal-only custom field, an internal note, or a staff-only value
   (an assignee's email, an internal SLA breach note) is **refused at save time** when the
   action's destination is customer-visible — a public comment, a notification to a
   customer, a webhook whose owner lacks reach — with the offending field named; the same
   check runs at execution, so a field made internal *after* the rule was saved is redacted
   rather than leaked. The dry-run's validation panel lists every placeholder and its
-  visibility. `AU-3` governs what an action *may do*; `AU-11` governs what it may *say*.
-- `AU-12` "Call a webhook" delivers only what the webhook's owner may see — `WH-14` in
+  visibility. `AM-3` governs what an action *may do*; `AM-11` governs what it may *say*.
+- `AM-12` "Call a webhook" delivers only what the webhook's owner may see — `WH-14` in
   [webhooks-and-api-keys.md](webhooks-and-api-keys.md) — evaluated against the rule's
   `effective_role_id`, never against the rule author's own reach.
+- `AM-13` **There is no delete action.** The action vocabulary above contains no delete,
+  purge or archive-and-purge action, for P4 and every earlier phase — an automation cannot
+  destroy data ([pending-actions.md](../01-architecture/pending-actions.md)). Any later
+  automation-delete capability needs its own feature specification with blast-radius
+  control, dry-run behaviour, explicit human approval, audit requirements and a security
+  review before it is scheduled.
 
 A rule that silently starts changing hundreds of work items is the worst possible outcome,
 and the dry-run is the guard.

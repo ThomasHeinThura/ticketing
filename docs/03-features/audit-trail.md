@@ -85,6 +85,47 @@ Borrowed from OpenProject's journal design.
 - `AU-12` Customers never see the audit log. They see the public portion of `activity` on
   their own requests.
 - `AU-13` Reading the audit log is itself audited, as is exporting it.
+- `AU-14` **If the audit write fails, the mutation still succeeds** — losing a mutation
+  because auditing failed is worse than a gap — but the failure is never silent: an
+  error-level log line, an `audit_write_failures_total` metric that alerts, and a
+  notification to every instance administrator, because the trade is acceptable only if
+  someone finds out ([security-model.md](../01-architecture/security-model.md#audit)).
+- `AU-15` Rows are **hash-chained**: `row_hash` is SHA-256 over the canonicalised row
+  including `prev_hash`; the first row chains from the zero hash. `audit-verify` (on demand,
+  and at every restore drill) walks the chain, so alteration by a database-level actor is
+  detectable even though the application role holds no `UPDATE`/`DELETE` on the table
+  ([data-model.md](../01-architecture/data-model.md) §11).
+
+## Audit action catalogue
+
+`audit_log.action` is a dotted key. **Where a domain event exists for the mutation, the
+audit action is that event's key** from [events.md](../01-architecture/events.md) — one
+vocabulary, not two (`work_item.transitioned`, `pending_action.requested`,
+`identity.deprovisioned`, …). The keys below are **audit-only**: security-relevant things
+that are not domain events and so appear nowhere else. This list is the single home for
+them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) do-not 11).
+
+| Audit-only action | Written when |
+| --- | --- |
+| `auth.sign_in_succeeded` · `auth.sign_in_failed` · `auth.sign_out` · `auth.session_revoked` | Authentication lifecycle, with the provider used |
+| `auth.mfa_enrolled` · `auth.mfa_reset` | Second factor enrolled; reset by an administrator (with the verification note) |
+| `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
+| `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |
+| `project.reach_changed` | `owner_team_id` or `parent_id` changed ([rbac.md](../01-architecture/rbac.md#reach)) |
+| `invitation.sent` · `invitation.redeemed` · `invitation.revoked` | Invitations |
+| `plugin.changed` · `plugin.tested` · `secrets.rekeyed` | Plugin configuration (keys only, never values), a `test()` call even when unsaved, key rotation |
+| `feature_flag.changed` | Any level |
+| `permission.denied` | A 403 or an out-of-reach 404 on a scoped route |
+| `work_item.exported` · `report.exported` · `attachment.downloaded` · `config.exported` · `instance.exported` | Data leaving through a person's hands |
+| `bulk.performed` | One summary row per bulk operation (plus one per item) |
+| `import.run` · `job.triggered` | Run-level import audit; a manual job trigger |
+| `api_key.created` · `api_key.revoked` · `webhook.created` · `webhook.deleted` · `webhook.secret_rotated` | Durable-authority lifecycle |
+| `automation.enabled` · `automation.disabled` | Rule state |
+| `ai.sent_externally` | A work item's content was sent to an `ai.*` provider |
+| `organisation.created` · `organisation.suspended` · `organisation.deleted` · `legal_hold.placed` · `legal_hold.lifted` | Tenancy lifecycle |
+| `audit.read` · `audit.exported` · `audit.purged` | `AU-13`; the purge audits itself |
+| `instance.restored` | A restore completed ([backup-and-restore.md](../05-operations/backup-and-restore.md)) |
+| `pending_action.viewed` | The one pending-action transition that is not an event (`PA-11`) |
 
 ## Screens
 
@@ -113,7 +154,7 @@ GET  /api/work-items/{key}/reconstruct?at=…    work_item:read
 | Case | Behaviour |
 | --- | --- |
 | Very large before/after payload | Truncated at 64 KB with a marker; the full diff remains in `activity` for work items |
-| Audit write fails | The mutation still succeeds, and an error-level log line is emitted. Losing a mutation because auditing failed is worse than a gap. This is a deliberate trade and it is monitored |
+| Audit write fails | The mutation still succeeds (`AU-14`); error-level log line, alerting metric, and a notification to every instance administrator. Losing a mutation because auditing failed is worse than a gap — a deliberate, monitored trade |
 | Clock skew across replicas | Timestamps come from the database, never from the application |
 | Actor deleted | Rows retain the id and a tombstoned display name |
 | Retention shortened | Applies from the next purge. The change is audited |

@@ -1,6 +1,9 @@
 # 0013 — Marketplace listing and usage metering are an optional plugin, never a default
 
-- **Status:** Accepted
+- **Status:** Accepted — *addendum 2026-09-05:* the marketplace listing itself is deferred
+  beyond the current three-to-four-month scope, and when it comes, a **BYOL / contract**
+  listing is preferred over usage metering. This ADR's decision (metering is an optional
+  plugin, never a default) stands unchanged; only the expected first listing type moved
 - **Date:** 2026-09-05
 - **Deciders:** Thomas
 

@@ -141,7 +141,7 @@ Branding         name, logos, colours, login background
 Authentication   identity providers, MFA policy, session policy
 Organisations    tenants, quotas, portal access
 Storage          object storage backend
-Notifications    channels: SMTP, webhooks, Slack, Teams, ntfy
+Notifications    channels: SMTP, webhooks (core); more as built
 Features         instance-wide feature flags and locks
 Jobs             schedules, run history, manual trigger
 Plugins          everything configurable, in one list

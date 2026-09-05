@@ -45,7 +45,7 @@ policy.
 | `user:{personId}` | Every connected client, own id only | Notifications, assignment to you, approval requests |
 | `project:{projectId}` | Anyone viewing a project surface | Work item create/update/delete/move, comments, state changes |
 | `work_item:{key}` | Anyone with a work item open | Comments, activity, approvals, attachments |
-| `instance` | Instance admins | Plugin config changes, job failures |
+| `instance` | Instance admins | Plugin config changes, job failures, import progress (`import.chunk_completed`) |
 
 ## Messages
 

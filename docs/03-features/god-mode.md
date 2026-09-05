@@ -37,8 +37,11 @@ list covering a third of the surface.
 ## Access
 
 Requires `instance:admin`, which cannot be granted by a workspace role and cannot be
-granted by an invitation. The first instance administrator is created on an empty database
-from `TASKDESK_BOOTSTRAP_ADMIN_EMAIL`.
+granted by an invitation, and cannot be granted by any identity connection, OIDC claim,
+SCIM attribute or group mapping. The first instance administrator is created on the
+one-time **setup page** an empty database serves, unlocked by a token printed in the
+container log ([auth-and-identity.md](../01-architecture/auth-and-identity.md#break-glass));
+`TASKDESK_BOOTSTRAP_ADMIN_EMAIL` exists only for headless installs.
 
 God Mode is a route group inside the agent application — `/agent/god-mode/*` — rather than
 a separate application. A separate application means separate authentication, separate
@@ -46,9 +49,10 @@ deployment and separate design drift, which is a price without a benefit.
 
 ## Sections
 
-**Eighteen screens** — the God Mode rows in the
+**Nineteen screens** — the God Mode rows in the
 [screen inventory](../02-design/screen-inventory.md). Sections map one-to-one to rows except
-Authentication and Organisations, each a list plus a detail.
+Authentication (list plus connection editor) and Organisations (list, detail, and the
+detail's Identity tab).
 
 ### Health — the landing page
 
@@ -60,7 +64,7 @@ What is working and what is not, at a glance. Each check reports one of
 | Database | pool wait > 100 ms | unreachable |
 | Valkey (if configured) | latency > 50 ms | unreachable — the app degrades to in-memory and says so |
 | Object storage | test write > 2 s | test write fails |
-| Each `notify` / `auth` plugin | last `plugin-health` ping slow | last ping failed |
+| Each `notify` / `auth` plugin, and each enabled identity connection (OIDC discovery; SCIM last sync) | last `plugin-health` ping slow; SCIM sync failed once | last ping failed; SCIM token revoked while the connection is enabled |
 | Each job | last success older than 2× cadence | older than 3× cadence, or three consecutive failures |
 | Backups | no `backup_run` in 24 h | none in 48 h |
 | Disk headroom (filesystem storage only) | < 20 % | < 10 % |
@@ -108,16 +112,25 @@ and the submitted accent is contrast-checked against the token pairs before save
 not a block). Served from `/api/public/branding` so the login page can render before anyone
 signs in.
 
-### Authentication
+### Authentication — identity connections
 
-The most important screen. See [auth and identity](../01-architecture/auth-and-identity.md)
-and [auth runtime reconfiguration](../01-architecture/auth-runtime-reconfiguration.md).
+The most important screen. See [auth and identity](../01-architecture/auth-and-identity.md),
+[identity provisioning](identity-provisioning.md) and
+[auth runtime reconfiguration](../01-architecture/auth-runtime-reconfiguration.md).
 
-- Add, edit, enable, disable and delete identity providers.
-- Each provider: type, display name, **which portal it serves**, endpoints, credentials,
-  claim mapping, just-in-time provisioning rules, group-to-role mapping, domain
-  restriction.
-- **Test connection** before going live.
+- Add, edit, enable, disable and delete **identity connections** (OIDC — Microsoft Entra
+  first) and the non-OIDC auth plugins (password, OTP, magic link, TOTP, passkey).
+- Each connection: provider type, display name, **which portal it serves — agent or
+  customer, never both**, issuer/tenant, client id and encrypted secret, redirect URI,
+  claim mapping, domain bindings, just-in-time provisioning policy, MFA-upstream mode.
+  Customer connections are edited from the organisation's Identity tab (below) — same
+  routes, filtered.
+- **SCIM panel** per connection: endpoint URL, bearer token create / rotate / revoke
+  (shown once; rotation invalidates the old token at once), allowed resources, attribute
+  mapping, allowlisted group → role mappings (never `instance:admin`, never `sees_all`),
+  lifecycle policy, last sync, last failure without secrets, provisioning event log.
+- **Test connection** (OIDC discovery + dry run) and **Test SCIM** before going live; both
+  audited even when nothing is saved.
 - MFA policy: off, optional, required for staff, required for a role, required for
   everyone.
 - Session policy: idle timeout, absolute lifetime, concurrent session limit.
@@ -137,6 +150,16 @@ projects for that organisation at creation**, never a resolution level of their 
 Provisioning a new customer organisation is the operation performed most often, so it is
 one screen and one submit.
 
+**Organisation → Identity** (`/agent/god-mode/organisations/{id}/identity`, P3): the
+customer organisation's own identity connection — enable/disable portal SSO; provider type
+(Microsoft Entra first); organisation-bound OIDC settings; SCIM endpoint information; SCIM
+token create and rotate; Test OIDC; Test SCIM; provisioning status and last sync result;
+errors without secrets; controlled attribute mapping; controlled group mapping (customer
+roles only); audit history; and **unmissable warnings** that everything on this screen is
+bound to this one organisation and to the customer portal only. Instance administrators
+only — customers cannot configure their own IdP in the first release
+([identity-provisioning.md](identity-provisioning.md) `IP-5`).
+
 ### Storage
 
 Which object storage backend, its settings, a test write, current usage, and the
@@ -144,8 +167,10 @@ attachment limits.
 
 ### Notifications
 
-Channels available on this instance: SMTP, generic webhook, Slack, Teams, Discord,
-Telegram, ntfy, Gotify. Each is a `notify.*` plugin with settings and a test send through
+Channels available on this instance: SMTP and the generic webhook (core). Further
+`notify.*` channels — Teams → Slack → Telegram → Viber, then others — appear here as they
+are built ([notifications.md](notifications.md); future scope, decided 2026-09-05). Each is
+a `notify.*` plugin with settings and a test send through
 the generic `POST /api/instance/plugins/{id}/test` route — there is no channel-specific
 test route. Plus the default notification preferences new users inherit.
 
@@ -215,7 +240,11 @@ Import runs and their history. See [import strategy](../06-data-import/import-st
   "wrong password" from "cannot reach host".
 - `GM-5` Settings forms are generated from each plugin's Zod schema, so a new plugin
   arrives with its administration UI already built.
-- `GM-6` Destructive actions require typing the name of the thing being destroyed.
+- `GM-6` Destructive actions are **pending actions**
+  ([pending-actions.md](../01-architecture/pending-actions.md)): the request returns `202`,
+  the server chooses the confirmation level, and for God Mode targets — organisations,
+  identity connections, auth plugins, hard purge — that level is **typed exact name +
+  step-up**. The client cannot lower it.
 
 **Impersonation**
 
@@ -227,10 +256,11 @@ Import runs and their history. See [import strategy](../06-data-import/import-st
   `audit_log.impersonator_id` set — "doubly audited" means exactly this: one row for the
   act, one per action.
 - `GM-9` The impersonator may read and may perform ordinary writes as the target. They may
-  **not**: decide approvals, perform any elevated action, start a further impersonation,
-  change the target's credentials or MFA, export data, or **create anything that outlives
-  the session** — API keys, webhooks, invitations, role or membership edits, `sees_all`
-  grants. Each refusal is a 403 naming `impersonation`. The impersonated person is
+  **not**: decide approvals, **request or approve a deletion** (a pending action —
+  [pending-actions.md](../01-architecture/pending-actions.md)), perform any elevated action,
+  start a further impersonation, change the target's credentials or MFA, export data, or
+  **create anything that outlives the session** — API keys, webhooks, invitations, role or
+  membership edits, `sees_all` grants. Each refusal is a 403 naming `impersonation`. The impersonated person is
   **notified** in-app and by email when the session ends, with the start and end times and
   the reason recorded at `GM-7`.
 - `GM-10` Another instance administrator can never be impersonated.
@@ -245,8 +275,9 @@ environment, not the database:
   `TASKDESK_ENCRYPTION_KEY_PREVIOUS` to the old one, and restarts. Both keys are readable;
   writes use the new one.
 - `GM-13` God Mode → Plugins → **Rotate secrets** (elevated) starts the `secrets-rekey` job,
-  which re-encrypts every `instance_plugin_config.secrets` row under the new key and stamps
-  its `key_id`. Progress and any failure are visible; the job is resumable.
+  which re-encrypts every `instance_plugin_config.secrets` row **and every
+  `identity_connection.client_secret`** under the new key and stamps its `key_id`. Progress
+  and any failure are visible; the job is resumable.
 - `GM-14` When every row carries the new `key_id`, Health says so, and the operator removes
   `TASKDESK_ENCRYPTION_KEY_PREVIOUS`. Full procedure in the [runbook](../05-operations/runbook.md).
 
@@ -266,7 +297,7 @@ environment, not the database:
 
 ## Screens
 
-The eighteen God Mode rows in the [screen inventory](../02-design/screen-inventory.md).
+The nineteen God Mode rows in the [screen inventory](../02-design/screen-inventory.md).
 They use the same shell and the same primitives as the rest of the agent application. God
 Mode is not a place where the design standard relaxes — it is where an administrator forms
 their first impression of whether the product is trustworthy.
@@ -290,7 +321,7 @@ POST   /api/instance/terminology/preview              instance:manage_terminolog
 GET    /api/instance/plugins                          instance:manage_plugins
 POST   /api/instance/plugins                          instance:manage_plugins  (E for auth.*)
 PATCH  /api/instance/plugins/{id}                     instance:manage_plugins  (E for auth.*)
-DELETE /api/instance/plugins/{id}                     instance:manage_plugins  (E for auth.*; auth.password refused)
+DELETE /api/instance/plugins/{id}                     instance:manage_plugins  (E for auth.*; auth.password refused; pending action — typed name + step-up)
 POST   /api/instance/plugins/{id}/test                instance:manage_plugins
 POST   /api/instance/plugins/rotate-secrets           instance:manage_plugins  E   (starts secrets-rekey)
 GET    /api/instance/storage/usage                    instance:admin
@@ -299,8 +330,22 @@ POST   /api/instance/organisations                    instance:admin
 PATCH  /api/instance/organisations/{id}               instance:admin
 POST   /api/instance/organisations/{id}/suspend       instance:admin
 POST   /api/instance/organisations/{id}/unsuspend     instance:admin
-DELETE /api/instance/organisations/{id}               instance:admin  E
+DELETE /api/instance/organisations/{id}               instance:admin  E  (pending action — typed name + step-up)
 PUT    /api/instance/organisations/{id}/catalogue     instance:admin
+GET    /api/instance/organisations/{id}/identity      instance:admin      (the organisation's identity connection)
+
+GET    /api/instance/identity-connections                         instance:admin
+POST   /api/instance/identity-connections                         instance:admin  E
+PATCH  /api/instance/identity-connections/{id}                    instance:admin  E
+DELETE /api/instance/identity-connections/{id}                    instance:admin  E  (pending action — typed name + step-up)
+POST   /api/instance/identity-connections/{id}/test               instance:admin      (audited even unsaved)
+POST   /api/instance/identity-connections/{id}/scim               instance:admin  E
+PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E*  (*E when a mapping grants staff access, a role above member, or reach — IP-6)
+POST   /api/instance/identity-connections/{id}/scim/rotate-token  instance:admin  E
+POST   /api/instance/identity-connections/{id}/scim/revoke-token  instance:admin  E
+POST   /api/instance/identity-connections/{id}/scim/test          instance:admin
+GET    /api/instance/identity-connections/{id}/events             instance:admin
+POST   /api/instance/purge                                        instance:admin  E  (PA-13 — legal hold checked)
 GET    /api/instance/users                            instance:admin
 POST   /api/instance/users/{id}/suspend               instance:admin
 POST   /api/instance/users/{id}/unsuspend             instance:admin

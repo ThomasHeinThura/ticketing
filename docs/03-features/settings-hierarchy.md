@@ -158,6 +158,7 @@ them requires no relearning. Rows in the [screen inventory](../02-design/screen-
 GET/PATCH /api/instance/settings                       instance:admin                 instance
 GET/PATCH /api/workspaces/{id}/settings                workspace:manage_settings      workspace
 GET/PATCH /api/workspaces/{id}/features                workspace:manage_settings      workspace
+DELETE    /api/workspaces/{id}                         workspace:delete  E            workspace — the danger zone; → 202 pending action (typed exact name + step-up), refused while the workspace has active projects ([pending-actions.md](../01-architecture/pending-actions.md))
 GET/PATCH /api/projects/{projectId}/settings           project:manage_settings        project
 GET/PATCH /api/projects/{projectId}/features           project:manage_settings        project
 GET/PATCH /api/me/settings                             authenticated + self

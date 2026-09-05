@@ -12,7 +12,7 @@ reference, not a legal one — for licence rules see
 
 **Take:**
 
-- The complete design system: 60+ Radix-based primitives in `components/ui`, Tailwind v4
+- The complete design system: a full primitive set in `components/ui` (mixed Radix + Base UI at fork, converged on Base UI at extraction), Tailwind v4
   with CSS variables, `new-york` shadcn style, zinc base, Geist Variable typography.
 - The application shell: collapsible sidebar, workspace switcher, project nav, command
   palette (`⌘K`), breadcrumbs.
@@ -185,7 +185,7 @@ licence.
 distributed like plugins is a real, working commercial model built on the same idea our
 own plugin registry ([ADR 0006](../01-architecture/adr/0006-plugin-registry.md)) enables —
 useful external validation, even though we monetise through God Mode feature-flag tiers
-and marketplace metering ([ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md))
+and — if a marketplace listing is ever made — a BYOL/contract entitlement plugin ([ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md); metering is the non-preferred path)
 rather than a module storefront.
 
 **Reject:** its ticket status set is small and effectively fixed. A second concrete,

@@ -124,7 +124,7 @@ GET    /api/work-items/{key}/approvals        work_item:read
 POST   /api/work-items/{key}/approvals        approval:request
 POST   /api/approvals/{id}/decide             approval:decide
 POST   /api/approvals/{id}/withdraw           approval:request
-GET    /api/my/approvals                      (self)
+GET    /api/me/approvals                      (self)
 GET    /api/portal/approvals                  (self, portal router)
 POST   /api/portal/approvals/{id}/decide      approval:decide
 ```

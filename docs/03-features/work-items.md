@@ -96,7 +96,12 @@ whether it is an epic, and which custom fields apply.
 - `WI-21` Deletion is soft for 30 days, then purged with its comments, activity and
   attachments.
 - `WI-22` Deleting a parent orphans its children rather than cascading. The user is told.
-- `WI-23` Deletion requires `work_item:delete` and a typed confirmation of the key.
+- `WI-23` Deletion requires `work_item:delete` and goes through a **pending action**
+  ([pending-actions.md](../01-architecture/pending-actions.md)): `DELETE` returns `202`,
+  the dialog shows key, title, project, requester/portal-visibility impact and the 30-day
+  recovery period, and the requesting person approves in the browser. A bulk deletion
+  additionally requires the typed affected count. The same applies from the API and from
+  MCP — nothing is deleted without the approval, and a model cannot supply it.
 
 **Bulk operations**
 
@@ -126,7 +131,7 @@ whether it is an epic, and which custom fields apply.
 | Set priority | `work_item:set_priority` | |
 | Escalate priority only | `work_item:escalate_priority` | The customer capability |
 | Re-rank | `work_item:rank` | Customers: own organisation only |
-| Delete | `work_item:delete` | Typed confirmation |
+| Delete | `work_item:delete` | Pending action — explicit click; bulk additionally requires the typed count (`WI-23`) |
 | Archive | `work_item:update` | |
 
 ## Screens

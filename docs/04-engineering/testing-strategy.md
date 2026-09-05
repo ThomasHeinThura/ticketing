@@ -160,6 +160,50 @@ covered elsewhere:
   its side effects and required permission in the text a model reads (`MC-6`), checked by
   a snapshot test, since this is the one part of the contract a human reviewer is least
   likely to notice drifting.
+- **Same RBAC as the owner** (`MC-19`–`MC-21`) — a key whose owner is deactivated, loses a
+  membership or has a role reduced fails on the next call; a service key cannot be flagged
+  `is_mcp` (the schema `CHECK` is asserted); no `mcp:*` capability exists in the capability
+  enumeration.
+- **No self-approval** — `delete_work_item`, `decide_approval` and bulk operations return
+  `202` with a pending action; a `confirm` argument is ignored; approval from the MCP key
+  itself is `403 session_required` ([pending-actions.md](../01-architecture/pending-actions.md)).
+- **Injection** — `injection.test.ts` (`MC-18`).
+
+## Identity provisioning tests — SCIM and Microsoft Entra
+
+**Where** — `tests/api-integration/identity/`. Seventeen named acceptance tests, numbered
+`01`–`17` in [identity-provisioning.md](../03-features/identity-provisioning.md#testing),
+run on every PR against a mock IdP and, **before the P3 identity gate closes, against a real
+Microsoft Entra test tenant**. In one line each: agent OIDC is agent-portal-only; customer
+OIDC is bound to one organisation; portal sessions are isolated both ways; a SCIM token
+cannot touch another organisation; no request attribute selects a tenant, role or portal;
+a customer connection cannot create staff or authority; SCIM create/filter/update/deactivate/
+reactivate behave per Entra; groups map only to permitted roles in scope; nothing grants
+`instance:admin` automatically; token rotation invalidates the old token and never leaks;
+OIDC protocol failures block sign-in; a second IdP does not auto-link on email; every
+identity event is audited. `/scim/v2/*` is also inside the IDOR fuzz and tenant-isolation
+suites like any other scoped surface.
+
+## Pending-action tests — universal deletion approval
+
+**Where** — `tests/api-integration/pending-actions/` and `tests/e2e/security/`; the named
+list is in [pending-actions.md](../01-architecture/pending-actions.md#testing). What they
+prove: a delete request creates a pending action and **mutates nothing**; API keys, MCP
+keys, impersonation sessions and model-supplied fields cannot approve; approval is bound to
+the exact targets and payload hash and is single-use; it expires at 15 minutes; the route
+policy is re-run at execution; project/workspace/organisation/key/webhook/identity-connection
+deletions require typed name + step-up; bulk requires the typed count; a service key
+cannot request a deletion; retention purge of an approved soft delete needs no second
+approval; legal hold blocks purge; there is no MCP purge tool; every transition is audited.
+
+## Multi-tenant negative tests — the additions of 2026-09-05
+
+Already in `tests/permissions/` and `tests/e2e/security/`, named here so the list is in one
+place: Customer A cannot infer Customer B's records through search, filter or `meta.total`
+(`filter-as-oracle.test.ts`); a `private` request is 404 to a colleague
+(`private-request-404-to-colleague.spec.ts`, `CP-16`); an owner-team change cannot silently
+grant reach (`lead-cannot-change-owner-team-or-parent.spec.ts`); a parent-project change
+cannot cross an organisation (`reparent-refused-across-organisations.test.ts`).
 
 ## Task and work-item lifecycle tests
 
@@ -246,6 +290,16 @@ build; approving is an explicit act in the pull request.
 
 Against a seeded dataset, asserting the budgets in
 [UX quality gates](../02-design/ux-quality-gates.md).
+
+### Design-system conformance
+
+Static, in the fast CI stage: `check:ui` fails on any import of `@radix-ui/*` or
+`@base-ui/react` outside `packages/ui`, and on any Radix primitive inside `packages/ui`
+not listed in `KNOWN-RADIX.md` ([ui-extraction-plan.md](../02-design/ui-extraction-plan.md));
+`check:tokens` fails on a token without a concrete value; `check:inventory` fails when the
+screen inventory's routes and `lib/routes.ts` disagree. Every screen's story set includes
+its **error, empty and loading** states (`G7`), and the P0 screens pass the accessibility
+gate before P0 closes.
 
 ## Manual
 

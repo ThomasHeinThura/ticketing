@@ -57,7 +57,7 @@ Recorded so they are not forgotten, and explicitly *not* scheduled.
 | Candidate | Why it is not in scope yet |
 | --- | --- |
 | **Collaborative editing** (Hocuspocus / CRDT) | A whole subsystem. Wait for evidence people actually co-edit descriptions |
-| **SAML** | better-auth does not cover it. Keycloak-as-broker serves the need meanwhile |
+| **SAML** | better-auth does not cover it; no broker is in scope either — Microsoft Entra OIDC only in core delivery (deferral table below) |
 | **LDAP / Active Directory sync** | Same |
 | **Inbound email to ticket** | Genuinely useful, genuinely fiddly. Parsing, threading, spam, spoofing |
 | **Formula and rollup custom fields** | A small language. Easy to start, hard to finish |
@@ -72,6 +72,23 @@ Recorded so they are not forgotten, and explicitly *not* scheduled.
 | **Third-party plugin loading** | Contracts are shaped for it; sandboxing and supply chain are not solved |
 | **Azure Marketplace / GCP Marketplace listings** | Same `license` plugin kind as AWS ([ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md)); no architecture work needed, only packaging, once AWS is proven |
 
+### Explicitly deferred beyond the current three-to-four-month scope (decided 2026-09-05)
+
+Recorded so no implementation agent "helpfully" builds them early. Each has its extension
+point in place and nothing else.
+
+| Deferred | Position | Revisit when |
+| --- | --- | --- |
+| **Antivirus / malware scanning of attachments** | Not built, not installed. Accepted residual risk stated in [attachments.md](../03-features/attachments.md); the allowlist, magic-byte check, separate files origin and download headers stand | Unknown external users can upload, or a customer/security requirement asks |
+| **PostgreSQL row-level security** | Not implemented. Scoped repositories, route policy, RBAC/reach and the negative tenant-isolation suites are the primary control ([decision log](decision-log.md)) | A compliance-sensitive customer requires database-level defence in depth |
+| **AWS Marketplace** | Not implemented. Before P7, prefer a **BYOL / contract** listing over self-hosted usage metering ([aws-marketplace.md](../05-operations/aws-marketplace.md), [ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md)) | P7 |
+| **Notification / chat integrations** | Future only, in this order: **Email is core**; then Microsoft Teams → Slack → Telegram → Viber → others. Inherited kaneo Slack/Discord/Telegram routers are removed at fork | After P4, one at a time, each as a `notify.*` plugin |
+| **Developer-tool integrations** | Future only: GitHub → GitLab → Gitea → Bitbucket → Azure DevOps. Inherited kaneo GitHub/Gitea routers are removed at fork; `external_link` is the extension point | After P4 |
+| **Public boards** | **Removed completely in P0** — not deferred as dormant code; a future feature needs its own spec and security review | If ever |
+| **Customer self-service IdP configuration** | Instance administrators configure every customer connection in the first release ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-5`) | A separate spec, security review, validation workflow and approval model |
+| **Further identity providers** (Okta, Keycloak, Google Workspace, generic OIDC, other SCIM sources) | Same `identity_connection` architecture; **Microsoft Entra only** in core delivery | Provider by provider, after Entra is proven |
+| **SCIM `/Bulk`** | Not implemented | Only if Entra interoperability testing proves it necessary |
+
 ## Decisions with deadlines
 
 | Decision | By when | Consequence of not deciding |
@@ -79,7 +96,7 @@ Recorded so they are not forgotten, and explicitly *not* scheduled.
 | **CLA, for a possible dual licence** | Before the first external contribution is merged | Retrofitting requires tracking down every contributor, or rewriting their work |
 | **Product name** | Before P7 | Branding, domains and documentation all assume one |
 | ~~Whether to sell externally~~ **Decided:** yes, via AWS Marketplace first | — | See [decision log](decision-log.md) and [AWS Marketplace listing](../05-operations/aws-marketplace.md) |
-| **AWS Marketplace seller registration** | Before P7 closes | Registration and the security review have their own lead time; start before the product is feature-complete |
+| **AWS Marketplace seller registration** | Only once a P7 listing decision is taken — the listing is **deferred** beyond the current scope (2026-09-05) | Registration and AWS's security review have their own lead time, so when the decision comes, start it before the product is feature-complete; BYOL/contract preferred |
 | **PITR / WAL archiving** | Before real customer data lands | Determines the achievable RPO |
 
 Tracked in [risks.md](risks.md).

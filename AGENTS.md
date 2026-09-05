@@ -150,6 +150,17 @@ Full checklist:
 11. Name a table, column, capability, feature flag, event key or job that is not in its
     single authoritative document — `data-model.md`, `rbac.md`, `plugin-architecture.md`,
     `events.md`, `background-jobs.md`. Add it there first, in the same change
+12. Delete anything without a **pending action** — every user-initiated deletion, from
+    every client, returns `202` and waits for the requesting human's approval in the UI
+    (`docs/01-architecture/pending-actions.md`). No `confirm: true`, no client-side dialog
+    as the control
+13. Invent an MCP permission (`mcp:*`), a SCIM-only tenancy rule, or any path by which an
+    identity provider, group or SCIM attribute grants `instance:admin` or `sees_all`
+14. Keep, flag or "leave for later" an inherited kaneo integration router (public boards,
+    GitHub, Gitea, Slack, Discord, Telegram) — they are **deleted at fork**
+    (`docs/01-architecture/inherited-features.md`); the plugin contracts are the way back
+15. Start building a feature while its section in `docs/07-planning/reviews/2026-09-05/`
+    is non-empty
 
 ---
 

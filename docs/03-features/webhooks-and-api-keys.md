@@ -119,6 +119,12 @@ does with a webhook is build a link back.
 - `AK-9` Keys flagged `is_mcp` default to the **read** capabilities only; write
   capabilities are an explicit opt-in at creation, shown with a warning
   ([mcp-server.md](mcp-server.md) `MC-15`).
+- `AK-10` **A service key can never be an MCP key** — `CHECK (NOT is_mcp OR person_id IS
+  NOT NULL)`. An MCP key is always a personal key owned by a named human (`MC-20`, `MC-21`).
+- `AK-11` Deleting an API key or a webhook is a **pending action** with typed exact name
+  and step-up ([pending-actions.md](../01-architecture/pending-actions.md)); a service key
+  cannot request any deletion (`PA-5`). Revocation (`AK-6`) is immediate and is not a
+  deletion — the row stays for audit.
 - `AK-8` Keys authenticate as `Authorization: Bearer tdk_…`.
 
 ## Permissions
@@ -150,9 +156,14 @@ POST   /api/webhooks/{id}/test                webhook:manage
 POST   /api/webhooks/{id}/rotate-secret       webhook:manage + re-auth
 GET    /api/webhooks/{id}/deliveries          webhook:manage
 POST   /api/webhooks/deliveries/{id}/redeliver webhook:manage
-GET    /api/api-keys                          (self) | api_key:manage
-POST   /api/api-keys                          (self) | api_key:manage
-DELETE /api/api-keys/{id}                     (self) | api_key:manage
+GET    /api/me/api-keys                            authenticated + self        (personal keys)
+POST   /api/me/api-keys                            authenticated + self        (personal key — clamped to the owner)
+DELETE /api/me/api-keys/{id}                       authenticated + self  E     → 202 pending action (typed name + step-up)
+POST   /api/me/api-keys/{id}/revoke                authenticated + self        (immediate; not a deletion — AK-6)
+GET    /api/workspaces/{id}/api-keys               api_key:manage              (service keys)
+POST   /api/workspaces/{id}/api-keys               api_key:manage  E           (service key — bounded by the creator, AK-7)
+DELETE /api/workspaces/{id}/api-keys/{keyId}       api_key:manage  E           → 202 pending action (typed name + step-up)
+POST   /api/workspaces/{id}/api-keys/{keyId}/revoke api_key:manage             (immediate)
 ```
 
 ## Edge cases

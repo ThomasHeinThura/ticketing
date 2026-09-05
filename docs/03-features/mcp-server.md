@@ -68,13 +68,16 @@ Write:
 create_work_item         update_work_item         transition_work_item
 assign_work_item         add_comment              add_label
 create_relation          set_custom_field         create_submission
-decide_approval          log_time
+decide_approval          log_time                 delete_work_item   (soft — pending action, MC-7)
 ```
+
+There is **no purge tool** and no hard-delete tool of any kind, and there never will be
+one on MCP (`PA-13`).
 
 Import-oriented:
 
 ```
-bulk_create_work_items   create_import_mapping    get_import_mapping
+bulk_create_work_items   create_import_link    get_import_link
 ```
 
 ## Behaviour
@@ -83,13 +86,14 @@ bulk_create_work_items   create_import_mapping    get_import_mapping
   `create_work_item` must not produce two work items. This is not optional.
 - `MC-6` Tool descriptions state permissions and side effects plainly, because the model
   reads them and will otherwise guess.
-- `MC-7` Destructive tools — delete, bulk operations above 50 items, `decide_approval` —
-  require an **out-of-band human confirmation**, not a model-supplied boolean. The tool
-  call returns a `pending_action_id` and a URL; the key's owner approves it in the agent
-  UI (a notification and an "Agent actions awaiting approval" panel under profile), and
-  the agent completes the call by passing the id back. A `confirm: true` argument was the
-  first draft and was rejected: the model that supplies it is the component under the
-  attacker's influence (`MC-15`). Pending actions expire after 15 minutes.
+- `MC-7` Destructive tools — `delete_work_item`, any bulk operation above 50 items,
+  `decide_approval` — go through the **pending action** mechanism in
+  [pending-actions.md](../01-architecture/pending-actions.md): the tool call returns `202`
+  with a `pending_action_id`; the key's **owner** approves it in the TaskDesk browser UI
+  (notification + Profile → Pending actions); the server executes on approval and the
+  agent learns the outcome by polling. A `confirm: true` argument was the first draft and
+  was rejected: the model that supplies it is the component under the attacker's influence
+  (`MC-15`). Pending actions expire after 15 minutes and are single-use.
 - `MC-8` Errors are returned as readable text, not raw JSON problem documents. An agent
   recovers better from "You can't assign work in this project — you need the assign
   permission" than from a status code.
@@ -142,10 +146,30 @@ that opens the ticket. The corpus treats this as the primary MCP threat, not an 
   `min(key.rate_limit_per_minute, instance_setting.mcp_write_ceiling_per_minute)`
   ([api-design.md](../01-architecture/api-design.md)).
 
-## Permissions
+## Permissions — MCP is an alternate client, not a second authorization system
 
 Every tool inherits its route's policy; the key's capability subset is intersected first.
-There is no MCP-specific capability — that is the point of "one authorization surface."
+There is no MCP-specific capability — no `mcp:admin`, `mcp:read`, `mcp:write` — that is the
+point of "one authorization surface" ([rbac.md](../01-architecture/rbac.md#mcp--the-same-rbac-not-a-second-one)).
+
+- `MC-19` MCP uses the same identity resolution, organisation/workspace/project/record
+  reach checks, capabilities and role implications, ownership predicates, feature-flag
+  checks, route policies, tenant-isolation rules, audit trail, rate limits and revocation
+  behaviour as the owning user. Effective authority on **every** request is
+  `current owner RBAC ∩ key capability subset ∩ current reach ∩ route policy ∩ feature availability`.
+- `MC-20` A personal MCP key is **owned by a named human user** and is evaluated against
+  that person's *current* permissions and reach. It may be narrower than the owner, never
+  broader; it loses access the moment the owner is deactivated, loses a membership, has a
+  role reduced, or revokes the key — it never retains old authority after the person has
+  lost normal UI/API access.
+- `MC-21` **Workspace service keys are not MCP keys** — `CHECK (NOT is_mcp OR person_id IS
+  NOT NULL)` in the schema. Service keys are for narrow, fixed integrations. A future design
+  may allow MCP on a service key only with a named accountable owner, a tightly bounded
+  subset, strict rate limits, full audit and the same destructive-action approval — none of
+  which exists today.
+- `MC-22` Writes through an `is_mcp` key have **stricter write and bulk rate limits** than
+  interactive traffic (`MC-10`), and every `is_mcp` key shows the untrusted-content warning
+  at creation (`MC-16`).
 
 ## API
 
@@ -173,10 +197,11 @@ The MCP server exposes no HTTP API of its own. The tool → route table below is
 | `add_label` | `PATCH /api/work-items/{key}` | `work_item:update` |
 | `create_relation` | `POST /api/work-items/{key}/relations` | `work_item:update` |
 | `create_submission` | `POST /api/submissions` | `intake:triage` (staff-side creation on a customer's behalf) |
-| `decide_approval` | `POST /api/approvals/{id}/decide` | `approval:decide` |
+| `decide_approval` | `POST /api/approvals/{id}/decide` → `202` pending action (`MC-7`, `PA-14`) | `approval:decide`; approved by the owner in the UI |
 | `log_time` | `POST /api/time-entries` | `time_entry:create` |
+| `delete_work_item` | `DELETE /api/work-items/{key}` → `202` pending action | `work_item:delete`; approved by the owner in the UI (`PA-1`–`PA-6`) |
 | `bulk_create_work_items` | `POST /api/imports/{id}/records` | `instance:admin` — opens an `import_run` with `plugin_id = 'import.mcp'` |
-| `create_import_mapping` / `get_import_mapping` | `POST/GET /api/imports/{id}/links` | `instance:admin` |
+| `create_import_link` / `get_import_link` | `POST/GET /api/imports/{id}/links` | `instance:admin` |
 
 ## Screens
 
@@ -194,6 +219,9 @@ In God Mode: MCP usage — which keys, how many calls, which tools, error rates.
 | Agent attempts something beyond its key | Refused with a readable explanation of what is missing |
 | Agent loops creating work items | Rate limit; a burst above threshold disables the key and notifies the owner |
 | Key revoked mid-session | The next call fails with a clear message |
+| Owner deactivated (SCIM `active=false`, God Mode) | Every `is_mcp` key is revoked with the sessions (`IP-15`); pending actions the key requested are `invalidated` |
+| Agent calls `delete_work_item` | `202` + `pending_action_id`; nothing is deleted until the owner approves in the UI; a `confirm` argument is ignored |
+| Agent asks for a purge / hard delete | No such tool; the model is told so in the tool list |
 | Tool renamed between versions | Old names kept as aliases for two minor releases |
 
 ## Testing

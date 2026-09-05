@@ -33,7 +33,10 @@ is the single list of CI checks**; [testing-strategy.md](testing-strategy.md) li
 │ pnpm lint            biome                       │
 │ pnpm typecheck       tsc across the workspace    │
 │ pnpm check:tokens    G2, G3 — tokens, contrast   │
-│ pnpm check:ui        G1 — no bespoke primitives  │
+│ pnpm check:ui        G1 — no bespoke primitives; │
+│                      no Radix/Base UI import     │
+│                      outside packages/ui; Radix  │
+│                      only per KNOWN-RADIX.md     │
 │ pnpm check:deps      no cycles, no boundary break│
 │ pnpm check:i18n      en-US complete              │
 │ pnpm audit           high/critical fails         │

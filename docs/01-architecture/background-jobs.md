@@ -74,11 +74,12 @@ finally { clearInterval(heartbeat); await lease.release(); }
 | `attachment-gc` | daily 03:30 | 30 min | Removes objects for `attachment.state = 'deleted'` rows and orphans |
 | `attachment-pending-cleanup` | hourly | 5 min | Deletes `attachment` rows still `pending` after an hour (presign never completed) |
 | `timer-sweeper` | 15 min | 5 min | Stops `running_timer` rows older than 12 h, writing a capped `time_entry` |
-| `plugin-health` | 10 min | 2 min | Pings configured plugins; surfaces failures in God Mode → Health |
+| `plugin-health` | 10 min | 2 min | Pings configured plugins **and each enabled `identity_connection`'s OIDC discovery document** (`IP-25`); surfaces failures in God Mode → Health |
 | `backup-check` | hourly | 2 min | Raises the Health warning when no `backup_run` succeeded in 48 h |
 | `import-run` | on demand | 1 h, renewed | Executes a queued import, chunked and resumable, on the **bulk write path** |
 | `report-export` | on demand | 30 min | Renders a large export to storage and emails an **authenticated** link (`RP-10`) |
-| `secrets-rekey` | on demand | 30 min | Re-encrypts every `instance_plugin_config.secrets` from `TASKDESK_ENCRYPTION_KEY_PREVIOUS` to the current key, writing `key_id` per row — see the [runbook](../05-operations/runbook.md) |
+| `secrets-rekey` | on demand | 30 min | Re-encrypts every `instance_plugin_config.secrets` **and `identity_connection.client_secret`** from `TASKDESK_ENCRYPTION_KEY_PREVIOUS` to the current key, writing `key_id` per row — see the [runbook](../05-operations/runbook.md) |
+| `pending-action-expire` | 1 min | 1 min | Marks `pending_action` rows past `expires_at` as `expired` and emits `pending_action.decided` (`PA-8`); invalidates pending rows whose requester was deactivated or whose credential was revoked since (`PA-9`) |
 
 All cadences are configurable in God Mode → Jobs (`instance:manage_jobs`). A job can be
 disabled, and a job can be triggered manually for debugging; both are audited.

@@ -5,18 +5,23 @@ and they are a **mixed Radix UI + Base UI set** (kaneo added `@base-ui/react` wh
 made Base UI its default in mid-2026). [ADR 0008](../01-architecture/adr/0008-single-design-system.md)
 is honest that extraction is real work; this is the plan. Written 2026-09-05.
 
-## Decision to make first: one primitive library
+## Primitive library — decided: Base UI
 
 | Option | For | Against |
 | --- | --- | --- |
-| **Base UI** (recommended) | shadcn's current default; MUI-backed; API-compatible with the Radix components it replaces; where kaneo is heading | Newer; a few primitives kaneo still uses only exist in Radix |
+| **Base UI** (chosen, 2026-09-05) | shadcn's current default; MUI-backed; API-compatible with the Radix components it replaces; where kaneo is heading | Newer; a few primitives kaneo still uses only exist in Radix |
 | Radix | Mature; most of kaneo's current components | shadcn no longer defaults to it; kaneo is migrating away |
 | Both, indefinitely | No migration cost | Two focus/portal/scroll-lock models in one package; "accessibility comes from one library" becomes untrue |
 
-**Recommendation: converge on Base UI**, migrating the remaining Radix components during
-extraction, and record the count actually found (not "60+") in the decision log. Any
-primitive Base UI lacks stays on Radix behind the same `packages/ui` export, listed in a
-`KNOWN-RADIX.md` inside the package, with a date to revisit.
+**Decision (Thomas, 2026-09-05): Base UI is the primary UI primitive standard.** During
+extraction, migrate each Radix primitive for which Base UI has an adequate equivalent, and
+record the count actually found (not "60+") in the decision log. Retain Radix **only** as a
+documented temporary exception where Base UI lacks a required primitive — behind the same
+`packages/ui` export, listed in `packages/ui/KNOWN-RADIX.md` with the reason and a date to
+revisit. **Feature code imports only from `@taskdesk/ui`**, never from `@radix-ui/*` or
+`@base-ui/react` directly — `check:ui` fails the build on a direct import and on any Radix
+primitive inside `packages/ui` that is not in `KNOWN-RADIX.md`. Two unmanaged primitive
+systems are not kept indefinitely: the exception register is reviewed at every phase gate.
 
 ## What moves
 

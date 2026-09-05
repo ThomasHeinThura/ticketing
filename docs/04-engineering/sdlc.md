@@ -55,6 +55,10 @@ and later never came.
 
 - The spec exists, has numbered behaviour rules, and its **Open questions section is
   empty**.
+- The feature's section in [reviews/2026-09-05/](../07-planning/reviews/2026-09-05/) is
+  **empty** — the ~300 medium/low audit findings close here, feature by feature, and a
+  feature may not enter stage 3 while any remain. Reviewers check this box, not the
+  author.
 - Thomas has read it. For anything non-trivial this is a real gate, not a formality — it
   is far cheaper to correct a spec than an implementation.
 

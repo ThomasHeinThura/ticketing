@@ -67,7 +67,8 @@ the most delicate code in the system; it is not left to a paragraph.
 ### The God Mode flow
 
 ```
-God Mode → Authentication → [ Add provider ]
+God Mode → Authentication → [ Add connection ]          (agent connections)
+God Mode → Organisations → Contoso → Identity → [ Add connection ]   (customer — same form)
 
   Choose type:
     ┌──────────────────┬──────────────────┬──────────────────┐
@@ -80,24 +81,35 @@ God Mode → Authentication → [ Add provider ]
 
   Form is generated from the plugin's Zod schema:
     Display name          "Contoso Staff SSO"          ← what users see on the button
-    Available on          ( ) Agent  ( ) Portal  (•) Both
+    Portal                (•) Agent  ( ) Customer      ← exactly one; never both (IP-1)
+    Organisation          —  (required when Customer; fixed to one organisation)
     Discovery URL         https://login.microsoftonline.com/{tenant}/v2.0/...
     Client ID             …
     Client secret         •••••••• (encrypted at rest)
     Scopes                openid profile email
     Claim mapping         email → email · name → name · groups → groups
-    Auto-provision        [x] create a user on first login
-      → assign side       (•) Staff  ( ) Customer  ( ) From claim: …
-      → assign org        (•) From email domain  ( ) Fixed: …
-      → assign role       Viewer ▾
-    Group → role mapping  "TaskDesk-Admins" → Admin      [+ add rule]
-    Domain restriction    @contoso.com
-    Require MFA           [ ]
+    Auto-provision (JIT)  [x] create a person on first login
+      → role              Viewer ▾   (≤ this connection's max role rank; customer
+                                      connections have exactly one choice: Customer)
+    Max role rank         50 (Lead) ▾                     ← agent connections only
+    Group → role mapping  "TaskDesk-Leads" → Lead        [+ add rule]  (allowlisted; ≤ max rank)
+    Domain bindings       contoso.com                     ← each domain bound to one connection
+    MFA upstream          (•) honour amr/acr claim  ( ) static  ( ) off
+    SCIM provisioning     [ ] enable → token, resources, mappings (IP-11…IP-23)
     Enabled               [x]
 
   [ Test connection ]   ← performs a real discovery + token exchange dry-run
+  [ Test SCIM ]
   [ Save ]
 ```
+
+Two things the form deliberately **cannot** express, because `IP-4` forbids them: **side**
+is never chosen — it follows the connection's portal (`agent` ⇒ staff, `customer` ⇒
+customer); **organisation** is never derived from a claim or an email domain — a customer
+connection is bound to one organisation at creation, an agent connection to the instance.
+The same form serves both places it appears: God Mode → Authentication → *Add connection*
+(agent) and God Mode → Organisations → *org* → Identity → *Add connection* (customer, with
+the organisation pre-filled and locked).
 
 The **Test connection** button is not optional polish. An administrator must be able to
 verify a provider before making it live, or the first person to discover it is broken
@@ -126,11 +138,66 @@ auth reconfiguration suite asserts each of them against a mock IdP:
 
 | Provider | Scope | Effect |
 | --- | --- | --- |
-| Entra ID | `agent` | Staff sign in with corporate SSO |
-| Email OTP | `customer` | Customers get a code, no password to manage |
+| Entra ID (our tenant) — identity connection | `agent` | Staff sign in with corporate SSO; SCIM keeps the staff directory in step |
+| Entra ID (Contoso's tenant) — identity connection bound to organisation Contoso | `customer` | Contoso's people sign in to the portal with their own SSO and land only in Contoso; Contoso's SCIM deactivates them when they leave |
+| Email OTP | `customer` | Other customers get a code, no password to manage |
 | Password | `both` | Break-glass and small deployments |
 
-The login screen for each portal renders only the providers scoped to it.
+The login screen for each portal renders only the providers scoped to it. An OIDC identity
+connection is `agent` **or** `customer`, never both; only non-OIDC auth plugins may be `both`.
+
+## Identity architecture — the authoritative model
+
+This document owns the identity model; [identity-provisioning.md](../03-features/identity-provisioning.md)
+owns the numbered behavioural rules (`IP-n`) and the acceptance tests; the security model,
+RBAC, God Mode and the portal spec link here rather than restating.
+
+**TaskDesk stores and is authoritative for:** `user`, `person`, `organisation`, organisation
+/ workspace / project memberships, roles and capabilities, `external_identity`,
+`identity_connection`, `scim_connection`, `scim_group_mapping`, sessions, API/MCP key
+ownership, audit history ([data-model.md](data-model.md) §2). **Microsoft Entra owns:**
+authentication, user lifecycle, directory attributes, and group membership where enabled.
+TaskDesk never stores an external user's password.
+
+**Durable identity key:** `(identity_connection, issuer, subject)` and, for SCIM-created
+records, `externalId`. Organisation binding and portal scope are properties of the
+connection, resolved server-side. **Email is an attribute** — it may change and is never
+the sole key or a linking key on its own.
+
+**Two connection shapes, one implementation:**
+
+| | Agent connection | Customer connection |
+| --- | --- | --- |
+| Portal | `agent` | `customer` |
+| Bound to | the instance | exactly **one** customer organisation |
+| May create | staff-side people; permitted workspace memberships; approved staff roles ≤ `max_role_rank` | customer-side people of that organisation; the customer role only |
+| May never | grant `instance:admin`, `sees_all`, a role above the maximum; let a group *name* create capabilities | create staff, instance admins, workspace/manager/lead roles, `sees_all`, cross-organisation membership, keys, webhooks, automations; reach agent routes or God Mode |
+| Configured by | instance administrators, God Mode → Authentication | instance administrators, God Mode → Organisations → *org* → Identity (customer self-service is a later, separately approved feature) |
+| SCIM | staff joiner/mover/leaver | that organisation's joiner/mover/leaver |
+
+**Lifecycle and revocation.** Deactivation — from SCIM `active=false`, from God Mode, or
+from an administrator — sets `person.active = false`, revokes every session and every
+personal API/MCP key, ends memberships per the connection's lifecycle policy, and preserves
+authored history attributed to a former member. It is never a hard delete; erasure and
+anonymisation are the separate elevated process in
+[data-protection.md](../05-operations/data-protection.md). Group→role mappings are
+allowlisted, scoped to the connection's organisation and portal, symmetric on removal, and
+can never reach `instance:admin` or `sees_all`.
+
+**Where the UI lives.** Agent connections: God Mode → Authentication. Customer connections:
+God Mode → Organisations → detail → Identity. Both are views over
+`/api/instance/identity-connections/*` ([god-mode.md](../03-features/god-mode.md)).
+
+## SCIM provisioning — summary
+
+OIDC says who someone is at login; SCIM creates, updates and **deactivates** people when
+the directory changes, so offboarding does not depend on anyone remembering. Core P3
+delivery for Microsoft Entra; endpoint `/scim/v2/*` on the agent origin; bearer token per
+connection with immediate-invalidation rotation; strict schemas; scope from the credential,
+never the body; `/Bulk` not implemented unless Entra interoperability testing requires it;
+tested against a real Entra tenant before the P3 identity gate. Full rules `IP-1`…`IP-25`
+and the 17 acceptance tests: [identity-provisioning.md](../03-features/identity-provisioning.md).
+Security treatment: [security-model.md](security-model.md#scim--an-inbound-privileged-management-api).
 
 ## Sessions
 
@@ -274,4 +341,5 @@ was used. Break-glass is loud by design.
 
 - [RBAC](rbac.md) · [Multi-tenancy](multi-tenancy.md) · [Security model](security-model.md)
 - [ADR 0003 — better-auth primary, pluggable IdP](adr/0003-better-auth-primary.md)
-- [God Mode](../03-features/god-mode.md)
+- [God Mode](../03-features/god-mode.md) · [Identity provisioning — SCIM/Entra](../03-features/identity-provisioning.md)
+- [Pending actions](pending-actions.md) · [Data protection](../05-operations/data-protection.md)

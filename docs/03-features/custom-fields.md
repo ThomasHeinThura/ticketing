@@ -71,7 +71,8 @@ is data rather than a migration.
   value.
 - `CF-7` Select options carry a stable key and an editable label, so renaming an option
   does not orphan existing values.
-- `CF-8` Deleting a field soft-deletes it. Values are retained and restorable for 30 days,
+- `CF-8` Deleting a field soft-deletes it — through a pending action, click-level
+  ([pending-actions.md](../01-architecture/pending-actions.md)). Values are retained and restorable for 30 days,
   after which they are purged.
 - `CF-9` Changing a field's format is refused. Create a new field and migrate.
 - `CF-10` Fields are filterable, sortable and available as table columns.

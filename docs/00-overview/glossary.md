@@ -57,6 +57,10 @@ a new term, add it here first.
 | **Portal** | `agent` or `customer`. Which of the two front-ends. Each has its own origin and session. |
 | **God Mode** | The instance administration surface. Requires the `instance:admin` capability. |
 | **Impersonation** | An instance admin acting as another user. Always audited, always banner-visible. |
+| **Identity connection** | One configured external identity source (Microsoft Entra first), bound to exactly one portal and — for customers — exactly one organisation. Owns OIDC settings and, optionally, a SCIM connection. |
+| **SCIM** | System for Cross-domain Identity Management — the inbound API a directory uses to create, update and *deactivate* people before or without a login. Core P3 delivery for Entra. |
+| **External identity** | The durable link between a person and an identity provider: issuer + immutable subject (+ SCIM `externalId`). Email is an attribute, never the key. |
+| **Pending action** | A server-held, single-use record that a named human approved one exact destructive operation (every deletion; destructive MCP calls). Nothing is deleted without one. |
 
 ## Configuration and extension
 
