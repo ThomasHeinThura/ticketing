@@ -1,0 +1,264 @@
+# Agent workflow
+
+The team is **Thomas plus three AI agents**: an OpenAI agent, GitHub Copilot, and Claude
+Code. This document is how that works without producing three incompatible codebases.
+
+> **If you are an AI agent picking up work here, read this document first, then
+> [SDLC](sdlc.md), then [coding standards](coding-standards.md), then the feature spec.**
+
+---
+
+## Roles
+
+| | Thomas | Agents |
+| --- | --- | --- |
+| Decides scope and priority | ✅ | ❌ |
+| Writes and approves specs | ✅ approves | ✅ drafts |
+| Writes ADRs | ✅ approves | ✅ drafts |
+| Implements | occasionally | ✅ mostly |
+| Writes tests | | ✅ |
+| Reviews | ✅ final say | ✅ first pass |
+| Approves a design (H1–H6) | ✅ only | ❌ |
+| Waives a quality gate | ✅ only | ❌ |
+| Merges to `main` | ✅ | ❌ |
+| Deploys to production | ✅ | ❌ |
+
+Two of these are absolute: **an agent may never approve its own design review, and an
+agent may never waive a quality gate.** Those are the two controls that stop the v1
+failure mode from returning through a different door.
+
+---
+
+## Why the constraints in this repository exist
+
+Most of the mechanical rules in these documents exist *because* most code here is written
+by agents:
+
+| Rule | What it prevents |
+| --- | --- |
+| No primitives outside `packages/ui` | Three agents inventing three button components |
+| Tokens only, no literal colours | Plausible-looking but inconsistent styling |
+| Every route declares a policy, CI-enforced | An agent adding an endpoint and forgetting the check |
+| Route registry with a round-trip test | A screen that exists but has no address |
+| Storybook required per primitive | Undiscoverable components, re-invented next week |
+| Visual regression snapshots | Silent drift across many small changes |
+| Spec before build | Agents producing something plausible and wrong |
+
+Given a fixed vocabulary and a build that rejects invention, agent output is remarkably
+consistent. Given freedom, it is remarkably inconsistent. Constrain accordingly.
+
+---
+
+## Dividing work between three agents
+
+**One agent per feature branch.** Never two agents on one branch — they will each rewrite
+the other's work and neither will notice.
+
+Suggested specialisation, though any agent can do any of it:
+
+| Agent | Suits |
+| --- | --- |
+| Claude Code | Long multi-file features, domain logic, refactors, test suites |
+| Copilot (in VS Code) | Work needing workspace context, iterating with Thomas watching, UI |
+| OpenAI agent | Research, spec drafting, migration mapping, documentation |
+
+Parallelise across **independent** areas — for example: API for feature A, UI for feature
+B, tests for feature C. Do not parallelise across a shared file.
+
+---
+
+## Model tiers within Claude Code
+
+When Claude Code orchestrates its own subagents — a Task, an Agent call, a Workflow — the
+model tier is not a free choice. It tracks who is allowed to sign off on what, not just
+who is cheaper.
+
+| Role | Model | Why |
+| --- | --- | --- |
+| Main / orchestrating session | **Opus or Fable** | Holds the whole task in view — scope, spec conformance, cross-file consequences. This is the seat that plans, assigns work, and signs off |
+| Implementation subagents — writing code or tests to an already-agreed spec | **Sonnet 5** | This repository's whole premise is that the spec is detailed enough for mechanical implementation ([AGENTS.md](../../AGENTS.md), [SDLC](sdlc.md)). Running every subagent on Opus/Fable multiplies token cost and setup time for no proportional gain on narrowly-scoped, spec-driven work |
+| Review — solution architecture / design sign-off | **Opus or Fable, never Sonnet** | A different, *stronger* context catches what the authoring context is structurally blind to — the same reasoning behind "an agent may never approve its own design review," one tier further |
+| Review — QA / quality officer, "senior" pass | **Opus or Fable** | Same reasoning |
+| **Review — security** | **Opus. Always. Not optional, not cost-negotiable.** | The one checkpoint this repository will not discount for budget. See below |
+
+**Security review is a checkpoint, not a step inside another review.** Every pull request
+and every [phase gate](sdlc.md) gets an explicit, separate security-focused pass on Opus,
+distinct from the architecture and QA passes even when the same higher-tier model performs
+more than one of them. "The QA reviewer also looked at security" is not the same thing as
+a security review, and does not satisfy this rule.
+
+**In practice:** a Claude Code session doing implementation work runs its Task/Agent
+subagents on Sonnet 5, and its own self-check before declaring "done" (see [verification is
+not optional](#verification-is-not-optional)) is not a substitute for the required Opus
+security pass — that is a separate, explicit step.
+
+This does not relax either absolute already stated under [Roles](#roles): an agent of any
+tier may never approve its own design review, and may never waive a quality gate. A
+stronger model reviewing is a stronger check, not a different kind of permission.
+
+---
+
+## The context problem
+
+An agent starting a task has no memory of yesterday. Everything it needs must be
+discoverable from the repository.
+
+**Before starting any task, read, in order:**
+
+1. `AGENTS.md` at the repository root
+2. This document
+3. [SDLC](sdlc.md) — the stage you are at
+4. [Coding standards](coding-standards.md)
+5. The feature spec in [03-features](../03-features/README.md)
+6. Any [ADR](../01-architecture/adr/README.md) the spec references
+7. The existing code in the area you are changing
+
+**Do not** infer conventions from a single file. Read three or four in the same area
+first. One file may itself be wrong.
+
+---
+
+## Task handoff format
+
+When Thomas assigns work, or an agent hands off, use this:
+
+```markdown
+## Task
+One sentence.
+
+## Stage
+Which SDLC stage this starts at.
+
+## Spec
+Path to the feature spec. Which numbered rules are in scope.
+
+## Files likely involved
+Paths. Not exhaustive — a starting point.
+
+## Definition of done
+Copied from definition-of-done.md, trimmed to what applies.
+
+## Constraints
+Anything unusual. "Do not touch the schema." "This must not break X."
+
+## Out of scope
+What NOT to do. This matters more than it sounds — agents expand scope helpfully.
+```
+
+---
+
+## Rules for agents
+
+### Do
+
+1. **Read the spec before writing code.** If it has open questions, stop and ask.
+2. **Follow the existing pattern.** Feature folders, fetchers, query hooks — the shape is
+   already decided.
+3. **Write tests as you go**, citing spec rule numbers in test names.
+4. **Run the checks yourself** before declaring done: `pnpm lint && pnpm typecheck &&
+   pnpm test`.
+5. **Update the spec** if implementation proved it wrong.
+6. **Say what you did not do.** An honest "I did not implement the bulk path" is far more
+   useful than silence.
+7. **Ask when genuinely blocked.** Three failed attempts is the ceiling — see
+   [error fix loop](error-fix-loop.md).
+
+### Do not
+
+1. **Do not invent UI primitives.** `packages/ui` or nothing.
+2. **Do not add a dependency** without asking. It needs a decision log entry.
+3. **Do not disable a test** to make a build pass. Ever.
+4. **Do not waive a quality gate.** Only Thomas.
+5. **Do not approve your own design review.**
+6. **Do not refactor beyond the task.** A pull request that fixes a bug and also
+   reorganises four files is unreviewable.
+7. **Do not paste code from an unlicensed source.** See
+   [licensing](../00-overview/licensing-and-attribution.md).
+8. **Do not guess at behaviour.** If the spec does not say, ask, and then write it down.
+9. **Do not claim something works without running it.** v1's handover was blunt about
+   this: *"verify before you believe."*
+
+---
+
+## Verification is not optional
+
+The single most common agent failure is **declaring success without checking**. v1's
+retrospective recorded that four of its worst defects were invisible to a green test
+suite, and that the only reliable path was to run things.
+
+Before any "done":
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm test:integration       # if the API changed
+pnpm test:permissions       # if a route was added or changed
+pnpm test:e2e -- <relevant> # if the UI changed
+```
+
+And then **actually open the screen** and use it. Automated checks are necessary and not
+sufficient.
+
+---
+
+## Skills
+
+`skills/` carries agent skills taken from kaneo, extended for this project:
+
+| Skill | Use for |
+| --- | --- |
+| `review-ui` | Check a screen against the design system and the quality gates |
+| `improve-animations` | Apply the motion specs |
+| `find-animation-opportunities` | Identify where motion would explain something |
+| `write-feature-spec` | Draft a spec in the house format |
+| `port-domain-logic` | Reimplement v1 domain logic in TypeScript |
+| `add-route` | Add an API route with policy, schemas and tests |
+| `add-primitive` | Add a `packages/ui` primitive with story and tests |
+
+Prefer a skill over freehand work — it encodes decisions already made.
+
+---
+
+## Sessions and memory
+
+- Agent memory does not persist. **The repository is the memory.**
+- Anything worth remembering goes into a document, not into a chat.
+- At the end of a session, update [status.md](../07-planning/status.md) with where things
+  stand and what is blocked.
+- Long-running context goes in the pull request description, not in the conversation.
+
+---
+
+## Review
+
+Every pull request gets:
+
+1. **An agent review** — a different agent from the one that wrote it. Fresh context
+   catches a surprising amount.
+2. **Automated gates** — everything in CI.
+3. **Thomas** — final approval, and the only source of approval for design and waivers.
+
+An agent reviewing its own work is worth very little; the same context that produced the
+mistake will not see it.
+
+---
+
+## When an agent should stop
+
+Stop and ask when:
+
+- The spec is ambiguous or has open questions.
+- The task requires a decision about scope or priority.
+- Three attempts at the same problem have failed.
+- A schema change looks necessary and was not in the task.
+- A quality gate is failing and the fix is not obvious.
+- The task appears to conflict with an ADR.
+- Something in the codebase looks wrong in a way the task did not anticipate.
+
+Stopping is not failure. Producing 400 lines built on a wrong assumption is.
+
+## Related
+
+- [SDLC](sdlc.md) · [Definition of Done](definition-of-done.md)
+- [Coding standards](coding-standards.md) · [Error fix loop](error-fix-loop.md)
