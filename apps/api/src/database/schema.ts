@@ -175,53 +175,6 @@ export const workspaceUserTable = pgTable(
   ],
 );
 
-export const workspaceBillingTable = pgTable(
-  "workspace_billing",
-  {
-    id: text("id")
-      .$defaultFn(() => createId())
-      .primaryKey(),
-    workspaceId: text("workspace_id")
-      .notNull()
-      .unique("workspace_billing_workspace_id_unique")
-      .references(() => workspaceTable.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    foundingFree: boolean("founding_free").notNull().default(false),
-    trialEndsAt: timestamp("trial_ends_at", { mode: "date" }),
-    creemCustomerId: text("creem_customer_id"),
-    creemSubscriptionId: text("creem_subscription_id").unique(),
-    creemProductId: text("creem_product_id"),
-    plan: text("plan"),
-    billingInterval: text("billing_interval"),
-    status: text("status"),
-    seats: integer("seats").notNull().default(1),
-    currentPeriodEnd: timestamp("current_period_end", { mode: "date" }),
-    canceledAt: timestamp("canceled_at", { mode: "date" }),
-    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { mode: "date" })
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => [index("workspace_billing_workspaceId_idx").on(table.workspaceId)],
-);
-
-export const trialGrantTable = pgTable("trial_grant", {
-  emailHash: text("email_hash").primaryKey(),
-  trialEndsAt: timestamp("trial_ends_at", { mode: "date" }).notNull(),
-  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-});
-
-export const billingEventTable = pgTable("billing_event", {
-  id: text("id").primaryKey(),
-  eventType: text("event_type").notNull(),
-  processedAt: timestamp("processed_at", { mode: "date" })
-    .defaultNow()
-    .notNull(),
-});
-
 export const teamTable = pgTable(
   "team",
   {
@@ -437,42 +390,6 @@ export const taskTable = pgTable(
     index("task_assigneeId_idx").on(table.userId),
     index("task_columnId_idx").on(table.columnId),
     unique("task_project_number_unique").on(table.projectId, table.number),
-  ],
-);
-
-export const billingReminderSentTable = pgTable(
-  "billing_reminder_sent",
-  {
-    id: text("id")
-      .$defaultFn(() => createId())
-      .primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => userTable.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    workspaceId: text("workspace_id")
-      .notNull()
-      .references(() => workspaceTable.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    reminderType: text("reminder_type").notNull(),
-    trialEndsAt: timestamp("trial_ends_at", { mode: "date" }),
-    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { mode: "date" })
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index("billing_reminder_sent_workspaceId_idx").on(table.workspaceId),
-    index("billing_reminder_sent_userId_idx").on(table.userId),
-    unique("billing_reminder_sent_user_type_unique").on(
-      table.userId,
-      table.reminderType,
-    ),
   ],
 );
 

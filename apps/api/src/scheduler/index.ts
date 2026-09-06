@@ -1,8 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { Cron } from "croner";
 import { checkDueDateReminders } from "./due-date-reminders";
-import { reconcileWorkspaceSeats } from "./seat-reconciliation";
-import { checkTrialReminders } from "./trial-reminders";
 
 const jobs: Cron[] = [];
 
@@ -50,19 +48,21 @@ export function initializeScheduler(): void {
       withCheckIn("due-date-reminders", checkDueDateReminders),
     ),
   );
-  jobs.push(new Cron("*/5 * * * *"));
-  jobs.push(
-    new Cron(
-      "17 * * * *",
-      withCheckIn("seat-reconciliation", reconcileWorkspaceSeats),
-    ),
-  );
-  jobs.push(
-    new Cron("23 * * * *", withCheckIn("trial-reminders", checkTrialReminders)),
-  );
-  console.log(
-    "⏰ Scheduler started (reminders every 5 minutes, seat reconciliation and trial reminders hourly)",
-  );
+  console.log("⏰ Scheduler started (due-date reminders every 5 minutes)");
+}
+
+/**
+ * The jobs currently registered, for tests.
+ *
+ * This exists because a real defect shipped without it: removing a cron job
+ * left a bare `jobs.push(new Cron(pattern))` behind — a schedule with NO
+ * handler. It compiled, it type-checked, and the suite stayed green, because
+ * nothing asserted what the scheduler actually registers. croner reports a
+ * `nextRun()` for a handler-less job just as it does for a real one, so it
+ * looked alive while doing nothing every five minutes.
+ */
+export function registeredJobs(): readonly Cron[] {
+  return jobs;
 }
 
 export function shutdownScheduler(): void {

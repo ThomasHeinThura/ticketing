@@ -200,6 +200,13 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
       url: string;
       title: string | null;
       metadata: Record<string, unknown> | null;
+      // The row is selected with `select()`, so these are present, and
+      // taskExternalLinkSchema requires them. Omitting them here discarded
+      // them at the type level while the response schema still demanded them
+      // — a latent mismatch that only surfaced once a middleware was removed
+      // and the route's response type stopped being inferred loosely.
+      createdAt: Date;
+      updatedAt: Date;
     }>
   >();
   for (const externalLink of externalLinksData) {
