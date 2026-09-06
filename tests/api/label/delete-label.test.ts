@@ -12,8 +12,6 @@ const mockFindFirst = vi.fn();
 const mockSelect = vi.fn();
 const mockDelete = vi.fn();
 const mockPublishEvent = vi.fn();
-const mockRemoveLabelFromGitHub = vi.fn();
-const mockRemoveLabelFromGitea = vi.fn();
 
 vi.mock("../../../apps/api/src/database", () => ({
   default: {
@@ -30,22 +28,6 @@ vi.mock("../../../apps/api/src/database", () => ({
 vi.mock("../../../apps/api/src/events", () => ({
   publishEvent: (...args: unknown[]) => mockPublishEvent(...args),
 }));
-
-vi.mock(
-  "../../../apps/api/src/plugins/github/utils/sync-label-to-github",
-  () => ({
-    removeLabelFromGitHub: (...args: unknown[]) =>
-      mockRemoveLabelFromGitHub(...args),
-  }),
-);
-
-vi.mock(
-  "../../../apps/api/src/plugins/gitea/utils/sync-label-to-gitea",
-  () => ({
-    removeLabelFromGitea: (...args: unknown[]) =>
-      mockRemoveLabelFromGitea(...args),
-  }),
-);
 
 import deleteLabel from "../../../apps/api/src/label/controllers/delete-label";
 
@@ -126,8 +108,6 @@ describe("deleteLabel", () => {
 
   describe("workspace-level label deletion (taskId is null)", () => {
     it("emits task.label_deleted events for each affected task-level label", async () => {
-      mockRemoveLabelFromGitHub.mockResolvedValue(undefined);
-      mockRemoveLabelFromGitea.mockResolvedValue(undefined);
       mockFindFirst.mockResolvedValue(WORKSPACE_LABEL);
       mockSelect.mockReturnValue(
         makeSelectMock([
@@ -168,42 +148,7 @@ describe("deleteLabel", () => {
       });
     });
 
-    it("calls removeLabelFromGitHub and removeLabelFromGitea for each affected task", async () => {
-      mockRemoveLabelFromGitHub.mockResolvedValue(undefined);
-      mockRemoveLabelFromGitea.mockResolvedValue(undefined);
-      mockFindFirst.mockResolvedValue(WORKSPACE_LABEL);
-      mockSelect.mockReturnValue(
-        makeSelectMock([
-          {
-            label: TASK_LABEL_1,
-            taskId: "task-1",
-            projectId: "proj-1",
-            workspaceId: "ws-1",
-          },
-          {
-            label: TASK_LABEL_2,
-            taskId: "task-2",
-            projectId: "proj-2",
-            workspaceId: "ws-1",
-          },
-        ]),
-      );
-      mockDelete.mockReturnValue(makeDeleteMock(DELETED_WORKSPACE_LABEL));
-
-      await deleteLabel("label-ws-1", "user-1");
-
-      expect(mockRemoveLabelFromGitHub).toHaveBeenCalledTimes(2);
-      expect(mockRemoveLabelFromGitHub).toHaveBeenCalledWith("task-1", "bug");
-      expect(mockRemoveLabelFromGitHub).toHaveBeenCalledWith("task-2", "bug");
-
-      expect(mockRemoveLabelFromGitea).toHaveBeenCalledTimes(2);
-      expect(mockRemoveLabelFromGitea).toHaveBeenCalledWith("task-1", "bug");
-      expect(mockRemoveLabelFromGitea).toHaveBeenCalledWith("task-2", "bug");
-    });
-
     it("fires no events when no task-level labels are affected", async () => {
-      mockRemoveLabelFromGitHub.mockResolvedValue(undefined);
-      mockRemoveLabelFromGitea.mockResolvedValue(undefined);
       mockFindFirst.mockResolvedValue(WORKSPACE_LABEL);
       mockSelect.mockReturnValue(makeSelectMock([]));
       mockDelete.mockReturnValue(makeDeleteMock(DELETED_WORKSPACE_LABEL));
@@ -211,8 +156,6 @@ describe("deleteLabel", () => {
       await deleteLabel("label-ws-1", "user-1");
 
       expect(mockPublishEvent).not.toHaveBeenCalled();
-      expect(mockRemoveLabelFromGitHub).not.toHaveBeenCalled();
-      expect(mockRemoveLabelFromGitea).not.toHaveBeenCalled();
     });
   });
 });

@@ -841,56 +841,6 @@ export const userNotificationWorkspaceProjectTable = pgTable(
   ],
 );
 
-export const githubIntegrationTable = pgTable("github_integration", {
-  id: text("id")
-    .$defaultFn(() => createId())
-    .primaryKey(),
-  projectId: text("project_id")
-    .notNull()
-    .references(() => projectTable.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    })
-    .unique(),
-  repositoryOwner: text("repository_owner").notNull(),
-  repositoryName: text("repository_name").notNull(),
-  installationId: integer("installation_id"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { mode: "date" })
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
-
-export const integrationTable = pgTable(
-  "integration",
-  {
-    id: text("id")
-      .$defaultFn(() => createId())
-      .primaryKey(),
-    projectId: text("project_id")
-      .notNull()
-      .references(() => projectTable.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    type: text("type").notNull(),
-    config: text("config").notNull(),
-    isActive: boolean("is_active").default(true),
-    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { mode: "date" })
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index("integration_projectId_idx").on(table.projectId),
-    index("integration_type_idx").on(table.type),
-    unique("integration_project_type_unique").on(table.projectId, table.type),
-  ],
-);
-
 export const externalLinkTable = pgTable(
   "external_link",
   {
@@ -900,12 +850,6 @@ export const externalLinkTable = pgTable(
     taskId: text("task_id")
       .notNull()
       .references(() => taskTable.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    integrationId: text("integration_id")
-      .notNull()
-      .references(() => integrationTable.id, {
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
@@ -922,7 +866,6 @@ export const externalLinkTable = pgTable(
   },
   (table) => [
     index("external_link_taskId_idx").on(table.taskId),
-    index("external_link_integrationId_idx").on(table.integrationId),
     index("external_link_externalId_idx").on(table.externalId),
     index("external_link_resourceType_idx").on(table.resourceType),
   ],

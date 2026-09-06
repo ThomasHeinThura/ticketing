@@ -10,8 +10,6 @@ import {
   workspaceUserTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
-import { removeLabelFromGitea } from "../../plugins/gitea/utils/sync-label-to-gitea";
-import { removeLabelFromGitHub } from "../../plugins/github/utils/sync-label-to-github";
 import { assertAssignableUser } from "../../utils/assert-assignable-user";
 import {
   assertValidPriority,
@@ -304,17 +302,6 @@ async function bulkUpdateTasks({
 
       for (const deletedLabel of deletedLabels) {
         if (!deletedLabel.taskId) continue;
-
-        removeLabelFromGitHub(deletedLabel.taskId, deletedLabel.name).catch(
-          (error) => {
-            console.error("Failed to remove label from GitHub:", error);
-          },
-        );
-        removeLabelFromGitea(deletedLabel.taskId, deletedLabel.name).catch(
-          (error) => {
-            console.error("Failed to remove label from Gitea:", error);
-          },
-        );
 
         const task = tasks.find((t) => t.id === deletedLabel.taskId);
         if (!task) continue;

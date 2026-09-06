@@ -19,8 +19,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
-import useGetGiteaIntegration from "@/hooks/queries/gitea-integration/use-get-gitea-integration";
-import useGetGithubIntegration from "@/hooks/queries/github-integration/use-get-github-integration";
 import useGetLabelsByTask from "@/hooks/queries/label/use-get-labels-by-task";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -91,8 +89,6 @@ export default function TaskPropertiesSidebar({
   const taskIsCompleted = isTaskCompleted(task?.status ?? "", columns);
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(workspaceId);
   const { data: taskLabels = [] } = useGetLabelsByTask(taskId ?? "");
-  const { data: githubIntegration } = useGetGithubIntegration(projectId);
-  const { data: giteaIntegration } = useGetGiteaIntegration(projectId);
   const { data: workspaceProjects = [] } = useGetProjects({ workspaceId });
   const canMoveTask =
     Boolean(task) && workspaceProjects.some((p) => p.id !== task?.projectId);
@@ -108,10 +104,10 @@ export default function TaskPropertiesSidebar({
 
   const projectSlug = project?.slug;
   const taskNumber = task?.number;
-  const branchPattern =
-    githubIntegration?.branchPattern ||
-    giteaIntegration?.branchPattern ||
-    "{slug}-{number}";
+  // The per-project branch pattern came from the GitHub and Gitea integrations,
+  // both deleted in issue #6. The default stands until a TaskDesk dev-links
+  // feature defines its own (feature.dev_links).
+  const branchPattern = "{slug}-{number}";
 
   const assignee = workspaceUsers?.members?.find(
     (member) => member.userId === task?.userId,
