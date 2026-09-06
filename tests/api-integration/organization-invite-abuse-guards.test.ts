@@ -14,8 +14,8 @@ import {
 // R1 (retrofit plan §4, highest silent-failure risk), second half: the
 // `ctx.path === "/organization/invite-member" && isCloud()` guard in
 // apps/api/src/auth.ts's global `hooks.before` middleware
-// (apps/api/src/auth.ts:671-706, the path check at :684). Its own comment
-// (auth.ts:681-683) records why it exists: the 2026-05-28 incident sent
+// (apps/api/src/auth.ts:626-706, the path check at :684). Its own comment
+// (auth.ts:636-640) records why it exists: the 2026-05-28 incident sent
 // ~14k phishing invites from disposable-email signups. Like the rate-limit
 // rule in organization-invite-rate-limit.test.ts, this is matched on a
 // literal path string and becomes a silent no-op the moment invitations
@@ -31,7 +31,7 @@ import {
 //
 // UNRUN: no PostgreSQL is available in this environment; see the report for
 // how this was verified by reading the source instead.
-describe("R1: /organization/invite-member cloud abuse gates (auth.ts:671-706)", () => {
+describe("R1: /organization/invite-member cloud abuse gates (auth.ts:626-706)", () => {
   const CLOUD_ENV: Record<string, string> = { KANEO_CLOUD: "true" };
   const saved: Record<string, string | undefined> = {};
 
@@ -57,7 +57,7 @@ describe("R1: /organization/invite-member cloud abuse gates (auth.ts:671-706)", 
   });
 
   it("blocks an invite to a disposable-email address on cloud, and writes no invitation row", async () => {
-    // apps/api/src/auth.ts:699-705. "dropmail.me" is in
+    // apps/api/src/auth.ts:660-681. "dropmail.me" is in
     // apps/api/src/utils/disposable-email-domains.ts.
     const { app } = createApp();
     const owner = await signUpUser(app);
