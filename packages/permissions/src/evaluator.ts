@@ -273,21 +273,59 @@ export type PolicyDecision =
   | { readonly allowed: true; readonly requiresElevation: boolean }
   | {
       readonly allowed: false;
-      readonly status: 401 | 403 | 404;
+      /**
+       * `500` is not an authorization answer: it is the evaluator refusing to answer at all
+       * because the caller did not supply a well-formed value for a security-relevant fact the
+       * route's policy requires. It is never a `403` (we do not know the caller lacks
+       * authority) and never a `404` (we do not know the row is out of reach — and a `404`
+       * here would hide a broken middleware among ordinary not-founds for as long as it took
+       * someone to notice).
+       */
+      readonly status: 401 | 403 | 404 | 500;
       readonly code: string;
       readonly reason: string;
       readonly missingCapability?: Capability;
+      /** Set only with `code: "policy_context_incomplete"` — for the log, not for the wire. */
+      readonly missingContext?: readonly string[];
     };
 
-/** What the middleware knows by the time the policy runs. */
+/**
+ * The declared "this route addresses no single resource" answer, spelled explicitly rather
+ * than implied by omitting `inReach`. Pass this — never `undefined` — when the policy's
+ * `reach` names the `no_single_resource` exemption.
+ */
+export const NO_SINGLE_RESOURCE = { noSingleResource: true } as const;
+export type NoSingleResource = typeof NO_SINGLE_RESOURCE;
+
+/**
+ * The declared "this route names no person parameter" answer, spelled explicitly rather than
+ * implied by omitting `targetPersonId`. Pass this — never `undefined` — when the policy's
+ * `personParam` names the `no_person_parameter` exemption.
+ */
+export const NO_PERSON_PARAMETER = { noPersonParameter: true } as const;
+export type NoPersonParameter = typeof NO_PERSON_PARAMETER;
+
+/**
+ * What the middleware knows by the time the policy runs.
+ *
+ * `inReach`, `targetPersonId` and `portalPredicateSatisfied` stay optional in the type — this
+ * package cannot force every caller to be rewritten in the same change (`tests/permissions/
+ * matrix-fixture.ts` builds one shape for every policy kind) — but `evaluatePolicy` never
+ * again treats an absent or malformed value as permission: absence is a denial, enforced at
+ * runtime as defence in depth for exactly the case the type system cannot reach, a policy map
+ * or a context object assembled from JSON, a plugin, or a `try`/`catch` that left a field
+ * unset (defect 5).
+ */
 export type PolicyContext = {
   readonly identity: ResolvedIdentity | null;
   readonly target: ScopeTarget;
   /**
-   * The answer from `reaches` for the resource this route addresses, or `undefined` when the
-   * route addresses no single resource (a create, a collection scoped by the query itself).
+   * The answer from `reaches` for the resource this route addresses, or the explicit
+   * `NO_SINGLE_RESOURCE` marker when the policy's `reach` says none applies. There is no
+   * third, implicit answer: an omitted or malformed value is refused, never allowed, whenever
+   * the policy declares `reach: "required"`.
    */
-  readonly inReach?: boolean;
+  readonly inReach?: boolean | NoSingleResource;
   /** Facts about the loaded row, for an `orOwner` branch. */
   readonly row?: {
     readonly personId?: string | null;
@@ -297,14 +335,30 @@ export type PolicyContext = {
   };
   /** Facts about the parsed body, for an `orSelfTarget` branch. */
   readonly body?: { readonly assigneeId?: string | null };
-  /** For a kind-2 policy: the person named by a path or query parameter, if any. */
-  readonly targetPersonId?: string | null;
-  /** For a kind-3 policy: whether the portal predicate scoped the query to this caller. */
+  /**
+   * For a kind-2 policy: the person named by a path or query parameter, or the explicit
+   * `NO_PERSON_PARAMETER` marker when the policy's `personParam` says none applies.
+   */
+  readonly targetPersonId?: string | NoPersonParameter | null;
+  /** For a kind-3 policy: whether the portal predicate scoped the query to this caller. A
+   *  portal policy names a predicate in every case, so there is no "not applicable" to
+   *  declare — an omitted or non-boolean value is refused, never allowed. */
   readonly portalPredicateSatisfied?: boolean;
   /** Now, for an `orOwner` `withinMinutes` window. */
   readonly now?: Date;
   readonly onUnknownCapability?: UnknownCapabilityHandler;
 };
+
+const DENY_CONTEXT_INCOMPLETE = (
+  missing: string,
+  reason: string,
+): PolicyDecision => ({
+  allowed: false,
+  status: 500,
+  code: "policy_context_incomplete",
+  reason,
+  missingContext: [missing],
+});
 
 const DENY_UNAUTHENTICATED = {
   allowed: false,
@@ -314,11 +368,46 @@ const DENY_UNAUTHENTICATED = {
 } as const;
 
 /**
+ * A declared flag that cannot be true of the kind that declares it.
+ *
+ * `PublicElevationFlags` already makes these unrepresentable on a well-typed `Policy` literal,
+ * and `validatePolicy` refuses them again at boot. This is the third layer, and the only one
+ * still standing when the policy map came from JSON, a plugin, or a downstream consumer that
+ * never met the type checker: an incoherent declaration **denies**. It never falls through to
+ * the kind's happy path.
+ *
+ * Returns the reason, or `null` when the declaration is coherent.
+ */
+function incoherentFlagReason(policy: Policy): string | null {
+  if (!isPublicPolicy(policy)) return null;
+  // Read through an untyped view deliberately: this check exists precisely for the policy
+  // object whose `sessionOnly` and `elevated` were never checked by the compiler.
+  const flags = policy as {
+    readonly sessionOnly?: unknown;
+    readonly elevated?: unknown;
+  };
+  if (flags.sessionOnly === true) {
+    return "A public route cannot be session-only: kind 4 accepts a request with no credential at all, so there is no session to require";
+  }
+  if (flags.elevated === true) {
+    return "A public route cannot be elevated: elevation is a fresh authentication of the caller, and kind 4 has no caller";
+  }
+  return null;
+}
+
+/**
  * Evaluate one route policy.
  *
  * The credential check runs **before** the policy: a `sessionOnly` route refuses an API key,
  * an MCP key or an impersonation session with `403 session_required`, so it never reaches the
  * pending-action layer at all.
+ *
+ * And it runs before **every** kind. No kind returns a successful decision before its declared
+ * `sessionOnly` and `elevated` have been enforced — there is no policy kind on which declared
+ * security metadata is silently inert (defect 3). Nor does any kind return a successful
+ * decision before every security-relevant context field its policy requires has been supplied
+ * as a well-formed value — an absent or malformed one is a denial, never an implicit allow
+ * (defect 5).
  */
 export function evaluatePolicy(
   policy: Policy,
@@ -326,39 +415,81 @@ export function evaluatePolicy(
 ): PolicyDecision {
   const { identity } = context;
 
-  if (isPublicPolicy(policy)) {
-    return { allowed: true, requiresElevation: false };
-  }
+  /* -- Declared security metadata, enforced before ANY successful decision returns. --
+   *
+   * This block used to sit below the public/delegated early returns, which made `sessionOnly`
+   * and `elevated` inert on exactly the two kinds whose whole purpose is to be an explicitly
+   * reviewed exception — while `sessionOnlyRoutes()` listed the route and
+   * `renderElevatedActionsMarkdown()` printed it into rbac.md.
+   */
 
-  // A delegated mount is allowlisted, not covered: the surface behind it authenticates itself.
-  if (isDelegatedPolicy(policy)) {
-    return { allowed: true, requiresElevation: false };
-  }
-
-  if (identity === null) return DENY_UNAUTHENTICATED;
-
-  if (policy.sessionOnly === true && identity.credential !== "session") {
+  const incoherent = incoherentFlagReason(policy);
+  if (incoherent !== null) {
     return {
       allowed: false,
       status: 403,
-      code: "session_required",
-      reason: `This route is session-only; the request arrived on a ${identity.credential}`,
+      code: "policy_incoherent",
+      reason: incoherent,
     };
+  }
+
+  if (policy.sessionOnly === true) {
+    if (identity === null) return DENY_UNAUTHENTICATED;
+    if (identity.credential !== "session") {
+      return {
+        allowed: false,
+        status: 403,
+        code: "session_required",
+        reason: `This route is session-only; the request arrived on a ${identity.credential}`,
+      };
+    }
   }
 
   const requiresElevation = policy.elevated === true;
 
+  if (isPublicPolicy(policy)) {
+    return { allowed: true, requiresElevation };
+  }
+
+  // A delegated mount is allowlisted, not covered: the surface behind it authenticates itself.
+  if (isDelegatedPolicy(policy)) {
+    return { allowed: true, requiresElevation };
+  }
+
+  if (identity === null) return DENY_UNAUTHENTICATED;
+
   if (isSelfPolicy(policy)) {
-    if (
-      context.targetPersonId != null &&
-      context.targetPersonId !== identity.personId
-    ) {
-      return {
-        allowed: false,
-        status: 404,
-        code: "not_found",
-        reason: "A self route may only address the caller's own records",
-      };
+    // A self route names the parameter that identifies a person, or states in writing — via
+    // the `no_person_parameter` exemption — that it names none. There is no third, implicit
+    // declaration: a missing or malformed `personParam` is a policy that never met the
+    // registry's validation (a JSON- or plugin-supplied map), and it is refused here too,
+    // defence in depth, rather than treated as "no constraint".
+    const personParam = policy.personParam as unknown;
+    const personExempt =
+      typeof personParam === "object" &&
+      personParam !== null &&
+      (personParam as { exempt?: unknown }).exempt === "no_person_parameter";
+
+    if (typeof personParam === "string") {
+      if (typeof context.targetPersonId !== "string") {
+        return DENY_CONTEXT_INCOMPLETE(
+          "targetPersonId",
+          `This route names "${personParam}" as the person parameter, and the context did not supply a target person id`,
+        );
+      }
+      if (context.targetPersonId !== identity.personId) {
+        return {
+          allowed: false,
+          status: 404,
+          code: "not_found",
+          reason: "A self route may only address the caller's own records",
+        };
+      }
+    } else if (!personExempt) {
+      return DENY_CONTEXT_INCOMPLETE(
+        "targetPersonId",
+        "This self route does not declare personParam — declare the parameter name or the no_person_parameter exemption",
+      );
     }
     return { allowed: true, requiresElevation };
   }
@@ -371,6 +502,17 @@ export function evaluatePolicy(
         code: "portal_required",
         reason: "This route requires a customer portal session",
       };
+    }
+    // A portal policy names a predicate in every case: there is no "not applicable" to
+    // declare, so an omitted or non-boolean answer is refused rather than treated as satisfied.
+    if (
+      context.portalPredicateSatisfied !== true &&
+      context.portalPredicateSatisfied !== false
+    ) {
+      return DENY_CONTEXT_INCOMPLETE(
+        "portalPredicateSatisfied",
+        `This route scopes by the ${policy.predicate} predicate, and the context did not supply whether it was satisfied`,
+      );
     }
     if (context.portalPredicateSatisfied === false) {
       return {
@@ -390,13 +532,41 @@ export function evaluatePolicy(
   }
 
   // Reach first: out of reach is 404, and it must not be distinguishable from "no such row".
-  if (context.inReach === false) {
-    return {
-      allowed: false,
-      status: 404,
-      code: "not_found",
-      reason: "Out of reach",
-    };
+  //
+  // The route's declared `reach` is authoritative, not the request: when it says "required",
+  // the context must supply a genuine boolean — `undefined`, `null`, a non-boolean JSON value,
+  // or a caller claiming the `NO_SINGLE_RESOURCE` exemption a "required" route did not declare
+  // are all refused rather than treated as "in reach". When the route declares the exemption,
+  // no reach question exists and the check is skipped regardless of what the context supplies.
+  const reach = policy.reach as unknown;
+  const reachExempt =
+    typeof reach === "object" &&
+    reach !== null &&
+    (reach as { exempt?: unknown }).exempt === "no_single_resource";
+
+  if (reach === "required") {
+    if (context.inReach !== true && context.inReach !== false) {
+      return DENY_CONTEXT_INCOMPLETE(
+        "inReach",
+        'This route declares reach: "required", and the context did not supply a reach answer',
+      );
+    }
+    if (context.inReach === false) {
+      return {
+        allowed: false,
+        status: 404,
+        code: "not_found",
+        reason: "Out of reach",
+      };
+    }
+  } else if (!reachExempt) {
+    // A capability policy that never met the registry's validation (a JSON- or plugin-supplied
+    // map) declares no reach requirement at all. Guessing "no reach question" here is exactly
+    // the omission this fix exists to refuse, so it is denied rather than allowed through.
+    return DENY_CONTEXT_INCOMPLETE(
+      "inReach",
+      'This route\'s capability policy does not declare reach — declare reach: "required" or the no_single_resource exemption',
+    );
   }
 
   const options = { onUnknown: context.onUnknownCapability };

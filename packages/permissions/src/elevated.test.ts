@@ -28,10 +28,18 @@ describe("the elevated-action list is generated, never hand-maintained", () => {
     "DELETE /api/webhooks/{id}": {
       capability: "webhook:manage",
       scope: "workspace",
+      reach: {
+        exempt: "no_single_resource",
+        reason: "a workspace-scoped management action, not a single resource",
+      },
       elevated: true,
       sessionOnly: true,
     },
-    "GET /api/project/{id}": { capability: "project:read", scope: "project" },
+    "GET /api/project/{id}": {
+      capability: "project:read",
+      scope: "project",
+      reach: "required",
+    },
   });
 
   it("lists exactly the entries that declare elevated: true", () => {
@@ -63,6 +71,10 @@ describe("the elevation coverage rule", () => {
         "POST /api/instance/purge": {
           capability: "instance:admin",
           scope: "instance",
+          reach: {
+            exempt: "no_single_resource",
+            reason: "an instance-wide action, not a single resource",
+          },
         },
       }),
     );
@@ -76,6 +88,11 @@ describe("the elevation coverage rule", () => {
         "POST /api/workspaces/{id}/api-keys": {
           capability: "api_key:manage",
           scope: "workspace",
+          reach: {
+            exempt: "no_single_resource",
+            reason:
+              "creates a new key; there is no existing row to reach-check",
+          },
         },
       }),
     );
@@ -106,6 +123,7 @@ describe("the elevation coverage rule", () => {
           "GET /api/project/{id}": {
             capability: "project:read",
             scope: "project",
+            reach: "required",
           },
         }),
       ),
@@ -126,6 +144,11 @@ describe("an elevated route is always session-only", () => {
           "POST /api/instance/users/{id}/impersonate": {
             capability: "instance:admin",
             scope: "instance",
+            reach: {
+              exempt: "no_single_resource",
+              reason:
+                "the impersonation target is named by a path parameter, not reach-checked",
+            },
             elevated: true,
           },
         }),

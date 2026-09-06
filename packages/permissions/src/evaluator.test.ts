@@ -244,8 +244,12 @@ describe("reach", () => {
 describe("evaluatePolicy", () => {
   const target = { workspaceId: WORKSPACE, projectId: PROJECT };
 
+  // `inReach` defaults to `true` here so that every existing capability-kind test below keeps
+  // exercising the code past the reach gate, the same way it did when the field was optional
+  // and simply omitted. The default is now written down in one place rather than implied by
+  // omission at each call site — which is the point of defect 5's fix.
   function context(overrides: Partial<PolicyContext> = {}): PolicyContext {
-    return { identity: identity(), target, ...overrides };
+    return { identity: identity(), target, inReach: true, ...overrides };
   }
 
   it("kind 4: a public route allows an anonymous caller", () => {
@@ -265,8 +269,8 @@ describe("evaluatePolicy", () => {
 
   it("401s an anonymous caller on every other kind", () => {
     const policies: Policy[] = [
-      { capability: "work_item:read", scope: "project" },
-      { authenticated: true, self: true },
+      { capability: "work_item:read", scope: "project", reach: "required" },
+      { authenticated: true, self: true, personParam: "personId" },
       { portal: "customer", predicate: "own_request" },
     ];
     for (const policy of policies) {
@@ -278,7 +282,7 @@ describe("evaluatePolicy", () => {
 
   it("kind 1: allows when the capability is held", () => {
     const decision = evaluatePolicy(
-      { capability: "work_item:read", scope: "project" },
+      { capability: "work_item:read", scope: "project", reach: "required" },
       context({
         identity: identity({
           authority: [grant({ capabilities: ["work_item:read"] })],
@@ -290,7 +294,7 @@ describe("evaluatePolicy", () => {
 
   it("kind 1: 403s with the missing capability named", () => {
     const decision = evaluatePolicy(
-      { capability: "work_item:delete", scope: "project" },
+      { capability: "work_item:delete", scope: "project", reach: "required" },
       context({
         identity: identity({
           authority: [grant({ capabilities: ["work_item:read"] })],
@@ -306,7 +310,7 @@ describe("evaluatePolicy", () => {
 
   it("kind 1: 404s out of reach, before any capability is considered", () => {
     const decision = evaluatePolicy(
-      { capability: "work_item:read", scope: "project" },
+      { capability: "work_item:read", scope: "project", reach: "required" },
       context({
         inReach: false,
         identity: identity({
@@ -321,6 +325,7 @@ describe("evaluatePolicy", () => {
     const policy: Policy = {
       capability: "comment:update_any",
       scope: "work_item",
+      reach: "required",
       orOwner: {
         predicate: "row.person_id === identity.personId",
         capability: "comment:update_own",
@@ -373,6 +378,7 @@ describe("evaluatePolicy", () => {
     const policy: Policy = {
       capability: "comment:update_any",
       scope: "work_item",
+      reach: "required",
       orOwner: {
         predicate: "row.person_id === identity.personId",
         capability: "comment:update_own",
@@ -417,6 +423,7 @@ describe("evaluatePolicy", () => {
     const policy: Policy = {
       capability: "work_item:assign",
       scope: "work_item",
+      reach: "required",
       orSelfTarget: {
         predicate: "body.assigneeId === identity.personId",
         capability: "work_item:update",
@@ -463,7 +470,11 @@ describe("evaluatePolicy", () => {
   });
 
   it("kind 2: refuses a parameter naming another person, with a 404", () => {
-    const policy: Policy = { authenticated: true, self: true };
+    const policy: Policy = {
+      authenticated: true,
+      self: true,
+      personParam: "personId",
+    };
     expect(
       evaluatePolicy(policy, context({ targetPersonId: "person-1" })).allowed,
     ).toBe(true);
@@ -476,7 +487,10 @@ describe("evaluatePolicy", () => {
     const policy: Policy = { portal: "customer", predicate: "own_request" };
     const customer = identity({ side: "customer", portal: "customer" });
     expect(
-      evaluatePolicy(policy, context({ identity: customer })).allowed,
+      evaluatePolicy(
+        policy,
+        context({ identity: customer, portalPredicateSatisfied: true }),
+      ).allowed,
     ).toBe(true);
     expect(evaluatePolicy(policy, context()).allowed).toBe(false);
     expect(
@@ -491,6 +505,7 @@ describe("evaluatePolicy", () => {
     const policy: Policy = {
       capability: "webhook:manage",
       scope: "workspace",
+      reach: "required",
       elevated: true,
       sessionOnly: true,
     };
@@ -519,5 +534,196 @@ describe("evaluatePolicy", () => {
     expect(() =>
       evaluatePolicy({ scope: "project" } as unknown as Policy, context()),
     ).toThrow(/none of the five kinds/);
+  });
+});
+
+/**
+ * Defect 3 — declared `sessionOnly` and `elevated` metadata used to be silently inert on kind
+ * 4 (public) and kind 5 (delegated): `evaluatePolicy` returned a successful decision before
+ * either flag was ever read, while `sessionOnlyRoutes()` listed the route and
+ * `renderElevatedActionsMarkdown()` printed it into rbac.md. Every case here proves the
+ * opposite: no kind returns success before its declared flags are enforced, and a flag a kind
+ * cannot coherently declare (kind 4 has no identity to re-authenticate or hold a session) is
+ * refused rather than ignored.
+ */
+describe("declared security metadata is never inert", () => {
+  const target = { workspaceId: WORKSPACE, projectId: PROJECT };
+  const TARGET_PERSON = "person-1";
+
+  /** One identity shape that satisfies every constrainable kind: a customer session holding
+   *  project:read, naming itself as the target person. The kind is the only variable. */
+  function holder(
+    credential: ResolvedIdentity["credential"],
+  ): ResolvedIdentity {
+    return identity({
+      credential,
+      side: "customer",
+      portal: "customer",
+      personId: TARGET_PERSON,
+      authority: [grant({ capabilities: ["project:read"] })],
+    });
+  }
+
+  function ctxFor(who: ResolvedIdentity | null): PolicyContext {
+    return {
+      identity: who,
+      target,
+      inReach: true,
+      targetPersonId: TARGET_PERSON,
+      portalPredicateSatisfied: true,
+    };
+  }
+
+  const constrainable: Array<[string, Policy]> = [
+    [
+      "capability",
+      {
+        capability: "project:read",
+        scope: "project",
+        reach: "required",
+        elevated: true,
+        sessionOnly: true,
+      },
+    ],
+    [
+      "self",
+      {
+        authenticated: true,
+        self: true,
+        personParam: "personId",
+        elevated: true,
+        sessionOnly: true,
+      },
+    ],
+    [
+      "portal",
+      {
+        portal: "customer",
+        predicate: "own_request",
+        elevated: true,
+        sessionOnly: true,
+      },
+    ],
+    [
+      "delegated",
+      {
+        delegated: "scim",
+        reason: "SCIM provisioning surface",
+        elevated: true,
+        sessionOnly: true,
+      },
+    ],
+  ];
+
+  it.each(constrainable)(
+    "refuses every non-session credential on a %s policy",
+    (_kind, policy) => {
+      for (const credential of [
+        "api_key",
+        "mcp_key",
+        "impersonation",
+      ] as const) {
+        expect(
+          evaluatePolicy(policy, ctxFor(holder(credential))),
+        ).toMatchObject({
+          allowed: false,
+          status: 403,
+          code: "session_required",
+        });
+      }
+    },
+  );
+
+  it.each(constrainable)(
+    "refuses an unauthenticated request on a %s policy",
+    (_kind, policy) => {
+      expect(evaluatePolicy(policy, ctxFor(null))).toMatchObject({
+        allowed: false,
+        status: 401,
+      });
+    },
+  );
+
+  it.each(constrainable)(
+    "carries elevated: true into the decision on a %s policy",
+    (_kind, policy) => {
+      const decision = evaluatePolicy(policy, ctxFor(holder("session")));
+      expect(decision.allowed).toBe(true);
+      if (decision.allowed) expect(decision.requiresElevation).toBe(true);
+    },
+  );
+
+  it("denies a public policy declaring sessionOnly rather than ignoring it", () => {
+    // Cast through unknown: this is the JSON- or plugin-supplied shape the type checker never
+    // sees. `validatePolicy` already refused this shape on HEAD, but `evaluatePolicy` — called
+    // directly, without the registry, from the matrix fixture and #10's middleware — allowed
+    // it on every credential.
+    const policy = {
+      public: true,
+      reason: "liveness probe",
+      sessionOnly: true,
+    } as unknown as Policy;
+    for (const who of [null, holder("session"), holder("mcp_key")]) {
+      expect(evaluatePolicy(policy, ctxFor(who))).toMatchObject({
+        allowed: false,
+        status: 403,
+        code: "policy_incoherent",
+      });
+    }
+  });
+
+  it("denies a public policy declaring elevated: true rather than ignoring it", () => {
+    // One keystroke away from apps/api/src/instance/policy.ts's shipped shape: flipping its
+    // `elevated: false` to `true` produced an allowed decision with requiresElevation: false
+    // on HEAD, and no layer objected.
+    const policy = {
+      public: true,
+      reason: "first-run bootstrap",
+      elevated: true,
+    } as unknown as Policy;
+    for (const who of [null, holder("session"), holder("mcp_key")]) {
+      expect(evaluatePolicy(policy, ctxFor(who))).toMatchObject({
+        allowed: false,
+        status: 403,
+        code: "policy_incoherent",
+      });
+    }
+  });
+
+  it("still allowlists a delegated mount that declares no flags, on every credential", () => {
+    // The regression guard that matters most: /api/auth/* sign-in must stay reachable with no
+    // session and no identity at all.
+    const policy: Policy = { delegated: "better-auth", reason: "auth mount" };
+    for (const credential of [
+      "session",
+      "api_key",
+      "mcp_key",
+      "impersonation",
+    ] as const) {
+      expect(evaluatePolicy(policy, ctxFor(holder(credential)))).toEqual({
+        allowed: true,
+        requiresElevation: false,
+      });
+    }
+    expect(evaluatePolicy(policy, ctxFor(null))).toEqual({
+      allowed: true,
+      requiresElevation: false,
+    });
+  });
+
+  it("leaves a public route's reasoned elevation waiver alone", () => {
+    // Guards against the over-correction that would break the shipped registry: dropping
+    // `elevated` entirely from kind 4 would make GET /api/instance/status fail
+    // elevationViolations() at boot.
+    const policy: Policy = {
+      public: true,
+      reason: "first-run bootstrap",
+      elevated: false,
+      elevationExemptionReason: "reads one boolean; it grants nothing",
+    };
+    expect(evaluatePolicy(policy, ctxFor(null))).toEqual({
+      allowed: true,
+      requiresElevation: false,
+    });
   });
 });

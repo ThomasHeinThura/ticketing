@@ -96,6 +96,9 @@ export function validatePolicy(routeKey: string, policy: Policy): string[] {
     if (!SCOPE_SET.has(policy.scope)) {
       problems.push(`${at}: unknown scope ${String(policy.scope)}`);
     }
+    problems.push(
+      ...reachProblems(at, policy.reach, policy.orOwner !== undefined),
+    );
     if (policy.orOwner !== undefined) {
       if (!OWNER_PREDICATE_SET.has(policy.orOwner.predicate)) {
         problems.push(
@@ -126,6 +129,10 @@ export function validatePolicy(routeKey: string, policy: Policy): string[] {
         );
       }
     }
+  }
+
+  if (isSelfPolicy(policy)) {
+    problems.push(...personParamProblems(at, routeKey, policy.personParam));
   }
 
   if (isPortalPolicy(policy)) {
@@ -164,11 +171,102 @@ export function validatePolicy(routeKey: string, policy: Policy): string[] {
     );
   }
 
-  if (kind === "public" && policy.sessionOnly === true) {
-    problems.push(`${at}: a public route cannot be sessionOnly`);
+  // Kind 4 has no identity, so the two identity-shaped flags are contradictions rather than
+  // constraints. `PublicElevationFlags` makes them unrepresentable on a well-typed literal;
+  // this refuses them again at boot, because a policy map can arrive from JSON or a plugin
+  // without meeting the compiler.
+  if (kind === "public") {
+    const flags = policy as {
+      readonly sessionOnly?: unknown;
+      readonly elevated?: unknown;
+    };
+    if (flags.sessionOnly === true) {
+      problems.push(
+        `${at}: a public route cannot be sessionOnly — kind 4 accepts a request with no credential at all, so there is no session to require`,
+      );
+    }
+    if (flags.elevated === true) {
+      problems.push(
+        `${at}: a public route cannot be elevated — elevation is a fresh authentication of the caller, and kind 4 has no caller. Declare elevated: false with an elevationExemptionReason instead.`,
+      );
+    }
   }
 
   return problems;
+}
+
+/**
+ * A capability route states, in writing, whether it addresses a resource. There is no default:
+ * a missing `reach` is the omission the evaluator would otherwise have to guess about, and a
+ * policy map can arrive from JSON or a plugin where the type never ran.
+ */
+function reachProblems(
+  at: string,
+  reach: unknown,
+  hasOwnerBranch: boolean,
+): string[] {
+  if (reach === "required") return [];
+  if (
+    typeof reach === "object" &&
+    reach !== null &&
+    (reach as { exempt?: unknown }).exempt === "no_single_resource"
+  ) {
+    if (hasOwnerBranch) {
+      return [
+        `${at}: an orOwner branch reads a loaded row, so the route does address a single resource — it cannot claim the no_single_resource exemption`,
+      ];
+    }
+    const reason = (reach as { reason?: unknown }).reason;
+    if (typeof reason !== "string" || reason.trim() === "") {
+      return [
+        `${at}: a reach exemption must say why the route addresses no single resource — omitting the reach check is a deliberate, reviewable act`,
+      ];
+    }
+    return [];
+  }
+  return [
+    `${at}: reach must be "required" or { exempt: "no_single_resource", reason } — a route that addresses a resource is reach-checked, and one that does not says so`,
+  ];
+}
+
+/**
+ * A self route names the parameter it scopes by, and the parameter must actually be in the
+ * path — which turns "the middleware extracts the right thing" from a promise into a check.
+ */
+function personParamProblems(
+  at: string,
+  routeKey: string,
+  param: unknown,
+): string[] {
+  if (typeof param === "string") {
+    if (param.trim() === "") {
+      return [
+        `${at}: personParam must name a path parameter, or declare the exemption`,
+      ];
+    }
+    if (!routeKey.includes(`{${param}}`)) {
+      return [
+        `${at}: personParam "${param}" is not a parameter of this route — the policy and the path disagree about what names a person`,
+      ];
+    }
+    return [];
+  }
+  if (
+    typeof param === "object" &&
+    param !== null &&
+    (param as { exempt?: unknown }).exempt === "no_person_parameter"
+  ) {
+    const reason = (param as { reason?: unknown }).reason;
+    if (typeof reason !== "string" || reason.trim() === "") {
+      return [
+        `${at}: a no_person_parameter exemption must say why this route names no person`,
+      ];
+    }
+    return [];
+  }
+  return [
+    `${at}: personParam must name a path parameter or declare { exempt: "no_person_parameter", reason }`,
+  ];
 }
 
 /** Merge feature policy maps into one registry, or throw with every problem listed at once. */

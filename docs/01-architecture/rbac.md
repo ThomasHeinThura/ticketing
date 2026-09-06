@@ -286,13 +286,28 @@ narrow: a project role overrides a workspace role for that project.
 kinds — the specs may use no other form, and the route-coverage test rejects any other:
 
 ```ts
-type Policy = (
-  | { capability: Capability; scope: Scope; orOwner?: OwnerBranch; orSelfTarget?: SelfTargetBranch } // 1. capability, optionally satisfied by an owner or self-target branch
-  | { authenticated: true; self: true }                                  // 2. the caller's own records only (/api/me/*)
-  | { portal: 'customer'; predicate: PortalPredicate }                   // 3. a customer session on /api/portal/*, scoped by predicate
-  | { public: true; reason: string }                                     // 4. unauthenticated, with a stated reason
-  | { delegated: 'better-auth' | 'websocket' | 'metrics' | 'scim'; reason: string } // 5. mounts outside the session model, allowlisted explicitly
-) & { elevated?: boolean; elevationExemptionReason?: string; sessionOnly?: true }; // declared on the route, not in a prose table
+type Policy =
+  | ({ capability: Capability; scope: Scope; reach: ReachRequirement;      // 1. capability, optionally satisfied by an owner or self-target branch
+      orOwner?: OwnerBranch; orSelfTarget?: SelfTargetBranch } & Flags)
+  | ({ authenticated: true; self: true; personParam: PersonParam } & Flags) // 2. the caller's own records only (/api/me/*)
+  | ({ portal: 'customer'; predicate: PortalPredicate } & Flags)           // 3. a customer session on /api/portal/*, scoped by predicate
+  | ({ public: true; reason: string } & PublicFlags)                       // 4. unauthenticated, with a stated reason
+  | ({ delegated: 'better-auth' | 'websocket' | 'metrics' | 'scim'; reason: string } & Flags); // 5. mounts outside the session model
+
+type Flags = { elevated?: boolean; elevationExemptionReason?: string; sessionOnly?: true };
+
+// Kind 4 has no identity, so there is no session to require and nothing to re-authenticate.
+// Those flags are REFUSED at declaration time rather than accepted and ignored — a flag that
+// a kind cannot enforce used to be silently inert, which is how a control gets documented,
+// tested and absent at the same time. `elevated: false` stays legal: it is the written
+// waiver `GET /api/instance/status` already relies on.
+type PublicFlags = { elevated?: false; elevationExemptionReason?: string; sessionOnly?: never };
+
+// Both are REQUIRED, and neither has a default. A security-relevant fact that can be omitted
+// will be omitted, and an omitted one used to mean ALLOW. The exemption is the only way to
+// say "not applicable", and it has to be said out loud, with a reason.
+type ReachRequirement = 'required' | { exempt: 'no_single_resource'; reason: string };
+type PersonParam = string | { exempt: 'no_person_parameter'; reason: string };
 
 type Scope = 'instance' | 'workspace' | 'project' | 'work_item' | 'organisation';
 type OwnerBranch = { predicate: OwnerPredicate; capability: Capability; withinMinutes?: number };

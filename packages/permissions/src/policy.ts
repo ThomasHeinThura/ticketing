@@ -96,10 +96,46 @@ export type SelfTargetBranch = {
   readonly capability: Capability;
 };
 
+/**
+ * Whether a capability route addresses one identifiable resource, and therefore must be
+ * reach-checked before authority is considered.
+ *
+ * There is no third answer and no default. "This route addresses no single resource" is a
+ * **static property of the route** — a create, or a collection scoped by the query itself —
+ * so it is declared here, once, where a reviewer reads it next to the path, rather than
+ * asserted per request by whichever middleware happens to run. `evaluatePolicy` cross-checks
+ * this declaration against what the request context actually supplies, and refuses rather
+ * than guesses when the two disagree (`evaluator.ts`, defect 5).
+ */
+export type ReachRequirement =
+  | "required"
+  | {
+      readonly exempt: "no_single_resource";
+      /** Why this route addresses nothing a reach check could be run against. */
+      readonly reason: string;
+    };
+
+/**
+ * Which request parameter names a person on a kind-2 route, or an explicit statement that
+ * none does. Static, for the same reason as `ReachRequirement`.
+ */
+export type PersonParam =
+  | string
+  | {
+      readonly exempt: "no_person_parameter";
+      readonly reason: string;
+    };
+
 /** Kind 1 — the normal case. */
 export type CapabilityPolicy = {
   readonly capability: Capability;
   readonly scope: Scope;
+  /**
+   * Required. A route that addresses a resource must be reach-checked; one that does not
+   * must say so in writing. Omitting it is the omission this registry exists to refuse, so
+   * it is not optional and it has no default.
+   */
+  readonly reach: ReachRequirement;
   readonly orOwner?: OwnerBranch;
   readonly orSelfTarget?: SelfTargetBranch;
 };
@@ -108,6 +144,11 @@ export type CapabilityPolicy = {
 export type SelfPolicy = {
   readonly authenticated: true;
   readonly self: true;
+  /**
+   * Required. The path or query parameter this route uses to name a person, or a written
+   * statement that the route names none.
+   */
+  readonly personParam: PersonParam;
 };
 
 /** Kind 3 — a customer session on `/api/portal/*`, scoped by predicate. */
@@ -145,14 +186,35 @@ export type ElevationFlags = {
   readonly elevationExemptionReason?: string;
 };
 
-export type Policy = (
-  | CapabilityPolicy
-  | SelfPolicy
-  | PortalPolicy
-  | PublicPolicy
-  | DelegatedPolicy
-) &
-  ElevationFlags;
+/**
+ * The flags a **public** route may declare — a strictly smaller set than `ElevationFlags`,
+ * because kind 4 has no identity at all.
+ *
+ * - `elevated: true` means "re-authenticate the caller before this proceeds". A public route
+ *   is *defined* by accepting a request that has no caller. The declaration is not merely
+ *   unenforced, it is incoherent, and it is unrepresentable here.
+ * - `sessionOnly: true` means "accept only a browser session". A public route accepts a
+ *   request carrying no credential whatsoever; demanding a session of it contradicts the kind.
+ * - `elevated: false` **stays**, and is load-bearing: it is not a security constraint but the
+ *   written waiver the elevation rule demands of an `/api/instance/*` route.
+ *   `GET /api/instance/status` is exactly that route.
+ */
+export type PublicElevationFlags = {
+  readonly elevated?: false;
+  readonly sessionOnly?: never;
+  readonly elevationExemptionReason?: string;
+};
+
+/**
+ * Every flag above is read by `evaluatePolicy` **before any successful decision returns**, on
+ * every kind. Metadata the evaluator does not read is metadata that lies: rbac.md's elevated
+ * and session-only tables are generated from these fields, so a declared-and-inert flag is a
+ * documented control that does not exist (defect 3).
+ */
+export type Policy =
+  | ((CapabilityPolicy | SelfPolicy | PortalPolicy | DelegatedPolicy) &
+      ElevationFlags & { readonly public?: never })
+  | (PublicPolicy & PublicElevationFlags);
 
 export const POLICY_KINDS = [
   "capability",
@@ -184,7 +246,7 @@ export function isPortalPolicy(
 
 export function isPublicPolicy(
   policy: Policy,
-): policy is PublicPolicy & ElevationFlags {
+): policy is PublicPolicy & PublicElevationFlags {
   return "public" in policy;
 }
 

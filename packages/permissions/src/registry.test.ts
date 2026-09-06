@@ -149,6 +149,7 @@ describe("createPolicyRegistry", () => {
         "GET  /api/project/{id}": {
           capability: "project:read",
           scope: "project",
+          reach: "required",
         },
       }),
       source("b/policy.ts", {
@@ -274,15 +275,143 @@ describe("validatePolicy — there is no sixth kind", () => {
 
   it("accepts each of the five kinds", () => {
     const policies: Policy[] = [
-      { capability: "project:read", scope: "project" },
-      { authenticated: true, self: true },
+      { capability: "project:read", scope: "project", reach: "required" },
+      { authenticated: true, self: true, personParam: "personId" },
       { portal: "customer", predicate: "own_request" },
       { public: true, reason: "rendered on the login page" },
       { delegated: "websocket", reason: "the upgrade handler authenticates" },
     ];
     for (const policy of policies) {
+      expect(validatePolicy("GET /api/{personId}/x", policy)).toEqual([]);
+    }
+  });
+
+  it("accepts the reach and personParam exemptions", () => {
+    const policies: Policy[] = [
+      {
+        capability: "work_item:create",
+        scope: "project",
+        reach: {
+          exempt: "no_single_resource",
+          reason: "a create addresses no row yet",
+        },
+      },
+      {
+        authenticated: true,
+        self: true,
+        personParam: {
+          exempt: "no_person_parameter",
+          reason: "/api/me/settings addresses the session's own person",
+        },
+      },
+    ];
+    for (const policy of policies) {
       expect(validatePolicy("GET /api/x", policy)).toEqual([]);
     }
+  });
+
+  it("rejects a capability policy that does not say whether reach applies", () => {
+    const problems = validatePolicy("GET /api/x", {
+      capability: "project:read",
+      scope: "project",
+    } as unknown as Policy);
+    expect(problems.join("\n")).toMatch(/reach must be/);
+  });
+
+  it("rejects a reach exemption with no written reason", () => {
+    const problems = validatePolicy("GET /api/x", {
+      capability: "project:read",
+      scope: "project",
+      reach: { exempt: "no_single_resource", reason: "" },
+    } as unknown as Policy);
+    expect(problems.join("\n")).toMatch(/deliberate, reviewable act/);
+  });
+
+  it("rejects a reach exemption on a route that loads a row via orOwner", () => {
+    const problems = validatePolicy("GET /api/x", {
+      capability: "comment:update_any",
+      scope: "work_item",
+      reach: { exempt: "no_single_resource", reason: "x" },
+      orOwner: {
+        predicate: "row.person_id === identity.personId",
+        capability: "comment:update_own",
+      },
+    } as unknown as Policy);
+    expect(problems.join("\n")).toMatch(
+      /cannot claim the no_single_resource exemption/,
+    );
+  });
+
+  it("rejects a self policy that does not say what names a person", () => {
+    const problems = validatePolicy("GET /api/x", {
+      authenticated: true,
+      self: true,
+    } as unknown as Policy);
+    expect(problems.join("\n")).toMatch(/personParam must name/);
+  });
+
+  it("rejects a personParam that is not actually a parameter of the route", () => {
+    const problems = validatePolicy("GET /api/me", {
+      authenticated: true,
+      self: true,
+      personParam: "personId",
+    } as unknown as Policy);
+    expect(problems.join("\n")).toMatch(/is not a parameter of this route/);
+  });
+
+  it("rejects a public route declaring sessionOnly", () => {
+    const problems = validatePolicy("GET /api/x", {
+      public: true,
+      reason: "liveness probe",
+      sessionOnly: true,
+    } as unknown as Policy);
+    expect(problems.join("\n")).toMatch(/a public route cannot be sessionOnly/);
+  });
+
+  it("rejects a public route declaring elevated: true", () => {
+    const problems = validatePolicy("GET /api/x", {
+      public: true,
+      reason: "first-run bootstrap",
+      elevated: true,
+    } as unknown as Policy);
+    expect(problems.join("\n")).toMatch(/a public route cannot be elevated/);
+  });
+
+  it("fails at boot on a public route that declares elevated: true", () => {
+    expect(() =>
+      createPolicyRegistry([
+        source("plugin/policy.ts", {
+          "GET /api/instance/status": {
+            public: true,
+            reason: "first-run bootstrap",
+            elevated: true,
+          } as unknown as Policy,
+        }),
+      ]),
+    ).toThrow(/a public route cannot be elevated/);
+  });
+
+  it("validatePolicy returns [] for the shipped public + elevated: false + waiver shape", () => {
+    expect(
+      validatePolicy("GET /api/instance/status", {
+        public: true,
+        reason: "first-run bootstrap",
+        elevated: false,
+        elevationExemptionReason:
+          "reads one boolean about setup state; it grants nothing",
+      }),
+    ).toEqual([]);
+  });
+
+  it("validatePolicy returns [] for a delegated mount declaring both flags", () => {
+    expect(
+      validatePolicy("POST /api/scim/v2/Users", {
+        delegated: "scim",
+        reason: "SCIM provisioning surface",
+        elevated: true,
+        sessionOnly: true,
+      }),
+    ).toEqual([]);
   });
 });
 
@@ -293,6 +422,7 @@ describe("capabilitiesReferencedBy", () => {
         "PATCH /api/comments/{id}": {
           capability: "comment:update_any",
           scope: "work_item",
+          reach: "required",
           orOwner: {
             predicate: "row.person_id === identity.personId",
             capability: "comment:update_own",
@@ -302,6 +432,7 @@ describe("capabilitiesReferencedBy", () => {
         "POST /api/work-items/{key}/assign": {
           capability: "work_item:assign",
           scope: "work_item",
+          reach: "required",
           orSelfTarget: {
             predicate: "body.assigneeId === identity.personId",
             capability: "work_item:update",
