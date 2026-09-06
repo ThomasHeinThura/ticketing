@@ -99,7 +99,7 @@ through the UI. **No further environment variables.** See
 | `compose.yml` | Base — at the repository root. Services, images, volumes, networks. **Publishes no application port** |
 | `deploy/compose.local.yml` | Overlay — local development: publishes 5173, no TLS, Mailpit |
 | `deploy/compose.prod.yml` | Overlay — Traefik labels, resource limits, external proxy network |
-| `deploy/compose.uat.yml` | Overlay — as production, different hostnames |
+| `deploy/compose.uat.yml` | Overlay — as production, different hostnames, and the bimats.com host's real topology: CloudFront terminates TLS, so the routers use the plain `web` entrypoint with no certificate resolver ([proxy topology evidence](proxy-topology-evidence.md)) |
 | `deploy/compose.traefik.yml` | Local Traefik, so production labels can be tested locally |
 | `deploy/compose.keycloak.yml` | Optional Keycloak |
 | `deploy/compose.observability.yml` | Optional Prometheus, Grafana, Loki |
@@ -279,5 +279,5 @@ brief outage into a long one. Hence the separation.
 ## Related
 
 - [Environments](environments.md) · [Configuration reference](configuration-reference.md)
-- [Traefik and domains](traefik-and-domains.md) · [Runbook](runbook.md)
+- [Traefik and domains](traefik-and-domains.md) · [Proxy topology evidence](proxy-topology-evidence.md) · [Runbook](runbook.md)
 - [One-line install](one-line-install.md) · [AWS Marketplace listing](aws-marketplace.md)

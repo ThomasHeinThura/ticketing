@@ -74,7 +74,23 @@ attaches to the existing proxy network and publishes nothing — and `install.sh
 ([one-line-install.md](one-line-install.md)). Locally, 5173 being bound is the expected
 state, so the check does not apply.
 
+**One hop is the count for this arrangement, not a default to carry elsewhere.** Where a CDN
+or load balancer sits in front of Traefik there are two appending hops and the value is `2`.
+The count is measured — send a request with a deliberately wrong `X-Forwarded-For` and read
+what arrives — never inferred from the number of boxes in the diagram. Method and results:
+[proxy-topology-evidence.md](proxy-topology-evidence.md).
+
 ## TLS
+
+Everything in this section describes Traefik terminating TLS itself, which is
+what `deploy/compose.prod.yml` and `deploy/compose.local.yml` configure. **It is
+not true of every host we run.** Where a CDN or load balancer sits in front,
+TLS terminates there and Traefik receives plain HTTP on its `web` entrypoint —
+no certificate resolver runs, an ACME challenge is never answered, and a
+`websecure` router is never matched. The bimats.com UAT host is exactly that
+shape (CloudFront in front), and `deploy/compose.uat.yml` therefore routes on
+`web` with no `certresolver`. Which shape you are in is a measurement, not a
+preference: [proxy-topology-evidence.md](proxy-topology-evidence.md).
 
 - Let's Encrypt via the ACME HTTP-01 challenge, or DNS-01 where a wildcard is wanted.
 - TLS 1.2 minimum; 1.3 preferred.
@@ -178,10 +194,12 @@ TaskDesk attaches to the existing network and contributes only its labels. The
 | Certificate not issued | HTTP-01 blocked, or DNS not yet propagated |
 | WebSocket disconnects every 60 s | Traefik idle timeout below the heartbeat |
 | Portal shows the agent application | `Host` header not forwarded, or `TASKDESK_PORTAL_URL` mismatched |
-| Redirect loop | `TASKDESK_TRUST_PROXY=0` behind TLS termination — set it to the real hop count (`1` for the shipped compose) |
+| Redirect loop | `TASKDESK_TRUST_PROXY=0` behind TLS termination — set it to the real hop count (`1` for the shipped compose). **Or**: TLS terminates at a CDN in front of Traefik, so `X-Forwarded-Proto` arriving at the application says `http` even though the viewer used HTTPS. Raising the hop count does not fix that one; fixing it means setting the header at the CDN ([proxy-topology-evidence.md](proxy-topology-evidence.md)) |
 | Every request rate-limited as one client | `TASKDESK_TRUST_PROXY` too low — the proxy's address is being read as the client |
+| A forged `X-Forwarded-For` moves the rate-limit bucket | `TASKDESK_TRUST_PROXY` too **high**, or the application port is published so the proxy can be bypassed entirely |
 
 ## Related
 
 - [Deployment](deployment.md) · [Environments](environments.md)
+- [Proxy topology evidence](proxy-topology-evidence.md) — how the trusted-hop count is measured, and what it measured here
 - [Security model](../01-architecture/security-model.md) · [Runbook](runbook.md)
