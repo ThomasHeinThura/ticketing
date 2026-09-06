@@ -61,6 +61,18 @@ const PORTAL_PREDICATE_SET: ReadonlySet<string> = new Set(PORTAL_PREDICATES);
 const DELEGATED_SET: ReadonlySet<string> = new Set(DELEGATED_SURFACES);
 
 /**
+ * `true` for a genuine, non-blank string reason — never a raw `.trim()` on a value that a
+ * JSON- or plugin-supplied policy map might not have made a string at all. `PublicPolicy.reason`
+ * and `DelegatedPolicy.reason` are both required strings on a well-typed `Policy`, but
+ * `validatePolicy` exists precisely for the map that never met that type, so calling `.trim()`
+ * unguarded here would trade a clear validation problem for a raw `TypeError` that aborts this
+ * function before it can report anything else in the batch.
+ */
+function hasNonEmptyReason(reason: unknown): boolean {
+  return typeof reason === "string" && reason.trim() !== "";
+}
+
+/**
  * Reject anything that is not one of the five kinds, or is one of them with a field the
  * closed sets do not contain. "The specs may use no other form."
  */
@@ -183,7 +195,7 @@ export function validatePolicy(routeKey: string, policy: Policy): string[] {
     }
   }
 
-  if (isPublicPolicy(policy) && policy.reason.trim() === "") {
+  if (isPublicPolicy(policy) && !hasNonEmptyReason(policy.reason)) {
     problems.push(
       `${at}: a public route must state a reason — "public" is a deliberate, reviewable act`,
     );
@@ -195,16 +207,36 @@ export function validatePolicy(routeKey: string, policy: Policy): string[] {
         `${at}: ${String(policy.delegated)} is not in the closed delegated union — adding a member is a decision-log entry, not an edit`,
       );
     }
-    if (policy.reason.trim() === "") {
+    if (!hasNonEmptyReason(policy.reason)) {
       problems.push(
         `${at}: a delegated mount must say what it delegates to and why`,
       );
     }
   }
 
-  if (policy.elevated === false && !policy.elevationExemptionReason?.trim()) {
+  // Coherence runs both directions. `ElevationFlags`/`PublicElevationFlags` make both
+  // unrepresentable on a well-typed literal — which is exactly why this reads through an
+  // untyped view, like the scopeSource check above, rather than `policy.elevated` directly:
+  // on a genuinely well-typed `Policy`, the union already makes "elevationExemptionReason is a
+  // string" and "elevated !== false" mutually exclusive, so the compiler-typed access narrows
+  // to `never` here and refuses to compile. The untyped view is what lets this function also
+  // catch the same incoherence on a policy map that arrived as JSON or from a plugin and never
+  // met that type.
+  const flags = policy as {
+    readonly elevated?: unknown;
+    readonly elevationExemptionReason?: unknown;
+  };
+  const hasExemptionReason =
+    typeof flags.elevationExemptionReason === "string" &&
+    flags.elevationExemptionReason.trim() !== "";
+  if (flags.elevated === false && !hasExemptionReason) {
     problems.push(
       `${at}: elevated: false needs elevationExemptionReason — an explicit, written opt-out`,
+    );
+  }
+  if (hasExemptionReason && flags.elevated !== false) {
+    problems.push(
+      `${at}: elevationExemptionReason is only meaningful with elevated: false — it states a reason for NOT requiring elevation, and none is being required here (elevated is ${flags.elevated === true ? "true" : "unset"})`,
     );
   }
 
@@ -335,10 +367,24 @@ export function createPolicyRegistry(
         ...validatePolicy(routeKey, policy).map((p) => `${source.name} → ${p}`),
       );
 
+      // `validatePolicy` already caught `policyKind`'s throw above (a policy matching none of
+      // the five kinds) and turned it into a problem string. Calling `policyKind` again here,
+      // unguarded, would let that same throw escape uncaught instead — aborting the whole
+      // batch immediately, discarding every problem collected for this and every other entry,
+      // and replacing the aggregated `PolicyRegistryError` this function promises with a bare
+      // `Error` naming only the first bad policy encountered. Skip storing the entry instead:
+      // its problem is already recorded, and the loop keeps collecting the rest of the batch.
+      let kind: PolicyKind;
+      try {
+        kind = policyKind(policy);
+      } catch {
+        continue;
+      }
+
       byKey.set(routeKey, {
         routeKey,
         policy,
-        kind: policyKind(policy),
+        kind,
         source: source.name,
       });
     }
@@ -358,10 +404,28 @@ export function createPolicyRegistry(
     entries,
     routeKeys: entries.map((entry) => entry.routeKey),
     get(routeKey: string) {
-      return byKey.get(normaliseRouteKey(routeKey));
+      // Hono can legitimately produce a router entry whose method sits outside
+      // `HTTP_METHODS` — `app.on(["PURGE", "QUERY", "LOCK"], …)` are all real, and none of
+      // them is in the closed set every policy map key is written against. `normaliseRouteKey`
+      // throws for such a key, and `computeRouteCoverage` calls `has`/`get` on every collected
+      // route without knowing which methods are "normal" — so a route using one of these
+      // methods must read as an ordinary miss, not abort the whole coverage run with a bare
+      // `Error`. No policy can ever be declared for a method outside the closed set, so "not
+      // found" is also the honest answer, not a paper-over: the route surfaces as uncovered.
+      let normalised: RouteKey;
+      try {
+        normalised = normaliseRouteKey(routeKey);
+      } catch {
+        return undefined;
+      }
+      return byKey.get(normalised);
     },
     has(routeKey: string) {
-      return byKey.has(normaliseRouteKey(routeKey));
+      try {
+        return byKey.has(normaliseRouteKey(routeKey));
+      } catch {
+        return false;
+      }
     },
   };
 }

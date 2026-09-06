@@ -105,6 +105,50 @@ describe("the elevation coverage rule", () => {
     ).toEqual(["api_key:manage"]);
   });
 
+  it("M2: catches a route whose orOwner branch grants an AUTHORITY_GRANTING capability", () => {
+    // The primary capability is ordinary read — not authority-granting on its own — so the
+    // route generates no violation on that basis alone. But its orOwner branch grants
+    // project:manage_members, which controls the two reach-affecting fields (parent_id,
+    // owner_team_id) and is itself in AUTHORITY_GRANTING. `capabilitiesReferencedBy` in
+    // registry.ts already walks both branches for the unreferenced-capability rule; the
+    // elevation rule must not be blind to what that function already sees.
+    const violations = elevationViolations(
+      registryOf({
+        "PATCH /api/projects/{id}": {
+          capability: "project:read",
+          scope: "project",
+          scopeSource: "row",
+          reach: "required",
+          orOwner: {
+            predicate: "row.created_by === identity.personId",
+            capability: "project:manage_members",
+          },
+        },
+      }),
+    );
+    expect(violations).toHaveLength(1);
+  });
+
+  it("M2: catches a route whose orSelfTarget branch grants an AUTHORITY_GRANTING capability", () => {
+    const violations = elevationViolations(
+      registryOf({
+        "PATCH /api/work-items/{key}/assignee": {
+          capability: "work_item:read",
+          scope: "work_item",
+          scopeSource: "row",
+          reach: "required",
+          orSelfTarget: {
+            predicate: "body.assigneeId === identity.personId",
+            // webhook:manage is in AUTHORITY_GRANTING; a self-target branch granting it is
+            // exactly as authority-granting as an orOwner branch granting it.
+            capability: "webhook:manage",
+          },
+        },
+      }),
+    );
+    expect(violations).toHaveLength(1);
+  });
+
   it("accepts an explicit, reasoned opt-out", () => {
     expect(
       elevationViolations(

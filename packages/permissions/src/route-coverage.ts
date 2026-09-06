@@ -264,8 +264,11 @@ export type CoverageResult = {
 /**
  * Compare the router against the registry.
  *
- * Four ways to fail, and all four are omissions rather than mistakes — which is the entire
- * point: v1's eleven authorization holes were every one of them an omission.
+ * Five ways to fail — `uncovered`, `baselineNowCovered`, `baselineStale`, `orphanedPolicies`
+ * and `unclassified` all make `ok` false — and every one of them is an omission rather than a
+ * mistake: v1's eleven authorization holes were every one of them an omission too. (This was
+ * "four ways" before `unclassified` — the wildcard-surface classification below — was added;
+ * update this count again if a sixth failure mode joins it.)
  */
 export function computeRouteCoverage(
   routes: readonly CollectedRoute[],

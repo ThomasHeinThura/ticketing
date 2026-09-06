@@ -121,21 +121,56 @@ export function elevationViolations(
   return violations;
 }
 
+/**
+ * Every `AUTHORITY_GRANTING` capability a policy can satisfy through **any** branch — not just
+ * its primary `capability`. `orOwner` and `orSelfTarget` are conjunctions (the branch's own
+ * capability is checked in addition to the predicate, never in place of the primary check),
+ * but the branch's capability is a real grant of authority when its predicate holds, and it
+ * can itself be authority-granting even when the route's primary capability is not — a route
+ * gated on `project:read` whose `orOwner` branch grants `project:manage_members` demands no
+ * step-up today and generates no row in the elevated-action table, even though
+ * `project:manage_members` controls the two reach-affecting fields (`parent_id`,
+ * `owner_team_id`) and sits in `AUTHORITY_GRANTING` in its own right.
+ *
+ * `capabilitiesReferencedBy` in `registry.ts` already walks both branches for the unreferenced-
+ * capability rule; this mirrors it so the elevation rule cannot miss what that function
+ * already sees.
+ */
+function authorityGrantingCapabilitiesOf(
+  policy: RegistryEntry["policy"],
+): Capability[] {
+  if (!isCapabilityPolicy(policy)) return [];
+  const capabilities: Capability[] = [];
+  if (AUTHORITY_GRANTING_SET.has(policy.capability)) {
+    capabilities.push(policy.capability);
+  }
+  if (
+    policy.orOwner !== undefined &&
+    AUTHORITY_GRANTING_SET.has(policy.orOwner.capability)
+  ) {
+    capabilities.push(policy.orOwner.capability);
+  }
+  if (
+    policy.orSelfTarget !== undefined &&
+    AUTHORITY_GRANTING_SET.has(policy.orSelfTarget.capability)
+  ) {
+    capabilities.push(policy.orSelfTarget.capability);
+  }
+  return capabilities;
+}
+
 function elevationRuleApplies(entry: RegistryEntry): boolean {
   if (isInstanceRoute(entry.routeKey)) return true;
-  return (
-    isCapabilityPolicy(entry.policy) &&
-    AUTHORITY_GRANTING_SET.has(entry.policy.capability)
-  );
+  return authorityGrantingCapabilitiesOf(entry.policy).length > 0;
 }
 
 function whyElevationApplies(entry: RegistryEntry): string {
   if (isInstanceRoute(entry.routeKey)) {
     return "an /api/instance/* route must declare elevated: true, or elevated: false with a written reason";
   }
-  const capability = isCapabilityPolicy(entry.policy)
-    ? entry.policy.capability
-    : "unknown";
+  const [capability = "unknown"] = authorityGrantingCapabilitiesOf(
+    entry.policy,
+  );
   return `${capability} is in AUTHORITY_GRANTING — declare elevated: true, or elevated: false with a written reason`;
 }
 

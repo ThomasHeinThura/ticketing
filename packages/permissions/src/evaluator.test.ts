@@ -166,6 +166,44 @@ describe("authority", () => {
       }),
     ).toBe(false);
   });
+
+  it("M1: an api_key identity with no keyCapabilities holds no capability at all — missing key data must never widen authority", () => {
+    // A key row with a null capability column, or a resolver branch that threw and was
+    // swallowed: `credential` is unmistakably "api_key", but `keyCapabilities` never arrived.
+    // An instance-scope grant so the unrelated tier clamp (finding 6) is not itself what
+    // denies this — the ONLY thing standing between this identity and instance:admin is the
+    // API-key clamp under test.
+    const noKeyData = {
+      credential: "api_key" as const,
+      authority: [
+        grant({
+          roleKey: "instance_admin",
+          scope: "instance",
+          scopeId: null,
+          rank: 100,
+          capabilities: ["instance:admin"],
+        }),
+      ],
+      // keyCapabilities intentionally omitted — the invariant violation under test.
+    };
+    expect(can(noKeyData, "instance:admin", "instance", {})).toBe(false);
+
+    // A session identity with no keyCapabilities is the ordinary, invariant-respecting case
+    // and must still get its full RBAC — this is not a blanket "no keyCapabilities ⇒ deny".
+    const sessionIdentity = {
+      credential: "session" as const,
+      authority: [
+        grant({
+          roleKey: "instance_admin",
+          scope: "instance",
+          scopeId: null,
+          rank: 100,
+          capabilities: ["instance:admin"],
+        }),
+      ],
+    };
+    expect(can(sessionIdentity, "instance:admin", "instance", {})).toBe(true);
+  });
 });
 
 describe("reach", () => {
@@ -529,6 +567,74 @@ describe("evaluatePolicy", () => {
           identity: identity({
             authority: [grant({ capabilities: ["work_item:update"] })],
           }),
+          scope: WORK_ITEM_SCOPE,
+        }),
+      ).allowed,
+    ).toBe(false);
+  });
+
+  it("M3: orSelfTarget dispatches on the declared predicate and fails closed on an unrecognised one", () => {
+    // Mirrors `ownerPredicateHolds`'s own coverage: a predicate string outside the closed
+    // `BODY_PREDICATES` set must never fall back to whichever check happens to be hard-coded
+    // — it must deny, the same way `ownerPredicateHolds`'s `default` case does. The identity
+    // holds the branch's capability and the body's assigneeId genuinely matches the actor, so
+    // the ONLY thing standing between allow and deny is the predicate dispatch itself.
+    const policy: Policy = {
+      capability: "work_item:delete",
+      scope: "work_item",
+      scopeSource: "row",
+      reach: "required",
+      orSelfTarget: {
+        // A registry entry that never met `validatePolicy` (JSON, a plugin, a corrupted row) —
+        // outside the closed BODY_PREDICATES set `validatePolicy` checks membership against.
+        predicate: "some.garbage.predicate" as never,
+        capability: "work_item:update",
+      },
+    };
+    const decision = evaluatePolicy(
+      policy,
+      context({
+        body: { assigneeId: "person-1" },
+        identity: identity({
+          authority: [grant({ capabilities: ["work_item:update"] })],
+        }),
+        scope: WORK_ITEM_SCOPE,
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+  });
+
+  it("L9: a future createdAt does not leave the withinMinutes window permanently open", () => {
+    const policy: Policy = {
+      capability: "comment:update_any",
+      scope: "work_item",
+      scopeSource: "row",
+      reach: "required",
+      orOwner: {
+        predicate: "row.person_id === identity.personId",
+        capability: "comment:update_own",
+        withinMinutes: 15,
+      },
+    };
+    const owner = identity({
+      authority: [grant({ capabilities: ["comment:update_own"] })],
+    });
+    const now = new Date("2026-09-06T12:00:00Z");
+
+    // Clock skew, an importer preserving a source system's original timestamp, or any path
+    // that lets a client supply created_at: this row's createdAt is an hour AHEAD of now, so
+    // `now - createdAt` is negative — and a negative number is `<=` every positive window
+    // bound, which used to read as "inside the window forever".
+    expect(
+      evaluatePolicy(
+        policy,
+        context({
+          identity: owner,
+          now,
+          row: {
+            personId: "person-1",
+            createdAt: new Date("2026-09-06T13:00:00Z"),
+          },
           scope: WORK_ITEM_SCOPE,
         }),
       ).allowed,

@@ -294,14 +294,22 @@ type Policy =
   | ({ public: true; reason: string } & PublicFlags)                       // 4. unauthenticated, with a stated reason
   | ({ delegated: 'better-auth' | 'websocket' | 'metrics' | 'scim'; reason: string } & Flags); // 5. mounts outside the session model
 
-type Flags = { elevated?: boolean; elevationExemptionReason?: string; sessionOnly?: true };
+// A union, not a flat object: elevationExemptionReason states a reason for NOT requiring
+// elevation, so it is representable only alongside elevated: false, in either direction —
+// elevated: false with no reason, and a reason attached while elevated isn't false, are both
+// unrepresentable here and both refused again at registry build time (#21).
+type Flags =
+  | { elevated?: true; sessionOnly?: true; elevationExemptionReason?: undefined }
+  | { elevated: false; sessionOnly?: true; elevationExemptionReason: string };
 
 // Kind 4 has no identity, so there is no session to require and nothing to re-authenticate.
 // Those flags are REFUSED at declaration time rather than accepted and ignored — a flag that
 // a kind cannot enforce used to be silently inert, which is how a control gets documented,
 // tested and absent at the same time. `elevated: false` stays legal: it is the written
-// waiver `GET /api/instance/status` already relies on.
-type PublicFlags = { elevated?: false; elevationExemptionReason?: string; sessionOnly?: never };
+// waiver `GET /api/instance/status` already relies on. Same bidirectional coherence as Flags.
+type PublicFlags =
+  | { elevated?: undefined; sessionOnly?: never; elevationExemptionReason?: undefined }
+  | { elevated: false; sessionOnly?: never; elevationExemptionReason: string };
 
 // Both are REQUIRED, and neither has a default. A security-relevant fact that can be omitted
 // will be omitted, and an omitted one used to mean ALLOW. The exemption is the only way to
@@ -326,8 +334,8 @@ type BodyPredicate = 'body.assigneeId === identity.personId';
 type PortalPredicate = 'own_request' | 'own_organisation' | 'addressed_approval' | 'own_submission';
 ```
 
-Two fields in that block were tightened while the registry was built (#7), because the
-document contradicted itself in both places:
+Three fields in that block were tightened while the registry was built (#7, #21), because the
+document contradicted itself in each place:
 
 - **`elevated` is a boolean, not `true`.** The elevation coverage test below demands "an
   explicit `elevated: false` with a written reason" for a route the rule catches but that does
@@ -338,6 +346,12 @@ document contradicted itself in both places:
   `work_item:assign`. The roles table above already settles what the conjunction is —
   "self-assignment by a `member` is `work_item:update` on an item where the new assignee is
   the actor" — so the branch names it.
+- **`elevationExemptionReason` coherence runs both directions (#21).** The forward direction —
+  `elevated: false` demands a reason — was already caught. `elevationExemptionReason` present
+  while `elevated` is `true` or omitted was not: a reason attached to a route that isn't
+  actually exempting anything from elevation is the same class of lie in the other direction,
+  and both `Flags` and `PublicFlags` above now make it unrepresentable, with `validatePolicy`
+  refusing it again at registry build time for a policy map that never met the type checker.
 
 - **Kind 1** is the normal case. The owner branch is a **conjunction, not a bypass**: the
   primary capability is checked first, and if it is absent the request is allowed only when
@@ -577,6 +591,14 @@ creation, because `is_mcp` is self-declared at creation and is therefore not a s
 boundary ([webhooks-and-api-keys.md](../03-features/webhooks-and-api-keys.md) `AK-9`).
 Workspace service keys cannot be MCP keys (a schema `CHECK`,
 [data-model.md](data-model.md) §2).
+
+**Missing key-capability data clamps to nothing, never to the owner's full RBAC (#21).** The
+∩ above presumes a key capability subset actually loaded. A null `capabilities` column on the
+key row, or a resolver branch that threw and was swallowed, must never be read as "no subset to
+intersect with" — that is the fail-open reading, and it would let the request run at the
+owner's full authority instead of the key's frozen one. `can()` in `evaluator.ts` enforces the
+invariant `credential === "api_key" ⟹ keyCapabilities !== undefined` directly: an `api_key`
+credential with no loaded capability subset holds no capability at all.
 
 ## Anti-patterns
 

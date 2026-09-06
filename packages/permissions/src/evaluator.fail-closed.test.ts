@@ -222,3 +222,25 @@ describe("missing security context is never allow", () => {
     ).toMatchObject({ allowed: false, status: 401 });
   });
 });
+
+describe("L13: the five kind guards test the discriminant's value, not merely its presence", () => {
+  // `validatePolicy` is exported and is the natural entry point for a JSON- or plugin-supplied
+  // policy map that never met the type checker — `isPublicPolicy` et al. used to read
+  // `"public" in policy`, true for `{ public: false }` just as much as `{ public: true }`.
+  // `evaluatePolicy` uses the same guards on the same untyped kind of input, so the identical
+  // gap reached runtime, not only the registry.
+  it("does not evaluate a policy carrying public: false as unconditionally public", () => {
+    const policy = {
+      public: false,
+      reason: "not actually public",
+    } as unknown as Policy;
+
+    const decision = evaluatePolicy(policy, {
+      identity: null,
+      target: {},
+    } as unknown as PolicyContext);
+
+    // On HEAD this is `{ allowed: true, requiresElevation: false }` for every caller.
+    expect(decision.allowed).toBe(false);
+  });
+});

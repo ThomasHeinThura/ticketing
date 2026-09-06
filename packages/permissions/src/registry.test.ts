@@ -8,6 +8,7 @@ import {
 import {
   capabilitiesReferencedBy,
   createPolicyRegistry,
+  PolicyRegistryError,
   validatePolicy,
 } from "./registry";
 
@@ -198,6 +199,57 @@ describe("createPolicyRegistry", () => {
     }
     expect(message).toMatch(/unknown capability/);
     expect(message).toMatch(/must state a reason/);
+  });
+
+  it("L11: a policy matching none of the five kinds does not crash the batch — every problem still surfaces, as PolicyRegistryError", () => {
+    // `policyKind` throws for a policy matching none of the five kinds. `validatePolicy`
+    // already turns that throw into a problem string; a second, unguarded call to
+    // `policyKind` further down the same function must not let that same throw escape
+    // uncaught — that would abort the whole batch, discard every problem already collected
+    // (here, the "GET /api/b" route's, listed second), and replace the promised aggregated
+    // `PolicyRegistryError` with a bare `Error` naming only the first bad policy.
+    let thrown: unknown;
+    try {
+      createPolicyRegistry([
+        source("bad/policy.ts", {
+          "GET /api/a": {} as unknown as Policy,
+          "GET /api/b": {
+            capability: "not:real",
+            scope: "project",
+            scopeSource: "row",
+            reach: "required",
+          } as unknown as Policy,
+        }),
+      ]);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(PolicyRegistryError);
+    expect((thrown as Error).message).toMatch(/none of the five kinds/);
+    expect((thrown as Error).message).toMatch(/unknown capability/);
+  });
+
+  it("L10: has()/get() do not throw on a method outside HTTP_METHODS", () => {
+    const registry = createPolicyRegistry([
+      source("a/policy.ts", {
+        "GET /api/project/{id}": {
+          capability: "project:read",
+          scope: "project",
+          scopeSource: "row",
+          reach: "required",
+        },
+      }),
+    ]);
+    // Hono's app.on(["PURGE", "QUERY", "LOCK"], …) can legitimately produce a router entry at
+    // one of these methods; none of them is in the closed HTTP_METHODS set any policy map key
+    // can use, so `computeRouteCoverage` calling has()/get() on such a route must see an
+    // ordinary miss — surfacing it as uncovered — never a bare, run-aborting `Error`.
+    for (const method of ["PURGE", "QUERY", "LOCK"]) {
+      expect(() => registry.has(`${method} /api/some/path`)).not.toThrow();
+      expect(registry.has(`${method} /api/some/path`)).toBe(false);
+      expect(() => registry.get(`${method} /api/some/path`)).not.toThrow();
+      expect(registry.get(`${method} /api/some/path`)).toBeUndefined();
+    }
   });
 });
 
@@ -515,6 +567,69 @@ describe("validatePolicy — there is no sixth kind", () => {
         sessionOnly: true,
       }),
     ).toEqual([]);
+  });
+
+  it("L11: does not throw when a public policy's reason was never a string", () => {
+    // A JSON- or plugin-supplied policy map that never met the type checker: `reason` absent
+    // (or any non-string value) would make an unguarded `.trim()` throw a raw TypeError
+    // instead of reporting a validation problem.
+    const problems = validatePolicy("GET /api/x", {
+      public: true,
+    } as unknown as Policy);
+    expect(problems.length).toBeGreaterThan(0);
+    expect(problems.join("\n")).toMatch(/must state a reason/);
+  });
+
+  it("L11: does not throw when a delegated policy's reason was never a string", () => {
+    const problems = validatePolicy("GET /api/x", {
+      delegated: "metrics",
+    } as unknown as Policy);
+    expect(problems.length).toBeGreaterThan(0);
+    expect(problems.join("\n")).toMatch(
+      /must say what it delegates to and why/,
+    );
+  });
+
+  it("L13: a policy carrying public: false (and no other kind) is refused, not validated as public", () => {
+    // `"public" in policy` is true for `{ public: false }` just as much as `{ public: true }` —
+    // presence, not value. This policy names no capability, no self param, no portal
+    // predicate, no delegated surface either; the five kind guards must test the
+    // discriminant's actual value so this is refused as matching none of the five kinds,
+    // rather than silently validated as a legitimate, fully public kind-4 policy.
+    const problems = validatePolicy("GET /api/x", {
+      public: false,
+      reason: "not actually public",
+    } as unknown as Policy);
+    expect(problems).not.toEqual([]);
+    expect(problems.join("\n")).toMatch(/none of the five kinds/);
+  });
+
+  it("Finding B: elevationExemptionReason present while elevated is true is refused (the reverse direction)", () => {
+    // The forward direction — elevated: false with no reason — was already caught. A reason
+    // attached to a route that isn't actually exempting anything from elevation is the same
+    // class of lie in the other direction.
+    const problems = validatePolicy("GET /api/x", {
+      capability: "project:read",
+      scope: "project",
+      scopeSource: "row",
+      reach: "required",
+      elevated: true,
+      elevationExemptionReason: "this reason should not be here",
+    } as unknown as Policy);
+    expect(problems).not.toEqual([]);
+    expect(problems.join("\n")).toMatch(/only meaningful with elevated: false/);
+  });
+
+  it("Finding B: elevationExemptionReason present while elevated is omitted is refused", () => {
+    const problems = validatePolicy("GET /api/x", {
+      capability: "project:read",
+      scope: "project",
+      scopeSource: "row",
+      reach: "required",
+      elevationExemptionReason: "this reason should not be here either",
+    } as unknown as Policy);
+    expect(problems).not.toEqual([]);
+    expect(problems.join("\n")).toMatch(/only meaningful with elevated: false/);
   });
 });
 

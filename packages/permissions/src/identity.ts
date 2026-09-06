@@ -83,6 +83,13 @@ export type ResolvedIdentity = {
   /**
    * The capability subset frozen onto an API key at creation, when the request carries one.
    * Effective authority is the intersection of the owner's RBAC and this set.
+   *
+   * **Invariant:** `credential === "api_key" ⟹ keyCapabilities !== undefined`. A key row with
+   * a null `capabilities` column, or a resolver branch that threw and was swallowed, must never
+   * reach the evaluator as "no key capabilities to intersect with" — that reads as "unclamped",
+   * i.e. the owner's full RBAC. `can()` in `evaluator.ts` enforces this: an `api_key` credential
+   * with `keyCapabilities` absent holds no capability at all, never the owner's authority.
+   * Missing key data must never widen what a key may do.
    */
   readonly keyCapabilities?: readonly string[];
 };

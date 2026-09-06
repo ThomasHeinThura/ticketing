@@ -212,13 +212,29 @@ export type DelegatedPolicy = {
  *   impersonation session is refused `403 session_required` **before** the policy runs.
  * - `elevated: false` is not a no-op: it is the explicit, reasoned opt-out that the elevation
  *   coverage test demands of an `/api/instance/*` route or an authority-granting capability.
+ *
+ * **Coherence runs both directions.** `elevationExemptionReason` states a reason for *not*
+ * requiring elevation, so it means something only when `elevated` is exactly `false` — a
+ * route declaring `elevated: true` (or omitting `elevated`) has no elevation being exempted
+ * from, and a reason attached there is the same class of lie as `elevated: false` with no
+ * reason: a written statement that describes nothing real. The union below makes the forward
+ * direction (`elevated: false` demands a reason) **and** the reverse direction (a reason
+ * demands `elevated: false`) unrepresentable on a well-typed literal; `validatePolicy` in
+ * `registry.ts` refuses both again at runtime, because a policy map can arrive from JSON or a
+ * plugin and never meet this type.
  */
-export type ElevationFlags = {
-  readonly elevated?: boolean;
-  readonly sessionOnly?: true;
-  /** Required when `elevated: false` is declared on a route the elevation rule would otherwise catch. */
-  readonly elevationExemptionReason?: string;
-};
+export type ElevationFlags =
+  | {
+      readonly elevated?: true;
+      readonly sessionOnly?: true;
+      readonly elevationExemptionReason?: undefined;
+    }
+  | {
+      readonly elevated: false;
+      readonly sessionOnly?: true;
+      /** Required: the explicit, reasoned opt-out the elevation rule demands. */
+      readonly elevationExemptionReason: string;
+    };
 
 /**
  * The flags a **public** route may declare — a strictly smaller set than `ElevationFlags`,
@@ -232,12 +248,21 @@ export type ElevationFlags = {
  * - `elevated: false` **stays**, and is load-bearing: it is not a security constraint but the
  *   written waiver the elevation rule demands of an `/api/instance/*` route.
  *   `GET /api/instance/status` is exactly that route.
+ *
+ * Same bidirectional coherence as `ElevationFlags`: `elevationExemptionReason` is representable
+ * only alongside `elevated: false`, never alongside an omitted `elevated`.
  */
-export type PublicElevationFlags = {
-  readonly elevated?: false;
-  readonly sessionOnly?: never;
-  readonly elevationExemptionReason?: string;
-};
+export type PublicElevationFlags =
+  | {
+      readonly elevated?: undefined;
+      readonly sessionOnly?: never;
+      readonly elevationExemptionReason?: undefined;
+    }
+  | {
+      readonly elevated: false;
+      readonly sessionOnly?: never;
+      readonly elevationExemptionReason: string;
+    };
 
 /**
  * Every flag above is read by `evaluatePolicy` **before any successful decision returns**, on
@@ -260,34 +285,58 @@ export const POLICY_KINDS = [
 
 export type PolicyKind = (typeof POLICY_KINDS)[number];
 
+/**
+ * The five kind checks below test the discriminant's **value**, not merely whether the key
+ * is present on the object. `"x" in policy` is true for `{ x: undefined }` and, for a boolean
+ * discriminant, for `{ x: false }` too — both of which are real shapes a hand-built, JSON- or
+ * plugin-supplied policy map can carry, and `validatePolicy` (the runtime entry point for
+ * exactly that untrusted-map case) is built entirely on these five functions. A well-typed
+ * `Policy` literal can never produce the gap — `CapabilityPolicy.capability`, `SelfPolicy.self`
+ * and `PublicPolicy.public` all require a real value already — so this is defence in depth for
+ * the path the type system does not reach, not a behaviour change for anything `tsc` accepted.
+ */
 export function isCapabilityPolicy(
   policy: Policy,
 ): policy is CapabilityPolicy & ElevationFlags {
-  return "capability" in policy;
+  return (
+    "capability" in policy &&
+    (policy as { readonly capability?: unknown }).capability !== undefined
+  );
 }
 
 export function isSelfPolicy(
   policy: Policy,
 ): policy is SelfPolicy & ElevationFlags {
-  return "self" in policy;
+  return (
+    "self" in policy && (policy as { readonly self?: unknown }).self === true
+  );
 }
 
 export function isPortalPolicy(
   policy: Policy,
 ): policy is PortalPolicy & ElevationFlags {
-  return "portal" in policy;
+  return (
+    "portal" in policy &&
+    (policy as { readonly portal?: unknown }).portal !== undefined
+  );
 }
 
 export function isPublicPolicy(
   policy: Policy,
 ): policy is PublicPolicy & PublicElevationFlags {
-  return "public" in policy;
+  return (
+    "public" in policy &&
+    (policy as { readonly public?: unknown }).public === true
+  );
 }
 
 export function isDelegatedPolicy(
   policy: Policy,
 ): policy is DelegatedPolicy & ElevationFlags {
-  return "delegated" in policy;
+  return (
+    "delegated" in policy &&
+    (policy as { readonly delegated?: unknown }).delegated !== undefined
+  );
 }
 
 /** Which of the five kinds this is. Throws for anything that is not one of them. */

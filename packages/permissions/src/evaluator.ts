@@ -254,9 +254,16 @@ export function authorityFor(
  *
  * `can(identity, 'work_item:assign', 'project', { projectId })`. Authority only — this
  * function does not know what reach is, and it never will.
+ *
+ * `identity.credential` is optional in the parameter type — a caller that has no notion of
+ * credential kind (a test fixture built before this field existed, a future caller with no API
+ * key path at all) still compiles, and is treated as "not an API key", which is the correct
+ * reading for anything that omits it. Every real `ResolvedIdentity` always supplies it.
  */
 export function can(
-  identity: Pick<ResolvedIdentity, "authority" | "keyCapabilities">,
+  identity: Pick<ResolvedIdentity, "authority" | "keyCapabilities"> & {
+    readonly credential?: ResolvedIdentity["credential"];
+  },
   capability: Capability,
   scope: Scope,
   target: ScopeTarget,
@@ -266,6 +273,21 @@ export function can(
   } = {},
 ): boolean {
   if (!authorityFor(identity, scope, target, options).has(capability)) {
+    return false;
+  }
+
+  // Invariant (`identity.ts`): `credential === "api_key" ⟹ keyCapabilities !== undefined`. A
+  // null capability column on the key row, or a resolver branch that threw and was swallowed,
+  // must never be read as "no clamp to apply" — that is exactly the fail-open shape that would
+  // let a key operate at its owner's full authority. Missing key-capability data on an API-key
+  // credential holds no capability at all, however broad the owner's RBAC, and there is no
+  // "authoritative safe default" documented anywhere in `docs/01-architecture/` or
+  // `identity.ts` that would license doing otherwise — so this fails closed rather than
+  // guessing one.
+  if (
+    identity.credential === "api_key" &&
+    identity.keyCapabilities === undefined
+  ) {
     return false;
   }
 
@@ -685,10 +707,27 @@ export type PolicyDecision =
        */
       readonly status: 401 | 403 | 404 | 500;
       readonly code: string;
+      /**
+       * **Client-safe by construction.** This is the one field a middleware may forward
+       * verbatim without reviewing what it says — every denial that could otherwise name a
+       * parameter, a predicate, a declared-vs-resolved scope, or which security-relevant fact
+       * was missing carries that detail in `diagnostic` instead, never here. A middleware that
+       * naively serialises `reason` to the client is safe on every decision this evaluator can
+       * return, not safe by convention that has to be remembered per decision code.
+       */
       readonly reason: string;
       readonly missingCapability?: Capability;
       /** Set only with `code: "policy_context_incomplete"` — for the log, not for the wire. */
       readonly missingContext?: readonly string[];
+      /**
+       * Log-only, like `missingContext` — **never** put this on the wire. Where `reason` is
+       * deliberately generic, this carries what actually happened: the missing field, the
+       * parameter or predicate name, the policy kind, the scope declared versus the scope
+       * resolved — whatever a developer needs to fix the caller or the policy, and exactly what
+       * an attacker must not learn about this route's internal authorization structure from a
+       * forwarded error body.
+       */
+      readonly diagnostic?: string;
     };
 
 /**
@@ -771,15 +810,33 @@ export type PolicyContext = {
   readonly onRefusedCapability?: RefusedCapabilityHandler;
 };
 
+/**
+ * The single client-safe message for every `policy_context_incomplete` denial. It says nothing
+ * about which field, parameter, predicate or policy kind was involved — that detail is exactly
+ * what `docs/01-architecture/rbac.md` calls internal authorization structure, and it goes in
+ * `diagnostic`, never here. `500` already tells the caller this is a server-side problem, not
+ * something they can fix by trying a different value.
+ */
+const CONTEXT_INCOMPLETE_CLIENT_REASON =
+  "The server could not evaluate this request's authorization";
+
+/**
+ * `missing` names the `PolicyContext` field for `missingContext` (already log-only by
+ * convention); `diagnostic` is the specific, structure-revealing explanation — the parameter
+ * name, the predicate, the declared scope — for the log, never the wire. `reason` is always
+ * `CONTEXT_INCOMPLETE_CLIENT_REASON`, so a middleware forwarding `reason` alone leaks nothing
+ * about this route's policy no matter which of the seven call sites below produced the denial.
+ */
 const DENY_CONTEXT_INCOMPLETE = (
   missing: string,
-  reason: string,
+  diagnostic: string,
 ): PolicyDecision => ({
   allowed: false,
   status: 500,
   code: "policy_context_incomplete",
-  reason,
+  reason: CONTEXT_INCOMPLETE_CLIENT_REASON,
   missingContext: [missing],
+  diagnostic,
 });
 
 const DENY_UNAUTHENTICATED = {
@@ -941,7 +998,11 @@ export function evaluatePolicy(
         allowed: false,
         status: 404,
         code: "not_found",
-        reason: `Outside the ${policy.predicate} predicate`,
+        // Generic and 404-shaped on purpose, like the reach check below: a 404 must not be
+        // distinguishable from an ordinary not-found, and naming the predicate would tell an
+        // unauthenticated-for-this-row caller exactly which internal rule excluded them.
+        reason: "Out of reach",
+        diagnostic: `Outside the ${policy.predicate} predicate`,
       };
     }
     return { allowed: true, requiresElevation };
@@ -1033,8 +1094,11 @@ export function evaluatePolicy(
   // The self-target branch is the same shape over the request body.
   if (
     policy.orSelfTarget !== undefined &&
-    context.body?.assigneeId != null &&
-    context.body.assigneeId === identity.personId &&
+    selfTargetPredicateHolds(
+      policy.orSelfTarget.predicate,
+      context,
+      identity.personId,
+    ) &&
     can(
       identity,
       policy.orSelfTarget.capability,
@@ -1107,7 +1171,8 @@ function resolveScopeForPolicy(
         allowed: false,
         status: 403,
         code: "scope_mismatch",
-        reason: `This route's policy declares scope "${policy.scope}", and the resolved scope was "${context.scope.kind}"`,
+        reason: "Forbidden",
+        diagnostic: `This route's policy declares scope "${policy.scope}", and the resolved scope was "${context.scope.kind}"`,
       },
     };
   }
@@ -1119,7 +1184,8 @@ function resolveScopeForPolicy(
         allowed: false,
         status: 403,
         code: "scope_source_mismatch",
-        reason: `This route's policy declares scopeSource "${policy.scopeSource}", and the resolved scope came from "${String(source)}"`,
+        reason: "Forbidden",
+        diagnostic: `This route's policy declares scopeSource "${policy.scopeSource}", and the resolved scope came from "${String(source)}"`,
       },
     };
   }
@@ -1147,6 +1213,31 @@ function ownerPredicateHolds(
   }
 }
 
+/**
+ * Does `predicate` hold against the parsed request body, for an `orSelfTarget` branch?
+ *
+ * Mirrors `ownerPredicateHolds`: dispatched on the predicate string rather than assumed, and
+ * `default` fails closed. `BODY_PREDICATES` is a closed set of exactly one member today, but
+ * `validatePolicy` only checks that `policy.orSelfTarget.predicate` is a member of that set —
+ * it never dispatches on it, so a second predicate added to the set in `policy.ts` without a
+ * matching case here must deny, not silently fall back to whichever check happened to be
+ * hard-coded first.
+ */
+function selfTargetPredicateHolds(
+  predicate: string,
+  context: PolicyContext,
+  personId: string,
+): boolean {
+  switch (predicate) {
+    case "body.assigneeId === identity.personId":
+      return (
+        context.body?.assigneeId != null && context.body.assigneeId === personId
+      );
+    default:
+      return false;
+  }
+}
+
 function isWithinWindow(
   withinMinutes: number | undefined,
   context: PolicyContext,
@@ -1155,7 +1246,13 @@ function isWithinWindow(
   const createdAt = context.row?.createdAt;
   if (createdAt === undefined) return false;
   const now = context.now ?? new Date();
-  return now.getTime() - createdAt.getTime() <= withinMinutes * 60_000;
+  const elapsedMs = now.getTime() - createdAt.getTime();
+  // Signed subtraction: a `createdAt` in the future (clock skew, an importer preserving a
+  // source system's original timestamp, or any path that lets a client supply `created_at`)
+  // makes `elapsedMs` negative, and a negative number is `<=` every positive window bound —
+  // the edit window would be open forever instead of not yet started. Out of window either
+  // way: a row that has not "started" its window yet is not inside it.
+  return elapsedMs >= 0 && elapsedMs <= withinMinutes * 60_000;
 }
 
 /**
