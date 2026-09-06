@@ -7,6 +7,7 @@
     "check:env": "node ./scripts/ci/check-env.mjs",
     "check:i18n": "node ./scripts/i18n/check.mjs",
     "check:openapi": "node ./scripts/ci/check-openapi.mjs",
+    "check:pr-template": "node ./scripts/ci/check-pr-template.mjs",
     "check:reviews": "node ./scripts/ci/check-reviews.mjs",
     "check:skips": "node ./scripts/ci/check-skips.mjs",
     "check:vocabulary": "node ./scripts/ci/check-vocabulary.mjs",
