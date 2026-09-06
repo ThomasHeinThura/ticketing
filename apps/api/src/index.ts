@@ -39,6 +39,7 @@ import taskRelation from "./task-relation";
 import timeEntry from "./time-entry";
 import user from "./user";
 import getAvatar from "./user/controllers/get-avatar";
+import { buildAuthRequest } from "./utils/auth-request";
 import { authenticateApiRequest } from "./utils/authenticate-api-request";
 import { authorizeAssetAccess } from "./utils/authorize-asset-access";
 import { getInvitationDetails } from "./utils/check-registration-allowed";
@@ -233,7 +234,7 @@ export function createApp() {
         },
       },
     }),
-    async (c) => auth.handler(c.req.raw),
+    async (c) => auth.handler(buildAuthRequest(c)),
   );
 
   api.openapi(
@@ -479,7 +480,7 @@ export function createApp() {
         }
         return c.redirect(deviceUrl.toString(), 302);
       }
-      return auth.handler(c.req.raw);
+      return auth.handler(buildAuthRequest(c));
     },
   );
 
@@ -495,7 +496,7 @@ export function createApp() {
 
       // Preserve Better Auth bearer session tokens on auth routes.
       if (session?.session && session.user) {
-        return auth.handler(c.req.raw);
+        return auth.handler(buildAuthRequest(c));
       }
 
       const headers = new Headers(c.req.raw.headers);
@@ -503,14 +504,10 @@ export function createApp() {
       // Better Auth API key plugin validates from x-api-key by default.
       headers.set("x-api-key", bearerToken);
 
-      return auth.handler(
-        new Request(c.req.raw, {
-          headers,
-        }),
-      );
+      return auth.handler(buildAuthRequest(c, headers));
     }
 
-    return auth.handler(c.req.raw);
+    return auth.handler(buildAuthRequest(c));
   });
 
   api.use("*", async (c, next) => {

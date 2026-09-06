@@ -44,6 +44,7 @@ import { isCloud } from "./utils/is-cloud";
 import { isDisposableEmail } from "./utils/is-disposable-email";
 import { isLocalSignInPath } from "./utils/is-local-sign-in-path";
 import { resolveAuthSecret } from "./utils/require-auth-secret";
+import { TRUSTED_CLIENT_IP_HEADER } from "./utils/resolve-client-ip";
 
 config();
 
@@ -146,25 +147,6 @@ function getAuthEmailCopy(locale?: string | null) {
     magicLinkSubject: "Login for TaskDesk",
     otpSubject: "Authentication code for TaskDesk",
   };
-}
-
-const DEFAULT_TRUSTED_PROXIES = [
-  "127.0.0.0/8",
-  "::1/128",
-  "10.0.0.0/8",
-  "172.16.0.0/12",
-  "192.168.0.0/16",
-];
-
-function trustedProxies(): string[] {
-  const raw = process.env.TRUSTED_PROXIES?.trim();
-  if (!raw) {
-    return DEFAULT_TRUSTED_PROXIES;
-  }
-  return raw
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
 }
 
 export const auth = betterAuth({
@@ -521,10 +503,16 @@ export const auth = betterAuth({
     },
   },
   rateLimit: {
-    // Enable in cloud; self-hosted instances opt in by setting KANEO_CLOUD.
-    // Default better-auth rate-limit only kicks in for production; we keep the
-    // global limits conservative and tighten signup/invite via customRules.
-    enabled: isCloud(),
+    // Enabled for EVERY deployment. kaneo used `enabled: isCloud()`, so
+    // authentication abuse protection was off for exactly the shape TaskDesk
+    // ships — self-hosted — and the sign-up and invite throttles below, which
+    // exist specifically to stop abuse, were inert.
+    //
+    // This is deliberately landed in the SAME change as the client-IP fix
+    // above. Enabling a limiter whose key a caller can choose achieves
+    // nothing: it would only have handed attackers a free key-rotation
+    // primitive. Identity first, then the limit.
+    enabled: true,
     window: 10,
     max: 100,
     customRules: {
@@ -746,8 +734,19 @@ export const auth = betterAuth({
   },
   advanced: {
     ipAddress: {
-      ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"],
-      trustedProxies: trustedProxies(),
+      // ONLY the internal header, which utils/auth-request.ts strips from every
+      // inbound request and then sets from utils/resolve-client-ip.ts.
+      //
+      // kaneo read ["cf-connecting-ip", "x-forwarded-for"] against a CIDR set
+      // that defaulted to all of RFC1918. `cf-connecting-ip` is single-valued
+      // and unvalidatable, so a caller chose its own rate-limit bucket and
+      // could rotate it per request; and a CIDR set is the wrong shape anyway,
+      // because on a shared cluster every pod is inside RFC1918.
+      //
+      // TASKDESK_TRUST_PROXY is a HOP COUNT, per configuration-reference.md,
+      // and counting from the right is the only derivation a caller cannot
+      // prepend to. No trustedProxies list: the value here is already resolved.
+      ipAddressHeaders: [TRUSTED_CLIENT_IP_HEADER],
     },
     defaultCookieAttributes: getDefaultCookieAttributes({
       apiUrl,
