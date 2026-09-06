@@ -17,6 +17,48 @@ Newest first.
 
 ---
 
+### 2026-09-06 · Model allocation — the orchestrator may be Opus, every spawned agent is Sonnet
+
+**Decision:** the **top-level orchestrator may remain Opus**. **Every** spawned agent —
+subagent, background agent, workflow agent, adversarial prober, review-evidence preparer —
+**must be Sonnet**, set explicitly at spawn time. No Opus subagents. No Fable subagents. No
+Opus review swarms. If a tool cannot guarantee Sonnet, do not spawn it: do the work in the
+top-level session, or defer it.
+
+Sonnet **may** implement, test, reproduce a vulnerability, probe adversarially, and prepare
+review evidence.
+
+Sonnet **may not** satisfy a mandatory independent Opus security review, sign off work the
+orchestrator authored, downgrade the reviewer requirement, or waive the gate. Neither may the
+orchestrator call its own remediation an independent review.
+
+**The mandatory independent Opus security review is unchanged.** When it is required and no
+independent Opus capacity is available, the pull request **waits**, marked:
+
+> **SECURITY RE-REVIEW PENDING — OPUS CAPACITY**
+
+Capacity exhaustion means wait, not downgrade. Sonnet is never substituted for speed.
+
+Default scale for analysis: **one** Sonnet implementation agent per active code slice, plus
+optionally one adversarial verifier. Sequential focused verification, not fan-out. The
+orchestrator synthesises.
+
+**Why:** on 2026-09-06 two thirteen-agent Opus workflows plus two Opus review agents — 28
+agents — exhausted the organisation's monthly allowance mid-task. Seven died in flight, and
+the ones lost were the expensive ones to lose: five of six adversarial passes, whose entire
+purpose was to catch designs that look right. The cost was not tokens; it was the
+verification step. One of the two adversarial passes that did run **defeated the design it
+attacked**, which is precisely the evidence that the missing five mattered.
+
+**Alternatives:** letting workflows inherit the session model. Rejected — that is the
+mechanism that caused this, silently. Dropping the Opus review requirement to fit the
+budget. Rejected — that trades a hard security gate for throughput, which is the failure this
+project exists to avoid.
+
+**Decided by:** Thomas, 2026-09-06.
+
+---
+
 ### 2026-09-06 · The control plane has one owner, and a source-of-truth hierarchy
 
 **Decision:** eight surfaces are **orchestrator-owned**: `AGENTS.md`, `CLAUDE.md`,

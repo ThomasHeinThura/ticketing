@@ -92,6 +92,38 @@ subagents on Sonnet 5, and its own self-check before declaring "done" (see [veri
 not optional](#verification-is-not-optional)) is not a substitute for the required Opus
 security pass — that is a separate, explicit step.
 
+### The tier a review needs, and the tier a spawned agent may be
+
+Since 2026-09-06 these are two different questions, and the table above answers only the
+first. **Every spawned agent is Sonnet** — subagent, background agent, workflow agent,
+adversarial prober — set explicitly at spawn, because a workflow that inherits the session
+model will quietly pick Opus. No Opus subagents, no Fable subagents, no Opus review swarms.
+Default scale is one Sonnet implementation agent per active code slice, plus optionally one
+adversarial verifier.
+
+So a review the table marks **Opus or Fable, never Sonnet** cannot be *delegated to a spawned
+agent* at all. It has exactly two honest homes:
+
+1. the **top-level session**, when that session is Opus or Fable and is not reviewing its own
+   work; or
+2. a **separate session** at the required tier, queued until capacity exists.
+
+There is no third option, and in particular **the reviewer requirement is not relaxed** to fit
+the budget. When a mandatory independent Opus security review is owed and no independent Opus
+capacity is available, the pull request **waits**, marked **SECURITY RE-REVIEW PENDING — OPUS
+CAPACITY**. Capacity exhaustion means wait, not downgrade.
+
+Sonnet may do everything that *feeds* such a review — read the code, reproduce a
+vulnerability, write the failing test, implement the fix, assemble the evidence. What it may
+not do is *be* the review. Neither may the orchestrator, for work the orchestrator authored:
+that is the "an agent may never approve its own design review" absolute, one seat up.
+
+Why this is written down rather than left to judgement: two thirteen-agent Opus workflows plus
+two Opus review agents exhausted the organisation's monthly allowance mid-task, and the seven
+agents that died in flight were five of six adversarial passes — the step whose whole purpose
+is to catch a design that looks right. One of the two that did run defeated the design it
+attacked (decision log, 2026-09-06).
+
 This does not relax either absolute already stated under [Roles](#roles): an agent of any
 tier may never approve its own design review, and may never waive a quality gate. A
 stronger model reviewing is a stronger check, not a different kind of permission.

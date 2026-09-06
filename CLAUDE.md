@@ -270,9 +270,28 @@ The tier is not a free choice; it tracks who may sign off on what
 
 | Work | Tier |
 | --- | --- |
-| Orchestrating, planning, reviewing | Opus or Fable |
+| Orchestrating, planning, reviewing | Opus or Fable — **top level only** |
 | Implementation against an agreed spec | Sonnet |
 | **Security review** | **Opus. Always. Every pull request, every stage gate.** |
+
+**Every spawned agent is Sonnet.** Subagent, background agent, workflow agent, adversarial
+prober, review-evidence preparer — all Sonnet, set **explicitly** at spawn time, because a
+workflow that inherits the session model will quietly pick Opus. No Opus subagents, no Fable
+subagents, no Opus review swarms. If a tool cannot guarantee Sonnet, do not spawn it: do the
+work at the top level, or defer it.
+
+Default scale: **one** Sonnet implementation agent per active code slice, plus optionally one
+adversarial verifier. Sequential focused verification, not fan-out.
+
+Sonnet may implement, test, reproduce a vulnerability, probe adversarially, and prepare review
+evidence. Sonnet may **not** satisfy the mandatory independent Opus security review, sign off
+work the orchestrator authored, downgrade the reviewer, or waive the gate — and neither may
+the orchestrator call its own remediation an independent review.
+
+When that review is required and no independent Opus capacity exists, the pull request
+**waits**, marked **SECURITY RE-REVIEW PENDING — OPUS CAPACITY**. Capacity exhaustion means
+wait, not downgrade. This is not a budget rule with a security exception; it is a budget rule
+that leaves the security gate exactly where it was (decision log, 2026-09-06).
 
 Three things an agent may never do:
 
