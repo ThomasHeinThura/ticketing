@@ -9,7 +9,7 @@ import {
 
 // R1 (retrofit plan §4, highest silent-failure risk), first half: the
 // rate-limit customRule keyed on the literal path string
-// "/organization/invite-member" -- apps/api/src/auth.ts:565-576, the rule
+// "/organization/invite-member" -- apps/api/src/auth.ts:505-522, the rule
 // itself at auth.ts:520.
 //
 // CORRECTED: an earlier revision of this comment said `rateLimit.enabled:
@@ -33,7 +33,7 @@ import {
 //
 // UNRUN: no PostgreSQL is available in this environment; see the report for
 // how this was verified by reading the source instead.
-describe("R1: rate-limit customRule on /organization/invite-member (auth.ts:565-576)", () => {
+describe("R1: rate-limit customRule on /organization/invite-member (auth.ts:505-522)", () => {
   const CLOUD_ENV: Record<string, string> = { KANEO_CLOUD: "true" };
   const saved: Record<string, string | undefined> = {};
 
@@ -60,7 +60,7 @@ describe("R1: rate-limit customRule on /organization/invite-member (auth.ts:565-
 
   it("allows 5 invite-member requests within the 60s window and rejects the 6th with 429", async () => {
     // customRules["/organization/invite-member"] = { window: 60, max: 5 }
-    // -- apps/api/src/auth.ts:574. Six rapid calls from the same caller
+    // -- apps/api/src/auth.ts:520. Six rapid calls from the same caller
     // should see the first 5 succeed and the 6th blocked. If invitations
     // ever move to a new path (S6a) without moving this rule along
     // (auth.ts:520 in the retrofit plan's line numbers, :574 here), this
