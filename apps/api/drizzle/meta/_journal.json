@@ -330,6 +330,13 @@
 			"when": 1788675923637,
 			"tag": "0046_drop_inherited_integrations",
 			"breakpoints": true
+		},
+		{
+			"idx": 47,
+			"version": "7",
+			"when": 1788678300325,
+			"tag": "0047_drop_billing",
+			"breakpoints": true
 		}
 	]
 }
