@@ -45,12 +45,12 @@ stages below.
 │ gitleaks             no secrets in the diff      │
 │ pnpm check:queries   no db.select() outside repo │
 │ pnpm check:inventory screen counts match rows    │
-│ pnpm check:reviews   spec in build ⇒ review secti│
-│ pnpm check:env       process.env ⊆ configuration-│
-│ pnpm check:vocabulary identifiers exist in author│
-│ pnpm check:skips     no .skip / .only / describe.│
-│ pr-template check    sections present; reviewer ≠│
-│ no-inherited-routes  no public-project/github/… r│
+│ pnpm check:reviews   review section empty        │
+│ pnpm check:env       no stray process.env        │
+│ pnpm check:vocabulary identifiers registered     │
+│ pnpm check:skips     no .skip / .only            │
+│ pr-template check    sections filled, tiers named│
+│ no-inherited-routes  removals stay removed       │
 ├─ Test ───────────────────────────────────────────┤
 │ pnpm test                unit + component        │
 │ pnpm test:coverage       90 % on packages/domain │

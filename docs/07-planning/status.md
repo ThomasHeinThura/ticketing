@@ -190,9 +190,16 @@ kaneo's inherited routes present and each carrying a policy**, P0 security revie
 
 ## Blocked
 
+- **The GitHub Project board does not exist.** The eight P0 issues are created
+  (**#4–#11**, labelled `stage:P0` / `security` / `blocked`, with dependency lines), but the
+  board they belong on is not: the CLI token carries `repo`, `read:org`, `gist` and
+  `workflow`, and Projects v2 needs `project`. Thomas runs
+  `gh auth refresh -s project,read:project` and an agent creates it, or he creates it in the
+  UI with the columns **Backlog / Ready / In Progress / Review / Blocked / Done**.
+  Unblocked by: Thomas.
 - **P0 step 1 (import kaneo)** — hard stop until **both**: the licence pull request
-  (`LICENSE`, `NOTICE`, `THIRD-PARTY-NOTICES.md`) has **merged**, and the **P0 issues
-  exist** on the Project board. The snapshot SHA and the migration approach are no longer
+  (`LICENSE`, `NOTICE`, `THIRD-PARTY-NOTICES.md`) has **merged**, and the **P0 issues exist**
+  — they now do (#4–#11), so this reduces to the licence merge. The snapshot SHA and the migration approach are no longer
   blockers — both were confirmed on 2026-09-06. Unblocked by: Thomas merging the licence
   pull request.
 
@@ -263,8 +270,13 @@ Thomas approves → merge, and never leave finished work uncommitted.
 
 Nine decision-log entries. Link check clean.
 
+Opened as two pull requests — **#2** (licence and provenance, closing issue #4) and **#3**
+(the confirmed decisions and `CLAUDE.md`) — and eight P0 issues, **#4–#11**, as vertical
+slices with dependency lines rather than one issue per screen. The GitHub Project board is
+the one thing not done: the token lacks the `project` scope.
+
 **Not done, deliberately:** no kaneo import and no P0 code — the hard stop is the licence
-pull request merging and the P0 issues existing.
+pull request merging.
 
 ### 2026-09-06 · Pre-P0 check applied — the plan corrected against kaneo's real source
 
