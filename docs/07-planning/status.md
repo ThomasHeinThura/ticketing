@@ -190,49 +190,58 @@ kaneo's inherited routes present and each carrying a policy**, P0 security revie
 
 ## Blocked
 
-- **The GitHub Project board does not exist.** The eight P0 issues are created
-  (**#4–#11**, labelled `stage:P0` / `security` / `blocked`, with dependency lines), but the
-  board they belong on is not: the CLI token carries `repo`, `read:org`, `gist` and
-  `workflow`, and Projects v2 needs `project`. Thomas runs
-  `gh auth refresh -s project,read:project` and an agent creates it, or he creates it in the
-  UI with the columns **Backlog / Ready / In Progress / Review / Blocked / Done**.
-  Unblocked by: Thomas.
-- **~~P0 step 1 (import kaneo)~~ — the licence gate is CLEARED.** The licence pull request
-  merged as `26c5cb6` and the P0 issues (#4–#11) exist. The snapshot SHA and the migration
-  approach were confirmed on 2026-09-06. **Steps 1–4 of the provenance order are done** —
-  see the session log below. What now blocks the *copy* is the two items beneath.
-- **No GitHub CLI and no GitHub token on the working machine.** `gh` is not installed
-  anywhere on the host and no token is present in the environment, `~/.config/gh`, or any
-  project `.env`. SSH to `git@github.com` authenticates fine, so **branches can be pushed
-  but pull requests cannot be opened**, issue dependency links cannot be corrected, and the
-  Project board cannot be created — this is the same root cause as the board item above.
-  Two branches are pushed and waiting: `docs/p0-working-agreement` and
-  `feat/issue-5-kaneo-import-provenance`. Their pull-request bodies are written and ready
-  to paste. Unblocked by: Thomas, with a token or by opening the two pull requests himself.
-- **The kaneo copy (step 5 of the provenance order) is held on seven documentation
-  decisions.** `repository-bootstrap.md` cannot be executed exactly as written: it
-  contradicts itself on Sentry (§2 *Move* vs §3 *delete every `SENTRY_*`*) and on
-  `KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS`; `scripts/openapi/` and the `apps/web` config
-  files have no verdict rows; and the environment migration table omits all seven **S3
-  connection variables**, which are read through a local `env()` helper at
-  `apps/api/src/storage/s3.ts:79-81` and so are invisible to a `process.env` grep. Per the
-  spec interaction rule these are proposed, not decided. Unblocked by: Thomas.
-- **Two inherited security defaults are on no removal list** — and both are verified in
-  kaneo's source, not inferred. `rateLimit: { enabled: isCloud() }` (`auth.ts:566`) leaves
-  rate limiting **off for every self-hosted instance**, which is TaskDesk's shipping model,
-  and stripping `KANEO_CLOUD` at de-brand would make that permanent. `apiKey({
-  enableSessionForAPIKeys: true })` (`auth.ts:536`) is a third authentication surface,
-  larger than the two already slated for removal. Both need a verdict in
-  `inherited-features.md` before #6 is written. Unblocked by: Thomas.
-- **v1 UAT has an active human user, so the v2 cutover must be scheduled, not taken.** The
-  frontend access log shows an interactive Entra-authenticated session on 2026-09-05 05:54
-  UTC. Separately, **a v2 UAT deployment is not yet possible at all**: `ticketing.v2`
-  contains no application code, no `package.json`, no `Dockerfile` and no compose file, so
-  there is nothing to deploy until #5 merges and #11 builds the deployment skeleton. The
-  pre-cutover record for v1 (running images, volumes, verified backup, verified rollback
-  command, and the finding that TLS terminates at CloudFront and not at Traefik) is
-  captured and is reported to Thomas. Unblocked by: #5 and #11, then Thomas's explicit
-  cutover authorisation.
+**Issue #5 — IN PROGRESS.** Code is complete on `feat/issue-5-kaneo-import-provenance`
+and every gate that exists today is green, but #5 is **not** complete: no pull request is
+open, no security review has happened, and it is not merged. Those are three distinct
+states and none of them is "done".
+
+- **No GitHub pull request exists for either branch.** `gh` is not installed on this host
+  and no token is present; SSH push works, so **branches are pushed and pull requests are
+  not opened**. Two branches wait: `docs/p0-working-agreement` (Task 0) and
+  `feat/issue-5-kaneo-import-provenance` (#5). Their pull-request bodies are written.
+  The same missing capability blocks correcting the issue dependency links (removing
+  `#5 blocks #5` and `#8 blocks #8`) and creating the Project board.
+  *Blast radius: everything — nothing can merge.* Unblocked by: Thomas, with a token or by
+  opening the pull requests from an authenticated GitHub client.
+- **#5 has had no security review, and it needs one.** The import brings in inherited
+  auth code, route files and `apps/api/src/storage/**` — paths `ci-cd.md` lists as
+  security-review scope. The required reviewer was not available in this session, so the
+  work is recorded as **unreviewed** rather than self-reviewed or downgraded.
+  *Blast radius: #5 only — it may not merge until reviewed.* Unblocked by: Thomas.
+- **`scripts/openapi/` has no verdict, and the OpenAPI drift check is currently lost.**
+  Running it proved it cannot simply be adopted: `check.mjs` writes `apps/docs/openapi.json`
+  and `apps/docs` is *Do not copy*. The copy table's default was applied — not copied — and
+  the two `openapi:check` script entries were dropped so the tree is green rather than red.
+  `apps/api/scripts/export-openapi.ts` is copied and `tests/api-integration/openapi.test.ts`
+  is kept, so the capability half-exists. It needs a destination.
+  *Blast radius: one lane.* Unblocked by: Thomas.
+- **`TURNSTILE_SECRET_KEY` and `TURNSTILE_TIMEOUT_MS` need a verdict.** Cloudflare Turnstile
+  is inherited CAPTCHA abuse protection. TaskDesk requires abuse protection for self-hosted
+  deployments, but a Cloudflare dependency is not obviously the right shape for a
+  self-hosted product and it is not in the plugin registry. It is the one variable group the
+  storage/plugin classification rule does not cleanly resolve, so it is raised rather than
+  decided. *Blast radius: one lane.* Unblocked by: Thomas.
+- **v2 UAT cannot be deployed yet, and will not reuse the v1 hostnames.** There is no
+  `Dockerfile`, no compose file and no `scripts/deploy.sh` in this repository — those are
+  #11. `Dockerfile.kaneo` was copied as the starting point but **cannot build in this tree**:
+  it copies `apps/web/nginx.kaneo.conf`, `deploy/kaneo-entrypoint.sh` and
+  `apps/web/env.sh`, all three excluded by the copy table. When v2 UAT does deploy it takes
+  **`ticket-v2-uat.bimats.com` and `portal-v2-uat.bimats.com`**, beside v1, with its own
+  compose project, network, volumes and database. **v1 UAT stays running and untouched.**
+  The raw #5 import must not be exposed publicly before #6 removes anonymous sign-in and
+  the public-project routes. *Blast radius: the deployment lane.* Unblocked by: #11.
+- **The GitHub Project board does not exist.** Same missing-token root cause as above.
+  Columns: **Backlog / Ready / In Progress / Review / Blocked / Done**. Unblocked by: Thomas.
+
+### Settled this session — no longer blocking
+
+Thomas's cloud-agent working agreement of 2026-09-06 closed the decisions that held the
+copy: **S3 connection variables** move to `storage.s3` runtime plugin configuration with
+credentials in secret storage, and a fresh install needs none because it defaults to
+`storage.filesystem`; **Sentry is deleted**, not moved; **`KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS`**
+goes with the generic webhook router; **rate limiting** and the **`apiKey` session surface**
+become #6 removals; and the **analytics beacon** is removed rather than preserved behind its
+hostname gate.
 
 ---
 
@@ -270,6 +279,58 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-06 · #5 completed on the branch — de-brand, lockfile delta, environment migration
+
+Continues the import session under Thomas's cloud-agent working agreement, which closed the
+decisions that had held the copy. The provenance order in `repository-bootstrap.md` §2 was
+followed in its stated sequence — untouched baseline, imported graph proven, copy proven,
+**then** rename, **then** an intentional lockfile regeneration, **then** a fresh audit and a
+measured delta — so upstream and TaskDesk changes stay distinguishable.
+
+**De-brand.** The five workspace packages and both apps moved to `@taskdesk/*`, and the
+brand left 209 source files: CSS class names, tiptap and ProseMirror node names, React
+component identifiers, i18n values across all 20 locales, email templates, the Helm chart,
+the motion specs, and four paths that carried it in the filename. Four cases were checked
+against the specification instead of swept: **`X-Kaneo-Signature` is a real HTTP header in
+retained code** — notification delivery keeps it after #6 deletes the webhook router — and
+it became `X-TaskDesk-Signature` because `webhooks-and-api-keys.md` **WH-1 already names
+that header**, so the sweep implements the spec rather than changing behaviour;
+`breadcrumbKaneo` was an i18n lookup **key**, renamed with its single usage; `KANEO_*`
+variables were protected because they belong to the environment migration; and
+`Dockerfile.kaneo` was deliberately left named as kaneo's, because it is still kaneo's
+unrewritten three-image Dockerfile and **cannot build in this tree** — it copies three files
+the copy table excludes. Verified that no kaneo copyright header was destroyed: kaneo
+carries none in source, attribution is the root `LICENSE`, preserved verbatim.
+
+**Lockfile regenerated deliberately, and the delta measured rather than assumed.** 1635
+external packages upstream, 1566 now: **zero added, 69 removed**, all transitive
+dependencies of workspace packages the copy table excludes. `pnpm audit` moves 12 → 11
+advisories (0 critical, 8 high, 3 moderate); the one `low` disappeared because it reached
+through `apps/site`, which is not copied. Trivy unchanged at 7 high, 0 critical.
+
+**Environment migration.** All **98** variables classified — not the "~80" the planning
+documents quote. The gap is entirely **indirect reads**: the seven S3 connection variables
+go through a local `env()` helper, four `CREEM_PRODUCT_*` through a lookup table, and the
+eight `SMTP_*` through a parameter default. A `check:env` gate that only greps
+`process.env` would pass a tree that still reads unapproved configuration. Four of the five
+required TaskDesk variables were renamed from their kaneo ancestors and the integration
+suite was re-run under the new names to prove the rename is wired end to end.
+`TASKDESK_PORTAL_URL` is genuinely new. `TRUSTED_PROXIES` was **not** renamed: kaneo takes a
+CIDR list defaulting to all of RFC1918 while TaskDesk takes a hop count, which is a
+behaviour change on a security boundary whose value must be **measured** in #11, not
+inferred from the topology.
+
+**Three defects found and fixed on the way.** `.gitignore`'s `.env.*` rule silently excluded
+`apps/api/.env.test.example`, which the copy table says to copy — it was on disk and never
+committed. `turbo.json` declared no `globalEnv` at all. And `biome.json` pinned schema
+`2.5.4` while `package.json` declares biome `2.5.7` — **upstream kaneo's committed lockfile
+was behind its own declared devDependency**, which only the deliberate regeneration
+surfaced.
+
+**Status, precisely.** #5 is **in progress**, not complete: the branch is pushed, every gate
+that exists today is green, **no pull request is open, no security review has happened, and
+nothing is merged.**
 
 ### 2026-09-06 · The P0 working agreement recorded; issue #5 provenance evidence produced
 
