@@ -243,22 +243,126 @@ const METHOD_SET: ReadonlySet<string> = new Set(HTTP_METHODS);
  * A trailing slash is significant to Hono and is preserved.
  */
 export function normaliseRouteKey(key: string): RouteKey {
-  const trimmed = key.trim().replace(/\s+/, " ");
-  const firstSpace = trimmed.indexOf(" ");
-  if (firstSpace === -1) {
+  const trimmed = key.trim();
+
+  // First whitespace run separates method from path. Scanned rather than
+  // matched, for the same reason as normaliseRoutePath below.
+  let split = 0;
+  while (split < trimmed.length && !isWhitespace(trimmed[split])) {
+    split += 1;
+  }
+  if (split === trimmed.length) {
     throw new Error(`Route key must be "METHOD path", got: ${key}`);
   }
-  const method = trimmed.slice(0, firstSpace).toUpperCase();
+
+  const method = trimmed.slice(0, split).toUpperCase();
   if (!METHOD_SET.has(method)) {
     throw new Error(`Unknown HTTP method in route key: ${key}`);
   }
-  const path = normaliseRoutePath(trimmed.slice(firstSpace + 1).trim());
+  const path = normaliseRoutePath(trimmed.slice(split).trim());
   return `${method} ${path}`;
 }
 
-/** Hono `:param` (and `:param?`, `:param{regex}`) become `{param}`; everything else is left alone. */
+/**
+ * True for exactly the characters JavaScript's `\s` matches.
+ *
+ * `String.prototype.trim` strips the same WhiteSpace + LineTerminator set that
+ * `\s` matches, so for a single character the two agree — including the awkward
+ * members, U+00A0 and U+FEFF.
+ */
+function isWhitespace(char: string): boolean {
+  return char.trim() === "";
+}
+
+/** `A-Z`, `a-z`, `0-9`, `_` — the character class Hono allows in a `:param` name. */
+function isParamNameChar(code: number): boolean {
+  return (
+    (code >= 65 && code <= 90) || // A-Z
+    (code >= 97 && code <= 122) || // a-z
+    (code >= 48 && code <= 57) || // 0-9
+    code === 95 // _
+  );
+}
+
+/**
+ * Hono `:param` (and `:param?`, `:param{regex}`) become `{param}`; everything
+ * else is left alone.
+ *
+ * Parsed by hand, in one left-to-right pass, deliberately.
+ *
+ * This was `path.replace(/:([A-Za-z0-9_]+)(\{[^}]*\})?(\?)?/g, "{$1}")`, which
+ * CodeQL flagged as `js/polynomial-redos` (HIGH) and which was genuinely
+ * quadratic: on `":0{{"` repeated, every `:` opens the optional `(\{[^}]*\})?`
+ * group, `[^}]*` runs greedily to the end of the string hunting a `}` that is
+ * never there, then gives the characters back one at a time. O(n) wasted per
+ * `:`, and the `g` flag supplies O(n) of them. Measured on Node 24: 2 000 chars
+ * 0.9 ms, 4 000 chars 3.3 ms, 8 000 chars 13.5 ms, 16 000 chars 50.8 ms,
+ * 32 000 chars 202.5 ms — four times the work for twice the input, all the way
+ * up. Route keys reach here from the route scanner, so the input is not a
+ * constant this module controls.
+ *
+ * The trap in rewriting it is that the obvious hand-parse is *also* quadratic:
+ * calling `path.indexOf("}", cursor)` for each `:` re-scans to the end of the
+ * string every time. So the closing-brace search uses one cursor that only ever
+ * moves forward across the whole call — every character of `path` is examined a
+ * bounded number of times, and the whole function is O(n).
+ *
+ * Output is byte-identical to the regex for every input, quirks included: a
+ * `{...}` constraint ends at the FIRST `}` (so `:id{[0-9]{3}}` yields `{id}}`,
+ * exactly as before), an unterminated `{` is left in place as a literal, and a
+ * `:` with no name character after it is not a parameter. `registry.test.ts`
+ * proves the equivalence differentially rather than asserting it.
+ */
 export function normaliseRoutePath(path: string): string {
-  return path.replace(/:([A-Za-z0-9_]+)(\{[^}]*\})?(\?)?/g, "{$1}");
+  const out: string[] = [];
+  let literalFrom = 0;
+  let i = 0;
+
+  // Monotone cursor: the next `}` at or after the last position we needed one.
+  // Only ever advances, which is what keeps this linear.
+  let nextClose = path.indexOf("}");
+
+  while (i < path.length) {
+    if (path[i] !== ":") {
+      i += 1;
+      continue;
+    }
+
+    let end = i + 1;
+    while (end < path.length && isParamNameChar(path.charCodeAt(end))) {
+      end += 1;
+    }
+    if (end === i + 1) {
+      i += 1; // a bare ":" is not a parameter
+      continue;
+    }
+
+    const name = path.slice(i + 1, end);
+
+    // Optional Hono regex constraint `{...}`, consumed and discarded.
+    if (path[end] === "{") {
+      while (nextClose !== -1 && nextClose <= end) {
+        nextClose = path.indexOf("}", nextClose + 1);
+      }
+      if (nextClose !== -1) {
+        end = nextClose + 1;
+      }
+      // No closing brace anywhere ahead: the optional group matches empty and
+      // the "{" stays a literal, which is what the regex did too.
+    }
+
+    // Optional "?" marker, consumed and discarded.
+    if (path[end] === "?") {
+      end += 1;
+    }
+
+    out.push(path.slice(literalFrom, i), "{", name, "}");
+    i = end;
+    literalFrom = end;
+  }
+
+  out.push(path.slice(literalFrom));
+  return out.join("");
 }
 
 export function routeKeyParts(key: RouteKey): {

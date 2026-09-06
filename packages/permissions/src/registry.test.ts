@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { normaliseRouteKey, type Policy, type PolicyMap } from "./policy";
+import {
+  normaliseRouteKey,
+  normaliseRoutePath,
+  type Policy,
+  type PolicyMap,
+} from "./policy";
 import {
   capabilitiesReferencedBy,
   createPolicyRegistry,
@@ -24,6 +29,116 @@ describe("route keys", () => {
     expect(() => normaliseRouteKey("FETCH /api/projects")).toThrow(
       /Unknown HTTP method/,
     );
+  });
+
+  it("separates on any whitespace, not only a space", () => {
+    expect(normaliseRouteKey("GET\t/api/task/:id")).toBe("GET /api/task/{id}");
+    expect(normaliseRouteKey("GET\n\t /api/task/:id")).toBe(
+      "GET /api/task/{id}",
+    );
+    expect(() => normaliseRouteKey("GET")).toThrow(/METHOD path/);
+  });
+});
+
+/**
+ * normaliseRoutePath was a regex until CodeQL flagged it `js/polynomial-redos`
+ * (HIGH). These tests exist so the hand-written parser that replaced it is held
+ * to the old behaviour rather than to my reading of the old behaviour, and so
+ * the quadratic cannot come back unnoticed.
+ */
+describe("normaliseRoutePath — the parser that replaced the regex", () => {
+  /** The exact expression that was removed. Kept here as the oracle. */
+  const withRemovedRegex = (path: string): string =>
+    path.replace(/:([A-Za-z0-9_]+)(\{[^}]*\})?(\?)?/g, "{$1}");
+
+  it("converts the syntaxes Hono actually emits", () => {
+    expect(normaliseRoutePath("/api/task/:id")).toBe("/api/task/{id}");
+    expect(normaliseRoutePath("/api/task/:id?")).toBe("/api/task/{id}");
+    expect(normaliseRoutePath("/api/task/:id{[0-9]+}")).toBe("/api/task/{id}");
+    expect(normaliseRoutePath("/api/task/:id{[0-9]+}?")).toBe("/api/task/{id}");
+    expect(normaliseRoutePath("/api/p/:pId/t/:tId")).toBe(
+      "/api/p/{pId}/t/{tId}",
+    );
+    expect(normaliseRoutePath("/api/task/{id}")).toBe("/api/task/{id}");
+  });
+
+  it("leaves alone what is not a parameter", () => {
+    expect(normaliseRoutePath("/api/health")).toBe("/api/health");
+    expect(normaliseRoutePath("/api/a:b")).toBe("/api/a{b}");
+    expect(normaliseRoutePath("/api/:")).toBe("/api/:");
+    expect(normaliseRoutePath("/api/:/x")).toBe("/api/:/x");
+    expect(normaliseRoutePath("")).toBe("");
+    expect(normaliseRoutePath("/")).toBe("/");
+  });
+
+  it("preserves a trailing slash, which is significant to Hono", () => {
+    expect(normaliseRoutePath("/api/task/:id/")).toBe("/api/task/{id}/");
+    expect(normaliseRouteKey("GET /api/task/:id/")).not.toBe(
+      normaliseRouteKey("GET /api/task/:id"),
+    );
+  });
+
+  it("keeps the old quirks rather than quietly improving them", () => {
+    // `[^}]*` stopped at the FIRST "}", so a nested-brace constraint left one
+    // behind. Changing that here would desynchronise this normaliser from the
+    // route scanner, which normalises through the same function.
+    expect(normaliseRoutePath("/api/task/:id{[0-9]{3}}")).toBe(
+      "/api/task/{id}}",
+    );
+    // An unterminated "{" makes the optional group match empty; the brace stays.
+    expect(normaliseRoutePath("/api/task/:id{[0-9]+")).toBe(
+      "/api/task/{id}{[0-9]+",
+    );
+  });
+
+  it("agrees with the removed regex on every generated input", () => {
+    const alphabet = [":", "{", "}", "?", "a", "0", "_", "/", "-", "."];
+    const cases: string[] = [];
+
+    // Every string of length <= 3 over an alphabet chosen to be all edge.
+    for (const a of alphabet) {
+      cases.push(a);
+      for (const b of alphabet) {
+        cases.push(a + b);
+        for (const c of alphabet) cases.push(a + b + c);
+      }
+    }
+
+    // Plus realistic and adversarial shapes.
+    cases.push(
+      "/api/workspace/:workspaceId/project/:projectId/task/:taskId",
+      "/api/task/:id{[0-9]+}?/comment/:commentId?",
+      "/api/:a{}/:b{}",
+      "/api/:a{:b}/:c",
+      "/api/:_/:0/:A",
+      ":0{{".repeat(64),
+      `${"{".repeat(64)}:id`,
+      `:id${"}".repeat(64)}`,
+      "::::id",
+      "/api/:id?????",
+    );
+
+    const disagreements = cases.filter(
+      (input) => normaliseRoutePath(input) !== withRemovedRegex(input),
+    );
+    expect(disagreements).toEqual([]);
+    expect(cases.length).toBeGreaterThan(1000);
+  });
+
+  it("is linear, not polynomial, on the input CodeQL named", () => {
+    // The removed regex measured 0.9/3.3/13.5/50.8/202.5 ms at 2k/4k/8k/16k/32k
+    // characters — four times the work for twice the input. 320k characters
+    // would have been about twenty seconds of blocked event loop.
+    const pathological = ":0{{".repeat(80_000); // 320k characters
+
+    const startedAt = performance.now();
+    const result = normaliseRoutePath(pathological);
+    const elapsedMs = performance.now() - startedAt;
+
+    expect(result.startsWith("{0}{{")).toBe(true);
+    // Generous by two orders of magnitude against the quadratic, so this fails
+    // on a reintroduced blowup and not on a slow CI runner.
+    expect(elapsedMs).toBeLessThan(1_000);
   });
 });
 
