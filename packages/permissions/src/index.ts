@@ -1,84 +1,155 @@
-import { createAccessControl } from "better-auth/plugins/access";
-import {
-  adminAc,
-  defaultStatements,
-  memberAc,
-  ownerAc,
-} from "better-auth/plugins/organization/access";
+/**
+ * `@taskdesk/permissions` — capabilities, roles, the route-policy registry and the evaluator.
+ *
+ * Two axes, never mixed: **reach** (what you can see) and **authority** (what you can change).
+ * Everything here is pure — no I/O, no database, no framework — so the same code answers a
+ * question in the API middleware, in a test and in a CI check.
+ *
+ * The anti-v1 mechanism lives here: a route cannot exist without declaring the capability it
+ * requires, and `pnpm test:permissions` proves it against **Hono's actual router**.
+ *
+ * Authoritative documents: `docs/01-architecture/rbac.md` (capabilities and policy kinds) and
+ * `docs/01-architecture/adr/0010-route-policy-registry.md`.
+ */
 
-export const statement = {
-  ...defaultStatements,
-  project: ["create", "read", "update", "delete", "share"],
-  task: ["create", "read", "update", "delete", "assign"],
-  label: ["create", "read", "update", "delete"],
-  workspace: ["read", "update", "delete", "manage_settings"],
-} as const;
-
-export const ac = createAccessControl(statement);
-
-export const viewer = ac.newRole({
-  ...memberAc.statements,
-  project: ["read"],
-  task: ["read"],
-  label: ["read"],
-  workspace: ["read"],
-});
-
-export const member = ac.newRole({
-  ...memberAc.statements,
-  project: ["create", "read"],
-  task: ["create", "read", "update"],
-  label: ["create", "read", "update", "delete"],
-  workspace: ["read"],
-});
-
-export const admin = ac.newRole({
-  ...adminAc.statements,
-  project: ["create", "read", "update", "delete", "share"],
-  task: ["create", "read", "update", "delete", "assign"],
-  label: ["create", "read", "update", "delete"],
-  workspace: ["read", "update", "manage_settings"],
-});
-
-export const owner = ac.newRole({
-  ...ownerAc.statements,
-  project: ["create", "read", "update", "delete", "share"],
-  task: ["create", "read", "update", "delete", "assign"],
-  label: ["create", "read", "update", "delete"],
-  workspace: ["read", "update", "delete", "manage_settings"],
-});
-
-export const builtInRoles = { viewer, member, admin, owner } as const;
-
-export type BuiltInRoleName = keyof typeof builtInRoles;
-
-// Default-role names that the API seeds per workspace. These ARE editable in
-// the UI (their permissions live as rows in `workspace_role`), but their names
-// are reserved and the rows are auto-created on workspace creation /
-// backfilled at boot. `owner` is intentionally NOT in this list because it
-// stays a true static role on the better-auth side.
-export const DEFAULT_ROLE_NAMES = ["viewer", "member", "admin"] as const;
-export type DefaultRoleName = (typeof DEFAULT_ROLE_NAMES)[number];
-
-function toMutablePayload(
-  statements: Record<string, readonly string[]>,
-): Record<string, string[]> {
-  const out: Record<string, string[]> = {};
-  for (const [resource, actions] of Object.entries(statements)) {
-    out[resource] = [...actions];
-  }
-  return out;
-}
-
-// Plain JSON-serializable permission payloads for the seeded default roles.
-// Mirrors each role's `.statements` (including better-auth's organization/
-// member/team/invitation/ac defaults) so a workspace_role row that uses one
-// of these has parity with the prior static definition.
-export const defaultRolePayloads: Record<
-  DefaultRoleName,
-  Record<string, string[]>
-> = {
-  viewer: toMutablePayload(viewer.statements),
-  member: toMutablePayload(member.statements),
-  admin: toMutablePayload(admin.statements),
-};
+export {
+  type ApprovedPlugin,
+  BETTER_AUTH_PLUGINS,
+  checkPluginList,
+  formatPluginListReport,
+  type PluginListBaseline,
+  type PluginListResult,
+  type PluginVerdict,
+} from "./better-auth-plugins";
+export {
+  CAPABILITIES,
+  CAPABILITY_GROUPS,
+  CAPABILITY_NAMES,
+  type Capability,
+  type CapabilityDefinition,
+  type CapabilityGroup,
+  capabilitiesInGroup,
+  type ImpliedCapability,
+  isCapability,
+} from "./capabilities";
+export {
+  AUTHORITY_GRANTING,
+  type ElevatedAction,
+  type ElevationViolation,
+  elevatedActions,
+  elevatedWithoutSessionOnly,
+  elevationViolations,
+  isInstanceRoute,
+  renderElevatedActionsMarkdown,
+  sessionOnlyRoutes,
+} from "./elevated";
+export {
+  authorityFor,
+  can,
+  evaluatePolicy,
+  expandCapabilities,
+  type PolicyContext,
+  type PolicyDecision,
+  type ProjectReachFacts,
+  reaches,
+  scopeIdFor,
+} from "./evaluator";
+export {
+  CREDENTIAL_KINDS,
+  type CredentialKind,
+  type Membership,
+  type Portal,
+  type Reach,
+  type ResolvedIdentity,
+  type RoleGrant,
+  type ScopeTarget,
+  type Side,
+  type UnknownCapabilityHandler,
+} from "./identity";
+/**
+ * kaneo's inherited better-auth access control, re-exported unchanged so the consumers that
+ * still read it keep building while #6 removes the `organization` plugin. New code uses the
+ * capability and policy surface above. See `legacy-better-auth-access-control.ts`.
+ */
+export {
+  ac,
+  admin,
+  type BuiltInRoleName,
+  builtInRoles,
+  DEFAULT_ROLE_NAMES,
+  type DefaultRoleName,
+  defaultRolePayloads,
+  member,
+  owner,
+  statement,
+  viewer,
+} from "./legacy-better-auth-access-control";
+export {
+  BODY_PREDICATES,
+  type BodyPredicate,
+  type CapabilityPolicy,
+  DELEGATED_SURFACES,
+  type DelegatedPolicy,
+  type DelegatedSurface,
+  type ElevationFlags,
+  HTTP_METHODS,
+  type HttpMethod,
+  isCapabilityPolicy,
+  isDelegatedPolicy,
+  isPortalPolicy,
+  isPublicPolicy,
+  isSelfPolicy,
+  normaliseRouteKey,
+  normaliseRoutePath,
+  OWNER_PREDICATES,
+  type OwnerBranch,
+  type OwnerPredicate,
+  POLICY_KINDS,
+  PORTAL_PREDICATES,
+  type Policy,
+  type PolicyKind,
+  type PolicyMap,
+  type PortalPolicy,
+  type PortalPredicate,
+  type PublicPolicy,
+  policyKind,
+  type RouteKey,
+  routeKeyParts,
+  SCOPES,
+  type Scope,
+  type SelfPolicy,
+  type SelfTargetBranch,
+} from "./policy";
+export {
+  capabilitiesReferencedBy,
+  createPolicyRegistry,
+  type PolicyRegistry,
+  PolicyRegistryError,
+  type PolicySource,
+  type RegistryEntry,
+  validatePolicy,
+} from "./registry";
+export {
+  BUILT_IN_ROLE_KEYS,
+  BUILT_IN_ROLES,
+  type BuiltInRoleKey,
+  INHERITED_ROLE_KEYS,
+  ROLE_SCOPES,
+  type RoleDefinition,
+  type RoleScope,
+} from "./roles";
+export {
+  type CollectedRoute,
+  type CoverageBaseline,
+  type CoverageResult,
+  classifySurface,
+  collectMiddleware,
+  collectRoutes,
+  computeRouteCoverage,
+  formatCoverageReport,
+  type HonoLikeApp,
+  type HonoRouterEntry,
+  isMiddlewareEntry,
+  ROUTE_SURFACES,
+  type RouteSurface,
+} from "./route-coverage";

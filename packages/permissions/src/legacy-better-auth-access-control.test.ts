@@ -9,7 +9,7 @@ import {
   owner,
   statement,
   viewer,
-} from "./index";
+} from "./legacy-better-auth-access-control";
 
 describe("@taskdesk/permissions statement surface", () => {
   it("exposes TaskDesk's resource statements alongside better-auth defaults", () => {
