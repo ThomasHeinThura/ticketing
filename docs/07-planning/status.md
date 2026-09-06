@@ -306,15 +306,40 @@ tooling (`postcss`/`nanoid`) or optional peerDependencies kaneo never imports (`
 `prisma`). The only advisory on a shipped path is `qs`, moderate, via the MCP SDK's
 `express`. `trivy config` on `Dockerfile.kaneo` is clean.
 
-**The copy itself was deliberately not performed.** Auditing the copy table and the
-environment migration table against kaneo's real tree found that
-`repository-bootstrap.md` cannot be executed exactly as written — it contradicts itself on
-Sentry and on `KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS`, `scripts/openapi/` and the
-`apps/web` config files have no verdict rows, and the environment table omits all seven S3
-**connection** variables because they are read through a local `env()` helper at
-`apps/api/src/storage/s3.ts:79-81` rather than as `process.env.X`. That is the spec
-interaction rule working, not a stall: ambiguity discovered, decision path stopped, change
-proposed, Thomas decides. Seven decisions are with him.
+**The copy was performed, and the imported tree is green.** 1,268 files from a `git
+archive` of the SHA — tracked files only, so no `node_modules`, `dist` or `.turbo`
+travelled. Every *Do not copy* row was verified absent afterwards; every *Copy* row
+present. On the imported tree: typecheck, build, lint, `i18n:check`, **unit 124 files /
+636 tests**, and **integration on Postgres 18 at 33 files / 227 tests — identical to the
+kaneo baseline**. The unit count reconciles exactly against the 130 / 692 baseline:
+`packages/planka-import` is not copied (5 files, 54 tests) and `apps/web/src/env.test.ts`
+is deleted (1 file, 2 tests).
+
+**Four things the copy table does not cover**, applied as stated in the commit message
+rather than decided silently: the two kept `skills/*` are symlinks into `.agents/`, a
+*Do not copy* row, so they were dereferenced; `apps/web/src/env.test.ts` asserts on the
+excluded `apps/web/env.sh` and was deleted with the mechanism it covers; `scripts/openapi/`
+has no verdict row and **running it proved it cannot simply be adopted** — `check.mjs`
+writes `apps/docs/openapi.json` and `apps/docs` is *Do not copy* — so the table default was
+applied and **the OpenAPI drift check is lost** until Thomas says where it should write; and
+`.gitignore` was merged rather than overwritten.
+
+**§2 de-brand cannot be completed inside #5, and that is a sequencing defect worth
+recording.** Only the web entry document and the manifest were de-branded. Each remaining
+part is coupled to work §1 or §3 defers: the `@kaneo/*` → `@taskdesk/*` rename changes a
+`workspace:*` specifier, which breaks `--frozen-lockfile` and forces regenerating the
+lockfile §1 says to keep until after the removals — measured at 799 changed lines, 69 of
+them external `resolution`/`integrity` lines, which would invalidate the audit baseline
+recorded in this same branch; `emailDomainName: "kaneo.app"` leaves with the anonymous
+plugin, as §2 itself says; and the i18n sweep would rename `X-Kaneo-Signature`, an HTTP
+header in the webhook contract, so it is not branding. The lockfile was verified
+**byte-identical to kaneo's at `42bb8011`**.
+
+**Still open: seven documentation decisions** — the Sentry and
+`KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS` self-contradictions, `scripts/openapi/`'s real
+home, and the seven missing **S3 connection variables**, which `apps/api/src/storage/s3.ts`
+reads through a local `env()` helper at lines 79-81 and which a `process.env.X` grep
+therefore cannot see. The environment migration is not applied.
 
 **Two inherited security defaults were found that are on no removal list**, both verified
 in source: `rateLimit: { enabled: isCloud() }` at `auth.ts:566` — rate limiting is off for
