@@ -138,10 +138,27 @@ taskdesk:
     # compared against the literal string "production", so an unset NODE_ENV
     # meant "not production" and opened them.
     nodeEnv: production
-    # Number of trusted reverse-proxy hops, NOT a boolean. Left empty on
-    # purpose: it depends on what sits in front of the Ingress, and an
-    # unmeasured guess on a security boundary is worse than an explicit gap.
-    # Measure it, then set it: docs/05-operations/proxy-topology-evidence.md
+    # Number of trusted reverse-proxy hops, NOT a boolean.
+    #
+    # Empty here does NOT mean "no assumption is made". It means the variable
+    # TASKDESK_TRUST_PROXY is simply omitted from the pod, and the application
+    # runtime default of 1 applies: exactly one trusted proxy, directly in
+    # front. Leaving this empty is a CHOICE of 1, not an abstention. If that is
+    # wrong for your topology, the client IP is wrong, and with it the
+    # rate-limit bucket, the API-key IP allowlist and audit_log.actor_ip.
+    #
+    # Set it explicitly whenever anything else sits in front of the Ingress.
+    # On the bimats.com host the measured chain is CloudFront -> Traefik ->
+    # TaskDesk, so deploy/compose.uat.yml sets 2 explicitly — that number came
+    # from headers captured off the running host, not from counting boxes on a
+    # diagram. Measure yours the same way before setting it:
+    #   docs/05-operations/proxy-topology-evidence.md
+    #
+    # Status: the reader that applies the default of 1 (parseTrustProxyDepth in
+    # apps/api/src/utils/resolve-client-ip.ts) ships with #6. Until #6 merges,
+    # no code reads this variable anywhere — chart or Compose — so setting it
+    # today changes nothing. The value is still correct to set now: it is the
+    # deployment contract this chart is written against.
     trustProxy: ""
     disableRegistration: false
     disablePasswordRegistration: false
