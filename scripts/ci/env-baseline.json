@@ -1,0 +1,213 @@
+{
+	"note": "Inherited kaneo environment reads that have not yet completed the migration to the five-plus-six rule (docs/04-engineering/repository-bootstrap.md § 2). This file is a RATCHET: an environment read that is neither approved in docs/05-operations/configuration-reference.md nor listed here fails the build. Entries are removed as the code that reads them is removed or moved into God Mode; entries are never added by hand to make a new violation pass. Shrink it with `pnpm check:env --prune`.",
+	"seededFrom": "04e3a55 (origin/main at the time issue #10 started)",
+	"unmigratedNames": {
+		"APPDATA": ["packages/mcp/src/install/targets.ts:71"],
+		"BILLING_FOUNDING_CUTOFF": ["apps/api/src/billing/config.ts:43"],
+		"BILLING_REMINDER_MAX_PER_RUN": [
+			"apps/api/src/scheduler/trial-reminders.ts:23"
+		],
+		"BILLING_TRIAL_DAYS": ["apps/api/src/billing/config.ts:38"],
+		"COOKIE_DOMAIN": ["apps/api/src/auth.ts:810"],
+		"CORS_ORIGINS": ["apps/api/src/index.ts:157"],
+		"CREEM_API_KEY": [
+			"apps/api/src/billing/config.ts:19",
+			"apps/api/src/billing/config.ts:30"
+		],
+		"CREEM_TEST_MODE": [
+			"apps/api/src/billing/config.ts:24",
+			"apps/api/src/billing/creem-client.ts:8"
+		],
+		"CREEM_WEBHOOK_SECRET": [
+			"apps/api/src/billing/config.ts:19",
+			"apps/api/src/billing/config.ts:34"
+		],
+		"CUSTOM_AUTH_PKCE": ["apps/api/src/auth.ts:533"],
+		"CUSTOM_OAUTH_AUTHORIZATION_URL": ["apps/api/src/auth.ts:525"],
+		"CUSTOM_OAUTH_AUTO_LOGIN": ["apps/api/src/utils/get-settings.ts:29"],
+		"CUSTOM_OAUTH_CLIENT_ID": [
+			"apps/api/src/auth.ts:523",
+			"apps/api/src/utils/get-settings.ts:25"
+		],
+		"CUSTOM_OAUTH_CLIENT_SECRET": [
+			"apps/api/src/auth.ts:524",
+			"apps/api/src/utils/get-settings.ts:26"
+		],
+		"CUSTOM_OAUTH_DISCOVERY_URL": ["apps/api/src/auth.ts:532"],
+		"CUSTOM_OAUTH_LOGOUT_URL": ["apps/api/src/utils/get-settings.ts:30"],
+		"CUSTOM_OAUTH_RESPONSE_TYPE": ["apps/api/src/auth.ts:531"],
+		"CUSTOM_OAUTH_SCOPES": ["apps/api/src/auth.ts:528"],
+		"CUSTOM_OAUTH_TOKEN_URL": ["apps/api/src/auth.ts:526"],
+		"CUSTOM_OAUTH_USER_INFO_URL": ["apps/api/src/auth.ts:527"],
+		"DEMO_MODE": ["apps/api/src/utils/get-settings.ts:15"],
+		"DEVICE_AUTH_CLIENT_IDS": ["apps/api/src/auth.ts:163"],
+		"DISABLE_EMAIL_OTP_SIGN_IN": [
+			"apps/api/src/auth.ts:67",
+			"apps/api/src/utils/get-settings.ts:13"
+		],
+		"DISABLE_GUEST_ACCESS": [
+			"apps/api/src/auth.ts:279",
+			"apps/api/src/utils/get-settings.ts:27"
+		],
+		"DISABLE_LOGIN_FORM": [
+			"apps/api/src/auth.ts:65",
+			"apps/api/src/utils/get-settings.ts:28"
+		],
+		"DISABLE_PASSWORD_REGISTRATION": [
+			"apps/api/src/auth.ts:64",
+			"apps/api/src/utils/get-settings.ts:12"
+		],
+		"DISABLE_REGISTRATION": [
+			"apps/api/src/auth.ts:62",
+			"apps/api/src/utils/check-registration-allowed.ts:24",
+			"apps/api/src/utils/get-settings.ts:10"
+		],
+		"DISABLE_WORKSPACE_CREATION": [
+			"apps/api/src/auth.ts:69",
+			"apps/api/src/utils/get-settings.ts:14"
+		],
+		"DISCORD_CLIENT_ID": [
+			"apps/api/src/auth.ts:274",
+			"apps/api/src/utils/get-settings.ts:22"
+		],
+		"DISCORD_CLIENT_SECRET": [
+			"apps/api/src/auth.ts:275",
+			"apps/api/src/utils/get-settings.ts:23"
+		],
+		"GITHUB_APP_ID": [
+			"apps/api/src/plugins/github/utils/github-app.ts:39",
+			"apps/api/src/plugins/github/utils/github-app.ts:46"
+		],
+		"GITHUB_APP_NAME": [
+			"apps/api/src/github-integration/controllers/verify-github-installation.ts:23",
+			"apps/api/src/github-integration/controllers/verify-github-installation.ts:24",
+			"apps/api/src/github-integration/controllers/verify-github-installation.ts:29",
+			"apps/api/src/github-integration/controllers/verify-github-installation.ts:30",
+			"apps/api/src/github-integration/index.ts:234",
+			"apps/api/src/plugins/github/webhooks/issue-opened.ts:42"
+		],
+		"GITHUB_CLIENT_ID": ["apps/api/src/utils/github-sso-env.ts:16"],
+		"GITHUB_CLIENT_SECRET": ["apps/api/src/utils/github-sso-env.ts:17"],
+		"GITHUB_OAUTH_CLIENT_ID": ["apps/api/src/utils/github-sso-env.ts:10"],
+		"GITHUB_OAUTH_CLIENT_SECRET": ["apps/api/src/utils/github-sso-env.ts:11"],
+		"GITHUB_PRIVATE_KEY": [
+			"apps/api/src/plugins/github/utils/github-app.ts:24"
+		],
+		"GITHUB_PRIVATE_KEY_BASE64": [
+			"apps/api/src/plugins/github/utils/github-app.ts:20"
+		],
+		"GITHUB_WEBHOOK_SECRET": [
+			"apps/api/src/plugins/github/utils/github-app.ts:38",
+			"apps/api/src/plugins/github/utils/github-app.ts:49"
+		],
+		"GOOGLE_CLIENT_ID": [
+			"apps/api/src/auth.ts:270",
+			"apps/api/src/utils/get-settings.ts:19"
+		],
+		"GOOGLE_CLIENT_SECRET": [
+			"apps/api/src/auth.ts:271",
+			"apps/api/src/utils/get-settings.ts:20"
+		],
+		"KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS": [
+			"apps/api/src/utils/assert-public-destination.ts:83",
+			"apps/api/src/utils/assert-public-destination.ts:84"
+		],
+		"KANEO_API_URL": [
+			"apps/api/scripts/export-openapi.ts:5",
+			"apps/api/src/auth.ts:83",
+			"apps/api/src/gitea-integration/controllers/get-gitea-integration.ts:35",
+			"apps/api/src/index.ts:414",
+			"apps/api/src/index.ts:616",
+			"apps/api/src/index.ts:838",
+			"apps/api/src/mcp/index.ts:31",
+			"apps/api/src/task/index.ts:901"
+		],
+		"KANEO_CLOUD": ["apps/api/src/utils/is-cloud.ts:2"],
+		"KANEO_INTERNAL_API_URL": ["apps/api/src/mcp/index.ts:35"],
+		"KANEO_MCP_CLIENT_ID": ["packages/mcp/src/server.ts:17"],
+		"POSTGRES_DB": ["apps/api/src/database/resolve-database-url.ts:72"],
+		"POSTGRES_HOST": [
+			"apps/api/src/database/resolve-database-url.ts:27",
+			"apps/api/src/database/resolve-database-url.ts:70"
+		],
+		"POSTGRES_PASSWORD": [
+			"apps/api/src/database/resolve-database-url.ts:26",
+			"apps/api/src/database/resolve-database-url.ts:62",
+			"apps/api/src/database/resolve-database-url.ts:69"
+		],
+		"POSTGRES_PORT": [
+			"apps/api/src/database/resolve-database-url.ts:28",
+			"apps/api/src/database/resolve-database-url.ts:71"
+		],
+		"POSTGRES_USER": ["apps/api/src/database/resolve-database-url.ts:68"],
+		"REDIS_CLUSTER_NODES": [
+			"apps/api/src/redis/index.ts:12",
+			"apps/api/src/redis/index.ts:100"
+		],
+		"REDIS_PASSWORD": [
+			"apps/api/src/redis/index.ts:105",
+			"apps/api/src/redis/index.ts:115"
+		],
+		"REDIS_SENTINELS": [
+			"apps/api/src/redis/index.ts:11",
+			"apps/api/src/redis/index.ts:109"
+		],
+		"REDIS_SENTINEL_MASTER_NAME": ["apps/api/src/redis/index.ts:114"],
+		"REDIS_SENTINEL_PASSWORD": ["apps/api/src/redis/index.ts:116"],
+		"REDIS_SENTINEL_TLS": ["apps/api/src/redis/index.ts:117"],
+		"S3_FORCE_PATH_STYLE": ["apps/api/src/storage/s3.ts:150"],
+		"S3_MAX_IMAGE_UPLOAD_BYTES": [
+			"apps/api/src/storage/s3.ts:152",
+			"apps/api/src/storage/s3.ts:164"
+		],
+		"S3_PRESIGN_TTL_SECONDS": ["apps/api/src/storage/s3.ts:156"],
+		"SENTRY_AUTH_TOKEN": ["apps/web/vite.config.ts:10"],
+		"SENTRY_DSN": [
+			"apps/api/src/instrument.ts:27",
+			"apps/api/src/instrument.ts:29"
+		],
+		"SENTRY_ENVIRONMENT": ["apps/api/src/instrument.ts:31"],
+		"SENTRY_ORG": ["apps/web/vite.config.ts:11"],
+		"SENTRY_PROFILES_SAMPLE_RATE": ["apps/api/src/instrument.ts:13"],
+		"SENTRY_PROJECT": ["apps/web/vite.config.ts:12"],
+		"SENTRY_RELEASE": ["apps/api/src/instrument.ts:32"],
+		"SENTRY_TRACES_SAMPLE_RATE": ["apps/api/src/instrument.ts:10"],
+		"SMTP_FROM": [
+			"packages/email/src/send-email.tsx:34",
+			"packages/email/src/send-email.tsx:52",
+			"packages/email/src/send-email.tsx:70",
+			"packages/email/src/send-email.tsx:99",
+			"packages/email/src/send-email.tsx:123",
+			"packages/email/src/send-email.tsx:143"
+		],
+		"TRUSTED_PROXIES": ["apps/api/src/auth.ts:184"],
+		"TURNSTILE_SECRET_KEY": ["apps/api/src/utils/verify-turnstile.ts:15"],
+		"TURNSTILE_TIMEOUT_MS": ["apps/api/src/utils/verify-turnstile.ts:23"],
+		"VITE_API_URL": [
+			"apps/web/src/fetchers/get-api-url.ts:3",
+			"apps/web/src/fetchers/instance/get-instance-status.ts:9",
+			"apps/web/src/lib/auth-client.ts:18",
+			"packages/libs/src/hono.ts:7"
+		],
+		"VITE_APP_URL": ["apps/web/src/lib/generate-link.ts:3"],
+		"VITE_CLIENT_URL": [
+			"apps/web/src/routes/auth/sign-in.tsx:103",
+			"apps/web/src/routes/auth/sign-in.tsx:120",
+			"apps/web/src/routes/auth/sign-in.tsx:141",
+			"apps/web/src/routes/auth/sign-in.tsx:161",
+			"apps/web/src/routes/auth/sign-in.tsx:181",
+			"apps/web/src/routes/auth/sign-up.tsx:75"
+		],
+		"VITE_SENTRY_DSN": ["apps/web/src/instrument.ts:3"],
+		"VITE_TURNSTILE_SITE_KEY": [
+			"apps/web/src/routes/auth/sign-in.tsx:26",
+			"apps/web/src/routes/auth/sign-up.tsx:23"
+		],
+		"XDG_CONFIG_HOME": ["packages/mcp/src/auth/token-store.ts:17"]
+	},
+	"unattributableReads": {
+		"apps/api/src/billing/config.ts": "CREEM_PRODUCT_* names are generated from the PRODUCT_ENV_KEYS lookup table. Billing is on issue #6's removal list.",
+		"apps/api/src/storage/s3.ts": "The seven S3 connection variables go through a local env(name) helper backed by process.env[name]. Storage becomes God Mode configuration (docs/05-operations/configuration-reference.md § Storage).",
+		"packages/email/src/smtp-config.ts": "The eight SMTP_* names arrive through the parameter default `env: SmtpEnv = process.env`. SMTP becomes God Mode configuration (§ Notifications)."
+	}
+}
