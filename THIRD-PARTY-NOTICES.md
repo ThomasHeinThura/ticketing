@@ -29,6 +29,7 @@ receiving upstream fixes ([ADR 0001](docs/01-architecture/adr/0001-kaneo-as-foun
 | Upstream CI on that commit | GitHub Actions run `33957941564`, green (lint, i18n, typecheck, unit, build, integration, docker build) |
 | Why this commit and not `v2.22.0` | the latest release tag predates upstream authorization fixes — `6de9ea05` "close five workspace-scoping gaps", `6bfe74de` "read the raw body in task permission middleware", `a581bdd2` "restore the entitlement check on project creation". Because kaneo is taken once and never merged again, a commit chosen for tidiness would carry known-fixed authorization bugs into TaskDesk permanently |
 | Confirmed by | Thomas Hein Thura, 2026-09-06 |
+| Verification run | **done, 2026-09-06** — kaneo's own suite green on the snapshot (130 unit files / 692 tests; 33 integration files / 227 tests on both Postgres 16 and 18; 0 failed, 0 skipped), `pnpm audit` 0 critical / 8 high (none reachable in a shipped TaskDesk), Trivy 0 critical. Full record in [inherited-features.md](docs/01-architecture/inherited-features.md) |
 | Import status | **pending** — the snapshot is imported in its own pull request, after this one merges |
 
 The verification run against that commit — kaneo's own test suite, `pnpm audit` and a Trivy

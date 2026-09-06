@@ -9,12 +9,78 @@ the SHA** is stated once — the locale count, the presence of `job_lease`, the 
 counts — so no other document has to guess.
 
 **kaneo commit taken:** **CONFIRMED** `42bb801114aa1ae499228a53180f0cdbc5607964` — upstream
-`main` (a commit, not a tag), 2026-09-05, upstream CI run 33957941564 green (lint, i18n,
-typecheck, unit, build, integration on Postgres 16, docker build). Reason: post-tag
-authorization fixes included. **Confirmed by Thomas, 2026-09-06**; the local clone
-(`51255e85`) is 68 commits behind, so `git fetch` first. At the fork this line becomes the
-taken SHA plus the verification record — kaneo's own suite pass/fail/skip counts, `pnpm
-audit` and Trivy results ([repository-bootstrap.md](../04-engineering/repository-bootstrap.md) §0).
+`main` (a commit, not a tag), upstream CI run 33957941564 green. Reason: post-tag
+authorization fixes included. **Confirmed by Thomas, 2026-09-06.**
+
+### Verification record — taken 2026-09-06
+
+This is the **attribution baseline**: the numbers a later red test is measured against, so
+that "this failure came from kaneo" and "we introduced this regression" can be told apart.
+Everything below was produced from a throwaway `git worktree` detached at the snapshot SHA,
+so the reference clone never gained a `node_modules`.
+
+| | |
+| --- | --- |
+| Snapshot SHA | `42bb801114aa1ae499228a53180f0cdbc5607964` |
+| Verified as | tip of upstream `main` at fetch time on 2026-09-06 (`git merge-base --is-ancestor` confirms) |
+| Upstream CI run | 33957941564, green |
+| Toolchain | Node 24.20.0, pnpm 10.32.1 (kaneo's `engines` says `>=24.0.0`, `packageManager` says `pnpm@10.32.1`) |
+| `pnpm install --frozen-lockfile` | clean, lockfile unchanged |
+
+**kaneo's own suite on the snapshot, untouched — every check green:**
+
+| Check | Result | Note |
+| --- | --- | --- |
+| `pnpm typecheck` | **pass** | |
+| `pnpm test` (unit) | **pass — 130 files, 692 tests, 0 failed, 0 skipped** | api 60/386 · web 49/190 · planka-import 5/54 · mcp 8/33 · email 6/16 · permissions 1/10 · libs 1/3 |
+| `pnpm build` | **pass** | |
+| `pnpm i18n:check` | **pass** | |
+| `pnpm openapi:check` | **pass** | not named in [repository-bootstrap.md](../04-engineering/repository-bootstrap.md) §0's baseline list — see the note below |
+| `pnpm lint` | **pass, tree unmodified** | kaneo's `lint` is `biome check --write .`; it changed nothing, so the snapshot is already biome-clean |
+| `pnpm test:integration` on **Postgres 16** | **pass — 33 files, 227 tests, 0 failed, 0 skipped** | 195s. This is what kaneo's own CI validates against |
+| `pnpm test:integration` on **Postgres 18** | **pass — 33 files, 227 tests, 0 failed, 0 skipped** | 69s. **Identical counts.** TaskDesk's target major runs kaneo's inherited suite with no behavioural difference — new information, not a regression we caused |
+
+**Two corrections to the surrounding documents, from running this:**
+
+- `pnpm openapi:check` (root script, backed by `scripts/openapi/check.mjs`, with its own job
+  in kaneo's `ci.yml`) is **absent from the §0 baseline list and has no verdict row in the
+  §1 copy table**, while `apps/api/scripts/export-openapi.ts` is copied and
+  `tests/api-integration/openapi.test.ts` is in the keep list. Under the table's own "an
+  entry not in the table is not copied" rule, TaskDesk would inherit half an OpenAPI drift
+  check. Flagged for Thomas; no verdict taken here.
+- The local clone is **no longer 68 commits behind at `51255e85`** — it is at the snapshot
+  SHA. The "`git fetch` first" instruction still stands, and the fetch was performed.
+
+**Supply-chain scan — `pnpm audit`, 2026-09-06: 12 advisories (0 critical, 8 high, 3 moderate, 1 low).**
+
+None of the eight high-severity advisories is reachable from a shipped TaskDesk. Each was
+traced to its dependency path rather than counted:
+
+| Severity | Package | Path | Reachable in the shipped product? |
+| --- | --- | --- | --- |
+| high ×4 | `fast-uri` | `@commitlint/cli > … > ajv > fast-uri` | **No** — `@commitlint/cli` is a root **devDependency** |
+| high | `js-yaml` | `@commitlint/cli > … > cosmiconfig > js-yaml` | **No** — same devDependency |
+| high | `nanoid` | `apps/web > postcss > nanoid` | **No** — build-time only |
+| high | `mysql2` | `apps/api > better-auth > mysql2` | **No** — an **optional peerDependency** of better-auth; kaneo uses `pg`, and nothing in `apps/api/src` or `packages/*/src` imports `mysql2` |
+| high | `deepmerge-ts` | `apps/api > better-auth > prisma > @prisma/config` | **No** — `prisma`/`@prisma/client` are optional peers; kaneo uses Drizzle |
+| moderate ×2 | `qs` | `apps/api > @modelcontextprotocol/sdk > express` | **Yes** — `packages/mcp` is copied. **The only advisory on a shipped path** |
+| moderate | `mysql2` | as above | No |
+| low | `postcss-selector-parser` | `apps/site > shadcn` | **No** — `apps/site` is *Do not copy*, so it leaves at import |
+
+**Verdict:** nothing high or critical blocks the import commit. The one item to carry
+forward is `qs` via the MCP SDK's `express`, which lands with `packages/mcp` and is
+recorded here rather than fixed inside an inherited snapshot.
+
+**Trivy, 2026-09-06:**
+
+- `trivy config` on `Dockerfile.kaneo` — **0 misconfigurations** at HIGH/CRITICAL.
+- `trivy fs --scanners vuln` over `pnpm-lock.yaml` (excluding `apps/site`, which is not
+  copied) — **7 HIGH, 0 CRITICAL**: `deepmerge-ts` CVE-2026-40345, `fast-uri` CVE-2026-75899
+  / CVE-2026-75931 / CVE-2026-75975 / CVE-2026-76172, `mysql2` GHSA-3f6p-5ww8-9rcr, `nanoid`
+  CVE-2026-67213. **The same package set `pnpm audit` found**, from a different advisory
+  database — two independent scanners agreeing that nothing critical is present, and that
+  every high sits in the dev, build-time or unused-optional-driver paths analysed above.
+
 
 **Primitive libraries found in `components/ui`:** **Base UI 43 / Radix 1 of 63** files
 (`form.tsx` imports `@radix-ui` `Slot`; `timeline.tsx` imports `Slot` from the `radix-ui`
