@@ -1,0 +1,19 @@
+TaskDesk
+Copyright (c) 2026 Thomas Hein Thura
+
+Licensed under the GNU Affero General Public License, version 3 (AGPL-3.0).
+The full licence text is in the LICENSE file distributed with this software,
+and at <https://www.gnu.org/licenses/agpl-3.0.html>.
+
+AGPL-3.0 section 13 — remote network interaction. If you modify this software
+and let users interact with your modified version over a network, you must
+give those users access to the corresponding source of your modified version,
+free of charge. Running an unmodified copy triggers no additional obligation
+beyond the licence itself.
+
+This product includes software developed by third parties. Every such
+component, its licence and its copyright holder are recorded in
+THIRD-PARTY-NOTICES.md, which is distributed with the source and is present
+inside the container image alongside this file. Copyright headers in files
+taken from an upstream project are preserved as that project's licence
+requires.
