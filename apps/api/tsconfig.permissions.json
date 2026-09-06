@@ -5,7 +5,8 @@
     "rootDir": "../..",
     "paths": {
       "@taskdesk/permissions": ["../../packages/permissions/src/index.ts"],
-      "vitest": ["./node_modules/vitest"]
+      "vitest": ["./node_modules/vitest"],
+      "hono": ["./node_modules/hono"]
     }
   },
   "include": ["../../tests/permissions/**/*.ts", "src/policy-registry.ts"]

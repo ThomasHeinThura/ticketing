@@ -356,8 +356,12 @@ export function normaliseRouteKey(key: string): RouteKey {
  * `\s` matches, so for a single character the two agree — including the awkward
  * members, U+00A0 and U+FEFF.
  */
-function isWhitespace(char: string): boolean {
-  return char.trim() === "";
+function isWhitespace(char: string | undefined): boolean {
+  // `undefined` only reaches here from an indexed read past the end, which the callers'
+  // bounds already prevent — but `noUncheckedIndexedAccess` cannot see that, and widening
+  // the parameter is honest where a non-null assertion would only silence it. Absent is not
+  // whitespace, which is also the fail-safe answer.
+  return char !== undefined && char.trim() === "";
 }
 
 /** `A-Z`, `a-z`, `0-9`, `_` — the character class Hono allows in a `:param` name. */
