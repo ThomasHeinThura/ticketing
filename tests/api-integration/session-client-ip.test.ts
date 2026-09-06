@@ -17,7 +17,7 @@ async function signUpWithForwardedFor(forwardedFor: string) {
     },
     body: JSON.stringify({
       email,
-      password: "TestPassw0rd!23",
+      password: `Pw-${randomUUID()}`,
       name: "IP Probe",
     }),
   });

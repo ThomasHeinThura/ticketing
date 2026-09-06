@@ -71,8 +71,18 @@ describe("github integration routes are workspace scoped", () => {
   });
 });
 
-describe("public project route", () => {
-  it("refuses a project that is not public", async () => {
+// Negative guard for issue #6. kaneo served project boards anonymously at
+// /api/public-project/:id when the project carried `is_public`. The route, its
+// controller and the column are all gone.
+//
+// The expected status is 401, not 404, and that is the point. kaneo registered
+// this route BEFORE the `api.use("*")` authentication guard, so it never ran
+// the guard at all — that ordering is what made it anonymous. With the route
+// removed, the path falls through to the guard, and an unauthenticated caller
+// is challenged like any other. A 200 here would mean the route is back; a 403
+// would mean something still resolves the path and makes its own decision.
+describe("the removed public project route", () => {
+  it("no longer bypasses authentication, and leaks nothing about the project", async () => {
     const { workspace } = await createWorkspaceMember();
     const { project } = await createProjectFixture({
       workspaceId: workspace.id,
@@ -81,7 +91,7 @@ describe("public project route", () => {
     const { app } = createApp();
     const response = await app.request(`/api/public-project/${project.id}`);
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(401);
     expect(await response.text()).not.toContain(project.name);
   });
 });
