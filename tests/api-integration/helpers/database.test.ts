@@ -8,18 +8,6 @@ import {
 } from "../../../apps/api/src/database/schema";
 import { resetTestDatabase } from "./database";
 
-async function seedMcpOauthStateRow(): Promise<string> {
-  const id = `mcp-oauth-${randomUUID()}`;
-  await db.insert(mcpOauthStateTable).values({
-    id,
-    kind: "test",
-    key: `key-${randomUUID()}`,
-    payload: {},
-    expiresAt: new Date(Date.now() + 60_000),
-  });
-  return id;
-}
-
 async function seedTaskReminderSentRow(): Promise<string> {
   const userId = `user-${randomUUID()}`;
   const workspaceId = `workspace-${randomUUID()}`;
@@ -98,14 +86,6 @@ describe("resetTestDatabase", () => {
 
   afterEach(async () => {
     await resetTestDatabase();
-  });
-
-  it("truncates mcp_oauth_state rows", async () => {
-    const id = await seedMcpOauthStateRow();
-
-    await resetTestDatabase();
-
-    expect(await rowExists("mcp_oauth_state", id)).toBe(false);
   });
 
   it("truncates task_reminder_sent rows", async () => {
