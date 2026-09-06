@@ -47,7 +47,30 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # Full history, because the shrink-only ratchet on
+          # tests/permissions/inherited-uncovered.json compares that file against its
+          # state at the MERGE BASE with main. The default shallow clone has no merge
+          # base, so the ratchet could not run — and the failure would arrive looking
+          # like a policy failure rather than a checkout problem. The step below exists
+          # to keep those two apart.
+          fetch-depth: 0
       - uses: ./.github/actions/setup
+      - name: merge base is resolvable
+        # Fails with its OWN message, before the suite runs. A gate that cannot read its
+        # own baseline must say so in those words: "the ratchet did not run" and "the
+        # ratchet ran and rejected your change" are different facts, and conflating them
+        # is how someone concludes the gate is flaky and stops reading it.
+        run: |
+          git fetch --no-tags --depth=0 origin main 2>/dev/null || git fetch --no-tags origin main
+          if ! base=$(git merge-base HEAD origin/main 2>/dev/null); then
+            echo "::error::Could not resolve a merge base with origin/main. This is a"
+            echo "::error::CHECKOUT problem, not a policy failure: the baseline ratchet"
+            echo "::error::compares inherited-uncovered.json against its state there and"
+            echo "::error::cannot run without it. Check fetch-depth on this job."
+            exit 1
+          fi
+          echo "merge base with origin/main: $base"
       - name: pnpm test:permissions
         run: pnpm test:permissions
 
