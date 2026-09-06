@@ -1,9 +1,7 @@
 import type React from "react";
 import type { ReactNode } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
-import { DemoAlert } from "@/components/demo-alert";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { isDemoMode } from "@/constants/urls";
 import { useUserPreferencesEffects } from "@/hooks/use-user-preferences-effects";
 import { cn } from "@/lib/cn";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -67,7 +65,6 @@ function Layout({ children, className }: LayoutProps) {
             className,
           )}
         >
-          {isDemoMode && <DemoAlert />}
           {children}
         </SidebarInset>
       </SidebarProvider>

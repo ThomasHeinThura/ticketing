@@ -27,25 +27,13 @@ export type SignUpFormValues = {
 type SignUpFormProps = {
   invitationId?: string;
   defaultEmail?: string;
-  /**
-   * Captcha token lifted from the page level. When the page renders Turnstile
-   * (cloud only), it passes the verified token here. `null` means captcha is
-   * required but not yet completed, so the submit button stays disabled.
-   * `undefined` means captcha isn't required at all (self-hosted).
-   */
-  turnstileToken?: string | null;
 };
 
-export function SignUpForm({
-  invitationId,
-  defaultEmail,
-  turnstileToken,
-}: SignUpFormProps) {
+export function SignUpForm({ invitationId, defaultEmail }: SignUpFormProps) {
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const { history } = useRouter();
-  const captchaRequired = turnstileToken !== undefined;
 
   const signUpSchema = useMemo(
     () =>
@@ -72,9 +60,6 @@ export function SignUpForm({
     setIsPending(true);
     try {
       const headers: Record<string, string> = {};
-      if (turnstileToken) {
-        headers["x-turnstile-token"] = turnstileToken;
-      }
       if (invitationId) {
         headers["x-invitation-id"] = invitationId;
       }
@@ -195,11 +180,7 @@ export function SignUpForm({
           />
         </div>
 
-        <Button
-          type="submit"
-          disabled={isPending || (captchaRequired && !turnstileToken)}
-          className="w-full mt-4"
-        >
+        <Button type="submit" disabled={isPending} className="w-full mt-4">
           {isPending
             ? t("auth:signUpForm.creatingAccount")
             : t("auth:signUpForm.createAccount")}

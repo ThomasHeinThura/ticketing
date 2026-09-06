@@ -1,11 +1,8 @@
-import "./instrument";
-
 import { dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { OpenAPIHono } from "@hono/zod-openapi";
-import * as Sentry from "@sentry/node";
 import type { Session, User } from "better-auth/types";
 import { eq, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -132,12 +129,9 @@ export function createApp() {
     if (err instanceof HTTPException) {
       // expected errors (401/404/...) are not reported; real failures are
       if (err.status >= 500) {
-        Sentry.captureException(err);
       }
       return err.getResponse();
     }
-
-    Sentry.captureException(err);
     return c.json({ message: "Internal Server Error" }, 500);
   });
   const nodeWs = createNodeWebSocket({ app });
@@ -527,24 +521,23 @@ export function createApp() {
     if (path.startsWith("/api/mcp") || path.startsWith("/api/.well-known/")) {
       return next();
     }
-    return Sentry.withIsolationScope(async () => {
-      Sentry.setUser(null);
-      try {
-        await authenticateApiRequest(c);
-        const windowId = c.req.header("X-TaskDesk-Window-Id");
-        const userId = c.get("userId");
-        const initiatorId = windowId ? `${userId}:${windowId}` : userId;
-        return await eventContext.run({ initiatorId }, next);
-      } catch (error) {
-        if (!(error instanceof HTTPException)) {
-          console.error("API authentication failed:", error);
-          throw new HTTPException(500, { message: "Internal Server Error" });
-        }
-        throw error;
-      } finally {
-        Sentry.setUser(null);
+    // kaneo wrapped this in Sentry.withIsolationScope(...). With Sentry gone the
+    // wrapper has no purpose, so the body runs directly — it must NOT become an
+    // uninvoked arrow function, or authenticateApiRequest never runs and every
+    // request through this guard succeeds unauthenticated.
+    try {
+      await authenticateApiRequest(c);
+      const windowId = c.req.header("X-TaskDesk-Window-Id");
+      const userId = c.get("userId");
+      const initiatorId = windowId ? `${userId}:${windowId}` : userId;
+      return await eventContext.run({ initiatorId }, next);
+    } catch (error) {
+      if (!(error instanceof HTTPException)) {
+        console.error("API authentication failed:", error);
+        throw new HTTPException(500, { message: "Internal Server Error" });
       }
-    });
+      throw error;
+    }
   });
 
   const oauthApi = api.route("/oauth", oauth);

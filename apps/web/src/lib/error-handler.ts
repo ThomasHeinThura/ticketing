@@ -63,7 +63,7 @@ export function parseApiError(error: unknown): ApiError {
     // API unknowns and any non-API error passed in (e.g. a React render
     // error bubbled up to ErrorBoundary), and a raw `error.message` from
     // the latter can leak internal implementation details to end users.
-    // The original error is preserved on `originalError` for Sentry.
+    // The original error is preserved on `originalError` for diagnostics.
     return {
       message: "common:error.messages.unknown",
       type: "unknown",

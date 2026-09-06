@@ -16,9 +16,15 @@ describe("API integration: config", () => {
       disableEmailOtpSignIn: false,
       disableLoginForm: false,
       customOAuthAutoLogin: false,
-      isDemoMode: false,
       hasGuestAccess: true,
     });
+
+    // isDemoMode left the public config with the cloud-only surfaces in #6.
+    // Asserting its ABSENCE matters: it was driven by DEMO_MODE and paired
+    // with a hardcoded `window.location.hostname === "demo.taskdesk.app"`
+    // branch in the web bundle, which is what AGENTS.md rule 2 forbids.
+    expect(payload).not.toHaveProperty("isDemoMode");
+    expect(payload).not.toHaveProperty("billingEnabled");
     expect(payload).toSatisfy((value: Record<string, unknown>) =>
       [
         "hasSmtp",

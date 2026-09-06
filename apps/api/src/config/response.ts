@@ -6,7 +6,6 @@ export const configSchema = z
     disablePasswordRegistration: z.boolean(),
     disableEmailOtpSignIn: z.boolean(),
     disableWorkspaceCreation: z.boolean(),
-    isDemoMode: z.boolean(),
     hasSmtp: z.boolean(),
     hasGithubSignIn: z.boolean(),
     hasGoogleSignIn: z.boolean(),

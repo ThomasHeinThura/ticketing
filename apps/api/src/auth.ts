@@ -49,7 +49,6 @@ import { isCloud } from "./utils/is-cloud";
 import { isDisposableEmail } from "./utils/is-disposable-email";
 import { isLocalSignInPath } from "./utils/is-local-sign-in-path";
 import { resolveAuthSecret } from "./utils/require-auth-secret";
-import { verifyTurnstile } from "./utils/verify-turnstile";
 
 config();
 
@@ -700,7 +699,7 @@ export const auth = betterAuth({
         }
 
         // Cloud-only abuse gates on password signup. Self-hosted instances
-        // leave KANEO_CLOUD/TURNSTILE_SECRET_KEY unset and skip both.
+        // leave KANEO_CLOUD unset and skip it.
         if (isCloud() && !isInstanceAdminSetup) {
           const signupEmail = (ctx.body?.email as string | undefined) ?? "";
           if (signupEmail && isDisposableEmail(signupEmail)) {
@@ -708,19 +707,6 @@ export const auth = betterAuth({
               message:
                 "Sign-up with disposable email addresses is not allowed.",
             });
-          }
-
-          const turnstileToken =
-            (ctx.body?.turnstileToken as string | undefined) ??
-            ctx.headers?.get("x-turnstile-token") ??
-            null;
-          const remoteIp =
-            ctx.headers?.get("cf-connecting-ip") ??
-            ctx.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-            null;
-          const verdict = await verifyTurnstile(turnstileToken, remoteIp);
-          if (!verdict.ok) {
-            throw new APIError("FORBIDDEN", { message: verdict.reason });
           }
         }
       }
