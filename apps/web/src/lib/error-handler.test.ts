@@ -10,7 +10,7 @@ describe("parseApiError", () => {
     expect(result.type).toBe("unknown");
     expect(result.message).toBe("common:error.messages.unknown");
     expect(result.message).not.toContain(internalMessage);
-    // originalError is preserved so Sentry still sees the real cause.
+    // originalError is preserved so the real cause is not lost.
     expect(result.originalError?.message).toBe(internalMessage);
   });
 

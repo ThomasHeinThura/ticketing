@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/node";
 import { Cron } from "croner";
 import { checkDueDateReminders } from "./due-date-reminders";
 
@@ -7,35 +6,24 @@ const jobs: Cron[] = [];
 type JobOutcome = { degraded?: boolean };
 
 // Cron jobs swallow their operational failures (per-item try/catch) so they
-// can keep processing the rest of the batch. Reporting Sentry status purely
-// from the thrown-rejection channel would always show "ok" for any partially
-// failed run. Inspect the returned outcome instead so handled failures light
-// up the monitor without aborting the rest of the work. Unexpected throws are
-// captured as exception events and swallowed so one bad tick can't take down
-// the scheduler via an unhandled rejection.
+// can keep processing the rest of the batch, which means the thrown-rejection
+// channel alone would report "ok" for a partially failed run. The returned
+// outcome is inspected instead, so a handled failure is still visible.
+//
+// kaneo reported this to Sentry as a check-in. TaskDesk has no phone-home, so
+// it goes to the log. When observability lands (Pino + Prometheus per
+// observability.md) this is the seam that emits a job metric.
 function withCheckIn<T>(name: string, fn: () => Promise<T>) {
   return async (): Promise<void> => {
-    const checkInId = Sentry.captureCheckIn({
-      monitorSlug: name,
-      status: "in_progress",
-    });
     try {
       const result = await fn();
       const degraded = Boolean(
         (result as JobOutcome | null | undefined)?.degraded,
       );
-      Sentry.captureCheckIn({
-        checkInId,
-        monitorSlug: name,
-        status: degraded ? "error" : "ok",
-      });
+      if (degraded) {
+        console.warn(`Cron job ${name} completed with handled failures`);
+      }
     } catch (error) {
-      Sentry.captureException(error, { tags: { area: "cron", job: name } });
-      Sentry.captureCheckIn({
-        checkInId,
-        monitorSlug: name,
-        status: "error",
-      });
       console.error(`Cron job ${name} failed`, error);
     }
   };
