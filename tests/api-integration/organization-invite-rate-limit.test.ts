@@ -10,8 +10,16 @@ import {
 // R1 (retrofit plan §4, highest silent-failure risk), first half: the
 // rate-limit customRule keyed on the literal path string
 // "/organization/invite-member" -- apps/api/src/auth.ts:565-576, the rule
-// itself at :574. `rateLimit.enabled: isCloud()` (apps/api/src/auth.ts:569)
-// so this only engages when KANEO_CLOUD=true.
+// itself at auth.ts:520.
+//
+// CORRECTED: an earlier revision of this comment said `rateLimit.enabled:
+// isCloud()`, so the throttle "only engages when KANEO_CLOUD=true". That is
+// kaneo's behaviour, not this baseline's. #16 sets `enabled: true` for EVERY
+// deployment (auth.ts:505-522) precisely because `isCloud()` left authentication
+// abuse protection off for the self-hosted shape TaskDesk ships. KANEO_CLOUD is
+// relevant to the SEPARATE cloud invite-abuse hook (auth.ts:630), not to whether
+// this limiter runs. It runs everywhere, which is why the suite had to model
+// distinct clients rather than disable it.
 //
 // This test intentionally lives ALONE in its own file: better-auth's
 // in-memory rate-limit store is a module-level Map
