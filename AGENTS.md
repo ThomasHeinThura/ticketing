@@ -52,14 +52,21 @@ branding, features, roles — all runtime configuration in God Mode, stored in t
 Environment variables are for bootstrap only — five required, a handful of optional
 operational switches, all listed in
 [`docs/05-operations/configuration-reference.md`](docs/05-operations/configuration-reference.md)
-and nowhere else — `check:env` fails the build on any other `process.env` read. If you are
+and nowhere else. `check:env` is the gate that makes this enforceable, and it is **IN OPEN
+PR #19** — `main` carries no workflow files at all, so nothing fails a build over a stray
+`process.env` read today and the rule holds by discipline alone. If you are
 about to add one, or write `if (customer === …)`, stop and add
 a plugin or a feature flag.
 
 ### 3 · Every route declares its permission
 
-A route without a policy entry **fails the build**. This is not ceremony — v1 shipped
+A route without a policy entry **must fail the build**. This is not ceremony — v1 shipped
 eleven authorization holes past a green test suite, and every one was an omission.
+
+**Stated as the rule, not as today's behaviour.** The registry and coverage gate are **IN
+OPEN PR #21**, the CI job that runs them is **IN OPEN PR #19**, and neither is on `main`.
+Until both land the rule is enforced by review, which is precisely what ADR 0010 rejected.
+Write policies as though the gate were live, because it is about to be.
 
 ### 4 · Every screen has a URL
 
@@ -79,16 +86,24 @@ apps/api      Hono + Drizzle + better-auth. The only backend.
 apps/web      React 19 + TanStack. Two entries: agent, portal. One source.
 apps/site     The documentation website — stack pending Thomas's decision (docs/08-docs-site/plan.md)
 
-packages/ui                 THE design system. Only source of primitives.
-packages/domain             SLA, workflow, approvals, assignment. Pure, no I/O.
-packages/permissions        Capabilities, roles, policy registry.
-packages/plugins-contracts  Interfaces every plugin implements.
-packages/libs               Typed Hono client.
-packages/importers          Azure DevOps, Plane, Jira, CSV.
+packages/ui                 THE design system. Only source of primitives.      NOT YET (#9)
+packages/domain             SLA, workflow, approvals, assignment. Pure, no I/O.  NOT YET
+packages/permissions        Capabilities, roles, policy registry.                ON MAIN (registry is in #21)
+packages/plugins-contracts  Interfaces every plugin implements.                  NOT YET
+packages/libs               Typed Hono client.                                   ON MAIN
+packages/importers          Azure DevOps, Plane, Jira, CSV.                      NOT YET
+packages/email              Transactional email.                                 ON MAIN
+packages/mcp                MCP client surface.                                  ON MAIN
+
+Dockerfile · compose.yml · deploy/ · charts/taskdesk/ · scripts/deploy.sh       ON MAIN (#20)
 
 tests/        api · api-integration · permissions · e2e · visual
 docs/         Read it. It is the memory this project has.
 ```
+
+This is the target shape with today's state marked. Four `packages/*` entries do not exist
+yet — do not import from them, and do not take their absence as licence to put their
+contents somewhere else.
 
 Detail: [`docs/01-architecture/monorepo-layout.md`](docs/01-architecture/monorepo-layout.md)
 
@@ -107,7 +122,8 @@ Detail: [`docs/01-architecture/monorepo-layout.md`](docs/01-architecture/monorep
 >
 > | Command | State |
 > | --- | --- |
-> | `pnpm install`, `pnpm dev`, `pnpm lint`, `pnpm typecheck` | **ON MAIN** |
+> | `pnpm install`, `pnpm dev`, `pnpm build`, `pnpm lint`, `pnpm typecheck` | **ON MAIN** |
+> | `pnpm i18n:check`, `i18n:check:fix`, `i18n:report`, `i18n:report:fix`, `i18n:schema` | **ON MAIN** — five scripts this document never listed |
 > | `pnpm test` (unit + component) | **ON MAIN** |
 > | `pnpm test:integration` | **ON MAIN** — a Postgres service container, not yet Testcontainers |
 > | `scripts/deploy.sh local` | **ON MAIN** — landed with #11's deployment slice (#20) |
@@ -116,6 +132,17 @@ Detail: [`docs/01-architecture/monorepo-layout.md`](docs/01-architecture/monorep
 > | `pnpm test:e2e`, `pnpm seed` | **not yet** |
 > | `pnpm check:tokens`, `check:ui`, `check:deps` | **not yet** — they assert over `packages/ui` and `packages/domain`, which #9 creates |
 > | `pnpm check:queries`, `check:inventory`, `check:bundle-purity` | **not yet** |
+>
+> **There are no workflow files on `main`** — `.github/` holds only
+> `pull_request_template.md`. So nothing runs automatically on a push to `main` today; CI
+> exists only on #19's branch, where it runs against that pull request. Any sentence in this
+> repository saying a gate "fails the build" describes the intended rule, not current
+> behaviour, until #19 merges.
+>
+> **When a command fails, the cause decides the response.** `turbo: not found` or a missing
+> `node_modules` means an uninstalled tree — run `pnpm install`. "No such script" for
+> something marked *IN OPEN PR* or *not yet* is the expected state. "No such script" for
+> anything marked **ON MAIN** is a real problem: say so rather than working around it.
 >
 > Keeping this table honest matters more than it looks. An agent told "none of this runs"
 > will scaffold a second copy of something that already exists; an agent told a command is

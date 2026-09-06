@@ -58,8 +58,12 @@ work gets reported as shipped, so the category is never optional.
   production / UAT / Traefik overlays, `scripts/deploy.sh`, a `charts/taskdesk` that
   fails closed on every bootstrap secret, and
   [proxy-topology-evidence.md](../05-operations/proxy-topology-evidence.md).
-- Commands that run: `pnpm install | dev | lint | typecheck | test | test:integration`,
-  and `scripts/deploy.sh`.
+- Commands that run: `pnpm install | dev | build | lint | typecheck | test |
+  test:integration`, the five `i18n:*` scripts, and `scripts/deploy.sh`.
+- **No CI.** `.github/` on `main` holds only `pull_request_template.md` — there are **zero
+  workflow files**, so nothing runs automatically on a push. Every gate described anywhere
+  in this repository as "failing the build" is describing the intended rule, not current
+  behaviour, until #19 merges. This is the single most load-bearing fact in this section.
 - A GitHub Project board (project 1, *TaskDesk v2 — P0*) with the six agreed columns.
 
 ### IN OPEN PR — real code, not on `main`, do not report as available
