@@ -1,0 +1,144 @@
+# TaskDesk — base Compose file.
+#
+# Specification: docs/05-operations/deployment.md § Compose files
+#
+# THIS FILE PUBLISHES NO APPLICATION PORT, AND MUST NOT.
+# Compose *concatenates* `ports:` across files: an overlay can add a published
+# port, it cannot take one away. `TASKDESK_TRUST_PROXY` is only sound because
+# port 5173 is reachable from the proxy network alone, so publishing it here
+# would publish it in production too. Publishing 5173 is the job of
+# deploy/compose.local.yml, which production never loads.
+#   docs/05-operations/traefik-and-domains.md
+#
+# Never use this file on its own — always base + one overlay:
+#   local       docker compose -f compose.yml -f deploy/compose.local.yml   -f deploy/compose.traefik.yml up -d --wait
+#   production  docker compose -f compose.yml -f deploy/compose.prod.yml    up -d --wait
+#   uat         docker compose -f compose.yml -f deploy/compose.uat.yml     up -d --wait
+# and use scripts/deploy.sh rather than raw `docker compose up`, which skips
+# secret generation, health waiting and the post-deploy probe.
+#
+# Every third-party image is pinned to a tag, never `latest`.
+
+name: taskdesk
+
+services:
+  taskdesk:
+    # `repo:tag` normally; `repo:tag@sha256:…` when TASKDESK_IMAGE_DIGEST is set,
+    # in which case the digest is what Docker actually pulls. Promotion and
+    # rollback are both "edit the digest and bring the service back up".
+    image: ghcr.io/thomasheinthura/taskdesk:${TASKDESK_IMAGE_TAG:-v2.0.0}${TASKDESK_IMAGE_DIGEST:+@}${TASKDESK_IMAGE_DIGEST:-}
+    restart: unless-stopped
+    # No `ports:`. See the header.
+    environment:
+      # --- the five required bootstrap variables --------------------------
+      TASKDESK_DATABASE_URL: postgres://${POSTGRES_USER:-taskdesk}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-taskdesk}
+      TASKDESK_ENCRYPTION_KEY: ${TASKDESK_ENCRYPTION_KEY:?TASKDESK_ENCRYPTION_KEY is required - run scripts/deploy.sh, which generates it}
+      TASKDESK_AUTH_SECRET: ${TASKDESK_AUTH_SECRET:?TASKDESK_AUTH_SECRET is required - run scripts/deploy.sh, which generates it}
+      TASKDESK_AGENT_URL: ${TASKDESK_AGENT_URL:?TASKDESK_AGENT_URL is required}
+      TASKDESK_PORTAL_URL: ${TASKDESK_PORTAL_URL:?TASKDESK_PORTAL_URL is required}
+      # --- optional per-process switches ----------------------------------
+      TASKDESK_PORT: ${TASKDESK_PORT:-5173}
+      TASKDESK_VALKEY_URL: redis://valkey:6379
+      TASKDESK_ROLE: ${TASKDESK_ROLE:-all}
+      NODE_ENV: ${NODE_ENV:-production}
+      # TASKDESK_TRUST_PROXY is deliberately NOT set here. It is a security
+      # boundary and its value is the measured number of trusted proxy hops in
+      # front of this container, which differs per deployment. The overlays set
+      # it. See docs/05-operations/proxy-topology-evidence.md.
+      # TASKDESK_ENCRYPTION_KEY_PREVIOUS is set by hand, only during a key
+      # rotation window (docs/05-operations/runbook.md).
+      # TASKDESK_BOOTSTRAP_ADMIN_EMAIL is set only for headless installs.
+    volumes:
+      # Attachment bytes for the default storage.filesystem backend.
+      # A fresh install stores attachments here: no bucket, no credentials, no
+      # third hostname. An administrator moves to storage.s3 from God Mode.
+      - taskdesk-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    networks:
+      - taskdesk
+    # The image declares its own HEALTHCHECK (liveness, touches no dependency).
+    stop_grace_period: 30s
+
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-taskdesk}
+      POSTGRES_USER: ${POSTGRES_USER:-taskdesk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-taskdesk} -d ${POSTGRES_DB:-taskdesk}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - taskdesk
+
+  valkey:
+    image: valkey/valkey:9-alpine
+    restart: unless-stopped
+    command: ["valkey-server", "--save", "60", "1", "--appendonly", "no"]
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - taskdesk
+
+  # ---------------------------------------------------------------------
+  # Opt-in object storage: `--profile s3`.
+  #
+  # A fresh install does NOT run this. It exists for a deployment that wants an
+  # S3 API on the same host; God Mode -> Storage then switches the active plugin
+  # from storage.filesystem to storage.s3.
+  #
+  # SeaweedFS is not a single-process S3 server by default — a bare container
+  # listening on 8333 does nothing — hence the explicit `server -s3` command.
+  #
+  # The plugin's configured PUBLIC endpoint must equal the browser-facing
+  # origin (https://files.<domain>): an S3 SigV4 signature covers the Host
+  # header, so a URL presigned for seaweedfs:8333 will not verify in a browser.
+  # And the BUCKET's own CORS — not a Traefik middleware — is what admits the
+  # agent and portal origins for a presigned POST.
+  # docs/05-operations/deployment.md § Object storage, when it is wanted
+  # ---------------------------------------------------------------------
+  seaweedfs:
+    image: chrislusf/seaweedfs:3.97
+    profiles: [s3]
+    restart: unless-stopped
+    command: >
+      server -dir=/data -s3 -s3.port=8333
+      -s3.config=/etc/seaweedfs/s3.json
+      -master.volumeSizeLimitMB=1024
+    volumes:
+      - seaweedfs-data:/data
+      - ./deploy/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8333/status"]
+      interval: 15s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    networks:
+      - taskdesk
+
+volumes:
+  postgres-data:
+  valkey-data:
+  taskdesk-data:
+  seaweedfs-data:
+
+networks:
+  taskdesk:
+    name: taskdesk

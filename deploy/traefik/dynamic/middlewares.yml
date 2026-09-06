@@ -1,0 +1,72 @@
+# Traefik file-provider middlewares.
+#
+# Specification: docs/05-operations/traefik-and-domains.md § Security headers
+#
+# Declared once, here, so they cannot drift between routers. Routers reference
+# them as `<name>@file`.
+#
+# Content-Security-Policy is deliberately absent: it is set by the application,
+# which is the only thing that knows the configured storage origin
+# (docs/01-architecture/security-model.md).
+
+http:
+  middlewares:
+
+    # The default. `includeSubDomains` and `preload` are NOT here: both are
+    # commitments about someone else's apex domain, so they are opt-in.
+    security-headers:
+      headers:
+        stsSeconds: 63072000
+        stsIncludeSubdomains: false
+        stsPreload: false
+        contentTypeNosniff: true
+        frameDeny: true
+        referrerPolicy: strict-origin-when-cross-origin
+        permissionsPolicy: "geolocation=(), camera=(), microphone=(), payment=()"
+        customResponseHeaders:
+          Cross-Origin-Opener-Policy: same-origin
+          X-Powered-By: ""
+          Server: ""
+
+    # Selected instead of the above when TASKDESK_HSTS_PRELOAD is set. Only
+    # meaningful once the apex domain is submitted to the browser preload list.
+    security-headers-preload:
+      headers:
+        stsSeconds: 63072000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        contentTypeNosniff: true
+        frameDeny: true
+        referrerPolicy: strict-origin-when-cross-origin
+        permissionsPolicy: "geolocation=(), camera=(), microphone=(), payment=()"
+        customResponseHeaders:
+          Cross-Origin-Opener-Policy: same-origin
+          X-Powered-By: ""
+          Server: ""
+
+    compress:
+      compress: {}
+
+    # Applied to the files host only, and only when an operator-owned S3
+    # endpoint is served behind this Traefik. A hostile uploaded file must not
+    # execute, so: no scripts, no framing, sandboxed, and downloaded rather than
+    # rendered. This middleware does NOT set the storage backend's CORS — a
+    # presigned POST goes from the browser straight to the storage endpoint, so
+    # the bucket's own CORS rules are what admit the agent and portal origins.
+    files-headers:
+      headers:
+        contentTypeNosniff: true
+        frameDeny: true
+        customResponseHeaders:
+          Content-Security-Policy: "default-src 'none'; sandbox"
+          Content-Disposition: attachment
+          Cross-Origin-Resource-Policy: same-site
+          X-Powered-By: ""
+          Server: ""
+
+    # A crude first line that protects the process. The application's own
+    # limits are identity-aware and enforce policy; both are wanted.
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 200

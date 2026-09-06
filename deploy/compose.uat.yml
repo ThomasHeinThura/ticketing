@@ -1,0 +1,116 @@
+# ===========================================================================
+#  DO NOT APPLY THIS OVERLAY YET.
+#
+#  Applying it publishes TaskDesk v2 on public hostnames. Issue #6 has not
+#  merged, so the tree still carries the inherited authentication defaults from
+#  the kaneo import — anonymous sign-in among them. Public exposure before #6
+#  merges is forbidden (docs/07-planning/status.md, Blocked).
+#
+#  Nothing in scripts/deploy.sh loads this file. Bringing it up is a deliberate
+#  manual act, and it is not one to take before #6.
+# ===========================================================================
+#
+# Overlay — UAT on the bimats.com host. As production, different hostnames, and
+# one material difference in topology: TLS terminates at CloudFront, not at
+# Traefik.
+#
+#   docker compose -f compose.yml -f deploy/compose.uat.yml up -d --wait
+#
+# UAT is held to the production standard: same image, same resource limits,
+# backed up and monitored (docs/05-operations/environments.md).
+#
+# v1 UAT stays running and untouched. v2 deploys BESIDE it with its own Compose
+# project, containers, network, volumes and database. Never reuse a v1 volume;
+# never `docker compose down -v` against v1. v1's project is `taskdesk-uat`,
+# serving ticket-uat.bimats.com and customerportal-uat.bimats.com.
+
+# Its own project, so every container, volume and network is distinct from v1's.
+name: taskdesk-v2-uat
+
+services:
+  taskdesk:
+    environment:
+      NODE_ENV: production
+      # ---------------------------------------------------------------
+      # MEASURED, not assumed. 2026-09-06.
+      #
+      # The chain is CloudFront -> Traefik -> TaskDesk, and BOTH hops append to
+      # X-Forwarded-For, so the real client is the second entry from the right:
+      #
+      #   viewer sends   (nothing, or a forged XFF)
+      #   CloudFront     appends the viewer's IP
+      #   Traefik        trusts the CloudFront edge (it is in the dokploy
+      #                  Traefik's forwardedHeaders.trustedIPs) and appends the
+      #                  edge IP
+      #   TaskDesk sees  "<forged...>, <viewer>, <cloudfront-edge>"
+      #
+      # Full evidence, including the captured header values and how to reproduce
+      # the measurement: docs/05-operations/proxy-topology-evidence.md.
+      # ---------------------------------------------------------------
+      TASKDESK_TRUST_PROXY: "2"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.services.taskdesk.loadbalancer.server.port=${TASKDESK_PORT:-5173}
+      - traefik.http.services.taskdesk.loadbalancer.healthcheck.path=/api/public/health/ready
+      # `web`, not `websecure`, and no certresolver: CloudFront terminates TLS
+      # and reaches this Traefik over plain HTTP on :80. A `websecure` router
+      # here would never be matched, and an ACME challenge would never be
+      # answered, because port 443 on this host is not what the browser talks
+      # to. Measured: entryPointName "web", RequestScheme "http", in the
+      # Traefik access log for a real request to ticket-uat.bimats.com.
+      - traefik.http.routers.taskdesk-v2-agent.rule=Host(`ticket-v2-uat.${DOMAIN:?DOMAIN is required}`)
+      - traefik.http.routers.taskdesk-v2-agent.entrypoints=web
+      - traefik.http.routers.taskdesk-v2-agent.service=taskdesk
+      - traefik.http.routers.taskdesk-v2-agent.middlewares=security-headers@file,compress@file,rate-limit@file
+      - traefik.http.routers.taskdesk-v2-portal.rule=Host(`portal-v2-uat.${DOMAIN:?DOMAIN is required}`)
+      - traefik.http.routers.taskdesk-v2-portal.entrypoints=web
+      - traefik.http.routers.taskdesk-v2-portal.service=taskdesk
+      - traefik.http.routers.taskdesk-v2-portal.middlewares=security-headers@file,compress@file,rate-limit@file
+    networks:
+      - taskdesk
+      - dokploy-network
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 1536M }
+        reservations: { cpus: "0.5", memory: 512M }
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+
+  postgres:
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 2048M }
+        reservations: { cpus: "0.5", memory: 512M }
+
+  valkey:
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 512M }
+        reservations: { cpus: "0.1", memory: 64M }
+
+networks:
+  # Renamed so it cannot collide with another project's `taskdesk` network.
+  taskdesk:
+    name: taskdesk-v2-uat
+  # The shared proxy network this host already runs. External: we attach, we do
+  # not create it, and we never reconfigure it.
+  dokploy-network:
+    external: true
+    name: dokploy-network
+
+# NOT SET, and this is the open item on this topology:
+#
+#   The middlewares above cannot fix X-Forwarded-Proto. Traefik trusts the
+#   CloudFront edge, so it passes a viewer-supplied X-Forwarded-Proto through
+#   verbatim, and when none is supplied it sets `http` — because its own
+#   entrypoint is plain :80. Either way the application does not learn that the
+#   viewer used HTTPS. Whether CloudFront forwards a viewer-supplied
+#   X-Forwarded-Proto depends on the distribution's origin request policy, which
+#   is not readable from this host.
+#
+#   Resolve it at the CDN (an origin custom header `X-Forwarded-Proto: https`,
+#   which CloudFront applies to every origin request) before this overlay is
+#   used for anything that issues a secure cookie or an absolute URL.
+#   docs/05-operations/proxy-topology-evidence.md

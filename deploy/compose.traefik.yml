@@ -1,0 +1,64 @@
+# Overlay — a local Traefik, with a self-signed certificate.
+#
+#   docker compose -f compose.yml -f deploy/compose.local.yml -f deploy/compose.traefik.yml up -d --wait
+#
+# Its purpose is that the production label configuration is exercised locally
+# rather than being first tested in UAT. It is NOT loaded in production: this
+# host, like v1's, already runs a Traefik serving other applications, and
+# deploy/compose.prod.yml attaches to that existing proxy network and
+# contributes only labels.
+#
+# scripts/deploy.sh local generates deploy/local/certs/{local.crt,local.key} and
+# deploy/traefik/dynamic/tls-local.yml. Trust local.crt in the OS keychain to
+# stop browser warnings.
+#
+# NOT PROVIDED, deliberately: an ACME/Let's Encrypt resolver for a standalone
+# production host that has no proxy of its own. It needs a contact email, and
+# there is no environment variable for one — configuration-reference.md's
+# "Variables the application does not read" table lists DOMAIN,
+# TASKDESK_IMAGE_TAG, TASKDESK_IMAGE_DIGEST and TASKDESK_HSTS_PRELOAD and
+# nothing else. Adding one is a decision, not an implementation detail, so it is
+# raised rather than invented. See docs/07-planning/status.md.
+#
+# Specification: docs/05-operations/traefik-and-domains.md
+
+services:
+  traefik:
+    image: traefik:v3.6.7
+    restart: unless-stopped
+    command:
+      - --global.sendanonymoususage=false
+      - --api.dashboard=false
+      - --ping=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=taskdesk
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      # Idle timeout above the application's 30-second WebSocket heartbeat, or
+      # connections are culled mid-conversation.
+      - --entrypoints.websecure.transport.respondingtimeouts.idletimeout=180s
+      - --accesslog=true
+      - --accesslog.format=json
+      - --accesslog.fields.headers.defaultmode=drop
+      - --log.level=INFO
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Read-only socket: Traefik discovers routers from container labels.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./deploy/traefik/dynamic:/etc/traefik/dynamic:ro
+      - ./deploy/local/certs:/etc/traefik/certs:ro
+    networks:
+      - taskdesk
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
