@@ -11,7 +11,7 @@
  * so `packages/permissions` stays a pure package with no framework dependency.
  */
 
-import { normaliseRoutePath, type RouteKey } from "./policy";
+import { isDelegatedPolicy, normaliseRoutePath, type RouteKey } from "./policy";
 import type { PolicyRegistry } from "./registry";
 
 /** The shape Hono exposes as `app.routes`. Structural — no import of hono here. */
@@ -51,20 +51,111 @@ export type CollectedRoute = {
 };
 
 /**
- * Is this router entry a middleware registration rather than a route?
+ * A hand-reviewed, exhaustive record of one legitimate `app.use(...)` / `api.use(...)`
+ * registration in `apps/api/src/index.ts`.
  *
- * `app.use(...)` registers `method: "ALL"` on a wildcard path with a `(c, next)` handler. All
- * three must hold. The rule is deliberately **fail-safe**: a catch-all terminal handler
- * (`app.all("/api/*", (c) => …)`, arity 1) is *not* middleware and therefore still has to
- * carry a policy — which is exactly the shape of route that hid behind kaneo's `api.use("*")`
- * ordering.
+ * `key` is the exact, unnormalised `METHOD path` Hono records for the registration (e.g.
+ * `"ALL /*"`). `registrations` is how many entries Hono is expected to hold at that exact key
+ * today — verified against the real router in `tests/permissions/route-coverage.test.ts`, not
+ * assumed here.
  */
-export function isMiddlewareEntry(entry: HonoRouterEntry): boolean {
-  return (
-    entry.method === "ALL" &&
-    entry.path.includes("*") &&
-    entry.handler.length >= 2
+export type DeclaredRouterMiddleware = {
+  readonly key: RouteKey;
+  readonly registrations: number;
+  readonly note: string;
+};
+
+/**
+ * The only entries `isMiddlewareEntry` ever excludes from coverage.
+ *
+ * Reviewed by hand; growing this list is a decision, not an inference. Today it accounts for
+ * the API's three genuine middleware registrations: `app.use("*", cors(...))`,
+ * `app.use(compress())` (both `ALL /*`), and `api.use("*", <auth + Sentry guard>)` (`ALL
+ * /api/*`, recorded under the `/api` mount).
+ */
+export const DECLARED_ROUTER_MIDDLEWARE: readonly DeclaredRouterMiddleware[] = [
+  {
+    key: "ALL /*",
+    registrations: 2,
+    note: 'apps/api/src/index.ts — app.use("*", cors(...)) and app.use(compress())',
+  },
+  {
+    key: "ALL /api/*",
+    registrations: 1,
+    note: 'apps/api/src/index.ts — api.use("*", <Sentry isolation scope + authenticateApiRequest guard>)',
+  },
+];
+
+/** A route whose path can match more than one endpoint. */
+function isWildcardRoute(route: CollectedRoute): boolean {
+  return route.path.includes("*");
+}
+
+function isAmbiguousWildcardAll(entry: HonoRouterEntry): boolean {
+  return entry.method.toUpperCase() === "ALL" && entry.path.includes("*");
+}
+
+/** The exact, unnormalised key `DECLARED_ROUTER_MIDDLEWARE` is keyed on. */
+function rawEntryKey(entry: HonoRouterEntry): RouteKey {
+  return `${entry.method.toUpperCase()} ${entry.path}` as RouteKey;
+}
+
+/** How many `ALL`+wildcard registrations the router actually holds, grouped by raw key. */
+function countAmbiguousEntries(app: HonoLikeApp): Map<RouteKey, number> {
+  const counts = new Map<RouteKey, number>();
+  for (const entry of app.routes) {
+    if (!isAmbiguousWildcardAll(entry)) continue;
+    const key = rawEntryKey(entry);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/**
+ * Is this router entry one of the hand-reviewed, explicitly declared middleware
+ * registrations?
+ *
+ * **Never inferred from handler arity.** `Function.length` cannot tell a real `(c, next)`
+ * middleware from a terminal handler written `(c, _next) => …` that never calls `next` — and
+ * it is exactly the shape Hono's own `app.mount(path, handler)` compiles to: method `ALL`, a
+ * wildcarded path, and a two-argument handler (`async (c, next) => { const res = await
+ * applicationHandler(...); if (res) return res; await next(); }`) that is itself
+ * indistinguishable from ordinary middleware by shape alone. An opaque mount hiding dozens of
+ * endpoints and a `(c, next) => …` that answers every request are the same arity as a CORS
+ * wrapper — arity says nothing about whether anything behind that entry ever needs a policy.
+ *
+ * Instead: the entry's exact `METHOD path` key must appear on `DECLARED_ROUTER_MIDDLEWARE`,
+ * *and* the router must hold precisely the declared number of registrations at that key — no
+ * more, no fewer.
+ *
+ * - An entry at an **undeclared** key (a new mount, a new `.use()` nobody reviewed) is never
+ *   treated as middleware: it flows into `collectRoutes` as an ordinary route and has to carry
+ *   a policy like everything else. This is the fail-closed direction the invariant requires —
+ *   an ambiguous wildcard is a route until a human says otherwise.
+ * - An **extra** registration crowding an already-declared key (an accidental second `.use()`,
+ *   or a mount that happens to land on the same path as a reviewed one) changes the count and
+ *   voids the declaration for **every** entry sharing that key, rather than quietly keeping
+ *   one of them exempt. The collision becomes a coverage failure, not a coincidence.
+ *
+ * This does not, and cannot, protect against a same-count *substitution* at a declared key
+ * (swapping the genuine middleware for something else while holding the registration count
+ * steady) — no signal available from `{ method, path, handler }` alone can prove identity, and
+ * tagging the registration at its call site would mean editing `apps/api/src/index.ts`, which
+ * this package does not reach into. What this closes is the concrete, demonstrated hole: a
+ * route silently vanishing from coverage because someone happened to write its handler with
+ * two parameters.
+ */
+export function isMiddlewareEntry(
+  entry: HonoRouterEntry,
+  actualCounts: ReadonlyMap<RouteKey, number>,
+): boolean {
+  if (!isAmbiguousWildcardAll(entry)) return false;
+  const key = rawEntryKey(entry);
+  const declared = DECLARED_ROUTER_MIDDLEWARE.find(
+    (candidate) => candidate.key === key,
   );
+  if (declared === undefined) return false;
+  return actualCounts.get(key) === declared.registrations;
 }
 
 export function classifySurface(path: string): RouteSurface {
@@ -86,10 +177,11 @@ export function classifySurface(path: string): RouteSurface {
  * times; `registrations` keeps that count for diagnostics.
  */
 export function collectRoutes(app: HonoLikeApp): CollectedRoute[] {
+  const ambiguousCounts = countAmbiguousEntries(app);
   const byKey = new Map<RouteKey, { route: CollectedRoute; count: number }>();
 
   for (const entry of app.routes) {
-    if (isMiddlewareEntry(entry)) continue;
+    if (isMiddlewareEntry(entry, ambiguousCounts)) continue;
 
     const path = normaliseRoutePath(entry.path);
     const method = entry.method.toUpperCase();
@@ -118,9 +210,10 @@ export function collectRoutes(app: HonoLikeApp): CollectedRoute[] {
 
 /** Every middleware registration, for the report. */
 export function collectMiddleware(app: HonoLikeApp): RouteKey[] {
+  const ambiguousCounts = countAmbiguousEntries(app);
   const keys = new Set<RouteKey>();
   for (const entry of app.routes) {
-    if (!isMiddlewareEntry(entry)) continue;
+    if (!isMiddlewareEntry(entry, ambiguousCounts)) continue;
     keys.add(`${entry.method.toUpperCase()} ${normaliseRoutePath(entry.path)}`);
   }
   return [...keys].sort();
@@ -146,6 +239,22 @@ export type CoverageResult = {
   readonly baselineStale: readonly string[];
   /** Policies for routes the router does not have. A renamed path leaves one of these behind. */
   readonly orphanedPolicies: readonly string[];
+  /**
+   * Wildcard surfaces nobody has declared. **Neither a policy nor a baseline entry clears
+   * one**, and that separation is the point.
+   *
+   * Letting a wildcard be satisfied by an ordinary policy is the trap: one line —
+   * `"ALL /api/legacy/*": { capability: "project:read", scope: "project" }` — turns the gate
+   * green while an entire mounted application is nominally guarded by a single capability
+   * check that none of its inner routes ever runs. That is not coverage; it is an invisible
+   * surface repainted as a covered one, which is harder to spot than the original defect.
+   * Letting the baseline clear one is the same trap with a shorter diff.
+   *
+   * So a wildcard carrying anything other than a `delegated` policy is neither covered nor
+   * uncovered. It is unclassified, and the only way out is a `delegated` policy stating, in a
+   * mandatory reason, that the surface behind it authenticates itself.
+   */
+  readonly unclassified: readonly CollectedRoute[];
   readonly bySurface: Readonly<
     Record<RouteSurface, { total: number; covered: number; uncovered: number }>
   >;
@@ -171,7 +280,32 @@ export function computeRouteCoverage(
   const knownUncovered: CollectedRoute[] = [];
   const baselineNowCovered: string[] = [];
 
+  const unclassified: CollectedRoute[] = [];
+
   for (const route of routes) {
+    // A wildcard surface hides an unknown number of endpoints, so only ONE of the five
+    // policy kinds can honestly cover it: `delegated`, which means "the surface behind
+    // this authenticates itself" and carries a mandatory reason.
+    //
+    // Checked before the ordinary registry lookup, deliberately. Any other kind would
+    // otherwise clear it, and that is the trap: one line —
+    // `"ALL /api/legacy/*": { capability: "project:read", scope: "project" }` — turns the
+    // gate green while an entire mounted application is nominally guarded by a single
+    // capability check that none of its inner routes ever runs. An invisible surface
+    // repainted as a covered one is harder to spot than the original defect. The baseline
+    // cannot clear one either; that is the same trap with a shorter diff.
+    if (isWildcardRoute(route)) {
+      const entry = registry.get(route.routeKey);
+      if (entry && isDelegatedPolicy(entry.policy)) {
+        covered.push(route);
+        if (baselineSet.has(route.routeKey)) {
+          baselineNowCovered.push(route.routeKey);
+        }
+      } else {
+        unclassified.push(route);
+      }
+      continue;
+    }
     if (registry.has(route.routeKey)) {
       covered.push(route);
       if (baselineSet.has(route.routeKey)) {
@@ -208,6 +342,7 @@ export function computeRouteCoverage(
   ) as CoverageResult["bySurface"];
 
   return {
+    unclassified,
     covered,
     uncovered,
     knownUncovered,
@@ -216,6 +351,7 @@ export function computeRouteCoverage(
     orphanedPolicies,
     bySurface,
     ok:
+      unclassified.length === 0 &&
       uncovered.length === 0 &&
       baselineNowCovered.length === 0 &&
       baselineStale.length === 0 &&
@@ -249,6 +385,23 @@ export function formatCoverageReport(result: CoverageResult): string {
     lines.push("", "Baseline entries naming routes the router no longer has:");
     for (const key of result.baselineStale) lines.push(`  ${key}`);
   }
+  if (result.unclassified.length > 0) {
+    lines.push("");
+    lines.push(
+      `UNCLASSIFIED WILDCARD SURFACES (${result.unclassified.length}) — a policy will NOT clear these, and neither will a baseline entry:`,
+    );
+    for (const route of result.unclassified) lines.push(`  ${route.routeKey}`);
+    lines.push(
+      "  Each hides an unknown number of endpoints. Either register concrete routes instead,",
+    );
+    lines.push(
+      "  or give it a `delegated` policy whose reason says what authenticates the surface",
+    );
+    lines.push(
+      "  behind it. No other policy kind, and no baseline entry, will clear one.",
+    );
+  }
+
   if (result.orphanedPolicies.length > 0) {
     lines.push("", "Policies whose route does not exist:");
     for (const key of result.orphanedPolicies) lines.push(`  ${key}`);

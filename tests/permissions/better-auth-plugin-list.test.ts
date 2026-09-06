@@ -8,6 +8,11 @@ import {
 } from "@taskdesk/permissions";
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadBetterAuthPluginIds, loadPolicyRegistry } from "./api-app";
+import {
+  diffBaselineEntries,
+  REPO_ROOT,
+  readJsonAtMergeBase,
+} from "./git-baseline";
 
 /**
  * The `/auth/*` mount, covered the only way it can be.
@@ -62,6 +67,65 @@ describe("the better-auth plugin list", () => {
     for (const id of baseline.pendingRemoval) {
       expect(removed, `${id} is in the pending-removal list`).toContain(id);
     }
+  });
+
+  it("keeps the pending-removal list shrinking, never growing", () => {
+    // Same growth hole as inherited-uncovered.json, narrower blast radius: comparing
+    // `baseline.pendingRemoval` only against the *current* constructed plugin list (as
+    // `baselineStale`, above, already does) cannot catch a PR that re-adds a condemned
+    // plugin id and appends it to this file in the same diff. Only a comparison against the
+    // file's content at the merge base with main can. See `git-baseline.ts`.
+    const previous = readJsonAtMergeBase(
+      REPO_ROOT,
+      "tests/permissions/better-auth-plugins-pending-removal.json",
+    ) as (PluginListBaseline & { readonly $comment?: unknown }) | null;
+    if (previous === null) {
+      // Bootstrap: this file did not exist yet at the merge base with main. Nothing to have
+      // grown from yet — see the identical case in route-coverage.test.ts.
+      return;
+    }
+    const drift = diffBaselineEntries(
+      previous.pendingRemoval,
+      baseline.pendingRemoval,
+    );
+    expect(
+      drift.added,
+      "entries appended to better-auth-plugins-pending-removal.json since the merge base with main",
+    ).toEqual([]);
+  });
+
+  it("STILL FAILS (via growth detection) when a re-added plugin id is appended to pending-removal", () => {
+    // The equivalent proven consequence: a condemned plugin comes back (a dependency bump
+    // re-enables it, a merge resolves the wrong way) and its id is appended to
+    // pendingRemoval to keep the build green. checkPluginList alone cannot catch this — from
+    // its point of view the id is now legitimately "pending removal" — only comparing
+    // against the previously committed list can.
+    const reintroducedId = "bearer";
+    const previousWithoutIt: PluginListBaseline = {
+      pendingRemoval: baseline.pendingRemoval.filter(
+        (id) => id !== reintroducedId,
+      ),
+    };
+    const currentWithIt: PluginListBaseline = {
+      pendingRemoval: [...previousWithoutIt.pendingRemoval, reintroducedId],
+    };
+
+    // Everything "kept" is constructed, as it genuinely would be, plus every plugin the
+    // pending-removal list itself says is still hanging around (including the reintroduced
+    // one) — the shape a real re-introduction actually takes.
+    const keptIds = BETTER_AUTH_PLUGINS.filter(
+      (plugin) => plugin.verdict === "kept",
+    ).map((plugin) => plugin.id);
+    const constructedIds = [...keptIds, ...currentWithIt.pendingRemoval];
+
+    const hiddenResult = checkPluginList(constructedIds, currentWithIt);
+    expect(hiddenResult.ok).toBe(true); // confirms the old hole really is a hole
+
+    const drift = diffBaselineEntries(
+      previousWithoutIt.pendingRemoval,
+      currentWithIt.pendingRemoval,
+    );
+    expect(drift.added).toEqual([reintroducedId]);
   });
 
   it("declares the mount as a delegated surface, with a reason", async () => {

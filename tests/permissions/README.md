@@ -42,6 +42,8 @@ belongs in the **fast** stage, as a required check, alongside lint, typecheck an
 | A built-in role whose capabilities or rank differ from rbac.md's table | `roles-match-rbac.test.ts` |
 | A change to who may call what, without a fixture diff | `matrix.test.ts` |
 | A better-auth plugin that is not on the approved list | `better-auth-plugin-list.test.ts` |
+| An ambiguous `ALL`+wildcard router entry not on the declared middleware list | `route-coverage.test.ts` (via `isMiddlewareEntry`) |
+| A shrinking-list baseline (`inherited-uncovered.json`, `better-auth-plugins-pending-removal.json`) with an entry appended since the merge base with `main` | `route-coverage.test.ts`, `better-auth-plugin-list.test.ts` (via `git-baseline.ts`) |
 
 ## The enumeration is Hono's router, not the OpenAPI document
 
@@ -51,9 +53,20 @@ so the document and the enforcement can disagree silently. Position is untrusted
 `api.use("*")` gates only what is registered below it, and sixteen inherited routes sit above
 it. A policy is a property of the route, never of where it happens to be declared.
 
-`app.use(...)` registrations are excluded as middleware only when **all three** hold: method
-`ALL`, a wildcard path, and a handler taking `(c, next)`. A catch-all terminal handler still
-needs a policy.
+**Never inferred from handler arity.** `Function.length` cannot tell a real `(c, next)`
+middleware from a terminal handler written `(c, _next) => …` that never calls `next` — and it
+is exactly the shape Hono's own `app.mount(path, handler)` compiles to (method `ALL`, a
+wildcarded path, a two-argument handler). Both used to be excluded from coverage on arity
+alone, which is how a mounted application's entire endpoint set could vanish with zero rows in
+`collectRoutes`, invisibly. Instead, an `ALL`+wildcard entry is excluded only when its exact
+`METHOD path` key is on the hand-reviewed `DECLARED_ROUTER_MIDDLEWARE` list *and* the router
+holds precisely the declared number of registrations at that key — no more, no fewer, so an
+extra registration crowding a declared key (an accidental second mount at the same path) voids
+the exemption for everything sharing it rather than one of them quietly keeping it. An entry at
+an undeclared key is never middleware: it becomes an ordinary route, and — like `/api/auth/*`
+today — needs either a normal policy or a `delegated` one carrying its own reason, i.e. its own
+coverage contract. See `route-coverage.ts`'s doc comment on `isMiddlewareEntry` for what this
+does and does not protect against.
 
 ## The two shrinking lists
 
@@ -65,6 +78,21 @@ they cannot rot into permanent exemptions.
   classified. A *new* route never lands here silently: adding a line is a visible diff.
 - **`better-auth-plugins-pending-removal.json`** — plugins removed at fork that #6 has not
   removed yet.
+
+**A visible diff is not enough on its own.** Comparing either file only against the *current*
+router or plugin list (which entries above already do) cannot catch a PR that adds an
+unpolicied route, or re-admits a condemned plugin, and hides it by appending the same key to
+the baseline in the same diff — both sides of that comparison move together and the gate stays
+green. `git-baseline.ts` closes that: it reads each file's content at the merge base with
+`main` (`git merge-base HEAD origin/main`, falling back to `main`) and `route-coverage.test.ts`
+/ `better-auth-plugin-list.test.ts` fail when the current file contains a key the merge-base
+version did not. Two situations are legitimately not failures — on `main` itself there is
+nothing to diff against but itself, and immediately after this file is introduced there is no
+prior version to have grown from — both documented, and both proven, in `git-baseline.ts` and
+`git-baseline.test.ts`. A checkout that cannot resolve *any* merge base at all (a shallow,
+single-branch CI checkout that never fetched `main`) is not treated as "assume it's fine": the
+check throws, because a build that cannot prove a baseline did not grow must not silently
+report that it did not.
 
 ## Regenerating a fixture
 
