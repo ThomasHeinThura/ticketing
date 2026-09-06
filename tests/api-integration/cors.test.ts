@@ -36,6 +36,29 @@ describe("API integration: CORS origin policy", () => {
     expect(await originHeaderFor("https://attacker.example")).toBeNull();
   });
 
+  // Negative guard for issue #6, CRITICAL. kaneo gated reflection on
+  // `NODE_ENV !== "production"`, and "not production" includes UNSET — the
+  // normal state of a self-hosted deployment, which is what TaskDesk ships.
+  // Combined with `credentials: true`, any website could read a logged-in
+  // victim's authenticated responses. The existing tests above and below only
+  // exercised the two explicit values, so nothing covered the case that was
+  // actually broken.
+  it("refuses unconfigured cross-origin requests when NODE_ENV is unset", async () => {
+    delete process.env.NODE_ENV;
+    delete process.env.TASKDESK_AGENT_URL;
+    delete process.env.CORS_ORIGINS;
+
+    expect(await originHeaderFor("https://attacker.example")).toBeNull();
+  });
+
+  it("refuses unconfigured cross-origin requests under any unexpected NODE_ENV", async () => {
+    process.env.NODE_ENV = "staging";
+    delete process.env.TASKDESK_AGENT_URL;
+    delete process.env.CORS_ORIGINS;
+
+    expect(await originHeaderFor("https://attacker.example")).toBeNull();
+  });
+
   it("still reflects the origin in development", async () => {
     process.env.NODE_ENV = "development";
     delete process.env.TASKDESK_AGENT_URL;
