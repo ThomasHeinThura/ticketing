@@ -73,7 +73,7 @@ describe("the elevation coverage rule", () => {
         "POST /api/instance/purge": {
           capability: "instance:admin",
           scope: "instance",
-          scopeSource: "request",
+          scopeSource: "instance",
           reach: {
             exempt: "no_single_resource",
             reason: "an instance-wide action, not a single resource",
@@ -149,7 +149,7 @@ describe("an elevated route is always session-only", () => {
           "POST /api/instance/users/{id}/impersonate": {
             capability: "instance:admin",
             scope: "instance",
-            scopeSource: "request",
+            scopeSource: "instance",
             reach: {
               exempt: "no_single_resource",
               reason:

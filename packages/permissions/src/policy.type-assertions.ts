@@ -70,3 +70,16 @@ export type SelfMustDeclarePersonParam = Assert<
     readonly self: true;
   }>
 >;
+
+/**
+ * A capability policy that omits `scopeSource` is the same omission again — finding 4's
+ * completion. This object is otherwise complete (`capability`, `scope`, `reach` all present) so
+ * the rejection is attributable to the missing field alone.
+ */
+export type CapabilityMustDeclareScopeSource = Assert<
+  Rejects<{
+    readonly capability: "project:read";
+    readonly scope: "project";
+    readonly reach: "required";
+  }>
+>;

@@ -89,6 +89,22 @@ export function validatePolicy(routeKey: string, policy: Policy): string[] {
     problems.push(`${at}: policy mixes ${shapes} of the five kinds`);
   }
 
+  // `scopeSource` means something only for a capability policy — self, portal, public and
+  // delegated have no scope whose provenance could be a row or a request. It is not merely
+  // unused on those four kinds, it is refused: a declared-and-ignored field is how a control
+  // gets documented and absent at the same time (the same failure mode `elevated`/`sessionOnly`
+  // on kind 4 already closes above). Checked from an untyped view because a well-typed literal
+  // of the other four kinds cannot carry this field at all — this is the runtime layer for a
+  // policy map that arrived as JSON or from a plugin and never met `tsc`.
+  if (!isCapabilityPolicy(policy)) {
+    const untyped = policy as { readonly scopeSource?: unknown };
+    if (untyped.scopeSource !== undefined) {
+      problems.push(
+        `${at}: only a capability policy may declare scopeSource — a ${kind} policy has no scope whose provenance applies, and supplying it is refused as incoherent`,
+      );
+    }
+  }
+
   if (isCapabilityPolicy(policy)) {
     if (!isCapability(policy.capability)) {
       problems.push(
@@ -100,7 +116,21 @@ export function validatePolicy(routeKey: string, policy: Policy): string[] {
     }
     if (!SCOPE_SOURCE_SET.has(policy.scopeSource)) {
       problems.push(
-        `${at}: scopeSource must be "row" or "request" (got ${String(policy.scopeSource)}) — it is not optional, and there is no default`,
+        `${at}: scopeSource must be "row", "request" or "instance" (got ${String(policy.scopeSource)}) — it is not optional, and there is no default`,
+      );
+    } else if (
+      policy.scope === "instance" &&
+      policy.scopeSource !== "instance"
+    ) {
+      problems.push(
+        `${at}: scope "instance" has no tenant or resource id whose provenance could be a row or a request — declare scopeSource: "instance"`,
+      );
+    } else if (
+      policy.scope !== "instance" &&
+      policy.scopeSource === "instance"
+    ) {
+      problems.push(
+        `${at}: scopeSource "instance" is only valid for scope "instance" — "${policy.scope}" is id-bearing and must declare "row" or "request"`,
       );
     }
     problems.push(

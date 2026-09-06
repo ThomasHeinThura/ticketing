@@ -16,27 +16,83 @@ import {
   type BuiltInRoleKey,
   CAPABILITY_NAMES,
   type Capability,
+  type CapabilityPolicy,
   evaluatePolicy,
   expandCapabilities,
+  instanceScope,
   isCapabilityPolicy,
+  organisationScopeFromRequest,
+  organisationScopeFromRow,
   type PolicyRegistry,
+  projectScopeFromRequest,
+  projectScopeFromRow,
   type ResolvedIdentity,
+  type ResolvedScope,
   type RoleGrant,
   type ScopeTarget,
+  workItemScopeFromRequest,
+  workItemScopeFromRow,
+  workspaceScopeFromRequest,
+  workspaceScopeFromRow,
 } from "@taskdesk/permissions";
 
 export const WORKSPACE_ID = "ws-matrix";
 export const PROJECT_ID = "prj-matrix";
 export const ORGANISATION_ID = "org-matrix";
 export const PERSON_ID = "person-matrix";
+export const WORK_ITEM_ID = "wi-matrix";
 
 export const MATRIX_TARGET: ScopeTarget = {
   instance: true,
   organisationId: ORGANISATION_ID,
   workspaceId: WORKSPACE_ID,
   projectId: PROJECT_ID,
-  workItemId: "wi-matrix",
+  workItemId: WORK_ITEM_ID,
 };
+
+/**
+ * Explicit `ResolvedScope` evidence for a capability policy under evaluation, built from the
+ * matrix's own fixed ids (finding 4, completion). Every capability-policy evaluation in this
+ * fixture now constructs this rather than relying on the removed flat-target fallback — the
+ * row/request family is chosen from the policy's own `scopeSource`, never guessed.
+ */
+function resolvedScopeFor(policy: CapabilityPolicy): ResolvedScope {
+  const fromRow = policy.scopeSource === "row";
+  switch (policy.scope) {
+    case "instance":
+      return instanceScope();
+    case "organisation":
+      return fromRow
+        ? organisationScopeFromRow({ organisationId: ORGANISATION_ID })
+        : organisationScopeFromRequest({ organisationId: ORGANISATION_ID });
+    case "workspace":
+      return fromRow
+        ? workspaceScopeFromRow({ workspaceId: WORKSPACE_ID })
+        : workspaceScopeFromRequest({ workspaceId: WORKSPACE_ID });
+    case "project":
+      return fromRow
+        ? projectScopeFromRow({
+            projectId: PROJECT_ID,
+            workspaceId: WORKSPACE_ID,
+          })
+        : projectScopeFromRequest({
+            projectId: PROJECT_ID,
+            workspaceId: WORKSPACE_ID,
+          });
+    case "work_item":
+      return fromRow
+        ? workItemScopeFromRow({
+            workItemId: WORK_ITEM_ID,
+            projectId: PROJECT_ID,
+            workspaceId: WORKSPACE_ID,
+          })
+        : workItemScopeFromRequest({
+            workItemId: WORK_ITEM_ID,
+            projectId: PROJECT_ID,
+            workspaceId: WORKSPACE_ID,
+          });
+  }
+}
 
 function grantFor(key: BuiltInRoleKey): RoleGrant {
   const role = BUILT_IN_ROLES[key];
@@ -112,6 +168,11 @@ function outcome(
   const decision = evaluatePolicy(registryPolicy, {
     identity,
     target: MATRIX_TARGET,
+    // Mandatory for a capability policy (finding 4); every other kind ignores it, so passing
+    // `undefined` for them is the correct "not applicable" rather than a guess.
+    scope: isCapabilityPolicy(registryPolicy)
+      ? resolvedScopeFor(registryPolicy)
+      : undefined,
     inReach: isCapabilityPolicy(registryPolicy) ? inReach : undefined,
     portalPredicateSatisfied: inReach,
   });

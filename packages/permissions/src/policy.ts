@@ -134,6 +134,12 @@ export type PersonParam =
  *   it. A route addressing one resource by `{id}` is `"row"`.
  * - `"request"` — there is no row yet, so the scope id legitimately comes from the request
  *   itself (a path parameter or the `X-Workspace-Id` header): a collection route, or a create.
+ * - `"instance"` — the route's scope is `"instance"` itself, which has no tenant or resource id
+ *   at all, so there is nothing whose provenance could be a loaded row or a request parameter.
+ *   Valid **only** for `scope: "instance"`, and required there — `"row"` and `"request"` both
+ *   describe how an *id* was obtained, and instance has no id to obtain. `validatePolicy`
+ *   refuses the declaration either way round: `scope: "instance"` with `scopeSource: "row"` or
+ *   `"request"`, and any other scope with `scopeSource: "instance"`.
  *
  * **Not the same question as `reach`.** `reach` asks whether this route addresses a single
  * resource that must be visibility-checked; `scopeSource` asks where the *authority* check's
@@ -143,9 +149,13 @@ export type PersonParam =
  *
  * Required on every capability policy, and deliberately not defaulted: a default is how the
  * one route where this matters gets forgotten. `evaluatePolicy` refuses a resolved scope whose
- * own source does not match this declaration — see `evaluator.ts`'s scope resolution.
+ * own source does not match this declaration — see `evaluator.ts`'s scope resolution. There is
+ * no fallback for an *absent* resolved scope either: a capability policy with no `context.scope`
+ * at all is refused (`policy_context_incomplete`), never evaluated against the flat, unverified
+ * request bag. Row/request provenance applies only to the four id-bearing scopes —
+ * `organisation`, `workspace`, `project`, `work_item`; instance uses its own source instead.
  */
-export const SCOPE_SOURCES = ["row", "request"] as const;
+export const SCOPE_SOURCES = ["row", "request", "instance"] as const;
 
 export type ScopeSource = (typeof SCOPE_SOURCES)[number];
 

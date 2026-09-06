@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   can,
   evaluatePolicy,
+  instanceScope,
   isResolvedScope,
   organisationScopeFromRow,
   type PolicyContext,
   projectScopeFromRow,
+  type ResolvedScope,
   ScopeResolutionError,
   workItemScopeFromRow,
   workspaceScopeFromRequest,
@@ -515,5 +517,211 @@ describe("evaluatePolicy — scope source (finding 4 arbitration)", () => {
     const mislabelled = workspaceScopeFromRow({ workspaceId: headerValue });
     expect(isResolvedScope(mislabelled)).toBe(true);
     expect(mislabelled.kind).toBe("workspace");
+  });
+});
+
+/**
+ * Finding 4, completion — the provenance-free fallback is removed.
+ *
+ * `resolveScopeForPolicy` used to end with `return { ok: true, target: context.target }` when
+ * `context.scope` was omitted: a policy declaring `scopeSource: "row"` still ran its authority
+ * check against the flat, unverified `target` bag. That is the identical omission this fix
+ * removes — absence read as "no constraint" — and it is the same bug whether `target` is empty
+ * or already names the right tenant, so every case below sets `target.workspaceId` to the SAME
+ * workspace the identity's grant and the resolved scope name, precisely so an allowed decision
+ * cannot be attributed to the target bag rather than to genuine scope evidence.
+ */
+describe("evaluatePolicy — the provenance-free fallback is removed (finding 4, completion)", () => {
+  const rowSourcedPolicy = policy({
+    capability: "webhook:manage",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  });
+  const target = { workspaceId: WORKSPACE_A };
+
+  function holderOf(capabilities: readonly string[]): ResolvedIdentity {
+    return identityWith(
+      grant({ scope: "workspace", scopeId: WORKSPACE_A, capabilities }),
+    );
+  }
+
+  it("context.scope absent — DENY, even though target.workspaceId already names the right tenant", () => {
+    const decision = evaluatePolicy(
+      rowSourcedPolicy,
+      ctx({
+        identity: holderOf(["webhook:manage"]),
+        target,
+        inReach: true,
+      }),
+    );
+    expect(decision).toMatchObject({
+      allowed: false,
+      status: 500,
+      code: "policy_context_incomplete",
+    });
+  });
+
+  it("RequestScope(A) — DENY, wrong provenance for a scopeSource: row policy", () => {
+    const decision = evaluatePolicy(
+      rowSourcedPolicy,
+      ctx({
+        identity: holderOf(["webhook:manage"]),
+        target,
+        inReach: true,
+        scope: workspaceScopeFromRequest({ workspaceId: WORKSPACE_A }),
+      }),
+    );
+    expect(decision).toMatchObject({
+      allowed: false,
+      status: 403,
+      code: "scope_source_mismatch",
+    });
+  });
+
+  it("RowScope(A) — proceeds to the normal authority check", () => {
+    const decision = evaluatePolicy(
+      rowSourcedPolicy,
+      ctx({
+        identity: holderOf(["webhook:manage"]),
+        target,
+        inReach: true,
+        scope: workspaceScopeFromRow({ workspaceId: WORKSPACE_A }),
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+
+    // "Proceeds to the normal authority check" — not "always allows once a scope resolved at
+    // all". An identity that genuinely lacks the capability is still refused.
+    const refused = evaluatePolicy(
+      rowSourcedPolicy,
+      ctx({
+        identity: holderOf([]),
+        target,
+        inReach: true,
+        scope: workspaceScopeFromRow({ workspaceId: WORKSPACE_A }),
+      }),
+    );
+    expect(refused).toMatchObject({
+      allowed: false,
+      status: 403,
+      code: "forbidden",
+    });
+  });
+
+  it("also denies: wrong scope kind, an unbranded plain object, a malformed scope, and a missing scope", () => {
+    const identity = holderOf(["webhook:manage"]);
+    const base = { identity, target, inReach: true };
+
+    // Wrong scope kind — a genuinely resolved scope, just not the one this policy declares.
+    expect(
+      evaluatePolicy(
+        rowSourcedPolicy,
+        ctx({
+          ...base,
+          scope: projectScopeFromRow({
+            projectId: PROJECT_1,
+            workspaceId: WORKSPACE_A,
+          }),
+        }),
+      ),
+    ).toMatchObject({ allowed: false, status: 403, code: "scope_mismatch" });
+
+    // An unbranded plain object of the exact right shape — never trusted, however it looks.
+    expect(
+      evaluatePolicy(
+        rowSourcedPolicy,
+        ctx({
+          ...base,
+          scope: {
+            kind: "workspace",
+            workspaceId: WORKSPACE_A,
+          } as unknown as ResolvedScope,
+        }),
+      ),
+    ).toMatchObject({
+      allowed: false,
+      status: 500,
+      code: "policy_context_incomplete",
+    });
+
+    // Malformed — not even an object.
+    expect(
+      evaluatePolicy(
+        rowSourcedPolicy,
+        ctx({ ...base, scope: "workspace:ws-A" as unknown as ResolvedScope }),
+      ),
+    ).toMatchObject({
+      allowed: false,
+      status: 500,
+      code: "policy_context_incomplete",
+    });
+
+    // Missing entirely.
+    expect(evaluatePolicy(rowSourcedPolicy, ctx(base))).toMatchObject({
+      allowed: false,
+      status: 500,
+      code: "policy_context_incomplete",
+    });
+  });
+});
+
+/**
+ * Finding 4, instance — `instance` has no tenant or resource id, so its scope evidence has no
+ * row or request to have come from. `instanceScope()` is its only constructor; there is no
+ * `instanceScopeFromRow`/`instanceScopeFromRequest` to mistakenly reach for.
+ */
+describe("evaluatePolicy — instance scope has its own source, not row or request", () => {
+  it("instanceScope() is a resolved scope, branded 'instance'", () => {
+    const scope = instanceScope();
+    expect(scope.kind).toBe("instance");
+    expect(isResolvedScope(scope)).toBe(true);
+  });
+
+  it("satisfies an instance-scope, scopeSource: 'instance' policy", () => {
+    const p = policy({
+      capability: "instance:manage_plugins",
+      scope: "instance",
+      scopeSource: "instance",
+    });
+    const identity = identityWith(
+      grant({
+        scope: "instance",
+        scopeId: null,
+        capabilities: ["instance:manage_plugins"],
+      }),
+    );
+    const decision = evaluatePolicy(
+      p,
+      ctx({ identity, scope: instanceScope() }),
+    );
+    expect(decision.allowed).toBe(true);
+  });
+
+  it("refuses an instance-scope policy when the resolved scope is a workspace", () => {
+    const p = policy({
+      capability: "instance:manage_plugins",
+      scope: "instance",
+      scopeSource: "instance",
+    });
+    const identity = identityWith(
+      grant({
+        scope: "instance",
+        scopeId: null,
+        capabilities: ["instance:manage_plugins"],
+      }),
+    );
+    const decision = evaluatePolicy(
+      p,
+      ctx({
+        identity,
+        scope: workspaceScopeFromRow({ workspaceId: WORKSPACE_A }),
+      }),
+    );
+    expect(decision).toMatchObject({
+      allowed: false,
+      status: 403,
+      code: "scope_mismatch",
+    });
   });
 });

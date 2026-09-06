@@ -284,6 +284,73 @@ describe("validatePolicy — there is no sixth kind", () => {
       { capability: "project:read", scope: "project", elevated: false },
       /needs elevationExemptionReason/,
     ],
+    [
+      "an instance-scope policy declaring scopeSource: row",
+      {
+        capability: "instance:manage_plugins",
+        scope: "instance",
+        scopeSource: "row",
+        reach: "required",
+      },
+      /declare scopeSource: "instance"/,
+    ],
+    [
+      "an instance-scope policy declaring scopeSource: request",
+      {
+        capability: "instance:manage_plugins",
+        scope: "instance",
+        scopeSource: "request",
+        reach: "required",
+      },
+      /declare scopeSource: "instance"/,
+    ],
+    [
+      "an id-bearing scope declaring scopeSource: instance",
+      {
+        capability: "project:read",
+        scope: "project",
+        scopeSource: "instance",
+        reach: "required",
+      },
+      /scopeSource "instance" is only valid for scope "instance"/,
+    ],
+    [
+      "a self policy carrying scopeSource",
+      {
+        authenticated: true,
+        self: true,
+        personParam: "personId",
+        scopeSource: "row",
+      },
+      /only a capability policy may declare scopeSource/,
+    ],
+    [
+      "a portal policy carrying scopeSource",
+      {
+        portal: "customer",
+        predicate: "own_request",
+        scopeSource: "request",
+      },
+      /only a capability policy may declare scopeSource/,
+    ],
+    [
+      "a public policy carrying scopeSource",
+      {
+        public: true,
+        reason: "x",
+        scopeSource: "row",
+      },
+      /only a capability policy may declare scopeSource/,
+    ],
+    [
+      "a delegated policy carrying scopeSource",
+      {
+        delegated: "metrics",
+        reason: "x",
+        scopeSource: "instance",
+      },
+      /only a capability policy may declare scopeSource/,
+    ],
   ];
 
   for (const [name, policy, expected] of cases) {
@@ -309,6 +376,16 @@ describe("validatePolicy — there is no sixth kind", () => {
     for (const policy of policies) {
       expect(validatePolicy("GET /api/{personId}/x", policy)).toEqual([]);
     }
+  });
+
+  it("accepts an instance-scope capability policy declaring scopeSource: instance", () => {
+    const policy: Policy = {
+      capability: "instance:manage_plugins",
+      scope: "instance",
+      scopeSource: "instance",
+      reach: "required",
+    };
+    expect(validatePolicy("GET /api/instance/plugins", policy)).toEqual([]);
   });
 
   it("accepts the reach and personParam exemptions", () => {

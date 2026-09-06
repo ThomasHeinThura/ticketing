@@ -4,6 +4,7 @@ import {
   NO_PERSON_PARAMETER,
   NO_SINGLE_RESOURCE,
   type PolicyContext,
+  projectScopeFromRequest,
 } from "./evaluator";
 import type { ResolvedIdentity, RoleGrant } from "./identity";
 import type { Policy } from "./policy";
@@ -175,13 +176,22 @@ describe("missing security context is never allow", () => {
         reason: "a collection scoped by the query itself",
       },
     };
+    // Reach evidence is optional here (the exemption applies); resolved scope evidence is not
+    // — finding 4 made it mandatory for every capability policy, exemption or not.
+    const scope = projectScopeFromRequest({
+      projectId: PROJECT,
+      workspaceId: WORKSPACE,
+    });
     expect(
-      evaluatePolicy(reachExempt, { ...base, inReach: NO_SINGLE_RESOURCE })
-        .allowed,
+      evaluatePolicy(reachExempt, {
+        ...base,
+        inReach: NO_SINGLE_RESOURCE,
+        scope,
+      }).allowed,
     ).toBe(true);
     // Omitting the field entirely is equally legitimate once the route declares the exemption.
     expect(
-      evaluatePolicy(reachExempt, { ...base } as PolicyContext).allowed,
+      evaluatePolicy(reachExempt, { ...base, scope } as PolicyContext).allowed,
     ).toBe(true);
 
     const selfExempt: Policy = {

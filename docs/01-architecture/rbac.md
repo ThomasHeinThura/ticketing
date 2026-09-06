@@ -314,8 +314,11 @@ type Scope = 'instance' | 'workspace' | 'project' | 'work_item' | 'organisation'
 // {id}: the id (and, for project/work_item, its containment chain) is read from that resource's
 // own row, in the same query that loads it. "request" — a collection route or a create, where
 // there is no row yet, so the id legitimately comes from the request itself (a path parameter or
-// the X-Workspace-Id header). Required, and not defaulted — see "Workspace context" below.
-type ScopeSource = 'row' | 'request';
+// the X-Workspace-Id header). "instance" — the route's scope IS 'instance', which names no
+// tenant or resource at all, so there is no id whose provenance "row" or "request" could
+// describe; valid only for scope: 'instance', and required there. Required, and not defaulted —
+// see "Workspace context" below.
+type ScopeSource = 'row' | 'request' | 'instance';
 type OwnerBranch = { predicate: OwnerPredicate; capability: Capability; withinMinutes?: number };
 type SelfTargetBranch = { predicate: BodyPredicate; capability: Capability };
 type OwnerPredicate = 'row.person_id === identity.personId' | 'row.created_by === identity.personId' | 'row.requester_id === identity.personId';
@@ -350,6 +353,10 @@ document contradicted itself in both places:
     after Zod parsing and before the handler. It exists so that self-assignment — "the new
     assignee is the actor" — is a declared policy rather than a handler branch; ownership
     predicates test the loaded row and can never express it.
+  - `scopeSource` is required on **every** kind-1 policy and **structurally absent** on the
+    other four — self, portal, public and delegated have no scope whose provenance is a
+    question at all. `validatePolicy` refuses both directions at registry build time: a
+    capability policy missing `scopeSource`, and any other kind declaring it.
 - **Kind 2** replaces every `(self)` in the specs: the handler may only touch rows keyed to
   `identity.personId`, and the evaluator refuses a path or query parameter naming another
   person.
@@ -386,6 +393,35 @@ object is therefore resolved from the route's declared **scope source** — a pa
 that header/query parameter, or (for `POST /api/work-items/search`) the filter body — and
 `idor-fuzz.test.ts` substitutes an id from the other seeded tenant at **every** source, not
 only in the path.
+
+**Scope evidence is mandatory, with no fallback.** `evaluatePolicy` does not select a capability
+policy's scope id off the flat request/row bag it is handed — it demands a `ResolvedScope`,
+built by one of `@taskdesk/permissions`'s scope constructors (`workspaceScopeFromRow`,
+`projectScopeFromRequest`, `instanceScope`, …), which records both the scope's `kind` and which
+of the three legitimate sources — `row`, `request`, or (for `scope: 'instance'` only)
+`instance` — it came from. A capability policy evaluated with no resolved scope at all is
+refused (`500 policy_context_incomplete`), never run against the bag as "no constraint" — that
+omission, closed everywhere else in this document, was still open here: a `scopeSource: 'row'`
+policy evaluated with `context.scope` omitted used to fall back to the flat bag and run the
+authority check anyway. There is no flag or legacy branch that restores that fallback; it is
+gone.
+
+The layered control this gives is honest about what it does and does not prove. `ResolvedScope`
+being mandatory, and the row/request constructor families being distinct branded types the
+evaluator can tell apart at runtime, closes the omission and the honest mismatch (a
+`...FromRequest` value reaching a `scopeSource: 'row'` policy). It does **not** make it
+impossible for a caller to write `workspaceScopeFromRow({ workspaceId: requestHeader })` — a
+brand only proves the value went through *a* constructor, not that the constructor's name
+matches what was actually passed in. The route middleware built in #8 must construct row
+evidence only from the row the handler actually loaded, never from a header or query parameter
+relabelled, and that is what the security review of every route's integration checks.
+
+`instance` gets its own source rather than being squeezed into `row`/`request`: it has no
+tenant or resource id, so there is nothing whose provenance either of those describes.
+`instanceScope()` is its only constructor — there is no `instanceScopeFromRow` or
+`instanceScopeFromRequest` to reach for by habit — and `validatePolicy` refuses a `scope:
+'instance'` policy declaring `scopeSource: 'row'` or `'request'`, and refuses `scopeSource:
+'instance'` on any other scope, at registry build time.
 
 ```ts
 // apps/api/src/work-item/policy.ts

@@ -382,29 +382,39 @@ function hasMembership(
 /* ------------------------------------------------------------------ *
  * Resolved scope — finding 4
  *
- * `evaluatePolicy` selects the authoritative id for a capability policy off the flat
- * `context.target` bag it has always taken (see `requiredIdFor`/`GRANT_SCOPES_FOR` above),
- * which is enough to close a grant of the wrong *kind* satisfying a policy of another kind.
- * It is not enough, alone, to close a policy's own scope id resolving against the WRONG
- * tenant — a `project`-scope policy whose `target.workspaceId` was set from a header rather
- * than from the addressed project's own row. That needs the caller to commit to where each id
- * came from, which is what `ResolvedScope` and `scopeSource` are for.
+ * A capability policy is never evaluated against the flat `context.target` bag directly.
+ * `context.target`'s ids are unverified — set from a header, a query parameter, or a row,
+ * with nothing recording which — so a policy declaring `scopeSource: "row"` used to still be
+ * checked against whatever the target bag happened to carry when `context.scope` was omitted.
+ * That is the identical omission this fix exists to close: absence read as "no constraint".
+ * **Resolved scope evidence is now mandatory for every `CapabilityPolicy` evaluation.** No
+ * `context.scope` at all means `evaluatePolicy` refuses with `policy_context_incomplete` —
+ * there is no fallback, flagged or otherwise, to the flat target bag.
  *
- * A capability policy may optionally be evaluated against an explicit `ResolvedScope`
- * (`PolicyContext.scope`) instead of leaving the id embedded, unverified, in `context.target`.
- * When one is supplied, `evaluatePolicy` checks that its `kind` matches `policy.scope` and
- * that its source (row/request — a **distinct** branded type per source, not one brand plus a
- * string field) matches `policy.scopeSource`, refusing a mismatch with its own code before
- * authority is ever considered.
+ * A capability policy is evaluated against an explicit `ResolvedScope` (`PolicyContext.scope`),
+ * built by one of this module's constructors, never the id left embedded, unverified, in
+ * `context.target`. `evaluatePolicy` checks that its `kind` matches `policy.scope` and that its
+ * source — row, request, or instance, each a **distinct** branded type, not one brand plus a
+ * string field — matches `policy.scopeSource`, refusing a mismatch before authority is ever
+ * considered.
+ *
+ * Row and request provenance make sense only for the four **id-bearing** scopes —
+ * `organisation`, `workspace`, `project`, `work_item` — each of which names a tenant or resource
+ * whose id came from somewhere. `instance` has no id at all: there is no tenant, no resource, and
+ * therefore nothing whose provenance could be "the loaded row" or "the request". It gets its own
+ * source, `"instance"`, and its own constructor, `instanceScope()`, with no row/request family to
+ * confuse it with.
  *
  * This is thinner than it looks, on purpose — see the caveat below the constructors.
  * ------------------------------------------------------------------ */
 
 const ROW_SCOPE = Symbol("taskdesk.permissions.RowScope");
 const REQUEST_SCOPE = Symbol("taskdesk.permissions.RequestScope");
+const INSTANCE_SCOPE = Symbol("taskdesk.permissions.InstanceScope");
 
 type RowBrand = { readonly [ROW_SCOPE]: true };
 type RequestBrand = { readonly [REQUEST_SCOPE]: true };
+type InstanceBrand = { readonly [INSTANCE_SCOPE]: true };
 
 type InstanceScopeFacts = { readonly kind: "instance" };
 type OrganisationScopeFacts = {
@@ -430,19 +440,29 @@ type WorkItemScopeFacts = {
   readonly workspaceId: string;
 };
 
-type ScopeFacts =
-  | InstanceScopeFacts
+/**
+ * The four scopes that name a tenant or resource — and so have an id whose provenance (row vs.
+ * request) is a meaningful question. `instance` is deliberately excluded: see `InstanceScope`.
+ */
+type IdBearingScopeFacts =
   | OrganisationScopeFacts
   | WorkspaceScopeFacts
   | ProjectScopeFacts
   | WorkItemScopeFacts;
 
-export type RowScope = ScopeFacts & RowBrand;
-export type RequestScope = ScopeFacts & RequestBrand;
+export type RowScope = IdBearingScopeFacts & RowBrand;
+export type RequestScope = IdBearingScopeFacts & RequestBrand;
+
+/**
+ * `instance` has no tenant or resource id, so it has neither a row nor a request to have come
+ * from — `instanceScope()` is its only constructor, and it is a construction error, not a
+ * missing case, for `RowScope`/`RequestScope` to ever carry `kind: "instance"`.
+ */
+export type InstanceScope = InstanceScopeFacts & InstanceBrand;
 
 /**
  * A scope resolved by one of this module's constructors, carrying its own containment chain
- * and which of the two legitimate sources it came from.
+ * and which of the three legitimate sources it came from.
  *
  * **This is not, and is not claimed to be, unrepresentable-by-construction protection against
  * a caller who lies about where a value came from.** The registry's call site is
@@ -451,15 +471,29 @@ export type RequestScope = ScopeFacts & RequestBrand;
  * never a value built at runtime from a header. And nothing stops
  * `workspaceScopeFromRow({ workspaceId: c.req.header("X-Workspace-Id") })` from typechecking —
  * the brand only proves the value went through *a* constructor, not that the constructor's
- * name matches what was actually passed in. The real defence is the **runtime** check below
- * (`isResolvedScope`, and `evaluatePolicy`'s source comparison): a hand-built, JSON-round-tripped
- * or object-spread copy loses the brand and is refused, and a caller who honestly used the
- * wrong constructor family for a route's declared `scopeSource` is refused too. What is not
- * caught is a caller who deliberately mislabels the call — that is a code-review question
- * (`fromRow` beside a header read is a lie a reviewer can see), not one this type system
- * answers.
+ * name matches what was actually passed in. The real defence is layered, and each layer is
+ * honestly only as strong as it is:
+ *
+ * 1. **`ResolvedScope` is mandatory.** `evaluatePolicy` no longer accepts an absent
+ *    `context.scope` for a capability policy at all — the omission this fix exists to close.
+ * 2. **The row and request constructor families are distinct types.** `workspaceScopeFromRow`
+ *    and `workspaceScopeFromRequest` produce values `isResolvedScope` and `evaluatePolicy` can
+ *    tell apart at runtime, so an honest mismatch — a `...FromRequest` value reaching a
+ *    `scopeSource: "row"` policy — is refused.
+ * 3. **The evaluator checks the declared source.** `evaluatePolicy`'s own code compares
+ *    `scopeSourceOf(context.scope)` against `policy.scopeSource` before authority is considered.
+ * 4. **The runtime integration (route middleware) must construct row evidence only from
+ *    authoritative persisted data** — the row the request handler actually loaded, not a header
+ *    or a query parameter relabelled. Nothing in this file can enforce that; it is a fact about
+ *    the caller, not the callee.
+ * 5. **Security review inspects those call sites.** A hand-built, JSON-round-tripped or
+ *    object-spread copy loses the brand and is refused (`isResolvedScope`); a caller who
+ *    deliberately mislabels the call — `fromRow` beside a header read — is not caught by any of
+ *    the above. That is a code-review question, not one this type system, or this runtime
+ *    check, answers. The valuable fix here is layer 1: removing the fallback that let a missing
+ *    `context.scope` run an authority decision with no scope evidence at all.
  */
-export type ResolvedScope = RowScope | RequestScope;
+export type ResolvedScope = RowScope | RequestScope | InstanceScope;
 
 export class ScopeResolutionError extends Error {}
 
@@ -472,7 +506,7 @@ function requireId(value: string, field: string): string {
   return value;
 }
 
-function brandRow<T extends ScopeFacts>(facts: T): T & RowBrand {
+function brandRow<T extends IdBearingScopeFacts>(facts: T): T & RowBrand {
   Object.defineProperty(facts, ROW_SCOPE, {
     value: true,
     enumerable: false,
@@ -482,7 +516,9 @@ function brandRow<T extends ScopeFacts>(facts: T): T & RowBrand {
   return Object.freeze(facts) as T & RowBrand;
 }
 
-function brandRequest<T extends ScopeFacts>(facts: T): T & RequestBrand {
+function brandRequest<T extends IdBearingScopeFacts>(
+  facts: T,
+): T & RequestBrand {
   Object.defineProperty(facts, REQUEST_SCOPE, {
     value: true,
     enumerable: false,
@@ -492,11 +528,24 @@ function brandRequest<T extends ScopeFacts>(facts: T): T & RequestBrand {
   return Object.freeze(facts) as T & RequestBrand;
 }
 
-export function instanceScopeFromRow(): RowScope {
-  return brandRow({ kind: "instance" });
+function brandInstance<T extends InstanceScopeFacts>(
+  facts: T,
+): T & InstanceBrand {
+  Object.defineProperty(facts, INSTANCE_SCOPE, {
+    value: true,
+    enumerable: false,
+    writable: false,
+    configurable: false,
+  });
+  return Object.freeze(facts) as T & InstanceBrand;
 }
-export function instanceScopeFromRequest(): RequestScope {
-  return brandRequest({ kind: "instance" });
+
+/**
+ * The only constructor for `scope: "instance"` — there is no row or request family, because
+ * `instance` has no tenant or resource id whose provenance either of those would describe.
+ */
+export function instanceScope(): InstanceScope {
+  return brandInstance({ kind: "instance" });
 }
 
 export function organisationScopeFromRow(facts: {
@@ -586,6 +635,7 @@ function scopeSourceOf(scope: unknown): ScopeSource | undefined {
   if (typeof scope !== "object" || scope === null) return undefined;
   if (ROW_SCOPE in scope) return "row";
   if (REQUEST_SCOPE in scope) return "request";
+  if (INSTANCE_SCOPE in scope) return "instance";
   return undefined;
 }
 
@@ -670,18 +720,23 @@ export type NoPersonParameter = typeof NO_PERSON_PARAMETER;
  */
 export type PolicyContext = {
   readonly identity: ResolvedIdentity | null;
+  /**
+   * The flat, unverified request/row bag. No longer consulted by `evaluatePolicy` for a
+   * capability policy's scope resolution — see `scope` below — but still present because other
+   * callers of this type (reach-fact assembly, the matrix fixture) build one shape for every
+   * policy kind, and other kinds' checks do not use it either. It stays required in the type
+   * for that reason, not because a capability policy is ever evaluated against it.
+   */
   readonly target: ScopeTarget;
   /**
    * A capability policy's scope, resolved through one of this module's constructors
-   * (`workspaceScopeFromRow`, `projectScopeFromRequest`, …) rather than left as loose ids in
-   * `target`. Optional, for the same reason every field below is: this package cannot force
-   * every caller to be rewritten in the same change, and `tests/permissions/matrix-fixture.ts`
-   * still builds one flat `target` bag for every policy kind. When it **is** supplied,
-   * `evaluatePolicy` demands it match the policy's declared `scope` and `scopeSource` and
-   * refuses rather than guesses on a mismatch (finding 4). When it is not, `evaluatePolicy`
-   * falls back to selecting the id straight off `target` — still gated by the containment
-   * table in `evaluator.ts`'s `GRANT_SCOPES_FOR`, but without the cross-tenant ancestor check a
-   * `ResolvedScope`'s own row-sourced fields carry.
+   * (`workspaceScopeFromRow`, `projectScopeFromRequest`, `instanceScope`, …) rather than left as
+   * loose ids in `target`. Optional in the *type* only because `self`/`portal`/`public`/
+   * `delegated` policies have no scope to resolve — for a `CapabilityPolicy`, it is **mandatory
+   * at runtime**: `evaluatePolicy` refuses with `policy_context_incomplete` when it is absent,
+   * with no fallback to `target` (finding 4's fallback removal). When it **is** supplied, it
+   * must match the policy's declared `scope` and `scopeSource` — a wrong kind, a wrong source,
+   * or an unbranded value are all refused rather than guessed at.
    */
   readonly scope?: ResolvedScope;
   /**
@@ -1006,67 +1061,69 @@ type ScopeResolutionResult =
 
 /**
  * Resolve which flat target this capability policy's authority check runs against, and refuse
- * before authority is even considered when the scope is missing, of the wrong kind, or (when
- * the context resolved one explicitly) sourced the way the policy did not declare.
+ * before authority is even considered when scope evidence is missing, malformed, of the wrong
+ * kind, or sourced the way the policy did not declare.
  *
- * Two paths. When `context.scope` is supplied, it must be a value produced by this module's
- * own constructors (never a hand-built or forged one), its `kind` must match `policy.scope`,
- * and its source must match `policy.scopeSource` — a `RequestScope` never satisfies a
- * `scopeSource: "row"` policy, whatever id it names (closes the cross-tenant case a header
- * masquerading as a row-verified id would otherwise reach). When it is not supplied, the check
- * falls back to `context.target` directly — still gated by `GRANT_SCOPES_FOR`'s containment
- * table, but without the source guarantee, exactly as documented on `PolicyContext.scope`.
+ * One path, not two. `context.scope` is **mandatory** for a capability policy — there is no
+ * fallback to `context.target`. `context.target` is unverified: nothing records whether each id
+ * on it came from a loaded row, a header, or a query parameter, so a policy declaring
+ * `scopeSource: "row"` executing an authority decision against that flat bag is exactly the
+ * omission this fix removes — absence read as "no constraint" is a fail-open, whatever else the
+ * bag happens to contain. An omitted `context.scope` is therefore refused
+ * (`policy_context_incomplete`) before `context.target` is ever consulted.
+ *
+ * When `context.scope` **is** supplied, it must be a value produced by this module's own
+ * constructors (never a hand-built or forged one — `isResolvedScope`), its `kind` must match
+ * `policy.scope`, and its source must match `policy.scopeSource` — a `RequestScope` never
+ * satisfies a `scopeSource: "row"` policy, whatever id it names (closes the cross-tenant case a
+ * header masquerading as a row-verified id would otherwise reach).
  */
 function resolveScopeForPolicy(
   policy: CapabilityPolicy,
   context: PolicyContext,
 ): ScopeResolutionResult {
-  if (context.scope !== undefined) {
-    if (!isResolvedScope(context.scope)) {
-      return {
-        ok: false,
-        decision: DENY_CONTEXT_INCOMPLETE(
-          "scope",
-          "context.scope was supplied but is not a value produced by this package's scope constructors — a hand-built, JSON-round-tripped or object-spread copy loses its brand and is refused rather than trusted",
-        ),
-      };
-    }
-    if (context.scope.kind !== policy.scope) {
-      return {
-        ok: false,
-        decision: {
-          allowed: false,
-          status: 403,
-          code: "scope_mismatch",
-          reason: `This route's policy declares scope "${policy.scope}", and the resolved scope was "${context.scope.kind}"`,
-        },
-      };
-    }
-    const source = scopeSourceOf(context.scope);
-    if (source !== policy.scopeSource) {
-      return {
-        ok: false,
-        decision: {
-          allowed: false,
-          status: 403,
-          code: "scope_source_mismatch",
-          reason: `This route's policy declares scopeSource "${policy.scopeSource}", and the resolved scope came from "${String(source)}"`,
-        },
-      };
-    }
-    return { ok: true, target: flattenResolvedScope(context.scope) };
-  }
-
-  if (scopeIdFor(policy.scope, context.target) === undefined) {
+  if (context.scope === undefined) {
     return {
       ok: false,
       decision: DENY_CONTEXT_INCOMPLETE(
         "scope",
-        `This route's capability policy declares scope "${policy.scope}", and the context did not supply a value for it`,
+        `This route's capability policy declares scope "${policy.scope}" — resolved scope evidence is mandatory, and the context supplied none. There is no fallback to the flat target bag: an omitted context.scope is a denial, never "no constraint".`,
       ),
     };
   }
-  return { ok: true, target: context.target };
+  if (!isResolvedScope(context.scope)) {
+    return {
+      ok: false,
+      decision: DENY_CONTEXT_INCOMPLETE(
+        "scope",
+        "context.scope was supplied but is not a value produced by this package's scope constructors — a hand-built, JSON-round-tripped or object-spread copy loses its brand and is refused rather than trusted",
+      ),
+    };
+  }
+  if (context.scope.kind !== policy.scope) {
+    return {
+      ok: false,
+      decision: {
+        allowed: false,
+        status: 403,
+        code: "scope_mismatch",
+        reason: `This route's policy declares scope "${policy.scope}", and the resolved scope was "${context.scope.kind}"`,
+      },
+    };
+  }
+  const source = scopeSourceOf(context.scope);
+  if (source !== policy.scopeSource) {
+    return {
+      ok: false,
+      decision: {
+        allowed: false,
+        status: 403,
+        code: "scope_source_mismatch",
+        reason: `This route's policy declares scopeSource "${policy.scopeSource}", and the resolved scope came from "${String(source)}"`,
+      },
+    };
+  }
+  return { ok: true, target: flattenResolvedScope(context.scope) };
 }
 
 function ownerPredicateHolds(
@@ -1101,7 +1158,13 @@ function isWithinWindow(
   return now.getTime() - createdAt.getTime() <= withinMinutes * 60_000;
 }
 
-/** The scope a capability policy is evaluated against — the route's declared scope source. */
+/**
+ * Read the id a given `scope` names off a flat `ScopeTarget` bag.
+ *
+ * No longer used by `evaluatePolicy` itself — resolved scope evidence is mandatory there, with
+ * no fallback to this flat bag (finding 4). Kept as a standalone, exported utility for a caller
+ * that still needs to read an id off a `ScopeTarget` outside the evaluator's own decision path.
+ */
 export function scopeIdFor(
   scope: Scope,
   target: ScopeTarget,

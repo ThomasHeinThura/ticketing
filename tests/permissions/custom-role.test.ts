@@ -5,6 +5,7 @@ import {
   evaluatePolicy,
   expandCapabilities,
   isCapabilityPolicy,
+  projectScopeFromRow,
   type ResolvedIdentity,
   type RoleGrant,
   roleCompositionProblems,
@@ -53,11 +54,17 @@ describe("an administrator-created role", () => {
       throw new Error("GET /api/project/{id} should carry a capability policy");
     }
 
+    const scope = projectScopeFromRow({
+      projectId: PROJECT_ID,
+      workspaceId: WORKSPACE_ID,
+    });
+
     const readOnly = withRole(customRole("support-observer", ["project:read"]));
     expect(
       evaluatePolicy(entry.policy, {
         identity: readOnly,
         target: MATRIX_TARGET,
+        scope,
         inReach: true,
       }).allowed,
     ).toBe(true);
@@ -69,6 +76,7 @@ describe("an administrator-created role", () => {
       evaluatePolicy(entry.policy, {
         identity: noProjects,
         target: MATRIX_TARGET,
+        scope,
         inReach: true,
       }),
     ).toMatchObject({ allowed: false, status: 403 });

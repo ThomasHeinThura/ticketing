@@ -5,13 +5,17 @@ import {
   evaluatePolicy,
   expandCapabilities,
   type PolicyContext,
+  projectScopeFromRow,
   reaches,
+  workItemScopeFromRow,
+  workspaceScopeFromRow,
 } from "./evaluator";
 import type { ResolvedIdentity, RoleGrant } from "./identity";
 import type { Policy } from "./policy";
 
 const WORKSPACE = "ws-1";
 const PROJECT = "prj-1";
+const WORK_ITEM = "wi-1";
 
 function grant(overrides: Partial<RoleGrant> = {}): RoleGrant {
   return {
@@ -267,6 +271,20 @@ describe("evaluatePolicy", () => {
     return { identity: identity(), target, inReach: true, ...overrides };
   }
 
+  // Finding 4: resolved scope evidence is mandatory, with no fallback to the flat `target` bag
+  // above — every capability-kind test below now passes the resolved scope its policy declares
+  // (row-sourced, matching `target`'s own ids) rather than relying on the removed fallback.
+  const PROJECT_SCOPE = projectScopeFromRow({
+    projectId: PROJECT,
+    workspaceId: WORKSPACE,
+  });
+  const WORK_ITEM_SCOPE = workItemScopeFromRow({
+    workItemId: WORK_ITEM,
+    projectId: PROJECT,
+    workspaceId: WORKSPACE,
+  });
+  const WORKSPACE_SCOPE = workspaceScopeFromRow({ workspaceId: WORKSPACE });
+
   it("kind 4: a public route allows an anonymous caller", () => {
     const policy: Policy = { public: true, reason: "login page branding" };
     expect(evaluatePolicy(policy, context({ identity: null }))).toEqual({
@@ -312,6 +330,7 @@ describe("evaluatePolicy", () => {
         identity: identity({
           authority: [grant({ capabilities: ["work_item:read"] })],
         }),
+        scope: PROJECT_SCOPE,
       }),
     );
     expect(decision).toEqual({ allowed: true, requiresElevation: false });
@@ -329,6 +348,7 @@ describe("evaluatePolicy", () => {
         identity: identity({
           authority: [grant({ capabilities: ["work_item:read"] })],
         }),
+        scope: PROJECT_SCOPE,
       }),
     );
     expect(decision).toMatchObject({
@@ -378,6 +398,7 @@ describe("evaluatePolicy", () => {
           identity: identity({
             authority: [grant({ capabilities: ["comment:update_own"] })],
           }),
+          scope: WORK_ITEM_SCOPE,
         }),
       ).allowed,
     ).toBe(true);
@@ -392,6 +413,7 @@ describe("evaluatePolicy", () => {
           identity: identity({
             authority: [grant({ capabilities: ["work_item:read"] })],
           }),
+          scope: WORK_ITEM_SCOPE,
         }),
       ).allowed,
     ).toBe(false);
@@ -405,6 +427,7 @@ describe("evaluatePolicy", () => {
           identity: identity({
             authority: [grant({ capabilities: ["comment:update_own"] })],
           }),
+          scope: WORK_ITEM_SCOPE,
         }),
       ).allowed,
     ).toBe(false);
@@ -437,6 +460,7 @@ describe("evaluatePolicy", () => {
             personId: "person-1",
             createdAt: new Date("2026-09-06T11:50:00Z"),
           },
+          scope: WORK_ITEM_SCOPE,
         }),
       ).allowed,
     ).toBe(true);
@@ -451,6 +475,7 @@ describe("evaluatePolicy", () => {
             personId: "person-1",
             createdAt: new Date("2026-09-06T11:40:00Z"),
           },
+          scope: WORK_ITEM_SCOPE,
         }),
       ).allowed,
     ).toBe(false);
@@ -477,6 +502,7 @@ describe("evaluatePolicy", () => {
           identity: identity({
             authority: [grant({ capabilities: ["work_item:update"] })],
           }),
+          scope: WORK_ITEM_SCOPE,
         }),
       ).allowed,
     ).toBe(true);
@@ -489,6 +515,7 @@ describe("evaluatePolicy", () => {
           identity: identity({
             authority: [grant({ capabilities: ["work_item:read"] })],
           }),
+          scope: WORK_ITEM_SCOPE,
         }),
       ).allowed,
     ).toBe(false);
@@ -502,6 +529,7 @@ describe("evaluatePolicy", () => {
           identity: identity({
             authority: [grant({ capabilities: ["work_item:update"] })],
           }),
+          scope: WORK_ITEM_SCOPE,
         }),
       ).allowed,
     ).toBe(false);
@@ -555,7 +583,10 @@ describe("evaluatePolicy", () => {
       });
 
     expect(
-      evaluatePolicy(policy, context({ identity: holder("session") })),
+      evaluatePolicy(
+        policy,
+        context({ identity: holder("session"), scope: WORKSPACE_SCOPE }),
+      ),
     ).toEqual({ allowed: true, requiresElevation: true });
 
     for (const credential of ["api_key", "mcp_key", "impersonation"] as const) {
@@ -610,6 +641,13 @@ describe("declared security metadata is never inert", () => {
       inReach: true,
       targetPersonId: TARGET_PERSON,
       portalPredicateSatisfied: true,
+      // Only the "capability" constrainable policy below reads this — finding 4 made it
+      // mandatory for a capability policy, and `evaluatePolicy` never consults it for the
+      // other three kinds, so supplying it unconditionally here is harmless for them.
+      scope: projectScopeFromRow({
+        projectId: PROJECT,
+        workspaceId: WORKSPACE,
+      }),
     };
   }
 
