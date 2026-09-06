@@ -271,8 +271,17 @@ async function lookupWorkspaceId(
         return null;
     }
   } catch (error) {
+    // Fail CLOSED. This used to `return null`, which is indistinguishable from
+    // "the row does not exist" — and several sources (fromTask, fromTaskId,
+    // fromLabel, fromComment, fromColumn, fromTimeEntry, fromActivity,
+    // fromWorkflowRule) fall back to an attacker-supplied `?workspaceId=` when
+    // the lookup yields null. A transient database error therefore downgraded a
+    // tenant check to caller-controlled input while the handler still acted on
+    // the resource id from the path. Issue #6.
     console.error(`Error looking up workspaceId for ${resource}:`, error);
-    return null;
+    throw new HTTPException(503, {
+      message: "Could not verify workspace access. Please retry.",
+    });
   }
 }
 
