@@ -34,14 +34,49 @@ export type SignedUpUser = {
  * enabled in apps/api/src/auth.ts, so this also mints a session/cookie) and
  * returns that cookie plus the created user row.
  */
+/**
+ * A distinct client address per call.
+ *
+ * `auth.ts` rate-limits `/sign-up/email` to **3 per 60 seconds per client IP**
+ * (the `customRules` block), and #16 turned that limiter on for every
+ * deployment — kaneo had it `enabled: isCloud()`, so the abuse protection was
+ * off for exactly the self-hosted shape TaskDesk ships. It is a real control and
+ * these tests must not disable it.
+ *
+ * A characterization file signs up a dozen or more users. Those are *different
+ * people*, and modelling them as one client is what is wrong — not the limit. So
+ * each call presents its own `x-forwarded-for`, which is precisely what a
+ * distinct client looks like to `resolveClientIp` at the default trust depth of
+ * 1. The trusted internal header cannot be spoofed this way: `buildAuthRequest`
+ * strips any inbound `x-taskdesk-client-ip` before setting its own.
+ *
+ * Pass `clientIp` explicitly to pin several requests to ONE address — which is
+ * how the rate-limit characterization proves the limiter still fires.
+ */
+let clientIpCounter = 0;
+export function nextClientIp(): string {
+  clientIpCounter += 1;
+  // 198.51.100.0/24 is TEST-NET-2 (RFC 5737) — reserved for documentation and
+  // never routable, so nothing here can resemble a real address.
+  return `198.51.100.${clientIpCounter % 254}`;
+}
+
 export async function signUpUser(
   app: App,
-  overrides?: Partial<{ email: string; password: string; name: string }>,
+  overrides?: Partial<{
+    email: string;
+    password: string;
+    name: string;
+    clientIp: string;
+  }>,
 ): Promise<SignedUpUser> {
   const email = overrides?.email ?? `user-${randomUUID()}@example.com`;
   const response = await app.request("/api/auth/sign-up/email", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      "x-forwarded-for": overrides?.clientIp ?? nextClientIp(),
+    },
     body: JSON.stringify({
       email,
       password: overrides?.password ?? "correct horse battery staple",
@@ -96,9 +131,19 @@ export async function inviteAndAcceptAsNewMember(
   role: string,
 ): Promise<SignedUpUser> {
   const email = `member-${randomUUID()}@example.com`;
+  // Own client address, for the same reason as signUpUser: auth.ts rate-limits
+  // `/organization/invite-member` to 5 per 60 seconds per client IP, and #16
+  // turned that limiter on for every deployment. Each invitation here stands for
+  // a different admin acting from their own browser, so one address per call is
+  // the accurate model. The rate-limit characterization pins ONE address on
+  // purpose and still proves the limiter fires.
   const invited = await app.request("/api/auth/organization/invite-member", {
     method: "POST",
-    headers: { "content-type": "application/json", cookie: ownerCookie },
+    headers: {
+      "content-type": "application/json",
+      cookie: ownerCookie,
+      "x-forwarded-for": nextClientIp(),
+    },
     body: JSON.stringify({ organizationId: workspaceId, email, role }),
   });
   if (invited.status !== 200) {
