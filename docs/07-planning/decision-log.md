@@ -17,6 +17,279 @@ Newest first.
 
 ---
 
+### 2026-09-06 · Model allocation — the orchestrator may be Opus, every spawned agent is Sonnet
+
+**Decision:** the **top-level orchestrator may remain Opus**. **Every** spawned agent —
+subagent, background agent, workflow agent, adversarial prober, review-evidence preparer —
+**must be Sonnet**, set explicitly at spawn time. No Opus subagents. No Fable subagents. No
+Opus review swarms. If a tool cannot guarantee Sonnet, do not spawn it: do the work in the
+top-level session, or defer it.
+
+Sonnet **may** implement, test, reproduce a vulnerability, probe adversarially, and prepare
+review evidence.
+
+Sonnet **may not** satisfy a mandatory independent Opus security review, sign off work the
+orchestrator authored, downgrade the reviewer requirement, or waive the gate. Neither may the
+orchestrator call its own remediation an independent review.
+
+**The mandatory independent Opus security review is unchanged.** When it is required and no
+independent Opus capacity is available, the pull request **waits**, marked:
+
+> **SECURITY RE-REVIEW PENDING — OPUS CAPACITY**
+
+Capacity exhaustion means wait, not downgrade. Sonnet is never substituted for speed.
+
+Default scale for analysis: **one** Sonnet implementation agent per active code slice, plus
+optionally one adversarial verifier. Sequential focused verification, not fan-out. The
+orchestrator synthesises.
+
+**Why:** on 2026-09-06 two thirteen-agent Opus workflows plus two Opus review agents — 28
+agents — exhausted the organisation's monthly allowance mid-task. Seven died in flight, and
+the ones lost were the expensive ones to lose: five of six adversarial passes, whose entire
+purpose was to catch designs that look right. The cost was not tokens; it was the
+verification step. One of the two adversarial passes that did run **defeated the design it
+attacked**, which is precisely the evidence that the missing five mattered.
+
+**Alternatives:** letting workflows inherit the session model. Rejected — that is the
+mechanism that caused this, silently. Dropping the Opus review requirement to fit the
+budget. Rejected — that trades a hard security gate for throughput, which is the failure this
+project exists to avoid.
+
+**Decided by:** Thomas, 2026-09-06.
+
+---
+
+### 2026-09-06 · The control plane has one owner, and a source-of-truth hierarchy
+
+**Decision:** eight surfaces are **orchestrator-owned**: `AGENTS.md`, `CLAUDE.md`,
+`docs/04-engineering/agent-workflow.md`, `docs/04-engineering/ci-cd.md`,
+`docs/07-planning/status.md`, `docs/07-planning/decision-log.md`, GitHub issue status and
+GitHub Project board status. Background and lane agents treat all eight as **read-only**
+unless their task explicitly says they own a specific change.
+
+A lane **reports** — completed work, evidence, findings, a suggested doc correction, a
+suggested issue or board transition. The orchestrator verifies it and performs the durable
+central update. Two lanes never independently edit `status.md` or this file.
+
+When sources disagree, the order is:
+
+1. the latest Thomas decision recorded in the decision log or a spec
+2. an accepted ADR, or an authoritative architecture or feature spec
+3. the `AGENTS.md` / `CLAUDE.md` operating agreement
+4. GitHub issue acceptance criteria
+5. the `status.md` / Project board operational snapshot
+6. a pull-request body or comment
+7. a temporary orchestration or chat instruction
+
+**A lower source never silently overrides a higher one.** An explicit Thomas instruction
+that changes architecture, scope, governance, gate semantics or persistent product
+behaviour may guide work immediately, but **must be persisted in the correct spec or here
+before dependent code merges**.
+
+No agent may move, rename or delete a planning document, reorganise `docs/`, move an issue
+between board columns, close or reopen an issue, or rewrite existing decision history —
+unless the task authorises it, or the orchestrator is performing a verified state
+transition under these rules. **A useful discovery is not authorisation to reorganise
+project memory.**
+
+**Why:** four lanes were editing central state independently while durable decisions from
+orchestration sessions went unrecorded, and the result was contradictory sources of truth.
+Every new agent reads these files as instructions, so a false statement in one of them is
+not a documentation defect — it is a wrong instruction issued to everyone who arrives next.
+
+**Alternatives:** letting each lane update the central record for its own work. Rejected:
+it is exactly what produced the drift. Locking the files entirely. Rejected: the record
+then rots instead of contradicting itself, which is not an improvement.
+
+**Decided by:** Thomas, 2026-09-06.
+
+---
+
+### 2026-09-06 · `status.md` is a durable snapshot, not a work log
+
+**Decision:** the rule that `status.md` is edited at the end of every agent session is
+**withdrawn**. It is updated only on a durable transition: a pull request genuinely becomes
+review-ready; a pull request merges; an issue blocks or unblocks; an issue completes; a
+throttle state changes; Thomas makes a material decision; or a material repository or
+deployment fact changes.
+
+Intermediate progress belongs in pull-request comments and reports.
+
+**Why:** a snapshot edited every session is a log, and a log is read as history rather than
+as current truth. The file's job is to answer "what is true right now" for an agent
+arriving cold, and per-session churn made that harder to trust, not easier.
+
+**Alternatives:** keeping the per-session rule and relying on discipline about content.
+Rejected — the cadence was itself the problem.
+
+**Decided by:** Thomas, 2026-09-06. Supersedes the per-session cadence stated in the
+2026-09-06 entry *"Repository setup, and the working mode from here on"*, which remains
+below as history.
+
+---
+
+### 2026-09-06 · Merge governance — required approving reviews is zero, and that is deliberate
+
+**Decision:** on `main`, **required approving reviews = 0** and **Require review from Code
+Owners = off**. The `protect-main` ruleset blocks deletion and non-fast-forward pushes and
+dismisses stale approvals on push. **Only Thomas authorises merges.**
+
+`CODEOWNERS` is **ownership metadata** — it says who to ask, not a mechanical gate.
+
+The security review and design review requirements are **unchanged and remain independent
+hard gates**. Lowering the approval count does not lower them, and no agent may
+self-approve, waive a gate, or downgrade a required reviewer.
+
+**Why:** the repository has one human. A required approving review from a single-person
+team is a rule that can only ever be satisfied by that person clicking approve on work they
+are about to merge anyway, and it was being described in three documents as though it were
+the control that keeps agents out of `main`. It is not; the control is that only Thomas
+merges, and the ruleset enforces the parts a machine can enforce.
+
+**Alternatives:** requiring one approval and having Thomas approve then merge. Rejected as
+ceremony that documents a protection it does not provide.
+
+**Decided by:** Thomas, 2026-09-06. Supersedes the "one approval from the code owner"
+wording in `ci-cd.md`, `agent-workflow.md`, `CLAUDE.md`, and the 2026-09-06 entries
+*"Repository setup, and the working mode from here on"* and *"Small design choices made by
+Claude Code while applying the pre-P0 check"*, all of which remain below as history.
+
+---
+
+### 2026-09-06 · A pull request is a slice; the issue is the completion gate
+
+**Decision:** pull-request state, issue state and Project-board state are three different
+things and are not derived from one another.
+
+Board columns mean exactly:
+
+| Column | Meaning |
+| --- | --- |
+| **Ready** | eligible work, implementation not started |
+| **In Progress** | implementation or remediation active, **including issues with partial child pull requests already merged** |
+| **Review** | the issue's current implementation is complete, all hard automated gates are green, all mandatory independent reviews are complete, and only Thomas's review and merge remain |
+| **Blocked** | a genuine hard dependency, external or shared-contract block prevents progress |
+| **Done** | the **issue's** Done criteria are satisfied |
+
+A child or slice pull request merging does **not** by itself move an issue to Done. **A
+pull request with unresolved CRITICAL or HIGH findings is not in Review state.**
+
+Concretely and settled: **#20 merging did not complete #11**, and **#16 merging will not
+complete #6**. Neither carries `Closes` linkage, on purpose. #16 may merge as a reviewed
+#6 security-and-removal slice; **#6 remains open until the `organization()` retrofit
+completes through S10 and its remaining obligations are met**.
+
+**Why:** GitHub closes an issue when a linked pull request merges, which silently converts
+"a slice landed" into "the work is finished". That is how a stage gets claimed early, and
+it is the failure this project's throttles exist to prevent.
+
+**Decided by:** Thomas, 2026-09-06.
+
+---
+
+### 2026-09-06 · Throttle 1, stated exactly
+
+**Decision:** Throttle 1 opens when **all five** are true:
+
+1. **#5 complete.**
+2. **#6 — the ISSUE — complete.** Not "a #6 slice merged".
+3. **#7 complete.**
+4. **Route-policy coverage actually executes in CI** — not that a gate script exists.
+5. **Adding an unclassified route fails CI**, demonstrated.
+
+**Why:** the previous wording was "#5 merged, #6 merged, #7 merged". Merging is a
+pull-request event and these are issues, so the old wording would have opened the throttle
+the moment any slice of #6 landed — while `organization()` was still mounted and the
+inherited surface still present. Points 4 and 5 are stated separately because a gate that
+exists and a gate that runs are different things, and this project has already shipped a
+control whose test asserted something other than its name.
+
+**Decided by:** Thomas, 2026-09-06. Supersedes the Throttle 1 wording in `CLAUDE.md` and
+in the 2026-09-06 entry *"The P0 working agreement — dependency graph, two throttles,
+blocking taxonomy"*, which remains below as history.
+
+---
+
+### 2026-09-06 · better-auth `organization()` is removed in P0 — final
+
+**Decision:** better-auth's `organization()` plugin is **removed during P0**. This is
+final and is not reopened without evidence that the target TaskDesk model is itself
+internally inconsistent.
+
+The implementation discovery that the plugin is load-bearing — workspace creation,
+invitations, members and roles route through it — does **not** reverse the decision.
+**Load-bearing means it needs a retrofit, not that it is kept.**
+
+The retrofit is #6 work, runs S1 through S10, and ends with `organization()` unmounted in
+P0. S1 is characterisation tests and gates everything after it.
+
+**Why:** I recommended retaining the plugin and was overruled. My error is worth recording
+because it is a reusable one: I treated "load-bearing" as evidence for "permanent", when it
+is evidence for "needs a plan". The trap the retrofit must avoid is that `tests/` holds
+exactly one reference to the plugin, so unmounting it would break workspace creation,
+invitations, members and roles while producing a single failing assertion — v1's failure
+mode in a new costume.
+
+**Decided by:** Thomas, 2026-09-06.
+
+---
+
+### 2026-09-06 · The OpenAPI baseline is `tests/api-contract/openapi.json`
+
+**Decision:** the **committed baseline** that the drift check compares against is
+`tests/api-contract/openapi.json`. The published document at `apps/site/public/openapi.json`
+is **generated output** and is not the baseline.
+
+**Why:** `status.md` recorded the destination as unresolved and the drift check as lost,
+which left a real gate looking optional. Separating the two answers it: a baseline is a
+test fixture and lives with the tests; a published document is a build artefact and lives
+with the site. Conflating them is how a drift check ends up comparing generated output
+against itself.
+
+**Decided by:** Thomas, 2026-09-06. The baseline currently exists **IN OPEN PR #19**, not
+on `main`.
+
+---
+
+### 2026-09-06 · Lane agents record evidence; they do not decide on Thomas's behalf
+
+**Decision:** a lane agent may record **evidence, findings, implementation properties and
+recommendations**. It does **not** create durable project decisions on Thomas's behalf.
+
+The four items recorded in the entry below, *"Deployment skeleton — four calls made while
+building #11"*, are therefore **reclassified** — the entry stays as history, and this is
+its correct reading:
+
+| # | Item | Correct classification |
+| --- | --- | --- |
+| 1 | `TASKDESK_TRUST_PROXY=2` on this UAT topology | **measured operational fact** |
+| 2 | unsafe `X-Forwarded-Proto` behaviour | **measured finding; remediation undecided** |
+| 3 | Helm chart fails closed on its secrets | **merged implementation / security property** |
+| 4 | `TASKDESK_HSTS_PRELOAD` empty-or-`1` semantics | **configuration correctness fix** |
+
+On item 2 specifically: the measured behaviour stands as fact — `X-Forwarded-Proto` is
+passed through verbatim from a trusted peer and set to `http` when absent, so the
+application either believes what a viewer asserts or believes every HTTPS request was
+HTTP. **The remediation is not decided.** An origin custom header at the CDN is a
+**candidate, not the answer**, pending inspection of the actual CloudFront distribution and
+origin configuration. That inspection needs Thomas and AWS console access.
+
+On the four application-side gaps #20 recorded as blocking — `TASKDESK_PORT` actually being
+read, live and ready health endpoints, Node static file serving, and a `storage.filesystem`
+implementation — these are **#11 prerequisites**, or dedicated prerequisite work. They are
+**not** automatically #6 or #9 scope. Implementation ownership is assigned when they are
+scheduled, not inferred from where they were noticed.
+
+**Why:** the four items were written in the voice of settled decisions by the agent that
+made them. Three were not decisions at all — two were measurements and one was a property
+of merged code — and the fourth was a bug fix. A measurement recorded as a decision is
+hard to revisit when better evidence arrives, and a candidate remediation recorded as a
+decision gets implemented without the verification step that would have caught it.
+
+**Decided by:** Thomas, 2026-09-06.
+
+---
+
 ### 2026-09-06 · Deployment skeleton — four calls made while building #11
 
 **Decision:** four things were decided in the course of building the deployment

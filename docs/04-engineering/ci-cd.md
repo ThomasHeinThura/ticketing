@@ -240,9 +240,15 @@ main                    always deployable, protected
 
 - No long-lived branches. A branch older than a week is a merge problem forming.
 - Squash merge, so `main` has one commit per change and the history is readable.
-- `main` requires: all checks green, **one approval from the code owner** — a `CODEOWNERS`
-  file (`* @ThomasHeinThura`) makes Thomas's review required on every pull request into
-  `main`, which is the mechanism behind "only Thomas merges" — and up to date with `main`.
+- `main` requires: all checks green, up to date with `main`, and **Thomas to press merge**.
+  The `protect-main` ruleset blocks deletion and non-fast-forward pushes and dismisses stale
+  approvals on push. **Required approving reviews is `0` and Require review from Code Owners
+  is off**, both deliberately — a required approval from a one-person team documents a
+  protection it does not provide (decision log, 2026-09-06).
+- `CODEOWNERS` (`* @ThomasHeinThura`) is **ownership metadata**: it says who to ask. It is
+  not the mechanism behind "only Thomas merges" — that is Thomas, and the ruleset enforces
+  the parts a machine can. **The security review and design review requirements below are
+  unaffected and remain independent hard gates.**
 
 ## Releases
 

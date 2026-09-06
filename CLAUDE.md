@@ -23,14 +23,35 @@ Then the feature spec for what you are doing, and any ADR it cites.
 
 ## Where this project is right now
 
-**There is no application code.** The repository is a documentation corpus — around 136
-markdown files — plus licence and provenance files. Nothing builds, nothing runs, and every
-command in `AGENTS.md` and `README.md` is marked *planned*. If `pnpm test` fails with "no
-such script", the checkout is fine and you are early.
+**There is application code, and this section is where you find out what is actually
+true.** Say it in four categories, always, and never let one blur into another:
 
-**The hard stop:** no kaneo import and no P0 code until the licence pull request has merged
-and the P0 issues exist. This is not a formality — it is the provenance boundary, so that
-upstream MIT code never sits in an AGPL repository without its notice.
+**ON MAIN.** The kaneo import at `42bb8011`, de-branded (#5). `apps/api`, `apps/web`,
+`packages/{permissions,email,libs,mcp,typescript-config}`, `package.json`, `pnpm-lock.yaml`.
+Licence and provenance files (#4). A root `Dockerfile`, `compose.yml`, the `deploy/`
+overlays, `scripts/deploy.sh`, a hardened `charts/taskdesk`, and
+`docs/05-operations/proxy-topology-evidence.md` — all from #11's deployment slice (#20).
+`pnpm install | dev | lint | typecheck | test | test:integration` all run.
+
+**IN OPEN PR.** #16 (draft) removes the inherited attack surface — a slice of #6. #21
+builds the policy registry, evaluator and route-coverage gate for #7. #19 adds the CI
+gates, `test:all`, the `check:*` scripts and the OpenAPI baseline for #10. **None of this
+is on `main`.** Do not describe it as available and do not rebuild it.
+
+**BLOCKED.** #8 (the router retrofit) waits for #6's removal surface to settle. #17 waits
+on a decision about sessions already minted by the removed flows.
+
+**DECIDED / NOT YET IMPLEMENTED.** better-auth's `organization()` is removed in P0 — final
+— but it is still mounted while the retrofit is written. The OpenAPI baseline destination
+is settled as `tests/api-contract/openapi.json`; the file exists only in #19.
+
+If `pnpm test:permissions` fails with "no such script", the checkout is fine — that command
+lands with #19.
+
+**The licence hard stop is satisfied and no longer applies.** #4 and #5 are both merged and
+closed, so the provenance boundary it protected is behind us: upstream MIT code sits in this
+AGPL repository *with* its notice. The rule is kept here as history because the reasoning
+still governs any future import.
 
 ## How work reaches `main`
 
@@ -38,8 +59,18 @@ upstream MIT code never sits in an AGPL repository without its notice.
 
 That flow is the standing approval, and it is what do-not 16 means in practice. Create a
 branch, commit to it, push, open a pull request that says what you did and what you did not
-do. **Only Thomas merges.** `main` is protected: pull request required, one approval, no
-force pushes, squash merge only.
+do. **Only Thomas merges.**
+
+`main` is protected by the `protect-main` ruleset: a pull request is required, deletion and
+non-fast-forward pushes are blocked, stale approvals are dismissed on push, and merges are
+squashed. **Required approving reviews is `0`, and Require review from Code Owners is
+off** — both deliberately (decision log, 2026-09-06).
+
+Do not wait for an approval that is not configured, and do not read the zero as permission.
+`CODEOWNERS` is **ownership metadata** — it says who to ask, not a gate. The control that
+keeps agents out of `main` is that only Thomas merges; the ruleset enforces the part a
+machine can enforce. **The security review and design review requirements are unchanged and
+remain independent hard gates.**
 
 Two failure modes to avoid, one in each direction: pushing to `main`, and leaving finished
 work uncommitted on the laptop. The second has happened — eighty-three files once sat
@@ -47,6 +78,43 @@ uncommitted because an earlier reading of do-not 16 was too strict.
 
 Commit messages are conventional (`docs:`, `chore:`, `feat:`, `fix:`) — commitlint and
 semantic-release are part of the inherited stack.
+
+## The control plane, and who owns it
+
+Eight surfaces are **orchestrator-owned**:
+
+`AGENTS.md` · `CLAUDE.md` · `docs/04-engineering/agent-workflow.md` ·
+`docs/04-engineering/ci-cd.md` · `docs/07-planning/status.md` ·
+`docs/07-planning/decision-log.md` · GitHub issue status · GitHub Project board status
+
+If you are a lane or background agent, treat all eight as **read-only** unless your task
+explicitly says you own a specific change. You may *report* — completed work, evidence,
+findings, a suggested doc correction, a suggested issue or board transition. The
+orchestrator verifies it and makes the durable central update. Two lanes editing
+`status.md` independently is how the record starts contradicting itself, and it did.
+
+**When sources disagree**, the order is: the latest Thomas decision in the decision log or a
+spec → an accepted ADR or authoritative spec → this file and `AGENTS.md` → GitHub issue
+acceptance criteria → `status.md` and the board → a pull-request body → a temporary chat
+instruction. **A lower source never silently overrides a higher one.** An instruction in
+this session that changes architecture, scope, governance, gate semantics or persistent
+behaviour may guide work immediately, but must be written into the right spec or the
+decision log **before dependent code merges**.
+
+**`status.md` is a durable snapshot, not a work log.** The old rule — edit it at the end of
+every session — is withdrawn. Update it only on a durable transition: a pull request becomes
+genuinely review-ready or merges, an issue blocks, unblocks or completes, a throttle state
+changes, Thomas makes a material decision, or a material repository or deployment fact
+changes. Intermediate progress goes in pull-request comments.
+
+**The decision log is append-only.** When Thomas reverses something, add a new newest-first
+entry naming what it supersedes and why, then update the operative documents. Never rewrite
+an old entry to pretend it did not happen.
+
+**No agent moves project memory.** Do not move, rename or delete a planning document,
+reorganise `docs/`, move an issue between board columns, close or reopen an issue, or
+rewrite decision history — unless the task authorises it. A useful discovery is not
+authorisation to reorganise.
 
 ## The P0 working agreement
 
@@ -90,14 +158,22 @@ The issue dependency links are corrected to match, and the self-references
 
 They do different jobs, and confusing them is how a stage gets claimed early.
 
-**Throttle 1 — parallel development opens.** All three must be true:
+**Throttle 1 — parallel development opens.** All **five** must be true:
 
-1. **#5 merged.**
-2. **#6 merged** — the dangerous inherited surfaces are gone: the public-project inline
-   route and `is_public`, the six integration routers, billing, anonymous sign-in, account
-   linking, the cookie cache, `deviceAuthorization` and `bearer`.
-3. **#7 merged** — the policy registry exists, route coverage runs in CI, and **a new route
-   without a policy fails the build.**
+1. **#5 complete.**
+2. **#6 — the ISSUE — complete.** The dangerous inherited surfaces are gone: the
+   public-project inline route and `is_public`, the six integration routers, billing,
+   anonymous sign-in, account linking, the cookie cache, `deviceAuthorization` and
+   `bearer` — **and** the `organization()` retrofit has run through S10.
+3. **#7 complete.**
+4. **Route-policy coverage actually executes in CI** — not that a gate script exists.
+5. **Adding an unclassified route fails CI**, demonstrated rather than asserted.
+
+Read 2 carefully: it says the **issue** completes, not that a slice merged. The earlier
+wording was "#6 merged", which would have opened the throttle the moment any slice landed
+while `organization()` was still mounted. 4 and 5 are separate because a gate that exists
+and a gate that runs are different things — and this project has already shipped a control
+whose test asserted something other than its name.
 
 **Throttle 2 — P0 may be claimed.** All five must be true:
 
@@ -194,9 +270,28 @@ The tier is not a free choice; it tracks who may sign off on what
 
 | Work | Tier |
 | --- | --- |
-| Orchestrating, planning, reviewing | Opus or Fable |
+| Orchestrating, planning, reviewing | Opus or Fable — **top level only** |
 | Implementation against an agreed spec | Sonnet |
 | **Security review** | **Opus. Always. Every pull request, every stage gate.** |
+
+**Every spawned agent is Sonnet.** Subagent, background agent, workflow agent, adversarial
+prober, review-evidence preparer — all Sonnet, set **explicitly** at spawn time, because a
+workflow that inherits the session model will quietly pick Opus. No Opus subagents, no Fable
+subagents, no Opus review swarms. If a tool cannot guarantee Sonnet, do not spawn it: do the
+work at the top level, or defer it.
+
+Default scale: **one** Sonnet implementation agent per active code slice, plus optionally one
+adversarial verifier. Sequential focused verification, not fan-out.
+
+Sonnet may implement, test, reproduce a vulnerability, probe adversarially, and prepare review
+evidence. Sonnet may **not** satisfy the mandatory independent Opus security review, sign off
+work the orchestrator authored, downgrade the reviewer, or waive the gate — and neither may
+the orchestrator call its own remediation an independent review.
+
+When that review is required and no independent Opus capacity exists, the pull request
+**waits**, marked **SECURITY RE-REVIEW PENDING — OPUS CAPACITY**. Capacity exhaustion means
+wait, not downgrade. This is not a budget rule with a security exception; it is a budget rule
+that leaves the security gate exactly where it was (decision log, 2026-09-06).
 
 Three things an agent may never do:
 
