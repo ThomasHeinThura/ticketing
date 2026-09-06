@@ -17,6 +17,61 @@ Newest first.
 
 ---
 
+### 2026-09-06 · PR #13 merged before its mandatory security review — deviation recorded, not waived
+
+**Decision:** **PR #13 was merged on 2026-09-06 before its mandatory security review had been
+performed.** That was a **process deviation, not an approved waiver.** A post-merge Opus
+security review was performed immediately, its findings are recorded on PR #13 and in
+[`security-reviews/13-kaneo-import.md`](security-reviews/13-kaneo-import.md), and every
+CRITICAL was fixed before Throttle 1. **From now on, a pull request that touches the
+security paths listed in [`ci-cd.md`](../04-engineering/ci-cd.md) does not merge until the
+required review is recorded on it.**
+
+The review found **three CRITICAL** defects in the merged code. All three are fixed on
+`feat/p0-remove-inherited-surfaces`:
+
+1. **A missing `TASKDESK_AUTH_SECRET` silently became a published constant.** `auth.ts`
+   passed `process.env.TASKDESK_AUTH_SECRET || ""` and validated the length only when the
+   variable was already set. An empty string is falsy inside better-auth, whose own chain
+   ends at `"better-auth-secret-12345678901234567890"` — published in its source — and which
+   only *throws* for that default when `NODE_ENV === "production"`. TaskDesk is
+   self-hosted-first, where `NODE_ENV` is routinely unset, and the Helm chart ships
+   `authSecret: ""` with no `NODE_ENV` at all. The documented install therefore signed every
+   session cookie with a value anyone can read on npm.
+2. **Credentialed CORS reflected any origin** whenever `NODE_ENV` was not exactly
+   `"production"` — again including unset.
+3. **`bearer()` published the raw session token** in a CORS-exposed response header, which
+   chained with (2) into cross-origin session theft with no XSS required.
+
+Plus one HIGH fixed in the same pass: a caught database error in `lookupWorkspaceId`
+returned `null`, indistinguishable from "no such row", and eight middleware sources fall
+back to a caller-supplied `?workspaceId=` on null — so a transient error downgraded a tenant
+check to attacker-controlled input.
+
+**Why:** the point of recording this is that **a skipped gate must be visible and
+corrected, never hidden or rewritten.** The three CRITICALs are the argument for the rule
+rather than an argument against it: none of them was visible in the pull-request
+description, all three were found by reading the merged source, and all three fail open on
+exactly the deployment shape TaskDesk ships. A review performed after the merge found real
+defects; a review skipped entirely would not have.
+
+Two honest limits on this review, stated rather than glossed: the session that authored
+PR #13 also orchestrated the review, so although the five reviewers were separate sessions
+with fresh context, this is **not** an outside pair of eyes; and the review covers the
+merged diff, not the whole inherited surface, much of which #6 is deleting anyway.
+
+**Alternatives:** recording it as an approved waiver — rejected, because it was not approved
+and calling it one would make the next skip easier. Quietly reviewing without recording —
+rejected for the same reason, and because
+[`CLAUDE.md`](../../CLAUDE.md) already warns that the rules agents route around are the ones
+written as sentences rather than gates. The durable fix is mechanical: once #10 lands, the
+fast CI job becomes a required status check on `main`, and the security-review section stops
+depending on anyone remembering.
+
+**Decided by:** Thomas, 2026-09-06
+
+---
+
 ### 2026-09-06 · The P0 working agreement — dependency graph, two throttles, blocking taxonomy
 
 **Decision:** the way P0 is sequenced and parallelised is settled and written into

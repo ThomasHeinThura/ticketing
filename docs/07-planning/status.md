@@ -190,58 +190,67 @@ kaneo's inherited routes present and each carrying a policy**, P0 security revie
 
 ## Blocked
 
-**Issue #5 — IN PROGRESS.** Code is complete on `feat/issue-5-kaneo-import-provenance`
-and every gate that exists today is green, but #5 is **not** complete: no pull request is
-open, no security review has happened, and it is not merged. Those are three distinct
-states and none of them is "done".
+### Process deviation — recorded, corrected, not waived
 
-- **No GitHub pull request exists for either branch.** `gh` is not installed on this host
-  and no token is present; SSH push works, so **branches are pushed and pull requests are
-  not opened**. Two branches wait: `docs/p0-working-agreement` (Task 0) and
-  `feat/issue-5-kaneo-import-provenance` (#5). Their pull-request bodies are written.
-  The same missing capability blocks correcting the issue dependency links (removing
-  `#5 blocks #5` and `#8 blocks #8`) and creating the Project board.
-  *Blast radius: everything — nothing can merge.* Unblocked by: Thomas, with a token or by
-  opening the pull requests from an authenticated GitHub client.
-- **#5 has had no security review, and it needs one.** The import brings in inherited
-  auth code, route files and `apps/api/src/storage/**` — paths `ci-cd.md` lists as
-  security-review scope. The required reviewer was not available in this session, so the
-  work is recorded as **unreviewed** rather than self-reviewed or downgraded.
-  *Blast radius: #5 only — it may not merge until reviewed.* Unblocked by: Thomas.
-- **`scripts/openapi/` has no verdict, and the OpenAPI drift check is currently lost.**
-  Running it proved it cannot simply be adopted: `check.mjs` writes `apps/docs/openapi.json`
-  and `apps/docs` is *Do not copy*. The copy table's default was applied — not copied — and
-  the two `openapi:check` script entries were dropped so the tree is green rather than red.
-  `apps/api/scripts/export-openapi.ts` is copied and `tests/api-integration/openapi.test.ts`
-  is kept, so the capability half-exists. It needs a destination.
-  *Blast radius: one lane.* Unblocked by: Thomas.
-- **`TURNSTILE_SECRET_KEY` and `TURNSTILE_TIMEOUT_MS` need a verdict.** Cloudflare Turnstile
-  is inherited CAPTCHA abuse protection. TaskDesk requires abuse protection for self-hosted
-  deployments, but a Cloudflare dependency is not obviously the right shape for a
-  self-hosted product and it is not in the plugin registry. It is the one variable group the
-  storage/plugin classification rule does not cleanly resolve, so it is raised rather than
-  decided. *Blast radius: one lane.* Unblocked by: Thomas.
-- **v2 UAT cannot be deployed yet, and will not reuse the v1 hostnames.** There is no
-  `Dockerfile`, no compose file and no `scripts/deploy.sh` in this repository — those are
-  #11. `Dockerfile.kaneo` was copied as the starting point but **cannot build in this tree**:
-  it copies `apps/web/nginx.kaneo.conf`, `deploy/kaneo-entrypoint.sh` and
-  `apps/web/env.sh`, all three excluded by the copy table. When v2 UAT does deploy it takes
-  **`ticket-v2-uat.bimats.com` and `portal-v2-uat.bimats.com`**, beside v1, with its own
-  compose project, network, volumes and database. **v1 UAT stays running and untouched.**
-  The raw #5 import must not be exposed publicly before #6 removes anonymous sign-in and
-  the public-project routes. *Blast radius: the deployment lane.* Unblocked by: #11.
-- **The GitHub Project board does not exist.** Same missing-token root cause as above.
-  Columns: **Backlog / Ready / In Progress / Review / Blocked / Done**. Unblocked by: Thomas.
+**PR #13 merged on 2026-09-06 before its mandatory security review had been performed.**
+This was a **process deviation, not an approved waiver.** A post-merge Opus security review
+was run immediately over the merged diff — five independent reviewers, one lens each,
+reading the source rather than the pull-request description. Findings are recorded in
+[`security-reviews/13-kaneo-import.md`](security-reviews/13-kaneo-import.md) with the five
+lens files beside it, and on PR #13 itself.
 
-### Settled this session — no longer blocking
+It found **three CRITICAL** defects, **all three now fixed** on
+`feat/p0-remove-inherited-surfaces` before Throttle 1: a missing `TASKDESK_AUTH_SECRET`
+silently falling through to a constant published in better-auth's source; credentialed CORS
+reflecting any origin whenever `NODE_ENV` was not exactly `"production"`; and `bearer()`
+publishing the raw session token in a CORS-exposed header. One HIGH was fixed in the same
+pass. **From now on a security-path pull request does not merge until its review is
+recorded on it** — and once #10 lands, the fast CI job becomes a required status check so
+this stops depending on anyone remembering.
 
-Thomas's cloud-agent working agreement of 2026-09-06 closed the decisions that held the
-copy: **S3 connection variables** move to `storage.s3` runtime plugin configuration with
-credentials in secret storage, and a fresh install needs none because it defaults to
-`storage.filesystem`; **Sentry is deleted**, not moved; **`KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS`**
-goes with the generic webhook router; **rate limiting** and the **`apiKey` session surface**
-become #6 removals; and the **analytics beacon** is removed rather than preserved behind its
-hostname gate.
+### Open
+
+- **`gh` is installed but not authenticated** (`gh auth status`: not logged into any host).
+  One `gh auth login` unblocks opening pull requests, posting the PR #13 review as a
+  comment, correcting the issue dependency links and creating the Project board. Until then
+  branches are pushed over SSH and Thomas opens the pull requests.
+  *Blast radius: everything — nothing merges.* Unblocked by: Thomas.
+- **#6 must relocate the SSRF guard before it deletes anything.**
+  `assertPublicWebhookDestination` lives in `apps/api/src/plugins/generic-webhook/config.ts`
+  — a directory #6 deletes — and is imported by two **retained** files,
+  `notification-preferences/delivery.ts` and `service.ts`. Deleting the directory first
+  breaks the build, and the quick fix is to drop the SSRF validation entirely. This is an
+  ordering precondition, not a suggestion. *Blast radius: the #6 lane.*
+- **Deleting the MCP OAuth route does not revoke the sessions it already minted.** A consent
+  click created a full 30-day better-auth session row. #6 removes the route; something else
+  has to invalidate outstanding tokens. **Needs its own issue.** *Blast radius: one lane.*
+- **`scripts/openapi/` still has no destination**, so the inherited OpenAPI drift check
+  remains lost. #10 owns restoring it. *Blast radius: one lane.*
+- **v2 UAT is not deployable and will not reuse the v1 hostnames.** No `Dockerfile`, no
+  compose file, no `scripts/deploy.sh` — that is #11. `Dockerfile.kaneo` **cannot build**:
+  it copies three files the copy table excludes. v2 takes
+  `ticket-v2-uat.bimats.com` / `portal-v2-uat.bimats.com` beside v1, with its own compose
+  project, network, volumes and database. **v1 UAT stays running and untouched**, and the
+  pre-#6 import must not be exposed publicly. *Blast radius: the deployment lane.*
+- **The GitHub Project board does not exist.** Same `gh` root cause.
+
+---
+
+## Throttle 1 — not yet open
+
+Three of the five conditions are unmet. Throttle 1 opens only when **all** are true:
+
+| | Condition | State |
+| --- | --- | --- |
+| 1 | #5 merged | ✅ merged as PR #13 |
+| 2 | #6 merged | ⬜ in progress — `feat/p0-remove-inherited-surfaces` |
+| 3 | #7 merged | ⬜ not started |
+| 4 | route coverage actually runs in CI | ⬜ #10 |
+| 5 | adding a route without a policy **fails the build** | ⬜ #10 |
+
+Conditions 4 and 5 are the ones most easily forgotten: it is **not enough** that #7 has a
+passing test locally. The check must execute in CI, which means the part of #10 that
+enforces route-policy coverage merges before Throttle 1 opens.
 
 ---
 
