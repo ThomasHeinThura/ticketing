@@ -1,0 +1,19 @@
+{
+	"$comment": [
+		"better-auth plugins that are removed at fork but are still constructed today.",
+		"",
+		"Not an allowlist. #6 (`feat/p0-remove-inherited-surfaces`) removes all four, and this list",
+		"shrinks with it: better-auth-plugin-list.test.ts fails on an entry that is already gone, so",
+		"the line must be deleted in the same change. Any *other* condemned or unrecognised plugin",
+		"appearing in the constructed list fails immediately — one wildcard mount hides dozens of",
+		"endpoints, and this assertion is the only thing that sees them.",
+		"",
+		"Verdicts: docs/01-architecture/auth-and-identity.md, 'The better-auth plugin set'."
+	],
+	"pendingRemoval": [
+		"anonymous",
+		"bearer",
+		"device-authorization",
+		"organization"
+	]
+}

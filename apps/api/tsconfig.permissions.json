@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "../..",
+    "paths": {
+      "@taskdesk/permissions": ["../../packages/permissions/src/index.ts"],
+      "vitest": ["./node_modules/vitest"]
+    }
+  },
+  "include": ["../../tests/permissions/**/*.ts", "src/policy-registry.ts"]
+}
