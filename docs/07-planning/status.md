@@ -21,17 +21,18 @@ findings across eight lenses, every one applied in its owning document or record
 Thomas confirmed the outstanding decisions on 2026-09-06 — the kaneo snapshot SHA
 (`42bb8011`, upstream main), inheriting kaneo's 45 migrations, the person model, the
 engine boundary rule, an RLS prototype in P0, and the stage/workstream/step/state
-vocabulary. **What now gates P0 is procedural, not a decision: the licence pull request
-must merge and the P0 issues must exist** — see Blocked. The full
-documentation corpus exists — thirteen ADRs, an authoritative data model including the
-identity/SCIM and pending-action tables, a formal accelerated delivery calendar, a release
-plan, and a changelog convention. No application code written yet. **Time is governed by
+vocabulary. **That procedural gate is closed: the licence pull request merged (#4) and the
+P0 issues exist.** The full documentation corpus exists — thirteen ADRs, an authoritative
+data model including the identity/SCIM and pending-action tables, a formal accelerated
+delivery calendar, a release plan, and a changelog convention. **Application code exists
+too**, and the four-category snapshot below says exactly what is on `main` versus what is
+only on a branch. **Time is governed by
 the operating rule at the top of [phases.md](phases.md):** the four-week plan is a flexible
 target, the program may take three to four months, some stages take days — finish on exit
 criteria, never skip a gate, move scope or dates and record it.
 
 ```
-P0 Foundation          ░░░░░░░░░░   0%   ← next
+P0 Foundation          ███░░░░░░░  25%   ← in progress (2 of 8 issues done: #4 #5)
 P1 Core work           ░░░░░░░░░░   0%
 P2 Service desk        ░░░░░░░░░░   0%
 P3 Portal + identity   ░░░░░░░░░░   0%
@@ -40,6 +41,53 @@ P5 Insight + agile     ░░░░░░░░░░   0%
 P6 Import + cutover    ░░░░░░░░░░   0%
 P7 Polish              ░░░░░░░░░░   0%
 ```
+
+## Where the code is — the only four categories that mean anything
+
+Every claim in this file belongs to exactly one of these. Blurring them is how a branch's
+work gets reported as shipped, so the category is never optional.
+
+### ON MAIN
+
+- **#4** licence and provenance — `LICENSE`, `NOTICE`, `THIRD-PARTY-NOTICES.md`. Closed.
+- **#5** the kaneo import at `42bb8011`, de-branded. Closed. `apps/api`, `apps/web`,
+  `packages/{permissions,email,libs,mcp,typescript-config}`, `package.json`,
+  `pnpm-lock.yaml`, migrations 0000–0044.
+- **#11's deployment slice** (PR #20, merged `38ff9ac`) — a root `Dockerfile` that builds
+  and runs as uid 10001, `compose.yml` publishing no application port, the local /
+  production / UAT / Traefik overlays, `scripts/deploy.sh`, a `charts/taskdesk` that
+  fails closed on every bootstrap secret, and
+  [proxy-topology-evidence.md](../05-operations/proxy-topology-evidence.md).
+- Commands that run: `pnpm install | dev | lint | typecheck | test | test:integration`,
+  and `scripts/deploy.sh`.
+- A GitHub Project board (project 1, *TaskDesk v2 — P0*) with the six agreed columns.
+
+### IN OPEN PR — real code, not on `main`, do not report as available
+
+| PR | Issue | State |
+| --- | --- | --- |
+| **#16** (draft) | #6 slice | removes the inherited attack surface. Body materially stale; independent security review not done. **Merging it will not close #6.** |
+| **#21** | #7 | policy registry, evaluator, route coverage. Two independent Opus reviews complete: **1 CRITICAL, 6 HIGH, 7 MEDIUM, 7 LOW**. Remediation in progress. **Not merge-ready.** |
+| **#19** | #10 | CI gates, `test:all`, the `check:*` scripts, `tests/api-contract/openapi.json`. Two CodeQL HIGHs fixed. **Not merge-ready** — route-policy coverage fails until #21 lands, and `pnpm audit` is honestly red. |
+
+### BLOCKED
+
+- **#8** — the router retrofit waits for #6's removal surface to settle. Classifying a route
+  that is about to be deleted is wasted review and a false sense of coverage.
+- **#17** — sessions already minted by the removed MCP OAuth and device flows. Deleting an
+  endpoint is not revoking a credential; a consent click created a full 30-day session row.
+
+### DECIDED / NOT YET IMPLEMENTED
+
+- **better-auth `organization()` is removed in P0 — final.** It is still mounted, because
+  it is load-bearing for workspace creation, invitations, members and roles. Load-bearing
+  means it needs a retrofit (S1–S10, #6 work), not that it is kept. **S1 —
+  characterisation tests — has not started and gates everything after it.**
+- **The OpenAPI baseline is `tests/api-contract/openapi.json`.** The file exists in #19.
+- **Throttle 1's five conditions** are settled in their exact form (below). Four are unmet.
+- **The four application-side gaps that stop v2 UAT coming up** — `TASKDESK_PORT` actually
+  being read, live/ready health endpoints, Node static serving, a `storage.filesystem`
+  driver — are **#11 prerequisites**. Ownership is assigned when they are scheduled.
 
 **Screens:** 0 of **136** complete — [inventory](../02-design/screen-inventory.md)
 (recounted 2026-09-05 with a kind column: P0 6 · P1 33 · P2 18 · P3 21 · P4 28 · P5 28 · P6 2)
@@ -210,11 +258,11 @@ this stops depending on anyone remembering.
 
 ### Open
 
-- **`gh` is installed but not authenticated** (`gh auth status`: not logged into any host).
-  One `gh auth login` unblocks opening pull requests, posting the PR #13 review as a
-  comment, correcting the issue dependency links and creating the Project board. Until then
-  branches are pushed over SSH and Thomas opens the pull requests.
-  *Blast radius: everything — nothing merges.* Unblocked by: Thomas.
+- ~~**`gh` is not authenticated.**~~ **RESOLVED 2026-09-06.** `gh` is authenticated and
+  carries the Project scope. Pull requests are opened from the CLI, the PR #13 review is
+  posted, and the Project board exists — project 1, *TaskDesk v2 — P0*, with the six
+  agreed columns. Kept as a line rather than deleted because it was the top blocker for a
+  day and its absence changed how several things were done.
 - **#6 must relocate the SSRF guard before it deletes anything.**
   `assertPublicWebhookDestination` lives in `apps/api/src/plugins/generic-webhook/config.ts`
   — a directory #6 deletes — and is imported by two **retained** files,
@@ -224,13 +272,20 @@ this stops depending on anyone remembering.
 - **Deleting the MCP OAuth route does not revoke the sessions it already minted.** A consent
   click created a full 30-day better-auth session row. #6 removes the route; something else
   has to invalidate outstanding tokens. **Needs its own issue.** *Blast radius: one lane.*
-- **`scripts/openapi/` still has no destination**, so the inherited OpenAPI drift check
-  remains lost. #10 owns restoring it. *Blast radius: one lane.*
+- ~~**`scripts/openapi/` has no destination.**~~ **DECIDED 2026-09-06** (decision log):
+  the committed baseline the drift check compares against is
+  `tests/api-contract/openapi.json`; a published `apps/site/public/openapi.json` is
+  generated output, not the baseline. **IN OPEN PR #19** — `scripts/ci/check-openapi.mjs`
+  and the baseline file exist there and the `contract - OpenAPI drift` job passes. **Not on
+  `main`.** *Blast radius: one lane.*
 - **v2 UAT is not deployable yet, and the remaining reasons are application-side.**
-  The deployment skeleton exists on `feat/p0-deployment-skeleton` — a `Dockerfile` that
-  builds, base + local + production + UAT compose files, Traefik middlewares and
-  `scripts/deploy.sh`. `Dockerfile.kaneo` is deleted. What is still missing is in the
-  application, not the deployment:
+  The deployment skeleton is **ON MAIN** — PR #20 merged 2026-09-06 as `38ff9ac`. A
+  `Dockerfile` that builds, base + local + production + UAT compose files, Traefik
+  middlewares, a hardened `charts/taskdesk` that fails closed on every bootstrap secret,
+  and `scripts/deploy.sh`. `Dockerfile.kaneo` is deleted.
+
+  **#20 merging did not complete #11**, which stays **In Progress**. What is still missing
+  is in the application, not the deployment:
   1. **The API listens on a hard-coded `1337`** (`apps/api/src/index.ts`, `startServer(…,
      port = 1337)`). `TASKDESK_PORT` is documented but never read, so the image, the
      compose files, the Helm Service and the healthcheck all point at 5173 and nothing
@@ -245,7 +300,10 @@ this stops depending on anyone remembering.
      `s3.ts`. The compose and Helm shape for it exists (a named volume at `/app/data`,
      attachments under `/app/data/attachments`, owned by uid 10001); the driver, and the
      God Mode setting that points at that path, do not.
-  These are Lane A/#6 and #9 work, not deployment work. **v2 takes
+  **These four are #11 prerequisites, or dedicated prerequisite work — they are NOT
+  automatically #6 or #9 scope.** An earlier revision of this file assigned them to Lane A
+  and #9; that was inference from where they were noticed, not a decision. Implementation
+  ownership is assigned when they are scheduled (decision log, 2026-09-06). **v2 takes
   `ticket-v2-uat.bimats.com` / `portal-v2-uat.bimats.com` beside v1**, with its own compose
   project, network, volumes and database. **v1 UAT stays running and untouched**, and the
   pre-#6 import must not be exposed publicly — `deploy/compose.uat.yml` carries a
@@ -271,15 +329,18 @@ this stops depending on anyone remembering.
 
 ## Throttle 1 — not yet open
 
-Three of the five conditions are unmet. Throttle 1 opens only when **all** are true:
+**Four of the five conditions are unmet.** Throttle 1 opens only when **all** are true.
+Note the wording of 2 and 3: the **issue** completes. A slice merging is not the condition,
+and reading it that way would open the throttle while `organization()` is still mounted
+(decision log, 2026-09-06).
 
 | | Condition | State |
 | --- | --- | --- |
-| 1 | #5 merged | ✅ merged as PR #13 |
-| 2 | #6 merged | ⬜ in progress — `feat/p0-remove-inherited-surfaces` |
-| 3 | #7 merged | ⬜ not started |
-| 4 | route coverage actually runs in CI | ⬜ #10 |
-| 5 | adding a route without a policy **fails the build** | ⬜ #10 |
+| 1 | **#5** complete | ✅ merged as PR #13 |
+| 2 | **#6 — the ISSUE** complete | ⬜ in progress. PR #16 is a draft slice on `feat/p0-remove-inherited-surfaces`; the `organization()` retrofit S1–S10 has not started |
+| 3 | **#7** complete | ⬜ in progress. **IN OPEN PR #21** — registry, evaluator and route coverage exist there, but two independent reviews found 1 CRITICAL and 6 HIGH, so it is not merge-ready |
+| 4 | route coverage **actually executes** in CI | ⬜ **IN OPEN PR #19** — the `route-policy` job exists and currently fails closed, which is the gate working rather than the condition being met |
+| 5 | adding a route without a policy **fails the build** | ⬜ #19, and not yet demonstrated. The review found that appending a line to `inherited-uncovered.json` currently makes the gate green again, so this condition needs the baseline-monotonicity fix in #21 before it can be claimed |
 
 Conditions 4 and 5 are the ones most easily forgotten: it is **not enough** that #7 has a
 passing test locally. The check must execute in CI, which means the part of #10 that

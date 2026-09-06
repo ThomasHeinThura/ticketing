@@ -270,10 +270,17 @@ Every pull request gets:
    catches a surprising amount.
 2. **Automated gates** — everything in CI.
 3. **Thomas** — final approval, and the only source of approval for design and waivers.
-`main` enforces the third step mechanically: a `CODEOWNERS` file (`* @ThomasHeinThura`)
-makes Thomas's review required on every pull request into `main`
-([ci-cd.md](ci-cd.md#branching)) — "only Thomas merges" is a branch-protection rule, not a
-sentence.
+`main` enforces as much of the third step as a machine can. The `protect-main` ruleset
+requires a pull request, blocks deletion and non-fast-forward pushes, dismisses stale
+approvals on push, and squashes merges. It does **not** require an approving review:
+**required approving reviews is `0`, and Require review from Code Owners is off**
+([ci-cd.md](ci-cd.md#branching), decision log 2026-09-06).
+
+So "only Thomas merges" is enforced by Thomas holding the merge button, not by a review
+requirement — and `CODEOWNERS` (`* @ThomasHeinThura`) is ownership metadata that says who to
+ask. Do not wait for an approval that is not configured, and do not read the zero as
+permission: steps 1 and 2 above are unchanged, and the security review at its fixed tier
+remains a hard gate no agent may waive or downgrade.
 
 An agent reviewing its own work is worth very little; the same context that produced the
 mistake will not see it.

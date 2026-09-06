@@ -96,12 +96,30 @@ Detail: [`docs/01-architecture/monorepo-layout.md`](docs/01-architecture/monorep
 
 ## Commands
 
-> **Planned — not available until P0 completes.** None of these commands runs today: there
-> is no `package.json`, no `pnpm-lock.yaml` and no application code in this repository.
-> They are the contract P0 builds against, and [ci-cd.md](docs/04-engineering/ci-cd.md) is
-> the single list of what CI runs. If you are an agent and a command fails with "no such
-> script", that is the expected state, not a broken checkout — read
-> [docs/07-planning/status.md](docs/07-planning/status.md) before doing anything else.
+> **Some of these run today; most do not yet.** The repository has a `package.json`, a
+> `pnpm-lock.yaml`, `apps/api`, `apps/web` and `packages/*` — that changed when #5 merged.
+> [ci-cd.md](docs/04-engineering/ci-cd.md) remains the single list of what CI runs.
+>
+> The table below says what is true **on `main`** right now. A command marked *open PR* is
+> real code on an unmerged branch: do not describe it as available, and do not re-implement
+> it. A command marked *not yet* has nothing behind it, and a "no such script" failure is
+> the expected state rather than a broken checkout.
+>
+> | Command | State |
+> | --- | --- |
+> | `pnpm install`, `pnpm dev`, `pnpm lint`, `pnpm typecheck` | **ON MAIN** |
+> | `pnpm test` (unit + component) | **ON MAIN** |
+> | `pnpm test:integration` | **ON MAIN** — a Postgres service container, not yet Testcontainers |
+> | `scripts/deploy.sh local` | **ON MAIN** — landed with #11's deployment slice (#20) |
+> | `pnpm test:all`, `pnpm test:permissions` | **IN OPEN PR #19** |
+> | `pnpm check:env`, `check:vocabulary`, `check:reviews`, `check:skips`, `check:i18n`, `check:openapi` | **IN OPEN PR #19** |
+> | `pnpm test:e2e`, `pnpm seed` | **not yet** |
+> | `pnpm check:tokens`, `check:ui`, `check:deps` | **not yet** — they assert over `packages/ui` and `packages/domain`, which #9 creates |
+> | `pnpm check:queries`, `check:inventory`, `check:bundle-purity` | **not yet** |
+>
+> Keeping this table honest matters more than it looks. An agent told "none of this runs"
+> will scaffold a second copy of something that already exists; an agent told a command is
+> available when it only exists on a branch will report a gate as passing that never ran.
 
 ```bash
 pnpm install
