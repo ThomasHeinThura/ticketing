@@ -71,3 +71,26 @@ Thumbs.db
 tmp/
 temp/
 *.local
+
+# --- inherited from kaneo at 42bb8011 (repository-bootstrap.md §1, `.gitignore` = Copy) ---
+node_modules
+.pnp
+.pnp.js
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+coverage
+.turbo
+.vercel
+.next/
+build
+dist
+.source
+yarn-debug.log*
+*.db
+.worktrees/
+compose.override.yml
+.idea
+apps/web/.tanstack/
+.pi/
