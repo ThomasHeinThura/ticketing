@@ -99,7 +99,6 @@ export const boardSchema = z
         slug: z.string(),
         icon: z.string().nullable(),
         description: z.string().nullable(),
-        isPublic: z.boolean().nullable(),
         workspaceId: z.string(),
         columns: z.array(boardColumnSchema),
         archivedTasks: z.array(boardTaskSchema),

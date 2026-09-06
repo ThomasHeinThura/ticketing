@@ -55,26 +55,28 @@ describe("authorizeAssetAccess", () => {
     state.caller = "anonymous";
   });
 
-  it("allows an anonymous caller to read an asset of a public project", async () => {
+  // Negative guard for issue #6. kaneo returned early — with NO credential
+  // check — for any asset whose project carried `is_public`. That branch and
+  // the column are gone. This test deliberately passes a legacy `isPublic:
+  // true` target through a cast, so that if anyone ever reintroduces the
+  // field or the early return, this fails instead of silently reopening
+  // anonymous asset reads.
+  it("refuses an anonymous caller even for a target carrying a legacy isPublic flag", async () => {
     const status = await statusOf(
       authorizeAssetAccess(context, {
         workspaceId: "workspace-1",
         isPublic: true,
-      }),
+      } as unknown as { workspaceId: string }),
     );
 
-    expect(status).toBe(200);
-    // The credential check must be skipped entirely: it throws for anonymous
-    // callers, which is what made the public branch unreachable.
-    expect(state.resolveCalls).toBe(0);
+    expect(status).toBe(401);
+    // The credential check must actually run — it is no longer skippable.
+    expect(state.resolveCalls).toBe(1);
   });
 
   it("rejects an anonymous caller for a private asset", async () => {
     const status = await statusOf(
-      authorizeAssetAccess(context, {
-        workspaceId: "workspace-1",
-        isPublic: false,
-      }),
+      authorizeAssetAccess(context, { workspaceId: "workspace-1" }),
     );
 
     expect(status).toBe(401);
@@ -84,10 +86,7 @@ describe("authorizeAssetAccess", () => {
     state.caller = "outsider";
 
     const status = await statusOf(
-      authorizeAssetAccess(context, {
-        workspaceId: "workspace-1",
-        isPublic: null,
-      }),
+      authorizeAssetAccess(context, { workspaceId: "workspace-1" }),
     );
 
     expect(status).toBe(403);
@@ -97,10 +96,7 @@ describe("authorizeAssetAccess", () => {
     state.caller = "member";
 
     const status = await statusOf(
-      authorizeAssetAccess(context, {
-        workspaceId: "workspace-1",
-        isPublic: false,
-      }),
+      authorizeAssetAccess(context, { workspaceId: "workspace-1" }),
     );
 
     expect(status).toBe(200);

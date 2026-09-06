@@ -249,7 +249,7 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
   })
   .openapi(updateProjectRoute, async (c) => {
     const { id } = c.req.valid("param");
-    const { name, icon, slug, description, isPublic } = c.req.valid("json");
+    const { name, icon, slug, description } = c.req.valid("json");
     const workspaceId = c.get("workspaceId");
     const updatedProject = await updateProjectCtrl(
       id,
@@ -257,7 +257,6 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
       icon,
       slug,
       description,
-      isPublic,
       workspaceId,
     );
     return c.json(updatedProject, 200);

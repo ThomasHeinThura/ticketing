@@ -325,7 +325,6 @@ export const projectTable = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-    isPublic: boolean("is_public").default(false),
     archivedAt: timestamp("archived_at", { mode: "date" }),
     lastTaskNumber: integer("last_task_number").notNull().default(0),
     position: integer("position").notNull().default(0),

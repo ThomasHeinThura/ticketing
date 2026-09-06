@@ -317,7 +317,6 @@ export function registerMcpTools(
         icon: z.string().optional(),
         slug: optionalNonEmptyString,
         description: z.string().optional(),
-        isPublic: z.boolean().optional(),
       }),
     },
     async (args) => {
@@ -347,15 +346,9 @@ export function registerMcpTools(
             : typeof existing.description === "string"
               ? existing.description
               : "";
-        const isPublic =
-          patch.isPublic !== undefined
-            ? patch.isPublic
-            : typeof existing.isPublic === "boolean"
-              ? existing.isPublic
-              : false;
         return client.json(`/api/project/${encodeURIComponent(id)}`, {
           method: "PUT",
-          body: JSON.stringify({ name, icon, slug, description, isPublic }),
+          body: JSON.stringify({ name, icon, slug, description }),
         });
       });
     },

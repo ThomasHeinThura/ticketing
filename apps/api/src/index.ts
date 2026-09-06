@@ -43,7 +43,6 @@ import { createRoute, jsonResponse, z } from "./openapi";
 import { initializePlugins } from "./plugins";
 import { migrateGitHubIntegration } from "./plugins/github/migration";
 import project from "./project";
-import { getPublicProject } from "./project/controllers/get-public-project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
 import slackIntegration from "./slack-integration";
@@ -223,13 +222,6 @@ export function createApp() {
     async (c) => c.json(await getInstanceStatus(), 200),
   );
 
-  const publicProjectApi = api.get("/public-project/:id", async (c) => {
-    const { id } = c.req.param();
-    const project = await getPublicProject(id);
-
-    return c.json(project);
-  });
-
   api.post("/github-integration/webhook", handleGithubWebhookRoute);
 
   api.post(
@@ -292,9 +284,11 @@ export function createApp() {
           mimeType: schema.assetTable.mimeType,
           filename: schema.assetTable.filename,
           workspaceId: schema.assetTable.workspaceId,
-          isPublic: schema.projectTable.isPublic,
         })
         .from(schema.assetTable)
+        // The join selects nothing now that `is_public` is gone, but it is kept
+        // deliberately: it still requires the asset to belong to a real project,
+        // so an orphaned asset row 404s rather than being served.
         .innerJoin(
           schema.projectTable,
           eq(schema.assetTable.projectId, schema.projectTable.id),
@@ -319,9 +313,8 @@ export function createApp() {
 
         return new Response(object.body as BodyInit, {
           headers: {
-            "Cache-Control": asset.isPublic
-              ? "public, max-age=300"
-              : "private, max-age=120",
+            // Every asset is private: TaskDesk has no public-project read path.
+            "Cache-Control": "private, max-age=120",
             "Content-Disposition": buildContentDisposition(
               asset.filename,
               inline,
@@ -764,7 +757,6 @@ export function createApp() {
     notificationApi,
     notificationPreferencesApi,
     projectApi,
-    publicProjectApi,
     searchApi,
     slackIntegrationApi,
     taskApi,
@@ -882,7 +874,6 @@ const {
   notificationApi,
   notificationPreferencesApi,
   projectApi,
-  publicProjectApi,
   searchApi,
   slackIntegrationApi,
   taskApi,
@@ -930,7 +921,6 @@ export type AppType =
   | typeof invitationApi
   | typeof workspaceApi
   | typeof userApi
-  | typeof publicProjectApi
   | typeof invitationPublicApi
   | typeof oauthApi;
 
