@@ -77,7 +77,7 @@ const manifest = [
     stage: "fast",
     run: ["gitleaks", "detect", "--no-banner", "--redact"],
     ciOnly: true,
-    note: "runs in CI from a pinned action; locally it runs only if gitleaks is on PATH.",
+    note: "runs in CI from a pinned action; skipped locally.",
   },
   {
     gate: "pnpm check:queries",
@@ -275,8 +275,15 @@ async function main() {
       results.push({ ...entry, outcome: "enabled" });
       continue;
     }
-    if (entry.ciOnly && !process.env.CI && !available(entry.run[0])) {
+    if (entry.ciOnly && !process.env.CI) {
       results.push({ ...entry, outcome: "skipped locally" });
+      continue;
+    }
+    if (!available(entry.run[0])) {
+      results.push({
+        ...entry,
+        outcome: `FAIL (${entry.run[0]} not installed)`,
+      });
       continue;
     }
 
@@ -303,7 +310,7 @@ async function main() {
     }
   }
 
-  const failed = results.filter((result) => result.outcome === "FAIL");
+  const failed = results.filter((result) => result.outcome.startsWith("FAIL"));
   const pending = results.filter((result) => result.outcome === "not enabled");
   process.stdout.write(
     `\n  ${results.filter((r) => r.outcome === "pass").length} passed · ` +
