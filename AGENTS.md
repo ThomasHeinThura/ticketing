@@ -20,14 +20,14 @@ Licensed **AGPL-3.0**.
 1. This file
 2. [`docs/04-engineering/agent-workflow.md`](docs/04-engineering/agent-workflow.md) —
    **required** if you are an AI agent
-2b. [`CLAUDE.md`](CLAUDE.md) — if you are Claude: the working mode, the model tiers, what
-   subagent patterns work in this repository and what stalls, and how Thomas wants reports
-   written
-3. [`docs/04-engineering/sdlc.md`](docs/04-engineering/sdlc.md) — the nine steps
-4. [`docs/04-engineering/coding-standards.md`](docs/04-engineering/coding-standards.md)
-5. The feature spec for what you are building, in
+3. [`CLAUDE.md`](CLAUDE.md) — **required if you are Claude**: the working mode, the model
+   tiers, which subagent patterns work in this repository and which stall, and how Thomas
+   wants reports written
+4. [`docs/04-engineering/sdlc.md`](docs/04-engineering/sdlc.md) — the nine steps
+5. [`docs/04-engineering/coding-standards.md`](docs/04-engineering/coding-standards.md)
+6. The feature spec for what you are building, in
    [`docs/03-features/`](docs/03-features/README.md)
-6. Any [ADR](docs/01-architecture/adr/README.md) that spec references
+7. Any [ADR](docs/01-architecture/adr/README.md) that spec references
 
 Full index: [`docs/README.md`](docs/README.md)
 
