@@ -17,6 +17,70 @@ Newest first.
 
 ---
 
+### 2026-09-06 · The P0 working agreement — dependency graph, two throttles, blocking taxonomy
+
+**Decision:** the way P0 is sequenced and parallelised is settled and written into
+[`CLAUDE.md`](../../CLAUDE.md) ("The P0 working agreement"), in eight parts:
+
+1. **The dependency graph.** #4 licence is done. **#5 (kaneo import at `42bb8011`) must
+   merge before any real application work.** After it, **#6 removals, #10 CI and #11
+   deployment run in parallel**; **#7** policy registry may overlap #6; **#8** router
+   retrofit waits only for #6's removal surface to settle, because classifying a route that
+   is about to be deleted is wasted review; **#9** UI extraction is independent after #5 but
+   must not edit the same files as #6 concurrently. **#8 complete plus the P0 exit gates
+   green ⇒ P0 may be claimed complete.** The issue dependency links are corrected to match
+   and the self-references ("#5 blocks #5", "#8 blocks #8") removed.
+2. **Two throttles, doing different jobs.** *Throttle 1* opens parallel development when
+   #5, #6 and #7 have all merged — that is, when the dangerous inherited surfaces are gone
+   and a route without a policy fails the build. *Throttle 2* governs only whether P0 may
+   be **claimed**: #8 green, the Opus security review having read every public and delegated
+   policy reason, the permission matrix green for every built-in role, the RLS prototype
+   resolved either way, and the remaining exit criteria green. **Throttle 2 gates the claim,
+   never the throttle.**
+3. **What runs in parallel afterwards** — three to four active branches, one architectural
+   idea per pull request: P1 core, P2 domain (pure functions in `packages/domain` **before**
+   any HTTP endpoint), P3 identity internals (**before** `/scim/v2/*` is exposed), P4
+   governance seams (a configuration seam lands with the thing it configures, never later).
+4. **A blocking taxonomy graded by blast radius** — one workstream, a shared contract, a
+   soft block, or no block — each with a different response, and one rule common to all
+   four: never guess, never weaken a failing test, never route around a gate.
+5. **Shared-contract ownership.** `packages/permissions`, identity and context types, the
+   organisation/workspace/project schema, the `work_item` base schema, plugin contracts, the
+   API error envelope, the event envelope, route-policy types and the migration journal are
+   changed by a **small dedicated contract pull request**, never by a feature agent in
+   passing.
+6. **The spec interaction rule** — proceed / close the open review findings first / stop and
+   propose a document change / spec and decision log before code / Thomas reviews an
+   entirely new feature. Never silently implement something different from the spec.
+7. **The reference restriction** — implementation reads kaneo and Ticketing v1 **only**.
+   Plane, OpenProject and the six ITSM systems are closed; that research is finished and
+   recorded in `THIRD-PARTY-NOTICES.md` §2.
+8. **Authority** — only Thomas authorises merges; never self-approve, never waive a gate,
+   never downgrade an unavailable reviewer.
+
+**Why:** every one of the eight closes a failure this project has already seen or has
+explicitly named as a risk. The graph exists because #5 replaces the tree, so anything built
+first is rework. The two throttles exist because "P0 is done" and "we may now work in
+parallel" were being treated as one event, which is how a stage gets claimed on the strength
+of the work that opened it rather than the work that finished it (R2, and product principle
+7). The blocking taxonomy exists because "blocked" had one word and three blast radii, and
+the wrong response to a shared-contract block stops nothing while the wrong response to a
+one-lane block stops everything. Shared-contract ownership is R17 — parallel workstreams
+reproducing three inconsistent codebases faster than usual — converted into a rule about who
+may open which pull request. The reference restriction is the licensing boundary, and it is
+easiest to breach late, when an implementer wants to see how somebody else solved something.
+
+**Alternatives:** leaving the sequencing implicit in [phases.md](phases.md) and the
+[accelerated delivery plan](accelerated-delivery-plan.md) — rejected, because both describe
+*what* P0 contains and neither states which issue may start when, which is the question an
+agent actually has at the start of a session. A separate planning document was also
+rejected: this is operating guidance for the agent doing the work, and
+[`CLAUDE.md`](../../CLAUDE.md) is where an agent is already required to look.
+
+**Decided by:** Thomas, 2026-09-06 — settled, not to be reopened.
+
+---
+
 ### 2026-09-06 · The week-2 scope confirmation is a named moment with an owner
 
 **Decision:** at the end of week 2 of any accelerated window, **Thomas writes two lines in
