@@ -1,11 +1,5 @@
 import * as v from "valibot";
-import { assertPublicDestination } from "../../utils/assert-public-destination";
-
-export async function assertPublicWebhookDestination(
-  webhookUrl: string,
-): Promise<void> {
-  await assertPublicDestination(webhookUrl, "Generic webhook");
-}
+import { assertPublicWebhookDestination } from "../../utils/assert-public-destination";
 
 export const genericWebhookEventKeys = [
   "taskCreated",
