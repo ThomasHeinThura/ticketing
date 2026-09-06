@@ -1,6 +1,6 @@
 # Service catalogue, changes and releases
 
-- **Phase:** P5
+- **Stage:** P5
 - **Status:** ⬜
 - **Feature flag:** `feature.service_catalogue`
 - **Depends on:** work items, workflows, approvals

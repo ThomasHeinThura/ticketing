@@ -1,6 +1,6 @@
 # Views and layouts
 
-- **Phase:** P1
+- **Stage:** P1
 - **Status:** ⬜
 - **Feature flag:** per layout — `feature.calendar`, `feature.timeline` (was `feature.gantt`; the UI says Timeline)
 - **Depends on:** work items, states
@@ -21,7 +21,7 @@ them lost your filters. Here there is one destination — `/work` — with a lay
 
 ## Layouts
 
-| Layout | Best for | Phase |
+| Layout | Best for | Stage |
 | --- | --- | :-: |
 | **Board** | Flow. What is where, what is stuck | P1 |
 | **List** | Reading. Grouped, scannable, dense | P1 |

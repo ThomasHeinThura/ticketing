@@ -124,7 +124,7 @@ it. Do not reimplement a `Select` because the native one "looked wrong" — styl
 one.
 
 WCAG 2.1 AA is the floor: contrast, focus visibility, keyboard reachability, screen reader
-labels. Verified by axe in CI, and by manual keyboard-only passes at phase review.
+labels. Verified by axe in CI, and by manual keyboard-only passes at stage review.
 
 ---
 

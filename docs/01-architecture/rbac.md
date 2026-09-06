@@ -123,9 +123,9 @@ capability has exactly one group.
 stored as strings in `role.capabilities`, in `api_key.capabilities` and in a service key's
 frozen creation-time subset, so a rename that only touches `capabilities.ts` silently drops
 the capability from every custom role and every issued key while CI stays green. A rename or
-a removal therefore ships in two phases: phase one adds the new name, keeps the old name as
+a removal therefore ships in two stages: stage one adds the new name, keeps the old name as
 a recorded **alias** for one release, and runs a data migration over `role.capabilities` and
-`api_key.capabilities`; phase two drops the alias. Both phases need a decision-log entry. An
+`api_key.capabilities`; stage two drops the alias. Both stages need a decision-log entry. An
 unrecognised capability string encountered at evaluation is **logged and treated as absent** —
 never expanded by a wildcard implication — and a startup check reports any stored string that
 is not in `capabilities.ts`.

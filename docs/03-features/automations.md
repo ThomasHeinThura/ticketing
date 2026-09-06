@@ -1,6 +1,6 @@
 # Automations
 
-- **Phase:** P4
+- **Stage:** P4
 - **Status:** ⬜
 - **Feature flag:** `feature.automations`
 - **Depends on:** workflows, notifications, webhooks
@@ -111,7 +111,7 @@ visibility, actor role.
   [webhooks-and-api-keys.md](webhooks-and-api-keys.md) — evaluated against the rule's
   `effective_role_id`, never against the rule author's own reach.
 - `AM-13` **There is no delete action.** The action vocabulary above contains no delete,
-  purge or archive-and-purge action, for P4 and every earlier phase — an automation cannot
+  purge or archive-and-purge action, for P4 and every earlier stage — an automation cannot
   destroy data ([pending-actions.md](../01-architecture/pending-actions.md)). Any later
   automation-delete capability needs its own feature specification with blast-radius
   control, dry-run behaviour, explicit human approval, audit requirements and a security

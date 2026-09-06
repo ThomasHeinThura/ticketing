@@ -1,6 +1,6 @@
 # Screen inventory
 
-Every screen in the product, its route, its kind, its phase, and its status.
+Every screen in the product, its route, its kind, its stage, and its status.
 
 **Kind:** `route` — has a URL in `lib/routes.ts` · `overlay` — a pane/palette over another
 screen · `dialog` — modal · `section` — a region of a parent screen.
@@ -8,14 +8,14 @@ screen · `dialog` — modal · `section` — a region of a parent screen.
 
 Update this file as part of the work. It is the answer to "what is left?" Rewritten
 2026-09-05: the [planning review](../07-planning/review-2026-09-05.md) found the counts
-wrong in five of seven phases and about twenty screens the specs require missing. Routes
+wrong in five of seven stages and about twenty screens the specs require missing. Routes
 are written in full so a script can check them against `lib/routes.ts`.
 
 ---
 
 ## Agent — core
 
-| Screen | Route | Kind | Phase | Status |
+| Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
 | Sign in | `/agent/sign-in` | route | P0 | ⬜ |
 | Sign-in — provider chooser | `/agent/sign-in` | section | P0 | ⬜ |
@@ -34,7 +34,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 
 ## Agent — project
 
-| Screen | Route | Kind | Phase | Status |
+| Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
 | Project overview | `/agent/projects/{key}` | route | P1 | ⬜ |
 | Work — board | `/agent/projects/{key}/work?layout=board` | route | P1 | ⬜ |
@@ -53,7 +53,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 
 ## Agent — work item
 
-| Screen | Route | Kind | Phase | Status |
+| Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
 | Work item — full page | `/agent/work-items/{key}` | route | P1 | ⬜ |
 | Work item — side pane | `?item={key}` on any list | overlay | P1 | ⬜ |
@@ -68,7 +68,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 
 ## Agent — service desk
 
-| Screen | Route | Kind | Phase | Status |
+| Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
 | Intake queue | `/agent/triage?tab=intake` | route | P2 | ⬜ |
 | Submission detail | `/agent/submissions/{ref}` | route | P2 | ⬜ |
@@ -83,7 +83,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 
 ## Agent — insight
 
-| Screen | Route | Kind | Phase | Status |
+| Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
 | Reports index | `/agent/reports` | route | P5 | ⬜ |
 | Report detail | `/agent/reports/{key}` | route | P5 | ⬜ |
@@ -96,7 +96,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 
 ## Agent — settings
 
-| Screen | Route | Kind | Phase | Status |
+| Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
 | Profile — general | `/agent/settings/profile` | route | P1 | ⬜ |
 | Profile — appearance | `/agent/settings/profile/appearance` | route | P1 | ⬜ |
@@ -146,7 +146,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 
 ## Agent — God Mode
 
-| Screen | Route | Kind | Phase | Status |
+| Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
 | God Mode home / health | `/agent/god-mode` | route | P4 | ⬜ |
 | General (incl. terminology) | `/agent/god-mode/general` | route | P4 | ⬜ |
@@ -170,7 +170,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 
 ## Portal
 
-| Screen | Route | Kind | Phase | Status |
+| Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
 | Sign in | `/portal/sign-in` | route | P3 | ⬜ |
 | Accept invitation | `/portal/invite` | route | P3 | ⬜ |
@@ -196,7 +196,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 Recomputed by `scripts/check-inventory.mjs` in CI from the rows above; the table fails the
 build if it drifts.
 
-| Phase | Screens |
+| Stage | Screens |
 | --- | --- |
 | P0 Foundation | 6 |
 | P1 Core work | 33 |
@@ -208,7 +208,7 @@ build if it drifts.
 | **Total** | **136** |
 
 For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
-more screens at 100%, delivered a phase at a time — see
+more screens at 100%, delivered a stage at a time — see
 [Product principles](../00-overview/product-principles.md), principle 7.
 
 ## Rules
@@ -222,10 +222,10 @@ more screens at 100%, delivered a phase at a time — see
   side pane ([assignment.md](../03-features/assignment.md)); `check:inventory` exempts it
   explicitly.
 - A screen is not ✅ until it passes every automated gate (`G1`–`G13`) and the human gates
-  at review (`H1`–`H6`); the phase-level checks (`P1`–`P6`) apply at phase close.
+  at review (`H1`–`H6`); the stage-level checks (`P1`–`P6`) apply at stage close.
 - Adding a screen means adding a row here in the same pull request — and every screen a
   feature spec names must have a row.
 
 ## Related
 
-- [Information architecture](information-architecture.md) · [Phases](../07-planning/phases.md)
+- [Information architecture](information-architecture.md) · [Stages](../07-planning/phases.md)

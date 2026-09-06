@@ -1,6 +1,6 @@
 # Time and cost
 
-- **Phase:** P5
+- **Stage:** P5
 - **Status:** ⬜
 - **Feature flags:** `feature.time_tracking`, `feature.cost_tracking`
 - **Depends on:** work items, projects, people

@@ -17,6 +17,212 @@ Newest first.
 
 ---
 
+### 2026-09-06 · The week-2 scope confirmation is a named moment with an owner
+
+**Decision:** at the end of week 2 of any accelerated window, **Thomas writes two lines in
+[status.md](status.md): what go-live contains, and what has moved.** Recorded in
+[accelerated-delivery-plan.md](accelerated-delivery-plan.md).
+
+**Why:** the flexible-date rule (decision A) is settled and is not reopened here. What it
+lacked was a moment: a date allowed to move, with nobody scheduled to say what it now means,
+drifts silently because everyone assumes someone else is watching. The existing escalation
+("the moment workstream A looks behind") is event-driven and fires only when something looks
+wrong; this one fires regardless, which is why it catches the case where nothing did.
+
+**Decided by:** Thomas, 2026-09-06
+
+---
+
+### 2026-09-06 · Repository setup, and the working mode from here on
+
+**Decision:** four things are true about how this repository is operated, and P0 code does
+not start until the first two are done.
+
+1. **Branch protection is live.** The ruleset `protect-main` on `main`: pull request
+   required, one approval, stale approvals dismissed, force pushes and deletion blocked,
+   bypass list empty, squash merge only. **Status checks stay off until GitHub Actions
+   exists in P0**, and then the fast CI job is added to that same ruleset as a required
+   check — a ruleset that requires a check nobody can run would block every pull request.
+2. **The licence files land in their own pull request, before the kaneo import.** `LICENSE`
+   (AGPL-3.0), `NOTICE` and `THIRD-PARTY-NOTICES.md` at the repository root. The import is a
+   **separate** pull request that opens only after the licence one merges. This is the
+   provenance boundary: our licence first, kaneo's MIT code second, kaneo's copyright headers
+   preserved. ([licensing-and-attribution.md](../00-overview/licensing-and-attribution.md))
+3. **Work is tracked in GitHub Issues, as vertical slices, not per screen.** The markdown
+   corpus stays the knowledge; issues track the work. A Project board carries Backlog /
+   Ready / In Progress / Review / Blocked / Done. The P0 slices are: licence and provenance
+   files; kaneo import at the confirmed SHA; delete `public-project` and the inherited
+   integration routers; the router retrofit into the five policy kinds; `packages/ui`
+   extraction and Base UI convergence; the CI/CD skeleton; the deployment skeleton; the
+   policy registry and route-coverage test on the inherited surface.
+4. **The working mode is branch → commit → pull request → Thomas approves → merge.**
+   This is [AGENTS.md](../../AGENTS.md) do-not 16 made concrete: an agent may create a
+   branch, commit to it and open a pull request; Thomas approves and merges. Work is never
+   left uncommitted on a local machine, and nothing reaches `main` without his approval.
+   The earlier reading of do-not 16 — that even a branch commit needed approval — produced
+   eighty-three uncommitted files on one laptop, which is the failure this rule exists to
+   prevent, in the other direction.
+
+**Hard stop:** no P0 code, and no kaneo import, until (2) has merged and (3) exists.
+
+**Decided by:** Thomas, 2026-09-06
+
+---
+
+### 2026-09-06 · Terminology: stage, workstream, step, state — one word each
+
+**Decision:** the P0–P7 sequence is renamed from **phases** to **stages**, and a stage means
+a level of **product capability**, not a unit of scheduling. Execution lanes are
+**workstreams**. Because "stage" was already carrying three other meanings in the corpus,
+those are renamed in the same pass rather than left to collide:
+
+| Term | Means | Owner document |
+| --- | --- | --- |
+| **Stage** (P0–P7) | A level of product capability, with exit criteria | [phases.md](phases.md) |
+| **Workstream** | A lane of work executing against those criteria; several run at once | [accelerated-delivery-plan.md](accelerated-delivery-plan.md) |
+| **Step** (1–9) | One pass of the build process for a single feature — formerly "SDLC stages" | [sdlc.md](../04-engineering/sdlc.md) |
+| **State** | Where one work item sits in its lifecycle — ADR 0011's loose "stages" corrected | [ADR 0011](../01-architecture/adr/0011-ticket-lifecycle-engine.md) |
+
+"Phase gate" becomes **stage gate**; the Definition of Done's `## Phase completion` becomes
+`## Stage completion` and its anchor moves with it. `**Phase:**` in each feature spec header
+becomes `**Stage:**`. Compound words in the other sense — a *two-phase* destructive
+migration, a *multi-stage* Dockerfile, an *operator-staged* key rotation, the *fast* and
+*full* **CI stages** — are untouched and stay unambiguous because they are always qualified.
+
+**Why:** the corpus said each phase finishes before the next begins, and simultaneously ran
+six lanes at once on the accelerated calendar. Both statements were true about different
+things wearing one word. Separating capability from execution dissolves the contradiction
+instead of explaining it away, and [product principle 7](../00-overview/product-principles.md)
+is restated to constrain what may be *claimed* finished rather than what may be *started*.
+
+**Two consequences worth stating.** The file is still named `phases.md`: renaming it would
+touch eighty-seven links for no semantic gain, and the heading inside it says "Stages".
+The historical review files under `07-planning/reviews/` are left in the old vocabulary
+deliberately — they are a record of what was said on a date, not living guidance.
+
+**Decided by:** Thomas, 2026-09-06 — the four-way disambiguation drafted by Claude Code and
+reversible per row.
+
+---
+
+### 2026-09-06 · Security status is reported as a breakdown, never as "complete"
+
+**Decision:** [status.md](status.md) no longer says "Security review: complete". It carries
+seven lines, because "complete" was a statement about the *documentation* that read as a
+statement about the *product*:
+
+architecture ✅ · threat model ✅ · implementation ⬜ · SAST and dependency scanning ⬜ ·
+authorization tests ⬜ · internal red team ⬜ · external penetration test ⬜.
+
+**Why:** five of the seven cannot even be attempted before code exists. A reader — a
+customer, a reviewer, a future agent — seeing "complete" would reasonably conclude the
+product had been security tested. It has not been; the corpus has been reviewed. The
+breakdown makes the difference impossible to misread and gives each row a place to turn
+green.
+
+**Decided by:** Thomas, 2026-09-06
+
+---
+
+### 2026-09-06 · The Sep 12 milestone is the "Foundation Technical Preview"
+
+**Decision:** the week-1 milestone is renamed from "UAT ready" to **Foundation Technical
+Preview** in [accelerated-delivery-plan.md](accelerated-delivery-plan.md) and
+[status.md](status.md). The UAT *environment* keeps its name and its compose overlay.
+
+**Why:** "UAT" promises that users are about to accept something. What week 1 produces is a
+de-branded kaneo with sign-in, the policy registry and the CI gates — a foundation, and a
+technical audience. Naming it accurately costs nothing now and prevents a stakeholder
+arriving on 12 September expecting to accept a product.
+
+**Decided by:** Thomas, 2026-09-06
+
+---
+
+### 2026-09-06 · The engine boundary — plugin, or domain module plus a flag
+
+**Decision:** [plugin-architecture.md](../01-architecture/plugin-architecture.md) gains one
+question that decides which shape a feature takes. *Could two implementations of this be
+installed side by side and swapped by an administrator?*
+
+- **Yes → a plugin.** SMTP or Teams; S3 or the filesystem; Entra or Okta.
+- **No → a domain module plus a feature flag.** SLA, workflow, approvals, assignment, the
+  terminology overlay: one implementation, varying only in configuration and whether it is on.
+
+Both still follow the five points of the engine pattern. The rule decides only whether the
+swap point is a registry entry or a flag plus configuration rows.
+
+**Why:** "everything is an engine" was being read as "everything needs a plugin kind", which
+points at six registries with one member each — ceremony that makes the codebase harder to
+read while proving nothing. The rule keeps the promise (nothing hardcoded per customer)
+without the ceremony.
+
+**Decided by:** Thomas, 2026-09-06
+
+---
+
+### 2026-09-06 · PostgreSQL RLS is promoted from deferred to a P0 prototype
+
+**Decision:** row-level security becomes a **P0 prototype** on `work_item`, `comment` and
+`attachment` — the three tables where a missed `WHERE` leaks another tenant's content rather
+than a setting. It is a **backstop beneath** the application layer, never the primary
+control: scoped repositories, the route policy registry and reach/authority stay primary,
+because they are what gets reviewed and what can express reach versus authority at all.
+
+The prototype answers three questions with measurements instead of opinions: does it survive
+connection pooling, what does it cost on the hot list queries, and does it ever disagree with
+the application layer — a disagreement being a bug in one of them, which is the point of
+having two. **P0 exit:** merged with those answers written down, or dropped with the reason in
+this log. An open prototype does not close P0.
+
+**Why:** "the application is the only thing standing between two customers' data" was the
+one place the security review had no defence in depth, and the cheapest moment to find out
+whether RLS is affordable here is while the schema is three tables old rather than eighty.
+
+**Supersedes:** "No row-level security in Postgres" (2026-09-05), below, and removes RLS from
+the deferred list in [roadmap.md](roadmap.md).
+
+**Decided by:** Thomas, 2026-09-06
+
+---
+
+### 2026-09-06 · The person model — one person, one organisation
+
+**Decision:** a `person` belongs to **exactly one organisation**, fixed at creation.
+
+- The **agent portal** serves the internal staff organisation only. Staff arrive through an
+  identity connection scoped to that portal, or by email invitation, and are then placed on
+  teams and named as stakeholders.
+- The **customer portal** serves one organisation per customer company. No customer person
+  belongs to two organisations.
+- **Email is not an identity key and is not unique per instance.** The key is
+  `(identity_connection_id, subject)`; better-auth's default unique index on `user.email` is
+  dropped at fork.
+- A human who genuinely needs **both** portals has **two `person` rows**, and **may use the
+  same address for both** — the rows are keyed per connection and collide on nothing. They
+  are never linked, which is `IP-18` applied rather than contradicted.
+- **The default is not a second account.** A staff member who needs the customer's view uses
+  **God Mode impersonation** — audited twice, capped at thirty minutes (`GM-7`, `GM-8`).
+
+**Known limitation, accepted:** a consultant who is genuinely a contact at two customer
+organisations needs two customer-side rows and two sign-ins. **The schema is not being
+redesigned for it now:** the cost is a rare person signing in twice, against a many-to-many
+identity model that would be paid for on every authorization check.
+
+**Why:** this corrects an earlier concern about "multi-organisation people" that does not
+apply, and it corrects the corpus, which said such a person needed *different email
+addresses*. That was a needless restriction — the identity key was never the address.
+
+**Recorded in:** [multi-tenancy.md](../01-architecture/multi-tenancy.md#identity-across-tenants)
+(owner), [data-model.md](../01-architecture/data-model.md) §2,
+[identity-provisioning.md](../03-features/identity-provisioning.md) `IP-33`,
+[god-mode.md](../03-features/god-mode.md), [customer-portal.md](../03-features/customer-portal.md),
+[glossary.md](../00-overview/glossary.md).
+
+**Decided by:** Thomas, 2026-09-06
+
+---
+
 ### 2026-09-06 · Small design choices made by Claude Code while applying the pre-P0 check — all reversible
 
 **Decision:** while applying the ≈200 findings, a handful of gaps had no decision behind
@@ -32,7 +238,7 @@ with the smallest option and is listed here so Thomas can reverse any of them in
 | **Health deep endpoint** is `/api/instance/health/deep`, capability `instance:admin` only; the metrics bearer token grants `/metrics` alone | api-design.md, security-model.md, observability.md, runbook.md | letting the metrics token read `health/deep` as a delegated route |
 | **TaskDesk uses Tailwind's built-in spacing, type, shadow and z-index scales directly, as kaneo does** — the invented `--space-*` / `--text-*` / `--shadow-*` / `--z-*` / layout tokens are removed from design-tokens.md; only colour, radius, motion and the status/priority/SLA colour tokens are ours | design-tokens.md | authoring those token families with values before `packages/ui` extraction |
 | **Root `i18n/` stays where kaneo has it** (with `scripts/i18n/*.mjs` and the CI i18n job), not `packages/i18n/` | monorepo-layout.md, i18n.md, repository-bootstrap.md | moving it, and porting the three scripts and the CI step |
-| **Assignment**: defaults and UI are P1; the rule *engine* ports with `packages/domain` in P2 | phases.md, 03-features/README.md | moving both to one phase |
+| **Assignment**: defaults and UI are P1; the rule *engine* ports with `packages/domain` in P2 | phases.md, 03-features/README.md | moving both to one stage |
 | **Prefix `PG` reserved** for a future `pages.md` | 03-features/README.md registry | dropping Pages from P5 |
 | **CODEOWNERS** (`* @ThomasHeinThura`, required review on `main`) is the mechanism behind "only Thomas merges" | ci-cd.md | none needed — it is what the Roles table already promised |
 | **Semantic-release, commitlint and husky are kept** from kaneo (tech-stack.md already lists them), so `.husky/`, `commitlint.config.js` and `release.config.js` are copied | repository-bootstrap.md | dropping them and the `prepare` script |
@@ -45,13 +251,16 @@ silently is how v1 drifted. This table is the middle path — decided, visible, 
 
 ---
 
-### 2026-09-05 · kaneo snapshot commit: upstream main `42bb8011` proposed — awaiting Thomas's confirmation
+### 2026-09-05 · kaneo snapshot commit: upstream main `42bb8011` — **confirmed 2026-09-06**
 
-**Decision (proposed, not yet confirmed):** fork from upstream `main` commit
+**Decision — CONFIRMED by Thomas, 2026-09-06.** Fork from upstream `main` commit
 `42bb801114aa1ae499228a53180f0cdbc5607964` (2026-09-05, kaneo CI run 33957941564 green:
 lint, i18n, typecheck, unit, build, integration on Postgres 16, docker build) — **not** from
-the latest release tag `v2.22.0` (2026-08-21). Thomas confirms the exact SHA explicitly
-before any source is copied; until then P0 step 1 does not start.
+the latest release tag `v2.22.0` (2026-08-21). The SHA is recorded in
+`THIRD-PARTY-NOTICES.md` at the repository root, which merges before the import.
+
+**What still gates the import** is procedural, not a decision: the licence pull request must
+merge, and the P0 issues must exist. See the repository-setup entry below.
 
 **Why:** the tag predates authorization fixes that landed on `main` two to three days later
 — `6de9ea05` "close five workspace-scoping gaps" (08-23), `6bfe74de` "read the raw body in
@@ -76,7 +285,7 @@ Facts that depend on the SHA (locale count, `job_lease` presence) are stated onc
 no release is scheduled and the fork has no upstream relationship to benefit from one.
 
 **Decided by:** Thomas — recommendation drafted by Claude Code (Fable) from the pre-P0
-check; **pending Thomas's explicit confirmation of the SHA**.
+check; **confirmed by Thomas on 2026-09-06**.
 
 ---
 
@@ -206,7 +415,7 @@ mentioned environment variables — the largest single body of P0 step-1 work wa
 
 ### 2026-09-05 · Migrations: kaneo's history is inherited; removals are additive migrations — confirm with the SHA
 
-**Decision (recorded from Thomas's message, to be confirmed together with the SHA):**
+**Decision — CONFIRMED by Thomas, 2026-09-06.**
 TaskDesk's `apps/api/drizzle/` starts from kaneo's **45 migrations** (`0000`–`0044` at the
 snapshot) and their `meta/_journal.json`, exactly as taken. Every fork-time removal
 (billing tables, `integration`, `github_integration`, `project.is_public`) is a **new,
@@ -318,7 +527,7 @@ file, fails the gate. **Operator lane — a shell is expected, improvisation is 
 install, restore from backup, and upgrade are shell procedures by design (and the one-time
 setup token is read from the installer output or the container log); the bar is that each
 is completed by following the runbook exactly, with no command the runbook does not name,
-and timed. Timings and every hesitation go into the phase review note.
+and timed. Timings and every hesitation go into the stage review note.
 
 **Why:** the red-team gate tests the security surface; nothing rehearsed the operational
 go-live as a sequence. "The first ten minutes sells this product." The original wording
@@ -366,7 +575,7 @@ unauthenticated route in kaneo's `index.ts`.
 
 ---
 
-### 2026-09-05 · Pages needs a spec before P5 stage 2; the fixed-report count is twenty
+### 2026-09-05 · Pages needs a spec before P5 step 2; the fixed-report count is twenty
 
 **Decision:** "Pages" stays scheduled in P5 and in the screen inventory but is marked
 **spec required** — no `docs/03-features/pages.md` exists; prefix `PG` is reserved in the
@@ -398,8 +607,8 @@ is applied in the owning documents, not left in a review file. By class:
 | Data model | data-model.md, events.md, background-jobs.md, ADR 0007/0009, sla.md, workflows.md, approvals.md, storage-and-attachments.md, comments-and-activity.md | `scheduled_transition` table; `first_response_at`; `is_reopen`; legal hold; organisation quotas; comment tombstones; workspace soft delete; tenancy columns on attachment/outbox/imports/custom-field values; `sla.missed`, `approval.withdrawn`; `automation-schedule` job; three `status`→`state` |
 | Design | design-system.md, design-tokens.md, ux-quality-gates.md, ui-extraction-plan.md, accessibility.md, motion.md, ADR 0008 | Radix → Base UI everywhere; tokens split into inherited-verbatim vs authored; kaneo's real radii/easings/neutral base; gates with no mechanism marked as human gates or given one; two-entry routing split named as P0 work |
 | Operations | configuration-reference.md, deployment.md, container-image.md, traefik-and-domains.md, one-line-install.md, backup-and-restore.md, runbook.md, kubernetes.md, observability.md | ports never in the base compose file; SeaweedFS as a profile with a real definition; single kaneo image; stray variables classified; health paths unified; upgrade through `deploy.sh`; rotation procedure unified; healthcheck buildable |
-| Planning | phases.md, roadmap.md, release-plan.md, accelerated-delivery-plan.md, risks.md, 03-features/README.md | marketplace deferral everywhere; 13 unassigned specs placed; inherited-in-week-1 register corrected; Pages; twenty reports; assignment rules P1/P2 resolved; integration routers named in P0 step 1; phase-sequencing exception written into the phase gate |
-| Process | AGENTS.md, agent-workflow.md, sdlc.md, definition-of-done.md, ci-cd.md, testing-strategy.md, `.github/pull_request_template.md` | PR template exists and is specified; model, reviewer and security-reviewer recorded per PR; "screens opened" artefact; one phase-gate list; do-not 16; third absolute; go-live rehearsal; `check:reviews`, `.skip`/`.only` grep, identifier and env checks as CI steps |
+| Planning | phases.md, roadmap.md, release-plan.md, accelerated-delivery-plan.md, risks.md, 03-features/README.md | marketplace deferral everywhere; 13 unassigned specs placed; inherited-in-week-1 register corrected; Pages; twenty reports; assignment rules P1/P2 resolved; integration routers named in P0 step 1; stage-sequencing exception written into the stage gate |
+| Process | AGENTS.md, agent-workflow.md, sdlc.md, definition-of-done.md, ci-cd.md, testing-strategy.md, `.github/pull_request_template.md` | PR template exists and is specified; model, reviewer and security-reviewer recorded per PR; "screens opened" artefact; one stage-gate list; do-not 16; third absolute; go-live rehearsal; `check:reviews`, `.skip`/`.only` grep, identifier and env checks as CI steps |
 
 **Why:** an audit whose fixes do not land is how v1 drifted. Every row in the eight lens
 files is either applied in its owning document or named here as a decision.
@@ -416,7 +625,7 @@ Each section is recorded in the document it governs; this entry is the index.
 
 | § | Decision | Recorded in |
 | --- | --- | --- |
-| A | The four-week plan is a **flexible target**; the whole program may take **three to four months**; a phase or task may finish in **one to three days** where kaneo already provides it. Finish when exit criteria are met; never remove security/quality/test/review gates to hit a date; narrow scope, move work later or move the date, and record it. **An operating rule, not a decision to reopen** | [phases.md](phases.md) (top), [accelerated-delivery-plan.md](accelerated-delivery-plan.md), [status.md](status.md) |
+| A | The four-week plan is a **flexible target**; the whole program may take **three to four months**; a stage or task may finish in **one to three days** where kaneo already provides it. Finish when exit criteria are met; never remove security/quality/test/review gates to hit a date; narrow scope, move work later or move the date, and record it. **An operating rule, not a decision to reopen** | [phases.md](phases.md) (top), [accelerated-delivery-plan.md](accelerated-delivery-plan.md), [status.md](status.md) |
 | B | kaneo is a one-time, SHA-pinned source snapshot; inherited code is not trusted TaskDesk code; every inherited router is retrofitted into the five policy kinds before P0 closes | [phases.md](phases.md) P0, [inherited-features.md](../01-architecture/inherited-features.md), [security-model.md](../01-architecture/security-model.md#the-inherited-kaneo-surface--the-p0-seam) |
 | C | `public-project` deleted at P0 — routes, handlers, screens, access paths, dormant code; `feature.public_boards` reserved with no implementation | [inherited-features.md](../01-architecture/inherited-features.md), [plugin-architecture.md](../01-architecture/plugin-architecture.md) |
 | D | `parent_id` and `owner_team_id` are reach-affecting: own route, `project:manage_members`, audited `project.reach_changed`, both sides authorised, no cross-organisation re-parenting, owner team in the same workspace | [rbac.md](../01-architecture/rbac.md#reach), [teams.md](../03-features/teams.md) |
@@ -526,7 +735,7 @@ document it affects:
   inventory recounted (133, with a `kind` column) and checked by CI.
 
 The remaining per-spec findings (~300 medium/low) are tracked in
-[reviews/2026-09-05/](reviews/2026-09-05/) and are closed at SDLC stage 2 of each feature,
+[reviews/2026-09-05/](reviews/2026-09-05/) and are closed at SDLC step 2 of each feature,
 before its build — recorded as **P0 step 0** in [phases.md](phases.md).
 
 **Why:** four independent reviewers converged on the same diagnosis — prose written faster
@@ -648,7 +857,7 @@ change existing documents:
 - **Versioning starts at `2.0.0-alpha.1`**, not `0.x` and not a continuation of kaneo's
   `2.22.x` — the product is TaskDesk v2 and [api-design.md](../01-architecture/api-design.md)
   already anchors API stability to "when v2.0 ships". Pre-release identifiers
-  (`alpha` → `beta` → `rc`) are flipped on `main` at phase closes; no second long-lived
+  (`alpha` → `beta` → `rc`) are flipped on `main` at stage closes; no second long-lived
   branch. `2.0.0` GA is the P4 close — "one image, any customer" — the first sellable
   release; external paying customers and marketplace listing wait for the P7 penetration
   test.
@@ -678,11 +887,11 @@ explanation); a `next` branch for pre-releases (rejected — the second long-liv
 ### 2026-09-05 · Inbound email is a candidate, not P5 — a contradiction corrected
 
 **Decision:** [intake-queue.md](../03-features/intake-queue.md) said inbound email parsing
-was "Phase 5"; [roadmap.md](roadmap.md) and [phases.md](phases.md) list it as a candidate,
+was "Stage 5"; [roadmap.md](roadmap.md) and [phases.md](phases.md) list it as a candidate,
 not scheduled. Two documents against one — intake-queue.md is corrected. `IQ-1` still
 names email as a possible source so the data model does not preclude it.
 
-**Why:** found by the 2026-09-05 cross-document review. Recorded because a phase
+**Why:** found by the 2026-09-05 cross-document review. Recorded because a stage
 assignment stated in one spec and denied in the roadmap is exactly how scope creeps in
 unnoticed.
 
@@ -695,7 +904,7 @@ unnoticed.
 **Decision:** a `CHANGELOG.md` exists at the repo root from today, in Keep a Changelog
 format, with an honest "no code released yet" `[Unreleased]` entry rather than fabricated
 history. [CI/CD](../04-engineering/ci-cd.md) gains a **Release notes** section requiring a
-short human-written summary at every phase close, alongside the entries
+short human-written summary at every stage close, alongside the entries
 `semantic-release` generates automatically, and ties that moment to updating the
 [screen inventory](../02-design/screen-inventory.md) and
 [feature index](../03-features/README.md) status columns together, so "what shipped"
@@ -704,8 +913,8 @@ answers consistently from all three places.
 **Why:** an explicit requirement for changelogs, feature-completion tracking and release
 documentation. A generated commit log alone doesn't answer "what can I do now that I
 couldn't before"; a separate, disconnected release-notes process drifts from what the
-screen inventory and feature index say. Tying the three together at one moment (the phase
-close, [SDLC](../04-engineering/sdlc.md) stage 8) is cheaper than reconciling them later.
+screen inventory and feature index say. Tying the three together at one moment (the stage
+close, [SDLC](../04-engineering/sdlc.md) step 8) is cheaper than reconciling them later.
 
 **Decided by:** Thomas
 
@@ -738,10 +947,10 @@ the architecture.
 **Decision:** within Claude Code's own orchestration of Task/Agent subagents, the main
 session plans and reviews on Opus or Fable; implementation subagents write code and tests
 on Sonnet 5. Security review is carved out as its own mandatory checkpoint on Opus, at
-every pull request and every phase gate, distinct from the general architecture/QA review
+every pull request and every stage gate, distinct from the general architecture/QA review
 even when the same model performs both. Recorded in
 [agent-workflow.md](../04-engineering/agent-workflow.md#model-tiers-within-claude-code) and
-referenced from [SDLC](../04-engineering/sdlc.md) stages 5 and the phase gate.
+referenced from [SDLC](../04-engineering/sdlc.md) steps 5 and the stage gate.
 
 **Why:** an explicit requirement driven by cost and setup overhead — running every
 mechanical implementation step on the most expensive model multiplies token spend for
@@ -910,7 +1119,7 @@ branding exercise that should not block the build.
 
 ### 2026-09-05 · No dates on the roadmap until P1 closes
 
-**Decision:** the roadmap sequences phases but gives no dates.
+**Decision:** the roadmap sequences stages but gives no dates.
 
 **Why:** throughput for one human plus three agents is unknown. Dates now would be fiction,
 and fiction that gets planned against is worse than no plan. After P0 and P1 there is
@@ -1008,6 +1217,11 @@ detectable — the route coverage test, the permission matrix and the tenant iso
 requires it for compliance.
 
 **Decided by:** Thomas
+
+**Superseded 2026-09-06 (above):** RLS is promoted to a **P0 prototype** on
+`work_item`, `comment` and `attachment` as a backstop. The reasoning here still holds for
+why it is not the *primary* control; what changed is that "revisit if a customer requires
+it" became "find out now, while the schema is three tables old".
 
 ---
 
@@ -1111,9 +1325,9 @@ lands — in addition to, not instead of, the external penetration test (R19).
 Gate waivers, recorded per [UX quality gates](../02-design/ux-quality-gates.md).
 
 ### 2026-09-05 · Gate activities consolidated before `2.0.0` — recorded as a waiver, pending confirmation
-**Gate:** the per-phase manual accessibility pass, fresh-eyes test, four-browser check and k6 baseline ([sdlc.md](../04-engineering/sdlc.md) phase gate)
-**Reason:** [release-plan.md](release-plan.md) runs these four **once, before `2.0.0`**, over the whole surface instead of once per phase. That is a gate waiver granted by a planning document; the waiver procedure ([ux-quality-gates.md](../02-design/ux-quality-gates.md)) was not followed when it was written, so it is recorded here to be visible
-**Follow-up:** confirm or revert — if confirmed, the phase-gate list in [definition-of-done.md](../04-engineering/definition-of-done.md) says so; if reverted, release-plan.md is corrected
+**Gate:** the per-stage manual accessibility pass, fresh-eyes test, four-browser check and k6 baseline ([sdlc.md](../04-engineering/sdlc.md) stage gate)
+**Reason:** [release-plan.md](release-plan.md) runs these four **once, before `2.0.0`**, over the whole surface instead of once per stage. That is a gate waiver granted by a planning document; the waiver procedure ([ux-quality-gates.md](../02-design/ux-quality-gates.md)) was not followed when it was written, so it is recorded here to be visible
+**Follow-up:** confirm or revert — if confirmed, the stage-gate list in [definition-of-done.md](../04-engineering/definition-of-done.md) says so; if reverted, release-plan.md is corrected
 **Approved by:** *pending — Thomas*
 
 ```markdown

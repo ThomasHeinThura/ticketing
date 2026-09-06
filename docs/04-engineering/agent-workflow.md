@@ -82,7 +82,7 @@ who is cheaper.
 | **Review — security** | **Opus. Always. Not optional, not cost-negotiable.** | The one checkpoint this repository will not discount for budget. See below |
 
 **Security review is a checkpoint, not a step inside another review.** Every pull request
-and every [phase gate](sdlc.md) gets an explicit, separate security-focused pass on Opus,
+and every [stage gate](sdlc.md) gets an explicit, separate security-focused pass on Opus,
 distinct from the architecture and QA passes even when the same higher-tier model performs
 more than one of them. "The QA reviewer also looked at security" is not the same thing as
 a security review, and does not satisfy this rule.
@@ -129,7 +129,7 @@ discoverable from the repository.
 
 1. `AGENTS.md` at the repository root
 2. This document
-3. [SDLC](sdlc.md) — the stage you are at
+3. [SDLC](sdlc.md) — the step you are at
 4. [Coding standards](coding-standards.md)
 5. The feature spec in [03-features](../03-features/README.md)
 6. Any [ADR](../01-architecture/adr/README.md) the spec references
@@ -149,7 +149,7 @@ When Thomas assigns work, or an agent hands off, use this:
 One sentence.
 
 ## Stage
-Which SDLC stage this starts at.
+Which SDLC step this starts at.
 
 ## Spec
 Path to the feature spec. Which numbered rules are in scope.

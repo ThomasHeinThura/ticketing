@@ -1,6 +1,6 @@
 # Accessibility
 
-**Target: WCAG 2.1 Level AA.** Verified automatically in CI and manually at each phase
+**Target: WCAG 2.1 Level AA.** Verified automatically in CI and manually at each stage
 review.
 
 This is not compliance theatre. A service desk is used all day, every day, by people with
@@ -58,7 +58,7 @@ announcements at each step. Verify it works; it is easy to break with custom sen
 
 ## Screen readers
 
-Tested with VoiceOver (Safari, macOS) and NVDA (Firefox, Windows) at each phase review.
+Tested with VoiceOver (Safari, macOS) and NVDA (Firefox, Windows) at each stage review.
 
 - Semantic HTML first. `<button>` for actions, `<a>` for navigation, real headings in
   order, real lists, real tables with `<th scope>`.
@@ -116,11 +116,11 @@ Nothing auto-plays. Nothing flashes more than three times per second.
 | Keyboard | Playwright keyboard-only journeys | Core flows complete without a mouse |
 | Contrast | `check-tokens.mjs` | Every declared pair passes AA |
 | Reduced motion | E2E project with `reducedMotion: 'reduce'` | Full suite passes |
-| Screen reader | Manual, VoiceOver + NVDA | Phase review sign-off |
-| Zoom | Manual at 200% | Phase review sign-off |
+| Screen reader | Manual, VoiceOver + NVDA | Stage review sign-off |
+| Zoom | Manual at 200% | Stage review sign-off |
 
 Automated tooling catches roughly a third of real accessibility problems. The manual
-passes at phase review are not optional.
+passes at stage review are not optional.
 
 ## Known exceptions
 

@@ -1,6 +1,6 @@
 # Knowledge base
 
-- **Phase:** P5
+- **Stage:** P5
 - **Status:** ⬜
 - **Feature flag:** `feature.knowledge_base`
 - **Depends on:** request types, search
@@ -116,8 +116,8 @@ GET    /api/portal/kb/deflection?q=…           { portal: 'customer', predicate
 
 ## Out of scope
 
-- Multi-language articles — Phase 6 candidate
-- AI-generated articles from resolved tickets — Phase 6 candidate, and it needs care
+- Multi-language articles — Stage 6 candidate
+- AI-generated articles from resolved tickets — Stage 6 candidate, and it needs care
 - Public, unauthenticated knowledge base
 
 ## Testing

@@ -4,6 +4,11 @@ Terms mean exactly this throughout the codebase, the UI and these documents. If 
 a new term, add it here first.
 
 ## Tenancy and structure
+| **Stage** (P0–P7) | A level of product capability with exit criteria — *what the product can do*, not when anyone works on it ([phases.md](../07-planning/phases.md)) |
+| **Workstream** | A lane of work executing against those criteria; several run at once ([accelerated-delivery-plan.md](../07-planning/accelerated-delivery-plan.md)) |
+| **Step** (1–9) | One pass of the build process for a single feature ([SDLC](../04-engineering/sdlc.md)) |
+| **State** | Where one work item sits in its lifecycle ([ADR 0011](../01-architecture/adr/0011-ticket-lifecycle-engine.md)) |
+| **Person** | Someone in exactly one organisation. Not the same as a better-auth `user`: the identity key is `(identity_connection_id, subject)`, and one human may hold two `person` rows — staff-side and customer-side — under the same email |
 
 | Term | Meaning |
 | --- | --- |

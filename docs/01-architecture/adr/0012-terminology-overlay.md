@@ -18,7 +18,7 @@ customers may reasonably want the same product to say "Ticket" and "Case" respec
 "Sprint" instead of "Cycle", without either commissioning a fork or waiting for a release.
 This is a distinct problem from [ADR 0011](0011-ticket-lifecycle-engine.md), which makes
 *state names* ("Resolved", "Fixed") fully data-driven per project. ADR 0011 covers the
-stages a work item passes through. This ADR covers the **nouns** used to name the concepts
+states a work item passes through. This ADR covers the **nouns** used to name the concepts
 themselves — work item, project, cycle, epic — which are hardcoded today in every system
 we looked at, our own v1 included.
 

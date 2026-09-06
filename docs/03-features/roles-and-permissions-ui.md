@@ -1,6 +1,6 @@
 # Roles and permissions UI
 
-- **Phase:** P4
+- **Stage:** P4
 - **Status:** ⬜
 - **Feature flag:** always on
 - **Depends on:** RBAC

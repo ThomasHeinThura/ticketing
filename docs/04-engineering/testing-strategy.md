@@ -251,7 +251,7 @@ each feature's own tests:
 
 ### Journeys
 
-Every primary path, per phase. Sign in; create a work item; drag it across a board; comment
+Every primary path, per stage. Sign in; create a work item; drag it across a board; comment
 publicly and internally; raise a portal request; triage it; decide an approval; edit a role
 and see the effect; configure an identity provider.
 
@@ -327,7 +327,7 @@ were prose until 2026-09-06.
 ## Manual
 
 Automation catches roughly a third of accessibility problems and none of "this is
-confusing". At each phase gate:
+confusing". At each stage gate:
 
 | Check | Method |
 | --- | --- |

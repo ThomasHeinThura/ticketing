@@ -59,7 +59,7 @@ v2 inverts that:
 | --- | --- |
 | Build features, then style them | Start from a finished design system; features must fit it |
 | Hand-rolled primitives | kaneo's 60+ Radix/Tailwind primitives, no exceptions |
-| Ship wide | Ship one phase fully finished before starting the next |
+| Ship wide | Ship one stage fully finished before starting the next |
 | UX reviewed at the end | UX gates in CI on every pull request |
 | Config in env vars and code | Config in God Mode, at runtime |
 

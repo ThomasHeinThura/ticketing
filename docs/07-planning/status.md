@@ -1,7 +1,7 @@
 # Status
 
 **Last updated:** 2026-09-06
-**Current phase:** P0 · Foundation — not yet started
+**Current stage:** P0 · Foundation — not yet started
 **Updated by:** Claude Code (Fable), applying the pre-P0 check at Thomas's direction —
 see the session log
 
@@ -18,13 +18,16 @@ decision document of 2026-09-05 (sections A–N plus the core-identity update) �
 findings across eight lenses, every one applied in its owning document or recorded in the
 [decision log](decision-log.md); audit trail in
 [reviews/2026-09-05/pre-p0-check-fable/](reviews/2026-09-05/pre-p0-check-fable/)).
-**P0 step 1 is gated on Thomas confirming the kaneo snapshot SHA** (proposed upstream main
-`42bb8011`, CI green) and the migration approach — see Blocked. The full
+Thomas confirmed the outstanding decisions on 2026-09-06 — the kaneo snapshot SHA
+(`42bb8011`, upstream main), inheriting kaneo's 45 migrations, the person model, the
+engine boundary rule, an RLS prototype in P0, and the stage/workstream/step/state
+vocabulary. **What now gates P0 is procedural, not a decision: the licence pull request
+must merge and the P0 issues must exist** — see Blocked. The full
 documentation corpus exists — thirteen ADRs, an authoritative data model including the
 identity/SCIM and pending-action tables, a formal accelerated delivery calendar, a release
 plan, and a changelog convention. No application code written yet. **Time is governed by
 the operating rule at the top of [phases.md](phases.md):** the four-week plan is a flexible
-target, the program may take three to four months, some phases take days — finish on exit
+target, the program may take three to four months, some stages take days — finish on exit
 criteria, never skip a gate, move scope or dates and record it.
 
 ```
@@ -41,10 +44,23 @@ P7 Polish              ░░░░░░░░░░   0%
 **Screens:** 0 of **136** complete — [inventory](../02-design/screen-inventory.md)
 (recounted 2026-09-05 with a kind column: P0 6 · P1 33 · P2 18 · P3 21 · P4 28 · P5 28 · P6 2)
 **Features:** 0 of **31** shipped — [index](../03-features/README.md) (teams.md was missing from the index until 2026-09-05)
-**ADRs:** 0001–0013 accepted · **Docs:** ~136 files, link check clean · **Security review:** complete, all high items closed in the corpus
+**ADRs:** 0001–0013 accepted · **Docs:** ~136 files, link check clean · **Security review:** see the breakdown below — the corpus is reviewed, the product is not
+**Security status** — "complete" was a documentation claim being read as a product claim,
+so it is broken out. Five of the seven are impossible before code exists:
+
+| | |
+| --- | --- |
+| Architecture review | ✅ done |
+| Threat model | ✅ done |
+| Implementation review | ⬜ no code yet |
+| SAST / dependency scanning | ⬜ no code, no lockfile |
+| Authorization tests (route coverage, role × route matrix, tenant isolation) | ⬜ P0 |
+| Internal red-team pass | ⬜ before the internal go-live gate |
+| External penetration test | ⬜ before the first external paying customer (R19) |
+
 **Readiness:** **Conditional GO → condition met.** The [external readiness review](reviews/2026-09-05/readiness-review-external.md)
 asked for one documentation-closure PR before P0 code; that PR is this branch's third commit
-**Target calendar:** UAT by 2026-09-12, go-live by 2026-10-03, full scope by end of
+**Target calendar:** **Foundation Technical Preview** by 2026-09-12, go-live by 2026-10-03, full scope by end of
 December 2026 — see [accelerated-delivery-plan.md](accelerated-delivery-plan.md). **This
 is a target, not a deadline held under pressure** — the date is explicitly allowed to move;
 the engine-pattern architecture and the security gates are what may not.
@@ -114,8 +130,8 @@ limits, then GitHub Copilot too, then handed to Claude Code:**
 - **Recorded a model-tier policy** for Claude Code's own subagent orchestration in
   [agent-workflow.md](../04-engineering/agent-workflow.md): Sonnet 5 implements against an
   approved spec; Opus or Fable plans and reviews; **security review is Opus, always, not
-  negotiable against schedule.** Wired into [SDLC](../04-engineering/sdlc.md) stage 5 and
-  the phase gate.
+  negotiable against schedule.** Wired into [SDLC](../04-engineering/sdlc.md) step 5 and
+  the stage gate.
 - **Wrote the accelerated delivery plan**
   ([accelerated-delivery-plan.md](accelerated-delivery-plan.md))** at Thomas's explicit
   request — a dated Sept–Dec 2026 calendar mapping the full P0–P7 scope in parallel
@@ -124,7 +140,7 @@ limits, then GitHub Copilot too, then handed to Claude Code:**
   same day once Thomas clarified the calendar is a target, not a deadline under pressure.
 - **Added `CHANGELOG.md`** and a release-notes convention in
   [ci-cd.md](../04-engineering/ci-cd.md) tying the changelog, the screen inventory and the
-  feature index together at every phase close.
+  feature index together at every stage close.
 
 ---
 
@@ -138,8 +154,9 @@ task with its own Opus review:
 0. Spec closure — items 1–3 (data model authoritative, five policy kinds, week-one
    documents, threat model) **done 2026-09-05**; item 4 — each spec's remaining findings in
    [reviews/2026-09-05/](reviews/2026-09-05/) — is a **standing gate at that feature's SDLC
-   stage 2**, not a completed step ([AGENTS.md](../../AGENTS.md) do-not 15)
-1. Initialise the repository — **only after Thomas confirms the SHA**: `git fetch`, run
+   step 2**, not a completed step ([AGENTS.md](../../AGENTS.md) do-not 15)
+1. Initialise the repository — **only after the licence pull request merges and the P0
+   issues exist**: `git fetch`, run
    kaneo's own suite on that SHA as the baseline, copy per the exhaustive table, de-brand
    **including the environment migration table**, apply the **fork-time removal and disable
    list** (anonymous sign-in, account linking, cookie cache, `deviceAuthorization`/`bearer`,
@@ -162,7 +179,9 @@ task with its own Opus review:
 14. Sign-in, MFA, not-found, error boundary
 
 If the [accelerated delivery plan](accelerated-delivery-plan.md) is being followed, this
-is also **week 1** of that calendar, targeting UAT-ready by 2026-09-12.
+is also **week 1** of that calendar, targeting the **Foundation Technical Preview** by
+2026-09-12 — a technical preview of the foundation, not a user-acceptance milestone; the
+UAT *environment* keeps its name.
 
 **Exit criteria:** builds, deploys locally on three hostnames, every CI gate green **with
 kaneo's inherited routes present and each carrying a policy**, P0 security review signed off.
@@ -171,12 +190,11 @@ kaneo's inherited routes present and each carrying a policy**, P0 security revie
 
 ## Blocked
 
-- **P0 step 1 (copy kaneo)** — awaiting Thomas's explicit confirmation of the kaneo
-  snapshot SHA (proposed `42bb8011`, upstream main, CI green — not the `v2.22.0` tag, which
-  predates authorization fixes) and of the migration approach (inherit kaneo's 45). Both
-  are recorded as proposed in the [decision log](decision-log.md). Unblocked by: Thomas.
-- **Committing today's edits** — per do-not 16 the working tree stays uncommitted until
-  Thomas says "commit". Unblocked by: Thomas.
+- **P0 step 1 (import kaneo)** — hard stop until **both**: the licence pull request
+  (`LICENSE`, `NOTICE`, `THIRD-PARTY-NOTICES.md`) has **merged**, and the **P0 issues
+  exist** on the Project board. The snapshot SHA and the migration approach are no longer
+  blockers — both were confirmed on 2026-09-06. Unblocked by: Thomas merging the licence
+  pull request.
 
 ---
 
@@ -187,11 +205,8 @@ kaneo's inherited routes present and each carrying a policy**, P0 security revie
 | CLA, for a possible dual licence | Before the first external contribution | Thomas |
 | Final product name | Before P7 | Thomas |
 | ~~Whether to sell externally~~ | Decided: yes — but the **AWS Marketplace listing itself is deferred beyond the current 3–4-month scope** (2026-09-05); BYOL/contract preferred when it comes — see [decision log](decision-log.md) | — |
-| **kaneo snapshot SHA** — confirm upstream main `42bb801114aa1ae499228a53180f0cdbc5607964` (CI green, run 33957941564), not the `v2.22.0` tag | **Before P0 step 1 copies anything** | Thomas |
-| **Migrations** — inherit kaneo's 45 migrations (recorded from Thomas's message) or squash to a generated baseline | With the SHA confirmation | Thomas |
 | Docs-site stack — fresh Fumadocs app (recommended) / kaneo's marketing site + `/docs` / Mintlify | Before P0's `apps/site` skeleton | Thomas |
 | Visual-regression tool for gate G8 — Playwright `toHaveScreenshot` with in-repo baselines, or Chromatic | Before P0's UX gate scripts | Thomas |
-| Week-2 scope-confirmation moment (proposed by the second review agent) — add or keep the event-driven escalation | Before week 2 of any accelerated window | Thomas |
 | Gate consolidation in release-plan.md — confirm as a waiver or revert | Before `2.0.0` | Thomas |
 | WAL archiving for point-in-time recovery | Before real customer data | Thomas |
 | Whether the 4-week go-live scope needs to narrow | Escalate the moment workstream A (service-desk domain logic) looks behind, per [accelerated-delivery-plan.md](accelerated-delivery-plan.md#what-happens-if-week-4-looks-tight) | Thomas |
@@ -208,7 +223,7 @@ defaults surviving the fork.
 | | Risk | Why now |
 | --- | --- | --- |
 | **R15** | Workstream A (SLA/workflow/approvals port) can't realistically finish in the compressed window | It is the schedule's critical path, named on day one |
-| **R2** | Phase discipline collapses | The accelerated plan deliberately runs phases in parallel — the discipline that must survive is the deferral register, not phase sequencing |
+| **R2** | Stage discipline collapses | The accelerated plan deliberately runs stages in parallel — the discipline that must survive is the deferral register, not stage sequencing |
 | **R1** | UX failure repeats | P0 is where the guards are installed or are not, on any calendar |
 | **R17** | Parallel workstreams reproduce three-inconsistent-codebases faster than usual | Cross-agent review and CI-enforced vocabulary matter more, not less, under this pace |
 
@@ -217,6 +232,39 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-06 · Confirmed decisions applied; licence and provenance files opened as a pull request
+
+Thomas returned a confirmed decision document closing everything the pre-P0 check had left
+open, and adding repository setup. Applied in two pull requests.
+
+**Licence and provenance** (its own pull request, the provenance boundary before the kaneo
+import): `LICENSE` (AGPL-3.0 verbatim), `NOTICE` (copied into the image, section 13 stated
+plainly), `THIRD-PARTY-NOTICES.md` (kaneo's MIT licence verbatim with its holder, the
+confirmed snapshot commit and why it is not the `v2.22.0` tag, the projects studied but not
+copied, and the rule that third-party code arrives with its notice in the same pull request).
+
+**Documentation**: the SHA and the inherited-migrations decision marked **confirmed**
+everywhere they had said "pending"; **stage / workstream / step / state** separated into one
+word each, which required renaming the SDLC's nine stages to **steps** and ADR 0011's loose
+"stages" to **states** so the new word had one meaning; product principle 7 restated to
+constrain what may be *claimed* finished rather than what may be *started*; the security
+line broken into seven rows because "complete" described the documents and was being read as
+the product; the Sep 12 milestone renamed **Foundation Technical Preview**; the **engine
+boundary rule** (swappable ⇒ plugin, single implementation ⇒ domain module plus a flag);
+**RLS promoted from deferred to a P0 prototype** on `work_item`, `comment` and `attachment`
+with a merge-or-drop exit; the **person model** — one person, one organisation, email is not
+an identity key, two rows for a human who needs both portals with the same address allowed,
+impersonation as the supported route for staff, and the two-customer-organisations consultant
+recorded as an accepted limitation; every command in README and AGENTS.md marked **planned,
+not available until P0 completes**; the **week-2 scope confirmation** given an owner and a
+moment; **do-not 16** rewritten as the working mode — branch → commit → pull request →
+Thomas approves → merge, and never leave finished work uncommitted.
+
+Nine decision-log entries. Link check clean.
+
+**Not done, deliberately:** no kaneo import and no P0 code — the hard stop is the licence
+pull request merging and the P0 issues existing.
 
 ### 2026-09-06 · Pre-P0 check applied — the plan corrected against kaneo's real source
 
@@ -335,7 +383,7 @@ impersonation forbidden from creating durable authority; five new threat-model r
 task with its own Opus review; an internal red-team pass at the go-live gate; ten new
 negative security tests; R20 added. All high-severity findings are closed in the corpus;
 the medium/low items that are per-spec are listed in the review files and close at each
-spec's SDLC stage 2.
+spec's SDLC step 2.
 
 Also: `.gitignore`, `CHANGELOG.md`, [release-plan.md](release-plan.md) (channels, `stable.txt`,
 `release/2.N` branches, migration matrix), first commit and push to `docs/v2-planning-corpus`,
@@ -385,7 +433,7 @@ Key conclusions:
   (reach vs authority, directory-resolved identity, 404-not-403). Its *frontend* is being
   discarded entirely.
 - v1's real failure was process, not code: features were declared done when they
-  functioned. The nine-stage SDLC and the thirteen automated UX gates exist to close that.
+  functioned. The nine-step SDLC and the thirteen automated UX gates exist to close that.
 - The eleven authorization holes v1 shipped past a green suite were all *omissions*. The
   route policy registry converts that class of bug into a build failure.
 
@@ -395,7 +443,7 @@ Key conclusions:
 
 At the end of every session:
 
-1. Update the phase progress bars.
+1. Update the stage progress bars.
 2. Update screen and feature counts.
 3. Move anything finished into **Done**.
 4. Restate **Next** with concrete steps, not intentions.

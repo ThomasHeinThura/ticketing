@@ -1,6 +1,6 @@
 # Identity connections and SCIM provisioning — Microsoft Entra first
 
-- **Phase:** P3 (data model, security rules and acceptance tests fixed in P0; identity,
+- **Stage:** P3 (data model, security rules and acceptance tests fixed in P0; identity,
   membership, RBAC, audit and revocation infrastructure proven in P1/P2; operational
   hardening in P4)
 - **Status:** ⬜
@@ -330,6 +330,17 @@ filtered to `organisation_id`; there is one implementation.
 | Group mapped to a role later deleted | Mapping auto-disabled and flagged; derived memberships removed |
 
 ## Out of scope (first release)
+One more rule belongs with these, because it is the reason several of them can be simple:
+
+- `IP-33` **A person belongs to exactly one organisation, and email is not an identity
+  key.** The agent portal serves the internal staff organisation; a customer connection
+  serves exactly one customer organisation (`IP-1`). A human who is both a staff member and
+  a customer contact has **two `person` rows** and may use **the same address for both** —
+  they are keyed `(identity_connection_id, subject)` and are never linked, which is `IP-18`
+  applied rather than contradicted. Staff who need the customer's view use God Mode
+  impersonation, not a second account. A contact at two customer organisations is a
+  recorded limitation, not a schema to redesign
+  ([multi-tenancy.md](../01-architecture/multi-tenancy.md#identity-across-tenants)).
 
 SCIM `/Bulk`; generic SCIM for every provider (build standards-based, validate against
 Entra, then extend provider by provider — Okta, Keycloak, Google Workspace, generic OIDC

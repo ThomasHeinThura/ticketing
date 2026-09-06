@@ -24,7 +24,9 @@ for the integration tests and the local stack.
    ```
 
    Confirm the run for that SHA is green in kaneo's Actions before proposing it. **Thomas
-   confirms the exact SHA explicitly before any source is copied.** Record in both
+   confirmed this SHA on 2026-09-06.** The remaining gate before any source is copied is
+   procedural, not a decision: the licence pull request must be merged and the P0 issues
+   must exist ([status.md](../07-planning/status.md)). Record in both
    [inherited-features.md](../01-architecture/inherited-features.md) and
    `THIRD-PARTY-NOTICES.md`: the full SHA; "main commit, not a tag"; the date; the upstream
    CI run id and result; the reason ("post-tag authorization fixes included"); and the
@@ -421,5 +423,5 @@ open https://ticket.localhost    # the one-time setup page; token is in the cont
 
 ## Related
 
-- [Phases](../07-planning/phases.md) · [ADR 0001](../01-architecture/adr/0001-kaneo-as-foundation.md) · [ADR 0008](../01-architecture/adr/0008-single-design-system.md)
+- [Stages](../07-planning/phases.md) · [ADR 0001](../01-architecture/adr/0001-kaneo-as-foundation.md) · [ADR 0008](../01-architecture/adr/0008-single-design-system.md)
 - [Container image](../05-operations/container-image.md) · [Migrations](migrations.md)

@@ -1,6 +1,6 @@
 # Search and saved views
 
-- **Phase:** P1
+- **Stage:** P1
 - **Status:** ⬜
 - **Feature flag:** always on
 - **Depends on:** work items, views

@@ -1,6 +1,6 @@
 # Documentation website
 
-- **Phase:** skeleton in P0, content grows per phase, complete in P7
+- **Stage:** skeleton in P0, content grows per stage, complete in P7
 - **Location:** `apps/site`
 - **Stack:** **pending Thomas's decision** (status.md → Open decisions). The earlier line
   "Next.js + Fumadocs, following kaneo's `apps/site`" was wrong on both counts: kaneo uses
@@ -119,9 +119,9 @@ CI → export /openapi.json → apps/site/public/openapi.json → Scalar
 A hand-written API reference is wrong within a month. This one cannot drift, because it is
 the same document the server serves.
 
-## Growth per phase
+## Growth per stage
 
-| Phase | Added |
+| Stage | Added |
 | --- | --- |
 | P0 | Skeleton, deploy pipeline, landing page |
 | P1 | Getting started, working with tickets, projects |

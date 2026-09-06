@@ -1,6 +1,6 @@
 # Intake queue
 
-- **Phase:** P2
+- **Stage:** P2
 - **Status:** ⬜
 - **Feature flag:** `feature.intake`
 - **Depends on:** request types, work items, notifications
@@ -157,8 +157,8 @@ POST   /api/portal/submissions/{ref}/withdraw  (portal session)
 - Automated triage rules → [automations.md](automations.md)
 - Inbound email parsing — **a candidate, not scheduled**; see the "candidates, not
   commitments" table in [roadmap.md](../07-planning/roadmap.md). `IQ-1` names email as a
-  source so the data model does not preclude it, not because it is planned for a phase.
-  *(Corrected 2026-09-05 — this line previously said "Phase 5", contradicting the roadmap.)*
+  source so the data model does not preclude it, not because it is planned for a stage.
+  *(Corrected 2026-09-05 — this line previously said "Stage 5", contradicting the roadmap.)*
 
 ## Testing
 

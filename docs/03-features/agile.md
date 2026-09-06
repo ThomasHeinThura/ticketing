@@ -1,6 +1,6 @@
 # Cycles, modules and estimates
 
-- **Phase:** P5
+- **Stage:** P5
 - **Status:** ⬜
 - **Feature flags:** `feature.cycles`, `feature.modules`, `feature.estimates`
 - **Depends on:** work items, projects

@@ -2,7 +2,7 @@
 
 All notable changes to TaskDesk are recorded here, generated primarily by
 `semantic-release` from conventional commits ([CI/CD](docs/04-engineering/ci-cd.md)) and
-supplemented, at every phase close, with a short human-written summary of what actually
+supplemented, at every stage close, with a short human-written summary of what actually
 shipped — see [Release notes](docs/04-engineering/ci-cd.md#release-notes).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning

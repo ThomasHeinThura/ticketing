@@ -1,6 +1,6 @@
 # God Mode
 
-- **Phase:** P4 (authentication and organisations land in P3; the audit log in P2)
+- **Stage:** P4 (authentication and organisations land in P3; the audit log in P2)
 - **Status:** ⬜
 - **Feature flag:** always on
 - **Depends on:** plugin architecture, RBAC
@@ -26,6 +26,11 @@ list covering a third of the surface.
 | **Plugin** | A configured implementation of a contract — auth, storage, notify, import, search, ai, license |
 | **Feature flag** | An instance-level switch, lockable so lower levels cannot override |
 | **Impersonation** | An instance administrator acting as another person, audited twice |
+Impersonation is also the **supported way for a staff member to see what a customer sees**
+— not a second customer account for themselves. One person belongs to one organisation
+([multi-tenancy.md](../01-architecture/multi-tenancy.md#identity-across-tenants)), so
+support work happens through this audited, time-capped route, where every action is
+attributable to the administrator who took it.
 
 ## Data
 

@@ -73,7 +73,7 @@ registered in [inherited-features.md](inherited-features.md).
 | `bearer` | **removed at fork** | a second token-bearing authentication surface |
 | `organization` | **removed at fork — P0 step 1b** | see below |
 | `twoFactor` | **added — P0** | TOTP and backup codes |
-| `passkey` | **added — later phase** | |
+| `passkey` | **added — later stage** | |
 
 **The organization plugin is kaneo's workspace model, not a dormant feature.** In kaneo it
 maps `organizationId → workspaceId` and owns `workspace`, `workspace_member`, `invitation`,
@@ -252,6 +252,11 @@ TaskDesk never stores an external user's password.
 records, `externalId`. Organisation binding and portal scope are properties of the
 connection, resolved server-side. **Email is an attribute** — it may change and is never
 the sole key or a linking key on its own.
+
+One person belongs to exactly one organisation, and the same address may appear on a
+staff-side and a customer-side `person` row without the two ever being linked — the key is
+`(identity_connection_id, subject)`, so they collide on nothing (`IP-33`,
+[multi-tenancy.md](multi-tenancy.md#identity-across-tenants)).
 
 **Two connection shapes, one implementation:**
 

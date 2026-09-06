@@ -78,7 +78,7 @@ the database on every request. Token claims never carry authority.
   it behind a stable reference, with a Valkey message to trigger the rebuild on every
   replica. This is the most delicate code in the auth layer and needs careful tests.
 - **SAML is not covered** by better-auth today. Enterprises that require SAML rather than
-  OIDC are unserved until we add a SAML plugin (Phase 5) or point them at Keycloak as an
+  OIDC are unserved until we add a SAML plugin (Stage 5) or point them at Keycloak as an
   OIDC-fronting broker — which, pleasingly, the plugin model already supports.
 - **A misconfigured provider can lock everyone out.** Mitigated by: `auth.password` cannot
   be removed; the Test action; and a documented CLI break-glass.

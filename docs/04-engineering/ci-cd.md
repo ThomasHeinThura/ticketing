@@ -264,11 +264,11 @@ directly, entry per commit. That is necessary and not sufficient: a list of comm
 messages does not answer "what can I now do that I couldn't yesterday," which is the
 question a release note exists to answer.
 
-**At every phase close** ([SDLC](sdlc.md) stage 8 — Document), in addition to the
+**At every stage close** ([SDLC](sdlc.md) step 8 — Document), in addition to the
 generated entries:
 
 1. Update the [screen inventory](../02-design/screen-inventory.md) status column for every
-   screen the phase touched.
+   screen the stage touched.
 2. Update [03-features/README.md](../03-features/README.md)'s status column for every
    feature that reached its Definition of Done — ⬜ → 🟡 → ✅. A feature does not move to
    ✅ here until [definition-of-done.md](definition-of-done.md) is actually satisfied, not

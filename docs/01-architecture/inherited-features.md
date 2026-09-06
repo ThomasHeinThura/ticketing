@@ -8,10 +8,10 @@ feature ships **feature-flagged off**. This page is also where every fact that *
 the SHA** is stated once — the locale count, the presence of `job_lease`, the primitive
 counts — so no other document has to guess.
 
-**kaneo commit taken:** PROPOSED `42bb801114aa1ae499228a53180f0cdbc5607964` — upstream
+**kaneo commit taken:** **CONFIRMED** `42bb801114aa1ae499228a53180f0cdbc5607964` — upstream
 `main` (a commit, not a tag), 2026-09-05, upstream CI run 33957941564 green (lint, i18n,
 typecheck, unit, build, integration on Postgres 16, docker build). Reason: post-tag
-authorization fixes included. **Pending Thomas's explicit confirmation**; the local clone
+authorization fixes included. **Confirmed by Thomas, 2026-09-06**; the local clone
 (`51255e85`) is 68 commits behind, so `git fetch` first. At the fork this line becomes the
 taken SHA plus the verification record — kaneo's own suite pass/fail/skip counts, `pnpm
 audit` and Trivy results ([repository-bootstrap.md](../04-engineering/repository-bootstrap.md) §0).

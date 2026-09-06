@@ -73,13 +73,15 @@ selected records are URL state.
 
 ---
 
-## 7. Finish one phase before starting the next
+## 7. Finish what you claim
 
 v1 had 25 screens at 60% each. That is worse than 15 screens at 100%.
 
-**In practice:** a phase is done when its features pass the Definition of Done, including
-UX gates and E2E tests. Only then does the next phase start. See
-[Phases](../07-planning/phases.md).
+**In practice:** a feature is not done until it passes the Definition of Done, including
+UX gates and E2E tests; a **stage** is not claimed until every feature in it does and its
+[stage gate](../04-engineering/definition-of-done.md#stage-completion) has passed. Several
+workstreams may be advancing different stages at once — the principle constrains what you
+may call finished, not what you may start. See [Stages](../07-planning/phases.md).
 
 ---
 

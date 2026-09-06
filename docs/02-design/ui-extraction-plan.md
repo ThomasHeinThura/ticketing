@@ -27,7 +27,7 @@ revisit. **Feature code imports only from `@taskdesk/ui`**, never from `@radix-u
 any Radix import not listed in `KNOWN-RADIX.md`, which is a table with fixed columns
 (primitive · module specifier · reason · revisit date) that the check parses. Re-exports
 from `@taskdesk/ui` pass, because the check scans import specifiers, not exported symbols. Two unmanaged primitive
-systems are not kept indefinitely: the exception register is reviewed at every phase gate.
+systems are not kept indefinitely: the exception register is reviewed at every stage gate.
 
 ## What moves
 

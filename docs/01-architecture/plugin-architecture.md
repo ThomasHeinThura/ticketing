@@ -238,7 +238,7 @@ rendered; [configuration-reference.md](../05-operations/configuration-reference.
 every feature spec link here rather than restating it, and a CI test asserts the code enum
 equals this list.
 
-| Flag | Hides | Phase |
+| Flag | Hides | Stage |
 | --- | --- | --- |
 | `feature.cycles` | Cycles/sprints | P5 |
 | `feature.modules` | Modules | P5 |
@@ -282,6 +282,24 @@ The seven plugin kinds above (`auth`, `storage`, `notify`, `import`, `search`, `
 registry's current members, but the *pattern* is not limited to them. **Every feature in
 this product — the ones specified today and any added later — is expected to follow the
 same shape**, whether or not it ever gets a literal `Plugin` implementation:
+
+**First, the boundary rule — plugin or module?** (decided 2026-09-06). Ask one question:
+*could two different implementations of this be installed side by side and swapped by an
+administrator?*
+
+- **Yes → a plugin.** SMTP or Microsoft Teams; S3 or the filesystem; Entra or Okta. The
+  implementations are genuinely interchangeable, they come and go per deployment, and a
+  registry is the only honest way to hold them.
+- **No → a domain module plus a feature flag.** SLA, workflow, approvals, assignment, the
+  terminology overlay. There is one implementation; what varies is its *configuration* and
+  whether it is switched on. Giving it a plugin registry would be ceremony around a single
+  member, and the flag already answers the only real question ("is this deployment using
+  it?").
+
+Both still follow the five points below — that is what "the engine pattern" means. The rule
+only decides whether the swap point is a **registry entry** or a **flag plus configuration
+rows**, and it exists because "everything is a plugin" was being read as "everything needs a
+plugin kind", which would have produced six registries with one member each.
 
 1. **A contract, not an implementation.** The behaviour is defined as an interface or a
    data shape ([`packages/plugins-contracts`](#contract) for a swappable backend; a table

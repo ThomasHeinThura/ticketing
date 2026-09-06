@@ -53,11 +53,11 @@ teaches nothing.
 - Do not refactor while fixing. Two changes in one pull request means neither is reviewed
   properly.
 - Do not fix adjacent things you noticed. Note them, open issues, move on.
-- If the fix reveals the spec was wrong, **update the spec** and re-enter at SDLC stage 3.
+- If the fix reveals the spec was wrong, **update the spec** and re-enter at SDLC step 3.
 
 ## 4 · Verify
 
-Re-run from the earliest stage the change could have affected:
+Re-run from the earliest step the change could have affected:
 
 | Change touched | Re-run from |
 | --- | --- |

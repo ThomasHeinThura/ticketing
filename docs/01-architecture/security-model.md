@@ -7,7 +7,7 @@ Rewritten 2026-09-05 after the [planning review](../07-planning/review-2026-09-0
 dedicated security pass: the controls were strong, the threat model was missing, and a
 dozen boundaries (WebSocket origin and re-authorization, CSRF, egress, provisioning,
 account linking, step-up, scope-object resolution) were asserted rather than specified.
-Security review is a **mandatory Opus checkpoint** on every merge and every phase gate —
+Security review is a **mandatory Opus checkpoint** on every merge and every stage gate —
 [agent-workflow.md](../04-engineering/agent-workflow.md#model-tiers-within-claude-code).
 
 ## Threat model
@@ -107,9 +107,10 @@ Response schemas are explicit; there is no `select *` to the wire. Every table r
 through a feature's `repository.ts` whose exports take an identity and return a
 phantom-typed `ScopedQuery` that **cannot execute without one** — a type error, not a lint
 warning; `check:queries` additionally fails the build on any `db.select()` outside a
-repository. RLS remains rejected as the *primary* control ([multi-tenancy.md](multi-tenancy.md));
-it may be added as a backstop on `work_item`, `comment` and `attachment` if a customer's
-compliance requires it, recorded in the decision log.
+repository. RLS remains rejected as the *primary* control ([multi-tenancy.md](multi-tenancy.md)) — but
+as a **backstop** it is no longer deferred: a P0 prototype covers `work_item`, `comment` and
+`attachment`, and P0 closes with it either merged and measured or dropped with the reason in
+the decision log (decided 2026-09-06).
 
 ---
 
@@ -476,7 +477,7 @@ exit criteria cite this table, not the prose above:
 | Entra SCIM is tenant-bound | `04-scim-token-cannot-touch-other-organisation.test.ts`, `06-customer-connection-cannot-create-staff-or-authority.test.ts` green against a real Entra tenant |
 | OIDC is safe | `15-oidc-protocol-failures-block-sign-in.test.ts` green |
 | Deletion is never immediate | `delete-returns-202-and-deletes-nothing.test.ts` green |
-| Opus security review | PR template, phase gate | Every PR touching security surfaces; every phase; **the P0 router retrofit explicitly** |
+| Opus security review | PR template, stage gate | Every PR touching security surfaces; every stage; **the P0 router retrofit explicitly** |
 | Independent red-team pass — authorization surface, portal boundary, inherited kaneo routes | Internal (a fresh Opus context with the hostile seed, not the authoring session) | **At the go-live gate**, before real customer data — the calendar does not move this |
 | Penetration test | External | Before first external customer, then annually ([risks.md](../07-planning/risks.md) R19) |
 

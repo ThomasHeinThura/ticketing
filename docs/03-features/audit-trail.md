@@ -1,6 +1,6 @@
 # Audit trail
 
-- **Phase:** P2
+- **Stage:** P2
 - **Status:** ⬜
 - **Feature flag:** always on
 - **Depends on:** nothing

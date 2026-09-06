@@ -15,10 +15,10 @@
 
 ## What this document is, and is not
 
-[phases.md](phases.md) defines what each phase's **Definition of Done actually means** —
+[phases.md](phases.md) defines what each stage's **Definition of Done actually means** —
 that does not change, and nothing here lowers that bar permanently. This document maps the
 **full P0–P7 scope already specified** onto a real, dated calendar at Thomas's explicit
-request, running phases in parallel rather than strictly sequentially, and it says
+request, running stages in parallel rather than strictly sequentially, and it says
 **exactly where a quality gate is compressed, deferred, or run at reduced depth to hit the
 date** — because the alternative is a plan that looks fine and quietly isn't, which is the
 one failure mode this whole project exists to avoid.
@@ -39,9 +39,9 @@ be fantasy. Three things make an aggressive attempt realistic rather than fantas
    point. Week 1 is de-branding and hardening a running product, not building one from a
    blank editor.
 2. **The specs already exist.** All 31 feature specs, the data model, the API design, the
-   RBAC model and thirteen ADRs are written. [SDLC](../04-engineering/sdlc.md) stage 2 (Specify)
+   RBAC model and thirteen ADRs are written. [SDLC](../04-engineering/sdlc.md) step 2 (Specify)
    — normally the slowest stage because it requires human judgement — is already done for
-   the whole product. What is left is stages 3–9, which parallelise.
+   the whole product. What is left is steps 3–9, which parallelise.
 3. **Heavy, model-tiered AI-agent parallelisation.** Independent workstreams (below) run
    concurrently, each on its own branch, per
    [agent-workflow.md](../04-engineering/agent-workflow.md)'s "parallelise across
@@ -82,12 +82,12 @@ Today is **2026-09-05** (Saturday).
 
 | Week | Dates | Milestone |
 | --- | --- | --- |
-| **1** | Sep 5 – Sep 12 | **UAT ready.** v1-level core running: de-branded kaneo, sign-in, RBAC/policy registry, CI security gates live |
+| **1** | Sep 5 – Sep 12 | **Foundation Technical Preview.** v1-level core running: de-branded kaneo, sign-in, RBAC/policy registry, CI security gates live |
 | **2–4** | Sep 12 – Oct 3 | Parallel build-out of service desk, portal, governance and reduced insight/agile scope. **Go-live** at the end of week 4 |
 | **5** | Oct 3 – Oct 10 | **Production testing week** — soak test, load test, security pass, bug bash, no new features |
 | **6–17** | Oct 10 – Dec 31 | The 3-month window: import/cutover, full polish and hardening, requested features, ongoing bug-fixing, and **paying down everything deferred below**. (AWS Marketplace is deferred beyond this window — decided 2026-09-05) |
 
-### Week 1 — v1-level core, UAT ready (by Sep 12)
+### Week 1 — Foundation Technical Preview (by Sep 12)
 
 **"v1 level" means, precisely:** sign-in with MFA, organisations/workspaces/projects,
 work items with type/state/priority, board and list views, comments, labels, basic
@@ -135,7 +135,7 @@ thinner") holds:** P1 — attachments, relations and hierarchy, search and saved
 and engagements, pending actions (with the core-work stream; at go-live: full, as their P1
 specs say); P4 — custom fields, teams, API keys, the MCP server, automations (the inherited
 engine, flag-gated), impersonation, settings hierarchy, audit trail (with governance; at
-go-live: reduced to what the P4 rows below name). Their phases are the ones in
+go-live: reduced to what the P4 rows below name). Their stages are the ones in
 [03-features/README.md](../03-features/README.md).
 
 **Workstream A is the schedule risk.** Porting the SLA engine, the versioned workflow
@@ -159,9 +159,9 @@ No new features. This week is exclusively:
 - Load test against the [testing strategy](../04-engineering/testing-strategy.md) targets.
 - A full security pass: the negative E2E suite in full, tenant-isolation fuzzing, a
   dependency and container scan, and an Opus-reviewed pass over the whole surface built so
-  far — the phase-gate security review from [SDLC](../04-engineering/sdlc.md), run once
-  now rather than only at a phase close, because "go-live" is being treated as a real
-  phase-gate event.
+  far — the stage-gate security review from [SDLC](../04-engineering/sdlc.md), run once
+  now rather than only at a stage close, because "go-live" is being treated as a real
+  stage-gate event.
 - A bug bash against the realistic and hostile seed datasets.
 - Backup and restore drill — **R12** in [risks.md](risks.md) exists precisely because this
   step gets skipped under deadline pressure; it does not get skipped here.
@@ -222,6 +222,18 @@ left column is silently thinner without appearing here.
 permission-matrix entry to get there.** Those are full-strength from week 1, per
 [What never moves, regardless of the calendar](#what-never-moves-regardless-of-the-calendar).
 
+## The week-2 scope confirmation — a named moment, not a vigil
+
+**At the end of week 2 of any accelerated window, Thomas writes two lines in
+[status.md](status.md): what go-live contains, and what has moved.** That is the whole
+ritual. It is the scheduled form of the flexibility rule — a date that may move needs one
+moment where someone says out loud what it now means, or "flexible" quietly becomes
+"discovered in week five".
+
+It does not replace the escalation below, which is event-driven and fires the moment
+workstream A looks behind. This one fires whether or not anything looks wrong, which is
+exactly why it catches the case where nothing looked wrong.
+
 ## What happens if week 4 looks tight
 
 State it now rather than discover it on Oct 2, and state it as a genuine choice rather
@@ -245,6 +257,6 @@ there and does not restate them, so the register has one home.
 
 ## Related
 
-- [Phases](phases.md) · [Roadmap](roadmap.md) · [Risks](risks.md) · [Status](status.md)
+- [Stages](phases.md) · [Roadmap](roadmap.md) · [Risks](risks.md) · [Status](status.md)
 - [SDLC](../04-engineering/sdlc.md) · [Agent workflow](../04-engineering/agent-workflow.md)
 - [Security model](../01-architecture/security-model.md)

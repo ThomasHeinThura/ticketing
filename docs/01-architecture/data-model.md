@@ -87,6 +87,13 @@ Marketplace licensing ([ADR 0013](adr/0013-marketplace-metering-plugin.md)) need
 of its own: `license.none` / `license.aws-marketplace` are `instance_plugin_config` rows.
 
 ## 2. Identity and access
+**One person, one organisation; email is not a key.** `person.organisation_id` is fixed at
+creation and never changes. The identity key is `(identity_connection_id, subject)` on
+`external_identity`, so **better-auth's default unique index on `user.email` is dropped at
+fork** — two `person` rows in different organisations may carry the same address, which is
+how one human can be both a staff member and a customer contact without the two ever being
+linked (`IP-18`, [multi-tenancy.md](multi-tenancy.md#identity-across-tenants)). Anything
+that needs "this human, everywhere" does not exist by design.
 
 better-auth owns `user`, `session`, `account`, `verification`, `two_factor`, `passkey`,
 `apikey`. better-auth is used for **authentication only** — its organisation plugin is
