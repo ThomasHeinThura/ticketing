@@ -141,20 +141,38 @@ jobs:
       - name: pnpm build
         run: pnpm build
 
-  supply-chain:
-    name: supply chain - audit + gitleaks
+  # Deliberately two jobs, not one. As a single "supply chain" job the first failing step
+  # stopped the second, so a red dependency audit hid whether the repository had a secret in
+  # it — the more urgent of the two questions, and the one with a bounded fix. Split, each
+  # answers its own question and neither masks the other.
+
+  dependency-audit:
+    name: supply chain - dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: pnpm audit
+        # ci-cd.md: high or critical fails. RED TODAY, and left red on purpose. The
+        # inherited graph carries high advisories — js-yaml via @commitlint/cli, nanoid via
+        # apps__web>postcss — every one in devDependencies or build tooling. Fixing them is
+        # a pnpm-lock.yaml change, which this branch does not own.
+        #
+        # Not narrowed to --prod, not lowered to --audit-level=critical, not given
+        # continue-on-error. Any of those would turn a true statement into a green tick.
+        # The gate reports what is true; the lockfile change makes it green.
+        run: pnpm audit --audit-level=high
+
+  secret-scan:
+    name: supply chain - secret scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
+          # gitleaks scans history, so it needs all of it.
           fetch-depth: 0
-      - uses: ./.github/actions/setup
-      - name: pnpm audit
-        # ci-cd.md: high or critical fails. Red on the inherited graph today — eight high
-        # advisories, all in devDependencies and build tooling. Fixing them is a lockfile
-        # change, so this job reports the truth rather than being narrowed to hide it.
-        run: pnpm audit --audit-level=high
       - name: gitleaks
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
@@ -170,7 +188,33 @@ jobs:
         # helm ships on the GitHub-hosted Ubuntu runner image, so no action is needed.
         run: helm lint charts/taskdesk
       - name: helm template
-        run: helm template taskdesk charts/taskdesk > /dev/null
+        # The chart fails closed on every required bootstrap value (#20, now on main), so a
+        # bare `helm template` cannot render and this step was red for the right reason.
+        # Supply a synthetic fixture instead of weakening the chart.
+        #
+        # The two URLs must be DIFFERENT hostnames: validations.yaml rejects
+        # clientUrl == portalUrl, because a shared cookie scope is what would let a portal
+        # session reach the agent application (ADR 0004). Passing the same value twice here
+        # would render fine and quietly stop testing that rule.
+        #
+        # The secrets are throwaway 64-character strings that exist only inside this step.
+        # They are not credentials: nothing they could unlock is created.
+        run: |
+          helm template taskdesk charts/taskdesk \
+            --set taskdesk.env.authSecret="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')" \
+            --set taskdesk.env.encryptionKey="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')" \
+            --set taskdesk.env.clientUrl=https://agent.ci.invalid \
+            --set taskdesk.env.portalUrl=https://portal.ci.invalid \
+            > /dev/null
+      - name: helm template must FAIL without its secrets
+        # helm lint exits 0 even when a `fail` directive fires, so without this the
+        # fail-closed behaviour the chart exists for is never actually exercised in CI.
+        run: |
+          if helm template taskdesk charts/taskdesk > /dev/null 2>&1; then
+            echo "::error::chart rendered with no authSecret — it must fail closed"
+            exit 1
+          fi
+          echo "chart correctly refused to render without its bootstrap secrets"
 
   gates-declared:
     name: CI matches ci-cd.md
