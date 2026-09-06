@@ -40,6 +40,33 @@ re-keying stops.
 
 ## Why v1 failed, and what changes
 
+**How long the first attempt actually took.** Measured from the repositories themselves,
+not remembered, because the answer is easy to get wrong in either direction.
+
+There were **two** attempts, a month apart:
+
+| | Started | Ended | Where | Size |
+| --- | --- | --- | --- | --- |
+| **v0** | 2026-07-04, 00:22:54 (+0630) | 2026-07-05 | Four separate GitLab repositories — `app1.backend`, `app2.backend`, `app3.backend`, `frontend` — on RKE2/Istio behind a WSO2 gateway | 24 commits, all inside two hours of one night |
+| **v1** | 2026-08-08 | 2026-09-05 | One Azure DevOps repository, after the four were consolidated | 325 commits, ending at `uat-1.0.22` |
+
+Between them, **33 days with no recorded work** — 6 July to 7 August inclusive. So the
+honest figures are **roughly four and a half weeks of building** across **nine weeks of
+elapsed calendar**, and neither of those is the six weeks that memory suggests.
+
+The evidence is easy to lose, which is why it is written down here. v1's own git history
+begins 2026-08-15, a week after work restarted, because its first commit — `0ecbea0`,
+"consolidate the four service repos into one" — folded four repositories into one commit
+and **did not preserve their history**; v1's changelog is the only surviving witness to that
+week. v0 survives only as `Test-Ticketing-app.zip` outside the repository, which still
+contains all four `.git` directories intact.
+
+That is the calibration for this document. **Twenty-five screens at roughly sixty per cent,
+in about four and a half weeks, by one person and a set of agents.** Throughput was never
+the problem, so v2 does not try to fix throughput. Everything below trades breadth for
+finishedness, and the [stages](../07-planning/phases.md) exist to make that trade
+enforceable rather than aspirational.
+
 TaskDesk v1 was **feature-rich and unusable**. It had SLAs, approvals, workflows, CAB,
 intake, 20 reports, timesheets, a service catalogue — genuinely more capability than most
 commercial tools. And nobody wanted to use it, because:
@@ -58,8 +85,8 @@ v2 inverts that:
 | v1 | v2 |
 | --- | --- |
 | Build features, then style them | Start from a finished design system; features must fit it |
-| Hand-rolled primitives | kaneo's 60+ Radix/Tailwind primitives, no exceptions |
-| Ship wide | Ship one stage fully finished before starting the next |
+| Hand-rolled primitives | kaneo's 63 Tailwind primitives, predominantly Base UI, no exceptions |
+| Ship wide | Run independent workstreams in parallel; claim each stage only when its exit gate passes |
 | UX reviewed at the end | UX gates in CI on every pull request |
 | Config in env vars and code | Config in God Mode, at runtime |
 
