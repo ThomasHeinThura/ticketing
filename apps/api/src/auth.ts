@@ -53,6 +53,7 @@ import { getGithubSsoOAuthCredentials } from "./utils/github-sso-env";
 import { isCloud } from "./utils/is-cloud";
 import { isDisposableEmail } from "./utils/is-disposable-email";
 import { isLocalSignInPath } from "./utils/is-local-sign-in-path";
+import { resolveAuthSecret } from "./utils/require-auth-secret";
 import { verifyTurnstile } from "./utils/verify-turnstile";
 
 config();
@@ -101,15 +102,14 @@ const baseURLWithoutPath = (() => {
   }
 })();
 
-if (
-  process.env.TASKDESK_AUTH_SECRET &&
-  process.env.TASKDESK_AUTH_SECRET.length < 32
-) {
-  console.error(
-    "TASKDESK_AUTH_SECRET is less than 32 characters, please generate a new one.",
-  );
+const authSecretResult = resolveAuthSecret(process.env.TASKDESK_AUTH_SECRET);
+
+if (!authSecretResult.ok) {
+  console.error(authSecretResult.reason);
   process.exit(1);
 }
+
+const authSecret = authSecretResult.secret;
 
 async function getUserLocale(email: string) {
   const [user] = await db
@@ -199,7 +199,7 @@ function getDeviceAuthVerificationUri(): string {
 export const auth = betterAuth({
   baseURL: baseURLWithoutPath,
   trustedOrigins,
-  secret: process.env.TASKDESK_AUTH_SECRET || "",
+  secret: authSecret,
   basePath: "/api/auth",
   database: drizzleAdapter(db, {
     provider: "pg",
