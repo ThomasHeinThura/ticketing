@@ -29,19 +29,19 @@ function sendMock(ws: unknown) {
 }
 
 describe("broadcastToUser", () => {
-  const originalRedisUrl = process.env.REDIS_URL;
+  const originalRedisUrl = process.env.TASKDESK_VALKEY_URL;
 
   beforeEach(async () => {
-    delete process.env.REDIS_URL;
+    delete process.env.TASKDESK_VALKEY_URL;
     await initializeWebSocketAdapter();
   });
 
   afterEach(async () => {
     await shutdownWebSocketAdapter();
     if (originalRedisUrl === undefined) {
-      delete process.env.REDIS_URL;
+      delete process.env.TASKDESK_VALKEY_URL;
     } else {
-      process.env.REDIS_URL = originalRedisUrl;
+      process.env.TASKDESK_VALKEY_URL = originalRedisUrl;
     }
   });
 

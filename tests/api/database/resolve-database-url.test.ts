@@ -5,7 +5,7 @@ import {
 } from "../../../apps/api/src/database/resolve-database-url";
 
 const keys = [
-  "DATABASE_URL",
+  "TASKDESK_DATABASE_URL",
   "POSTGRES_HOST",
   "POSTGRES_PORT",
   "POSTGRES_DB",
@@ -35,8 +35,9 @@ describe("resolve-database-url", () => {
     }
   });
 
-  it("returns DATABASE_URL unchanged when explicitly configured", () => {
-    process.env.DATABASE_URL = "postgresql://app:secret@example.com:5433/appdb";
+  it("returns TASKDESK_DATABASE_URL unchanged when explicitly configured", () => {
+    process.env.TASKDESK_DATABASE_URL =
+      "postgresql://app:secret@example.com:5433/appdb";
 
     expect(resolveDatabaseConnectionString()).toBe(
       "postgresql://app:secret@example.com:5433/appdb",
@@ -44,7 +45,7 @@ describe("resolve-database-url", () => {
 
     expect(resolveDatabaseConfig()).toMatchObject({
       connectionString: "postgresql://app:secret@example.com:5433/appdb",
-      source: "DATABASE_URL",
+      source: "TASKDESK_DATABASE_URL",
       host: "example.com",
       port: 5433,
       database: "appdb",
@@ -52,7 +53,7 @@ describe("resolve-database-url", () => {
     });
   });
 
-  it("derives DATABASE_URL from POSTGRES_* when a derivation signal is present", () => {
+  it("derives TASKDESK_DATABASE_URL from POSTGRES_* when a derivation signal is present", () => {
     process.env.POSTGRES_PASSWORD = "password";
     process.env.POSTGRES_HOST = "db.internal";
     process.env.POSTGRES_PORT = "6543";
@@ -101,7 +102,7 @@ describe("resolve-database-url", () => {
     process.env.POSTGRES_HOST = "db.internal";
 
     expect(() => resolveDatabaseConfig()).toThrow(
-      "POSTGRES_PASSWORD must be set when deriving DATABASE_URL from POSTGRES_* variables",
+      "POSTGRES_PASSWORD must be set when deriving TASKDESK_DATABASE_URL from POSTGRES_* variables",
     );
   });
 

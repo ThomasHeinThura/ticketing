@@ -27,8 +27,8 @@ function makeFakeWs() {
 
 describe("broadcastToProject", () => {
   beforeEach(async () => {
-    // Ensure no REDIS_URL so InMemoryBroadcastAdapter is used
-    delete process.env.REDIS_URL;
+    // Ensure no TASKDESK_VALKEY_URL so InMemoryBroadcastAdapter is used
+    delete process.env.TASKDESK_VALKEY_URL;
     await initializeWebSocketAdapter();
   });
 

@@ -7,7 +7,7 @@ let _redisSub: RedisClient | null = null;
 
 function isRedisConfigured(): boolean {
   return !!(
-    process.env.REDIS_URL ||
+    process.env.TASKDESK_VALKEY_URL ||
     process.env.REDIS_SENTINELS ||
     process.env.REDIS_CLUSTER_NODES
   );
@@ -118,10 +118,10 @@ export function resolveRedisMode(): RedisMode {
     };
   }
 
-  const url = process.env.REDIS_URL;
+  const url = process.env.TASKDESK_VALKEY_URL;
   if (!url) {
     throw new Error(
-      "REDIS_URL, REDIS_SENTINELS, or REDIS_CLUSTER_NODES must be set",
+      "TASKDESK_VALKEY_URL, REDIS_SENTINELS, or REDIS_CLUSTER_NODES must be set",
     );
   }
   return { mode: "standalone", url };

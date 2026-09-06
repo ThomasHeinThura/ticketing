@@ -73,7 +73,7 @@ export class AuthService {
    * Returns a valid access token, running the device authorization flow if needed.
    */
   async getAccessToken(): Promise<string> {
-    // Non-interactive auth: a pre-created TaskDesk API key (KANEO_API_KEY) is sent
+    // Non-interactive auth: a pre-created TaskDesk API key (TASKDESK_API_KEY) is sent
     // as a Bearer token, which the REST API already accepts. This skips the
     // device flow so the MCP server works in headless/Docker environments.
     if (this.apiKey) {

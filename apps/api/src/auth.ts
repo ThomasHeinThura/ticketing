@@ -81,7 +81,7 @@ function isOAuthCallbackPath(path: unknown): boolean {
 }
 
 const apiUrl = process.env.KANEO_API_URL || "http://localhost:1337";
-const clientUrl = process.env.KANEO_CLIENT_URL || "http://localhost:5173";
+const clientUrl = process.env.TASKDESK_AGENT_URL || "http://localhost:5173";
 
 const trustedOrigins = [clientUrl];
 try {
@@ -101,9 +101,12 @@ const baseURLWithoutPath = (() => {
   }
 })();
 
-if (process.env.AUTH_SECRET && process.env.AUTH_SECRET.length < 32) {
+if (
+  process.env.TASKDESK_AUTH_SECRET &&
+  process.env.TASKDESK_AUTH_SECRET.length < 32
+) {
   console.error(
-    "AUTH_SECRET is less than 32 characters, please generate a new one.",
+    "TASKDESK_AUTH_SECRET is less than 32 characters, please generate a new one.",
   );
   process.exit(1);
 }
@@ -196,7 +199,7 @@ function getDeviceAuthVerificationUri(): string {
 export const auth = betterAuth({
   baseURL: baseURLWithoutPath,
   trustedOrigins,
-  secret: process.env.AUTH_SECRET || "",
+  secret: process.env.TASKDESK_AUTH_SECRET || "",
   basePath: "/api/auth",
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -481,7 +484,7 @@ export const auth = betterAuth({
         },
       },
       async sendInvitationEmail(data) {
-        const inviteLink = `${process.env.KANEO_CLIENT_URL}/invitation/accept/${data.id}`;
+        const inviteLink = `${process.env.TASKDESK_AGENT_URL}/invitation/accept/${data.id}`;
         const locale = await getUserLocale(data.email);
         const copy = getWorkspaceInvitationEmailCopy(locale);
 

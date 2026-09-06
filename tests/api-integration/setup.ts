@@ -37,7 +37,7 @@ function assertTestDatabaseUrl(connectionString: string) {
   const databaseName = url.pathname.replace(/^\//, "");
   if (!databaseName.endsWith("_test")) {
     throw new Error(
-      `Integration tests require DATABASE_URL to use a database name ending in _test (got "${databaseName}")`,
+      `Integration tests require TASKDESK_DATABASE_URL to use a database name ending in _test (got "${databaseName}")`,
     );
   }
 }
@@ -51,24 +51,24 @@ function readDatabaseUrlFromEnvFile() {
   }
 
   const envFile = readFileSync(envPath, "utf8");
-  const match = envFile.match(/^DATABASE_URL=(.+)$/m);
+  const match = envFile.match(/^TASKDESK_DATABASE_URL=(.+)$/m);
   const raw = match?.[1]?.trim();
   return raw ? stripEnvValueQuotes(raw) : null;
 }
 
 const defaultTestDatabaseUrl =
   "postgresql://postgres:postgres@localhost:5432/taskdesk_test";
-const envDatabaseUrl = process.env.DATABASE_URL?.trim();
+const envDatabaseUrl = process.env.TASKDESK_DATABASE_URL?.trim();
 const fromEnv = envDatabaseUrl ? stripEnvValueQuotes(envDatabaseUrl) : "";
 const rawDatabaseUrl =
   fromEnv || readDatabaseUrlFromEnvFile() || defaultTestDatabaseUrl;
-process.env.DATABASE_URL = deriveTestDatabaseUrl(rawDatabaseUrl);
-assertTestDatabaseUrl(process.env.DATABASE_URL);
+process.env.TASKDESK_DATABASE_URL = deriveTestDatabaseUrl(rawDatabaseUrl);
+assertTestDatabaseUrl(process.env.TASKDESK_DATABASE_URL);
 
 process.env.NODE_ENV = "test";
-process.env.AUTH_SECRET = "test-secret-with-at-least-32-chars";
+process.env.TASKDESK_AUTH_SECRET = "test-secret-with-at-least-32-chars";
 process.env.KANEO_API_URL = "http://localhost:1337";
-process.env.KANEO_CLIENT_URL = "http://localhost:5173";
+process.env.TASKDESK_AGENT_URL = "http://localhost:5173";
 process.env.DISABLE_GUEST_ACCESS = "false";
 process.env.DISABLE_REGISTRATION = "false";
 process.env.DISABLE_PASSWORD_REGISTRATION = "false";

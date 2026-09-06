@@ -172,7 +172,7 @@ describe("isRedisConfigured", () => {
   const savedEnv = { ...process.env };
 
   beforeEach(() => {
-    delete process.env.REDIS_URL;
+    delete process.env.TASKDESK_VALKEY_URL;
     delete process.env.REDIS_SENTINELS;
     delete process.env.REDIS_CLUSTER_NODES;
   });
@@ -185,8 +185,8 @@ describe("isRedisConfigured", () => {
     expect(isRedisConfigured()).toBe(false);
   });
 
-  it("returns true when REDIS_URL is set", () => {
-    process.env.REDIS_URL = "redis://localhost:6379";
+  it("returns true when TASKDESK_VALKEY_URL is set", () => {
+    process.env.TASKDESK_VALKEY_URL = "redis://localhost:6379";
     expect(isRedisConfigured()).toBe(true);
   });
 
@@ -201,7 +201,7 @@ describe("isRedisConfigured", () => {
   });
 
   it("returns true when multiple Redis env vars are set", () => {
-    process.env.REDIS_URL = "redis://localhost:6379";
+    process.env.TASKDESK_VALKEY_URL = "redis://localhost:6379";
     process.env.REDIS_SENTINELS = "sentinel-1:26379";
     process.env.REDIS_CLUSTER_NODES = "node-1:6379";
     expect(isRedisConfigured()).toBe(true);

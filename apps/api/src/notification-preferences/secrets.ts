@@ -11,7 +11,7 @@ const SECRET_ALGORITHM = "aes-256-gcm";
 const SECRET_IV_BYTES = 12;
 
 function getSecretEncryptionKey() {
-  const rawKey = process.env.NOTIFICATION_SECRET_ENCRYPTION_KEY?.trim();
+  const rawKey = process.env.TASKDESK_ENCRYPTION_KEY?.trim();
   if (!rawKey) {
     return null;
   }
@@ -24,7 +24,7 @@ function requireSecretEncryptionKey() {
   if (!key) {
     throw new HTTPException(500, {
       message:
-        "NOTIFICATION_SECRET_ENCRYPTION_KEY is required to store encrypted notification secrets",
+        "TASKDESK_ENCRYPTION_KEY is required to store encrypted notification secrets",
     });
   }
 

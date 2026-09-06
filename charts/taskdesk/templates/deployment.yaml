@@ -49,11 +49,11 @@ spec:
               containerPort: {{ .Values.taskdesk.service.targetPort }}
               protocol: TCP
           env:
-            - name: KANEO_CLIENT_URL
+            - name: TASKDESK_AGENT_URL
               value: "{{ .Values.taskdesk.env.clientUrl }}"
             - name: CORS_ORIGINS
               value: {{ $corsOriginsValue | quote }}
-            - name: AUTH_SECRET
+            - name: TASKDESK_AUTH_SECRET
               {{- if .Values.taskdesk.env.existingSecret.enabled }}
               valueFrom:
                 secretKeyRef:
@@ -69,7 +69,7 @@ spec:
                   name: {{ .Values.postgresql.auth.existingSecret }}
                   key: {{ .Values.postgresql.auth.secretKeys.userPasswordKey }}
             {{- end }}
-            - name: DATABASE_URL
+            - name: TASKDESK_DATABASE_URL
               {{- if .Values.taskdesk.env.database.external.enabled }}
               {{- if .Values.taskdesk.env.database.external.existingSecret.enabled }}
               valueFrom:

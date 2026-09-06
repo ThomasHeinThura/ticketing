@@ -66,7 +66,7 @@ describe("prepare-database-startup", () => {
         logError,
       }),
     ).rejects.toThrow(
-      "Database startup failed for postgres:5432/taskdesk (source: POSTGRES_ENV). If you are running outside Docker Compose, use localhost or set DATABASE_URL explicitly.",
+      "Database startup failed for postgres:5432/taskdesk (source: POSTGRES_ENV). If you are running outside Docker Compose, use localhost or set TASKDESK_DATABASE_URL explicitly.",
     );
 
     expect(runStartupMigrations).not.toHaveBeenCalled();
@@ -130,7 +130,7 @@ describe("prepare-database-startup", () => {
 
   it("logs config resolution failures through the startup wrapper", async () => {
     const configError = new Error(
-      "POSTGRES_PASSWORD must be set when deriving DATABASE_URL from POSTGRES_* variables",
+      "POSTGRES_PASSWORD must be set when deriving TASKDESK_DATABASE_URL from POSTGRES_* variables",
     );
     const logError = vi.fn();
 

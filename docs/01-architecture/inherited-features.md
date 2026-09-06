@@ -82,6 +82,87 @@ recorded here rather than fixed inside an inherited snapshot.
   every high sits in the dev, build-time or unused-optional-driver paths analysed above.
 
 
+### Environment migration record — the complete inherited surface
+
+`grep process.env` is **not** sufficient, and this is the reason the earlier count was wrong.
+kaneo reads environment variables three ways, and only the first is greppable:
+
+| How | Where | Hidden variables |
+| --- | --- | --- |
+| `process.env.NAME` | everywhere | 95 |
+| `process.env[name]` through a local helper | `apps/api/src/storage/s3.ts:79-81` — `function env(name) { return process.env[name]?.trim() \|\| "" }` | the **seven S3 connection variables** |
+| `process.env[TABLE[k][j]]` through a lookup | `apps/api/src/billing/config.ts:55,63` — `PRODUCT_ENV_KEYS` | four `CREEM_PRODUCT_*` |
+| parameter default `env: SmtpEnv = process.env` | `packages/email/src/smtp-config.ts:15,39` | the eight `SMTP_*` |
+
+**The real total is 98 variables**, not the "~80" the planning documents quote. Any
+`check:env` gate must resolve indirect reads or it will pass a tree that still reads
+unapproved configuration.
+
+#### Renamed to TaskDesk bootstrap variables — **done**
+
+| kaneo | TaskDesk | Note |
+| --- | --- | --- |
+| `AUTH_SECRET` | `TASKDESK_AUTH_SECRET` | one of the five required |
+| `DATABASE_URL` | `TASKDESK_DATABASE_URL` | one of the five required |
+| `KANEO_CLIENT_URL` | `TASKDESK_AGENT_URL` | one of the five required |
+| `NOTIFICATION_SECRET_ENCRYPTION_KEY` | `TASKDESK_ENCRYPTION_KEY` | one of the five required; kaneo already had a secret-encryption key, so this is a rename, not a new mechanism |
+| `REDIS_URL` | `TASKDESK_VALKEY_URL` | optional operational |
+| `KANEO_API_URL`, `KANEO_API_KEY` **in `packages/mcp` only** | `TASKDESK_API_URL`, `TASKDESK_API_KEY` | the **MCP client's own** configuration on the user's machine — `configuration-reference.md` is explicit that the server never reads either |
+
+`TASKDESK_PORTAL_URL` — the fifth required variable — is **new**: kaneo has one origin, so
+there is nothing to rename. It is introduced with the second entry point in #9/#11.
+
+#### Moved to runtime configuration — God Mode, not environment
+
+Per the storage decision of 2026-09-06 and the "nothing is hardcoded per customer" rule.
+**Non-secret** values become plugin or instance configuration rows; **credentials** go
+through TaskDesk's secret storage and are encrypted with `TASKDESK_ENCRYPTION_KEY`, never
+held as plaintext configuration.
+
+| Group | Variables | Destination | Secret? |
+| --- | --- | --- | --- |
+| **S3 connection** | `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_PUBLIC_BASE_URL`, `S3_KEY_PREFIX` | `storage.s3` plugin config | no |
+| **S3 credentials** | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | `storage.s3` plugin config | **yes — encrypted** |
+| **S3 tuning** | `S3_FORCE_PATH_STYLE`, `S3_MAX_IMAGE_UPLOAD_BYTES`, `S3_PRESIGN_TTL_SECONDS` | `storage.s3` plugin config | no |
+| **SMTP** | `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_SECURE`, `SMTP_REQUIRE_TLS`, `SMTP_IGNORE_TLS` | `notify.email` plugin config | no |
+| **SMTP credentials** | `SMTP_USER`, `SMTP_PASSWORD` | `notify.email` plugin config | **yes — encrypted** |
+| **Generic OIDC** | `CUSTOM_OAUTH_DISCOVERY_URL`, `CUSTOM_OAUTH_AUTHORIZATION_URL`, `CUSTOM_OAUTH_TOKEN_URL`, `CUSTOM_OAUTH_USER_INFO_URL`, `CUSTOM_OAUTH_LOGOUT_URL`, `CUSTOM_OAUTH_SCOPES`, `CUSTOM_OAUTH_RESPONSE_TYPE`, `CUSTOM_OAUTH_AUTO_LOGIN`, `CUSTOM_AUTH_PKCE`, `CUSTOM_OAUTH_CLIENT_ID` | `identity_connection` | no |
+| **OIDC secret** | `CUSTOM_OAUTH_CLIENT_SECRET` | `identity_connection` | **yes — encrypted** |
+| **Social providers** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `identity_connection` | secret half **encrypted** |
+| **Instance switches** | `DISABLE_REGISTRATION`, `DISABLE_LOGIN_FORM`, `DISABLE_PASSWORD_REGISTRATION`, `DISABLE_EMAIL_OTP_SIGN_IN`, `DISABLE_WORKSPACE_CREATION` | instance settings | no |
+| **Origins / cookies** | `CORS_ORIGINS`, `COOKIE_DOMAIN` | derived from `TASKDESK_AGENT_URL` + `TASKDESK_PORTAL_URL`, or instance settings | no |
+| **Valkey topology** | `REDIS_CLUSTER_NODES`, `REDIS_SENTINELS`, `REDIS_SENTINEL_MASTER_NAME`, `REDIS_SENTINEL_TLS` | operational; fold into `TASKDESK_VALKEY_URL` or an operational row | no |
+| **Valkey credentials** | `REDIS_PASSWORD`, `REDIS_SENTINEL_PASSWORD` | as above | **yes** |
+| **Postgres parts** | `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | kaneo derives a URL from these when `TASKDESK_DATABASE_URL` is absent (`apps/api/src/database/resolve-database-url.ts`). TaskDesk has **one** required URL, so this derivation path is redundant and is removed with the configuration work | **yes** (password) |
+
+#### Deleted with the feature they belong to — **#6**
+
+| Group | Variables | Deleted with |
+| --- | --- | --- |
+| Billing | `CREEM_API_KEY`, `CREEM_WEBHOOK_SECRET`, `CREEM_TEST_MODE`, `CREEM_PRODUCT_PERSONAL_MONTHLY`, `CREEM_PRODUCT_PERSONAL_ANNUAL`, `CREEM_PRODUCT_TEAM_MONTHLY`, `CREEM_PRODUCT_TEAM_ANNUAL`, `BILLING_TRIAL_DAYS`, `BILLING_FOUNDING_CUTOFF`, `BILLING_REMINDER_MAX_PER_RUN` | the billing system. kaneo's provider is **Creem**, not Stripe |
+| Sentry | `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_PROFILES_SAMPLE_RATE`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` | Sentry. **This settles the contradiction** between §2 of `repository-bootstrap.md` (which said *Move* for the first five) and §3 item 10 (*delete every `SENTRY_*`*): Sentry is deleted. `SENTRY_AUTH_TOKEN` is a live CI credential and must not be inherited |
+| GitHub integration | `GITHUB_APP_ID`, `GITHUB_APP_NAME`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`, `GITHUB_PRIVATE_KEY`, `GITHUB_PRIVATE_KEY_BASE64`, `GITHUB_WEBHOOK_SECRET` | the GitHub integration router |
+| Discord integration | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | the Discord integration router |
+| Generic webhook | `KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS` | the generic webhook router. **This settles its contradiction too** — §2 said *Move*, §3 item 8 said removed; it goes with the router |
+| Anonymous sign-in | `DISABLE_GUEST_ACCESS` | the `anonymous()` plugin |
+| Device authorization | `DEVICE_AUTH_CLIENT_IDS` | the `deviceAuthorization` plugin |
+| MCP OAuth | `KANEO_MCP_CLIENT_ID` | the MCP OAuth routes |
+| Cloud-only | `KANEO_CLOUD`, `DEMO_MODE` | cloud/SaaS behaviour. **Note:** `KANEO_CLOUD` currently gates `rateLimit.enabled` — deleting it must **enable** abuse protection, never freeze it off. See the security row below |
+
+#### Kept — operating-system variables, not configuration
+
+`NODE_ENV`, `APPDATA`, `XDG_CONFIG_HOME` (the last two are the MCP client resolving a
+config directory on the user's own machine).
+
+#### Deferred, with a reason
+
+| Variable | Deferred to | Why |
+| --- | --- | --- |
+| `TRUSTED_PROXIES` → `TASKDESK_TRUST_PROXY` | **#11** | This is **not a rename**. kaneo takes a comma-separated CIDR **list**, defaulting to all of RFC1918 — so on a shared cluster every pod can forge the header the rate limiter keys on. TaskDesk takes a **hop count**. Changing list semantics to hop-count semantics is a behaviour change on a security boundary, and the correct hop count for this deployment must be **measured** from the headers actually arriving, not inferred from the topology diagram |
+| `KANEO_API_URL`, `KANEO_INTERNAL_API_URL` | **#11** | Both describe the API's own origin. Under TaskDesk's single-image model the web bundle is same-origin by construction, so these do not simply rename — they may disappear. That resolution belongs with the container-image work |
+| `TURNSTILE_SECRET_KEY`, `TURNSTILE_TIMEOUT_MS` | **Thomas** | Cloudflare Turnstile is inherited CAPTCHA abuse protection. TaskDesk requires abuse protection for self-hosted deployments, but a Cloudflare dependency is not obviously the right shape for a self-hosted product, and it is not in the plugin registry. This is the one variable group the storage/plugin rule does not cleanly classify, so it is raised rather than decided |
+
+
 **Primitive libraries found in `components/ui`:** **Base UI 43 / Radix 1 of 63** files
 (`form.tsx` imports `@radix-ui` `Slot`; `timeline.tsx` imports `Slot` from the `radix-ui`
 umbrella). **17 of the 18 `@radix-ui/*` dependencies in `apps/web/package.json` are unused

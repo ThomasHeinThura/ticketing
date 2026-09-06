@@ -47,10 +47,9 @@ const REMINDERS: {
 ];
 
 function clientUrl() {
-  return (process.env.KANEO_CLIENT_URL ?? "https://cloud.taskdesk.app").replace(
-    /\/$/,
-    "",
-  );
+  return (
+    process.env.TASKDESK_AGENT_URL ?? "https://cloud.taskdesk.app"
+  ).replace(/\/$/, "");
 }
 
 async function getWorkspacesNeedingReminder(type: ReminderType, now: Date) {

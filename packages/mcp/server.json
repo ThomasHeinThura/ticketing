@@ -17,14 +17,14 @@
 			},
 			"environmentVariables": [
 				{
-					"name": "KANEO_API_URL",
+					"name": "TASKDESK_API_URL",
 					"description": "Base URL of your TaskDesk API (defaults to http://localhost:1337)",
 					"isRequired": false,
 					"format": "string",
 					"isSecret": false
 				},
 				{
-					"name": "KANEO_API_KEY",
+					"name": "TASKDESK_API_KEY",
 					"description": "TaskDesk API key for non-interactive auth; omit to use the interactive device flow",
 					"isRequired": false,
 					"format": "string",

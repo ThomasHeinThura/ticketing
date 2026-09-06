@@ -84,7 +84,7 @@ export async function handleTaskCreated(
 
       if (project) {
         const clientUrl =
-          process.env.KANEO_CLIENT_URL || "http://localhost:5173";
+          process.env.TASKDESK_AGENT_URL || "http://localhost:5173";
         const taskUrl = `${clientUrl}/dashboard/workspace/${project.workspaceId}/project/${event.projectId}/task/${event.taskId}`;
         const taskIdentifier = `${project.slug.toUpperCase()}-${event.number}`;
 

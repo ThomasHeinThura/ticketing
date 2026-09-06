@@ -5,7 +5,7 @@ describe("resolveRedisMode priority resolution", () => {
   const savedEnv = { ...process.env };
 
   beforeEach(() => {
-    delete process.env.REDIS_URL;
+    delete process.env.TASKDESK_VALKEY_URL;
     delete process.env.REDIS_SENTINELS;
     delete process.env.REDIS_CLUSTER_NODES;
     delete process.env.REDIS_PASSWORD;
@@ -21,7 +21,7 @@ describe("resolveRedisMode priority resolution", () => {
   it("selects Cluster mode when REDIS_CLUSTER_NODES is set (highest priority)", () => {
     process.env.REDIS_CLUSTER_NODES = "node-1:6379,node-2:6379";
     process.env.REDIS_SENTINELS = "sentinel-1:26379";
-    process.env.REDIS_URL = "redis://localhost:6379";
+    process.env.TASKDESK_VALKEY_URL = "redis://localhost:6379";
 
     const result = resolveRedisMode();
 
@@ -37,7 +37,7 @@ describe("resolveRedisMode priority resolution", () => {
 
   it("selects Sentinel mode when REDIS_SENTINELS is set (no cluster)", () => {
     process.env.REDIS_SENTINELS = "sentinel-1:26379,sentinel-2:26379";
-    process.env.REDIS_URL = "redis://localhost:6379";
+    process.env.TASKDESK_VALKEY_URL = "redis://localhost:6379";
     process.env.REDIS_SENTINEL_MASTER_NAME = "mymaster";
     process.env.REDIS_PASSWORD = "secret";
 
@@ -56,8 +56,8 @@ describe("resolveRedisMode priority resolution", () => {
     });
   });
 
-  it("selects Standalone mode when only REDIS_URL is set (lowest priority)", () => {
-    process.env.REDIS_URL = "redis://localhost:6379";
+  it("selects Standalone mode when only TASKDESK_VALKEY_URL is set (lowest priority)", () => {
+    process.env.TASKDESK_VALKEY_URL = "redis://localhost:6379";
 
     const result = resolveRedisMode();
 
@@ -69,7 +69,7 @@ describe("resolveRedisMode priority resolution", () => {
 
   it("throws when no Redis configuration is provided", () => {
     expect(() => resolveRedisMode()).toThrow(
-      "REDIS_URL, REDIS_SENTINELS, or REDIS_CLUSTER_NODES must be set",
+      "TASKDESK_VALKEY_URL, REDIS_SENTINELS, or REDIS_CLUSTER_NODES must be set",
     );
   });
 

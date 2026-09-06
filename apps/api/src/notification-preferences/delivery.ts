@@ -47,7 +47,7 @@ type DeliveryContent = {
 };
 
 function buildTaskUrl(workspaceId: string, projectId: string, taskId: string) {
-  const clientUrl = process.env.KANEO_CLIENT_URL || "http://localhost:5173";
+  const clientUrl = process.env.TASKDESK_AGENT_URL || "http://localhost:5173";
   return `${clientUrl}/dashboard/workspace/${workspaceId}/project/${projectId}/task/${taskId}`;
 }
 

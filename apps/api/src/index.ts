@@ -155,7 +155,7 @@ export function createApp() {
   const { upgradeWebSocket, injectWebSocket } = nodeWs;
   const corsOriginSource = [
     process.env.CORS_ORIGINS,
-    process.env.KANEO_CLIENT_URL,
+    process.env.TASKDESK_AGENT_URL,
   ].find((value) => value?.trim());
   const corsOrigins = corsOriginSource
     ?.split(",")
@@ -166,7 +166,7 @@ export function createApp() {
 
   if (!corsOrigins && !reflectUnconfiguredOrigins) {
     console.warn(
-      "[cors] Neither CORS_ORIGINS nor KANEO_CLIENT_URL is set, so cross-origin requests are refused. Same-origin deployments (the bundled image) are unaffected; set KANEO_CLIENT_URL if the web app is served from another origin.",
+      "[cors] Neither CORS_ORIGINS nor TASKDESK_AGENT_URL is set, so cross-origin requests are refused. Same-origin deployments (the bundled image) are unaffected; set TASKDESK_AGENT_URL if the web app is served from another origin.",
     );
   }
 
@@ -496,7 +496,7 @@ export function createApp() {
       // Optional `ui=1` forces redirect when Sec-Fetch-* headers are missing (e.g. some clients).
       if (forceUiRedirect || secFetchDest === "document") {
         const clientUrl = (
-          process.env.KANEO_CLIENT_URL || "http://localhost:5173"
+          process.env.TASKDESK_AGENT_URL || "http://localhost:5173"
         ).replace(/\/$/, "");
         const deviceUrl = new URL(`${clientUrl}/device`);
         if (userCode) {

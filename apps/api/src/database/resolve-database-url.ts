@@ -1,6 +1,9 @@
 const LOCAL_FALLBACK_CONNECTION_STRING = "postgresql://localhost:5432/taskdesk";
 
-type DatabaseConfigSource = "DATABASE_URL" | "POSTGRES_ENV" | "LOCAL_FALLBACK";
+type DatabaseConfigSource =
+  | "TASKDESK_DATABASE_URL"
+  | "POSTGRES_ENV"
+  | "LOCAL_FALLBACK";
 
 export type ResolvedDatabaseConfig = {
   connectionString: string;
@@ -48,14 +51,17 @@ function toResolvedConfig(
 }
 
 export function resolveDatabaseConfig(): ResolvedDatabaseConfig {
-  if (process.env.DATABASE_URL) {
-    return toResolvedConfig(process.env.DATABASE_URL, "DATABASE_URL");
+  if (process.env.TASKDESK_DATABASE_URL) {
+    return toResolvedConfig(
+      process.env.TASKDESK_DATABASE_URL,
+      "TASKDESK_DATABASE_URL",
+    );
   }
 
   if (getDerivationSignal()) {
     if (!process.env.POSTGRES_PASSWORD) {
       throw new Error(
-        "POSTGRES_PASSWORD must be set when deriving DATABASE_URL from POSTGRES_* variables",
+        "POSTGRES_PASSWORD must be set when deriving TASKDESK_DATABASE_URL from POSTGRES_* variables",
       );
     }
 

@@ -36,7 +36,7 @@ describe("mergeMcpServerEntry", () => {
     const out = mergeMcpServerEntry(existing, "taskdesk", {
       command: "/usr/bin/node",
       args: ["/app/index.js"],
-      env: { KANEO_API_URL: "http://localhost:1337" },
+      env: { TASKDESK_API_URL: "http://localhost:1337" },
     });
     expect(JSON.parse(out)).toEqual({
       other: true,
@@ -45,7 +45,7 @@ describe("mergeMcpServerEntry", () => {
         taskdesk: {
           command: "/usr/bin/node",
           args: ["/app/index.js"],
-          env: { KANEO_API_URL: "http://localhost:1337" },
+          env: { TASKDESK_API_URL: "http://localhost:1337" },
         },
       },
     });

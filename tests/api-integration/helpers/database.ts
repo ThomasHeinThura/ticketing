@@ -25,17 +25,19 @@ function quoteIdentifier(identifier: string) {
 }
 
 async function ensureTestDatabaseExists() {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = process.env.TASKDESK_DATABASE_URL;
 
   if (!connectionString) {
-    throw new Error("DATABASE_URL must be defined for integration tests");
+    throw new Error(
+      "TASKDESK_DATABASE_URL must be defined for integration tests",
+    );
   }
 
   const databaseName = getDatabaseName(connectionString);
 
   if (!databaseName.endsWith("_test")) {
     throw new Error(
-      `Refusing to manage non-test database "${databaseName}". DATABASE_URL must point to a test database.`,
+      `Refusing to manage non-test database "${databaseName}". TASKDESK_DATABASE_URL must point to a test database.`,
     );
   }
 
