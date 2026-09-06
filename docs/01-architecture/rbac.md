@@ -287,19 +287,33 @@ kinds — the specs may use no other form, and the route-coverage test rejects a
 
 ```ts
 type Policy = (
-  | { capability: Capability; scope: Scope; orOwner?: OwnerBranch; orSelfTarget?: BodyPredicate } // 1. capability, optionally satisfied by an owner branch
+  | { capability: Capability; scope: Scope; orOwner?: OwnerBranch; orSelfTarget?: SelfTargetBranch } // 1. capability, optionally satisfied by an owner or self-target branch
   | { authenticated: true; self: true }                                  // 2. the caller's own records only (/api/me/*)
   | { portal: 'customer'; predicate: PortalPredicate }                   // 3. a customer session on /api/portal/*, scoped by predicate
   | { public: true; reason: string }                                     // 4. unauthenticated, with a stated reason
   | { delegated: 'better-auth' | 'websocket' | 'metrics' | 'scim'; reason: string } // 5. mounts outside the session model, allowlisted explicitly
-) & { elevated?: true; sessionOnly?: true };                             // declared on the route, not in a prose table
+) & { elevated?: boolean; elevationExemptionReason?: string; sessionOnly?: true }; // declared on the route, not in a prose table
 
 type Scope = 'instance' | 'workspace' | 'project' | 'work_item' | 'organisation';
 type OwnerBranch = { predicate: OwnerPredicate; capability: Capability; withinMinutes?: number };
+type SelfTargetBranch = { predicate: BodyPredicate; capability: Capability };
 type OwnerPredicate = 'row.person_id === identity.personId' | 'row.created_by === identity.personId' | 'row.requester_id === identity.personId';
 type BodyPredicate = 'body.assigneeId === identity.personId';
 type PortalPredicate = 'own_request' | 'own_organisation' | 'addressed_approval' | 'own_submission';
 ```
+
+Two fields in that block were tightened while the registry was built (#7), because the
+document contradicted itself in both places:
+
+- **`elevated` is a boolean, not `true`.** The elevation coverage test below demands "an
+  explicit `elevated: false` with a written reason" for a route the rule catches but that does
+  not need a step-up, and `elevated?: true` cannot express one. `elevationExemptionReason` is
+  that reason, and the registry refuses `elevated: false` without it.
+- **`orSelfTarget` carries a capability, like `orOwner`.** As a bare predicate it would be a
+  bypass: a `viewer` whose body names themselves would pass a route requiring
+  `work_item:assign`. The roles table above already settles what the conjunction is —
+  "self-assignment by a `member` is `work_item:update` on an item where the new assignee is
+  the actor" — so the branch names it.
 
 - **Kind 1** is the normal case. The owner branch is a **conjunction, not a bypass**: the
   primary capability is checked first, and if it is absent the request is allowed only when
@@ -358,7 +372,8 @@ export const workItemPolicies = {
   'POST  /api/projects/{projectId}/work-items': { capability: 'work_item:create', scope: 'project' },
   'GET   /api/work-items/{key}':                { capability: 'work_item:read',   scope: 'work_item' },
   'POST  /api/work-items/{key}/assign':         { capability: 'work_item:assign', scope: 'work_item',
-                                                  orSelfTarget: 'body.assigneeId === identity.personId' },
+                                                  orSelfTarget: { predicate: 'body.assigneeId === identity.personId',
+                                                                  capability: 'work_item:update' } },
   'PATCH /api/comments/{id}':                   { capability: 'comment:update_any', scope: 'work_item',
                                                   orOwner: { predicate: 'row.person_id === identity.personId',
                                                              capability: 'comment:update_own', withinMinutes: 15 } },
@@ -390,6 +405,15 @@ Three CI tests make this load-bearing:
    capability is in the declared `AUTHORITY_GRANTING` set, must carry `elevated: true` or an
    explicit `elevated: false` with a written reason. A new authority-minting route that
    nobody remembered to list therefore fails the build instead of shipping unprotected.
+   `AUTHORITY_GRANTING` is `packages/permissions/src/elevated.ts`, and it is the eight
+   capabilities every row of the elevated table below is reachable through:
+   `instance:admin`, `instance:manage_plugins`, `workspace:manage_members` (granting
+   `sees_all`), `workspace:manage_roles` (a role editor mints authority up to the editor's
+   own rank), `project:manage_members` (the two reach-affecting fields),
+   `api_key:manage`, `webhook:manage` (a standing outbound channel, `WH-14`) and
+   `change:manage` (the freeze override). The test also asserts the other half of the rule:
+   **an elevated route is always `sessionOnly`**, since an elevated route that forgets it is
+   reachable from a personal API key.
 5. **Session-only test** — `tests/permissions/session-only.test.ts` enumerates its cases
    **from the `sessionOnly` field** in the registry, not from a second hand-kept list.
 
@@ -424,6 +448,12 @@ Mode, the security model and the feature specs cite it rather than restating it.
 `policy.ts` files.** Edit the registry, not this table; a hand-added row here that no policy
 declares fails the generation check, and a policy that declares `elevated: true` and is
 missing here fails it too.
+
+The first half of that check is **scoped to routes the router actually has**, because most of
+the routes below arrive with P1 and P4: a row naming a route that does not exist yet is a
+specification, not a defect. It arms itself route by route as each one lands, and the second
+half — a policy declaring `elevated: true` that this table does not carry — is enforced from
+the first day.
 
 | Action | Route |
 | --- | --- |

@@ -46,10 +46,19 @@ the failure is at boot, not at request time.
 
 ### 2. Route coverage test
 
-`tests/permissions/route-coverage.test.ts` enumerates every route in the generated OpenAPI
-document and fails if any lacks a policy. A public route must supply `public: true` **and
+`tests/permissions/route-coverage.test.ts` enumerates every route in **Hono's router**
+(`app.routes`) and fails if any lacks a policy. A public route must supply `public: true` **and
 a `reason` string**, making "this is public" a deliberate, reviewable act rather than an
 absence.
+
+> **Correction, 2026-09-06 (#7).** This section originally said "the generated OpenAPI
+> document". Reading kaneo's real source settled it the other way, and
+> [rbac.md](../rbac.md#route-policies--the-anti-v1-mechanism) already carries the corrected
+> wording: the OpenAPI document cannot see the routes registered inline in `index.ts`, the
+> `/auth/*` mount, the websocket upgrades or `/metrics` — and `createRoute({ security: [] })`
+> edits the document with **zero runtime effect**, so the document and the enforcement can
+> disagree silently. Those are precisely the surfaces v1 leaked through. The decision — every
+> route declares its policy, CI proves it — is unchanged; only the thing being enumerated is.
 
 ### 3. Permission matrix test
 
