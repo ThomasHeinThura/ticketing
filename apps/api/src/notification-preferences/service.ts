@@ -8,7 +8,7 @@ import {
   userNotificationWorkspaceRuleTable,
   workspaceUserTable,
 } from "../database/schema";
-import { assertPublicWebhookDestination } from "../plugins/generic-webhook/config";
+import { assertPublicWebhookDestination } from "../utils/assert-public-destination";
 import { decryptSecret, encryptSecret } from "./secrets";
 
 export type NotificationPreferenceProjectMode = "all" | "selected";

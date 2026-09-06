@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import * as Sentry from "@sentry/node";
-import { assertPublicWebhookDestination } from "./config";
+import { assertPublicWebhookDestination } from "../../utils/assert-public-destination";
 
 type GenericWebhookPayload = Record<string, unknown>;
 
