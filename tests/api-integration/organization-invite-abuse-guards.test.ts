@@ -7,6 +7,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createWorkspaceViaPlugin,
   extractSessionCookie,
+  nextClientIp,
   signUpUser,
 } from "./helpers/organization-http";
 
@@ -85,42 +86,27 @@ describe("R1: /organization/invite-member cloud abuse gates (auth.ts:671-706)", 
     expect(invitationRows).toHaveLength(0);
   });
 
-  it("blocks an anonymous/guest session from sending a workspace invitation on cloud", async () => {
-    // apps/api/src/auth.ts:684-698. The guard checks the SESSION user's
-    // isAnonymous flag before anything about membership or permissions is
-    // evaluated, so this fires even though the anonymous user is not a
-    // member of the target workspace at all.
+  it("FINDING: the gate's isAnonymous branch is UNREACHABLE on this baseline — #6 removed anonymous() sign-in", async () => {
+    // auth.ts:640 still refuses an invitation from a session whose user has
+    // isAnonymous set. On the #16 baseline that branch cannot be reached: #6
+    // removed the anonymous() plugin (auth.ts:234), so nothing mints an
+    // anonymous user and /sign-in/anonymous does not exist.
+    //
+    // Characterized rather than asserted-around. The branch is harmless — it is
+    // defence in depth if guest access ever returns — but a test claiming to
+    // cover it would be claiming coverage this baseline cannot provide, and S4-S7
+    // would inherit that false assurance.
     const { app } = createApp();
-    const owner = await signUpUser(app);
-    const created = await createWorkspaceViaPlugin(app, owner.cookie);
-    const workspace = (await created.json()) as { id: string };
 
-    const anonSignIn = await app.request("/api/auth/sign-in/anonymous", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-    });
-    expect(anonSignIn.status).toBe(200);
-    const anonCookie = extractSessionCookie(anonSignIn);
-
-    const response = await app.request("/api/auth/organization/invite-member", {
+    const anonymous = await app.request("/api/auth/sign-in/anonymous", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        cookie: anonCookie,
+        "x-forwarded-for": nextClientIp(),
       },
-      body: JSON.stringify({
-        organizationId: workspace.id,
-        email: `guest-invitee-${randomUUID()}@example.com`,
-        role: "member",
-      }),
     });
-    expect(response.status).toBe(403);
-    await expect(response.text()).resolves.toMatch(/Guest accounts/);
 
-    const invitationRows = await db
-      .select()
-      .from(schema.invitationTable)
-      .where(eq(schema.invitationTable.workspaceId, workspace.id));
-    expect(invitationRows).toHaveLength(0);
+    // 404: the route is gone with the plugin.
+    expect(anonymous.status).toBe(404);
   });
 });
