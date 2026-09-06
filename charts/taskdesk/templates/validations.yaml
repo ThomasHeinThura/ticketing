@@ -1,6 +1,34 @@
 {{- $publicExposureEnabled := or .Values.ingress.enabled .Values.gateway.enabled -}}
+{{/*
+Fail closed on every required bootstrap value.
+
+The chart refuses to render rather than shipping a placeholder. A rendered
+install that starts with an empty secret is the failure this replaces: an absent
+TASKDESK_AUTH_SECRET once fell through to a constant published in better-auth's
+own source (decision log, 2026-09-06). The application now refuses to start
+without it, so an empty default would only move the failure later and make it
+harder to read.
+
+There is deliberately no generated-on-install fallback. See the note in
+values.yaml: Helm regenerates a `randAlphaNum` default on every upgrade unless a
+`lookup` guards it, and `lookup` is empty under `helm template`, `--dry-run` and
+most GitOps renderers — so the "convenient" option silently rotates the session
+secret and the plugin encryption key on upgrade.
+*/}}
 {{- if and (not .Values.taskdesk.env.existingSecret.enabled) (or (not .Values.taskdesk.env.authSecret) (lt (len (.Values.taskdesk.env.authSecret | toString)) 32)) -}}
-{{- fail "taskdesk.env.authSecret must be explicitly set to at least 32 characters or provided via taskdesk.env.existingSecret" -}}
+{{- fail "\ntaskdesk.env.authSecret is required and must be at least 32 characters.\n  Generate one:  openssl rand -hex 32\n  Or reference an existing Secret: taskdesk.env.existingSecret.{enabled,name,key}\nRotating it signs every user out, so generate it once and keep it." -}}
+{{- end -}}
+{{- if and (not .Values.taskdesk.env.encryptionKeyExistingSecret.enabled) (or (not .Values.taskdesk.env.encryptionKey) (lt (len (.Values.taskdesk.env.encryptionKey | toString)) 32)) -}}
+{{- fail "\ntaskdesk.env.encryptionKey is required and must be at least 32 characters.\n  Generate one:  openssl rand -hex 32\n  Or reference an existing Secret: taskdesk.env.encryptionKeyExistingSecret.{enabled,name,key}\nLose it and every configured integration must be reconfigured, so back it up." -}}
+{{- end -}}
+{{- if not .Values.taskdesk.env.clientUrl -}}
+{{- fail "\ntaskdesk.env.clientUrl is required: the public agent origin, e.g. https://ticket.example.com" -}}
+{{- end -}}
+{{- if not .Values.taskdesk.env.portalUrl -}}
+{{- fail "\ntaskdesk.env.portalUrl is required: the public portal origin, e.g. https://portal.example.com.\nIt must be a different hostname from clientUrl — a separate cookie scope is what keeps portal sessions out of the agent application (ADR 0004)." -}}
+{{- end -}}
+{{- if and .Values.taskdesk.env.clientUrl .Values.taskdesk.env.portalUrl (eq .Values.taskdesk.env.clientUrl .Values.taskdesk.env.portalUrl) -}}
+{{- fail "\ntaskdesk.env.clientUrl and taskdesk.env.portalUrl must be different hostnames (ADR 0004)." -}}
 {{- end -}}
 {{- if and $publicExposureEnabled .Values.postgresql.enabled (not .Values.postgresql.auth.existingSecret) (eq .Values.postgresql.auth.password "taskdesk_password") -}}
 {{- fail "postgresql.auth.password must be changed or provided via postgresql.auth.existingSecret before enabling ingress or gateway" -}}

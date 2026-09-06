@@ -83,19 +83,66 @@ taskdesk:
   #     memory: 128Mi
 
   env:
-    # Public URL of this TaskDesk instance (e.g. https://taskdesk.example.com)
-    # KANEO_API_URL is derived automatically as clientUrl/api if not set
+    # --------------------------------------------------------------------
+    # The five required bootstrap variables.
+    # docs/05-operations/configuration-reference.md is the authority; nothing
+    # here may introduce a name that is not in it.
+    #
+    # THERE IS NO DEFAULT FOR ANY SECRET, AND THERE MUST NOT BE. The chart
+    # refuses to render when one is missing (templates/validations.yaml) and
+    # says which value to set. That is deliberate: an install that starts with
+    # a placeholder secret is worse than one that will not start, and an
+    # absent TASKDESK_AUTH_SECRET once fell through to a constant published in
+    # better-auth's own source, signing every session cookie with a value
+    # anyone can read (decision log, 2026-09-06).
+    #
+    # Why not generate one on install? Because Helm has no memory: a
+    # `randAlphaNum` default is a NEW secret on every `helm upgrade` unless it
+    # is guarded by a `lookup`, and `lookup` returns nothing under
+    # `helm template`, `--dry-run` and most GitOps renderers. Rotating
+    # TASKDESK_AUTH_SECRET signs every user out; rotating
+    # TASKDESK_ENCRYPTION_KEY makes every stored plugin secret unreadable. A
+    # required value that fails loudly is the safer contract, and
+    # `existingSecret` is the recommended production form of it.
+    # --------------------------------------------------------------------
+
+    # Public agent origin -> TASKDESK_AGENT_URL (e.g. https://ticket.example.com)
     clientUrl: ""
+    # Public portal origin -> TASKDESK_PORTAL_URL (e.g. https://portal.example.com)
+    # A separate hostname, and therefore a separate cookie scope, is not
+    # optional: it is what keeps portal sessions out of the agent application
+    # (ADR 0004).
+    portalUrl: ""
     # Allowed CORS origins. Accepts a comma-separated string or YAML list.
     # Defaults to clientUrl when left empty.
     corsOrigins: []
-    # Required Better Auth secret (minimum 32 characters), unless existingSecret is enabled.
+    # Session signing -> TASKDESK_AUTH_SECRET. 64 hex characters.
     # Generate with: openssl rand -hex 32
+    # Required unless existingSecret.enabled.
     authSecret: ""
     existingSecret:
       enabled: false
       name: ""
       key: auth-secret
+    # Plugin-secret encryption -> TASKDESK_ENCRYPTION_KEY. 64 hex characters.
+    # Generate with: openssl rand -hex 32
+    # LOSE THIS AND EVERY CONFIGURED INTEGRATION MUST BE RECONFIGURED.
+    # Required unless encryptionKeyExistingSecret.enabled.
+    encryptionKey: ""
+    encryptionKeyExistingSecret:
+      enabled: false
+      name: ""
+      key: encryption-key
+    # production | development. In development only, HTTP webhook targets are
+    # permitted (WH-12). Leave it alone: several inherited security checks
+    # compared against the literal string "production", so an unset NODE_ENV
+    # meant "not production" and opened them.
+    nodeEnv: production
+    # Number of trusted reverse-proxy hops, NOT a boolean. Left empty on
+    # purpose: it depends on what sits in front of the Ingress, and an
+    # unmeasured guess on a security boundary is worse than an explicit gap.
+    # Measure it, then set it: docs/05-operations/proxy-topology-evidence.md
+    trustProxy: ""
     disableRegistration: false
     disablePasswordRegistration: false
     disableEmailOtpSignIn: false
@@ -139,15 +186,18 @@ taskdesk:
   # extraEnvFrom:
   #   - secretRef:
   #       name: oauth-secret
+  # Liveness touches no dependency, so a Postgres blip never restarts a healthy
+  # pod and turn a brief outage into a long one. Readiness is where the
+  # database check belongs. docs/05-operations/deployment.md § Health and readiness
   livenessProbe:
     httpGet:
-      path: /api/health
+      path: /api/public/health/live
       port: taskdesk
     initialDelaySeconds: 60
     periodSeconds: 10
   readinessProbe:
     httpGet:
-      path: /api/health
+      path: /api/public/health/ready
       port: taskdesk
     initialDelaySeconds: 30
     periodSeconds: 10

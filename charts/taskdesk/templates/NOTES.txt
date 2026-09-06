@@ -50,12 +50,45 @@ NOTES:
    Using an external database connection.
    {{- end }}
 
-2. Important environment variables:
-   - AUTH_SECRET: Secret key for Better Auth
-   - KANEO_CLIENT_URL: Public URL of this instance (currently set to: "{{ .Values.taskdesk.env.clientUrl }}")
-   - DATABASE_URL: Derived from postgresql.auth values unless taskdesk.env.database.external.enabled=true
+2. Bootstrap configuration. Five variables, and nothing else — everything else
+   (storage, mail, identity providers, branding, features, roles) is configured
+   in God Mode and stored in the database.
 
-   You can customize these values in your values.yaml file.
+   - TASKDESK_DATABASE_URL   derived from postgresql.auth, unless
+                             taskdesk.env.database.external.enabled=true
+   - TASKDESK_ENCRYPTION_KEY taskdesk.env.encryptionKey, or
+                             taskdesk.env.encryptionKeyExistingSecret
+   - TASKDESK_AUTH_SECRET    taskdesk.env.authSecret, or
+                             taskdesk.env.existingSecret
+   - TASKDESK_AGENT_URL      taskdesk.env.clientUrl  ("{{ .Values.taskdesk.env.clientUrl }}")
+   - TASKDESK_PORTAL_URL     taskdesk.env.portalUrl  ("{{ .Values.taskdesk.env.portalUrl }}")
 
-3. The taskdesk image combines the API and web frontend in a single container.
-   nginx runs on port 5173 and proxies /api/ requests to the internal Node API.
+   Neither secret has a default and neither is generated for you. The chart
+   refuses to render without them and tells you which one is missing. For a
+   production install, put both in a Secret you manage and reference it:
+
+     kubectl create secret generic taskdesk-secrets \
+       --from-literal=auth-secret="$(openssl rand -hex 32)" \
+       --from-literal=encryption-key="$(openssl rand -hex 32)"
+
+     helm upgrade --install ... \
+       --set taskdesk.env.existingSecret.enabled=true \
+       --set taskdesk.env.existingSecret.name=taskdesk-secrets \
+       --set taskdesk.env.encryptionKeyExistingSecret.enabled=true \
+       --set taskdesk.env.encryptionKeyExistingSecret.name=taskdesk-secrets
+
+   Back up the encryption key. Losing it means every configured integration
+   must be reconfigured. Rotating the auth secret signs everyone out.
+
+3. First run. On an empty database the application serves a one-time setup page,
+   unlocked by a token printed in the container log:
+
+     $ kubectl logs -n {{ .Release.Namespace }} deploy/{{ include "taskdesk.fullname" . }} | grep -i setup
+
+   The token is reissued, and the previous one invalidated, on every restart
+   until the first administrator has been created.
+
+4. The image serves the API and BOTH web bundles from one Node process on port
+   {{ .Values.taskdesk.service.targetPort }}, selecting the bundle by Host header. There is no nginx in it.
+   That is why the agent and portal hostnames must both be routed to this
+   Service, and why they must be different hostnames.

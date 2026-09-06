@@ -49,10 +49,36 @@ spec:
               containerPort: {{ .Values.taskdesk.service.targetPort }}
               protocol: TCP
           env:
+            # NODE_ENV is set explicitly and is not allowed to be absent.
+            # Several inherited checks compared against the literal string
+            # "production"; unset therefore meant "not production" and opened
+            # them — credentialed CORS reflecting any origin, among others
+            # (decision log, 2026-09-06). The image sets it too; this makes the
+            # chart's intent readable in `kubectl describe pod`.
+            - name: NODE_ENV
+              value: {{ .Values.taskdesk.env.nodeEnv | default "production" | quote }}
+            - name: TASKDESK_PORT
+              value: {{ .Values.taskdesk.service.targetPort | quote }}
             - name: TASKDESK_AGENT_URL
               value: "{{ .Values.taskdesk.env.clientUrl }}"
+            - name: TASKDESK_PORTAL_URL
+              value: "{{ .Values.taskdesk.env.portalUrl }}"
+            {{- with .Values.taskdesk.env.trustProxy }}
+            # Measured, never guessed: docs/05-operations/proxy-topology-evidence.md
+            - name: TASKDESK_TRUST_PROXY
+              value: {{ . | quote }}
+            {{- end }}
             - name: CORS_ORIGINS
               value: {{ $corsOriginsValue | quote }}
+            - name: TASKDESK_ENCRYPTION_KEY
+              {{- if .Values.taskdesk.env.encryptionKeyExistingSecret.enabled }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.taskdesk.env.encryptionKeyExistingSecret.name }}
+                  key: {{ .Values.taskdesk.env.encryptionKeyExistingSecret.key }}
+              {{- else }}
+              value: {{ .Values.taskdesk.env.encryptionKey | quote }}
+              {{- end }}
             - name: TASKDESK_AUTH_SECRET
               {{- if .Values.taskdesk.env.existingSecret.enabled }}
               valueFrom:
