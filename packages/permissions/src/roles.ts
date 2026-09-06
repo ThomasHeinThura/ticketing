@@ -20,6 +20,9 @@ import {
   CAPABILITIES,
   CAPABILITY_NAMES,
   type Capability,
+  type CapabilityTier,
+  isCapability,
+  tierPermits,
 } from "./capabilities";
 
 /** The scope a role may be attached at. `organisation` exists for exactly one system role: `customer`. */
@@ -278,3 +281,66 @@ export const INHERITED_ROLE_KEYS = [
   "admin",
   "owner",
 ] as const satisfies readonly BuiltInRoleKey[];
+
+/* ------------------------------------------------------------------ *
+ * Role/capability composition — finding 6
+ * ------------------------------------------------------------------ */
+
+/** The container tier a role at `scope` carries. Only an instance-scope role is instance-tier. */
+export function roleScopeTier(scope: RoleScope): CapabilityTier {
+  return scope === "instance" ? "instance" : "workspace";
+}
+
+export class RoleCompositionError extends Error {}
+
+export type RoleCompositionProblem = {
+  readonly capability: Capability;
+  readonly reason: string;
+};
+
+/**
+ * Which capabilities in `capabilities` exceed what a role scoped at `scope` may hold.
+ *
+ * This is the **grant-time** half of the tier invariant — the earliest boundary at which an
+ * invalid role/capability composition can be rejected, before the row is ever saved. It is not
+ * the only defence: `role.capabilities` is JSON, so a row can also arrive from a migration, a
+ * seed script, a plugin fixture, a restored backup, or another service writing the table
+ * directly, none of which run through this check. `expandCapabilities`'s tier clamp
+ * (`evaluator.ts`) is the **evaluation-time** half, for exactly that row.
+ *
+ * An unrecognised string is not flagged here — that is `expandCapabilities`'s `onUnknown`
+ * concern, not a composition problem.
+ */
+export function roleCompositionProblems(
+  scope: RoleScope,
+  capabilities: readonly string[],
+): RoleCompositionProblem[] {
+  const tier = roleScopeTier(scope);
+  const problems: RoleCompositionProblem[] = [];
+  for (const name of capabilities) {
+    if (!isCapability(name)) continue;
+    if (!tierPermits(tier, name)) {
+      problems.push({
+        capability: name,
+        reason: `${name} is instance-tier authority; a ${scope}-scope role may never hold it`,
+      });
+    }
+  }
+  return problems;
+}
+
+/** Throws `RoleCompositionError` when `role` names a capability its scope may not hold. */
+export function assertRoleComposition(role: {
+  readonly key: string;
+  readonly scope: RoleScope;
+  readonly capabilities: readonly string[];
+}): void {
+  const problems = roleCompositionProblems(role.scope, role.capabilities);
+  if (problems.length > 0) {
+    throw new RoleCompositionError(
+      `Role "${role.key}" (${role.scope}-scope) cannot hold: ${problems
+        .map((problem) => problem.capability)
+        .join(", ")}`,
+    );
+  }
+}

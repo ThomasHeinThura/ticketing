@@ -287,8 +287,8 @@ kinds — the specs may use no other form, and the route-coverage test rejects a
 
 ```ts
 type Policy =
-  | ({ capability: Capability; scope: Scope; reach: ReachRequirement;      // 1. capability, optionally satisfied by an owner or self-target branch
-      orOwner?: OwnerBranch; orSelfTarget?: SelfTargetBranch } & Flags)
+  | ({ capability: Capability; scope: Scope; scopeSource: ScopeSource;     // 1. capability, optionally satisfied by an owner or self-target branch
+      reach: ReachRequirement; orOwner?: OwnerBranch; orSelfTarget?: SelfTargetBranch } & Flags)
   | ({ authenticated: true; self: true; personParam: PersonParam } & Flags) // 2. the caller's own records only (/api/me/*)
   | ({ portal: 'customer'; predicate: PortalPredicate } & Flags)           // 3. a customer session on /api/portal/*, scoped by predicate
   | ({ public: true; reason: string } & PublicFlags)                       // 4. unauthenticated, with a stated reason
@@ -310,6 +310,12 @@ type ReachRequirement = 'required' | { exempt: 'no_single_resource'; reason: str
 type PersonParam = string | { exempt: 'no_person_parameter'; reason: string };
 
 type Scope = 'instance' | 'workspace' | 'project' | 'work_item' | 'organisation';
+// Where the scope id must legitimately come from. "row" — a route addressing one resource by
+// {id}: the id (and, for project/work_item, its containment chain) is read from that resource's
+// own row, in the same query that loads it. "request" — a collection route or a create, where
+// there is no row yet, so the id legitimately comes from the request itself (a path parameter or
+// the X-Workspace-Id header). Required, and not defaulted — see "Workspace context" below.
+type ScopeSource = 'row' | 'request';
 type OwnerBranch = { predicate: OwnerPredicate; capability: Capability; withinMinutes?: number };
 type SelfTargetBranch = { predicate: BodyPredicate; capability: Capability };
 type OwnerPredicate = 'row.person_id === identity.personId' | 'row.created_by === identity.personId' | 'row.requester_id === identity.personId';

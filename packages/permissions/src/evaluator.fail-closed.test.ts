@@ -65,6 +65,7 @@ function expectContextRefusal(decision: ReturnType<typeof evaluatePolicy>) {
 const REACH_REQUIRED: Policy = {
   capability: "project:read",
   scope: "project",
+  scopeSource: "row",
   reach: "required",
 };
 
@@ -168,6 +169,7 @@ describe("missing security context is never allow", () => {
     const reachExempt: Policy = {
       capability: "project:read",
       scope: "project",
+      scopeSource: "request",
       reach: {
         exempt: "no_single_resource",
         reason: "a collection scoped by the query itself",

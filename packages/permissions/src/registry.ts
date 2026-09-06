@@ -24,6 +24,7 @@ import {
   type PolicyMap,
   policyKind,
   type RouteKey,
+  SCOPE_SOURCES,
   SCOPES,
 } from "./policy";
 
@@ -53,6 +54,7 @@ export type PolicyRegistry = {
 };
 
 const SCOPE_SET: ReadonlySet<string> = new Set(SCOPES);
+const SCOPE_SOURCE_SET: ReadonlySet<string> = new Set(SCOPE_SOURCES);
 const OWNER_PREDICATE_SET: ReadonlySet<string> = new Set(OWNER_PREDICATES);
 const BODY_PREDICATE_SET: ReadonlySet<string> = new Set(BODY_PREDICATES);
 const PORTAL_PREDICATE_SET: ReadonlySet<string> = new Set(PORTAL_PREDICATES);
@@ -95,6 +97,11 @@ export function validatePolicy(routeKey: string, policy: Policy): string[] {
     }
     if (!SCOPE_SET.has(policy.scope)) {
       problems.push(`${at}: unknown scope ${String(policy.scope)}`);
+    }
+    if (!SCOPE_SOURCE_SET.has(policy.scopeSource)) {
+      problems.push(
+        `${at}: scopeSource must be "row" or "request" (got ${String(policy.scopeSource)}) — it is not optional, and there is no default`,
+      );
     }
     problems.push(
       ...reachProblems(at, policy.reach, policy.orOwner !== undefined),

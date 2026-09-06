@@ -28,6 +28,7 @@ describe("the elevated-action list is generated, never hand-maintained", () => {
     "DELETE /api/webhooks/{id}": {
       capability: "webhook:manage",
       scope: "workspace",
+      scopeSource: "request",
       reach: {
         exempt: "no_single_resource",
         reason: "a workspace-scoped management action, not a single resource",
@@ -38,6 +39,7 @@ describe("the elevated-action list is generated, never hand-maintained", () => {
     "GET /api/project/{id}": {
       capability: "project:read",
       scope: "project",
+      scopeSource: "row",
       reach: "required",
     },
   });
@@ -71,6 +73,7 @@ describe("the elevation coverage rule", () => {
         "POST /api/instance/purge": {
           capability: "instance:admin",
           scope: "instance",
+          scopeSource: "request",
           reach: {
             exempt: "no_single_resource",
             reason: "an instance-wide action, not a single resource",
@@ -88,6 +91,7 @@ describe("the elevation coverage rule", () => {
         "POST /api/workspaces/{id}/api-keys": {
           capability: "api_key:manage",
           scope: "workspace",
+          scopeSource: "request",
           reach: {
             exempt: "no_single_resource",
             reason:
@@ -123,6 +127,7 @@ describe("the elevation coverage rule", () => {
           "GET /api/project/{id}": {
             capability: "project:read",
             scope: "project",
+            scopeSource: "row",
             reach: "required",
           },
         }),
@@ -144,6 +149,7 @@ describe("an elevated route is always session-only", () => {
           "POST /api/instance/users/{id}/impersonate": {
             capability: "instance:admin",
             scope: "instance",
+            scopeSource: "request",
             reach: {
               exempt: "no_single_resource",
               reason:

@@ -10,7 +10,7 @@
  * small dedicated pull request, never by a feature agent in passing.
  */
 
-import type { Capability } from "./capabilities";
+import type { Capability, CapabilityTier } from "./capabilities";
 import type { RoleScope } from "./roles";
 
 /** Which portal a person belongs to. One person, one organisation; a customer is never staff. */
@@ -109,6 +109,25 @@ export type ScopeTarget = {
 export type UnknownCapabilityHandler = (
   capability: string,
   context: { roleKey?: string; source: "role" | "api_key" },
+) => void;
+
+/**
+ * A stored `capability` is real, but the container holding it does not carry a high enough
+ * tier for it — an `instance:*` string sitting in a workspace-, project- or organisation-scope
+ * role row (finding 6). It is refused and treated as absent.
+ *
+ * This is not a warning to be tuned away: reaching this handler means a role row exists that
+ * the grant-time boundary (`roleCompositionProblems`, `assertRoleComposition` in `roles.ts`)
+ * should have refused before it was ever saved — a migration, a seed script, a plugin fixture,
+ * a restored backup, or another service writing the table directly.
+ */
+export type RefusedCapabilityHandler = (
+  capability: Capability,
+  context: {
+    roleKey?: string;
+    source: "role" | "api_key";
+    tier: CapabilityTier;
+  },
 ) => void;
 
 export type { Capability };

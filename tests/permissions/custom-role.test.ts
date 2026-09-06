@@ -1,11 +1,13 @@
 import {
   BUILT_IN_ROLES,
   can,
+  capabilitiesInGroup,
   evaluatePolicy,
   expandCapabilities,
   isCapabilityPolicy,
   type ResolvedIdentity,
   type RoleGrant,
+  roleCompositionProblems,
 } from "@taskdesk/permissions";
 import { describe, expect, it } from "vitest";
 import { loadPolicyRegistry } from "./api-app";
@@ -85,8 +87,14 @@ describe("an administrator-created role", () => {
     // A role saved by an older UI, or by the API, may hold only the ticked names. Implication
     // is expanded at evaluation time too, so the stored row still behaves correctly.
     const sparse = withRole(customRole("sparse", ["comment:update_any"]));
-    expect(can(sparse, "comment:update_own", MATRIX_TARGET)).toBe(true);
-    expect(can(sparse, "comment:create", MATRIX_TARGET)).toBe(true);
+    expect(
+      can(sparse, "comment:update_own", "workspace", {
+        workspaceId: WORKSPACE_ID,
+      }),
+    ).toBe(true);
+    expect(
+      can(sparse, "comment:create", "workspace", { workspaceId: WORKSPACE_ID }),
+    ).toBe(true);
   });
 
   it("treats a capability name this build does not know as absent", () => {
@@ -95,25 +103,63 @@ describe("an administrator-created role", () => {
     );
     const seen: string[] = [];
     expect(
-      can(stale, "work_item:read", MATRIX_TARGET, {
-        onUnknown: (name) => seen.push(name),
-      }),
+      can(
+        stale,
+        "work_item:read",
+        "workspace",
+        { workspaceId: WORKSPACE_ID },
+        {
+          onUnknown: (name) => seen.push(name),
+        },
+      ),
     ).toBe(true);
     expect(seen).toEqual(["work_item:supervise"]);
   });
 
   it("cannot mint instance authority through a workspace role", () => {
     // instance:admin is not grantable through workspace roles at all — nor through any identity
-    // connection, OIDC claim, SCIM attribute or group mapping.
+    // connection, OIDC claim, SCIM attribute or group mapping (rbac.md § "Roles are editable
+    // rows"). Three layers, all asserted here — the finding this test is named for was that its
+    // body asserted the opposite.
     const overreaching = withRole(
       customRole("shadow-admin", ["instance:admin", "workspace:read"]),
     );
-    // The role row can hold the string; what it cannot do is apply at a workspace scope…
+
+    // 1. Grant time — the composition is refused before a row like this one could ever be
+    //    saved (roles.ts's roleCompositionProblems, wired to whatever creates a custom role).
     expect(
-      can(overreaching, "instance:admin", { workspaceId: WORKSPACE_ID }),
+      roleCompositionProblems("workspace", [
+        "instance:admin",
+        "workspace:read",
+      ]),
+    ).toHaveLength(1);
+
+    // 2. Evaluation time, for the row some other process wrote anyway — a migration, a seed
+    //    script, a restored backup. The string grants NONE of the five instance capabilities,
+    //    scope named however the request happens to name the workspace.
+    for (const capability of capabilitiesInGroup("Instance")) {
+      expect(
+        can(overreaching, capability, "workspace", {
+          workspaceId: WORKSPACE_ID,
+        }),
+        capability,
+      ).toBe(false);
+      expect(
+        can(overreaching, capability, "workspace", {
+          instance: true,
+          workspaceId: WORKSPACE_ID,
+        }),
+        capability,
+      ).toBe(false);
+    }
+    // What was actually ticked still works — a clamp, not a blanket refusal.
+    expect(
+      can(overreaching, "workspace:read", "workspace", {
+        workspaceId: WORKSPACE_ID,
+      }),
     ).toBe(true);
-    // …which is why the guard that matters is at grant time, not evaluation time. Assert the
-    // seeded roles do not carry it, so no clone of a built-in role can spread it.
+
+    // 3. And the seeded roles never carry it, so no clone of a built-in role can spread it.
     for (const role of Object.values(BUILT_IN_ROLES)) {
       if (role.scope === "instance") continue;
       expect(role.capabilities, role.key).not.toContain("instance:admin");
@@ -132,10 +178,12 @@ describe("an administrator-created role", () => {
       ],
     };
     expect(
-      can(identity, "work_item:delete", { workspaceId: WORKSPACE_ID }),
+      can(identity, "work_item:delete", "workspace", {
+        workspaceId: WORKSPACE_ID,
+      }),
     ).toBe(true);
     expect(
-      can(identity, "work_item:delete", {
+      can(identity, "work_item:delete", "project", {
         workspaceId: WORKSPACE_ID,
         projectId: PROJECT_ID,
       }),

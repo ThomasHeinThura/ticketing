@@ -203,6 +203,7 @@ describe("computeRouteCoverage", () => {
           capability: "project:read",
           scope: "project",
           reach: "required",
+          scopeSource: "row",
         },
       }),
     );
@@ -220,6 +221,7 @@ describe("computeRouteCoverage", () => {
           capability: "project:read",
           scope: "project",
           reach: "required",
+          scopeSource: "row",
         },
       }),
       { uncovered: ["DELETE /api/project/{id}"] },
@@ -236,11 +238,13 @@ describe("computeRouteCoverage", () => {
           capability: "project:read",
           scope: "project",
           reach: "required",
+          scopeSource: "row",
         },
         "DELETE /api/project/{id}": {
           capability: "project:delete",
           scope: "project",
           reach: "required",
+          scopeSource: "row",
         },
       }),
       { uncovered: ["DELETE /api/project/{id}"] },
@@ -257,11 +261,13 @@ describe("computeRouteCoverage", () => {
           capability: "project:read",
           scope: "project",
           reach: "required",
+          scopeSource: "row",
         },
         "DELETE /api/project/{id}": {
           capability: "project:delete",
           scope: "project",
           reach: "required",
+          scopeSource: "row",
         },
       }),
       { uncovered: ["GET /api/public-project/{id}"] },
@@ -278,16 +284,19 @@ describe("computeRouteCoverage", () => {
           capability: "project:read",
           scope: "project",
           reach: "required",
+          scopeSource: "row",
         },
         "DELETE /api/project/{id}": {
           capability: "project:delete",
           scope: "project",
           reach: "required",
+          scopeSource: "row",
         },
         "GET /api/projects/{id}": {
           capability: "project:read",
           scope: "project",
           reach: "required",
+          scopeSource: "row",
         },
       }),
     );
@@ -330,6 +339,7 @@ describe("computeRouteCoverage", () => {
           capability: "project:read",
           scope: "project",
           reach: "required",
+          scopeSource: "row",
         },
       }),
     );
@@ -353,6 +363,7 @@ describe("computeRouteCoverage", () => {
           capability: "project:read",
           scope: "project",
           reach: "required",
+          scopeSource: "row",
         },
         "ALL /legacy/*": {
           delegated: "metrics",
@@ -401,6 +412,7 @@ describe("an undeclared wildcard surface is unclassified, not coverable", () => 
             capability: "project:read",
             scope: "project",
             reach: "required",
+            scopeSource: "row",
           },
           "GET /api/health": {
             public: true,

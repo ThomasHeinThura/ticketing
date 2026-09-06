@@ -14,6 +14,7 @@ export const projectPolicies = {
   "GET /api/project/{id}": {
     capability: "project:read",
     scope: "project",
+    scopeSource: "row",
     reach: "required",
   },
 } as const satisfies PolicyMap;

@@ -89,6 +89,7 @@ describe("authority", () => {
           grant({ roleKey: "extra", capabilities: ["work_item:export"] }),
         ],
       },
+      "workspace",
       { workspaceId: WORKSPACE },
     );
     expect(held.has("work_item:create")).toBe(true);
@@ -103,6 +104,7 @@ describe("authority", () => {
           grant({ scopeId: "ws-other", capabilities: ["project:delete"] }),
         ],
       },
+      "workspace",
       { workspaceId: WORKSPACE },
     );
     expect(held.size).toBe(0);
@@ -121,6 +123,7 @@ describe("authority", () => {
           }),
         ],
       },
+      "project",
       { workspaceId: WORKSPACE, projectId: PROJECT },
     );
     expect(held.has("work_item:read")).toBe(true);
@@ -139,6 +142,7 @@ describe("authority", () => {
           }),
         ],
       },
+      "workspace",
       { workspaceId: WORKSPACE },
     );
     expect(held.has("instance:manage_plugins")).toBe(true);
@@ -149,12 +153,14 @@ describe("authority", () => {
       authority: [grant({ capabilities: ["work_item:update"] })],
       keyCapabilities: ["work_item:read"],
     };
-    expect(can(withKey, "work_item:read", { workspaceId: WORKSPACE })).toBe(
-      true,
-    );
-    expect(can(withKey, "work_item:update", { workspaceId: WORKSPACE })).toBe(
-      false,
-    );
+    expect(
+      can(withKey, "work_item:read", "workspace", { workspaceId: WORKSPACE }),
+    ).toBe(true);
+    expect(
+      can(withKey, "work_item:update", "workspace", {
+        workspaceId: WORKSPACE,
+      }),
+    ).toBe(false);
   });
 });
 
@@ -242,7 +248,16 @@ describe("reach", () => {
 });
 
 describe("evaluatePolicy", () => {
-  const target = { workspaceId: WORKSPACE, projectId: PROJECT };
+  // workItemId/workItemProjectId are here so the work_item-scope policies below (comment and
+  // work_item:assign) resolve a scope at all — finding 4 made `evaluatePolicy` actually read
+  // `policy.scope`, so a work_item-scope policy now needs the target to name a work item, not
+  // just a project.
+  const target = {
+    workspaceId: WORKSPACE,
+    projectId: PROJECT,
+    workItemId: "wi-1",
+    workItemProjectId: PROJECT,
+  };
 
   // `inReach` defaults to `true` here so that every existing capability-kind test below keeps
   // exercising the code past the reach gate, the same way it did when the field was optional
@@ -269,7 +284,12 @@ describe("evaluatePolicy", () => {
 
   it("401s an anonymous caller on every other kind", () => {
     const policies: Policy[] = [
-      { capability: "work_item:read", scope: "project", reach: "required" },
+      {
+        capability: "work_item:read",
+        scope: "project",
+        scopeSource: "row",
+        reach: "required",
+      },
       { authenticated: true, self: true, personParam: "personId" },
       { portal: "customer", predicate: "own_request" },
     ];
@@ -282,7 +302,12 @@ describe("evaluatePolicy", () => {
 
   it("kind 1: allows when the capability is held", () => {
     const decision = evaluatePolicy(
-      { capability: "work_item:read", scope: "project", reach: "required" },
+      {
+        capability: "work_item:read",
+        scope: "project",
+        scopeSource: "row",
+        reach: "required",
+      },
       context({
         identity: identity({
           authority: [grant({ capabilities: ["work_item:read"] })],
@@ -294,7 +319,12 @@ describe("evaluatePolicy", () => {
 
   it("kind 1: 403s with the missing capability named", () => {
     const decision = evaluatePolicy(
-      { capability: "work_item:delete", scope: "project", reach: "required" },
+      {
+        capability: "work_item:delete",
+        scope: "project",
+        scopeSource: "row",
+        reach: "required",
+      },
       context({
         identity: identity({
           authority: [grant({ capabilities: ["work_item:read"] })],
@@ -310,7 +340,12 @@ describe("evaluatePolicy", () => {
 
   it("kind 1: 404s out of reach, before any capability is considered", () => {
     const decision = evaluatePolicy(
-      { capability: "work_item:read", scope: "project", reach: "required" },
+      {
+        capability: "work_item:read",
+        scope: "project",
+        scopeSource: "row",
+        reach: "required",
+      },
       context({
         inReach: false,
         identity: identity({
@@ -325,6 +360,7 @@ describe("evaluatePolicy", () => {
     const policy: Policy = {
       capability: "comment:update_any",
       scope: "work_item",
+      scopeSource: "row",
       reach: "required",
       orOwner: {
         predicate: "row.person_id === identity.personId",
@@ -378,6 +414,7 @@ describe("evaluatePolicy", () => {
     const policy: Policy = {
       capability: "comment:update_any",
       scope: "work_item",
+      scopeSource: "row",
       reach: "required",
       orOwner: {
         predicate: "row.person_id === identity.personId",
@@ -423,6 +460,7 @@ describe("evaluatePolicy", () => {
     const policy: Policy = {
       capability: "work_item:assign",
       scope: "work_item",
+      scopeSource: "row",
       reach: "required",
       orSelfTarget: {
         predicate: "body.assigneeId === identity.personId",
@@ -505,6 +543,7 @@ describe("evaluatePolicy", () => {
     const policy: Policy = {
       capability: "webhook:manage",
       scope: "workspace",
+      scopeSource: "row",
       reach: "required",
       elevated: true,
       sessionOnly: true,
@@ -580,6 +619,7 @@ describe("declared security metadata is never inert", () => {
       {
         capability: "project:read",
         scope: "project",
+        scopeSource: "row",
         reach: "required",
         elevated: true,
         sessionOnly: true,

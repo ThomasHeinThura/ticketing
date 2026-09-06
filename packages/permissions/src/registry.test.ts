@@ -149,6 +149,7 @@ describe("createPolicyRegistry", () => {
         "GET  /api/project/{id}": {
           capability: "project:read",
           scope: "project",
+          scopeSource: "row",
           reach: "required",
         },
       }),
@@ -228,6 +229,25 @@ describe("validatePolicy — there is no sixth kind", () => {
       /unknown scope/,
     ],
     [
+      "a missing scopeSource",
+      {
+        capability: "project:read",
+        scope: "project",
+        reach: "required",
+      },
+      /scopeSource/,
+    ],
+    [
+      "an invented scopeSource",
+      {
+        capability: "project:read",
+        scope: "project",
+        scopeSource: "header",
+        reach: "required",
+      },
+      /scopeSource/,
+    ],
+    [
       "an invented owner predicate",
       {
         capability: "comment:update_any",
@@ -275,7 +295,12 @@ describe("validatePolicy — there is no sixth kind", () => {
 
   it("accepts each of the five kinds", () => {
     const policies: Policy[] = [
-      { capability: "project:read", scope: "project", reach: "required" },
+      {
+        capability: "project:read",
+        scope: "project",
+        scopeSource: "row",
+        reach: "required",
+      },
       { authenticated: true, self: true, personParam: "personId" },
       { portal: "customer", predicate: "own_request" },
       { public: true, reason: "rendered on the login page" },
@@ -291,6 +316,7 @@ describe("validatePolicy — there is no sixth kind", () => {
       {
         capability: "work_item:create",
         scope: "project",
+        scopeSource: "request",
         reach: {
           exempt: "no_single_resource",
           reason: "a create addresses no row yet",
@@ -422,6 +448,7 @@ describe("capabilitiesReferencedBy", () => {
         "PATCH /api/comments/{id}": {
           capability: "comment:update_any",
           scope: "work_item",
+          scopeSource: "row",
           reach: "required",
           orOwner: {
             predicate: "row.person_id === identity.personId",
@@ -432,6 +459,7 @@ describe("capabilitiesReferencedBy", () => {
         "POST /api/work-items/{key}/assign": {
           capability: "work_item:assign",
           scope: "work_item",
+          scopeSource: "row",
           reach: "required",
           orSelfTarget: {
             predicate: "body.assigneeId === identity.personId",

@@ -495,3 +495,64 @@ export function isCapability(value: string): value is Capability {
 export function capabilitiesInGroup(group: CapabilityGroup): Capability[] {
   return CAPABILITY_NAMES.filter((name) => CAPABILITIES[name].group === group);
 }
+
+/* ------------------------------------------------------------------ *
+ * Capability tiers — finding 6
+ * ------------------------------------------------------------------ */
+
+/**
+ * The tier of authority a capability carries — **ordered, least authority first**.
+ *
+ * Instance authority administers the whole deployment; it belongs to instance-scope roles
+ * only. rbac.md § "Roles are editable rows" states this without hedging: no `instance:*`
+ * capability is grantable through a workspace-, project- or organisation-scope role, nor
+ * through any identity connection, OIDC claim, SCIM attribute or group mapping.
+ *
+ * The tier is **derived from the group**, not kept as a second list a future capability could
+ * be added without updating: a capability filed under the `Instance` group is instance-tier
+ * the moment it is written. `capabilities-match-rbac.test.ts` already binds the group to
+ * rbac.md, so this cannot drift from the doc either.
+ */
+export const CAPABILITY_TIERS = ["workspace", "instance"] as const;
+
+export type CapabilityTier = (typeof CAPABILITY_TIERS)[number];
+
+const INSTANCE_GROUP: CapabilityGroup = "Instance";
+
+const TIER_RANK: Readonly<Record<CapabilityTier, number>> = {
+  workspace: 0,
+  instance: 1,
+};
+
+/** The tier `capability` belongs to, derived from its group. */
+export function capabilityTier(capability: Capability): CapabilityTier {
+  return CAPABILITIES[capability].group === INSTANCE_GROUP
+    ? "instance"
+    : "workspace";
+}
+
+export function isInstanceCapability(capability: Capability): boolean {
+  return capabilityTier(capability) === "instance";
+}
+
+export function isWorkspaceTierCapability(capability: Capability): boolean {
+  return capabilityTier(capability) === "workspace";
+}
+
+export function isCapabilityTier(value: unknown): value is CapabilityTier {
+  return value === "workspace" || value === "instance";
+}
+
+/**
+ * Does a container whose own tier is `containerTier` permit holding `capability`?
+ *
+ * Fails closed on an unrecognised tier: an unrecognised or missing value must never be read as
+ * "instance" — the highest, least restrictive tier — so it permits nothing.
+ */
+export function tierPermits(
+  containerTier: unknown,
+  capability: Capability,
+): boolean {
+  if (!isCapabilityTier(containerTier)) return false;
+  return TIER_RANK[capabilityTier(capability)] <= TIER_RANK[containerTier];
+}

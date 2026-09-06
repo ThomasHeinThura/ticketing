@@ -126,10 +126,34 @@ export type PersonParam =
       readonly reason: string;
     };
 
+/**
+ * Where the scope id a capability policy is checked against must legitimately come from.
+ *
+ * - `"row"` — the addressed resource has its own row, and the scope id (and its containment
+ *   chain, for `project`/`work_item`) must be read from that row in the same query that loads
+ *   it. A route addressing one resource by `{id}` is `"row"`.
+ * - `"request"` — there is no row yet, so the scope id legitimately comes from the request
+ *   itself (a path parameter or the `X-Workspace-Id` header): a collection route, or a create.
+ *
+ * **Not the same question as `reach`.** `reach` asks whether this route addresses a single
+ * resource that must be visibility-checked; `scopeSource` asks where the *authority* check's
+ * scope id is allowed to come from. A create has `reach: { exempt: "no_single_resource" }`
+ * (there is no row to be out of reach of) and still needs `scopeSource` — the workspace the
+ * new row will belong to is exactly what authority is checked against.
+ *
+ * Required on every capability policy, and deliberately not defaulted: a default is how the
+ * one route where this matters gets forgotten. `evaluatePolicy` refuses a resolved scope whose
+ * own source does not match this declaration — see `evaluator.ts`'s scope resolution.
+ */
+export const SCOPE_SOURCES = ["row", "request"] as const;
+
+export type ScopeSource = (typeof SCOPE_SOURCES)[number];
+
 /** Kind 1 — the normal case. */
 export type CapabilityPolicy = {
   readonly capability: Capability;
   readonly scope: Scope;
+  readonly scopeSource: ScopeSource;
   /**
    * Required. A route that addresses a resource must be reach-checked; one that does not
    * must say so in writing. Omitting it is the omission this registry exists to refuse, so
