@@ -1,0 +1,178 @@
+# The fast stage of the pull-request pipeline.
+#
+# docs/04-engineering/ci-cd.md is the single list of CI checks and this workflow implements
+# its "Fast — required on every push, target under 15 minutes" block. Nothing is added that
+# the document does not declare: scripts/ci/test-all.mjs reconciles the two on every run,
+# and the `gates-declared` job below fails if they drift apart.
+#
+# Gates that cannot exist yet — check:tokens, check:ui, check:deps, check:queries,
+# check:inventory, test:coverage, test:mcp, check:bundle-purity, check:bundle-size — have
+# no job here on purpose. `pnpm test:all --list` prints each one with the reason and the
+# issue that unblocks it. A job that passed because it found nothing to check would look
+# like coverage and be worth less than nothing.
+#
+# Workflow hardening (ci-cd.md § Secrets): permissions are read-only at the top, no job
+# here signs or publishes anything, and every third-party action is pinned by commit SHA.
+
+name: CI - fast
+
+on:
+  pull_request:
+    # `edited` matters: the PR-template and security-review checks read the body.
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  merge_group:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-fast-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+
+jobs:
+  # ── The Throttle 1 boundary ────────────────────────────────────────────────────────────
+  # Its own job so it can be its own required status check on the protect-main ruleset,
+  # independent of everything else in this workflow. docs/07-planning/status.md § Throttle 1
+  # conditions 4 and 5: route coverage runs in CI, and a route without a policy fails the
+  # build. The wrapper fails closed until the suite from #7 exists.
+  route-policy:
+    name: route policy coverage + permission matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: pnpm test:permissions
+        run: pnpm test:permissions
+
+  static:
+    name: static
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: pnpm lint (biome)
+        # `pnpm lint` is `turbo lint`, and each package's lint script is
+        # `biome check --write .`, which rewrites files. CI must report, not fix.
+        run: pnpm lint:ci
+      - name: pnpm typecheck
+        run: pnpm typecheck
+      - name: pnpm check:i18n
+        run: pnpm check:i18n
+
+  registers:
+    name: registers - env, vocabulary, reviews, skips
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # check:reviews diffs against the base branch.
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: pnpm check:env
+        run: pnpm check:env
+      - name: pnpm check:vocabulary
+        run: pnpm check:vocabulary
+      - name: pnpm check:reviews
+        run: pnpm check:reviews
+      - name: pnpm check:skips
+        run: pnpm check:skips
+
+  pull-request:
+    name: pull request template + security review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: pr-template check
+        # Reads the body from the event payload, and the security-review path globs from
+        # docs/04-engineering/ci-cd.md.
+        run: pnpm check:pr-template
+
+  test:
+    name: unit + component
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: pnpm test
+        run: pnpm test
+
+  contract:
+    name: contract - OpenAPI drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: pnpm check:openapi
+        # Regenerates the document and fails when tests/api-contract/openapi.json no longer
+        # matches the API. Redocly lint and `oasdiff breaking` are the other half of
+        # `pnpm test:contract` and need two dev dependencies that are not installed yet.
+        run: pnpm check:openapi
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: pnpm build
+        run: pnpm build
+
+  supply-chain:
+    name: supply chain - audit + gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: pnpm audit
+        # ci-cd.md: high or critical fails. Red on the inherited graph today — eight high
+        # advisories, all in devDependencies and build tooling. Fixing them is a lockfile
+        # change, so this job reports the truth rather than being narrowed to hide it.
+        run: pnpm audit --audit-level=high
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  helm:
+    name: helm lint + template
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: helm lint
+        # helm ships on the GitHub-hosted Ubuntu runner image, so no action is needed.
+        run: helm lint charts/taskdesk
+      - name: helm template
+        run: helm template taskdesk charts/taskdesk > /dev/null
+
+  gates-declared:
+    name: CI matches ci-cd.md
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: reconcile the gate list
+        # Fails when ci-cd.md declares a gate CI does not run, or CI runs one ci-cd.md does
+        # not declare. ci-cd.md is the single list; this keeps it true.
+        run: pnpm test:all --list
