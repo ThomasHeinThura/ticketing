@@ -20,14 +20,10 @@ import {
 } from "better-auth/api";
 import {
   admin as adminPlugin,
-  anonymous,
-  bearer,
-  deviceAuthorization,
   emailOTP,
   genericOAuth,
   lastLoginMethod,
   magicLink,
-  openAPI,
   organization,
 } from "better-auth/plugins";
 import type { AccessControl } from "better-auth/plugins/access";
@@ -40,7 +36,6 @@ import deleteAccountData from "./user/controllers/delete-account-data";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
 import { checkWorkspaceName } from "./utils/check-workspace-name";
 import { mapCustomOAuthProfileToUser } from "./utils/custom-oauth-profile";
-import { generateDemoName } from "./utils/generate-demo-name";
 import { getDefaultCookieAttributes } from "./utils/get-default-cookie-attributes";
 import { getInvitationEmailSubject } from "./utils/get-invitation-email-subject";
 import { getWorkspaceInvitationEmailCopy } from "./utils/get-workspace-invitation-email-copy";
@@ -153,19 +148,6 @@ function getAuthEmailCopy(locale?: string | null) {
   };
 }
 
-function getDeviceAuthClientIds(): Set<string> {
-  const raw = process.env.DEVICE_AUTH_CLIENT_IDS?.trim();
-  if (raw) {
-    return new Set(
-      raw
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    );
-  }
-  return new Set(["taskdesk-cli", "taskdesk-mcp"]);
-}
-
 const DEFAULT_TRUSTED_PROXIES = [
   "127.0.0.0/8",
   "::1/128",
@@ -183,11 +165,6 @@ function trustedProxies(): string[] {
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
-}
-
-function getDeviceAuthVerificationUri(): string {
-  const base = clientUrl.replace(/\/$/, "");
-  return `${base}/device`;
 }
 
 export const auth = betterAuth({
@@ -210,7 +187,6 @@ export const auth = betterAuth({
       team: schema.teamTable,
       teamMember: schema.teamMemberTable,
       apikey: schema.apikeyTable,
-      deviceCode: schema.deviceCodeTable,
     },
   }),
   user: {
@@ -230,16 +206,19 @@ export const auth = betterAuth({
   },
   account: {
     accountLinking: {
-      // Link an OAuth/OIDC sign-in to an existing account that shares the same
-      // email instead of failing with error=account_not_linked. The listed
-      // providers verify the email on their side, so they are trusted to link.
-      enabled: true,
-      trustedProviders: ["github", "google", "discord", "custom"],
-      // Only link to an existing local account after its email has been
-      // verified. Without this check, an attacker could pre-register a victim's
-      // email with a password account and retain access after the victim signs
-      // in through a trusted OAuth/OIDC provider.
-      requireLocalEmailVerified: true,
+      // Disabled in #6. kaneo shipped `enabled: true` with `trustedProviders`
+      // including "custom" — the generic OIDC provider an operator configures.
+      // Trusting it means anyone who can register the victim's email address at
+      // that provider takes over the existing local account. The
+      // `requireLocalEmailVerified` mitigation did not close it either: kaneo
+      // enforces no email verification anywhere, and magic-link and email-OTP
+      // sign-in both set emailVerified: true, so nearly every account already
+      // satisfied the precondition.
+      //
+      // TaskDesk's identity design is Microsoft Entra OIDC with explicit
+      // connection configuration; deliberate linking, if it is ever wanted,
+      // gets its own specification.
+      enabled: false,
     },
   },
   emailAndPassword: {
@@ -270,14 +249,10 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-    ...(process.env.DISABLE_GUEST_ACCESS !== "true"
-      ? [
-          anonymous({
-            generateName: async () => generateDemoName(),
-            emailDomainName: "taskdesk.app",
-          }),
-        ]
-      : []),
+    // anonymous() guest sign-in removed in #6. kaneo enabled it BY DEFAULT —
+    // it was opt-OUT via DISABLE_GUEST_ACCESS. It minted a real user row, which
+    // also let a guest arriving first consume the zero-user first-run window and
+    // permanently lock an instance out of ever gaining an admin (see #18).
     lastLoginMethod(),
     magicLink({
       sendMagicLink: async ({ email, url }) => {
@@ -505,9 +480,18 @@ export const auth = betterAuth({
         },
       ],
     }),
-    bearer(),
+    // bearer() removed in #6. It emitted the raw session token in a
+    // `set-auth-token` response header with Access-Control-Expose-Headers on
+    // every auth response. Combined with kaneo's credentialed CORS reflection
+    // that was cross-origin session theft with no XSS required — finding C3 of
+    // the PR #13 review. The CORS fix broke the chain; this closes it.
     apiKey({
-      enableSessionForAPIKeys: true,
+      // NEVER true. webhooks-and-api-keys.md specifies `sessionOnly` routes that
+      // must answer "403 session_required from an API or MCP key" — which is
+      // only possible if a key is not a session. kaneo minted a full session
+      // from an API key, making it a third authentication surface larger than
+      // the two removed above.
+      enableSessionForAPIKeys: false,
       apiKeyHeaders: "x-api-key",
       rateLimit: {
         enabled: true,
@@ -515,21 +499,25 @@ export const auth = betterAuth({
         timeWindow: 60 * 1000,
       },
     }),
-    deviceAuthorization({
-      verificationUri: getDeviceAuthVerificationUri(),
-      validateClient: async (clientId) =>
-        getDeviceAuthClientIds().has(clientId),
-    }),
+    // deviceAuthorization() removed in #6. mcp-server.md MC-3 puts an OAuth
+    // device flow explicitly out of scope — "a whole authentication mechanism".
+    // It also laundered an API key into a session token that outlived the key's
+    // own revocation (#17).
     adminPlugin({
       defaultRole: "user",
       adminRoles: ["admin"],
     }),
-    openAPI(),
+    // openAPI() removed in #6. It mounted an unauthenticated
+    // /api/auth/reference that pulls an UNPINNED @scalar/api-reference bundle
+    // from a third-party CDN into the API's own cookie origin.
   ],
   session: {
+    // Cookie cache disabled in #6. kaneo cached the session in the cookie for
+    // five minutes, and that path returns session data with NO database read —
+    // so a revoked session kept working for up to five minutes, and a forged
+    // cookie was never compared against any row. Revocation has to be immediate.
     cookieCache: {
-      enabled: true,
-      maxAge: 5 * 60,
+      enabled: false,
     },
   },
   rateLimit: {
