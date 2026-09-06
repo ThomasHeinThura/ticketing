@@ -1,0 +1,50 @@
+{
+	"$schema": "https://turbo.build/schema.json",
+	"globalEnv": [
+		"TASKDESK_DATABASE_URL",
+		"TASKDESK_ENCRYPTION_KEY",
+		"TASKDESK_AUTH_SECRET",
+		"TASKDESK_AGENT_URL",
+		"TASKDESK_PORTAL_URL",
+		"TASKDESK_VALKEY_URL",
+		"TASKDESK_PORT",
+		"TASKDESK_ROLE",
+		"TASKDESK_TRUST_PROXY",
+		"TASKDESK_ENCRYPTION_KEY_PREVIOUS",
+		"TASKDESK_BOOTSTRAP_ADMIN_EMAIL"
+	],
+	"ui": "tui",
+	"tasks": {
+		"build": {
+			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$", ".env*"],
+			"outputs": ["dist/**"]
+		},
+		"@taskdesk/site#build": {
+			"outputs": [".next/**", "!.next/cache/**", "out/**"]
+		},
+		"dev": {
+			"dependsOn": ["^build"],
+			"cache": false,
+			"persistent": true
+		},
+		"lint": {
+			"cache": false
+		},
+		"typecheck": {
+			"dependsOn": ["^build"],
+			"outputs": []
+		},
+		"test": {
+			"dependsOn": ["^build"],
+			"cache": false,
+			"outputs": ["coverage/**"]
+		},
+		"test:integration": {
+			"dependsOn": ["^build"],
+			"cache": false,
+			"outputs": ["coverage/**"],
+			"env": ["DATABASE_URL"]
+		}
+	}
+}

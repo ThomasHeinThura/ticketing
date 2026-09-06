@@ -1,0 +1,40 @@
+# TaskDesk Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "taskdesk.fullname" . }}-taskdesk
+  labels:
+    {{- include "taskdesk.labels" . | nindent 4 }}
+    app.kubernetes.io/component: taskdesk
+spec:
+  type: {{ .Values.taskdesk.service.type }}
+  ports:
+    - port: {{ .Values.taskdesk.service.port }}
+      targetPort: taskdesk
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "taskdesk.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: taskdesk
+
+{{- if .Values.postgresql.enabled }}
+---
+# PostgreSQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "taskdesk.fullname" . }}-postgresql
+  labels:
+    {{- include "taskdesk.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  type: {{ .Values.postgresql.service.type }}
+  ports:
+    - port: {{ .Values.postgresql.service.port }}
+      targetPort: postgresql
+      protocol: TCP
+      name: postgresql
+  selector:
+    {{- include "taskdesk.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+{{- end }}

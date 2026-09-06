@@ -31,6 +31,9 @@ k6-results/
 .env.*
 !.env.example
 !deploy/.env.example
+# repository-bootstrap.md §1 copies apps/api/.env.test.example; the `.env.*` rule
+# above would otherwise silently drop it. It holds test placeholders, no secrets.
+!.env.test.example
 *.pem
 *.key
 *.crt
@@ -71,3 +74,26 @@ Thumbs.db
 tmp/
 temp/
 *.local
+
+# --- inherited from kaneo at 42bb8011 (repository-bootstrap.md §1, `.gitignore` = Copy) ---
+node_modules
+.pnp
+.pnp.js
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+coverage
+.turbo
+.vercel
+.next/
+build
+dist
+.source
+yarn-debug.log*
+*.db
+.worktrees/
+compose.override.yml
+.idea
+apps/web/.tanstack/
+.pi/

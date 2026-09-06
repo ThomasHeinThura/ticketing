@@ -9,12 +9,159 @@ the SHA** is stated once — the locale count, the presence of `job_lease`, the 
 counts — so no other document has to guess.
 
 **kaneo commit taken:** **CONFIRMED** `42bb801114aa1ae499228a53180f0cdbc5607964` — upstream
-`main` (a commit, not a tag), 2026-09-05, upstream CI run 33957941564 green (lint, i18n,
-typecheck, unit, build, integration on Postgres 16, docker build). Reason: post-tag
-authorization fixes included. **Confirmed by Thomas, 2026-09-06**; the local clone
-(`51255e85`) is 68 commits behind, so `git fetch` first. At the fork this line becomes the
-taken SHA plus the verification record — kaneo's own suite pass/fail/skip counts, `pnpm
-audit` and Trivy results ([repository-bootstrap.md](../04-engineering/repository-bootstrap.md) §0).
+`main` (a commit, not a tag), upstream CI run 33957941564 green. Reason: post-tag
+authorization fixes included. **Confirmed by Thomas, 2026-09-06.**
+
+### Verification record — taken 2026-09-06
+
+This is the **attribution baseline**: the numbers a later red test is measured against, so
+that "this failure came from kaneo" and "we introduced this regression" can be told apart.
+Everything below was produced from a throwaway `git worktree` detached at the snapshot SHA,
+so the reference clone never gained a `node_modules`.
+
+| | |
+| --- | --- |
+| Snapshot SHA | `42bb801114aa1ae499228a53180f0cdbc5607964` |
+| Verified as | tip of upstream `main` at fetch time on 2026-09-06 (`git merge-base --is-ancestor` confirms) |
+| Upstream CI run | 33957941564, green |
+| Toolchain | Node 24.20.0, pnpm 10.32.1 (kaneo's `engines` says `>=24.0.0`, `packageManager` says `pnpm@10.32.1`) |
+| `pnpm install --frozen-lockfile` | clean, lockfile unchanged |
+
+**kaneo's own suite on the snapshot, untouched — every check green:**
+
+| Check | Result | Note |
+| --- | --- | --- |
+| `pnpm typecheck` | **pass** | |
+| `pnpm test` (unit) | **pass — 130 files, 692 tests, 0 failed, 0 skipped** | api 60/386 · web 49/190 · planka-import 5/54 · mcp 8/33 · email 6/16 · permissions 1/10 · libs 1/3 |
+| `pnpm build` | **pass** | |
+| `pnpm i18n:check` | **pass** | |
+| `pnpm openapi:check` | **pass** | not named in [repository-bootstrap.md](../04-engineering/repository-bootstrap.md) §0's baseline list — see the note below |
+| `pnpm lint` | **pass, tree unmodified** | kaneo's `lint` is `biome check --write .`; it changed nothing, so the snapshot is already biome-clean |
+| `pnpm test:integration` on **Postgres 16** | **pass — 33 files, 227 tests, 0 failed, 0 skipped** | 195s. This is what kaneo's own CI validates against |
+| `pnpm test:integration` on **Postgres 18** | **pass — 33 files, 227 tests, 0 failed, 0 skipped** | 69s. **Identical counts.** TaskDesk's target major runs kaneo's inherited suite with no behavioural difference — new information, not a regression we caused |
+
+**Two corrections to the surrounding documents, from running this:**
+
+- `pnpm openapi:check` (root script, backed by `scripts/openapi/check.mjs`, with its own job
+  in kaneo's `ci.yml`) is **absent from the §0 baseline list and has no verdict row in the
+  §1 copy table**, while `apps/api/scripts/export-openapi.ts` is copied and
+  `tests/api-integration/openapi.test.ts` is in the keep list. Under the table's own "an
+  entry not in the table is not copied" rule, TaskDesk would inherit half an OpenAPI drift
+  check. Flagged for Thomas; no verdict taken here.
+- The local clone is **no longer 68 commits behind at `51255e85`** — it is at the snapshot
+  SHA. The "`git fetch` first" instruction still stands, and the fetch was performed.
+
+**Supply-chain scan — `pnpm audit`, 2026-09-06: 12 advisories (0 critical, 8 high, 3 moderate, 1 low).**
+
+None of the eight high-severity advisories is reachable from a shipped TaskDesk. Each was
+traced to its dependency path rather than counted:
+
+| Severity | Package | Path | Reachable in the shipped product? |
+| --- | --- | --- | --- |
+| high ×4 | `fast-uri` | `@commitlint/cli > … > ajv > fast-uri` | **No** — `@commitlint/cli` is a root **devDependency** |
+| high | `js-yaml` | `@commitlint/cli > … > cosmiconfig > js-yaml` | **No** — same devDependency |
+| high | `nanoid` | `apps/web > postcss > nanoid` | **No** — build-time only |
+| high | `mysql2` | `apps/api > better-auth > mysql2` | **No** — an **optional peerDependency** of better-auth; kaneo uses `pg`, and nothing in `apps/api/src` or `packages/*/src` imports `mysql2` |
+| high | `deepmerge-ts` | `apps/api > better-auth > prisma > @prisma/config` | **No** — `prisma`/`@prisma/client` are optional peers; kaneo uses Drizzle |
+| moderate ×2 | `qs` | `apps/api > @modelcontextprotocol/sdk > express` | **Yes** — `packages/mcp` is copied. **The only advisory on a shipped path** |
+| moderate | `mysql2` | as above | No |
+| low | `postcss-selector-parser` | `apps/site > shadcn` | **No** — `apps/site` is *Do not copy*, so it leaves at import |
+
+**Verdict:** nothing high or critical blocks the import commit. The one item to carry
+forward is `qs` via the MCP SDK's `express`, which lands with `packages/mcp` and is
+recorded here rather than fixed inside an inherited snapshot.
+
+**Trivy, 2026-09-06:**
+
+- `trivy config` on `Dockerfile.kaneo` — **0 misconfigurations** at HIGH/CRITICAL.
+- `trivy fs --scanners vuln` over `pnpm-lock.yaml` (excluding `apps/site`, which is not
+  copied) — **7 HIGH, 0 CRITICAL**: `deepmerge-ts` CVE-2026-40345, `fast-uri` CVE-2026-75899
+  / CVE-2026-75931 / CVE-2026-75975 / CVE-2026-76172, `mysql2` GHSA-3f6p-5ww8-9rcr, `nanoid`
+  CVE-2026-67213. **The same package set `pnpm audit` found**, from a different advisory
+  database — two independent scanners agreeing that nothing critical is present, and that
+  every high sits in the dev, build-time or unused-optional-driver paths analysed above.
+
+
+### Environment migration record — the complete inherited surface
+
+`grep process.env` is **not** sufficient, and this is the reason the earlier count was wrong.
+kaneo reads environment variables three ways, and only the first is greppable:
+
+| How | Where | Hidden variables |
+| --- | --- | --- |
+| `process.env.NAME` | everywhere | 95 |
+| `process.env[name]` through a local helper | `apps/api/src/storage/s3.ts:79-81` — `function env(name) { return process.env[name]?.trim() \|\| "" }` | the **seven S3 connection variables** |
+| `process.env[TABLE[k][j]]` through a lookup | `apps/api/src/billing/config.ts:55,63` — `PRODUCT_ENV_KEYS` | four `CREEM_PRODUCT_*` |
+| parameter default `env: SmtpEnv = process.env` | `packages/email/src/smtp-config.ts:15,39` | the eight `SMTP_*` |
+
+**The real total is 98 variables**, not the "~80" the planning documents quote. Any
+`check:env` gate must resolve indirect reads or it will pass a tree that still reads
+unapproved configuration.
+
+#### Renamed to TaskDesk bootstrap variables — **done**
+
+| kaneo | TaskDesk | Note |
+| --- | --- | --- |
+| `AUTH_SECRET` | `TASKDESK_AUTH_SECRET` | one of the five required |
+| `DATABASE_URL` | `TASKDESK_DATABASE_URL` | one of the five required |
+| `KANEO_CLIENT_URL` | `TASKDESK_AGENT_URL` | one of the five required |
+| `NOTIFICATION_SECRET_ENCRYPTION_KEY` | `TASKDESK_ENCRYPTION_KEY` | one of the five required; kaneo already had a secret-encryption key, so this is a rename, not a new mechanism |
+| `REDIS_URL` | `TASKDESK_VALKEY_URL` | optional operational |
+| `KANEO_API_URL`, `KANEO_API_KEY` **in `packages/mcp` only** | `TASKDESK_API_URL`, `TASKDESK_API_KEY` | the **MCP client's own** configuration on the user's machine — `configuration-reference.md` is explicit that the server never reads either |
+
+`TASKDESK_PORTAL_URL` — the fifth required variable — is **new**: kaneo has one origin, so
+there is nothing to rename. It is introduced with the second entry point in #9/#11.
+
+#### Moved to runtime configuration — God Mode, not environment
+
+Per the storage decision of 2026-09-06 and the "nothing is hardcoded per customer" rule.
+**Non-secret** values become plugin or instance configuration rows; **credentials** go
+through TaskDesk's secret storage and are encrypted with `TASKDESK_ENCRYPTION_KEY`, never
+held as plaintext configuration.
+
+| Group | Variables | Destination | Secret? |
+| --- | --- | --- | --- |
+| **S3 connection** | `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_PUBLIC_BASE_URL`, `S3_KEY_PREFIX` | `storage.s3` plugin config | no |
+| **S3 credentials** | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | `storage.s3` plugin config | **yes — encrypted** |
+| **S3 tuning** | `S3_FORCE_PATH_STYLE`, `S3_MAX_IMAGE_UPLOAD_BYTES`, `S3_PRESIGN_TTL_SECONDS` | `storage.s3` plugin config | no |
+| **SMTP** | `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_SECURE`, `SMTP_REQUIRE_TLS`, `SMTP_IGNORE_TLS` | `notify.email` plugin config | no |
+| **SMTP credentials** | `SMTP_USER`, `SMTP_PASSWORD` | `notify.email` plugin config | **yes — encrypted** |
+| **Generic OIDC** | `CUSTOM_OAUTH_DISCOVERY_URL`, `CUSTOM_OAUTH_AUTHORIZATION_URL`, `CUSTOM_OAUTH_TOKEN_URL`, `CUSTOM_OAUTH_USER_INFO_URL`, `CUSTOM_OAUTH_LOGOUT_URL`, `CUSTOM_OAUTH_SCOPES`, `CUSTOM_OAUTH_RESPONSE_TYPE`, `CUSTOM_OAUTH_AUTO_LOGIN`, `CUSTOM_AUTH_PKCE`, `CUSTOM_OAUTH_CLIENT_ID` | `identity_connection` | no |
+| **OIDC secret** | `CUSTOM_OAUTH_CLIENT_SECRET` | `identity_connection` | **yes — encrypted** |
+| **Social providers** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `identity_connection` | secret half **encrypted** |
+| **Instance switches** | `DISABLE_REGISTRATION`, `DISABLE_LOGIN_FORM`, `DISABLE_PASSWORD_REGISTRATION`, `DISABLE_EMAIL_OTP_SIGN_IN`, `DISABLE_WORKSPACE_CREATION` | instance settings | no |
+| **Origins / cookies** | `CORS_ORIGINS`, `COOKIE_DOMAIN` | derived from `TASKDESK_AGENT_URL` + `TASKDESK_PORTAL_URL`, or instance settings | no |
+| **Valkey topology** | `REDIS_CLUSTER_NODES`, `REDIS_SENTINELS`, `REDIS_SENTINEL_MASTER_NAME`, `REDIS_SENTINEL_TLS` | operational; fold into `TASKDESK_VALKEY_URL` or an operational row | no |
+| **Valkey credentials** | `REDIS_PASSWORD`, `REDIS_SENTINEL_PASSWORD` | as above | **yes** |
+| **Postgres parts** | `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | kaneo derives a URL from these when `TASKDESK_DATABASE_URL` is absent (`apps/api/src/database/resolve-database-url.ts`). TaskDesk has **one** required URL, so this derivation path is redundant and is removed with the configuration work | **yes** (password) |
+
+#### Deleted with the feature they belong to — **#6**
+
+| Group | Variables | Deleted with |
+| --- | --- | --- |
+| Billing | `CREEM_API_KEY`, `CREEM_WEBHOOK_SECRET`, `CREEM_TEST_MODE`, `CREEM_PRODUCT_PERSONAL_MONTHLY`, `CREEM_PRODUCT_PERSONAL_ANNUAL`, `CREEM_PRODUCT_TEAM_MONTHLY`, `CREEM_PRODUCT_TEAM_ANNUAL`, `BILLING_TRIAL_DAYS`, `BILLING_FOUNDING_CUTOFF`, `BILLING_REMINDER_MAX_PER_RUN` | the billing system. kaneo's provider is **Creem**, not Stripe |
+| Sentry | `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_PROFILES_SAMPLE_RATE`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` | Sentry. **This settles the contradiction** between §2 of `repository-bootstrap.md` (which said *Move* for the first five) and §3 item 10 (*delete every `SENTRY_*`*): Sentry is deleted. `SENTRY_AUTH_TOKEN` is a live CI credential and must not be inherited |
+| GitHub integration | `GITHUB_APP_ID`, `GITHUB_APP_NAME`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`, `GITHUB_PRIVATE_KEY`, `GITHUB_PRIVATE_KEY_BASE64`, `GITHUB_WEBHOOK_SECRET` | the GitHub integration router |
+| Discord integration | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | the Discord integration router |
+| Generic webhook | `KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS` | the generic webhook router. **This settles its contradiction too** — §2 said *Move*, §3 item 8 said removed; it goes with the router |
+| Anonymous sign-in | `DISABLE_GUEST_ACCESS` | the `anonymous()` plugin |
+| Device authorization | `DEVICE_AUTH_CLIENT_IDS` | the `deviceAuthorization` plugin |
+| MCP OAuth | `KANEO_MCP_CLIENT_ID` | the MCP OAuth routes |
+| Cloud-only | `KANEO_CLOUD`, `DEMO_MODE` | cloud/SaaS behaviour. **Note:** `KANEO_CLOUD` currently gates `rateLimit.enabled` — deleting it must **enable** abuse protection, never freeze it off. See the security row below |
+
+#### Kept — operating-system variables, not configuration
+
+`NODE_ENV`, `APPDATA`, `XDG_CONFIG_HOME` (the last two are the MCP client resolving a
+config directory on the user's own machine).
+
+#### Deferred, with a reason
+
+| Variable | Deferred to | Why |
+| --- | --- | --- |
+| `TRUSTED_PROXIES` → `TASKDESK_TRUST_PROXY` | **#11** | This is **not a rename**. kaneo takes a comma-separated CIDR **list**, defaulting to all of RFC1918 — so on a shared cluster every pod can forge the header the rate limiter keys on. TaskDesk takes a **hop count**. Changing list semantics to hop-count semantics is a behaviour change on a security boundary, and the correct hop count for this deployment must be **measured** from the headers actually arriving, not inferred from the topology diagram |
+| `KANEO_API_URL`, `KANEO_INTERNAL_API_URL` | **#11** | Both describe the API's own origin. Under TaskDesk's single-image model the web bundle is same-origin by construction, so these do not simply rename — they may disappear. That resolution belongs with the container-image work |
+| `TURNSTILE_SECRET_KEY`, `TURNSTILE_TIMEOUT_MS` | **Thomas** | Cloudflare Turnstile is inherited CAPTCHA abuse protection. TaskDesk requires abuse protection for self-hosted deployments, but a Cloudflare dependency is not obviously the right shape for a self-hosted product, and it is not in the plugin registry. This is the one variable group the storage/plugin rule does not cleanly classify, so it is raised rather than decided |
+
 
 **Primitive libraries found in `components/ui`:** **Base UI 43 / Radix 1 of 63** files
 (`form.tsx` imports `@radix-ui` `Slot`; `timeline.tsx` imports `Slot` from the `radix-ui`
