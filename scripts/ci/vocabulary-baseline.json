@@ -1,0 +1,33 @@
+{
+	"note": "Inherited kaneo identifiers that are not yet named in their authority document. This file is a RATCHET: an identifier that is neither registered nor listed here fails the build. Entries are removed as tables are deleted (#6) or renamed into the TaskDesk vocabulary by the router retrofit (#8); entries are never added by hand. Shrink it with `pnpm check:vocabulary --prune`.",
+	"seededFrom": "04e3a55 (origin/main at the time issue #10 started)",
+	"unregistered": {
+		"table": {
+			"asset": ["apps/api/src/database/schema.ts"],
+			"billing_event": ["apps/api/src/database/schema.ts"],
+			"billing_reminder_sent": ["apps/api/src/database/schema.ts"],
+			"column": ["apps/api/src/database/schema.ts"],
+			"device_code": ["apps/api/src/database/schema.ts"],
+			"github_integration": ["apps/api/src/database/schema.ts"],
+			"integration": ["apps/api/src/database/schema.ts"],
+			"mcp_oauth_state": ["apps/api/src/database/schema.ts"],
+			"task": ["apps/api/src/database/schema.ts"],
+			"task_relation": ["apps/api/src/database/schema.ts"],
+			"task_reminder_sent": ["apps/api/src/database/schema.ts"],
+			"trial_grant": ["apps/api/src/database/schema.ts"],
+			"user_avatar": ["apps/api/src/database/schema.ts"],
+			"user_notification_preference": ["apps/api/src/database/schema.ts"],
+			"user_notification_workspace_project": [
+				"apps/api/src/database/schema.ts"
+			],
+			"user_notification_workspace_rule": ["apps/api/src/database/schema.ts"],
+			"workflow_rule": ["apps/api/src/database/schema.ts"],
+			"workspace_billing": ["apps/api/src/database/schema.ts"],
+			"workspace_member": [
+				"apps/api/auth-schema.ts",
+				"apps/api/src/database/schema.ts"
+			],
+			"workspace_role": ["apps/api/src/database/schema.ts"]
+		}
+	}
+}
