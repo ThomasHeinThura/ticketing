@@ -29,10 +29,27 @@ import { exists, repoRoot } from "./lib/repo.mjs";
 const NAME = "test:permissions";
 
 /**
- * Where the suite may live, in the order the documents name it. Extend this list — do not
- * write a second scanner — if #7 publishes a different entry point.
+ * Where the suite may live. The first entry is the one #7 published: a vitest config at
+ * `apps/api/vitest.permissions.config.ts` including `../../tests/permissions/**\/*.test.ts`
+ * — vitest rather than tsx, because tsx cannot resolve `@octokit/app`'s exports and vite
+ * can. It runs with apps/api as the working directory, which is what that config's relative
+ * `include` expects.
+ *
+ * Extend this list — do not write a second scanner — if the entry point moves.
  */
 const candidates = [
+  {
+    config: "apps/api/vitest.permissions.config.ts",
+    command: [
+      "--filter",
+      "@taskdesk/api",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.permissions.config.ts",
+    ],
+  },
   {
     config: "tests/permissions/vitest.config.ts",
     command: [
@@ -41,16 +58,6 @@ const candidates = [
       "run",
       "--config",
       "tests/permissions/vitest.config.ts",
-    ],
-  },
-  {
-    config: "tests/permissions/vitest.config.mts",
-    command: [
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "tests/permissions/vitest.config.mts",
     ],
   },
 ];
