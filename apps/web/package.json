@@ -1,5 +1,5 @@
 {
-	"name": "@kaneo/web",
+	"name": "@taskdesk/web",
 	"private": true,
 	"version": "0.0.0",
 	"type": "module",
@@ -106,8 +106,8 @@
 	},
 	"devDependencies": {
 		"@babel/core": "^8.0.1",
-		"@kaneo/libs": "workspace:*",
-		"@kaneo/permissions": "workspace:*",
+		"@taskdesk/libs": "workspace:*",
+		"@taskdesk/permissions": "workspace:*",
 		"@rolldown/plugin-babel": "^0.2.3",
 		"@tailwindcss/postcss": "^4.3.3",
 		"@testing-library/jest-dom": "^7.0.0",

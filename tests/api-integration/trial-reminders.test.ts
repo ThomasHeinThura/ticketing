@@ -12,7 +12,7 @@ import {
 
 const sendTrialReminderEmail = vi.fn();
 
-vi.mock("@kaneo/email", () => ({
+vi.mock("@taskdesk/email", () => ({
   isSmtpConfigured: () => true,
   sendTrialReminderEmail: (...args: unknown[]) =>
     sendTrialReminderEmail(...args),
@@ -32,7 +32,7 @@ const CLOUD_ENV = {
   CREEM_API_KEY: "creem_test_dummy",
   CREEM_WEBHOOK_SECRET: "whsec_dummy",
   SMTP_HOST: "smtp.example.com",
-  SMTP_FROM: "kaneo@example.com",
+  SMTP_FROM: "taskdesk@example.com",
   BILLING_REMINDER_MAX_PER_RUN: "2",
 };
 const saved: Record<string, string | undefined> = {};

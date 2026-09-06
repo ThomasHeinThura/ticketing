@@ -1,5 +1,5 @@
 {
-	"name": "@kaneo/permissions",
+	"name": "@taskdesk/permissions",
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
@@ -22,7 +22,7 @@
 		"better-auth": "^1.6.25"
 	},
 	"devDependencies": {
-		"@kaneo/typescript-config": "workspace:*",
+		"@taskdesk/typescript-config": "workspace:*",
 		"typescript": "^7.0.2",
 		"vite": "^8.2.0",
 		"vitest": "^4.1.10"

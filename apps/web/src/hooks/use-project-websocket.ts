@@ -1,5 +1,5 @@
-import { windowId } from "@kaneo/libs";
 import { useQueryClient } from "@tanstack/react-query";
+import { windowId } from "@taskdesk/libs";
 import { useEffect, useRef } from "react";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { authClient } from "@/lib/auth-client";

@@ -35,7 +35,7 @@ let search: {
   email: string;
   invitationId?: string;
   redirect?: string;
-} = { email: "invitee@kaneo.test" };
+} = { email: "invitee@taskdesk.test" };
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: unknown) => options,
@@ -90,7 +90,7 @@ afterEach(async () => {
   cleanup();
   emailOtp.mockReset();
   push.mockReset();
-  search = { email: "invitee@kaneo.test" };
+  search = { email: "invitee@taskdesk.test" };
 });
 
 // The ResizeObserver stub is installed at module scope, so restore it rather
@@ -101,13 +101,13 @@ afterAll(() => {
 
 describe("VerifyOtp", () => {
   it("forwards the invitation so a first OTP sign-in can create the account", async () => {
-    search = { email: "invitee@kaneo.test", invitationId: "invitation-1" };
+    search = { email: "invitee@taskdesk.test", invitationId: "invitation-1" };
 
     submitCode();
 
     await waitFor(() => expect(emailOtp).toHaveBeenCalledTimes(1));
     expect(emailOtp).toHaveBeenCalledWith(
-      { email: "invitee@kaneo.test", otp: "123456" },
+      { email: "invitee@taskdesk.test", otp: "123456" },
       { headers: { "x-invitation-id": "invitation-1" } },
     );
   });
@@ -117,7 +117,7 @@ describe("VerifyOtp", () => {
 
     await waitFor(() => expect(emailOtp).toHaveBeenCalledTimes(1));
     expect(emailOtp).toHaveBeenCalledWith(
-      { email: "invitee@kaneo.test", otp: "123456" },
+      { email: "invitee@taskdesk.test", otp: "123456" },
       undefined,
     );
   });

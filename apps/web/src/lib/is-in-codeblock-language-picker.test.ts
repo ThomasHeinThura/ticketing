@@ -18,13 +18,13 @@ describe("isInCodeBlockLanguagePicker", () => {
 
   it("returns true when target is the picker element itself", () => {
     const picker = document.createElement("div");
-    picker.className = "kaneo-codeblock-language";
+    picker.className = "taskdesk-codeblock-language";
     expect(isInCodeBlockLanguagePicker(picker)).toBe(true);
   });
 
   it("returns true when target is a descendant of the picker", () => {
     const picker = document.createElement("div");
-    picker.className = "kaneo-codeblock-language";
+    picker.className = "taskdesk-codeblock-language";
     const child = document.createElement("span");
     picker.appendChild(child);
     expect(isInCodeBlockLanguagePicker(child)).toBe(true);

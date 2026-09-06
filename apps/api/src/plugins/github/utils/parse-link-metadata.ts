@@ -28,7 +28,7 @@ export function parseLinkMetadata<T extends object = Record<string, unknown>>(
   }
 
   // Parsing succeeding is not the same as the row holding metadata. The
-  // literal `null` parses to `null`, `"kaneo"` to a string, and either would
+  // literal `null` parses to `null`, `"taskdesk"` to a string, and either would
   // pass the return type on to a caller that reads a named field off it, which
   // is the crash this helper exists to prevent. An array is not what any writer
   // here produces either, and spreading one forward would turn its indices into

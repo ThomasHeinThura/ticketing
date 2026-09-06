@@ -57,7 +57,7 @@ function readDatabaseUrlFromEnvFile() {
 }
 
 const defaultTestDatabaseUrl =
-  "postgresql://postgres:postgres@localhost:5432/kaneo_test";
+  "postgresql://postgres:postgres@localhost:5432/taskdesk_test";
 const envDatabaseUrl = process.env.DATABASE_URL?.trim();
 const fromEnv = envDatabaseUrl ? stripEnvValueQuotes(envDatabaseUrl) : "";
 const rawDatabaseUrl =
@@ -97,7 +97,7 @@ process.env.CUSTOM_OAUTH_SCOPES = "";
 process.env.CUSTOM_OAUTH_RESPONSE_TYPE = "";
 process.env.CUSTOM_OAUTH_DISCOVERY_URL = "";
 process.env.CUSTOM_OAUTH_AUTO_LOGIN = "";
-process.env.DEVICE_AUTH_CLIENT_IDS = "kaneo-cli";
+process.env.DEVICE_AUTH_CLIENT_IDS = "taskdesk-cli";
 
 afterEach(() => {
   vi.restoreAllMocks();

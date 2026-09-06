@@ -1,7 +1,7 @@
 import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { AuthService } from "./auth/auth-service.js";
-import { KaneoClient } from "./kaneo/client.js";
+import { TaskDeskClient } from "./taskdesk/client.js";
 import { registerTools } from "./tools/register.js";
 import { normalizeBaseUrl } from "./utils/normalize-base-url.js";
 
@@ -14,12 +14,12 @@ export function createMcpServer(): McpServer {
   const baseUrl = normalizeBaseUrl(
     process.env.KANEO_API_URL || "http://localhost:1337",
   );
-  const clientId = process.env.KANEO_MCP_CLIENT_ID || "kaneo-mcp";
+  const clientId = process.env.KANEO_MCP_CLIENT_ID || "taskdesk-mcp";
   const apiKey = process.env.KANEO_API_KEY || undefined;
   const auth = new AuthService({ baseUrl, clientId, apiKey });
-  const client = new KaneoClient({ baseUrl, auth });
+  const client = new TaskDeskClient({ baseUrl, auth });
   const server = new McpServer({
-    name: "kaneo-mcp",
+    name: "taskdesk-mcp",
     version: packageVersion,
   });
   registerTools(server, { client });

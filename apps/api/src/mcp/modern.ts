@@ -6,7 +6,7 @@ export function createModernMcpHandler(token: string, apiUrl: string) {
   return createMcpHandler(
     () => {
       const server = new McpServer({
-        name: "kaneo-mcp",
+        name: "taskdesk-mcp",
         version: "1.0.0",
       });
       registerMcpTools(toMcpToolRegistrar(server), apiUrl, token);

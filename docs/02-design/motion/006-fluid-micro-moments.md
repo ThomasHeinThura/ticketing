@@ -22,5 +22,5 @@
 
 ## Verification
 
-- Mechanical: `pnpm --filter @kaneo/web build`.
+- Mechanical: `pnpm --filter @taskdesk/web build`.
 - Feel: select cards and the toolbar rises from the bottom edge; deselect and it is gone instantly. Toggle a checkbox rapidly: the check scales in and interruption retargets (no restart flicker). New notification: badge pops in. Hover the two sidebar copy buttons in sequence: the second tooltip appears without the full delay.

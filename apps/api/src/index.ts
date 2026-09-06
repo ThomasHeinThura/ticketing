@@ -403,17 +403,17 @@ export function createApp() {
     const document = api.getOpenAPI31Document({
       openapi: "3.1.0",
       info: {
-        title: "Kaneo API",
+        title: "TaskDesk API",
         version: "1.0.0",
         description:
-          "Kaneo Project Management API - Manage projects, tasks, labels, and more",
+          "TaskDesk Project Management API - Manage projects, tasks, labels, and more",
       },
       servers: [
         {
           url: normalizeApiServerUrl(
-            process.env.KANEO_API_URL || "https://cloud.kaneo.app",
+            process.env.KANEO_API_URL || "https://cloud.taskdesk.app",
           ),
-          description: "Kaneo API Server",
+          description: "TaskDesk API Server",
         },
       ],
       security: [{ bearerAuth: [] }],
@@ -553,7 +553,7 @@ export function createApp() {
       Sentry.setUser(null);
       try {
         await authenticateApiRequest(c);
-        const windowId = c.req.header("X-Kaneo-Window-Id");
+        const windowId = c.req.header("X-TaskDesk-Window-Id");
         const userId = c.get("userId");
         const initiatorId = windowId ? `${userId}:${windowId}` : userId;
         return await eventContext.run({ initiatorId }, next);

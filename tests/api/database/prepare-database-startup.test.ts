@@ -7,18 +7,19 @@ describe("prepare-database-startup", () => {
 
     await prepareDatabaseStartup({
       resolveConfig: () => ({
-        connectionString: "postgresql://kaneo:password@postgres:5432/kaneo",
+        connectionString:
+          "postgresql://taskdesk:password@postgres:5432/taskdesk",
         source: "POSTGRES_ENV",
         host: "postgres",
         port: 5432,
-        database: "kaneo",
-        username: "kaneo",
+        database: "taskdesk",
+        username: "taskdesk",
         logConfig: {
           source: "POSTGRES_ENV",
           host: "postgres",
           port: 5432,
-          database: "kaneo",
-          username: "kaneo",
+          database: "taskdesk",
+          username: "taskdesk",
         },
       }),
       waitForDatabase: async () => {
@@ -43,18 +44,19 @@ describe("prepare-database-startup", () => {
     await expect(
       prepareDatabaseStartup({
         resolveConfig: () => ({
-          connectionString: "postgresql://kaneo:password@postgres:5432/kaneo",
+          connectionString:
+            "postgresql://taskdesk:password@postgres:5432/taskdesk",
           source: "POSTGRES_ENV",
           host: "postgres",
           port: 5432,
-          database: "kaneo",
-          username: "kaneo",
+          database: "taskdesk",
+          username: "taskdesk",
           logConfig: {
             source: "POSTGRES_ENV",
             host: "postgres",
             port: 5432,
-            database: "kaneo",
-            username: "kaneo",
+            database: "taskdesk",
+            username: "taskdesk",
           },
         }),
         waitForDatabase: async () => {
@@ -64,7 +66,7 @@ describe("prepare-database-startup", () => {
         logError,
       }),
     ).rejects.toThrow(
-      "Database startup failed for postgres:5432/kaneo (source: POSTGRES_ENV). If you are running outside Docker Compose, use localhost or set DATABASE_URL explicitly.",
+      "Database startup failed for postgres:5432/taskdesk (source: POSTGRES_ENV). If you are running outside Docker Compose, use localhost or set DATABASE_URL explicitly.",
     );
 
     expect(runStartupMigrations).not.toHaveBeenCalled();
@@ -74,8 +76,8 @@ describe("prepare-database-startup", () => {
         source: "POSTGRES_ENV",
         host: "postgres",
         port: 5432,
-        database: "kaneo",
-        username: "kaneo",
+        database: "taskdesk",
+        username: "taskdesk",
       }),
       waitError,
     );
@@ -88,18 +90,19 @@ describe("prepare-database-startup", () => {
     await expect(
       prepareDatabaseStartup({
         resolveConfig: () => ({
-          connectionString: "postgresql://kaneo:password@postgres:5432/kaneo",
+          connectionString:
+            "postgresql://taskdesk:password@postgres:5432/taskdesk",
           source: "POSTGRES_ENV",
           host: "postgres",
           port: 5432,
-          database: "kaneo",
-          username: "kaneo",
+          database: "taskdesk",
+          username: "taskdesk",
           logConfig: {
             source: "POSTGRES_ENV",
             host: "postgres",
             port: 5432,
-            database: "kaneo",
-            username: "kaneo",
+            database: "taskdesk",
+            username: "taskdesk",
           },
         }),
         waitForDatabase: async () => undefined,
@@ -109,7 +112,7 @@ describe("prepare-database-startup", () => {
         logError,
       }),
     ).rejects.toThrow(
-      "Database migrations failed for postgres:5432/kaneo (source: POSTGRES_ENV).",
+      "Database migrations failed for postgres:5432/taskdesk (source: POSTGRES_ENV).",
     );
 
     expect(logError).toHaveBeenCalledWith(
@@ -118,8 +121,8 @@ describe("prepare-database-startup", () => {
         source: "POSTGRES_ENV",
         host: "postgres",
         port: 5432,
-        database: "kaneo",
-        username: "kaneo",
+        database: "taskdesk",
+        username: "taskdesk",
       }),
       migrationError,
     );

@@ -2,10 +2,10 @@ import { mergeAttributes, Node } from "@tiptap/core";
 
 // Inline atom node for an @mention of a workspace member. Stores the member id
 // (used by the backend to fire a notification) and a display label, and
-// round-trips through Markdown as `<kaneo-mention id label></kaneo-mention>`,
-// mirroring the KaneoIssueLink extension.
-export const KaneoMention = Node.create({
-  name: "kaneoMention",
+// round-trips through Markdown as `<taskdesk-mention id label></taskdesk-mention>`,
+// mirroring the TaskDeskIssueLink extension.
+export const TaskDeskMention = Node.create({
+  name: "taskdeskMention",
   group: "inline",
   inline: true,
   atom: true,
@@ -30,8 +30,8 @@ export const KaneoMention = Node.create({
 
   parseHTML() {
     return [
-      { tag: "kaneo-mention[id]" },
-      { tag: "span[data-type='kaneo-mention']" },
+      { tag: "taskdesk-mention[id]" },
+      { tag: "span[data-type='taskdesk-mention']" },
     ];
   },
 
@@ -39,8 +39,8 @@ export const KaneoMention = Node.create({
     return [
       "span",
       mergeAttributes(HTMLAttributes, {
-        "data-type": "kaneo-mention",
-        class: "kaneo-mention",
+        "data-type": "taskdesk-mention",
+        class: "taskdesk-mention",
       }),
       `@${node.attrs.label || ""}`,
     ];
@@ -54,6 +54,6 @@ export const KaneoMention = Node.create({
     const id = String(node.attrs?.id || "");
     const label = String(node.attrs?.label || "");
     if (!id) return `@${label}`;
-    return `<kaneo-mention id="${id}" label="${label}"></kaneo-mention>`;
+    return `<taskdesk-mention id="${id}" label="${label}"></taskdesk-mention>`;
   },
 });

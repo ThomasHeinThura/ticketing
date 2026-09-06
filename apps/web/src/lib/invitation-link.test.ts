@@ -3,8 +3,8 @@ import { buildInvitationLink } from "./invitation-link";
 
 describe("buildInvitationLink", () => {
   it("builds the accept route from the given origin", () => {
-    expect(buildInvitationLink("inv-1", "https://kaneo.example.com")).toBe(
-      "https://kaneo.example.com/invitation/accept/inv-1",
+    expect(buildInvitationLink("inv-1", "https://taskdesk.example.com")).toBe(
+      "https://taskdesk.example.com/invitation/accept/inv-1",
     );
   });
 
@@ -15,8 +15,8 @@ describe("buildInvitationLink", () => {
   });
 
   it("does not double the separator when the origin has a trailing slash", () => {
-    expect(buildInvitationLink("inv-3", "https://kaneo.example.com/")).toBe(
-      "https://kaneo.example.com/invitation/accept/inv-3",
+    expect(buildInvitationLink("inv-3", "https://taskdesk.example.com/")).toBe(
+      "https://taskdesk.example.com/invitation/accept/inv-3",
     );
   });
 

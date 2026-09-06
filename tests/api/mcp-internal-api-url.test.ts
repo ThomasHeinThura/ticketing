@@ -31,7 +31,7 @@ function toolRequest() {
         _meta: {
           "io.modelcontextprotocol/protocolVersion": protocolVersion,
           "io.modelcontextprotocol/clientInfo": {
-            name: "kaneo-internal-url-test",
+            name: "taskdesk-internal-url-test",
             version: "1.0.0",
           },
           "io.modelcontextprotocol/clientCapabilities": {},

@@ -48,11 +48,11 @@ describe("API integration: CORS origin policy", () => {
 
   it("allows the configured client URL and refuses everything else", async () => {
     process.env.NODE_ENV = "production";
-    process.env.KANEO_CLIENT_URL = "https://kaneo.example";
+    process.env.KANEO_CLIENT_URL = "https://taskdesk.example";
     delete process.env.CORS_ORIGINS;
 
-    expect(await originHeaderFor("https://kaneo.example")).toBe(
-      "https://kaneo.example",
+    expect(await originHeaderFor("https://taskdesk.example")).toBe(
+      "https://taskdesk.example",
     );
     expect(await originHeaderFor("https://attacker.example")).toBeNull();
   });

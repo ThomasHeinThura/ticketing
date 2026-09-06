@@ -7,11 +7,11 @@ import type {
   UserBroadcast,
 } from "./broadcast-adapter";
 
-const CHANNEL_PREFIX = "kaneo:ws:";
+const CHANNEL_PREFIX = "taskdesk:ws:";
 const CHANNEL_SUFFIX = ":broadcast";
 const CHANNEL_PATTERN = `${CHANNEL_PREFIX}*${CHANNEL_SUFFIX}`;
 
-const USER_CHANNEL_PREFIX = "kaneo:ws-user:";
+const USER_CHANNEL_PREFIX = "taskdesk:ws-user:";
 const USER_CHANNEL_PATTERN = `${USER_CHANNEL_PREFIX}*${CHANNEL_SUFFIX}`;
 
 const broadcastMessageSchema = v.object({

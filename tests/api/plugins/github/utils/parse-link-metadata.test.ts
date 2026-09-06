@@ -10,10 +10,10 @@ afterEach(() => {
 describe("parseLinkMetadata", () => {
   it("reads a well formed object", () => {
     expect(
-      parseLinkMetadata('{"state":"open","createdFrom":"kaneo"}', context),
+      parseLinkMetadata('{"state":"open","createdFrom":"taskdesk"}', context),
     ).toEqual({
       state: "open",
-      createdFrom: "kaneo",
+      createdFrom: "taskdesk",
     });
   });
 
@@ -39,7 +39,7 @@ describe("parseLinkMetadata", () => {
   it("keeps the row out of the warning", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
-    // The row can hold a task description synced from Kaneo, so the log gets
+    // The row can hold a task description synced from TaskDesk, so the log gets
     // the link id to find it by and not the content itself.
     parseLinkMetadata(
       '{"lastSync":{"description":"segredo do cliente"',
@@ -57,10 +57,10 @@ describe("parseLinkMetadata", () => {
     // handlers typed as metadata. `null` is the one that bites: reading
     // `metadata.createdFrom` off it throws inside the webhook.
     expect(parseLinkMetadata("null", context)).toEqual({});
-    expect(parseLinkMetadata('"kaneo"', context)).toEqual({});
+    expect(parseLinkMetadata('"taskdesk"', context)).toEqual({});
     expect(parseLinkMetadata("42", context)).toEqual({});
     expect(parseLinkMetadata("true", context)).toEqual({});
-    expect(parseLinkMetadata('["kaneo"]', context)).toEqual({});
+    expect(parseLinkMetadata('["taskdesk"]', context)).toEqual({});
     expect(warn).toHaveBeenCalledTimes(5);
   });
 });

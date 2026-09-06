@@ -7,11 +7,11 @@ describe("PasswordResetEmail", () => {
   it("renders Japanese copy for a Japanese locale", async () => {
     const html = await render(
       createElement(PasswordResetEmail, {
-        resetLink: "https://kaneo.example/reset",
+        resetLink: "https://taskdesk.example/reset",
         locale: "ja-JP",
       }),
     );
     expect(html).toContain("パスワードのリセット");
-    expect(html).toContain("Kaneo セキュリティメール");
+    expect(html).toContain("TaskDesk セキュリティメール");
   });
 });

@@ -1,4 +1,4 @@
-import { client } from "@kaneo/libs";
+import { client } from "@taskdesk/libs";
 
 async function reorderColumns(
   projectId: string,

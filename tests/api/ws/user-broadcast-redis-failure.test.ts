@@ -36,7 +36,7 @@ import {
   shutdownWebSocketAdapter,
 } from "../../../apps/api/src/ws/index";
 
-const USER_PATTERN = "kaneo:ws-user:*:broadcast";
+const USER_PATTERN = "taskdesk:ws-user:*:broadcast";
 
 function makeFakeWs() {
   return {
@@ -56,7 +56,7 @@ function sendMock(ws: unknown) {
 function emitUserBroadcast(payload: unknown, channelUserId = "user-1") {
   const data = JSON.stringify(payload);
   for (const fn of [...listeners]) {
-    fn(USER_PATTERN, `kaneo:ws-user:${channelUserId}:broadcast`, data);
+    fn(USER_PATTERN, `taskdesk:ws-user:${channelUserId}:broadcast`, data);
   }
 }
 

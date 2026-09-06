@@ -1,4 +1,4 @@
-import { client } from "@kaneo/libs";
+import { client } from "@taskdesk/libs";
 import { HttpError } from "@/lib/http-error";
 
 async function getTasks(projectId: string) {

@@ -46,7 +46,7 @@ const sessions = new Map<string, McpSession>();
 
 function createMcpServerForUser(token: string): LegacyMcpServer {
   const server = new LegacyMcpServer({
-    name: "kaneo-mcp",
+    name: "taskdesk-mcp",
     version: "1.0.0",
   });
   registerMcpTools(toMcpToolRegistrar(server), internalApiUrl, token);
@@ -106,11 +106,11 @@ const authorizeRoute = createRoute({
   tags: ["MCP"],
   summary: "Start MCP authorization",
   description:
-    "Begin an MCP OAuth authorization. Redirects the browser to the Kaneo consent page, which then approves or denies the request.",
+    "Begin an MCP OAuth authorization. Redirects the browser to the TaskDesk consent page, which then approves or denies the request.",
   security: [],
   request: { query: authorizationQuerySchema },
   responses: {
-    302: { description: "Redirect to the Kaneo consent page" },
+    302: { description: "Redirect to the TaskDesk consent page" },
     400: jsonError("Invalid authorization request"),
   },
 });

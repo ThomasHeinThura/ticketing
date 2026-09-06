@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "kaneo.fullname" . }}-postgresql-data
+  name: {{ include "taskdesk.fullname" . }}-postgresql-data
   labels:
-    {{- include "kaneo.labels" . | nindent 4 }}
+    {{- include "taskdesk.labels" . | nindent 4 }}
     app.kubernetes.io/component: postgresql
 spec:
   accessModes:

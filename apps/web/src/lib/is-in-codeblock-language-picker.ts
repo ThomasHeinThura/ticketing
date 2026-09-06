@@ -10,6 +10,6 @@
 export function isInCodeBlockLanguagePicker(target: EventTarget | null) {
   return (
     target instanceof Element &&
-    target.closest(".kaneo-codeblock-language") !== null
+    target.closest(".taskdesk-codeblock-language") !== null
   );
 }

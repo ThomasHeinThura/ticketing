@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   post: vi.fn(),
 }));
 
-vi.mock("@kaneo/libs", () => ({
+vi.mock("@taskdesk/libs", () => ({
   client: {
     task: {
       ":projectId": {

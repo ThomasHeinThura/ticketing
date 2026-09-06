@@ -1,4 +1,4 @@
-const KEY = "kaneo:pending-checkout";
+const KEY = "taskdesk:pending-checkout";
 
 const VALID = new Set([
   "personal-monthly",

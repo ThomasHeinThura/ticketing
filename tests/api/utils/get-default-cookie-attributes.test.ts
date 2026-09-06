@@ -4,8 +4,8 @@ import { getDefaultCookieAttributes } from "../../../apps/api/src/utils/get-defa
 describe("getDefaultCookieAttributes", () => {
   it("marks same-domain HTTPS cookies as secure", () => {
     const attributes = getDefaultCookieAttributes({
-      apiUrl: "https://kaneo.example.com/api",
-      clientUrl: "https://kaneo.example.com",
+      apiUrl: "https://taskdesk.example.com/api",
+      clientUrl: "https://taskdesk.example.com",
     });
 
     expect(attributes).toEqual({

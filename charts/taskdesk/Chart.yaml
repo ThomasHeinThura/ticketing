@@ -1,6 +1,6 @@
 apiVersion: v2
-name: kaneo
-description: Kaneo - All you need. Nothing you don't. Open source project management that works for you.
+name: taskdesk
+description: TaskDesk - All you need. Nothing you don't. Open source project management that works for you.
 type: application
 version: 2.22.0
 appVersion: "2.22.0"
@@ -10,14 +10,14 @@ keywords:
   - task-management
   - productivity
   - collaboration
-home: https://kaneo.app
+home: https://taskdesk.app
 sources:
-  - https://github.com/usekaneo/kaneo
-icon: https://assets.kaneo.app/logo-text.png
+  - https://github.com/usetaskdesk/taskdesk
+icon: https://assets.taskdesk.app/logo-text.png
 maintainers:
-  - name: Kaneo Team
-    url: https://github.com/usekaneo
-    email: info@kaneo.app
+  - name: TaskDesk Team
+    url: https://github.com/usetaskdesk
+    email: info@taskdesk.app
 annotations:
   artifacthub.io/license: MIT
   artifacthub.io/containsSecurityUpdates: "false"

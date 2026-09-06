@@ -1,7 +1,7 @@
-# Kaneo Helm Chart
-This Helm chart deploys [Kaneo](https://kaneo.app) - open source project management that works for you, not against you.
+# TaskDesk Helm Chart
+This Helm chart deploys [TaskDesk](https://taskdesk.app) - open source project management that works for you, not against you.
 ## Introduction
-This chart bootstraps a Kaneo deployment on a Kubernetes cluster using the Helm package manager. It deploys both the API backend and Web frontend components, along with a PostgreSQL database, with optional ingress or Gateway API resources.
+This chart bootstraps a TaskDesk deployment on a Kubernetes cluster using the Helm package manager. It deploys both the API backend and Web frontend components, along with a PostgreSQL database, with optional ingress or Gateway API resources.
 ## Prerequisites
 - Kubernetes 1.23+
 - Helm 3.2.0+
@@ -10,28 +10,28 @@ This chart bootstraps a Kaneo deployment on a Kubernetes cluster using the Helm 
 ### Basic Installation
 Install directly from GHCR:
 ```bash
-helm install kaneo oci://ghcr.io/usekaneo/charts/kaneo \
-  --namespace kaneo \
+helm install taskdesk oci://ghcr.io/usetaskdesk/charts/taskdesk \
+  --namespace taskdesk \
   --create-namespace
 # Access locally
-kubectl port-forward svc/kaneo-kaneo 5173:5173 -n kaneo
+kubectl port-forward svc/taskdesk-taskdesk 5173:5173 -n taskdesk
 ```
 Open [http://localhost:5173](http://localhost:5173) and you're ready to go.
 ### Production Setup with Ingress
 For real deployments, you'll want proper ingress:
 ```bash
-helm install kaneo oci://ghcr.io/usekaneo/charts/kaneo \
-  --namespace kaneo \
+helm install taskdesk oci://ghcr.io/usetaskdesk/charts/taskdesk \
+  --namespace taskdesk \
   --create-namespace \
   --set ingress.enabled=true \
   --set ingress.className=nginx \
   --set "ingress.hosts[0].host=pm.yourcompany.com"
 ```
 ### Production Setup with Gateway API
-If your cluster already has Gateway API CRDs and a `Gateway` configured, you can expose Kaneo with an `HTTPRoute`:
+If your cluster already has Gateway API CRDs and a `Gateway` configured, you can expose TaskDesk with an `HTTPRoute`:
 ```bash
-helm install kaneo oci://ghcr.io/usekaneo/charts/kaneo \
-  --namespace kaneo \
+helm install taskdesk oci://ghcr.io/usetaskdesk/charts/taskdesk \
+  --namespace taskdesk \
   --create-namespace \
   --set gateway.enabled=true \
   --set "gateway.parentRefs[0].name=main-gateway" \
@@ -40,19 +40,19 @@ helm install kaneo oci://ghcr.io/usekaneo/charts/kaneo \
   --set "gateway.hostnames[0]=pm.yourcompany.com"
 ```
 ## Installing the Chart
-To install the published chart with the release name `my-kaneo`:
+To install the published chart with the release name `my-taskdesk`:
 ```bash
-helm install my-kaneo oci://ghcr.io/usekaneo/charts/kaneo
+helm install my-taskdesk oci://ghcr.io/usetaskdesk/charts/taskdesk
 ```
 To install from a local checkout instead:
 ```bash
-helm install my-kaneo ./charts/kaneo
+helm install my-taskdesk ./charts/taskdesk
 ```
-The command deploys Kaneo on the Kubernetes cluster with default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
+The command deploys TaskDesk on the Kubernetes cluster with default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
 ## Uninstalling the Chart
-To uninstall/delete the `my-kaneo` deployment:
+To uninstall/delete the `my-taskdesk` deployment:
 ```bash
-helm uninstall my-kaneo
+helm uninstall my-taskdesk
 ```
 ## Parameters
 ### Global parameters
@@ -70,7 +70,7 @@ helm uninstall my-kaneo
 | `autoscaling.minReplicas`           | Minimum number of replicas                                                                                         | `1`         |
 | `autoscaling.maxReplicas`           | Maximum number of replicas                                                                                         | `10`        |
 | `autoscaling.targetCPUUtilizationPercentage` | Target CPU utilization percentage                                                                         | `80`        |
-When CPU autoscaling is enabled, set `kaneo.resources.requests.cpu`; Kubernetes cannot calculate CPU utilization without a CPU request.
+When CPU autoscaling is enabled, set `taskdesk.resources.requests.cpu`; Kubernetes cannot calculate CPU utilization without a CPU request.
 ### PostgreSQL Database parameters
 | Name                                | Description                                                                                                        | Value                           |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
@@ -78,9 +78,9 @@ When CPU autoscaling is enabled, set `kaneo.resources.requests.cpu`; Kubernetes 
 | `postgresql.image.repository`       | PostgreSQL image repository                                                                                        | `postgres`                      |
 | `postgresql.image.tag`              | PostgreSQL image tag                                                                                               | `16-alpine`                     |
 | `postgresql.image.pullPolicy`       | PostgreSQL image pull policy                                                                                      | `IfNotPresent`                  |
-| `postgresql.auth.database`          | PostgreSQL database name                                                                                           | `kaneo`                         |
-| `postgresql.auth.username`          | PostgreSQL username                                                                                                | `kaneo_user`                    |
-| `postgresql.auth.password`          | PostgreSQL password                                                                                                | `kaneo_password`                |
+| `postgresql.auth.database`          | PostgreSQL database name                                                                                           | `taskdesk`                         |
+| `postgresql.auth.username`          | PostgreSQL username                                                                                                | `taskdesk_user`                    |
+| `postgresql.auth.password`          | PostgreSQL password                                                                                                | `taskdesk_password`                |
 | `postgresql.auth.existingSecret`    | Name of existing secret containing PostgreSQL credentials                                                          | `""`                            |
 | `postgresql.persistence.enabled`    | Enable persistence for PostgreSQL data                                                                             | `true`                          |
 | `postgresql.persistence.size`       | PostgreSQL PVC size                                                                                                | `8Gi`                           |
@@ -89,37 +89,37 @@ When CPU autoscaling is enabled, set `kaneo.resources.requests.cpu`; Kubernetes 
 | `postgresql.service.type`           | PostgreSQL service type                                                                                            | `ClusterIP`                     |
 | `postgresql.service.port`           | PostgreSQL service port                                                                                            | `5432`                          |
 | `postgresql.resources`              | Resource requests and limits for PostgreSQL container                                                              | `{}`                            |
-### Kaneo application parameters
+### TaskDesk application parameters
 | Name                                | Description                                                                                                        | Value                           |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
-| `kaneo.image.repository`            | Kaneo image repository                                                                                             | `ghcr.io/usekaneo/kaneo`        |
-| `kaneo.image.tag`                   | Kaneo image tag. Defaults to `Chart.appVersion` when empty                                                         | `""`                            |
-| `kaneo.image.pullPolicy`            | Kaneo image pull policy                                                                                            | `IfNotPresent`                  |
-| `kaneo.service.type`                | Kaneo service type                                                                                                 | `ClusterIP`                     |
-| `kaneo.service.port`                | Kaneo service port                                                                                                 | `5173`                          |
-| `kaneo.service.targetPort`          | Kaneo container port                                                                                               | `5173`                          |
-| `kaneo.env`                         | Environment variables for the Kaneo container                                                                      | See `values.yaml`               |
-| `kaneo.env.clientUrl`               | Public URL of the Kaneo instance. **Required for any non-localhost deployment**; sets `KANEO_CLIENT_URL`. Omitting this causes "invalid origin" errors on login. Note: this key is case-sensitive (`clientUrl`, not `clientURL`). | `""` |
-| `kaneo.env.corsOrigins`             | Allowed CORS origins as a comma-separated string or YAML list                                                      | `[]`                            |
-| `kaneo.env.authSecret`              | Required Better Auth secret (minimum 32 characters), ignored if existingSecret is enabled                           | `""` |
-| `kaneo.env.existingSecret.enabled`  | Whether to use an existing secret for `AUTH_SECRET`                                                                | `false`                         |
-| `kaneo.env.existingSecret.name`     | Name of the existing secret containing `AUTH_SECRET`                                                               | `""`                            |
-| `kaneo.env.existingSecret.key`      | Key in the existing secret that contains `AUTH_SECRET`                                                             | `auth-secret`                   |
-| `kaneo.env.disableRegistration`     | Disable new user registration                                                                                      | `false`                         |
-| `kaneo.env.disablePasswordRegistration` | Disable password-based account creation while keeping social/OIDC registration available                        | `false`                         |
-| `kaneo.env.disableEmailOtpSignIn`   | Use email/password sign-in instead of verification codes when SMTP is configured                                   | `false`                         |
-| `kaneo.env.database.external.enabled` | Use external PostgreSQL database (set postgresql.enabled to false)                                               | `false`                         |
-| `kaneo.env.database.external.host`  | External PostgreSQL host                                                                                           | `""`                            |
-| `kaneo.env.database.external.port`  | External PostgreSQL port                                                                                           | `5432`                          |
-| `kaneo.env.database.external.database` | External PostgreSQL database name                                                                               | `kaneo`                         |
-| `kaneo.env.database.external.username` | External PostgreSQL username                                                                                    | `kaneo_user`                    |
-| `kaneo.env.database.external.password` | External PostgreSQL password                                                                                    | `""`                            |
-| `kaneo.env.database.external.existingSecret.enabled` | Use an existing secret for the external database connection URI                             | `false`                         |
-| `kaneo.env.database.external.existingSecret.name` | Name of the secret containing the database connection URI                                    | `""`                            |
-| `kaneo.env.database.external.existingSecret.passwordKey` | Key in the secret whose value is a full PostgreSQL connection URI                       | `postgres_uri`                  |
-| `kaneo.extraEnv`                    | Additional Kubernetes EnvVar entries appended to the Kaneo container                                               | `[]`                            |
-| `kaneo.extraEnvFrom`                | Additional Kubernetes EnvFromSource entries appended to the Kaneo container                                        | `[]`                            |
-| `kaneo.resources`                   | Resource requests and limits for the Kaneo container (optional, disabled by default)                               | `{}`                            |
+| `taskdesk.image.repository`            | TaskDesk image repository                                                                                             | `ghcr.io/usetaskdesk/taskdesk`        |
+| `taskdesk.image.tag`                   | TaskDesk image tag. Defaults to `Chart.appVersion` when empty                                                         | `""`                            |
+| `taskdesk.image.pullPolicy`            | TaskDesk image pull policy                                                                                            | `IfNotPresent`                  |
+| `taskdesk.service.type`                | TaskDesk service type                                                                                                 | `ClusterIP`                     |
+| `taskdesk.service.port`                | TaskDesk service port                                                                                                 | `5173`                          |
+| `taskdesk.service.targetPort`          | TaskDesk container port                                                                                               | `5173`                          |
+| `taskdesk.env`                         | Environment variables for the TaskDesk container                                                                      | See `values.yaml`               |
+| `taskdesk.env.clientUrl`               | Public URL of the TaskDesk instance. **Required for any non-localhost deployment**; sets `KANEO_CLIENT_URL`. Omitting this causes "invalid origin" errors on login. Note: this key is case-sensitive (`clientUrl`, not `clientURL`). | `""` |
+| `taskdesk.env.corsOrigins`             | Allowed CORS origins as a comma-separated string or YAML list                                                      | `[]`                            |
+| `taskdesk.env.authSecret`              | Required Better Auth secret (minimum 32 characters), ignored if existingSecret is enabled                           | `""` |
+| `taskdesk.env.existingSecret.enabled`  | Whether to use an existing secret for `AUTH_SECRET`                                                                | `false`                         |
+| `taskdesk.env.existingSecret.name`     | Name of the existing secret containing `AUTH_SECRET`                                                               | `""`                            |
+| `taskdesk.env.existingSecret.key`      | Key in the existing secret that contains `AUTH_SECRET`                                                             | `auth-secret`                   |
+| `taskdesk.env.disableRegistration`     | Disable new user registration                                                                                      | `false`                         |
+| `taskdesk.env.disablePasswordRegistration` | Disable password-based account creation while keeping social/OIDC registration available                        | `false`                         |
+| `taskdesk.env.disableEmailOtpSignIn`   | Use email/password sign-in instead of verification codes when SMTP is configured                                   | `false`                         |
+| `taskdesk.env.database.external.enabled` | Use external PostgreSQL database (set postgresql.enabled to false)                                               | `false`                         |
+| `taskdesk.env.database.external.host`  | External PostgreSQL host                                                                                           | `""`                            |
+| `taskdesk.env.database.external.port`  | External PostgreSQL port                                                                                           | `5432`                          |
+| `taskdesk.env.database.external.database` | External PostgreSQL database name                                                                               | `taskdesk`                         |
+| `taskdesk.env.database.external.username` | External PostgreSQL username                                                                                    | `taskdesk_user`                    |
+| `taskdesk.env.database.external.password` | External PostgreSQL password                                                                                    | `""`                            |
+| `taskdesk.env.database.external.existingSecret.enabled` | Use an existing secret for the external database connection URI                             | `false`                         |
+| `taskdesk.env.database.external.existingSecret.name` | Name of the secret containing the database connection URI                                    | `""`                            |
+| `taskdesk.env.database.external.existingSecret.passwordKey` | Key in the secret whose value is a full PostgreSQL connection URI                       | `postgres_uri`                  |
+| `taskdesk.extraEnv`                    | Additional Kubernetes EnvVar entries appended to the TaskDesk container                                               | `[]`                            |
+| `taskdesk.extraEnvFrom`                | Additional Kubernetes EnvFromSource entries appended to the TaskDesk container                                        | `[]`                            |
+| `taskdesk.resources`                   | Resource requests and limits for the TaskDesk container (optional, disabled by default)                               | `{}`                            |
 | `podSecurityContext`                | Security context applied at the Pod level                                                                          | `{}`                            |
 | `securityContext`                   | Security context applied at the container level                                                                    | `{}`                            |
 ### Ingress parameters
@@ -143,7 +143,7 @@ When CPU autoscaling is enabled, set `kaneo.resources.requests.cpu`; Kubernetes 
 ### Minimal Configuration
 ```yaml
 # values.yaml
-kaneo:
+taskdesk:
   env:
     authSecret: "your-secure-auth-secret-at-least-32-characters"
     clientUrl: "https://your-domain.com"
@@ -156,7 +156,7 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
-          service: kaneo
+          service: taskdesk
           port: 5173
 ```
 ### Production Configuration with TLS
@@ -177,8 +177,8 @@ postgresql:
     requests:
       cpu: 100m
       memory: 128Mi
-# Kaneo configuration
-kaneo:
+# TaskDesk configuration
+taskdesk:
   resources:
     limits:
       cpu: 1000m
@@ -200,10 +200,10 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
-          service: kaneo
+          service: taskdesk
           port: 5173
   tls:
-    - secretName: kaneo-tls
+    - secretName: taskdesk-tls
       hosts:
         - your-domain.com
 ```
@@ -211,37 +211,37 @@ ingress:
 If you're running Traefik as your ingress controller (common in self-hosted clusters), configure the ingress directly rather than through the chart's built-in ingress support:
 ```yaml
 # values.yaml
-kaneo:
+taskdesk:
   env:
     authSecret: "your-secure-auth-secret-at-least-32-characters"
-    clientUrl: "https://kaneo.your-domain.com"
+    clientUrl: "https://taskdesk.your-domain.com"
 ```
 ```yaml
 # ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: kaneo-ingress
-  namespace: kaneo
+  name: taskdesk-ingress
+  namespace: taskdesk
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   ingressClassName: traefik
   rules:
-    - host: kaneo.your-domain.com
+    - host: taskdesk.your-domain.com
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: kaneo-kaneo
+                name: taskdesk-taskdesk
                 port:
                   number: 5173
   tls:
     - hosts:
-        - kaneo.your-domain.com
-      secretName: kaneo-tls
+        - taskdesk.your-domain.com
+      secretName: taskdesk-tls
 ```
 ### Using External PostgreSQL Database
 If you prefer to use an external PostgreSQL database instead of the bundled one:
@@ -250,7 +250,7 @@ If you prefer to use an external PostgreSQL database instead of the bundled one:
 # Disable bundled PostgreSQL
 postgresql:
   enabled: false
-kaneo:
+taskdesk:
   env:
     authSecret: "your-secure-auth-secret-at-least-32-characters"
     database:
@@ -258,17 +258,17 @@ kaneo:
         enabled: true
         host: "your-postgres-host.com"
         port: 5432
-        database: "kaneo"
-        username: "kaneo_user"
+        database: "taskdesk"
+        username: "taskdesk_user"
         password: "your-db-password"
 ```
 ### Using an Existing Secret for Sensitive Data
 For production environments, it's recommended to store sensitive data like the auth secret and database credentials in Kubernetes Secrets:
-When `postgresql.auth.existingSecret` is used with bundled PostgreSQL, the password is expanded by Kubernetes into `DATABASE_URL` at runtime and must be URL-safe. If your password contains reserved URI characters such as `@`, `:`, `/`, `#`, `%`, or spaces, use an external database and provide the complete connection URI through `kaneo.env.database.external.existingSecret`.
+When `postgresql.auth.existingSecret` is used with bundled PostgreSQL, the password is expanded by Kubernetes into `DATABASE_URL` at runtime and must be URL-safe. If your password contains reserved URI characters such as `@`, `:`, `/`, `#`, `%`, or spaces, use an external database and provide the complete connection URI through `taskdesk.env.database.external.existingSecret`.
 ```bash
 # Create a Secret for sensitive data
-kubectl create secret generic kaneo-secrets \
-  --namespace kaneo \
+kubectl create secret generic taskdesk-secrets \
+  --namespace taskdesk \
   --from-literal=auth-secret="your-secure-auth-secret-at-least-32-characters" \
   --from-literal=postgres-password="your-secure-db-password"
 ```
@@ -277,85 +277,85 @@ Then reference these secrets in your values:
 # values.yaml
 postgresql:
   auth:
-    existingSecret: "kaneo-secrets"
+    existingSecret: "taskdesk-secrets"
     secretKeys:
       userPasswordKey: "postgres-password"
-kaneo:
+taskdesk:
   env:
     existingSecret:
       enabled: true
-      name: "kaneo-secrets"
+      name: "taskdesk-secrets"
       key: "auth-secret"
 ```
 #### Using an Existing Secret with External PostgreSQL
 When using an external database, the secret must contain a full PostgreSQL connection URI rather than just the password. Any special characters in the password (such as `@`, `:`, `/`) must be [percent-encoded](https://developer.mozilla.org/en-US/docs/Glossary/Percent-encoding).
 ```bash
 # Create the secret with a full connection URI
-kubectl create secret generic kaneo-secrets \
-  --namespace kaneo \
+kubectl create secret generic taskdesk-secrets \
+  --namespace taskdesk \
   --from-literal=auth-secret="your-secure-auth-secret-at-least-32-characters" \
-  --from-literal=postgres_uri="postgresql://kaneo_user:your-password@your-host:5432/kaneo"
+  --from-literal=postgres_uri="postgresql://taskdesk_user:your-password@your-host:5432/taskdesk"
 ```
 ```yaml
 # values.yaml
 postgresql:
   enabled: false
 
-kaneo:
+taskdesk:
   env:
-    clientUrl: "https://kaneo.your-domain.com"
+    clientUrl: "https://taskdesk.your-domain.com"
     existingSecret:
       enabled: true
-      name: "kaneo-secrets"
+      name: "taskdesk-secrets"
       key: "auth-secret"
     database:
       external:
         enabled: true
         host: "your-postgres-host.com"
         port: 5432
-        database: "kaneo"
-        username: "kaneo_user"
+        database: "taskdesk"
+        username: "taskdesk_user"
         password: ""
         existingSecret:
           enabled: true
-          name: "kaneo-secrets"
+          name: "taskdesk-secrets"
           passwordKey: postgres_uri
 ```
 ## Database Management
 ### PostgreSQL Configuration
 The chart deploys PostgreSQL 16 (Alpine) by default with the following configuration:
-- Database name: `kaneo`
-- Username: `kaneo_user`
-- Default password: `kaneo_password` (change this in production!)
+- Database name: `taskdesk`
+- Username: `taskdesk_user`
+- Default password: `taskdesk_password` (change this in production!)
 - Persistent storage: 8Gi (configurable)
-The bundled PostgreSQL deployment is intended for development, trials, and small self-hosted installs. For production environments, use an external managed PostgreSQL database by setting `postgresql.enabled=false` and configuring `kaneo.env.database.external`.
+The bundled PostgreSQL deployment is intended for development, trials, and small self-hosted installs. For production environments, use an external managed PostgreSQL database by setting `postgresql.enabled=false` and configuring `taskdesk.env.database.external`.
 Bundled PostgreSQL credentials are only applied when PostgreSQL initializes an empty data directory. If a PVC already exists, changing `postgresql.auth.password` or `postgresql.auth.existingSecret` updates the Pod environment but does not rotate the password inside the existing database. For local retesting with a new password, uninstall the release and delete the test PVC before reinstalling:
 ```bash
-helm uninstall kaneo -n kaneo-test
-kubectl delete pvc kaneo-postgresql-data -n kaneo-test --ignore-not-found
+helm uninstall taskdesk -n taskdesk-test
+kubectl delete pvc taskdesk-postgresql-data -n taskdesk-test --ignore-not-found
 ```
 To preserve data, rotate the password inside PostgreSQL first, then update the Helm values to match.
 ### Backup and Recovery
 For production deployments, consider implementing regular database backups:
 ```bash
 # Example backup command
-kubectl exec -it deployment/my-kaneo-postgresql -- pg_dump -U kaneo_user kaneo > kaneo-backup.sql
+kubectl exec -it deployment/my-taskdesk-postgresql -- pg_dump -U taskdesk_user taskdesk > taskdesk-backup.sql
 ```
 ### Migration from SQLite
 If you're migrating from a previous SQLite-based installation, you'll need to:
 1. Export your data from SQLite
 2. Deploy the new PostgreSQL-based chart
 3. Import your data into PostgreSQL
-Contact the Kaneo community on [Discord](https://discord.gg/rU4tSyhXXU) for migration assistance.
+Contact the TaskDesk community on [Discord](https://discord.gg/rU4tSyhXXU) for migration assistance.
 ## Troubleshooting
 ### "invalid origin" error on login
-Kaneo's API validates the `Origin` header on every request against `KANEO_CLIENT_URL`. If `clientUrl` is not set (or is set incorrectly), every login attempt fails with this error.
+TaskDesk's API validates the `Origin` header on every request against `KANEO_CLIENT_URL`. If `clientUrl` is not set (or is set incorrectly), every login attempt fails with this error.
 
-Set `clientUrl` to the URL users access Kaneo from:
+Set `clientUrl` to the URL users access TaskDesk from:
 ```yaml
-kaneo:
+taskdesk:
   env:
-    clientUrl: "https://kaneo.your-domain.com"
+    clientUrl: "https://taskdesk.your-domain.com"
 ```
 
 > **Note:** The key is `clientUrl` (camelCase). `clientURL` (all-caps) is silently ignored; the env var will be empty and login will fail with no helpful error.
@@ -363,7 +363,7 @@ kaneo:
 ### Pods crash immediately after upgrading to use `existingSecret`
 If pods enter `CrashLoopBackOff` after switching to an existing secret for the external database, the connection URI in the secret is likely wrong. Check what the pod is actually using:
 ```bash
-kubectl get secret kaneo-secrets -n kaneo \
+kubectl get secret taskdesk-secrets -n taskdesk \
   -o jsonpath='{.data.postgres_uri}' | base64 -d
 ```
 Common causes:
@@ -375,9 +375,9 @@ Common causes:
 On clusters with Pod Security Admission enabled, you may see warnings like `would violate PodSecurity "restricted:latest"`. The chart exposes `podSecurityContext` and `securityContext` to address these. See the [Security](#security) section for recommended values.
 ## Architecture
 This chart deploys the following components:
-1. **Kaneo application**: Serves the web UI and API from the combined Kaneo image
+1. **TaskDesk application**: Serves the web UI and API from the combined TaskDesk image
 2. **PostgreSQL Database**: Stores all application data with proper relational integrity
-The Kaneo application and PostgreSQL run in separate pods for resource isolation and simpler database lifecycle management.
+The TaskDesk application and PostgreSQL run in separate pods for resource isolation and simpler database lifecycle management.
 ## Production Environment
 For production deployments, you should:
 1. Set secure values for `AUTH_SECRET` and PostgreSQL passwords
@@ -398,10 +398,10 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
-          service: kaneo
+          service: taskdesk
           port: 5173
   tls:
-    - secretName: kaneo-tls
+    - secretName: taskdesk-tls
       hosts:
         - your-domain.com
 ```
@@ -416,11 +416,11 @@ gateway:
       namespace: gateway-system
       sectionName: https
   hostnames:
-    - kaneo.example.com
+    - taskdesk.example.com
 ```
 By default the chart creates one Gateway API rule:
-1. `/` goes to the Kaneo service
-If you need custom matching or multiple backend references, override `gateway.rules` directly. Each `backendRefs` entry follows the same pattern as ingress and uses the chart-specific `service` field (`kaneo`), which is expanded to the release-specific Service name.
+1. `/` goes to the TaskDesk service
+If you need custom matching or multiple backend references, override `gateway.rules` directly. Each `backendRefs` entry follows the same pattern as ingress and uses the chart-specific `service` field (`taskdesk`), which is expanded to the release-specific Service name.
 ## Security
 For production deployments, consider the following security recommendations:
 1. Use secure `AUTH_SECRET` and PostgreSQL passwords, preferably stored in Kubernetes Secrets
@@ -432,7 +432,7 @@ For production deployments, consider the following security recommendations:
 ### Pod Security Context
 On clusters with Pod Security Admission enforcement, set the following to satisfy the `restricted` policy:
 ```yaml
-kaneo:
+taskdesk:
     podSecurityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -446,7 +446,7 @@ kaneo:
 ### Registration Control
 By default, user registration is enabled. To disable new user registration:
 ```yaml
-kaneo:
+taskdesk:
   env:
     disableRegistration: true
 ```

@@ -1,25 +1,25 @@
-{{- $corsOrigins := .Values.kaneo.env.corsOrigins -}}
+{{- $corsOrigins := .Values.taskdesk.env.corsOrigins -}}
 {{- $corsOriginsValue := "" -}}
 {{- if kindIs "slice" $corsOrigins -}}
   {{- $corsOriginsValue = join "," $corsOrigins -}}
 {{- else if $corsOrigins -}}
   {{- $corsOriginsValue = $corsOrigins -}}
-{{- else if .Values.kaneo.env.clientUrl -}}
-  {{- $corsOriginsValue = .Values.kaneo.env.clientUrl -}}
+{{- else if .Values.taskdesk.env.clientUrl -}}
+  {{- $corsOriginsValue = .Values.taskdesk.env.clientUrl -}}
 {{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "kaneo.fullname" . }}
+  name: {{ include "taskdesk.fullname" . }}
   labels:
-    {{- include "kaneo.labels" . | nindent 4 }}
+    {{- include "taskdesk.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "kaneo.selectorLabels" . | nindent 6 }}
+      {{- include "taskdesk.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -27,42 +27,42 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "kaneo.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: kaneo
+        {{- include "taskdesk.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: taskdesk
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "kaneo.serviceAccountName" . }}
+      serviceAccountName: {{ include "taskdesk.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       enableServiceLinks: {{ default false .Values.enableServiceLinks }}
       containers:
-        - name: kaneo
+        - name: taskdesk
           securityContext:
-            {{- toYaml .Values.kaneo.securityContext | nindent 12 }}
-          image: "{{ .Values.kaneo.image.repository }}:{{ .Values.kaneo.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.kaneo.image.pullPolicy }}
+            {{- toYaml .Values.taskdesk.securityContext | nindent 12 }}
+          image: "{{ .Values.taskdesk.image.repository }}:{{ .Values.taskdesk.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.taskdesk.image.pullPolicy }}
           ports:
-            - name: kaneo
-              containerPort: {{ .Values.kaneo.service.targetPort }}
+            - name: taskdesk
+              containerPort: {{ .Values.taskdesk.service.targetPort }}
               protocol: TCP
           env:
             - name: KANEO_CLIENT_URL
-              value: "{{ .Values.kaneo.env.clientUrl }}"
+              value: "{{ .Values.taskdesk.env.clientUrl }}"
             - name: CORS_ORIGINS
               value: {{ $corsOriginsValue | quote }}
             - name: AUTH_SECRET
-              {{- if .Values.kaneo.env.existingSecret.enabled }}
+              {{- if .Values.taskdesk.env.existingSecret.enabled }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.kaneo.env.existingSecret.name }}
-                  key: {{ .Values.kaneo.env.existingSecret.key }}
+                  name: {{ .Values.taskdesk.env.existingSecret.name }}
+                  key: {{ .Values.taskdesk.env.existingSecret.key }}
               {{- else }}
-              value: {{ .Values.kaneo.env.authSecret | quote }}
+              value: {{ .Values.taskdesk.env.authSecret | quote }}
               {{- end }}
-            {{- if and (not .Values.kaneo.env.database.external.enabled) .Values.postgresql.auth.existingSecret }}
+            {{- if and (not .Values.taskdesk.env.database.external.enabled) .Values.postgresql.auth.existingSecret }}
             - name: KANEO_POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -70,41 +70,41 @@ spec:
                   key: {{ .Values.postgresql.auth.secretKeys.userPasswordKey }}
             {{- end }}
             - name: DATABASE_URL
-              {{- if .Values.kaneo.env.database.external.enabled }}
-              {{- if .Values.kaneo.env.database.external.existingSecret.enabled }}
+              {{- if .Values.taskdesk.env.database.external.enabled }}
+              {{- if .Values.taskdesk.env.database.external.existingSecret.enabled }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.kaneo.env.database.external.existingSecret.name }}
-                  key: {{ .Values.kaneo.env.database.external.existingSecret.passwordKey }}
+                  name: {{ .Values.taskdesk.env.database.external.existingSecret.name }}
+                  key: {{ .Values.taskdesk.env.database.external.existingSecret.passwordKey }}
               {{- else }}
-              value: "postgresql://{{ include "kaneo.urlencodeUserinfo" .Values.kaneo.env.database.external.username }}:{{ include "kaneo.urlencodeUserinfo" .Values.kaneo.env.database.external.password }}@{{ .Values.kaneo.env.database.external.host }}:{{ .Values.kaneo.env.database.external.port }}/{{ .Values.kaneo.env.database.external.database }}"
+              value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.username }}:{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.password }}@{{ .Values.taskdesk.env.database.external.host }}:{{ .Values.taskdesk.env.database.external.port }}/{{ .Values.taskdesk.env.database.external.database }}"
               {{- end }}
               {{- else }}
               {{- if .Values.postgresql.auth.existingSecret }}
-              value: "postgresql://{{ include "kaneo.urlencodeUserinfo" .Values.postgresql.auth.username }}:$(KANEO_POSTGRES_PASSWORD)@{{ include "kaneo.fullname" . }}-postgresql:{{ .Values.postgresql.service.port }}/{{ .Values.postgresql.auth.database }}"
+              value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.postgresql.auth.username }}:$(KANEO_POSTGRES_PASSWORD)@{{ include "taskdesk.fullname" . }}-postgresql:{{ .Values.postgresql.service.port }}/{{ .Values.postgresql.auth.database }}"
               {{- else }}
-              value: "postgresql://{{ include "kaneo.urlencodeUserinfo" .Values.postgresql.auth.username }}:{{ include "kaneo.urlencodeUserinfo" .Values.postgresql.auth.password }}@{{ include "kaneo.fullname" . }}-postgresql:{{ .Values.postgresql.service.port }}/{{ .Values.postgresql.auth.database }}"
+              value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.postgresql.auth.username }}:{{ include "taskdesk.urlencodeUserinfo" .Values.postgresql.auth.password }}@{{ include "taskdesk.fullname" . }}-postgresql:{{ .Values.postgresql.service.port }}/{{ .Values.postgresql.auth.database }}"
               {{- end }}
               {{- end }}
             - name: DISABLE_REGISTRATION
-              value: {{ .Values.kaneo.env.disableRegistration | quote }}
+              value: {{ .Values.taskdesk.env.disableRegistration | quote }}
             - name: DISABLE_PASSWORD_REGISTRATION
-              value: {{ .Values.kaneo.env.disablePasswordRegistration | quote }}
+              value: {{ .Values.taskdesk.env.disablePasswordRegistration | quote }}
             - name: DISABLE_EMAIL_OTP_SIGN_IN
-              value: {{ .Values.kaneo.env.disableEmailOtpSignIn | quote }}
-            {{- with .Values.kaneo.extraEnv }}
+              value: {{ .Values.taskdesk.env.disableEmailOtpSignIn | quote }}
+            {{- with .Values.taskdesk.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-          {{- with .Values.kaneo.extraEnvFrom }}
+          {{- with .Values.taskdesk.extraEnvFrom }}
           envFrom:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           livenessProbe:
-            {{- toYaml .Values.kaneo.livenessProbe | nindent 12 }}
+            {{- toYaml .Values.taskdesk.livenessProbe | nindent 12 }}
           readinessProbe:
-            {{- toYaml .Values.kaneo.readinessProbe | nindent 12 }}
+            {{- toYaml .Values.taskdesk.readinessProbe | nindent 12 }}
           resources:
-            {{- toYaml .Values.kaneo.resources | nindent 12 }}
+            {{- toYaml .Values.taskdesk.resources | nindent 12 }}
 
       {{- with .Values.nodeSelector }}
       nodeSelector:

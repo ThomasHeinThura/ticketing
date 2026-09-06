@@ -15,29 +15,29 @@ export type NotificationEmailProps = {
 
 const messages = {
   en: {
-    preview: "You have a new Kaneo notification",
+    preview: "You have a new TaskDesk notification",
     subtitle: "A notification matched your delivery preferences.",
-    footer: "Kaneo notification",
-    actionLabel: "Open in Kaneo",
+    footer: "TaskDesk notification",
+    actionLabel: "Open in TaskDesk",
   },
   de: {
-    preview: "Du hast eine neue Kaneo-Benachrichtigung",
+    preview: "Du hast eine neue TaskDesk-Benachrichtigung",
     subtitle:
       "Eine Benachrichtigung entspricht deinen Zustellungs-Einstellungen.",
-    footer: "Kaneo-Benachrichtigung",
-    actionLabel: "In Kaneo oeffnen",
+    footer: "TaskDesk-Benachrichtigung",
+    actionLabel: "In TaskDesk oeffnen",
   },
   vi: {
-    preview: "Bạn có thông báo mới từ Kaneo",
+    preview: "Bạn có thông báo mới từ TaskDesk",
     subtitle: "Một thông báo khớp với tùy chọn nhận thông báo của bạn.",
-    footer: "Thông báo Kaneo",
-    actionLabel: "Mở trong Kaneo",
+    footer: "Thông báo TaskDesk",
+    actionLabel: "Mở trong TaskDesk",
   },
   ja: {
-    preview: "Kaneo の新しい通知",
+    preview: "TaskDesk の新しい通知",
     subtitle: "配信設定に一致する通知がありました。",
-    footer: "Kaneo 通知",
-    actionLabel: "Kaneo で開く",
+    footer: "TaskDesk 通知",
+    actionLabel: "TaskDesk で開く",
   },
 } as const;
 
@@ -69,7 +69,7 @@ const NotificationEmail = ({
 NotificationEmail.PreviewProps = {
   title: "Task assigned to you",
   message: "You were assigned to Design account notifications.",
-  actionUrl: "https://kaneo.app",
+  actionUrl: "https://taskdesk.app",
 } as NotificationEmailProps;
 
 export default NotificationEmail;

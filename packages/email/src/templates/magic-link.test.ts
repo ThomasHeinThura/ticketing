@@ -7,11 +7,11 @@ describe("MagicLinkEmail", () => {
   it("renders Japanese copy for a Japanese locale", async () => {
     const html = await render(
       createElement(MagicLinkEmail, {
-        magicLink: "https://kaneo.example/auth",
+        magicLink: "https://taskdesk.example/auth",
         locale: "ja-JP",
       }),
     );
-    expect(html).toContain("Kaneo にサインイン");
-    expect(html).toContain("Kaneo セキュリティメール");
+    expect(html).toContain("TaskDesk にサインイン");
+    expect(html).toContain("TaskDesk セキュリティメール");
   });
 });

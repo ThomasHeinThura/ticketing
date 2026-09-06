@@ -12,9 +12,9 @@ describe("github config", () => {
   });
 
   it("builds default config values", () => {
-    expect(getDefaultConfig("usekaneo", "kaneo", 42)).toEqual({
-      repositoryOwner: "usekaneo",
-      repositoryName: "kaneo",
+    expect(getDefaultConfig("usetaskdesk", "taskdesk", 42)).toEqual({
+      repositoryOwner: "usetaskdesk",
+      repositoryName: "taskdesk",
       installationId: 42,
       branchPattern: "{slug}-{number}",
       commentTaskLinkOnGitHubIssue: true,
@@ -29,8 +29,8 @@ describe("github config", () => {
   it("validates valid config", async () => {
     await expect(
       validateGitHubConfig({
-        repositoryOwner: "usekaneo",
-        repositoryName: "kaneo",
+        repositoryOwner: "usetaskdesk",
+        repositoryName: "taskdesk",
         installationId: 42,
         branchPattern: "{slug}-{number}",
       }),
@@ -39,7 +39,7 @@ describe("github config", () => {
 
   it("reports validation errors for invalid config", async () => {
     const result = await validateGitHubConfig({
-      repositoryOwner: "usekaneo",
+      repositoryOwner: "usetaskdesk",
       installationId: "bad",
     });
 

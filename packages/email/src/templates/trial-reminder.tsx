@@ -43,13 +43,14 @@ const TrialReminderEmail = ({
           Choose a plan
         </Link>
         <Text style={styles.paragraph}>
-          Kaneo is also free forever if you host it yourself, with every feature
-          included. You can export your data at any time and move it to your own
-          server.
+          TaskDesk is also free forever if you host it yourself, with every
+          feature included. You can export your data at any time and move it to
+          your own server.
         </Text>
         <Section style={styles.divider} />
         <Text style={styles.footer}>
-          You are receiving this because you own this workspace on Kaneo Cloud.
+          You are receiving this because you own this workspace on TaskDesk
+          Cloud.
         </Text>
       </Section>
     </EmailShell>

@@ -53,10 +53,10 @@ export const EmbedBlock = Node.create({
   parseHTML() {
     return [
       {
-        tag: "kaneo-embed[url]",
+        tag: "taskdesk-embed[url]",
       },
       {
-        tag: "div[data-type='kaneo-embed'][data-url]",
+        tag: "div[data-type='taskdesk-embed'][data-url]",
       },
     ];
   },
@@ -66,7 +66,7 @@ export const EmbedBlock = Node.create({
     const mode = String(HTMLAttributes.mode || "embed") as EmbedMode;
     const embedSource = mode === "embed" ? getEmbedSource(url) : null;
     const attrs = mergeAttributes(HTMLAttributes, {
-      "data-type": "kaneo-embed",
+      "data-type": "taskdesk-embed",
       "data-url": url,
       "data-mode": mode,
       contenteditable: "false",
@@ -76,7 +76,7 @@ export const EmbedBlock = Node.create({
       return [
         "div",
         attrs,
-        ["span", { class: "kaneo-embed-invalid-link" }, url],
+        ["span", { class: "taskdesk-embed-invalid-link" }, url],
       ];
     }
 
@@ -105,7 +105,7 @@ export const EmbedBlock = Node.create({
         attrs,
         [
           "div",
-          { class: "kaneo-embed-unsupported" },
+          { class: "taskdesk-embed-unsupported" },
           i18n.t("tasks:detail.editor.embed.onlyYoutubeInline"),
         ],
       ];
@@ -134,8 +134,8 @@ export const EmbedBlock = Node.create({
     const url = String(node.attrs?.url || "");
     const mode = node.attrs?.mode === "link" ? "link" : "embed";
     if (!isValidUrl(url)) {
-      return `\n<span class="kaneo-embed-invalid-link">${escapeHtml(url)}</span>\n`;
+      return `\n<span class="taskdesk-embed-invalid-link">${escapeHtml(url)}</span>\n`;
     }
-    return `\n<kaneo-embed url="${escapeHtml(url)}" mode="${mode}" />\n`;
+    return `\n<taskdesk-embed url="${escapeHtml(url)}" mode="${mode}" />\n`;
   },
 });

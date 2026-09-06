@@ -90,7 +90,9 @@ export function ErrorDisplay({
 
             {parsedError.type === "cors" && (
               <Button
-                onClick={() => window.open("https://kaneo.app/docs", "_blank")}
+                onClick={() =>
+                  window.open("https://taskdesk.app/docs", "_blank")
+                }
                 variant="outline"
                 size="icon"
                 className="w-full"

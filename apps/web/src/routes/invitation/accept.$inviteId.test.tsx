@@ -44,8 +44,8 @@ function renderSignedOutInvitation() {
       valid: true,
       invitation: {
         id: "invitation-1",
-        email: "invitee@kaneo.test",
-        workspaceName: "Kaneo",
+        email: "invitee@taskdesk.test",
+        workspaceName: "TaskDesk",
         inviterName: "Ada",
         expiresAt: "2999-01-01T00:00:00.000Z",
         status: "pending",
@@ -74,7 +74,7 @@ describe("AcceptInvitation", () => {
 
     expect(navigate).toHaveBeenCalledWith({
       to: "/auth/sign-up",
-      search: { invitationId: "invitation-1", email: "invitee@kaneo.test" },
+      search: { invitationId: "invitation-1", email: "invitee@taskdesk.test" },
     });
   });
 
@@ -87,7 +87,7 @@ describe("AcceptInvitation", () => {
 
     expect(navigate).toHaveBeenCalledWith({
       to: "/auth/sign-in",
-      search: { invitationId: "invitation-1", email: "invitee@kaneo.test" },
+      search: { invitationId: "invitation-1", email: "invitee@taskdesk.test" },
     });
   });
 });

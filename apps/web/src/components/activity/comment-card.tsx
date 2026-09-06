@@ -246,8 +246,8 @@ export default function CommentCard({
             uploadSurface="comment"
             className={
               isEditing
-                ? "[&_.kaneo-comment-editor-content_.ProseMirror]:min-h-[3rem] [&_.kaneo-comment-editor-content_.ProseMirror]:max-h-none [&_.kaneo-comment-editor-content_.ProseMirror]:overflow-visible [&_.kaneo-comment-editor-content_.ProseMirror]:px-3 [&_.kaneo-comment-editor-content_.ProseMirror]:pt-2.5 [&_.kaneo-comment-editor-content_.ProseMirror]:pb-2"
-                : "kaneo-comment-viewer [&_.kaneo-comment-editor-content_.ProseMirror]:px-3 [&_.kaneo-comment-editor-content_.ProseMirror]:pt-2 [&_.kaneo-comment-editor-content_.ProseMirror]:pb-3"
+                ? "[&_.taskdesk-comment-editor-content_.ProseMirror]:min-h-[3rem] [&_.taskdesk-comment-editor-content_.ProseMirror]:max-h-none [&_.taskdesk-comment-editor-content_.ProseMirror]:overflow-visible [&_.taskdesk-comment-editor-content_.ProseMirror]:px-3 [&_.taskdesk-comment-editor-content_.ProseMirror]:pt-2.5 [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-2"
+                : "taskdesk-comment-viewer [&_.taskdesk-comment-editor-content_.ProseMirror]:px-3 [&_.taskdesk-comment-editor-content_.ProseMirror]:pt-2 [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-3"
             }
             autoFocus={isEditing}
             readOnly={!isEditing}

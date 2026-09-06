@@ -25,7 +25,7 @@ describe("API integration: task image upload finalize", () => {
   });
 
   it("returns a URL using KANEO_API_URL", async () => {
-    process.env.KANEO_API_URL = "http://kaneo.test:1337";
+    process.env.KANEO_API_URL = "http://taskdesk.test:1337";
 
     const member = await createWorkspaceMember();
     const { project, columns } = await createProjectFixture({
@@ -70,12 +70,14 @@ describe("API integration: task image upload finalize", () => {
     const payload = (await response.json()) as { id: string; url: string };
     expect(payload).toHaveProperty("id");
     expect(payload).toHaveProperty("url");
-    expect(payload.url).toBe(`http://kaneo.test:1337/api/asset/${payload.id}`);
+    expect(payload.url).toBe(
+      `http://taskdesk.test:1337/api/asset/${payload.id}`,
+    );
     expect(payload.url).not.toContain("localhost");
   });
 
   it("updates the URL when KANEO_API_URL changes", async () => {
-    process.env.KANEO_API_URL = "https://proxy.kaneo.internal";
+    process.env.KANEO_API_URL = "https://proxy.taskdesk.internal";
 
     const member = await createWorkspaceMember();
     const { project, columns } = await createProjectFixture({
@@ -119,7 +121,7 @@ describe("API integration: task image upload finalize", () => {
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { id: string; url: string };
     expect(payload.url).toBe(
-      `https://proxy.kaneo.internal/api/asset/${payload.id}`,
+      `https://proxy.taskdesk.internal/api/asset/${payload.id}`,
     );
     expect(payload.url).not.toContain("localhost");
   });
@@ -152,7 +154,7 @@ describe("API integration: task image upload finalize", () => {
     const key = `workspace/${member.workspace.id}/project/${project.id}/task/${task.id}/descriptions/fallback-image.png`;
 
     const response = await app.request(
-      `https://app.kaneo.test/api/task/image-upload/${task.id}/finalize`,
+      `https://app.taskdesk.test/api/task/image-upload/${task.id}/finalize`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -168,7 +170,9 @@ describe("API integration: task image upload finalize", () => {
 
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { id: string; url: string };
-    expect(payload.url).toBe(`https://app.kaneo.test/api/asset/${payload.id}`);
+    expect(payload.url).toBe(
+      `https://app.taskdesk.test/api/asset/${payload.id}`,
+    );
     expect(payload.url).not.toContain("localhost");
   });
 

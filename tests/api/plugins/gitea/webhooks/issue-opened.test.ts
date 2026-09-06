@@ -91,8 +91,8 @@ const integration = {
   type: "gitea",
   config: JSON.stringify({
     baseUrl: "https://gitea.example.com",
-    repositoryOwner: "usekaneo",
-    repositoryName: "kaneo",
+    repositoryOwner: "usetaskdesk",
+    repositoryName: "taskdesk",
     token: "token",
   }),
 };
@@ -104,14 +104,14 @@ function issueOpenedPayload(labels: Array<string | { name?: string }>) {
       number: 42,
       title: "Fix the login bug",
       body: "Steps to reproduce",
-      html_url: "https://gitea.example.com/usekaneo/kaneo/issues/42",
+      html_url: "https://gitea.example.com/usetaskdesk/taskdesk/issues/42",
       labels,
       user: { login: "octocat" },
     },
     repository: {
-      owner: { login: "usekaneo" },
-      name: "kaneo",
-      html_url: "https://gitea.example.com/usekaneo/kaneo",
+      owner: { login: "usetaskdesk" },
+      name: "taskdesk",
+      html_url: "https://gitea.example.com/usetaskdesk/taskdesk",
     },
   };
 }

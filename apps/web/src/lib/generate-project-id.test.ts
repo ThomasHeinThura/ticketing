@@ -3,7 +3,7 @@ import generateProjectSlug from "./generate-project-id";
 
 describe("generateProjectSlug", () => {
   it("takes the first three letters of a single word", () => {
-    expect(generateProjectSlug("Kaneo")).toBe("KAN");
+    expect(generateProjectSlug("TaskDesk")).toBe("TAS");
   });
 
   it("takes the initials of the first three words", () => {
@@ -12,7 +12,7 @@ describe("generateProjectSlug", () => {
   });
 
   it("ignores a leading separator instead of spending an initial on it", () => {
-    expect(generateProjectSlug(" Kaneo")).toBe("KAN");
+    expect(generateProjectSlug(" TaskDesk")).toBe("TAS");
     expect(generateProjectSlug(" Alpha Beta Gamma")).toBe("ABG");
     expect(generateProjectSlug("- Alpha Beta Gamma")).toBe("ABG");
   });

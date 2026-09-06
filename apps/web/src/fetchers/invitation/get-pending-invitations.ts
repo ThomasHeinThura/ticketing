@@ -1,4 +1,4 @@
-import { client } from "@kaneo/libs";
+import { client } from "@taskdesk/libs";
 import { HttpError } from "@/lib/http-error";
 import type { WorkspaceUserInvitation } from "@/types/workspace-user";
 

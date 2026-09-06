@@ -45,8 +45,8 @@ describe("github integration routes are workspace scoped", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         projectId: project.id,
-        repositoryOwner: "usekaneo",
-        repositoryName: "kaneo",
+        repositoryOwner: "usetaskdesk",
+        repositoryName: "taskdesk",
       }),
     });
 

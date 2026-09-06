@@ -59,7 +59,7 @@ export async function handleIssueClosed(payload: IssueClosedPayload) {
       source: "issue_closed",
     });
 
-    if (existingMetadata.createdFrom === "kaneo") {
+    if (existingMetadata.createdFrom === "taskdesk") {
       continue;
     }
 

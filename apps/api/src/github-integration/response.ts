@@ -15,7 +15,7 @@ export const githubIntegrationSchema = z
     }),
     commentTaskLinkOnGitHubIssue: z.boolean().optional().openapi({
       description:
-        "When on, Kaneo comments a link back to the task on the linked GitHub issue.",
+        "When on, TaskDesk comments a link back to the task on the linked GitHub issue.",
     }),
     isActive: z.boolean().nullable(),
     createdAt: responseTimestamp,

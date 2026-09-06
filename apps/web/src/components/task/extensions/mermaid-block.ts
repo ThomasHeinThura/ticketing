@@ -86,7 +86,7 @@ async function renderMermaid(code: string, dark: boolean) {
 
   mermaidIdCounter += 1;
   const { svg } = await mermaid.render(
-    `kaneo-mermaid-${mermaidIdCounter}`,
+    `taskdesk-mermaid-${mermaidIdCounter}`,
     code,
   );
 
@@ -161,7 +161,7 @@ function createScheduler(errorKey: string, onSettled: () => void): Scheduler {
 
 function createPreviewElement(state: RenderState | null) {
   const container = document.createElement("div");
-  container.className = "kaneo-mermaid-preview";
+  container.className = "taskdesk-mermaid-preview";
   container.contentEditable = "false";
 
   if (!state || state.status === "error") {

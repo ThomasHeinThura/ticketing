@@ -128,7 +128,7 @@ describe("S3 helpers", () => {
       /^workspace\/workspace-1\/project\/project-2\/task\/task-3\/comments\/sprint-plan-final-1717171717000-[a-z0-9]+\.png$/,
     );
     process.env.S3_ENDPOINT = "https://storage.example.test";
-    process.env.S3_BUCKET = "kaneo";
+    process.env.S3_BUCKET = "taskdesk";
     process.env.S3_ACCESS_KEY_ID = "test-access-key";
     process.env.S3_SECRET_ACCESS_KEY = "test-secret-key";
     delete process.env.S3_KEY_PREFIX;
@@ -145,7 +145,7 @@ describe("S3 helpers", () => {
 
   it("assertTaskImageKeyMatchesContext rejects traversal past the prefix", () => {
     process.env.S3_ENDPOINT = "https://storage.example.test";
-    process.env.S3_BUCKET = "kaneo";
+    process.env.S3_BUCKET = "taskdesk";
     process.env.S3_ACCESS_KEY_ID = "test-access-key";
     process.env.S3_SECRET_ACCESS_KEY = "test-secret-key";
     delete process.env.S3_KEY_PREFIX;
@@ -182,15 +182,15 @@ describe("S3 helpers", () => {
     expect(applyKeyPrefix("staging", "workspace/a/file.png")).toBe(
       "staging/workspace/a/file.png",
     );
-    expect(applyKeyPrefix("prod/kaneo/", "workspace/a/file.png")).toBe(
-      "prod/kaneo/workspace/a/file.png",
+    expect(applyKeyPrefix("prod/taskdesk/", "workspace/a/file.png")).toBe(
+      "prod/taskdesk/workspace/a/file.png",
     );
     expect(applyKeyPrefix("prefix///", "key")).toBe("prefix/key");
   });
 
   it("assertTaskImageKeyMatchesContext respects S3_KEY_PREFIX", () => {
     process.env.S3_ENDPOINT = "https://storage.example.test";
-    process.env.S3_BUCKET = "kaneo";
+    process.env.S3_BUCKET = "taskdesk";
     process.env.S3_ACCESS_KEY_ID = "test-access-key";
     process.env.S3_SECRET_ACCESS_KEY = "test-secret-key";
     process.env.S3_KEY_PREFIX = "staging";
@@ -228,7 +228,7 @@ describe("S3 helpers", () => {
 
   it("creates presigned upload URLs without hoisted checksum query params", async () => {
     process.env.S3_ENDPOINT = "https://storage.example.test";
-    process.env.S3_BUCKET = "kaneo";
+    process.env.S3_BUCKET = "taskdesk";
     process.env.S3_ACCESS_KEY_ID = "test-access-key";
     process.env.S3_SECRET_ACCESS_KEY = "test-secret-key";
     process.env.S3_REGION = "us-east-1";
@@ -271,19 +271,19 @@ describe("S3 helpers", () => {
 
   it("assertStorageConfigured succeeds without static keys (IAM role mode)", () => {
     process.env.S3_ENDPOINT = "https://s3.us-east-1.amazonaws.com";
-    process.env.S3_BUCKET = "kaneo";
+    process.env.S3_BUCKET = "taskdesk";
     delete process.env.S3_ACCESS_KEY_ID;
     delete process.env.S3_SECRET_ACCESS_KEY;
 
     const config = assertStorageConfigured();
-    expect(config.bucket).toBe("kaneo");
+    expect(config.bucket).toBe("taskdesk");
     expect(config.accessKeyId).toBe("");
     expect(config.secretAccessKey).toBe("");
   });
 
   it("assertStorageConfigured throws when only one credential key is set", () => {
     process.env.S3_ENDPOINT = "https://s3.us-east-1.amazonaws.com";
-    process.env.S3_BUCKET = "kaneo";
+    process.env.S3_BUCKET = "taskdesk";
     process.env.S3_ACCESS_KEY_ID = "AKIA";
     delete process.env.S3_SECRET_ACCESS_KEY;
 
@@ -346,7 +346,7 @@ describe("S3 credential provider chain (IAM role)", () => {
     // configured, but ambient AWS credentials are resolvable from the
     // environment (the AWS SDK default provider chain reads AWS_* env vars).
     process.env.S3_ENDPOINT = "https://s3.us-east-1.amazonaws.com";
-    process.env.S3_BUCKET = "kaneo";
+    process.env.S3_BUCKET = "taskdesk";
     process.env.S3_REGION = "us-east-1";
     process.env.S3_FORCE_PATH_STYLE = "false";
     process.env.AWS_ACCESS_KEY_ID = ambientAccessKeyId;

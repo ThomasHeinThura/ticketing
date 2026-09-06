@@ -38,7 +38,7 @@ function modernRequest(
         _meta: {
           "io.modelcontextprotocol/protocolVersion": protocolVersion,
           "io.modelcontextprotocol/clientInfo": {
-            name: "kaneo-stateless-test",
+            name: "taskdesk-stateless-test",
             version: "1.0.0",
           },
           "io.modelcontextprotocol/clientCapabilities": {},
@@ -343,7 +343,7 @@ describe("MCP 2026-07-28 stateless HTTP", () => {
         params: {
           protocolVersion: "2025-06-18",
           capabilities: {},
-          clientInfo: { name: "kaneo-test", version: "1.0.0" },
+          clientInfo: { name: "taskdesk-test", version: "1.0.0" },
         },
       }),
     });

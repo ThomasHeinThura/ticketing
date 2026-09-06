@@ -64,13 +64,13 @@ describe("isSmtpConfigured", () => {
     expect(
       isSmtpConfigured({
         SMTP_HOST: "relay.internal",
-        SMTP_FROM: "kaneo@example.com",
+        SMTP_FROM: "taskdesk@example.com",
       }),
     ).toBe(true);
   });
 
   it("is false without a host or a sender", () => {
-    expect(isSmtpConfigured({ SMTP_FROM: "kaneo@example.com" })).toBe(false);
+    expect(isSmtpConfigured({ SMTP_FROM: "taskdesk@example.com" })).toBe(false);
     expect(isSmtpConfigured({ SMTP_HOST: "relay.internal" })).toBe(false);
     expect(isSmtpConfigured({})).toBe(false);
   });

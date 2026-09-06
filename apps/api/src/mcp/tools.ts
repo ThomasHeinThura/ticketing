@@ -210,7 +210,7 @@ const hexColorSchema = z
     "Expected a hex color like #FF6600",
   );
 
-/** Register Kaneo's authenticated tool catalog on an MCP server adapter. */
+/** Register TaskDesk's authenticated tool catalog on an MCP server adapter. */
 export function registerMcpTools(
   server: McpToolRegistrar,
   baseUrl: string,
@@ -233,7 +233,7 @@ export function registerMcpTools(
   registerTool(
     "whoami",
     {
-      description: "Return the current Kaneo session and user.",
+      description: "Return the current TaskDesk session and user.",
       inputSchema: z.object({}),
     },
     async () =>

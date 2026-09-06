@@ -1,4 +1,4 @@
-import { resolveApiBaseUrl } from "@kaneo/libs";
+import { resolveApiBaseUrl } from "@taskdesk/libs";
 
 export type InstanceStatus = {
   hasUsers: boolean;

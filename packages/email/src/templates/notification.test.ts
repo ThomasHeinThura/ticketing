@@ -9,11 +9,11 @@ describe("NotificationEmail", () => {
       createElement(NotificationEmail, {
         title: "タスクが割り当てられました",
         message: "デザイン案の確認をお願いします。",
-        actionUrl: "https://kaneo.example/task/1",
+        actionUrl: "https://taskdesk.example/task/1",
         locale: "ja-JP",
       }),
     );
-    expect(html).toContain("Kaneo で開く");
+    expect(html).toContain("TaskDesk で開く");
     expect(html).toContain("配信設定に一致する通知がありました。");
   });
 });

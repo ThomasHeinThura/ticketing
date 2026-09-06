@@ -3,7 +3,7 @@ import * as Sentry from "@sentry/react";
 const dsn = import.meta.env.VITE_SENTRY_DSN;
 
 // skip init if env.sh never replaced the "KANEO_SENTRY_DSN" placeholder
-if (dsn && !dsn.startsWith("KANEO_")) {
+if (dsn && !dsn.startsWith("TASKDESK_")) {
   Sentry.init({
     dsn,
     environment: import.meta.env.MODE,
@@ -11,15 +11,15 @@ if (dsn && !dsn.startsWith("KANEO_")) {
     sendDefaultPii: false,
     ignoreErrors: [
       // Thrown by Safari browser extensions on iOS 18+ injecting content scripts;
-      // not caused by kaneo code.
+      // not caused by taskdesk code.
       "Invalid call to runtime.sendMessage()",
       // Thrown by Facebook's in-app browser (Android) navigation performance logger
-      // calling postMessage on a destroyed WebView Java bridge; not caused by kaneo code.
+      // calling postMessage on a destroyed WebView Java bridge; not caused by taskdesk code.
       "Error invoking postMessage: Java object is gone",
     ],
     denyUrls: [
       // Errors from third-party affiliate/adware browser extensions that inject
-      // scripts fetching from rsc.cdn77.org (e.g. domainList.json); not caused by kaneo code.
+      // scripts fetching from rsc.cdn77.org (e.g. domainList.json); not caused by taskdesk code.
       /cdn77\.org/,
     ],
     // Safari's "Load failed" used to be filtered here by message alone, which

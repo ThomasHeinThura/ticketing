@@ -1,5 +1,5 @@
 {
-  "name": "@kaneo/email",
+  "name": "@taskdesk/email",
   "version": "1.0.0",
   "private": true,
   "exports": {

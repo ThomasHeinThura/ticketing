@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 
 const SCRIPT_SRC =
   "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-const SCRIPT_ATTR = "data-kaneo-turnstile";
+const SCRIPT_ATTR = "data-taskdesk-turnstile";
 
 declare global {
   interface Window {

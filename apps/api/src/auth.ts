@@ -3,13 +3,13 @@ import {
   sendMagicLinkEmail,
   sendOtpEmail,
   sendWorkspaceInvitationEmail,
-} from "@kaneo/email";
+} from "@taskdesk/email";
 import {
   ac,
   DEFAULT_ROLE_NAMES,
   defaultRolePayloads,
   owner,
-} from "@kaneo/permissions";
+} from "@taskdesk/permissions";
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -131,28 +131,28 @@ function getAuthEmailCopy(locale?: string | null) {
 
   if (localeKey === "de") {
     return {
-      magicLinkSubject: "Anmeldelink fuer Kaneo",
-      otpSubject: "Bestaetigungscode fuer Kaneo",
+      magicLinkSubject: "Anmeldelink fuer TaskDesk",
+      otpSubject: "Bestaetigungscode fuer TaskDesk",
     };
   }
 
   if (localeKey === "vi") {
     return {
-      magicLinkSubject: "Liên kết đăng nhập Kaneo",
-      otpSubject: "Mã xác minh Kaneo",
+      magicLinkSubject: "Liên kết đăng nhập TaskDesk",
+      otpSubject: "Mã xác minh TaskDesk",
     };
   }
 
   if (localeKey === "ja") {
     return {
-      magicLinkSubject: "Kaneo ログインリンク",
-      otpSubject: "Kaneo 認証コード",
+      magicLinkSubject: "TaskDesk ログインリンク",
+      otpSubject: "TaskDesk 認証コード",
     };
   }
 
   return {
-    magicLinkSubject: "Login for Kaneo",
-    otpSubject: "Authentication code for Kaneo",
+    magicLinkSubject: "Login for TaskDesk",
+    otpSubject: "Authentication code for TaskDesk",
   };
 }
 
@@ -166,7 +166,7 @@ function getDeviceAuthClientIds(): Set<string> {
         .filter(Boolean),
     );
   }
-  return new Set(["kaneo-cli", "kaneo-mcp"]);
+  return new Set(["taskdesk-cli", "taskdesk-mcp"]);
 }
 
 const DEFAULT_TRUSTED_PROXIES = [
@@ -277,7 +277,7 @@ export const auth = betterAuth({
       ? [
           anonymous({
             generateName: async () => generateDemoName(),
-            emailDomainName: "kaneo.app",
+            emailDomainName: "taskdesk.app",
           }),
         ]
       : []),
@@ -399,7 +399,7 @@ export const auth = betterAuth({
           }
         : true,
       // Better Auth defaults this to `true`, which blocks any user whose email
-      // is not verified from accepting/rejecting an invitation. Kaneo does not
+      // is not verified from accepting/rejecting an invitation. TaskDesk does not
       // verify emails on signup (and guest/anonymous users are unverified by
       // design), so leaving the default on breaks invitation acceptance for
       // everyone. The invitation link id is the actual secret here, so gate on
@@ -415,7 +415,7 @@ export const auth = betterAuth({
         afterCreateOrganization: async ({ organization, user }) => {
           // Seed the editable default roles for this workspace. Each
           // role's permissions are derived from the compiled-in defaults
-          // in `@kaneo/permissions`; admins can later replace them in the
+          // in `@taskdesk/permissions`; admins can later replace them in the
           // Roles UI. We skip names that somehow already exist (this hook
           // is best-effort idempotent; the boot-time backfill is the
           // belt-and-braces path).

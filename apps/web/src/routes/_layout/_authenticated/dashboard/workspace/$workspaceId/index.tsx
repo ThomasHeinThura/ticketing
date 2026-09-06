@@ -108,7 +108,7 @@ function SortableProjectRow({
     <TableRow
       ref={setNodeRef}
       style={style}
-      data-kaneo-sortable=""
+      data-taskdesk-sortable=""
       className={cn(
         "group/row cursor-pointer",
         isDragging && "relative z-10 bg-muted shadow-md",
@@ -174,13 +174,13 @@ function RouteComponent() {
   );
 
   const handleDragStart = () => {
-    document.body.classList.add("kaneo-dragging");
+    document.body.classList.add("taskdesk-dragging");
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    document.body.classList.remove("kaneo-dragging");
+    document.body.classList.remove("taskdesk-dragging");
 
     if (!over || active.id === over.id || !orderedProjects) return;
 
@@ -365,7 +365,9 @@ function RouteComponent() {
           modifiers={[restrictToVerticalAxis, restrictToParentElement]}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
-          onDragCancel={() => document.body.classList.remove("kaneo-dragging")}
+          onDragCancel={() =>
+            document.body.classList.remove("taskdesk-dragging")
+          }
         >
           <Table>
             <TableHeader className="p-4">

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { KaneoClient } from "./client.js";
+import { TaskDeskClient } from "./client.js";
 
-describe("KaneoClient", () => {
+describe("TaskDeskClient", () => {
   const originalFetch = globalThis.fetch;
 
   afterEach(() => {
@@ -21,7 +21,7 @@ describe("KaneoClient", () => {
       );
     globalThis.fetch = fetchMock as typeof fetch;
 
-    const client = new KaneoClient({
+    const client = new TaskDeskClient({
       baseUrl: "https://api.example.com",
       auth: auth as never,
     });
@@ -56,7 +56,7 @@ describe("KaneoClient", () => {
       );
     globalThis.fetch = fetchMock as typeof fetch;
 
-    const client = new KaneoClient({
+    const client = new TaskDeskClient({
       baseUrl: "https://api.example.com",
       auth: auth as never,
     });
@@ -79,7 +79,7 @@ describe("KaneoClient", () => {
       }),
     ) as typeof fetch;
 
-    const client = new KaneoClient({
+    const client = new TaskDeskClient({
       baseUrl: "https://api.example.com",
       auth: auth as never,
     });
