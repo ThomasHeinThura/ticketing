@@ -21,7 +21,9 @@
     "lint:ci": "biome ci .",
     "openapi:write": "node ./scripts/ci/check-openapi.mjs --write",
     "test": "turbo test",
+    "test:all": "node ./scripts/ci/test-all.mjs",
     "test:integration": "turbo test:integration",
+    "test:permissions": "node ./scripts/ci/route-policy-gate.mjs",
     "typecheck": "turbo typecheck",
     "prepare": "husky"
   },
