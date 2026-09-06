@@ -197,11 +197,42 @@ kaneo's inherited routes present and each carrying a policy**, P0 security revie
   `gh auth refresh -s project,read:project` and an agent creates it, or he creates it in the
   UI with the columns **Backlog / Ready / In Progress / Review / Blocked / Done**.
   Unblocked by: Thomas.
-- **P0 step 1 (import kaneo)** — hard stop until **both**: the licence pull request
-  (`LICENSE`, `NOTICE`, `THIRD-PARTY-NOTICES.md`) has **merged**, and the **P0 issues exist**
-  — they now do (#4–#11), so this reduces to the licence merge. The snapshot SHA and the migration approach are no longer
-  blockers — both were confirmed on 2026-09-06. Unblocked by: Thomas merging the licence
-  pull request.
+- **~~P0 step 1 (import kaneo)~~ — the licence gate is CLEARED.** The licence pull request
+  merged as `26c5cb6` and the P0 issues (#4–#11) exist. The snapshot SHA and the migration
+  approach were confirmed on 2026-09-06. **Steps 1–4 of the provenance order are done** —
+  see the session log below. What now blocks the *copy* is the two items beneath.
+- **No GitHub CLI and no GitHub token on the working machine.** `gh` is not installed
+  anywhere on the host and no token is present in the environment, `~/.config/gh`, or any
+  project `.env`. SSH to `git@github.com` authenticates fine, so **branches can be pushed
+  but pull requests cannot be opened**, issue dependency links cannot be corrected, and the
+  Project board cannot be created — this is the same root cause as the board item above.
+  Two branches are pushed and waiting: `docs/p0-working-agreement` and
+  `feat/issue-5-kaneo-import-provenance`. Their pull-request bodies are written and ready
+  to paste. Unblocked by: Thomas, with a token or by opening the two pull requests himself.
+- **The kaneo copy (step 5 of the provenance order) is held on seven documentation
+  decisions.** `repository-bootstrap.md` cannot be executed exactly as written: it
+  contradicts itself on Sentry (§2 *Move* vs §3 *delete every `SENTRY_*`*) and on
+  `KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS`; `scripts/openapi/` and the `apps/web` config
+  files have no verdict rows; and the environment migration table omits all seven **S3
+  connection variables**, which are read through a local `env()` helper at
+  `apps/api/src/storage/s3.ts:79-81` and so are invisible to a `process.env` grep. Per the
+  spec interaction rule these are proposed, not decided. Unblocked by: Thomas.
+- **Two inherited security defaults are on no removal list** — and both are verified in
+  kaneo's source, not inferred. `rateLimit: { enabled: isCloud() }` (`auth.ts:566`) leaves
+  rate limiting **off for every self-hosted instance**, which is TaskDesk's shipping model,
+  and stripping `KANEO_CLOUD` at de-brand would make that permanent. `apiKey({
+  enableSessionForAPIKeys: true })` (`auth.ts:536`) is a third authentication surface,
+  larger than the two already slated for removal. Both need a verdict in
+  `inherited-features.md` before #6 is written. Unblocked by: Thomas.
+- **v1 UAT has an active human user, so the v2 cutover must be scheduled, not taken.** The
+  frontend access log shows an interactive Entra-authenticated session on 2026-09-05 05:54
+  UTC. Separately, **a v2 UAT deployment is not yet possible at all**: `ticketing.v2`
+  contains no application code, no `package.json`, no `Dockerfile` and no compose file, so
+  there is nothing to deploy until #5 merges and #11 builds the deployment skeleton. The
+  pre-cutover record for v1 (running images, volumes, verified backup, verified rollback
+  command, and the finding that TLS terminates at CloudFront and not at Traefik) is
+  captured and is reported to Thomas. Unblocked by: #5 and #11, then Thomas's explicit
+  cutover authorisation.
 
 ---
 
@@ -239,6 +270,82 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-06 · The P0 working agreement recorded; issue #5 provenance evidence produced
+
+Two branches, both pushed, neither merged. Machine: Linux/EC2, **not** a Mac — `open -a
+Docker` does not apply here, `docker info` does, and the Docker daemon was already running
+88 containers.
+
+**Task 0 — the working agreement** (`docs/p0-working-agreement`). Thomas's confirmed
+sequencing was settled in conversation but written down nowhere. One new `CLAUDE.md`
+section, "The P0 working agreement", in eight parts — the #4–#11 dependency graph, the two
+throttles and the rule that Throttle 2 gates the *claim* and never the throttle, the P1–P4
+parallel lanes, a blocking taxonomy graded by blast radius, shared-contract ownership, the
+spec interaction rule, the reference restriction, and authority — plus the matching
+decision-log entry. The `branch → commit → pull request → Thomas approves → merge` flow was
+deliberately **not** restated as new; it is already settled in two places and the new
+section points at them.
+
+**Task 1 — issue #5, provenance steps 1–4** (`feat/issue-5-kaneo-import-provenance`). The
+mandated order was followed exactly. A throwaway `git worktree` detached at
+`42bb801114aa1ae499228a53180f0cdbc5607964`, so the reference clone never gained a
+`node_modules` — verified afterwards that it still has none. `git fetch` first, and the
+pinned SHA is still the tip of upstream `main`.
+
+**The attribution baseline, every check green on the untouched snapshot:** typecheck,
+build, `i18n:check`, `openapi:check`, and `lint` (which is `biome check --write .` and
+changed nothing, so the snapshot is already biome-clean). Unit: **130 files, 692 tests, 0
+failed, 0 skipped**. Integration: **33 files, 227 tests, 0 failed, 0 skipped — identical on
+Postgres 16 and Postgres 18**, which is the new information the bootstrap document asked
+for, since kaneo's own CI validates only on 16. Supply chain: `pnpm audit` 12 advisories (0
+critical, 8 high) and Trivy 7 high / 0 critical over the same package set — two scanners
+agreeing. Every high was traced to its dependency path rather than counted, and none is
+reachable in a shipped TaskDesk: all sit in devDependencies (`@commitlint/cli`), build-time
+tooling (`postcss`/`nanoid`) or optional peerDependencies kaneo never imports (`mysql2`,
+`prisma`). The only advisory on a shipped path is `qs`, moderate, via the MCP SDK's
+`express`. `trivy config` on `Dockerfile.kaneo` is clean.
+
+**The copy itself was deliberately not performed.** Auditing the copy table and the
+environment migration table against kaneo's real tree found that
+`repository-bootstrap.md` cannot be executed exactly as written — it contradicts itself on
+Sentry and on `KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS`, `scripts/openapi/` and the
+`apps/web` config files have no verdict rows, and the environment table omits all seven S3
+**connection** variables because they are read through a local `env()` helper at
+`apps/api/src/storage/s3.ts:79-81` rather than as `process.env.X`. That is the spec
+interaction rule working, not a stall: ambiguity discovered, decision path stopped, change
+proposed, Thomas decides. Seven decisions are with him.
+
+**Two inherited security defaults were found that are on no removal list**, both verified
+in source: `rateLimit: { enabled: isCloud() }` at `auth.ts:566` — rate limiting is off for
+every self-hosted instance, and stripping `KANEO_CLOUD` would make that permanent rather
+than fix it — and `apiKey({ enableSessionForAPIKeys: true })` at `auth.ts:536`, a third
+authentication surface larger than the two already slated for removal. This is the same
+pattern as the `anonymous()` and `accountLinking` finds: it was only visible by opening
+`auth.ts`.
+
+**UAT.** No cutover was attempted. v1 UAT runs as compose project `taskdesk-uat`, and its
+declared config directory `/home/ubuntu/ticketing-uat/` no longer exists — the equivalent
+files are in `ticketing.v1/`, and `docker compose config` was verified to resolve the same
+nine services from there, which gives a working rollback command. Today's database dump was
+verified readable with `pg_restore -l` (76 tables). **TLS does not terminate at Traefik**:
+both UAT hostnames resolve to CloudFront with an ACM wildcard `*.bimats.com` valid to
+2026-12-11, and Traefik serves only the plain `web` entrypoint behind it — so there is no
+per-host certificate to reissue at cutover, which makes the swap simpler than assumed. **v1
+UAT is not idle**: an interactive Entra-authenticated session on 2026-09-05 05:54 UTC. And
+a v2 UAT deployment is not possible yet regardless, because `ticketing.v2` still has no
+application code.
+
+**Toolchain.** Node 24.20.0 and pnpm 10.32.1 installed **user-locally** via `fnm` and
+`corepack`, not machine-wide. There is no `gh` and no GitHub token anywhere on the host;
+SSH push works, so branches are pushed and pull requests cannot be opened.
+
+**Not done, deliberately:** the kaneo copy, de-brand and environment migration (held on the
+seven decisions); the issue dependency-link corrections and the Project board (no token);
+a second-model review of either branch (none available — recorded as unreviewed rather than
+downgraded, per the third absolute); and no committed security note, because
+`docs/07-planning/security-reviews/` does not exist and its filename needs a pull-request
+number that does not exist yet.
 
 ### 2026-09-06 · Confirmed decisions applied; licence and provenance files opened as a pull request
 
