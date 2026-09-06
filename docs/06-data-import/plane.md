@@ -1,7 +1,7 @@
 # Importing from Plane
 
 - **Plugin:** `import.plane`
-- **Phase:** P6
+- **Stage:** P6
 
 Plane's model is the closest to ours, so this is the simplest of the imports — mostly
 one-to-one, with three real decisions.

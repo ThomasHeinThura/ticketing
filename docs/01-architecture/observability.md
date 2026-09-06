@@ -1,7 +1,7 @@
 # Observability
 
 v1 shipped without tracing and regretted it — "the four worst defects were invisible to
-green tests". Observability is built in from Phase 0, not retrofitted.
+green tests". Observability is built in from Stage 0, not retrofitted.
 
 ## The three signals
 

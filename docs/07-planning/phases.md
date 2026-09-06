@@ -1,32 +1,48 @@
-# Phases
+# Stages
 
-Seven phases. Each one is **finished** before the next begins — see
-[product principle 7](../00-overview/product-principles.md). That remains the definition
-of "finished" used throughout this document.
+Seven stages of **capability maturity**: P0 is the least capable product that has all its
+guards, P7 is the one that can be handed to a stranger. A stage says *what the product can
+do and how well*, not *when someone works on it*.
 
-**For dates**, and for the one calendar where several of these phases deliberately run in
-parallel rather than sequentially — with every resulting trade-off named — see
-[accelerated-delivery-plan.md](accelerated-delivery-plan.md). This document still answers
-"what does done mean"; that one answers "what ships by which date."
+That distinction is the point of the word, and it was chosen on 2026-09-06 to end a
+contradiction the corpus carried: this document used to say each phase finishes before the
+next begins, while [accelerated-delivery-plan.md](accelerated-delivery-plan.md) runs six
+lanes at once. Both were describing something true, in one word that could not hold both.
+The vocabulary now:
+
+| Term | Means | Lives in |
+| --- | --- | --- |
+| **Stage** (P0–P7) | A level of product capability, with exit criteria | This document |
+| **Workstream** | A lane of work executing against those criteria — several run at once | [accelerated-delivery-plan.md](accelerated-delivery-plan.md) |
+| **Step** (1–9) | One pass of the build process for a single feature | [SDLC](../04-engineering/sdlc.md) |
+| **State** | Where one work item sits in its lifecycle | [ADR 0011](../01-architecture/adr/0011-ticket-lifecycle-engine.md) |
+
+So several workstreams may be advancing different stages at the same time, and nothing is
+contradictory about it. What is **not** allowed is calling a stage complete before its exit
+criteria are met — that is [product principle 7](../00-overview/product-principles.md), and
+it constrains the claim, never the calendar.
+
+**For dates**, see [accelerated-delivery-plan.md](accelerated-delivery-plan.md). This
+document answers "what does done mean"; that one answers "what ships by which date."
 
 **The operating rule for time (Thomas, 2026-09-05 — settled, not a question):** the
 four-week accelerated plan is a **flexible target** for fast internal progress, not a
 promise that the whole product, a marketplace launch or external-customer readiness lands
-in four weeks. The complete program may take **three to four months**. A phase, feature or
+in four weeks. The complete program may take **three to four months**. A stage, feature or
 P0 task may finish in **one to three days** where kaneo already provides a working
 foundation and the policy/security retrofit is straightforward; other work takes longer
-because it changes security, identity, tenancy or deployment behaviour. For every phase:
+because it changes security, identity, tenancy or deployment behaviour. For every stage:
 finish it when its exit criteria are met; do not delay finished work to match a calendar;
 **never skip a security, quality, test or review gate to match a calendar**; if needed,
 narrow optional scope, move an unfinished feature later, or move the target date — and
 record the change in [status.md](status.md), here, and in [release-plan.md](release-plan.md).
 
-A phase is finished when every feature in it meets the
+A stage is **claimed** when every feature in it meets the
 [Definition of Done](../04-engineering/definition-of-done.md), including the UX gates, and
-the phase gate in the [SDLC](../04-engineering/sdlc.md) has been passed and written up.
-Under the accelerated calendar, that phase gate carries the same parallel-workstreams
-exception as the calendar itself (decision A, [decision log](decision-log.md)); the
-mechanism for it is recorded in [SDLC](../04-engineering/sdlc.md).
+the [stage gate](../04-engineering/definition-of-done.md#stage-completion) has been passed
+and written up. Workstreams may be working on P2, P3 and P4 concurrently; each of those
+stages is claimed only when its own gate passes. That is why the gate is the control and
+sequencing is not.
 
 ---
 
@@ -87,6 +103,10 @@ happens; building on top of them is easy.
 - Seed scripts: minimal, realistic, hostile
 - Dockerfile, `compose.yml`, Traefik config, `scripts/deploy.sh`, the `install.sh`
   bootstrapper it is wrapped by — see [One-line install](../05-operations/one-line-install.md)
+- **PostgreSQL RLS prototype** on `work_item`, `comment` and `attachment` — a backstop
+  beneath the application layer, never the primary control. Answers pooling, cost and
+  agreement with the application ([multi-tenancy.md](../01-architecture/multi-tenancy.md#isolation)),
+  and closes one way or the other before P0 does
 - Observability: Pino, Prometheus, health endpoints
 - `apps/site` docs skeleton (Fumadocs)
 - ADRs 0001–0013 committed
@@ -103,7 +123,7 @@ happens; building on top of them is easy.
 
 **P0 step 0 — spec closure (added 2026-09-05).** Before step 1, items 1–3 below are
 finished, in this order, from the [planning review](review-2026-09-05.md), so nothing
-below is built on a guess; item 4 is a **standing gate** at each feature's SDLC stage 2,
+below is built on a guess; item 4 is a **standing gate** at each feature's SDLC step 2,
 not a step 0 task completed once:
 
 1. `data-model.md` authoritative for every table and column; identifier lists
@@ -117,7 +137,7 @@ not a step 0 task completed once:
    [i18n](../01-architecture/i18n.md), [Helm values contract](../05-operations/kubernetes.md),
    the threat model in [security-model.md](../01-architecture/security-model.md).
 4. Each feature spec's remaining findings in
-   [reviews/2026-09-05/](reviews/2026-09-05/) are closed at **SDLC stage 2 of that
+   [reviews/2026-09-05/](reviews/2026-09-05/) are closed at **SDLC step 2 of that
    feature**, before its build starts — not all at once now. A spec is not "specified"
    until its section in those files is empty.
 
@@ -128,7 +148,9 @@ Also: anonymous sign-in is off; account linking is off; the cookie cache is off;
 in Hono's router matches `public-project`, `github`, `gitea`, `slack`, `discord`,
 `telegram` or `generic-webhook`; no `process.env` read exists outside the approved list;
 kaneo's own test suite baseline (pass/fail/skip counts on the confirmed SHA) is recorded;
-and the PR template is present.
+and the PR template is present. The **RLS prototype** is either merged with its pooling,
+cost and agreement findings written down, or dropped with the reason in the decision log —
+an open prototype does not close P0.
 
 ---
 
@@ -271,7 +293,7 @@ touching a file.
 - Dashboards with widgets
 - Knowledge base with deflection
 - Service catalogue, changes, change freezes, releases
-- Pages — **spec required before stage 2** (no `pages.md` yet; prefix `PG` reserved)
+- Pages — **spec required before step 2** (no `pages.md` yet; prefix `PG` reserved)
 - **Inherited from kaneo and flag-gated from P0** (see
   [inherited-features.md](../01-architecture/inherited-features.md)): calendar/gantt/
   timeline layouts and basic time entries. They ship **off** until their v2 specs are
@@ -331,7 +353,7 @@ off.
 
 **Why P0 first, with no features.** Retrofitting quality gates never happens. Every rule in
 [UX quality gates](../02-design/ux-quality-gates.md) is cheap to add to an empty repository
-and expensive to add to a full one. This is the phase most likely to feel like a delay and
+and expensive to add to a full one. This is the stage most likely to feel like a delay and
 most likely to be the reason v2 does not repeat v1.
 
 **Why core work before the service desk.** The service desk is built on work items. There

@@ -188,21 +188,21 @@ will use it.
 
 ---
 
-## Phase gate — before a phase is declared complete
+## Stage gate — before a stage is declared complete
 
-**The canonical phase-gate list is
-[definition-of-done.md § Phase completion](../04-engineering/definition-of-done.md#phase-completion).**
+**The canonical stage-gate list is
+[definition-of-done.md § Stage completion](../04-engineering/definition-of-done.md#stage-completion).**
 The six checks below are its UX half, numbered `PG1`–`PG6` (renamed 2026-09-06) so they are
-never confused with the delivery phases P0–P7.
+never confused with the delivery stages P0–P7.
 
 ### PG1 · Screen review
 
 Every new screen walked through against [design principles](design-principles.md), with
-a written sign-off in the phase review note.
+a written sign-off in the stage review note.
 
 ### PG2 · Screen reader pass
 
-VoiceOver on Safari and NVDA on Firefox, over the phase's core journeys.
+VoiceOver on Safari and NVDA on Firefox, over the stage's core journeys.
 
 ### PG3 · Keyboard-only day
 

@@ -1,6 +1,6 @@
 # Import strategy
 
-- **Phase:** P6
+- **Stage:** P6
 - **Status:** ⬜
 - **Feature flag:** always on for administrators
 

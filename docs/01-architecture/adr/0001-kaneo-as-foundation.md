@@ -63,7 +63,7 @@ Specifically:
   kaneo's changelog, with anything relevant cherry-picked deliberately.
 - **We inherit kaneo's existing bugs and design debt** without its maintainers' context.
 - **We must genuinely understand the code we took.** Copying code you do not understand
-  is how you get a codebase nobody can change. Phase 0 includes a deliberate
+  is how you get a codebase nobody can change. Stage 0 includes a deliberate
   read-and-strip pass, not just a `cp -r`.
 - Attribution obligations persist forever and must survive refactoring.
 
@@ -101,4 +101,4 @@ produced a hand-rolled UI. Starting from a finished design system is the whole p
 
 - [Licensing and attribution](../../00-overview/licensing-and-attribution.md)
 - [ADR 0008 — single design system](0008-single-design-system.md)
-- [Phases](../../07-planning/phases.md)
+- [Stages](../../07-planning/phases.md)

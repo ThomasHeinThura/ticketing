@@ -53,6 +53,11 @@ Full picture: [docs/01-architecture/overview.md](docs/01-architecture/overview.m
 
 ## Install
 
+> **Planned — not available until P0 completes.** There is no application code in this
+> repository yet, `get.taskdesk.dev` does not resolve, and `scripts/deploy.sh` does not
+> exist. Everything in this section, and every command elsewhere in this README, describes
+> what P0 builds. Live progress: [docs/07-planning/status.md](docs/07-planning/status.md).
+
 ```bash
 curl -fsSL https://get.taskdesk.dev | bash
 ```
@@ -82,7 +87,7 @@ host, Kubernetes via the Helm chart, or — deferred, P7 at the earliest —
 2. **Nothing is hardcoded per customer.** If it varies by deployment, it is God Mode.
 3. **Every route declares its permission.** No policy, no build.
 4. **Every screen has a URL.** No state reachable only by clicking.
-5. **Ship narrow and finished.** A phase completes before the next begins.
+5. **Ship narrow and finished.** A stage completes before the next begins.
 
 These exist because v1 was feature-rich and unusable, and because it shipped eleven
 authorization holes past a green test suite. Both failures were structural, and these are

@@ -1,6 +1,6 @@
 # Teams
 
-- **Phase:** P4 (the `team` table and CAB flag are created in P2 for approvals)
+- **Stage:** P4 (the `team` table and CAB flag are created in P2 for approvals)
 - **Status:** ⬜
 - **Feature flag:** always on
 - **Depends on:** RBAC, workspace members

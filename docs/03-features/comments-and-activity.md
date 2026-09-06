@@ -1,6 +1,6 @@
 # Comments and activity
 
-- **Phase:** P1
+- **Stage:** P1
 - **Status:** ⬜
 - **Feature flag:** always on
 - **Depends on:** work items, RBAC

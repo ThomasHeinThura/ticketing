@@ -1,11 +1,15 @@
 # Customer portal
 
-- **Phase:** P3
+- **Stage:** P3
 - **Status:** ⬜
 - **Feature flag:** `feature.customer_portal`
 - **Depends on:** request types, intake, approvals, RBAC
 
 ## Purpose
+**One customer, one organisation.** Every portal person belongs to exactly one customer
+organisation and sees only its requests. A person contracted to two customer organisations
+holds a separate account in each — a recorded limitation, not a gap
+([multi-tenancy.md](../01-architecture/multi-tenancy.md#identity-across-tenants)).
 
 Give customers a place to raise requests, watch progress, approve things and find answers
 — so that status updates stop being a manual email round trip.

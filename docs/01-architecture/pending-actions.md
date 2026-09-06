@@ -1,7 +1,7 @@
 # Pending actions — server-enforced approval for deletion and destructive agent calls
 
 - **Status:** decided 2026-09-05 (Thomas — confirmed decision document, sections H, I, J)
-- **Phase:** the mechanism lands in **P1** with work-item deletion, for **browser-session
+- **Stage:** the mechanism lands in **P1** with work-item deletion, for **browser-session
   deletions only**. API-key issuance and MCP are **P4**; until then any `DELETE` — or any
   destructive MCP call — arriving with an API-key credential returns `403 not_implemented`,
   and MCP delete tools do not exist. The `web`, `api` and `mcp` origins below are the design;

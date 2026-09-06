@@ -129,7 +129,7 @@ converges within the poll interval rather than silently diverging
 | Permission revoked | Affected topics are dropped on the invalidation message; the client is told which and refetches |
 | Subscribe flood | Per-socket rate limit on inbound frames; a client exceeding it is closed |
 
-## Presence and typing (Phase 4)
+## Presence and typing (Stage 4)
 
 Presence — who else is on this work item — is stored in Valkey with a short TTL and
 broadcast on the topic. If Valkey is absent, presence is simply unavailable; it is not a
@@ -144,7 +144,7 @@ Plane runs Hocuspocus for CRDT-backed collaborative rich text. It is genuinely n
 is genuinely a whole subsystem: a second server process, Y.js documents, awareness state,
 persistence and conflict resolution.
 
-**Not in scope before Phase 5.** Until then, concurrent edits to a description are handled
+**Not in scope before Stage 5.** Until then, concurrent edits to a description are handled
 with optimistic concurrency: a `409` and a clear "someone else changed this" affordance.
 Revisit when there is evidence people actually co-edit descriptions.
 

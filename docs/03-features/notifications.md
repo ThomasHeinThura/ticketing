@@ -1,6 +1,6 @@
 # Notifications
 
-- **Phase:** P4 (in-app inbox in P1)
+- **Stage:** P4 (in-app inbox in P1)
 - **Status:** ⬜
 - **Feature flag:** always on; channels are plugins
 - **Depends on:** plugin architecture, background jobs

@@ -1,6 +1,6 @@
 # Reports and dashboards
 
-- **Phase:** P5
+- **Stage:** P5
 - **Status:** ⬜
 - **Feature flag:** `feature.reports`
 - **Depends on:** work items, SLA, time and cost

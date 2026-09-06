@@ -55,7 +55,7 @@ feel.
 - Numeric role ranks (Admin 20 / Member 15 / Guest 5) so comparisons are `>=` rather than
   a lookup table.
 - Live collaborative editing via Hocuspocus — noted as a *later* possibility, not a
-  phase-one commitment.
+  stage-one commitment.
 
 **Reject:**
 

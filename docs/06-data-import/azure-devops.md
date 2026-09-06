@@ -1,7 +1,7 @@
 # Importing from Azure DevOps
 
 - **Plugin:** `import.azure-devops`
-- **Phase:** P6
+- **Stage:** P6
 
 ## Access
 

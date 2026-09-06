@@ -1,6 +1,6 @@
 # Custom fields
 
-- **Phase:** P4
+- **Stage:** P4
 - **Status:** ⬜
 - **Feature flag:** always on
 - **Depends on:** work item types, RBAC
@@ -49,7 +49,7 @@ So an instance with forty fields still shows a change request six of them.
 Deliberately **not** supported in v2: formula and rollup fields. They are a small language
 with evaluation order, error handling and performance characteristics, and they are the
 kind of feature that is easy to start and impossible to finish. Recorded as a candidate
-for a later phase.
+for a later stage.
 
 ## Data
 

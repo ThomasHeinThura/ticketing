@@ -1,6 +1,6 @@
 # Projects and engagements
 
-- **Phase:** P1 (delivery structure in P2)
+- **Stage:** P1 (delivery structure in P2)
 - **Status:** ⬜
 - **Feature flag:** always on
 - **Depends on:** workspaces, RBAC, organisations

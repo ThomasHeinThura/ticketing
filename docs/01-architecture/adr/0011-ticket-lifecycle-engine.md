@@ -7,12 +7,12 @@
 ## Context
 
 An incident, a service request, a change, a problem, an epic, a story, a task and a bug
-all move through a sequence of named stages that someone can act on, be gated by a role,
+all move through a sequence of named states that someone can act on, be gated by a role,
 and eventually count as "done" for SLA and reporting purposes. Nearly every ITSM and
 ticketing system we reviewed — v1 included — answers this by giving each category its own
 fixed status enum, hand-coded: `open / pending / resolved / closed` for tickets,
 `new / in_progress / review / done` for tasks, wired into the application in `switch`
-statements and template strings. Renaming a stage, or adding one, means shipping a code
+statements and template strings. Renaming a state, or adding one, means shipping a code
 change.
 
 That is precisely the rigidity the product must not repeat. One customer wants
@@ -74,7 +74,7 @@ fixed vocabulary, and it exists solely to make cross-cutting logic possible.**
 unable to serve a second project — the exact thing this ADR exists to guarantee.)*
 - The **noun** used to describe a work item, a project, a cycle and so on (`"Ticket"` vs
   `"Issue"` vs `"Case"`) is a *separate* concern, covered by
-  [ADR 0012](0012-terminology-overlay.md). This ADR is about the **stages** a work item
+  [ADR 0012](0012-terminology-overlay.md). This ADR is about the **states** a work item
   passes through; ADR 0012 is about the **names of the concepts** themselves.
 
 ## Consequences
@@ -113,7 +113,7 @@ unable to serve a second project — the exact thing this ADR exists to guarante
 ### Neutral
 
 - This ADR changes nothing about what `work-items.md`, `workflows.md` or the data model
-  already specify. It exists so the decision — one engine, data-driven stages, one fixed
+  already specify. It exists so the decision — one engine, data-driven states, one fixed
   five-value vocabulary — is recorded as a decision rather than left implicit across three
   documents.
 

@@ -48,9 +48,9 @@ used the default tag.
 
 **Pre-release numbering, honestly.** `semantic-release` computes versions from commits:
 with `prerelease` on `main`, the first `feat:` after `2.0.0-alpha.1` yields
-`2.1.0-alpha.1`, not `2.0.0-alpha.2` — so the phase-to-version table below cannot hold if
+`2.1.0-alpha.1`, not `2.0.0-alpha.2` — so the stage-to-version table below cannot hold if
 versions are left to the tool. Two rules make it hold: (1) **the version is pinned at each
-phase close** with a `chore(release): 2.0.0-beta.1` commit that sets the tag explicitly,
+stage close** with a `chore(release): 2.0.0-beta.1` commit that sets the tag explicitly,
 and `semantic-release` only ever bumps within the pinned pre-release line between closes;
 (2) this is **verified by a dry run in accelerated week 1** — a twenty-minute experiment
 that prevents a confusing release history. No `next`/`beta` branches for pre-releases,
@@ -59,11 +59,11 @@ because a second long-lived branch is exactly the merge problem
 dispatched Release workflow** (kaneo's pattern), not by a version-bump commit on every
 merge — which also means no CI identity needs a branch-protection bypass.
 
-## Releases mapped to phases
+## Releases mapped to stages
 
-What each phase close *is*, as a release, and who could honestly be sold it.
+What each stage close *is*, as a release, and who could honestly be sold it.
 
-| Release | Phase close | What it is | Sellable to |
+| Release | Stage close | What it is | Sellable to |
 | --- | --- | --- | --- |
 | `2.0.0-alpha.1` | P0 | The gated skeleton: sign-in, policy registry, CI green on the **inherited kaneo surface with every route carrying a policy** ([phases.md](phases.md#p0--foundation)) | Nobody. This is infrastructure |
 | `2.0.0-alpha.N` | P1 | A polished self-hosted work manager — kaneo-parity, hardened | Nobody *as a product*: kaneo itself is free. Usable internally; replaces Planner |
@@ -91,7 +91,7 @@ listing is not among them — it is deferred beyond the scope, [roadmap.md](road
 
 ## Reduced scope and deferrals — stated here, not only by reference
 
-Six full phase gates cannot fit in five weeks with one human: each gate as written in
+Six full stage gates cannot fit in five weeks with one human: each gate as written in
 [sdlc.md](../04-engineering/sdlc.md) needs a VoiceOver *and* NVDA pass, a keyboard-only
 session, a fresh-eyes test, four browsers, a 10,000-item data run, a k6 baseline, a
 holistic Opus security review and a written review. So the accelerated `2.0.0` is defined
@@ -102,7 +102,7 @@ deferral register for what go-live ships thinner, and here:
 
 - **Gate activities consolidated**: the manual accessibility pass, fresh-eyes test,
   four-browser check and k6 baseline are run **once, before `2.0.0`**, over the whole
-  surface, instead of once per phase. Automated gates (`G1`–`G13`), route/permission tests
+  surface, instead of once per stage. Automated gates (`G1`–`G13`), route/permission tests
   and the Opus security review of every merge are **not** consolidated — they run as
   specified. **This consolidation is a gate waiver and is recorded as one in the
   [decision log](decision-log.md) (Waivers), pending Thomas's confirmation** — a planning
@@ -122,7 +122,7 @@ The first slipped gate is a signal to move the date or narrow the scope
 ## Cadence
 
 - **Edge and pre-release:** every merge, automatically. No ceremony.
-- **Stable:** promoted when the phase gate (or, in the 3-month window, a two-week release
+- **Stable:** promoted when the stage gate (or, in the 3-month window, a two-week release
   train) passes — never on a calendar alone. A stable release that is not ready waits; the
   edge channel keeps moving.
 - **Patch releases:** `fix:` commits to `main` produce a patch immediately and are promoted
@@ -142,7 +142,7 @@ The first slipped gate is a signal to move the date or narrow the scope
 
 ## Stable-release checklist
 
-Every stable promotion, in addition to the phase gate in [sdlc.md](../04-engineering/sdlc.md):
+Every stable promotion, in addition to the stage gate in [sdlc.md](../04-engineering/sdlc.md):
 
 1. `CHANGELOG.md` has its human-written summary above the generated entries
    ([ci-cd.md § Release notes](../04-engineering/ci-cd.md#release-notes)).
@@ -166,6 +166,6 @@ Every stable promotion, in addition to the phase gate in [sdlc.md](../04-enginee
 
 ## Related
 
-- [Phases](phases.md) · [Accelerated delivery plan](accelerated-delivery-plan.md) · [Roadmap](roadmap.md)
+- [Stages](phases.md) · [Accelerated delivery plan](accelerated-delivery-plan.md) · [Roadmap](roadmap.md)
 - [CI/CD](../04-engineering/ci-cd.md) · [Deployment](../05-operations/deployment.md) · [One-line install](../05-operations/one-line-install.md)
 - [CHANGELOG.md](../../CHANGELOG.md)

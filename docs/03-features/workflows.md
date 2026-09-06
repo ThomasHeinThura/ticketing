@@ -1,6 +1,6 @@
 # Workflows
 
-- **Phase:** P2
+- **Stage:** P2
 - **Status:** ⬜
 - **Feature flag:** always on
 - **Depends on:** states, work item types, RBAC

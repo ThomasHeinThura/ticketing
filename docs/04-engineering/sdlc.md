@@ -1,6 +1,6 @@
 # SDLC
 
-The nine stages every piece of work passes through. Expanded from Thomas's original
+The nine steps every piece of work passes through. Expanded from Thomas's original
 eight, with explicit entry and exit criteria so that "done" is not a matter of opinion.
 
 This exists because v1's failure was not a coding failure. It was a **process** failure:
@@ -19,18 +19,18 @@ and later never came.
 
 **Purpose** — decide what to build and why, before anyone opens an editor.
 
-**Entry** — a phase is active and its previous phase is closed.
+**Entry** — a stage is active and its previous stage is closed.
 
 **Do**
 
-- Pick the next item from the [phase backlog](../07-planning/phases.md).
-- Confirm it is in scope for the current phase. If it is not, it goes to the backlog, not
-  into this phase.
+- Pick the next item from the [stage backlog](../07-planning/phases.md).
+- Confirm it is in scope for the current stage. If it is not, it goes to the backlog, not
+  into this stage.
 - Identify what it depends on and whether those exist yet.
 - Check [licensing](../00-overview/licensing-and-attribution.md) if any code is being
   taken from elsewhere.
 
-**Exit** — the item is on the phase board with a clear scope statement.
+**Exit** — the item is on the stage board with a clear scope statement.
 
 ---
 
@@ -38,7 +38,7 @@ and later never came.
 
 **Purpose** — write down what is being built, before building it.
 
-**Entry** — stage 1 complete.
+**Entry** — step 1 complete.
 
 **Do**
 
@@ -57,14 +57,14 @@ and later never came.
   empty**.
 - The feature's section in [reviews/2026-09-05/](../07-planning/reviews/2026-09-05/) is
   **empty** — the ~300 medium/low audit findings close here, feature by feature, and a
-  feature may not enter stage 3 while any remain. Reviewers check this box, not the
+  feature may not enter step 3 while any remain. Reviewers check this box, not the
   author.
 - Thomas has read it. For anything non-trivial this is a real gate, not a formality — it
   is far cheaper to correct a spec than an implementation.
 
-> **This stage is not optional and it is not "documentation".** It is the design. An
+> **This step is not optional and it is not "documentation".** It is the design. An
 > agent implementing from a vague spec will produce something plausible and wrong, and
-> the wrongness will only surface at stage 6.
+> the wrongness will only surface at step 6.
 
 ---
 
@@ -128,7 +128,7 @@ recorded on the pull request.
 
 ## 6 · UX check
 
-**Purpose** — the stage v1 skipped.
+**Purpose** — the step v1 skipped.
 
 **Do**
 
@@ -146,13 +146,13 @@ request.
 
 ## 7 · Fix loop
 
-**Purpose** — resolve what stages 4, 5 and 6 found.
+**Purpose** — resolve what steps 4, 5 and 6 found.
 
 **Do**
 
-- Fix, then **re-run from the earliest stage the fix could have affected**. A change to
-  domain logic re-enters at stage 4, not stage 7.
-- If a fix reveals the spec was wrong, update the spec and re-enter at stage 3.
+- Fix, then **re-run from the earliest step the fix could have affected**. A change to
+  domain logic re-enters at step 4, not step 7.
+- If a fix reveals the spec was wrong, update the spec and re-enter at step 3.
 - Record anything learned in [error-fix-loop.md](error-fix-loop.md).
 
 **Loop discipline**
@@ -205,36 +205,36 @@ request.
 | --- | --- |
 | **Typo, copy change** | 3 → 9 |
 | **Bug fix** | 3 → 4 → 5 → 7 → 9, plus 6 if UI |
-| **Small feature** | All nine, stage 2 as a spec section rather than a new document |
+| **Small feature** | All nine, step 2 as a spec section rather than a new document |
 | **Feature** | All nine, in full |
-| **Phase** | All nine, plus the [phase gate](definition-of-done.md#phase-completion) at the end |
+| **Stage** | All nine, plus the [stage gate](definition-of-done.md#stage-completion) at the end |
 
-The stages are never skipped for convenience. They are scoped to the work.
+The steps are never skipped for convenience. They are scoped to the work.
 
-## The phase gate
+## The stage gate
 
-**The canonical phase-gate list lives in one place:
-[definition-of-done.md § Phase completion](definition-of-done.md#phase-completion).** This
+**The canonical stage-gate list lives in one place:
+[definition-of-done.md § Stage completion](definition-of-done.md#stage-completion).** This
 section no longer restates it — four copies of the list had drifted apart by 2026-09-06. In
 one sentence: every feature passes the Definition of Done; the manual passes (screen reader,
 keyboard-only session, fresh-eyes test, cross-browser, realistic data volumes, load baseline,
-backup and restore) are run; **a phase-level security review, on Opus** — a holistic pass
-over the whole phase's surface, not the sum of the per-feature reviews — is recorded; the
-phase review is written in `07-planning/`, including what went wrong; and every gate that was
-not run is a **recorded waiver** in the decision log, or the phase is not closed.
+backup and restore) are run; **a stage-level security review, on Opus** — a holistic pass
+over the whole stage's surface, not the sum of the per-feature reviews — is recorded; the
+stage review is written in `07-planning/`, including what went wrong; and every gate that was
+not run is a **recorded waiver** in the decision log, or the stage is not closed.
 
-**No phase starts before the previous one closes.** This is
+**No stage starts before the previous one closes.** This is
 [principle 7](../00-overview/product-principles.md), and it is the discipline that prevents
 twenty-five screens at sixty per cent.
 
 **The one exception, written down so nobody has to infer it:** during an accelerated window
-in which several phases deliberately run as parallel workstreams (decision A in the
+in which several stages deliberately run as parallel workstreams (decision A in the
 [decision log](../07-planning/decision-log.md); the calendar in
-[accelerated-delivery-plan.md](../07-planning/accelerated-delivery-plan.md)), phase
-*sequencing* is replaced by two things — the plan's **deferral register** (what each phase
+[accelerated-delivery-plan.md](../07-planning/accelerated-delivery-plan.md)), stage
+*sequencing* is replaced by two things — the plan's **deferral register** (what each stage
 deliberately ships thinner, in writing) and the **per-feature Definition of Done** (nothing
-is called done because a calendar says so). Each phase's gate still runs, in full, before that
-phase's features are declared done; what moves is *when* phases start, not *what* closes them.
+is called done because a calendar says so). Each stage's gate still runs, in full, before that
+stage's features are declared done; what moves is *when* stages start, not *what* closes them.
 An agent reading only this document should neither refuse to start P3 work while P2 is open
 during such a window, nor treat the gate list as already broken.
 

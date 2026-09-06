@@ -20,7 +20,10 @@ Licensed **AGPL-3.0**.
 1. This file
 2. [`docs/04-engineering/agent-workflow.md`](docs/04-engineering/agent-workflow.md) —
    **required** if you are an AI agent
-3. [`docs/04-engineering/sdlc.md`](docs/04-engineering/sdlc.md) — the nine stages
+2b. [`CLAUDE.md`](CLAUDE.md) — if you are Claude: the working mode, the model tiers, what
+   subagent patterns work in this repository and what stalls, and how Thomas wants reports
+   written
+3. [`docs/04-engineering/sdlc.md`](docs/04-engineering/sdlc.md) — the nine steps
 4. [`docs/04-engineering/coding-standards.md`](docs/04-engineering/coding-standards.md)
 5. The feature spec for what you are building, in
    [`docs/03-features/`](docs/03-features/README.md)
@@ -65,7 +68,7 @@ verified by a round-trip test.
 
 ### 5 · Ship narrow and finished
 
-A phase completes before the next starts. v1 died of twenty-five screens at sixty per cent.
+A stage completes before the next starts. v1 died of twenty-five screens at sixty per cent.
 
 ---
 
@@ -92,6 +95,13 @@ Detail: [`docs/01-architecture/monorepo-layout.md`](docs/01-architecture/monorep
 ---
 
 ## Commands
+
+> **Planned — not available until P0 completes.** None of these commands runs today: there
+> is no `package.json`, no `pnpm-lock.yaml` and no application code in this repository.
+> They are the contract P0 builds against, and [ci-cd.md](docs/04-engineering/ci-cd.md) is
+> the single list of what CI runs. If you are an agent and a command fails with "no such
+> script", that is the expected state, not a broken checkout — read
+> [docs/07-planning/status.md](docs/07-planning/status.md) before doing anything else.
 
 ```bash
 pnpm install
@@ -170,9 +180,15 @@ Full checklist:
     (`docs/01-architecture/inherited-features.md`); the plugin contracts are the way back
 15. Start building a feature while its section in `docs/07-planning/reviews/2026-09-05/`
     is non-empty
-16. Commit, push or merge anything without Thomas's explicit approval in the same session.
-    **A report is not approval.** Finish, write the report, leave the working tree
-    uncommitted, and stop ([decision log](docs/07-planning/decision-log.md), 2026-09-05)
+16. Commit, push or merge anything outside the agreed working mode. **A report is not
+    approval.** The working mode *is* the standing approval, and it is:
+    **branch → commit → pull request → Thomas approves → merge.** So: create a branch,
+    commit your work to it, push it, open a pull request describing what you did — that is
+    the normal end of a task. **Only Thomas merges to `main`**, and only Thomas approves
+    anything outside this path (committing straight to `main`, force-pushing, rewriting
+    history, deleting a branch someone else may be using). Never leave finished work
+    uncommitted on a local machine — that is how eighty-three files once sat on one laptop
+    ([decision log](docs/07-planning/decision-log.md), 2026-09-06)
 17. Guess at behaviour — if the spec does not say, ask, and then write the answer into the
     spec
 18. Claim something works without running it — every screen you touched is opened and

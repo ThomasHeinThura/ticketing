@@ -1,6 +1,6 @@
 # Work items
 
-- **Phase:** P1
+- **Stage:** P1
 - **Status:** ⬜
 - **Feature flag:** always on
 - **Depends on:** projects, states, RBAC

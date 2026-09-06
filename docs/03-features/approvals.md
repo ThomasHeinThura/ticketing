@@ -1,6 +1,6 @@
 # Approvals and CAB
 
-- **Phase:** P2
+- **Stage:** P2
 - **Status:** ⬜
 - **Feature flag:** `feature.approvals`
 - **Depends on:** workflows, notifications

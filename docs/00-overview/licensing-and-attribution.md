@@ -66,8 +66,9 @@ cycles/modules/estimates model, intake. Reimplemented in our idiom.
 `THIRD-PARTY-NOTICES.md` with the source path and commit SHA. For kaneo itself the notice
 carries the licence verbatim with its holder line — "MIT License — Copyright (c) 2024 Andrej
 Acevski" — and the snapshot commit exactly as recorded in
-[inherited-features.md](../01-architecture/inherited-features.md) (proposed upstream main
-`42bb8011`, pending Thomas's confirmation).
+[inherited-features.md](../01-architecture/inherited-features.md) — upstream `main`
+`42bb801114aa1ae499228a53180f0cdbc5607964`, confirmed by Thomas on 2026-09-06 and already
+recorded in `THIRD-PARTY-NOTICES.md`.
 
 ### openproject → ideas only
 

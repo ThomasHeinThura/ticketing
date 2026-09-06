@@ -1,6 +1,6 @@
 # Service calendars
 
-- **Phase:** P2
+- **Stage:** P2
 - **Status:** ⬜
 - **Feature flag:** `feature.sla`
 - **Depends on:** nothing

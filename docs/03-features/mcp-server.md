@@ -1,6 +1,6 @@
 # MCP server
 
-- **Phase:** P4
+- **Stage:** P4
 - **Status:** ⬜
 - **Feature flag:** `feature.mcp`
 - **Depends on:** API keys, RBAC

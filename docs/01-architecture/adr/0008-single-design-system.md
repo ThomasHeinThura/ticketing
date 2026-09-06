@@ -77,7 +77,7 @@ one.**
   optimum.
 - **Extraction from kaneo has a cost.** kaneo's primitives live inside its web app and
   assume its Tailwind configuration and path aliases. Moving them to a package means
-  reworking imports, the Tailwind preset and the build. This is Phase 0 work and is
+  reworking imports, the Tailwind preset and the build. This is Stage 0 work and is
   budgeted.
 - **The lint rules will occasionally be wrong** and will need escape hatches. Escapes are
   permitted with an inline comment naming the reason, and they are reviewed.

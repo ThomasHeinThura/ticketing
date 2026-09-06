@@ -41,7 +41,7 @@ docs/
 ├── 04-engineering/     SDLC, agent workflow, testing, CI/CD, standards
 ├── 05-operations/      Deploy, configure, run, back up, scale
 ├── 06-data-import/     Importing from Azure DevOps, Plane, Jira, CSV
-├── 07-planning/        Roadmap, phases, risks, decisions, live status
+├── 07-planning/        Roadmap, stages, risks, decisions, live status
 └── 08-docs-site/       The public documentation website
 ```
 
@@ -60,4 +60,4 @@ CI where possible and by review where not. Full list in
 
 ## Status
 
-Live status, current phase and open work: [07-planning/status.md](07-planning/status.md).
+Live status, current stage and open work: [07-planning/status.md](07-planning/status.md).

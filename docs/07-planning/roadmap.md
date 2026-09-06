@@ -1,15 +1,15 @@
 # Roadmap
 
-Phases in order, with what each unlocks and what it retires. Detail in
+Stages in order, with what each unlocks and what it retires. Detail in
 [phases.md](phases.md).
 
-**No dates here, on principle** — the phase sequence below is the reference for what each
-phase *is* and what "done" means for it, independent of any calendar.
+**No dates here, on principle** — the stage sequence below is the reference for what each
+stage *is* and what "done" means for it, independent of any calendar.
 
 A **dated** mapping of this same scope onto a real Sept–Dec 2026 calendar, at Thomas's
 explicit request and with every quality-gate trade-off named, lives separately in
 [accelerated-delivery-plan.md](accelerated-delivery-plan.md) — read that for "what ships
-by which date," and this page for "what does each phase actually mean."
+by which date," and this page for "what does each stage actually mean."
 
 ## Sequence
 
@@ -24,9 +24,9 @@ P6 Import + cutover     │  retires: Azure DevOps
 P7 Polish              ─┘  ← externally sellable
 ```
 
-## What each phase makes possible
+## What each stage makes possible
 
-| Phase | After it, we can… |
+| Stage | After it, we can… |
 | --- | --- |
 | **P0** | Build features without accumulating design debt |
 | **P1** | Run a team's work here, and prefer it |
@@ -80,7 +80,7 @@ point in place and nothing else.
 | Deferred | Position | Revisit when |
 | --- | --- | --- |
 | **Antivirus / malware scanning of attachments** | Not built, not installed. Accepted residual risk stated in [attachments.md](../03-features/attachments.md); the allowlist, magic-byte check, separate files origin and download headers stand | Unknown external users can upload, or a customer/security requirement asks |
-| **PostgreSQL row-level security** | Not implemented. Scoped repositories, route policy, RBAC/reach and the negative tenant-isolation suites are the primary control ([decision log](decision-log.md)) | A compliance-sensitive customer requires database-level defence in depth |
+| ~~**PostgreSQL row-level security**~~ **Moved into P0 as a prototype** (2026-09-06) on `work_item`, `comment`, `attachment` — a backstop, never the primary control ([multi-tenancy.md](../01-architecture/multi-tenancy.md)) | A compliance-sensitive customer requires database-level defence in depth |
 | **AWS Marketplace** | Not implemented, and **not a P7 task**. When a listing decision is taken, prefer a **BYOL / contract** listing over self-hosted usage metering ([aws-marketplace.md](../05-operations/aws-marketplace.md), [ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md)) | After the current scope closes — a separate listing decision |
 | **Notification / chat integrations** | Future only, in this order: **Email is core**; then Microsoft Teams → Slack → Telegram → Viber → others. Inherited kaneo Slack/Discord/Telegram routers are removed at fork | After P4, one at a time, each as a `notify.*` plugin |
 | **Developer-tool integrations** | Future only: GitHub → GitLab → Gitea → Bitbucket → Azure DevOps. Inherited kaneo GitHub/Gitea routers are removed at fork; `external_link` is the extension point | After P4 |
@@ -104,13 +104,13 @@ Tracked in [risks.md](risks.md).
 ## How progress is tracked
 
 - [status.md](status.md) — the live picture, updated at the end of every session
-- [screen-inventory.md](../02-design/screen-inventory.md) — every screen with its phase and status
+- [screen-inventory.md](../02-design/screen-inventory.md) — every screen with its stage and status
 - [03-features/README.md](../03-features/README.md) — feature status
-- Phase reviews — written at each phase close, **including what went wrong**
+- Stage reviews — written at each stage close, **including what went wrong**
 
 ## The one thing that must not happen
 
-**Do not start a phase before the previous one is finished.**
+**Do not start a stage before the previous one is finished.**
 
 v1 had twenty-five screens at roughly sixty per cent each, and it died of it. Fifteen
 screens at a hundred per cent would have been a product. Every pressure in a project pushes
@@ -121,5 +121,5 @@ likely to be quietly broken.
 
 ## Related
 
-- [Phases](phases.md) · [Status](status.md) · [Risks](risks.md)
+- [Stages](phases.md) · [Status](status.md) · [Risks](risks.md)
 - [Vision](../00-overview/vision.md)

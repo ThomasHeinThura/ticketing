@@ -23,10 +23,27 @@ Instance                      one deployment, one database
 
 ## Isolation
 
-Isolation is enforced in the application, not by Postgres row-level security. RLS was
-considered and rejected: it moves policy away from the code that is reviewed, it
-complicates connection pooling, and it does not express reach/authority. What we do
-instead is make omission detectable — see [Security model](security-model.md).
+Isolation is enforced **in the application**: scoped repositories, the route policy
+registry, reach and authority. That is the primary control, and it stays primary — it is
+the layer that is reviewed, tested and able to express reach versus authority, which SQL
+cannot.
+
+**Postgres row-level security is a P0 prototype, as a backstop underneath it** (decided
+2026-09-06, promoted from the deferred list). Scope: `work_item`, `comment` and
+`attachment` only — the three tables where a missed `WHERE` leaks another tenant's content
+rather than a setting. The policy reads the organisation from a session GUC set by the
+connection wrapper, and it is a **second** check that must agree with the application's,
+never the only one.
+
+The prototype exists to answer three questions with a measurement rather than an opinion:
+does it survive PgBouncer-style pooling, what does it cost on the hot list queries, and does
+it ever disagree with the application layer (a disagreement is a bug in one of them, and
+finding it is the point). **P0 exit:** the prototype is either merged with those answers
+written down, or dropped with the reason recorded in the [decision log](../07-planning/decision-log.md).
+Either outcome closes the question; leaving it open does not.
+
+What does not change: omission stays detectable in the application — see
+[Security model](security-model.md).
 
 ### Query scoping
 
@@ -87,10 +104,36 @@ they see, their service calendar, their SLA policies and their notification sett
 
 ## Identity across tenants
 
-- A person belongs to one organisation. Email is unique per instance.
-- Someone needing access as both staff and customer needs two accounts with different
-  emails. This is deliberate: a single identity with two sides is precisely the
-  ambiguity that produces authorization bugs.
+**One person, one organisation.** A `person` row belongs to exactly one organisation and
+never moves between them. Everything below follows from that.
+
+- **The agent portal serves the internal staff organisation only** — the one marked
+  `is_internal`. Staff arrive through an identity connection scoped to that portal
+  (Microsoft Entra in core delivery; other providers when they land), or by email
+  invitation, and are then placed on teams and named as stakeholders.
+- **The customer portal serves one organisation per customer company.** No customer person
+  belongs to two organisations.
+- **Email is not an identity key, and is not unique per instance.** The key is
+  `(identity_connection_id, subject)` on `external_identity` — Entra's `oid` within its
+  tenant. Better-auth's default unique index on `user.email` is therefore dropped at fork
+  ([data-model.md](data-model.md) §2); an address is an attribute that can change, and two
+  people at different customers may legitimately present the same one.
+- **A human who genuinely needs both portals gets two `person` rows** — one staff-side, one
+  customer-side — and **the same email address is allowed on both**, because the identity
+  key is per connection and the two rows collide on nothing. They are never linked: linking
+  them by address is exactly what `IP-18` forbids, and a single identity with two sides is
+  the ambiguity that produces authorization bugs.
+- **But the default is not a second account.** A staff member who needs to see what a
+  customer sees uses **God Mode impersonation** — audited twice, capped at thirty minutes
+  ([god-mode.md](../03-features/god-mode.md) `GM-7`, `GM-8`). A second account is for
+  someone who genuinely *is* a customer contact in their own right, not for support work.
+
+**Known limitation, accepted deliberately (2026-09-06):** a consultant who is genuinely a
+contact at two customer organisations needs two customer-side `person` rows and signs in to
+each through that organisation's own connection. There is no single identity spanning
+customer organisations, and the schema is **not** being redesigned for it now — the cost is
+a rare person signing in twice; the alternative is a many-to-many identity model paying for
+itself on every authorization check.
 - Identity providers are bound per portal, and a customer connection is bound to exactly
   one organisation by `identity_connection.organisation_id`
   ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-1`). **That

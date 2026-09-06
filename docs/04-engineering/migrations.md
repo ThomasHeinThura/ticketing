@@ -24,8 +24,8 @@ baseline and regenerate the journal) is cleaner and is one command. Inheriting w
 the inherited journal is what kaneo's own integration suite was validated against, so it is
 the only baseline the pre-copy test run can be attributed to
 ([repository-bootstrap.md](repository-bootstrap.md) §0). **This choice is recorded from
-Thomas's message and is confirmed together with the SHA**; it is reversible until the first
-TaskDesk migration is written.
+Thomas confirmed this on 2026-09-06: inherit the 45, no squashed baseline.** It remains
+reversible until the first TaskDesk migration is written.
 
 ## Files
 

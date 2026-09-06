@@ -1,6 +1,6 @@
 # Risks
 
-Ordered by expected damage. Reviewed at every phase close.
+Ordered by expected damage. Reviewed at every stage close.
 
 **Likelihood** and **impact**: low / medium / high.
 
@@ -31,7 +31,7 @@ the moment it happened.
 
 ---
 
-## R2 · Phase discipline collapses
+## R2 · Stage discipline collapses
 
 | | |
 | --- | --- |
@@ -44,12 +44,12 @@ feels efficient and is how v1 ended up with twenty-five half-finished screens.
 
 **Mitigations**
 
-- A phase gate with a written review, including what went wrong
+- A stage gate with a written review, including what went wrong
 - The screen inventory makes incompleteness visible
 - [Product principle 7](../00-overview/product-principles.md), stated so it can be pointed
   at
 
-**Early warning:** work in flight for two phases at once; a phase review skipped "to save
+**Early warning:** work in flight for two stages at once; a stage review skipped "to save
 time".
 
 ---
@@ -172,7 +172,7 @@ them have hundreds of features. Each individually looks small.
 
 **Mitigations**
 
-- Phase scope is fixed at phase start
+- Stage scope is fixed at stage start
 - Feature specs have an explicit **Out of scope** section
 - The roadmap's "candidates, not commitments" list is where good ideas go to wait
 - Feature flags mean an unbuilt feature costs nothing
@@ -408,7 +408,7 @@ only in this register; the accelerated plan points here rather than restating th
 
 ## Review
 
-At every phase close:
+At every stage close:
 
 1. Did any risk materialise? Write down what happened.
 2. Did a mitigation work, or only appear to?
@@ -417,4 +417,4 @@ At every phase close:
 
 ## Related
 
-- [Roadmap](roadmap.md) · [Phases](phases.md) · [Decision log](decision-log.md)
+- [Roadmap](roadmap.md) · [Stages](phases.md) · [Decision log](decision-log.md)

@@ -1,6 +1,6 @@
 # Webhooks and API keys
 
-- **Phase:** P4
+- **Stage:** P4
 - **Status:** ⬜
 - **Feature flag:** always on
 - **Depends on:** plugin architecture, background jobs, RBAC
@@ -169,8 +169,8 @@ does with a webhook is build a link back.
   NOT NULL)`. An MCP key is always a personal key owned by a named human (`MC-20`, `MC-21`).
 - `AK-12` **Renaming or removing a capability is a two-phase change, because capability names
   live in `api_key.capabilities` as strings** — in a service key's frozen creation-time subset
-  most of all. Phase one adds the new name and keeps the old one as a recorded alias for one
-  release while a data migration rewrites `role.capabilities` and `api_key.capabilities`; phase
+  most of all. Stage one adds the new name and keeps the old one as a recorded alias for one
+  release while a data migration rewrites `role.capabilities` and `api_key.capabilities`; stage
   two drops the alias. An unrecognised capability string on a stored key is logged and treated
   as absent, never wildcard-expanded. The rule and its decision-log requirement live in
   [rbac.md](../01-architecture/rbac.md#capabilities).

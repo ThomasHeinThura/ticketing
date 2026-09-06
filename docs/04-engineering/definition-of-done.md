@@ -125,16 +125,16 @@ Everything above, plus:
 
 ---
 
-## Phase completion
+## Stage completion
 
-**This is the canonical phase-gate list.** [SDLC](sdlc.md#the-phase-gate) and
-[UX quality gates](../02-design/ux-quality-gates.md#phase-gate--before-a-phase-is-declared-complete) both point here instead of
+**This is the canonical stage-gate list.** [SDLC](sdlc.md#the-stage-gate) and
+[UX quality gates](../02-design/ux-quality-gates.md#stage-gate--before-a-stage-is-declared-complete) both point here instead of
 restating it; ux-quality-gates.md's own automated checks are renumbered `PG1`–`PG6` so
-they stop colliding with the delivery-phase numbering (`P0`–`P5+`) used everywhere else.
+they stop colliding with the delivery-stage numbering (`P0`–`P5+`) used everywhere else.
 
-- [ ] Every feature in the phase meets its Definition of Done
+- [ ] Every feature in the stage meets its Definition of Done
 - [ ] Screen review — every new screen walked through against
-      [design principles](../02-design/design-principles.md), signed off in the phase
+      [design principles](../02-design/design-principles.md), signed off in the stage
       review note (PG1)
 - [ ] Every screen ✅ in the [screen inventory](../02-design/screen-inventory.md)
 - [ ] Full E2E suite green, agent and portal
@@ -146,19 +146,19 @@ they stop colliding with the delivery-phase numbering (`P0`–`P5+`) used everyw
 - [ ] Run against realistic data — 10,000 work items, 50 projects, 200 people (PG6)
 - [ ] Load test baseline recorded
 - [ ] Backup and restore verified
-- [ ] **Phase-level Opus security review** — a holistic pass over the whole phase's
+- [ ] **Stage-level Opus security review** — a holistic pass over the whole stage's
       surface, not only the per-feature reviews already passed
-- [ ] Written phase review in `07-planning/`, **including what went wrong**
+- [ ] Written stage review in `07-planning/`, **including what went wrong**
 - [ ] [Screen inventory](../02-design/screen-inventory.md),
       [feature index](../03-features/README.md) status columns and `CHANGELOG.md`
-      updated together, at the same phase close
+      updated together, at the same stage close
 - [ ] Roadmap and status updated
-- [ ] Gates table complete for every pull request in the phase, with every **waived** row
+- [ ] Gates table complete for every pull request in the stage, with every **waived** row
       linked to its [decision log](../07-planning/decision-log.md) entry — see the
       [pull request template](../../.github/pull_request_template.md)'s `## Gates` section
 
 Under the accelerated calendar, this gate carries the parallel-workstreams exception
-recorded as decision A — see [SDLC § The phase gate](sdlc.md#the-phase-gate).
+recorded as decision A — see [SDLC § The stage gate](sdlc.md#the-stage-gate).
 
 ---
 
@@ -188,7 +188,7 @@ each is completed by **following the runbook exactly, in the documented commands
 step the runbook does not name**, and timed. A step that needs a command the
 documentation does not contain is a documentation defect and fails the gate.
 
-Record both lanes' timings and every hesitation in the phase review note. A hesitation is
+Record both lanes' timings and every hesitation in the stage review note. A hesitation is
 a design bug ([UX quality gates](../02-design/ux-quality-gates.md) PG4), and a step that
 took three times its expected duration is one too.
 

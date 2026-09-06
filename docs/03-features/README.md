@@ -7,7 +7,7 @@ behaves at the edges, and how it is tested.
 
 ## Core work management
 
-| Feature | Phase | Status | Inspired by |
+| Feature | Stage | Status | Inspired by |
 | --- | :-: | :-: | --- |
 | [Work items](work-items.md) | P1 | ⬜ | kaneo, Plane, v1 |
 | [Views and layouts](views.md) | P1 | ⬜ | kaneo |
@@ -20,7 +20,7 @@ behaves at the edges, and how it is tested.
 
 ## Service desk
 
-| Feature | Phase | Status | Inspired by |
+| Feature | Stage | Status | Inspired by |
 | --- | :-: | :-: | --- |
 | [Workflows](workflows.md) | P2 | ⬜ | v1, OpenProject |
 | [SLA](sla.md) | P2 | ⬜ | v1, JSM |
@@ -32,14 +32,14 @@ behaves at the edges, and how it is tested.
 
 ## Portal and identity
 
-| Feature | Phase | Status | Inspired by |
+| Feature | Stage | Status | Inspired by |
 | --- | :-: | :-: | --- |
 | [Customer portal](customer-portal.md) | P3 | ⬜ | JSM |
 | [Identity connections and SCIM provisioning](identity-provisioning.md) | P3 | ⬜ | Microsoft Entra, JSM |
 
 ## Governance and administration
 
-| Feature | Phase | Status | Inspired by |
+| Feature | Stage | Status | Inspired by |
 | --- | :-: | :-: | --- |
 | [Roles and permissions UI](roles-and-permissions-ui.md) | P4 | ⬜ | kaneo, OpenProject |
 | [Teams](teams.md) | P4 | ⬜ | kaneo, OpenProject |
@@ -53,7 +53,7 @@ behaves at the edges, and how it is tested.
 
 ## Insight and agile
 
-| Feature | Phase | Status | Inspired by |
+| Feature | Stage | Status | Inspired by |
 | --- | :-: | :-: | --- |
 | [Cycles, modules, estimates](agile.md) | P5 | ⬜ | Plane |
 | [Time and cost](time-and-cost.md) | P5 | ⬜ | OpenProject, v1 |
@@ -75,7 +75,7 @@ questions, and so a reviewer can check the result against it.
 ```markdown
 # <Feature>
 
-- **Phase:** Pn
+- **Stage:** Pn
 - **Status:** ⬜
 - **Feature flag:** `feature.<key>` (or "always on")
 - **Depends on:** …
@@ -155,5 +155,5 @@ otherwise force a renumber; a checker treats `16a` as distinct from `16`.
 
 ## Related
 
-- [Screen inventory](../02-design/screen-inventory.md) · [Phases](../07-planning/phases.md)
+- [Screen inventory](../02-design/screen-inventory.md) · [Stages](../07-planning/phases.md)
 - [Data model](../01-architecture/data-model.md) · [Glossary](../00-overview/glossary.md)
