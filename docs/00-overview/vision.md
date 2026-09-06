@@ -40,6 +40,19 @@ re-keying stops.
 
 ## Why v1 failed, and what changes
 
+**How long v1 actually took: four weeks.** Measured, not remembered. The oldest entry in
+v1's changelog is **8 August 2026** and its last commit is **5 September 2026** — 28 days,
+325 commits, 310 of them Thomas's, ending at the release tagged `uat-1.0.22`. The
+consolidated repository's own git history is shorter still, 15 August to 5 September, because
+the four service repositories it was assembled from were folded into one commit and their
+history was not preserved; the changelog is therefore the earlier and more honest witness.
+
+That number is the calibration for this document. **Twenty-five screens at roughly sixty per
+cent, in four weeks, by one person and a set of agents.** Throughput was never the problem,
+so v2 does not try to fix throughput. Everything below trades breadth for finishedness, and
+the [stages](../07-planning/phases.md) exist to make that trade enforceable rather than
+aspirational.
+
 TaskDesk v1 was **feature-rich and unusable**. It had SLAs, approvals, workflows, CAB,
 intake, 20 reports, timesheets, a service catalogue — genuinely more capability than most
 commercial tools. And nobody wanted to use it, because:
@@ -58,7 +71,7 @@ v2 inverts that:
 | v1 | v2 |
 | --- | --- |
 | Build features, then style them | Start from a finished design system; features must fit it |
-| Hand-rolled primitives | kaneo's 60+ Radix/Tailwind primitives, no exceptions |
+| Hand-rolled primitives | kaneo's 63 Tailwind primitives, predominantly Base UI, no exceptions |
 | Ship wide | Ship one stage fully finished before starting the next |
 | UX reviewed at the end | UX gates in CI on every pull request |
 | Config in env vars and code | Config in God Mode, at runtime |
