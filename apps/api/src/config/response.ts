@@ -6,7 +6,6 @@ export const configSchema = z
     disablePasswordRegistration: z.boolean(),
     disableEmailOtpSignIn: z.boolean(),
     disableWorkspaceCreation: z.boolean(),
-    isDemoMode: z.boolean(),
     hasSmtp: z.boolean(),
     hasGithubSignIn: z.boolean(),
     hasGoogleSignIn: z.boolean(),
@@ -16,6 +15,5 @@ export const configSchema = z
     disableLoginForm: z.boolean(),
     customOAuthAutoLogin: z.boolean(),
     customOAuthLogoutUrl: z.string().nullable(),
-    billingEnabled: z.boolean(),
   })
   .openapi("Config");

@@ -112,3 +112,20 @@ export async function assertPublicDestination(
     throw new Error(`${label} destination resolves to a non-routable address`);
   }
 }
+
+/**
+ * Outbound webhook destination guard.
+ *
+ * This lived in `plugins/generic-webhook/config.ts` — a directory issue #6
+ * deletes — while two retained modules imported it:
+ * `notification-preferences/delivery.ts` and `.../service.ts`, which validate
+ * user-supplied ntfy, Gotify and webhook URLs. Deleting the plugin directory
+ * first would have broken the build, and the quickest way to make the build
+ * green again is to drop the call — silently removing the only SSRF check on
+ * those URLs. Moving it here first makes that mistake impossible.
+ */
+export async function assertPublicWebhookDestination(
+  webhookUrl: string,
+): Promise<void> {
+  await assertPublicDestination(webhookUrl, "Generic webhook");
+}

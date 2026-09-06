@@ -1,0 +1,13 @@
+-- Issue #6 — drop the state table for kaneo's MCP OAuth consent flow.
+--
+-- TaskDesk's own MCP design says plainly that "the MCP server exposes no HTTP
+-- API of its own" (mcp-server.md): the client authenticates with an API key
+-- and every tool inherits its route's policy. MC-3 additionally puts an OAuth
+-- device flow out of scope. kaneo's in-process MCP HTTP server and its OAuth
+-- consent flow are therefore not part of TaskDesk's design and are removed.
+--
+-- IMPORTANT: dropping this table is NOT revocation. The consent flow minted
+-- real 30-day better-auth session rows, and those live in `session`, not here.
+-- Issue #17 covers revoking them; deleting an endpoint must never be mistaken
+-- for invalidating what it already issued.
+DROP TABLE IF EXISTS "mcp_oauth_state" CASCADE;

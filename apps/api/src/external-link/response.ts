@@ -4,7 +4,6 @@ export const externalLinkSchema = z
   .object({
     id: z.string(),
     taskId: z.string(),
-    integrationId: z.string(),
     resourceType: z.string().openapi({
       description:
         "The kind of remote resource, e.g. `issue` or `pull_request`.",
@@ -20,11 +19,6 @@ export const externalLinkSchema = z
     }),
     createdAt: responseTimestamp,
     updatedAt: responseTimestamp,
-    // The route selects only id/type here on purpose: integration.config holds
-    // plaintext provider secrets and any workspace member can read this route.
-    integration: z
-      .object({ id: z.string(), type: z.string() })
-      .openapi("ExternalLinkIntegration"),
   })
   .openapi("ExternalLink");
 

@@ -155,7 +155,6 @@ describe("registerTools", () => {
       icon: "Layout",
       slug: "roadmap",
       description: "",
-      isPublic: false,
     });
     expect(result?.isError).toBe(false);
   });

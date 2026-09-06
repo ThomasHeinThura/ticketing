@@ -12,10 +12,6 @@ export const projectSchema = z
     name: z.string(),
     description: z.string().nullable(),
     createdAt: responseTimestamp,
-    isPublic: z.boolean().nullable().openapi({
-      description:
-        "When true the project's board is readable without signing in, via /api/public-project/{id}.",
-    }),
     archivedAt: nullableResponseTimestamp.openapi({
       description:
         "Non-null once archived; archived projects are hidden by default.",

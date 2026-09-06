@@ -175,53 +175,6 @@ export const workspaceUserTable = pgTable(
   ],
 );
 
-export const workspaceBillingTable = pgTable(
-  "workspace_billing",
-  {
-    id: text("id")
-      .$defaultFn(() => createId())
-      .primaryKey(),
-    workspaceId: text("workspace_id")
-      .notNull()
-      .unique("workspace_billing_workspace_id_unique")
-      .references(() => workspaceTable.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    foundingFree: boolean("founding_free").notNull().default(false),
-    trialEndsAt: timestamp("trial_ends_at", { mode: "date" }),
-    creemCustomerId: text("creem_customer_id"),
-    creemSubscriptionId: text("creem_subscription_id").unique(),
-    creemProductId: text("creem_product_id"),
-    plan: text("plan"),
-    billingInterval: text("billing_interval"),
-    status: text("status"),
-    seats: integer("seats").notNull().default(1),
-    currentPeriodEnd: timestamp("current_period_end", { mode: "date" }),
-    canceledAt: timestamp("canceled_at", { mode: "date" }),
-    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { mode: "date" })
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => [index("workspace_billing_workspaceId_idx").on(table.workspaceId)],
-);
-
-export const trialGrantTable = pgTable("trial_grant", {
-  emailHash: text("email_hash").primaryKey(),
-  trialEndsAt: timestamp("trial_ends_at", { mode: "date" }).notNull(),
-  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-});
-
-export const billingEventTable = pgTable("billing_event", {
-  id: text("id").primaryKey(),
-  eventType: text("event_type").notNull(),
-  processedAt: timestamp("processed_at", { mode: "date" })
-    .defaultNow()
-    .notNull(),
-});
-
 export const teamTable = pgTable(
   "team",
   {
@@ -325,7 +278,6 @@ export const projectTable = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-    isPublic: boolean("is_public").default(false),
     archivedAt: timestamp("archived_at", { mode: "date" }),
     lastTaskNumber: integer("last_task_number").notNull().default(0),
     position: integer("position").notNull().default(0),
@@ -438,42 +390,6 @@ export const taskTable = pgTable(
     index("task_assigneeId_idx").on(table.userId),
     index("task_columnId_idx").on(table.columnId),
     unique("task_project_number_unique").on(table.projectId, table.number),
-  ],
-);
-
-export const billingReminderSentTable = pgTable(
-  "billing_reminder_sent",
-  {
-    id: text("id")
-      .$defaultFn(() => createId())
-      .primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => userTable.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    workspaceId: text("workspace_id")
-      .notNull()
-      .references(() => workspaceTable.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    reminderType: text("reminder_type").notNull(),
-    trialEndsAt: timestamp("trial_ends_at", { mode: "date" }),
-    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { mode: "date" })
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index("billing_reminder_sent_workspaceId_idx").on(table.workspaceId),
-    index("billing_reminder_sent_userId_idx").on(table.userId),
-    unique("billing_reminder_sent_user_type_unique").on(
-      table.userId,
-      table.reminderType,
-    ),
   ],
 );
 
@@ -842,56 +758,6 @@ export const userNotificationWorkspaceProjectTable = pgTable(
   ],
 );
 
-export const githubIntegrationTable = pgTable("github_integration", {
-  id: text("id")
-    .$defaultFn(() => createId())
-    .primaryKey(),
-  projectId: text("project_id")
-    .notNull()
-    .references(() => projectTable.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    })
-    .unique(),
-  repositoryOwner: text("repository_owner").notNull(),
-  repositoryName: text("repository_name").notNull(),
-  installationId: integer("installation_id"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { mode: "date" })
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
-
-export const integrationTable = pgTable(
-  "integration",
-  {
-    id: text("id")
-      .$defaultFn(() => createId())
-      .primaryKey(),
-    projectId: text("project_id")
-      .notNull()
-      .references(() => projectTable.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    type: text("type").notNull(),
-    config: text("config").notNull(),
-    isActive: boolean("is_active").default(true),
-    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { mode: "date" })
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index("integration_projectId_idx").on(table.projectId),
-    index("integration_type_idx").on(table.type),
-    unique("integration_project_type_unique").on(table.projectId, table.type),
-  ],
-);
-
 export const externalLinkTable = pgTable(
   "external_link",
   {
@@ -901,12 +767,6 @@ export const externalLinkTable = pgTable(
     taskId: text("task_id")
       .notNull()
       .references(() => taskTable.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    integrationId: text("integration_id")
-      .notNull()
-      .references(() => integrationTable.id, {
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
@@ -923,7 +783,6 @@ export const externalLinkTable = pgTable(
   },
   (table) => [
     index("external_link_taskId_idx").on(table.taskId),
-    index("external_link_integrationId_idx").on(table.integrationId),
     index("external_link_externalId_idx").on(table.externalId),
     index("external_link_resourceType_idx").on(table.resourceType),
   ],
@@ -1028,59 +887,6 @@ export const apikeyTable = pgTable(
   ],
 );
 
-export const deviceCodeTable = pgTable(
-  "device_code",
-  {
-    id: text("id")
-      .$defaultFn(() => createId())
-      .primaryKey(),
-    deviceCode: text("device_code").notNull(),
-    userCode: text("user_code").notNull(),
-    userId: text("user_id").references(() => userTable.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
-    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { mode: "date" })
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
-    status: text("status").notNull(),
-    lastPolledAt: timestamp("last_polled_at", { mode: "date" }),
-    pollingInterval: integer("polling_interval"),
-    clientId: text("client_id"),
-    scope: text("scope"),
-  },
-  (table) => [
-    uniqueIndex("device_code_device_code_uidx").on(table.deviceCode),
-    uniqueIndex("device_code_user_code_uidx").on(table.userCode),
-    index("device_code_user_id_idx").on(table.userId),
-  ],
-);
-
-export const mcpOauthStateTable = pgTable(
-  "mcp_oauth_state",
-  {
-    id: text("id")
-      .$defaultFn(() => createId())
-      .primaryKey(),
-    kind: text("kind").notNull(),
-    key: text("key").notNull(),
-    payload: jsonb("payload").notNull(),
-    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
-    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { mode: "date" })
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    uniqueIndex("mcp_oauth_state_kind_key_uidx").on(table.kind, table.key),
-    index("mcp_oauth_state_expiresAt_idx").on(table.expiresAt),
-  ],
-);
-
 // Auth-schema compatible aliases in schema.ts
 export const user = userTable;
 export const session = sessionTable;
@@ -1093,7 +899,6 @@ export const workspace_member = workspaceUserTable;
 export const invitation = invitationTable;
 export const organizationRole = workspaceRoleTable;
 export const apikey = apikeyTable;
-export const deviceCode = deviceCodeTable;
 
 // Auth-schema compatible relation exports in schema.ts
 export const userRelations = relations(user, ({ many }) => ({

@@ -195,12 +195,18 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     Array<{
       id: string;
       taskId: string;
-      integrationId: string;
       resourceType: string;
       externalId: string;
       url: string;
       title: string | null;
       metadata: Record<string, unknown> | null;
+      // The row is selected with `select()`, so these are present, and
+      // taskExternalLinkSchema requires them. Omitting them here discarded
+      // them at the type level while the response schema still demanded them
+      // — a latent mismatch that only surfaced once a middleware was removed
+      // and the route's response type stopped being inferred loosely.
+      createdAt: Date;
+      updatedAt: Date;
     }>
   >();
   for (const externalLink of externalLinksData) {
@@ -259,7 +265,6 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
       slug: project.slug,
       icon: project.icon,
       description: project.description,
-      isPublic: project.isPublic,
       workspaceId: project.workspaceId,
       columns,
       archivedTasks,

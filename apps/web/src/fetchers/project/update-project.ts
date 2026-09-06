@@ -12,11 +12,10 @@ async function updateProject({
   icon,
   slug,
   description,
-  isPublic,
 }: UpdateProjectRequest) {
   const response = await client.project[":id"].$put({
     param: { id },
-    json: { name, icon, slug, description, isPublic },
+    json: { name, icon, slug, description },
   });
 
   if (!response.ok) {

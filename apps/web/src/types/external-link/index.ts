@@ -22,7 +22,6 @@ export type ExternalLinkMetadata = {
 export type ExternalLink = {
   id: string;
   taskId: string;
-  integrationId: string;
   resourceType: string;
   externalId: string;
   url: string;

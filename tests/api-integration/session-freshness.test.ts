@@ -48,12 +48,26 @@ async function signUp(app: ReturnType<typeof createApp>["app"]) {
   return cookies;
 }
 
-describe("API integration: session freshness after profile updates", () => {
+/**
+ * Session freshness, after the cookie cache was disabled in issue #6.
+ *
+ * kaneo cached the session in the cookie for five minutes. That path returns
+ * session data with NO database read, so a revoked session kept working for up
+ * to five minutes and a forged cookie was never compared against any row. The
+ * two tests that used to live here asserted the STALENESS was tolerable —
+ * that `get-session` returned the old user until you passed
+ * `?disableCookieCache=true`.
+ *
+ * That is now the wrong assertion. These are its inverse: an ordinary
+ * `get-session`, with no special query parameter, must already reflect the
+ * database. If the cache is ever re-enabled, these fail.
+ */
+describe("API integration: session freshness without a cookie cache", () => {
   beforeEach(async () => {
     await resetTestDatabase();
   });
 
-  it("serves the updated user when the session cookie cache is bypassed", async () => {
+  it("reflects a profile update immediately, with no cache-bypass parameter", async () => {
     const { app } = createApp();
     const cookies = await signUp(app);
 
@@ -64,22 +78,17 @@ describe("API integration: session freshness after profile updates", () => {
     });
     expect(update.status).toBe(200);
 
-    const cached = (await (
+    // The plain call — the one kaneo served from the cookie cache.
+    const session = (await (
       await app.request("/api/auth/get-session", {
         headers: { cookie: cookies },
       })
     ).json()) as SessionResponse;
-    expect(cached?.user.image).toBeNull();
 
-    const fresh = (await (
-      await app.request("/api/auth/get-session?disableCookieCache=true", {
-        headers: { cookie: cookies },
-      })
-    ).json()) as SessionResponse;
-    expect(fresh?.user.image).toBe("/api/user/avatar/new-avatar-id");
+    expect(session?.user.image).toBe("/api/user/avatar/new-avatar-id");
   });
 
-  it("refreshes the cached session cookie on get-session", async () => {
+  it("gives the same answer with and without disableCookieCache", async () => {
     const { app } = createApp();
     const cookies = await signUp(app);
 
@@ -89,20 +98,19 @@ describe("API integration: session freshness after profile updates", () => {
       body: JSON.stringify({ name: "Renamed User" }),
     });
 
-    const refreshed = await app.request(
-      "/api/auth/get-session?disableCookieCache=true",
-      { headers: { cookie: cookies } },
-    );
-
-    expect(refreshed.headers.getSetCookie().length).toBeGreaterThan(0);
-
-    const nextCookies = applyCookies(cookies, refreshed);
-    const cached = (await (
+    const plain = (await (
       await app.request("/api/auth/get-session", {
-        headers: { cookie: nextCookies },
+        headers: { cookie: cookies },
+      })
+    ).json()) as SessionResponse;
+    const bypassed = (await (
+      await app.request("/api/auth/get-session?disableCookieCache=true", {
+        headers: { cookie: cookies },
       })
     ).json()) as SessionResponse;
 
-    expect(cached?.user.name).toBe("Renamed User");
+    // Identical answers mean there is no cache to bypass.
+    expect(plain?.user.name).toBe("Renamed User");
+    expect(bypassed?.user.name).toBe("Renamed User");
   });
 });

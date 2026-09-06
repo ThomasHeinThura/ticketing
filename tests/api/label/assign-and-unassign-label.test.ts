@@ -13,10 +13,6 @@ const mockSelect = vi.fn();
 const mockDelete = vi.fn();
 const mockInsert = vi.fn();
 const mockPublishEvent = vi.fn();
-const mockRemoveLabelFromGitHub = vi.fn();
-const mockRemoveLabelFromGitea = vi.fn();
-const mockSyncLabelToGitHub = vi.fn();
-const mockSyncLabelToGitea = vi.fn();
 
 function createMockTxContext() {
   return {
@@ -51,24 +47,6 @@ vi.mock("../../../apps/api/src/database", () => ({
 vi.mock("../../../apps/api/src/events", () => ({
   publishEvent: (...args: unknown[]) => mockPublishEvent(...args),
 }));
-
-vi.mock(
-  "../../../apps/api/src/plugins/github/utils/sync-label-to-github",
-  () => ({
-    removeLabelFromGitHub: (...args: unknown[]) =>
-      mockRemoveLabelFromGitHub(...args),
-    syncLabelToGitHub: (...args: unknown[]) => mockSyncLabelToGitHub(...args),
-  }),
-);
-
-vi.mock(
-  "../../../apps/api/src/plugins/gitea/utils/sync-label-to-gitea",
-  () => ({
-    removeLabelFromGitea: (...args: unknown[]) =>
-      mockRemoveLabelFromGitea(...args),
-    syncLabelToGitea: (...args: unknown[]) => mockSyncLabelToGitea(...args),
-  }),
-);
 
 import assignLabelToTask from "../../../apps/api/src/label/controllers/assign-label-to-task";
 import unassignLabelFromTask from "../../../apps/api/src/label/controllers/unassign-label-from-task";
@@ -143,7 +121,6 @@ describe("unassignLabelFromTask", () => {
     mockFindFirst.mockResolvedValue(TASK_LABEL);
     mockSelect.mockReturnValue(makeSelectMock([TASK]));
     mockDelete.mockReturnValue(makeDeleteMock(TASK_LABEL));
-    mockRemoveLabelFromGitHub.mockResolvedValue(undefined);
 
     await unassignLabelFromTask("label-task-1", "user-1");
 
@@ -156,17 +133,6 @@ describe("unassignLabelFromTask", () => {
       userId: "user-1",
       type: "label_unassigned",
     });
-  });
-
-  it("calls removeLabelFromGitHub with the deleted task's id and name", async () => {
-    mockFindFirst.mockResolvedValue(TASK_LABEL);
-    mockSelect.mockReturnValue(makeSelectMock([TASK]));
-    mockDelete.mockReturnValue(makeDeleteMock(TASK_LABEL));
-    mockRemoveLabelFromGitHub.mockResolvedValue(undefined);
-
-    await unassignLabelFromTask("label-task-1", "user-1");
-
-    expect(mockRemoveLabelFromGitHub).toHaveBeenCalledWith("task-1", "bug");
   });
 
   it("rejects when the label is a workspace definition (taskId is null)", async () => {
@@ -200,8 +166,6 @@ describe("assignLabelToTask", () => {
     const insertedCopy = { ...TASK_LABEL, id: "label-task-2" };
     const insertChain = makeInsertMock(insertedCopy);
     mockInsert.mockReturnValue(insertChain);
-    mockSyncLabelToGitHub.mockResolvedValue(undefined);
-    mockSyncLabelToGitea.mockResolvedValue(undefined);
 
     const result = await assignLabelToTask("label-ws-1", "task-1", "user-1");
 
@@ -219,16 +183,6 @@ describe("assignLabelToTask", () => {
       userId: "user-1",
       type: "label_assigned",
     });
-    expect(mockSyncLabelToGitHub).toHaveBeenCalledWith(
-      "task-1",
-      "bug",
-      "EF4444",
-    );
-    expect(mockSyncLabelToGitea).toHaveBeenCalledWith(
-      "task-1",
-      "bug",
-      "EF4444",
-    );
   });
 
   it("is idempotent when the same label is already attached to the same task", async () => {
@@ -251,20 +205,8 @@ describe("assignLabelToTask", () => {
     const insertedCopy = { ...TASK_LABEL, id: "label-task-2" };
     const insertChain = makeInsertMock(insertedCopy);
     mockInsert.mockReturnValue(insertChain);
-    mockRemoveLabelFromGitHub.mockResolvedValue(undefined);
-    mockRemoveLabelFromGitea.mockResolvedValue(undefined);
-    mockSyncLabelToGitHub.mockResolvedValue(undefined);
-    mockSyncLabelToGitea.mockResolvedValue(undefined);
 
     await assignLabelToTask("label-task-1", "task-1", "user-1");
-
-    expect(mockRemoveLabelFromGitHub).toHaveBeenCalledWith("task-old", "bug");
-    expect(mockRemoveLabelFromGitea).toHaveBeenCalledWith("task-old", "bug");
-    expect(mockSyncLabelToGitHub).toHaveBeenCalledWith(
-      "task-1",
-      "bug",
-      "EF4444",
-    );
     expect(mockPublishEvent).toHaveBeenCalledWith(
       "task.label_assigned",
       expect.objectContaining({
@@ -285,8 +227,6 @@ describe("assignLabelToTask", () => {
 
     expect(result).toEqual(TASK_LABEL);
     expect(mockInsert).toHaveBeenCalledTimes(1);
-    expect(mockSyncLabelToGitHub).not.toHaveBeenCalled();
-    expect(mockSyncLabelToGitea).not.toHaveBeenCalled();
     expect(mockPublishEvent).not.toHaveBeenCalled();
   });
 
@@ -318,9 +258,6 @@ describe("assignLabelToTask", () => {
     ).rejects.toMatchObject({
       status: 500,
     });
-
-    expect(mockSyncLabelToGitHub).not.toHaveBeenCalled();
-    expect(mockSyncLabelToGitea).not.toHaveBeenCalled();
     expect(mockPublishEvent).not.toHaveBeenCalled();
   });
 

@@ -89,7 +89,6 @@ const task: Task = {
     {
       id: "link-1",
       taskId: "task-1",
-      integrationId: "integration-1",
       resourceType: "pull_request",
       externalId: "42",
       url: "https://github.com/o/r/pull/42",

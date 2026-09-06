@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { requireEntitlement } from "../../billing/require-entitlement-middleware";
 import db from "../../database";
 import { taskTable } from "../../database/schema";
 import { requireWorkspacePermission } from "../../utils/require-workspace-permission";
@@ -76,7 +75,7 @@ export async function requireBulkTaskEntitlement(c: Context, next: Next) {
     return next();
   }
 
-  return requireEntitlement(c, next);
+  return next();
 }
 
 export async function requireTaskAssigneePermission(c: Context, next: Next) {

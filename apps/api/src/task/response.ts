@@ -43,7 +43,6 @@ const taskExternalLinkSchema = z
   .object({
     id: z.string(),
     taskId: z.string(),
-    integrationId: z.string(),
     resourceType: z.string(),
     externalId: z.string(),
     url: z.string(),
@@ -99,7 +98,6 @@ export const boardSchema = z
         slug: z.string(),
         icon: z.string().nullable(),
         description: z.string().nullable(),
-        isPublic: z.boolean().nullable(),
         workspaceId: z.string(),
         columns: z.array(boardColumnSchema),
         archivedTasks: z.array(boardTaskSchema),
