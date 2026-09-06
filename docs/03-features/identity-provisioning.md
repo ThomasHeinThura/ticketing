@@ -75,7 +75,8 @@ de-provisioning writes.
 - `IP-1` An identity connection has a **portal scope** of exactly `agent` or `customer`.
   An `agent` connection has no organisation; a `customer` connection is bound to **exactly
   one** customer organisation. A connection can never serve both portals — `both` is not a
-  value ([ADR 0004](../01-architecture/adr/0004-two-portals-two-origins.md)).
+  value ([ADR 0003](../01-architecture/adr/0003-better-auth-primary.md),
+  [plugin-architecture.md](../01-architecture/plugin-architecture.md)).
 - `IP-2` A `customer` connection may create or manage **only customer-side people of its
   own organisation**, holding **only the customer role** (until a customer-role model is
   separately specified). It can never: create staff-side users; create instance
@@ -114,14 +115,56 @@ de-provisioning writes.
 - `IP-8` A customer connection's callback is accepted **only on the portal origin**, an
   agent connection's only on the agent origin; the resulting session carries the matching
   `session.portal` and is unusable on the other host.
-- `IP-9` Domain-based mapping requires `email_verified = true`, and one email domain is
-  bound to one approved connection ([security-model.md](../01-architecture/security-model.md#identity-provisioning-and-account-linking)).
+- `IP-9` One email domain is bound to one approved connection, in that connection's
+  `domain_bindings`, and the binding **refuses** a token whose address domain belongs to
+  another connection. It never *selects* the organisation — that is
+  `identity_connection.organisation_id`, resolved from the connection
+  ([multi-tenancy.md](../01-architecture/multi-tenancy.md),
+  [security-model.md](../01-architecture/security-model.md#identity-provisioning-and-account-linking)).
+  The check runs against whichever address `IP-27`'s precedence produced.
+  `email_verified = true` is required **only of providers that emit that claim**: Microsoft
+  Entra emits none at all, so requiring it there would make the rule unsatisfiable and the
+  implementer would quietly drop it. For Entra the address is trusted because the token came
+  from the connection's own tenant (`IP-26`), not because a claim asserts it.
 - `IP-10` JIT provisioning (create on first login) is a per-connection policy, off by
   default for customer connections when SCIM is enabled — the directory, not the login,
   creates people. When both are on, the first login **links** to the SCIM-created record by
   `subject`/`externalId`; it never creates a duplicate.
+- `IP-26` **The issuer must be a specific tenant.** A connection stores the *resolved,
+  tenant-specific* issuer from its discovery document. Entra's `/common` and
+  `/organizations` authorities are **refused at save**, with an explanation: their discovery
+  documents return an `issuer` containing a `{tenantid}` template, so an equality check
+  fails and a naive substitution would accept a token from *any* Entra tenant. Every ID
+  token must match both the stored `iss` **and** `identity_connection.tenant_id` through its
+  `tid` claim; either mismatch fails sign-in, audited. This is the rule
+  `05-no-user-controlled-tenant-selection.test.ts` asserts.
+- `IP-27` **The subject is `oid` + `tid`; the address is derived by precedence.** Entra
+  v2.0 ID tokens do not guarantee an `email` claim — it is optional, present only when
+  configured or when the user has a `mail` attribute — and they emit **no `email_verified`
+  claim at all**. So the durable subject is always `oid` (with `tid`), and the address is
+  taken by precedence `email` → `preferred_username` → `upn`, with `IP-9`'s domain check
+  applied to whichever of the three was used. If none of them is a valid address, **JIT
+  provisioning fails closed**: sign-in is refused, a `provisioning_event` is written, and no
+  address is invented. The resulting email snapshot is an attribute, never a key (`IP-18`).
+- `IP-29` **The portal login page performs home-realm discovery; it never enumerates.**
+  Customer connections are per-organisation, so a list of them would name every customer
+  organisation to every anonymous visitor. The portal login page therefore renders **no list
+  of organisations or connections**: it asks for an email address and resolves the
+  connection server-side from `domain_bindings` (`IP-9`). The response is
+  **constant-shape** — a bound domain and an unknown domain return the same body, the same
+  status and the same timing class — so the page cannot be used to test whether an
+  organisation exists here. The agent login page is the opposite case and may list its
+  providers: they are instance-level and few
+  ([customer-portal.md](customer-portal.md) `CP-18`,
+  [auth-and-identity.md](../01-architecture/auth-and-identity.md#per-portal-binding)).
 
 ### SCIM endpoint
+
+**The SCIM 2.0 server is ours.** better-auth has no SCIM plugin, so the schemas, the
+`PATCH` path expressions, `ListResponse`, the SCIM error bodies and the filter parser —
+hand-written, and only for `eq` on `userName` and `externalId` (`IP-13`) — are our own
+protocol code; only the credential check reuses the platform.
+
 
 - `IP-11` One SCIM 2.0 endpoint family on the agent origin: `/scim/v2/Users`,
   `/scim/v2/Users/{id}`, `/scim/v2/Groups`, `/scim/v2/Groups/{id}`,
@@ -146,7 +189,9 @@ de-provisioning writes.
   (`IP-4`) and oversized bodies are rejected with SCIM error responses. Requests are
   rate-limited per connection (anonymous-class limits apply to failed authentication).
 - `IP-15` **Deactivation** (`active=false`, or `DELETE`): set `person.active = false`; revoke
-  every session; revoke every personal API key and MCP key; remove or reduce workspace and
+  every session — which takes effect on that person's **very next request**, because
+  `session.cookieCache` is disabled and every request is validated against the `session`
+  table ([auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions)); revoke every personal API key and MCP key; remove or reduce workspace and
   project memberships per the connection's `lifecycle_policy` (default: memberships end);
   **preserve** authored work items, comments, approvals, activity and audit rows, attributed
   to a deactivated/former member; write a provisioning event with source, organisation,
@@ -160,6 +205,21 @@ de-provisioning writes.
 - `IP-17` Profile updates (`PATCH`/`PUT`) may change permitted attributes — name, email
   snapshot, `userName`, job title, locale — and can never alter organisation, portal scope,
   role, reach or capabilities.
+- `IP-31` **Tolerated Entra deviations.** `IP-14`'s strictness is about *authority*, not
+  about spelling, and Entra's provisioning service sends three things a literal-minded
+  validator rejects. All three are tolerated, and only these three: `op` values are matched
+  **case-insensitively** (`"Replace"`, `"Add"`, `"Remove"`); `active` is accepted as the
+  strings `"True"` / `"False"` as well as a JSON boolean, and coerced; and the
+  `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User` extension is **ignored, not
+  rejected**, unless one of its attributes is explicitly mapped. None of this weakens
+  `IP-4`: a forbidden attribute is still refused `400 forbidden_attribute`, whatever its
+  case or JSON type.
+- `IP-32` **A same-connection duplicate is not something to retry.** Entra's provisioning
+  agent retries on 5xx and on timeouts, so `POST /Users` is re-delivered. A create whose
+  `externalId` or `userName` already exists **on the same connection** returns `409` with
+  `scimType: "uniqueness"` and the existing resource's `id` in the detail, so the agent
+  reconciles instead of stalling or duplicating. `IP-18`'s `409` answers a different
+  question — a match on *another* connection or organisation — and is unchanged.
 
 ### Linking and identity
 
@@ -170,6 +230,16 @@ de-provisioning writes.
   connection or organisation is refused `409` and logged — it does not adopt the record.
 - `IP-19` Within one connection, SCIM create followed by first OIDC login links by
   `subject` (Entra `oid`) and `externalId`; the email snapshot is updated, not matched.
+- `IP-30` **Claiming a placeholder person.** An import may leave a `person` with
+  `user_id = null` and `is_placeholder = true` so history has an author
+  ([auth-and-identity.md](../01-architecture/auth-and-identity.md#identity-resolution--the-important-rule)).
+  A later sign-up may **claim** that row — linked, not duplicated — but only on a path where
+  **TaskDesk itself verified the address**: password sign-up with email verification, email
+  OTP, or magic link; or an explicit, administrator-confirmed claim. **Never on the SSO
+  path**, where the address is the IdP's assertion rather than our verification, and where
+  for Entra there is no `email_verified` claim to lean on at all (`IP-27`). Every claim is
+  audited. This is not an exception to `IP-18`: `IP-18` forbids linking to another
+  *connection's* account, and this links to a row that has no account.
 
 ### Groups
 
@@ -185,6 +255,15 @@ de-provisioning writes.
   membership it derived (`scim_group_member` is the ledger). Memberships granted by an
   administrator directly are **not** touched by group sync.
 - `IP-23` Nested-group resolution beyond what Entra sends directly is out of scope.
+- `IP-28` **The OIDC `groups` claim carries object ids, and can go missing.** Group → role
+  mapping from an ID token is keyed on the group's **object id**, with the display name kept
+  only as a snapshot — exactly as `scim_group_mapping` is already keyed on
+  `external_group_id` with `external_group_name_snapshot`. This is what keeps `IP-3`'s "no
+  group *name* alone" true of the OIDC path as well as the SCIM one. Above Entra's
+  group-count limit the claim is replaced by `_claim_names` / `_claim_sources` pointing at
+  Graph; TaskDesk **ignores the claim**, provisions the JIT default role only, and raises a
+  `provisioning_event` and a God Mode → Health warning
+  ([decision-log.md](../07-planning/decision-log.md)).
 
 ### Audit and health
 
@@ -245,7 +324,7 @@ filtered to `organisation_id`; there is one implementation.
 | Entra sends a user whose email domain is bound to another connection | Refused `409`, provisioning event `request.denied`, administrator notified |
 | Token used after rotation | `401`; provisioning event `auth.failed`; counted against the anonymous rate class |
 | Two connections claim the same organisation | Refused at save — one active customer connection per organisation in the first release |
-| Connection disabled while users have sessions | Sessions stay valid until idle/absolute expiry; new logins refused; SCIM calls `403 connection_disabled` |
+| Connection disabled or deleted while users have sessions | Disabling or deleting an identity connection **revokes every session issued through that connection immediately** — the same treatment as suspending an organisation; new logins are refused; SCIM calls return `403 connection_disabled`. Editing a connection's configuration while it stays enabled does **not** revoke anything |
 | Connection deleted | Pending action (typed name + step-up); external identities are kept, marked orphaned; people are **not** deactivated automatically — the administrator chooses |
 | Entra sends `active=false` for the last instance administrator | Deactivated like anyone else — break-glass is the CLI, not an exception in SCIM |
 | Group mapped to a role later deleted | Mapping auto-disabled and flagged; derived memberships removed |
@@ -255,7 +334,8 @@ filtered to `organisation_id`; there is one implementation.
 SCIM `/Bulk`; generic SCIM for every provider (build standards-based, validate against
 Entra, then extend provider by provider — Okta, Keycloak, Google Workspace, generic OIDC
 are future); customer self-service IdP configuration; SAML; LDAP; nested-group resolution;
-a customer-role model richer than the single customer role.
+a Microsoft Graph `memberOf` lookup on group-claim overage (`IP-28` ignores the claim
+instead); a customer-role model richer than the single customer role.
 
 ## Testing
 
@@ -283,7 +363,25 @@ listed in [testing-strategy.md](../04-engineering/testing-strategy.md).
 15-oidc-protocol-failures-block-sign-in.test.ts
 16-same-email-second-idp-does-not-autolink.test.ts
 17-every-identity-event-is-audited.test.ts
+18-placeholder-claim-requires-local-verification.test.ts
+19-scim-discovery-documents.test.ts
+20-scim-pagination.test.ts
+21-scim-bad-token-401.test.ts
+22-entra-scim-quirks.test.ts
+23-connection-disable-revokes-sessions.test.ts
+24-oidc-no-autolink-config-read.test.ts
+25-session-revocation-immediate.test.ts
 ```
+
+**Twenty-five acceptance tests.** Eight were added when `IP-26`…`IP-32` and the placeholder
+rule were written: 18 asserts `IP-30` (an SSO login never claims a placeholder), 19 the
+`ServiceProviderConfig` / `ResourceTypes` / `Schemas` documents Entra reads first, 20
+`startIndex`/`count` pagination, 21 `401` on an absent or garbage bearer token (test 14
+covers only rotation), 22 `IP-31`'s tolerated deviations together with `IP-4` still
+refusing, 23 the edge-case row above, 24 reads the **constructed** better-auth configuration
+to prove `accountLinking.enabled` is `false` rather than inferring it from behaviour, and 25
+proves a revoked session fails on the next request — the SLA stated in
+[auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions).
 
 Plus the IDOR fuzz and tenant-isolation suites, which cover `/scim/v2/*` like any other
 scoped surface.

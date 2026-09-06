@@ -26,7 +26,7 @@ indistinguishable in style from one that came with the system.
 
 ## 2. Calm by default
 
-kaneo's interface is quiet. Muted zinc, restrained colour, generous whitespace, few
+kaneo's interface is quiet. Muted neutral greys, restrained colour, generous whitespace, few
 borders, subtle shadows. Colour means something — it is not decoration.
 
 | Colour | Reserved for |
@@ -35,7 +35,7 @@ borders, subtle shadows. Colour means something — it is not decoration.
 | Amber | At-risk SLA, warnings, pending approval |
 | Green | Success, met SLA, completed states |
 | Blue / accent | Primary action, current selection |
-| Zinc | Everything else |
+| Neutral grey | Everything else |
 
 Two consequences: a red badge is *noticed* because red is rare, and a screen with nothing
 wrong looks calm.
@@ -164,6 +164,14 @@ We are not forbidden from improving on kaneo. We are forbidden from improving on
 If a kaneo pattern is genuinely wrong for a service desk, change it **in
 `packages/ui`, once, for everything**, and record why in the
 [decision log](../07-planning/decision-log.md).
+
+## The written vocabulary behind "does it look like kaneo?"
+
+kaneo ships its design vocabulary as agent skills under `../kaneo/skills/` —
+`pick-ui-library`, `animation-vocabulary`, `review-animations`, `apple-design`,
+`emil-design-eng`. They are read-once references (not copied — [inherited-features.md](../01-architecture/inherited-features.md)),
+and together with the kaneo reference screenshot set captured at P0 they are what gate
+`H1` compares against ([ux-quality-gates.md](ux-quality-gates.md)).
 
 ## Related
 

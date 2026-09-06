@@ -9,8 +9,10 @@
 curl -fsSL https://get.taskdesk.dev | bash
 ```
 
-One command, on a clean machine with nothing but a shell and outbound HTTPS, ends with a
-running instance and a printed sign-in URL. This is the installer a small customer runs
+The script is `install.sh` — the same name it is called by in
+[traefik-and-domains.md](traefik-and-domains.md) and the one you get from
+`curl -o install.sh`. One command, on a clean machine with nothing but a shell and outbound
+HTTPS, ends with a running instance and a printed sign-in URL. This is the installer a small customer runs
 without ever cloning a repository, and it is also what a bigger customer's automation calls
 identically — the same command either way.
 
@@ -41,18 +43,36 @@ runs the one-liner and instead follows the manual `git clone` steps in
    [Deployment](deployment.md)'s "First run" — start dependencies, wait for health, apply
    migrations, create the bootstrap administrator, probe the API — happens exactly as
    documented, because it is the same script.
-6. **Prints the result**: the one-time **setup URL** (with the token from the container
-   log) at which the first administrator is created, and a reminder that everything else —
-   storage, mail, identity providers, branding — is configured in God Mode, not in a file.
-   A fresh install works with **no storage configuration at all**: `storage.filesystem` is
-   the default until an administrator chooses otherwise.
+6. **Prints the result**: the one-time **setup URL and its token**, read from the container
+   log and printed as the last thing on screen, at which the first administrator is created;
+   and a reminder that everything else — storage, mail, identity providers, branding — is
+   configured in God Mode, not in a file. A fresh install works with **no storage
+   configuration at all**: `storage.filesystem` is the default until an administrator
+   chooses otherwise, so there is no bucket, no credential and no third hostname to arrange
+   first. The token is short-lived; if it has expired by the time you get to it, see the
+   runbook's **First run** section.
+
+### Production pre-flight
+
+`--env production` runs two checks before it touches anything, because both failures are
+cheap to catch here and expensive to diagnose later:
+
+- **DNS.** The hostnames in play must already resolve to this host — ACME HTTP-01 needs them
+  before the first `up`. `ticket.` and `portal.` always; `files.` **only when `--files-host`
+  is given**, because a `storage.filesystem` install has no third hostname at all
+  ([deployment.md](deployment.md)). The script prints the exact records to create and stops.
+- **Port 5173 must not already be bound.** Production publishes no application port — that
+  is what makes `TASKDESK_TRUST_PROXY=1` sound ([traefik-and-domains.md](traefik-and-domains.md))
+  — so something already listening on 5173 means another stack is running, or a local-mode
+  install is still up on this host. The check does **not** run for `--env local`, where
+  publishing 5173 is exactly what the local overlay is for.
 
 ## Flags
 
 | Flag | Effect |
 | --- | --- |
 | `--env local\|production` | Which Compose overlay to bring up. Default `local` |
-| `--domain <domain>` | Derives the three hostnames — `ticket.<domain>`, `portal.<domain>`, `files.<domain>` — for `production`; `--agent-host` / `--portal-host` / `--files-host` override any of them. **Pre-flight:** the script resolves all three and refuses to continue, printing the exact DNS records to create, if any does not point at this host — ACME HTTP-01 needs them before the first `up`, and this is the most common first-run failure |
+| `--domain <domain>` | Derives `ticket.<domain>` and `portal.<domain>` for `production`; `--agent-host` / `--portal-host` override either. `--files-host` adds the third hostname, and is only wanted when this host also serves an operator-owned S3 endpoint. The DNS pre-flight above checks exactly the hostnames in play |
 | `--version <tag>` | Install a specific release instead of the latest stable one |
 | `--dir <path>` | Install directory. Default `~/taskdesk` |
 | `--yes` | Do not prompt before installing Docker or writing files |

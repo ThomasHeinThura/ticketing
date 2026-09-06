@@ -41,11 +41,11 @@ product rather than inventing a fourth:
 
 | Tier | Answers | Precedent | Built from |
 | --- | --- | --- | --- |
-| **1 — Fixed** | A known question, asked often | MS Planner's built-in charts; Plane's insights | The fourteen canned reports below. Filterable (`RP-7`), never restructured |
+| **1 — Fixed** | A known question, asked often | MS Planner's built-in charts; Plane's insights | The twenty canned reports below. Filterable (`RP-7`), never restructured |
 | **2 — Selectable (row and column)** | "Show me this data, shaped my way" | MS Planner's grid view; Plane's spreadsheet view | The existing [Table view](views.md) and [saved views](search-and-saved-views.md) — a column chooser plus the structured filter grammar ([API design](../01-architecture/api-design.md)), saved and reused as a report |
 | **3 — Customisable** | A genuinely novel question | Azure DevOps Analytics widgets; Jira dashboard gadgets and JQL | A small ad-hoc report builder over the same filter grammar and `saved_view` mechanism, adding grouping, aggregation and a chart-type choice |
 
-**Tier 1 — Fixed reports.** The fourteen reports below. An administrator cannot restructure
+**Tier 1 — Fixed reports.** The twenty reports below. An administrator cannot restructure
 one — only filter it (`RP-7`) — because a fixed report's value is that everyone reads the
 same shape and trusts it. This tier is unaffected by anything below.
 

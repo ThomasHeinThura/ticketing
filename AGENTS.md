@@ -49,7 +49,8 @@ branding, features, roles — all runtime configuration in God Mode, stored in t
 Environment variables are for bootstrap only — five required, a handful of optional
 operational switches, all listed in
 [`docs/05-operations/configuration-reference.md`](docs/05-operations/configuration-reference.md)
-and nowhere else. If you are about to add one, or write `if (customer === …)`, stop and add
+and nowhere else — `check:env` fails the build on any other `process.env` read. If you are
+about to add one, or write `if (customer === …)`, stop and add
 a plugin or a feature flag.
 
 ### 3 · Every route declares its permission
@@ -73,7 +74,7 @@ A phase completes before the next starts. v1 died of twenty-five screens at sixt
 ```
 apps/api      Hono + Drizzle + better-auth. The only backend.
 apps/web      React 19 + TanStack. Two entries: agent, portal. One source.
-apps/site     Next.js + Fumadocs. The documentation website.
+apps/site     The documentation website — stack pending Thomas's decision (docs/08-docs-site/plan.md)
 
 packages/ui                 THE design system. Only source of primitives.
 packages/domain             SLA, workflow, approvals, assignment. Pure, no I/O.
@@ -104,11 +105,18 @@ pnpm test                  # unit + component
 pnpm test:integration      # Testcontainers Postgres
 pnpm test:permissions      # route coverage + role × route matrix
 pnpm test:e2e
-pnpm test:all              # what CI runs
+pnpm test:all              # alias for every CI check — ci-cd.md is the single list
 
 pnpm check:tokens          # no literal colours; contrast passes
 pnpm check:ui              # no bespoke primitives
 pnpm check:deps            # no cycles, no boundary violations
+pnpm check:queries         # no db.select() outside repository.ts
+pnpm check:inventory       # screen inventory ↔ generated routes
+pnpm check:reviews         # a spec in build has an empty review section
+pnpm check:env             # no process.env read outside configuration-reference.md
+pnpm check:vocabulary      # tables/capabilities/events/jobs exist in their authority doc
+pnpm check:skips           # no .skip / .only / describe.skip
+pnpm check:bundle-purity   # no agent module in the portal bundle
 
 pnpm seed minimal | realistic | hostile
 scripts/deploy.sh local
@@ -125,7 +133,8 @@ pnpm test:permissions      # if a route changed
 pnpm test:e2e -- <scope>   # if the UI changed
 ```
 
-**And then open the screen and use it.**
+**And then open the screen and use it** — and list every screen you opened in the pull
+request's `## Screens opened` section (route, viewport, what you clicked, screenshot).
 
 v1's handover was blunt about this and it is worth repeating: *verify before you believe.*
 Four of its worst defects were invisible to a green test suite.
@@ -157,10 +166,17 @@ Full checklist:
 13. Invent an MCP permission (`mcp:*`), a SCIM-only tenancy rule, or any path by which an
     identity provider, group or SCIM attribute grants `instance:admin` or `sees_all`
 14. Keep, flag or "leave for later" an inherited kaneo integration router (public boards,
-    GitHub, Gitea, Slack, Discord, Telegram) — they are **deleted at fork**
+    GitHub, Gitea, Slack, Discord, Telegram, generic webhook) — they are **deleted at fork**
     (`docs/01-architecture/inherited-features.md`); the plugin contracts are the way back
 15. Start building a feature while its section in `docs/07-planning/reviews/2026-09-05/`
     is non-empty
+16. Commit, push or merge anything without Thomas's explicit approval in the same session.
+    **A report is not approval.** Finish, write the report, leave the working tree
+    uncommitted, and stop ([decision log](docs/07-planning/decision-log.md), 2026-09-05)
+17. Guess at behaviour — if the spec does not say, ask, and then write the answer into the
+    spec
+18. Claim something works without running it — every screen you touched is opened and
+    listed in the pull request's `## Screens opened` section
 
 ---
 

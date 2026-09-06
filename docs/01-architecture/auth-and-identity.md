@@ -34,26 +34,78 @@ layer never knows or cares how someone logged in.
 | Requirement | better-auth |
 | --- | --- |
 | Works with zero config | ✅ email + password out of the box |
-| Multi-organisation | **Not used.** better-auth's organisation plugin is deliberately off — our own `organisation` / `membership` / `team` / `invitation` tables are the directory, because identity is always resolved from *our* database. better-auth does authentication only |
-| MFA | ✅ two-factor plugin — TOTP, backup codes |
-| Magic link | ✅ |
-| Email OTP | ✅ |
-| Passkeys | ✅ |
+| Multi-organisation | **Not used.** better-auth's organisation plugin is removed at the fork — our own `organisation` / `membership` / `team` / `invitation` tables are the directory, because identity is always resolved from *our* database. better-auth does authentication only |
+| MFA | ✅ two-factor plugin — TOTP, backup codes. **Added by us**; kaneo does not enable it |
+| Magic link | ✅ inherited |
+| Email OTP | ✅ inherited |
+| Passkeys | ✅ passkey plugin. **Added by us**, after P0 |
 | Arbitrary OIDC | ✅ genericOAuth — **configurable at runtime** |
 | API keys | ✅ apiKey plugin |
-| Impersonation | ✅ admin plugin, audited |
+| Impersonation | ✅ admin plugin — kept **only as a session primitive**; the authority check is ours (see the plugin table) |
 | TypeScript-native, Drizzle adapter | ✅ |
-| Already in kaneo | ✅ |
+| Already in kaneo | ✅ the library. **Not the plugin set** — see the plugin table below |
 
 Keycloak is **not** a dependency. It is one OIDC provider among many, added through
 God Mode if a deployment wants it. That is the difference between "we support Keycloak"
 and "we require Keycloak".
 
+### The better-auth plugin set — inherited, removed, added
+
+kaneo enables eleven better-auth plugins and enables neither `twoFactor` nor `passkey`.
+"Already in kaneo" above is true of the library and false of half the capabilities, in both
+directions, so the verdict is written per plugin. The removals are the identity half of the
+fork-time removal and disable list in
+[decision-log.md](../07-planning/decision-log.md); the doing is
+[repository-bootstrap.md](../04-engineering/repository-bootstrap.md) §3 and the verdicts are
+registered in [inherited-features.md](inherited-features.md).
+
+| Plugin | Verdict | Note |
+| --- | --- | --- |
+| `magicLink` | inherited — kept | `auth.magic-link` |
+| `emailOTP` | inherited — kept | `auth.email-otp` |
+| `genericOAuth` | inherited — kept | the protocol implementation every `auth.oidc` connection is built on |
+| `apiKey` | inherited — kept | the credential only; our `api_key` table owns everything else |
+| `admin` | inherited — kept **as a session primitive only** | its HTTP routes are **not mounted**, `user.role` is **never read**, and `POST /api/instance/users/{id}/impersonate` ([rbac.md](rbac.md)) does the authority check and sets `impersonatedBy`. Using the plugin's own endpoints would reintroduce the second authority source the identity-resolution rule forbids |
+| `openAPI` | inherited — kept | development only |
+| `lastLoginMethod` | inherited — kept | |
+| `anonymous` | **removed at fork** | guest sign-in, on by default in kaneo. An ephemeral-identity surface does not ship dormant |
+| `deviceAuthorization` | **removed at fork** | a device-code grant no v2 spec asks for |
+| `bearer` | **removed at fork** | a second token-bearing authentication surface |
+| `organization` | **removed at fork — P0 step 1b** | see below |
+| `twoFactor` | **added — P0** | TOTP and backup codes |
+| `passkey` | **added — later phase** | |
+
+**The organization plugin is kaneo's workspace model, not a dormant feature.** In kaneo it
+maps `organizationId → workspaceId` and owns `workspace`, `workspace_member`, `invitation`,
+`workspace_role`, `team` and `teamMember` through the adapter schema, with hooks for create,
+delete and seat sync. Removing it is therefore a retrofit, done in **P0 step 1b**: our own
+`organisation` / `workspace` / `membership` / `role` tables ([data-model.md](data-model.md)
+§2) replace `workspace_role` and `team`, our own `invitation` table and the flow below
+replace the plugin's, and the whole `/organization/*` route family — including the
+`/organization/invite-member` route the invitation flow currently runs on — **disappears from
+the router**, which the inherited route-coverage expectation in
+[repository-bootstrap.md](../04-engineering/repository-bootstrap.md) accounts for.
+
+Two inherited defaults are disabled rather than removed, and both are load-bearing here:
+`account.accountLinking` (see [Placeholder people](#identity-resolution--the-important-rule)
+and `IP-18`) and `session.cookieCache` (see [Sessions](#sessions)).
+
 ## Runtime provider configuration
 
-Providers are `auth.*` plugins (see [Plugin architecture](plugin-architecture.md)),
-stored as `instance_plugin_config` rows, edited in God Mode, and **loaded into the
-better-auth instance at boot and on change**.
+Providers are `auth.*` plugins (see [Plugin architecture](plugin-architecture.md)), edited
+in God Mode, and **loaded into the better-auth instance at boot and on change**. They live
+in two tables, and the difference matters to the reload mechanism:
+
+- **Non-OIDC auth plugins** — `auth.password`, `auth.email-otp`, `auth.magic-link` — are
+  `instance_plugin_config` rows.
+- **OIDC connections** — every configured instance of `auth.oidc` and its presets
+  `auth.entra`, `auth.keycloak`, … — are **`identity_connection` rows**, because the
+  organisation FK and the SCIM link cannot live in a generic `config jsonb`
+  ([identity-provisioning.md](../03-features/identity-provisioning.md),
+  [data-model.md](data-model.md) §2). The plugin *kinds* stay in the plugin registry and
+  provide the protocol implementation.
+
+Both tables carry `config_version`, and the reload mechanism watches **both**.
 
 Implementation note: better-auth is configured once at construction. To support runtime
 changes we build the auth instance from database configuration and rebuild it when
@@ -83,16 +135,19 @@ God Mode → Organisations → Contoso → Identity → [ Add connection ]   (cu
     Display name          "Contoso Staff SSO"          ← what users see on the button
     Portal                (•) Agent  ( ) Customer      ← exactly one; never both (IP-1)
     Organisation          —  (required when Customer; fixed to one organisation)
-    Discovery URL         https://login.microsoftonline.com/{tenant}/v2.0/...
+    Discovery URL         https://login.microsoftonline.com/<tenant-guid>/v2.0/...
+                          ← a specific tenant; /common and /organizations are refused (IP-26)
     Client ID             …
     Client secret         •••••••• (encrypted at rest)
     Scopes                openid profile email
-    Claim mapping         email → email · name → name · groups → groups
+    Claim mapping         identifier: oid + tid (fixed) · email: email → preferred_username
+                          → upn · name → name · groups → groups          (IP-27)
     Auto-provision (JIT)  [x] create a person on first login
       → role              Viewer ▾   (≤ this connection's max role rank; customer
                                       connections have exactly one choice: Customer)
     Max role rank         50 (Lead) ▾                     ← agent connections only
-    Group → role mapping  "TaskDesk-Leads" → Lead        [+ add rule]  (allowlisted; ≤ max rank)
+    Group → role mapping  1f9a…-c3d2 "TaskDesk-Leads" → Lead   [+ add rule]
+                          ← keyed on the group OBJECT ID; the name is a snapshot (IP-28)
     Domain bindings       contoso.com                     ← each domain bound to one connection
     MFA upstream          (•) honour amr/acr claim  ( ) static  ( ) off
     SCIM provisioning     [ ] enable → token, resources, mappings (IP-11…IP-23)
@@ -129,8 +184,33 @@ auth reconfiguration suite asserts each of them against a mock IdP:
   `exp` and signature (via the discovered JWKS, cached, with key rotation honoured) are
   validated before any claim is read.
 - Redirect URIs are exact-match, per portal, and never taken from the request.
+- The issuer is the connection's **resolved, tenant-specific** issuer, and — for Entra —
+  the token's `tid` must equal the connection's tenant as well as its `iss` (`IP-26`).
 - The domain mapping and the account-linking rules below apply **after** the token is
   validated, never to raw claims.
+
+### What Microsoft Entra actually sends — the claim rules
+
+Entra is the one provider in core delivery, and three of its behaviours break a naive OIDC
+mapping. The rules are **stated normatively in
+[identity-provisioning.md](../03-features/identity-provisioning.md)**, which owns the `IP-n`
+numbering; they are named here only so that an implementer reading the protocol floor knows
+they exist.
+
+- **The issuer must be a specific tenant** — `IP-26`. `/common` and `/organizations` are
+  refused at save; the connection stores the resolved tenant-specific issuer; every ID token
+  must match both `iss` and `tid`. `05-no-user-controlled-tenant-selection.test.ts`.
+- **The identifier is `oid` + `tid`, and there may be no `email` claim** — `IP-27`. Address
+  precedence `email` → `preferred_username` → `upn`; no `email_verified` claim exists at
+  all; JIT fails closed rather than inventing an address.
+- **The `groups` claim carries object ids, and can go missing** — `IP-28`. Mapping is keyed
+  on the group object id with a name snapshot; on overage the claim is ignored, the JIT
+  default role is provisioned, and a `provisioning_event` and Health warning are raised. No
+  Graph call in the first release.
+
+A domain binding **refuses** a token whose email domain belongs to another connection. It
+never *selects* the organisation — that is `identity_connection.organisation_id`, resolved
+from the connection ([multi-tenancy.md](multi-tenancy.md)).
 
 ### Per-portal binding
 
@@ -143,8 +223,17 @@ auth reconfiguration suite asserts each of them against a mock IdP:
 | Email OTP | `customer` | Other customers get a code, no password to manage |
 | Password | `both` | Break-glass and small deployments |
 
-The login screen for each portal renders only the providers scoped to it. An OIDC identity
-connection is `agent` **or** `customer`, never both; only non-OIDC auth plugins may be `both`.
+An OIDC identity connection is `agent` **or** `customer`, never both; only non-OIDC auth
+plugins may be `both` ([ADR 0003](adr/0003-better-auth-primary.md),
+[plugin-architecture.md](plugin-architecture.md)).
+
+**The agent login screen renders the providers scoped to `agent`** — there are few of them,
+they belong to the instance, and naming them discloses nothing. **The portal login screen
+renders no connection list at all.** Customer connections are per-organisation, so a list
+would name every customer organisation to every anonymous visitor. The portal asks for an
+email address and resolves the connection server-side from `domain_bindings`
+([customer-portal.md](../03-features/customer-portal.md) `CP-18`,
+[identity-provisioning.md](../03-features/identity-provisioning.md) `IP-29`).
 
 ## Identity architecture — the authoritative model
 
@@ -195,9 +284,14 @@ the directory changes, so offboarding does not depend on anyone remembering. Cor
 delivery for Microsoft Entra; endpoint `/scim/v2/*` on the agent origin; bearer token per
 connection with immediate-invalidation rotation; strict schemas; scope from the credential,
 never the body; `/Bulk` not implemented unless Entra interoperability testing requires it;
-tested against a real Entra tenant before the P3 identity gate. Full rules `IP-1`…`IP-25`
-and the 17 acceptance tests: [identity-provisioning.md](../03-features/identity-provisioning.md).
+tested against a real Entra tenant before the P3 identity gate. Full rules `IP-1`…`IP-32`
+and the twenty-five acceptance tests: [identity-provisioning.md](../03-features/identity-provisioning.md).
 Security treatment: [security-model.md](security-model.md#scim--an-inbound-privileged-management-api).
+
+**Unlike every other row in the table above, SCIM is not a library capability.** The SCIM
+2.0 server is **ours** — better-auth provides no SCIM plugin. Schemas, the filter parser,
+`PATCH` path expressions, `ListResponse` and the SCIM error bodies are our own protocol
+code; only the credential check reuses the platform. Budget it as such.
 
 ## Sessions
 
@@ -205,15 +299,38 @@ Security treatment: [security-model.md](security-model.md#scim--an-inbound-privi
   elevated-action routes). **No tokens in browser storage, ever.** CSRF is *not* left to
   `SameSite`: the full rule — no state-changing GET, `Origin` check on every unsafe
   method, double-submit token — is in [security-model.md](security-model.md#sessions-csrf-and-step-up).
-- **One better-auth instance, two cookies.** The cookie is host-only (no `Domain`
-  attribute), so `ticket.<domain>` and `portal.<domain>` each hold their own; the cookie
-  *prefix* is chosen per request from the request host (`tdk_agent_` / `tdk_portal_`), and
-  every `session` row carries `portal` (`agent` | `customer`), set at issue time. The
+- **Two better-auth instances, one per portal origin** (decided 2026-09-06, Claude Code —
+  reversible). better-auth derives cookie names from *construction-time* configuration, not
+  from the incoming request, so "one instance, a per-request prefix" is not a thing the
+  library can do. The holder therefore constructs **two** instances on every reload, one per
+  portal, each with its own `baseURL`, its own cookie names, its own `trustedOrigins` (that
+  portal's origin only) and its own provider set (the connections scoped to that portal).
+  **The request host selects the instance**; everything else about the reload is unchanged
+  ([auth-runtime-reconfiguration.md](auth-runtime-reconfiguration.md)).
+- **The two cookie names, in full:** `__Host-tdk_agent_session` on `ticket.<domain>` and
+  `__Host-tdk_portal_session` on `portal.<domain>`. `__Host-` is a browser-enforced *name*
+  prefix, so the name literally begins with it: host-only, no `Domain` attribute, `Path=/`,
+  `Secure`. kaneo's `COOKIE_DOMAIN` variable and its cross-subdomain
+  `SameSite=None; Partitioned` branch are **removed at the fork** — both are incompatible
+  with `__Host-` and with `SameSite=Lax`, and the API is served on each portal's own origin,
+  which `/api/portal/*` already implies
+  ([decision-log.md](../07-planning/decision-log.md) — environment surface).
+- Every `session` row carries `portal` (`agent` | `customer`), set at issue time. The
   portal-boundary middleware compares `session.portal` to the request host — that column
   is the data the check runs on.
-- Server-side sessions in Postgres. Revocation is immediate.
+- **Server-side sessions in Postgres, and this is the honest revocation SLA.**
+  better-auth's `session.cookieCache` is **disabled** at the fork — kaneo enables it for
+  five minutes, which serves a session from a signed cookie with no database read. Every
+  request that presents a session cookie is validated against the `session` table, so a
+  revoked or deleted session fails **on the very next request**. The separate *authority*
+  resolution (memberships, roles, `sees_all`) keeps its 30-second Valkey cache with explicit
+  invalidation, below. So: a **revoked session** takes effect on the next request; a
+  **changed authority** takes effect immediately in the normal case and within 30 s if the
+  invalidation message is lost. `IP-15`, the SCIM de-provisioning tests and god-mode.md's
+  "organisation suspended" row all cite this paragraph.
 - Idle timeout and absolute lifetime configurable in God Mode.
-- Session rows record IP, user agent, and `impersonatedBy`.
+- Session rows record IP, user agent, and `impersonatedBy` — written by our own
+  `POST /api/instance/users/{id}/impersonate`, never by better-auth's admin routes.
 
 ## Portal boundary
 
@@ -249,15 +366,33 @@ id, on every request. Consequences:
 
 Resolution is cached in Valkey for **30 seconds** (the revocation-latency budget, stated
 once here and in [scaling.md](../05-operations/scaling.md)), keyed by user id, and
-invalidated explicitly on any membership or role change — so in practice revocation is
-immediate and 30 s is only the worst case when the invalidation message is lost.
+invalidated explicitly on every membership, role, deactivation and connection change — so in
+practice an authority change is immediate and 30 s is only the worst case when the
+invalidation message is lost. This is the *authority* cache; the *session* SLA is the one
+stated under [Sessions](#sessions), and they are different budgets.
+
+**Accounts are never linked automatically.** kaneo ships better-auth with
+`account.accountLinking: { enabled: true, trustedProviders: ["github","google","discord",
+"custom"] }`, and `"custom"` is precisely the `genericOAuth` provider id every `auth.oidc`
+connection is built on — so, as inherited, an OIDC sign-in would silently adopt an existing
+account with the same address. At the fork it is set **explicitly** to `enabled: false`. No
+claim is made about the library's own defaults, in either direction: the retrofit sets the
+value, and `16-same-email-second-idp-does-not-autolink.test.ts` asserts it by reading the
+**constructed configuration**, not only the HTTP behaviour (`IP-18`).
 
 **Placeholder people.** An import may create a `person` with `user_id = null` and
 `is_placeholder = true` so history has an author. A placeholder can never be assigned work
-or hold a membership. When that email later signs in through any provider, the new `user`
-is **linked to the existing placeholder row** (claimed, not duplicated) after the email is
-verified; the claim is audited. This is the only path by which a login attaches to a
-pre-existing directory record.
+or hold a membership. A later sign-up may **claim** that row (linked, not duplicated) —
+but only on a path where **TaskDesk itself verified the address**: password sign-up with
+email verification, email OTP, or magic link; or an explicit, administrator-confirmed
+claim. **Never on the SSO path** — an ID token's address is the IdP's assertion, not our
+verification, and for Entra there is no `email_verified` claim to lean on at all. Every
+claim is audited. The rule in full is `IP-30` in
+[identity-provisioning.md](../03-features/identity-provisioning.md), tested by
+`18-placeholder-claim-requires-local-verification.test.ts`. This is the only path by which a
+login attaches to a pre-existing directory record, and it is not an exception to `IP-18`:
+`IP-18` forbids linking to another *connection's* account, and this links to a row that has
+no account.
 
 ## Multi-factor authentication
 
@@ -316,7 +451,10 @@ one-time **setup page** at the agent origin, unlocked by a 32-byte token printed
 the container log (the pattern Jenkins and Portainer use). It creates the first instance
 administrator, enrols MFA, and records completion in `instance_setting.setup_completed_at`
 — a durable marker, so the page can never be re-opened by deleting user rows. The setup
-token expires after one hour or one use. `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` remains as an
+token expires after one hour or one use, and **while `setup_completed_at` is null every
+container start prints a fresh token and invalidates the previous one** — so an operator who
+missed the log line restarts the container rather than hunting for it, and a token scrolled
+past in a shared log is already dead ([runbook](../05-operations/runbook.md)). `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` remains as an
 optional override for **headless** installs (automation that cannot read a log) and is
 ignored once `setup_completed_at` is set.
 
@@ -334,7 +472,7 @@ was used. Break-glass is loud by design.
 | Customer reaching agent surface | Portal boundary at callback and per request; server-side policy on every route |
 | Privilege escalation via invite | Invitations cannot grant instance-admin; role bounded by inviter's authority |
 | Brute force | Rate limit on auth endpoints; optional CAPTCHA plugin; account lockout configurable |
-| Open redirect at callback | Redirect targets restricted to the configured portal origins |
+| Open redirect at callback | Redirect targets restricted by each instance's `trustedOrigins`, which holds **that portal's origin only**; redirect URIs are exact-match and rebuilt from that instance's `baseURL` on every reload |
 | Secret leakage in API responses | Secrets never serialised; responses use explicit response schemas |
 
 ## Related

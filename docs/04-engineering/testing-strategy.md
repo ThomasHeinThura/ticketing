@@ -77,6 +77,19 @@ Covers: CRUD with policy enforcement, transactions and rollback, cascades, optim
 concurrency, cross-tenant isolation, migration application, job leasing, outbox delivery.
 
 ## Permission tests — RBAC and its API, the structural layer
+Added 2026-09-06, from the fork-time removal list ([decision log](../07-planning/decision-log.md)):
+
+- `no-inherited-integration-routes.test.ts` — no route in Hono's router matches
+  `public-project|github|gitea|slack|discord|telegram|generic-webhook`; `octokit` and
+  `@octokit/webhooks` are absent from the lockfile.
+- `no-anonymous-plugin.test.ts` — the constructed better-auth configuration contains no
+  `anonymous`, `deviceAuthorization` or `bearer` plugin, `accountLinking.enabled` is `false`
+  and `session.cookieCache` is disabled (reads the config, not the HTTP behaviour).
+- `session-revocation-immediate.test.ts` — a revoked session fails on the very next request
+  ([auth-and-identity.md](../01-architecture/auth-and-identity.md) § Sessions).
+- `auth-reload-on-identity-connection-change.test.ts` — a new or disabled
+  `identity_connection` takes effect on every replica without a restart
+  ([auth-runtime-reconfiguration.md](../01-architecture/auth-runtime-reconfiguration.md)).
 
 **Where** — `tests/permissions/`.
 
@@ -278,6 +291,8 @@ review ([reviews/2026-09-05/security.md](../07-planning/reviews/2026-09-05/secur
 each names the finding it closes in its file header.
 
 ### Accessibility
+Runs as its own Playwright project, invoked by `pnpm test:a11y` / `pnpm test:perf` in the full
+stage ([ci-cd.md](ci-cd.md)) — one shape in both documents.
 
 `@axe-core/playwright` runs on every screen the E2E suite visits. Zero critical or serious.
 
@@ -287,19 +302,27 @@ Screenshot comparison on Storybook stories and on key screens. An unapproved dif
 build; approving is an explicit act in the pull request.
 
 ### Performance
+Runs as its own Playwright project, invoked by `pnpm test:a11y` / `pnpm test:perf` in the full
+stage ([ci-cd.md](ci-cd.md)) — one shape in both documents.
 
 Against a seeded dataset, asserting the budgets in
 [UX quality gates](../02-design/ux-quality-gates.md).
 
 ### Design-system conformance
 
-Static, in the fast CI stage: `check:ui` fails on any import of `@radix-ui/*` or
+Static, in the fast CI stage: `check:ui` fails on any import of `@radix-ui/*`, the `radix-ui` umbrella package, or
 `@base-ui/react` outside `packages/ui`, and on any Radix primitive inside `packages/ui`
 not listed in `KNOWN-RADIX.md` ([ui-extraction-plan.md](../02-design/ui-extraction-plan.md));
 `check:tokens` fails on a token without a concrete value; `check:inventory` fails when the
 screen inventory's routes and `lib/routes.ts` disagree. Every screen's story set includes
 its **error, empty and loading** states (`G7`), and the P0 screens pass the accessibility
 gate before P0 closes.
+Four more static checks run in the same fast stage, each defined once in
+[ci-cd.md](ci-cd.md#pull-request-pipeline): `check:reviews` (a spec in build has an empty
+review section), `check:env` (no `process.env` read outside the configuration reference),
+`check:vocabulary` (every table, capability, event key and job name exists in its authority
+document) and `check:skips` (no `.skip` / `.only`). They exist because the rules they enforce
+were prose until 2026-09-06.
 
 ## Manual
 
@@ -353,7 +376,7 @@ pnpm test:e2e              # Playwright, all projects
 pnpm test:e2e -- --project=security
 pnpm test:visual
 pnpm test:load
-pnpm test:all              # everything; CI runs this
+pnpm test:all              # alias for every CI check; CI runs the stages in ci-cd.md
 ```
 
 ## CI gating
@@ -361,9 +384,10 @@ pnpm test:all              # everything; CI runs this
 | Trigger | Runs |
 | --- | --- |
 | Every push | lint, typecheck, unit, component |
-| Every pull request | + integration, permissions, contract, MCP, E2E, visual, a11y, performance budgets |
+| Every pull request — **fast stage** | lint, typecheck, unit, component, permissions (route coverage + matrix), contract, the `check:*` scripts (tokens, ui, deps, queries, inventory, reviews, env, vocabulary, skips), the PR-template check |
+| Merge queue or `ready-for-review` — **full stage** | + integration, MCP, E2E, visual, `test:a11y`, `test:perf`, bundle purity and size |
 | Merge to `main` | + full E2E across browsers, container scan |
-| Release | + load test, SBOM, migration dry-run against a production copy |
+| Release | + load test and the upgrade matrix ([migrations.md](migrations.md)); the SBOM is a main-pipeline step; the production-copy dry run is an **operator** step in the [runbook](../05-operations/runbook.md), never CI |
 
 ## Rules
 

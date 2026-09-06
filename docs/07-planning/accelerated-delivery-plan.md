@@ -93,7 +93,7 @@ Today is **2026-09-05** (Saturday).
 work items with type/state/priority, board and list views, comments, labels, basic
 editable roles — the P0 + P1 scope from [phases.md](phases.md), which is substantially
 kaneo de-branded and hardened, not built from zero. **It does not mean v1's full feature
-set** (SLA, approvals, portal, 14 reports) — that would not be honest to promise for week
+set** (SLA, approvals, portal, 20 reports) — that would not be honest to promise for week
 1, and isn't the claim.
 
 - P0 in full: repo initialised from kaneo, de-branded, licensed, `packages/ui` extracted,
@@ -126,9 +126,17 @@ split, not serial.
 | **A — Service desk domain** | SLA engine, workflow/lifecycle engine ([ADR 0011](../01-architecture/adr/0011-ticket-lifecycle-engine.md)), approvals, assignment rules, service calendars, request types, intake queue | v1's `.NET` domain logic, reimplemented — **the highest-risk stream**, see below |
 | **B — Portal & identity** | Portal origin/bundle, core portal screens, identity connections (Microsoft Entra OIDC for the agent portal and organisation-bound for the customer portal), **SCIM provisioning/de-provisioning for Entra** with its 17 acceptance tests against a real test tenant, God Mode identity screens, MFA/session policy — the P3 scope in [phases.md](phases.md#p3--portal-and-identity), unchanged in content, placed in this window | v1's portal spec (design only — its code is discarded), JSM's permission model |
 | **C — Governance / God Mode** | Roles editor, feature flags, plugin registry UI, organisations, branding, terminology overlay ([ADR 0012](../01-architecture/adr/0012-terminology-overlay.md)) | Plane's instance-admin model |
-| **D — Reduced insight** | Cycles, tier 1 fixed reports (a working subset, not all fourteen), tier 2 selectable reports | Reduced [P5](phases.md) scope — see deferrals |
-| **E — Realtime, notifications, webhooks** | WebSocket fan-out, notification channels, outbound webhooks with signing | P1/P4 scope, pulled forward because the other streams depend on it |
+| **D — Reduced insight** | Cycles, tier 1 fixed reports (a working subset, not all twenty), tier 2 selectable reports | Reduced [P5](phases.md) scope — see deferrals |
+| **E — Realtime, notifications, webhooks** | WebSocket fan-out, **`notify.email` (SMTP) only — chat channels are deferred**, outbound webhooks with signing | P1/P4 scope, pulled forward because the other streams depend on it |
 | **F — Security & QA (continuous, cross-cutting)** | Opus security review of every workstream's every merge; negative E2E suites; tenant-isolation fuzzing | Runs across all five other streams, never paused |
+
+**Specs not named in the rows above, placed so the register's promise ("nothing is silently
+thinner") holds:** P1 — attachments, relations and hierarchy, search and saved views, projects
+and engagements, pending actions (with the core-work stream; at go-live: full, as their P1
+specs say); P4 — custom fields, teams, API keys, the MCP server, automations (the inherited
+engine, flag-gated), impersonation, settings hierarchy, audit trail (with governance; at
+go-live: reduced to what the P4 rows below name). Their phases are the ones in
+[03-features/README.md](../03-features/README.md).
 
 **Workstream A is the schedule risk.** Porting the SLA engine, the versioned workflow
 engine and approvals from v1's C# to TypeScript, with the exhaustive test coverage
@@ -194,9 +202,10 @@ left column is silently thinner without appearing here.
 
 | Area | At go-live (end of week 4) | Deferred to weeks 6–17 |
 | --- | --- | --- |
-| **Reporting** | Tier 1 (a working subset of the fourteen, not all), tier 2 (selectable table reports) | The rest of the fourteen fixed reports; tier 3 customisable report builder; dashboards beyond a sensible default |
-| **Agile** | Cycles | Modules, estimates, calendar/timeline views |
-| **Time & cost** | Not present | Time entries, rates, budgets — the whole feature |
+| **Reporting** | Tier 1 (a working subset of the twenty, not all), tier 2 (selectable table reports) | The rest of the twenty fixed reports; tier 3 customisable report builder; dashboards beyond a sensible default |
+| **Agile** | Cycles | Modules, estimates, calendar/timeline views — inherited from kaneo, flag-gated off until spec-aligned |
+| **Automations** | The inherited `workflow-rule` engine, flag-gated off | Spec-aligned engine with dry-run ([automations.md](../03-features/automations.md), P4) |
+| **Time & cost** | Inherited from kaneo (basic time entries), flag-gated off until spec-aligned | Time entries, rates, budgets — the whole feature |
 | **Service management** | Not present | Services, changes, change freezes, releases |
 | **Knowledge base** | Not present | Articles, deflection during request creation |
 | **Import** | Not present | The entire [P6](phases.md) — Azure DevOps, Plane, Jira, CSV |
@@ -227,16 +236,12 @@ were not — that is the specific dishonesty
 to prevent. Escalate to Thomas the moment workstream A looks behind, not at the week-4
 deadline, precisely so this choice can be made deliberately rather than discovered late.
 
-## Risk register additions specific to this plan
+## Risks specific to this plan
 
-Beyond the standing risks in [risks.md](risks.md) (**R1–R14 and R18–R20** — R19's pentest lead time and R20's router retrofit are calendar-critical — all still active and now
-under more pressure, not less):
-
-| | Risk | Mitigation |
-| --- | --- | --- |
-| **R15** | Workstream A (domain-logic port) cannot realistically finish by week 4 | Named the schedule's critical path from day one; scope-narrows go-live per the section above rather than shipping untested SLA/workflow logic |
-| **R16** | "Go-live" gets treated, informally, as the *final* bar rather than a phase-gate with known deferrals | This document's deferral register is read at week 5's phase gate and again before any external customer is onboarded |
-| **R17** | Parallel workstreams on one fast calendar reproduce **R7** (three agents, three inconsistent codebases) faster than usual | Cross-agent review stays mandatory even under deadline pressure; the fixed vocabulary in [coding-standards.md](../04-engineering/coding-standards.md) is enforced by CI, not by review diligence alone |
+**R15** (workstream A cannot finish inside the window), **R16** ("go-live" mistaken for the
+final bar) and **R17** (parallel workstreams reproduce R7 faster) are defined once, in
+[risks.md](risks.md), together with the standing R1–R14 and R18–R21 — this document points
+there and does not restate them, so the register has one home.
 
 ## Related
 

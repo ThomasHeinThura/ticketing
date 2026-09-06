@@ -31,58 +31,70 @@ Ticketing.v2/
 │   │       ├── hooks/          queries/ mutations/ and plain hooks
 │   │       ├── store/          zustand, UI state only
 │   │       └── lib/            routes.ts registry, formatters, guards
-│   └── site/                   Next.js + Fumadocs documentation website
+│   └── site/                   the documentation website — stack is an OPEN decision (08-docs-site/plan.md);
+│                               kaneo's apps/site is a marketing site and its apps/docs is Mintlify, so neither is copied
 │
 ├── packages/
 │   ├── ui/                     THE design system. Only source of primitives.
-│   │   ├── src/components/     button, dialog, table, sidebar, … (60+)
+│   │   ├── src/components/     button, dialog, table, sidebar, … (63, extracted from apps/web)
 │   │   ├── src/styles/         tokens.css, theme.css, motion.css
 │   │   └── .storybook/
 │   ├── domain/                 pure business logic, zero I/O
 │   │   └── src/{sla,workflow,approvals,assignment,calendar,ranking}/
 │   ├── permissions/            capabilities, roles, policy registry, evaluator
+│   │                           REPLACES kaneo's 84-line package, keeping its four role names
 │   ├── plugins-contracts/      the interfaces every plugin implements
 │   ├── libs/                   typed Hono client, shared URL helpers
 │   ├── email/                  React Email templates + sender
 │   ├── mcp/                    MCP server (agent access + import tooling)
 │   ├── importers/              azure-devops · plane · jira · csv
-│   ├── i18n/                   locale resources, schema, check scripts
 │   └── typescript-config/      shared tsconfig bases
 │
-├── tests/
-│   ├── api/                    unit tests for API modules
-│   ├── api-integration/        Testcontainers + real Postgres
-│   ├── permissions/            role × route matrix, route coverage
-│   ├── e2e/                    Playwright — agent + portal projects
-│   └── visual/                 Playwright screenshot baselines
+├── tests/                      the first two directories are kaneo's own shape, inherited with its suites
+│   ├── api/                    unit tests for API modules            (inherited, minus the deleted areas)
+│   ├── api-integration/        Testcontainers + real Postgres        (inherited, minus the deleted areas)
+│   ├── permissions/            role × route matrix, route coverage   (ours)
+│   ├── e2e/                    Playwright — agent + portal projects  (ours)
+│   └── visual/                 Playwright screenshot baselines       (ours)
 │
 ├── charts/taskdesk/            Helm chart — derived from kaneo's, rewritten for one image (05-operations/kubernetes.md)
 ├── tests/fixtures/             seed datasets: minimal · realistic · hostile
 ├── deploy/                     compose files, Traefik config, env templates
 ├── scripts/                    deploy.sh · install.sh · backup.sh · restore.sh · archive-wal.sh · anonymise.ts (tested — tests/anonymise/)
 │                               seed.ts · check-inventory.mjs · check-queries.mjs · i18n checks · openapi export
+├── i18n/                       locale JSONs, resources.ts, schema.json — stays at the root, as kaneo has it
 ├── plans/                      motion & interaction design specs (from kaneo)
 ├── skills/                     agent skills for UI review, animation, etc.
 ├── docs/                       this documentation corpus
-├── AGENTS.md                   canonical guide for humans and AI agents
+├── .github/
+│   ├── pull_request_template.md   the PR checklist (04-engineering/sdlc.md)
+│   └── workflows/              ours, written fresh — none of kaneo's fifteen are copied
+├── AGENTS.md                   canonical guide for humans and AI agents — ours, never kaneo's
 ├── LICENSE                     AGPL-3.0
 ├── THIRD-PARTY-NOTICES.md      kaneo MIT notice and any other attributions
 ├── compose.yml                 local development stack
-├── Dockerfile                  single multi-stage image
+├── Dockerfile                  the single multi-stage image; kaneo's apps/api/Dockerfile and
+│                               apps/web/Dockerfile are not copied (05-operations/container-image.md)
 ├── turbo.json  ·  biome.json  ·  pnpm-workspace.yaml
 ```
+
+There is **no `apps/mcp`**: the MCP server lives in `packages/mcp` and is mounted by
+`apps/api` ([mcp-server.md](../03-features/mcp-server.md)). kaneo's inherited `mcp` and
+`oauth` routers are a different thing and are removed at the fork
+([inherited-features.md](inherited-features.md)).
 
 ## Package boundaries
 
 The dependency graph is acyclic and enforced.
 
 ```
-apps/web  ──► packages/ui, libs, permissions, i18n
+apps/web  ──► packages/ui, libs, permissions   (locales come from the root i18n/)
 apps/api  ──► packages/domain, permissions, plugins-contracts, email, libs, importers
 packages/domain        ──► (nothing — pure)
-packages/permissions   ──► (nothing — pure)
+packages/permissions   ──► (nothing — pure; kaneo's depends on better-auth, which is why it is
+                            replaced rather than extended)
 packages/plugins-contracts ──► (nothing — types only)
-packages/ui            ──► (react, radix, tailwind only)
+packages/ui            ──► (react, Base UI, tailwind only — Radix only per KNOWN-RADIX.md)
 ```
 
 **Rules:**

@@ -9,7 +9,9 @@ mouse. Accessibility work makes the product better for everyone who uses it heav
 
 ## What we get for free
 
-Radix handles, correctly, in every primitive:
+Base UI handles, correctly, in every primitive (kaneo's `components/ui` is Base UI
+throughout — the guarantee is attributed to the library actually in use, corrected
+2026-09-06):
 
 - Focus management and focus trapping in overlays
 - Keyboard interaction patterns per WAI-ARIA authoring practices
@@ -18,7 +20,8 @@ Radix handles, correctly, in every primitive:
 - Escape and outside-click dismissal
 - Portal rendering with correct focus return
 
-**Do not work around Radix.** If a `Select` looks wrong, style the Radix one. Replacing it
+**Do not work around Base UI.** If a `Select` looks wrong, style the Base UI one
+(`@base-ui/react/select`, exactly as kaneo does). Replacing it
 with a `<div>` and a click handler discards all of the above and is the most common way
 accessibility is lost.
 
@@ -140,7 +143,7 @@ Before opening a pull request:
 4. Are error messages associated with their fields?
 5. Does it work at 200% zoom?
 6. Does it work with reduced motion?
-7. Did you use a Radix primitive rather than a `div` with a click handler?
+7. Did you use a Base UI primitive (through `@taskdesk/ui`) rather than a `div` with a click handler?
 
 ## Related
 

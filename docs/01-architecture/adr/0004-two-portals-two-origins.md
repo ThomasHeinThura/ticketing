@@ -31,7 +31,20 @@ design system.**
 
 - `ticket.<domain>` serves the agent bundle. `portal.<domain>` serves the customer bundle.
 - Separate cookies scoped to each host, so an agent session and a customer session can
-  never be confused.
+  never be confused. **The mechanism is two better-auth instances, one per portal origin.**
+  better-auth derives cookie names, `baseURL` and `trustedOrigins` from *construction-time*
+  configuration, never from the incoming request, so one instance cannot issue a differently
+  named cookie per host. The auth holder therefore constructs a **pair** on every reload —
+  each instance with its own `baseURL` (that portal's origin), its own cookie name
+  (`__Host-tdk_agent_session` on `ticket.<domain>`, `__Host-tdk_portal_session` on
+  `portal.<domain>`), its own `trustedOrigins` holding **that origin only**, and its own
+  provider set (the connections scoped to that portal). **The request host selects the
+  instance**; the two are built, validated and swapped together. kaneo's `COOKIE_DOMAIN`
+  variable and its cross-subdomain `SameSite=None; Partitioned` cookie branch are **removed
+  at the fork** — both are incompatible with a `__Host-` name prefix, and each portal's API
+  is served on that portal's own origin, which `/api/portal/*` below already implies
+  ([auth-and-identity.md § Sessions](../auth-and-identity.md#sessions),
+  [auth-runtime-reconfiguration.md](../auth-runtime-reconfiguration.md)).
 - The portal boundary is enforced **at the identity-provider callback** (a customer
   completing a login on the agent origin gets no session and an audit row) **and on every
   request** (session portal must match request host).
@@ -104,6 +117,18 @@ If you find yourself writing "this is safe because it isn't in the customer bund
 review comment, that reasoning is invalid. Ask instead: what does the server do when a
 customer session calls this route directly? If the answer is not "the policy middleware
 denies it", the code is wrong.
+
+## Amendments
+
+**2026-09-06 — the cookie mechanism is named.** As first accepted this ADR said "separate
+cookies scoped to each host" without saying how one auth library produces two differently
+named cookies; the earlier architecture review had already flagged that this is not a
+configuration setting. The decision bullet above now names it: two better-auth instances,
+one per portal origin, selected by request host, with per-instance `baseURL`, cookie name,
+`trustedOrigins` and provider set, and `COOKIE_DOMAIN` removed at the fork. The alternative
+— a single instance behind a request-scoped wrapper that rewrites `Set-Cookie` and `Cookie`
+names — is recorded in [decision-log.md](../../07-planning/decision-log.md) as the one-line
+reversal. Nothing else in this ADR changes.
 
 ## Related
 

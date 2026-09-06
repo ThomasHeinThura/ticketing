@@ -7,8 +7,8 @@
 | | |
 | --- | --- |
 | Base | shadcn/ui, `new-york` style |
-| Primitives | Radix UI |
-| Colour base | zinc |
+| Primitives | Base UI (`@base-ui/react`); Radix only per `packages/ui/KNOWN-RADIX.md` |
+| Colour base | neutral |
 | Styling | Tailwind CSS v4, CSS variables |
 | Variants | class-variance-authority |
 | Icons | lucide-react — the only icon source |
@@ -39,25 +39,44 @@ packages/ui/
 
 Taken from kaneo. Every one has a Storybook story and passes axe.
 
-**Layout** — `sidebar` `breadcrumb` `separator` `scroll-area` `resizable` `frame` `group`
-`aspect-ratio`
+List regenerated from `ls apps/web/src/components/ui` (63 files, checked 2026-09-06), not
+from memory. kaneo names two of these differently than shadcn convention (`menu`, not
+`dropdown-menu`; `preview-card`, not `hover-card`) and has `calendar` where the doc
+previously said `date-picker`/`date-range-picker` — use kaneo's real names below.
 
-**Forms** — `button` `input` `textarea` `checkbox` `radio-group` `select` `combobox`
-`autocomplete` `multi-select` `switch` `toggle` `toggle-group` `slider` `input-otp`
-`number-field` `date-picker` `date-range-picker` `field` `fieldset` `label` `form`
+**Layout** — `sidebar` `breadcrumb` `separator` `scroll-area` `frame` `group`
 
-**Overlays** — `dialog` `alert-dialog` `sheet` `drawer` `popover` `hover-card` `tooltip`
-`context-menu` `dropdown-menu` `menubar` `command`
+**Forms** — `button` `input` `textarea` `checkbox` `checkbox-group` `radio-group` `select`
+`combobox` `autocomplete` `switch` `toggle` `toggle-group` `slider` `input-otp`
+`input-group` `number-field` `shortcut-number` `calendar` `field` `fieldset` `label` `form`
 
-**Display** — `card` `badge` `avatar` `avatar-group` `table` `data-table` `progress`
-`circular-progress` `meter` `pagination` `timeline` `skeleton` `empty` `alert` `kbd`
-`code`
+**Overlays** — `dialog` `alert-dialog` `sheet` `popover` `preview-card` `tooltip`
+`context-menu` `menu` `menubar` `command`
+
+**Display** — `card` `badge` `avatar` `table` `progress` `circular-progress` `meter`
+`pagination` `timeline` `skeleton` `empty` `alert` `kbd`
 
 **Disclosure** — `accordion` `collapsible` `tabs`
 
-**Feedback** — `toast` `spinner` `error-boundary` `error-display`
+**Feedback** — `toast` `spinner` `error-boundary` `error-display` `error-fallback`
+`loading-skeleton` `toolbar`
 
-**Navigation** — `nav-main` `nav-projects` `workspace-switcher` `user-menu`
+Twelve primitives this document previously listed **do not exist in kaneo** and are not
+"taken from kaneo": `resizable`, `aspect-ratio`, `multi-select`, `date-picker`,
+`date-range-picker`, `drawer`, `hover-card` (kaneo: `preview-card`), `dropdown-menu`
+(kaneo: `menu`), `avatar-group`, `data-table`, `code`, `user-menu`. If a service desk needs
+one of these, it is new work — build it from kaneo's primitives, mark it **authored, not
+extracted** in "What we add for TaskDesk" below, and budget it; do not assume it ships free
+with the extraction.
+
+## Navigation — app-shell composites, extracted separately
+
+`nav-main` `nav-projects` `workspace-switcher` live at kaneo's `apps/web/src/components/*`,
+not `components/ui/` — they are feature composites, not primitives (`nav-projects.tsx`
+imports dnd-kit and is project-aware, which the rule below forbids in a primitive). They
+move to `apps/web/src/components/app-shell/` alongside the extraction, not into
+`packages/ui`. `user-menu` does not exist in kaneo (kaneo has `user-avatar.tsx`, a smaller
+primitive) — build the menu from `avatar` + `menu`, marked **authored, not extracted**.
 
 ## What we add for TaskDesk
 
@@ -82,7 +101,7 @@ and they must look as though they shipped with the system.
 ## Adding a primitive
 
 1. Check kaneo first. If it exists there, take it rather than writing it.
-2. Build on a Radix primitive where one exists. Do not reimplement focus management.
+2. Build on a Base UI primitive where one exists. Do not reimplement focus management.
 3. Tokens only — no literal colours, no arbitrary spacing.
 4. Use `cva` for variants. Support `className` passthrough and `asChild` where sensible.
 5. Forward refs. Spread `...props`.
@@ -146,9 +165,9 @@ login background — injected from `/api/public/branding`. No rebuild.
 Runs at `pnpm --filter @taskdesk/ui storybook`, deployed alongside the documentation site,
 and is the canonical catalogue. Every primitive appears with all its states.
 
-Chromatic-style visual snapshots run against Storybook in CI, so an unintended visual
-change to a primitive fails the build rather than being discovered on a screen three weeks
-later.
+Visual snapshots run against Storybook so an unintended visual change to a primitive fails
+the build rather than being discovered on a screen three weeks later — see
+[G8](ux-quality-gates.md#g8--visual-regression) for the tool, which is not yet chosen.
 
 ## Attribution
 

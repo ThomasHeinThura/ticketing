@@ -72,7 +72,7 @@ What each phase close *is*, as a release, and who could honestly be sold it.
 | `2.0.0-rc.1` → **`2.0.0`** | **P4** | + God Mode, editable roles, feature flags: **"one image, any customer" becomes true** | **The first genuinely sellable release.** Self-hosted customers who configure it themselves |
 | `2.1.0` | P5 | + cycles/modules/estimates, time & cost, three-tier reporting, knowledge base, service catalogue | Delivery teams; leadership who need "how are we doing?" |
 | `2.2.0` | P6 | + importers (Azure DevOps, Plane, Jira, CSV) | Anyone migrating off another tool — the release that closes deals stuck on "but our history" |
-| `2.3.0` | P7 | + full a11y audit, i18n, penetration test, marketplace packaging | **External paying customers and AWS Marketplace buyers** — the pentest is what makes this release different, not features |
+| `2.3.0` | P7 | + full a11y audit, i18n, penetration test | **External paying customers** (self-hosted) — the pentest is what makes this release different, not features. A marketplace listing is deferred beyond the current scope (2026-09-05) |
 
 Two honest consequences of this table:
 
@@ -86,7 +86,8 @@ Two honest consequences of this table:
 
 Under the accelerated calendar, the P0–P5 reduced-scope go-live maps to **`2.0.0-rc.1`**
 at the end of week 4 and **`2.0.0`** after the week-5 production-testing pass; `2.1`–`2.3`
-then land inside the 3-month window as their deferrals are paid down.
+then land inside the 3-month window as their deferrals are paid down (the marketplace
+listing is not among them — it is deferred beyond the scope, [roadmap.md](roadmap.md)).
 
 ## Reduced scope and deferrals — stated here, not only by reference
 
@@ -94,19 +95,22 @@ Six full phase gates cannot fit in five weeks with one human: each gate as writt
 [sdlc.md](../04-engineering/sdlc.md) needs a VoiceOver *and* NVDA pass, a keyboard-only
 session, a fresh-eyes test, four browsers, a 10,000-item data run, a k6 baseline, a
 holistic Opus security review and a written review. So the accelerated `2.0.0` is defined
-**by what it deliberately does not yet contain**, and that list lives in two places that
-must agree — [accelerated-delivery-plan.md](accelerated-delivery-plan.md)'s deferral
-register, and here:
+**by what it deliberately does not yet contain**, and that list lives in **three** places
+that must agree — [roadmap.md](roadmap.md#explicitly-deferred-beyond-the-current-three-to-four-month-scope-decided-2026-09-05)
+for what is outside the whole program, [accelerated-delivery-plan.md](accelerated-delivery-plan.md)'s
+deferral register for what go-live ships thinner, and here:
 
 - **Gate activities consolidated**: the manual accessibility pass, fresh-eyes test,
   four-browser check and k6 baseline are run **once, before `2.0.0`**, over the whole
   surface, instead of once per phase. Automated gates (`G1`–`G13`), route/permission tests
   and the Opus security review of every merge are **not** consolidated — they run as
-  specified.
+  specified. **This consolidation is a gate waiver and is recorded as one in the
+  [decision log](decision-log.md) (Waivers), pending Thomas's confirmation** — a planning
+  document cannot waive a gate on its own.
 - **Features deferred to `2.1`–`2.3`**: the accelerated plan's register — full report set
   and tier-3 builder, time & cost, service management, knowledge base, import, i18n beyond
-  `en-US`, the manual accessibility audit, load at scale, the penetration test, marketplace
-  packaging.
+  `en-US`, the manual accessibility audit, load at scale, the penetration test. (The
+  marketplace listing is not deferred *to* `2.3` — it is deferred beyond the current scope.)
 - **Penetration test booked in week 1** ([risks.md](risks.md) **R19**), scoped to auth,
   tenancy and the portal boundary, with a second pass before external sale.
 

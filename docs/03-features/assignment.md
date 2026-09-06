@@ -99,10 +99,10 @@ worse than not showing them.
 ## API
 
 ```
-POST   /api/work-items/{key}/assign     work_item:assign | work_item:update (self)
-DELETE /api/work-items/{key}/assign     work_item:assign | work_item:update (self)
+POST   /api/work-items/{key}/assign     work_item:assign · orSelfTarget(body.assigneeId, work_item:update)   — kind 1; the body predicate is in the registry ([rbac.md](../01-architecture/rbac.md)), not the handler
+DELETE /api/work-items/{key}/assign     work_item:assign · orSelfTarget(row.assignee_id, work_item:update)
 GET    /api/projects/{id}/assignable    work_item:read
-POST   /api/work-items/bulk/assign      per-item capability
+POST   /api/work-items/bulk/assign      work_item:assign — evaluated per item; partial results reported; above 50 items from an MCP key → 202 (`MC-7`)
 ```
 
 `GET /assignable` returns the roster with current load, filtered to people the actor may

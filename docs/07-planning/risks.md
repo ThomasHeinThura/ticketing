@@ -331,13 +331,14 @@ diligence.
 | Likelihood | **High** (it is a property of the architecture) |
 | Impact | **Medium** — commercial, not security |
 | Owner | Thomas |
-| **Deadline** | **Before P7 starts** |
+| **Deadline** | **Decided 2026-09-05** — BYOL / contract preferred; the listing itself is deferred beyond the current scope |
 
 AWS's anti-tamper requirement is unsatisfiable in a self-hosted AGPL product where the
 buyer administers the instance — see [aws-marketplace.md](../05-operations/aws-marketplace.md)
-and [ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md). **Mitigation:**
-choose a BYOL / contract listing (no usage metering) before P7; consult AWS Partner
-Business Development on the AGPL position.
+and [ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md). **Mitigation — done:**
+BYOL / contract chosen over usage metering ([decision log](decision-log.md)). Remaining, only
+if and when a listing decision is taken: consult AWS Partner Business Development on the
+AGPL position.
 
 ---
 
@@ -377,7 +378,31 @@ retrofit is a named P0 task with a human-reviewed pass router by router
 ([phases.md](phases.md#p0--foundation)); `public-project` is deleted rather than flagged; a
 `public` or `delegated` policy requires a written `reason`, and the P0 Opus security review
 reads every one of those reasons before P0 closes. The P0 exit criterion is green on the
-*inherited* surface, not on an empty application.
+*inherited* surface, not on an empty application. **Size, measured 2026-09-06:** kaneo mounts
+28 sub-routers plus 6 inline routes in `apps/api/src/index.ts` — about 105 route
+definitions, roughly 85 after the fork-time removals — so the order is **delete first, then
+retrofit**; no policy is written for a route about to go.
+
+---
+
+## R21 · Inherited authentication defaults survive the fork
+
+| | |
+| --- | --- |
+| Likelihood | **Medium** — three of them were found only by reading `auth.ts` |
+| Impact | **High** — each is an authentication surface no specification knows about |
+| Owner | Thomas |
+| **Deadline** | **P0 step 1 exit** |
+
+kaneo enables better-auth's `anonymous()` guest sign-in by default, ships
+`accountLinking.enabled: true` with the generic OIDC provider trusted, keeps a five-minute
+session cookie cache, and mounts `deviceAuthorization` and `bearer`. None of it was in any
+TaskDesk document until 2026-09-06, and the route-coverage test cannot see a plugin that is
+*on*. **Mitigation:** the fork-time removal and disable list in the
+[decision log](decision-log.md) is executable — `tests/permissions/no-anonymous-plugin.test.ts`
+reads the constructed better-auth configuration, `no-inherited-integration-routes.test.ts`
+walks Hono's router — and both are P0 exit criteria ([phases.md](phases.md)). R15–R17 live
+only in this register; the accelerated plan points here rather than restating them.
 
 ---
 

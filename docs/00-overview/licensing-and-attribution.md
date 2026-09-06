@@ -63,7 +63,11 @@ three-tier settings hierarchy, project feature toggles, numeric role ranks, the
 cycles/modules/estimates model, intake. Reimplemented in our idiom.
 
 **If you do copy a non-trivial plane file verbatim,** record it in
-`THIRD-PARTY-NOTICES.md` with the source path and commit SHA.
+`THIRD-PARTY-NOTICES.md` with the source path and commit SHA. For kaneo itself the notice
+carries the licence verbatim with its holder line — "MIT License — Copyright (c) 2024 Andrej
+Acevski" — and the snapshot commit exactly as recorded in
+[inherited-features.md](../01-architecture/inherited-features.md) (proposed upstream main
+`42bb8011`, pending Thomas's confirmation).
 
 ### openproject → ideas only
 

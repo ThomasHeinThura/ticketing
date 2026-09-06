@@ -81,7 +81,7 @@ point in place and nothing else.
 | --- | --- | --- |
 | **Antivirus / malware scanning of attachments** | Not built, not installed. Accepted residual risk stated in [attachments.md](../03-features/attachments.md); the allowlist, magic-byte check, separate files origin and download headers stand | Unknown external users can upload, or a customer/security requirement asks |
 | **PostgreSQL row-level security** | Not implemented. Scoped repositories, route policy, RBAC/reach and the negative tenant-isolation suites are the primary control ([decision log](decision-log.md)) | A compliance-sensitive customer requires database-level defence in depth |
-| **AWS Marketplace** | Not implemented. Before P7, prefer a **BYOL / contract** listing over self-hosted usage metering ([aws-marketplace.md](../05-operations/aws-marketplace.md), [ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md)) | P7 |
+| **AWS Marketplace** | Not implemented, and **not a P7 task**. When a listing decision is taken, prefer a **BYOL / contract** listing over self-hosted usage metering ([aws-marketplace.md](../05-operations/aws-marketplace.md), [ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md)) | After the current scope closes — a separate listing decision |
 | **Notification / chat integrations** | Future only, in this order: **Email is core**; then Microsoft Teams → Slack → Telegram → Viber → others. Inherited kaneo Slack/Discord/Telegram routers are removed at fork | After P4, one at a time, each as a `notify.*` plugin |
 | **Developer-tool integrations** | Future only: GitHub → GitLab → Gitea → Bitbucket → Azure DevOps. Inherited kaneo GitHub/Gitea routers are removed at fork; `external_link` is the extension point | After P4 |
 | **Public boards** | **Removed completely in P0** — not deferred as dormant code; a future feature needs its own spec and security review | If ever |
@@ -95,7 +95,7 @@ point in place and nothing else.
 | --- | --- | --- |
 | **CLA, for a possible dual licence** | Before the first external contribution is merged | Retrofitting requires tracking down every contributor, or rewriting their work |
 | **Product name** | Before P7 | Branding, domains and documentation all assume one |
-| ~~Whether to sell externally~~ **Decided:** yes, via AWS Marketplace first | — | See [decision log](decision-log.md) and [AWS Marketplace listing](../05-operations/aws-marketplace.md) |
+| ~~Whether to sell externally~~ **Decided:** yes — but the AWS Marketplace listing itself is **deferred beyond the current scope** (2026-09-05), BYOL/contract preferred when it comes | — | See [decision log](decision-log.md) and [AWS Marketplace listing](../05-operations/aws-marketplace.md) |
 | **AWS Marketplace seller registration** | Only once a P7 listing decision is taken — the listing is **deferred** beyond the current scope (2026-09-05) | Registration and AWS's security review have their own lead time, so when the decision comes, start it before the product is feature-complete; BYOL/contract preferred |
 | **PITR / WAL archiving** | Before real customer data lands | Determines the achievable RPO |
 

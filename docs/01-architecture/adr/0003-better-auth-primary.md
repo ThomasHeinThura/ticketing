@@ -34,8 +34,15 @@ plugin, configured in God Mode, stored in the database.**
 - Any number of OIDC providers can be added at runtime through the UI. Entra and Keycloak
   are **presets** over the generic OIDC plugin — pre-filled endpoint patterns and
   friendlier field labels — not special code paths.
-- Each provider instance carries a `portal_scope` of `agent`, `customer` or `both`, so
-  "Entra for staff, email OTP for customers" is a UI choice, not an architecture.
+- Each provider instance carries a `portal_scope`, so "Entra for staff, email OTP for
+  customers" is a UI choice, not an architecture. An **OIDC identity connection** is scoped
+  `agent` **or** `customer` — never `both`, because a customer connection is bound to one
+  organisation and an agent connection to none, and one row cannot be both. Only the
+  **non-OIDC** auth plugins — password, email OTP, magic link — may be scoped `both`
+  ([plugin-architecture.md](../plugin-architecture.md),
+  [identity-provisioning.md](../../03-features/identity-provisioning.md) `IP-1`,
+  [data-model.md](../data-model.md) §2, where `identity_connection.portal_scope` carries a
+  `CHECK`).
 - Each provider carries just-in-time provisioning rules: which side, which organisation,
   which role a first-time user receives, and optional group-claim to role mapping.
 - Every provider has a **Test connection** action that performs a real discovery and token
@@ -103,6 +110,17 @@ original.
 **Keycloak for customers, better-auth for staff — permanently split.** Rejected as an
 *architecture*, though it remains perfectly configurable as a *deployment choice*. That is
 the point: it should be a setting, not a design.
+
+## Amendments
+
+**2026-09-06 — `both` is not available to an OIDC connection.** As first accepted, the
+decision bullet above offered every provider instance a `portal_scope` of "`agent`,
+`customer` or `both`". Four documents already said the opposite for OIDC connections
+specifically, and `identity_connection.portal_scope` carries a `CHECK` that refuses `both`.
+The bullet is corrected rather than the rule: an OIDC connection is `agent` or `customer`;
+only non-OIDC auth plugins may be `both`. Nothing else in this ADR changes. `IP-1` cites
+this ADR and [plugin-architecture.md](../plugin-architecture.md) as its source — not
+[ADR 0004](0004-two-portals-two-origins.md), which never stated the rule.
 
 ## Related
 

@@ -15,19 +15,25 @@ because it was in a different language from the system of record — it **polled
 API over HTTP** rather than reading the database.
 
 kaneo's API already ships `croner` for cron-expression scheduling and a `job_lease` table
-providing a distributed lock, which is precisely the mechanism a worker needs to avoid
-duplicate execution across replicas.
+providing a distributed lock — and the acquire/release SQL that goes with it
+(`apps/api/src/scheduler/leader-lock.ts`) — which is precisely the mechanism a worker needs
+to avoid duplicate execution across replicas. It ships **no renewal**, so a long handler
+loses its lease mid-flight; the heartbeat and the abort `signal` are ours to add.
+[background-jobs.md](../background-jobs.md) says the same thing, and is the detail.
 
 ## Decision
 
 **Background work runs in the API process, scheduled by `croner`, made replica-safe by the
 `job_lease` table.**
 
-- Jobs live in `apps/api/src/jobs/`, each exporting
-  `{ name, schedule, leaseTtl, handler }`.
+- Jobs live in `apps/api/src/jobs/`, each exporting exactly the signature
+  [background-jobs.md](../background-jobs.md) defines:
+  `{ name, schedule, leaseTtl | 'none', handler(signal) }`. `'none'` is the `outbox-drain`
+  case, and `signal` aborts when the lease is lost — both are mandatory, not optional.
 - Before running, a job acquires a lease with a single atomic
-  `INSERT … ON CONFLICT … WHERE expires_at < now()`. Long jobs renew mid-flight so a crash
-  frees the lease within one TTL.
+  `INSERT … ON CONFLICT … WHERE expires_at < now()` — kaneo's statement, kept verbatim.
+  Long jobs renew mid-flight (**our addition**) so a crash frees the lease within one TTL
+  and a 4-hour import under a 1-hour TTL survives.
 - **Every handler must be idempotent.** A lease gives at-least-once, never exactly-once.
 - Unbounded work is chunked, with an `await` between chunks so the event loop is not
   starved.

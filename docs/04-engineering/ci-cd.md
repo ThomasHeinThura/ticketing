@@ -23,6 +23,8 @@ release.
 
 Two required stages, so the fast one stays fast enough that nobody routes around it. **This
 is the single list of CI checks**; [testing-strategy.md](testing-strategy.md) links here.
+`pnpm test:all` is the local alias that runs every check in this list; CI runs them as the
+stages below.
 
 **Fast — required on every push, target under 15 minutes:**
 
@@ -43,6 +45,12 @@ is the single list of CI checks**; [testing-strategy.md](testing-strategy.md) li
 │ gitleaks             no secrets in the diff      │
 │ pnpm check:queries   no db.select() outside repo │
 │ pnpm check:inventory screen counts match rows    │
+│ pnpm check:reviews   spec in build ⇒ review secti│
+│ pnpm check:env       process.env ⊆ configuration-│
+│ pnpm check:vocabulary identifiers exist in author│
+│ pnpm check:skips     no .skip / .only / describe.│
+│ pr-template check    sections present; reviewer ≠│
+│ no-inherited-routes  no public-project/github/… r│
 ├─ Test ───────────────────────────────────────────┤
 │ pnpm test                unit + component        │
 │ pnpm test:coverage       90 % on packages/domain │
@@ -80,9 +88,37 @@ label), target under 45 minutes, sharded four ways:**
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
-The Opus **security review** is a required PR-template section, checked non-empty by CI
-whenever the diff touches `apps/api/src/{middleware,plugins}/**`, `packages/permissions/**`
-or any `policy.ts` — see [agent-workflow.md](agent-workflow.md#model-tiers-within-claude-code).
+The Opus **security review** is a required section of `.github/pull_request_template.md`
+(the template is specified in [definition-of-done.md](definition-of-done.md#the-pull-request-template)).
+CI checks it non-empty, naming Opus, whenever the diff touches **any** of — this list is the
+authoritative scope; [sdlc.md](sdlc.md) and [security-model.md](../01-architecture/security-model.md)
+cite it and do not restate it:
+
+```
+apps/api/src/**/policy.ts            packages/permissions/**
+apps/api/src/middleware/**           packages/plugins-contracts/**
+apps/api/src/plugins/**              apps/api/src/scim/**
+apps/api/src/auth*                   apps/api/src/storage/**
+apps/api/src/webhooks/**             any new route file (a new *.ts exporting a Hono router)
+```
+
+The same fast-stage **PR-template check** asserts every fixed section is present, that none
+is empty unless marked `n/a` with a reason, that `## Reviewed by` names a different model or
+session from `## Implemented by`, that `## Screens opened` is non-empty when `apps/web/**`
+changed, and that no checklist box is left unticked and unmarked. **`check:reviews`** fails
+when a feature spec named in the diff still has a non-empty section in
+`docs/07-planning/reviews/2026-09-05/` (the `pre-p0-check-fable/` folder is an applied audit
+trail and is excluded). **`check:env`** fails on a `process.env` read outside
+[configuration-reference.md](../05-operations/configuration-reference.md)'s list;
+**`check:vocabulary`** on a table, capability, event key or job name absent from its
+authority document; **`check:skips`** on `.skip(`, `.only(` or `describe.skip`.
+**`tests/permissions/no-inherited-integration-routes.test.ts`** asserts no route matches
+`public-project|github|gitea|slack|discord|telegram|generic-webhook`, that `octokit` and
+`@octokit/webhooks` are absent from the lockfile, and that the better-auth plugin list equals
+the approved list (no `anonymous`, `deviceAuthorization` or `bearer`) — the fork-time removal
+list made executable ([decision log](../07-planning/decision-log.md)).
+`pnpm test:a11y` and `pnpm test:perf` are Playwright projects invoked separately in the full
+stage; [testing-strategy.md](testing-strategy.md) describes them the same way.
 
 ## Main pipeline
 
@@ -204,7 +240,9 @@ main                    always deployable, protected
 
 - No long-lived branches. A branch older than a week is a merge problem forming.
 - Squash merge, so `main` has one commit per change and the history is readable.
-- `main` requires: all checks green, one approval, up to date with `main`.
+- `main` requires: all checks green, **one approval from the code owner** — a `CODEOWNERS`
+  file (`* @ThomasHeinThura`) makes Thomas's review required on every pull request into
+  `main`, which is the mechanism behind "only Thomas merges" — and up to date with `main`.
 
 ## Releases
 
@@ -277,7 +315,7 @@ Automated smoke test, not a manual glance:
 
 ```
 /api/health/ready returns 200
-/api/health/deep  reports every dependency healthy
+/api/instance/health/deep  reports every dependency healthy (instance:admin session)
 sign in as a seeded account
 list projects
 create and delete a work item

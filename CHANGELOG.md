@@ -29,6 +29,12 @@ starting point):
   cross-cutting control; deferred-scope list (antivirus, RLS, marketplace, integrations)
   recorded; external readiness review ("Conditional GO") filed and answered. P0 step 1 may
   start when this merges.
+- 2026-09-06 — pre-P0 check applied: the corpus corrected against kaneo's real source
+  (snapshot SHA proposed, fork-time removal list, environment migration table, inherited
+  authentication defaults disabled), security and identity contradictions resolved, data
+  model columns added, Radix → Base UI, PR template written, do-not 16 and the third
+  absolute added, go-live rehearsal gate defined. P0 step 1 starts when Thomas confirms
+  the SHA.
 
 This file starts recording real entries from the first change merged in
 [P0](docs/07-planning/phases.md). Until then, treat

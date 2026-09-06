@@ -92,10 +92,10 @@ GET    /api/kb/articles/{id}                   kb_article:read
 PATCH  /api/kb/articles/{id}                   kb_article:write
 POST   /api/kb/articles/{id}/publish           kb_article:publish
 GET    /api/kb/articles/{id}/versions          kb_article:read
-GET    /api/kb/search?q=…                      (scoped)
+GET    /api/kb/search?q=…                      kb_article:read (scope workspace; results reach-filtered)
 GET    /api/kb/categories                      kb_article:read
-GET    /api/portal/kb                          (portal session)
-GET    /api/portal/kb/{id}                     (portal session)
+GET    /api/portal/kb                          portal(own_organisation) — kind 3
+GET    /api/portal/kb/{id}                     portal(own_organisation) — kind 3
 POST   /api/portal/kb/{id}/feedback            (portal session)
 GET    /api/kb/deflection?q=…                  kb_article:read           (agent — staff see the same suggestions, KB-12)
 GET    /api/portal/kb/deflection?q=…           { portal: 'customer', predicate: 'own_organisation' }

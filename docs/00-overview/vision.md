@@ -41,7 +41,7 @@ re-keying stops.
 ## Why v1 failed, and what changes
 
 TaskDesk v1 was **feature-rich and unusable**. It had SLAs, approvals, workflows, CAB,
-intake, 14 reports, timesheets, a service catalogue — genuinely more capability than most
+intake, 20 reports, timesheets, a service catalogue — genuinely more capability than most
 commercial tools. And nobody wanted to use it, because:
 
 - Every UI primitive was hand-written. No component library, no consistency, missing icons

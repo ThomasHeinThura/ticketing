@@ -13,7 +13,7 @@ reference, not a legal one — for licence rules see
 **Take:**
 
 - The complete design system: a full primitive set in `components/ui` (mixed Radix + Base UI at fork, converged on Base UI at extraction), Tailwind v4
-  with CSS variables, `new-york` shadcn style, zinc base, Geist Variable typography.
+  with CSS variables, `new-york` shadcn style, neutral base, Geist Variable typography.
 - The application shell: collapsible sidebar, workspace switcher, project nav, command
   palette (`⌘K`), breadcrumbs.
 - The board / list / calendar / gantt / backlog view family, with dnd-kit drag & drop.

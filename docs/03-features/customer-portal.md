@@ -28,7 +28,7 @@ It must also be genuinely good on a phone. That is where customers will use it.
 | --- | --- |
 | Origin | `portal.<domain>` — separate from the agent origin |
 | Session | Separate cookie, scoped to that host |
-| Identity | Whichever providers are scoped to `customer` in God Mode |
+| Identity | Whichever providers are scoped to `customer` in God Mode — **never listed on the login page**; the visitor gives an email address and the connection is resolved server-side (`CP-18`) |
 | Bundle | Contains no agent or God Mode code — asserted at build |
 | API | `/api/portal/*` — a narrow, separately reviewed router |
 
@@ -134,13 +134,27 @@ misconfigured away through the role editor.
   deactivates them when they leave. Instance administrators configure it (God Mode →
   Organisations → *org* → Identity); customers cannot configure their own IdP in the first
   release (`IP-5`). Invitation (`CP-11`) remains the path for organisations without SSO.
+- `CP-18` **The login page does home-realm discovery, and enumerates nothing.** Customer
+  connections are per-organisation, so a list of sign-in buttons would name every customer
+  organisation to every anonymous visitor. The portal login page shows no organisation or
+  connection list at all: it asks for an email address, and the server resolves the
+  connection from the connection's `domain_bindings` — redirecting to that organisation's
+  IdP, or falling through to the non-SSO methods. A bound domain and an unknown domain
+  produce the **same body, the same status and the same timing class**, so the page cannot
+  be used to discover whether an organisation is a customer. The full rule is
+  [identity-provisioning.md](identity-provisioning.md) `IP-29`; the agent login page is the
+  opposite case and may list its providers
+  ([auth-and-identity.md](../01-architecture/auth-and-identity.md#per-portal-binding)).
 
 ## Permissions
 
 Portal access is granted by being a **customer-side person** (`person.side = 'customer'`)
 holding the built-in `customer` role on an **organisation-scoped membership**
 (`membership.scope = 'organisation'`, [data-model.md](../01-architecture/data-model.md) §2)
-in an organisation with portal access enabled. That membership is created by invitation
+in an organisation whose `organisation.portal_access` is true
+([data-model.md](../01-architecture/data-model.md) §2 — the column that closes the portal to
+one organisation's people without deactivating the organisation itself). That membership is
+created by invitation
 (`CP-11`), JIT provisioning or SCIM (`CP-17`). The customer role is off the main rank
 ladder — see [RBAC](../01-architecture/rbac.md).
 
@@ -214,7 +228,7 @@ in your head — which is the point of not reusing the agent handlers.
 
 | Case | Behaviour |
 | --- | --- |
-| Customer's organisation is suspended | Sessions invalidated; sign-in shows a message with the support email |
+| Customer's organisation is suspended, or `organisation.portal_access` is set false | Every session of that organisation's customer-side people is invalidated — in effect on their next request, per [auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions) — and sign-in shows a message with the support email |
 | Customer session hits the agent origin | Rejected at the callback and on every request; audited |
 | Work item moved to a project the customer cannot see | It disappears from their list. The bookmarked URL returns 404 |
 | Portal disabled by feature flag | The origin returns a maintenance page, not a broken app |

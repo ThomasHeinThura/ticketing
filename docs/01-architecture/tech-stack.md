@@ -13,7 +13,8 @@ Inherited from kaneo unless noted. Versions are the floor, not a ceiling — kee
 | Lint + format | **Biome 2** | Tabs, organised imports. Replaces ESLint + Prettier |
 | Custom lint rules | Biome plugins + bespoke node scripts | UX gates; see [UX quality gates](../02-design/ux-quality-gates.md) |
 | Commits | **commitlint** conventional + **husky** | |
-| Releases | **semantic-release** | |
+| Releases | **semantic-release** + commitlint + husky | Kept from kaneo (`release.config.js`, `commitlint.config.js`, `.husky/`) — decision log 2026-09-06 |
+
 
 ## Backend
 
@@ -24,11 +25,11 @@ Inherited from kaneo unless noted. Versions are the floor, not a ceiling — kee
 | Validation | **Zod 4** | Single source for request/response schemas and OpenAPI |
 | ORM | **Drizzle 0.45** | `drizzle-kit` migrations, forward-only |
 | Database | **PostgreSQL 18** | Only store for primary data. See below — bumped from 16 |
-| Auth | **better-auth 1.6** | Organisation, MFA/TOTP, magic link, email OTP, API keys, generic OAuth/OIDC, admin/impersonation plugins |
+| Auth | **better-auth 1.6** | Magic link, email OTP, API keys, generic OAuth/OIDC inherited; `twoFactor` added in P0; `anonymous`, `deviceAuthorization`, `bearer` and the `organization` plugin **removed at fork**; `admin` kept as a session primitive only — the per-plugin table is in [auth-and-identity.md](auth-and-identity.md) |
 | IDs | **CUID2** | Sortable-ish, URL-safe, non-enumerable |
 | WebSocket | **@hono/node-ws** | In-memory or Valkey pub/sub adapter |
 | Cache / pub-sub | **Valkey 9** (Redis-compatible) via **ioredis** | Optional; degrades to in-memory |
-| Object storage | **@aws-sdk/client-s3** — a plain S3-API client, no vendor SDK | **SeaweedFS** for the shipped local/self-hosted default; any real S3 in production. **Not MinIO** — see below |
+| Object storage | **@aws-sdk/client-s3** — a plain S3-API client, no vendor SDK | **`storage.filesystem` on a fresh install** (decision log 2026-09-05); **SeaweedFS** shipped as an opt-in Compose profile for self-hosted S3; any real S3 in production. **Not MinIO** — see below |
 | Scheduling | **croner** + `job_lease` table | In-process, replica-safe |
 | Email | **nodemailer** via `packages/email` | React Email templates |
 | Errors | **Sentry** (optional) | Configured in God Mode, not env-only |
@@ -46,7 +47,7 @@ Inherited from kaneo unless noted. Versions are the floor, not a ceiling — kee
 | Server state | **TanStack Query 5** | The only place server data lives |
 | Client state | **Zustand** | UI-only state: selection, preferences, panel sizes |
 | Styling | **Tailwind CSS v4** | `@tailwindcss/vite`, CSS variables |
-| Primitives | **Base UI** (`@base-ui/react`) as the primary standard, wrapped in `packages/ui`; Radix only as documented exceptions | shadcn `new-york`, zinc base. Decided 2026-09-05: migrate each inherited Radix primitive when Base UI has an adequate equivalent; retained Radix primitives are listed in `packages/ui/KNOWN-RADIX.md` and enforced by `check:ui`; feature code imports only `@taskdesk/ui` — see below and [ui-extraction-plan.md](../02-design/ui-extraction-plan.md) |
+| Primitives | **Base UI** (`@base-ui/react`) as the primary standard, wrapped in `packages/ui`; Radix only as documented exceptions | shadcn `new-york`, **neutral** base (kaneo's `index.css` has no zinc tokens). Decided 2026-09-05: migrate each inherited Radix primitive when Base UI has an adequate equivalent; retained Radix primitives are listed in `packages/ui/KNOWN-RADIX.md` and enforced by `check:ui`; feature code imports only `@taskdesk/ui` — see below and [ui-extraction-plan.md](../02-design/ui-extraction-plan.md) |
 | Variants | **class-variance-authority** | |
 | Icons | **lucide-react** | The only icon source |
 | Fonts | **Geist Variable** / **Geist Mono Variable** | |
@@ -57,7 +58,7 @@ Inherited from kaneo unless noted. Versions are the floor, not a ceiling — kee
 | Charts | **Recharts** | Reports and dashboards |
 | Tables | **TanStack Table** | Table/spreadsheet view |
 | Dates | **date-fns** + **@internationalized/date** | Calendar primitives need the latter |
-| i18n | kaneo's `i18n/` structure | **18** locales inherited (not 22); `en-US` authoritative — [i18n.md](i18n.md) |
+| i18n | kaneo's root `i18n/` structure, kept in place | 18 locale files at the local clone, 19 upstream (pl-PL) — stated for the SHA taken in [inherited-features.md](inherited-features.md); `en-US` authoritative — [i18n.md](i18n.md) |
 
 ## Testing
 
@@ -71,7 +72,7 @@ Inherited from kaneo unless noted. Versions are the floor, not a ceiling — kee
 | Visual regression | **Playwright** screenshots | `tests/visual/` |
 | E2E | **Playwright** | `tests/e2e/`, agent and portal projects |
 | Accessibility | **@axe-core/playwright** | Runs inside E2E; zero critical/serious |
-| Component catalogue | **Storybook 10** (ESM-only; 8 was two majors stale) | Required for every `packages/ui` primitive. Not in kaneo — added |
+| Component catalogue | **Storybook 10** (ESM-only; 8 was two majors stale) | Required for every `packages/ui` primitive. Not in kaneo — added. **Spiked against kaneo's exact stack (Vite 8 on Rolldown, React 19, TypeScript 7) before P0 adopts it**; the result and the framework package pin go in the decision log |
 | Load | **k6** | Baseline before each release |
 
 Detail: [Testing strategy](../04-engineering/testing-strategy.md).
@@ -84,7 +85,7 @@ Detail: [Testing strategy](../04-engineering/testing-strategy.md).
 | Orchestration | Docker Compose + **Traefik** (primary); Helm chart (secondary) |
 | Reverse proxy | **Traefik** — TLS, routing by host, security headers |
 | Identity | **Microsoft Entra** — OIDC + SCIM, the one provider in core delivery ([identity-provisioning.md](../03-features/identity-provisioning.md)). Any standards-compliant OIDC issuer works through `auth.oidc`; a **Keycloak 26** preset is future scope, kept here only as a compatibility note |
-| Object storage | **SeaweedFS** (default self-hosted) or any real S3 — see below |
+| Object storage | `storage.filesystem` by default; **SeaweedFS** (opt-in profile) or any real S3 — see below |
 | Mail (dev) | **Mailpit** |
 | CI | **GitHub Actions** — decided 2026-09-05: the repository is on GitHub, and keyless cosign signing and `semantic-release`'s GitHub integration both assume it. v1's Azure Pipelines are not carried over |
 | Registry | Docker Hub / ACR |
@@ -102,7 +103,8 @@ already a plain S3-API client, not a MinIO client, so this is a reference-implem
 swap, not a design change.
 
 **SeaweedFS** (Apache-2.0, actively maintained, most production-ready of the pure
-open alternatives surveyed) ships as the default self-hosted backend instead. **Garage**
+open alternatives surveyed) ships as the **opt-in** self-hosted S3 backend (`--profile s3`)
+instead; a fresh install runs `storage.filesystem`. **Garage**
 (AGPL-3.0, same licence family as this product, minimal footprint) is documented as the
 lightweight alternative for small single-tenant installs. Real AWS S3 remains the
 recommended production choice for anyone who wants it, unaffected either way, because
@@ -110,7 +112,12 @@ recommended production choice for anyone who wants it, unaffected either way, be
 
 ## Base UI as the primary primitive standard (decided 2026-09-05)
 
-kaneo has begun depending on `@base-ui/react` alongside its existing Radix primitives,
+**Corrected 2026-09-06 against kaneo's source:** kaneo has already moved — 43 of its 63
+primitives import `@base-ui/react`; exactly one (`form.tsx`) imports `@radix-ui` (for
+`Slot`, plus `timeline.tsx` via the `radix-ui` umbrella package), and 17 of its 18
+`@radix-ui/*` dependencies have no references at all. The "convergence" below is therefore
+one file plus pruning 17 dead dependencies; `KNOWN-RADIX.md` starts with at most one row.
+The original wording follows for the record: kaneo has begun depending on `@base-ui/react` alongside its existing Radix primitives,
 following shadcn/ui's July 2026 switch to Base UI as the default for new projects (Base
 UI is production-stable, MUI-backed, API-compatible with the Radix components it
 replaces). `packages/ui` is taken from kaneo **once**, at P0 step 1
@@ -120,7 +127,15 @@ an adequate Base UI equivalent migrates; the rest are listed in `packages/ui/KNO
 with a reason and a revisit date, enforced by `check:ui`; feature code imports only
 `@taskdesk/ui` ([ui-extraction-plan.md](../02-design/ui-extraction-plan.md)).
 
+## `packages/permissions` is replaced, not extended
+
+kaneo's package is 84 lines of better-auth `createAccessControl` statements plus four static
+roles and a `better-auth` dependency — no capability registry, no policy kinds, no evaluator.
+TaskDesk keeps the four role *names* for data continuity and writes the rest fresh, without
+the dependency ([monorepo-layout.md](monorepo-layout.md)).
+
 ## Added to kaneo's stack — the honest P0 tooling list
+
 
 kaneo does **not** ship these; every one is installed, configured and wired into CI during
 P0. This is the input to the P0 estimate, not a footnote.
@@ -141,7 +156,8 @@ P0. This is the input to the P0 estimate, not a footnote.
 | A small AST script (`check:queries`) | The "no `db.select()` outside `repository.ts`" rule — Biome cannot express it |
 
 Also inherited and to be **consolidated**, per the [inherited-features register](inherited-features.md):
-`valibot` → Zod only; `nanostores` → Zustand only; Radix + Base UI → **Base UI**, converged
+`valibot` → Zod only (one surviving file after the integration deletions); `nanostores` **stays** — it is
+better-auth's client store, not an app choice; Radix + Base UI → **Base UI**, already ~98 % converged upstream,
 at `packages/ui` extraction (decided 2026-09-05), with retained Radix in `KNOWN-RADIX.md`.
 
 ## Deliberate omissions

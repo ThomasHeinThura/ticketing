@@ -24,6 +24,9 @@ record the change in [status.md](status.md), here, and in [release-plan.md](rele
 A phase is finished when every feature in it meets the
 [Definition of Done](../04-engineering/definition-of-done.md), including the UX gates, and
 the phase gate in the [SDLC](../04-engineering/sdlc.md) has been passed and written up.
+Under the accelerated calendar, that phase gate carries the same parallel-workstreams
+exception as the calendar itself (decision A, [decision log](decision-log.md)); the
+mechanism for it is recorded in [SDLC](../04-engineering/sdlc.md).
 
 ---
 
@@ -35,26 +38,50 @@ in place before the first feature is written.
 Doing this first is the whole bet. Adding quality gates to an existing codebase never
 happens; building on top of them is easy.
 
-- Copy kaneo into `Ticketing.v2`; de-brand; strip billing, seats, trials and cloud abuse
-  mitigations; **delete `public-project`** (anonymous boards — removed, not flagged)
+- **Local prerequisites**: Node 24 (via a version manager), pnpm `10.32.1` (via
+  corepack), Docker.
+- Copy kaneo into `Ticketing.v2` at the SHA **Thomas confirms before any source is
+  copied** — kaneo's own test suite is run first, on that SHA, as the attribution
+  baseline; de-brand; strip seats and trials. **Removed or disabled at fork, not kept
+  dormant** (full list and reasoning:
+  [decision log](decision-log.md#2026-09-05--fork-time-removal-and-disable-list--the-fork-is-not-done-until-every-item-is-gone)):
+  anonymous guest sign-in (better-auth's `anonymous()` plugin, its env vars and settings
+  fields); OIDC/OAuth automatic account linking (`accountLinking.enabled` set `false`);
+  the session cookie cache (`session.cookieCache` disabled); `deviceAuthorization()` and
+  `bearer()`; **`public-project`** (the inline route, `project.is_public`, its schema,
+  controllers, the MCP tool, **the anonymous branch of
+  `utils/authorize-asset-access.ts`**, and the web `public-project` components, routes,
+  fetchers, hooks and tests); **the six integration plugins**
+  (`github`/`gitea`/`slack`/`discord`/`telegram`/`generic-webhook` — routers, web
+  screens, the `integration` and `github_integration` tables, and their dependencies);
+  billing (its four tables, `creem`, `CREEM_*`/`BILLING_*`/`TURNSTILE_*`, `trial-card`,
+  `demo-alert`); Sentry (the `sentry/` folder and all its code sites); cloud abuse
+  mitigations; `packages/planka-import` and its publish workflows; and kaneo's own agent
+  instruction files (`AGENTS.md`, `CLAUDE.md`, `.claude/`, `.cursor/`, `.agents/`, most of
+  `skills/`) — TaskDesk's `AGENTS.md` is authored fresh.
+- **Environment migration table** — every kaneo variable gets a keep / rename / move-to-
+  God-Mode / delete verdict (`repository-bootstrap.md` §2); `deploy/.env.example` is
+  written fresh.
 - **Retrofit kaneo's inherited routers into the five policy kinds** — the largest
   security task in P0 and the reason the route-coverage test enumerates Hono's router. A
   human-reviewed pass over the inherited code (the snapshot's scanner run detects known
   CVEs, not a planted change), with its own Opus security review before P0 closes. See
-  [repository-bootstrap.md](../04-engineering/repository-bootstrap.md#3-inherited-features-register)
+  [repository-bootstrap.md](../04-engineering/repository-bootstrap.md#3-removals-then-the-retrofit)
 - **Inherited-features register** — one page in `docs/01-architecture/` listing every
   kaneo feature and notable dependency with a verdict (*keep — spec exists* / *keep —
   write a spec* / *remove*) and the kaneo commit SHA taken. Anything kept without a v2
   spec is feature-flagged **off** until the spec exists. Starting table and expected
   verdicts: [review-2026-09-05.md](review-2026-09-05.md)
-- `THIRD-PARTY-NOTICES.md`, `NOTICE`, `LICENSE` (AGPL-3.0), `AGENTS.md`
-- Extract `packages/ui` from kaneo's `components/ui`; Tailwind preset; Storybook
-- Split `apps/web` into two entries: `entry.agent.tsx`, `entry.portal.tsx`
+- `THIRD-PARTY-NOTICES.md`, `NOTICE`, `LICENSE` (AGPL-3.0), `AGENTS.md`,
+  `.github/pull_request_template.md`
+- Extract `packages/ui` from kaneo's `components/ui`; Tailwind preset; a **Storybook spike** first, to prove it against kaneo's actual primitives before full adoption
+- Split `apps/web` into two entries — `entry.agent.tsx`, `entry.portal.tsx` — as **two separate `tanstackRouter()` instances**, the two-entry routing split
 - `packages/domain`, `packages/permissions`, `packages/plugins-contracts` scaffolded
 - Route registry `lib/routes.ts` with the round-trip test
 - Policy registry + **route coverage test** + **permission matrix test**
-- CI: lint, typecheck, unit, integration, permissions, E2E, visual, a11y, performance
-- UX gate scripts: `check-tokens`, `check-ui`, `check-deps`, `check-bundle-purity`
+- CI: lint, typecheck, unit, integration, permissions, E2E, visual, a11y, performance,
+  `check:reviews`, `check:env`, `check:vocabulary`, and a `.skip`/`.only` grep gate
+- UX gate scripts: `check:tokens`, `check:ui`, `check:deps`, `check:bundle-purity`
 - Playwright with agent, portal, security, reduced-motion and mobile projects
 - Testcontainers integration harness
 - Seed scripts: minimal, realistic, hostile
@@ -74,9 +101,10 @@ happens; building on top of them is easy.
   `pending_action` model and route family ([pending-actions.md](../01-architecture/pending-actions.md)).
   **No production SCIM endpoint is built in P0.**
 
-**P0 step 0 — spec closure (added 2026-09-05).** Before step 1, the
-[planning review](review-2026-09-05.md)'s prerequisites are finished, in this order, so
-nothing below is built on a guess:
+**P0 step 0 — spec closure (added 2026-09-05).** Before step 1, items 1–3 below are
+finished, in this order, from the [planning review](review-2026-09-05.md), so nothing
+below is built on a guess; item 4 is a **standing gate** at each feature's SDLC stage 2,
+not a step 0 task completed once:
 
 1. `data-model.md` authoritative for every table and column; identifier lists
    single-homed (flags, jobs, events, env vars, capabilities) — **done in the review**.
@@ -96,6 +124,11 @@ nothing below is built on a guess:
 **Done when:** the stack builds, deploys locally on three hostnames, every CI gate runs
 green **with kaneo's inherited routes present and each carrying a policy** (not on an
 empty application), and the P0 Opus security review has signed off the router retrofit.
+Also: anonymous sign-in is off; account linking is off; the cookie cache is off; no route
+in Hono's router matches `public-project`, `github`, `gitea`, `slack`, `discord`,
+`telegram` or `generic-webhook`; no `process.env` read exists outside the approved list;
+kaneo's own test suite baseline (pass/fail/skip counts on the confirmed SHA) is recorded;
+and the PR template is present.
 
 ---
 
@@ -115,11 +148,15 @@ hardened and extended.
 - Attachments
 - Labels, relations
 - Search, command palette, saved views
-- Assignment rules
+- Assignment rules — defaults and UI
 - **Pending actions** — the server-enforced deletion approval
   ([pending-actions.md](../01-architecture/pending-actions.md)) lands here with work-item,
   comment, attachment, **project and workspace** deletion from the web UI (the two danger
-  zones ship in P1, so step-up exists in P1 too); API-key and MCP origins join in P4
+  zones ship in P1, so step-up exists in P1 too). **Browser-session deletions only in
+  P1** — API-key issuance and MCP are P4; until then an API-key `DELETE` returns
+  `403 not_implemented`.
+- **In-app notification inbox** (`/agent/inbox`) — channels, preferences, digests and
+  quiet hours follow in P4 ([notifications.md](../03-features/notifications.md))
 - Realtime over WebSocket
 - Profile settings: general, appearance
 - Workspace and project settings: general, members, states, labels
@@ -135,8 +172,9 @@ this is v1's domain logic reimplemented in TypeScript.
 
 **Replaces:** the Power Apps ticketing tool.
 
-- `packages/domain`: SLA engine, service calendars, workflow engine, approvals,
-  assignment rules — ported from v1, tested exhaustively
+- `packages/domain`: SLA engine, service calendars, workflow engine, approvals, the
+  assignment rule **engine** — ported from v1 as part of `packages/domain`, tested
+  exhaustively
 - Work item types with categories (service / delivery)
 - Workflows: versioned, per-role transitions, note policies, guards
 - SLA policies, goals, pauses, at-risk and breach events
@@ -208,6 +246,11 @@ the identity gate does not close on a mock alone.
 - **Identity operations hardening**: provisioning-event visibility, identity health on the
   Health screen, SCIM token-rotation UX, connection config in the config export, role
   management maturity for group mappings
+- **Inherited from kaneo and flag-gated from P0** (see
+  [inherited-features.md](../01-architecture/inherited-features.md)): the `workflow-rule`
+  automation engine. It ships **off** until the v2
+  [automations.md](../03-features/automations.md) spec is aligned and the UX gates pass —
+  it is not built from zero here.
 
 **Done when:** a fresh container can be turned into a customer's own service desk without
 touching a file.
@@ -224,11 +267,15 @@ touching a file.
 - Calendar and timeline layouts
 - Time entries, timer, timesheet grid
 - Rates, cost types, cost entries, budgets, capacity
-- The fourteen reports, in five groups
+- The twenty reports, in five groups
 - Dashboards with widgets
 - Knowledge base with deflection
 - Service catalogue, changes, change freezes, releases
-- Pages
+- Pages — **spec required before stage 2** (no `pages.md` yet; prefix `PG` reserved)
+- **Inherited from kaneo and flag-gated from P0** (see
+  [inherited-features.md](../01-architecture/inherited-features.md)): calendar/gantt/
+  timeline layouts and basic time entries. They ship **off** until their v2 specs are
+  aligned and the UX gates pass — they are not built from zero here.
 
 **Done when:** a manager answers a portfolio SLA question in under thirty seconds, and
 delivery teams run their sprints here.
@@ -267,10 +314,12 @@ off.
 - Onboarding and empty-state pass
 - Load test baselines
 - Disaster recovery drill
-- **AWS Marketplace listing**: container-product packaging, `license.aws-marketplace`
-  plugin ([ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md)), seller
-  registration and security review — see
-  [AWS Marketplace listing](../05-operations/aws-marketplace.md)
+- **AWS Marketplace listing — deferred beyond the current scope (decided
+  2026-09-05).** Not built in P7. When a listing decision is taken, BYOL/contract is
+  preferred over usage metering; the `license` plugin kind and
+  [ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md) remain the
+  mechanism. See
+  [roadmap.md](roadmap.md#explicitly-deferred-beyond-the-current-three-to-four-month-scope-decided-2026-09-05).
 - **One-line installer** hardened and published at a stable URL — see
   [One-line install](../05-operations/one-line-install.md)
 

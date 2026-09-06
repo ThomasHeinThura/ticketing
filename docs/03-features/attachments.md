@@ -23,7 +23,9 @@ This document covers behaviour and interface.
 - `AT-4` An attachment on an internal comment is always internal, whatever its own flag
   says.
 - `AT-5` Download URLs are presigned with a five-minute lifetime and are issued only after
-  a policy check. The bucket is never public.
+  a policy check. The bucket is never public, and there is **no anonymous read path**:
+  kaneo's `is_public` branch in `authorize-asset-access.ts` is deleted at fork
+  ([decision log](../07-planning/decision-log.md)).
 - `AT-6` Every download writes an audit row.
 - `AT-7` Deleting is soft; the object is removed the following night by `attachment-gc`,
   so an accidental deletion is recoverable for a day. Like every deletion it is a pending
@@ -93,7 +95,7 @@ POST   /api/portal/requests/{ref}/attachments/presign   { portal: 'customer', pr
 | Two files with the same name | Both kept. Display disambiguates with the upload time |
 | Declared MIME does not match magic bytes | Rejected at `complete`; the object is deleted |
 | Attachment on a work item moved to another project | Moves with it |
-| Customer uploads to a resolved request | Allowed within the reopen window (`instance_setting.reopen_window_days`); reopens the request through the workflow's `is_reopen` transition as a system actor — `WF-21`, one mechanism shared with `CP-8` |
+| Customer uploads to a resolved request | Allowed within the reopen window (`instance_setting.reopen_window_days`); reopens the request through the workflow's `is_reopen` (`workflow_transition.is_reopen`) transition as a system actor — `WF-21`, one mechanism shared with `CP-8` |
 | Presigned POST conditions | Always pin the exact object key, `content-length-range` up to the limit, and the declared content type — the credential cannot write another key or an unbounded object. The download path serves only `state = 'ready'` rows, never by raw key |
 | Malware | **No scanner — a stated, accepted residual risk** (decided 2026-09-05: not built or installed in the current scope; revisit before unknown external users can upload). Mitigated by the allowlist, magic-byte check, separate files origin and `Content-Disposition: attachment`. A *future* `storage.antivirus` plugin (ClamAV or a hosted scanner) would gate `pending → ready`; the plugin id is reserved, nothing else ([roadmap.md](../07-planning/roadmap.md)). Archives (`zip`, `7z`, …) are an instance-configurable allowlist entry because they bypass the extension allowlist for the recipient |
 

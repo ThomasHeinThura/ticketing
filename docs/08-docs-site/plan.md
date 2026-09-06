@@ -2,7 +2,14 @@
 
 - **Phase:** skeleton in P0, content grows per phase, complete in P7
 - **Location:** `apps/site`
-- **Stack:** Next.js + [Fumadocs](https://fumadocs.dev), following kaneo's `apps/site`
+- **Stack:** **pending Thomas's decision** (status.md → Open decisions). The earlier line
+  "Next.js + Fumadocs, following kaneo's `apps/site`" was wrong on both counts: kaneo uses
+  no Fumadocs anywhere, its `apps/site` is a Next 16 **marketing** site, and its docs are
+  `apps/docs` on **Mintlify** (`docs.json`) — which the bootstrap does not copy. Options:
+  (i) a **fresh Fumadocs app** at `apps/site` — recommended, because this plan already wants
+  a Scalar OpenAPI reference and Playwright screenshots, which need a self-hosted build;
+  (ii) copy kaneo's marketing site and add a `/docs` segment; (iii) Mintlify (hosted).
+  Nothing under this heading is built until the option is chosen.
 
 ## Two audiences, two documentation sets
 
@@ -51,7 +58,7 @@ docs.<domain>/
 │   ├── docker-compose     the primary path
 │   ├── kubernetes         Helm, secondary
 │   ├── traefik            three hostnames, TLS
-│   ├── configuration      the eight bootstrap variables
+│   ├── configuration      the five required bootstrap variables (+ six optional)
 │   ├── upgrading
 │   ├── backup-restore
 │   └── troubleshooting

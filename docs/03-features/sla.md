@@ -69,11 +69,14 @@ an event once, and for list filtering. It is never the answer to "what is the st
 **Computation**
 
 - `SLA-4` `dueAt` = the instant at which `target_minutes` of covered time have elapsed
-  since creation, per the calendar, skipping pauses.
+  since `sla_started_at` (copied from the accepted submission's `created_at`, otherwise the
+  work item's `created_at` — [data-model.md](../01-architecture/data-model.md)), per the
+  calendar, skipping pauses.
 - `SLA-5` Covered time counts only inside the calendar's weekday windows, in the
   calendar's timezone, excluding holidays.
 - `SLA-6` A 24×7 calendar makes covered time equal to wall-clock time.
-- `SLA-7` `first_response` stops at the first public comment by a staff member.
+- `SLA-7` `first_response` stops at the first public comment by a staff member, which sets
+  `work_item.first_response_at` — the stored fact the metric is computed from.
 - `SLA-8` `resolution` stops when the work item enters a state in the `completed` group.
 - `SLA-9` Reopening a completed item resumes the resolution clock from where it stopped —
   it does not restart.
@@ -103,6 +106,10 @@ an event once, and for list filtering. It is never the answer to "what is the st
 - `SLA-16` Events fan out to notifications, webhooks and the escalation path.
 - `SLA-17` Escalation follows the project's stakeholder escalation order, waiting the
   configured interval between levels.
+- `SLA-15a` `sla.met` and `sla.missed` are emitted by the **transition into a
+  `completed`-group state** (`WF-17`), not by `sla-scan` — an item whose `resolved_at` is
+  set is outside the scan's candidate set. `sla-scan` emits only `sla.at_risk` and
+  `sla.breached` ([events.md](../01-architecture/events.md)).
 
 **Display**
 

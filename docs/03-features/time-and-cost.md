@@ -103,10 +103,10 @@ breakdown by activity and by person.
 ## API
 
 ```
-GET    /api/time-entries?person=&from=&to=      time_entry:create | read_any
+GET    /api/time-entries?person=&from=&to=      time_entry:read_any · orOwner(person_id, time_entry:create)   — own entries with `create`, everyone's with `read_any`
 POST   /api/time-entries                        time_entry:create
-PATCH  /api/time-entries/{id}                   owner | time_entry:read_any
-DELETE /api/time-entries/{id}                   owner | time_entry:read_any
+PATCH  /api/time-entries/{id}                   time_entry:update_any · orOwner(person_id, time_entry:update_own)
+DELETE /api/time-entries/{id}                   time_entry:delete_any · orOwner(person_id, time_entry:delete_own) → 202 pending action
 POST   /api/time-entries/timer/start            time_entry:create
 POST   /api/time-entries/timer/stop             time_entry:create
 GET    /api/projects/{key}/budget               budget:read

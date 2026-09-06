@@ -70,7 +70,9 @@ real customer.
 
 ## Production
 
-- Hostnames: `ticket.<domain>`, `portal.<domain>`, `files.<domain>`.
+- Hostnames: `ticket.<domain>`, `portal.<domain>` — and `files.<domain>` only when an
+  operator-owned S3 endpoint is served behind this Traefik (`--profile s3`); on the default
+  `storage.filesystem` there are two.
 - Deployed by manual promotion of a digest already verified in UAT.
 - Hourly database backups, offsite, with restore verified monthly.
 - Full monitoring and alerting.
@@ -86,7 +88,9 @@ Every customer runs their own instance of the same image, configured entirely th
 God Mode.
 
 - No customer-specific build, tag or branch.
-- Upgrades are `docker compose pull && up -d`.
+- Upgrades are `scripts/deploy.sh upgrade`, which verifies the image's cosign signature before
+  pulling ([deployment.md](deployment.md)); raw `docker compose pull && up -d` is the labelled
+  no-verification fallback.
 - Their configuration is theirs; we do not hold it.
 - Support is by guiding them through God Mode, or by an audited impersonation session with
   their consent.
@@ -117,7 +121,7 @@ construction rather than by convention.
 | UAT | `ticket-uat.<domain>` | `portal-uat.<domain>` | `files-uat.<domain>` |
 | Production | `ticket.<domain>` | `portal.<domain>` | `files.<domain>` |
 
-Three hostnames per environment. The third exists so attachments are served from an origin
+Two hostnames per environment, three when the S3 profile is on. The third exists so attachments are served from an origin
 that has no application on it — see
 [storage and attachments](../01-architecture/storage-and-attachments.md).
 

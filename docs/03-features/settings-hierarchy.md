@@ -161,9 +161,9 @@ GET/PATCH /api/workspaces/{id}/features                workspace:manage_settings
 DELETE    /api/workspaces/{id}                         workspace:delete  E            workspace — the danger zone; → 202 pending action (typed exact name + step-up), refused while the workspace has active projects ([pending-actions.md](../01-architecture/pending-actions.md))
 GET/PATCH /api/projects/{projectId}/settings           project:manage_settings        project
 GET/PATCH /api/projects/{projectId}/features           project:manage_settings        project
-GET/PATCH /api/me/settings                             authenticated + self
-GET       /api/features/resolved?project=…             authenticated (any); resolved for the caller's reach
-GET       /api/audit?entity_type=&entity_id=           the entity's own read capability
+GET/PATCH /api/me/settings                             self (kind 2 — the caller's own `user_preference` rows)
+GET       /api/features/resolved?project=…             self (kind 2) — resolved for the caller's reach
+GET       /api/audit?entity_type=&entity_id=           the entity's read capability (kind 1, chosen by `entity_type` from the registry)
 ```
 
 `GET /features/resolved` returns the fully resolved flag set for a context, so the client

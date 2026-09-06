@@ -2,7 +2,8 @@
 
 ## Where we start
 
-One container, one Postgres, one Valkey, one SeaweedFS. That comfortably serves 100 concurrent
+One container, one Postgres, one Valkey — and SeaweedFS only if the S3 profile is enabled;
+the shipped default is `storage.filesystem` on a volume. That comfortably serves 100 concurrent
 users on 5.5 cores and 5 GiB — half of v1's footprint, because there is one application
 process rather than four.
 

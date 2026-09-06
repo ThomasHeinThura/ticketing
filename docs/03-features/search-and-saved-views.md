@@ -89,14 +89,14 @@ triage. See [intake queue](intake-queue.md).
 
 ```
 POST /api/work-items/search                    work_item:read
-GET  /api/search?q=…&kinds=…                   (scoped to reach)
-GET  /api/views                                (scoped)
-POST /api/views                                (per scope)
-GET  /api/views/{id}                           (per scope)
-PATCH /api/views/{id}                          owner | workspace:manage_settings
-DELETE /api/views/{id}                         owner | workspace:manage_settings
-POST /api/views/{id}/pin                       (self)
-GET  /api/views/{id}/count                     (cached 30s)
+GET  /api/search?q=…&kinds=…                   work_item:read (scope workspace via `X-Workspace-Id`; results reach-filtered)
+GET  /api/views                                saved_view:read (scope workspace)
+POST /api/views                                saved_view:create (scope workspace)
+GET  /api/views/{id}                           saved_view:read — the view's own workspace; shared-with is part of reach
+PATCH /api/views/{id}                          workspace:manage_settings · orOwner(created_by, saved_view:create)
+DELETE /api/views/{id}                         workspace:manage_settings · orOwner(created_by, saved_view:create) → 202 pending action
+POST /api/views/{id}/pin                       self (kind 2 — the caller's own `user_preference` row)
+GET  /api/views/{id}/count                     saved_view:read (cached 30 s)
 ```
 
 ## Edge cases

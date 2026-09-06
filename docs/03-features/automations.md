@@ -49,7 +49,7 @@ list of what may appear in this picker. This document does not maintain its own 
 | `sla.at_risk` / `sla.breached` | SLA edge |
 | `approval.decided` | An approval decision |
 | `submission.received` | A new submission |
-| `schedule` | A cron expression, evaluated against a filter — a scheduler entry, not an event |
+| `schedule` | A cron expression, evaluated against a filter — a scheduler entry, not an event; evaluated every minute by the `automation-schedule` job, one lease per rule ([background-jobs.md](../01-architecture/background-jobs.md)) |
 
 ## Conditions
 

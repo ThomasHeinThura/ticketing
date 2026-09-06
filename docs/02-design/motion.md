@@ -34,10 +34,11 @@ list entrance on every route change, which turns a 50 ms navigation into a 400 m
 --duration-normal:  200ms;   /* dropdown, popover, toast */
 --duration-slow:    300ms;   /* dialog, sheet, route */
 
---ease-out:     cubic-bezier(0.16, 1, 0.3, 1);     /* things arriving */
---ease-in:      cubic-bezier(0.7, 0, 0.84, 0);     /* things leaving */
---ease-in-out:  cubic-bezier(0.65, 0, 0.35, 1);    /* things moving */
---ease-spring:  spring(1, 100, 15, 0);             /* drag settle */
+--ease-out:     cubic-bezier(0.23, 1, 0.32, 1);    /* things arriving — kaneo's value, verbatim */
+--ease-in-out:  cubic-bezier(0.77, 0, 0.175, 1);   /* things moving — kaneo's value, verbatim */
+/* kaneo defines exactly these two curves (apps/web/src/index.css). "Leaving" reverses
+   --ease-out through the transition rather than adding a third curve; the drag-settle spring
+   is a Framer Motion transition object in motion.ts, because spring() is not valid CSS. */
 ```
 
 Arriving uses `ease-out` — fast start, gentle finish. Leaving uses `ease-in` — get out of
@@ -71,15 +72,26 @@ the way. Moving uses `ease-in-out`.
 
 ## Reduced motion
 
+kaneo's rule, adopted verbatim: **drop movement and container morphs, keep opacity**. A
+fade that disappears is a regression for the very users the preference serves; a slide or a
+re-flow that disappears is the point. kaneo does this with selectors, not by zeroing every
+duration:
+
 ```css
 @media (prefers-reduced-motion: reduce) {
-  --duration-fast:   0ms;
-  --duration-normal: 0ms;
-  --duration-slow:   0ms;
+  /* popups keep their opacity feedback, lose their movement — the data-slot list is in index.css */
+  [data-slot="dialog-content"], [data-slot="sheet-content"], [data-slot="popover-content"],
+  [data-slot="menu-content"], [data-slot="tooltip-content"] {
+    transition-property: opacity !important;
+  }
+  /* containers that re-flow do not animate at all */
+  [data-sidebar], [data-kaneo-sortable] { transition: none !important; }
 }
 ```
 
-Because every duration is a token, honouring the preference is a single override.
+The `!important` on `[data-kaneo-sortable]` is deliberate — dnd-kit sets inline transitions.
+(The earlier block here declared custom properties outside any selector, which is invalid
+CSS and did nothing; corrected 2026-09-06.)
 Framer Motion uses `useReducedMotion()` to switch to instant variants.
 
 Critically, **reduced motion removes the animation, not the affordance**. A dialog still
@@ -108,7 +120,7 @@ the communicating.
 
 - Animate **`transform` and `opacity` only**. Anything else means layout or paint on every
   frame.
-- Height animations use a measured `max-height` or Radix's collapsible, never
+- Height animations use a measured `max-height` or Base UI's collapsible (its height is exposed through Base UI's own CSS variable, not `--radix-collapsible-content-height`), never
   `height: auto`.
 - `will-change` is applied at interaction start and removed at end, never left on.
 - Budget: 60 fps. A dropped frame during a board drag is a bug, and is caught by the

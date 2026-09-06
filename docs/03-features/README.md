@@ -16,7 +16,7 @@ behaves at the edges, and how it is tested.
 | [Comments and activity](comments-and-activity.md) | P1 | ⬜ | kaneo, JSM |
 | [Attachments](attachments.md) | P1 | ⬜ | kaneo |
 | [Search and saved views](search-and-saved-views.md) | P1 | ⬜ | kaneo, JSM |
-| [Assignment](assignment.md) | P1 | ⬜ | v1 |
+| [Assignment](assignment.md) | P1 (the rule *engine* ports with `packages/domain` in P2) | ⬜ | v1 |
 
 ## Service desk
 
@@ -60,6 +60,10 @@ behaves at the edges, and how it is tested.
 | [Reports and dashboards](reports-and-dashboards.md) | P5 | ⬜ | v1 |
 | [Knowledge base](knowledge-base.md) | P5 | ⬜ | JSM |
 | [Service catalogue, changes, releases](service-management.md) | P5 | ⬜ | v1, ITIL |
+
+*Scheduled in P5 without a spec yet: **Pages** ([phases.md](../07-planning/phases.md); prefix
+`PG` reserved below). It cannot enter build until `pages.md` exists and has been read — the
+spec count stays 31 until then.*
 
 ---
 
@@ -136,7 +140,7 @@ writing a spec.
 | `AP` | approvals | | `RP` | reports-and-dashboards |
 | `TM` | teams | | `KB` | knowledge-base |
 | `PA` | ../01-architecture/pending-actions | | `SVC` `CH` `REL` | service-management |
-| `EV` | ../01-architecture/events | | | |
+| `EV` | ../01-architecture/events | | `PG` | pages — **reserved, spec not yet written** |
 
 Sub-ids (`IQ-16a`) are allowed only when inserting a rule between two existing ones would
 otherwise force a renumber; a checker treats `16a` as distinct from `16`.

@@ -90,8 +90,13 @@ Borrowed from OpenProject's journal design.
   error-level log line, an `audit_write_failures_total` metric that alerts, and a
   notification to every instance administrator, because the trade is acceptable only if
   someone finds out ([security-model.md](../01-architecture/security-model.md#audit)).
-- `AU-15` Rows are **hash-chained**: `row_hash` is SHA-256 over the canonicalised row
-  including `prev_hash`; the first row chains from the zero hash. `audit-verify` (on demand,
+- `AU-15` Rows are **hash-chained**: `row_hash` is SHA-256 over the **canonical form defined
+  once in data-model.md §11** — the ordered column list, RFC 8785 canonical JSON for the
+  `jsonb` columns, microsecond UTC ISO-8601 timestamps, lowercase hex; `organisation_id` and
+  every other post-hoc-mutable column excluded — including `prev_hash`. Every insert takes
+  `pg_advisory_xact_lock` on the audit constant, so the chain is strictly serial per instance
+  even with many replicas; the first row chains from the zero hash, and `audit-purge` writes
+  an `audit_chain_anchor` row that `audit-verify` starts from. `audit-verify` (on demand,
   and at every restore drill) walks the chain, so alteration by a database-level actor is
   detectable even though the application role holds no `UPDATE`/`DELETE` on the table
   ([data-model.md](../01-architecture/data-model.md) §11).
@@ -144,8 +149,8 @@ matters more than the central log.
 ```
 GET  /api/instance/audit                       instance:read_audit
 GET  /api/workspaces/{id}/audit                workspace:manage_settings
-GET  /api/audit/entity/{type}/{id}             (capability for that entity)
-POST /api/instance/audit/export                instance:read_audit + re-auth
+GET  /api/audit/entity/{type}/{id}             the entity's read capability (kind 1, chosen by `{type}` from the registry)
+POST /api/instance/audit/export                instance:read_audit  E  (elevated — step-up)
 GET  /api/work-items/{key}/reconstruct?at=…    work_item:read
 ```
 

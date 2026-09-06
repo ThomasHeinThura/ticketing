@@ -7,15 +7,17 @@
 ## Context
 
 An SLA answers: given this work item, its request type, its priority and its project's
-service calendar, when is the deadline, and are we `ok`, `at-risk`, `breached`, `met` or
-`missed`?
+service calendar, when is the deadline, and are we `none`, `ok`, `at_risk`, `breached`,
+`met` or `missed`? Those six snake_case values are the vocabulary; they are enumerated on
+`work_item_sla_cache.state` in [data-model.md](../data-model.md) and described in
+[sla.md](../../03-features/sla.md).
 
 The obvious implementation stores a `sla_due_at` timestamp on the work item when it is
 created, and a scheduled job flips a `sla_state` column as deadlines pass. Most ticketing
 systems do this.
 
 v1 did **not**. It computed SLA state lazily on read, from
-`created_at + policy target` evaluated against the service calendar. This turned out to be
+`sla_started_at + policy target` evaluated against the service calendar. This turned out to be
 one of v1's better decisions and is worth preserving deliberately rather than by accident.
 
 ## Decision
@@ -25,8 +27,13 @@ No `sla_state` column.**
 
 ```ts
 computeSlaState({
-  createdAt, resolvedAt, priority, workItemTypeId,
-  policy,          // the version effective at createdAt
+  slaStartedAt,    // work_item.sla_started_at — submission.created_at on acceptance,
+                   // otherwise work_item.created_at. Never created_at directly: that is
+                   // exactly the clock restart sla_started_at exists to prevent.
+  firstResponseAt, // work_item.first_response_at, null until the first public staff
+                   // comment — the stored fact the first_response metric stops on
+  resolvedAt, priority, workItemTypeId,
+  policy,          // the version effective at slaStartedAt
   calendar,        // windows + holidays + timezone
   pauses,          // [{ startedAt, endedAt }]
   now,
@@ -36,12 +43,17 @@ computeSlaState({
 - Lives in `packages/domain/src/sla/`. Pure, no I/O, exhaustively unit-tested.
 - All durations are in **covered minutes** — time inside the service calendar's windows,
   excluding holidays and excluding paused intervals. Never wall-clock.
-- The policy **version effective at creation** is used, so changing a policy does not
+- The policy **version effective at `slaStartedAt`** is used, so changing a policy does not
   retroactively rewrite whether past tickets were met.
+- The `first_response` metric stops at `firstResponseAt`; the `resolution` metric stops at
+  `resolvedAt`. Both are stored facts, which is what makes "a pure function of stored
+  facts" true rather than aspirational.
 - The only persisted SLA artefact is `work_item_sla_cache`, holding the *last observed
-  state*, used solely by `sla-scan` to detect an edge and fire an event once. It is a
-  denormalisation for notification purposes and is never read to answer "what is the SLA
-  state?".
+  state*. It has exactly two readers: `sla-scan`, to detect an edge and fire an event once,
+  and **list filters and sorts**, which cannot express the computation in SQL (see the
+  Negative section below). It is **never** read by the detail endpoint or the API to answer
+  "what is the SLA state?" — those always recompute, and where the two disagree the
+  computed value wins.
 
 ## Consequences
 
@@ -79,7 +91,8 @@ computeSlaState({
   by the function being genuinely cheap — arithmetic over a small window array.
 
 - **Historical reporting needs care.** "What was our SLA attainment in March?" must
-  evaluate each item against the policy version effective at its creation, not today's.
+  evaluate each item against the policy version effective at its `sla_started_at`, not
+  today's.
   The design supports this correctly; the reporting queries must remember to.
 
 ### Neutral

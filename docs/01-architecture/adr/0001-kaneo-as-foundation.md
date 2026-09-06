@@ -14,8 +14,9 @@ without fixing the underlying absence of a design system.
 We evaluated [kaneo](https://github.com/usekaneo/kaneo) and found an application whose
 UI/UX is exactly the standard we want, built on a stack we would have chosen anyway:
 Hono, Drizzle, PostgreSQL, better-auth, React 19, TanStack Router and Query, Tailwind v4,
-60+ Radix-based primitives, dnd-kit, Tiptap, Framer Motion — plus motion design specs and
-UI-review skills already written down.
+63 primitives, predominantly Base UI (43 of the 63 import `@base-ui/react`; exactly one
+imports Radix), dnd-kit, Tiptap, Framer Motion — plus motion design specs and UI-review
+skills already written down.
 
 kaneo is **MIT licensed**, so we may use its code without restriction beyond attribution.
 
@@ -30,6 +31,10 @@ Specifically:
 
 - `Ticketing.v2` starts as a copy of kaneo's monorepo structure, API, web application,
   design system, Dockerfile, Helm chart, i18n and tooling configuration.
+- **The snapshot is one commit, recorded once** — the SHA, why that commit, the upstream CI
+  run it passed and the verification done before the copy live in
+  [inherited-features.md](../inherited-features.md), not here; this ADR does not name a
+  commit, so it cannot go stale against one.
 - We immediately de-brand, remove what we do not want (billing, seats, trials, cloud
   abuse mitigations as always-on), and restructure what we need to change (tenancy, RBAC,
   service desk domain).

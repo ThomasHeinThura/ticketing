@@ -91,8 +91,15 @@ they see, their service calendar, their SLA policies and their notification sett
 - Someone needing access as both staff and customer needs two accounts with different
   emails. This is deliberate: a single identity with two sides is precisely the
   ambiguity that produces authorization bugs.
-- Identity providers may be bound per portal, and a provider may restrict by email domain,
-  which in practice binds it to an organisation.
+- Identity providers are bound per portal, and a customer connection is bound to exactly
+  one organisation by `identity_connection.organisation_id`
+  ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-1`). **That
+  column is the only thing that selects the organisation.**
+- A connection's `domain_bindings` do something narrower and easier to misread: a domain
+  binding **refuses** a token whose address domain belongs to a *different* connection. It
+  never selects the organisation, and it is not a second, weaker route to one — an email
+  domain is evidence for rejecting, never for choosing (`IP-9`,
+  [auth-and-identity.md](auth-and-identity.md#what-every-authoidc-plugin-must-do--the-protocol-floor)).
 
 ## Provisioning a new customer organisation
 
@@ -103,10 +110,16 @@ God Mode → Organisations → New
   Service calendar          (choose or create)
   Default SLA policy
   Request catalogue         (which request types they see)
-  Portal access             enabled / disabled
-  Identity provider         inherit instance default, or bind a specific one
+  Portal access             enabled / disabled      (organisation.portal_access)
   Initial contact           email → invitation
 ```
+
+Identity is **not** a field on this form. There is nothing to inherit: an `agent` connection
+has no organisation at all, so there is no instance default a customer organisation could
+fall back to. An organisation's identity is a **read-through of its `identity_connection`
+row** — created and edited afterwards, by an instance administrator, in God Mode →
+Organisations → *org* → Identity ([god-mode.md](../03-features/god-mode.md),
+[identity-provisioning.md](../03-features/identity-provisioning.md) `IP-5`).
 
 No deploy. No restart. This is the operation that must be effortless, because it is the
 one performed most often.
@@ -131,14 +144,20 @@ Configured per organisation in God Mode, with **real defaults** — an internet-
 with unlimited storage and unlimited portal users is a denial-of-wallet path from a
 low-privilege actor. The internal organisation may raise them freely.
 
-| Quota | Default |
-| --- | --- |
-| Projects | 200 |
-| Work items | 500,000 |
-| Storage | 20 GB |
-| Portal users | 500 |
-| API requests / minute | 600 |
-| Webhook endpoints | 10 |
+The six limits are stored in **`organisation_quota`**
+([data-model.md](data-model.md) §2), one row per organisation, `organisation_id` unique;
+**no row means these defaults**. Current usage is never stored there — it is counted live
+off the owning tables and the rate limiter's window — so a quota can be lowered below
+present usage without a migration or a backfill.
+
+| Quota | `organisation_quota` column | Default |
+| --- | --- | --- |
+| Projects | `max_projects` | 200 |
+| Work items | `max_work_items` | 500,000 |
+| Storage | `max_storage_bytes` | 20 GiB |
+| Portal users | `max_portal_users` | 500 |
+| API requests / minute | `max_api_requests_per_minute` | 600 |
+| Webhook endpoints | `max_webhooks` | 10 |
 
 Exceeding a quota returns `429` with a problem document naming the quota.
 

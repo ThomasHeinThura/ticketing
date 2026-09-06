@@ -27,13 +27,14 @@ was one of v1's bugs — a customer account could request an internal CAB approv
 | **Approval** | A request for a decision, on a work item, from a person, with an expiry |
 | **Requester** | Who asked |
 | **Approver** | Who must decide |
-| **Status** | `pending` · `approved` · `rejected` · `expired` · `withdrawn` |
+| **State** | `pending` · `approved` · `rejected` · `expired` · `withdrawn` — the `approval.state` enumeration in [data-model.md §7](../01-architecture/data-model.md) |
 | **Gate** | A workflow transition that requires an approval before it may be made |
 
 ## Data
 
-`approval` — `work_item_id`, `kind`, `requested_by`, `approver_id`, `status`,
-`expires_at`, `decided_at`, `decision_note`.
+`approval` — the authoritative column list is [data-model.md §7](../01-architecture/data-model.md)
+(`state`, `transition_id`, the reminder timestamps and the rest); this document does not
+repeat it.
 
 ## Behaviour
 
@@ -48,7 +49,7 @@ was one of v1's bugs — a customer account could request an internal CAB approv
 - `AP-4` Expiry defaults to 7 days, configurable per request, capped at 90 days.
 - `AP-5` Multiple approvals may be pending on one work item. The gate is satisfied by the
   policy set on the transition: **any** approver, or **all** approvers.
-- `AP-6` The requester may withdraw a pending approval. It becomes `withdrawn`, not
+- `AP-6` The requester may withdraw a pending approval. It becomes `withdrawn` (emitting `approval.withdrawn`), not
   deleted.
 
 **Deciding**

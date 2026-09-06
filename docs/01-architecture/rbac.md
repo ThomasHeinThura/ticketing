@@ -60,7 +60,7 @@ so a role stored without the implied entry still behaves correctly.
 | | `work_item:transition` | `work_item:read` | Change state, subject to workflow legality |
 | | `work_item:rank` | `work_item:read` | Re-order within a state or backlog |
 | | `work_item:set_priority` | `work_item:escalate_priority` | Set priority up or down |
-| | `work_item:escalate_priority` | | Raise priority only — the customer capability |
+| | `work_item:escalate_priority` | `work_item:read` | Raise priority only — the customer capability |
 | | `work_item:export` | `work_item:read` | Export a view or list to CSV/XLSX |
 | **Comments** | `comment:create` | `work_item:read` | Comment publicly |
 | | `comment:create_internal` | `comment:create` | Comment internally |
@@ -73,7 +73,8 @@ so a role stored without the implied entry still behaves correctly.
 | | `attachment:delete_any` | `attachment:delete_own` | Delete anyone's attachments |
 | **Labels & fields** | `label:manage` | | Create, edit, delete labels |
 | | `custom_field:manage` | | Define custom fields and sections |
-| **Views** | `saved_view:create` | `work_item:read` | Create private saved views and queues |
+| **Views** | `saved_view:read` | | List and open saved views and queues shared with you |
+| | `saved_view:create` | `saved_view:read`, `work_item:read` | Create private saved views and queues |
 | | `saved_view:share` | `saved_view:create` | Share a view with a team or the workspace |
 | **Service desk** | `sla_policy:read` | | Read SLA policies and service calendars |
 | | `sla_policy:manage` | `sla_policy:read` | Author policies and calendars |
@@ -87,9 +88,11 @@ so a role stored without the implied entry still behaves correctly.
 | | `approval:decide` | | Decide an approval addressed to you |
 | | `approval:decide_cab` | `approval:decide` | Decide a CAB approval — **and** be a member of the CAB team |
 | **Time & cost** | `time_entry:create` | | Log own time; start/stop own timer |
+| | `time_entry:update_own` | `time_entry:create` | Edit own entries |
+| | `time_entry:delete_own` | `time_entry:create` | Delete own entries |
 | | `time_entry:read_any` | | See anyone's entries |
-| | `time_entry:update_any` | `time_entry:read_any` | Edit anyone's entries |
-| | `time_entry:delete_any` | `time_entry:update_any` | Delete anyone's entries |
+| | `time_entry:update_any` | `time_entry:read_any`, `time_entry:update_own` | Edit anyone's entries |
+| | `time_entry:delete_any` | `time_entry:update_any`, `time_entry:delete_own` | Delete anyone's entries |
 | | `time_entry:log_backdated` | `time_entry:create` | Log beyond the workspace backdating limit |
 | | `time_entry:manage_rates` | `time_entry:read_any` | Rates, cost types; see cost data |
 | | `budget:read` | | See budgets |
@@ -115,6 +118,17 @@ you do not own"; `*_own` means only your own. Add new capabilities here and in
 `capabilities.ts` in the same change — a CI test asserts they match, that every capability
 is referenced by at least one route policy or documented domain rule, and that every
 capability has exactly one group.
+
+**Adding is additive; renaming or removing is a two-phase change.** Capability names are
+stored as strings in `role.capabilities`, in `api_key.capabilities` and in a service key's
+frozen creation-time subset, so a rename that only touches `capabilities.ts` silently drops
+the capability from every custom role and every issued key while CI stays green. A rename or
+a removal therefore ships in two phases: phase one adds the new name, keeps the old name as
+a recorded **alias** for one release, and runs a data migration over `role.capabilities` and
+`api_key.capabilities`; phase two drops the alias. Both phases need a decision-log entry. An
+unrecognised capability string encountered at evaluation is **logged and treated as absent** —
+never expanded by a wildcard implication — and a startup check reports any stored string that
+is not in `capabilities.ts`.
 
 ## Roles are editable rows
 
@@ -171,13 +185,13 @@ up in review as a diff.
 | `owner` | 100 | Everything, including deleting the workspace. Not editable | every capability except `instance:*` |
 | `admin` | 80 | Everything except deleting the workspace | as `owner` minus `workspace:delete` |
 | `manager` | 60 | Runs delivery: projects, members, policies, workflows | `workspace:read`, `workspace:manage_settings`, `workspace:manage_members`, `project:create`, `project:read`, `project:update`, `project:manage_members`, `project:manage_settings`, `project:archive`, all `work_item:*`, all `comment:*`, all `attachment:*`, `label:manage`, `custom_field:manage`, `saved_view:create`, `saved_view:share`, `sla_policy:manage`, `workflow:manage`, `request_type:manage`, `intake:triage`, `approval:request_cab`, `approval:decide`, all `time_entry:*`, `budget:manage`, `report:read_all`, `report:export`, `kb_article:publish`, `service:manage`, `change:manage`, `release:manage`, `member:invite`, `member:remove`, `webhook:manage`, `automation:manage` |
-| `lead` | 50 | Assigns work, triages intake, decides approvals within reach | `workspace:read`, `project:read`, `project:update`, `project:manage_members`, `work_item:create`, `work_item:update`, `work_item:delete`, `work_item:assign`, `work_item:transition`, `work_item:rank`, `work_item:set_priority`, `work_item:export`, `comment:create_internal`, `comment:update_own`, `comment:delete_own`, `attachment:create`, `attachment:delete_own`, `label:manage`, `saved_view:share`, `sla_policy:read`, `workflow:read`, `request_type:read`, `intake:triage`, `approval:request`, `approval:decide`, `time_entry:create`, `time_entry:read_any`, `time_entry:log_backdated`, `budget:read`, `report:read`, `report:export`, `kb_article:write`, `service:read`, `member:invite`, `automation:manage` |
-| `member` | 40 | Creates and updates work items, comments internally, self-assigns | `workspace:read`, `project:read`, `work_item:create`, `work_item:update`, `work_item:transition`, `work_item:rank`, `work_item:set_priority`, `comment:create_internal`, `comment:update_own`, `comment:delete_own`, `attachment:create`, `attachment:delete_own`, `saved_view:create`, `sla_policy:read`, `workflow:read`, `request_type:read`, `approval:request`, `approval:decide`, `time_entry:create`, `budget:read`, `report:read`, `kb_article:write`, `service:read` |
-| `viewer` | 20 | Read-only | `workspace:read`, `project:read`, `work_item:read`, `sla_policy:read`, `workflow:read`, `request_type:read`, `report:read`, `kb_article:read`, `service:read` |
-| `customer` | 10 | Portal only. Off the ladder — see below | `work_item:read`, `comment:create`, `attachment:create`, `attachment:delete_own`, `work_item:rank`, `work_item:escalate_priority`, `approval:decide`, `kb_article:read` — and nothing else, ever |
+| `lead` | 50 | Assigns work, triages intake, decides approvals within reach | `workspace:read`, `project:read`, `project:update`, `project:manage_members`, `work_item:create`, `work_item:update`, `work_item:delete`, `work_item:assign`, `work_item:transition`, `work_item:rank`, `work_item:set_priority`, `work_item:export`, `comment:create_internal`, `comment:update_own`, `comment:delete_own`, `attachment:create`, `attachment:delete_own`, `label:manage`, `saved_view:share`, `sla_policy:read`, `workflow:read`, `request_type:read`, `intake:triage`, `approval:request`, `approval:decide`, `time_entry:create`, `time_entry:update_own`, `time_entry:delete_own`, `time_entry:read_any`, `time_entry:log_backdated`, `budget:read`, `report:read`, `report:export`, `kb_article:write`, `service:read`, `member:invite`, `automation:manage` |
+| `member` | 40 | Creates and updates work items, comments internally, self-assigns | `workspace:read`, `project:read`, `work_item:create`, `work_item:update`, `work_item:transition`, `work_item:rank`, `work_item:set_priority`, `comment:create_internal`, `comment:update_own`, `comment:delete_own`, `attachment:create`, `attachment:delete_own`, `saved_view:create`, `sla_policy:read`, `workflow:read`, `request_type:read`, `approval:request`, `approval:decide`, `time_entry:create`, `time_entry:update_own`, `time_entry:delete_own`, `budget:read`, `report:read`, `kb_article:write`, `service:read` |
+| `viewer` | 20 | Read-only | `workspace:read`, `project:read`, `work_item:read`, `saved_view:read`, `sla_policy:read`, `workflow:read`, `request_type:read`, `report:read`, `kb_article:read`, `service:read` |
+| `customer` | 10 | Portal only. Off the ladder — see below | `work_item:read`, `comment:create`, `attachment:create`, `work_item:rank`, `work_item:escalate_priority`, `approval:decide`, `kb_article:read` — and nothing else, ever |
 
 Self-assignment by a `member` is `work_item:update` on an item where the new assignee is
-the actor — a documented ownership predicate, not `work_item:assign`
+the actor — the `orSelfTarget` body predicate below, not `work_item:assign`
 ([assignment.md](../03-features/assignment.md)).
 
 Instance scope has one system role: `instance_admin`, holding `instance:*`.
@@ -200,7 +214,7 @@ grant them away through the role editor:
 | Rate a resolution | See SLA policy internals — only their own due time |
 | View their organisation's projects | See any other organisation. Ever |
 | Withdraw their own submission before triage | **Read any report or dashboard** |
-| Reopen a resolved request within the window | Delete anything |
+| Reopen a resolved request within the window | Delete anything — including their own attachment; the portal has no `DELETE` route |
 
 Modelled on Jira Service Management, which got these rules right.
 
@@ -242,10 +256,14 @@ per route remains true. `owner-team-reach.test.ts` asserts a `lead` (holding
 `project:update` but not `project:manage_members`) cannot move either field.
 
 **The 404 is constant-shape.** An out-of-reach id and a non-existent id return the same
-status, the same body, and go through the same lookup path (the row is fetched, then the
-reach check fails — never "not found" short-circuited before the fetch), so neither the
-error body nor the latency class tells a patient attacker which of the two it was. Both
-count against the same rate-limit bucket.
+status and the same body, and both count against the same rate-limit bucket. The reach check
+is **always executed** — on a lookup miss against a synthesised row rather than a fetched one,
+never "not found" short-circuited before the check — so the two answers come out of the same
+code path and the same error constructor. `constant-shape-404.test.ts` asserts equal status,
+equal body and equal headers for the two cases. **Latency equivalence is not claimed:** a
+lookup miss does less work than a hit, and no fixed-time response, padding or jitter is
+specified. The claim is that the *response* does not distinguish the two, not that the clock
+does not.
 
 Within a customer organisation, a work item or submission with
 `customer_visibility = 'private'` is in reach only for its requester and its participants
@@ -268,21 +286,35 @@ narrow: a project role overrides a workspace role for that project.
 kinds — the specs may use no other form, and the route-coverage test rejects any other:
 
 ```ts
-type Policy =
-  | { capability: Capability; scope: Scope; orOwner?: OwnerPredicate }   // 1. capability, optionally satisfied by ownership
+type Policy = (
+  | { capability: Capability; scope: Scope; orOwner?: OwnerBranch; orSelfTarget?: BodyPredicate } // 1. capability, optionally satisfied by an owner branch
   | { authenticated: true; self: true }                                  // 2. the caller's own records only (/api/me/*)
   | { portal: 'customer'; predicate: PortalPredicate }                   // 3. a customer session on /api/portal/*, scoped by predicate
   | { public: true; reason: string }                                     // 4. unauthenticated, with a stated reason
   | { delegated: 'better-auth' | 'websocket' | 'metrics' | 'scim'; reason: string } // 5. mounts outside the session model, allowlisted explicitly
+) & { elevated?: true; sessionOnly?: true };                             // declared on the route, not in a prose table
 
 type Scope = 'instance' | 'workspace' | 'project' | 'work_item' | 'organisation';
+type OwnerBranch = { predicate: OwnerPredicate; capability: Capability; withinMinutes?: number };
 type OwnerPredicate = 'row.person_id === identity.personId' | 'row.created_by === identity.personId' | 'row.requester_id === identity.personId';
+type BodyPredicate = 'body.assigneeId === identity.personId';
 type PortalPredicate = 'own_request' | 'own_organisation' | 'addressed_approval' | 'own_submission';
 ```
 
-- **Kind 1** is the normal case. `orOwner` expresses "the author within the edit window, or
-  `comment:update_any`" without inventing an OR of two policies: the capability is checked
-  first; if absent, the named ownership predicate is evaluated against the loaded row.
+- **Kind 1** is the normal case. The owner branch is a **conjunction, not a bypass**: the
+  primary capability is checked first, and if it is absent the request is allowed only when
+  the caller holds the branch's own `*_own` capability **and** the named predicate evaluates
+  true against the loaded row. Revoking `comment:delete_own` from a role therefore takes
+  effect, and every `*_own` capability is referenced by a route policy — which is what makes
+  the "every capability is referenced by at least one route policy" CI rule true rather than
+  aspirational.
+  - `withinMinutes` carries a time bound relative to the row's `created_at`, so the comment
+    edit window ("edit own comments within the window") is expressed **in the registry** and
+    is visible to the route-coverage test, instead of being decided in a handler.
+  - `orSelfTarget` is a predicate over the **request body**, evaluated by the middleware
+    after Zod parsing and before the handler. It exists so that self-assignment — "the new
+    assignee is the actor" — is a declared policy rather than a handler branch; ownership
+    predicates test the loaded row and can never express it.
 - **Kind 2** replaces every `(self)` in the specs: the handler may only touch rows keyed to
   `identity.personId`, and the evaluator refuses a path or query parameter naming another
   person.
@@ -294,24 +326,56 @@ type PortalPredicate = 'own_request' | 'own_organisation' | 'addressed_approval'
 - **Kind 5** exists because the route-coverage test enumerates **Hono's router**
   (`app.routes`), not the OpenAPI document — the OpenAPI document does not know about
   `/auth/*`, `/ws` or `/metrics`, and those are precisely the surfaces v1 leaked through.
+  The `delegated` union is **closed**: adding a member is a decision-log entry, not an edit.
+
+  A delegated mount is **explicitly allowlisted, with the surface behind it unenumerated** —
+  not "covered". `/auth/*` is one mounted handler whose endpoint set is defined by the
+  better-auth **plugin list**, and that list is rebuilt at runtime from database configuration
+  ([auth-runtime-reconfiguration.md](auth-runtime-reconfiguration.md)), so `app.routes` shows
+  a single wildcard where dozens of endpoints live. The control that closes the gap is a
+  different one: the coverage test asserts that the **constructed plugin list equals the
+  approved list** — no `anonymous`, no `deviceAuthorization`, no `bearer`
+  ([decision log](../07-planning/decision-log.md), fork-time removal list) — and the same
+  assertion re-runs on every runtime rebuild, logging and alerting on a diff.
+
+  kaneo's inherited `mcp` and `oauth` routers are **deleted at fork**, not retrofitted: v2's
+  MCP is a separate `apps/mcp/` process with no HTTP API of its own, and better-auth is the
+  only authentication surface. Neither router needs a policy kind because neither survives
+  the copy.
 
 **Workspace context** for routes with `scope: 'workspace'` and no workspace in the path
 (`/api/custom-fields`, `/api/capabilities`, `/api/webhooks` …) is the `X-Workspace-Id`
 header (or `?workspace=`), validated against the identity's memberships **before** the
-policy check; absent ⇒ `400`. Defined once in [api-design.md](api-design.md).
+policy check; absent ⇒ `400`. Defined once in [api-design.md](api-design.md). The scope
+object is therefore resolved from the route's declared **scope source** — a path parameter,
+that header/query parameter, or (for `POST /api/work-items/search`) the filter body — and
+`idor-fuzz.test.ts` substitutes an id from the other seeded tenant at **every** source, not
+only in the path.
 
 ```ts
 // apps/api/src/work-item/policy.ts
 export const workItemPolicies = {
   'POST  /api/projects/{projectId}/work-items': { capability: 'work_item:create', scope: 'project' },
   'GET   /api/work-items/{key}':                { capability: 'work_item:read',   scope: 'work_item' },
-  'POST  /api/work-items/{key}/assign':         { capability: 'work_item:assign', scope: 'work_item' },
-  'PATCH /api/comments/{id}':                   { capability: 'comment:update_any', scope: 'work_item', orOwner: 'row.person_id === identity.personId' },
+  'POST  /api/work-items/{key}/assign':         { capability: 'work_item:assign', scope: 'work_item',
+                                                  orSelfTarget: 'body.assigneeId === identity.personId' },
+  'PATCH /api/comments/{id}':                   { capability: 'comment:update_any', scope: 'work_item',
+                                                  orOwner: { predicate: 'row.person_id === identity.personId',
+                                                             capability: 'comment:update_own', withinMinutes: 15 } },
+  'DELETE /api/time-entries/{id}':              { capability: 'time_entry:delete_any', scope: 'workspace',
+                                                  orOwner: { predicate: 'row.person_id === identity.personId',
+                                                             capability: 'time_entry:delete_own' } },
+  'DELETE /api/webhooks/{id}':                  { capability: 'webhook:manage', scope: 'workspace',
+                                                  elevated: true, sessionOnly: true },
   'GET   /api/me/settings':                     { authenticated: true, self: true },
   'GET   /api/portal/requests/{ref}':           { portal: 'customer', predicate: 'own_request' },
   'GET   /api/public/branding':                 { public: true, reason: 'rendered on the login page' },
 } satisfies PolicyMap<typeof routes>;   // keys derive from the route table — a mismatch is a type error
 ```
+
+`withinMinutes: 15` above is an illustration of the shape; the comment edit window itself is
+owned by [comments-and-activity.md](../03-features/comments-and-activity.md) and the registry
+takes its number from there.
 
 Three CI tests make this load-bearing:
 
@@ -322,6 +386,12 @@ Three CI tests make this load-bearing:
    same call 404 when the resource is outside the identity's memberships). The fixture is
    generated from the role table above.
 3. **Custom-role test** — an administrator-created role is run through the same matrix.
+4. **Elevation coverage test** — every route under `/api/instance/*`, and every route whose
+   capability is in the declared `AUTHORITY_GRANTING` set, must carry `elevated: true` or an
+   explicit `elevated: false` with a written reason. A new authority-minting route that
+   nobody remembered to list therefore fails the build instead of shipping unprotected.
+5. **Session-only test** — `tests/permissions/session-only.test.ts` enumerates its cases
+   **from the `sessionOnly` field** in the registry, not from a second hand-kept list.
 
 v1 shipped 11 authorization holes past a green test suite. These tests are the structural
 answer. See [Security model](security-model.md).
@@ -342,10 +412,18 @@ information leak.
 
 Some actions require a fresh authentication regardless of capability — **the second
 factor when the account has one** (never "password *or* MFA"), an IdP re-authentication
-with `prompt=login` for SSO-only accounts — which issues a single-use confirmation token
-bound to the specific action and target, valid five minutes
-([security model](security-model.md#sessions-csrf-and-step-up)). **This is the only
-list**; God Mode, the security model and the feature specs cite it rather than restating it.
+with `prompt=login` for SSO-only accounts. Re-authenticating mints a single-use confirmation
+token **bound to the pending action's id**, valid five minutes, from
+`POST /api/me/step-up` ([pending-actions.md](pending-actions.md) `PA-15`,
+[security model](security-model.md#sessions-csrf-and-step-up)) — one step-up can never
+approve two things, and a token that expires while the approver reads the summary can be
+re-minted for as long as the pending action itself lives. **This is the only list**; God
+Mode, the security model and the feature specs cite it rather than restating it.
+
+**This table is generated by `pnpm test:permissions` from the `elevated: true` entries in the
+`policy.ts` files.** Edit the registry, not this table; a hand-added row here that no policy
+declares fails the generation check, and a policy that declares `elevated: true` and is
+missing here fails it too.
 
 | Action | Route |
 | --- | --- |
@@ -363,6 +441,7 @@ list**; God Mode, the security model and the feature specs cite it rather than r
 | Rotating the encryption key | `POST /api/instance/rotate-encryption-key` (operator-staged — see [runbook](../05-operations/runbook.md)) |
 | Exporting instance data — audit CSV, configuration export, full export | `POST /api/instance/audit/export`, `GET /api/instance/config-export`, `POST /api/instance/export` |
 | Rotating a webhook secret | `POST /api/webhooks/{id}/rotate-secret` |
+| Creating a webhook, or changing an existing webhook's `url` — a standing outbound data channel carrying every event in the owner's reach to an arbitrary endpoint, indefinitely | `POST /api/webhooks`, and `PATCH /api/webhooks/{id}` when the body changes `url` ([webhooks-and-api-keys.md](../03-features/webhooks-and-api-keys.md) `WH-14`) |
 | Overriding a change freeze | `POST /api/work-items/{key}/change/override-freeze` |
 
 ### Session-only routes
@@ -370,16 +449,28 @@ list**; God Mode, the security model and the feature specs cite it rather than r
 Elevated actions, and the approval/denial of a **pending action**
 ([pending-actions.md](pending-actions.md)), are accepted only from a **browser session**:
 an API key, an `is_mcp` key or an impersonation session is refused `403 session_required`.
-This is a credential check in the auth middleware, applied before the route's policy, and
-`tests/permissions/session-only.test.ts` enumerates the routes it covers.
+This is a credential check in the auth middleware, applied **before** the route's policy —
+so a session-only route never reaches the pending-action layer at all — and the routes it
+covers are the ones carrying `sessionOnly: true` in the registry, which
+`tests/permissions/session-only.test.ts` enumerates from that field.
 
 ### Deletion is never immediate
 
-Every user-initiated `DELETE` — from the web UI, the REST API, a personal API key or an
-MCP tool — returns `202` with a pending action that the requesting human approves in the
-UI; the server re-runs the route policy at approval time and executes exactly the approved
-targets. The confirmation level (click, typed name, typed count, step-up) is decided by the
-server from the target type. Rules, table and routes: [pending-actions.md](pending-actions.md).
+Every user-initiated `DELETE` returns `202` with a pending action that the requesting human
+approves in the UI; the server re-runs the route policy at approval time and executes exactly
+the approved targets. The confirmation level (click, typed name, typed count, typed count +
+step-up, typed name + step-up) is decided by the server from the target type. Rules, table
+and routes: [pending-actions.md](pending-actions.md).
+
+**Two credential classes, two answers — the elevated targets are session-origin only.**
+Deleting a workspace, an organisation, a project, an API key, a webhook, an identity
+connection or an `auth.*` plugin is on the elevated list above and therefore carries
+`sessionOnly: true`. Those DELETEs are refused **`403 session_required`** when they arrive on
+an API key, an MCP key or an impersonation session: the credential check runs before the
+policy, so there is no 202 and no pending action to approve. Every other DELETE — work item,
+comment, attachment, custom field, saved view, time entry and the rest — is accepted from a
+personal API key or an MCP tool and returns the same `202` with a pending action, which the
+owning human then approves in the browser. The web UI reaches both classes.
 
 ## MCP — the same RBAC, not a second one
 
@@ -393,9 +484,12 @@ current owner RBAC  ∩  key capability subset  ∩  current reach  ∩  route p
 ```
 
 evaluated against the owner's *current* identity, so deactivation, membership removal,
-role change or key revocation take effect on the next call. An `is_mcp` key defaults to
-the read capabilities; writes are an explicit, warned opt-in. Workspace service keys
-cannot be MCP keys (a schema `CHECK`, [data-model.md](data-model.md) §2).
+role change or key revocation take effect on the next call. **Every** personal API key —
+`is_mcp` or not — defaults to the read capabilities; writes are an explicit, warned opt-in at
+creation, because `is_mcp` is self-declared at creation and is therefore not a security
+boundary ([webhooks-and-api-keys.md](../03-features/webhooks-and-api-keys.md) `AK-9`).
+Workspace service keys cannot be MCP keys (a schema `CHECK`,
+[data-model.md](data-model.md) §2).
 
 ## Anti-patterns
 

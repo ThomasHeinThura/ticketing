@@ -1,7 +1,10 @@
 # Kubernetes — the Helm values contract
 
-`charts/taskdesk` is derived from kaneo's chart but rewritten: kaneo ships separate `api`
-and `web` images, this product ships one image serving two bundles by `Host` header. Written
+`charts/taskdesk` is derived from kaneo's chart but rewritten. kaneo's chart also runs a
+**single combined image** — nginx serving the web bundle beside the node API, one entrypoint
+starting both, one Deployment behind one hostname. What differs is the inside: TaskDesk
+serves both bundles from the Node process, selected by `Host` header, with no nginx, so the
+chart needs three Ingress hosts and a `TASKDESK_ROLE` split across two Deployments. Written
 2026-09-05 because three documents described the chart three incompatible ways.
 
 ## Shape
@@ -11,9 +14,9 @@ and `web` images, this product ships one image serving two bundles by `Host` hea
 | `Deployment taskdesk-web` | `TASKDESK_ROLE=web`, `replicas` ≥ 1, readiness on `/api/public/health/ready`, liveness on `/live` |
 | `Deployment taskdesk-jobs` | `TASKDESK_ROLE=jobs`, exactly 1 replica |
 | `Service taskdesk` | Port 5173, in front of `taskdesk-web` only |
-| `Ingress` | Three hosts — agent, portal, files — each with TLS; the files host points at the storage Service or is omitted when a real S3 bucket is used |
+| `Ingress` | Agent and portal hosts, each with TLS, plus the files host **only** when the cluster serves an operator-owned S3 endpoint (`storage.bundled`); omitted on `storage.filesystem` and on a real S3 bucket |
 | `ServiceAccount` | Created by default (`serviceAccount.create: true`); RBAC with named `resourceNames`, no wildcards — an AWS Marketplace requirement too |
-| `Secret` | `existingSecret` (recommended) or generated on first install; holds the five bootstrap variables |
+| `Secret` | `existingSecret` (recommended) or generated on first install; holds the **three secret-bearing** variables — `TASKDESK_DATABASE_URL`, `TASKDESK_ENCRYPTION_KEY`, `TASKDESK_AUTH_SECRET`. The other two required variables are not secrets and are not duplicated here: `TASKDESK_AGENT_URL` and `TASKDESK_PORTAL_URL` are **templated** as `https://` + `hosts.agent` / `hosts.portal` |
 | `Job taskdesk-migrate` | Optional pre-upgrade hook; by default the entrypoint migrates under the advisory lock |
 
 ## `values.yaml` contract

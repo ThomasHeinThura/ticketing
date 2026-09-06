@@ -8,7 +8,7 @@ filesystem without a code change.
 
 | Plugin id | Use |
 | --- | --- |
-| `storage.s3` | Default. SeaweedFS locally, AWS S3 / Garage / Wasabi / B2 in production — a plain S3-API client; not MinIO, see [tech stack](tech-stack.md) |
+| `storage.s3` | The production recommendation — any S3-compatible endpoint: AWS S3, Garage, Wasabi, B2, or SeaweedFS shipped as an **opt-in Compose profile**; a plain S3-API client; not MinIO, see [tech stack](tech-stack.md). **A fresh install runs `storage.filesystem`** until an administrator chooses otherwise (decision log, 2026-09-05) |
 | `storage.azure-blob` | Azure-native deployments |
 | `storage.filesystem` | Single-node, no object store. Volume-mounted |
 
@@ -33,7 +33,7 @@ object. Nobody should discover their storage is misconfigured when a user loses 
 Generated, never derived from the user's filename:
 
 ```
-{workspaceId}/{yyyy}/{mm}/{attachmentId}{ext}
+{workspaceId}/{yyyy}/{mm}/{attachmentId}{ext}     ← workspaceId = attachment.workspace_id, denormalised at insert (a submission attachment has one too)
 ```
 
 - No user-controlled path segment ⇒ no traversal.
@@ -49,7 +49,7 @@ Uploads go **direct to storage** via a presigned POST. The API never proxies fil
 1. POST /api/attachments/presign
      { workItemId, filename, mimeType, size }
    → policy check, quota check, allowlist check
-   → creates attachment row (status = pending)
+   → creates attachment row (state = pending)
    → returns { attachmentId, url, fields, expiresIn: 300 }
 
 2. Browser POSTs the file directly to storage.
@@ -57,7 +57,7 @@ Uploads go **direct to storage** via a presigned POST. The API never proxies fil
 3. POST /api/attachments/{id}/complete
    → server stats the object: exists? size matches? 
    → sniffs magic bytes against the declared MIME type
-   → status = ready, emits activity + websocket event
+   → state = ready, emits activity + websocket event
 ```
 
 A `pending` attachment older than one hour is cleaned up by `attachment-gc`, along with
@@ -81,6 +81,12 @@ ods), text (txt, md, csv, log, json, xml, yaml), archives (zip, 7z, tar, gz).
 ## Download and serving
 
 - Downloads are **presigned URLs with a 5-minute TTL**, issued only after a policy check.
+- The storage plugin's configured **public endpoint must equal the browser-facing origin**:
+  an S3 SigV4 signature covers the `Host` header, so a URL presigned for `seaweedfs:8333`
+  fails at `https://files.<domain>`. The bucket's CORS allows exactly the agent and portal
+  origins. `files.<domain>` and its Traefik router exist **only** when an operator-owned S3
+  endpoint is served behind this Traefik ([deployment.md](../05-operations/deployment.md));
+  on `storage.filesystem` the API serves bytes itself and no third hostname exists.
   The object store is never public.
 - `Content-Disposition: attachment` for everything except images that are being displayed
   inline in the UI.

@@ -47,6 +47,12 @@ refused with the hold named. The per-tenant export above is the e-discovery expo
 organisation's data, nothing else's, in a documented JSON shape. Holds are listed on the
 Health screen so nobody forgets one is in place.
 
+It is a `legal_hold` row — `scope` (`organisation` \| `person`), `scope_id`, `placed_by`,
+`placed_at`, `reason`, `lifted_by`, `lifted_at` — in [data-model.md](../01-architecture/data-model.md);
+`audit-purge`, `session-cleanup` and `attachment-gc` skip every held scope
+([background-jobs.md](../01-architecture/background-jobs.md)), and placing or lifting a hold
+is audited as `legal_hold.placed` / `legal_hold.lifted`.
+
 ## Processing locations and sub-processors
 
 None inherent — the product phones home to nothing. Sub-processors are exactly the plugins

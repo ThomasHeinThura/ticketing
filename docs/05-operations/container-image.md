@@ -36,7 +36,8 @@ COPY --chown=taskdesk:taskdesk deploy/entrypoint.sh NOTICE ./
 USER taskdesk
 ENV NODE_ENV=production TASKDESK_PORT=5173
 EXPOSE 5173
-HEALTHCHECK --interval=30s --timeout=3s --start-period=30s CMD node dist/healthcheck.js
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s \
+  CMD wget --spider -q http://127.0.0.1:5173/api/public/health/live || exit 1
 ENTRYPOINT ["./entrypoint.sh"]
 LABEL org.opencontainers.image.version=$VERSION org.opencontainers.image.revision=$GIT_SHA \
       org.opencontainers.image.created=$BUILD_TIME org.opencontainers.image.source=https://github.com/<org>/taskdesk \
@@ -55,6 +56,15 @@ LABEL org.opencontainers.image.version=$VERSION org.opencontainers.image.revisio
 
 `HEALTHCHECK` calls `/api/public/health/live` — process up, touches no dependency — so a
 Postgres blip never restarts a healthy container; readiness is the load balancer's concern.
+
+It is a `wget` one-liner, the same shape kaneo uses, and deliberately **not** a
+`dist/healthcheck.js`: the build declares two esbuild entries (`index`, `cli`), so a third
+output nothing produces would leave the container permanently `unhealthy` — and
+`up -d --wait` blocks on exactly that ([deployment.md](deployment.md)).
+
+Migrations run at boot under an advisory lock; the mechanism, the ordering and the two-phase
+rule for destructive changes are in
+[migrations.md](../04-engineering/migrations.md) and are not restated here.
 
 ## The CLI
 

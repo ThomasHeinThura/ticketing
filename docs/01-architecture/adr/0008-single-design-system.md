@@ -23,8 +23,10 @@ in `Frontend/src/ui/`. The consequences, documented in v1's own notes:
 The verdict in v1's own retrospective was unambiguous: *"No component library: UI
 primitives hand-coded, leading to inconsistency; v2 should adopt a mature library."*
 
-Meanwhile kaneo ships 60+ Radix-based primitives with Tailwind v4 tokens, a coherent
-visual language, dark mode, motion specs and accessibility handled by Radix.
+Meanwhile kaneo ships 63 primitives — 43 on Base UI, one on Radix (`Slot`) — with Tailwind
+v4 tokens, a coherent visual language, dark mode, motion specs and accessibility handled by
+Base UI. *(Wording corrected 2026-09-06 against kaneo's source; the ADR originally said
+"60+ Radix-based". Decision N of 2026-09-05 makes Base UI the primary standard.)*
 
 ## Decision
 
@@ -55,7 +57,7 @@ one.**
 - **Consistency is structural, not aspirational.** Two screens built by two different
   people, or two different AI agents, look the same because they are made of the same
   parts.
-- **Accessibility comes from Radix**, once, rather than being re-litigated per component.
+- **Accessibility comes from Base UI**, once (decision N, 2026-09-05), rather than being re-litigated per component.
 - **Dark mode, motion and theming are token-driven**, so a branding change is a variable
   change.
 - **The portal cannot become second-class.** It is built from the same parts as the agent

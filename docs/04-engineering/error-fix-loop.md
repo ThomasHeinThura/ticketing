@@ -108,7 +108,10 @@ Write down:
 4. What you have ruled out.
 5. Your current best hypothesis.
 
-Then escalate to Thomas.
+Then ask Thomas — the five-item note above *is* the escalation, and it goes into the pull
+request description and a **Blocked** entry in [status.md](../07-planning/status.md). The
+same shape applies when a usage limit blocks a required reviewer
+([agent-workflow.md](agent-workflow.md#model-tiers-within-claude-code), the third absolute).
 
 This applies especially to AI agents, where the failure mode is generating variation after
 variation without new information. A fourth variation on a wrong model of the problem is

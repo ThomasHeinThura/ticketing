@@ -2,10 +2,18 @@
 
 What to do when something is wrong. Symptom-first, because that is how you arrive here.
 
+**Before the metrics commands below will work:** `export METRICS_TOKEN=…`, copied from God
+Mode → Observability. It is **not** an environment variable of the container and there is no
+`TASKDESK_METRICS_TOKEN` — the token is runtime configuration like everything else
+([configuration-reference.md](configuration-reference.md)). `/metrics` is served on its own
+listener, port **9464**, which is not routed through Traefik
+([observability.md](../01-architecture/observability.md)); the health endpoints are on the
+application port as usual.
+
 ## Triage
 
-1. **Is it up?** `curl https://ticket.<domain>/api/health/ready`
-2. **Is it everything or one thing?** `/api/health/deep` lists each dependency
+1. **Is it up?** `curl https://ticket.<domain>/api/public/health/ready`
+2. **Is it everything or one thing?** `/api/instance/health/deep` lists each dependency (an `instance:admin` session — the metrics token does not grant it)
 3. **What changed?** Last deploy, last configuration change (God Mode → Audit)
 4. **Who is affected?** One organisation or all — Sentry tags by organisation
 5. **Communicate before investigating.** A five-word status message buys an hour of quiet
@@ -14,12 +22,24 @@ What to do when something is wrong. Symptom-first, because that is how you arriv
 
 ## Symptoms
 
+### First run
+
+The install finished, and nobody has signed in yet. This is where the most likely incident
+of an instance's whole life happens.
+
+| Cause | Fix |
+| --- | --- |
+| **Setup token expired or lost** | The token is short-lived and single-use. While `setup_completed_at` is null, **every container restart prints a fresh token and invalidates the previous one** ([auth-and-identity.md](../01-architecture/auth-and-identity.md)) — so `docker compose restart taskdesk` and read the new one out of `docker compose logs taskdesk`. Nothing else is lost; no administrator exists yet |
+| Setup page says setup is already complete | Someone else claimed the first administrator. Sign in as them, or use break-glass below |
+| Headless install created no administrator | `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` was unset. Set it and restart, or use the setup page |
+| Certificate not issued on the first `up` | DNS did not point here when ACME ran. Fix the record and restart Traefik; the installer's pre-flight exists to catch exactly this ([one-line-install.md](one-line-install.md)) |
+
 ### Site is down
 
 ```bash
 docker compose ps
 docker compose logs --tail=200 taskdesk
-curl -sf localhost:5173/api/health/live
+curl -sf localhost:5173/api/public/health/live
 ```
 
 | Cause | Fix |
@@ -33,7 +53,7 @@ curl -sf localhost:5173/api/health/live
 ### Slow
 
 ```bash
-curl -H "Authorization: Bearer $TASKDESK_METRICS_TOKEN" localhost:5173/metrics | grep -E 'duration|pool|eventloop'
+curl -H "Authorization: Bearer $METRICS_TOKEN" localhost:9464/metrics | grep -E 'duration|pool|eventloop'
 ```
 
 | Cause | Fix |
@@ -61,7 +81,7 @@ curl -H "Authorization: Bearer $TASKDESK_METRICS_TOKEN" localhost:5173/metrics |
 ### Notifications not arriving
 
 ```bash
-curl -H "Authorization: Bearer $TASKDESK_METRICS_TOKEN" localhost:5173/metrics | grep outbox
+curl -H "Authorization: Bearer $METRICS_TOKEN" localhost:9464/metrics | grep outbox
 ```
 
 | Cause | Fix |
@@ -88,7 +108,7 @@ wrong — the inputs are wrong.
 ### Jobs not running
 
 ```bash
-curl -H "Authorization: Bearer $TASKDESK_METRICS_TOKEN" localhost:5173/metrics | grep job_last_success
+curl -H "Authorization: Bearer $METRICS_TOKEN" localhost:9464/metrics | grep job_last_success
 psql -c "select * from job_lease;"
 ```
 
@@ -105,7 +125,10 @@ psql -c "select * from job_lease;"
 | Storage unreachable | God Mode → Storage → test |
 | Credentials rotated | Re-enter in God Mode |
 | Bucket full or quota hit | Check usage |
+| Presign rejected by the storage endpoint | **The configured public endpoint is not the browser-facing origin.** A SigV4 signature covers the `Host` header, so a URL signed for the internal endpoint fails when the browser fetches it at the files origin. God Mode → Storage → public endpoint must equal what the browser sees ([deployment.md](deployment.md)) |
+| Presign accepted, browser upload blocked | The **bucket's** CORS does not allow the agent and portal origins. This is bucket configuration, not a Traefik middleware |
 | Presign failing | Clock skew between the app and the object store breaks signatures |
+| Bucket does not exist | The `--profile s3` bucket-create step did not run. Re-run `scripts/deploy.sh` |
 
 ---
 
@@ -128,10 +151,6 @@ The CLI is a build target of the image (`apps/api/src/cli.ts` → `dist/cli.js`,
 | `verify-backup <file>` | `pg_restore --list` plus a decrypt check of one plugin secret against the current key |
 | `rekey-status` | Progress of `secrets-rekey`: rows on the new `key_id` vs total |
 
-```
-# (metrics token is in God Mode → Observability)
-```
-
 The command writes an `audit_log` row recording that break-glass was used. If it appears in
 the audit log and nobody knows why, treat it as an incident.
 
@@ -140,10 +159,19 @@ the audit log and nobody knows why, treat it as an incident.
 ## Rolling back
 
 ```bash
-docker compose down taskdesk
-# edit the image digest in .env
-docker compose up -d taskdesk
-curl -sf localhost:5173/api/health/ready
+scripts/deploy.sh rollback <previous-digest>
+curl -sf localhost:5173/api/public/health/ready
+```
+
+`deploy.sh rollback` verifies the cosign signature on the digest it is about to run, sets
+`TASKDESK_IMAGE_DIGEST` in `.env`, and brings the service back with `--wait`. **Rolling back
+onto an unverified digest is still a supply-chain decision** — which is why the manual
+sequence below is the labelled fallback rather than the procedure:
+
+```bash
+docker compose down taskdesk         # no signature verification
+# edit TASKDESK_IMAGE_DIGEST in .env
+docker compose up -d --wait taskdesk
 ```
 
 **Migrations do not roll back.** If the release included a destructive migration, a code
@@ -192,8 +220,8 @@ God Mode and should be recorded as one.
 ```bash
 docker compose logs -f taskdesk
 docker compose exec postgres psql -U taskdesk
-curl -s localhost:5173/api/health/deep | jq
-curl -s -H "Authorization: Bearer $TASKDESK_METRICS_TOKEN" localhost:5173/metrics | grep taskdesk_
+curl -s -b "$ADMIN_SESSION_COOKIE" localhost:5173/api/instance/health/deep | jq   # instance:admin session; the metrics token does not grant this
+curl -s -H "Authorization: Bearer $METRICS_TOKEN" localhost:9464/metrics | grep taskdesk_
 docker stats
 df -h && du -sh /var/lib/docker/volumes/*
 ```

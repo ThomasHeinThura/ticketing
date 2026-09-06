@@ -98,14 +98,18 @@ the **only** place lifecycle side-effects are defined; `sla.md` and `assignment.
   `sla_pause` row, so the clock resumes from where it stopped, not from zero.
 - `WF-19` Effects available on any transition: `set_assignee { personId | 'default' }`,
   `clear_assignee`, `pause_sla`, `resume_sla` (an open `waiting_customer` pause),
-  `set_field { field, value }`, and `schedule_transition { after_minutes, to_state_id }` —
+  `set_field { field, value }`, and `schedule_transition { after_minutes, to_state_id }` (each pending instance is a
+  `scheduled_transition` row — `work_item_id`, `from_state_id`, `to_state_id`, `due_at`,
+  `state`; `reminder-scan` fires due rows and cancels a row whose item has already left
+  `from_state_id` — [data-model.md](../01-architecture/data-model.md)) —
   the "pending until" pattern, fired by the scheduler and cancelled if the item leaves the
   state first.
 - `WF-20` A transition emits `work_item.transitioned` ([events.md](../01-architecture/events.md))
   for automations, webhooks and notifications, in the same transaction as the change.
 - `WF-21` A customer-initiated reopen ([customer-portal.md](customer-portal.md) `CP-8`, a
   reply to a closed request, an upload to a resolved request) is executed as a **system
-  actor** through the workflow's transition marked `is_reopen`; if the active version has
+  actor** through the workflow's transition marked `is_reopen` (`workflow_transition.is_reopen`,
+  at most one per workflow version); if the active version has
   none, the action is accepted, the item stays resolved, and a flagged activity row asks
   staff to look. One mechanism for all three call sites.
 

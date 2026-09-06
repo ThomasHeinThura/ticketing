@@ -8,8 +8,12 @@ identifiers (`job_lease.name`, Prometheus labels) and are not restated anywhere 
 
 v1 ran a Go worker whose entire job was polling the API and computing snapshots. It cost
 a language, a deployment, a set of service-to-service credentials, and a second place for
-bugs to hide. kaneo already ships `croner`; the `job_lease` table is ours to write and is
-small. That is all that is actually needed at this scale.
+bugs to hide. kaneo already ships **both** halves of this: `croner`, and the `job_lease`
+table with its `withJobLease()` acquire/release SQL
+(`apps/api/src/database/schema.ts`, `apps/api/src/scheduler/leader-lock.ts`) — the same
+statements written out below. What is genuinely ours is the **heartbeat/renew** and the
+abort `signal`, which upstream has no equivalent of; that is what makes the 4-hour import
+case below work. Agrees with [ADR 0007](adr/0007-in-process-jobs.md).
 
 The trade is real and accepted: a long job competes with request handling for the event
 loop. Mitigations — jobs are chunked, they yield between batches, and heavy aggregation
@@ -23,10 +27,13 @@ so the escape hatch in [scaling.md](../05-operations/scaling.md) is real.
 job_lease ( name text primary key, owner text not null, expires_at timestamptz not null )
 ```
 
-`owner` is `${hostname}:${pid}:${bootId}` — unique per process lifetime.
+Inherited from kaneo, unchanged — and deliberately without `created_at`/`updated_at`: it is
+a lock, not data ([data-model.md](data-model.md)). `owner` is
+`${hostname}:${pid}:${bootId}` — unique per process lifetime.
 
 ```sql
--- acquire: succeeds only if no lease exists or the existing one has expired
+-- acquire (INHERITED — identical to kaneo's leader-lock.ts): succeeds only if no lease
+-- exists or the existing one has expired
 insert into job_lease (name, owner, expires_at)
 values ($1, $2, now() + $3::interval)
 on conflict (name) do update
@@ -34,11 +41,12 @@ on conflict (name) do update
   where job_lease.expires_at < now()
 returning owner;                       -- a row is returned ⇔ we hold the lease
 
--- heartbeat, every TTL/3 while the handler runs; the owner predicate is what makes it safe
+-- heartbeat (OURS — upstream has no renewal), every TTL/3 while the handler runs;
+-- the owner predicate is what makes it safe
 update job_lease set expires_at = now() + $3::interval
   where name = $1 and owner = $2;      -- 0 rows ⇒ we lost the lease: stop, do not release
 
--- release, only our own
+-- release (INHERITED), only our own
 delete from job_lease where name = $1 and owner = $2;
 ```
 
@@ -63,15 +71,15 @@ finally { clearInterval(heartbeat); await lease.release(); }
 
 | Name | Cadence | Lease TTL | What it does |
 | --- | --- | --- | --- |
-| `sla-scan` | 5 min | 5 min | Recomputes SLA state for open work items from `sla_started_at`; emits `sla.at_risk` / `sla.breached` / `sla.met` on edges via `work_item_sla_cache` |
-| `reminder-scan` | 15 min | 5 min | `work_item.due_soon` / `overdue`, `prerequisite.overdue`, `approval.expiring` / `expired` (writes `reminder_50_sent_at` / `reminder_90_sent_at` so nothing repeats), walks escalation paths (`NO-22`), auto-declines submissions in `clarifying` past the window (`IQ-15`), flags `sla_pause` rows open > 30 days, flags KB articles past `review_due_at`, fires due `schedule_transition` effects |
+| `sla-scan` | 5 min | 5 min | Recomputes SLA state for **open** work items from `sla_started_at`; emits `sla.at_risk` / `sla.breached` on edges via `work_item_sla_cache`. It does **not** emit `sla.met` / `sla.missed` — a just-completed item has `resolved_at` set and is outside the candidate set below, so those two are emitted by the `WF-17` transition into a `completed`-group state ([events.md](events.md)) |
+| `reminder-scan` | 15 min | 5 min | `work_item.due_soon` / `overdue`, `prerequisite.overdue`, `approval.expiring` / `expired` (writes `reminder_50_sent_at` / `reminder_90_sent_at` so nothing repeats), walks escalation paths (`NO-22`), auto-declines submissions in `clarifying` past the window (`IQ-15`), flags `sla_pause` rows open > 30 days, flags KB articles past `review_due_at`, fires due `scheduled_transition` rows (`state = 'pending'` and `due_at <= now()`; a row whose work item has left `from_state_id` is marked `cancelled` instead) |
 | `outbox-drain` | 30 s | **none — `SKIP LOCKED`** | Delivers webhooks and external notifications with retry/backoff; auto-disables a webhook failing for 24 h and emits `webhook.auto_disabled`. Runs on every replica concurrently by design |
 | `notification-digest` | hourly | 5 min | Batches digest-preference notifications into one email per person |
 | `metrics-snapshot` | hourly | 15 min | Writes `metric_snapshot` (hourly grain; daily rollup at 00:15) and, daily, `cycle_snapshot` |
 | `search-reindex` | 10 min | 10 min | Catches up rows whose search vector is stale |
-| `audit-purge` | daily 03:00 | 30 min | Deletes `audit_log` rows past retention as `taskdesk_maint`; writes its own audit row |
-| `session-cleanup` | daily 03:15 | 5 min | Expired sessions, invitations, idempotency keys, soft-deleted rows past their window |
-| `attachment-gc` | daily 03:30 | 30 min | Removes objects for `attachment.state = 'deleted'` rows and orphans |
+| `audit-purge` | daily 03:00 | 30 min | Deletes `audit_log` rows past retention as `taskdesk_maint`; **skips rows whose `organisation_id` or actor is under an open `legal_hold`** (join `legal_hold` on `lifted_at is null`); writes an `audit_chain_anchor` row **before** deleting, and does not delete if the anchor cannot be written; writes its own audit row |
+| `session-cleanup` | daily 03:15 | 5 min | Expired sessions, invitations, idempotency keys, soft-deleted rows past their window — **the soft-delete purge skips any row whose organisation or person is under an open `legal_hold`**, and leaves it soft-deleted until the hold lifts |
+| `attachment-gc` | daily 03:30 | 30 min | Removes objects for `attachment.state = 'deleted'` rows and orphans; **skips attachments whose `organisation_id` is under an open `legal_hold`** — which is why `attachment.workspace_id` / `organisation_id` are stored on the row ([data-model.md](data-model.md)) |
 | `attachment-pending-cleanup` | hourly | 5 min | Deletes `attachment` rows still `pending` after an hour (presign never completed) |
 | `timer-sweeper` | 15 min | 5 min | Stops `running_timer` rows older than 12 h, writing a capped `time_entry` |
 | `plugin-health` | 10 min | 2 min | Pings configured plugins **and each enabled `identity_connection`'s OIDC discovery document** (`IP-25`); surfaces failures in God Mode → Health |
@@ -79,10 +87,17 @@ finally { clearInterval(heartbeat); await lease.release(); }
 | `import-run` | on demand | 1 h, renewed | Executes a queued import, chunked and resumable, on the **bulk write path** |
 | `report-export` | on demand | 30 min | Renders a large export to storage and emails an **authenticated** link (`RP-10`) |
 | `secrets-rekey` | on demand | 30 min | Re-encrypts every `instance_plugin_config.secrets` **and `identity_connection.client_secret`** from `TASKDESK_ENCRYPTION_KEY_PREVIOUS` to the current key, writing `key_id` per row — see the [runbook](../05-operations/runbook.md) |
+| `automation-schedule` | 1 min | 1 min, **per rule** | Evaluates every enabled `automation` whose `trigger = 'schedule'` and whose `schedule_cron` is due against the rule's `project_filter`, then invokes it. Rule crons are stored rows, not `croner` registrations: the job wakes each minute, selects the due rules and runs them, so a rule edited in the UI takes effect on the next tick with no scheduler reload. The lease name is **one per rule** — `automation:<automation_id>` — so 40 replicas run each rule once and a slow rule does not block the others. This is the runner behind the `schedule` trigger that [events.md](events.md) calls "not an event" |
 | `pending-action-expire` | 1 min | 1 min | Marks `pending_action` rows past `expires_at` as `expired` and emits `pending_action.decided` (`PA-8`); invalidates pending rows whose requester was deactivated or whose credential was revoked since (`PA-9`) |
 
 All cadences are configurable in God Mode → Jobs (`instance:manage_jobs`). A job can be
 disabled, and a job can be triggered manually for debugging; both are audited.
+
+**`audit-verify` is not in this table and is not a scheduled job.** It is an **on-demand
+CLI** (`taskdesk audit-verify`, also runnable from God Mode) that walks the `audit_log`
+hash chain from the newest `audit_chain_anchor` and reports the first row where the chain
+breaks. It is run on demand and at every restore drill — [data-model.md](data-model.md),
+[audit-trail.md](../03-features/audit-trail.md). It takes no lease, because it only reads.
 
 ## SLA scanning, and why it is cheap
 
@@ -93,11 +108,24 @@ Authoritative SLA **state is not stored**. It is computed from
 
 ```sql
 -- narrow the candidate set in SQL before touching JavaScript
-select id, key, sla_started_at, priority, type_id, project_id
-from work_item
-where resolved_at is null and archived_at is null and deleted_at is null
-  and coalesce(sla_policy_resolves(type_id, project_id), false);
+select wi.id, wi.key, wi.sla_started_at, wi.first_response_at, wi.priority, wi.type_id,
+       wi.project_id,
+       coalesce(wit.sla_policy_id, rt.sla_policy_id, p.sla_policy_id, w.default_sla_policy_id)
+         as sla_policy_id            -- SLA-1's four levels, in order, spelled out
+from work_item wi
+join work_item_type wit on wit.id = wi.type_id
+join project p         on p.id  = wi.project_id
+join workspace w       on w.id  = p.workspace_id
+left join submission sub on sub.work_item_id = wi.id
+left join request_type rt on rt.id = sub.request_type_id
+where wi.resolved_at is null and wi.archived_at is null and wi.deleted_at is null
+  and coalesce(wit.sla_policy_id, rt.sla_policy_id, p.sla_policy_id,
+               w.default_sla_policy_id) is not null;
 ```
+
+There is no `sla_policy_resolves()` function; the resolution order of `SLA-1`
+(work item type → request type → project → workspace default) is the `coalesce` above, and
+it is the only place it is written as SQL.
 
 For each candidate, the pure `computeSlaState()` function from `packages/domain` runs. Only
 work items whose state *changed since the last scan* emit an event; the last known state is
@@ -132,9 +160,10 @@ replica.
 ## Metrics snapshots
 
 Reports over months of history are too slow to compute per request. `metrics-snapshot`
-writes hourly aggregates into `metric_snapshot` whose `dimensions` always include
-`project_id` and `organisation_id`, so a viewer's report sums only the rows within their
-reach (`RP-17`). Reports read snapshots for closed periods and compute live only for the
+writes hourly aggregates into `metric_snapshot`. `project_id` and `organisation_id` are
+**real columns** on that table with an index over them ([data-model.md](data-model.md)),
+not `dimensions` keys, so a viewer's report sums only the rows within their reach (`RP-17`)
+without a jsonb extraction per row. Reports read snapshots for closed periods and compute live only for the
 current partial hour, and say so.
 
 ## Import runs

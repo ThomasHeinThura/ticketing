@@ -1,8 +1,10 @@
 # `packages/ui` extraction plan
 
 kaneo has **no design-system package** — its primitives live inside `apps/web/src/components/ui`,
-and they are a **mixed Radix UI + Base UI set** (kaneo added `@base-ui/react` when shadcn/ui
-made Base UI its default in mid-2026). [ADR 0008](../01-architecture/adr/0008-single-design-system.md)
+and they are **already a Base UI set** (checked against kaneo's source 2026-09-06): 43 of
+63 import `@base-ui/react`; one (`form.tsx`) imports `@radix-ui/react-slot` for `Slot`,
+`timeline.tsx` takes `Slot` from the `radix-ui` umbrella package, and 17 of the 18
+`@radix-ui/*` dependencies in `apps/web/package.json` have no references at all. [ADR 0008](../01-architecture/adr/0008-single-design-system.md)
 is honest that extraction is real work; this is the plan. Written 2026-09-05.
 
 ## Primitive library — decided: Base UI
@@ -14,22 +16,26 @@ is honest that extraction is real work; this is the plan. Written 2026-09-05.
 | Both, indefinitely | No migration cost | Two focus/portal/scroll-lock models in one package; "accessibility comes from one library" becomes untrue |
 
 **Decision (Thomas, 2026-09-05): Base UI is the primary UI primitive standard.** During
-extraction, migrate each Radix primitive for which Base UI has an adequate equivalent, and
-record the count actually found (not "60+") in the decision log. Retain Radix **only** as a
+extraction the count actually found is **one live Radix use — `Slot`**; the 17 unused
+`@radix-ui/*` dependencies are simply not copied, and `KNOWN-RADIX.md` starts with at most
+one row. Retain Radix **only** as a
 documented temporary exception where Base UI lacks a required primitive — behind the same
 `packages/ui` export, listed in `packages/ui/KNOWN-RADIX.md` with the reason and a date to
 revisit. **Feature code imports only from `@taskdesk/ui`**, never from `@radix-ui/*` or
-`@base-ui/react` directly — `check:ui` fails the build on a direct import and on any Radix
-primitive inside `packages/ui` that is not in `KNOWN-RADIX.md`. Two unmanaged primitive
+`@base-ui/react` directly — `check:ui` fails the build on any import of `@radix-ui/*`, the
+`radix-ui` umbrella or `@base-ui/react` outside `packages/ui`, and inside `packages/ui` on
+any Radix import not listed in `KNOWN-RADIX.md`, which is a table with fixed columns
+(primitive · module specifier · reason · revisit date) that the check parses. Re-exports
+from `@taskdesk/ui` pass, because the check scans import specifiers, not exported symbols. Two unmanaged primitive
 systems are not kept indefinitely: the exception register is reviewed at every phase gate.
 
 ## What moves
 
 | From `apps/web/src/` | To `packages/ui/src/` |
 | --- | --- |
-| `components/ui/*` | `primitives/*` — one file per primitive, one story, one test |
+| `components/ui/*` | `primitives/*` — one file per primitive, one story, one test; `error-boundary.tsx` is **de-Sentry'd before it moves** (fork-time removal list) |
 | Tailwind v4 theme (`index.css` CSS variables, `@theme`) | `theme.css` + `tailwind-preset.ts`; **every token gets a value** in light and dark ([design-tokens.md](design-tokens.md)) |
-| `lib/utils.ts` (`cn`) | `lib/cn.ts` |
+| `lib/cn.ts` (`cn`, 99 importers) | `lib/cn.ts` — `lib/utils.ts`, a byte-identical duplicate with 5 importers, is deleted and its importers repointed in the codemod |
 | Icon usage | `icons.ts` — the lucide allowlist the `icon` columns store names from |
 | Motion tokens (`plans/001`) | `motion.ts` — including the spring as a Framer Motion object, not CSS |
 
@@ -65,3 +71,15 @@ count.
 
 - [Design system](design-system.md) · [Design tokens](design-tokens.md) · [ADR 0008](../01-architecture/adr/0008-single-design-system.md)
 - [Repository bootstrap](../04-engineering/repository-bootstrap.md)
+
+## Two entries, two route trees — P0 work this plan depends on
+
+kaneo has one `index.html`, one `main.tsx` and one generated `routeTree.gen.ts` with 49 static
+route imports, so "two entries, one source" is not a build flag. The split is: two
+`tanstackRouter()` plugin instances in `vite.config.ts` with separate `routesDirectory`
+(`src/routes/agent`, `src/routes/portal`) and `generatedRouteTree` outputs; two Rollup
+inputs (`entry.agent.tsx`, `entry.portal.tsx`) and two HTML files; shared components under
+`components/`; `lib/routes.ts` **generated** from the two trees (never hand-maintained) so
+`G5` and `check:inventory` compare against one source of truth; and `G12` walking the portal
+bundle's module graph from the bundler's metadata. Listed in
+[phases.md](../07-planning/phases.md) P0.

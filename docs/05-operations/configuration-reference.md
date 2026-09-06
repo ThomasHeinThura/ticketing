@@ -6,7 +6,7 @@ Two kinds of configuration, and the distinction is the whole point of the archit
 | --- | --- | --- |
 | Where | Environment variables | God Mode, stored in the database |
 | Changing it needs | A restart | Nothing |
-| Amount | Five required, six optional — the table below is the **only** list | Everything else |
+| Amount | Five required; six optional per-process switches; `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` for headless installs; the three `POSTGRES_*` variables are read by the Postgres image only | Everything else |
 | Why | Needed *to reach* the configuration | Varies per deployment and per customer |
 
 See [plugin architecture](../01-architecture/plugin-architecture.md) and
@@ -51,11 +51,34 @@ operational switches. Everything else is a setting inside the app.*
 | --- | --- |
 | `POSTGRES_DB` · `POSTGRES_USER` · `POSTGRES_PASSWORD` | Standard image variables |
 
-### That is the complete list.
+### That is the complete list of what the application reads.
 
 If you find yourself wanting to add one, the answer is almost certainly a plugin or a
 feature flag. See the rule in
 [plugin architecture](../01-architecture/plugin-architecture.md).
+
+kaneo's API reads about eighty environment variables. The five-plus-six rule is therefore a
+**migration**, not a rename: every inherited variable has a keep / rename / move-to-God-Mode
+/ delete verdict in
+[repository-bootstrap.md § 2](../04-engineering/repository-bootstrap.md), and
+`deploy/.env.example` is written fresh rather than copied.
+
+### Variables the application does not read
+
+These appear in `deploy/.env` or in a client's own configuration and are named here so that
+finding one in the corpus does not look like a breach of the rule above. **None of them is
+read by the server process.**
+
+| Variable | Read by | Purpose |
+| --- | --- | --- |
+| `DOMAIN` | Compose, at file-parse time | Substituted into every Traefik router rule — the `Host(...)` matcher for `ticket.`, `portal.` and, when deployed, `files.` ([traefik-and-domains.md](traefik-and-domains.md)). A wrong value produces a 404 from Traefik, never an application error |
+| `TASKDESK_IMAGE_TAG` · `TASKDESK_IMAGE_DIGEST` | Compose | Which image the `taskdesk` service pulls. Rollback is editing the digest here and bringing the service back up ([runbook](runbook.md)) |
+| `TASKDESK_HSTS_PRELOAD` | Compose, into the Traefik headers middleware | Opt-in `includeSubDomains; preload` on `Strict-Transport-Security`. Off unless the operator sets it, because both are commitments about someone else's apex domain ([traefik-and-domains.md](traefik-and-domains.md)) |
+| `TASKDESK_API_URL` · `TASKDESK_API_KEY` | `@taskdesk/mcp`, on the user's own machine | The MCP client package's own configuration ([mcp-server.md](../03-features/mcp-server.md)). It talks to an instance over HTTP like any other API consumer; the server never reads either name |
+
+The five-plus-six rule governs what the **application** reads. What Compose substitutes into
+a YAML file, and what a client package reads on a laptop, are different surfaces with
+different blast radii.
 
 ---
 
@@ -90,8 +113,13 @@ quotas
 
 ### Storage
 
-Backend (`s3`, `azure-blob`, `filesystem`) · endpoint · region · bucket · credentials ·
-path style · max file size · max files per work item · allowed extensions
+Backend (`s3`, `azure-blob`, `filesystem`) · endpoint · **public endpoint** · region ·
+bucket · credentials · path style · max file size · max files per work item ·
+allowed extensions
+
+**A fresh install is `filesystem`** — attachment bytes on a named volume, no credentials, no
+bucket, no third hostname. An administrator moves to `s3` when they want to
+([deployment.md](deployment.md) has the Compose profile and the presign constraint).
 
 ### Notifications
 
@@ -114,6 +142,11 @@ Per job: schedule · enabled · last run · manual trigger
 
 Sentry DSN · OTLP endpoint and headers · trace sample rate · metrics bearer token ·
 log level per module
+
+The **metrics bearer token** guards `/metrics` on the separate metrics listener and is God
+Mode → Observability configuration, never an environment variable — there is no
+`TASKDESK_METRICS_TOKEN`. The [runbook](runbook.md)'s metrics commands read it from a shell
+variable the operator exports by hand ([observability.md](../01-architecture/observability.md)).
 
 ### AI (optional, off by default)
 
@@ -143,8 +176,15 @@ inherited value came from.
 - The API **never returns a secret**. Reads return `"••••••••"`; writes accept either a
   new value or a sentinel meaning "unchanged".
 - Every change is audited, recording which keys changed — never the values.
-- Rotation is a God Mode operation that re-encrypts everything under a new key in a
-  transaction, retaining the old key until it completes.
+- **Rotation is operator-staged, then incremental.** The operator sets the new key in
+  `TASKDESK_ENCRYPTION_KEY` and moves the old one to `TASKDESK_ENCRYPTION_KEY_PREVIOUS`,
+  restarts, and then runs God Mode → Plugins → Rotate secrets. `secrets-rekey` re-encrypts
+  **row by row**, stamping each with the new `key_id`; both keys are readable for the whole
+  window, so a crash resumes rather than restarts. `rekey-status` reports rows on the new
+  `key_id` against the total. When God Mode → Health confirms every row has moved, the
+  operator removes `TASKDESK_ENCRYPTION_KEY_PREVIOUS` and restarts once more. The step-by-
+  step form is in the [runbook](runbook.md); back up **both** keys while the window is open
+  ([backup and restore](backup-and-restore.md)).
 
 ---
 
@@ -178,10 +218,18 @@ TASKDESK_BOOTSTRAP_ADMIN_EMAIL=you@example.com
 POSTGRES_DB=taskdesk
 POSTGRES_USER=taskdesk
 POSTGRES_PASSWORD=taskdesk
+
+# Compose-only — substituted into the YAML, never read by the application
+DOMAIN=localhost
+TASKDESK_IMAGE_TAG=v2.0.0
+TASKDESK_IMAGE_DIGEST=
+TASKDESK_HSTS_PRELOAD=0
 ```
 
-Local development uses Mailpit for mail and SeaweedFS for storage, both configured through
-God Mode on first run — exactly as a real deployment would be.
+Local development uses Mailpit for mail and the `filesystem` storage plugin, both of them
+reached through God Mode on first run — exactly as a real deployment would be. SeaweedFS is
+there behind `--profile s3` for anyone who wants to exercise the S3 path locally
+([deployment.md](deployment.md)).
 
 ## Related
 

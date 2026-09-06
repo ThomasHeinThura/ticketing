@@ -94,6 +94,14 @@ bulk_create_work_items   create_import_link    get_import_link
   agent learns the outcome by polling. A `confirm: true` argument was the first draft and
   was rejected: the model that supplies it is the component under the attacker's influence
   (`MC-15`). Pending actions expire after 15 minutes and are single-use.
+- `MC-7a` The field-changing write tools — `assign_work_item`, `transition_work_item`,
+  `update_work_item`, `set_custom_field`, `add_comment` (public visibility) and `log_time` —
+  are **not** approval-gated per call. They require the key's explicit, warned write opt-in
+  (`MC-16`), run under the MCP write ceiling (`MC-22`), are audited individually with
+  `origin: mcp`, and any of them touching more than 50 items in one call is a bulk operation
+  under `MC-7`. The prompt-injection example below ("reassign every ticket") is therefore
+  **bounded** by the write opt-in and the ceiling, not prevented outright; a read-only key —
+  the default — cannot do it at all. Decided 2026-09-06 (Claude Code, reversible).
 - `MC-8` Errors are returned as readable text, not raw JSON problem documents. An agent
   recovers better from "You can't assign work in this project — you need the assign
   permission" than from a status code.
@@ -116,7 +124,7 @@ that opens the ticket. The corpus treats this as the primary MCP threat, not an 
   with a `source` (`customer` | `staff` | `system`), and the server's tool descriptions
   say so in words the model will read. The server never places user content in the
   position of an instruction.
-- `MC-16` Keys flagged `is_mcp` default to the **read** capability set; write capabilities
+- `MC-16` Every personal key — `is_mcp` or not — defaults to the **read** capability set (`AK-9`); write capabilities
   are an explicit opt-in at key creation, shown with a warning naming this risk
   ([webhooks-and-api-keys.md](webhooks-and-api-keys.md) `AK-9`).
 - `MC-17` Destructive and bulk operations need the out-of-band human approval in `MC-7`,
@@ -145,6 +153,12 @@ that opens the ticket. The corpus treats this as the primary MCP threat, not an 
   by an `is_mcp` key are refused with 404 by the policy layer. Rate limit for such keys is
   `min(key.rate_limit_per_minute, instance_setting.mcp_write_ceiling_per_minute)`
   ([api-design.md](../01-architecture/api-design.md)).
+  **`is_mcp` is self-declared.** It is set by the creation flow, and nothing stops a person
+  from pasting an ordinary personal key into `@taskdesk/mcp`. It is therefore **not a
+  security boundary**: the controls that matter — the read-only default and the warned write
+  opt-in — apply to **every personal key** (`AK-9`, `MC-16`), and `is_mcp` adds only the
+  MCP-specific ceilings (`MC-22`) and the `feature.mcp` 404. Decided 2026-09-06 (Claude
+  Code, reversible).
 
 ## Permissions — MCP is an alternate client, not a second authorization system
 
@@ -188,7 +202,7 @@ The MCP server exposes no HTTP API of its own. The tool → route table below is
 | `list_people` | `GET /api/workspaces/{id}/members` | `workspace:read` |
 | `get_sla_status` | `GET /api/work-items/{key}/sla` | `work_item:read` |
 | `list_approvals` | `GET /api/me/approvals` | authenticated + self |
-| `list_saved_views` | `GET /api/views` | `saved_view:create` |
+| `list_saved_views` | `GET /api/views` | `saved_view:read` |
 | `create_work_item` | `POST /api/projects/{projectId}/work-items` | `work_item:create` |
 | `update_work_item` / `set_custom_field` | `PATCH /api/work-items/{key}` | `work_item:update` |
 | `transition_work_item` | `POST /api/work-items/{key}/transition` | `work_item:transition` |

@@ -29,7 +29,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 | Command palette | — | overlay | P1 | ⬜ |
 | Pending action approval (every deletion — [pending-actions.md](../01-architecture/pending-actions.md)) | — | dialog | P1 | ⬜ |
 | Global search results | `/agent/search` | route | P1 | ⬜ |
-| Not found | `*` | route | P0 | ⬜ |
+| Not found (agent origin) | `*` | route | P0 | ⬜ |
 | Error boundary | — | overlay | P0 | ⬜ |
 
 ## Agent — project
@@ -187,7 +187,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 | Article | `/portal/kb/{id}` | route | P5 | ⬜ |
 | Satisfaction survey | `/portal/requests/{ref}/rate` | route | P3 | ⬜ |
 | Account (incl. notification preferences) | `/portal/account` | route | P3 | ⬜ |
-| Not found | `*` | route | P3 | ⬜ |
+| Not found (portal origin) | `*` | route | P3 | ⬜ |
 
 ---
 
@@ -214,6 +214,13 @@ more screens at 100%, delivered a phase at a time — see
 ## Rules
 
 - Every row of kind `route` is in `lib/routes.ts`; `G5` checks exactly those rows.
+- Rows whose route differs only by a query string (`?layout=`, `?tab=`, `?lens=`) share one
+  **canonical route**; `check:inventory` compares canonical routes (query stripped) against
+  the generated `lib/routes.ts`, so the 136 rows map to fewer route entries by design — that
+  is not a defect. The two `*` rows are distinct routes because they live on different origins.
+- Assignment has no screen of its own — its rules live in project settings and the work-item
+  side pane ([assignment.md](../03-features/assignment.md)); `check:inventory` exempts it
+  explicitly.
 - A screen is not ✅ until it passes every automated gate (`G1`–`G13`) and the human gates
   at review (`H1`–`H6`); the phase-level checks (`P1`–`P6`) apply at phase close.
 - Adding a screen means adding a row here in the same pull request — and every screen a

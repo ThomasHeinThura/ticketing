@@ -25,6 +25,13 @@ claim a version the toolchain cannot produce.
 4. **Boring REST.** Nouns, plural, kebab-case. Verbs live in HTTP methods, except for
    genuine actions which get an explicit sub-resource.
 5. **Errors are machine-readable.** RFC 9457 problem details, always.
+6. **CSRF is a cookie-only concern.** The `Origin`/`Referer` check and the double-submit
+   token apply **only to cookie-authenticated unsafe requests**, because the cookie is the
+   only credential a browser attaches ambiently; requests bearing an API key, a bearer token
+   or a SCIM token are exempt from both, and non-browser clients that send no `Origin` are
+   not refused. Stated once in
+   [security-model.md](security-model.md#sessions-csrf-and-step-up) — this is a citation,
+   not a second rule.
 
 ## Base paths
 
@@ -32,8 +39,8 @@ claim a version the toolchain cannot produce.
 | --- | --- | --- |
 | `/api/*` | The application API | capability |
 | `/api/me/*` | The caller's own records: settings, preferences, API keys, approvals | `authenticated + self` |
-| `/api/public/*` | Unauthenticated: branding, `health/live` and `health/ready`, the login page's provider **buttons only** (label + id — never discovery URLs, tenant ids or domain restrictions), terminology, CSP reports | `public` with reason. `health/deep` is **not** public — `instance:admin` or the metrics token |
-| `/api/instance/*` | God Mode. `instance:*` capabilities | capability |
+| `/api/public/*` | Unauthenticated: branding, `health/live` and `health/ready`, the login page's provider **buttons only** (label + id — never discovery URLs, tenant ids or domain restrictions), terminology, CSP reports | `public` with reason — **no exceptions**, so the router's blanket kind is true of every route under it |
+| `/api/instance/*` | God Mode. `instance:*` capabilities. Includes the dependency-enumerating deep health check, `GET /api/instance/health/deep` — capability `instance:admin`, scope `instance`; it is **not** on the public router, and the `/metrics` bearer token is not an alternative credential for it | capability |
 | `/api/portal/*` | Customer portal — a deliberately narrow, separate router | `portal` with predicate |
 | `/auth/*` | better-auth handler | `delegated: better-auth` |
 | `/ws` | WebSocket upgrade | `delegated: websocket` (Origin-checked — [realtime.md](realtime.md)) |
@@ -217,7 +224,7 @@ Microsoft Entra parses those, not problem documents
 
 | Status | Used for |
 | --- | --- |
-| **202** | **Accepted, not performed.** Every user-initiated `DELETE` and every destructive MCP call returns `202` with `{ pendingActionId, action, summary, confirmation, expiresAt, approveUrl }`; the requesting human approves in the UI and the server executes — [pending-actions.md](pending-actions.md). A retry while pending is `409 pending_approval` |
+| **202** | **Accepted, not performed.** A user-initiated `DELETE` of an ordinary record — work item, comment, attachment, custom field, saved view, time entry, label — and every destructive MCP call returns `202` with `{ pendingActionId, action, summary, confirmation, expiresAt, approveUrl }`; the requesting human approves in the UI and the server executes — [pending-actions.md](pending-actions.md). A retry while pending is `409 pending_approval` with the same id, whether or not it carries an `Idempotency-Key`. **The elevated targets are the exception:** deleting a workspace, organisation, project, API key, webhook, identity connection or `auth.*` plugin carries `sessionOnly: true`, so on an API key, an MCP key or an impersonation session it is `403 session_required` **before the policy runs** — no 202, no pending action ([pending-actions.md](pending-actions.md) `PA-5`) |
 | 400 | Malformed request; missing workspace context; a SCIM or OIDC payload carrying a forbidden tenant/role/capability attribute (`forbidden_attribute`) |
 | 401 | No or invalid session |
 | 403 | In reach, missing capability. `capability` names what is missing. Also `session_required` (an API/MCP key or impersonation session on a session-only route) and `no_approver` (a service key requesting a deletion) |
@@ -257,6 +264,13 @@ Unsafe requests may send `Idempotency-Key`. The key, request hash and response a
 in `idempotency_key` for 24 hours; a repeat returns the original response; a duplicate that
 arrives **while the first is still in flight** returns `409`. Required for importers,
 mandatory for anything invoked by an AI agent, which may retry.
+
+**Order matters for deletions.** The idempotency middleware runs **before** the pending-action
+layer, so a keyed retry of a `DELETE` replays the stored `202` and creates nothing. An unkeyed
+repeat reaches the pending-action layer and is stopped there by a uniqueness rule on the open
+action, returning `409 pending_approval` with the existing id. Either way there is exactly one
+pending action per set of targets — never two for a human to reason about
+([pending-actions.md](pending-actions.md) `PA-4`).
 
 ## Rate limiting
 

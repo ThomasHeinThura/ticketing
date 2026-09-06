@@ -1,9 +1,9 @@
 # Status
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-09-06
 **Current phase:** P0 · Foundation — not yet started
-**Updated by:** Thomas (session continued by Claude Code after the OpenAI agent and
-GitHub Copilot both hit usage limits mid-session — see the session log)
+**Updated by:** Claude Code (Fable), applying the pre-P0 check at Thomas's direction —
+see the session log
 
 > Update this at the end of every working session. It is the first thing anyone — human or
 > agent — reads when picking the project up cold.
@@ -13,7 +13,13 @@ GitHub Copilot both hit usage limits mid-session — see the session log)
 ## Where we are
 
 Planning complete, audited, security-reviewed, and closed against Thomas's confirmed
-decision document of 2026-09-05 (sections A–N plus the core-identity update). The full
+decision document of 2026-09-05 (sections A–N plus the core-identity update) — and, on
+2026-09-06, **corrected against kaneo's real source** by a pre-P0 check (≈200 verified
+findings across eight lenses, every one applied in its owning document or recorded in the
+[decision log](decision-log.md); audit trail in
+[reviews/2026-09-05/pre-p0-check-fable/](reviews/2026-09-05/pre-p0-check-fable/)).
+**P0 step 1 is gated on Thomas confirming the kaneo snapshot SHA** (proposed upstream main
+`42bb8011`, CI green) and the migration approach — see Blocked. The full
 documentation corpus exists — thirteen ADRs, an authoritative data model including the
 identity/SCIM and pending-action tables, a formal accelerated delivery calendar, a release
 plan, and a changelog convention. No application code written yet. **Time is governed by
@@ -35,7 +41,7 @@ P7 Polish              ░░░░░░░░░░   0%
 **Screens:** 0 of **136** complete — [inventory](../02-design/screen-inventory.md)
 (recounted 2026-09-05 with a kind column: P0 6 · P1 33 · P2 18 · P3 21 · P4 28 · P5 28 · P6 2)
 **Features:** 0 of **31** shipped — [index](../03-features/README.md) (teams.md was missing from the index until 2026-09-05)
-**ADRs:** 0001–0013 accepted · **Docs:** ~125 files, link check clean · **Security review:** complete, all high items closed in the corpus
+**ADRs:** 0001–0013 accepted · **Docs:** ~136 files, link check clean · **Security review:** complete, all high items closed in the corpus
 **Readiness:** **Conditional GO → condition met.** The [external readiness review](reviews/2026-09-05/readiness-review-external.md)
 asked for one documentation-closure PR before P0 code; that PR is this branch's third commit
 **Target calendar:** UAT by 2026-09-12, go-live by 2026-10-03, full scope by end of
@@ -133,8 +139,12 @@ task with its own Opus review:
    documents, threat model) **done 2026-09-05**; item 4 — each spec's remaining findings in
    [reviews/2026-09-05/](reviews/2026-09-05/) — is a **standing gate at that feature's SDLC
    stage 2**, not a completed step ([AGENTS.md](../../AGENTS.md) do-not 15)
-1. Initialise the repository: copy kaneo, de-brand, strip billing and cloud-only pieces,
-   **delete `public-project`**; fill the inherited-features register with the SHA
+1. Initialise the repository — **only after Thomas confirms the SHA**: `git fetch`, run
+   kaneo's own suite on that SHA as the baseline, copy per the exhaustive table, de-brand
+   **including the environment migration table**, apply the **fork-time removal and disable
+   list** (anonymous sign-in, account linking, cookie cache, `deviceAuthorization`/`bearer`,
+   `public-project` by file, the six integration plugins and their tables, billing, Sentry,
+   planka-import, kaneo's agent files); fill the inherited-features register
 1b. **Retrofit every inherited kaneo router into the five policy kinds** — human-reviewed,
    router by router; Opus security review before P0 closes
 2. `LICENSE`, `THIRD-PARTY-NOTICES.md`, `NOTICE`, `AGENTS.md`
@@ -161,7 +171,12 @@ kaneo's inherited routes present and each carrying a policy**, P0 security revie
 
 ## Blocked
 
-Nothing.
+- **P0 step 1 (copy kaneo)** — awaiting Thomas's explicit confirmation of the kaneo
+  snapshot SHA (proposed `42bb8011`, upstream main, CI green — not the `v2.22.0` tag, which
+  predates authorization fixes) and of the migration approach (inherit kaneo's 45). Both
+  are recorded as proposed in the [decision log](decision-log.md). Unblocked by: Thomas.
+- **Committing today's edits** — per do-not 16 the working tree stays uncommitted until
+  Thomas says "commit". Unblocked by: Thomas.
 
 ---
 
@@ -171,7 +186,13 @@ Nothing.
 | --- | --- | --- |
 | CLA, for a possible dual licence | Before the first external contribution | Thomas |
 | Final product name | Before P7 | Thomas |
-| ~~Whether to sell externally~~ | Decided: yes, via AWS Marketplace — see [decision log](decision-log.md) | — |
+| ~~Whether to sell externally~~ | Decided: yes — but the **AWS Marketplace listing itself is deferred beyond the current 3–4-month scope** (2026-09-05); BYOL/contract preferred when it comes — see [decision log](decision-log.md) | — |
+| **kaneo snapshot SHA** — confirm upstream main `42bb801114aa1ae499228a53180f0cdbc5607964` (CI green, run 33957941564), not the `v2.22.0` tag | **Before P0 step 1 copies anything** | Thomas |
+| **Migrations** — inherit kaneo's 45 migrations (recorded from Thomas's message) or squash to a generated baseline | With the SHA confirmation | Thomas |
+| Docs-site stack — fresh Fumadocs app (recommended) / kaneo's marketing site + `/docs` / Mintlify | Before P0's `apps/site` skeleton | Thomas |
+| Visual-regression tool for gate G8 — Playwright `toHaveScreenshot` with in-repo baselines, or Chromatic | Before P0's UX gate scripts | Thomas |
+| Week-2 scope-confirmation moment (proposed by the second review agent) — add or keep the event-driven escalation | Before week 2 of any accelerated window | Thomas |
+| Gate consolidation in release-plan.md — confirm as a waiver or revert | Before `2.0.0` | Thomas |
 | WAL archiving for point-in-time recovery | Before real customer data | Thomas |
 | Whether the 4-week go-live scope needs to narrow | Escalate the moment workstream A (service-desk domain logic) looks behind, per [accelerated-delivery-plan.md](accelerated-delivery-plan.md#what-happens-if-week-4-looks-tight) | Thomas |
 
@@ -179,9 +200,10 @@ Nothing.
 
 ## Watch list
 
-Risks currently most likely to bite. Full list in [risks.md](risks.md), now with three
+Risks currently most likely to bite. Full list in [risks.md](risks.md), now with seven
 additions — **R15–R17** for the accelerated calendar, **R18** marketplace integrity, **R19**
-pentest lead time, **R20** the kaneo router retrofit.
+pentest lead time, **R20** the kaneo router retrofit, **R21** inherited authentication
+defaults surviving the fork.
 
 | | Risk | Why now |
 | --- | --- | --- |
@@ -195,6 +217,47 @@ pentest lead time, **R20** the kaneo router retrofit.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-06 · Pre-P0 check applied — the plan corrected against kaneo's real source
+
+Thomas asked whether the corpus had been checked "file by file" and whether anything would
+bite later. Fable ran a whole-corpus check: deterministic scripts (links, flags, env vars,
+identifier registries — all clean) plus eight background Opus lenses (bootstrap vs kaneo,
+RBAC/security, identity, data model, design, planning, process, operations), each writing
+findings incrementally; every Top-5 claim was re-verified against the files before use.
+≈200 findings, ≈60 high. The registries held (111 tables, 84 capabilities, 38 events, 22
+flags — zero orphans); the defects were **kaneo reality, contradictions, missing columns and
+mechanisms, and prose-only process rules**.
+
+Thomas then directed that nothing stay in a review file. Applied in one pass (fourteen
+decision-log entries; eight file-partitioned edit agents; Opus review): the **kaneo snapshot
+SHA** proposed as upstream main `42bb8011` (the `v2.22.0` tag predates authorization fixes)
+— pending confirmation; the **fork-time removal and disable list** (kaneo enables
+better-auth's `anonymous()` guest sign-in by default, ships `accountLinking.enabled: true`
+with the generic OIDC provider trusted, and a five-minute session cookie cache — none of it
+was in any document); the **environment migration table** (≈80 kaneo variables →
+five-plus-six); `public-project` as a file checklist including the anonymous
+attachment-read path; migrations inherited from kaneo's 45 (recorded from Thomas's message,
+to confirm); `storage.filesystem` as the fresh-install default with SeaweedFS as an opt-in
+profile; CSRF scoped to cookie auth; `orOwner` requiring the `*_own` capability; elevated
+DELETEs refused to non-session credentials; `pending_action` gaining `payload`/`route_key`;
+Entra claim rules Entra can actually satisfy; the reload mechanism watching
+`identity_connection`; `scheduled_transition`, `first_response_at`, `is_reopen`, legal hold,
+quotas, tombstones; Radix → Base UI in six documents (kaneo is already 43/63 Base UI);
+design tokens split into inherited-verbatim and authored; compose ports out of the base
+file; the PR template written and specified; do-not 16 (Thomas's wording); the third
+absolute (wait, never downgrade the reviewer); the two-lane go-live rehearsal gate;
+marketplace deferral everywhere; Pages marked spec-required; twenty reports. Thomas's two
+agent-report messages were verified item by item: all valid except the claim that email was
+missing from the decision log (it was at line 59; a dedicated entry now exists anyway).
+
+Method note: the Workflow tool was not used (it stalled three times on this corpus the day
+before); plain background agents with incremental files completed 8/8 for the review. In
+the apply pass five of eight edit agents were killed by a 600 s stall watchdog mid-edit and
+were resumed with their context; edits were verified by diff afterwards.
+
+**Not done, by rule:** nothing committed or pushed (do-not 16). **Next:** Thomas confirms
+the SHA and the migration approach and says "commit"; then P0 step 1.
 
 ### 2026-09-05 · Decision document applied — identity/SCIM core, universal deletion approval, deferred scope
 

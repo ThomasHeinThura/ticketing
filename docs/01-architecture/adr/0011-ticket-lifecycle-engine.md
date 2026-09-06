@@ -53,6 +53,9 @@ fixed vocabulary, and it exists solely to make cross-cutting logic possible.**
   Incident, service request, change, epic and bug all flow through the same `state` +
   `workflow` tables, exactly as [work-items.md](../../03-features/work-items.md) already
   argues for the work item table itself.
+- **Removing a state archives it** (`state.archived_at`: hidden from pickers, still
+  referenceable by existing work items and activity; `work_item.state_id` is `ON DELETE
+  RESTRICT`).
 - **Renaming, adding or removing states — and reshaping the transition graph between
   them — is a workspace-settings action**; **which states a project uses, in what order,
   and which is its default is a project-settings action** (`project_state`). Both take
@@ -62,7 +65,7 @@ fixed vocabulary, and it exists solely to make cross-cutting logic possible.**
 - **Transitions carry `guards` and `effects`** — two closed vocabularies owned by
   [workflows.md](../../03-features/workflows.md). Effects are how a transition sets or
   clears an assignee, pauses or resumes the SLA clock, or schedules a follow-up transition
-  ("pending until Thursday"). There is no second place where lifecycle side-effects live:
+  ("pending until Thursday" — persisted as a `scheduled_transition` row). There is no second place where lifecycle side-effects live:
   [sla.md](../../03-features/sla.md) and [assignment.md](../../03-features/assignment.md)
   cite the vocabulary, they do not define their own.
 

@@ -8,14 +8,25 @@
 | | Contains | Criticality |
 | --- | --- | --- |
 | **PostgreSQL** | Everything: work items, users, **and all runtime configuration** | Total loss |
-| **Object storage** | Attachment bytes | Serious loss |
-| **`.env`** | `TASKDESK_ENCRYPTION_KEY`, `TASKDESK_AUTH_SECRET` | Without the key, every configured integration must be re-entered |
+| **The attachment volume** | Attachment bytes on the shipped `storage.filesystem` backend — a named Docker volume, not a bucket | Serious loss |
+| **Object storage** | Attachment bytes, when `storage.s3` is the active plugin instead | Serious loss |
+| **`.env`** | `TASKDESK_ENCRYPTION_KEY`, `TASKDESK_AUTH_SECRET` — and `TASKDESK_ENCRYPTION_KEY_PREVIOUS` whenever a rotation window is open | Without the key, every configured integration must be re-entered |
 
-The third is easy to forget and is the one that ruins a restore. **Configuration is data**
+The last is easy to forget and is the one that ruins a restore. **Configuration is data**
 — identity providers, SMTP, storage, branding, feature flags, roles all live in Postgres,
 and their secrets are encrypted with a key that lives only in `.env`.
 
-Store the encryption key in a password manager, separately from the backups.
+The second and third are alternatives, not both: which one applies is whichever storage
+plugin the instance is actually running. A fresh install is `filesystem`, so **the default
+thing to back up is a Docker volume** — and `rclone sync` to a bucket does not see it.
+
+**During a key rotation, back up both keys.** Rotation is incremental
+([runbook](runbook.md)), so for the length of the window a dump legitimately contains rows
+under either `key_id` and needs `TASKDESK_ENCRYPTION_KEY` *and*
+`TASKDESK_ENCRYPTION_KEY_PREVIOUS` to restore. A dump taken mid-rotation and restored with
+only the new key decrypts about half of your plugin secrets.
+
+Store the encryption keys in a password manager, separately from the backups.
 
 ## Schedule
 
@@ -23,7 +34,7 @@ Store the encryption key in a password manager, separately from the backups.
 | --- | --- | --- | --- |
 | Postgres, production | Hourly | 48 hourly, 30 daily, 12 monthly | Local + offsite |
 | Postgres, UAT | Daily | 7 daily | Local |
-| Object storage | Daily incremental | 30 days | Offsite |
+| Attachments — volume or bucket | Daily incremental | 30 days | Offsite |
 | Secrets | On change | Versioned | Password manager |
 
 Offsite is not optional. A backup on the same host survives a bad migration and nothing
@@ -41,9 +52,15 @@ The script verifies the dump is restorable — `pg_restore --list` at minimum �
 uploading. A dump that cannot be listed will not restore, and finding that out during an
 incident is the worst possible time.
 
-**Object storage** — `rclone sync` (or `aws s3 sync`) incremental to a second bucket in a
-different location. Backend-neutral; works for SeaweedFS, Garage and real S3 alike.
-*(Not `mc` — that is the MinIO client, and MinIO is the dependency the stack dropped.)*
+**The attachment volume** (`storage.filesystem`, the shipped default) — `restic backup` of
+the volume's mount point, or `tar` of it into the same offsite location as the dumps, taken
+from a short-lived container that mounts it read-only. It is ordinary files on a Docker
+volume, so nothing S3-shaped applies to it.
+
+**Object storage** (`storage.s3`) — `rclone sync` (or `aws s3 sync`) incremental to a second
+bucket in a different location. Backend-neutral; works for SeaweedFS, Garage and real S3
+alike. *(Not `mc` — that is the MinIO client, and MinIO is the dependency the stack
+dropped.)*
 
 Every successful run — database, objects, WAL — writes a `backup_run` row
 ([data model](../01-architecture/data-model.md)), which is how God Mode → Health knows

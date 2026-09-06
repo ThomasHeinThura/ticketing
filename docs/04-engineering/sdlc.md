@@ -117,7 +117,9 @@ and later never came.
 - **A security review, on Opus, not optional.** See
   [agent-workflow.md](agent-workflow.md#model-tiers-within-claude-code) — a separate,
   explicit pass, distinct from the general code review, on anything touching auth,
-  reach/authority, secrets, uploads, webhooks or a new route.
+  reach/authority, secrets, uploads, webhooks or a new route. The **trigger is the path list in [ci-cd.md](ci-cd.md#pull-request-pipeline)** — that list is
+  authoritative and this sentence only cites it; the review itself is recorded in the pull
+  request's `## Security review` section and its committed note.
 
 **Exit** — `pnpm test:integration` green. `pnpm test:permissions` green. Security review
 recorded on the pull request.
@@ -156,7 +158,7 @@ request.
 **Loop discipline**
 
 - After **three** failed attempts at the same problem, stop. Write down what was tried and
-  what happened, and escalate to Thomas. Do not keep trying variations — that is how a
+  what happened — the five-item note from [error-fix-loop.md](error-fix-loop.md) — and ask Thomas. Do not keep trying variations — that is how a
   two-hour task becomes a two-day one.
 - Do not disable a test to make a build pass. Ever.
 - Do not waive a gate without following the waiver procedure.
@@ -205,28 +207,36 @@ request.
 | **Bug fix** | 3 → 4 → 5 → 7 → 9, plus 6 if UI |
 | **Small feature** | All nine, stage 2 as a spec section rather than a new document |
 | **Feature** | All nine, in full |
-| **Phase** | All nine, plus the [phase gate](../02-design/ux-quality-gates.md) at the end |
+| **Phase** | All nine, plus the [phase gate](definition-of-done.md#phase-completion) at the end |
 
 The stages are never skipped for convenience. They are scoped to the work.
 
 ## The phase gate
 
-At the end of each phase, before the next begins:
-
-- Every feature in the phase passes the [Definition of Done](definition-of-done.md).
-- Manual screen reader pass.
-- A keyboard-only working session.
-- A fresh-eyes test with someone who has not seen the feature.
-- Cross-browser check.
-- A run against realistic data volumes.
-- Load test baseline recorded.
-- **A phase-level security review, on Opus** — not just the per-feature reviews already
-  passed, a holistic pass over the whole phase's surface together.
-- A written phase review in `07-planning/`, including what went wrong.
+**The canonical phase-gate list lives in one place:
+[definition-of-done.md § Phase completion](definition-of-done.md#phase-completion).** This
+section no longer restates it — four copies of the list had drifted apart by 2026-09-06. In
+one sentence: every feature passes the Definition of Done; the manual passes (screen reader,
+keyboard-only session, fresh-eyes test, cross-browser, realistic data volumes, load baseline,
+backup and restore) are run; **a phase-level security review, on Opus** — a holistic pass
+over the whole phase's surface, not the sum of the per-feature reviews — is recorded; the
+phase review is written in `07-planning/`, including what went wrong; and every gate that was
+not run is a **recorded waiver** in the decision log, or the phase is not closed.
 
 **No phase starts before the previous one closes.** This is
-[principle 7](../00-overview/product-principles.md), and it is the discipline that
-prevents twenty-five screens at sixty per cent.
+[principle 7](../00-overview/product-principles.md), and it is the discipline that prevents
+twenty-five screens at sixty per cent.
+
+**The one exception, written down so nobody has to infer it:** during an accelerated window
+in which several phases deliberately run as parallel workstreams (decision A in the
+[decision log](../07-planning/decision-log.md); the calendar in
+[accelerated-delivery-plan.md](../07-planning/accelerated-delivery-plan.md)), phase
+*sequencing* is replaced by two things — the plan's **deferral register** (what each phase
+deliberately ships thinner, in writing) and the **per-feature Definition of Done** (nothing
+is called done because a calendar says so). Each phase's gate still runs, in full, before that
+phase's features are declared done; what moves is *when* phases start, not *what* closes them.
+An agent reading only this document should neither refuse to start P3 work while P2 is open
+during such a window, nor treat the gate list as already broken.
 
 ## Related
 

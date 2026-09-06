@@ -17,6 +17,398 @@ Newest first.
 
 ---
 
+### 2026-09-06 · Small design choices made by Claude Code while applying the pre-P0 check — all reversible
+
+**Decision:** while applying the ≈200 findings, a handful of gaps had no decision behind
+them and could not be left open without leaving a document contradictory. Each was closed
+with the smallest option and is listed here so Thomas can reverse any of them in one line.
+
+| Choice | Where it landed | Reverse by |
+| --- | --- | --- |
+| **All personal API keys are read-only by default**; write capabilities are an explicit, warned opt-in at creation. `is_mcp` adds only the MCP-specific ceilings and is stated to be self-declared, not a security boundary | webhooks-and-api-keys.md `AK-9`, mcp-server.md `MC-14`–`MC-16` | restoring "read-only default applies to `is_mcp` keys only" |
+| **Elevated targets are never deletable from a non-session credential**: API-key / MCP / impersonation DELETE of a workspace, organisation, project, API key, webhook, identity connection or auth plugin is `403 session_required`, not `202` | rbac.md, api-design.md, pending-actions.md | allowing 202 for those targets and adding an approval surface for them in P4 |
+| **Two better-auth instances, one per portal origin**, constructed together on every reload — each with its own `baseURL`, cookie name (`__Host-tdk_agent_session`, `__Host-tdk_portal_session`), `trustedOrigins` and provider set; the request host selects the instance | auth-and-identity.md, auth-runtime-reconfiguration.md, ADR 0004 | a single instance plus a request-scoped cookie/redirect wrapper — the alternative the docs previously implied without naming |
+| **Group-claim overage** (Entra `_claim_names`): the claim is ignored, the JIT default role is provisioned, a `provisioning_event` and a Health warning are raised; no Graph call in the first release | identity-provisioning.md | adding a Graph `memberOf` call under the connection's own credentials |
+| **Health deep endpoint** is `/api/instance/health/deep`, capability `instance:admin` only; the metrics bearer token grants `/metrics` alone | api-design.md, security-model.md, observability.md, runbook.md | letting the metrics token read `health/deep` as a delegated route |
+| **TaskDesk uses Tailwind's built-in spacing, type, shadow and z-index scales directly, as kaneo does** — the invented `--space-*` / `--text-*` / `--shadow-*` / `--z-*` / layout tokens are removed from design-tokens.md; only colour, radius, motion and the status/priority/SLA colour tokens are ours | design-tokens.md | authoring those token families with values before `packages/ui` extraction |
+| **Root `i18n/` stays where kaneo has it** (with `scripts/i18n/*.mjs` and the CI i18n job), not `packages/i18n/` | monorepo-layout.md, i18n.md, repository-bootstrap.md | moving it, and porting the three scripts and the CI step |
+| **Assignment**: defaults and UI are P1; the rule *engine* ports with `packages/domain` in P2 | phases.md, 03-features/README.md | moving both to one phase |
+| **Prefix `PG` reserved** for a future `pages.md` | 03-features/README.md registry | dropping Pages from P5 |
+| **CODEOWNERS** (`* @ThomasHeinThura`, required review on `main`) is the mechanism behind "only Thomas merges" | ci-cd.md | none needed — it is what the Roles table already promised |
+| **Semantic-release, commitlint and husky are kept** from kaneo (tech-stack.md already lists them), so `.husky/`, `commitlint.config.js` and `release.config.js` are copied | repository-bootstrap.md | dropping them and the `prepare` script |
+| **kaneo's inherited `mcp` and `oauth` routers and the better-auth `organization`, `anonymous`, `deviceAuthorization` and `bearer` plugins are removed at fork**; `admin` is kept only as a session primitive with its routes unmounted; `twoFactor` is added in P0 | inherited-features.md, auth-and-identity.md | per row, with a spec and a security review |
+
+**Why:** an apply pass that stops to ask on every small gap does not finish; one that decides
+silently is how v1 drifted. This table is the middle path — decided, visible, reversible.
+
+**Decided by:** Claude Code (Fable), 2026-09-06 — each row stands unless Thomas reverses it.
+
+---
+
+### 2026-09-05 · kaneo snapshot commit: upstream main `42bb8011` proposed — awaiting Thomas's confirmation
+
+**Decision (proposed, not yet confirmed):** fork from upstream `main` commit
+`42bb801114aa1ae499228a53180f0cdbc5607964` (2026-09-05, kaneo CI run 33957941564 green:
+lint, i18n, typecheck, unit, build, integration on Postgres 16, docker build) — **not** from
+the latest release tag `v2.22.0` (2026-08-21). Thomas confirms the exact SHA explicitly
+before any source is copied; until then P0 step 1 does not start.
+
+**Why:** the tag predates authorization fixes that landed on `main` two to three days later
+— `6de9ea05` "close five workspace-scoping gaps" (08-23), `6bfe74de` "read the raw body in
+task permission middleware" (08-24), `a581bdd2` "restore the entitlement check on project
+creation" (08-24), `902e3219` "five defects that fail silently", `018f4750` replica-safe
+notifications, `cf701d02` the `job_lease` table. kaneo is taken once and never merged
+again ([ADR 0001](../01-architecture/adr/0001-kaneo-as-foundation.md)), so a commit chosen
+for tidiness would carry known-fixed authorization bugs into TaskDesk permanently. kaneo's
+releases are manual `workflow_dispatch`; no release has been cut since the fixes. The local
+clone (`51255e85`, 2026-09-04) is itself 68 commits behind upstream — `git fetch` first.
+
+**Recorded at fork, in [inherited-features.md](../01-architecture/inherited-features.md)
+and `THIRD-PARTY-NOTICES.md`:** the full SHA; "main commit, not a tag"; the date; the
+upstream CI run id and result; the reason ("post-tag authorization fixes included"); and
+the verification steps run before the copy — kaneo's own suite green on that SHA with
+pass/fail/skip counts (the attribution baseline for the P0 exit criterion), `pnpm audit`
+and Trivy clean at high/critical, and the inherited defaults noted for removal (anonymous
+sign-in, OIDC auto-link, five-minute session cookie cache — see the next two entries).
+Facts that depend on the SHA (locale count, `job_lease` presence) are stated once, there.
+
+**Alternatives:** the `v2.22.0` tag — rejected, above. Waiting for a `v2.23.0` — rejected;
+no release is scheduled and the fork has no upstream relationship to benefit from one.
+
+**Decided by:** Thomas — recommendation drafted by Claude Code (Fable) from the pre-P0
+check; **pending Thomas's explicit confirmation of the SHA**.
+
+---
+
+### 2026-09-05 · Fork-time removal and disable list — the fork is not done until every item is gone
+
+**Decision:** P0 step 1 is not complete, and the route-coverage gate is not trusted, until
+each of the following is removed or explicitly disabled in the copied code, with a test or a
+grep in `tests/permissions/` proving absence where one is possible. Owner for the doing:
+[repository-bootstrap.md](../04-engineering/repository-bootstrap.md) §3; owner for the
+verdicts: [inherited-features.md](../01-architecture/inherited-features.md).
+
+1. **Anonymous guest sign-in** — better-auth `anonymous()` is enabled by default in kaneo
+   (`apps/api/src/auth.ts:275-281`, opt-out via `DISABLE_GUEST_ACCESS`), with
+   `DEMO_MODE` / `hasGuestAccess` / `billingEnabled` exposed to the client
+   (`utils/get-settings.ts`). **Removed** — the plugin, the env vars, the settings fields.
+   Same reasoning as public boards: an unauthenticated or ephemeral-identity surface does
+   not ship dormant in a product whose thesis is that authorization omissions are build
+   failures. A `no-anonymous-plugin.test.ts` asserts the constructed better-auth config
+   contains no `anonymous` plugin.
+2. **OIDC / OAuth automatic account linking** — kaneo ships `accountLinking.enabled: true`
+   with `trustedProviders: ["github","google","discord","custom"]` (`auth.ts:235-245`);
+   `"custom"` is the `genericOAuth` provider our `auth.oidc` is built on.
+   **Disabled explicitly** (`enabled: false`) — the docs' claim that "defaults are off" was
+   wrong for the inherited code, and `IP-18` depends on it. The test for `IP-18` reads the
+   constructed config, not only the HTTP behaviour.
+3. **Session cookie cache** — `session.cookieCache { enabled: true, maxAge: 300 }`
+   (`auth.ts:557-560`). **Disabled** — see the revocation entry below.
+4. **`deviceAuthorization()` and `bearer()`** better-auth plugins (`auth.ts:535,545`) —
+   two authentication surfaces no v2 spec mentions. **Removed at fork**; either returns only
+   with a spec and a security review.
+5. **`public-project`** — not a router: the inline route at `apps/api/src/index.ts:226`,
+   the `project.is_public` column (`schema.ts:328`, two-phase drop per
+   [migrations.md](../04-engineering/migrations.md)), `project/schema.ts`,
+   `project/response.ts`, `controllers/update-project.ts`, `mcp/tools.ts`,
+   **`utils/authorize-asset-access.ts` (the anonymous attachment-read branch)**, the web
+   `components/public-project/`, `routes/public-project.$projectId.tsx`, its fetchers,
+   hooks and tests. Confirms section C of the confirmed decisions.
+6. **The six integration plugins** — `apps/api/src/plugins/{github,gitea,slack,discord,
+   generic-webhook,telegram}` (registered in `plugins/index.ts`), their routers, web
+   screens, the `integration` and `github_integration` tables, the `octokit` /
+   `@octokit/webhooks` dependencies, `NOTIFICATION_SECRET_ENCRYPTION_KEY`,
+   `KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS`, and their tests under `tests/api/`.
+   `plugins/registry.ts` and `plugins/types.ts` are kept as the seed of
+   `packages/plugins-contracts`. Confirms section B; corrects the register row that kept
+   "`plugins`" as if it were something else.
+7. **Billing** — four tables (`workspace_billing`, `trial_grant`, `billing_event`,
+   `billing_reminder_sent`), `creem`, `CREEM_*` / `BILLING_*` / `TURNSTILE_*` /
+   `KANEO_CLOUD`, `trial-card`, `demo-alert`, `get-settings.ts`'s `billingEnabled`, and
+   `tests/api/billing/`.
+8. **Sentry** — the `sentry/` folder **and** the 17 code sites (`apps/api/src/instrument.ts`,
+   `apps/web/src/instrument.ts`, the Vite source-map plugin, `@sentry/*` dependencies,
+   `SENTRY_*` / `VITE_SENTRY_*`), including `components/ui/error-boundary.tsx` **before** it
+   moves into `packages/ui`.
+9. **`packages/planka-import`** and the `publish-mcp` / `publish-planka-import` workflows.
+10. **kaneo's own agent instructions** — `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.cursor/`,
+    `.agents/`, `.coderabbit.yaml`, `skills-lock.json` and eight of the ten `skills/` — never
+    copied; TaskDesk's `AGENTS.md` is authored fresh.
+11. **The environment surface** — every kaneo variable gets a keep / rename / move-to-God-
+    Mode / delete verdict (next entry).
+
+**P0 exit criteria gain these lines** ([phases.md](phases.md) P0 "Done when",
+[repository-bootstrap.md](../04-engineering/repository-bootstrap.md) §7): anonymous sign-in
+off, account linking off, cookie cache off, no route matching `public-project`, `github`,
+`gitea`, `slack`, `discord`, `telegram` or `generic-webhook` in Hono's router, no
+`process.env` read outside the approved list.
+
+**Why:** the pre-P0 check read kaneo's source and found three enabled-by-default
+authentication behaviours no document knew about. The route-coverage test cannot see a
+plugin that is *on*; only an explicit removal list can.
+
+**Decided by:** Thomas (message of 2026-09-05: "the fork is not done until anonymous
+sign-in is off and auto-link is off by default"); list drafted by Claude Code (Fable).
+
+---
+
+### 2026-09-05 · Session revocation SLA — the inherited five-minute cookie cache is disabled
+
+**Decision:** `session.cookieCache` is **disabled** at fork. Every request that presents a
+session cookie is validated against the `session` table; a revoked or deleted session fails
+on the very next request. The **authority** resolution (memberships, roles, `sees_all`)
+keeps its Valkey cache of **30 seconds**, invalidated explicitly on every membership, role,
+deactivation and connection change — so a *revoked session* takes effect on the next
+request, and a *changed authority* takes effect immediately in the normal case and within
+30 s if the invalidation message is lost. That is the honest SLA, stated once in
+[auth-and-identity.md](../01-architecture/auth-and-identity.md) § Sessions and cited by
+`IP-15`, the SCIM de-provisioning tests and `god-mode.md`'s "organisation suspended" row.
+
+**Why:** kaneo enables better-auth's cookie cache for five minutes (`auth.ts:557-560`),
+which serves a session from a signed cookie without a database read. No TaskDesk document
+mentioned it, and four of them promised "revocation is immediate". A SCIM `active=false`
+would have left live portal sessions for up to five minutes. Disabling the cache costs one
+indexed primary-key read per request, which the product can afford.
+
+**Alternatives:** keep the cache with `maxAge` ≤ 30 s (rejected — it still contradicts
+"immediate" and gains little); keep five minutes and state it (rejected — the identity gate
+promises Entra deactivation ends access "within a minute").
+
+**Decided by:** Thomas (message of 2026-09-05: "do not leave 'immediate' in one doc and
+'5 minutes' in the inherited config"); drafted by Claude Code (Fable).
+
+---
+
+### 2026-09-05 · Environment surface at the fork — every kaneo variable gets a verdict
+
+**Decision:** kaneo's API reads about eighty distinct environment variables (`KANEO_*`,
+bare `AUTH_SECRET` / `DATABASE_URL` / `POSTGRES_*`, `REDIS_*` including Sentinel and
+Cluster modes, `S3_*`, `SMTP_*`, `COOKIE_DOMAIN`, `TRUSTED_PROXIES`, `CUSTOM_OAUTH_*` ×11,
+`DISABLE_*` ×6, `SENTRY_*` ×5, `CREEM_*` / `BILLING_*` ×6, `TURNSTILE_*`, `DEMO_MODE`,
+`DEVICE_AUTH_CLIENT_IDS`, …) and the web bundle substitutes `KANEO_API_URL`,
+`KANEO_SENTRY_DSN`, `KANEO_TURNSTILE_SITE_KEY` at container start (`apps/web/env.sh`).
+The five-plus-six rule ([configuration-reference.md](../05-operations/configuration-reference.md))
+is therefore a **migration**, not a rename. [repository-bootstrap.md](../04-engineering/repository-bootstrap.md)
+§2 now carries the table: every variable → **rename** to a `TASKDESK_*` bootstrap variable,
+**move** into God Mode (which plugin or setting), or **delete** with its feature. Consequences
+recorded there: Redis Sentinel and Cluster modes are dropped (one `TASKDESK_VALKEY_URL`);
+`COOKIE_DOMAIN` and the cross-subdomain cookie branch are dropped (`__Host-` cookies per
+portal); `TRUSTED_PROXIES` becomes the `TASKDESK_TRUST_PROXY` hop count; `apps/web/env.sh`
+is deleted (the web bundle learns its API origin from the page it is served from).
+`deploy/.env.example` is **written fresh**; kaneo's root `.env.sample` is not copied.
+
+**Why:** the bootstrap document's de-brand step covered names, strings and assets and never
+mentioned environment variables — the largest single body of P0 step-1 work was unitemised.
+
+**Decided by:** Thomas (message of 2026-09-05, item 5); table drafted by Claude Code (Fable).
+
+---
+
+### 2026-09-05 · Migrations: kaneo's history is inherited; removals are additive migrations — confirm with the SHA
+
+**Decision (recorded from Thomas's message, to be confirmed together with the SHA):**
+TaskDesk's `apps/api/drizzle/` starts from kaneo's **45 migrations** (`0000`–`0044` at the
+snapshot) and their `meta/_journal.json`, exactly as taken. Every fork-time removal
+(billing tables, `integration`, `github_integration`, `project.is_public`) is a **new,
+additive migration** on top, generated from the post-strip `schema.ts`. There is no
+hand-made `0001_initial.sql`; [migrations.md](../04-engineering/migrations.md)'s file
+listing is corrected to show the inherited prefix range and the first TaskDesk migration
+number.
+
+**Why:** Thomas: "base migrations on kaneo's 45 rather than a fake fresh 0001". The
+inherited journal is what kaneo's own integration suite was validated against, so it is the
+only baseline the pre-copy test run can be attributed to. **Trade-off, stated honestly:**
+every fresh TaskDesk database will replay kaneo's history — creating and then dropping
+billing, integration and public-board columns — and kaneo's table and enum names are baked
+into the early migrations. The alternative (squash to a generated baseline and regenerate
+the journal) is cleaner and is one command; it is reversible until the first TaskDesk
+migration is written.
+
+**Also decided:** the `custom/` directory with an "interleaving runner" is dropped from
+[migrations.md](../04-engineering/migrations.md) — `drizzle-kit migrate` applies only what
+the journal lists. Hand-written SQL (the `work_item.key` trigger, extensions, the
+append-only grants) is appended into generated migration files, journal-tracked.
+
+**Decided by:** Thomas (message of 2026-09-05); wording by Claude Code (Fable).
+
+---
+
+### 2026-09-05 · A fresh install uses `storage.filesystem`; SeaweedFS is an opt-in Compose profile
+
+**Decision:** on a new instance the active storage plugin is `storage.filesystem`
+(attachment bytes on a named Docker volume under the container's data path) — no storage
+configuration, no third hostname, no bucket. SeaweedFS ships in the Compose stack as an
+**opt-in profile** (`--profile s3`) with a complete service definition (`weed server -s3`,
+an `s3.json` credential file, a bucket-create step in `scripts/deploy.sh`, a health check),
+and an administrator points `storage.s3` at it — or at real S3 or Garage — from God Mode.
+`files.<domain>` and its Traefik router exist **only** when an operator-owned S3 endpoint
+is served behind this Traefik; the installer's DNS pre-flight checks it only then. The
+storage plugin's configured public endpoint **must equal** the browser-facing origin, or
+presigned URLs will not verify; the bucket's CORS allows exactly the agent and portal
+origins.
+
+**Why:** this was already the decision ("`storage.filesystem` works with no configuration,
+so a fresh install needs no storage variable at all", environment-variables entry below) —
+but [storage-and-attachments.md](../01-architecture/storage-and-attachments.md) still said
+`storage.s3` was the default and the deployment stack table started SeaweedFS
+unconditionally, with no service definition that could actually run. The two documents are
+now aligned to the decision.
+
+**Decided by:** Thomas (environment-variables decision); alignment by Claude Code (Fable).
+
+---
+
+### 2026-09-05 · Do-not 16 — no commit, push or merge without Thomas's explicit approval in the same session
+
+**Decision:** [AGENTS.md](../../AGENTS.md) gains do-not 16, in Thomas's words: *"Commit,
+push or merge anything without Thomas's explicit approval in the same session. A report is
+not approval."* This **supersedes** the earlier working rule "report first, then commit,
+push and update the PR". From now on an agent finishes its work, writes the report, and
+stops; Thomas says "commit" (or "commit and push") in the same session, or the changes stay
+in the working tree.
+
+**Why:** two closure passes today were committed and pushed before Thomas had read their
+reports. For documentation that was harmless; from P0 onward it is code. A rule that is
+approval-gated is the only one a memoryless agent cannot argue itself around.
+
+**Noted, not decided:** the narrower form (agents may commit and push to their own feature
+branch; merge, `main`, history rewrites and any push *after* an unread report need approval)
+keeps branch pushes cheap and keeps the PR description as the place long-running context
+lives ([agent-workflow.md](../04-engineering/agent-workflow.md)). Thomas chose the strict
+form; the narrow form is a one-line change if the strict form proves too slow. A CODEOWNERS
+rule requiring Thomas's review on `main` is added to [ci-cd.md](../04-engineering/ci-cd.md)
+so "only Thomas merges" has a mechanism, whichever form is in force.
+
+**Decided by:** Thomas
+
+---
+
+### 2026-09-05 · Third absolute — an unavailable reviewer is not a downgraded reviewer
+
+**Decision:** [agent-workflow.md](../04-engineering/agent-workflow.md) § Model tiers gains
+a third absolute next to "never approve your own design review" and "never waive a gate":
+when a usage limit, quota, outage or timeout makes the required review tier unreachable
+mid-review, the agent **stops and waits**. It does not continue on a lower tier, does not
+let the authoring session review its own work "just this once", and does not let a Sonnet
+implementation subagent review the code it wrote under any framing. While blocked it
+records what is finished and what is unreviewed in the PR description, adds a **Blocked**
+entry to [status.md](status.md) naming the tier it waits for, and stops. Proceeding without
+the review is a gate waiver only Thomas grants, through the waiver procedure.
+
+**Why:** the failure has already happened twice today (two agents hit limits mid-session).
+"Not cost-negotiable" addressed budget, not availability; an agent that cannot reach Opus
+reads "cost" as not covering its situation. This is the v1 pattern — the exception that
+becomes the rule — named so it cannot be routed around.
+
+**Decided by:** Thomas (message of 2026-09-05, suggestion 3)
+
+---
+
+### 2026-09-05 · Go-live rehearsal gate — two lanes, timed, before the first real tenant
+
+**Decision:** [definition-of-done.md](../04-engineering/definition-of-done.md) gains a
+"Go-live rehearsal" section, cited from [phases.md](phases.md) and the accelerated plan's
+week-5 gate. Before the first real tenant, internal or external, the first week of a
+customer's life is rehearsed once, in order, in a single sitting, against the `realistic`
+seed, and timed. **Administrator lane — browser only, ten minutes:** create an
+organisation, configure Microsoft Entra for it, invite a customer and have them sign in,
+raise a request from the portal, triage it, breach an SLA on purpose and see it where the
+spec says, resolve it. Over ten minutes, or any step that needs a terminal or an edited
+file, fails the gate. **Operator lane — a shell is expected, improvisation is not:**
+install, restore from backup, and upgrade are shell procedures by design (and the one-time
+setup token is read from the installer output or the container log); the bar is that each
+is completed by following the runbook exactly, with no command the runbook does not name,
+and timed. Timings and every hesitation go into the phase review note.
+
+**Why:** the red-team gate tests the security surface; nothing rehearsed the operational
+go-live as a sequence. "The first ten minutes sells this product." The original wording
+("requires a shell → not done") would have failed by construction, because install,
+restore, upgrade and the setup token are shell steps in the deployment design.
+
+**Decided by:** Thomas (message of 2026-09-05, suggestion 2); two-lane wording by Claude
+Code (Fable)
+
+---
+
+### 2026-09-05 · `notify.email` (SMTP) is core delivery
+
+**Decision:** the SMTP channel (`notify.email`) is **core**, not a future integration.
+Authentication codes (email OTP, magic link), invitations, the first-run and setup flow,
+notification email and pending-action notices all depend on it. It is configured in God
+Mode → Notifications (host, port, TLS, credentials, from-address, reply-to; "send a test
+email"), never by environment variable. The deferred "notification integrations" list is
+**chat channels only**, in this future priority order: Microsoft Teams → Slack → Telegram →
+Viber. The generic signed webhook stays core in P4. Nothing else changes.
+
+**Why:** already recorded inside the deferred-scope list of the A–N entry ("Email is core")
+and consistent across notifications.md, plugin-architecture.md, roadmap.md and god-mode.md
+— this dedicated entry exists so that a reader scanning the log's headings cannot miss it or
+"helpfully" defer email with the chat channels.
+
+**Decided by:** Thomas (confirmed 2026-09-05)
+
+---
+
+### 2026-09-05 · Unauthenticated invitation lookup stays, as a `public` route
+
+**Decision:** kaneo's `GET /invitation/public/:id` (`apps/api/src/index.ts:240`) — the
+pre-sign-in view of an invitation (workspace name, inviter, expiry) — is **kept** through
+the router retrofit as policy kind 4 (`public`), rate-limited in the anonymous class,
+constant-shape 404 for an unknown or expired id, returning no email address and no member
+list. It is listed in the inherited-features register with this verdict.
+
+**Why:** the invitation flow needs the invitee to see what they are accepting before they
+authenticate; the alternative (a blind accept) is worse UX for no security gain, since the
+id is a ≥128-bit token. Recorded because no document had a verdict for the only other
+unauthenticated route in kaneo's `index.ts`.
+
+**Decided by:** Claude Code (Fable) — reversible; Thomas may reverse to "remove" in one line.
+
+---
+
+### 2026-09-05 · Pages needs a spec before P5 stage 2; the fixed-report count is twenty
+
+**Decision:** "Pages" stays scheduled in P5 and in the screen inventory but is marked
+**spec required** — no `docs/03-features/pages.md` exists; prefix `PG` is reserved in the
+[features README](../03-features/README.md) registry and the P5 table notes the missing
+spec. It cannot enter build until the spec is written and read (the README's own rule). The
+fixed-report count is **twenty** (4 + 3 + 5 + 4 + 4 in
+[reports-and-dashboards.md](../03-features/reports-and-dashboards.md)); the word "fourteen"
+is corrected in that spec, phases.md, the accelerated plan and vision.md.
+
+**Why:** a scheduled feature with no spec is how scope enters unnoticed; a count repeated in
+five documents that the owning spec's own tables contradict is how counts drift.
+
+**Decided by:** Thomas (message of 2026-09-05, item 6); minimal-scope form by Claude Code
+(Fable) — writing the spec or dropping Pages from P5 remains Thomas's call.
+
+---
+
+### 2026-09-05 · Pre-P0 check applied — where each class of finding landed
+
+**Decision:** the pre-P0 check (Fable, 2026-09-05; ≈200 verified findings, eight lenses,
+audit trail in [reviews/2026-09-05/pre-p0-check-fable/](reviews/2026-09-05/pre-p0-check-fable/))
+is applied in the owning documents, not left in a review file. By class:
+
+| Class | Owner document(s) | Headline corrections |
+| --- | --- | --- |
+| kaneo reality (bootstrap) | repository-bootstrap.md, inherited-features.md, migrations.md, monorepo-layout.md, ADR 0001, tech-stack.md, 08-docs-site/plan.md | exhaustive copy table; env migration table; `public-project` checklist; `plugins` = the six integrations; `job_lease` inherited; `packages/permissions` replaced not extended; kaneo's `tests/`; docs-site claim corrected (open decision) |
+| Authorization & security | rbac.md, security-model.md, pending-actions.md, api-design.md, webhooks-and-api-keys.md, mcp-server.md, six feature route tables | CSRF scoped to cookie auth; `orOwner` requires the `*_own` capability; elevated DELETEs from non-session credentials are `403 session_required`; `pending_action` gains `payload`, `route_key`, `invalidation_reason`; personal keys read-only by default; `MC-7` destructive list widened; `Policy` gains `elevated`/`sessionOnly`; audit chain input and serialisation defined; service-key ownership transfers to workspace admins |
+| Identity | auth-and-identity.md, auth-runtime-reconfiguration.md, identity-provisioning.md, customer-portal.md, multi-tenancy.md, god-mode.md, ADR 0003 | reload watches `identity_connection` too; account linking off; cookie cache off; Entra claim precedence (`preferred_username`/`upn`), group object ids, overage rule, single-tenant issuer + `tid`; placeholder claiming restricted; `portal_scope` never `both`; home-realm discovery; connection disable revokes sessions; SCIM server is ours, Entra quirks tolerated |
+| Data model | data-model.md, events.md, background-jobs.md, ADR 0007/0009, sla.md, workflows.md, approvals.md, storage-and-attachments.md, comments-and-activity.md | `scheduled_transition` table; `first_response_at`; `is_reopen`; legal hold; organisation quotas; comment tombstones; workspace soft delete; tenancy columns on attachment/outbox/imports/custom-field values; `sla.missed`, `approval.withdrawn`; `automation-schedule` job; three `status`→`state` |
+| Design | design-system.md, design-tokens.md, ux-quality-gates.md, ui-extraction-plan.md, accessibility.md, motion.md, ADR 0008 | Radix → Base UI everywhere; tokens split into inherited-verbatim vs authored; kaneo's real radii/easings/neutral base; gates with no mechanism marked as human gates or given one; two-entry routing split named as P0 work |
+| Operations | configuration-reference.md, deployment.md, container-image.md, traefik-and-domains.md, one-line-install.md, backup-and-restore.md, runbook.md, kubernetes.md, observability.md | ports never in the base compose file; SeaweedFS as a profile with a real definition; single kaneo image; stray variables classified; health paths unified; upgrade through `deploy.sh`; rotation procedure unified; healthcheck buildable |
+| Planning | phases.md, roadmap.md, release-plan.md, accelerated-delivery-plan.md, risks.md, 03-features/README.md | marketplace deferral everywhere; 13 unassigned specs placed; inherited-in-week-1 register corrected; Pages; twenty reports; assignment rules P1/P2 resolved; integration routers named in P0 step 1; phase-sequencing exception written into the phase gate |
+| Process | AGENTS.md, agent-workflow.md, sdlc.md, definition-of-done.md, ci-cd.md, testing-strategy.md, `.github/pull_request_template.md` | PR template exists and is specified; model, reviewer and security-reviewer recorded per PR; "screens opened" artefact; one phase-gate list; do-not 16; third absolute; go-live rehearsal; `check:reviews`, `.skip`/`.only` grep, identifier and env checks as CI steps |
+
+**Why:** an audit whose fixes do not land is how v1 drifted. Every row in the eight lens
+files is either applied in its owning document or named here as a decision.
+
+**Decided by:** Thomas (message of 2026-09-05: "nothing stays only in a review file");
+applied by Claude Code (Fable) with Sonnet edit agents and Opus review.
+
+---
+
 ### 2026-09-05 · Confirmed decisions A–N, and Microsoft Entra SCIM/OIDC as core delivery
 
 **Decision:** Thomas's confirmed decision document of 2026-09-05 is **product policy**.
@@ -405,6 +797,11 @@ architecture and is decided now so nothing downstream has to be retrofitted.
 **Alternatives:** metering compiled in and toggled by an environment variable. Rejected —
 inverts the trust model every other plugin already establishes.
 
+**Superseded the same day by the confirmed decisions of 2026-09-05 (above):** the listing
+itself is **deferred beyond the current three-to-four-month scope**; a BYOL / contract
+listing is preferred over usage metering when the decision is taken; nothing in P7 builds
+it. The `license` plugin kind (ADR 0013) remains the architecture for whenever that is.
+
 **Decided by:** Thomas
 
 ---
@@ -520,6 +917,11 @@ and fiction that gets planned against is worse than no plan. After P0 and P1 the
 evidence.
 
 **Decided by:** Thomas
+
+**Partly superseded the same day:** the roadmap still carries no dates, but a dated
+mapping was requested and lives in [accelerated-delivery-plan.md](accelerated-delivery-plan.md)
+as a flexible target (section A of the confirmed decisions); the "until P1 closes" condition
+no longer applies. Bookkeeping only.
 
 ---
 
@@ -708,7 +1110,11 @@ lands — in addition to, not instead of, the external penetration test (R19).
 
 Gate waivers, recorded per [UX quality gates](../02-design/ux-quality-gates.md).
 
-*(None yet.)*
+### 2026-09-05 · Gate activities consolidated before `2.0.0` — recorded as a waiver, pending confirmation
+**Gate:** the per-phase manual accessibility pass, fresh-eyes test, four-browser check and k6 baseline ([sdlc.md](../04-engineering/sdlc.md) phase gate)
+**Reason:** [release-plan.md](release-plan.md) runs these four **once, before `2.0.0`**, over the whole surface instead of once per phase. That is a gate waiver granted by a planning document; the waiver procedure ([ux-quality-gates.md](../02-design/ux-quality-gates.md)) was not followed when it was written, so it is recorded here to be visible
+**Follow-up:** confirm or revert — if confirmed, the phase-gate list in [definition-of-done.md](../04-engineering/definition-of-done.md) says so; if reverted, release-plan.md is corrected
+**Approved by:** *pending — Thomas*
 
 ```markdown
 ### YYYY-MM-DD · Waived <gate> in PR #n

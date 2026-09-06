@@ -95,6 +95,28 @@ security pass — that is a separate, explicit step.
 This does not relax either absolute already stated under [Roles](#roles): an agent of any
 tier may never approve its own design review, and may never waive a quality gate. A
 stronger model reviewing is a stronger check, not a different kind of permission.
+**A third absolute: an unavailable reviewer is not a downgraded reviewer.** When a usage
+limit, a quota, an outage or a timeout makes the required tier unreachable mid-review —
+**stop and wait**. Do not continue on a lower tier. Do not let the authoring session review
+its own work "just this once", and do not let a Sonnet implementation subagent review the
+code it wrote, under any framing: not "a quick sanity pass", not "just the diff", not
+"pending the real review". A review recorded at the wrong tier is worse than no review,
+because it closes the PR field that would otherwise stay visibly open. While blocked: write
+what is finished and what is unreviewed in the pull request description, add a **Blocked**
+entry to [status.md](../07-planning/status.md) naming the tier you are waiting for and who
+unblocks it, and stop. Waiting for capacity is a normal, recordable state — the same class
+as "three attempts failed" ([error fix loop](error-fix-loop.md)). Only Thomas may decide the
+work proceeds without the review, and that decision is a gate waiver: it follows the waiver
+procedure in [UX quality gates](../02-design/ux-quality-gates.md), including the
+decision-log entry.
+
+**These tiers apply to every agent's pull request, not only Claude Code's.** A pull request
+authored by the OpenAI agent or by Copilot gets its architecture/QA review and its Opus
+security review through a Claude Code session before Thomas sees it; if that session cannot
+reach Opus, the third absolute applies. The PR template records which model implemented,
+which reviewed and which ran the security pass, and CI refuses a template whose
+`Reviewed by` equals `Implemented by` or whose `Security review` does not name Opus
+([ci-cd.md](ci-cd.md#pull-request-pipeline)).
 
 ---
 
@@ -165,6 +187,11 @@ What NOT to do. This matters more than it sounds — agents expand scope helpful
 
 ### Do not
 
+The authoritative list is [AGENTS.md § Do not](../../AGENTS.md#do-not) — eighteen items,
+including do-not 16 (no commit, push or merge without Thomas's explicit approval in the same
+session). The items below are the ones most often broken in practice; if the two ever
+disagree, AGENTS.md wins.
+
 1. **Do not invent UI primitives.** `packages/ui` or nothing.
 2. **Do not add a dependency** without asking. It needs a decision log entry.
 3. **Do not disable a test** to make a build pass. Ever.
@@ -204,7 +231,9 @@ sufficient.
 
 ## Skills
 
-`skills/` carries two agent skills inherited from kaneo and five we write in P0 — the
+`skills/` carries two agent skills kept from kaneo's ten (the other eight are read-once
+references, not copied — [inherited-features.md](../01-architecture/inherited-features.md))
+and five we write in P0 — the
 review found the first draft listed all seven as inherited, which hid the work:
 
 | Skill | Origin | Use for |
@@ -228,6 +257,8 @@ Prefer a skill over freehand work — it encodes decisions already made.
 - At the end of a session, update [status.md](../07-planning/status.md) with where things
   stand and what is blocked.
 - Long-running context goes in the pull request description, not in the conversation.
+- **The working tree stays uncommitted until Thomas says "commit"** ([AGENTS.md](../../AGENTS.md)
+  do-not 16). Finish, write the report, stop. A report is not approval; neither is silence.
 
 ---
 
@@ -239,6 +270,10 @@ Every pull request gets:
    catches a surprising amount.
 2. **Automated gates** — everything in CI.
 3. **Thomas** — final approval, and the only source of approval for design and waivers.
+`main` enforces the third step mechanically: a `CODEOWNERS` file (`* @ThomasHeinThura`)
+makes Thomas's review required on every pull request into `main`
+([ci-cd.md](ci-cd.md#branching)) — "only Thomas merges" is a branch-protection rule, not a
+sentence.
 
 An agent reviewing its own work is worth very little; the same context that produced the
 mistake will not see it.

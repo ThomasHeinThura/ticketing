@@ -64,17 +64,28 @@ Opus security review before P0 closes ([phases.md](../07-planning/phases.md#p0--
 Five policy kinds, defined once in [RBAC](rbac.md): capability (optionally `orOwner`),
 `authenticated + self`, `portal + predicate`, `public + reason`, `delegated + reason`.
 `tests/permissions/route-coverage.test.ts` enumerates **Hono's router** — not the OpenAPI
-document, so `/auth/*`, `/ws` and `/metrics` are covered — and fails on any route without a
-policy of a known shape.
+document — and fails on any route without a policy of a known shape. `/auth/*`, `/ws` and
+`/metrics` are **explicitly allowlisted, with the surface behind them unenumerated**, not
+"covered": `/auth/*` is one mounted handler whose endpoint set is defined by the better-auth
+**plugin list**, which is rebuilt at runtime from database configuration. The control there is
+a different assertion — the constructed plugin list must equal the approved list (no
+`anonymous`, no `deviceAuthorization`, no `bearer`) — re-run on every runtime rebuild, logging
+and alerting on a diff. Policies also carry `elevated` and `sessionOnly`, so elevation is a
+build failure to omit rather than a prose table someone forgot ([RBAC](rbac.md)).
 
 ### 2. The scope object is resolved by the framework, not the handler
 
 A policy's `scope` names *which* object the capability is checked against; the policy
-middleware **loads that object from the request's path parameter, checks reach, checks
-authority, and hands the already-authorized row to the handler**. Handlers never re-load
-by id from user input. This closes the classic IDOR (a valid capability in project A, an id
-from project B): `tests/permissions/idor-fuzz.test.ts` takes every scoped route and
-substitutes ids from the other seeded tenant, asserting 404.
+middleware **loads that object from the route's declared scope source, checks reach, checks
+authority, and hands the already-authorized row to the handler**. The scope source is the
+path parameter for most routes and, for workspace-scoped collection routes with no workspace
+in the path (`/api/custom-fields`, `/api/capabilities`, `/api/webhooks`, `/api/views`,
+`/api/notifications`), the required `X-Workspace-Id` header or `?workspace=` query parameter,
+validated the same way; `POST /api/work-items/search` takes it from the filter body. Handlers
+never re-load by id from user input. This closes the classic IDOR (a valid capability in
+project A, an id from project B): `tests/permissions/idor-fuzz.test.ts` takes every scoped
+route and substitutes ids from the other seeded tenant **at every scope source — path segment,
+header and search body alike** — asserting 404.
 
 ### 3. Permission matrix, twice — plus generated roles
 
@@ -182,7 +193,8 @@ Every user-initiated deletion — web UI, REST API, personal API key, MCP — is
 `pending_action` that the requesting human approves in a browser session; the server
 re-runs the route policy at approval, verifies the payload hash and target versions, and
 executes exactly the approved targets. Confirmation levels rise with blast radius (click →
-typed name → typed count → typed name + step-up). No model-supplied field, API key,
+typed name → typed count → typed count + step-up → typed name + step-up), one required level
+per target type, never a choice between two. No model-supplied field, API key,
 impersonation session or automation can approve; automations have no delete action before
 P4; there is no MCP purge tool; hard purge is retention lifecycle or an elevated
 `instance:admin` operation that checks legal hold first. The whole mechanism, table, routes
@@ -206,10 +218,10 @@ The server is.
 | Control | Rule |
 | --- | --- |
 | Cookies | HTTP-only, `Secure`, host-only (no `Domain`), `__Host-` prefix, `SameSite=Lax`; `SameSite=Strict` for the elevated-action routes |
-| CSRF | **No state-changing GET, ever** (a lint rule). Every unsafe method requires `Origin` (or `Referer`) to equal the request host's own origin; failing that, 403. Cookie-authenticated unsafe requests additionally carry a double-submit token. `SameSite` alone is not the control — the agent and portal are sibling subdomains |
+| CSRF | **No state-changing GET, ever** (a lint rule). The CSRF controls apply **only to cookie-authenticated requests**, because the cookie is the only ambient-authority credential: an unsafe method presented with a session cookie requires `Origin` (or `Referer`) to equal the request host's own origin **and** a matching double-submit token; either failing is a 403. `SameSite` alone is not the control — the agent and portal are sibling subdomains. Requests authenticated by a **bearer token, a personal or service API key, or a SCIM token** are exempt from both checks: they are not sent automatically by a browser, so there is nothing for a cross-site page to forge, and non-browser clients (curl, CI, Microsoft Entra's SCIM client, the MCP server) send no `Origin` at all. This is the single statement of the rule; [api-design.md](api-design.md) cites it |
 | Session rotation | The session id is regenerated on authentication, on impersonation start/end, and on MFA enrolment (fixation) |
 | Defaults | Idle 12 h, absolute 30 days, concurrent 5 — configurable in God Mode within maxima of 7 days idle / 90 days absolute |
-| Step-up for elevated actions | Re-authentication means the **second factor** when the account has one — never "password *or* MFA". SSO-only accounts re-authenticate at the IdP with `prompt=login`. The re-auth issues a **single-use confirmation token bound to the specific action and target**, valid five minutes; a session-wide window is not enough |
+| Step-up for elevated actions | Re-authentication means the **second factor** when the account has one — never "password *or* MFA". SSO-only accounts re-authenticate at the IdP with `prompt=login`. The re-auth is minted by `POST /api/me/step-up` (session-only) and returns a **single-use confirmation token bound to the pending action's id**, valid five minutes; the pending action must already exist, so the token can never be broader than one approval, and a token that expires while the approver reads the summary is re-minted from the same endpoint for as long as the action is `pending`. A session-wide window is not enough. Statuses and re-minting: [pending-actions.md](pending-actions.md) `PA-15` |
 | Elevated list | The single list in [RBAC](rbac.md) |
 
 ## Impersonation
@@ -229,7 +241,7 @@ session happened.
 | Filter as an oracle | Filterable fields carry their own read capability; the filter is evaluated **after** identity scoping; `meta.total` counts only rows in reach |
 | XSS | React escapes by default. Rich text is a Tiptap **JSON document, never raw HTML**; sanitised against an allowlist on write **and** normalised on render; importers write through the same domain-layer sanitiser as the API. `dangerouslySetInnerHTML` is banned by lint |
 | Uploads | Extension and MIME allowlist, magic-byte sniff at `complete`, size cap; presigned POST pins key, `content-length-range` and content type; served from a separate origin with `Content-Disposition: attachment`; only `state = 'ready'` rows are served. No malware scanner — accepted residual risk; a future `storage.antivirus` plugin is reserved, not built ([roadmap.md](../07-planning/roadmap.md)) |
-| SSRF / egress | **One HTTP client for every outbound call** — webhooks, OIDC discovery, SMTP, S3/Azure endpoints, AI providers, OTLP, Sentry, marketplace APIs, and plugin `test()` — resolves and checks the target against private, link-local and metadata ranges (`169.254.169.254`, `fd00:ec2::254`) before connecting and again at connect time; never follows redirects to a new host; optional egress allowlist in God Mode. Plugin `test()` is rate-limited and **audited even when nothing is saved** |
+| SSRF / egress | **One HTTP client for every outbound call** — webhooks, OIDC discovery, SMTP, S3/Azure endpoints, AI providers, OTLP, Sentry, marketplace APIs, and plugin `test()` — resolves and checks the target against private, link-local and metadata ranges (`169.254.169.254`, `fd00:ec2::254`) before connecting and again at connect time; never follows redirects to a new host. The **egress allowlist** is stated once, here, and cited from `WH-12`: in production it is a God Mode-configurable, **default-empty**, per-host list whose every edit is an elevated, audited change, and it may be used **only** by `ai.*` plugins reaching a self-hosted model on a private address; `notify.*`, `webhook` and `import.*` may never target private, link-local or metadata ranges in production, and no God Mode entry can make them. A separate development allowlist relaxes the HTTPS requirement and exists **only** when `NODE_ENV=development`. Plugin `test()` is rate-limited and **audited even when nothing is saved** |
 | Path traversal | Object keys are generated, never derived from user filenames |
 | Mass assignment | Zod schemas are strict; unknown keys rejected, not stripped |
 | ReDoS | User-supplied patterns never compiled to regex |
@@ -334,7 +346,33 @@ of outcome:
 Append-only is **enforced in the database**: the application role has no `UPDATE`/`DELETE`
 on `audit_log` ([migrations.md](../04-engineering/migrations.md)); rows are hash-chained
 (`prev_hash`) so tampering by a database-level actor is detectable; retention purge runs as
-a separate maintenance role and is itself audited. Reading the audit log is scoped: a
+a separate maintenance role and is itself audited.
+
+**The chain is defined precisely, because a vague chain fails towards a false alarm during an
+incident.** Three things are specified and none of them is left to the implementer:
+
+- **Hash input.** `row_hash` is SHA-256 over the concatenation, in this fixed order, of
+  `prev_hash`, `id`, `occurred_at`, `actor_person_id`, `impersonator_id`, `action`,
+  `entity_type`, `entity_id`, `workspace_id`, `project_id`, `before`, `after`, `context` —
+  each field length-prefixed, `null` distinguished from empty. `jsonb` columns are serialised
+  as **RFC 8785 canonical JSON**; timestamps as microsecond-precision UTC ISO-8601; the digest
+  is written lowercase hex. `organisation_id` and every other column that may be backfilled or
+  corrected after the fact are **excluded from the input** — a post-hoc mutable column inside
+  the hash would break the chain on a legitimate backfill.
+- **Serialisation point.** Every audit insert takes `pg_advisory_xact_lock(<the audit-chain
+  constant>)` before reading the current tip and inserts inside the same transaction, so the
+  chain is a strictly serial critical section. It is **one chain per instance**, not per
+  workspace: a single tip is what `audit-verify` can walk end to end, and the throughput cost
+  is one short lock per audited write, which this product's write rate can afford. Without
+  this, two replicas read the same tip, insert with the same `prev_hash`, and `audit-verify`
+  reports tampering on a healthy instance — at exactly the moment it is trusted most.
+- **Purge anchor.** `audit-purge` does not silently leave a hole. After deleting an expired
+  range it appends an **anchor row** — an ordinary audited row naming the purged range and the
+  `row_hash` of the last surviving row before it — and `audit-verify` starts from the newest
+  anchor and walks forward, so a purge reads as a purge and never as a break. `audit-verify`
+  reports three distinct outcomes: `intact`, `purged-at <anchor>` (expected), and `broken at
+  <id>` (a genuine mismatch). An `AU-14` write gap leaves no row and therefore no chain
+  discontinuity; it is visible as an alert and a metric, not as a verification failure. Reading the audit log is scoped: a
 workspace administrator sees rows with their `workspace_id` **and** whose entity is in
 their reach — a manager with two projects does not read a third project's `before`/`after`
 payloads through the workspace audit screen; instance-wide reads need `instance:read_audit`.
@@ -347,11 +385,16 @@ is in [data-protection.md](../05-operations/data-protection.md).
 
 - `/api/public/auth-providers` returns **only** what the login page needs — a button label
   and provider id — never discovery URLs, tenant ids or domain restrictions.
-- `/api/public/health/live` and `/ready` are anonymous; `/api/public/health/deep`
-  enumerates dependencies and requires `instance:admin` or the metrics bearer token.
+- `/api/public/health/live` and `/ready` are anonymous. The dependency-enumerating deep check
+  is **not** on the public router at all: it is `GET /api/instance/health/deep`, policy kind 1
+  with `instance:admin`. The one endpoint that lists every dependency is the reconnaissance
+  surface this threat model names, so it does not live behind a per-route exception under a
+  router whose blanket kind is `public`.
 - `/metrics` is bearer-guarded with a constant-time comparison and, where the operator can,
   bound to a separate listener not exposed by Traefik; its labels are cross-tenant
-  inventory and are treated as sensitive.
+  inventory and are treated as sensitive. The metrics bearer token is policy kind 5
+  (`delegated: 'metrics'`) and grants **`/metrics` and nothing else** — it is not an
+  alternative credential for `/api/instance/health/deep` or any other route.
 - An **anonymous rate-limit class**, keyed by IP and — for anything that sends mail — by
   target email, covers `/api/public/*`, the non-login `/auth/*` endpoints (magic link, OTP,
   reset) and the WebSocket upgrade. Those endpoints respond identically and in constant time

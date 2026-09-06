@@ -65,6 +65,7 @@ What is working and what is not, at a glance. Each check reports one of
 | Valkey (if configured) | latency > 50 ms | unreachable — the app degrades to in-memory and says so |
 | Object storage | test write > 2 s | test write fails |
 | Each `notify` / `auth` plugin, and each enabled identity connection (OIDC discovery; SCIM last sync) | last `plugin-health` ping slow; SCIM sync failed once | last ping failed; SCIM token revoked while the connection is enabled |
+| Auth configuration — the config version each replica is serving and the outcome of its last reload, reported for **both** per-portal better-auth instances ([auth-runtime-reconfiguration.md](../01-architecture/auth-runtime-reconfiguration.md)) | last reload failed and the previous instances are still being served, or replicas disagree on the config version | no instances could be constructed on a replica, or a connection's discovery document has been unreachable since the last reload |
 | Each job | last success older than 2× cadence | older than 3× cadence, or three consecutive failures |
 | Backups | no `backup_run` in 24 h | none in 48 h |
 | Disk headroom (filesystem storage only) | < 20 % | < 10 % |
@@ -138,14 +139,31 @@ The most important screen. See [auth and identity](../01-architecture/auth-and-i
 
 `auth.password` cannot be removed. It is the lock-out prevention.
 
+This screen is the **only** place any of it is configured. better-auth's own `admin` plugin
+routes are **not mounted** — the plugin is kept as a session primitive only, and every
+administrative action here runs through our own `/api/instance/*` routes with the authority
+check resolved from our directory ([auth-and-identity.md](../01-architecture/auth-and-identity.md),
+[rbac.md](../01-architecture/rbac.md)). A customer organisation's connection is likewise
+**configured by an instance administrator**, on the organisation's Identity tab below, and
+never by the customer ([identity-provisioning.md](identity-provisioning.md) `IP-5`).
+
 ### Organisations
 
 Customer organisations. Create, edit, suspend, delete. Per organisation: name, key, email
-domains, portal access, quotas, bound identity provider, request catalogue
+domains, portal access (`organisation.portal_access`), quotas (`organisation_quota`),
+request catalogue
 (`organisation_request_type`), default customer visibility (`private` | `organisation`),
 and **project defaults** — a service calendar and an SLA policy that are **copied onto new
 projects for that organisation at creation**, never a resolution level of their own
 ([settings-hierarchy.md](settings-hierarchy.md) `ST-3`).
+
+**Identity is not one of these fields, and there is no instance default to inherit** — an
+`agent` connection has no organisation, so there is nothing for a customer organisation to
+fall back to. What the screen shows is a **read-through of the organisation's
+`identity_connection` row**: none, or the one connection bound to it by
+`identity_connection.organisation_id`, edited on the Identity tab below
+([identity-provisioning.md](identity-provisioning.md) `IP-5`,
+[multi-tenancy.md](../01-architecture/multi-tenancy.md)).
 
 Provisioning a new customer organisation is the operation performed most often, so it is
 one screen and one submit.
@@ -382,7 +400,7 @@ GET    /api/instance/backup-runs                      instance:admin
 | Encryption key rotation interrupted | `secrets-rekey` is resumable; rows carry `key_id`, both keys stay readable until Health reports completion |
 | Plugin config saved while a job is using it | The job finishes with the old config; the next run uses the new one |
 | Two admins editing one plugin | Optimistic concurrency, 409 with a diff |
-| Organisation suspended with active sessions | Sessions invalidated immediately |
+| Organisation suspended with active sessions | Every session of that organisation's people is invalidated, in effect on their next request — the SLA in [auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions), where `session.cookieCache` is disabled so no request is served from a cookie. Disabling or deleting an identity connection is treated the same way ([identity-provisioning.md](identity-provisioning.md)) |
 | Impersonation session reaches 30 minutes | Invalidated; administrator returned to their own session; `impersonation.ended` audited with reason `cap` |
 | Feature flag locked off while a project uses the feature | Owned by [settings-hierarchy.md](settings-hierarchy.md) |
 

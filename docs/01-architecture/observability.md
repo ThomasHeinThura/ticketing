@@ -50,7 +50,10 @@ does not require a restart.
 Prometheus exposition at `/metrics`, guarded by a bearer token configured in God Mode →
 Observability, compared in constant time. Business metrics carry `{project, organisation}`
 labels — a cross-tenant inventory — so the token is treated as a secret and, where the
-operator can, `/metrics` is bound to a separate listener not exposed through Traefik. Log
+operator can, `/metrics` is bound to a separate **internal listener on port 9464** (fixed,
+never published, never an environment variable — the runbook's `curl` targets it) not
+exposed through Traefik. The bearer token grants `/metrics` alone — it does **not** read
+`/api/instance/health/deep`, which is `instance:admin` only (decision log 2026-09-06). Log
 redaction is an **allowlist** — the log line serialises named fields only — because a
 denylist of secret patterns cannot catch a field nobody anticipated.
 
@@ -68,6 +71,8 @@ taskdesk_sla_state{project,state}                      ok|at_risk|breached
 taskdesk_intake_pending
 taskdesk_approvals_pending
 taskdesk_portal_sessions_active
+taskdesk_auth_reload_total{outcome}                    ok|failed — auth configuration reloads per replica
+taskdesk_auth_config_version                            the auth config_version each replica serves
 ```
 
 **Jobs**
@@ -119,7 +124,7 @@ Sampling: 100% of errors, 100% of requests slower than 1 s, 1% of the rest.
 | --- | --- | --- |
 | `/api/public/health/live` | The process is running | Container liveness. Anonymous |
 | `/api/public/health/ready` | Database reachable, migrations applied | Load balancer readiness. Anonymous |
-| `/api/instance/health/deep` | Also checks Valkey, storage, SMTP, each plugin, backups | God Mode dashboard, monitoring. **`instance:admin` or the metrics bearer token** — it enumerates every dependency, which is reconnaissance if anonymous |
+| `/api/instance/health/deep` | Also checks Valkey, storage, SMTP, each plugin, backups | God Mode dashboard, monitoring. **`instance:admin` only** (the metrics token does not grant it) — it enumerates every dependency, which is reconnaissance if anonymous |
 
 `live` never touches a dependency — a liveness probe that fails when Postgres blips will
 restart a healthy container and make an outage worse.

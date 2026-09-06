@@ -1,8 +1,11 @@
 # Pending actions — server-enforced approval for deletion and destructive agent calls
 
 - **Status:** decided 2026-09-05 (Thomas — confirmed decision document, sections H, I, J)
-- **Phase:** the mechanism lands in **P1** with work-item deletion; MCP and API-key
-  origins use it from **P4**
+- **Phase:** the mechanism lands in **P1** with work-item deletion, for **browser-session
+  deletions only**. API-key issuance and MCP are **P4**; until then any `DELETE` — or any
+  destructive MCP call — arriving with an API-key credential returns `403 not_implemented`,
+  and MCP delete tools do not exist. The `web`, `api` and `mcp` origins below are the design;
+  only `web` is reachable before P4
 - **Feature flag:** always on — it is a security control, not a feature
 
 > A confirm dialog in the browser is not a control. The server must hold a durable,
@@ -36,11 +39,33 @@ mis-click, which the browser dialog already caught in v1 but which the API never
 
 `pending_action` — [data-model.md](data-model.md) §11. Every approval is **bound** to:
 requester `person_id`; credential (`session` or `api_key` + id); origin; `action`
-(`delete`, `bulk_delete`, `purge`, `mcp_destructive`); `target_type` and the exact
-`target_ids[]`; `target_versions` where the target is versioned; a `payload_hash` of the
-full request; the `scope` (workspace/project/organisation); `created_at`; `expires_at`;
-`state`; the confirmation kind required and the one supplied; `decided_by`,
-`decision_session_id`, `decided_at`; `executed_at`; `error`.
+(`delete`, `bulk_delete`, `purge`, `mcp_destructive`); `route_key`; `target_type` and the
+exact `target_ids[]`; `target_versions` where the target is versioned; the stored `payload`
+and its `payload_hash`; the `scope` (workspace/project/organisation); `created_at`;
+`expires_at`; `state`; `invalidation_reason`; the confirmation kind required and the one
+supplied; `decided_by`, `decision_session_id`, `decided_at`; `executed_at`; `error`.
+
+Three of those columns exist so that the guarantees below have a mechanism rather than a
+convention, and each has one job:
+
+- **`payload jsonb`** — the request is *kept*, not only digested, so `PA-6` can re-hash it.
+  `payload_hash` is SHA-256 over a **canonical payload** with exactly these members, in this
+  order: `{ action, route_key, target_type, target_ids (sorted ascending), workspace_id,
+  project_id, organisation_id, confirmation_required }`, serialised as RFC 8785 canonical JSON
+  and written lowercase hex. Nothing outside that set enters the hash — not `created_at`, not
+  the rendered summary — so the digest is reproducible at approval time from the stored row.
+- **`route_key text` not null** — the exact `policy.ts` key (`'DELETE /api/work-items/{key}'`),
+  type-constrained to `keyof PolicyMap`. `PA-6` re-runs `policyMap[route_key]` and nothing
+  else. Without it the server cannot know *which* policy to re-run — `mcp_destructive` alone
+  covers `decide_approval` and any bulk operation above 50 items — and an implementer would
+  build a second `target_type → capability` map outside the registry, which is exactly the
+  second authorization surface this design exists to prevent.
+- **`invalidation_reason text` null** — an enum over the `PA-9` causes, so "why did this
+  approval die?" is answerable from the row during the incident review the audit story depends
+  on.
+
+`payload_summary jsonb` stays what it always was: what the dialog renders. It is never the
+thing that is hashed or executed.
 
 ## Behaviour
 
@@ -54,24 +79,47 @@ full request; the `scope` (workspace/project/organisation); `created_at`; `expir
 - `PA-3` A **web-UI** request opens the approval dialog immediately in the same browser
   session, rendered from the server's `summary` (never from client state). To the person it
   is a confirm dialog; underneath it is `PA-6`.
-- `PA-4` An **API-key or MCP** request returns the same `202`. The requester is notified
-  ("An agent using your key *ci-bot* asked to delete SUP-1234") and approves from
-  **Profile → Pending actions** or the notification. The client learns the outcome by
-  polling `GET /api/me/pending-actions/{id}` — retrying the original request while the
-  action is pending returns `409 pending_approval` with the id, and creates nothing new.
-- `PA-5` A request made with a **workspace service key** (no `person_id`) has no approver
+- `PA-4` An **API-key or MCP** request to delete an **ordinary** record — work item, comment,
+  attachment, custom field, saved view, time entry, label, relation and the rest — returns the
+  same `202`. The requester is notified ("An agent using your key *ci-bot* asked to delete
+  SUP-1234") and approves from **Profile → Pending actions** or the notification. The client
+  learns the outcome by polling `GET /api/me/pending-actions/{id}`.
+  - **The retry rule, stated once.** Idempotency middleware runs **first**: a repeat carrying
+    the same `Idempotency-Key` replays the stored `202` and reaches nothing further
+    ([api-design.md](api-design.md)). Behind it, a partial unique index on
+    `(requested_by_person_id, action, target_ids, state) WHERE state = 'pending'` makes a
+    second *pending* action for the same targets impossible. So a retry of the same request
+    while one is pending returns **`409 pending_approval` with the id and creates nothing
+    new** — with or without an idempotency key. There is no path that produces two pending
+    actions for the same targets, and `target_ids` (not the rendered summary) is what
+    establishes identity.
+- `PA-5` **Two credential classes, two answers.** Deleting a **workspace, organisation,
+  project, API key, webhook, identity connection or `auth.*` plugin** is on the elevated list
+  and carries `sessionOnly: true` ([rbac.md](rbac.md#session-only-routes)). The credential
+  check runs in the auth middleware **before** the route policy, so those requests are refused
+  **`403 session_required`** when they arrive on an API key, an MCP key or an impersonation
+  session: no pending action is created and there is no 202 to poll. The elevated rows in the
+  confirmation table below are therefore **web-origin only**. Everything else keeps `PA-4`.
+- `PA-5a` A request made with a **workspace service key** (no `person_id`) has no approver
   and is refused `403 no_approver`. Service keys cannot delete.
 - `PA-6` **Approval** is `POST /api/me/pending-actions/{id}/approve` with the required
   confirmation — policy kind 2 (`authenticated + self`: the requester only) **and
   session-only**: an API key, an `is_mcp` key or an impersonation session is refused `403`
   ([rbac.md](rbac.md#elevated-and-audited-actions--the-single-list)). The server then:
   1. re-checks the action is `pending` and unexpired;
-  2. re-resolves the approver's identity and **re-runs the route policy** against the
-     current reach and capability — an approver who lost access since requesting gets 404
-     and the action becomes `invalidated`;
-  3. re-hashes the stored payload against the stored `payload_hash` and, for versioned
-     targets, checks `target_versions` still match (a work item edited since the request
-     is `409 target_changed`, and the action is `invalidated`);
+  2. re-resolves the approver's identity and **re-runs `policyMap[route_key]`** — the stored
+     route's own policy, no other — against the current reach and capability; an approver who
+     lost access since requesting gets 404 and the action becomes `invalidated`;
+  3. re-hashes the stored `payload` over the canonical members above and compares it to the
+     stored `payload_hash`, and for versioned targets checks `target_versions` still match
+     (a work item edited since the request is `409 target_changed`, and the action is
+     `invalidated`);
+  3a. re-reads each target's **current** `workspace_id`, `project_id` and `organisation_id`
+     and compares them to the stored scope — any difference is `409 target_changed` and the
+     action is `invalidated`, even where the approver happens to hold the capability in the
+     new scope. Without this step a target moved between the request and the approval is
+     deleted in a scope the approver never saw in the summary, which is the target-substitution
+     attack `PA-7` exists to prevent, achieved without touching the pending action;
   4. validates the confirmation — typed text equals the exact key/name, typed count equals
      the affected count, step-up token present and bound to this action where required;
   5. marks the action `approved`, executes **exactly the stored targets**, marks it
@@ -83,7 +131,10 @@ full request; the `scope` (workspace/project/organisation); `created_at`; `expir
   ([background-jobs.md](background-jobs.md)) marks stale rows `expired`.
 - `PA-9` **Invalidation:** an action becomes `invalidated` when the requesting credential
   is revoked, the requester is deactivated, the requester loses reach to any target, the
-  required capability is removed, the requester cancels it, or a target's version changes.
+  required capability is removed, the requester cancels it, a target's version changes, or
+  **a target has moved to another scope** since the request (`PA-6` step 3a — a cross-project
+  or cross-workspace move). Whichever cause fired is written to `invalidation_reason` and
+  carried on the `pending_action.decided` event, so the row explains itself afterwards.
   Denial by the approver is `denied`. None of these can later be approved.
 - `PA-10` **Nobody approves their own automation.** A model-supplied field (the old
   `confirm: true`), a header, an MCP argument or an automation cannot satisfy `PA-6`.
@@ -111,6 +162,17 @@ full request; the `scope` (workspace/project/organisation); `created_at`; `expir
 - `PA-14` The same mechanism carries the MCP server's other destructive tools —
   `decide_approval`, and any bulk operation above 50 items — with `action =
   'mcp_destructive'` ([mcp-server.md](../03-features/mcp-server.md) `MC-7`, `MC-17`).
+- `PA-15` **Step-up is minted per pending action, and can be re-minted.**
+  `POST /api/me/step-up` (session-only, `authenticated + self`) takes a `pendingActionId`,
+  performs the re-authentication described in
+  [security-model.md](security-model.md#sessions-csrf-and-step-up), and returns a
+  **single-use token bound to that id**, valid **five minutes**. It can only be called after
+  the pending action exists, so a token can never be broader than one approval. The token's
+  five minutes are shorter than the action's fifteen on purpose: an approver who reads a
+  project-deletion summary for six minutes has a live action and a dead token, and simply
+  mints another — `POST /api/me/step-up` succeeds for as long as the action is `pending`. An
+  approval that needs a token and has none is `403 step_up_required`; one presenting an
+  expired or already-used token is `403 step_up_expired`. Both leave the action `pending`.
 
 ## Confirmation levels
 
@@ -121,7 +183,8 @@ cannot lower it. The dialog always shows the **exact target** and the **action**
 | --- | --- | --- |
 | Comment, attachment, personal saved view | Exact target, parent work item | Explicit click |
 | Work item | Key, title, project, requester and portal-visibility impact, the soft-delete recovery period | Explicit click |
-| **Bulk deletion** (any type, > 1 item) | Total count, the exact filter/query, workspace/project scope, representative targets | **Typed count** *or* the exact matching phrase. Never a model-supplied value |
+| **Bulk deletion** of **50 items or fewer** | Total count, the exact filter/query, workspace/project scope, representative targets | **Typed count**. Never a model-supplied value |
+| **Bulk deletion above 50 items** | As above, plus the full blast radius of the filter | **Typed count + step-up** (`typed_count_step_up`) |
 | Project | Affected work items, members, attachments, integrations; recovery and purge behaviour | **Typed project key or exact name + step-up** |
 | Workspace, organisation | Full operational and security impact | **Typed exact name + step-up** |
 | API key, webhook, identity connection / provider | Who and what depends on it; what stops working | **Typed exact name + step-up** |
@@ -129,9 +192,21 @@ cannot lower it. The dialog always shows the **exact target** and the **action**
 | MCP destructive that is not a deletion (`PA-14`: `decide_approval`, bulk > 50 items) | The decision or the batch, and the work items it touches | Explicit click |
 | **Any other single deletable record** — role (with its holders reassigned, `RL-8`), custom field (`CF-8`), team, service calendar, automation rule, time entry, shared or team saved view, label, relation | Exact target and its dependants | Explicit click |
 
-Step-up is the action-bound confirmation token in
-[security-model.md](security-model.md#sessions-csrf-and-step-up); the token names the
-pending action id, so one step-up cannot approve two things.
+Each row states **one** required confirmation, never a choice between two: the column is the
+`confirmation_required` enum value, and "A or B" is not something the enum can hold or a test
+can assert. The enum is `click | typed_name | typed_count | typed_count_step_up |
+typed_name_step_up`.
+
+The ladder rises with blast radius, and `typed_count_step_up` exists because it did not. Bulk
+deletion by filter is the largest blast radius in the product — every work item in a workspace,
+in one request — and it previously stopped at a typed count with no second factor, while
+deleting a single webhook required one. A stolen browser session (the "compromised staff
+session" adversary in [security-model.md](security-model.md#threat-model)) could therefore
+destroy a workspace's entire work-item corpus without a second factor. Above 50 items — the
+same threshold the corpus already uses for MCP bulk — it now needs one.
+
+Step-up is the action-bound confirmation token minted by `PA-15`; the token names the pending
+action id, so one step-up cannot approve two things.
 
 ## Permissions
 
@@ -163,9 +238,15 @@ GET     /api/me/pending-actions/{id}                      authenticated + self
 POST    /api/me/pending-actions/{id}/approve              authenticated + self, session-only
 POST    /api/me/pending-actions/{id}/deny                 authenticated + self, session-only
 POST    /api/me/pending-actions/{id}/cancel               authenticated + self
+POST    /api/me/step-up                                   authenticated + self, session-only  (PA-15)
 GET     /api/workspaces/{id}/pending-actions              workspace:manage_settings (read-only)
 POST    /api/instance/purge                               instance:admin  E  (PA-13)
 ```
+
+The first line covers ordinary records. A `DELETE` on an **elevated** target (workspace,
+organisation, project, API key, webhook, identity connection, `auth.*` plugin) carries
+`sessionOnly: true` and returns `403 session_required` on any non-session credential rather
+than a 202 — `PA-5`.
 
 `202` is added to the status table in [api-design.md](api-design.md#errors); the response
 body carries the `summary` the UI renders.
@@ -175,7 +256,10 @@ body carries the `summary` the UI renders.
 | Case | Behaviour |
 | --- | --- |
 | Approver's session expires mid-dialog | The action stays `pending` until `expires_at`; re-sign-in and approve from Profile → Pending actions |
-| Two identical delete requests | Two pending actions; approving one executes it; the second is `invalidated` on approval attempt because the target is gone (404) |
+| Two identical delete requests | **One** pending action. The idempotency layer replays the stored `202` for a keyed retry; an unkeyed repeat hits the partial unique index and returns `409 pending_approval` with the existing id (`PA-4`) |
+| Elevated `DELETE` presented on an API key or MCP key | `403 session_required` before the policy runs — no pending action, nothing to poll (`PA-5`) |
+| Target moved to another project or workspace between request and approval | `PA-6` step 3a → `409 target_changed`, action `invalidated` with `invalidation_reason = 'target_scope_changed'`, even if the approver holds the capability in the new scope |
+| Step-up token expires while the approver reads the summary | `403 step_up_expired`; the action stays `pending` and a fresh token is minted from `POST /api/me/step-up` (`PA-15`) |
 | Target already soft-deleted by someone else | `PA-6` step 2 → 404, action `invalidated` |
 | Requester is impersonated | Impersonation sessions cannot request or approve deletions (`GM-9`) |
 | Work item edited between request and approval | `409 target_changed`; the requester asks again and sees the new summary |
@@ -206,6 +290,11 @@ approval-replay-and-target-substitution-refused.test.ts
 approval-invalidated-on-revocation-deactivation-lost-reach.test.ts
 approval-invalidated-on-target-version-change.test.ts
 bulk-delete-requires-typed-count.test.ts
+bulk-delete-above-50-requires-step-up.test.ts
+elevated-delete-from-api-key-is-403-session-required.test.ts
+retry-while-pending-returns-409-and-creates-nothing.test.ts
+approval-invalidated-when-target-moves-scope.test.ts
+step-up-token-is-bound-to-one-pending-action-and-re-mintable.test.ts
 project-delete-requires-typed-key-and-step-up.test.ts
 model-supplied-confirm-field-ignored.test.ts
 retention-purge-needs-no-second-approval.test.ts

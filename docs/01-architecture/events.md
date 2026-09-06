@@ -64,9 +64,10 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 
 | Key | Emitted when | A | W | N | Payload |
 | --- | --- | :-: | :-: | :-: | --- |
-| `sla.at_risk` | `sla-scan` finds a goal ≥ 75 % consumed | ✅ | ✅ | ✅ | `metric`, `dueAt`, `consumedPct` |
-| `sla.breached` | `sla-scan` finds a goal past due | ✅ | ✅ | ✅ | `metric`, `dueAt`, `breachedByMinutes` |
-| `sla.met` | A goal is satisfied before its due time | — | ✅ | — | `metric`, `metAt`, `marginMinutes` |
+| `sla.at_risk` | `sla-scan` ([background-jobs.md](background-jobs.md)) finds an **open** goal ≥ 75 % consumed | ✅ | ✅ | ✅ | `metric`, `dueAt`, `consumedPct` |
+| `sla.breached` | `sla-scan` finds an **open** goal past due | ✅ | ✅ | ✅ | `metric`, `dueAt`, `breachedByMinutes` |
+| `sla.met` | The **transition into a `completed`-group state** (`WF-17`) finds the goal satisfied before its due time. Not `sla-scan` — an item that has just met its goal has `resolved_at` set and is outside the scan's candidate set | — | ✅ | — | `metric`, `metAt`, `marginMinutes` |
+| `sla.missed` | The same transition finds the goal already past its due time — "closed after target" ([sla.md](../03-features/sla.md)). The `missed` half of the pair `sla.met` completes; without it the sixth SLA state fires nothing | — | ✅ | — | `metric`, `dueAt`, `missedByMinutes` |
 
 ### Approvals
 
@@ -76,6 +77,7 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 | `approval.decided` | Approved or rejected | ✅ | ✅ | ✅ | `approvalId`, `decision`, `note?` |
 | `approval.expiring` | `reminder-scan` reaches 50 % / 90 % of the window | — | — | ✅ | `approvalId`, `expiresAt`, `pctElapsed` |
 | `approval.expired` | `reminder-scan` passes `expiresAt` undecided | — | ✅ | ✅ | `approvalId` |
+| `approval.withdrawn` | The requester withdraws an undecided approval (`AP-6`) — a fifth `approval.state`, not a decision, so it is not folded into `approval.decided` | — | ✅ | ✅ (the approver) | `approvalId`, `withdrawnBy`, `reason?` |
 
 ### Intake
 
@@ -115,9 +117,9 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 ### Not events
 
 - **`schedule`** — the automation trigger "a cron expression, evaluated against a filter"
-  is a *scheduler entry*, not a domain event: the `croner` job evaluates the filter and
-  invokes the rule directly. It appears in the automations trigger picker and nowhere in
-  this catalogue.
+  is a *scheduler entry*, not a domain event: the `automation-schedule` job
+  ([background-jobs.md](background-jobs.md)) evaluates the filter and invokes the rule
+  directly. It appears in the automations trigger picker and nowhere in this catalogue.
 - **`work_item.field_changed`** — not a key; it is `work_item.updated` with a condition on
   `changes[].field`. Kept as the automation picker's label, resolved to `work_item.updated`
   when the rule is saved.
