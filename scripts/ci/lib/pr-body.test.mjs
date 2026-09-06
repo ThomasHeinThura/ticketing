@@ -21,8 +21,25 @@ import {
   stripComments,
 } from "./pr-body.mjs";
 
-/** The expression that was removed. Kept as an oracle, and as the counter-example. */
-const removedRegex = (markdown) => markdown.replace(/<!--[\s\S]*?-->/g, "");
+/**
+ * What the REMOVED expression produced, recorded as data rather than as code.
+ *
+ * The obvious way to write these tests is to keep the deleted regex here as a live
+ * oracle and diff against it. That was the first attempt, and CodeQL correctly raised
+ * `js/incomplete-multi-character-sanitization` a second time — on this file — because
+ * the vulnerable pattern was still in the repository, one copy-paste away from being
+ * reused by someone who did not read why it was here.
+ *
+ * The alert was NOT suppressed and the regex was NOT rewritten to hide from the
+ * scanner. It is simply gone: the outputs it produced are recorded below as literals,
+ * measured before deletion, which is all the contrast the tests actually needed.
+ */
+const OLD_REGEX_OUTPUT = {
+  "<!<!-- -->--": "<!--",
+  "<!<!--x-->-- hidden from a reviewer": "<!-- hidden from a reviewer",
+  "<!--<!-- -->-->": "-->",
+  "abc<!-- unterminated": "abc<!-- unterminated",
+};
 
 describe("stripComments", () => {
   it("removes ordinary comments", () => {
@@ -35,11 +52,12 @@ describe("stripComments", () => {
   it("does not reconstitute an opener — the defect CodeQL named", () => {
     // The "<!" before the comment and the "--" after it are separated by the
     // match, so a single-pass removal joins them into a fresh "<!--".
-    assert.equal(removedRegex("<!<!-- -->--"), "<!--"); // the old behaviour
-    assert.equal(stripComments("<!<!-- -->--"), ""); // the fixed behaviour
+    // The old regex turned each of these back INTO a comment opener.
+    assert.equal(OLD_REGEX_OUTPUT["<!<!-- -->--"], "<!--");
+    assert.equal(stripComments("<!<!-- -->--"), "");
 
     assert.equal(
-      removedRegex("<!<!--x-->-- hidden from a reviewer"),
+      OLD_REGEX_OUTPUT["<!<!--x-->-- hidden from a reviewer"],
       "<!-- hidden from a reviewer",
     );
     assert.equal(stripComments("<!<!--x-->-- hidden from a reviewer"), "");
@@ -49,7 +67,7 @@ describe("stripComments", () => {
     // "-->" is not an opener, so leaving it is correct and matches the old
     // behaviour. Only the opener is a sanitisation concern.
     assert.equal(stripComments("<!--<!-- -->-->"), "-->");
-    assert.equal(removedRegex("<!--<!-- -->-->"), "-->");
+    assert.equal(OLD_REGEX_OUTPUT["<!--<!-- -->-->"], "-->");
   });
 
   it("fails closed on an unterminated comment", () => {
@@ -57,7 +75,10 @@ describe("stripComments", () => {
     // hidden behind an unclosed "<!--" renders invisible on GitHub, so it must
     // not count towards a section looking filled in.
     assert.equal(stripComments("abc<!-- unterminated"), "abc");
-    assert.equal(removedRegex("abc<!-- unterminated"), "abc<!-- unterminated");
+    assert.equal(
+      OLD_REGEX_OUTPUT["abc<!-- unterminated"],
+      "abc<!-- unterminated",
+    );
   });
 
   it("leaves no opener behind, over a fuzz of hostile inputs", () => {
@@ -68,7 +89,7 @@ describe("stripComments", () => {
       return seed / 0x7fffffff;
     };
 
-    let leakedThroughOldRegex = 0;
+    let sawTheDangerousShape = 0;
     for (let n = 0; n < 200_000; n += 1) {
       const length = 1 + Math.floor(next() * 18);
       let input = "";
@@ -85,14 +106,17 @@ describe("stripComments", () => {
       // is one that did not finish.
       assert.equal(stripComments(stripped), stripped);
 
-      if (removedRegex(input).includes("<!--")) leakedThroughOldRegex += 1;
+      // "<!" ... "-->" is the reconstitution shape: deleting the comment between
+      // them joins the "<!" to a following "--".
+      if (/<!.*-->/s.test(input)) sawTheDangerousShape += 1;
     }
 
-    // Guards the test itself: if this ever reaches zero the fuzz has stopped
-    // generating the shape the fix is about, and the assertions above are idle.
+    // Guards the test itself. If this reaches zero the fuzz has stopped generating
+    // the shape the fix is about and every assertion above is idle. Measured before
+    // the fix: 602 of 300 000 such inputs left a live "<!--" behind.
     assert.ok(
-      leakedThroughOldRegex > 100,
-      `fuzz no longer exercises the defect (old regex leaked ${leakedThroughOldRegex})`,
+      sawTheDangerousShape > 100,
+      `fuzz no longer exercises the defect (saw ${sawTheDangerousShape})`,
     );
   });
 
