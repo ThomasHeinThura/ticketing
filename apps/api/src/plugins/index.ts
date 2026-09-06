@@ -1,24 +1,20 @@
-import { discordPlugin } from "./discord";
-import { genericWebhookPlugin } from "./generic-webhook";
-import { giteaPlugin } from "./gitea";
-import { githubPlugin, initializeGitHubPlugin } from "./github";
-import { initializeEventSubscriptions, registerPlugin } from "./registry";
-import { slackPlugin } from "./slack";
-import { telegramPlugin } from "./telegram";
+import { initializeEventSubscriptions } from "./registry";
 
+/**
+ * Plugin initialisation.
+ *
+ * TaskDesk ships **no** plugins yet. kaneo's six inherited integrations
+ * (GitHub, Gitea, Slack, Discord, Telegram, generic webhook) were deleted in
+ * issue #6 — not flagged off — because an outbound-request surface configured
+ * per project is not something to ship dormant.
+ *
+ * The registry and the contract types survive deliberately: they are the seed
+ * of `packages/plugins-contracts`, and the engine boundary rule says a plugin
+ * contract is the right shape here because storage, notification and identity
+ * providers are genuinely swappable implementations.
+ */
 export function initializePlugins() {
-  console.log("Initializing plugins...");
-
-  registerPlugin(githubPlugin);
-  registerPlugin(giteaPlugin);
-  registerPlugin(slackPlugin);
-  registerPlugin(discordPlugin);
-  registerPlugin(genericWebhookPlugin);
-  registerPlugin(telegramPlugin);
-  initializeGitHubPlugin();
   initializeEventSubscriptions();
-
-  console.log("✅ Plugins initialized");
 }
 
 export * from "./registry";

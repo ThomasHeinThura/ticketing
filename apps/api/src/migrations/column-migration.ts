@@ -1,12 +1,6 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import db from "../database";
-import {
-  columnTable,
-  integrationTable,
-  projectTable,
-  taskTable,
-  workflowRuleTable,
-} from "../database/schema";
+import { columnTable, projectTable, taskTable } from "../database/schema";
 
 const DEFAULT_COLUMNS = [
   { name: "To Do", slug: "to-do", position: 0, isFinal: false },
@@ -14,12 +8,6 @@ const DEFAULT_COLUMNS = [
   { name: "In Review", slug: "in-review", position: 2, isFinal: false },
   { name: "Done", slug: "done", position: 3, isFinal: true },
 ];
-
-const EVENT_MAPPING: Record<string, string> = {
-  onBranchPush: "branch_push",
-  onPROpen: "pr_opened",
-  onPRMerge: "pr_merged",
-};
 
 export async function migrateColumns() {
   console.log("🔄 Starting column migration...");
@@ -80,96 +68,9 @@ export async function migrateColumns() {
               AND ${taskTable.columnId} IS DISTINCT FROM ${columnId}`,
         );
     }
-
-    const integrations = await db.query.integrationTable.findMany({
-      where: eq(integrationTable.projectId, project.id),
-    });
-
-    for (const integration of integrations) {
-      if (
-        (integration.type !== "github" && integration.type !== "gitea") ||
-        !integration.isActive
-      ) {
-        continue;
-      }
-
-      const forgeType = integration.type as "github" | "gitea";
-
-      try {
-        const config = JSON.parse(integration.config);
-        const transitions = config.statusTransitions || {};
-
-        for (const [configKey, eventType] of Object.entries(EVENT_MAPPING)) {
-          const targetSlug = transitions[configKey];
-          if (!targetSlug) continue;
-
-          const targetColumnId = columnMap.get(targetSlug);
-          if (!targetColumnId) continue;
-
-          await ensureMigrationWorkflowRule(
-            project.id,
-            forgeType,
-            eventType as string,
-            targetColumnId,
-          );
-        }
-
-        // Add default rules for issue events
-        const todoColumnId = columnMap.get("to-do");
-        const doneColumnId = columnMap.get("done");
-
-        if (todoColumnId) {
-          await ensureMigrationWorkflowRule(
-            project.id,
-            forgeType,
-            "issue_opened",
-            todoColumnId,
-          );
-        }
-
-        if (doneColumnId) {
-          await ensureMigrationWorkflowRule(
-            project.id,
-            forgeType,
-            "issue_closed",
-            doneColumnId,
-          );
-        }
-      } catch {
-        console.error(
-          `Failed to migrate workflow rules for integration ${integration.id}`,
-        );
-      }
-    }
   }
 
   console.log(
     `✅ Column migration complete! Migrated ${projects.length} projects`,
   );
-}
-
-async function ensureMigrationWorkflowRule(
-  projectId: string,
-  integrationType: "github" | "gitea",
-  eventType: string,
-  columnId: string,
-) {
-  const existing = await db.query.workflowRuleTable.findFirst({
-    where: and(
-      eq(workflowRuleTable.projectId, projectId),
-      eq(workflowRuleTable.integrationType, integrationType),
-      eq(workflowRuleTable.eventType, eventType),
-    ),
-  });
-
-  if (existing) {
-    return;
-  }
-
-  await db.insert(workflowRuleTable).values({
-    projectId,
-    integrationType,
-    eventType,
-    columnId,
-  });
 }

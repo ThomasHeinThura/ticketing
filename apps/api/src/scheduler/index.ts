@@ -1,7 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { Cron } from "croner";
 import { checkDueDateReminders } from "./due-date-reminders";
-import { checkProjectWebhookReminders } from "./project-webhook-reminders";
 import { reconcileWorkspaceSeats } from "./seat-reconciliation";
 import { checkTrialReminders } from "./trial-reminders";
 
@@ -51,12 +50,7 @@ export function initializeScheduler(): void {
       withCheckIn("due-date-reminders", checkDueDateReminders),
     ),
   );
-  jobs.push(
-    new Cron(
-      "*/5 * * * *",
-      withCheckIn("project-webhook-reminders", checkProjectWebhookReminders),
-    ),
-  );
+  jobs.push(new Cron("*/5 * * * *"));
   jobs.push(
     new Cron(
       "17 * * * *",

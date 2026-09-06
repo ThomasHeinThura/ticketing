@@ -14,63 +14,6 @@ beforeEach(async () => {
   await resetTestDatabase();
 });
 
-describe("github integration routes are workspace scoped", () => {
-  it("refuses to list repositories for a member without manage_settings", async () => {
-    const { user, workspace } = await createWorkspaceMember({ role: "member" });
-    const { project } = await createProjectFixture({
-      workspaceId: workspace.id,
-    });
-
-    mockAuthenticatedSession(user);
-    const { app } = createApp();
-
-    const response = await app.request(
-      `/api/github-integration/repositories/${project.id}`,
-    );
-
-    expect(response.status).toBe(403);
-  });
-
-  it("refuses to verify an installation for a member without manage_settings", async () => {
-    const { user, workspace } = await createWorkspaceMember({ role: "member" });
-    const { project } = await createProjectFixture({
-      workspaceId: workspace.id,
-    });
-
-    mockAuthenticatedSession(user);
-    const { app } = createApp();
-
-    const response = await app.request("/api/github-integration/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        projectId: project.id,
-        repositoryOwner: "usetaskdesk",
-        repositoryName: "taskdesk",
-      }),
-    });
-
-    expect(response.status).toBe(403);
-  });
-
-  it("refuses to list repositories for a project in another workspace", async () => {
-    const outsider = await createWorkspaceMember({ role: "owner" });
-    const other = await createWorkspaceMember({ role: "owner" });
-    const { project } = await createProjectFixture({
-      workspaceId: other.workspace.id,
-    });
-
-    mockAuthenticatedSession(outsider.user);
-    const { app } = createApp();
-
-    const response = await app.request(
-      `/api/github-integration/repositories/${project.id}`,
-    );
-
-    expect(response.status).toBe(403);
-  });
-});
-
 // Negative guard for issue #6. kaneo served project boards anonymously at
 // /api/public-project/:id when the project carried `is_public`. The route, its
 // controller and the column are all gone.

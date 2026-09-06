@@ -195,7 +195,6 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     Array<{
       id: string;
       taskId: string;
-      integrationId: string;
       resourceType: string;
       externalId: string;
       url: string;

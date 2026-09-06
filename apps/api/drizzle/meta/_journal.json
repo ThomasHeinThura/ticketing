@@ -323,6 +323,13 @@
 			"when": 1788673380911,
 			"tag": "0045_drop_project_is_public",
 			"breakpoints": true
+		},
+		{
+			"idx": 46,
+			"version": "7",
+			"when": 1788675923637,
+			"tag": "0046_drop_inherited_integrations",
+			"breakpoints": true
 		}
 	]
 }

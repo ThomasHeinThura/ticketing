@@ -23,14 +23,8 @@ import config from "./config";
 import db, { getDatabase, schema } from "./database";
 import { prepareDatabaseStartup } from "./database/prepare-database-startup";
 import { waitForDatabase } from "./database/wait-for-database";
-import discordIntegration from "./discord-integration";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
-import genericWebhookIntegration from "./generic-webhook-integration";
-import giteaIntegration, { handleGiteaWebhookRoute } from "./gitea-integration";
-import githubIntegration, {
-  handleGithubWebhookRoute,
-} from "./github-integration";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
 import invitation from "./invitation";
 import label from "./label";
@@ -41,15 +35,12 @@ import notificationPreferences from "./notification-preferences";
 import oauth from "./oauth";
 import { createRoute, jsonResponse, z } from "./openapi";
 import { initializePlugins } from "./plugins";
-import { migrateGitHubIntegration } from "./plugins/github/migration";
 import project from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
-import slackIntegration from "./slack-integration";
 import { getPrivateObject } from "./storage/s3";
 import task from "./task";
 import taskRelation from "./task-relation";
-import telegramIntegration from "./telegram-integration";
 import timeEntry from "./time-entry";
 import user from "./user";
 import getAvatar from "./user/controllers/get-avatar";
@@ -226,13 +217,6 @@ export function createApp() {
       },
     }),
     async (c) => c.json(await getInstanceStatus(), 200),
-  );
-
-  api.post("/github-integration/webhook", handleGithubWebhookRoute);
-
-  api.post(
-    "/gitea-integration/webhook/:integrationId",
-    handleGiteaWebhookRoute,
   );
 
   const invitationPublicApi = api.get("/invitation/public/:id", async (c) => {
@@ -584,24 +568,6 @@ export function createApp() {
     notificationPreferences,
   );
   const searchApi = api.route("/search", search);
-  const githubIntegrationApi = api.route(
-    "/github-integration",
-    githubIntegration,
-  );
-  const giteaIntegrationApi = api.route("/gitea-integration", giteaIntegration);
-  const genericWebhookIntegrationApi = api.route(
-    "/generic-webhook-integration",
-    genericWebhookIntegration,
-  );
-  const discordIntegrationApi = api.route(
-    "/discord-integration",
-    discordIntegration,
-  );
-  const slackIntegrationApi = api.route("/slack-integration", slackIntegration);
-  const telegramIntegrationApi = api.route(
-    "/telegram-integration",
-    telegramIntegration,
-  );
   const taskRelationApi = api.route("/task-relation", taskRelation);
   const externalLinkApi = api.route("/external-link", externalLink);
   const workflowRuleApi = api.route("/workflow-rule", workflowRule);
@@ -752,11 +718,7 @@ export function createApp() {
     columnApi,
     commentApi,
     configApi,
-    discordIntegrationApi,
     externalLinkApi,
-    genericWebhookIntegrationApi,
-    githubIntegrationApi,
-    giteaIntegrationApi,
     invitationApi,
     invitationPublicApi,
     labelApi,
@@ -764,10 +726,8 @@ export function createApp() {
     notificationPreferencesApi,
     projectApi,
     searchApi,
-    slackIntegrationApi,
     taskApi,
     taskRelationApi,
-    telegramIntegrationApi,
     timeEntryApi,
     userApi,
     workflowRuleApi,
@@ -804,7 +764,6 @@ export async function runStartupTasks() {
   await migrateApiKeyReferenceId();
 
   await migrateNotificationPreferencesSchema();
-  await migrateGitHubIntegration();
   await migrateColumns();
   await seedDefaultWorkspaceRoles();
 
@@ -869,11 +828,7 @@ const {
   columnApi,
   commentApi,
   configApi,
-  discordIntegrationApi,
   externalLinkApi,
-  genericWebhookIntegrationApi,
-  githubIntegrationApi,
-  giteaIntegrationApi,
   invitationApi,
   invitationPublicApi,
   labelApi,
@@ -881,10 +836,8 @@ const {
   notificationPreferencesApi,
   projectApi,
   searchApi,
-  slackIntegrationApi,
   taskApi,
   taskRelationApi,
-  telegramIntegrationApi,
   timeEntryApi,
   userApi,
   workflowRuleApi,
@@ -915,12 +868,6 @@ export type AppType =
   | typeof notificationApi
   | typeof notificationPreferencesApi
   | typeof searchApi
-  | typeof githubIntegrationApi
-  | typeof giteaIntegrationApi
-  | typeof genericWebhookIntegrationApi
-  | typeof discordIntegrationApi
-  | typeof slackIntegrationApi
-  | typeof telegramIntegrationApi
   | typeof taskRelationApi
   | typeof externalLinkApi
   | typeof workflowRuleApi
