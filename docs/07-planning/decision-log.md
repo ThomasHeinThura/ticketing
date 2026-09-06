@@ -17,6 +17,63 @@ Newest first.
 
 ---
 
+### 2026-09-06 · Deployment skeleton — four calls made while building #11
+
+**Decision:** four things were decided in the course of building the deployment
+skeleton. None changes a specification; each is a place where the specification did not
+reach and the alternative would have been to guess.
+
+**1 · `TASKDESK_TRUST_PROXY=2` on the bimats.com host, from measurement.**
+The chain is CloudFront → Traefik → TaskDesk, and **TLS terminates at CloudFront, not at
+Traefik** — measured, not assumed: a real request to `ticket-uat.bimats.com` reached the
+host's Traefik on the plain `web` (`:80`) entrypoint, scheme `http`. Both hops **append**
+to `X-Forwarded-For`: CloudFront appended the viewer address after a deliberately forged
+one, and `traefik:v3.6.7` — reproduced in an isolated lab with the same
+`forwardedHeaders.trustedIPs` shape — preserved the incoming header and appended its own
+peer. Two appending hops, so the client is the second entry from the right. It is set in
+`deploy/compose.uat.yml` only, never in the base file, because it is a property of a host
+and not of the product. Method and captured values:
+[`proxy-topology-evidence.md`](../05-operations/proxy-topology-evidence.md).
+*Reversible by:* re-measuring and editing that one line in the overlay.
+
+**2 · `X-Forwarded-Proto` is not trustworthy on that host, and it is not fixed here.**
+The same measurements show both failure modes: Traefik passes a viewer-supplied
+`X-Forwarded-Proto` through verbatim when the peer is trusted, and sets `http` when none
+arrives — because its own entrypoint is plain `:80`. So the application either believes
+what a viewer told it, or believes every HTTPS request was HTTP. Which one depends on the
+CloudFront distribution's origin request policy, which is not readable from the host. The
+fix is an origin custom header at the CDN, and it is recorded as an open item rather than
+worked around in a middleware. **Nothing on that topology should issue a secure cookie or
+build an absolute URL from the forwarded protocol until it is done.**
+
+**3 · The Helm chart requires its secrets; it does not generate them.**
+`charts/taskdesk` shipped `authSecret: ""` and no `NODE_ENV`, and set neither
+`TASKDESK_ENCRYPTION_KEY` nor `TASKDESK_PORTAL_URL` at all. The chart now fails to render
+with a message naming the missing value and the `openssl rand -hex 32` that produces it,
+and documents `existingSecret` as the production form. **Generate-on-install was rejected:**
+Helm has no memory, so a `randAlphaNum` default is a new secret on every `helm upgrade`
+unless a `lookup` guards it, and `lookup` returns nothing under `helm template`,
+`--dry-run` and most GitOps renderers. Silently rotating the session secret signs everyone
+out; silently rotating the encryption key makes every stored plugin secret unreadable. A
+required value that fails loudly is the safer contract.
+
+**4 · `TASKDESK_HSTS_PRELOAD` is empty-or-`1`, not `0`-or-`1`.**
+`configuration-reference.md`'s example `.env` had `TASKDESK_HSTS_PRELOAD=0`. Compose has no
+boolean: `${VAR:+…}` fires on any **non-empty** value, so `0` would have selected the
+preload middleware and committed the operator's whole apex domain. The example is corrected
+to an empty value, and `scripts/deploy.sh` rejects anything that is not empty or `1` rather
+than let `0` quietly mean "on". No variable was added or renamed.
+
+**Alternatives:** for (1), setting `2` because the diagram has two boxes — which is what
+the issue explicitly warned against, and which would have been *right by accident*; the
+measurement is what makes it defensible, and it also produced (2), which the guess would
+have missed entirely. For (3), restoring a default value — rejected outright; that is the
+CRITICAL this project already fixed once.
+
+**Decided by:** Claude Code (deployment lane, #11), recorded for Thomas.
+
+---
+
 ### 2026-09-06 · PR #13 merged before its mandatory security review — deviation recorded, not waived
 
 **Decision:** **PR #13 was merged on 2026-09-06 before its mandatory security review had been

@@ -226,12 +226,45 @@ this stops depending on anyone remembering.
   has to invalidate outstanding tokens. **Needs its own issue.** *Blast radius: one lane.*
 - **`scripts/openapi/` still has no destination**, so the inherited OpenAPI drift check
   remains lost. #10 owns restoring it. *Blast radius: one lane.*
-- **v2 UAT is not deployable and will not reuse the v1 hostnames.** No `Dockerfile`, no
-  compose file, no `scripts/deploy.sh` — that is #11. `Dockerfile.kaneo` **cannot build**:
-  it copies three files the copy table excludes. v2 takes
-  `ticket-v2-uat.bimats.com` / `portal-v2-uat.bimats.com` beside v1, with its own compose
+- **v2 UAT is not deployable yet, and the remaining reasons are application-side.**
+  The deployment skeleton exists on `feat/p0-deployment-skeleton` — a `Dockerfile` that
+  builds, base + local + production + UAT compose files, Traefik middlewares and
+  `scripts/deploy.sh`. `Dockerfile.kaneo` is deleted. What is still missing is in the
+  application, not the deployment:
+  1. **The API listens on a hard-coded `1337`** (`apps/api/src/index.ts`, `startServer(…,
+     port = 1337)`). `TASKDESK_PORT` is documented but never read, so the image, the
+     compose files, the Helm Service and the healthcheck all point at 5173 and nothing
+     answers.
+  2. **`/api/public/health/live` and `/api/public/health/ready` do not exist.** The only
+     health route is kaneo's `/api/health`. Until they do, the container's HEALTHCHECK can
+     never pass and `up -d --wait` blocks on it — which is exactly the failure
+     [container-image.md](../05-operations/container-image.md) warns about.
+  3. **The Node process serves no static files.** kaneo used nginx; the TaskDesk image has
+     none, by design. The web bundles ship at `/app/public` and nothing reads them.
+  4. **There is no `storage.filesystem` driver.** `apps/api/src/storage/` contains only
+     `s3.ts`. The compose and Helm shape for it exists (a named volume at `/app/data`,
+     attachments under `/app/data/attachments`, owned by uid 10001); the driver, and the
+     God Mode setting that points at that path, do not.
+  These are Lane A/#6 and #9 work, not deployment work. **v2 takes
+  `ticket-v2-uat.bimats.com` / `portal-v2-uat.bimats.com` beside v1**, with its own compose
   project, network, volumes and database. **v1 UAT stays running and untouched**, and the
-  pre-#6 import must not be exposed publicly. *Blast radius: the deployment lane.*
+  pre-#6 import must not be exposed publicly — `deploy/compose.uat.yml` carries a
+  do-not-apply banner saying so. *Blast radius: the deployment lane, then UAT.*
+- **`X-Forwarded-Proto` reaching the application on the bimats.com host is wrong or
+  attacker-controlled, and the fix is at CloudFront.** TLS terminates at CloudFront, so
+  Traefik's `web` entrypoint is plain HTTP: it forwards a viewer-supplied
+  `X-Forwarded-Proto` verbatim, and sets `http` when none arrives. Either way the
+  application cannot learn that the viewer used HTTPS. Set an origin custom header
+  `X-Forwarded-Proto: https` on the distribution. Evidence and method:
+  [proxy-topology-evidence.md](../05-operations/proxy-topology-evidence.md).
+  *Blast radius: anything that issues a secure cookie or builds an absolute URL, on that
+  host only.* Unblocked by: Thomas (AWS console).
+- **A standalone production host has no ACME configuration**, because Let's Encrypt needs a
+  contact email and there is no environment variable for one —
+  [configuration-reference.md](../05-operations/configuration-reference.md)'s "variables the
+  application does not read" table lists four, and none is an email. It was raised rather
+  than invented. It does not block this host, which terminates TLS at CloudFront.
+  *Blast radius: a future customer install on a bare host.* Unblocked by: Thomas.
 - **The GitHub Project board does not exist.** Same `gh` root cause.
 
 ---
@@ -288,6 +321,42 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-06 · #11 deployment skeleton built and measured on the real host
+
+`feat/p0-deployment-skeleton`. A `Dockerfile` that builds, Compose base plus three
+overlays, Traefik middlewares, `scripts/deploy.sh`, and a corrected Helm chart.
+`Dockerfile.kaneo` is deleted rather than repaired — it could not build, and that break was
+also why the repository's only `NODE_ENV=production` was unreachable (security review 13,
+E-9).
+
+**What was verified, not assumed.** `docker build` succeeds. The entrypoint refuses to
+start and names all five missing variables. The container runs as uid 10001, carries
+`NOTICE`, `LICENSE` and `THIRD-PARTY-NOTICES.md`, and its attachment directory is writable
+by that user. `docker compose config` passes for every overlay combination, the production
+render contains **no `ports:` at all**, and `helm template` fails closed on each missing
+secret with its own message and succeeds when they are supplied.
+
+**The trust-proxy value was measured rather than guessed**, which was the point of the
+exercise and which found more than the number. TLS terminates at **CloudFront, not
+Traefik** — a real request to `ticket-uat.bimats.com` arrived on Traefik's plain `web`
+entrypoint. Both CloudFront and Traefik **append** to `X-Forwarded-For`, so the value is
+`2`, set in the UAT overlay only. The same measurements showed that `X-Forwarded-Proto`
+reaching the application is either attacker-supplied or wrong, which no amount of counting
+boxes would have revealed. Full method and captured headers:
+[proxy-topology-evidence.md](../05-operations/proxy-topology-evidence.md).
+
+**Four application-side gaps stop the stack actually coming up** — a hard-coded port 1337,
+the two missing public health endpoints, no static file serving in the Node process, and no
+`storage.filesystem` driver. They are listed under Blocked. None of them is deployment
+work, and none was worked around here: the skeleton is built to the documented contract and
+the gaps are named.
+
+**Not done:** `install.sh`. `scripts/deploy.sh` carries the production pre-flight the
+one-liner needs, but the bootstrapper itself is not written. The Helm chart is corrected,
+not rewritten to [kubernetes.md](../05-operations/kubernetes.md)'s two-Deployment,
+three-Ingress-host contract — that is a larger piece of work and the chart is a P2 CI
+artefact.
 
 ### 2026-09-06 · #5 completed on the branch — de-brand, lockfile delta, environment migration
 

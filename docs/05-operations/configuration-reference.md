@@ -34,7 +34,7 @@ See [plugin architecture](../01-architecture/plugin-architecture.md) and
 | `TASKDESK_VALKEY_URL` | — | Required for multiple replicas |
 | `TASKDESK_ROLE` | `all` | `web` \| `jobs` \| `all`. Gates the in-process scheduler, so a replica can be dedicated to jobs — the escape hatch in [scaling.md](scaling.md). Inherently per-process; cannot live in the database |
 | `TASKDESK_ENCRYPTION_KEY_PREVIOUS` | — | Set only during key rotation: the old key, readable, while `secrets-rekey` re-encrypts under the new one. Key material — inherently env. See [runbook](runbook.md) |
-| `TASKDESK_TRUST_PROXY` | `1` | **Number of trusted reverse-proxy hops**, not a boolean: `1` = Traefik directly in front (the shipped compose); `2` = a load balancer in front of Traefik; `0` = no proxy, use the socket address. The client IP is read from `X-Forwarded-For` at exactly that hop, so a forged header moves no rate-limit bucket and satisfies no API-key IP allowlist. Must be known before the first request can be attributed to an IP. Meaningful only because the application port is **never published** in production — reachable from the proxy network alone ([traefik-and-domains.md](traefik-and-domains.md)) |
+| `TASKDESK_TRUST_PROXY` | `1` | **Number of trusted reverse-proxy hops**, not a boolean: `1` = Traefik directly in front (the shipped compose); `2` = a load balancer in front of Traefik; `0` = no proxy, use the socket address. The client IP is read from `X-Forwarded-For` at exactly that hop, so a forged header moves no rate-limit bucket and satisfies no API-key IP allowlist. Must be known before the first request can be attributed to an IP. Meaningful only because the application port is **never published** in production — reachable from the proxy network alone ([traefik-and-domains.md](traefik-and-domains.md)). **Measured, never assumed:** the shipped Compose overlays set it, the method and the captured values are in [proxy-topology-evidence.md](proxy-topology-evidence.md), and where a CDN terminates TLS in front of Traefik the answer is `2` |
 | `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` | — | **Headless installs only.** The normal first run needs no variable: on an empty database the app serves a one-time **setup page**, unlocked by a token printed in the container log, where the first administrator is created (see [one-line-install.md](one-line-install.md)) |
 | `NODE_ENV` | `production` | In `development` only, HTTP webhook targets are permitted (`WH-12`) — there is no separate variable for that |
 
@@ -223,7 +223,10 @@ POSTGRES_PASSWORD=taskdesk
 DOMAIN=localhost
 TASKDESK_IMAGE_TAG=v2.0.0
 TASKDESK_IMAGE_DIGEST=
-TASKDESK_HSTS_PRELOAD=0
+TASKDESK_HSTS_PRELOAD=
+# empty or absent = off; `1` = on. Compose has no boolean, so ANY non-empty
+# value — including `0` — selects the preload middleware. scripts/deploy.sh
+# rejects anything that is not empty or `1` rather than let `0` mean "on".
 ```
 
 Local development uses Mailpit for mail and the `filesystem` storage plugin, both of them
@@ -234,4 +237,4 @@ there behind `--profile s3` for anyone who wants to exercise the S3 path locally
 ## Related
 
 - [Plugin architecture](../01-architecture/plugin-architecture.md) · [God Mode](../03-features/god-mode.md)
-- [Deployment](deployment.md) · [Backup and restore](backup-and-restore.md)
+- [Deployment](deployment.md) · [Proxy topology evidence](proxy-topology-evidence.md) · [Backup and restore](backup-and-restore.md)

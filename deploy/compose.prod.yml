@@ -1,0 +1,109 @@
+# Overlay — production.
+#
+#   docker compose -f compose.yml -f deploy/compose.prod.yml up -d --wait
+#
+# Use scripts/deploy.sh production, which verifies the image's cosign signature
+# before pulling, asserts that no application port is published, and probes the
+# API afterwards.
+#
+# It adds Traefik labels, resource limits and the external proxy network. It
+# adds NO `ports:` — and cannot remove one, because Compose concatenates
+# `ports:` across files. That is why the base file publishes nothing.
+#
+# Assumes Traefik already exists on the host, serving other applications, and
+# that TaskDesk attaches to its network and contributes only labels. A host with
+# no proxy of its own additionally loads deploy/compose.traefik.yml.
+#
+# Specification: docs/05-operations/deployment.md, traefik-and-domains.md
+
+services:
+  taskdesk:
+    environment:
+      NODE_ENV: production
+      # ---------------------------------------------------------------
+      # TASKDESK_TRUST_PROXY: the number of trusted reverse-proxy hops.
+      #
+      # 1 is correct for the topology this overlay assumes — one Traefik,
+      # terminating TLS, directly in front, with the application port
+      # unpublished so nothing else can reach it.
+      #
+      # It is WRONG for a host where a CDN or load balancer sits in front of
+      # Traefik. Do not raise it because the diagram has more boxes: read the
+      # X-Forwarded-For that actually arrives and count. The method, and the
+      # measured answer for the bimats.com host, are in
+      # docs/05-operations/proxy-topology-evidence.md.
+      # ---------------------------------------------------------------
+      TASKDESK_TRUST_PROXY: "1"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.services.taskdesk.loadbalancer.server.port=${TASKDESK_PORT:-5173}
+      - traefik.http.services.taskdesk.loadbalancer.healthcheck.path=/api/public/health/ready
+      # agent
+      - traefik.http.routers.taskdesk-agent.rule=Host(`ticket.${DOMAIN:?DOMAIN is required}`)
+      - traefik.http.routers.taskdesk-agent.entrypoints=websecure
+      - traefik.http.routers.taskdesk-agent.tls=true
+      - traefik.http.routers.taskdesk-agent.tls.certresolver=letsencrypt
+      - traefik.http.routers.taskdesk-agent.service=taskdesk
+      - traefik.http.routers.taskdesk-agent.middlewares=security-headers${TASKDESK_HSTS_PRELOAD:+-preload}@file,compress@file,rate-limit@file
+      # portal — separate cookie scope, separate identity providers, no agent code
+      - traefik.http.routers.taskdesk-portal.rule=Host(`portal.${DOMAIN:?DOMAIN is required}`)
+      - traefik.http.routers.taskdesk-portal.entrypoints=websecure
+      - traefik.http.routers.taskdesk-portal.tls=true
+      - traefik.http.routers.taskdesk-portal.tls.certresolver=letsencrypt
+      - traefik.http.routers.taskdesk-portal.service=taskdesk
+      - traefik.http.routers.taskdesk-portal.middlewares=security-headers${TASKDESK_HSTS_PRELOAD:+-preload}@file,compress@file,rate-limit@file
+    networks:
+      - taskdesk
+      - proxy
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 1536M }
+        reservations: { cpus: "0.5", memory: 512M }
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+
+  postgres:
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 2048M }
+        reservations: { cpus: "0.5", memory: 512M }
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+
+  valkey:
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 512M }
+        reservations: { cpus: "0.1", memory: 64M }
+
+  # Only started with `--profile s3`. The third hostname exists ONLY when an
+  # operator-owned S3 endpoint is served behind this Traefik: on the shipped
+  # storage.filesystem install there is no files router and no third DNS record,
+  # and on a real S3 or Azure bucket the files origin is the provider's.
+  seaweedfs:
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.services.taskdesk-files.loadbalancer.server.port=8333
+      - traefik.http.routers.taskdesk-files.rule=Host(`files.${DOMAIN:?DOMAIN is required}`)
+      - traefik.http.routers.taskdesk-files.entrypoints=websecure
+      - traefik.http.routers.taskdesk-files.tls=true
+      - traefik.http.routers.taskdesk-files.tls.certresolver=letsencrypt
+      - traefik.http.routers.taskdesk-files.service=taskdesk-files
+      - traefik.http.routers.taskdesk-files.middlewares=files-headers@file
+    networks:
+      - taskdesk
+      - proxy
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 512M }
+        reservations: { cpus: "0.1", memory: 128M }
+
+networks:
+  # The proxy's own network, created and owned by whoever runs Traefik.
+  proxy:
+    external: true
+    name: proxy

@@ -1,0 +1,85 @@
+# Overlay — local development.
+#
+#   docker compose -f compose.yml -f deploy/compose.local.yml -f deploy/compose.traefik.yml up -d --wait
+#
+# Use scripts/deploy.sh local, which also generates secrets and certificates,
+# waits for health and probes the result. Bare `docker compose up` produces a
+# stack that appears to be running and is not.
+#
+# THIS IS THE ONLY FILE THAT PUBLISHES THE APPLICATION PORT. Compose
+# concatenates `ports:` across files, so a base file that published 5173 would
+# publish it in production too, and the "never published" premise that
+# TASKDESK_TRUST_PROXY rests on would be false.
+# Production never loads this file. scripts/deploy.sh production asserts it.
+
+services:
+  taskdesk:
+    ports:
+      - "${TASKDESK_PORT:-5173}:${TASKDESK_PORT:-5173}"
+    environment:
+      # Local Traefik is the only hop in front of the container, and it is on
+      # the same Docker network. Directly verifiable here, unlike a real
+      # deployment: see docs/05-operations/proxy-topology-evidence.md.
+      TASKDESK_TRUST_PROXY: "1"
+      # HTTP webhook targets are permitted in development only (WH-12).
+      NODE_ENV: development
+      TASKDESK_BOOTSTRAP_ADMIN_EMAIL: ${TASKDESK_BOOTSTRAP_ADMIN_EMAIL:-}
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=taskdesk
+      - traefik.http.services.taskdesk.loadbalancer.server.port=${TASKDESK_PORT:-5173}
+      - traefik.http.services.taskdesk.loadbalancer.healthcheck.path=/api/public/health/ready
+      - traefik.http.routers.taskdesk-agent.rule=Host(`ticket.${DOMAIN:-localhost}`)
+      - traefik.http.routers.taskdesk-agent.entrypoints=websecure
+      - traefik.http.routers.taskdesk-agent.tls=true
+      - traefik.http.routers.taskdesk-agent.service=taskdesk
+      - traefik.http.routers.taskdesk-agent.middlewares=security-headers@file,compress@file,rate-limit@file
+      - traefik.http.routers.taskdesk-portal.rule=Host(`portal.${DOMAIN:-localhost}`)
+      - traefik.http.routers.taskdesk-portal.entrypoints=websecure
+      - traefik.http.routers.taskdesk-portal.tls=true
+      - traefik.http.routers.taskdesk-portal.service=taskdesk
+      - traefik.http.routers.taskdesk-portal.middlewares=security-headers@file,compress@file,rate-limit@file
+
+  postgres:
+    # Published so psql, a GUI client and the integration tests can reach it.
+    # Local only.
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  # Local mail. Every notification the instance sends lands here instead of a
+  # real inbox; SMTP host/port are configured in God Mode -> Notifications
+  # (mailpit:1025), exactly as a real deployment would configure a real relay.
+  mailpit:
+    image: axllent/mailpit:v1.28
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    volumes:
+      - mailpit-data:/data
+    networks:
+      - taskdesk
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=taskdesk
+      - traefik.http.services.mailpit.loadbalancer.server.port=8025
+      - traefik.http.routers.mailpit.rule=Host(`mail.${DOMAIN:-localhost}`)
+      - traefik.http.routers.mailpit.entrypoints=websecure
+      - traefik.http.routers.mailpit.tls=true
+      - traefik.http.routers.mailpit.service=mailpit
+
+  # Only started with `--profile s3`; the files host is local-only here.
+  seaweedfs:
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=taskdesk
+      - traefik.http.services.taskdesk-files.loadbalancer.server.port=8333
+      - traefik.http.routers.taskdesk-files.rule=Host(`files.${DOMAIN:-localhost}`)
+      - traefik.http.routers.taskdesk-files.entrypoints=websecure
+      - traefik.http.routers.taskdesk-files.tls=true
+      - traefik.http.routers.taskdesk-files.service=taskdesk-files
+      - traefik.http.routers.taskdesk-files.middlewares=files-headers@file
+
+volumes:
+  mailpit-data:
