@@ -100,6 +100,13 @@ jobs:
         # Reads the body from the event payload, and the security-review path globs from
         # docs/04-engineering/ci-cd.md.
         run: pnpm check:pr-template
+      - name: pr-body parser unit tests
+        # Not a new gate — it makes the gate above trustworthy. `stripComments` was a
+        # CodeQL HIGH (js/incomplete-multi-character-sanitization): the regex it replaced
+        # could reconstitute the very `<!--` it removed, so an author could hide a section
+        # from a reviewer while this checker counted it as filled in. node:test, so no new
+        # dependency.
+        run: pnpm test:ci-scripts
 
   test:
     name: unit + component
