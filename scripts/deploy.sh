@@ -45,7 +45,7 @@ S3_CONFIG="$REPO_ROOT/deploy/seaweedfs/s3.json"
 # The workflow file is owned by #10; if it is renamed, this must be renamed with
 # it, and a mismatch fails closed rather than silently accepting any signature.
 COSIGN_ISSUER="https://token.actions.githubusercontent.com"
-COSIGN_IDENTITY="https://github.com/ThomasHeinThura/Ticketing.v2/.github/workflows/release.yml@refs/heads/main"
+COSIGN_IDENTITY="https://github.com/ThomasHeinThura/ticketing/.github/workflows/release.yml@refs/heads/main"
 
 BLUE=$'\033[34m'; RED=$'\033[31m'; YELLOW=$'\033[33m'; GREEN=$'\033[32m'; OFF=$'\033[0m'
 [ -t 1 ] || { BLUE=""; RED=""; YELLOW=""; GREEN=""; OFF=""; }

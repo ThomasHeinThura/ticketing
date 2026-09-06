@@ -152,5 +152,5 @@ LABEL org.opencontainers.image.title="TaskDesk" \
       org.opencontainers.image.version=$VERSION \
       org.opencontainers.image.revision=$GIT_SHA \
       org.opencontainers.image.created=$BUILD_TIME \
-      org.opencontainers.image.source="https://github.com/ThomasHeinThura/Ticketing.v2" \
+      org.opencontainers.image.source="https://github.com/ThomasHeinThura/ticketing" \
       org.opencontainers.image.licenses="AGPL-3.0"

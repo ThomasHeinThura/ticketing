@@ -12,7 +12,7 @@ keywords:
   - collaboration
 home: https://taskdesk.app
 sources:
-  - https://github.com/ThomasHeinThura/Ticketing.v2
+  - https://github.com/ThomasHeinThura/ticketing
 icon: https://assets.taskdesk.app/logo-text.png
 maintainers:
   - name: TaskDesk Team
