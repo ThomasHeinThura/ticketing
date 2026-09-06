@@ -161,7 +161,13 @@ export function createApp() {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
-  const reflectUnconfiguredOrigins = process.env.NODE_ENV !== "production";
+  // Fail CLOSED. kaneo used `NODE_ENV !== "production"`, and "not production"
+  // includes "unset" — the normal case for a self-hosted deployment, which is
+  // exactly what TaskDesk ships. That reflected ANY origin back with
+  // `credentials: true`, letting any website read a logged-in victim's
+  // authenticated responses. Reflection is now an explicit development opt-in.
+  // Issue #6.
+  const reflectUnconfiguredOrigins = process.env.NODE_ENV === "development";
 
   if (!corsOrigins && !reflectUnconfiguredOrigins) {
     console.warn(
