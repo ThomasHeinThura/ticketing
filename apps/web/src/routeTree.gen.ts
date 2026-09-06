@@ -21,7 +21,6 @@ import { Route as AuthSignUpRouteImport } from './routes/auth/sign-up'
 import { Route as AuthVerifyOtpRouteImport } from './routes/auth/verify-otp'
 import { Route as DeviceIndexRouteImport } from './routes/device/index'
 import { Route as DeviceApproveRouteImport } from './routes/device/approve'
-import { Route as McpAuthorizeRouteImport } from './routes/mcp.authorize'
 import { Route as LayoutAuthenticatedDashboardRouteImport } from './routes/_layout/_authenticated/dashboard'
 import { Route as LayoutAuthenticatedInvitationsRouteImport } from './routes/_layout/_authenticated/invitations'
 import { Route as LayoutAuthenticatedOnboardingRouteImport } from './routes/_layout/_authenticated/onboarding'
@@ -111,11 +110,6 @@ const DeviceApproveRoute = DeviceApproveRouteImport.update({
   id: '/approve',
   path: '/approve',
   getParentRoute: () => DeviceRoute,
-} as any)
-const McpAuthorizeRoute = McpAuthorizeRouteImport.update({
-  id: '/mcp/authorize',
-  path: '/mcp/authorize',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutAuthenticatedDashboardRoute =
   LayoutAuthenticatedDashboardRouteImport.update({
@@ -336,7 +330,6 @@ export interface FileRoutesByFullPath {
   '/auth/sign-up': typeof AuthSignUpRoute
   '/auth/verify-otp': typeof AuthVerifyOtpRoute
   '/device/approve': typeof DeviceApproveRoute
-  '/mcp/authorize': typeof McpAuthorizeRoute
   '/device/': typeof DeviceIndexRoute
   '/dashboard': typeof LayoutAuthenticatedDashboardRouteWithChildren
   '/invitations': typeof LayoutAuthenticatedInvitationsRoute
@@ -379,7 +372,6 @@ export interface FileRoutesByTo {
   '/auth/sign-up': typeof AuthSignUpRoute
   '/auth/verify-otp': typeof AuthVerifyOtpRoute
   '/device/approve': typeof DeviceApproveRoute
-  '/mcp/authorize': typeof McpAuthorizeRoute
   '/device': typeof DeviceIndexRoute
   '/invitations': typeof LayoutAuthenticatedInvitationsRoute
   '/onboarding': typeof LayoutAuthenticatedOnboardingRoute
@@ -424,7 +416,6 @@ export interface FileRoutesById {
   '/auth/sign-up': typeof AuthSignUpRoute
   '/auth/verify-otp': typeof AuthVerifyOtpRoute
   '/device/approve': typeof DeviceApproveRoute
-  '/mcp/authorize': typeof McpAuthorizeRoute
   '/device/': typeof DeviceIndexRoute
   '/_layout/_authenticated/dashboard': typeof LayoutAuthenticatedDashboardRouteWithChildren
   '/_layout/_authenticated/invitations': typeof LayoutAuthenticatedInvitationsRoute
@@ -470,7 +461,6 @@ export interface FileRouteTypes {
     | '/auth/sign-up'
     | '/auth/verify-otp'
     | '/device/approve'
-    | '/mcp/authorize'
     | '/device/'
     | '/dashboard'
     | '/invitations'
@@ -513,7 +503,6 @@ export interface FileRouteTypes {
     | '/auth/sign-up'
     | '/auth/verify-otp'
     | '/device/approve'
-    | '/mcp/authorize'
     | '/device'
     | '/invitations'
     | '/onboarding'
@@ -557,7 +546,6 @@ export interface FileRouteTypes {
     | '/auth/sign-up'
     | '/auth/verify-otp'
     | '/device/approve'
-    | '/mcp/authorize'
     | '/device/'
     | '/_layout/_authenticated/dashboard'
     | '/_layout/_authenticated/invitations'
@@ -598,7 +586,6 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   DeviceRoute: typeof DeviceRouteWithChildren
   TestErrorRoute: typeof TestErrorRoute
-  McpAuthorizeRoute: typeof McpAuthorizeRoute
   InvitationAcceptInviteIdRoute: typeof InvitationAcceptInviteIdRoute
 }
 
@@ -687,13 +674,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/device/approve'
       preLoaderRoute: typeof DeviceApproveRouteImport
       parentRoute: typeof DeviceRoute
-    }
-    '/mcp/authorize': {
-      id: '/mcp/authorize'
-      path: '/mcp/authorize'
-      fullPath: '/mcp/authorize'
-      preLoaderRoute: typeof McpAuthorizeRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/_layout/_authenticated/dashboard': {
       id: '/_layout/_authenticated/dashboard'
@@ -1129,7 +1109,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   DeviceRoute: DeviceRouteWithChildren,
   TestErrorRoute: TestErrorRoute,
-  McpAuthorizeRoute: McpAuthorizeRoute,
   InvitationAcceptInviteIdRoute: InvitationAcceptInviteIdRoute,
 }
 export const routeTree = rootRouteImport

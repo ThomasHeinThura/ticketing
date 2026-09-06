@@ -24,7 +24,6 @@ import externalLink from "./external-link";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
 import invitation from "./invitation";
 import label from "./label";
-import mcpRoutes, { mcpWellKnownRoutes } from "./mcp";
 import { migrateColumns } from "./migrations/column-migration";
 import notification from "./notification";
 import notificationPreferences from "./notification-preferences";
@@ -514,13 +513,12 @@ export function createApp() {
     return auth.handler(c.req.raw);
   });
 
-  api.route("/", mcpRoutes);
-
   api.use("*", async (c, next) => {
-    const path = c.req.path;
-    if (path.startsWith("/api/mcp") || path.startsWith("/api/.well-known/")) {
-      return next();
-    }
+    // No prefix exemptions. kaneo exempted /api/mcp, /api/.well-known/ and
+    // /api/billing/webhook; all three surfaces are removed in issue #6, so
+    // every route mounted below this guard is authenticated without exception.
+    // Adding one back is a route-policy decision that belongs to #7, not a
+    // string appended here.
     // kaneo wrapped this in Sentry.withIsolationScope(...). With Sentry gone the
     // wrapper has no purpose, so the body runs directly — it must NOT become an
     // uninvoked arrow function, or authenticateApiRequest never runs and every
@@ -560,16 +558,6 @@ export function createApp() {
   const invitationApi = api.route("/invitation", invitation);
   const workspaceApi = api.route("/workspace", workspace);
   const userApi = api.route("/user", user);
-
-  app.route(
-    "/",
-    mcpWellKnownRoutes(
-      (process.env.KANEO_API_URL || "http://localhost:1337").replace(
-        /\/api\/?$/,
-        "",
-      ),
-    ),
-  );
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
   // so the literal path "user" isn't consumed by the param route.
@@ -706,6 +694,7 @@ export function createApp() {
     externalLinkApi,
     invitationApi,
     invitationPublicApi,
+    oauthApi,
     labelApi,
     notificationApi,
     notificationPreferencesApi,
@@ -717,7 +706,6 @@ export function createApp() {
     userApi,
     workflowRuleApi,
     workspaceApi,
-    oauthApi,
   };
 }
 
@@ -815,6 +803,7 @@ const {
   externalLinkApi,
   invitationApi,
   invitationPublicApi,
+  oauthApi,
   labelApi,
   notificationApi,
   notificationPreferencesApi,
@@ -826,7 +815,6 @@ const {
   userApi,
   workflowRuleApi,
   workspaceApi,
-  oauthApi,
 } = createdApp;
 
 const entrypoint = process.argv[1];
