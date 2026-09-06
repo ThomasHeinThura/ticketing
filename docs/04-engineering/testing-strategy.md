@@ -91,7 +91,10 @@ Added 2026-09-06, from the fork-time removal list ([decision log](../07-planning
   `identity_connection` takes effect on every replica without a restart
   ([auth-runtime-reconfiguration.md](../01-architecture/auth-runtime-reconfiguration.md)).
 
-**Where** — `tests/permissions/`.
+**Where** — `tests/permissions/`. One command, `pnpm test:permissions`, needing no environment
+and no database; exit `0` or `1`, no warning-only mode. The contract CI wires against — what
+fails the build, and why there is no second route scanner — is
+[`tests/permissions/README.md`](../../tests/permissions/README.md).
 
 This layer exists specifically because of v1's eleven authorization holes, and it is the
 one layer that tests the API surface itself rather than a feature behind it — see

@@ -13,6 +13,7 @@
     "lint": "turbo lint",
     "test": "turbo test",
     "test:integration": "turbo test:integration",
+    "test:permissions": "turbo test:permissions",
     "typecheck": "turbo typecheck",
     "prepare": "husky"
   },

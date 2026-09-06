@@ -1,0 +1,527 @@
+/**
+ * Route policies — the anti-v1 mechanism.
+ *
+ * Every route declares its policy at definition time. A policy is one of **exactly five
+ * kinds**; the specs may use no other form and the route-coverage test rejects any other
+ * (`docs/01-architecture/rbac.md` § "Route policies", ADR 0010).
+ *
+ * Position is untrusted. v1 — and the inherited kaneo tree — enforced authentication by
+ * source-code ordering: `api.use("*")` gates only what is registered below it, and sixteen
+ * routes sat above it. A policy is therefore a property of the **route**, never of where it
+ * happens to be declared.
+ */
+
+import type { Capability } from "./capabilities";
+
+/** What a capability check is evaluated against. */
+export const SCOPES = [
+  "instance",
+  "workspace",
+  "project",
+  "work_item",
+  "organisation",
+] as const;
+
+export type Scope = (typeof SCOPES)[number];
+
+/**
+ * Predicates over the **loaded row**. Closed set: a new predicate is a change to rbac.md,
+ * not an edit at the keyboard.
+ */
+export const OWNER_PREDICATES = [
+  "row.person_id === identity.personId",
+  "row.created_by === identity.personId",
+  "row.requester_id === identity.personId",
+] as const;
+
+export type OwnerPredicate = (typeof OWNER_PREDICATES)[number];
+
+/** Predicates over the **request body**, evaluated after Zod parsing and before the handler. */
+export const BODY_PREDICATES = [
+  "body.assigneeId === identity.personId",
+] as const;
+
+export type BodyPredicate = (typeof BODY_PREDICATES)[number];
+
+/** How a customer-portal policy scopes the query. */
+export const PORTAL_PREDICATES = [
+  "own_request",
+  "own_organisation",
+  "addressed_approval",
+  "own_submission",
+] as const;
+
+export type PortalPredicate = (typeof PORTAL_PREDICATES)[number];
+
+/**
+ * The mounts that sit outside the session model.
+ *
+ * **This union is closed.** Adding a member is a decision-log entry, not an edit — the whole
+ * point of kind 5 is that a delegated mount is an explicitly allowlisted exception.
+ */
+export const DELEGATED_SURFACES = [
+  "better-auth",
+  "websocket",
+  "metrics",
+  "scim",
+] as const;
+
+export type DelegatedSurface = (typeof DELEGATED_SURFACES)[number];
+
+/**
+ * The owner branch of a capability policy.
+ *
+ * It is a **conjunction, not a bypass**: the primary capability is checked first, and if it
+ * is absent the request is allowed only when the caller holds this branch's own `*_own`
+ * capability **and** the predicate evaluates true against the loaded row.
+ */
+export type OwnerBranch = {
+  readonly predicate: OwnerPredicate;
+  readonly capability: Capability;
+  /** Time bound relative to the row's `created_at` — the comment edit window, in the registry. */
+  readonly withinMinutes?: number;
+};
+
+/**
+ * The self-target branch of a capability policy — the request body names the actor.
+ *
+ * Like `orOwner` it is a **conjunction**: the caller must still hold `capability`. rbac.md's
+ * type block writes this branch as a bare predicate, but its own roles table settles what the
+ * conjunction is — "self-assignment by a `member` is `work_item:update` on an item where the
+ * new assignee is the actor" — and a bare predicate would let a `viewer` self-assign, which is
+ * the exact class of hole this registry exists to refuse.
+ */
+export type SelfTargetBranch = {
+  readonly predicate: BodyPredicate;
+  readonly capability: Capability;
+};
+
+/**
+ * Whether a capability route addresses one identifiable resource, and therefore must be
+ * reach-checked before authority is considered.
+ *
+ * There is no third answer and no default. "This route addresses no single resource" is a
+ * **static property of the route** — a create, or a collection scoped by the query itself —
+ * so it is declared here, once, where a reviewer reads it next to the path, rather than
+ * asserted per request by whichever middleware happens to run. `evaluatePolicy` cross-checks
+ * this declaration against what the request context actually supplies, and refuses rather
+ * than guesses when the two disagree (`evaluator.ts`, defect 5).
+ */
+export type ReachRequirement =
+  | "required"
+  | {
+      readonly exempt: "no_single_resource";
+      /** Why this route addresses nothing a reach check could be run against. */
+      readonly reason: string;
+    };
+
+/**
+ * Which request parameter names a person on a kind-2 route, or an explicit statement that
+ * none does. Static, for the same reason as `ReachRequirement`.
+ */
+export type PersonParam =
+  | string
+  | {
+      readonly exempt: "no_person_parameter";
+      readonly reason: string;
+    };
+
+/**
+ * Where the scope id a capability policy is checked against must legitimately come from.
+ *
+ * - `"row"` — the addressed resource has its own row, and the scope id (and its containment
+ *   chain, for `project`/`work_item`) must be read from that row in the same query that loads
+ *   it. A route addressing one resource by `{id}` is `"row"`.
+ * - `"request"` — there is no row yet, so the scope id legitimately comes from the request
+ *   itself (a path parameter or the `X-Workspace-Id` header): a collection route, or a create.
+ * - `"instance"` — the route's scope is `"instance"` itself, which has no tenant or resource id
+ *   at all, so there is nothing whose provenance could be a loaded row or a request parameter.
+ *   Valid **only** for `scope: "instance"`, and required there — `"row"` and `"request"` both
+ *   describe how an *id* was obtained, and instance has no id to obtain. `validatePolicy`
+ *   refuses the declaration either way round: `scope: "instance"` with `scopeSource: "row"` or
+ *   `"request"`, and any other scope with `scopeSource: "instance"`.
+ *
+ * **Not the same question as `reach`.** `reach` asks whether this route addresses a single
+ * resource that must be visibility-checked; `scopeSource` asks where the *authority* check's
+ * scope id is allowed to come from. A create has `reach: { exempt: "no_single_resource" }`
+ * (there is no row to be out of reach of) and still needs `scopeSource` — the workspace the
+ * new row will belong to is exactly what authority is checked against.
+ *
+ * Required on every capability policy, and deliberately not defaulted: a default is how the
+ * one route where this matters gets forgotten. `evaluatePolicy` refuses a resolved scope whose
+ * own source does not match this declaration — see `evaluator.ts`'s scope resolution. There is
+ * no fallback for an *absent* resolved scope either: a capability policy with no `context.scope`
+ * at all is refused (`policy_context_incomplete`), never evaluated against the flat, unverified
+ * request bag. Row/request provenance applies only to the four id-bearing scopes —
+ * `organisation`, `workspace`, `project`, `work_item`; instance uses its own source instead.
+ */
+export const SCOPE_SOURCES = ["row", "request", "instance"] as const;
+
+export type ScopeSource = (typeof SCOPE_SOURCES)[number];
+
+/** Kind 1 — the normal case. */
+export type CapabilityPolicy = {
+  readonly capability: Capability;
+  readonly scope: Scope;
+  readonly scopeSource: ScopeSource;
+  /**
+   * Required. A route that addresses a resource must be reach-checked; one that does not
+   * must say so in writing. Omitting it is the omission this registry exists to refuse, so
+   * it is not optional and it has no default.
+   */
+  readonly reach: ReachRequirement;
+  readonly orOwner?: OwnerBranch;
+  readonly orSelfTarget?: SelfTargetBranch;
+};
+
+/** Kind 2 — the caller's own records only (`/api/me/*`). Replaces every `(self)` in the specs. */
+export type SelfPolicy = {
+  readonly authenticated: true;
+  readonly self: true;
+  /**
+   * Required. The path or query parameter this route uses to name a person, or a written
+   * statement that the route names none.
+   */
+  readonly personParam: PersonParam;
+};
+
+/** Kind 3 — a customer session on `/api/portal/*`, scoped by predicate. */
+export type PortalPolicy = {
+  readonly portal: "customer";
+  readonly predicate: PortalPredicate;
+};
+
+/** Kind 4 — unauthenticated, with a stated reason, so "public" is a deliberate, reviewable act. */
+export type PublicPolicy = {
+  readonly public: true;
+  readonly reason: string;
+};
+
+/** Kind 5 — a mount outside the session model, allowlisted explicitly. */
+export type DelegatedPolicy = {
+  readonly delegated: DelegatedSurface;
+  readonly reason: string;
+};
+
+/**
+ * Declared on the route, not in a prose table.
+ *
+ * - `elevated` — requires a fresh authentication regardless of capability. The single
+ *   elevated-action table in rbac.md is **generated** from these entries.
+ * - `sessionOnly` — accepted only from a browser session; an API key, an `is_mcp` key or an
+ *   impersonation session is refused `403 session_required` **before** the policy runs.
+ * - `elevated: false` is not a no-op: it is the explicit, reasoned opt-out that the elevation
+ *   coverage test demands of an `/api/instance/*` route or an authority-granting capability.
+ *
+ * **Coherence runs both directions.** `elevationExemptionReason` states a reason for *not*
+ * requiring elevation, so it means something only when `elevated` is exactly `false` — a
+ * route declaring `elevated: true` (or omitting `elevated`) has no elevation being exempted
+ * from, and a reason attached there is the same class of lie as `elevated: false` with no
+ * reason: a written statement that describes nothing real. The union below makes the forward
+ * direction (`elevated: false` demands a reason) **and** the reverse direction (a reason
+ * demands `elevated: false`) unrepresentable on a well-typed literal; `validatePolicy` in
+ * `registry.ts` refuses both again at runtime, because a policy map can arrive from JSON or a
+ * plugin and never meet this type.
+ */
+export type ElevationFlags =
+  | {
+      readonly elevated?: true;
+      readonly sessionOnly?: true;
+      readonly elevationExemptionReason?: undefined;
+    }
+  | {
+      readonly elevated: false;
+      readonly sessionOnly?: true;
+      /** Required: the explicit, reasoned opt-out the elevation rule demands. */
+      readonly elevationExemptionReason: string;
+    };
+
+/**
+ * The flags a **public** route may declare — a strictly smaller set than `ElevationFlags`,
+ * because kind 4 has no identity at all.
+ *
+ * - `elevated: true` means "re-authenticate the caller before this proceeds". A public route
+ *   is *defined* by accepting a request that has no caller. The declaration is not merely
+ *   unenforced, it is incoherent, and it is unrepresentable here.
+ * - `sessionOnly: true` means "accept only a browser session". A public route accepts a
+ *   request carrying no credential whatsoever; demanding a session of it contradicts the kind.
+ * - `elevated: false` **stays**, and is load-bearing: it is not a security constraint but the
+ *   written waiver the elevation rule demands of an `/api/instance/*` route.
+ *   `GET /api/instance/status` is exactly that route.
+ *
+ * Same bidirectional coherence as `ElevationFlags`: `elevationExemptionReason` is representable
+ * only alongside `elevated: false`, never alongside an omitted `elevated`.
+ */
+export type PublicElevationFlags =
+  | {
+      readonly elevated?: undefined;
+      readonly sessionOnly?: never;
+      readonly elevationExemptionReason?: undefined;
+    }
+  | {
+      readonly elevated: false;
+      readonly sessionOnly?: never;
+      readonly elevationExemptionReason: string;
+    };
+
+/**
+ * Every flag above is read by `evaluatePolicy` **before any successful decision returns**, on
+ * every kind. Metadata the evaluator does not read is metadata that lies: rbac.md's elevated
+ * and session-only tables are generated from these fields, so a declared-and-inert flag is a
+ * documented control that does not exist (defect 3).
+ */
+export type Policy =
+  | ((CapabilityPolicy | SelfPolicy | PortalPolicy | DelegatedPolicy) &
+      ElevationFlags & { readonly public?: never })
+  | (PublicPolicy & PublicElevationFlags);
+
+export const POLICY_KINDS = [
+  "capability",
+  "self",
+  "portal",
+  "public",
+  "delegated",
+] as const;
+
+export type PolicyKind = (typeof POLICY_KINDS)[number];
+
+/**
+ * The five kind checks below test the discriminant's **value**, not merely whether the key
+ * is present on the object. `"x" in policy` is true for `{ x: undefined }` and, for a boolean
+ * discriminant, for `{ x: false }` too — both of which are real shapes a hand-built, JSON- or
+ * plugin-supplied policy map can carry, and `validatePolicy` (the runtime entry point for
+ * exactly that untrusted-map case) is built entirely on these five functions. A well-typed
+ * `Policy` literal can never produce the gap — `CapabilityPolicy.capability`, `SelfPolicy.self`
+ * and `PublicPolicy.public` all require a real value already — so this is defence in depth for
+ * the path the type system does not reach, not a behaviour change for anything `tsc` accepted.
+ */
+export function isCapabilityPolicy(
+  policy: Policy,
+): policy is CapabilityPolicy & ElevationFlags {
+  return (
+    "capability" in policy &&
+    (policy as { readonly capability?: unknown }).capability !== undefined
+  );
+}
+
+export function isSelfPolicy(
+  policy: Policy,
+): policy is SelfPolicy & ElevationFlags {
+  return (
+    "self" in policy && (policy as { readonly self?: unknown }).self === true
+  );
+}
+
+export function isPortalPolicy(
+  policy: Policy,
+): policy is PortalPolicy & ElevationFlags {
+  return (
+    "portal" in policy &&
+    (policy as { readonly portal?: unknown }).portal !== undefined
+  );
+}
+
+export function isPublicPolicy(
+  policy: Policy,
+): policy is PublicPolicy & PublicElevationFlags {
+  return (
+    "public" in policy &&
+    (policy as { readonly public?: unknown }).public === true
+  );
+}
+
+export function isDelegatedPolicy(
+  policy: Policy,
+): policy is DelegatedPolicy & ElevationFlags {
+  return (
+    "delegated" in policy &&
+    (policy as { readonly delegated?: unknown }).delegated !== undefined
+  );
+}
+
+/** Which of the five kinds this is. Throws for anything that is not one of them. */
+export function policyKind(policy: Policy): PolicyKind {
+  if (isCapabilityPolicy(policy)) return "capability";
+  if (isSelfPolicy(policy)) return "self";
+  if (isPortalPolicy(policy)) return "portal";
+  if (isPublicPolicy(policy)) return "public";
+  if (isDelegatedPolicy(policy)) return "delegated";
+  throw new Error(
+    "Policy matches none of the five kinds in rbac.md — there is no sixth kind",
+  );
+}
+
+export const HTTP_METHODS = [
+  "GET",
+  "HEAD",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "OPTIONS",
+  "ALL",
+] as const;
+
+export type HttpMethod = (typeof HTTP_METHODS)[number];
+
+/**
+ * A route key: `METHOD path`, with path parameters in braces —
+ * `"POST /api/projects/{projectId}/work-items"`.
+ *
+ * rbac.md writes them padded for readability (`'POST  /api/…'`); `normaliseRouteKey`
+ * collapses that, and converts Hono's `:param` syntax to braces, so one route has exactly
+ * one key however it was written.
+ */
+export type RouteKey = string;
+
+export type PolicyMap = Readonly<Record<RouteKey, Policy>>;
+
+const METHOD_SET: ReadonlySet<string> = new Set(HTTP_METHODS);
+
+/**
+ * Canonicalise a route key.
+ *
+ * `"POST  /api/projects/:projectId/work-items"` and
+ * `"post /api/projects/{projectId}/work-items"` both become
+ * `"POST /api/projects/{projectId}/work-items"`.
+ *
+ * A trailing slash is significant to Hono and is preserved.
+ */
+export function normaliseRouteKey(key: string): RouteKey {
+  const trimmed = key.trim();
+
+  // First whitespace run separates method from path. Scanned rather than
+  // matched, for the same reason as normaliseRoutePath below.
+  let split = 0;
+  while (split < trimmed.length && !isWhitespace(trimmed[split])) {
+    split += 1;
+  }
+  if (split === trimmed.length) {
+    throw new Error(`Route key must be "METHOD path", got: ${key}`);
+  }
+
+  const method = trimmed.slice(0, split).toUpperCase();
+  if (!METHOD_SET.has(method)) {
+    throw new Error(`Unknown HTTP method in route key: ${key}`);
+  }
+  const path = normaliseRoutePath(trimmed.slice(split).trim());
+  return `${method} ${path}`;
+}
+
+/**
+ * True for exactly the characters JavaScript's `\s` matches.
+ *
+ * `String.prototype.trim` strips the same WhiteSpace + LineTerminator set that
+ * `\s` matches, so for a single character the two agree — including the awkward
+ * members, U+00A0 and U+FEFF.
+ */
+function isWhitespace(char: string | undefined): boolean {
+  // `undefined` only reaches here from an indexed read past the end, which the callers'
+  // bounds already prevent — but `noUncheckedIndexedAccess` cannot see that, and widening
+  // the parameter is honest where a non-null assertion would only silence it. Absent is not
+  // whitespace, which is also the fail-safe answer.
+  return char !== undefined && char.trim() === "";
+}
+
+/** `A-Z`, `a-z`, `0-9`, `_` — the character class Hono allows in a `:param` name. */
+function isParamNameChar(code: number): boolean {
+  return (
+    (code >= 65 && code <= 90) || // A-Z
+    (code >= 97 && code <= 122) || // a-z
+    (code >= 48 && code <= 57) || // 0-9
+    code === 95 // _
+  );
+}
+
+/**
+ * Hono `:param` (and `:param?`, `:param{regex}`) become `{param}`; everything
+ * else is left alone.
+ *
+ * Parsed by hand, in one left-to-right pass, deliberately.
+ *
+ * This was `path.replace(/:([A-Za-z0-9_]+)(\{[^}]*\})?(\?)?/g, "{$1}")`, which
+ * CodeQL flagged as `js/polynomial-redos` (HIGH) and which was genuinely
+ * quadratic: on `":0{{"` repeated, every `:` opens the optional `(\{[^}]*\})?`
+ * group, `[^}]*` runs greedily to the end of the string hunting a `}` that is
+ * never there, then gives the characters back one at a time. O(n) wasted per
+ * `:`, and the `g` flag supplies O(n) of them. Measured on Node 24: 2 000 chars
+ * 0.9 ms, 4 000 chars 3.3 ms, 8 000 chars 13.5 ms, 16 000 chars 50.8 ms,
+ * 32 000 chars 202.5 ms — four times the work for twice the input, all the way
+ * up. Route keys reach here from the route scanner, so the input is not a
+ * constant this module controls.
+ *
+ * The trap in rewriting it is that the obvious hand-parse is *also* quadratic:
+ * calling `path.indexOf("}", cursor)` for each `:` re-scans to the end of the
+ * string every time. So the closing-brace search uses one cursor that only ever
+ * moves forward across the whole call — every character of `path` is examined a
+ * bounded number of times, and the whole function is O(n).
+ *
+ * Output is byte-identical to the regex for every input, quirks included: a
+ * `{...}` constraint ends at the FIRST `}` (so `:id{[0-9]{3}}` yields `{id}}`,
+ * exactly as before), an unterminated `{` is left in place as a literal, and a
+ * `:` with no name character after it is not a parameter. `registry.test.ts`
+ * proves the equivalence differentially rather than asserting it.
+ */
+export function normaliseRoutePath(path: string): string {
+  const out: string[] = [];
+  let literalFrom = 0;
+  let i = 0;
+
+  // Monotone cursor: the next `}` at or after the last position we needed one.
+  // Only ever advances, which is what keeps this linear.
+  let nextClose = path.indexOf("}");
+
+  while (i < path.length) {
+    if (path[i] !== ":") {
+      i += 1;
+      continue;
+    }
+
+    let end = i + 1;
+    while (end < path.length && isParamNameChar(path.charCodeAt(end))) {
+      end += 1;
+    }
+    if (end === i + 1) {
+      i += 1; // a bare ":" is not a parameter
+      continue;
+    }
+
+    const name = path.slice(i + 1, end);
+
+    // Optional Hono regex constraint `{...}`, consumed and discarded.
+    if (path[end] === "{") {
+      while (nextClose !== -1 && nextClose <= end) {
+        nextClose = path.indexOf("}", nextClose + 1);
+      }
+      if (nextClose !== -1) {
+        end = nextClose + 1;
+      }
+      // No closing brace anywhere ahead: the optional group matches empty and
+      // the "{" stays a literal, which is what the regex did too.
+    }
+
+    // Optional "?" marker, consumed and discarded.
+    if (path[end] === "?") {
+      end += 1;
+    }
+
+    out.push(path.slice(literalFrom, i), "{", name, "}");
+    i = end;
+    literalFrom = end;
+  }
+
+  out.push(path.slice(literalFrom));
+  return out.join("");
+}
+
+export function routeKeyParts(key: RouteKey): {
+  method: HttpMethod;
+  path: string;
+} {
+  const normalised = normaliseRouteKey(key);
+  const firstSpace = normalised.indexOf(" ");
+  return {
+    method: normalised.slice(0, firstSpace) as HttpMethod,
+    path: normalised.slice(firstSpace + 1),
+  };
+}

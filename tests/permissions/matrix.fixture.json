@@ -1,0 +1,669 @@
+{
+	"capabilities": {
+		"instance_admin": [
+			"instance:admin",
+			"instance:read_audit",
+			"instance:manage_plugins",
+			"instance:manage_jobs",
+			"instance:manage_terminology"
+		],
+		"owner": [
+			"workspace:read",
+			"workspace:update",
+			"workspace:delete",
+			"workspace:manage_members",
+			"workspace:manage_roles",
+			"workspace:manage_settings",
+			"project:create",
+			"project:read",
+			"project:update",
+			"project:manage_members",
+			"project:manage_settings",
+			"project:archive",
+			"project:delete",
+			"work_item:read",
+			"work_item:create",
+			"work_item:update",
+			"work_item:delete",
+			"work_item:assign",
+			"work_item:transition",
+			"work_item:rank",
+			"work_item:set_priority",
+			"work_item:escalate_priority",
+			"work_item:export",
+			"comment:create",
+			"comment:create_internal",
+			"comment:update_own",
+			"comment:delete_own",
+			"comment:update_any",
+			"comment:delete_any",
+			"attachment:create",
+			"attachment:delete_own",
+			"attachment:delete_any",
+			"label:manage",
+			"custom_field:manage",
+			"saved_view:read",
+			"saved_view:create",
+			"saved_view:share",
+			"sla_policy:read",
+			"sla_policy:manage",
+			"workflow:read",
+			"workflow:manage",
+			"request_type:read",
+			"request_type:manage",
+			"intake:triage",
+			"approval:request",
+			"approval:request_cab",
+			"approval:decide",
+			"approval:decide_cab",
+			"time_entry:create",
+			"time_entry:update_own",
+			"time_entry:delete_own",
+			"time_entry:read_any",
+			"time_entry:update_any",
+			"time_entry:delete_any",
+			"time_entry:log_backdated",
+			"time_entry:manage_rates",
+			"budget:read",
+			"budget:manage",
+			"report:read",
+			"report:read_all",
+			"report:export",
+			"kb_article:read",
+			"kb_article:write",
+			"kb_article:publish",
+			"service:read",
+			"service:manage",
+			"change:manage",
+			"release:manage",
+			"member:invite",
+			"member:remove",
+			"api_key:manage",
+			"webhook:manage",
+			"automation:manage"
+		],
+		"admin": [
+			"workspace:read",
+			"workspace:update",
+			"workspace:manage_members",
+			"workspace:manage_roles",
+			"workspace:manage_settings",
+			"project:create",
+			"project:read",
+			"project:update",
+			"project:manage_members",
+			"project:manage_settings",
+			"project:archive",
+			"project:delete",
+			"work_item:read",
+			"work_item:create",
+			"work_item:update",
+			"work_item:delete",
+			"work_item:assign",
+			"work_item:transition",
+			"work_item:rank",
+			"work_item:set_priority",
+			"work_item:escalate_priority",
+			"work_item:export",
+			"comment:create",
+			"comment:create_internal",
+			"comment:update_own",
+			"comment:delete_own",
+			"comment:update_any",
+			"comment:delete_any",
+			"attachment:create",
+			"attachment:delete_own",
+			"attachment:delete_any",
+			"label:manage",
+			"custom_field:manage",
+			"saved_view:read",
+			"saved_view:create",
+			"saved_view:share",
+			"sla_policy:read",
+			"sla_policy:manage",
+			"workflow:read",
+			"workflow:manage",
+			"request_type:read",
+			"request_type:manage",
+			"intake:triage",
+			"approval:request",
+			"approval:request_cab",
+			"approval:decide",
+			"approval:decide_cab",
+			"time_entry:create",
+			"time_entry:update_own",
+			"time_entry:delete_own",
+			"time_entry:read_any",
+			"time_entry:update_any",
+			"time_entry:delete_any",
+			"time_entry:log_backdated",
+			"time_entry:manage_rates",
+			"budget:read",
+			"budget:manage",
+			"report:read",
+			"report:read_all",
+			"report:export",
+			"kb_article:read",
+			"kb_article:write",
+			"kb_article:publish",
+			"service:read",
+			"service:manage",
+			"change:manage",
+			"release:manage",
+			"member:invite",
+			"member:remove",
+			"api_key:manage",
+			"webhook:manage",
+			"automation:manage"
+		],
+		"manager": [
+			"workspace:read",
+			"workspace:manage_members",
+			"workspace:manage_settings",
+			"project:create",
+			"project:read",
+			"project:update",
+			"project:manage_members",
+			"project:manage_settings",
+			"project:archive",
+			"work_item:read",
+			"work_item:create",
+			"work_item:update",
+			"work_item:delete",
+			"work_item:assign",
+			"work_item:transition",
+			"work_item:rank",
+			"work_item:set_priority",
+			"work_item:escalate_priority",
+			"work_item:export",
+			"comment:create",
+			"comment:create_internal",
+			"comment:update_own",
+			"comment:delete_own",
+			"comment:update_any",
+			"comment:delete_any",
+			"attachment:create",
+			"attachment:delete_own",
+			"attachment:delete_any",
+			"label:manage",
+			"custom_field:manage",
+			"saved_view:read",
+			"saved_view:create",
+			"saved_view:share",
+			"sla_policy:read",
+			"sla_policy:manage",
+			"workflow:read",
+			"workflow:manage",
+			"request_type:read",
+			"request_type:manage",
+			"intake:triage",
+			"approval:request",
+			"approval:request_cab",
+			"approval:decide",
+			"time_entry:create",
+			"time_entry:update_own",
+			"time_entry:delete_own",
+			"time_entry:read_any",
+			"time_entry:update_any",
+			"time_entry:delete_any",
+			"time_entry:log_backdated",
+			"time_entry:manage_rates",
+			"budget:read",
+			"budget:manage",
+			"report:read",
+			"report:read_all",
+			"report:export",
+			"kb_article:read",
+			"kb_article:write",
+			"kb_article:publish",
+			"service:read",
+			"service:manage",
+			"change:manage",
+			"release:manage",
+			"member:invite",
+			"member:remove",
+			"webhook:manage",
+			"automation:manage"
+		],
+		"lead": [
+			"workspace:read",
+			"project:read",
+			"project:update",
+			"project:manage_members",
+			"work_item:read",
+			"work_item:create",
+			"work_item:update",
+			"work_item:delete",
+			"work_item:assign",
+			"work_item:transition",
+			"work_item:rank",
+			"work_item:set_priority",
+			"work_item:escalate_priority",
+			"work_item:export",
+			"comment:create",
+			"comment:create_internal",
+			"comment:update_own",
+			"comment:delete_own",
+			"attachment:create",
+			"attachment:delete_own",
+			"label:manage",
+			"saved_view:read",
+			"saved_view:create",
+			"saved_view:share",
+			"sla_policy:read",
+			"workflow:read",
+			"request_type:read",
+			"intake:triage",
+			"approval:request",
+			"approval:decide",
+			"time_entry:create",
+			"time_entry:update_own",
+			"time_entry:delete_own",
+			"time_entry:read_any",
+			"time_entry:log_backdated",
+			"budget:read",
+			"report:read",
+			"report:export",
+			"kb_article:read",
+			"kb_article:write",
+			"service:read",
+			"member:invite",
+			"automation:manage"
+		],
+		"member": [
+			"workspace:read",
+			"project:read",
+			"work_item:read",
+			"work_item:create",
+			"work_item:update",
+			"work_item:transition",
+			"work_item:rank",
+			"work_item:set_priority",
+			"work_item:escalate_priority",
+			"comment:create",
+			"comment:create_internal",
+			"comment:update_own",
+			"comment:delete_own",
+			"attachment:create",
+			"attachment:delete_own",
+			"saved_view:read",
+			"saved_view:create",
+			"sla_policy:read",
+			"workflow:read",
+			"request_type:read",
+			"approval:request",
+			"approval:decide",
+			"time_entry:create",
+			"time_entry:update_own",
+			"time_entry:delete_own",
+			"budget:read",
+			"report:read",
+			"kb_article:read",
+			"kb_article:write",
+			"service:read"
+		],
+		"viewer": [
+			"workspace:read",
+			"project:read",
+			"work_item:read",
+			"saved_view:read",
+			"sla_policy:read",
+			"workflow:read",
+			"request_type:read",
+			"report:read",
+			"kb_article:read",
+			"service:read"
+		],
+		"customer": [
+			"work_item:read",
+			"work_item:rank",
+			"work_item:escalate_priority",
+			"comment:create",
+			"attachment:create",
+			"approval:decide",
+			"kb_article:read"
+		]
+	},
+	"routes": {
+		"DELETE /api/auth/*": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"GET /api/auth/*": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"GET /api/health": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"GET /api/instance/status": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"GET /api/project/{id}": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"GET /api/ws/{projectId}": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"GET /api/ws/user": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"PATCH /api/auth/*": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"POST /api/auth/*": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"PUT /api/auth/*": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		}
+	}
+}
