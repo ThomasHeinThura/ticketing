@@ -1,0 +1,16 @@
+# CODEOWNERS — the mechanism behind "only Thomas merges".
+#
+# docs/04-engineering/ci-cd.md § Branching: "`main` requires: all checks green, **one
+# approval from the code owner** — a `CODEOWNERS` file (`* @ThomasHeinThura`) makes Thomas's
+# review required on every pull request into `main`, which is the mechanism behind 'only
+# Thomas merges'".
+#
+# CLAUDE.md § Authority says the same thing as a sentence. This file is the sentence turned
+# into something the platform enforces — but only once branch protection on `main` has
+# "Require review from Code Owners" enabled. That switch is Thomas's to flip; this file
+# alone does nothing.
+#
+# Agents produce branches, tested code and pull requests. They never self-approve
+# (AGENTS.md do-not 7) and never merge (do-not 16).
+
+* @ThomasHeinThura

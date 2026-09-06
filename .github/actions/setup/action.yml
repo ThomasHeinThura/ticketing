@@ -1,0 +1,22 @@
+name: Set up the workspace
+description: Node 24, corepack pnpm, and a frozen-lockfile install.
+
+runs:
+  using: composite
+  steps:
+    - name: Enable corepack
+      shell: bash
+      # packageManager in package.json pins pnpm, so corepack needs no third-party action.
+      run: corepack enable
+
+    - name: Set up Node
+      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+      with:
+        # package.json's engines field is a range (">=24.0.0"); the major is pinned here so
+        # a new major cannot arrive in CI before anyone has decided to move to it.
+        node-version: "24"
+        cache: pnpm
+
+    - name: Install
+      shell: bash
+      run: pnpm install --frozen-lockfile

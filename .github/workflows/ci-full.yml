@@ -1,0 +1,112 @@
+# The full stage of the pull-request pipeline.
+#
+# docs/04-engineering/ci-cd.md: "Full — required before merge, runs on the merge queue (or
+# on the `ready-for-review` label), target under 45 minutes, sharded four ways."
+#
+# Most of this block cannot run yet. There is no Playwright suite, no deployable
+# application to point one at (#11), no packages/ui (#9), and the visual-regression tool for
+# G8 is still an open decision in docs/07-planning/status.md. Those jobs are written out
+# below and disabled with `if: false`, so the shape is reviewable and the reason is next to
+# it — but they are **not** to be added to the protect-main ruleset as required checks. A
+# skipped job is not a passing gate, and treating it as one is how a suite goes green over
+# nothing.
+
+name: CI - full
+
+on:
+  merge_group:
+  pull_request:
+    types: [labeled, synchronize, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-full-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+
+jobs:
+  integration:
+    name: integration - Postgres 18
+    # On a pull request this stage runs only once it is labelled ready-for-review.
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'ready-for-review')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        # ci-cd.md and testing-strategy.md say Testcontainers. The inherited suite connects
+        # to TASKDESK_DATABASE_URL instead, so it gets a Postgres 18 service container here
+        # and the Testcontainers move stays visible as unfinished work rather than being
+        # quietly claimed. The version is the one docs/01-architecture/tech-stack.md pins.
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: taskdesk_test
+          # No password, deliberately, and none was ever meaningful here. A literal
+          # credential in a workflow file is a secret-scanner finding whether or not it
+          # guards anything, and inventing a less obvious one would still teach readers
+          # that credentials belong in this file.
+          #
+          # trust is sound for exactly this shape and no other: the container publishes
+          # onto the ephemeral runner's loopback only, the runner is single-tenant and is
+          # destroyed with the job, and the database holds fixtures. It is NOT a pattern
+          # for anything that outlives a job — real deployments require a password and
+          # generate it (docs/05-operations, and the chart refuses to render without one).
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      TASKDESK_DATABASE_URL: postgresql://postgres@localhost:5432/taskdesk_test
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: pnpm test:integration
+        run: pnpm test:integration
+
+  e2e:
+    name: NOT ENABLED - e2e (agent + portal)
+    if: false
+    # Blocked by: no Playwright suite, and no deployable application to run it against
+    # (#11). ci-cd.md also lists the security, reduced-motion (G9) and mobile-320 (H6)
+    # projects; they arrive with the suite, as `pnpm test:e2e --project=…`.
+    runs-on: ubuntu-latest
+    steps:
+      - run: exit 1
+
+  a11y:
+    name: NOT ENABLED - a11y (G4, axe)
+    if: false
+    # Blocked by: no Playwright suite and no screens to run axe against.
+    runs-on: ubuntu-latest
+    steps:
+      - run: exit 1
+
+  visual:
+    name: NOT ENABLED - visual regression (G8)
+    if: false
+    # Blocked by: no Playwright suite, and the tool is undecided — Playwright
+    # toHaveScreenshot with in-repo baselines, or Chromatic (docs/07-planning/status.md
+    # § Open decisions).
+    runs-on: ubuntu-latest
+    steps:
+      - run: exit 1
+
+  performance:
+    name: NOT ENABLED - performance budgets (G11)
+    if: false
+    # Blocked by: no Playwright suite, and no budgets written down anywhere.
+    runs-on: ubuntu-latest
+    steps:
+      - run: exit 1
