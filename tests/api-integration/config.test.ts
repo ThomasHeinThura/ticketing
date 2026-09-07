@@ -16,7 +16,6 @@ describe("API integration: config", () => {
       disableEmailOtpSignIn: false,
       disableLoginForm: false,
       customOAuthAutoLogin: false,
-      hasGuestAccess: true,
     });
 
     // isDemoMode left the public config with the cloud-only surfaces in #6.

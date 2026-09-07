@@ -1,11 +1,4 @@
-import open from "open";
-import { pollDeviceAccessToken, requestDeviceCode } from "./device-flow.js";
-import {
-  clearCredentials,
-  loadCredentials,
-  type StoredCredentials,
-  saveCredentials,
-} from "./token-store.js";
+import { clearCredentials } from "./token-store.js";
 
 export type AuthServiceOptions = {
   baseUrl: string;
@@ -13,13 +6,34 @@ export type AuthServiceOptions = {
   apiKey?: string;
 };
 
-type TokenValidationResult = "valid" | "invalid" | "unknown";
-
+/**
+ * Authentication for the MCP client.
+ *
+ * **`TASKDESK_API_KEY` is the only way to authenticate.** That is not a new
+ * restriction — it is the only path that has worked since issue #6 removed
+ * better-auth's `deviceAuthorization()` plugin and kaneo's in-process MCP OAuth
+ * server. Both `/api/auth/device/code` and `/api/auth/device/token` return **404**.
+ *
+ * This class used to run that device flow: request a code, open a browser, poll for
+ * a token, and cache the result to `~/.config/taskdesk-mcp/credentials.json`. All of
+ * it was retained after the server side was deleted, so the package's only
+ * interactive path POSTed to endpoints that no longer exist. Independent review of
+ * `a4147a1` found it; removing it is issue #6's inherited-surface work, not #17's.
+ *
+ * **Stored credentials are no longer honoured, and that is deliberate.** A
+ * `credentials.json` on disk holds an access token minted by the very flow this
+ * change removes. Reading it would let a token from a deleted authorization path
+ * keep authenticating — which is exactly the distinction migrations `0048` and
+ * `0049` make when they say dropping the tables is not revocation. `clearToken()`
+ * still deletes the file, so a stale one can be purged rather than merely ignored.
+ *
+ * Revoking sessions those flows already minted **server-side** remains issue #17.
+ * This only stops the client from presenting them.
+ */
 export class AuthService {
   readonly baseUrl: string;
   readonly clientId: string;
   private readonly apiKey?: string;
-  private activeGetAccessTokenPromise?: Promise<string>;
 
   constructor(options: AuthServiceOptions) {
     this.baseUrl = options.baseUrl;
@@ -28,8 +42,11 @@ export class AuthService {
   }
 
   /**
-   * True when a pre-created TaskDesk API key is used instead of the interactive
-   * device flow. Callers use this to avoid clearing/retrying auth on a 401.
+   * True when a pre-created TaskDesk API key is configured.
+   *
+   * Now always the case for a working client — there is no other credential — but
+   * kept because callers use it to decide whether to clear and retry auth on a 401,
+   * and a static key must not be cleared.
    */
   get usingApiKey(): boolean {
     return Boolean(this.apiKey);
@@ -38,31 +55,8 @@ export class AuthService {
   async clearToken(): Promise<void> {
     // Nothing to clear for API-key auth; the key is static config.
     if (this.apiKey) return;
+    // Purges any credentials.json left by the removed device flow.
     await clearCredentials();
-  }
-
-  private async validateAccessToken(
-    token: string,
-  ): Promise<TokenValidationResult> {
-    try {
-      const signal = AbortSignal.timeout(10_000);
-      const res = await fetch(`${this.baseUrl}/api/auth/get-session`, {
-        headers: { Authorization: `Bearer ${token}` },
-        signal,
-      });
-      if (res.status === 401) {
-        return "invalid";
-      }
-      if (!res.ok) {
-        return "unknown";
-      }
-      const data = (await res.json().catch(() => null)) as {
-        user?: { id?: string };
-      } | null;
-      return data?.user?.id ? "valid" : "unknown";
-    } catch {
-      return "unknown";
-    }
   }
 
   private log(msg: string): void {
@@ -70,73 +64,22 @@ export class AuthService {
   }
 
   /**
-   * Returns a valid access token, running the device authorization flow if needed.
+   * Returns the configured API key, or throws.
+   *
+   * Throwing is the honest answer. The alternative — falling back to a cached
+   * token — would honour a credential minted by a removed flow, and the
+   * alternative before that, running the flow itself, reaches a 404.
    */
   async getAccessToken(): Promise<string> {
-    // Non-interactive auth: a pre-created TaskDesk API key (TASKDESK_API_KEY) is sent
-    // as a Bearer token, which the REST API already accepts. This skips the
-    // device flow so the MCP server works in headless/Docker environments.
     if (this.apiKey) {
       return this.apiKey;
     }
 
-    if (this.activeGetAccessTokenPromise) {
-      return await this.activeGetAccessTokenPromise;
-    }
-
-    this.activeGetAccessTokenPromise = (async () => {
-      const cached = await loadCredentials();
-      if (
-        cached &&
-        cached.baseUrl === this.baseUrl &&
-        cached.clientId === this.clientId &&
-        cached.accessToken
-      ) {
-        const validation = await this.validateAccessToken(cached.accessToken);
-        // Fail-open for "unknown": validateAccessToken returns "unknown" on transient HTTP/network
-        // errors or ambiguous responses. Treating "unknown" like "valid" avoids clearToken() and a full
-        // device re-auth so flaky connectivity does not wipe cached.accessToken; only "invalid" forces
-        // a fresh login. Tests should cover both unknown and invalid paths.
-        if (validation === "valid" || validation === "unknown") {
-          return cached.accessToken;
-        }
-        await this.clearToken();
-      }
-
-      const code = await requestDeviceCode(this.baseUrl, this.clientId);
-      const verifyUrl = code.verification_uri_complete || code.verification_uri;
-      this.log(
-        `Open ${verifyUrl} and approve this device. User code: ${code.user_code}`,
-      );
-
-      try {
-        await open(verifyUrl);
-      } catch {
-        this.log("Could not open a browser automatically; use the URL above.");
-      }
-
-      const accessToken = await pollDeviceAccessToken(
-        this.baseUrl,
-        this.clientId,
-        code.device_code,
-        code.interval,
-        { log: (m) => this.log(m) },
-      );
-
-      const toStore: StoredCredentials = {
-        version: 1,
-        baseUrl: this.baseUrl,
-        clientId: this.clientId,
-        accessToken,
-      };
-      await saveCredentials(toStore);
-      return accessToken;
-    })();
-
-    try {
-      return await this.activeGetAccessTokenPromise;
-    } finally {
-      this.activeGetAccessTokenPromise = undefined;
-    }
+    this.log(
+      "No TASKDESK_API_KEY is set. Interactive device authorization was removed in issue #6 and its endpoints return 404; create an API key in TaskDesk and set TASKDESK_API_KEY.",
+    );
+    throw new Error(
+      "TASKDESK_API_KEY is required: interactive device authorization has been removed.",
+    );
   }
 }

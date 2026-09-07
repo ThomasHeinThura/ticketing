@@ -1,16 +1,26 @@
-import { chmod, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { unlink } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 
-export type StoredCredentials = {
-  version: 1;
-  baseUrl: string;
-  clientId: string;
-  accessToken: string;
-};
-
-const FILE_MODE = 0o600;
-const DIR_MODE = 0o700;
+/**
+ * What is left of the MCP credential store: the ability to **delete** it.
+ *
+ * This module used to load, save and clear `~/.config/taskdesk-mcp/credentials.json`
+ * — the access token cached by better-auth's device-authorization flow. Issue #6
+ * removed that flow, both server-side and, in this change, client-side, so nothing
+ * writes the file any more.
+ *
+ * The read path went with it, deliberately. A `credentials.json` still on disk holds
+ * a token minted by a removed authorization path; reading it would let that token
+ * keep authenticating. Migrations `0048` and `0049` make the same point about the
+ * server tables — dropping them is not revocation — and the client half of that is
+ * refusing to present the credential rather than merely losing the ability to
+ * refresh it.
+ *
+ * `clearCredentials()` remains so a stale file can be **purged** rather than left
+ * lying around ignored. Revoking the session that token belongs to, server-side, is
+ * issue #17.
+ */
 
 function configDir(): string {
   const base =
@@ -22,42 +32,11 @@ export function credentialsPath(): string {
   return path.join(configDir(), "credentials.json");
 }
 
-export async function loadCredentials(): Promise<StoredCredentials | null> {
-  try {
-    const raw = await readFile(credentialsPath(), "utf8");
-    const parsed = JSON.parse(raw) as StoredCredentials;
-    if (
-      parsed?.version === 1 &&
-      typeof parsed.baseUrl === "string" &&
-      typeof parsed.clientId === "string" &&
-      typeof parsed.accessToken === "string"
-    ) {
-      return parsed;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-export async function saveCredentials(data: StoredCredentials): Promise<void> {
-  const dir = configDir();
-  await mkdir(dir, { recursive: true, mode: DIR_MODE });
-  const file = credentialsPath();
-  await writeFile(file, `${JSON.stringify(data, null, 2)}\n`, {
-    mode: FILE_MODE,
-  });
-  try {
-    await chmod(file, FILE_MODE);
-  } catch {
-    /* ignore chmod failures on some FS */
-  }
-}
-
+/** Deletes any credentials file left behind by the removed device flow. */
 export async function clearCredentials(): Promise<void> {
   try {
     await unlink(credentialsPath());
   } catch {
-    /* noop */
+    // Already gone, or never written. Both are the desired end state.
   }
 }

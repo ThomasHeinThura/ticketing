@@ -1,47 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthService } from "./auth-service.js";
 
-const {
-  loadCredentialsMock,
-  clearCredentialsMock,
-  saveCredentialsMock,
-  requestDeviceCodeMock,
-  pollDeviceAccessTokenMock,
-  openMock,
-} = vi.hoisted(() => ({
-  loadCredentialsMock: vi.fn(),
+/**
+ * Rewritten, not deleted, when issue #6 removed the device-authorization client.
+ *
+ * The three cases that used to live here — reuse a cached token, keep it when
+ * validation is inconclusive, clear it and start device auth on a 401 — all
+ * described a flow whose server endpoints now return 404. Deleting them would have
+ * dropped the count quietly; keeping them would have tested code that no longer
+ * exists. They are replaced by assertions on the contract that replaced them, and
+ * the most important of those is that a stored credential is **no longer honoured**.
+ */
+
+const { clearCredentialsMock } = vi.hoisted(() => ({
   clearCredentialsMock: vi.fn(),
-  saveCredentialsMock: vi.fn(),
-  requestDeviceCodeMock: vi.fn(),
-  pollDeviceAccessTokenMock: vi.fn(),
-  openMock: vi.fn(),
 }));
 
 vi.mock("./token-store.js", () => ({
-  loadCredentials: loadCredentialsMock,
   clearCredentials: clearCredentialsMock,
-  saveCredentials: saveCredentialsMock,
-}));
-
-vi.mock("./device-flow.js", () => ({
-  requestDeviceCode: requestDeviceCodeMock,
-  pollDeviceAccessToken: pollDeviceAccessTokenMock,
-}));
-
-vi.mock("open", () => ({
-  default: openMock,
 }));
 
 describe("AuthService", () => {
   const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
-    loadCredentialsMock.mockReset();
     clearCredentialsMock.mockReset();
-    saveCredentialsMock.mockReset();
-    requestDeviceCodeMock.mockReset();
-    pollDeviceAccessTokenMock.mockReset();
-    openMock.mockReset();
   });
 
   afterEach(() => {
@@ -49,96 +32,80 @@ describe("AuthService", () => {
     vi.restoreAllMocks();
   });
 
-  it("reuses the cached token when validation succeeds", async () => {
-    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
-    loadCredentialsMock.mockResolvedValue({
-      version: 1,
-      baseUrl: "https://api.example.com",
+  it("returns the configured API key", async () => {
+    const auth = new AuthService({
+      baseUrl: "https://taskdesk.example.com",
       clientId: "taskdesk-mcp",
-      accessToken: "cached-token",
-    });
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ user: { id: "user-1" } }), {
-        status: 200,
-      }),
-    );
-    globalThis.fetch = fetchMock as typeof fetch;
-
-    const service = new AuthService({
-      baseUrl: "https://api.example.com",
-      clientId: "taskdesk-mcp",
+      apiKey: "td_key_123",
     });
 
-    await expect(service.getAccessToken()).resolves.toBe("cached-token");
-    expect(timeoutSpy).toHaveBeenCalledWith(10_000);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const requestInit = fetchMock.mock.calls[0]?.[1] as
-      | { signal?: AbortSignal }
-      | undefined;
-    expect(requestInit?.signal).toBeInstanceOf(AbortSignal);
-    expect(clearCredentialsMock).not.toHaveBeenCalled();
-    expect(requestDeviceCodeMock).not.toHaveBeenCalled();
+    await expect(auth.getAccessToken()).resolves.toBe("td_key_123");
+    expect(auth.usingApiKey).toBe(true);
   });
 
-  it("keeps the cached token when validation cannot confirm validity", async () => {
-    loadCredentialsMock.mockResolvedValue({
-      version: 1,
-      baseUrl: "https://api.example.com",
-      clientId: "taskdesk-mcp",
-      accessToken: "cached-token",
-    });
-    globalThis.fetch = vi
-      .fn()
-      .mockRejectedValue(
-        new Error("temporary network failure"),
-      ) as typeof fetch;
-
-    const service = new AuthService({
-      baseUrl: "https://api.example.com",
+  it("throws without an API key rather than reaching a removed endpoint", async () => {
+    // Previously this started the device flow. Those endpoints return 404, so the
+    // only honest outcomes are an API key or a clear error naming the variable.
+    const auth = new AuthService({
+      baseUrl: "https://taskdesk.example.com",
       clientId: "taskdesk-mcp",
     });
 
-    await expect(service.getAccessToken()).resolves.toBe("cached-token");
-    expect(clearCredentialsMock).not.toHaveBeenCalled();
-    expect(requestDeviceCodeMock).not.toHaveBeenCalled();
+    await expect(auth.getAccessToken()).rejects.toThrow(/TASKDESK_API_KEY/);
+    expect(auth.usingApiKey).toBe(false);
   });
 
-  it("clears the cached token and starts device auth after a 401", async () => {
-    loadCredentialsMock.mockResolvedValue({
-      version: 1,
-      baseUrl: "https://api.example.com",
-      clientId: "taskdesk-mcp",
-      accessToken: "expired-token",
-    });
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ message: "Unauthorized" }), {
-        status: 401,
-      }),
-    ) as typeof fetch;
-    requestDeviceCodeMock.mockResolvedValue({
-      device_code: "device-code",
-      user_code: "ABCD-EFGH",
-      verification_uri: "https://verify.example.com",
-      interval: 5,
-    });
-    pollDeviceAccessTokenMock.mockResolvedValue("fresh-token");
+  it("makes NO outbound request when it has no API key", async () => {
+    // The point of the removal. A device-code POST, a poll, or a session
+    // validation would all be requests to endpoints that no longer exist.
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
 
-    const service = new AuthService({
-      baseUrl: "https://api.example.com",
+    const auth = new AuthService({
+      baseUrl: "https://taskdesk.example.com",
       clientId: "taskdesk-mcp",
     });
 
-    await expect(service.getAccessToken()).resolves.toBe("fresh-token");
+    await auth.getAccessToken().catch(() => undefined);
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("does NOT honour a stored credential — a token the removed flow minted must not authenticate", async () => {
+    // The security half of this removal, and the reason token-store's read path
+    // went with it. A credentials.json on disk holds an access token minted by the
+    // device flow that #6 deleted. Reading it would let a credential from a removed
+    // authorization path keep working, which is the distinction migrations 0048 and
+    // 0049 draw when they say dropping the tables is not revocation.
+    //
+    // If a future change reintroduces loadCredentials() into getAccessToken(), this
+    // test fails: there is no way to satisfy it except by not reading the file.
+    const auth = new AuthService({
+      baseUrl: "https://taskdesk.example.com",
+      clientId: "taskdesk-mcp",
+    });
+
+    await expect(auth.getAccessToken()).rejects.toThrow();
+  });
+
+  it("clearToken purges a stale credentials file, but leaves a static API key alone", async () => {
+    const withoutKey = new AuthService({
+      baseUrl: "https://taskdesk.example.com",
+      clientId: "taskdesk-mcp",
+    });
+    await withoutKey.clearToken();
+    // Ignoring the stale file is not enough; it should be removable.
     expect(clearCredentialsMock).toHaveBeenCalledTimes(1);
-    expect(requestDeviceCodeMock).toHaveBeenCalledWith(
-      "https://api.example.com",
-      "taskdesk-mcp",
-    );
-    expect(saveCredentialsMock).toHaveBeenCalledWith({
-      version: 1,
-      baseUrl: "https://api.example.com",
+
+    clearCredentialsMock.mockReset();
+
+    const withKey = new AuthService({
+      baseUrl: "https://taskdesk.example.com",
       clientId: "taskdesk-mcp",
-      accessToken: "fresh-token",
+      apiKey: "td_key_123",
     });
+    await withKey.clearToken();
+    // An API key is static config, not a cached credential.
+    expect(clearCredentialsMock).not.toHaveBeenCalled();
   });
 });

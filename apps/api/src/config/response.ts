@@ -11,7 +11,6 @@ export const configSchema = z
     hasGoogleSignIn: z.boolean(),
     hasDiscordSignIn: z.boolean(),
     hasCustomOAuth: z.boolean(),
-    hasGuestAccess: z.boolean(),
     disableLoginForm: z.boolean(),
     customOAuthAutoLogin: z.boolean(),
     customOAuthLogoutUrl: z.string().nullable(),

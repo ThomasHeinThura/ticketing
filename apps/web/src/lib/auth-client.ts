@@ -1,7 +1,6 @@
 import { apiKeyClient } from "@better-auth/api-key/client";
 import {
   adminClient,
-  anonymousClient,
   deviceAuthorizationClient,
   emailOTPClient,
   genericOAuthClient,
@@ -28,7 +27,6 @@ export const authClient = createAuthClient({
   baseURL: getBaseURL(),
   basePath: "/api/auth",
   plugins: [
-    anonymousClient(),
     lastLoginMethodClient(),
     magicLinkClient(),
     emailOTPClient(),
