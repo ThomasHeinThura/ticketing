@@ -3,13 +3,20 @@
  * Issue #6, retrofit plan step S1.
  *
  * ────────────────────────────────────────────────────────────────────────────
- * EXECUTED GREEN — 20/20 against a real PostgreSQL 18
+ * EXECUTED GREEN — the S1 suite is 24/24 against a real PostgreSQL 18
  * ────────────────────────────────────────────────────────────────────────────
  *
- * Every assertion in this file has run. The suite is 20 passed / 0 failed /
- * 0 skipped against a real database, migrated from scratch. That is what makes
- * it an oracle: each assertion pins DATABASE STATE the live plugin actually
- * writes, not a claim about what it should write.
+ * Every assertion in this file has run. **THIS FILE holds 20 tests; the S1
+ * SUITE is 24 passed / 4 files / 0 failed / 0 skipped** against a real
+ * database, migrated from scratch — 20 here, 1 in the rate-limit file, 2 in
+ * the abuse-guards file, 1 in the active-session file.
+ *
+ * Both numbers are stated on purpose. An earlier header said "the suite is 20"
+ * while 20 was, by coincidence, this file's OWN count — so a reader who counted
+ * `it()` blocks here found 20 and concluded the header was right. It was not.
+ *
+ * That is what makes this an oracle: each assertion pins DATABASE STATE the
+ * live plugin actually writes, not a claim about what it should write.
  *
  * The earlier header said the opposite — "not one assertion has executed",
  * "do not treat this file as an oracle" — and stayed that way after the green
@@ -35,7 +42,9 @@
  *
  * LINE CITATIONS. Re-verified against `main` at `b75cf02`, not assumed. The
  * `auth.ts` and `schema.ts` addresses hold exactly, because those two files did
- * not change. Three citations did move and are corrected below: #21 relocated
+ * not change. FOUR citations did move and are corrected below — three found in
+ * the first sweep and a fourth when F3 was closed, which is the same
+ * completeness claim F3 flagged, wrong again by one until now. #21 relocated
  * the legacy better-auth access-control module out of
  * `packages/permissions/src/index.ts` into
  * `packages/permissions/src/legacy-better-auth-access-control.ts`. `index.ts`
@@ -70,8 +79,8 @@ import {
 // equivalence oracle for S4-S7: the same assertions must keep passing once
 // each concern moves to a native TaskDesk route.
 //
-// EXECUTED: 20 passed / 0 failed / 0 skipped against a real PostgreSQL 18,
-// migrated from scratch. Every assertion below was ALSO derived by reading
+// EXECUTED: the S1 suite is 24 passed / 4 files / 0 failed / 0 skipped against
+// a real PostgreSQL 18, migrated from scratch; 20 of those 24 live in this file. Every assertion below was ALSO derived by reading
 // apps/api/src/auth.ts, apps/api/src/database/schema.ts,
 // packages/permissions/src/legacy-better-auth-access-control.ts and the
 // better-auth organization plugin's own source (crud-org.mjs, crud-invites.mjs,
@@ -103,11 +112,38 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
   });
 
   describe("create", () => {
-    // THE ORACLE. Every observable side effect of one plugin create call, in
-    // one test on purpose: S4 replaces this route and must reproduce ALL of it.
-    it("create writes EVERY side effect: workspace, owner workspace_member, 3 seeded workspace_role rows, workspace.created, a default team and its team_member", async () => {
+    // THE ORACLE. All SEVEN observable side effects of one plugin create call,
+    // in one test on purpose: S4 replaces this route and must reproduce ALL of
+    // them. Split apart, S4 could pass the headline assertions while silently
+    // ceasing to write one of the others.
+    //
+    // The seventh -- the creating session's active_organization_id -- was
+    // unasserted anywhere in this suite until F11. better-auth does it in
+    // crud-org.mjs: `if (ctx.context.session && !ctx.body.keepCurrentActiveOrganization)
+    // await adapter.setActiveOrganization(...)`. An S4 handler that omitted it
+    // would leave a user who has just created their first workspace with no
+    // active workspace and no error -- the exact failure
+    // organization-active-session.test.ts names as its reason to exist, on the
+    // commonest path of all, while the suite stayed green.
+    //
+    // Thomas's scope decision: this create-time behaviour is PRESERVED by the
+    // native replacement. It is a contract, not an accident to be dropped.
+    it("create writes all SEVEN side effects: workspace, owner workspace_member, 3 seeded workspace_role rows, workspace.created, a default team, its team_member, and the creating session's active_organization_id", async () => {
       const { app } = createApp();
       const owner = await signUpUser(app);
+
+      // (7) BEFORE. Capture the creating session as a ROW, not as a user: the
+      // assertion after create has to be about THIS persisted session, so a
+      // future implementation cannot satisfy it by minting a fresh session that
+      // happens to carry the workspace.
+      const sessionsBefore = await db
+        .select()
+        .from(schema.sessionTable)
+        .where(eq(schema.sessionTable.userId, owner.user.id));
+      expect(sessionsBefore).toHaveLength(1);
+      const creatingSessionId = sessionsBefore[0]?.id;
+      if (!creatingSessionId) throw new Error("expected one creating session");
+      expect(sessionsBefore[0]?.activeOrganizationId).toBeNull();
 
       const created = await createWorkspaceViaPlugin(app, owner.cookie, {
         name: "Acme Inc",
@@ -194,6 +230,18 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
         .where(eq(schema.teamMemberTable.teamId, team.id));
       expect(teamMemberRows).toHaveLength(1);
       expect(teamMemberRows[0]?.userId).toBe(owner.user.id);
+
+      // (7) AFTER. The SAME session row, re-read by its captured id: null ->
+      // the new workspace id. Deliberately not "some session has it", not "a
+      // fresh login gets it", not "the response says so" -- the transition on
+      // the one row that already existed before the call.
+      const sessionsAfter = await db
+        .select()
+        .from(schema.sessionTable)
+        .where(eq(schema.sessionTable.id, creatingSessionId));
+      expect(sessionsAfter).toHaveLength(1);
+      expect(sessionsAfter[0]?.id).toBe(creatingSessionId);
+      expect(sessionsAfter[0]?.activeOrganizationId).toBe(workspace.id);
     });
 
     it("rejects a name that fails checkWorkspaceName before any row is written", async () => {

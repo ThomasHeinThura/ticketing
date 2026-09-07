@@ -6,13 +6,32 @@ import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
 
 // R2 (retrofit plan §4): session.active_organization_id
-// (apps/api/src/database/schema.ts:61) is populated ONLY inside the
-// `hooks.after` middleware on the sign-up/sign-in paths --
-// apps/api/src/auth.ts:713-733 (the write itself at :726-730). An existing
-// session never re-acquires it: this hook only ever runs on
-// "/sign-up*"/"/sign-in*" requests (the ctx.path.startsWith check at
-// auth.ts:~713), never as a side effect of workspace membership changing
-// later (e.g. an invite getting accepted, or a direct DB seed).
+// (apps/api/src/database/schema.ts:61).
+//
+// CORRECTED BY F11. An earlier version of this comment, and this describe
+// block's own title, said the column is populated ONLY at sign-in/sign-up.
+// That is false, and the create path is the counter-example: better-auth's
+// createOrganization also sets it, on the CREATING session, which the create
+// oracle in organization-plugin-characterization.test.ts now pins as the
+// seventh side effect. There are three distinct behaviours and this file
+// characterizes the middle one:
+//
+//   CREATE                  -- the creating session gets the new workspace
+//                              selected, in the same request.
+//   LATER MEMBERSHIP INSERT -- an already-existing session is NOT
+//                              retroactively backfilled just because a
+//                              workspace membership appears. THIS FILE.
+//   FRESH SIGN-IN           -- a new session can select an available
+//                              workspace, per the hooks.after middleware.
+//
+// So: populated by the `hooks.after` middleware on the sign-up/sign-in paths
+// when applicable -- apps/api/src/auth.ts:713-733, the write at :726-730,
+// gated by the ctx.path.startsWith check at auth.ts:~713 -- AND during
+// organization creation for the creating session. What it is NOT is
+// retroactive: no existing session re-acquires it as a side effect of
+// workspace membership changing later (an invite accepted, or a direct DB
+// seed). That non-retroactivity is what the test below proves, and it is
+// unchanged.
 //
 // This is a genuinely HTTP-level, database-state characterization: it does
 // not need mocking, and it pins exactly the behavior the retrofit plan
@@ -28,7 +47,7 @@ import { resetTestDatabase } from "./helpers/database";
 // HEAD, and is corrected rather than quietly dropped: the most security-
 // sensitive files in the suite were telling their next reader that nothing in
 // them had ever run.
-describe("R2: session.active_organization_id is set only at sign-in/sign-up (auth.ts:713-733)", () => {
+describe("R2: session.active_organization_id is NOT retroactively backfilled into an existing session (auth.ts:713-733)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
   });
