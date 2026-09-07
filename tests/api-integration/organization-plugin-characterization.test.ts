@@ -3,30 +3,44 @@
  * Issue #6, retrofit plan step S1.
  *
  * ────────────────────────────────────────────────────────────────────────────
- * S1 CHARACTERIZATION ASSERTIONS UNRUN — POSTGRESQL REQUIRED
+ * EXECUTED GREEN — 20/20 against a real PostgreSQL 18
  * ────────────────────────────────────────────────────────────────────────────
  *
- * Not one assertion in this file has executed. There is no PostgreSQL reachable
- * from the environment these were written in. Every test here fails today with a
- * single `ECONNREFUSED 127.0.0.1:5432`, which proves the imports resolve, the app
- * boots and the HTTP requests are issued — and proves nothing whatsoever about
- * what the plugin actually writes.
+ * Every assertion in this file has run. The suite is 20 passed / 0 failed /
+ * 0 skipped against a real database, migrated from scratch. That is what makes
+ * it an oracle: each assertion pins DATABASE STATE the live plugin actually
+ * writes, not a claim about what it should write.
  *
- * Do not treat this file as an oracle until it has run green against the real
- * plugin. Do not start S2 on the strength of it.
+ * The earlier header said the opposite — "not one assertion has executed",
+ * "do not treat this file as an oracle" — and stayed that way after the green
+ * run, because the commit that executed the suite touched the two files it had
+ * to change and not this one. It is corrected rather than quietly dropped.
  *
- * BASELINE. This branch is cut from #16 (`feat/p0-remove-inherited-surfaces`),
- * NOT from `main`, because the retrofit plan is written against that tree: on #16
- * billing is already removed and `enableSessionForAPIKeys` is `false`. Those
- * differences from `main` are intentional #16 changes, not plan defects. If #16's
- * head moves or #16 merges, this branch must be semantically rebased and the
- * characterization surface re-inspected — a stale plugin baseline here is worse
- * than none, because it would silently certify the wrong behaviour.
+ * **S2 is still not started, and a green oracle is not permission to start it.**
  *
- * LINE CITATIONS. The `apps/api/src/auth.ts:NNN` references in the comments below
- * were authored against `main` and only partly re-verified against this branch.
- * Treat them as pointers to the right code, not as exact addresses, and correct
- * them on the first green run.
+ * BASELINE — and this is the second correction. This file used to say the branch
+ * was cut from #16 (`feat/p0-remove-inherited-surfaces`) rather than from `main`,
+ * and warned that "if #16's head moves or #16 merges, this branch must be
+ * semantically rebased and the characterization surface re-inspected — a stale
+ * plugin baseline here is worse than none, because it would silently certify the
+ * wrong behaviour."
+ *
+ * #16 merged, as `b75cf02`. The warning was acted on: this branch was rebuilt
+ * from that merge and carries **only** these five files, and every surface these
+ * assertions characterize was re-inspected against it. `apps/api/src/auth.ts`,
+ * `apps/api/src/database/schema.ts` and `apps/api/src/events/index.ts` are all
+ * byte-identical to the tree this file was written against, so the plugin
+ * baseline did not move. `organization()` is still mounted, and it is still the
+ * one entry on `better-auth-plugins-pending-removal.json`.
+ *
+ * LINE CITATIONS. Re-verified against `main` at `b75cf02`, not assumed. The
+ * `auth.ts` and `schema.ts` addresses hold exactly, because those two files did
+ * not change. Three citations did move and are corrected below: #21 relocated
+ * the legacy better-auth access-control module out of
+ * `packages/permissions/src/index.ts` into
+ * `packages/permissions/src/legacy-better-auth-access-control.ts`. `index.ts`
+ * still re-exports `DEFAULT_ROLE_NAMES`, so no import here changed — only the
+ * prose addresses were stale.
  *
  * WHAT THIS FILE IS FOR. These assertions are the equivalence oracle for S4–S7.
  * Each asserts on DATABASE STATE, never on plugin response shapes — a response
@@ -55,12 +69,14 @@ import {
 // equivalence oracle for S4-S7: the same assertions must keep passing once
 // each concern moves to a native TaskDesk route.
 //
-// UNRUN: there is no PostgreSQL in this environment. Every assertion below
-// was verified by reading apps/api/src/auth.ts, apps/api/src/database/
-// schema.ts, packages/permissions/src/index.ts and the better-auth
-// organization plugin's own source (crud-org.mjs, crud-invites.mjs,
-// crud-access-control.mjs, has-permission.mjs) -- see the report for
-// file:line citations per assertion.
+// EXECUTED: 20 passed / 0 failed / 0 skipped against a real PostgreSQL 18,
+// migrated from scratch. Every assertion below was ALSO derived by reading
+// apps/api/src/auth.ts, apps/api/src/database/schema.ts,
+// packages/permissions/src/legacy-better-auth-access-control.ts and the
+// better-auth organization plugin's own source (crud-org.mjs, crud-invites.mjs,
+// crud-access-control.mjs, has-permission.mjs) -- so a failure here means the
+// plugin changed, not that the fixture drifted. See the report for file:line
+// citations per assertion.
 
 type RecordedEvent = { type: string; data: unknown };
 const recordedEvents: RecordedEvent[] = [];
@@ -125,8 +141,9 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
       // 3 workspace_role rows seeded by afterCreateOrganization --
       // apps/api/src/auth.ts:381-410 (seed loop at :425-452), names from
       // DEFAULT_ROLE_NAMES = ["viewer", "member", "admin"] --
-      // packages/permissions/src/index.ts:60. "owner" is deliberately never
-      // seeded (packages/permissions/src/index.ts:56-60; this is R5 in the
+      // packages/permissions/src/legacy-better-auth-access-control.ts:78.
+      // "owner" is deliberately never seeded (same file, :73-78; this is R5 in
+      // the
       // retrofit plan) -- owner authority stays entirely in the compiled-in
       // static role.
       const roleRows = await db
