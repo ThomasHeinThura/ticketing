@@ -114,8 +114,8 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
       expect(created.status).toBe(200);
       const workspace = (await created.json()) as { id: string };
 
-      // workspace row -- schema mapping apps/api/src/auth.ts:341-352,
-      // adapter model map apps/api/src/auth.ts:212, table
+      // workspace row -- schema mapping apps/api/src/auth.ts:292-303,
+      // adapter model map apps/api/src/auth.ts:157-172, table
       // apps/api/src/database/schema.ts:141-151.
       const workspaceRows = await db
         .select()
@@ -127,7 +127,7 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
       // workspace_member row, role=owner. The plugin's own createOrganization
       // handler creates this with role = orgOptions.creatorRole ?? "owner"
       // (better-auth crud-org.mjs); our schema remaps organizationId ->
-      // workspaceId and createdAt -> joinedAt (apps/api/src/auth.ts:353-359),
+      // workspaceId and createdAt -> joinedAt (apps/api/src/auth.ts:304-310),
       // table at apps/api/src/database/schema.ts:153-176.
       const memberRows = await db
         .select()
@@ -139,7 +139,7 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
       expect(memberRows[0]?.joinedAt).toBeInstanceOf(Date);
 
       // 3 workspace_role rows seeded by afterCreateOrganization --
-      // apps/api/src/auth.ts:381-410 (seed loop at :425-452), names from
+      // apps/api/src/auth.ts:369-411 (seed loop at :385-393), names from
       // DEFAULT_ROLE_NAMES = ["viewer", "member", "admin"] --
       // packages/permissions/src/legacy-better-auth-access-control.ts:78.
       // "owner" is deliberately never seeded (same file, :73-78; this is R5 in
@@ -196,7 +196,7 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
     });
 
     it("rejects a name that fails checkWorkspaceName before any row is written", async () => {
-      // beforeCreateOrganization -- apps/api/src/auth.ts:412-417, validator
+      // beforeCreateOrganization -- apps/api/src/auth.ts:363-368, validator
       // at apps/api/src/utils/check-workspace-name.ts (URL_PATTERN check).
       const { app } = createApp();
       const owner = await signUpUser(app);
@@ -214,9 +214,9 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
   describe("invite", () => {
     it("creates an invitation row with status=pending", async () => {
       // invite-member -- apps/api/src/auth.ts:413-444 (sendInvitationEmail),
-      // table apps/api/src/database/schema.ts:259-283 (status defaults to
-      // "pending" at schema.ts:271), adapter mapping apps/api/src/auth.ts:
-      // 360-365.
+      // table apps/api/src/database/schema.ts:212-236 (status defaults to
+      // "pending" at schema.ts:224), adapter mapping apps/api/src/auth.ts:
+      // 311-316.
       const { app } = createApp();
       const owner = await signUpUser(app);
       const created = await createWorkspaceViaPlugin(app, owner.cookie);
@@ -254,8 +254,8 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
     it("FINDING: accepts a role name that only exists as a seeded workspace_role row, not one of better-auth's own static role names", async () => {
       // better-auth's createInvitation handler treats any role not in its
       // own defaultRoles ({admin, owner, member}) plus orgOptions.roles
-      // ({owner}, apps/api/src/auth.ts:331) as "unknown", then -- because
-      // dynamicAccessControl.enabled is true (apps/api/src/auth.ts:332-335)
+      // ({owner}, apps/api/src/auth.ts:282) as "unknown", then -- because
+      // dynamicAccessControl.enabled is true (apps/api/src/auth.ts:283-286)
       // -- falls back to looking the name up in workspace_role for this
       // workspace. "viewer" only exists there because
       // afterCreateOrganization just seeded it. Confirmed against
@@ -539,7 +539,7 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
 
     it("FINDING: delete-role refuses to delete a seeded default role (e.g. 'admin') while it is assigned to a member -- better-auth's own 'cannot delete a pre-defined role' guard does NOT protect it", async () => {
       // better-auth's deleteOrgRole only blocks names in
-      // orgOptions.roles (= {owner} here, apps/api/src/auth.ts:331), so
+      // orgOptions.roles (= {owner} here, apps/api/src/auth.ts:282), so
       // "admin"/"member"/"viewer" are NOT protected as pre-defined roles at
       // the plugin level -- only the separate "role is assigned to a
       // member" guard stops this delete. Confirmed against better-auth's
@@ -613,7 +613,7 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
     // index.ts (viewer :19-25, member :27-33, admin :35-41, owner :43-49)
     // and better-auth's has-permission.mjs / permission.mjs merge logic:
     // for any role name other than "owner" (which is the only entry in
-    // orgOptions.roles, apps/api/src/auth.ts:331), the workspace_role DB
+    // orgOptions.roles, apps/api/src/auth.ts:282), the workspace_role DB
     // row's JSON is merged onto an empty statement set, so it behaves as a
     // full replacement in practice.
 

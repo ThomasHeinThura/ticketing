@@ -8,7 +8,7 @@ import { resetTestDatabase } from "./helpers/database";
 // R2 (retrofit plan §4): session.active_organization_id
 // (apps/api/src/database/schema.ts:61) is populated ONLY inside the
 // `hooks.after` middleware on the sign-up/sign-in paths --
-// apps/api/src/auth.ts:~712-733 (the write itself at :792-796). An existing
+// apps/api/src/auth.ts:713-733 (the write itself at :726-730). An existing
 // session never re-acquires it: this hook only ever runs on
 // "/sign-up*"/"/sign-in*" requests (the ctx.path.startsWith check at
 // auth.ts:~713), never as a side effect of workspace membership changing
@@ -22,7 +22,7 @@ import { resetTestDatabase } from "./helpers/database";
 //
 // UNRUN: no PostgreSQL is available in this environment; see the report for
 // how this was verified by reading the source instead.
-describe("R2: session.active_organization_id is set only at sign-in/sign-up (auth.ts:~712-733)", () => {
+describe("R2: session.active_organization_id is set only at sign-in/sign-up (auth.ts:713-733)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
   });

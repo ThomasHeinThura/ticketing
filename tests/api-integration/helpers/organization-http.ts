@@ -97,8 +97,8 @@ export async function signUpUser(
 
 /**
  * Creates a workspace through the plugin's real `/organization/create` route
- * (apps/api/src/auth.ts:318-378 schema mapping, :412-417
- * beforeCreateOrganization, :418-460 afterCreateOrganization). Returns the
+ * (apps/api/src/auth.ts:292-329 schema mapping, :363-368
+ * beforeCreateOrganization, :369-411 afterCreateOrganization). Returns the
  * raw Response so callers can assert on status as well as the created id.
  */
 export async function createWorkspaceViaPlugin(
