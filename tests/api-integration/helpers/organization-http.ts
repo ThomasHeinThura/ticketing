@@ -50,8 +50,18 @@ export type SignedUpUser = {
  * 1. The trusted internal header cannot be spoofed this way: `buildAuthRequest`
  * strips any inbound `x-taskdesk-client-ip` before setting its own.
  *
- * Pass `clientIp` explicitly to pin several requests to ONE address — which is
- * how the rate-limit characterization proves the limiter still fires.
+ * TWO MODES, and the distinction is now real rather than described. Ordinary
+ * helper traffic takes a UNIQUE address per call, from this counter. The R1
+ * rate-limit characterization passes ONE fixed TEST-NET-2 address explicitly on
+ * all six of its requests, because pinning the bucket is what makes six calls
+ * one caller.
+ *
+ * An earlier version of this comment claimed the second mode was already how
+ * R1 worked. It was not: that test passed no address at all and its calls
+ * shared a bucket only via better-auth's NODE_ENV=test localhost fallback — or
+ * the "no-trusted-ip" bucket. Either would still have passed while proving
+ * something other than what the test said. Nothing here relies on that
+ * fallback now.
  */
 let clientIpCounter = 0;
 export function nextClientIp(): string {
@@ -132,11 +142,13 @@ export async function inviteAndAcceptAsNewMember(
 ): Promise<SignedUpUser> {
   const email = `member-${randomUUID()}@example.com`;
   // Own client address, for the same reason as signUpUser: auth.ts rate-limits
-  // `/organization/invite-member` to 5 per 60 seconds per client IP, and #16
-  // turned that limiter on for every deployment. Each invitation here stands for
-  // a different admin acting from their own browser, so one address per call is
-  // the accurate model. The rate-limit characterization pins ONE address on
-  // purpose and still proves the limiter fires.
+  // `/organization/invite-member` to 5 per 60 seconds per client IP
+  // (auth.ts:520), and #16 turned that limiter on for every deployment. Each
+  // invitation here stands for a different admin acting from their own browser,
+  // so one address per call is the accurate model -- and it keeps unrelated
+  // tests from spending the R1 characterization's budget of 5. R1 pins ONE
+  // explicit address instead, which is the only intentional same-client
+  // sequence in the suite.
   const invited = await app.request("/api/auth/organization/invite-member", {
     method: "POST",
     headers: {

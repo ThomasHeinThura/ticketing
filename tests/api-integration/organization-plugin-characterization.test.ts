@@ -57,6 +57,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createWorkspaceViaPlugin,
   inviteAndAcceptAsNewMember,
+  nextClientIp,
   signUpUser,
 } from "./helpers/organization-http";
 
@@ -230,6 +231,11 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
           headers: {
             "content-type": "application/json",
             cookie: owner.cookie,
+            // F8: a distinct client per invitation. These stand for different
+            // admins; modelling them as one caller spends the 5/60s invite
+            // budget that belongs to the R1 characterization, and a 429 here
+            // would be attributed to whichever test happened to run sixth.
+            "x-forwarded-for": nextClientIp(),
           },
           body: JSON.stringify({
             organizationId: workspace.id,
@@ -274,6 +280,11 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
           headers: {
             "content-type": "application/json",
             cookie: owner.cookie,
+            // F8: a distinct client per invitation. These stand for different
+            // admins; modelling them as one caller spends the 5/60s invite
+            // budget that belongs to the R1 characterization, and a 429 here
+            // would be attributed to whichever test happened to run sixth.
+            "x-forwarded-for": nextClientIp(),
           },
           body: JSON.stringify({
             organizationId: workspace.id,
@@ -291,6 +302,98 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
       expect(invitationRows).toHaveLength(1);
       expect(invitationRows[0]?.role).toBe("viewer");
     });
+
+    // F7: the positive case above cannot distinguish "dynamicAccessControl is
+    // on AND a matching workspace_role row exists" from "arbitrary role strings
+    // are accepted". Without these two negatives, an S4-S7 route that took any
+    // free-text role on invitation would keep the whole suite green -- a real
+    // loss of constraint on the retrofit. Both semantics probed live.
+
+    it("rejects an UNKNOWN role that has no workspace_role row -- ROLE_NOT_FOUND", async () => {
+      const { app } = createApp();
+      const owner = await signUpUser(app);
+      const created = await createWorkspaceViaPlugin(app, owner.cookie);
+      const workspace = (await created.json()) as { id: string };
+
+      const inviteeEmail = `unknown-role-${randomUUID()}@example.com`;
+      const invited = await app.request(
+        "/api/auth/organization/invite-member",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            cookie: owner.cookie,
+            "x-forwarded-for": nextClientIp(),
+          },
+          body: JSON.stringify({
+            organizationId: workspace.id,
+            email: inviteeEmail,
+            role: "totally-unknown-role",
+          }),
+        },
+      );
+      expect(invited.status).toBe(400);
+      // The plugin names the rejected role in the message; there is no `code`
+      // field on this one, unlike the delete-role guards above.
+      expect(await invited.json()).toMatchObject({
+        message: "ROLE_NOT_FOUND: totally-unknown-role",
+      });
+
+      // Nothing was written.
+      const invitationRows = await db
+        .select()
+        .from(schema.invitationTable)
+        .where(eq(schema.invitationTable.email, inviteeEmail.toLowerCase()));
+      expect(invitationRows).toHaveLength(0);
+    });
+
+    it("rejects 'viewer' itself once its workspace_role ROW is removed -- proving the row, not the name, is the prerequisite", async () => {
+      // The sharpest form of the boundary. Same role name that succeeds above,
+      // now rejected, with only the row's existence changed. That is what
+      // separates the dynamic-access-control lookup from a name allowlist.
+      const { app } = createApp();
+      const owner = await signUpUser(app);
+      const created = await createWorkspaceViaPlugin(app, owner.cookie);
+      const workspace = (await created.json()) as { id: string };
+
+      const deleted = await app.request("/api/auth/organization/delete-role", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: owner.cookie },
+        body: JSON.stringify({
+          organizationId: workspace.id,
+          roleName: "viewer",
+        }),
+      });
+      expect(deleted.status).toBe(200);
+
+      const inviteeEmail = `no-viewer-row-${randomUUID()}@example.com`;
+      const invited = await app.request(
+        "/api/auth/organization/invite-member",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            cookie: owner.cookie,
+            "x-forwarded-for": nextClientIp(),
+          },
+          body: JSON.stringify({
+            organizationId: workspace.id,
+            email: inviteeEmail,
+            role: "viewer",
+          }),
+        },
+      );
+      expect(invited.status).toBe(400);
+      expect(await invited.json()).toMatchObject({
+        message: "ROLE_NOT_FOUND: viewer",
+      });
+
+      const invitationRows = await db
+        .select()
+        .from(schema.invitationTable)
+        .where(eq(schema.invitationTable.email, inviteeEmail.toLowerCase()));
+      expect(invitationRows).toHaveLength(0);
+    });
   });
 
   describe("accept", () => {
@@ -299,8 +402,9 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
       // invitation.email against session.user.email (case-insensitively),
       // then updates invitation.status pending -> accepted and inserts a
       // workspace_member row with role = invitation.role.
-      // requireEmailVerificationOnInvitation: false (apps/api/src/auth.ts:
-      // 410) means the invitee's unverified email does not block this.
+      // requireEmailVerificationOnInvitation: false (apps/api/src/auth.ts:361)
+      // means the invitee's unverified email does not block this. :410 is the
+      // close of the publishEvent call, not this option.
       const { app } = createApp();
       const owner = await signUpUser(app);
       const created = await createWorkspaceViaPlugin(app, owner.cookie);
@@ -314,6 +418,11 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
           headers: {
             "content-type": "application/json",
             cookie: owner.cookie,
+            // F8: a distinct client per invitation. These stand for different
+            // admins; modelling them as one caller spends the 5/60s invite
+            // budget that belongs to the R1 characterization, and a 429 here
+            // would be attributed to whichever test happened to run sixth.
+            "x-forwarded-for": nextClientIp(),
           },
           body: JSON.stringify({
             organizationId: workspace.id,
@@ -370,6 +479,11 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
           headers: {
             "content-type": "application/json",
             cookie: owner.cookie,
+            // F8: a distinct client per invitation. These stand for different
+            // admins; modelling them as one caller spends the 5/60s invite
+            // budget that belongs to the R1 characterization, and a 429 here
+            // would be attributed to whichever test happened to run sixth.
+            "x-forwarded-for": nextClientIp(),
           },
           body: JSON.stringify({
             organizationId: workspace.id,
@@ -537,13 +651,79 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
       expect(roleRows).toHaveLength(0);
     });
 
-    it("FINDING: delete-role refuses to delete a seeded default role (e.g. 'admin') while it is assigned to a member -- better-auth's own 'cannot delete a pre-defined role' guard does NOT protect it", async () => {
-      // better-auth's deleteOrgRole only blocks names in
-      // orgOptions.roles (= {owner} here, apps/api/src/auth.ts:282), so
-      // "admin"/"member"/"viewer" are NOT protected as pre-defined roles at
-      // the plugin level -- only the separate "role is assigned to a
-      // member" guard stops this delete. Confirmed against better-auth's
-      // crud-access-control.mjs deleteOrgRole.
+    // F6: the two guards better-auth applies here BOTH return 400, so status
+    // alone cannot tell them apart -- and the finding this suite records is
+    // precisely that the pre-defined guard does NOT protect the seeded roles.
+    // Asserting only `status === 400` would stay green under an implementation
+    // that DID pre-defined-protect `admin`, which is the opposite of what the
+    // title claims. All three cases are pinned on their exact semantic, probed
+    // against the live plugin rather than assumed.
+
+    it("delete-role SUCCEEDS on an UNASSIGNED seeded role ('viewer') and removes the row", async () => {
+      const { app } = createApp();
+      const owner = await signUpUser(app);
+      const created = await createWorkspaceViaPlugin(app, owner.cookie);
+      const workspace = (await created.json()) as { id: string };
+
+      const response = await app.request("/api/auth/organization/delete-role", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: owner.cookie },
+        body: JSON.stringify({
+          organizationId: workspace.id,
+          roleName: "viewer",
+        }),
+      });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ success: true });
+
+      // The row is really gone -- this is the case that proves the two
+      // refusals below are refusals, not a blanket "delete-role never works".
+      const roleRows = await db
+        .select()
+        .from(schema.workspaceRoleTable)
+        .where(
+          and(
+            eq(schema.workspaceRoleTable.workspaceId, workspace.id),
+            eq(schema.workspaceRoleTable.role, "viewer"),
+          ),
+        );
+      expect(roleRows).toHaveLength(0);
+    });
+
+    it("delete-role refuses 'owner' via the PRE-DEFINED guard -- CANNOT_DELETE_A_PRE_DEFINED_ROLE", async () => {
+      // `owner` is the only entry in orgOptions.roles (apps/api/src/auth.ts:282),
+      // so it is the only name better-auth's deleteOrgRole treats as
+      // pre-defined. Confirmed against better-auth's crud-access-control.mjs.
+      const { app } = createApp();
+      const owner = await signUpUser(app);
+      const created = await createWorkspaceViaPlugin(app, owner.cookie);
+      const workspace = (await created.json()) as { id: string };
+
+      const response = await app.request("/api/auth/organization/delete-role", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: owner.cookie },
+        body: JSON.stringify({
+          organizationId: workspace.id,
+          roleName: "owner",
+        }),
+      });
+      expect(response.status).toBe(400);
+      // The CODE, not just the status. This is what ties owner's refusal to the
+      // pre-defined guard specifically.
+      expect(await response.json()).toMatchObject({
+        code: "CANNOT_DELETE_A_PRE_DEFINED_ROLE",
+      });
+    });
+
+    it("FINDING: delete-role refuses an ASSIGNED seeded role ('admin') via the ASSIGNMENT guard -- ROLE_IS_ASSIGNED_TO_MEMBERS, NOT the pre-defined guard", async () => {
+      // The finding: "admin"/"member"/"viewer" are NOT pre-defined-protected at
+      // the plugin level -- only the separate "role is assigned to a member"
+      // check stops this delete. The distinct code is the whole evidence: if a
+      // future implementation pre-defined-protected `admin`, the status would
+      // still be 400 but the code would become
+      // CANNOT_DELETE_A_PRE_DEFINED_ROLE and this test would fail, which is the
+      // point. Compare with the 'viewer' case above, where the same seeded role
+      // deletes cleanly once nobody holds it.
       const { app } = createApp();
       const owner = await signUpUser(app);
       const created = await createWorkspaceViaPlugin(app, owner.cookie);
@@ -558,16 +738,16 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
 
       const response = await app.request("/api/auth/organization/delete-role", {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          cookie: owner.cookie,
-        },
+        headers: { "content-type": "application/json", cookie: owner.cookie },
         body: JSON.stringify({
           organizationId: workspace.id,
           roleName: "admin",
         }),
       });
       expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({
+        code: "ROLE_IS_ASSIGNED_TO_MEMBERS",
+      });
 
       const roleRows = await db
         .select()
@@ -610,7 +790,10 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
     }
 
     // Permission matrix cross-checked against packages/permissions/src/
-    // index.ts (viewer :19-25, member :27-33, admin :35-41, owner :43-49)
+    // legacy-better-auth-access-control.ts (viewer :37-43, member :45-51,
+    // admin :53-59, owner :61-67). #21 moved these definitions out of
+    // index.ts, which is now a re-export barrel: its :19-49 is plugin-list,
+    // capability and elevated-action exports and defines no role at all
     // and better-auth's has-permission.mjs / permission.mjs merge logic:
     // for any role name other than "owner" (which is the only entry in
     // orgOptions.roles, apps/api/src/auth.ts:282), the workspace_role DB

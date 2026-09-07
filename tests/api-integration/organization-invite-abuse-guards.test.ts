@@ -27,8 +27,14 @@ import {
 // below makes exactly one invite-member call, well under that rule's
 // max: 5, so ordering within this file cannot make either test flaky.
 //
-// UNRUN: no PostgreSQL is available in this environment; see the report for
-// how this was verified by reading the source instead.
+// EXECUTED. These assertions run against a real PostgreSQL 18: the independent
+// review of bc8a749 reproduced them green, and the F1-F10 remediation pass
+// re-ran them on a freshly created database. The claim this replaces --
+// "UNRUN: no PostgreSQL is available in this environment; see the report for
+// how this was verified by reading the source instead" -- was false at that
+// HEAD, and is corrected rather than quietly dropped: the most security-
+// sensitive files in the suite were telling their next reader that nothing in
+// them had ever run.
 describe("R1: /organization/invite-member cloud abuse gates (auth.ts:626-652)", () => {
   const CLOUD_ENV: Record<string, string> = { KANEO_CLOUD: "true" };
   const saved: Record<string, string | undefined> = {};
