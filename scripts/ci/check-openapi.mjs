@@ -47,7 +47,18 @@ function run(command, args) {
     cwd: repoRoot,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, FORCE_COLOR: "0" },
+    env: {
+      ...process.env,
+      FORCE_COLOR: "0",
+      // The export constructs the real app, so #6's fail-closed auth-secret guard
+      // runs and refuses to boot without one. That guard is correct and must not
+      // be weakened; a throwaway value satisfies it. Nothing is signed here --
+      // the export writes a document and exits, issuing no session and reaching
+      // no database. Overridden only when the caller has not set one.
+      TASKDESK_AUTH_SECRET:
+        process.env.TASKDESK_AUTH_SECRET ??
+        "openapi-export-only-not-a-real-secret-32",
+    },
   });
 }
 

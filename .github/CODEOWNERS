@@ -1,14 +1,18 @@
-# CODEOWNERS — the mechanism behind "only Thomas merges".
+# CODEOWNERS — ownership metadata. It says who to ask. It is NOT a merge gate.
 #
-# docs/04-engineering/ci-cd.md § Branching: "`main` requires: all checks green, **one
-# approval from the code owner** — a `CODEOWNERS` file (`* @ThomasHeinThura`) makes Thomas's
-# review required on every pull request into `main`, which is the mechanism behind 'only
-# Thomas merges'".
+# An earlier version of this comment quoted ci-cd.md's "one approval from the code owner"
+# and called this file "the mechanism behind 'only Thomas merges'". That wording was
+# SUPERSEDED before this branch was written: decision-log.md, 2026-09-06, "Merge governance
+# — required approving reviews is zero, and that is deliberate" sets **required approving
+# reviews = 0** and **Require review from Code Owners = off**, both deliberately, and says
+# in terms that CODEOWNERS is ownership metadata rather than a mechanical gate. ci-cd.md
+# § Branching and CLAUDE.md § How work reaches `main` both already read that way; this file
+# was the last place still quoting the old sentence.
 #
-# CLAUDE.md § Authority says the same thing as a sentence. This file is the sentence turned
-# into something the platform enforces — but only once branch protection on `main` has
-# "Require review from Code Owners" enabled. That switch is Thomas's to flip; this file
-# alone does nothing.
+# Do NOT enable "Require review from Code Owners" to make this file mean more. The reason is
+# recorded in that decision: a required approving review from a one-person team documents a
+# gate rather than providing one, and the control that actually keeps agents out of `main`
+# is that only Thomas merges.
 #
 # Agents produce branches, tested code and pull requests. They never self-approve
 # (AGENTS.md do-not 7) and never merge (do-not 16).
