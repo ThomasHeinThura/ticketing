@@ -148,3 +148,132 @@ export async function loadBody({ bodyFile, eventPath }) {
   }
   return "";
 }
+
+/**
+ * Words that identify the independent-review checklist item, whatever its wording.
+ *
+ * Matched against a NORMALISED line — comments stripped, emphasis and backticks
+ * removed, case folded — so `**Independent** security review`, `<!-- x -->
+ * independent review` and `independent_review` all resolve to the same item.
+ */
+const REVIEW_ITEM = /\bindependent\b[^\n]*\breview\b|\bsecurity\s+review\b/;
+
+/** A checkbox line, ticked or not. */
+const ANY_BOX = /^\s*-\s*\[[ xX]\]/;
+/** An UNticked checkbox line. */
+const OPEN_BOX = /^\s*-\s*\[\s\]/;
+
+/**
+ * Strips the decoration an author could hide behind: HTML comments, emphasis
+ * markers, backticks and the box itself. Linear — one pass of single-character
+ * classes, no nested quantifier, so this cannot reintroduce the polynomial
+ * backtracking CodeQL flagged in the original one-regex sanitiser.
+ */
+function normaliseItem(line) {
+  return stripComments(line)
+    .replace(OPEN_BOX, "")
+    .replace(ANY_BOX, "")
+    .replace(/[*_`~]+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Is THIS checklist line dismissed with a reason of its own?
+ *
+ * `markedNotApplicable` cannot answer this. It asks whether a *section* carries
+ * an `n/a` plus twelve characters of other text — and on a single item the
+ * item's own label supplies those twelve characters, so `- [ ] Route policies —
+ * n/a` would pass with no reason at all. An item is different: the reason has to
+ * come AFTER the `n/a`, because the words before it are the thing being excused.
+ *
+ * Linear: one `n/a`, one optional separator, then a run of non-space. No nested
+ * quantifier over the same input.
+ */
+function itemMarkedNotApplicable(line) {
+  return /\bn\/a\b\s*[\u2014\u2013:,;.-]?\s*\S[^\n]{5,}/i.test(
+    stripComments(line),
+  );
+}
+
+/**
+ * Checklist enforcement, at ITEM granularity.
+ *
+ * **The loophole this replaces.** Applicability used to be decided for a whole
+ * `###` block: `markedNotApplicable(block)` was computed once, and a single
+ * truthful `n/a` anywhere in the block `continue`d past EVERY unticked box in
+ * it. So a real "route policies — n/a, this PR adds no routes" silently excused
+ * an unticked "Independent security review" three lines below. Both PR #16 and
+ * PR #57 passed this check that way, and #19's own body did too.
+ *
+ * The rule now:
+ *
+ * - A block with **no checkboxes at all** may still be dismissed wholesale —
+ *   `### Frontend change` / `n/a — no UI` is legitimate and stays legitimate.
+ * - A block **with** checkboxes is judged line by line. An unticked box must
+ *   carry its own `n/a` **and its own reason**, on that line. A neighbour's
+ *   `n/a` is worth nothing to it.
+ * - The **independent-review** item cannot be dismissed with `n/a` at all. That
+ *   is not a new policy: CLAUDE.md's third absolute already forbids downgrading
+ *   an unavailable reviewer — "a review recorded at the wrong tier is worse than
+ *   no review, because it closes the field that would otherwise stay visibly
+ *   open". `n/a` on that item is exactly that closure. It must be ticked, or the
+ *   check fails and says why.
+ */
+export function checklistProblems(raw) {
+  const problems = [];
+  const blocks = [];
+  let current = null;
+
+  for (const line of raw.split("\n")) {
+    const heading = /^###\s+(.*\S)\s*$/.exec(line);
+    if (heading) {
+      current = { name: heading[1], lines: [] };
+      blocks.push(current);
+      continue;
+    }
+    if (current) current.lines.push(line);
+  }
+
+  for (const block of blocks) {
+    const body = block.lines.join("\n");
+
+    if (contentOf(body) === "") {
+      problems.push(
+        `"${block.name}" is blank — paste the checklist from definition-of-done.md and tick it, or mark it n/a with one line saying why.`,
+      );
+      continue;
+    }
+
+    const boxes = block.lines.filter((line) =>
+      ANY_BOX.test(stripComments(line)),
+    );
+
+    // No boxes: prose stands on its own, n/a or not. Unchanged behaviour.
+    if (boxes.length === 0) continue;
+
+    for (const line of block.lines) {
+      const visible = stripComments(line);
+      if (!OPEN_BOX.test(visible)) continue;
+
+      if (REVIEW_ITEM.test(normaliseItem(line))) {
+        problems.push(
+          `"${block.name}": ${visible.trim()}\n      An unticked independent-review item is a BLOCKER, not a note, and it cannot be ` +
+            "marked n/a — only a completed review at the required tier closes it (CLAUDE.md, third absolute).",
+        );
+        continue;
+      }
+
+      // Item-level n/a, with its own reason on its own line.
+      if (!itemMarkedNotApplicable(visible)) {
+        problems.push(
+          `"${block.name}": ${visible.trim()}\n      Tick it, or mark THIS line n/a with a reason. An n/a elsewhere in the section ` +
+            "does not carry over.",
+        );
+      }
+    }
+  }
+
+  return problems;
+}

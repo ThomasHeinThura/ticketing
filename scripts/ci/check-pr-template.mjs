@@ -24,10 +24,9 @@
 import path from "node:path";
 import { addedPaths, changedFiles, changedPaths } from "./lib/diff.mjs";
 import {
-  contentOf,
+  checklistProblems,
   field,
   loadBody,
-  markedNotApplicable,
   normaliseHeading,
   sections,
 } from "./lib/pr-body.mjs";
@@ -67,48 +66,6 @@ function gateRows(text) {
  * either pasted and ticked, or marked n/a with a reason — never left blank, and never
  * deleted.
  */
-function checklistProblems(raw) {
-  const problems = [];
-  const lines = raw.split("\n");
-  const blocks = [];
-  let current = null;
-
-  for (const line of lines) {
-    const heading = /^###\s+(.*\S)\s*$/.exec(line);
-    if (heading) {
-      current = { name: heading[1], lines: [] };
-      blocks.push(current);
-      continue;
-    }
-    if (current) {
-      current.lines.push(line);
-    }
-  }
-
-  for (const block of blocks) {
-    const body = block.lines.join("\n");
-    const notApplicable = markedNotApplicable(body);
-
-    if (contentOf(body) === "") {
-      problems.push(
-        `"${block.name}" is blank — paste the checklist from definition-of-done.md and tick it, or mark it n/a with one line saying why.`,
-      );
-      continue;
-    }
-
-    if (notApplicable) {
-      continue;
-    }
-
-    for (const line of block.lines) {
-      if (/^\s*-\s*\[\s\]/.test(line) && !/\bn\/a\b/i.test(line)) {
-        problems.push(`"${block.name}": ${line.trim()}`);
-      }
-    }
-  }
-
-  return problems;
-}
 
 async function securitySurfaceTouched() {
   const { matches, globs } = await readSecurityReviewPaths();

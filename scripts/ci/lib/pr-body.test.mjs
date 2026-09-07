@@ -13,6 +13,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  checklistProblems,
   contentOf,
   field,
   markedNotApplicable,
@@ -191,5 +192,111 @@ describe("markedNotApplicable", () => {
       markedNotApplicable("n/a — deployment infrastructure, no UI code"),
       true,
     );
+  });
+});
+
+describe("checklistProblems — applicability is per ITEM, not per block", () => {
+  const ROUTES = "- [ ] Route policies — n/a: this PR adds no routes";
+
+  it("an unrelated n/a does NOT excuse a required unticked item", () => {
+    // THE LOOPHOLE. `markedNotApplicable` was computed for the whole block, so
+    // this exact shape passed: one truthful n/a, one unticked blocker.
+    const problems = checklistProblems(
+      `### Backend change\n\n- [x] Migration reviewed\n${ROUTES}\n- [ ] Negative assertions added\n`,
+    );
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /Negative assertions added/);
+    assert.match(problems[0], /does not carry over/);
+  });
+
+  it("a genuinely n/a item may remain n/a, with its own reason", () => {
+    assert.deepEqual(
+      checklistProblems(
+        `### Backend change\n\n- [x] Migration reviewed\n${ROUTES}\n`,
+      ),
+      [],
+    );
+  });
+
+  it("an item-level n/a still needs a reason, not the two letters", () => {
+    const problems = checklistProblems(
+      "### Backend change\n\n- [ ] Route policies — n/a\n",
+    );
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /Route policies/);
+  });
+
+  it("a section with NO checkboxes may still be dismissed wholesale", () => {
+    // Unchanged behaviour, deliberately: `### Frontend change` / `n/a — no UI`.
+    assert.deepEqual(
+      checklistProblems(
+        "### Frontend change\n\nn/a — deletions only, no new UI.\n",
+      ),
+      [],
+    );
+  });
+
+  it("the independent-review item cannot be bypassed by n/a", () => {
+    const problems = checklistProblems(
+      "### Backend change\n\n- [ ] Independent security review — n/a, no reviewer was available\n",
+    );
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /cannot be\s+marked n\/a/);
+  });
+
+  it("the independent-review item cannot be bypassed by an HTML comment", () => {
+    for (const line of [
+      "- [ ] Independent security review <!-- n/a, skipped -->",
+      "- [ ] <!-- ignore --> **Independent** `security` review",
+      "- [ ] Independent___review — n/a",
+    ]) {
+      const problems = checklistProblems(`### Backend change\n\n${line}\n`);
+      assert.equal(problems.length, 1, `expected a blocker for: ${line}`);
+      assert.match(problems[0], /independent-review item is a BLOCKER/);
+    }
+  });
+
+  it("a ticked independent-review item is accepted", () => {
+    assert.deepEqual(
+      checklistProblems(
+        "### Backend change\n\n- [x] Independent security review — Opus, 2026-09-07\n",
+      ),
+      [],
+    );
+  });
+
+  it("a box hidden entirely inside a comment is not a box, and not a bypass either", () => {
+    // Commenting the item out removes it from the checklist rather than
+    // satisfying it, so the section becomes prose-only and the MISSING item is
+    // caught by the template's section list instead. What must not happen is the
+    // comment counting as a tick.
+    const problems = checklistProblems(
+      "### Backend change\n\n<!-- - [ ] Independent security review -->\n- [ ] Migration reviewed\n",
+    );
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /Migration reviewed/);
+  });
+
+  it("existing HTML-comment sanitisation still holds inside checklist lines", () => {
+    // The unterminated-comment fail-closed behaviour proved in stripComments
+    // must survive being reached through this path.
+    const problems = checklistProblems(
+      "### Backend change\n\n- [ ] Migration reviewed <!-- unterminated\n",
+    );
+    assert.equal(problems.length, 1);
+  });
+
+  it("is linear, so the fix does not trade one scanner finding for another", () => {
+    const time = (n) => {
+      const body = `### B\n\n${`- [ ] item <!-- ${"a".repeat(n)} -->\n`.repeat(40)}`;
+      const t = process.hrtime.bigint();
+      checklistProblems(body);
+      return Number(process.hrtime.bigint() - t) / 1e6;
+    };
+    time(2_000);
+    const small = Math.max(time(20_000), 0.5);
+    const large = time(160_000);
+    // 8x the input must not cost anywhere near 64x the time.
+    assert.ok(large < small * 24, `non-linear: ${small}ms -> ${large}ms`);
   });
 });
