@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -6,7 +5,6 @@ import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createWorkspaceViaPlugin,
-  extractSessionCookie,
   nextClientIp,
   signUpUser,
 } from "./helpers/organization-http";
