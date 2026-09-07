@@ -64,7 +64,7 @@ const { workspaceAccess } = await import(
 // Mirrors POST /api/activity/comment: there is no `taskId` path param, the id
 // travels in the JSON body, and the handler acts on that body value.
 function buildApp() {
-  return new Hono()
+  return new Hono<{ Variables: { userId: string } }>()
     .use("*", async (c, next) => {
       c.set("userId", "user-1");
       return next();

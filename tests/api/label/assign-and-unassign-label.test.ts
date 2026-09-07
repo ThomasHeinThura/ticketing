@@ -40,7 +40,7 @@ vi.mock("../../../apps/api/src/database", () => ({
     select: (...args: unknown[]) => mockSelect(...args),
     insert: (...args: unknown[]) => mockInsert(...args),
     delete: (...args: unknown[]) => mockDelete(...args),
-    transaction: (...args: unknown[]) => mockTransaction(...args),
+    transaction: (cb: (tx: unknown) => unknown) => mockTransaction(cb),
   },
 }));
 

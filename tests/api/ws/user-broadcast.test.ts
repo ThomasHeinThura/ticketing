@@ -61,9 +61,11 @@ describe("broadcastToUser", () => {
       { timeout: 300 },
     );
 
-    expect(JSON.parse(sendMock(first).mock.calls[0][0]).type).toBe(
-      "NOTIFICATION_CREATED",
-    );
+    const [firstCall] = sendMock(first).mock.calls;
+    if (firstCall === undefined) {
+      throw new Error("expected send() to have been called at least once");
+    }
+    expect(JSON.parse(firstCall[0]).type).toBe("NOTIFICATION_CREATED");
 
     removeUserConnection("user-1", connA);
     removeUserConnection("user-1", connB);
