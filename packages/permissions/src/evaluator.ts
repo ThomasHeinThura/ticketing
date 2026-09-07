@@ -17,13 +17,15 @@ import {
   isCapability,
   tierPermits,
 } from "./capabilities";
-import type {
-  Membership,
-  RefusedCapabilityHandler,
-  ResolvedIdentity,
-  RoleGrant,
-  ScopeTarget,
-  UnknownCapabilityHandler,
+import {
+  type CapabilitySource,
+  isKeyCredential,
+  type Membership,
+  type RefusedCapabilityHandler,
+  type ResolvedIdentity,
+  type RoleGrant,
+  type ScopeTarget,
+  type UnknownCapabilityHandler,
 } from "./identity";
 import {
   type CapabilityPolicy,
@@ -56,7 +58,7 @@ export type CapabilityExpansionOptions = {
   /** A stored capability the container's tier does not permit. Refused, and reported here. */
   readonly onRefused?: RefusedCapabilityHandler;
   readonly roleKey?: string;
-  readonly source?: "role" | "api_key";
+  readonly source?: CapabilitySource;
 };
 
 /**
@@ -276,27 +278,39 @@ export function can(
     return false;
   }
 
-  // Invariant (`identity.ts`): `credential === "api_key" ⟹ keyCapabilities !== undefined`. A
-  // null capability column on the key row, or a resolver branch that threw and was swallowed,
-  // must never be read as "no clamp to apply" — that is exactly the fail-open shape that would
-  // let a key operate at its owner's full authority. Missing key-capability data on an API-key
-  // credential holds no capability at all, however broad the owner's RBAC, and there is no
-  // "authoritative safe default" documented anywhere in `docs/01-architecture/` or
-  // `identity.ts` that would license doing otherwise — so this fails closed rather than
-  // guessing one.
+  // Invariant (`identity.ts`): `isKeyCredential(credential) ⟹ keyCapabilities !== undefined`,
+  // for EVERY kind in KEY_CREDENTIAL_KINDS. A null capability column on the key row, or a
+  // resolver branch that threw and was swallowed, must never be read as "no clamp to apply" —
+  // that is exactly the fail-open shape that would let a key operate at its owner's full
+  // authority. Missing key-capability data holds no capability at all, however broad the
+  // owner's RBAC, and no "authoritative safe default" is documented anywhere in
+  // `docs/01-architecture/` or `identity.ts` that would license guessing one.
+  //
+  // This tested `credential === "api_key"` alone until independent review of 5956fb3 found
+  // that `mcp_key` — a sibling key kind since CREDENTIAL_KINDS was written — fell straight
+  // through it and inherited owner RBAC. The membership test now goes through
+  // `isKeyCredential`, so the two cannot drift apart again and a new key kind has to be
+  // added to one list rather than remembered at each comparison.
   if (
-    identity.credential === "api_key" &&
+    isKeyCredential(identity.credential) &&
     identity.keyCapabilities === undefined
   ) {
     return false;
   }
 
-  // A request carrying an API key is additionally clamped to the key's frozen subset:
-  // effective authority is owner RBAC ∩ key capability subset (rbac.md § MCP).
+  // A request carrying a key is additionally clamped to that key's frozen subset: effective
+  // authority is owner RBAC ∩ key capability subset (rbac.md § MCP).
   if (identity.keyCapabilities !== undefined) {
     const keyHeld = expandCapabilities(identity.keyCapabilities, {
       onUnknown: options.onUnknown,
-      source: "api_key",
+      // Diagnostic label only — never a security decision. It reports which credential the
+      // refused capability came from, so an mcp_key refusal is not logged as an api_key one.
+      // A non-key credential carrying keyCapabilities is a shape the type permits and the
+      // resolver should never produce; it is labelled api_key rather than widening
+      // CapabilitySource to cover a case that would itself be a defect.
+      source: isKeyCredential(identity.credential)
+        ? identity.credential
+        : "api_key",
     });
     if (!keyHeld.has(capability)) return false;
   }

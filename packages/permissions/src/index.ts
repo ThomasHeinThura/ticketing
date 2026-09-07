@@ -82,8 +82,12 @@ export {
   workspaceScopeFromRow,
 } from "./evaluator";
 export {
+  type CapabilitySource,
   CREDENTIAL_KINDS,
   type CredentialKind,
+  isKeyCredential,
+  KEY_CREDENTIAL_KINDS,
+  type KeyCredentialKind,
   type Membership,
   type Portal,
   type Reach,

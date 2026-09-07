@@ -11,6 +11,7 @@ import {
   workspaceScopeFromRow,
 } from "./evaluator";
 import type { ResolvedIdentity, RoleGrant } from "./identity";
+import { KEY_CREDENTIAL_KINDS } from "./identity";
 import type { Policy } from "./policy";
 
 const WORKSPACE = "ws-1";
@@ -165,6 +166,98 @@ describe("authority", () => {
         workspaceId: WORKSPACE,
       }),
     ).toBe(false);
+  });
+
+  // Every key credential kind, driven from KEY_CREDENTIAL_KINDS itself rather than a list
+  // written out here. The original defect was that `api_key` was fixed and `mcp_key` — its
+  // sibling since CREDENTIAL_KINDS was written — was not, because nothing forced the second
+  // case to be considered. A hand-maintained list in the test would reproduce exactly that:
+  // add a third key kind and this table covers it or fails to compile.
+  describe.each(KEY_CREDENTIAL_KINDS)(
+    "key credential clamp: %s",
+    (credential) => {
+      // Instance-scope, so the unrelated tier clamp is not what denies these. The only thing
+      // between this identity and instance:admin is the key clamp under test.
+      const instanceAdmin = [
+        grant({
+          roleKey: "instance_admin",
+          scope: "instance" as const,
+          scopeId: null,
+          rank: 100,
+          capabilities: ["instance:admin"],
+        }),
+      ];
+
+      it("undefined keyCapabilities DENIES — it never inherits the owner's RBAC", () => {
+        const noKeyData = {
+          credential,
+          authority: instanceAdmin,
+          // keyCapabilities intentionally omitted — the invariant violation under test.
+        };
+        expect(can(noKeyData, "instance:admin", "instance", {})).toBe(false);
+      });
+
+      it("an explicitly allowed key capability is granted", () => {
+        const bounded = {
+          credential,
+          authority: [grant({ capabilities: ["work_item:read"] })],
+          keyCapabilities: ["work_item:read"],
+        };
+        expect(
+          can(bounded, "work_item:read", "workspace", {
+            workspaceId: WORKSPACE,
+          }),
+        ).toBe(true);
+      });
+
+      it("a capability the owner holds but the key does not remains DENIED", () => {
+        const bounded = {
+          credential,
+          authority: [
+            grant({ capabilities: ["work_item:read", "work_item:update"] }),
+          ],
+          keyCapabilities: ["work_item:read"],
+        };
+        expect(
+          can(bounded, "work_item:update", "workspace", {
+            workspaceId: WORKSPACE,
+          }),
+        ).toBe(false);
+      });
+
+      it("an empty key subset grants nothing, and is distinct from undefined", () => {
+        // [] is a key that was deliberately scoped to nothing. undefined is missing data.
+        // Both deny, and they must deny for different reasons — collapsing them is how the
+        // missing-data case would come to look benign.
+        const emptyKey = {
+          credential,
+          authority: instanceAdmin,
+          keyCapabilities: [] as readonly string[],
+        };
+        expect(can(emptyKey, "instance:admin", "instance", {})).toBe(false);
+      });
+    },
+  );
+
+  it("a non-key credential with no keyCapabilities keeps full RBAC — the clamp is not a blanket rule", () => {
+    // The counter-control for the table above. `session` and `impersonation` carry no key
+    // subset, so absent keyCapabilities is the ordinary case for them, not missing data. If
+    // this ever fails, the clamp has been broadened into a denial of ordinary sessions.
+    for (const credential of ["session", "impersonation"] as const) {
+      const identity = {
+        credential,
+        authority: [
+          grant({
+            roleKey: "instance_admin",
+            scope: "instance" as const,
+            scopeId: null,
+            rank: 100,
+            capabilities: ["instance:admin"],
+          }),
+        ],
+      };
+      expect(can(identity, "instance:admin", "instance", {})).toBe(true);
+    }
   });
 
   it("M1: an api_key identity with no keyCapabilities holds no capability at all — missing key data must never widen authority", () => {

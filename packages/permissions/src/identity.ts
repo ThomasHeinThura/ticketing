@@ -33,6 +33,33 @@ export const CREDENTIAL_KINDS = [
 export type CredentialKind = (typeof CREDENTIAL_KINDS)[number];
 
 /**
+ * The credential kinds that carry a frozen capability subset — a **key**.
+ *
+ * Declared as a set rather than tested inline, because the inline form is what went wrong:
+ * `can()` clamped on `credential === "api_key"` alone, so an `mcp_key` request with no loaded
+ * subset inherited its owner's full RBAC. One credential kind was fixed and its sibling was
+ * not, because nothing forced the question to be asked twice.
+ *
+ * Adding a credential kind now means deciding whether it belongs here. Leaving it out is a
+ * decision that it carries no key subset — which is right for `session` and `impersonation`,
+ * neither of which has one — and that decision is visible in this list rather than implied by
+ * the absence of a comparison somewhere in the evaluator.
+ */
+export const KEY_CREDENTIAL_KINDS = ["api_key", "mcp_key"] as const;
+
+export type KeyCredentialKind = (typeof KEY_CREDENTIAL_KINDS)[number];
+
+/** True when this credential is expected to carry a frozen key capability subset. */
+export function isKeyCredential(
+  credential: CredentialKind | undefined,
+): credential is KeyCredentialKind {
+  return (
+    credential !== undefined &&
+    (KEY_CREDENTIAL_KINDS as readonly string[]).includes(credential)
+  );
+}
+
+/**
  * A role attached to a membership, reduced to what evaluation needs.
  *
  * `capabilities` are the **raw stored strings** from `role.capabilities`, which may contain a
@@ -84,12 +111,17 @@ export type ResolvedIdentity = {
    * The capability subset frozen onto an API key at creation, when the request carries one.
    * Effective authority is the intersection of the owner's RBAC and this set.
    *
-   * **Invariant:** `credential === "api_key" ⟹ keyCapabilities !== undefined`. A key row with
+   * **Invariant:** `isKeyCredential(credential) ⟹ keyCapabilities !== undefined` — for
+   * **every** kind in `KEY_CREDENTIAL_KINDS`, currently `api_key` and `mcp_key`. A key row with
    * a null `capabilities` column, or a resolver branch that threw and was swallowed, must never
    * reach the evaluator as "no key capabilities to intersect with" — that reads as "unclamped",
-   * i.e. the owner's full RBAC. `can()` in `evaluator.ts` enforces this: an `api_key` credential
-   * with `keyCapabilities` absent holds no capability at all, never the owner's authority.
+   * i.e. the owner's full RBAC. `can()` in `evaluator.ts` enforces this: a key credential with
+   * `keyCapabilities` absent holds no capability at all, never the owner's authority.
    * Missing key data must never widen what a key may do.
+   *
+   * This was written as `credential === "api_key"` and enforced for that kind alone, so an
+   * `mcp_key` request with no loaded subset inherited full owner RBAC. Found by independent
+   * review of `5956fb3`.
    */
   readonly keyCapabilities?: readonly string[];
 };
@@ -115,7 +147,7 @@ export type ScopeTarget = {
 /** A `capability` is unknown to this build: log it, treat it as absent, never wildcard-expand it. */
 export type UnknownCapabilityHandler = (
   capability: string,
-  context: { roleKey?: string; source: "role" | "api_key" },
+  context: { roleKey?: string; source: CapabilitySource },
 ) => void;
 
 /**
@@ -128,11 +160,21 @@ export type UnknownCapabilityHandler = (
  * should have refused before it was ever saved — a migration, a seed script, a plugin fixture,
  * a restored backup, or another service writing the table directly.
  */
+/**
+ * Where a capability came from, for diagnostics only — never a security decision.
+ *
+ * Was `"role" | "api_key"`, which had the same blind spot as the clamp it reports on: an
+ * `mcp_key` refusal was logged as an `api_key` one. A misleading log is how the original
+ * fail-open stayed invisible, so this follows KEY_CREDENTIAL_KINDS rather than naming one
+ * kind. Widened alongside the clamp fix, not as separate refactoring.
+ */
+export type CapabilitySource = "role" | KeyCredentialKind;
+
 export type RefusedCapabilityHandler = (
   capability: Capability,
   context: {
     roleKey?: string;
-    source: "role" | "api_key";
+    source: CapabilitySource;
     tier: CapabilityTier;
   },
 ) => void;
