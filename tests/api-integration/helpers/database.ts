@@ -84,7 +84,8 @@ export async function ensureTestDatabaseMigrated() {
 // Ponytail: query Postgres directly. The catalog is the canonical source of
 // what tables actually exist after migrations run. Reflecting on the schema
 // object in apps/api/src/database misses any table that is not exported from
-// the index.ts registry (for example mcp_oauth_state and task_reminder_sent).
+// the index.ts registry (for example task_reminder_sent). It used to name
+// mcp_oauth_state too; #6 dropped that table in migration 0048.
 async function listPublicTableNames(): Promise<string[]> {
   const result = await db.execute<{ table_name: string }>(sql`
     SELECT table_name

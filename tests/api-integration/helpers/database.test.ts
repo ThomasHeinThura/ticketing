@@ -2,10 +2,7 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
-import {
-  mcpOauthStateTable,
-  taskReminderSentTable,
-} from "../../../apps/api/src/database/schema";
+import { taskReminderSentTable } from "../../../apps/api/src/database/schema";
 import { resetTestDatabase } from "./database";
 
 async function seedTaskReminderSentRow(): Promise<string> {
