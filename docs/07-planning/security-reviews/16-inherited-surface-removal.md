@@ -21,6 +21,12 @@ count instead of trusting `X-Forwarded-For`.
 **Each review saw exactly one head, and its verdict attaches to that head.** The chain is set
 out below so no reader can infer a review covered code it never read.
 
+**A note on the SHAs.** `a4147a1` and `e022ad5` are the heads the reviewers actually read and are
+the SHAs their comments name, so they are cited throughout — but the later rebase onto merged #21
+replayed every commit after the merge base, so both are now **orphaned** objects rather than
+branch ancestors. `a4147a1` became `22d7b2b` and `e022ad5` became `6d4d09b`, with identical
+content. Where a commit inside the branch is cited by SHA below, it is the **post-rebase** one.
+
 **Method:** both reviewers were fresh independent Opus sessions, neither the authoring session
 nor the remediation agent. Both worked in detached throwaway worktrees pinned at the head under
 review and explicitly refused the pull-request body as evidence — every claim was re-derived
@@ -131,7 +137,8 @@ rendering flag, `hasGuestAccess` and `DISABLE_GUEST_ACCESS` are all gone.
 ### F2 — the SSRF fix had no regression guard at all · VERIFIED-CLOSED, non-vacuously
 
 The most consequential finding, because it was a **false coverage claim** rather than a code
-defect. The hardening in `0e046a6` (H10/H12) was correct — the reviewer read both halves and
+defect. The hardening (H10/H12, `0e046a6` at review time, `f446ffa` after the rebase) was
+correct — the reviewer read both halves and
 said so — but nothing anywhere in `tests/` asserted `redirect: "manual"`, and nothing asserted
 that the relocated `assertPublicWebhookDestination` was still invoked by the three senders that
 import it. **Deleting either line broke no test.** That directly contradicted the branch's own
@@ -222,11 +229,20 @@ contradictions inside the body.
 PR **#21** merged to `main` as `cc5d732` while this branch was still based on `38ff9ac`. This
 pass rebases onto it and reconciles the two monotonic ratchets #21 introduced.
 
-**The rebase replayed all 14 commits with zero conflicts.** Every security-verified file is
-byte-identical to `e022ad5` — proved by comparing blob hashes for `require-auth-secret.ts`,
+**The rebase replayed all 14 commits with zero conflicts, and the replay is provably faithful.**
+`git range-diff 38ff9ac..e022ad5 cc5d732..93d520d` reports **`=` for all fourteen** — every
+replayed commit's patch is byte-identical to its pre-rebase counterpart. That is a stronger
+statement than a spot check: it compares the series commit by commit, so a conflict resolution
+that quietly altered one hunk anywhere would show as `!` rather than `=`.
+
+Corroborating, from two independent angles: blob hashes match for `require-auth-secret.ts`,
 `index.ts`, `auth.ts`, `assert-public-destination.ts`, `delivery.ts`, `delivery-ssrf.test.ts`,
-`resolve-client-ip.ts` and all three `packages/mcp/src/auth/` files, and by a name-status diff
-that shows **zero deletions and zero modifications** to anything this branch owns.
+`resolve-client-ip.ts` and all three `packages/mcp/src/auth/` files; and a name-status diff from
+`e022ad5` to the rebased head shows **zero deletions and zero modifications** to anything this
+branch owns — only the 46 files and 14 doc/manifest edits `main` brought in.
+
+**No conflict required touching previously cleared production code**, so nothing in C1/C2/C3 or
+F1/F2/F3 was reopened by the rebase itself.
 
 **Ratchet prune, derived rather than hand-matched.** #21's suite loads the real constructed Hono
 app and the real better-auth instance, so its own `baselineStale` answers exactly the question
