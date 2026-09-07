@@ -40,8 +40,9 @@ describe("R2: session.active_organization_id is set only at sign-in/sign-up (aut
 
     // First sign-up: no workspace exists yet, so the after-hook
     // (auth.ts:~716-728) finds no workspace_member row for this user and
-    // leaves activeOrganizationId null on this session (the `if
-    // (activeWorkspaceId)` guard at auth.ts:728 never runs the UPDATE).
+    // leaves activeOrganizationId null on this session. The `if
+    // (activeWorkspaceId)` guard is auth.ts:725 and never runs the UPDATE that
+    // follows at :726-729 -- :728 is that update's .set(), not the guard.
     const signUp = await app.request("/api/auth/sign-up/email", {
       method: "POST",
       headers: { "content-type": "application/json" },
