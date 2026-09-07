@@ -4,26 +4,19 @@ import { validateWorkspaceAccess } from "./validate-workspace-access";
 
 type AssetAccessTarget = {
   workspaceId: string;
-  isPublic: boolean | null;
 };
 
 /**
  * Authorizes a request for a stored asset.
  *
- * Assets that belong to a public project are readable by anyone, so the
- * credential check must be skipped entirely for them:
- * `resolveAssetBearerOrCookie` throws a 401 for anonymous callers rather than
- * returning an empty user, so calling it first makes the public case
- * unreachable.
+ * Every caller must present a credential. TaskDesk has no anonymous asset
+ * read path: the inherited kaneo branch that returned early for assets of a
+ * public project was removed with `project.is_public` in issue #6.
  */
 export async function authorizeAssetAccess(
   c: Context,
   asset: AssetAccessTarget,
 ): Promise<void> {
-  if (asset.isPublic) {
-    return;
-  }
-
   const { userId, apiKeyId } = await resolveAssetBearerOrCookie(c);
   await validateWorkspaceAccess(userId, asset.workspaceId, apiKeyId);
 }

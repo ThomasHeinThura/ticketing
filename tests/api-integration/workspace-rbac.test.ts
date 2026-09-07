@@ -996,68 +996,6 @@ describe("API integration: workspace RBAC enforcement", () => {
     });
   });
 
-  describe("resource coverage: workspace:manage_settings", () => {
-    // The integration endpoints (slack/discord/etc.) all gate on
-    // workspace:manage_settings. Use Slack as the canonical surface; the
-    // 403 fires in middleware before the handler ever tries to call out.
-    it("blocks a member from creating a Slack integration", async () => {
-      const member = await createWorkspaceMember({ role: "member" });
-      const { project } = await createProjectFixture({
-        workspaceId: member.workspace.id,
-      });
-      mockAuthenticatedSession(member.user);
-      const { app } = createApp();
-
-      const response = await app.request(
-        `/api/slack-integration/project/${project.id}`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            webhookUrl: "https://hooks.slack.com/services/x/y/z",
-          }),
-        },
-      );
-      expect(response.status).toBe(403);
-    });
-
-    it("blocks a viewer from creating a Slack integration", async () => {
-      const member = await createWorkspaceMember({ role: "viewer" });
-      const { project } = await createProjectFixture({
-        workspaceId: member.workspace.id,
-      });
-      mockAuthenticatedSession(member.user);
-      const { app } = createApp();
-
-      const response = await app.request(
-        `/api/slack-integration/project/${project.id}`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            webhookUrl: "https://hooks.slack.com/services/x/y/z",
-          }),
-        },
-      );
-      expect(response.status).toBe(403);
-    });
-
-    it("blocks a member from deleting an integration", async () => {
-      const member = await createWorkspaceMember({ role: "member" });
-      const { project } = await createProjectFixture({
-        workspaceId: member.workspace.id,
-      });
-      mockAuthenticatedSession(member.user);
-      const { app } = createApp();
-
-      const response = await app.request(
-        `/api/slack-integration/project/${project.id}`,
-        { method: "DELETE" },
-      );
-      expect(response.status).toBe(403);
-    });
-  });
-
   describe("instance admin bypass", () => {
     it("bypasses the workspace permission check when user.role === 'admin'", async () => {
       const member = await createWorkspaceMember({ role: "viewer" });
@@ -1101,6 +1039,52 @@ describe("API integration: workspace RBAC enforcement", () => {
 
       const response = await postCreateTask(app, project.id);
       expect(response.status).toBe(403);
+    });
+  });
+
+  // Negative guard for issue #6, replacing the three cases that used Slack as
+  // the canonical `workspace:manage_settings` surface.
+  //
+  // All six inherited integration routers (GitHub, Gitea, Slack, Discord,
+  // Telegram, generic webhook) are deleted, so there is no longer a route to
+  // assert RBAC against — and that is worth asserting directly: these paths
+  // must be ABSENT, not merely permission-checked.
+  //
+  // NOTE for #7/#8: `workspace:manage_settings` is now required by NO route in
+  // the application. The integration routers were its only consumers. The
+  // capability still exists in packages/permissions; re-attaching it to the
+  // God Mode / instance settings surface is that work's job, and the route
+  // coverage test should notice a capability nothing enforces.
+  describe("the removed integration routers", () => {
+    const removedRoutes = [
+      "/api/github-integration",
+      "/api/gitea-integration",
+      "/api/slack-integration",
+      "/api/discord-integration",
+      "/api/telegram-integration",
+      "/api/generic-webhook-integration",
+    ];
+
+    it("no longer mounts any inherited integration router", async () => {
+      const owner = await createWorkspaceMember({ role: "owner" });
+      const { project } = await createProjectFixture({
+        workspaceId: owner.workspace.id,
+      });
+      mockAuthenticatedSession(owner.user);
+      const { app } = createApp();
+
+      for (const route of removedRoutes) {
+        const response = await app.request(`${route}/project/${project.id}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        });
+
+        // 404 — the router is gone. An owner is used deliberately: a 403 would
+        // only prove the caller lacked permission, which would still mean the
+        // route existed.
+        expect(response.status).toBe(404);
+      }
     });
   });
 });

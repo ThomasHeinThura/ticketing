@@ -190,7 +190,6 @@ function RouteComponent() {
             ? normalizedData.description
             : (project.description ?? ""),
           icon: iconChanged ? normalizedData.icon : (project.icon ?? "Layout"),
-          isPublic: !!project.isPublic,
         };
 
         await updateProject(updatePayload);
@@ -227,7 +226,6 @@ function RouteComponent() {
     },
     [
       project?.id,
-      project?.isPublic,
       project?.name,
       project?.slug,
       project?.description,

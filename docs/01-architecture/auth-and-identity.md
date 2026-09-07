@@ -66,7 +66,7 @@ registered in [inherited-features.md](inherited-features.md).
 | `genericOAuth` | inherited — kept | the protocol implementation every `auth.oidc` connection is built on |
 | `apiKey` | inherited — kept | the credential only; our `api_key` table owns everything else |
 | `admin` | inherited — kept **as a session primitive only** | its HTTP routes are **not mounted**, `user.role` is **never read**, and `POST /api/instance/users/{id}/impersonate` ([rbac.md](rbac.md)) does the authority check and sets `impersonatedBy`. Using the plugin's own endpoints would reintroduce the second authority source the identity-resolution rule forbids |
-| `openAPI` | inherited — kept | development only |
+| `openAPI` | **removed at fork** | listed here as *"kept — development only"* until 2026-09-07. It mounts an unauthenticated `/api/auth/reference` that pulls an **unpinned** `cdn.jsdelivr.net/npm/@scalar/api-reference` bundle into the API's own cookie origin — **H19** of the [#13 security review](../07-planning/security-reviews/13-kaneo-import.md), which put it on issue #6's removal list. Removed in #6's inherited-defaults slice. The API's **own** OpenAPI document is `@hono/zod-openapi` at `GET /api/openapi` and is untouched by this |
 | `lastLoginMethod` | inherited — kept | |
 | `anonymous` | **removed at fork** | guest sign-in, on by default in kaneo. An ephemeral-identity surface does not ship dormant |
 | `deviceAuthorization` | **removed at fork** | a device-code grant no v2 spec asks for |

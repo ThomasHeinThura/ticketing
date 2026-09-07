@@ -45,7 +45,11 @@ export const BETTER_AUTH_PLUGINS: readonly ApprovedPlugin[] = [
     verdict: "kept",
     note: "session primitive only — its HTTP routes are not mounted and user.role is never read",
   },
-  { id: "open-api", verdict: "kept", note: "development only" },
+  {
+    id: "open-api",
+    verdict: "removed",
+    note: "was 'kept — development only' until #16 removed it. It mounted an unauthenticated /api/auth/reference that pulls an UNPINNED @scalar/api-reference bundle into the API's own cookie origin — H19 of the #13 security review, which put it on issue #6's removal list. The API's own OpenAPI document is @hono/zod-openapi at GET /api/openapi and is unaffected",
+  },
   { id: "last-login-method", verdict: "kept", note: "" },
   {
     id: "anonymous",

@@ -681,12 +681,6 @@
 						"toggleLink": {
 							"type": "string"
 						},
-						"guestSuccess": {
-							"type": "string"
-						},
-						"guestError": {
-							"type": "string"
-						},
 						"oidcError": {
 							"type": "string"
 						},
@@ -739,8 +733,6 @@
 						"passwordRegistrationDisabled",
 						"toggleMessage",
 						"toggleLink",
-						"guestSuccess",
-						"guestError",
 						"oidcError",
 						"googleError",
 						"githubError",
@@ -860,9 +852,6 @@
 						"signingIn": {
 							"type": "string"
 						},
-						"continueAsGuest": {
-							"type": "string"
-						},
 						"toggleMessage": {
 							"type": "string"
 						},
@@ -890,7 +879,6 @@
 						"registrationDisabledAlert",
 						"passwordDisabledAlert",
 						"signingIn",
-						"continueAsGuest",
 						"toggleMessage",
 						"toggleLink",
 						"instanceStatusError",

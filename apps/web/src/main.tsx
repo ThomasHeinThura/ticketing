@@ -1,5 +1,3 @@
-import "./instrument";
-
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
@@ -60,7 +58,7 @@ function App() {
 
 // Root boundary fallback: shows a generic message and a refresh button,
 // without rendering the raw error.message. The full error is still
-// captured to Sentry by the boundary itself.
+// handled by the boundary itself.
 function RootCrashFallback({
   resetError,
 }: {

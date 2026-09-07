@@ -1,6 +1,5 @@
 import { isSmtpConfigured } from "@taskdesk/email";
 import { config } from "dotenv-mono";
-import { isBillingEnabled } from "../billing/config";
 import { isGithubSsoConfigured } from "./github-sso-env";
 
 config();
@@ -12,7 +11,6 @@ function getSettings() {
       process.env.DISABLE_PASSWORD_REGISTRATION === "true",
     disableEmailOtpSignIn: process.env.DISABLE_EMAIL_OTP_SIGN_IN === "true",
     disableWorkspaceCreation: process.env.DISABLE_WORKSPACE_CREATION === "true",
-    isDemoMode: process.env.DEMO_MODE === "true",
     hasSmtp: isSmtpConfigured(),
     hasGithubSignIn: isGithubSsoConfigured(),
     hasGoogleSignIn:
@@ -24,11 +22,9 @@ function getSettings() {
     hasCustomOAuth:
       Boolean(process.env.CUSTOM_OAUTH_CLIENT_ID) &&
       Boolean(process.env.CUSTOM_OAUTH_CLIENT_SECRET),
-    hasGuestAccess: process.env.DISABLE_GUEST_ACCESS !== "true",
     disableLoginForm: process.env.DISABLE_LOGIN_FORM === "true",
     customOAuthAutoLogin: process.env.CUSTOM_OAUTH_AUTO_LOGIN === "true",
     customOAuthLogoutUrl: process.env.CUSTOM_OAUTH_LOGOUT_URL || null,
-    billingEnabled: isBillingEnabled(),
   };
 }
 

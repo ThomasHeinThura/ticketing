@@ -1,6 +1,5 @@
 import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { requireEntitlement } from "../billing/require-entitlement-middleware";
 import db from "../database";
 import {
   assetTable,
@@ -139,7 +138,6 @@ const createTaskRoute = createRoute({
   middleware: [
     workspaceAccess.fromProject("projectId"),
     requireWorkspacePermission({ task: ["create"] }),
-    requireEntitlement,
   ] as const,
   request: {
     params: projectIdParam,
@@ -186,7 +184,6 @@ const moveTaskRoute = createRoute({
   middleware: [
     workspaceAccess.fromTask(),
     requireWorkspacePermission({ task: ["update"] }),
-    requireEntitlement,
   ] as const,
   request: {
     params: taskParam,
@@ -220,7 +217,6 @@ const updateTaskRoute = createRoute({
     workspaceAccess.fromTask(),
     requireWorkspacePermission({ task: ["update"] }),
     requireTaskAssigneePermission,
-    requireEntitlement,
   ] as const,
   request: {
     params: taskParam,
@@ -268,7 +264,6 @@ const importTasksRoute = createRoute({
   middleware: [
     workspaceAccess.fromProject("projectId"),
     requireWorkspacePermission({ task: ["create"] }),
-    requireEntitlement,
   ] as const,
   request: {
     params: projectIdParam,
@@ -320,7 +315,6 @@ const updateTaskStatusRoute = createRoute({
   middleware: [
     workspaceAccess.fromTask(),
     requireWorkspacePermission({ task: ["update"] }),
-    requireEntitlement,
   ] as const,
   request: {
     params: taskParam,
@@ -348,7 +342,6 @@ const updateTaskPriorityRoute = createRoute({
   middleware: [
     workspaceAccess.fromTask(),
     requireWorkspacePermission({ task: ["update"] }),
-    requireEntitlement,
   ] as const,
   request: {
     params: taskParam,
@@ -377,7 +370,6 @@ const updateTaskAssigneeRoute = createRoute({
   middleware: [
     workspaceAccess.fromTask(),
     requireWorkspacePermission({ task: ["assign"] }),
-    requireEntitlement,
   ] as const,
   request: {
     params: taskParam,
@@ -406,7 +398,6 @@ const updateTaskDueDateRoute = createRoute({
   middleware: [
     workspaceAccess.fromTask(),
     requireWorkspacePermission({ task: ["update"] }),
-    requireEntitlement,
   ] as const,
   request: {
     params: taskParam,
@@ -434,7 +425,6 @@ const updateTaskTitleRoute = createRoute({
   middleware: [
     workspaceAccess.fromTask(),
     requireWorkspacePermission({ task: ["update"] }),
-    requireEntitlement,
   ] as const,
   request: {
     params: taskParam,
@@ -463,7 +453,6 @@ const createTaskImageUploadRoute = createRoute({
   middleware: [
     workspaceAccess.fromTask(),
     requireWorkspacePermission({ task: ["update"] }),
-    requireEntitlement,
   ] as const,
   request: {
     params: taskParam,
@@ -494,7 +483,6 @@ const finalizeTaskImageUploadRoute = createRoute({
   middleware: [
     workspaceAccess.fromTask(),
     requireWorkspacePermission({ task: ["update"] }),
-    requireEntitlement,
   ] as const,
   request: {
     params: taskParam,
@@ -525,7 +513,6 @@ const updateTaskDescriptionRoute = createRoute({
   middleware: [
     workspaceAccess.fromTask(),
     requireWorkspacePermission({ task: ["update"] }),
-    requireEntitlement,
   ] as const,
   request: {
     params: taskParam,

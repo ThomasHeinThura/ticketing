@@ -1,6 +1,3 @@
-import { and, eq } from "drizzle-orm";
-import db from "../database";
-import { integrationTable } from "../database/schema";
 import { subscribeToEvent } from "../events";
 import type {
   IntegrationPlugin,
@@ -239,16 +236,31 @@ export function listPlugins(): IntegrationPlugin[] {
   return Array.from(plugins.values());
 }
 
-async function getActiveIntegrations(projectId: string) {
-  return db.query.integrationTable.findMany({
-    where: and(
-      eq(integrationTable.projectId, projectId),
-      eq(integrationTable.isActive, true),
-    ),
-    with: {
-      project: true,
-    },
-  });
+type ActiveIntegration = {
+  id: string;
+  type: string;
+  projectId: string;
+  config: string;
+};
+
+/**
+ * TaskDesk has no persisted integrations.
+ *
+ * kaneo read the `integration` table, which issue #6 drops along with the six
+ * inherited integration plugins. The registry itself survives deliberately —
+ * it is the seed of `packages/plugins-contracts`, and the engine boundary rule
+ * says a plugin contract is the right shape here because storage, notification
+ * and identity providers are genuinely swappable implementations.
+ *
+ * So every `broadcast*` below keeps its signature and becomes a no-op until
+ * TaskDesk defines its own plugin configuration storage. The alternative —
+ * deleting the registry and rebuilding it later — would throw away the one
+ * piece of kaneo's plugin design worth keeping.
+ */
+async function getActiveIntegrations(
+  _projectId: string,
+): Promise<ActiveIntegration[]> {
+  return [];
 }
 
 function createContext(integration: {

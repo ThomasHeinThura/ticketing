@@ -9,7 +9,6 @@ async function updateProject(
   icon: string,
   slug: string,
   description: string,
-  isPublic: boolean,
   workspaceId: string,
 ) {
   const [existingProject] = await db
@@ -35,7 +34,6 @@ async function updateProject(
       icon,
       slug,
       description,
-      isPublic,
     })
     .where(eq(projectTable.id, id))
     .returning();

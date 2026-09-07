@@ -20,32 +20,22 @@ import {
 } from "better-auth/api";
 import {
   admin as adminPlugin,
-  anonymous,
-  bearer,
-  deviceAuthorization,
   emailOTP,
   genericOAuth,
   lastLoginMethod,
   magicLink,
-  openAPI,
   organization,
 } from "better-auth/plugins";
 import type { AccessControl } from "better-auth/plugins/access";
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
 import { count, eq, sql } from "drizzle-orm";
-import {
-  findBillableWorkspaces,
-  formatBillableWorkspacesMessage,
-} from "./billing/controllers/find-billable-workspaces";
-import { syncWorkspaceSeats } from "./billing/controllers/sync-seats";
 import db, { schema } from "./database";
 import { publishEvent } from "./events";
 import deleteAccountData from "./user/controllers/delete-account-data";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
 import { checkWorkspaceName } from "./utils/check-workspace-name";
 import { mapCustomOAuthProfileToUser } from "./utils/custom-oauth-profile";
-import { generateDemoName } from "./utils/generate-demo-name";
 import { getDefaultCookieAttributes } from "./utils/get-default-cookie-attributes";
 import { getInvitationEmailSubject } from "./utils/get-invitation-email-subject";
 import { getWorkspaceInvitationEmailCopy } from "./utils/get-workspace-invitation-email-copy";
@@ -53,7 +43,8 @@ import { getGithubSsoOAuthCredentials } from "./utils/github-sso-env";
 import { isCloud } from "./utils/is-cloud";
 import { isDisposableEmail } from "./utils/is-disposable-email";
 import { isLocalSignInPath } from "./utils/is-local-sign-in-path";
-import { verifyTurnstile } from "./utils/verify-turnstile";
+import { resolveAuthSecret } from "./utils/require-auth-secret";
+import { TRUSTED_CLIENT_IP_HEADER } from "./utils/resolve-client-ip";
 
 config();
 
@@ -101,15 +92,14 @@ const baseURLWithoutPath = (() => {
   }
 })();
 
-if (
-  process.env.TASKDESK_AUTH_SECRET &&
-  process.env.TASKDESK_AUTH_SECRET.length < 32
-) {
-  console.error(
-    "TASKDESK_AUTH_SECRET is less than 32 characters, please generate a new one.",
-  );
+const authSecretResult = resolveAuthSecret(process.env.TASKDESK_AUTH_SECRET);
+
+if (!authSecretResult.ok) {
+  console.error(authSecretResult.reason);
   process.exit(1);
 }
+
+const authSecret = authSecretResult.secret;
 
 async function getUserLocale(email: string) {
   const [user] = await db
@@ -159,47 +149,10 @@ function getAuthEmailCopy(locale?: string | null) {
   };
 }
 
-function getDeviceAuthClientIds(): Set<string> {
-  const raw = process.env.DEVICE_AUTH_CLIENT_IDS?.trim();
-  if (raw) {
-    return new Set(
-      raw
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    );
-  }
-  return new Set(["taskdesk-cli", "taskdesk-mcp"]);
-}
-
-const DEFAULT_TRUSTED_PROXIES = [
-  "127.0.0.0/8",
-  "::1/128",
-  "10.0.0.0/8",
-  "172.16.0.0/12",
-  "192.168.0.0/16",
-];
-
-function trustedProxies(): string[] {
-  const raw = process.env.TRUSTED_PROXIES?.trim();
-  if (!raw) {
-    return DEFAULT_TRUSTED_PROXIES;
-  }
-  return raw
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-}
-
-function getDeviceAuthVerificationUri(): string {
-  const base = clientUrl.replace(/\/$/, "");
-  return `${base}/device`;
-}
-
 export const auth = betterAuth({
   baseURL: baseURLWithoutPath,
   trustedOrigins,
-  secret: process.env.TASKDESK_AUTH_SECRET || "",
+  secret: authSecret,
   basePath: "/api/auth",
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -216,7 +169,6 @@ export const auth = betterAuth({
       team: schema.teamTable,
       teamMember: schema.teamMemberTable,
       apikey: schema.apikeyTable,
-      deviceCode: schema.deviceCodeTable,
     },
   }),
   user: {
@@ -236,16 +188,19 @@ export const auth = betterAuth({
   },
   account: {
     accountLinking: {
-      // Link an OAuth/OIDC sign-in to an existing account that shares the same
-      // email instead of failing with error=account_not_linked. The listed
-      // providers verify the email on their side, so they are trusted to link.
-      enabled: true,
-      trustedProviders: ["github", "google", "discord", "custom"],
-      // Only link to an existing local account after its email has been
-      // verified. Without this check, an attacker could pre-register a victim's
-      // email with a password account and retain access after the victim signs
-      // in through a trusted OAuth/OIDC provider.
-      requireLocalEmailVerified: true,
+      // Disabled in #6. kaneo shipped `enabled: true` with `trustedProviders`
+      // including "custom" — the generic OIDC provider an operator configures.
+      // Trusting it means anyone who can register the victim's email address at
+      // that provider takes over the existing local account. The
+      // `requireLocalEmailVerified` mitigation did not close it either: kaneo
+      // enforces no email verification anywhere, and magic-link and email-OTP
+      // sign-in both set emailVerified: true, so nearly every account already
+      // satisfied the precondition.
+      //
+      // TaskDesk's identity design is Microsoft Entra OIDC with explicit
+      // connection configuration; deliberate linking, if it is ever wanted,
+      // gets its own specification.
+      enabled: false,
     },
   },
   emailAndPassword: {
@@ -276,14 +231,10 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-    ...(process.env.DISABLE_GUEST_ACCESS !== "true"
-      ? [
-          anonymous({
-            generateName: async () => generateDemoName(),
-            emailDomainName: "taskdesk.app",
-          }),
-        ]
-      : []),
+    // anonymous() guest sign-in removed in #6. kaneo enabled it BY DEFAULT —
+    // it was opt-OUT via DISABLE_GUEST_ACCESS. It minted a real user row, which
+    // also let a guest arriving first consume the zero-user first-run window and
+    // permanently lock an instance out of ever gaining an admin (see #18).
     lastLoginMethod(),
     magicLink({
       sendMagicLink: async ({ email, url }) => {
@@ -458,30 +409,6 @@ export const auth = betterAuth({
             ownerId: user.id,
           });
         },
-        beforeDeleteOrganization: async ({ organization }) => {
-          const billable = await findBillableWorkspaces([organization.id]);
-          if (billable.length > 0) {
-            throw new APIError("CONFLICT", {
-              message: formatBillableWorkspacesMessage(
-                billable.map((workspace) => workspace.name),
-              ),
-            });
-          }
-        },
-        afterAddMember: async ({ member }) => {
-          if (member?.organizationId) {
-            void syncWorkspaceSeats(member.organizationId).catch((error) => {
-              console.error("Seat sync after member add failed:", error);
-            });
-          }
-        },
-        afterRemoveMember: async ({ member }) => {
-          if (member?.organizationId) {
-            void syncWorkspaceSeats(member.organizationId).catch((error) => {
-              console.error("Seat sync after member remove failed:", error);
-            });
-          }
-        },
       },
       async sendInvitationEmail(data) {
         const inviteLink = `${process.env.TASKDESK_AGENT_URL}/invitation/accept/${data.id}`;
@@ -535,9 +462,18 @@ export const auth = betterAuth({
         },
       ],
     }),
-    bearer(),
+    // bearer() removed in #6. It emitted the raw session token in a
+    // `set-auth-token` response header with Access-Control-Expose-Headers on
+    // every auth response. Combined with kaneo's credentialed CORS reflection
+    // that was cross-origin session theft with no XSS required — finding C3 of
+    // the PR #13 review. The CORS fix broke the chain; this closes it.
     apiKey({
-      enableSessionForAPIKeys: true,
+      // NEVER true. webhooks-and-api-keys.md specifies `sessionOnly` routes that
+      // must answer "403 session_required from an API or MCP key" — which is
+      // only possible if a key is not a session. kaneo minted a full session
+      // from an API key, making it a third authentication surface larger than
+      // the two removed above.
+      enableSessionForAPIKeys: false,
       apiKeyHeaders: "x-api-key",
       rateLimit: {
         enabled: true,
@@ -545,28 +481,38 @@ export const auth = betterAuth({
         timeWindow: 60 * 1000,
       },
     }),
-    deviceAuthorization({
-      verificationUri: getDeviceAuthVerificationUri(),
-      validateClient: async (clientId) =>
-        getDeviceAuthClientIds().has(clientId),
-    }),
+    // deviceAuthorization() removed in #6. mcp-server.md MC-3 puts an OAuth
+    // device flow explicitly out of scope — "a whole authentication mechanism".
+    // It also laundered an API key into a session token that outlived the key's
+    // own revocation (#17).
     adminPlugin({
       defaultRole: "user",
       adminRoles: ["admin"],
     }),
-    openAPI(),
+    // openAPI() removed in #6. It mounted an unauthenticated
+    // /api/auth/reference that pulls an UNPINNED @scalar/api-reference bundle
+    // from a third-party CDN into the API's own cookie origin.
   ],
   session: {
+    // Cookie cache disabled in #6. kaneo cached the session in the cookie for
+    // five minutes, and that path returns session data with NO database read —
+    // so a revoked session kept working for up to five minutes, and a forged
+    // cookie was never compared against any row. Revocation has to be immediate.
     cookieCache: {
-      enabled: true,
-      maxAge: 5 * 60,
+      enabled: false,
     },
   },
   rateLimit: {
-    // Enable in cloud; self-hosted instances opt in by setting KANEO_CLOUD.
-    // Default better-auth rate-limit only kicks in for production; we keep the
-    // global limits conservative and tighten signup/invite via customRules.
-    enabled: isCloud(),
+    // Enabled for EVERY deployment. kaneo used `enabled: isCloud()`, so
+    // authentication abuse protection was off for exactly the shape TaskDesk
+    // ships — self-hosted — and the sign-up and invite throttles below, which
+    // exist specifically to stop abuse, were inert.
+    //
+    // This is deliberately landed in the SAME change as the client-IP fix
+    // above. Enabling a limiter whose key a caller can choose achieves
+    // nothing: it would only have handed attackers a free key-rotation
+    // primitive. Identity first, then the limit.
+    enabled: true,
     window: 10,
     max: 100,
     customRules: {
@@ -729,7 +675,7 @@ export const auth = betterAuth({
         }
 
         // Cloud-only abuse gates on password signup. Self-hosted instances
-        // leave KANEO_CLOUD/TURNSTILE_SECRET_KEY unset and skip both.
+        // leave KANEO_CLOUD unset and skip it.
         if (isCloud() && !isInstanceAdminSetup) {
           const signupEmail = (ctx.body?.email as string | undefined) ?? "";
           if (signupEmail && isDisposableEmail(signupEmail)) {
@@ -737,19 +683,6 @@ export const auth = betterAuth({
               message:
                 "Sign-up with disposable email addresses is not allowed.",
             });
-          }
-
-          const turnstileToken =
-            (ctx.body?.turnstileToken as string | undefined) ??
-            ctx.headers?.get("x-turnstile-token") ??
-            null;
-          const remoteIp =
-            ctx.headers?.get("cf-connecting-ip") ??
-            ctx.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-            null;
-          const verdict = await verifyTurnstile(turnstileToken, remoteIp);
-          if (!verdict.ok) {
-            throw new APIError("FORBIDDEN", { message: verdict.reason });
           }
         }
       }
@@ -801,8 +734,19 @@ export const auth = betterAuth({
   },
   advanced: {
     ipAddress: {
-      ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"],
-      trustedProxies: trustedProxies(),
+      // ONLY the internal header, which utils/auth-request.ts strips from every
+      // inbound request and then sets from utils/resolve-client-ip.ts.
+      //
+      // kaneo read ["cf-connecting-ip", "x-forwarded-for"] against a CIDR set
+      // that defaulted to all of RFC1918. `cf-connecting-ip` is single-valued
+      // and unvalidatable, so a caller chose its own rate-limit bucket and
+      // could rotate it per request; and a CIDR set is the wrong shape anyway,
+      // because on a shared cluster every pod is inside RFC1918.
+      //
+      // TASKDESK_TRUST_PROXY is a HOP COUNT, per configuration-reference.md,
+      // and counting from the right is the only derivation a caller cannot
+      // prepend to. No trustedProxies list: the value here is already resolved.
+      ipAddressHeaders: [TRUSTED_CLIENT_IP_HEADER],
     },
     defaultCookieAttributes: getDefaultCookieAttributes({
       apiUrl,

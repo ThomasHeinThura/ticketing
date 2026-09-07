@@ -11,7 +11,7 @@ import {
   userTable,
   workspaceTable,
 } from "../database/schema";
-import { assertPublicWebhookDestination } from "../plugins/generic-webhook/config";
+import { assertPublicWebhookDestination } from "../utils/assert-public-destination";
 import { decryptSecret } from "./secrets";
 
 const DEFAULT_OUTBOUND_FETCH_TIMEOUT_MS = 15_000;
@@ -25,7 +25,20 @@ async function fetchWithTimeout(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...rest, signal: controller.signal });
+    return await fetch(url, {
+      ...rest,
+      signal: controller.signal,
+      // Never follow redirects on an outbound, user-supplied destination.
+      // assertPublicWebhookDestination validates the ORIGINAL host; a 3xx to
+      // 127.0.0.1 or 169.254.169.254 would walk straight past that check.
+      // `redirect` is set after the spread so a caller cannot weaken it.
+      //
+      // kaneo already knew this: generic-webhook/client.ts and
+      // gitea/utils/gitea-api.ts both set `redirect: "manual"`. This helper —
+      // the one that SURVIVES issue #6 — did not, so the cleanup would have
+      // deleted the two hardened callers and kept the unhardened one.
+      redirect: "manual",
+    });
   } finally {
     clearTimeout(timer);
   }

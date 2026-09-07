@@ -23,7 +23,6 @@ export const updateProjectBody = z.object({
   icon: z.string(),
   slug: z.string(),
   description: z.string(),
-  isPublic: z.boolean(),
 });
 
 export const reorderProjectsBody = z.object({

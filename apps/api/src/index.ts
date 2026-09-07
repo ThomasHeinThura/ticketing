@@ -1,11 +1,8 @@
-import "./instrument";
-
 import { dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { OpenAPIHono } from "@hono/zod-openapi";
-import * as Sentry from "@sentry/node";
 import type { Session, User } from "better-auth/types";
 import { eq, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -16,44 +13,33 @@ import { HTTPException } from "hono/http-exception";
 import activity from "./activity";
 import { auth } from "./auth";
 import { organizationRoutes } from "./auth-openapi";
-import billing from "./billing";
 import column from "./column";
 import comment from "./comment";
 import config from "./config";
 import db, { getDatabase, schema } from "./database";
 import { prepareDatabaseStartup } from "./database/prepare-database-startup";
 import { waitForDatabase } from "./database/wait-for-database";
-import discordIntegration from "./discord-integration";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
-import genericWebhookIntegration from "./generic-webhook-integration";
-import giteaIntegration, { handleGiteaWebhookRoute } from "./gitea-integration";
-import githubIntegration, {
-  handleGithubWebhookRoute,
-} from "./github-integration";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
 import invitation from "./invitation";
 import label from "./label";
-import mcpRoutes, { mcpWellKnownRoutes } from "./mcp";
 import { migrateColumns } from "./migrations/column-migration";
 import notification from "./notification";
 import notificationPreferences from "./notification-preferences";
 import oauth from "./oauth";
 import { createRoute, jsonResponse, z } from "./openapi";
 import { initializePlugins } from "./plugins";
-import { migrateGitHubIntegration } from "./plugins/github/migration";
 import project from "./project";
-import { getPublicProject } from "./project/controllers/get-public-project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
-import slackIntegration from "./slack-integration";
 import { getPrivateObject } from "./storage/s3";
 import task from "./task";
 import taskRelation from "./task-relation";
-import telegramIntegration from "./telegram-integration";
 import timeEntry from "./time-entry";
 import user from "./user";
 import getAvatar from "./user/controllers/get-avatar";
+import { buildAuthRequest } from "./utils/auth-request";
 import { authenticateApiRequest } from "./utils/authenticate-api-request";
 import { authorizeAssetAccess } from "./utils/authorize-asset-access";
 import { getInvitationDetails } from "./utils/check-registration-allowed";
@@ -143,12 +129,9 @@ export function createApp() {
     if (err instanceof HTTPException) {
       // expected errors (401/404/...) are not reported; real failures are
       if (err.status >= 500) {
-        Sentry.captureException(err);
       }
       return err.getResponse();
     }
-
-    Sentry.captureException(err);
     return c.json({ message: "Internal Server Error" }, 500);
   });
   const nodeWs = createNodeWebSocket({ app });
@@ -162,7 +145,13 @@ export function createApp() {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
-  const reflectUnconfiguredOrigins = process.env.NODE_ENV !== "production";
+  // Fail CLOSED. kaneo used `NODE_ENV !== "production"`, and "not production"
+  // includes "unset" — the normal case for a self-hosted deployment, which is
+  // exactly what TaskDesk ships. That reflected ANY origin back with
+  // `credentials: true`, letting any website read a logged-in victim's
+  // authenticated responses. Reflection is now an explicit development opt-in.
+  // Issue #6.
+  const reflectUnconfiguredOrigins = process.env.NODE_ENV === "development";
 
   if (!corsOrigins && !reflectUnconfiguredOrigins) {
     console.warn(
@@ -223,20 +212,6 @@ export function createApp() {
     async (c) => c.json(await getInstanceStatus(), 200),
   );
 
-  const publicProjectApi = api.get("/public-project/:id", async (c) => {
-    const { id } = c.req.param();
-    const project = await getPublicProject(id);
-
-    return c.json(project);
-  });
-
-  api.post("/github-integration/webhook", handleGithubWebhookRoute);
-
-  api.post(
-    "/gitea-integration/webhook/:integrationId",
-    handleGiteaWebhookRoute,
-  );
-
   const invitationPublicApi = api.get("/invitation/public/:id", async (c) => {
     const { id } = c.req.param();
     const result = await getInvitationDetails(id);
@@ -259,7 +234,7 @@ export function createApp() {
         },
       },
     }),
-    async (c) => auth.handler(c.req.raw),
+    async (c) => auth.handler(buildAuthRequest(c)),
   );
 
   api.openapi(
@@ -292,9 +267,11 @@ export function createApp() {
           mimeType: schema.assetTable.mimeType,
           filename: schema.assetTable.filename,
           workspaceId: schema.assetTable.workspaceId,
-          isPublic: schema.projectTable.isPublic,
         })
         .from(schema.assetTable)
+        // The join selects nothing now that `is_public` is gone, but it is kept
+        // deliberately: it still requires the asset to belong to a real project,
+        // so an orphaned asset row 404s rather than being served.
         .innerJoin(
           schema.projectTable,
           eq(schema.assetTable.projectId, schema.projectTable.id),
@@ -319,9 +296,8 @@ export function createApp() {
 
         return new Response(object.body as BodyInit, {
           headers: {
-            "Cache-Control": asset.isPublic
-              ? "public, max-age=300"
-              : "private, max-age=120",
+            // Every asset is private: TaskDesk has no public-project read path.
+            "Cache-Control": "private, max-age=120",
             "Content-Disposition": buildContentDisposition(
               asset.filename,
               inline,
@@ -504,7 +480,7 @@ export function createApp() {
         }
         return c.redirect(deviceUrl.toString(), 302);
       }
-      return auth.handler(c.req.raw);
+      return auth.handler(buildAuthRequest(c));
     },
   );
 
@@ -520,7 +496,7 @@ export function createApp() {
 
       // Preserve Better Auth bearer session tokens on auth routes.
       if (session?.session && session.user) {
-        return auth.handler(c.req.raw);
+        return auth.handler(buildAuthRequest(c));
       }
 
       const headers = new Headers(c.req.raw.headers);
@@ -528,50 +504,38 @@ export function createApp() {
       // Better Auth API key plugin validates from x-api-key by default.
       headers.set("x-api-key", bearerToken);
 
-      return auth.handler(
-        new Request(c.req.raw, {
-          headers,
-        }),
-      );
+      return auth.handler(buildAuthRequest(c, headers));
     }
 
-    return auth.handler(c.req.raw);
+    return auth.handler(buildAuthRequest(c));
   });
 
-  api.route("/", mcpRoutes);
-
   api.use("*", async (c, next) => {
-    const path = c.req.path;
-    if (
-      path.startsWith("/api/mcp") ||
-      path.startsWith("/api/.well-known/") ||
-      path === "/api/billing/webhook"
-    ) {
-      return next();
-    }
-    return Sentry.withIsolationScope(async () => {
-      Sentry.setUser(null);
-      try {
-        await authenticateApiRequest(c);
-        const windowId = c.req.header("X-TaskDesk-Window-Id");
-        const userId = c.get("userId");
-        const initiatorId = windowId ? `${userId}:${windowId}` : userId;
-        return await eventContext.run({ initiatorId }, next);
-      } catch (error) {
-        if (!(error instanceof HTTPException)) {
-          console.error("API authentication failed:", error);
-          throw new HTTPException(500, { message: "Internal Server Error" });
-        }
-        throw error;
-      } finally {
-        Sentry.setUser(null);
+    // No prefix exemptions. kaneo exempted /api/mcp, /api/.well-known/ and
+    // /api/billing/webhook; all three surfaces are removed in issue #6, so
+    // every route mounted below this guard is authenticated without exception.
+    // Adding one back is a route-policy decision that belongs to #7, not a
+    // string appended here.
+    // kaneo wrapped this in Sentry.withIsolationScope(...). With Sentry gone the
+    // wrapper has no purpose, so the body runs directly — it must NOT become an
+    // uninvoked arrow function, or authenticateApiRequest never runs and every
+    // request through this guard succeeds unauthenticated.
+    try {
+      await authenticateApiRequest(c);
+      const windowId = c.req.header("X-TaskDesk-Window-Id");
+      const userId = c.get("userId");
+      const initiatorId = windowId ? `${userId}:${windowId}` : userId;
+      return await eventContext.run({ initiatorId }, next);
+    } catch (error) {
+      if (!(error instanceof HTTPException)) {
+        console.error("API authentication failed:", error);
+        throw new HTTPException(500, { message: "Internal Server Error" });
       }
-    });
+      throw error;
+    }
   });
 
   const oauthApi = api.route("/oauth", oauth);
-
-  const billingApi = api.route("/billing", billing);
   const projectApi = api.route("/project", project);
   const taskApi = api.route("/task", task);
   const columnApi = api.route("/column", column);
@@ -585,40 +549,12 @@ export function createApp() {
     notificationPreferences,
   );
   const searchApi = api.route("/search", search);
-  const githubIntegrationApi = api.route(
-    "/github-integration",
-    githubIntegration,
-  );
-  const giteaIntegrationApi = api.route("/gitea-integration", giteaIntegration);
-  const genericWebhookIntegrationApi = api.route(
-    "/generic-webhook-integration",
-    genericWebhookIntegration,
-  );
-  const discordIntegrationApi = api.route(
-    "/discord-integration",
-    discordIntegration,
-  );
-  const slackIntegrationApi = api.route("/slack-integration", slackIntegration);
-  const telegramIntegrationApi = api.route(
-    "/telegram-integration",
-    telegramIntegration,
-  );
   const taskRelationApi = api.route("/task-relation", taskRelation);
   const externalLinkApi = api.route("/external-link", externalLink);
   const workflowRuleApi = api.route("/workflow-rule", workflowRule);
   const invitationApi = api.route("/invitation", invitation);
   const workspaceApi = api.route("/workspace", workspace);
   const userApi = api.route("/user", user);
-
-  app.route(
-    "/",
-    mcpWellKnownRoutes(
-      (process.env.KANEO_API_URL || "http://localhost:1337").replace(
-        /\/api\/?$/,
-        "",
-      ),
-    ),
-  );
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
   // so the literal path "user" isn't consumed by the param route.
@@ -749,32 +685,24 @@ export function createApp() {
     api,
     injectWebSocket,
     activityApi,
-    billingApi,
     columnApi,
     commentApi,
     configApi,
-    discordIntegrationApi,
     externalLinkApi,
-    genericWebhookIntegrationApi,
-    githubIntegrationApi,
-    giteaIntegrationApi,
     invitationApi,
     invitationPublicApi,
+    oauthApi,
     labelApi,
     notificationApi,
     notificationPreferencesApi,
     projectApi,
-    publicProjectApi,
     searchApi,
-    slackIntegrationApi,
     taskApi,
     taskRelationApi,
-    telegramIntegrationApi,
     timeEntryApi,
     userApi,
     workflowRuleApi,
     workspaceApi,
-    oauthApi,
   };
 }
 
@@ -806,7 +734,6 @@ export async function runStartupTasks() {
   await migrateApiKeyReferenceId();
 
   await migrateNotificationPreferencesSchema();
-  await migrateGitHubIntegration();
   await migrateColumns();
   await seedDefaultWorkspaceRoles();
 
@@ -867,32 +794,24 @@ const {
   app,
   injectWebSocket,
   activityApi,
-  billingApi,
   columnApi,
   commentApi,
   configApi,
-  discordIntegrationApi,
   externalLinkApi,
-  genericWebhookIntegrationApi,
-  githubIntegrationApi,
-  giteaIntegrationApi,
   invitationApi,
   invitationPublicApi,
+  oauthApi,
   labelApi,
   notificationApi,
   notificationPreferencesApi,
   projectApi,
-  publicProjectApi,
   searchApi,
-  slackIntegrationApi,
   taskApi,
   taskRelationApi,
-  telegramIntegrationApi,
   timeEntryApi,
   userApi,
   workflowRuleApi,
   workspaceApi,
-  oauthApi,
 } = createdApp;
 
 const entrypoint = process.argv[1];
@@ -906,7 +825,6 @@ if (isMainModule) {
 }
 
 export type AppType =
-  | typeof billingApi
   | typeof configApi
   | typeof projectApi
   | typeof taskApi
@@ -918,19 +836,12 @@ export type AppType =
   | typeof notificationApi
   | typeof notificationPreferencesApi
   | typeof searchApi
-  | typeof githubIntegrationApi
-  | typeof giteaIntegrationApi
-  | typeof genericWebhookIntegrationApi
-  | typeof discordIntegrationApi
-  | typeof slackIntegrationApi
-  | typeof telegramIntegrationApi
   | typeof taskRelationApi
   | typeof externalLinkApi
   | typeof workflowRuleApi
   | typeof invitationApi
   | typeof workspaceApi
   | typeof userApi
-  | typeof publicProjectApi
   | typeof invitationPublicApi
   | typeof oauthApi;
 
