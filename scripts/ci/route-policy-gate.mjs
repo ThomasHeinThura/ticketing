@@ -40,15 +40,17 @@ const NAME = "test:permissions";
 const candidates = [
   {
     config: "apps/api/vitest.permissions.config.ts",
-    command: [
-      "--filter",
-      "@taskdesk/api",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.permissions.config.ts",
-    ],
+    // Delegate through the CANONICAL entry point rather than invoking vitest
+    // directly. `pnpm test:permissions` is `turbo test:permissions`, and turbo's
+    // task declares `dependsOn: ["^build"]` -- which is the only thing that
+    // builds `@taskdesk/email` before the suite imports the API that imports it.
+    // Calling `pnpm --filter @taskdesk/api exec vitest` skips that ordering and
+    // dies from a clean checkout with `Failed to resolve entry for package
+    // "@taskdesk/email"`. It passes locally only because a previous build left
+    // dist/ behind, which is exactly the shape of green that CI exists to refuse.
+    // No recursion: the root script is this wrapper's caller, `turbo
+    // test:permissions` resolves the PACKAGE task.
+    command: ["test:permissions"],
   },
   {
     config: "tests/permissions/vitest.config.ts",
