@@ -71,8 +71,24 @@ jobs:
             exit 1
           fi
           echo "merge base with origin/main: $base"
-      - name: pnpm test:permissions
-        run: pnpm test:permissions
+      - name: git identity for the ratchet's scratch repositories
+        # `tests/permissions/git-baseline.test.ts` proves the shrink-only ratchet
+        # against REAL git, by initialising throwaway repositories and committing
+        # into them. A GitHub runner has no committer identity, so `git commit`
+        # exits with `fatal: empty ident name` and the whole route-policy job goes
+        # red -- reading exactly like a policy failure when it is nothing of the
+        # kind. This job already separates "the ratchet could not run" from "the
+        # ratchet rejected your change"; this is the same distinction one layer
+        # down. Local runs pass because developers have a global identity set.
+        run: |
+          git config --global user.email "ci@taskdesk.invalid"
+          git config --global user.name "TaskDesk CI"
+      - name: pnpm check:route-policy
+        # #19's fail-closed wrapper. It does not scan routes -- it locates #7's
+        # published suite, refuses to pass without both route-coverage.test.ts and
+        # matrix.test.ts, and then runs it. `pnpm test:permissions` remains #21's
+        # canonical entry point and this delegates to it.
+        run: pnpm check:route-policy
 
   static:
     name: static
