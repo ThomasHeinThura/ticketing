@@ -286,20 +286,72 @@ narrow: a project role overrides a workspace role for that project.
 kinds — the specs may use no other form, and the route-coverage test rejects any other:
 
 ```ts
-type Policy = (
-  | { capability: Capability; scope: Scope; orOwner?: OwnerBranch; orSelfTarget?: BodyPredicate } // 1. capability, optionally satisfied by an owner branch
-  | { authenticated: true; self: true }                                  // 2. the caller's own records only (/api/me/*)
-  | { portal: 'customer'; predicate: PortalPredicate }                   // 3. a customer session on /api/portal/*, scoped by predicate
-  | { public: true; reason: string }                                     // 4. unauthenticated, with a stated reason
-  | { delegated: 'better-auth' | 'websocket' | 'metrics' | 'scim'; reason: string } // 5. mounts outside the session model, allowlisted explicitly
-) & { elevated?: true; sessionOnly?: true };                             // declared on the route, not in a prose table
+type Policy =
+  | ({ capability: Capability; scope: Scope; scopeSource: ScopeSource;     // 1. capability, optionally satisfied by an owner or self-target branch
+      reach: ReachRequirement; orOwner?: OwnerBranch; orSelfTarget?: SelfTargetBranch } & Flags)
+  | ({ authenticated: true; self: true; personParam: PersonParam } & Flags) // 2. the caller's own records only (/api/me/*)
+  | ({ portal: 'customer'; predicate: PortalPredicate } & Flags)           // 3. a customer session on /api/portal/*, scoped by predicate
+  | ({ public: true; reason: string } & PublicFlags)                       // 4. unauthenticated, with a stated reason
+  | ({ delegated: 'better-auth' | 'websocket' | 'metrics' | 'scim'; reason: string } & Flags); // 5. mounts outside the session model
+
+// A union, not a flat object: elevationExemptionReason states a reason for NOT requiring
+// elevation, so it is representable only alongside elevated: false, in either direction —
+// elevated: false with no reason, and a reason attached while elevated isn't false, are both
+// unrepresentable here and both refused again at registry build time (#21).
+type Flags =
+  | { elevated?: true; sessionOnly?: true; elevationExemptionReason?: undefined }
+  | { elevated: false; sessionOnly?: true; elevationExemptionReason: string };
+
+// Kind 4 has no identity, so there is no session to require and nothing to re-authenticate.
+// Those flags are REFUSED at declaration time rather than accepted and ignored — a flag that
+// a kind cannot enforce used to be silently inert, which is how a control gets documented,
+// tested and absent at the same time. `elevated: false` stays legal: it is the written
+// waiver `GET /api/instance/status` already relies on. Same bidirectional coherence as Flags.
+type PublicFlags =
+  | { elevated?: undefined; sessionOnly?: never; elevationExemptionReason?: undefined }
+  | { elevated: false; sessionOnly?: never; elevationExemptionReason: string };
+
+// Both are REQUIRED, and neither has a default. A security-relevant fact that can be omitted
+// will be omitted, and an omitted one used to mean ALLOW. The exemption is the only way to
+// say "not applicable", and it has to be said out loud, with a reason.
+type ReachRequirement = 'required' | { exempt: 'no_single_resource'; reason: string };
+type PersonParam = string | { exempt: 'no_person_parameter'; reason: string };
 
 type Scope = 'instance' | 'workspace' | 'project' | 'work_item' | 'organisation';
+// Where the scope id must legitimately come from. "row" — a route addressing one resource by
+// {id}: the id (and, for project/work_item, its containment chain) is read from that resource's
+// own row, in the same query that loads it. "request" — a collection route or a create, where
+// there is no row yet, so the id legitimately comes from the request itself (a path parameter or
+// the X-Workspace-Id header). "instance" — the route's scope IS 'instance', which names no
+// tenant or resource at all, so there is no id whose provenance "row" or "request" could
+// describe; valid only for scope: 'instance', and required there. Required, and not defaulted —
+// see "Workspace context" below.
+type ScopeSource = 'row' | 'request' | 'instance';
 type OwnerBranch = { predicate: OwnerPredicate; capability: Capability; withinMinutes?: number };
+type SelfTargetBranch = { predicate: BodyPredicate; capability: Capability };
 type OwnerPredicate = 'row.person_id === identity.personId' | 'row.created_by === identity.personId' | 'row.requester_id === identity.personId';
 type BodyPredicate = 'body.assigneeId === identity.personId';
 type PortalPredicate = 'own_request' | 'own_organisation' | 'addressed_approval' | 'own_submission';
 ```
+
+Three fields in that block were tightened while the registry was built (#7, #21), because the
+document contradicted itself in each place:
+
+- **`elevated` is a boolean, not `true`.** The elevation coverage test below demands "an
+  explicit `elevated: false` with a written reason" for a route the rule catches but that does
+  not need a step-up, and `elevated?: true` cannot express one. `elevationExemptionReason` is
+  that reason, and the registry refuses `elevated: false` without it.
+- **`orSelfTarget` carries a capability, like `orOwner`.** As a bare predicate it would be a
+  bypass: a `viewer` whose body names themselves would pass a route requiring
+  `work_item:assign`. The roles table above already settles what the conjunction is —
+  "self-assignment by a `member` is `work_item:update` on an item where the new assignee is
+  the actor" — so the branch names it.
+- **`elevationExemptionReason` coherence runs both directions (#21).** The forward direction —
+  `elevated: false` demands a reason — was already caught. `elevationExemptionReason` present
+  while `elevated` is `true` or omitted was not: a reason attached to a route that isn't
+  actually exempting anything from elevation is the same class of lie in the other direction,
+  and both `Flags` and `PublicFlags` above now make it unrepresentable, with `validatePolicy`
+  refusing it again at registry build time for a policy map that never met the type checker.
 
 - **Kind 1** is the normal case. The owner branch is a **conjunction, not a bypass**: the
   primary capability is checked first, and if it is absent the request is allowed only when
@@ -315,6 +367,10 @@ type PortalPredicate = 'own_request' | 'own_organisation' | 'addressed_approval'
     after Zod parsing and before the handler. It exists so that self-assignment — "the new
     assignee is the actor" — is a declared policy rather than a handler branch; ownership
     predicates test the loaded row and can never express it.
+  - `scopeSource` is required on **every** kind-1 policy and **structurally absent** on the
+    other four — self, portal, public and delegated have no scope whose provenance is a
+    question at all. `validatePolicy` refuses both directions at registry build time: a
+    capability policy missing `scopeSource`, and any other kind declaring it.
 - **Kind 2** replaces every `(self)` in the specs: the handler may only touch rows keyed to
   `identity.personId`, and the evaluator refuses a path or query parameter naming another
   person.
@@ -352,13 +408,43 @@ that header/query parameter, or (for `POST /api/work-items/search`) the filter b
 `idor-fuzz.test.ts` substitutes an id from the other seeded tenant at **every** source, not
 only in the path.
 
+**Scope evidence is mandatory, with no fallback.** `evaluatePolicy` does not select a capability
+policy's scope id off the flat request/row bag it is handed — it demands a `ResolvedScope`,
+built by one of `@taskdesk/permissions`'s scope constructors (`workspaceScopeFromRow`,
+`projectScopeFromRequest`, `instanceScope`, …), which records both the scope's `kind` and which
+of the three legitimate sources — `row`, `request`, or (for `scope: 'instance'` only)
+`instance` — it came from. A capability policy evaluated with no resolved scope at all is
+refused (`500 policy_context_incomplete`), never run against the bag as "no constraint" — that
+omission, closed everywhere else in this document, was still open here: a `scopeSource: 'row'`
+policy evaluated with `context.scope` omitted used to fall back to the flat bag and run the
+authority check anyway. There is no flag or legacy branch that restores that fallback; it is
+gone.
+
+The layered control this gives is honest about what it does and does not prove. `ResolvedScope`
+being mandatory, and the row/request constructor families being distinct branded types the
+evaluator can tell apart at runtime, closes the omission and the honest mismatch (a
+`...FromRequest` value reaching a `scopeSource: 'row'` policy). It does **not** make it
+impossible for a caller to write `workspaceScopeFromRow({ workspaceId: requestHeader })` — a
+brand only proves the value went through *a* constructor, not that the constructor's name
+matches what was actually passed in. The route middleware built in #8 must construct row
+evidence only from the row the handler actually loaded, never from a header or query parameter
+relabelled, and that is what the security review of every route's integration checks.
+
+`instance` gets its own source rather than being squeezed into `row`/`request`: it has no
+tenant or resource id, so there is nothing whose provenance either of those describes.
+`instanceScope()` is its only constructor — there is no `instanceScopeFromRow` or
+`instanceScopeFromRequest` to reach for by habit — and `validatePolicy` refuses a `scope:
+'instance'` policy declaring `scopeSource: 'row'` or `'request'`, and refuses `scopeSource:
+'instance'` on any other scope, at registry build time.
+
 ```ts
 // apps/api/src/work-item/policy.ts
 export const workItemPolicies = {
   'POST  /api/projects/{projectId}/work-items': { capability: 'work_item:create', scope: 'project' },
   'GET   /api/work-items/{key}':                { capability: 'work_item:read',   scope: 'work_item' },
   'POST  /api/work-items/{key}/assign':         { capability: 'work_item:assign', scope: 'work_item',
-                                                  orSelfTarget: 'body.assigneeId === identity.personId' },
+                                                  orSelfTarget: { predicate: 'body.assigneeId === identity.personId',
+                                                                  capability: 'work_item:update' } },
   'PATCH /api/comments/{id}':                   { capability: 'comment:update_any', scope: 'work_item',
                                                   orOwner: { predicate: 'row.person_id === identity.personId',
                                                              capability: 'comment:update_own', withinMinutes: 15 } },
@@ -390,6 +476,15 @@ Three CI tests make this load-bearing:
    capability is in the declared `AUTHORITY_GRANTING` set, must carry `elevated: true` or an
    explicit `elevated: false` with a written reason. A new authority-minting route that
    nobody remembered to list therefore fails the build instead of shipping unprotected.
+   `AUTHORITY_GRANTING` is `packages/permissions/src/elevated.ts`, and it is the eight
+   capabilities every row of the elevated table below is reachable through:
+   `instance:admin`, `instance:manage_plugins`, `workspace:manage_members` (granting
+   `sees_all`), `workspace:manage_roles` (a role editor mints authority up to the editor's
+   own rank), `project:manage_members` (the two reach-affecting fields),
+   `api_key:manage`, `webhook:manage` (a standing outbound channel, `WH-14`) and
+   `change:manage` (the freeze override). The test also asserts the other half of the rule:
+   **an elevated route is always `sessionOnly`**, since an elevated route that forgets it is
+   reachable from a personal API key.
 5. **Session-only test** — `tests/permissions/session-only.test.ts` enumerates its cases
    **from the `sessionOnly` field** in the registry, not from a second hand-kept list.
 
@@ -424,6 +519,12 @@ Mode, the security model and the feature specs cite it rather than restating it.
 `policy.ts` files.** Edit the registry, not this table; a hand-added row here that no policy
 declares fails the generation check, and a policy that declares `elevated: true` and is
 missing here fails it too.
+
+The first half of that check is **scoped to routes the router actually has**, because most of
+the routes below arrive with P1 and P4: a row naming a route that does not exist yet is a
+specification, not a defect. It arms itself route by route as each one lands, and the second
+half — a policy declaring `elevated: true` that this table does not carry — is enforced from
+the first day.
 
 | Action | Route |
 | --- | --- |
@@ -490,6 +591,14 @@ creation, because `is_mcp` is self-declared at creation and is therefore not a s
 boundary ([webhooks-and-api-keys.md](../03-features/webhooks-and-api-keys.md) `AK-9`).
 Workspace service keys cannot be MCP keys (a schema `CHECK`,
 [data-model.md](data-model.md) §2).
+
+**Missing key-capability data clamps to nothing, never to the owner's full RBAC (#21).** The
+∩ above presumes a key capability subset actually loaded. A null `capabilities` column on the
+key row, or a resolver branch that threw and was swallowed, must never be read as "no subset to
+intersect with" — that is the fail-open reading, and it would let the request run at the
+owner's full authority instead of the key's frozen one. `can()` in `evaluator.ts` enforces the
+invariant `credential === "api_key" ⟹ keyCapabilities !== undefined` directly: an `api_key`
+credential with no loaded capability subset holds no capability at all.
 
 ## Anti-patterns
 

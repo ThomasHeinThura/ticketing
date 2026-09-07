@@ -40,6 +40,11 @@
 			"cache": false,
 			"outputs": ["coverage/**"]
 		},
+		"test:permissions": {
+			"dependsOn": ["^build"],
+			"cache": false,
+			"outputs": []
+		},
 		"test:integration": {
 			"dependsOn": ["^build"],
 			"cache": false,

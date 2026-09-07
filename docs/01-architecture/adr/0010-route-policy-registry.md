@@ -44,12 +44,35 @@ export const workItemPolicies = {
 The route factory refuses at module load to construct a route with no policy entry — so
 the failure is at boot, not at request time.
 
+> **Correction, 2026-09-06 (#21).** The paragraph above is the target architecture, and it
+> remains the goal — this correction narrows only the *status* claim, not the decision. No
+> route factory refusing at module load exists yet: `grep -rn "policy-registry"` finds exactly
+> one importer of `apps/api/src/policy-registry.ts`, `tests/permissions/api-app.ts`, and
+> `apps/api/src/index.ts` — the module that actually constructs every route — never imports
+> it. What #21 delivers is the policy machinery itself (the five policy kinds, `createPolicyRegistry`'s
+> eager validation of the entries it is given, and the coverage/matrix contract in section 2
+> and 3 below) and CI enforcement of it: `tests/permissions/route-coverage.test.ts` and
+> `matrix.test.ts` fail the **build** on an uncovered route today, which is real and is what
+> Throttle 1 gates. It is not the same guarantee as the route factory failing the running
+> server's own **boot** on the same defect — that requires wiring `policyRegistry` into the
+> real request-handling path, which is runtime authorization integration, not yet done, and
+> owned by issue #8.
+
 ### 2. Route coverage test
 
-`tests/permissions/route-coverage.test.ts` enumerates every route in the generated OpenAPI
-document and fails if any lacks a policy. A public route must supply `public: true` **and
+`tests/permissions/route-coverage.test.ts` enumerates every route in **Hono's router**
+(`app.routes`) and fails if any lacks a policy. A public route must supply `public: true` **and
 a `reason` string**, making "this is public" a deliberate, reviewable act rather than an
 absence.
+
+> **Correction, 2026-09-06 (#7).** This section originally said "the generated OpenAPI
+> document". Reading kaneo's real source settled it the other way, and
+> [rbac.md](../rbac.md#route-policies--the-anti-v1-mechanism) already carries the corrected
+> wording: the OpenAPI document cannot see the routes registered inline in `index.ts`, the
+> `/auth/*` mount, the websocket upgrades or `/metrics` — and `createRoute({ security: [] })`
+> edits the document with **zero runtime effect**, so the document and the enforcement can
+> disagree silently. Those are precisely the surfaces v1 leaked through. The decision — every
+> route declares its policy, CI proves it — is unchanged; only the thing being enumerated is.
 
 ### 3. Permission matrix test
 
