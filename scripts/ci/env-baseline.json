@@ -138,7 +138,13 @@
 		"XDG_CONFIG_HOME": ["packages/mcp/src/auth/token-store.ts:27"]
 	},
 	"unattributableReads": {
-		"apps/api/src/storage/s3.ts": "The seven S3 connection variables go through a local env(name) helper backed by process.env[name]. Storage becomes God Mode configuration (docs/05-operations/configuration-reference.md § Storage).",
-		"packages/email/src/smtp-config.ts": "The eight SMTP_* names arrive through the parameter default `env: SmtpEnv = process.env`. SMTP becomes God Mode configuration (§ Notifications)."
+		"apps/api/src/storage/s3.ts": {
+			"reason": "The seven S3 connection variables go through a local env(name) helper backed by process.env[name]. Storage becomes God Mode configuration (docs/05-operations/configuration-reference.md § Storage).",
+			"reads": 1
+		},
+		"packages/email/src/smtp-config.ts": {
+			"reason": "The eight SMTP_* names arrive through the parameter default `env: SmtpEnv = process.env`. SMTP becomes God Mode configuration (§ Notifications).",
+			"reads": 2
+		}
 	}
 }

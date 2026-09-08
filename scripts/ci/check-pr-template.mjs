@@ -347,7 +347,6 @@ async function main() {
             ),
           );
         }
-        continue;
       }
     }
   }

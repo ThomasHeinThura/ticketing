@@ -35,6 +35,12 @@ import path from "node:path";
 import { readConfigurationReference } from "./lib/configuration-reference.mjs";
 import { findEnvReads, viteBuiltIns } from "./lib/env-reads.mjs";
 import {
+  addedKeys,
+  addedWithinKeys,
+  BaselineHistoryUnavailableError,
+  readBaselineAtMergeBase,
+} from "./lib/git-baseline.mjs";
+import {
   codeFilesUnder,
   finish,
   readText,
@@ -44,6 +50,13 @@ import {
 } from "./lib/repo.mjs";
 
 const NAME = "check:env";
+
+const BASELINE_RELATIVE_PATH = "scripts/ci/env-baseline.json";
+/** Baseline sections the ratchet guards, with a human label for the message. */
+const RATCHET_SECTIONS = [
+  ["unmigratedNames", "an unregistered environment name"],
+  ["unattributableReads", "an unattributable environment read"],
+];
 const baselinePath = path.join(repoRoot, "scripts/ci/env-baseline.json");
 
 /**
@@ -161,9 +174,19 @@ async function main() {
     }
     const unattributableReads = {};
     for (const file of Object.keys(baseline.unattributableReads ?? {}).sort()) {
-      if (observedUnattributable.has(file)) {
-        unattributableReads[file] = baseline.unattributableReads[file];
-      }
+      if (!observedUnattributable.has(file)) continue;
+      // F10: record HOW MANY reads the file was baselined with. A bare reason string
+      // blanket-exempted the file, so a new computed read added beside the inherited
+      // one passed silently — in two files that handle S3 and SMTP credentials.
+      const existing = baseline.unattributableReads[file];
+      const reason =
+        typeof existing === "object" && existing !== null
+          ? existing.reason
+          : existing;
+      unattributableReads[file] = {
+        reason,
+        reads: observedUnattributable.get(file).length,
+      };
     }
     const next = { ...baseline, unmigratedNames, unattributableReads };
     await fs.writeFile(baselinePath, `${JSON.stringify(next, null, "\t")}\n`);
@@ -174,8 +197,36 @@ async function main() {
     return;
   }
 
+  // F10: a baselined NAME is exempt only in the FILES the baseline records it in, not
+  // repo-wide. `COOKIE_DOMAIN` inherited at apps/api/src/auth.ts does not license a
+  // second read of it somewhere else.
+  const exemptFilesByName = new Map(
+    Object.entries(baseline.unmigratedNames ?? {}).map(([name, locations]) => [
+      name,
+      new Set(
+        (Array.isArray(locations) ? locations : []).map(
+          (location) => String(location).split(":")[0],
+        ),
+      ),
+    ]),
+  );
+
   for (const [name, locations] of [...observedNames].sort()) {
-    if (name in (baseline.unmigratedNames ?? {})) {
+    const exemptFiles = exemptFilesByName.get(name);
+    if (exemptFiles) {
+      const unexpected = locations.filter(
+        (location) => !exemptFiles.has(String(location).split(":")[0]),
+      );
+      if (unexpected.length === 0) continue;
+      failures.push(
+        violation(
+          unexpected.join("\n  "),
+          `\`${name}\` is baselined as inherited debt, but only in ` +
+            `${[...exemptFiles].join(", ")}. A baselined name is NOT exempt repo-wide — ` +
+            "a new read of it elsewhere is new debt. Add it to " +
+            "docs/05-operations/configuration-reference.md, or use runtime configuration.",
+        ),
+      );
       continue;
     }
     const compose = reference.notReadByApplication.get(name);
@@ -185,8 +236,35 @@ async function main() {
     failures.push(violation(locations.join("\n  "), why));
   }
 
+  // F10: a baselined FILE was blanket-exempt, so any NEW computed read added to
+  // apps/api/src/storage/s3.ts or packages/email/src/smtp-config.ts — both of which
+  // handle credentials — passed silently. The baseline now records how many reads it
+  // was seeded with per file, and a file that grows past its recorded count fails.
+  const allowedCounts = new Map(
+    Object.entries(baseline.unattributableReads ?? {}).map(([file, value]) => [
+      file,
+      typeof value === "object" && value !== null && "reads" in value
+        ? Number(value.reads)
+        : Number.POSITIVE_INFINITY,
+    ]),
+  );
+
   for (const [file, reads] of [...observedUnattributable].sort()) {
-    if (file in (baseline.unattributableReads ?? {})) {
+    if (allowedCounts.has(file)) {
+      const allowed = allowedCounts.get(file);
+      if (reads.length <= allowed) continue;
+      const detail = reads
+        .map((read) => `line ${read.line} (${read.kind}): ${read.snippet}`)
+        .join("\n      ");
+      failures.push(
+        violation(
+          file,
+          `${reads.length} unattributable environment read(s), but the baseline records ` +
+            `${allowed}. This file carries INHERITED debt; it is not a licence to add ` +
+            "more. Read a literal name, or route the read through a central configuration " +
+            `module.\n      ${detail}`,
+        ),
+      );
       continue;
     }
     const detail = reads
@@ -200,6 +278,50 @@ async function main() {
           `Read a literal name, or route the read through a central configuration module.\n      ${detail}`,
       ),
     );
+  }
+
+  // ── F3: the shrink-only ratchet, compared against history ───────────────────
+  // This baseline is documented as only ever shrinking, but nothing compared it
+  // against its own past, so it was not a ratchet. A change that added a violation AND
+  // appended the matching baseline line moved both sides of the comparison together and
+  // went green while printing a number the file says must only fall. Reproduced before
+  // this fix. The only thing that catches it is the baseline's content at the merge
+  // base, which the current change cannot rewrite. Same helper semantics as
+  // tests/permissions/git-baseline.ts, including its refusal to guess.
+  try {
+    const { base, previous } = readBaselineAtMergeBase(BASELINE_RELATIVE_PATH);
+    if (previous) {
+      for (const [section, label] of RATCHET_SECTIONS) {
+        for (const key of addedKeys(baseline[section], previous[section])) {
+          failures.push(
+            violation(
+              `${BASELINE_RELATIVE_PATH} (${section})`,
+              `\`${key}\` was ADDED to the baseline relative to the merge base ` +
+                `${base.sha.slice(0, 9)} (${base.ref}). This list only ever shrinks: ` +
+                `${label} is inherited debt, and appending to it is how a new violation ` +
+                "ships green. Fix the violation, or take the change to Thomas as a " +
+                "deliberate, recorded exception.",
+            ),
+          );
+        }
+        for (const { key, added } of addedWithinKeys(
+          baseline[section],
+          previous[section],
+        )) {
+          failures.push(
+            violation(
+              `${BASELINE_RELATIVE_PATH} (${section}.${key})`,
+              `${added.length} new entr(y/ies) under \`${key}\` relative to the merge ` +
+                `base — ${added.join(", ")}. Growth inside an existing key is still ` +
+                "growth.",
+            ),
+          );
+        }
+      }
+    }
+  } catch (error) {
+    if (!(error instanceof BaselineHistoryUnavailableError)) throw error;
+    failures.push(violation(BASELINE_RELATIVE_PATH, error.message));
   }
 
   const staleNames = Object.keys(baseline.unmigratedNames ?? {}).filter(

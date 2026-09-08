@@ -29,6 +29,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
+  addedKeys,
+  addedWithinKeys,
+  BaselineHistoryUnavailableError,
+  readBaselineAtMergeBase,
+} from "./lib/git-baseline.mjs";
+import {
   codeFilesUnder,
   finish,
   readText,
@@ -38,6 +44,9 @@ import {
 } from "./lib/repo.mjs";
 
 const NAME = "check:vocabulary";
+
+const BASELINE_RELATIVE_PATH = "scripts/ci/vocabulary-baseline.json";
+const RATCHET_SECTIONS = [["unregistered", "an unregistered identifier"]];
 const baselinePath = path.join(repoRoot, "scripts/ci/vocabulary-baseline.json");
 
 const classes = [
@@ -134,6 +143,56 @@ async function main() {
         `${stale.length} baselined ${group.identifier} name(s) no longer declared — run \`pnpm check:vocabulary --prune\`.`,
       );
     }
+  }
+
+  // ── F3: the shrink-only ratchet, compared against history ───────────────────
+  // Documented as only ever shrinking, but nothing compared it against its own past.
+  // A new `pgTable("rev19_probe_growth")` plus one hand-added baseline entry in the
+  // same diff went green while printing "13 inherited identifier(s) … This number must
+  // only fall" — up from 12. Reproduced before this fix. The baseline's content at the
+  // merge base is the only reference the current change cannot rewrite.
+  try {
+    const { base, previous } = readBaselineAtMergeBase(BASELINE_RELATIVE_PATH);
+    if (previous) {
+      for (const [section, label] of RATCHET_SECTIONS) {
+        const now = baseline[section] ?? {};
+        const before = previous[section] ?? {};
+        // `unregistered` nests one level: kind -> name -> locations.
+        for (const kind of new Set([
+          ...Object.keys(now),
+          ...Object.keys(before),
+        ])) {
+          for (const key of addedKeys(now[kind], before[kind])) {
+            failures.push(
+              violation(
+                `${BASELINE_RELATIVE_PATH} (${section}.${kind})`,
+                `\`${key}\` was ADDED to the baseline relative to the merge base ` +
+                  `${base.sha.slice(0, 9)} (${base.ref}). This list only ever shrinks: ` +
+                  `${label} is inherited debt, and appending to it is how a new ` +
+                  "violation ships green. Name the identifier in its authority document " +
+                  "instead (AGENTS.md do-not 11).",
+              ),
+            );
+          }
+          for (const { key, added } of addedWithinKeys(
+            now[kind],
+            before[kind],
+          )) {
+            failures.push(
+              violation(
+                `${BASELINE_RELATIVE_PATH} (${section}.${kind}.${key})`,
+                `${added.length} new location(s) under \`${key}\` relative to the ` +
+                  `merge base — ${added.join(", ")}. Growth inside an existing key is ` +
+                  "still growth.",
+              ),
+            );
+          }
+        }
+      }
+    }
+  } catch (error) {
+    if (!(error instanceof BaselineHistoryUnavailableError)) throw error;
+    failures.push(violation(BASELINE_RELATIVE_PATH, error.message));
   }
 
   if (prune) {
