@@ -201,22 +201,22 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
-        - name: pnpm audit
-          # ci-cd.md: high or critical fails. GREEN — and green by fixing the graph, not by
-          # narrowing the question. The inherited advisories this comment used to call
-          # permanent (js-yaml via @commitlint/cli, nanoid via apps__web>postcss) are closed
-          # by the pins in pnpm-workspace.yaml, which this branch DOES own. `pnpm audit`
-          # reports no known vulnerabilities at EVERY severity, not only at high.
-          #
-          # Nothing is suppressed to get there: no --prod narrowing, no
-          # --audit-level=critical, no continue-on-error, no .npmrc, no .pnpmfile.cjs, no
-          # auditConfig/ignoreGhsas anywhere in the repository. Any of those would turn a
-          # true statement into a green tick, which is the opposite of the point.
-          #
-          # Read pnpm-workspace.yaml for what is pinned and why. Note what this gate CANNOT
-          # see: removing a version FLOOR is invisible to it, because a floor sits exactly
-          # where there is no advisory. `check:overrides` in the registers job guards the
-          # override source itself for that reason.
+      - name: pnpm audit
+        # ci-cd.md: high or critical fails. GREEN — and green by fixing the graph, not by
+        # narrowing the question. The inherited advisories this comment used to call
+        # permanent (js-yaml via @commitlint/cli, nanoid via apps__web>postcss) are closed
+        # by the pins in pnpm-workspace.yaml, which this branch DOES own. `pnpm audit`
+        # reports no known vulnerabilities at EVERY severity, not only at high.
+        #
+        # Nothing is suppressed to get there: no --prod narrowing, no
+        # --audit-level=critical, no continue-on-error, no .npmrc, no .pnpmfile.cjs, no
+        # auditConfig/ignoreGhsas anywhere in the repository. Any of those would turn a
+        # true statement into a green tick, which is the opposite of the point.
+        #
+        # Read pnpm-workspace.yaml for what is pinned and why. Note what this gate CANNOT
+        # see: removing a version FLOOR is invisible to it, because a floor sits exactly
+        # where there is no advisory. `check:overrides` in the registers job guards the
+        # override source itself for that reason.
         run: pnpm audit --audit-level=high
 
   secret-scan:
