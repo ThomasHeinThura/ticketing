@@ -1,3 +1,4 @@
+import { HTTPException } from "hono/http-exception";
 import {
   apiRouter,
   type BaseVariables,
@@ -5,19 +6,37 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { checkWorkspaceName } from "../utils/check-workspace-name";
+import {
+  requireSession,
+  requireWorkspaceCreationAllowed,
+} from "../utils/require-session";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
+import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import createWorkspaceCtrl, {
+  WorkspaceSlugTakenError,
+} from "./controllers/create-workspace";
+import deleteWorkspaceCtrl from "./controllers/delete-workspace";
 import getUserWorkspacesCtrl from "./controllers/get-user-workspaces";
 import getWorkspaceDetailCtrl from "./controllers/get-workspace-detail";
 import getWorkspaceInvitationsCtrl from "./controllers/get-workspace-invitations";
 import getWorkspaceMembersCtrl from "./controllers/get-workspace-members";
+import updateWorkspaceCtrl from "./controllers/update-workspace";
 import {
+  deletedWorkspaceSchema,
   workspaceDetailSchema,
   workspaceInvitationListSchema,
   workspaceMemberListSchema,
+  workspaceSchema,
   workspaceSummaryListSchema,
 } from "./response";
-import { workspaceIdParam } from "./schema";
+import {
+  createWorkspaceBody,
+  updateWorkspaceBody,
+  workspaceIdParam,
+} from "./schema";
 
 const listWorkspacesRoute = createRoute({
   method: "get",
@@ -96,7 +115,116 @@ const getWorkspaceInvitationsRoute = createRoute({
   },
 });
 
-const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
+// ── S4: the native workspace write routes ────────────────────────────────
+// Issue #6, retrofit plan §3 (S4 row). Additive: the `organization()` plugin
+// stays mounted and every client still writes through it until S3/S8a
+// repoint them, so these ship dark.
+//
+// All three require a real session (`requireSession`) rather than accepting
+// an API key — see that middleware for R10 and why this preserves rather
+// than widens the inherited reachability.
+
+const createWorkspaceRoute = createRoute({
+  method: "post",
+  operationId: "createWorkspace",
+  path: "/",
+  tags: ["Workspaces"],
+  summary: "Create a workspace",
+  description:
+    "Create a workspace, its owner membership, its default roles and its default team in a single transaction. Native replacement for authClient.organization.create().",
+  middleware: [requireSession, requireWorkspaceCreationAllowed] as const,
+  request: {
+    body: {
+      required: true,
+      content: { "application/json": { schema: createWorkspaceBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The created workspace", workspaceSchema),
+    400: errorResponse("Invalid body, or the name was rejected"),
+    401: errorResponse("No session — API keys may not create workspaces"),
+    403: errorResponse("Workspace creation is disabled on this instance"),
+    409: errorResponse("The requested slug is already taken"),
+  },
+});
+
+const updateWorkspaceRoute = createRoute({
+  method: "patch",
+  operationId: "updateWorkspace",
+  path: "/{workspaceId}",
+  tags: ["Workspaces"],
+  summary: "Update a workspace",
+  description:
+    "Update a workspace's name, slug, logo or description. Native replacement for authClient.organization.update().",
+  middleware: [
+    requireSession,
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    // The INHERITED capability key, which is what the seeded `workspace_role`
+    // rows actually carry. Re-keying these to the TaskDesk `workspace:*`
+    // vocabulary is #7's capability migration (retrofit plan §3.1 item 1),
+    // not this lane's to invent — and choosing a different key here would
+    // silently change who may update a workspace.
+    requireWorkspacePermission({ organization: ["update"] }),
+  ] as const,
+  request: {
+    params: workspaceIdParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateWorkspaceBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The updated workspace", workspaceSchema),
+    400: errorResponse("Invalid body, or the name was rejected"),
+    401: errorResponse("No session — API keys may not update workspaces"),
+    403: errorResponse(
+      "No workspace access, or missing organization:update permission",
+    ),
+    404: errorResponse("Workspace not found"),
+    409: errorResponse("The requested slug is already taken"),
+  },
+});
+
+const deleteWorkspaceRoute = createRoute({
+  method: "delete",
+  operationId: "deleteWorkspace",
+  path: "/{workspaceId}",
+  tags: ["Workspaces"],
+  summary: "Delete a workspace",
+  description:
+    "Delete a workspace and everything cascading off it. Native replacement for authClient.organization.delete().",
+  middleware: [
+    requireSession,
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspacePermission({ organization: ["delete"] }),
+  ] as const,
+  request: { params: workspaceIdParam },
+  responses: {
+    200: jsonResponse("The deleted workspace's id", deletedWorkspaceSchema),
+    401: errorResponse("No session — API keys may not delete workspaces"),
+    403: errorResponse(
+      "No workspace access, or missing organization:delete permission",
+    ),
+    404: errorResponse("Workspace not found"),
+  },
+});
+
+/**
+ * `checkWorkspaceName` is the security control on the name, moved off
+ * `beforeCreateOrganization` unchanged. It runs before anything is written.
+ */
+function assertWorkspaceNameAllowed(name: string) {
+  const check = checkWorkspaceName(name);
+  if (!check.ok) {
+    throw new HTTPException(400, { message: check.reason });
+  }
+}
+
+const workspace = apiRouter<
+  BaseVariables & { workspaceId: string; sessionId: string }
+>()
   .openapi(listWorkspacesRoute, async (c) =>
     c.json(await getUserWorkspacesCtrl(c.get("userId")), 200),
   )
@@ -108,6 +236,63 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
   )
   .openapi(getWorkspaceInvitationsRoute, async (c) =>
     c.json(await getWorkspaceInvitationsCtrl(c.get("workspaceId")), 200),
-  );
+  )
+  .openapi(createWorkspaceRoute, async (c) => {
+    const body = c.req.valid("json");
+    assertWorkspaceNameAllowed(body.name);
+
+    try {
+      const created = await createWorkspaceCtrl({
+        name: body.name.trim(),
+        slug: body.slug,
+        logo: body.logo,
+        description: body.description,
+        ownerId: c.get("userId"),
+        sessionId: c.get("sessionId"),
+      });
+      return c.json(created, 200);
+    } catch (error) {
+      if (error instanceof WorkspaceSlugTakenError) {
+        throw new HTTPException(409, {
+          message: "That workspace slug is already taken",
+        });
+      }
+      throw error;
+    }
+  })
+  .openapi(updateWorkspaceRoute, async (c) => {
+    const body = c.req.valid("json");
+    if (body.name !== undefined) {
+      assertWorkspaceNameAllowed(body.name);
+    }
+
+    try {
+      const updated = await updateWorkspaceCtrl(c.get("workspaceId"), {
+        ...body,
+        name: body.name?.trim(),
+      });
+      if (!updated) {
+        throw new HTTPException(404, { message: "Workspace not found" });
+      }
+      return c.json(updated, 200);
+    } catch (error) {
+      if (error instanceof WorkspaceSlugTakenError) {
+        throw new HTTPException(409, {
+          message: "That workspace slug is already taken",
+        });
+      }
+      throw error;
+    }
+  })
+  .openapi(deleteWorkspaceRoute, async (c) => {
+    const deleted = await deleteWorkspaceCtrl(
+      c.get("workspaceId"),
+      c.get("sessionId"),
+    );
+    if (!deleted) {
+      throw new HTTPException(404, { message: "Workspace not found" });
+    }
+    return c.json(deleted, 200);
+  });
 
 export default workspace;
