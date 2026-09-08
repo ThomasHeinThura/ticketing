@@ -4,8 +4,6 @@ import db from "../database";
 
 const INSTANCE_ID = randomUUID();
 
-export const SEAT_RECONCILIATION_LEASE = "seat-reconciliation";
-
 const DEFAULT_LEASE_MS = 15 * 60 * 1000;
 
 export async function withJobLease<T>(
