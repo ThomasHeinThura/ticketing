@@ -1,0 +1,26 @@
+/*
+ * Primitive tokens — raw values with no theme meaning (design-tokens.md#two-layers).
+ * Copied verbatim from kaneo's apps/web/src/index.css :root block at extraction.
+ * The font stack and the radius primitive are theme-invariant (same in light and
+ * dark), which is why they are filed here rather than in theme.css alongside the
+ * semantic (per-theme) assignments.
+ */
+:root {
+  --font-sans:
+    "Geist Variable",
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono:
+    "Geist Mono Variable",
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace;
+  --radius: 0.625rem;
+}
