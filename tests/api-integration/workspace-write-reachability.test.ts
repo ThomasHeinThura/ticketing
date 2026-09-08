@@ -10,12 +10,22 @@
  * too — so a native create/update/delete would become API-key reachable for
  * the FIRST time, silently, as a side effect of moving the route.
  *
- * These routes therefore require a session. That is not a route-policy
- * decision being invented here — the durable policy declaration belongs to
- * #7's registry (retrofit plan §3.1 item 3, and nothing is declared) — it is
- * the inherited reachability being PRESERVED rather than widened by accident.
- * Effects 7 and 8 also need a session row to mutate, so a sessionless create
- * could not satisfy the NINE-effect contract in any case.
+ * These routes therefore require a session, via `requireSessionOnly()`
+ * (`apps/api/src/utils/require-session-only.ts`, #65) — the SAME control the
+ * S2 native reads use, not a second implementation of it. Both a policy
+ * declaration (`sessionOnly: true`, `apps/api/src/workspace/policy.ts`) and
+ * this runtime enforcement exist; the declaration alone would be inert
+ * metadata (nothing wires `policyRegistry` into `apps/api/src/index.ts` yet
+ * — issue #8's), so the assertions below are against the runtime, not the
+ * registry. Effects 7 and 8 also need a session row to mutate, so a
+ * sessionless create could not satisfy the NINE-effect contract in any case.
+ *
+ * An earlier version of this file asserted `401` for an API-key call, back
+ * when these routes ran a bespoke `requireSession` that only checked for
+ * `session?.id` and could not distinguish "no credential" from "the wrong
+ * kind of credential". Consolidating onto `requireSessionOnly()` means these
+ * routes now give the same `403 session_required` the S2 reads give for the
+ * same case — asserted below, not the stale `401`.
  */
 import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
@@ -87,20 +97,23 @@ describe("S4 native writes are session-only (A2-P22)", () => {
       headers: keyHeaders,
       body: JSON.stringify({ name: "By Key" }),
     });
-    expect(create.status).toBe(401);
+    expect(create.status).toBe(403);
+    expect(await create.text()).toContain("session_required");
 
     const update = await app.request(`/api/workspace/${id}`, {
       method: "PATCH",
       headers: keyHeaders,
       body: JSON.stringify({ name: "By Key" }),
     });
-    expect(update.status).toBe(401);
+    expect(update.status).toBe(403);
+    expect(await update.text()).toContain("session_required");
 
     const remove = await app.request(`/api/workspace/${id}`, {
       method: "DELETE",
       headers: { "x-api-key": apiKey },
     });
-    expect(remove.status).toBe(401);
+    expect(remove.status).toBe(403);
+    expect(await remove.text()).toContain("session_required");
 
     const rows = await db.select().from(schema.workspaceTable);
     expect(rows).toHaveLength(1);
