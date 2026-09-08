@@ -11,7 +11,7 @@
  * happens to be declared.
  */
 
-import type { Capability } from "./capabilities";
+import type { Capability } from "./capabilities.js";
 
 /** What a capability check is evaluated against. */
 export const SCOPES = [

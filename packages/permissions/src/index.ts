@@ -20,7 +20,7 @@ export {
   type PluginListBaseline,
   type PluginListResult,
   type PluginVerdict,
-} from "./better-auth-plugins";
+} from "./better-auth-plugins.js";
 export {
   CAPABILITIES,
   CAPABILITY_GROUPS,
@@ -38,7 +38,7 @@ export {
   isInstanceCapability,
   isWorkspaceTierCapability,
   tierPermits,
-} from "./capabilities";
+} from "./capabilities.js";
 export {
   AUTHORITY_GRANTING,
   type ElevatedAction,
@@ -49,7 +49,7 @@ export {
   isInstanceRoute,
   renderElevatedActionsMarkdown,
   sessionOnlyRoutes,
-} from "./elevated";
+} from "./elevated.js";
 export {
   authorityFor,
   type CapabilityExpansionOptions,
@@ -80,7 +80,7 @@ export {
   workItemScopeFromRow,
   workspaceScopeFromRequest,
   workspaceScopeFromRow,
-} from "./evaluator";
+} from "./evaluator.js";
 export {
   type CapabilitySource,
   CREDENTIAL_KINDS,
@@ -97,7 +97,7 @@ export {
   type ScopeTarget,
   type Side,
   type UnknownCapabilityHandler,
-} from "./identity";
+} from "./identity.js";
 /**
  * kaneo's inherited better-auth access control, re-exported unchanged so the consumers that
  * still read it keep building while #6 removes the `organization` plugin. New code uses the
@@ -115,7 +115,7 @@ export {
   owner,
   statement,
   viewer,
-} from "./legacy-better-auth-access-control";
+} from "./legacy-better-auth-access-control.js";
 export {
   BODY_PREDICATES,
   type BodyPredicate,
@@ -156,7 +156,7 @@ export {
   type ScopeSource,
   type SelfPolicy,
   type SelfTargetBranch,
-} from "./policy";
+} from "./policy.js";
 export {
   capabilitiesReferencedBy,
   createPolicyRegistry,
@@ -165,7 +165,7 @@ export {
   type PolicySource,
   type RegistryEntry,
   validatePolicy,
-} from "./registry";
+} from "./registry.js";
 export {
   assertRoleComposition,
   BUILT_IN_ROLE_KEYS,
@@ -179,7 +179,7 @@ export {
   type RoleScope,
   roleCompositionProblems,
   roleScopeTier,
-} from "./roles";
+} from "./roles.js";
 export {
   type CollectedRoute,
   type CoverageBaseline,
@@ -194,4 +194,4 @@ export {
   isMiddlewareEntry,
   ROUTE_SURFACES,
   type RouteSurface,
-} from "./route-coverage";
+} from "./route-coverage.js";

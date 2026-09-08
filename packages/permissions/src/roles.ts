@@ -23,7 +23,7 @@ import {
   type CapabilityTier,
   isCapability,
   tierPermits,
-} from "./capabilities";
+} from "./capabilities.js";
 
 /** The scope a role may be attached at. `organisation` exists for exactly one system role: `customer`. */
 export const ROLE_SCOPES = [

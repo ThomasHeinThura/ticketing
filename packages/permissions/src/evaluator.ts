@@ -16,7 +16,7 @@ import {
   capabilitiesInGroup,
   isCapability,
   tierPermits,
-} from "./capabilities";
+} from "./capabilities.js";
 import {
   type CapabilitySource,
   isKeyCredential,
@@ -26,7 +26,7 @@ import {
   type RoleGrant,
   type ScopeTarget,
   type UnknownCapabilityHandler,
-} from "./identity";
+} from "./identity.js";
 import {
   type CapabilityPolicy,
   isCapabilityPolicy,
@@ -37,8 +37,8 @@ import {
   type Policy,
   type Scope,
   type ScopeSource,
-} from "./policy";
-import { type RoleScope, roleScopeTier } from "./roles";
+} from "./policy.js";
+import { type RoleScope, roleScopeTier } from "./roles.js";
 
 /* ------------------------------------------------------------------ *
  * Capability expansion

@@ -11,8 +11,12 @@
  * so `packages/permissions` stays a pure package with no framework dependency.
  */
 
-import { isDelegatedPolicy, normaliseRoutePath, type RouteKey } from "./policy";
-import type { PolicyRegistry } from "./registry";
+import {
+  isDelegatedPolicy,
+  normaliseRoutePath,
+  type RouteKey,
+} from "./policy.js";
+import type { PolicyRegistry } from "./registry.js";
 
 /** The shape Hono exposes as `app.routes`. Structural — no import of hono here. */
 export type HonoRouterEntry = {

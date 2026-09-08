@@ -11,7 +11,7 @@
  * the constraint 'true'`, naming the constraint that was lost.
  */
 
-import type { Policy } from "./policy";
+import type { Policy } from "./policy.js";
 
 type Assert<T extends true> = T;
 type Accepts<T> = [T] extends [Policy] ? true : false;
