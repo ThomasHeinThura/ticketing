@@ -60,12 +60,30 @@ export function stripComments(markdown) {
  * instruction comment, a bold field label with nothing after it, or a horizontal rule is
  * the template, not a filled-in section.
  */
+/**
+ * Characters that occupy no visual space but are not whitespace to `String.trim()`.
+ * A section whose only content is one of these renders BLANK on GitHub and used to pass
+ * the non-empty test (F13): U+200B ZERO WIDTH SPACE, U+200C/D the joiners, U+2060 WORD
+ * JOINER, U+FEFF ZERO WIDTH NO-BREAK SPACE, U+00AD SOFT HYPHEN, U+180E MONGOLIAN VOWEL
+ * SEPARATOR, plus the whole Cf (format) category, which covers the bidi controls.
+ *
+ * Applied ONLY when testing emptiness. Visible body content is never mutated by this —
+ * the caller keeps the original text for its error messages.
+ */
+const INVISIBLE = /[\u200B-\u200D\u2060\uFEFF\u00AD\u180E\p{Cf}]/gu;
+
+/** True when `text` contains nothing a human would see. */
+export function isBlank(text) {
+  return contentOf(text) === "";
+}
+
 export function contentOf(markdown) {
   return stripComments(markdown)
     .split("\n")
     .filter((line) => !/^\s*\*\*[^*]+:\*\*\s*$/.test(line))
     .filter((line) => !/^\s*-{3,}\s*$/.test(line))
     .join("\n")
+    .replace(INVISIBLE, "")
     .trim();
 }
 
@@ -221,6 +239,97 @@ function itemMarkedNotApplicable(line) {
  *   open". `n/a` on that item is exactly that closure. It must be ticked, or the
  *   check fails and says why.
  */
+/**
+ * F2 — PRESENCE, not just state.
+ *
+ * `checklistProblems` judges the checkboxes it finds. It had nothing to say about the
+ * ones it did NOT find, and three probes walked straight through that gap on this very
+ * pull request, each exiting 0:
+ *
+ *   1. delete the line `- [ ] **Independent security review — NOT DONE.**`
+ *   2. replace the whole `## Checklists` body with one prose line marking it n/a
+ *   3. reword the item so REVIEW_ITEM no longer matches, then n/a it
+ *
+ * (1) and (3) are quieter than the `n/a` loophole they replace: CI does not diff the
+ * body, so nobody sees a removal. This asserts the structure instead of trusting it.
+ *
+ * `declared` is the list of `###` headings the pull-request template declares under
+ * `## Checklists` — the template stays the single definition, exactly as `sections()`
+ * already treats it for the H2 list.
+ */
+export function checklistPresenceProblems(raw, declared) {
+  const problems = [];
+
+  const present = new Map();
+  let current = null;
+  for (const line of raw.split("\n")) {
+    const heading = /^###\s+(.*\S)\s*$/.exec(line);
+    if (heading) {
+      current = { name: heading[1], lines: [] };
+      present.set(normaliseHeading(heading[1]), current);
+      continue;
+    }
+    if (current) current.lines.push(line);
+  }
+
+  // 1. Every declared block must still be there. Deleting one is not an answer.
+  for (const heading of declared) {
+    if (!present.has(normaliseHeading(heading))) {
+      problems.push(
+        `"${heading}" is MISSING. Every checklist heading in ` +
+          ".github/pull_request_template.md ships in every pull request — a checklist that " +
+          "does not apply is marked n/a with a reason, never deleted. Deleting it removes " +
+          "the record that it was considered.",
+      );
+    }
+  }
+
+  // 2. At least one block must actually carry checkboxes. Collapsing the whole section
+  //    to prose leaves checklistProblems() with nothing to judge, which is probe (2).
+  const withBoxes = [...present.values()].filter((block) =>
+    block.lines.some((line) => ANY_BOX.test(stripComments(line))),
+  );
+  if (present.size > 0 && withBoxes.length === 0) {
+    problems.push(
+      "no checklist block contains a single checkbox. A `## Checklists` section made " +
+        "entirely of prose has nothing to tick and nothing to check — paste the real " +
+        "checklists from docs/04-engineering/definition-of-done.md.",
+    );
+  }
+
+  // 3. EXACTLY ONE independent-review checkbox must exist. Zero is probe (1) and probe
+  //    (3) — deletion and rewording are indistinguishable from the outside, and both
+  //    must fail with the same message the unticked box gets. More than one is
+  //    ambiguous about which one closes the gate.
+  const reviewItems = [];
+  for (const block of present.values()) {
+    for (const line of block.lines) {
+      const visible = stripComments(line);
+      if (!ANY_BOX.test(visible)) continue;
+      if (REVIEW_ITEM.test(normaliseItem(line)))
+        reviewItems.push({ block: block.name, line: visible.trim() });
+    }
+  }
+
+  if (reviewItems.length === 0) {
+    problems.push(
+      "there is NO independent-review checkbox anywhere in `## Checklists`. The " +
+        "mandatory independent security review is a BLOCKER that a completed review at " +
+        "the required tier closes (CLAUDE.md, third absolute) — it is not closed by " +
+        "deleting the line, and not by rewording it so this check stops recognising it. " +
+        "Restore a checkbox whose text names the independent/security review.",
+    );
+  } else if (reviewItems.length > 1) {
+    problems.push(
+      `there are ${reviewItems.length} independent-review checkboxes ` +
+        `(${reviewItems.map((item) => `"${item.block}"`).join(", ")}). Exactly one must ` +
+        "exist, so which one gates the merge is not a matter of interpretation.",
+    );
+  }
+
+  return problems;
+}
+
 export function checklistProblems(raw) {
   const problems = [];
   const blocks = [];

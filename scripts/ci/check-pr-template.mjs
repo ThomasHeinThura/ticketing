@@ -24,6 +24,7 @@
 import path from "node:path";
 import { addedPaths, changedFiles, changedPaths } from "./lib/diff.mjs";
 import {
+  checklistPresenceProblems,
   checklistProblems,
   field,
   loadBody,
@@ -277,7 +278,40 @@ async function main() {
   }
 
   const checklists = present.get(normaliseHeading("Checklists"));
+  if (!checklists) {
+    // sections() already reports a missing fixed section, but the review blocker
+    // deserves its own sentence rather than being one line in a list of headings.
+    failures.push(
+      violation(
+        "## Checklists",
+        "the section is absent, so the mandatory independent-review checkbox is absent " +
+          "with it. That is not how the review gate is closed.",
+      ),
+    );
+  }
   if (checklists) {
+    // The template declares which ### blocks ship. It stays the single definition,
+    // exactly as it already does for the H2 list above.
+    const declaredChecklists = [];
+    let insideChecklists = false;
+    for (const line of template.split("\n")) {
+      if (/^##\s+Checklists\s*$/.test(line)) {
+        insideChecklists = true;
+        continue;
+      }
+      if (!insideChecklists) continue;
+      if (/^##\s+/.test(line)) break;
+      const heading = /^###\s+(.*\S)\s*$/.exec(line);
+      if (heading) declaredChecklists.push(heading[1]);
+    }
+
+    for (const problem of checklistPresenceProblems(
+      checklists.raw,
+      declaredChecklists,
+    )) {
+      failures.push(violation("## Checklists", problem));
+    }
+
     for (const problem of checklistProblems(checklists.raw)) {
       failures.push(
         violation(

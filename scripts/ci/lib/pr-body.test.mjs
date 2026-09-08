@@ -13,6 +13,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  checklistPresenceProblems,
   checklistProblems,
   contentOf,
   field,
@@ -298,5 +299,116 @@ describe("checklistProblems — applicability is per ITEM, not per block", () =>
     const large = time(160_000);
     // 8x the input must not cost anywhere near 64x the time.
     assert.ok(large < small * 24, `non-linear: ${small}ms -> ${large}ms`);
+  });
+});
+
+describe("checklistPresenceProblems — F2, presence not just state", () => {
+  const declared = ["Any change", "Backend change", "Phase completion"];
+
+  const full = [
+    "### Any change",
+    "- [x] does what the task says",
+    "",
+    "### Backend change",
+    "n/a — no backend change.",
+    "",
+    "### Phase completion",
+    "- [ ] **Independent security review — NOT DONE.**",
+  ].join("\n");
+
+  it("accepts a body carrying every declared heading and exactly one review box", () => {
+    assert.deepEqual(checklistPresenceProblems(full, declared), []);
+  });
+
+  it("FAILS when the independent-review line is deleted (reviewer probe 1)", () => {
+    const raw = full
+      .split("\n")
+      .filter((line) => !/Independent security review/.test(line))
+      .join("\n");
+    const problems = checklistPresenceProblems(raw, declared);
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /NO independent-review checkbox/);
+  });
+
+  it("FAILS when a declared heading is deleted", () => {
+    const raw = full.replace(
+      "### Backend change\nn/a — no backend change.\n",
+      "",
+    );
+    assert.ok(
+      checklistPresenceProblems(raw, declared).some((problem) =>
+        /"Backend change" is MISSING/.test(problem),
+      ),
+    );
+  });
+
+  it("FAILS when the whole section collapses to prose (reviewer probe 2)", () => {
+    const raw = "n/a — every checklist is inapplicable to CI infrastructure.";
+    const problems = checklistPresenceProblems(raw, declared);
+    // every declared heading missing, and no review box
+    assert.equal(problems.filter((p) => /is MISSING/.test(p)).length, 3);
+    assert.ok(problems.some((p) => /NO independent-review checkbox/.test(p)));
+  });
+
+  it("FAILS when headings survive but no block has a checkbox", () => {
+    const raw = [
+      "### Any change",
+      "n/a — prose.",
+      "",
+      "### Backend change",
+      "n/a — prose.",
+      "",
+      "### Phase completion",
+      "n/a — prose.",
+    ].join("\n");
+    const problems = checklistPresenceProblems(raw, declared);
+    assert.ok(
+      problems.some((p) =>
+        /no checklist block contains a single checkbox/.test(p),
+      ),
+    );
+  });
+
+  it("FAILS when the review item is reworded past REVIEW_ITEM (reviewer probe 3)", () => {
+    const raw = full.replace(
+      "- [ ] **Independent security review — NOT DONE.**",
+      "- [ ] Adversarial cross-check by a second agent — n/a: capacity unavailable.",
+    );
+    const problems = checklistPresenceProblems(raw, declared);
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /NO independent-review checkbox/);
+  });
+
+  it("FAILS when two review boxes exist, so which one gates is unambiguous", () => {
+    const raw = `${full}\n- [x] security review done by someone else`;
+    const problems = checklistPresenceProblems(raw, declared);
+    assert.ok(problems.some((p) => /2 independent-review checkboxes/.test(p)));
+  });
+
+  it("does not care about heading dash flavour or case", () => {
+    const raw = full.replace("### Any change", "### ANY CHANGE");
+    assert.deepEqual(checklistPresenceProblems(raw, declared), []);
+  });
+});
+
+describe("contentOf — F13, invisible characters are not content", () => {
+  for (const [name, char] of [
+    ["U+200B zero width space", "\u200B"],
+    ["U+200C zero width non-joiner", "\u200C"],
+    ["U+200D zero width joiner", "\u200D"],
+    ["U+2060 word joiner", "\u2060"],
+    ["U+FEFF zero width no-break space", "\uFEFF"],
+    ["U+00AD soft hyphen", "\u00AD"],
+    ["U+061C arabic letter mark (Cf)", "\u061C"],
+  ]) {
+    it(`treats a section containing only ${name} as empty`, () => {
+      assert.equal(contentOf(char), "");
+      assert.equal(contentOf(`  ${char}${char}\n${char}  `), "");
+    });
+  }
+
+  it("still keeps real content that merely contains an invisible character", () => {
+    assert.equal(contentOf("re\u200Bviewed"), "reviewed");
+    assert.notEqual(contentOf("\u200Bactual text"), "");
   });
 });
