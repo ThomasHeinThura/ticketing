@@ -7,13 +7,11 @@ import {
   jsonResponse,
 } from "../openapi";
 import { checkWorkspaceName } from "../utils/check-workspace-name";
-import {
-  requireSession,
-  requireWorkspaceCreationAllowed,
-} from "../utils/require-session";
+import { requireWorkspaceCreationAllowed } from "../utils/require-session";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
+import { requireWorkspaceRoleAuthority } from "../utils/require-workspace-role-authority";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createWorkspaceCtrl, {
   WorkspaceSlugTakenError,
@@ -120,9 +118,13 @@ const getWorkspaceInvitationsRoute = createRoute({
 // stays mounted and every client still writes through it until S3/S8a
 // repoint them, so these ship dark.
 //
-// All three require a real session (`requireSession`) rather than accepting
-// an API key — see that middleware for R10 and why this preserves rather
-// than widens the inherited reachability.
+// All three require a real browser session (`requireSessionOnly()`, #65)
+// rather than accepting an API key — see that middleware for R10 and why
+// this preserves rather than widens the inherited reachability. The two
+// mutation routes also close a second boundary: an instance admin's
+// TaskDesk-wide authority must not silently substitute for the workspace
+// role their own membership carries (`requireWorkspaceRoleAuthority`) —
+// see that file for why, and for #66's boundary with it.
 
 const createWorkspaceRoute = createRoute({
   method: "post",
@@ -132,7 +134,7 @@ const createWorkspaceRoute = createRoute({
   summary: "Create a workspace",
   description:
     "Create a workspace, its owner membership, its default roles and its default team in a single transaction. Native replacement for authClient.organization.create().",
-  middleware: [requireSession, requireWorkspaceCreationAllowed] as const,
+  middleware: [requireSessionOnly(), requireWorkspaceCreationAllowed] as const,
   request: {
     body: {
       required: true,
@@ -142,8 +144,10 @@ const createWorkspaceRoute = createRoute({
   responses: {
     200: jsonResponse("The created workspace", workspaceSchema),
     400: errorResponse("Invalid body, or the name was rejected"),
-    401: errorResponse("No session — API keys may not create workspaces"),
-    403: errorResponse("Workspace creation is disabled on this instance"),
+    401: errorResponse("No credential at all"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), or workspace creation is disabled on this instance",
+    ),
     409: errorResponse("The requested slug is already taken"),
   },
 });
@@ -157,7 +161,7 @@ const updateWorkspaceRoute = createRoute({
   description:
     "Update a workspace's name, slug, logo or description. Native replacement for authClient.organization.update().",
   middleware: [
-    requireSession,
+    requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
     requireWorkspaceMembership,
     // The INHERITED capability key, which is what the seeded `workspace_role`
@@ -166,6 +170,9 @@ const updateWorkspaceRoute = createRoute({
     // not this lane's to invent — and choosing a different key here would
     // silently change who may update a workspace.
     requireWorkspacePermission({ organization: ["update"] }),
+    // Closes the instance-admin bypass `requireWorkspacePermission` alone
+    // would leave open — see require-workspace-role-authority.ts.
+    requireWorkspaceRoleAuthority({ organization: ["update"] }),
   ] as const,
   request: {
     params: workspaceIdParam,
@@ -177,9 +184,9 @@ const updateWorkspaceRoute = createRoute({
   responses: {
     200: jsonResponse("The updated workspace", workspaceSchema),
     400: errorResponse("Invalid body, or the name was rejected"),
-    401: errorResponse("No session — API keys may not update workspaces"),
+    401: errorResponse("No credential at all"),
     403: errorResponse(
-      "No workspace access, or missing organization:update permission",
+      "An API key or impersonation session (session_required), no workspace access, or missing organization:update permission",
     ),
     404: errorResponse("Workspace not found"),
     409: errorResponse("The requested slug is already taken"),
@@ -195,17 +202,20 @@ const deleteWorkspaceRoute = createRoute({
   description:
     "Delete a workspace and everything cascading off it. Native replacement for authClient.organization.delete().",
   middleware: [
-    requireSession,
+    requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
     requireWorkspaceMembership,
     requireWorkspacePermission({ organization: ["delete"] }),
+    // Closes the instance-admin bypass `requireWorkspacePermission` alone
+    // would leave open — see require-workspace-role-authority.ts.
+    requireWorkspaceRoleAuthority({ organization: ["delete"] }),
   ] as const,
   request: { params: workspaceIdParam },
   responses: {
     200: jsonResponse("The deleted workspace's id", deletedWorkspaceSchema),
-    401: errorResponse("No session — API keys may not delete workspaces"),
+    401: errorResponse("No credential at all"),
     403: errorResponse(
-      "No workspace access, or missing organization:delete permission",
+      "An API key or impersonation session (session_required), no workspace access, or missing organization:delete permission",
     ),
     404: errorResponse("Workspace not found"),
   },
@@ -222,9 +232,28 @@ function assertWorkspaceNameAllowed(name: string) {
   }
 }
 
-const workspace = apiRouter<
-  BaseVariables & { workspaceId: string; sessionId: string }
->()
+/**
+ * The row id of the session making the call — needed by create (effects 7
+ * and 8 of the create contract) and delete (clearing the caller's own
+ * `active_organization_id`/`active_team_id` if they pointed at the deleted
+ * workspace). Read directly from `c.get("session")` rather than through a
+ * second context variable set by a bespoke middleware: `requireSessionOnly()`
+ * has already guaranteed a real, non-impersonated session by the time any of
+ * these handlers run, so this is a defensive re-check, not the control
+ * itself, and there is exactly one implementation of "require a session" on
+ * this router now.
+ */
+function requireSessionId(c: {
+  get(key: "session"): { id?: string } | null;
+}): string {
+  const session = c.get("session");
+  if (!session?.id) {
+    throw new HTTPException(401, { message: "Unauthorized" });
+  }
+  return session.id;
+}
+
+const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(listWorkspacesRoute, async (c) =>
     c.json(await getUserWorkspacesCtrl(c.get("userId")), 200),
   )
@@ -248,7 +277,7 @@ const workspace = apiRouter<
         logo: body.logo,
         description: body.description,
         ownerId: c.get("userId"),
-        sessionId: c.get("sessionId"),
+        sessionId: requireSessionId(c),
       });
       return c.json(created, 200);
     } catch (error) {
@@ -287,7 +316,7 @@ const workspace = apiRouter<
   .openapi(deleteWorkspaceRoute, async (c) => {
     const deleted = await deleteWorkspaceCtrl(
       c.get("workspaceId"),
-      c.get("sessionId"),
+      requireSessionId(c),
     );
     if (!deleted) {
       throw new HTTPException(404, { message: "Workspace not found" });

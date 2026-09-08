@@ -4,30 +4,6 @@ import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 
 /**
- * Require a real user session, not an API key.
- *
- * WHY THIS EXISTS (retrofit plan risk R10). `enableSessionForAPIKeys: false`
- * (`apps/api/src/auth.ts`) means an API key never became a better-auth
- * session, so the inherited `/organization/*` routes were effectively
- * session-only. Every route mounted under the global guard in
- * `apps/api/src/index.ts` authenticates API keys too — so moving workspace
- * creation, update and deletion to native routes would make them API-key
- * reachable for the FIRST time, silently, as a side effect of the move.
- *
- * This preserves the inherited reachability rather than widening it. It is
- * NOT a route-policy declaration: the `sessionOnly` decision and its registry
- * belong to #7 (retrofit plan §3.1 item 3), and nothing is declared here.
- */
-export async function requireSession(c: Context, next: Next) {
-  const session = c.get("session") as { id?: string } | null | undefined;
-  if (!session?.id) {
-    throw new HTTPException(401, { message: "Unauthorized" });
-  }
-  c.set("sessionId", session.id);
-  return next();
-}
-
-/**
  * The `DISABLE_WORKSPACE_CREATION` instance-admin gate, moved off the plugin
  * (`allowUserToCreateOrganization`, `apps/api/src/auth.ts`).
  *
@@ -42,6 +18,17 @@ export async function requireSession(c: Context, next: Next) {
  * The flag is read per request, matching `apps/api/src/utils/get-settings.ts`.
  * The plugin read it once at module load, which meant the constructed auth
  * config could not be re-gated without a restart.
+ *
+ * `requireSessionOnly()` (`apps/api/src/utils/require-session-only.ts`, #65)
+ * is what refuses a non-session credential ahead of this middleware on the
+ * create route now — this file no longer duplicates that check. An earlier
+ * version of this file had its own `requireSession`, which only checked for
+ * `session?.id` and answered a non-session caller with a generic `401`
+ * rather than the `403 session_required` `requireSessionOnly()` gives every
+ * other session-only route. Keeping a second, slightly different
+ * implementation of the same restriction is exactly what the freeze
+ * instructions for this batch forbid, so it was removed in favour of the one
+ * #65 already built and proved.
  */
 export async function requireWorkspaceCreationAllowed(c: Context, next: Next) {
   if (process.env.DISABLE_WORKSPACE_CREATION !== "true") {

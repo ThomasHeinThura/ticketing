@@ -18,6 +18,36 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * 2026-09-08 architecture default is to preserve that inherited restriction, not widen it
  * ahead of a deliberate runtime-policy decision.
  *
+ * **Also covers the three native S4 write routes** (retrofit plan §3, S4 row, issue #6):
+ * creating a workspace, updating one, and deleting one. Same `sessionOnly` reasoning as the
+ * three reads above, enforced the same way — directly, by
+ * `apps/api/src/utils/require-session-only.ts`, wired into all three routes' own middleware.
+ *
+ * **The capability strings below are the TARGET vocabulary, and do not match what actually
+ * gates the request today.** `PATCH`/`DELETE /api/workspace/{workspaceId}` declare
+ * `workspace:update`/`workspace:delete` here because those are the only strings the
+ * `Capability` union admits — but the runtime check on both routes is
+ * `requireWorkspacePermission({ organization: ["update"|"delete"] })`
+ * (`apps/api/src/utils/require-workspace-permission.ts`), which reads the INHERITED
+ * better-auth-shaped `organization` key the seeded `workspace_role` rows actually carry.
+ * Re-keying the seeded rows (and this evaluator) to `workspace:*` is #7's capability
+ * migration (retrofit plan §3.1 item 1) — declaring a different key here would not close
+ * that gap, it would just make the declaration and the enforcement disagree about which
+ * string means "may update this workspace", which is worse than the gap being visible. This
+ * is the same transitional state R4 already describes for the S2 reads; it is recorded here
+ * rather than pretended away, and it closes automatically the day #7 re-keys the evaluator —
+ * nothing here will need to change to benefit from that, only the enforcement will start
+ * checking the string this file already declares.
+ *
+ * **`sessionOnly` and workspace-role authority are two independent boundaries, and this
+ * batch enforces both directly.** `sessionOnly` refuses a non-session credential before the
+ * route's own logic runs at all (`require-session-only.ts`). Separately, on the two mutation
+ * routes only, `apps/api/src/utils/require-workspace-role-authority.ts` refuses an instance
+ * admin whose OWN workspace role does not grant the capability, closing the
+ * `hasWorkspacePermission` instance-admin bypass rather than inheriting it onto a route this
+ * batch adds. See that file for the full reasoning, including why it is not #66 despite
+ * touching the same permission rows.
+ *
  * **`GET /api/workspace/{id}/members` is deliberately absent from this file.** It predates
  * this batch (retrofit plan §3, S2 row: "already exists") and is classified by #8 alongside
  * the rest of the inherited surface — it is listed in
@@ -61,6 +91,50 @@ export const workspacePolicies = {
   // than the compound one does.
   "GET /api/workspace/{workspaceId}/invitations": {
     capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+
+  // Creates a workspace. There is no existing workspace to check authority against — the
+  // caller becomes the owner of a brand-new one, which is exactly the `self` kind's shape:
+  // the resulting rows are keyed to the caller's own identity (the owner `workspace_member`
+  // row, the new workspace itself), not to a capability held in some other scope. This is
+  // also why there is no `workspace:create` entry in the capability list at all (rbac.md):
+  // creation is gated only by authentication plus the instance-wide
+  // `DISABLE_WORKSPACE_CREATION` admin flag (`requireWorkspaceCreationAllowed`), which is a
+  // route-level business rule, not a capability check, and so is not itself a distinct policy
+  // kind.
+  "POST /api/workspace": {
+    authenticated: true,
+    self: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason:
+        "creates a new workspace that the caller becomes the owner of; the route names no person parameter because the caller is the person",
+    },
+    sessionOnly: true,
+  },
+
+  // Updates one workspace's own fields (name, slug, logo, description) by path id.
+  // `workspaceAccess.fromParam` resolves membership and loads the row; the update controller
+  // re-checks existence itself and 404s if it is gone, so the scope id is read from that same
+  // loaded row — `scopeSource: "row"`, same as the read route above.
+  "PATCH /api/workspace/{workspaceId}": {
+    capability: "workspace:update",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+
+  // Deletes one workspace and everything cascading off it, by path id. Same scope shape as
+  // update; a strictly narrower capability (delete implies update in rbac.md's implication
+  // table), and the seeded `workspace_role` rows reflect that narrowing today (only `owner`'s
+  // compiled definition — never a DB row, retrofit plan R5 — carries `organization:delete`).
+  "DELETE /api/workspace/{workspaceId}": {
+    capability: "workspace:delete",
     scope: "workspace",
     scopeSource: "row",
     reach: "required",
