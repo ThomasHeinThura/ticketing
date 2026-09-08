@@ -112,30 +112,111 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
   });
 
   describe("create", () => {
-    // THE ORACLE. All SEVEN observable side effects of one plugin create call,
-    // in one test on purpose: S4 replaces this route and must reproduce ALL of
-    // them. Split apart, S4 could pass the headline assertions while silently
-    // ceasing to write one of the others.
+    // THE ORACLE. NINE observable contract effects of one plugin create call:
+    // EIGHT first-order create effects, plus ONE one-hop durable event
+    // consequence. All in one test on purpose -- S4 replaces this route and
+    // must reproduce ALL of them. Split apart, S4 could pass the headline
+    // assertions while silently ceasing to write one of the others.
     //
-    // The seventh -- the creating session's active_organization_id -- was
-    // unasserted anywhere in this suite until F11. better-auth does it in
-    // crud-org.mjs: `if (ctx.context.session && !ctx.body.keepCurrentActiveOrganization)
-    // await adapter.setActiveOrganization(...)`. An S4 handler that omitted it
-    // would leave a user who has just created their first workspace with no
-    // active workspace and no error -- the exact failure
-    // organization-active-session.test.ts names as its reason to exist, on the
-    // commonest path of all, while the suite stayed green.
+    // The count is DERIVED, not asserted. It was wrong three times (the plan
+    // says four; S1 first found six; the review at 9a1eb4e found a seventh; the
+    // review at f3ce193 found an eighth) because every round read one step
+    // further down the same call stack. It is now closed by TWO independent
+    // methods: reading the whole create path, AND diffing every row count in
+    // all 29 public tables around one successful create. The second method is
+    // what found effect 9 -- it is not in the create stack at all.
     //
-    // Thomas's scope decision: this create-time behaviour is PRESERVED by the
-    // native replacement. It is a contract, not an accident to be dropped.
-    it("create writes all SEVEN side effects: workspace, owner workspace_member, 3 seeded workspace_role rows, workspace.created, a default team, its team_member, and the creating session's active_organization_id", async () => {
+    // SOURCE LEDGER -- FIRST-ORDER (1-8), performed by the create stack, its
+    // configured hooks and its adapter calls:
+    //
+    //   1 workspace row              crud-org.mjs:74  -> adapter.mjs:40
+    //   2 owner workspace_member     crud-org.mjs:100 -> adapter.mjs:185
+    //   3 three workspace_role rows  apps/api/src/auth.ts:395 (afterCreateOrganization),
+    //                                names from DEFAULT_ROLE_NAMES; no owner row (R5)
+    //   4 workspace.created event    apps/api/src/auth.ts:405 -> events/index.ts:35
+    //   5 default team row           crud-org.mjs:126 -> adapter.mjs:383
+    //   6 creator team_member row    crud-org.mjs:127 -> adapter.mjs:515
+    //   7 session active_organization_id
+    //                                crud-org.mjs:142 -> adapter.mjs:294
+    //                                -> internal-adapter.mjs:318 (updateSession)
+    //   8 session active_team_id     crud-org.mjs:143 -> adapter.mjs:463
+    //                                -> internal-adapter.mjs:318 (updateSession)
+    //
+    // Effects 5 and 6 run because `teams.enabled: true` with `teams.defaultTeam`
+    // left unset (apps/api/src/auth.ts:287-291) satisfies crud-org.mjs:106's
+    // `teams.enabled && defaultTeam?.enabled !== false` -- `undefined !== false`
+    // is true.
+    //
+    // THE keepCurrentActiveOrganization GATE. Effects 7 and 8 are BOTH
+    // conditional on the inherited request flag (crud-org.mjs:18, stripped from
+    // the org data at :63) being absent or false, and effect 8 additionally
+    // requires a truthy `teamMember` -- the same object that produced effects 5
+    // and 6, so TaskDesk's configuration guarantees it. This oracle pins the
+    // DEFAULT request: the flag is not sent. `keepCurrentActiveOrganization:
+    // true` is deliberately NOT characterized here.
+    //
+    // Effects 7 and 8 were each unasserted until a review found them (F11, then
+    // F12). An S4 handler that omitted either would leave a user who has just
+    // created their first workspace with no active workspace or no active team,
+    // and no error -- while the whole suite stayed green. Thomas's scope
+    // decision for both: PRESERVED by the native replacement through S4-S7. If
+    // S9 later removes or redesigns team semantics, that is a separate explicit
+    // divergence at S9, not a silent drop during S4.
+    //
+    // SOURCE LEDGER -- ONE-HOP DURABLE CONSEQUENCE (9):
+    //
+    //   9 notification row, type=workspace_created
+    //        apps/api/src/auth.ts:405 publishEvent("workspace.created")
+    //     -> apps/api/src/events/index.ts:35 EventEmitter dispatch
+    //     -> apps/api/src/notification/index.ts:167 subscriber
+    //     -> apps/api/src/notification/controllers/create-notification.ts:48
+    //        db.insert(notificationTable)
+    //
+    // It is unconditional here: auth.ts:405 always passes ownerId, satisfying
+    // the subscriber's `if (data.ownerId)` guard, and createNotification maps
+    // only task_*/due_date_* types to a preference key -- "workspace_created"
+    // maps to null, so there is no preference lookup and no early return.
+    //
+    // TIMING IS NOT CONTRACTUAL. The notification consequence is EVENTUAL. On
+    // the inherited implementation the row currently lands before the response
+    // because additional awaited database round-trips follow workspace.created
+    // (setActiveOrganization and setActiveTeam, crud-org.mjs:142-143), but that
+    // ordering is INCIDENTAL and is not part of the replacement contract.
+    // publishEvent uses EventEmitter dispatch and does not await the async
+    // subscriber's promise, so S4 may legitimately do less work after
+    // publishing. This oracle therefore polls within a bounded wait and must
+    // NOT be read as requiring synchronous persistence before the HTTP
+    // response.
+    //
+    // WHERE THE CONTRACT STOPS. Effect 9 is the one hop from the asserted
+    // event. Everything downstream of the notification row belongs to the
+    // notification subsystem and is EXCLUDED here:
+    //   - notification.created event  (create-notification.ts:63) -- downstream of 9
+    //   - deliverNotification(...)    (create-notification.ts:66) -- delivery concern
+    //   - email / webhook / push delivery                          -- delivery concern
+    // Also excluded, with reasons:
+    //   - session.updated_at bumping: a generic consequence of updating the row
+    //     at all (Drizzle $onUpdate, apps/api/src/database/schema.ts:53-55), not
+    //     a separate create-path decision
+    //   - the secondaryStorage session mirror (internal-adapter.mjs:322-345):
+    //     unreachable -- no secondaryStorage is configured
+    //   - beforeAddMember / afterAddMember / beforeCreateTeam / afterCreateTeam:
+    //     unreachable -- not configured in apps/api/src/auth.ts
+    //   - session databaseHooks: none exist (auth.ts:523 declares only
+    //     user.create.before / user.create.after)
+    //   - reads on the path (getSessionFromCtx, findUserById, listOrganizations,
+    //     findOrganizationBySlug, the role-seed SELECT): no persistence effect
+    //   - rate-limit rows: none -- no `storage` is configured, so the limiter
+    //     uses better-auth's in-memory store
+    // Unclassified create-path writes or events: 0.
+    it("create writes all NINE contract effects -- EIGHT first-order (workspace, owner workspace_member, 3 seeded workspace_role rows, workspace.created, a default team, its team_member, the creating session's active_organization_id and its active_team_id) plus ONE one-hop durable consequence (the workspace_created notification, asserted as eventual)", async () => {
       const { app } = createApp();
       const owner = await signUpUser(app);
 
-      // (7) BEFORE. Capture the creating session as a ROW, not as a user: the
-      // assertion after create has to be about THIS persisted session, so a
-      // future implementation cannot satisfy it by minting a fresh session that
-      // happens to carry the workspace.
+      // (7)+(8) BEFORE. Capture the creating session as a ROW, not as a user:
+      // the assertions after create have to be about THIS persisted session, so
+      // a future implementation cannot satisfy them by minting a fresh session
+      // that happens to carry the workspace or the team.
       const sessionsBefore = await db
         .select()
         .from(schema.sessionTable)
@@ -144,6 +225,7 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
       const creatingSessionId = sessionsBefore[0]?.id;
       if (!creatingSessionId) throw new Error("expected one creating session");
       expect(sessionsBefore[0]?.activeOrganizationId).toBeNull();
+      expect(sessionsBefore[0]?.activeTeamId).toBeNull();
 
       const created = await createWorkspaceViaPlugin(app, owner.cookie, {
         name: "Acme Inc",
@@ -193,14 +275,26 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
       );
       expect(roleRows.some((r) => r.role === "owner")).toBe(false);
 
-      // workspace.created event published -- apps/api/src/auth.ts:405.
-      expect(
-        recordedEvents.some(
-          (e) =>
-            e.type === "workspace.created" &&
-            (e.data as { workspaceId?: string }).workspaceId === workspace.id,
-        ),
-      ).toBe(true);
+      // (4) workspace.created event published -- apps/api/src/auth.ts:405.
+      // The PAYLOAD is the contract at the event-bus boundary, not merely that
+      // an event fired: effect 9 below is produced from these exact fields, and
+      // an S4 handler that published the event with a missing ownerId would
+      // silently stop producing the notification while still "publishing
+      // workspace.created".
+      const createdEvents = recordedEvents.filter(
+        (e) =>
+          e.type === "workspace.created" &&
+          (e.data as { workspaceId?: string }).workspaceId === workspace.id,
+      );
+      expect(createdEvents).toHaveLength(1);
+      const createdPayload = createdEvents[0]?.data as {
+        workspaceId?: string;
+        workspaceName?: string;
+        ownerId?: string;
+      };
+      expect(createdPayload.workspaceId).toBe(workspace.id);
+      expect(createdPayload.workspaceName).toBe("Acme Inc");
+      expect(createdPayload.ownerId).toBe(owner.user.id);
 
       // A DEFAULT TEAM AND ITS team_member, in the SAME request.
       //
@@ -231,10 +325,12 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
       expect(teamMemberRows).toHaveLength(1);
       expect(teamMemberRows[0]?.userId).toBe(owner.user.id);
 
-      // (7) AFTER. The SAME session row, re-read by its captured id: null ->
-      // the new workspace id. Deliberately not "some session has it", not "a
-      // fresh login gets it", not "the response says so" -- the transition on
-      // the one row that already existed before the call.
+      // (7)+(8) AFTER. The SAME session row, re-read by its captured id:
+      // active_organization_id null -> the new workspace id, and
+      // active_team_id null -> the new team id. Deliberately not "some session
+      // has it", not "a fresh login gets it", not "a second session has it",
+      // not "the response says so" -- both transitions on the one row that
+      // already existed before the call.
       const sessionsAfter = await db
         .select()
         .from(schema.sessionTable)
@@ -242,6 +338,36 @@ describe("API integration: organization() plugin characterization (S1, issue #6)
       expect(sessionsAfter).toHaveLength(1);
       expect(sessionsAfter[0]?.id).toBe(creatingSessionId);
       expect(sessionsAfter[0]?.activeOrganizationId).toBe(workspace.id);
+      expect(sessionsAfter[0]?.activeTeamId).toBe(team.id);
+
+      // (9) The ONE-HOP DURABLE CONSEQUENCE, asserted as EVENTUAL. Bounded
+      // poll, not a fixed sleep and not "any notification exists": the
+      // predicate is this create's exact notification identity, so the test
+      // fails deterministically if the row never arrives. See the timing note
+      // in the comment above -- immediate visibility is NOT asserted.
+      const findNotification = () =>
+        db
+          .select()
+          .from(schema.notificationTable)
+          .where(
+            and(
+              eq(schema.notificationTable.userId, owner.user.id),
+              eq(schema.notificationTable.type, "workspace_created"),
+              eq(schema.notificationTable.resourceId, workspace.id),
+            ),
+          );
+      const notificationDeadline = Date.now() + 5_000;
+      let notifications = await findNotification();
+      while (notifications.length === 0 && Date.now() < notificationDeadline) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        notifications = await findNotification();
+      }
+      expect(notifications).toHaveLength(1);
+      expect(notifications[0]?.resourceType).toBe("workspace");
+      expect(
+        (notifications[0]?.eventData as { workspaceName?: string } | null)
+          ?.workspaceName,
+      ).toBe("Acme Inc");
     });
 
     it("rejects a name that fails checkWorkspaceName before any row is written", async () => {
