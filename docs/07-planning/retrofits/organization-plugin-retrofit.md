@@ -5,7 +5,11 @@
 **Status of the decision:** settled — `organization()` IS removed in P0. This document maps the retrofit; it does not re-argue it.
 **Constraint:** #7 (`packages/permissions`, separate lane) replaces **policy + evaluation only** — never persistence, workspace/membership lifecycle, invitations, teams, plugin hooks, or route surface.
 
-_(Document written incrementally as each item was confirmed. All `file:line` references are relative to the lane-a-6 workspace root unless stated.)_
+**Status of S1: COMPLETE.** Merged to `main` via **PR #57** (squash commit `b4aef999238d8848563860449432db588207c2d4`, carrying reviewed head `95dc9280b9011f2d5615be1381d0993360a26368`). The S1 suite is 24 tests across 4 files, green against a real PostgreSQL 18. **Issue #6 is not complete, and S2 does not start automatically.**
+
+**The single most important correction this document has taken.** §3's S1 row originally listed **four** headline create side effects. Executed characterization measured **NINE**. §2.5 is now the authoritative statement of the inherited create contract, and **S4's equivalence obligation is NINE, not four.** Read §2.5 before planning S4.
+
+_(Document written incrementally as each item was confirmed. All `file:line` references are relative to the lane-a-6 workspace root unless stated, except §2.5, which is stated against `main` at `b4aef99`.)_
 
 ---
 
@@ -243,7 +247,7 @@ Exactly one mark per responsibility, per the brief; where a second consideration
 | 4 | Adapter mapping `organizationRole → workspace_role` | `auth.ts:317-322` + `auth.ts:168` + alias `schema.ts:900` | `role` with `capabilities jsonb`, `rank`, `key`, `is_system`, `is_editable`, `version` (`rbac.md:137-152`) | `CONTRACT` | The row *shape* is #7's: capability vocabulary, `capabilities.ts`, rank/implication semantics. TaskDesk's own reader (`require-workspace-permission.ts`) already reads the table without the plugin, so nothing about removal is blocked on this. |
 | 5 | Adapter mapping `team` (`organizationId→workspaceId`) | `auth.ts:323-328` + `auth.ts:169` + alias `schema.ts:896` | `team` (`workspace_id`, `name`, `capacity_days_per_week`, `is_cab`) — `data-model.md:113` | `MISS` | No TaskDesk route, controller, service or test writes `team` today. The plugin is the **only** writer. Removing it leaves teams with no create/update/delete path at all. |
 | 6 | `teamMember` model (not remapped) | `auth.ts:170` + alias `schema.ts:897`, table `schema.ts:194-211` | `team_member` (`team_id`, `person_id`, `allocation_pct`, `is_lead`) — `data-model.md:114` | `MISS` | Same as #5, plus the target keys on `person_id` and carries allocation fields the current table lacks. |
-| 7 | Workspace **creation** | `POST /auth/organization/create` (`auth-openapi.ts:158`), name check `auth.ts:363-368`, role seed + `workspace.created` event `auth.ts:369-411`, gate `auth.ts:346-354` | TaskDesk route `POST /api/workspace` | `ROUTE` | The only workspace-create path in the product. `apps/api/src/workspace/index.ts` currently exposes **one** route (`GET /{workspaceId}/members`) — there is no create/update/delete. This is the largest single piece of work. |
+| 7 | Workspace **creation** | `POST /auth/organization/create` (`auth-openapi.ts:158`), name check `auth.ts:363-368`, role seed + `workspace.created` event `auth.ts:369-411`, gate `auth.ts:346-354` | TaskDesk route `POST /api/workspace` | `ROUTE` | The only workspace-create path in the product. `apps/api/src/workspace/index.ts` currently exposes **one** route (`GET /{workspaceId}/members`) — there is no create/update/delete. This is the largest single piece of work. **Its full behavioural obligation is §2.5's NINE effects, not the four this document originally listed.** |
 | 8 | Workspace **deletion** | `POST /auth/organization/delete` (`auth-openapi.ts:290`) | TaskDesk route `DELETE /api/workspace/{id}` with soft delete (`deleted_at`, `purge_after` — `data-model.md:109`) | `ROUTE` | Today deletion relies on the DB `ON DELETE CASCADE` chains off `workspace.id`. Target adds a 30-day recovery window the current schema has no columns for; the *route* is the P0 obligation, the soft-delete columns are a later phase. |
 | 9 | Workspace **update** (name / logo / metadata / description) | `POST /auth/organization/update` (`auth-openapi.ts:979`) | TaskDesk route `PATCH /api/workspace/{id}` | `ROUTE` | `description` only exists because it is declared as an `additionalFields` entry at `auth.ts:295-302`; removing the plugin removes the only writer of that column. |
 | 10 | Workspace **lookup / list** (`list`, `get-full-organization`, `check-slug`) | `auth-openapi.ts:576`, `:393`, `:132` | TaskDesk routes `GET /api/workspace`, `GET /api/workspace/{id}` | `ROUTE` | `get-full-organization` is a compound read (workspace + members + invitations + teams) that `apps/web/src/hooks/queries/workspace/use-get-full-workspace.ts:19` depends on. Slug uniqueness is enforced in the DB already (`schema.ts:146`), so `check-slug` is trivially reimplementable. |
@@ -262,7 +266,7 @@ Exactly one mark per responsibility, per the brief; where a second consideration
 | 23 | Teams routes (`create-team`, `update-team`, `remove-team`, `list-teams`, `list-user-teams`, `set-active-team`, `add-team-member`, `remove-team-member`, `list-team-members`) | `auth-openapi.ts:239,1122,828,661,733,949,52,870,627` | TaskDesk team routes (`data-model.md:113-114`) | `MISS` | **No TaskDesk equivalent exists, and no frontend caller was found** in the `apps/web/src` sweep — the entire team surface appears to be reachable only through the plugin's HTTP API. If that holds, teams can be dropped with the plugin and rebuilt when the feature is actually specified, rather than reimplemented now. I did not exhaustively verify that no UI reaches teams by raw fetch. |
 | 24 | `session.activeOrganizationId` / `set-active` | write `auth.ts:713-733`; route `auth-openapi.ts:915`; client `workspace-switcher.tsx:59`, `onboarding-flow.tsx:81`, `create-workspace-modal.tsx:62`, `accept.$inviteId.tsx:62`; read `useActiveOrganization()` `use-active-workspace.ts:6-7`; column `schema.ts:61` | active workspace is a **client concern** or a TaskDesk-owned session field; authority never comes off the session (`auth-and-identity.md:352-367`) | `MIG` | Uniquely awkward: the *write* is already TaskDesk code (`auth.ts:717-721` reads `workspaceUserTable` directly) but the *read* is the plugin's client hook. The column was TaskDesk's `active_workspace_id` before the plugin renamed it (`apps/api/src/utils/migrate-session-column.ts:1-10`). Live sessions carry values in it — see §4. |
 | 25 | `allowUserToCreateOrganization` (`DISABLE_WORKSPACE_CREATION`) | `auth.ts:346-354` | authorization check on the TaskDesk create route | `ROUTE` | Behaviour to preserve exactly, including the documented cookie-cache-staleness workaround at `auth.ts:337-345` (which is now moot — the rationale at `auth.ts:337-345` cites `session.cookieCache`, and that cache was disabled in this very branch at `auth.ts:496-503`, so the fresh DB read is belt-and-braces rather than load-bearing). |
-| 26 | `workspace.created` domain event | `auth.ts:405-410` | emitted by the TaskDesk create service | `ROUTE` | Consumers live in `apps/api/src/plugins/registry.ts` (event subscriptions initialised at `:29`). If the plugin is removed without re-emitting, subscribers go quiet with no error. I did not enumerate the subscribers of `workspace.created`. |
+| 26 | `workspace.created` domain event | `auth.ts:405-410` | emitted by the TaskDesk create service | `ROUTE` | Consumers live in `apps/api/src/plugins/registry.ts` (event subscriptions initialised at `:29`). If the plugin is removed without re-emitting, subscribers go quiet with no error. **Now enumerated (this cell previously said it was not):** exactly one subscriber persists anything — `notification/index.ts:167` → the `workspace_created` notification row, which is **effect 9** of §2.5. The payload contract is `workspaceId` / `workspaceName` / `ownerId`. |
 | 27 | Workspace-name validation | `auth.ts:363-368` → `apps/api/src/utils/check-workspace-name.ts` | same validator on the TaskDesk create route | `IMPL` | Validator is TaskDesk code with its own unit test (`tests/api/utils/check-workspace-name.test.ts`). Only the call site moves. |
 | 28 | Client-side types derived from plugin return types | `apps/web/src/types/workspace-user/index.ts:4,9,14,19`; `apps/web/src/types/workspace/index.ts:5` | types generated from the TaskDesk OpenAPI document | `CONTRACT` | These `Awaited<ReturnType<typeof authClient.organization.*>>` aliases are the client's whole public shape for members and invitations. They stop compiling the moment `organizationClient()` is dropped, and their replacement shape is a shared contract. |
 | 29 | OpenAPI publication of the route family | `auth-openapi.ts:13` (1175 lines), registered `index.ts:376` | replaced by the TaskDesk routes' own registrations | `ROUTE` | Deleting `auth-openapi.ts` breaks `tests/api-integration/openapi.test.ts:71`. That test edit is mandatory and is the removal's tripwire. |
@@ -287,6 +291,121 @@ Exactly one mark per responsibility, per the brief; where a second consideration
 
 ---
 
+## 2.5 The inherited create contract, closed at NINE — S1 outcome, authoritative
+
+**This section supersedes the four-effect create description that §3's S1 row originally carried.** It is the equivalence contract S4–S7 must reproduce, and it is stated here rather than only in the test file so that a planner reading the plan cannot miss it.
+
+One **default** `POST /auth/organization/create` call has **NINE observable contract effects**: **EIGHT first-order create effects plus ONE one-hop durable event consequence.**
+
+The count was revised four times before it closed, and the shape of the error is worth keeping: **this plan said four; S1 first measured six; the review at `9a1eb4e` found a seventh; the review at `f3ce193` found an eighth; the whole-database enumeration that review prompted found the ninth.** Every round read one step further down the same call stack. It is now derived by **two independent methods** — reading the whole create path, and diffing every row count across all 29 public tables around one successful create — and the second method is what found effect 9, because effect 9 is not in the create stack at all.
+
+### First-order effects (1–8)
+
+| # | Effect | Note |
+|---|---|---|
+| 1 | one `workspace` row | |
+| 2 | one owner `workspace_member` row | `role = owner` |
+| 3 | three seeded `workspace_role` rows | `viewer`, `member`, `admin` — **no seeded `owner` row.** Owner authority is compiled in; see R5 |
+| 4 | one `workspace.created` event | payload contract below |
+| 5 | one default `team` row | named after the workspace |
+| 6 | one creator `team_member` row | |
+| 7 | the **creating session's** `active_organization_id`: `null → workspace.id` | same session row, column mutation — not a new row |
+| 8 | the **creating session's** `active_team_id`: `null → team.id` | same session row, column mutation — not a new row |
+
+Effects 5 and 6 exist because `teams.enabled: true` with `teams.defaultTeam` left unset (`auth.ts:287-291`) satisfies better-auth's `teams.enabled && defaultTeam?.enabled !== false` — `undefined !== false` is true.
+
+**Effect 4 — the exact payload contract.** `publishEvent("workspace.created", …)` at `auth.ts:405`. The contract at the event-bus boundary is:
+
+```
+workspaceId
+workspaceName
+ownerId
+```
+
+These three fields are the contract **because effect 9 is produced from exactly them**. The inherited call also passes an `ownerEmail` field, which the S1 oracle does **not** assert and which no consumer reads; it is not part of the contract, and S4 should not treat it as one.
+
+**Effects 7 and 8 were each unasserted until a review found them** (F11, then F12). An S4 handler omitting either would leave a user who has just created their first workspace with no active workspace, or no active team, **and no error** — while the whole suite stayed green.
+
+### One-hop durable consequence (9)
+
+`workspace.created` **eventually** causes exactly **one** persisted `notification` row:
+
+```
+type          = workspace_created
+userId        = creator
+resourceId    = workspace.id
+resourceType  = workspace
+eventData.workspaceName = workspace name
+```
+
+Chain: `auth.ts:405` `publishEvent` → `events/index.ts:35` `EventEmitter` dispatch → `notification/index.ts:167` subscriber → `notification/controllers/create-notification.ts:48` `db.insert(notificationTable)`.
+
+It is **unconditional** on this baseline: `auth.ts:405` always passes `ownerId`, satisfying the subscriber's `if (data.ownerId)` guard, and `createNotification` maps only `task_*` / `due_date_*` types to a preference key — `workspace_created` maps to `null`, so there is no preference lookup and no early return.
+
+### Timing is NOT contractual
+
+**Effect 9 is EVENTUALLY CONSISTENT.**
+
+The current inherited implementation often persists the notification **before** the HTTP response returns, but only because further awaited database work — `setActiveOrganization` and `setActiveTeam`, i.e. effects 7 and 8 — happens *after* `workspace.created` is published. **That ordering is INCIDENTAL.** `publishEvent` uses `EventEmitter` dispatch and does not await the async subscriber's promise, so a native S4 handler may legitimately do less work after publishing.
+
+**Synchronous pre-response notification persistence is NOT contractual.** The S1 oracle therefore asserts effect 9 through a **bounded poll** on this create's exact notification identity, and must not be read as requiring immediate visibility. An S4 implementation that persists the row a moment later is conformant; one that never persists it is not.
+
+### Where the contract stops — exclusions and the stopping rule
+
+Recording "nine" alone is not enough, because the enumeration was reopened four separate times before it closed. These are **excluded**, each for a stated reason, so S4 does not restart the debate:
+
+| Excluded | Reason |
+|---|---|
+| `session.updated_at` | generic Drizzle `$onUpdate` consequence of updating the session row at all (`schema.ts:53-55`) — not a separate organization-create decision |
+| `notification.created` | downstream notification-subsystem consequence **of** effect 9 (`create-notification.ts:63`) |
+| `deliverNotification(...)` | downstream delivery behaviour (`create-notification.ts:66`) |
+| email / webhook / push delivery | downstream notification subsystem |
+| `secondaryStorage` session mirror | unreachable — no `secondaryStorage` is configured |
+| unconfigured member / team organization hooks | unreachable — only `beforeCreateOrganization` and `afterCreateOrganization` are configured |
+| session `databaseHooks` | no applicable configured hook — `auth.ts:523` declares only `user` hooks |
+| reads on the create path | not persistence effects |
+| rate-limit database rows | absent — no `storage` is configured, so the limiter is in-memory |
+
+**The stopping rule is: 8 first-order effects + 1 asserted one-hop durable consequence.** No downstream notification internals are part of the organization-create equivalence contract.
+
+**Unclassified create-path writes or events: 0**, at both row and column granularity.
+
+### Scope of the ruling
+
+`N=9` is **the frozen inherited S1 baseline.** It is **not** a standing rule that every future event listener automatically becomes part of the organization-create contract. **Every future listener or consequence requires its own explicit contract decision.**
+
+### Session selection is preserved through S4–S7
+
+- `active_organization_id` create-time selection is **preserved through S4–S7**.
+- `active_team_id` create-time selection is **preserved through S4–S7**.
+
+If **S9** later removes or redesigns team semantics, that is an **explicit S9 divergence**. It must **not** disappear silently during S4.
+
+The characterized request is the **default** create request. `keepCurrentActiveOrganization=true` gates effects 7 and 8 (and only those two — 1–6 and 9 are ungated) and remains **outside** this S1 default-path oracle.
+
+### The executable source ledger — where implementers look next
+
+This section is the prose contract. **The executable ledger is:**
+
+> **`tests/api-integration/organization-plugin-characterization.test.ts`**
+
+Its oracle header and the comment block immediately above the create test carry, in one place:
+
+- the **8 + 1 taxonomy** and why the count is derived rather than asserted
+- the **installed-source path ledger** — the exact `better-auth` `crud-org.mjs` / `adapter.mjs` / `internal-adapter.mjs` call chain behind each of effects 1–8, and the full chain behind effect 9
+- the **timing caveat** (effect 9 is eventual; the pre-response ordering is incidental)
+- the **exclusions** and the stopping rule
+- the **same-session** assertions for effects 7 and 8 — captured as a row *before* the call and re-read by that captured id afterwards, so "some session", "a fresh login", "a second session" and "the response says so" are all excluded by construction
+- the **whole-database enumeration method** (29-table before/after row-count diff) that found effect 9
+
+**Deliberately not duplicated here:** the per-line `crud-org.mjs:NNN` / `adapter.mjs:NNN` addresses. Those are pinned to an installed dependency version and go stale on upgrade; the file-level pointer stays true. Read the ledger in the test file, not a copy of it.
+
+### Evidence
+
+The independent instrument that closed the S1 gate is **PR #57 review [`pullrequestreview-5141105391`](https://github.com/ThomasHeinThura/ticketing/pull/57#pullrequestreview-5141105391)** against reviewed head `95dc928`, verdict **CLEAR FOR THOMAS MERGE DECISION**. See the decision log entry *"2026-09-08 · Organization create baseline closes at N=9"* for the ruling itself, including the `N=9 → N=8 → N=9` history and the fact that the temporary `N=8` ruling was **never implemented**.
+
+---
+
 ## 3. The smallest merge-safe implementation plan
 
 **Shape of the plan:** every step before S10 is **additive**. The plugin stays mounted and serving throughout; new TaskDesk routes are added alongside it, the client is moved over one concern at a time, and only the final step unmounts anything. That keeps every intermediate commit independently revertible and keeps `main` shippable.
@@ -296,10 +415,10 @@ Exactly one mark per responsibility, per the brief; where a second consideration
 | Step | What changes | Preconditions | Verification | Migration? |
 |---|---|---|---|---|
 | **S0 — dead-code sweep** | Delete `apps/api/src/utils/migrate-organizations.ts` (41 lines, no importers). Delete the unused `SEAT_RECONCILIATION_LEASE` export (`apps/api/src/scheduler/leader-lock.ts:7`). | none | Typecheck + full suite green; grep for both symbols returns nothing. | No |
-| **S1 — characterization tests** | Add HTTP-level integration tests that drive the **current** plugin routes and assert on **database state**, not on plugin response shapes: create → 1 `workspace` + 1 `workspace_member(role=owner)` + 3 `workspace_role` rows + `workspace.created` published; invite → `invitation` row with `status=pending`; accept → `workspace_member` row; role create/update/delete → `workspace_role` rows; `has-permission` for owner/admin/member/viewer/custom. | Integration harness boots `createApp` (it already does — `tests/api-integration/*`). | New tests green against the plugin **today**. They are the equivalence oracle for S4–S7: the same assertions must pass afterwards. | No |
+| **S1 — characterization tests** — ✅ **COMPLETE, merged via PR #57** | HTTP-level integration tests that drive the **current** plugin routes and assert on **database state**, not on plugin response shapes. **create → all NINE contract effects of §2.5** (8 first-order + 1 one-hop durable, the last asserted as *eventual* via a bounded poll); invite → `invitation` row with `status=pending`; accept → `workspace_member` row; role create/update/delete → `workspace_role` rows, with the pre-defined-guard and assigned-role guards distinguished by error code; `has-permission` for owner/admin/member/viewer/custom, plus negative cases for an unknown role and for `viewer` with its row deleted. Also pins the two path-keyed guards of R1 and the R2 session behaviour. | Integration harness boots `createApp` (it already does — `tests/api-integration/*`). | **Done:** 24 passed / 4 files / 0 failed / 0 skipped against a real PostgreSQL 18, migrated from scratch. They are the equivalence oracle for S4–S7: the same assertions must pass afterwards. ⚠️ **This row originally listed FOUR create effects. It was wrong — the contract is NINE. See §2.5.** | No |
 | **S2 — native read routes (additive)** | Add `GET /api/workspace` (caller's workspaces), `GET /api/workspace/{id}` (workspace + members + pending invitations), `GET /api/workspace/{id}/invitations`, `GET /api/capabilities` (one call replacing the 16-way `hasPermission` fan-out; implemented over `hasWorkspacePermission`, `apps/api/src/utils/require-workspace-permission.ts:87`). `GET /api/workspace/{id}/members` already exists (`apps/api/src/workspace/index.ts:13-31`). | S1. | New route tests; `tests/api-integration/openapi.test.ts` still green (it only asserts presence, not absence). Compare `/api/capabilities` output against `has-permission` for the same fixtures. | No |
 | **S3 — client reads move off the plugin** | Repoint `get-workspaces`, `use-get-full-workspace`, `use-get-workspace-users`, `use-active-workspace-user`, `use-get-workspace-invites`, `use-workspace-permission` at the S2 routes. Replace `useListOrganizations` / `useActiveOrganization` with TanStack queries. **Redefine `apps/web/src/types/workspace-user/index.ts:4,9,14,19` and `apps/web/src/types/workspace/index.ts:5` against the TaskDesk response shapes** instead of `Awaited<ReturnType<typeof authClient.organization.*>>`. | S2 merged. | `apps/web/src/hooks/use-workspace-permission.test.tsx` rewritten and green; manual pass over workspace switcher, members table, roles UI. | No |
-| **S4 — native workspace writes** | `POST /api/workspace`, `PATCH /api/workspace/{id}`, `DELETE /api/workspace/{id}`. Move over, unchanged: `checkWorkspaceName` (`auth.ts:363-368`), the `DEFAULT_ROLE_NAMES` seed (`auth.ts:376-403`) — **without** the `catch` that swallows failures, `publishEvent("workspace.created")` (`auth.ts:405-410`), and the `DISABLE_WORKSPACE_CREATION` instance-admin gate (`auth.ts:346-354`). Generate + dedupe `slug` (NOT NULL UNIQUE, `schema.ts:146`) and write `description` (`schema.ts:149`). | S1. Client still on plugin writes — this step ships dark. | S1 assertions re-pointed at the new routes and passing identically. Duplicate-slug returns 409, not a 500. | No |
+| **S4 — native workspace writes** | `POST /api/workspace`, `PATCH /api/workspace/{id}`, `DELETE /api/workspace/{id}`. Move over, unchanged: `checkWorkspaceName` (`auth.ts:363-368`), the `DEFAULT_ROLE_NAMES` seed (`auth.ts:376-403`) — **without** the `catch` that swallows failures, `publishEvent("workspace.created")` (`auth.ts:405-410`), and the `DISABLE_WORKSPACE_CREATION` instance-admin gate (`auth.ts:346-354`). Generate + dedupe `slug` (NOT NULL UNIQUE, `schema.ts:146`) and write `description` (`schema.ts:149`). **Must also reproduce effects 5–9 of §2.5**, which the plugin performs and which no code in this step inherits for free: the default `team` row, the creator `team_member` row, the creating session's `active_organization_id` and `active_team_id`, and the `workspace.created` payload shape that effect 9's notification is built from. | S1 — **satisfied, merged.** Client still on plugin writes — this step ships dark. | **Equivalence obligation is NINE, not four** (§2.5). S1 assertions re-pointed at the new routes and passing identically — **all nine effects**, with effect 9 asserted as *eventual*, never as synchronous pre-response persistence. Duplicate-slug returns 409, not a 500. | No |
 | **S5 — native membership writes** | `POST /api/workspace/{id}/members`, `DELETE /api/workspace/{id}/members/{userId}`, `PATCH .../role`, `POST /api/workspace/{id}/leave`. Re-express the plugin's "last owner cannot leave" rule server-side — today the client fakes it with a promote/demote pair (`apps/web/src/hooks/mutations/workspace/use-transfer-workspace-ownership.ts:29,38`), which should collapse into one atomic transfer endpoint. | S4. | S1 assertions re-pointed; new negative tests: last owner cannot leave, cannot self-demote, cannot remove a member of another workspace. | No |
 | **S6a — native invitation writes** | `POST /api/workspace/{id}/invitations` (create + send), `POST /api/invitation/{id}/accept`, `.../reject`, `DELETE /api/invitation/{id}`. **In the same commit**, move the two path-keyed guards off better-auth: the rate-limit rule (`auth.ts:520`) and the cloud anonymous/disposable-email gate (`auth.ts:626-651`) onto the new route's middleware. Keep the existing link format (`auth.ts:414`) and `status` vocabulary (`pending`/`accepted`/`canceled`, `check-registration-allowed.ts:67,158-159`) byte-identical. | S5. | S1 assertions re-pointed. A test that the invite rate limit still fires, and one that a disposable-email invite is still rejected on cloud — neither exists today. Existing `tests/api-integration/registration-invitation.test.ts` must stay green untouched. | No |
 | **S6b — hashed invitation tokens** *(defer out of P0)* | Move to CSPRNG token + SHA-256 hash per `docs/01-architecture/auth-and-identity.md:358-363`. | S6a; an explicit decision to invalidate outstanding links. | — | **Yes** — adds `invitation.token_hash`. Do not bundle with S6a. |
@@ -338,7 +457,13 @@ Ordered by how quietly it fails.
 `apps/api/src/auth.ts:520` (`"/organization/invite-member": { window: 60, max: 5 }`) and `apps/api/src/auth.ts:630` (`if (ctx.path === "/organization/invite-member" && isCloud())`) match a **literal string**. Unmount the plugin, or move invitations to a new path, and both silently become no-ops: no exception, no type error, no failing test. The comment at `auth.ts:626-629` records why they exist — "the 2026-05-28 incident saw ~14k phishing invites sent from throwaway disposable-email signups". There is currently **no test** covering either guard, so the suite will not notice. Mitigation: S6a moves both in the same commit and adds the missing tests first (S1).
 
 ### R2 — Sessions already carrying `activeOrganizationId`
-`session.active_organization_id` (`apps/api/src/database/schema.ts:61`) is populated **only** on sign-in/sign-up (`apps/api/src/auth.ts:713-733`). An existing session never re-acquires it. If the client's `useActiveOrganization()` (`apps/web/src/hooks/queries/workspace/use-active-workspace.ts:6-7`) is removed without an equivalent server read, every already-signed-in user lands with no active workspace and no error — the UI simply renders empty. `use-active-workspace.ts:19-23` falls back to the route param, so users deep-linked into a workspace URL will look fine while users landing on the dashboard root will not — an easy bug to miss in manual testing. Mitigation: S8a keeps the column and the backfill; do not rename it (S8b) until after S10.
+**Corrected by executed characterization — this entry originally said "only on sign-in/sign-up", and that was wrong.** There are **three** distinct behaviours, and conflating them is what hid effects 7 and 8 for two review rounds:
+
+1. **Create selects for the creating session.** `POST /organization/create` sets `active_organization_id` **and** `active_team_id` on the session that made the call (§2.5, effects 7 and 8).
+2. **A later membership insert does not retroactively backfill an existing session** — this is the risk R2 actually names, and it is unchanged.
+3. **A fresh sign-in can select an available workspace** (`apps/api/src/auth.ts:713-733`).
+
+The risk below concerns behaviour 2 only. `session.active_organization_id` (`apps/api/src/database/schema.ts:61`) is not re-acquired by an existing session when a membership is added later. If the client's `useActiveOrganization()` (`apps/web/src/hooks/queries/workspace/use-active-workspace.ts:6-7`) is removed without an equivalent server read, every already-signed-in user lands with no active workspace and no error — the UI simply renders empty. `use-active-workspace.ts:19-23` falls back to the route param, so users deep-linked into a workspace URL will look fine while users landing on the dashboard root will not — an easy bug to miss in manual testing. Mitigation: S8a keeps the column and the backfill; do not rename it (S8b) until after S10.
 
 ### R3 — Invitation links already in inboxes
 The emailed link is `${TASKDESK_AGENT_URL}/invitation/accept/${data.id}` (`apps/api/src/auth.ts:414`) — **the invitation row id is the bearer secret**, and both the public lookup (`apps/api/src/index.ts:215-219` → `check-registration-allowed.ts:133-146`) and the accept page (`apps/web/src/routes/invitation/accept.$inviteId.tsx:53`) key on it. Two distinct failure modes:
@@ -362,7 +487,9 @@ Consolidating the UI onto a server endpoint (S2's `/api/capabilities`) will ther
 `afterCreateOrganization` seeds `workspace_role` inside a `try/catch` that **logs and continues** (`apps/api/src/auth.ts:397-403`). Today that hole is papered over by the boot-time backfill (`seed-default-workspace-roles.ts:19`, called at `index.ts:738`) — which only runs at process start. So a workspace can exist for hours where `viewer`/`member`/`admin` have no rows and every non-owner gets 403. S4 should make the seed part of the create **transaction** rather than copying the swallow-and-continue.
 
 ### R7 — `workspace.created` subscribers go quiet
-`publishEvent("workspace.created", ...)` (`apps/api/src/auth.ts:405-410`) is emitted only from the plugin hook. Subscriptions are wired in `apps/api/src/plugins/registry.ts:29`. A native create route that forgets the publish breaks every subscriber with no error anywhere. **I did not enumerate which subscribers listen for `workspace.created`** — that should be checked before S4.
+`publishEvent("workspace.created", ...)` (`apps/api/src/auth.ts:405-410`) is emitted only from the plugin hook. Subscriptions are wired in `apps/api/src/plugins/registry.ts:29`. A native create route that forgets the publish breaks every subscriber with no error anywhere.
+
+**RESOLVED by S1 — the enumeration this entry asked for has been done.** The original text said "I did not enumerate which subscribers listen for `workspace.created` — that should be checked before S4." It has been, by whole-database row-count diff rather than by reading subscriptions, which is what made it trustworthy: **exactly one subscriber persists anything** — `notification/index.ts:167`, which writes the `workspace_created` notification row that is **effect 9** of §2.5. That row is now a contract obligation on S4 in its own right, not merely a subscriber that might go quiet, and it is asserted as *eventual* rather than synchronous. The risk this entry describes is therefore no longer a silent one: an S4 route that forgets the publish fails the S1 oracle.
 
 ### R8 — Columns that only the plugin writes
 - `workspace.description` exists solely because of the `additionalFields` declaration at `auth.ts:295-302`. A replacement update route that omits it makes the field silently read-only.
