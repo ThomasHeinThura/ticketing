@@ -17,6 +17,167 @@ Newest first.
 
 ---
 
+### 2026-09-08 · Organization create baseline closes at N=9
+
+**Decision:** the frozen inherited S1 baseline for one default
+`POST /auth/organization/create` call is **NINE observable contract effects**:
+**eight first-order create effects plus one one-hop durable event consequence.**
+`N=9` is the authoritative ruling and is the equivalence obligation S4–S7 inherit.
+
+#### The nine effects
+
+**First-order (1–8)** — performed by the create stack, its configured hooks and its
+adapter calls:
+
+| # | Effect |
+|---|---|
+| 1 | one `workspace` row |
+| 2 | one owner `workspace_member` row |
+| 3 | three seeded `workspace_role` rows — `viewer`, `member`, `admin`. **No seeded `owner` row** (owner authority is compiled in; see R5 in the retrofit plan) |
+| 4 | one `workspace.created` event, whose payload contract is `workspaceId`, `workspaceName`, `ownerId` |
+| 5 | one default `team` row |
+| 6 | one creator `team_member` row |
+| 7 | on the **same creating session** row: `active_organization_id` `null → workspace.id` |
+| 8 | on the **same creating session** row: `active_team_id` `null → team.id` |
+
+**One-hop durable consequence (9):** `workspace.created` **eventually** causes exactly one
+persisted `notification` row —
+
+```
+type          = workspace_created
+userId        = creator
+resourceId    = workspace.id
+resourceType  = workspace
+eventData.workspaceName = workspace name
+```
+
+Effect 4's payload is the contract at the event-bus boundary precisely *because* effect 9 is
+produced from those exact fields.
+
+#### Decision history — recorded in sequence, not collapsed
+
+This ruling reversed itself and reversed back. The sequence is recorded because the
+reversals are the reusable lesson, not an embarrassment to be tidied away.
+
+1. **`N=9` was initially selected.**
+2. **A temporary `N=8` ruling then superseded it.** Effect 9 was temporarily *excluded* from
+   the contract and bounded polling was *rejected* as an oracle technique.
+3. **`N=9` was explicitly re-ratified**, after the bounded-eventual design and the
+   strengthened `workspace.created` payload were reconsidered — and the re-ratification
+   happened **before** the implementation represented by `95dc928`.
+4. **`95dc928` implements the final `N=9` ruling.**
+5. **The temporary `N=8` ruling was NEVER implemented.** No commit, on any branch, ever
+   encoded an eight-effect create contract.
+
+**Why the sequence is preserved verbatim:** a reader who finds only "N=9" cannot tell whether
+`N=8` was tried and abandoned or never existed, and the retrofit plan's own history shows the
+count being re-discovered one effect at a time (the plan said four; S1 first measured six; the
+review at `9a1eb4e` found a seventh; the review at `f3ce193` found an eighth; the
+whole-database enumeration that review prompted found the ninth). Collapsing the record is how
+that gets re-litigated at S4.
+
+#### Where the count stops — exclusions, so the enumeration is not restarted
+
+Recording "nine" alone is not enough. These are **not** part of the organization-create
+equivalence contract, each for a stated reason:
+
+| Excluded | Reason |
+|---|---|
+| `session.updated_at` | generic Drizzle `$onUpdate` consequence of updating the session row at all — not a separate organization-create decision |
+| `notification.created` | downstream notification-subsystem consequence *of* effect 9 |
+| `deliverNotification(...)` | downstream delivery behaviour |
+| email / webhook / push delivery | downstream notification subsystem |
+| `secondaryStorage` session mirror | unreachable — no `secondaryStorage` is configured |
+| unconfigured member / team organization hooks | unreachable — not configured |
+| session `databaseHooks` | none applicable — only `user` hooks are declared |
+| reads on the create path | not persistence effects |
+| rate-limit database rows | absent — the limiter is in-memory under the current configuration |
+
+**The stopping rule is: 8 first-order effects + 1 asserted one-hop durable consequence.** No
+downstream notification internals are part of the organization-create equivalence contract.
+
+#### Timing is not contractual
+
+**Effect 9 is EVENTUALLY CONSISTENT.** The current inherited implementation often persists the
+notification *before* the HTTP response returns, but only because further awaited database work
+(`setActiveOrganization`, `setActiveTeam` — effects 7 and 8) happens after `workspace.created`
+is published. **That ordering is INCIDENTAL.** `publishEvent` does not await its subscriber, so
+a native S4 handler may legitimately do less work after publishing.
+
+**Synchronous pre-response notification persistence is NOT contractual.** The S1 oracle
+therefore uses **bounded polling** on effect 9's exact notification identity rather than
+asserting immediate visibility. An S4 implementation that persists the row a second later is
+conformant; one that never persists it is not.
+
+#### Scope of the ruling
+
+`N=9` is **the frozen inherited S1 baseline**. It is **not** a standing rule that every future
+event listener automatically becomes part of the organization-create contract. Every future
+listener or consequence requires its own explicit contract decision.
+
+#### Session selection is preserved, not silently dropped
+
+- `active_organization_id` create-time selection is **preserved through S4–S7**.
+- `active_team_id` create-time selection is **preserved through S4–S7**.
+
+If S9 later removes or redesigns team semantics, that is an **explicit S9 divergence**. It must
+**not** disappear silently during S4.
+
+The characterized request is the **default** create request. `keepCurrentActiveOrganization=true`
+gates effects 7 and 8 and remains **outside** this S1 default-path oracle.
+
+#### Evidence — not a new decision
+
+The independent instrument that closed the S1 gate:
+
+- **PR #57 independent review `pullrequestreview-5141105391`** —
+  <https://github.com/ThomasHeinThura/ticketing/pull/57#pullrequestreview-5141105391>
+- **Reviewed exact code head:** `95dc9280b9011f2d5615be1381d0993360a26368`
+- **Verdict:** CLEAR FOR THOMAS MERGE DECISION
+
+This is **evidence for the ruling above, not itself a decision.** PR #57 merged to `main` as
+`b4aef999238d8848563860449432db588207c2d4`.
+
+**S1 is complete. Issue #6 is not.** A merged oracle is not permission to start S2, and S4 is
+blocked until this reconciliation lands.
+
+**Alternatives:** leaving the count at `N=8` and excluding the notification. Rejected — the
+row is durable, is caused unconditionally by an asserted event, and an S4 handler that stopped
+producing it would break a real user-visible behaviour with the whole suite green. Asserting
+effect 9 synchronously before the HTTP response. Rejected — that would pin an ordering the
+inherited implementation only produces by accident, and would fail a conformant S4.
+
+**Decided by:** Thomas, 2026-09-08.
+
+---
+
+### 2026-09-08 · A dispatch that reverses a live contract decision must say so — the `SUPERSEDES` convention
+
+**Decision:** when a new dispatch reverses or materially changes an earlier **live** contract
+decision, the dispatch **must begin** with an explicit marker equivalent to:
+
+```
+SUPERSEDES PRIOR CONTRACT DECISION:
+<the decision being replaced>
+```
+
+**Why:** today's `N=9 → N=8 → N=9` sequence demonstrated that an unlabelled reversal makes the
+dispatch chain ambiguous **even when the final coding agent ultimately executes the correct
+latest instruction.** The code came out right; the record did not. Reconstructing which ruling
+was live at which moment then costs more than the marker would have, and the cost lands on
+whoever has to certify the result rather than on whoever wrote the reversal.
+
+The marker is cheap, is verifiable in a diff, and makes an unlabelled reversal a visible defect
+rather than an invisible one.
+
+**Scope:** this convention applies to future **material architecture/contract reversals**. It
+is not required for ordinary refinement, clarification, or additive scope.
+
+**Alternatives:** relying on chronology alone (the later dispatch simply wins). Rejected — that
+is exactly what happened here, and it left three plausible readings of the same history.
+
+**Decided by:** Thomas, 2026-09-08.
+
 ### 2026-09-06 · Model allocation — the orchestrator may be Opus, every spawned agent is Sonnet
 
 **Decision:** the **top-level orchestrator may remain Opus**. **Every** spawned agent —
