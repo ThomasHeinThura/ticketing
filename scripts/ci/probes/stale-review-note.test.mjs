@@ -422,11 +422,19 @@ describe("GPT-F5 — the binding is over LANDED COMMITS, not the net tree", () =
     assert.ok(atH5.output.includes(h4.slice(0, 9)), atH5.output);
   });
 
-  it("attributes a merge's own contribution, and does not miss what it carried", () => {
-    // A merge is enumerated together with the commits it brought in, so each landed
-    // change is attributed exactly once. Built with a side branch whose commit touches a
-    // security path: the side commit must be reported, and a clean merge contributes
-    // nothing of its own.
+  it("attributes a conflict-free merge conservatively, and does not miss what it carried", () => {
+    // A merge is enumerated together with the commits it brought in, so nothing a merge
+    // carried can hide behind it. Built with a side branch whose commit touches a
+    // security path: the side commit must be reported, and the merge is charged the
+    // union of its per-parent diffs.
+    //
+    // GPT-F6 changed what this probe expects. It used to assert the merge contributed
+    // `[]`, from `diff-tree -c`. That combined diff is intersection-flavoured and can
+    // OMIT a path the merge changed relative to the reviewed parent, which is a bypass
+    // (see the hostile-merge probe below). The union over-attributes instead: this merge
+    // is now charged with the side branch's path as well, even though it only carried
+    // it. That is the deliberate trade — over-attribution costs a fresh delta review,
+    // under-attribution ships unreviewed content.
     const { dir, h1 } = reviewedScenario();
     write(dir, NOTE_PATH, note([h1]));
     const h2 = commit(dir, "docs: the note for H1");
@@ -466,10 +474,11 @@ describe("GPT-F5 — the binding is over LANDED COMMITS, not the net tree", () =
     assert.equal(merge.parents, 2, JSON.stringify(seen));
     assert.deepEqual(
       merge.paths,
-      [],
-      "a conflict-free merge contributes nothing of its own — the combined diff is " +
-        "empty, and double-counting the side branch here would blame the merge for code " +
-        "it only carried.",
+      ["apps/api/src/webhooks/outbound.ts"],
+      "the merge must be charged the UNION of its per-parent diffs. Relative to its " +
+        "first parent this merge does change that file, so an attribution that reported " +
+        "nothing here would be the GPT-F6 shape — and duplicating the side branch's own " +
+        "entry is harmless, because the only consequence is a fresh delta review.",
     );
 
     const run = runChecker(dir, "check-pr-template.mjs", [
@@ -478,5 +487,169 @@ describe("GPT-F5 — the binding is over LANDED COMMITS, not the net tree", () =
     ]);
     assert.equal(run.status, 1, `exited ${run.status}\n${run.output}`);
     assert.match(run.output, /apps\/api\/src\/webhooks\/outbound\.ts/);
+  });
+});
+
+describe("GPT-F6 — merge attribution may not use combined-diff semantics", () => {
+  it("catches a merge whose tree is taken wholesale from an ancestor", () => {
+    // The hostile shape, built with plumbing because no porcelain command produces it:
+    //
+    //   A    f.txt = "old"
+    //   H1   f.txt = "reviewed"        <- the reviewed head, child of A
+    //   M    git commit-tree A^{tree} -p H1 -p A
+    //
+    // M's tree IS A's tree, so for f.txt the merge result equals its SECOND parent. A
+    // combined diff reports only paths that differ from EVERY parent, so it reports
+    // nothing — while the tree that would merge has f.txt back at "old" and the review
+    // of H1 covers content no longer present. `rev-list H1..M` is just M, because A is
+    // an ancestor of H1, so there is no side-branch commit to catch it either.
+    const dir = scratchDir("hostile-merge");
+    initRepo(dir);
+    installCheckers(dir);
+
+    write(dir, "f.txt", "old\n");
+    const a = commit(dir, "A: f.txt = old");
+    setOriginMain(dir, a);
+
+    write(dir, "f.txt", "reviewed\n");
+    const h1 = commit(dir, "H1: f.txt = reviewed");
+
+    const tree = git(dir, ["rev-parse", `${a}^{tree}`]).trim();
+    const m = git(dir, [
+      "commit-tree",
+      tree,
+      "-p",
+      h1,
+      "-p",
+      a,
+      "-m",
+      "M: merge whose tree is A's, so the combined diff is empty",
+    ]).trim();
+    git(dir, ["update-ref", "HEAD", m]);
+
+    // 1. The range is M and nothing else — no side-branch commit can catch this.
+    assert.deepEqual(
+      git(dir, ["rev-list", `${h1}..${m}`])
+        .trim()
+        .split("\n"),
+      [m],
+      "the construction is wrong if anything but M is in the range; the whole point is " +
+        "that there is no other commit to attribute the change to.",
+    );
+    assert.deepEqual(
+      git(dir, ["rev-list", "--parents", "-n", "1", m])
+        .trim()
+        .split(/\s+/)
+        .slice(1),
+      [h1, a],
+      "M's first parent must be H1 and its second A",
+    );
+
+    // 5. The content genuinely differs from the reviewed tree.
+    assert.deepEqual(
+      git(dir, ["diff", "--name-only", h1, m]).trim().split("\n"),
+      ["f.txt"],
+      "if f.txt does not differ from the reviewed head, nothing unreviewed is shipping " +
+        "and this probe proves nothing.",
+    );
+    assert.equal(git(dir, ["show", `${m}:f.txt`]).trim(), "old");
+
+    // 2 + 3. The OLD predicate against the SHIPPED one, in the same repository.
+    // NB: these snippets are template literals, so `\n` inside one becomes a real
+    // newline before node parses it. Use String.fromCharCode(10) — no backslashes.
+    const measured = evaluateInRepo(
+      dir,
+      `import { spawnSync } from "node:child_process";
+       import { commitsBetween } from "./scripts/ci/lib/git-baseline.mjs";
+       import { repoRoot } from "./scripts/ci/lib/repo.mjs";
+       const g = (args) =>
+         spawnSync("git", args, { cwd: repoRoot, encoding: "utf8" })
+           .stdout.split(String.fromCharCode(10)).map((l) => l.trim()).filter(Boolean);
+       console.log(JSON.stringify({
+         combined: g(["diff-tree", "--no-commit-id", "--name-only", "-r", "-c", ${JSON.stringify(m)}]),
+         shipped: commitsBetween(${JSON.stringify(h1)}, ${JSON.stringify(m)}).map((c) => ({
+           sha: c.sha, parents: c.parents.length, paths: c.paths,
+         })),
+       }));`,
+    );
+
+    assert.deepEqual(
+      measured.combined,
+      [],
+      "the probe is vacuous: `diff-tree -c` now reports this path, so the combined-diff " +
+        "predicate would ALSO have caught this shape and the assertion below proves " +
+        `nothing about the fix. Saw: ${JSON.stringify(measured.combined)}`,
+    );
+    assert.deepEqual(
+      measured.shipped,
+      [{ sha: m, parents: 2, paths: ["f.txt"] }],
+      "the shipped attribution must charge the merge with f.txt, from the UNION of its " +
+        "per-parent diffs.",
+    );
+
+    // 3 + 4. The binding itself: RED, naming M and f.txt.
+    const binding = evaluateInRepo(
+      dir,
+      `import { reviewBinding } from "./scripts/ci/lib/security-review-note.mjs";
+       const nl = String.fromCharCode(10);
+       const tick = String.fromCharCode(96);
+       const note = ["# note", "", "**Reviewed head:** " + tick +
+         ${JSON.stringify(h1)} + tick, ""].join(nl);
+       console.log(JSON.stringify(reviewBinding({
+         notePath: ${JSON.stringify(NOTE_PATH)},
+         noteSource: note,
+         head: ${JSON.stringify(m)},
+       })));`,
+    );
+
+    assert.equal(
+      binding.kind,
+      "unbound",
+      `the review of H1 must NOT survive M. Got: ${JSON.stringify(binding)}`,
+    );
+    assert.deepEqual(binding.offending, [m], JSON.stringify(binding));
+    assert.deepEqual(binding.drifted, ["f.txt"], JSON.stringify(binding));
+    assert.ok(
+      binding.reason.includes(m.slice(0, 9)),
+      `the failure must name M (${m.slice(0, 9)}):\n${binding.reason}`,
+    );
+    assert.match(binding.reason, /f\.txt/);
+    assert.match(binding.reason, /\(merge\)/);
+    assert.match(binding.reason, /is STALE/);
+  });
+
+  it("still passes a merge that changes nothing at all", () => {
+    // The other direction: a merge whose tree equals BOTH parents contributes nothing,
+    // and the union of two empty diffs is empty. Without this, the conservative union
+    // could be satisfied by a check that simply charged every merge with everything.
+    const dir = scratchDir("empty-merge");
+    initRepo(dir);
+    installCheckers(dir);
+    write(dir, "f.txt", "same\n");
+    const a = commit(dir, "A");
+    setOriginMain(dir, a);
+    const b = commit(dir, "B: empty commit, same tree");
+
+    const tree = git(dir, ["rev-parse", `${b}^{tree}`]).trim();
+    const m = git(dir, [
+      "commit-tree",
+      tree,
+      "-p",
+      b,
+      "-p",
+      a,
+      "-m",
+      "M: identical to both parents",
+    ]).trim();
+    git(dir, ["update-ref", "HEAD", m]);
+
+    const measured = evaluateInRepo(
+      dir,
+      `import { commitsBetween } from "./scripts/ci/lib/git-baseline.mjs";
+       console.log(JSON.stringify(
+         commitsBetween(${JSON.stringify(b)}, ${JSON.stringify(m)}).map((c) => c.paths),
+       ));`,
+    );
+    assert.deepEqual(measured, [[]]);
   });
 });

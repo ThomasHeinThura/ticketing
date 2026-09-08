@@ -164,9 +164,14 @@ the two endpoint trees identical, so a `git diff <head>..HEAD` comparison saw an
 range and the old review passed with two unreviewed commits landed. **Reverting does not
 restore a clearance** — the reverted diff is still in the branch's history, it is what a
 bisect replays, and a revert can itself be wrong, so a reviewer has to see both. Merges
-are attributed honestly: `git rev-list` enumerates the commits a merge brought in
-individually, and the merge itself is judged on its combined diff — its own conflict
-resolution. One consequence, stated rather than discovered: merging `main` into the branch
+are attributed **conservatively**: `git rev-list` enumerates the commits a merge brought
+in individually, and the merge itself is charged the **union of its per-parent diffs**.
+Not a combined diff — that reports only what differs from *every* parent, so a merge whose
+tree is taken wholesale from an ancestor reports **nothing** while the reviewed content is
+silently replaced (constructible with `git commit-tree`, and constructed as a probe). The
+union can charge a merge with a path a side-branch commit in the same range is also
+charged with; that over-attribution costs a fresh delta review, whereas
+under-attribution ships unreviewed content. One consequence, stated rather than discovered: merging `main` into the branch
 after a review makes the note stale, because the tree the reviewer read is not the tree
 that would merge.
 

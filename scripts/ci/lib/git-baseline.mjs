@@ -294,12 +294,33 @@ export function normaliseSection(section, listField) {
  * attributed exactly its own contribution and nothing is double-counted:
  *
  *   no parents (a root commit) -> `diff-tree --root`
- *   one parent                 -> `diff-tree`, the ordinary case
- *   two or more parents        -> `diff-tree -c`, the COMBINED diff, which is the paths
- *                                 the merge changed relative to *every* parent. That is
- *                                 the merge's own contribution: its conflict resolution.
- *                                 The side branch's own commits are separate entries in
- *                                 this same list, so nothing it carried is missed.
+ *   one parent                 -> `diff-tree <parent> <commit>`
+ *   two or more parents        -> the UNION of `diff-tree <parent> <commit>` over every
+ *                                 parent.
+ *
+ * **GPT-F6 — the merge case used `diff-tree -c`, and that is not safe for this
+ * invariant.** A combined diff reports only the paths that differ from **every** parent,
+ * which is intersection-flavoured: if the merge result equals one parent for a path, that
+ * path is omitted — even when it differs from the reviewed first parent. So a merge whose
+ * tree is taken wholesale from a side branch reports **nothing at all**, and the reviewed
+ * content is silently replaced. Constructed with plumbing and measured:
+ *
+ *   A   f.txt = "old"
+ *   H1  f.txt = "reviewed"     <- the reviewed head, child of A
+ *   M   git commit-tree A^{tree} -p H1 -p A
+ *
+ *       git rev-list H1..M                  ->  M, and only M
+ *       git diff --name-only H1 M           ->  f.txt        (content DID change)
+ *       git show M:f.txt                    ->  "old"        (the review was undone)
+ *       git diff-tree -r -c M               ->  []           <-- the bypass
+ *       union of per-parent diffs           ->  f.txt        <-- what is used now
+ *
+ * The union is **deliberately conservative**. It can attribute to a merge a path that a
+ * side-branch commit in the same range is also charged with, and that over-attribution is
+ * harmless here: the only consequence is that a review goes stale and a fresh delta review
+ * is required. Under-attribution is the direction that ships unreviewed content, so a
+ * predicate that can omit a path is not usable as the security predicate no matter how
+ * precise it is when it works.
  *
  * One consequence worth stating out loud rather than discovering: merging `main` into the
  * branch after a review puts every one of main's new commits into this range, so the note
@@ -327,31 +348,37 @@ export function commitsBetween(from, to) {
     if (shas.length === 0) continue;
     const [sha, ...parents] = shas;
 
-    const args = [
+    const base = [
       "diff-tree",
       "--no-commit-id",
       "--name-only",
       "-r",
       "--no-renames",
     ];
-    if (parents.length === 0) args.push("--root");
-    else if (parents.length > 1) args.push("-c");
-    args.push(sha);
+    // One invocation per parent, unioned — never `-c`. See GPT-F6 above: a combined diff
+    // can omit a path the merge changed relative to the reviewed parent.
+    const invocations =
+      parents.length === 0
+        ? [[...base, "--root", sha]]
+        : parents.map((parent) => [...base, parent, sha]);
 
-    const shown = git(args);
-    if (shown.status !== 0) {
-      throw new BaselineHistoryUnavailableError(
-        `\`git ${args.join(" ")}\` failed: ${shown.stderr.trim()}`,
-      );
+    const paths = [];
+    for (const args of invocations) {
+      const shown = git(args);
+      if (shown.status !== 0) {
+        throw new BaselineHistoryUnavailableError(
+          `\`git ${args.join(" ")}\` failed: ${shown.stderr.trim()}. The review ` +
+            "binding cannot be evaluated on a commit whose paths git will not report, " +
+            'and "could not read it" is not "it changed nothing".',
+        );
+      }
+      for (const line of shown.stdout.split("\n")) {
+        const path = line.trim();
+        if (path !== "" && !paths.includes(path)) paths.push(path);
+      }
     }
-    commits.push({
-      sha,
-      parents,
-      paths: shown.stdout
-        .split("\n")
-        .map((path) => path.trim())
-        .filter((path) => path !== ""),
-    });
+
+    commits.push({ sha, parents, paths });
   }
 
   return commits;

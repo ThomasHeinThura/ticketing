@@ -17,6 +17,57 @@ Newest first.
 
 ---
 
+### 2026-09-08 · A merge is charged the union of its per-parent diffs, never a combined diff
+
+**Supersedes one clause** of
+[The review binding is over landed commits](#2026-09-08--the-review-binding-is-over-landed-commits-and-a-declared-state-is-not-a-token-match),
+below, which said *"the merge is judged on its combined diff — its own conflict
+resolution"*. That clause is **withdrawn**. Everything else in that entry stands.
+
+**Decision:** for the review-binding invariant, a merge commit's contribution is the
+**union of `git diff-tree <parent> <merge>` over every parent**. A combined diff
+(`diff-tree -c`) may **not** be used as the security predicate.
+
+**Why:** a combined diff reports only the paths that differ from *every* parent, which is
+intersection-flavoured. If the merge result equals one parent for a path, that path is
+omitted — even when it differs from the reviewed first parent. Constructed with plumbing
+and measured:
+
+```
+A    f.txt = "old"
+H1   f.txt = "reviewed"          <- the reviewed head, child of A
+M    git commit-tree A^{tree} -p H1 -p A
+
+git rev-list H1..M          ->  M, and only M
+git diff --name-only H1 M   ->  f.txt          (the content DID change)
+git show M:f.txt            ->  "old"          (the review was undone)
+git diff-tree -r -c M       ->  []             <-- the bypass
+union of per-parent diffs   ->  f.txt          <-- the fix
+```
+
+Because A is an ancestor of H1 there is no side-branch commit in the range to catch it
+either: `H1..M` is exactly `{M}`. So the previous attribution would have kept the review of
+H1 valid while shipping a tree that differs from it.
+
+**Alternatives:**
+- *Keep `-c` and add a second check for the first-parent diff.* Rejected as the same
+  answer with more moving parts: the union already includes the first-parent diff, and a
+  predicate assembled from two rules is one refactor away from losing one of them.
+- *Compare the merge's tree to the reviewed tree instead.* Rejected — that is the net-tree
+  comparison GPT-F5 removed, one level down.
+
+**Cost, stated plainly:** the union **over-attributes**. A conflict-free merge is now
+charged with the paths its side branch changed, even though it only carried them, and the
+same path can be charged to two commits in one range. That is accepted deliberately,
+because the only consequence of over-attribution is that a review goes stale and a fresh
+delta review is required, whereas under-attribution ships unreviewed content. A predicate
+that can omit a path is not usable here however precise it is when it works.
+
+**Decided by:** Thomas, 2026-09-08, on finding **GPT-F6** (HIGH, blocking) against
+`b3fd41dbed1bc74cbd666c8b272fb425de5722c8`.
+
+---
+
 ### 2026-09-08 · The review binding is over landed commits, and a declared state is not a token match
 
 **Supersedes two sentences** in
