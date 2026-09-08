@@ -16,9 +16,19 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { describe, it } from "node:test";
+import { after, describe, it } from "node:test";
 import { changedFiles, DiffUnavailableError } from "./diff.mjs";
 import { repoRoot } from "./repo.mjs";
+import {
+  cleanUpScratchRepos,
+  commit,
+  evaluateInRepo,
+  initRepo,
+  installCheckers,
+  scratchDir,
+  setOriginMain,
+  write,
+} from "./scratch-repo.mjs";
 
 /** Run `fn` with GITHUB_BASE_REF set, restoring it afterwards. */
 function withBaseRef(value, fn) {
@@ -33,6 +43,8 @@ function withBaseRef(value, fn) {
     else delete process.env.GITHUB_BASE_REF;
   }
 }
+
+after(cleanUpScratchRepos);
 
 describe("changedFiles — fails closed, never open", () => {
   it("THROWS when the base ref does not resolve", () => {
@@ -88,21 +100,74 @@ describe("changedFiles — fails closed, never open", () => {
     });
   });
 
-  it("an EMPTY diff against an identical ref returns [] without throwing", () => {
-    // HEAD..HEAD is the one legitimate empty case: base resolves, diff is genuinely
-    // empty. It must be distinguishable from the failures above.
-    const previous = process.env.GITHUB_BASE_REF;
-    try {
-      // baseRef() prefixes origin/, so compare a ref that resolves to HEAD itself.
-      const output = execFileSync(
-        "git",
-        ["diff", "--name-status", "--no-renames", "HEAD..HEAD"],
-        { cwd: repoRoot, encoding: "utf8" },
-      );
-      assert.equal(output.trim(), "");
-    } finally {
-      if (previous === undefined) delete process.env.GITHUB_BASE_REF;
-      else process.env.GITHUB_BASE_REF = previous;
-    }
+  /**
+   * D1 — this test used to prove nothing.
+   *
+   * It shelled `git diff --name-status HEAD..HEAD` and asserted git's output was empty,
+   * which is a tautology about git. `changedFiles()` — the function under test, and the
+   * one whose empty return is the whole subject of this file — was never called. It saved
+   * and restored `GITHUB_BASE_REF` around a block that never set it. The test passed
+   * whether or not `changedFiles` worked, and it would have passed if `changedFiles` had
+   * been deleted.
+   *
+   * Found by an independent read of the probe suite for exactly the property named in the
+   * remediation brief: an assertion that cannot fail. It now calls the function, in a
+   * scratch repository where the merge base genuinely equals HEAD, and pairs the empty
+   * case with a NON-empty one — because "returns []" only means something if the same
+   * code path can also return something else.
+   */
+  it("an EMPTY diff returns [] from changedFiles() itself, without throwing", () => {
+    const dir = scratchDir("diff-empty");
+    initRepo(dir);
+    write(dir, "a.txt", "one\n");
+    const base = commit(dir, "base");
+    setOriginMain(dir, base);
+    installCheckers(dir);
+
+    const result = evaluateInRepo(
+      dir,
+      `import { changedFiles, DiffUnavailableError } from "./scripts/ci/lib/diff.mjs";
+       let files = null;
+       let threw = null;
+       try { files = changedFiles(); } catch (error) {
+         threw = error instanceof DiffUnavailableError ? "DiffUnavailableError" : String(error);
+       }
+       console.log(JSON.stringify({ files, threw }));`,
+    );
+
+    assert.equal(
+      result.threw,
+      null,
+      `a resolvable base with no changes must not throw: ${result.threw}`,
+    );
+    assert.deepEqual(
+      result.files,
+      [],
+      `expected the genuine empty case, got ${JSON.stringify(result.files)}`,
+    );
+  });
+
+  it("and the same code path returns the change when there IS one", () => {
+    // The control for the test above. Without it, `[]` is indistinguishable from a
+    // `changedFiles()` that returns `[]` for everything.
+    const dir = scratchDir("diff-nonempty");
+    initRepo(dir);
+    write(dir, "a.txt", "one\n");
+    const base = commit(dir, "base");
+    setOriginMain(dir, base);
+    write(dir, "b.txt", "two\n");
+    commit(dir, "branch");
+    installCheckers(dir);
+
+    const result = evaluateInRepo(
+      dir,
+      `import { changedFiles } from "./scripts/ci/lib/diff.mjs";
+       console.log(JSON.stringify({ files: changedFiles() }));`,
+    );
+
+    assert.ok(
+      result.files.some((change) => change.file === "b.txt"),
+      `expected b.txt in the change set, got ${JSON.stringify(result.files)}`,
+    );
   });
 });

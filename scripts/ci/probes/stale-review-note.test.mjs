@@ -229,7 +229,7 @@ describe("GPT-F2 — the committed note is bound to the code it reviewed", () =>
 
   it("refuses a note whose heads are not in this branch — the post-rebase orphan", () => {
     const { dir } = reviewedScenario();
-    write(dir, NOTE_PATH, note(["0".repeat(39) + "1"]));
+    write(dir, NOTE_PATH, note([`${"0".repeat(39)}1`]));
     commit(dir, "docs: a note naming a head this branch does not contain");
 
     const run = runChecker(dir, "check-pr-template.mjs", [

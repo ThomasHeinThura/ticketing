@@ -21,9 +21,9 @@
  * override set is indistinguishable from "we deleted the protection", so it fails too.
  */
 
-import { readdir } from "node:fs/promises";
 import path from "node:path";
-import { exists, finish, readText, repoRoot, violation } from "./lib/repo.mjs";
+import { finish, readText, repoRoot, violation } from "./lib/repo.mjs";
+import { readWorkspaceManifests } from "./lib/workspace-membership.mjs";
 
 const NAME = "check:overrides";
 
@@ -60,10 +60,19 @@ function workspaceOverrideKeys(text) {
  * next person to trust it gets a floor that was never applied. The inert entry is
  * removed, and this now inspects every workspace manifest so the stated invariant and
  * the inspected surface are the same thing.
+ *
+ * **A5 — "every workspace manifest" was one level of `readdir` over a hardcoded
+ * `["apps", "packages"]`,** under a comment that said "from the pnpm-workspace.yaml
+ * globs". It was not: the workspace declares `packages/**` and `apps/**`, which are
+ * RECURSIVE, so a package nested one directory deeper would have carried an override
+ * source this gate could not see — the same claim-wider-than-its-inspection defect L5
+ * closed one level up. Membership now comes from `lib/workspace-membership.mjs`, which
+ * derives it from the workspace definition and fails closed when that cannot be read.
+ * No package is nested deeper today, so the set is unchanged; the hole is what closed.
  */
 async function nestedOverrideSources() {
   const found = [];
-  for (const relative of await workspaceManifests()) {
+  for (const relative of await readWorkspaceManifests()) {
     if (relative === "package.json") continue; // the root is checked separately
     let manifest;
     try {
@@ -81,27 +90,6 @@ async function nestedOverrideSources() {
     }
   }
   return found;
-}
-
-/** Every workspace package manifest, from the pnpm-workspace.yaml globs. */
-async function workspaceManifests() {
-  const out = ["package.json"];
-  for (const dir of ["apps", "packages"]) {
-    let entries;
-    try {
-      entries = await readdir(path.join(repoRoot, dir), {
-        withFileTypes: true,
-      });
-    } catch {
-      continue;
-    }
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const relative = `${dir}/${entry.name}/package.json`;
-      if (await exists(path.join(repoRoot, relative))) out.push(relative);
-    }
-  }
-  return out;
 }
 
 async function main() {

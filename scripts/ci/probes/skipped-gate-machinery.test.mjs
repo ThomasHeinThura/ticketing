@@ -94,16 +94,42 @@ describe("M3 — scripts/ci test machinery is scanned", () => {
     );
   });
 
-  it("the widened roots actually include scripts/ci", async () => {
-    // Guards the widening itself: narrowing `roots` back collapses this to false.
-    const { readFile } = await import("node:fs/promises");
-    const source = await readFile("scripts/ci/check-skips.mjs", "utf8");
-    const roots = /const roots = \[([^\]]*)\]/.exec(source);
-    assert.ok(roots, "check-skips.mjs no longer declares a `roots` array");
-    assert.match(
-      roots[1],
-      /"scripts\/ci"/,
-      "scripts/ci was removed from the scanned roots, which reopens M3",
+  /**
+   * Guards the widening itself — BEHAVIOURALLY.
+   *
+   * This test used to read `check-skips.mjs`'s source and regex out its `const roots =
+   * [...]` literal. It was an instance of the very class this pull request keeps
+   * closing: an assertion about the checker's TEXT standing in for an assertion about
+   * what the checker DOES. When A5 replaced the literal with membership derived from
+   * pnpm-workspace.yaml, the regex found nothing and the test failed — while the gate it
+   * guards had got strictly stronger. A text assertion cannot tell those two apart.
+   *
+   * So it places a real skipped test in the tree and checks the gate catches it. That
+   * holds however the roots are computed, and it fails if the coverage is ever narrowed.
+   */
+  it("a skipped test anywhere under scripts/ is caught, however roots are computed", () => {
+    const dir = scratchDir("m3-scripts-root");
+    initRepo(dir);
+    installCheckers(dir);
+    // scripts/i18n, NOT scripts/ci: outside the old literal `"scripts/ci"` entirely, so
+    // this case also pins A5's widening from `scripts/ci` to `scripts`.
+    write(
+      dir,
+      "scripts/i18n/extract.test.mjs",
+      `import { it } from "node:test";\n${SKIP}"disabled", () => {});\n`,
     );
+    const result = runChecker(dir, "check-skips.mjs");
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /scripts\/i18n\/extract\.test\.mjs/);
+  });
+
+  it("and scripts/ci itself is still covered — M3's original tree", () => {
+    const dir = repoWithProbe(
+      "scripts-ci-still",
+      `import { it } from "node:test";\n${SKIP}"disabled", () => {});\n`,
+    );
+    const result = runChecker(dir, "check-skips.mjs");
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /scripts\/ci\/probes\/example\.test\.mjs/);
   });
 });

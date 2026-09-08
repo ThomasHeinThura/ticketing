@@ -26,6 +26,35 @@
  * --listFiles` prints every file in the program, after include, exclude, files,
  * references and extends have all been resolved. That is the only authoritative answer,
  * and it costs about a second per config.
+ *
+ * A4 — WHICH CONFIGS, AND WHICH TREES.
+ *
+ * F11 bound the FILE LIST to the compiler and left two literals behind it, and both are
+ * the same defect one level out.
+ *
+ * 1. *The configs.* L4 parsed `-p (\S+)` out of the `typecheck` script's TEXT. Text is
+ *    not an invocation: `--project` in long form is missed, `tsc -b` names none, and —
+ *    the direction that matters — `echo "use -p tsconfig.tests.json" && tsc --noEmit -p
+ *    tsconfig.json` yields a coverage claim about a config the compiler never opens. The
+ *    script is now EXECUTED with `tsc` replaced by a recording shim, so the configs are
+ *    the ones a real run passes to a real compiler, whatever the shell does in between.
+ *    See `lib/tsc-invocations.mjs`, and `probes/orphan-tsconfig-coverage.test.mjs` for
+ *    what the textual predicate accepted.
+ *
+ * 2. *The trees.* `covered` was the literal `["tests/api", "tests/permissions"]` while
+ *    FOUR trees sit under `tests/`. Deriving the list from disk found what the literal
+ *    was hiding: **`tests/api-integration` has 34 TypeScript files and not one of them is
+ *    in any TypeScript program.** That is the identical gap this file was written for —
+ *    the one that let #16 ship a dangling import — sitting in the tree the whole time,
+ *    invisible because the guard's own scope was hand-written.
+ *
+ *    Adding it to `tsconfig.tests.json` produces 359 pre-existing `TS18048`-class errors,
+ *    and two other lanes are adding files to that tree right now, so closing it here
+ *    would be a different pull request wearing this one's clothes. It is declared as an
+ *    EXEMPTION instead: named, reasoned, printed on every run with its current file
+ *    count, and — this is the part the literal could not do — a new uncovered tree is a
+ *    hard failure, and an exemption that has become unnecessary is a hard failure too.
+ *    The gap is now loud rather than absent.
  */
 
 import assert from "node:assert/strict";
@@ -34,9 +63,53 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { repoRoot } from "./repo.mjs";
+import { recordedTscProjects } from "./tsc-invocations.mjs";
 
-/** Test trees that MUST be inside some typecheck program. */
-const covered = ["tests/api", "tests/permissions"];
+/**
+ * Trees under `tests/` that are knowingly OUTSIDE every TypeScript program.
+ *
+ * An entry is a debt, not a dispensation: it is printed on every run, a new uncovered
+ * tree cannot be added without appearing here, and an entry that is no longer needed
+ * fails the guard so it gets deleted rather than lingering as folklore.
+ */
+const EXEMPT = new Map([
+  [
+    "tests/api-integration",
+    "34 files, 0 in any program. Adding the tree to apps/api/tsconfig.tests.json " +
+      "compiles with 359 pre-existing TS18048-class errors (it has never been " +
+      "typechecked), and lanes are actively adding files to it. Closing it is its own " +
+      "pull request; this exemption exists so the gap is reported rather than assumed " +
+      "away, which is exactly what the hardcoded `covered` list did.",
+  ],
+]);
+
+/**
+ * Every test tree on disk that holds TypeScript, minus the declared exemptions.
+ *
+ * Derived, so a tree added tomorrow is covered by this guard tomorrow.
+ */
+async function coveredTrees() {
+  const testsDir = path.join(repoRoot, "tests");
+  const entries = await fs.readdir(testsDir, { withFileTypes: true });
+  const trees = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const relative = `tests/${entry.name}`;
+    const files = await walk(path.join(repoRoot, relative));
+    if (files.length === 0) continue; // e.g. tests/api-contract holds openapi.json
+    trees.push(relative);
+  }
+  assert.ok(
+    trees.length > 0,
+    "no tests/ subtree holds a TypeScript file — did the trees move? An empty derived " +
+      "list would make every assertion below vacuously true.",
+  );
+  return {
+    covered: trees.filter((tree) => !EXEMPT.has(tree)),
+    exempt: trees.filter((tree) => EXEMPT.has(tree)),
+    all: trees,
+  };
+}
 
 const apiDir = path.join(repoRoot, "apps/api");
 const tsc = path.join(apiDir, "node_modules/.bin/tsc");
@@ -65,10 +138,13 @@ async function tsconfigNames() {
       "coverage to. Coverage asserted against a config nobody runs is not coverage.",
   );
 
-  const names = [...script.matchAll(/-p\s+(\S+)/g)].map((match) => match[1]);
+  // A4: RUN the script with `tsc` replaced by a shim that records its argv and exits 0.
+  // Whatever the shell does — `&&`, `;`, a subshell, an `echo` that merely mentions a
+  // config — the recorded invocations are the ones a real compiler would have received.
+  const names = recordedTscProjects(script, apiDir);
   assert.ok(
     names.length > 0,
-    `apps/api's typecheck script invokes no \`-p <tsconfig>\`: ${script}`,
+    `executing apps/api's typecheck script invoked \`tsc\` with no project: ${script}`,
   );
 
   for (const name of names) {
@@ -146,8 +222,9 @@ describe("typecheck coverage of the test trees", () => {
       for (const file of programFiles(name)) union.add(file);
     }
 
+    const trees = await coveredTrees();
     const uncovered = [];
-    for (const tree of covered) {
+    for (const tree of trees.covered) {
       for (const file of await walk(path.join(repoRoot, tree))) {
         if (!union.has(path.resolve(file)))
           uncovered.push(path.relative(repoRoot, file));
@@ -172,7 +249,7 @@ describe("typecheck coverage of the test trees", () => {
       for (const file of programFiles(name)) union.add(file);
     }
 
-    for (const tree of covered) {
+    for (const tree of (await coveredTrees()).covered) {
       const root = path.join(repoRoot, tree);
       const onDisk = await walk(root);
       const inProgram = onDisk.filter((file) => union.has(path.resolve(file)));
@@ -185,6 +262,57 @@ describe("typecheck coverage of the test trees", () => {
       assert.ok(
         onDisk.length > 1,
         `${tree} has ${onDisk.length} file(s) on disk — did the tree move?`,
+      );
+    }
+  });
+
+  it("every test tree is either covered or DECLARED exempt — no third option", async () => {
+    // The literal `covered` list had a third option: a tree nobody had thought about,
+    // silently outside both the programs and the guard. `tests/api-integration` was in
+    // it. Derived membership removes the option entirely.
+    const trees = await coveredTrees();
+    const undeclared = trees.all.filter(
+      (tree) => !trees.covered.includes(tree) && !EXEMPT.has(tree),
+    );
+    assert.deepEqual(
+      undeclared,
+      [],
+      `${undeclared.length} tests/ tree(s) are neither covered nor declared exempt: ` +
+        `${undeclared.join(", ")}. Put the tree in an apps/api tsconfig include, or ` +
+        "declare it in EXEMPT with the reason and what it would take to close it.",
+    );
+
+    for (const [tree, reason] of EXEMPT) {
+      assert.ok(
+        typeof reason === "string" && reason.trim().length > 40,
+        `the exemption for ${tree} has no real reason. An exemption without one is the ` +
+          "hardcoded list again, spelled differently.",
+      );
+    }
+  });
+
+  it("an exemption that is no longer needed FAILS, so it cannot linger", async () => {
+    const names = await tsconfigNames();
+    const union = new Set();
+    for (const name of names) {
+      for (const file of programFiles(name)) union.add(file);
+    }
+
+    for (const tree of EXEMPT.keys()) {
+      const onDisk = await walk(path.join(repoRoot, tree)).catch(() => []);
+      if (onDisk.length === 0) continue; // the tree is gone; the next test reports it
+      const inProgram = onDisk.filter((file) => union.has(path.resolve(file)));
+      // Reported on every run, so the size of the debt is never invisible.
+      console.log(
+        `  note — ${tree}: ${inProgram.length} of ${onDisk.length} file(s) in a tsc ` +
+          "program (DECLARED EXEMPT). A broken import in the remainder cannot fail " +
+          "`pnpm typecheck`.",
+      );
+      assert.notEqual(
+        inProgram.length,
+        onDisk.length,
+        `${tree} is fully covered now, so its EXEMPT entry is stale. Delete the entry — ` +
+          "an exemption for a gap that has closed reads as a gap that is still open.",
       );
     }
   });

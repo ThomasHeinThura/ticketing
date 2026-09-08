@@ -47,7 +47,6 @@ import { verifyWaiver } from "./lib/gate-waiver.mjs";
 import {
   checklistPresenceProblems,
   checklistProblems,
-  contentOf,
   declaredState,
   field,
   loadBody,
@@ -69,10 +68,9 @@ import {
   reviewBinding,
 } from "./lib/security-review-note.mjs";
 import {
-  readRequiredSectionsScope,
+  readTemplateScope,
   TEMPLATE_RELATIVE_PATH,
   TemplateScopeUnavailableError,
-  templatePath,
 } from "./lib/template-scope.mjs";
 
 const NAME = "pr-template";
@@ -153,33 +151,34 @@ async function main() {
     return;
   }
 
-  const template = await readText(templatePath);
-
-  // H1: the required-section list is the UNION of the template at the merge base and the
-  // template at HEAD. Reading it from HEAD alone let a pull request delete a requirement
-  // and satisfy the checker by deleting it — see lib/template-scope.mjs for the four
-  // outcomes and the reproduction. Fails closed rather than guessing.
+  // H1 + A1: the required-section list AND the required checklist-block list are each the
+  // UNION of the template at the merge base and the template at HEAD. Reading either from
+  // HEAD alone let a pull request delete a requirement and satisfy the checker by deleting
+  // it — see lib/template-scope.mjs for the four outcomes and both reproductions. Fails
+  // closed rather than guessing.
   let templateScope;
   try {
-    templateScope = await readRequiredSectionsScope();
+    templateScope = await readTemplateScope();
   } catch (error) {
     if (!(error instanceof TemplateScopeUnavailableError)) throw error;
-    failures.push(violation("required-section scope", error.message));
+    failures.push(violation("template requirement scope", error.message));
     finish({ name: NAME, failures, warnings, ok: "unreachable" });
     return;
   }
-  const required = templateScope.headings;
+  const required = templateScope.sections.headings;
   const present = sections(body);
 
   // Narrowing the template is a governance act, so it is reported on the diff that does
   // it. The sections themselves stay required by the union above; this says WHY, so the
   // failure above does not read like an authoring slip.
-  if (templateScope.removed.length > 0) {
+  if (templateScope.sections.removed.length > 0) {
     failures.push(
       violation(
         TEMPLATE_RELATIVE_PATH,
-        `this diff REMOVES ${templateScope.removed.length} required section(s) from the ` +
-          `template — ${templateScope.removed.map((heading) => `## ${heading}`).join(", ")}. ` +
+        `this diff REMOVES ${templateScope.sections.removed.length} required section(s) ` +
+          `from the template — ${templateScope.sections.removed
+            .map((heading) => `## ${heading}`)
+            .join(", ")}. ` +
           "Those sections remain required on this pull request: a requirement that applied " +
           "at the merge base cannot be deleted by the change being checked against it. " +
           "Removing them from the template is a change to land on main, reviewed on its " +
@@ -552,25 +551,34 @@ async function main() {
       ),
     );
   }
-  if (checklists) {
-    // The template declares which ### blocks ship. It stays the single definition,
-    // exactly as it already does for the H2 list above.
-    const declaredChecklists = [];
-    let insideChecklists = false;
-    for (const line of template.split("\n")) {
-      if (/^##\s+Checklists\s*$/.test(line)) {
-        insideChecklists = true;
-        continue;
-      }
-      if (!insideChecklists) continue;
-      if (/^##\s+/.test(line)) break;
-      const heading = /^###\s+(.*\S)\s*$/.exec(line);
-      if (heading) declaredChecklists.push(heading[1]);
-    }
+  // A1: which ### blocks ship is the UNION across the merge base and HEAD, for the same
+  // reason the H2 list is. This block used to parse the working-tree template inline,
+  // under a comment claiming it stayed "the single definition, exactly as it already does
+  // for the H2 list above" — which H1 had just made false. Deleting `### Backend change`
+  // from the template and the body in one diff dropped "every new or changed route has a
+  // policy entry" and "Opus security review completed and recorded" from the requirements
+  // of the pull request doing the deleting. Reported whether or not `## Checklists`
+  // survived in the body, because the removal is the governance act either way.
+  if (templateScope.checklists.removed.length > 0) {
+    failures.push(
+      violation(
+        TEMPLATE_RELATIVE_PATH,
+        `this diff REMOVES ${templateScope.checklists.removed.length} required checklist ` +
+          `block(s) from the template — ${templateScope.checklists.removed
+            .map((heading) => `### ${heading}`)
+            .join(", ")}. ` +
+          "Those checklists remain required on this pull request. A checklist that does " +
+          "not apply is marked n/a with one line saying why; deleting it removes the " +
+          "record that it was considered, and deleting it from the template in the same " +
+          "diff removes the requirement to consider it at all.",
+      ),
+    );
+  }
 
+  if (checklists) {
     for (const problem of checklistPresenceProblems(
       checklists.raw,
-      declaredChecklists,
+      templateScope.checklists.headings,
     )) {
       failures.push(violation("## Checklists", problem));
     }

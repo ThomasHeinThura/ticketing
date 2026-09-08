@@ -23,6 +23,29 @@
  *
  * Comments are replaced by a single space rather than deleted, so byte offsets stay close
  * and reported line numbers remain meaningful: newlines inside a block comment are kept.
+ *
+ * **A3 — the substitution extent was found by counting raw braces, and that hid a real
+ * disabled test.** The first version located the end of a `${...}` by incrementing on `{`
+ * and decrementing on `}` with no idea which context those characters were in, then
+ * recursed on the slice — dropping `options` on the way, so a nested string was never
+ * blanked. A `}` inside a string, a regex or a comment INSIDE the substitution therefore
+ * closed it early, and the rest of the expression — which really does execute — was read
+ * as inert template text and blanked away. Demonstrated, not theorised:
+ *
+ *   const a = `${ ["}"].map(() => it.skip("real", fn)) }`;
+ *
+ * became `` const a = `${ ["}                                   `; `` and `check:skips`
+ * saw no skipped test. That is a gate bypass in the machinery that proves the other gates
+ * cannot be switched off silently, and an independent read of the probe suite reached the
+ * same input by hand-trace from the other direction.
+ *
+ * So there is no brace counter and no recursion any more. One loop, one explicit context
+ * stack: `${` PUSHES a code context and the matching `}` pops back to template text, while
+ * strings, regexes and comments are consumed by the same loop — so their braces are never
+ * even looked at, let alone counted. `blankStrings` now travels with the state rather than
+ * with a recursive call, which is what makes the two halves of the rule hold at once:
+ * template TEXT and string CONTENTS are data and get blanked; the code inside a
+ * substitution is code and does not, because a call written there executes.
  */
 
 /** Characters after which a `/` starts a regex literal rather than a division. */
@@ -70,21 +93,74 @@ export function stripCodeComments(source, options = {}) {
   const blankStrings = options.blankStrings === true;
   const out = [];
   let i = 0;
-  // Stack of template-literal depths; a `${` inside one pushes an expression context.
-  const templates = [];
+
+  // The context stack. The bottom frame is always code; `${` pushes another code frame on
+  // top of a template frame, and the `}` that balances it pops back. `brace` counts only
+  // the braces seen in THIS code frame, so an unbalanced brace inside a string can no
+  // longer end a substitution — the string branch below has already consumed it.
+  const stack = [{ kind: "code", brace: 0 }];
+  const top = () => stack[stack.length - 1];
+
+  /** Consume a string literal. Its CONTENTS are data; its delimiters and newlines stay. */
+  const readString = (quote) => {
+    out.push(quote);
+    i += 1;
+    while (i < source.length) {
+      if (source[i] === "\\") {
+        out.push(blankStrings ? "  " : `${source[i]}${source[i + 1] ?? ""}`);
+        i += 2;
+        continue;
+      }
+      const terminator = source[i] === quote || source[i] === "\n";
+      out.push(terminator || !blankStrings ? source[i] : " ");
+      if (terminator) {
+        i += 1;
+        return;
+      }
+      i += 1;
+    }
+  };
 
   while (i < source.length) {
+    const frame = top();
+
+    // ── template TEXT ────────────────────────────────────────────────────────────────
+    if (frame.kind === "template") {
+      const char = source[i];
+      if (char === "\\") {
+        out.push(char, source[i + 1] ?? "");
+        i += 2;
+        continue;
+      }
+      if (char === "`") {
+        out.push(char);
+        i += 1;
+        stack.pop();
+        continue;
+      }
+      if (char === "$" && source[i + 1] === "{") {
+        out.push("$", "{");
+        i += 2;
+        stack.push({ kind: "code", brace: 0 });
+        continue;
+      }
+      out.push(blankStrings && char !== "\n" ? " " : char);
+      i += 1;
+      continue;
+    }
+
+    // ── CODE ─────────────────────────────────────────────────────────────────────────
     const char = source[i];
     const next = source[i + 1];
 
-    // ── line comment ──
+    // line comment
     if (char === "/" && next === "/") {
       while (i < source.length && source[i] !== "\n") i += 1;
       out.push(" ");
       continue;
     }
 
-    // ── block comment ── keep newlines so line numbers survive
+    // block comment — keep newlines so line numbers survive
     if (char === "/" && next === "*") {
       i += 2;
       out.push(" ");
@@ -99,68 +175,19 @@ export function stripCodeComments(source, options = {}) {
       continue;
     }
 
-    // ── string literal ──
     if (char === '"' || char === "'") {
-      out.push(char);
-      i += 1;
-      while (i < source.length) {
-        if (source[i] === "\\") {
-          out.push(blankStrings ? "  " : `${source[i]}${source[i + 1] ?? ""}`);
-          i += 2;
-          continue;
-        }
-        const terminator = source[i] === char || source[i] === "\n";
-        out.push(terminator || !blankStrings ? source[i] : " ");
-        if (terminator) {
-          i += 1;
-          break;
-        }
-        i += 1;
-      }
+      readString(char);
       continue;
     }
 
-    // ── template literal ──
     if (char === "`") {
       out.push(char);
       i += 1;
-      templates.push(true);
-      while (i < source.length && templates.length > 0) {
-        if (source[i] === "\\") {
-          out.push(source[i], source[i + 1] ?? "");
-          i += 2;
-          continue;
-        }
-        if (source[i] === "`") {
-          out.push(source[i]);
-          i += 1;
-          templates.pop();
-          continue;
-        }
-        // `${` opens code again: hand control back to the main loop by recursing on the
-        // substitution's text, which keeps nesting correct without a second scanner.
-        if (source[i] === "$" && source[i + 1] === "{") {
-          out.push("$", "{");
-          i += 2;
-          let depth = 1;
-          const start = i;
-          while (i < source.length && depth > 0) {
-            if (source[i] === "{") depth += 1;
-            else if (source[i] === "}") depth -= 1;
-            if (depth > 0) i += 1;
-          }
-          out.push(stripCodeComments(source.slice(start, i)));
-          out.push("}");
-          i += 1;
-          continue;
-        }
-        out.push(blankStrings && source[i] !== "\n" ? " " : source[i]);
-        i += 1;
-      }
+      stack.push({ kind: "template" });
       continue;
     }
 
-    // ── regex literal ──
+    // regex literal, told from division by the previous meaningful character
     if (char === "/" && REGEX_ALLOWED_BEFORE.has(previousMeaningful(out))) {
       out.push(char);
       i += 1;
@@ -180,6 +207,29 @@ export function stripCodeComments(source, options = {}) {
         }
         i += 1;
       }
+      continue;
+    }
+
+    // Brace bookkeeping, and the one place a code frame ends: the `}` that balances the
+    // `${` which opened it. Everything above has already eaten the braces that live
+    // inside strings, regexes and comments, which is the whole of the A3 fix.
+    if (char === "{") {
+      frame.brace += 1;
+      out.push(char);
+      i += 1;
+      continue;
+    }
+    if (char === "}") {
+      if (frame.brace > 0) {
+        frame.brace -= 1;
+      } else if (stack.length > 1) {
+        out.push(char);
+        i += 1;
+        stack.pop();
+        continue;
+      }
+      out.push(char);
+      i += 1;
       continue;
     }
 

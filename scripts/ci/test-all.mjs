@@ -23,6 +23,7 @@ import { spawnSync } from "node:child_process";
 import { readDeclaredGates } from "./lib/ci-cd-gates.mjs";
 import { repoRoot } from "./lib/repo.mjs";
 import {
+  isExecuting,
   readWorkflowGates,
   WorkflowGatesUnavailableError,
 } from "./lib/workflow-gates.mjs";
@@ -259,17 +260,53 @@ function available(command) {
  *   check:pr-template / check:openapi / lint:ci
  *                       ci-cd.md names these by WHAT they check; CI names them by the
  *                       script that checks it. Both are accurate.
+ *   install             ci-cd.md declares the gate with its flag; the scanner records
+ *                       `pnpm <script>` and drops flags, and this one executes inside
+ *                       .github/actions/setup rather than in a workflow file. Found by
+ *                       A2's reverse direction on its first run, which is the direction
+ *                       working: a gate the scanner had never been able to see.
  *
  * Declared here rather than resolved by editing one side until today's strings match. An
  * alias is not an exemption: the gate it points at must still be declared in ci-cd.md AND
- * enabled in the manifest.
+ * enabled in the manifest, and — since A2 — must actually execute.
+ *
+ * Read in both directions. Direction 1 maps an executed command to the gate it satisfies;
+ * direction 2 inverts this map to ask which executed command would satisfy a gate the
+ * manifest calls enabled.
  */
 const WORKFLOW_ALIASES = new Map([
   ["pnpm check:route-policy", "pnpm test:permissions"],
   ["pnpm check:pr-template", "pr-template check"],
   ["pnpm check:openapi", "pnpm test:contract"],
   ["pnpm lint:ci", "pnpm lint"],
+  ["pnpm install", "pnpm install --frozen-lockfile"],
 ]);
+
+/**
+ * A2, the reverse direction: what to look for when a gate's manifest name is not the
+ * `pnpm <script>` the workflow scanner records.
+ *
+ * Every entry NARROWS the reverse check, so every entry names the observation that stands
+ * in for the gate — never a bare exemption. `gitleaks` runs as a third-party action and
+ * `helm lint` as a bare binary, so neither can ever appear as a `pnpm` gate.
+ *
+ * Gates whose only difference is the entry point belong in WORKFLOW_ALIASES instead, whose
+ * inverse this check already consults.
+ */
+const GATE_OBSERVATIONS = new Map([
+  ["gitleaks", ["uses:gitleaks/gitleaks-action"]],
+  ["helm lint + helm template", ["helm"]],
+]);
+
+/** declared gate -> the executed names that alias to it. The inverse of WORKFLOW_ALIASES. */
+function aliasSources() {
+  const inverse = new Map();
+  for (const [executed, declared] of WORKFLOW_ALIASES) {
+    if (!inverse.has(declared)) inverse.set(declared, []);
+    inverse.get(declared).push(executed);
+  }
+  return inverse;
+}
 
 async function reconcile() {
   const declared = await readDeclaredGates();
@@ -310,7 +347,8 @@ async function reconcile() {
     return problems;
   }
 
-  for (const executed of workflow.gates) {
+  // ── Direction 1: what CI executes must be declared and enabled ───────────────────
+  for (const executed of workflow.executed) {
     // test:all is the reconciler; it does not declare itself as one of the gates.
     if (executed === "pnpm test:all") continue;
 
@@ -337,6 +375,56 @@ async function reconcile() {
         `CI EXECUTES "${executed}" (declared as "${declaredAs}") but ` +
           "scripts/ci/test-all.mjs has no ENABLED entry for it. A gate that runs in CI " +
           'and is "not enabled yet" locally is a claim the manifest cannot make.',
+      );
+    }
+  }
+
+  // ── A2 · Direction 2: what the manifest calls ENABLED must actually execute ───────
+  // The loop above only ever asked "is this executed gate declared?". Nothing asked "is
+  // this declared, enabled gate executed?" — so deleting a step from ci-fast.yml while
+  // leaving `enabled` in the manifest and the row in ci-cd.md left two documents in
+  // perfect agreement and a gate that had silently stopped running. Nothing else in this
+  // repository would have noticed: the gate's own probes still pass, because they invoke
+  // the checker directly.
+  //
+  // "Executes" is a claim about shape, not merely presence. A step under `if: false`, a
+  // step with `continue-on-error: true`, a job gated on a pull-request label, and a
+  // workflow that does not trigger on `pull_request` are all reported here rather than
+  // counted, because GitHub treats a SKIPPED required check as satisfied and a
+  // cannot-fail step as a pass.
+  const sources = aliasSources();
+  for (const gate of enabledManifestGates) {
+    const candidates = [
+      gate,
+      ...(sources.get(gate) ?? []),
+      ...(GATE_OBSERVATIONS.get(gate) ?? []),
+    ];
+    const found = candidates.flatMap(
+      (candidate) => workflow.occurrences.get(candidate) ?? [],
+    );
+
+    if (found.length === 0) {
+      problems.push(
+        `scripts/ci/test-all.mjs marks "${gate}" ENABLED and NO workflow executes it ` +
+          `(looked for ${candidates.map((c) => `"${c}"`).join(", ")} across ` +
+          `${workflow.files.join(", ")}). "Enabled" is a claim that the gate runs. A gate ` +
+          "declared in ci-cd.md and enabled here while its step is gone is the failure " +
+          "this direction exists to catch: two documents agree, and nothing runs. Add the " +
+          "step back, mark the entry not-enabled with a reason, or — if CI invokes it " +
+          "under another name — add that name to GATE_OBSERVATIONS with the reason.",
+      );
+      continue;
+    }
+
+    if (!found.some((occurrence) => isExecuting(occurrence.kind))) {
+      const shapes = found
+        .map((occurrence) => `${occurrence.where}: ${occurrence.reason}`)
+        .join("; ");
+      problems.push(
+        `scripts/ci/test-all.mjs marks "${gate}" ENABLED and every workflow occurrence of ` +
+          `it CANNOT FAIL A PULL REQUEST — ${shapes}. A skipped required check reads as ` +
+          "satisfied and a `continue-on-error` step reads as a pass, so this is a gate in " +
+          "name only. Either make it run, or mark the entry not-enabled with the reason.",
       );
     }
   }

@@ -76,6 +76,9 @@ const RATCHET_SECTIONS = [
   ["unmigratedNames", "an unregistered environment name", null],
   ["unattributableReads", "an unattributable environment read", "occurrences"],
 ];
+
+import { readWorkspaceRoots } from "./lib/workspace-membership.mjs";
+
 const baselinePath = path.join(repoRoot, "scripts/ci/env-baseline.json");
 
 /**
@@ -83,7 +86,14 @@ const baselinePath = path.join(repoRoot, "scripts/ci/env-baseline.json");
  * application; the note printed at the end says so out loud rather than leaving the gap
  * silent.
  */
-const scanRoots = ["apps", "packages"];
+// A5's class: this was the literal `["apps", "packages"]`, a hand-written copy of the
+// workspace's membership rule. It is derived from pnpm-workspace.yaml now, so a new
+// workspace root cannot silently fall outside the surface this gate claims to scan. What
+// is DELIBERATELY excluded — tests/ and scripts/, which are build tooling rather than the
+// application — stays excluded, and the note at the end of the run still says so.
+async function scanRoots() {
+  return readWorkspaceRoots();
+}
 const mcpPackage = "packages/mcp/";
 
 function scopeOf(file) {
@@ -121,7 +131,8 @@ async function main() {
       .map(([name]) => name),
   );
 
-  const files = await codeFilesUnder(scanRoots);
+  const roots = await scanRoots();
+  const files = await codeFilesUnder(roots);
   const failures = [];
   const warnings = [];
   const observedNames = new Map();
@@ -430,7 +441,7 @@ async function main() {
   }
 
   warnings.push(
-    `scanned ${files.length} file(s) under ${scanRoots.join(", ")}; tests/ and scripts/ are build tooling, not the application, and are not scanned.`,
+    `scanned ${files.length} file(s) under ${roots.join(", ")}; tests/ and scripts/ are build tooling, not the application, and are not scanned.`,
   );
 
   finish({

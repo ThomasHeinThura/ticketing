@@ -18,6 +18,7 @@ import {
   violation,
 } from "./lib/repo.mjs";
 import { stripCodeComments } from "./lib/strip-code-comments.mjs";
+import { readWorkspaceRoots } from "./lib/workspace-membership.mjs";
 
 const NAME = "check:skips";
 
@@ -29,7 +30,16 @@ const NAME = "check:skips";
 // `isTestFile` below is what keeps this narrow: only *.test.mjs / *.spec.* files and
 // anything under tests/ are read, so ordinary scripts and their comments are never
 // scanned and cannot false-positive.
-const roots = ["apps", "packages", "tests", "scripts/ci"];
+//
+// A5's class, here: `roots` was a literal `["apps", "packages", "tests", "scripts/ci"]`.
+// The workspace half is now DERIVED from pnpm-workspace.yaml, so adding `tools/**` to the
+// workspace cannot leave this gate quietly not scanning it, and `scripts/ci` is widened
+// to `scripts` so a skipped test under `scripts/i18n` is covered too. `tests` and
+// `scripts` are named explicitly because neither is a workspace package — this gate wants
+// them, and saying so is the point.
+async function scanRoots() {
+  return [...(await readWorkspaceRoots()), "tests", "scripts"];
+}
 
 const banned = [
   {
@@ -64,7 +74,7 @@ function lineOf(source, index) {
 }
 
 async function main() {
-  const files = (await codeFilesUnder(roots)).filter((absolute) =>
+  const files = (await codeFilesUnder(await scanRoots())).filter((absolute) =>
     isTestFile(rel(absolute)),
   );
   const failures = [];

@@ -43,17 +43,24 @@ import {
   violation,
 } from "./lib/repo.mjs";
 
+import { readWorkspaceRoots } from "./lib/workspace-membership.mjs";
+
 const NAME = "check:vocabulary";
 
 const BASELINE_RELATIVE_PATH = "scripts/ci/vocabulary-baseline.json";
 const RATCHET_SECTIONS = [["unregistered", "an unregistered identifier"]];
 const baselinePath = path.join(repoRoot, "scripts/ci/vocabulary-baseline.json");
 
+// A5's class: `roots` was the literal `["apps", "packages"]`. It is the workspace's
+// membership rule, so it is read from the workspace definition — adding `tools/**` to
+// pnpm-workspace.yaml must not leave a declared table in there unregistered and unnoticed.
+// Derived at run time rather than at module load, because a failure to read the workspace
+// has to reach `main()`'s error handling instead of throwing at import.
 const classes = [
   {
     identifier: "table",
     authority: "docs/01-architecture/data-model.md",
-    roots: ["apps", "packages"],
+    roots: null, // the workspace roots; resolved in main()
     declaration: /pgTable\(\s*["']([^"']+)["']/g,
   },
 ];
@@ -96,7 +103,9 @@ async function main() {
     const approved = await registered(group.authority);
     const found = new Map();
 
-    for (const absolute of await codeFilesUnder(group.roots)) {
+    for (const absolute of await codeFilesUnder(
+      group.roots ?? (await readWorkspaceRoots()),
+    )) {
       const source = await readText(absolute);
       group.declaration.lastIndex = 0;
       for (

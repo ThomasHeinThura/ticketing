@@ -33,7 +33,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { after, describe, it } from "node:test";
 import {
-  bodyFile,
   cleanUpScratchRepos,
   commit,
   completeBody,
@@ -41,7 +40,6 @@ import {
   initRepo,
   installCheckers,
   installFromRepo,
-  remove,
   runChecker,
   scratchDir,
   setOriginMain,
@@ -61,6 +59,16 @@ function withoutSection(body, heading) {
   if (start === -1) return body;
   let end = start + 1;
   while (end < lines.length && !/^## /.test(lines[end])) end += 1;
+  return [...lines.slice(0, start), ...lines.slice(end)].join("\n");
+}
+
+/** Drop one `### ` checklist block, heading and content together. */
+function withoutChecklistBlock(body, heading) {
+  const lines = body.split("\n");
+  const start = lines.findIndex((line) => line.trim() === `### ${heading}`);
+  if (start === -1) return body;
+  let end = start + 1;
+  while (end < lines.length && !/^#{2,3} /.test(lines[end])) end += 1;
   return [...lines.slice(0, start), ...lines.slice(end)].join("\n");
 }
 
@@ -99,6 +107,33 @@ const HEAD_ONLY_REQUIRED = `
 
 function headOnlyRequired(dir) {
   return evaluateInRepo(dir, HEAD_ONLY_REQUIRED).headings;
+}
+
+/**
+ * The PRE-FIX derivation for A1: the `### ` blocks parsed out of the working-tree
+ * template's `## Checklists` section, inline, exactly as `check-pr-template` did it.
+ */
+const HEAD_ONLY_CHECKLISTS = `
+  const { readFileSync } = await import("node:fs");
+  let headings = [];
+  try {
+    const source = readFileSync(".github/pull_request_template.md", "utf8");
+    let inside = false;
+    for (const line of source.split("\\n")) {
+      if (/^##\\s+Checklists\\s*$/.test(line)) { inside = true; continue; }
+      if (!inside) continue;
+      if (/^##\\s+/.test(line)) break;
+      const heading = /^###\\s+(.*\\S)\\s*$/.exec(line);
+      if (heading) headings.push(heading[1]);
+    }
+  } catch {
+    headings = [];
+  }
+  console.log(JSON.stringify({ headings }));
+`;
+
+function headOnlyChecklists(dir) {
+  return evaluateInRepo(dir, HEAD_ONLY_CHECKLISTS).headings;
 }
 
 describe("H1 — template authority cannot delete a merge-base requirement", () => {
@@ -231,6 +266,121 @@ describe("H1 — template authority cannot delete a merge-base requirement", () 
       result.status,
       0,
       `a legitimate pull request must not be caught by the H1 fix:\n${result.output}`,
+    );
+  });
+});
+
+describe("A1 — checklist authority cannot delete a merge-base requirement either", () => {
+  it("1. deleting `### Backend change` from the template AND the body is RED, and the old predicate was GREEN", () => {
+    const dir = scenario("a1-block-and-template", (repo) => {
+      write(repo, "scripts/ci/placeholder.mjs", "// touched by the branch\n");
+      write(
+        repo,
+        ".github/pull_request_template.md",
+        withoutChecklistBlock(
+          readIn(repo, ".github/pull_request_template.md"),
+          "Backend change",
+        ),
+      );
+      write(
+        repo,
+        "body.md",
+        withoutChecklistBlock(completeBody(), "Backend change"),
+      );
+    });
+
+    // NON-VACUITY: the pre-fix derivation no longer declares the block, so the old
+    // checker required nothing of it. "Every new or changed route has a policy entry"
+    // and "Opus security review completed and recorded" left the requirements of the
+    // pull request that deleted them.
+    const oldBlocks = headOnlyChecklists(dir);
+    assert.ok(
+      !oldBlocks.includes("Backend change"),
+      `the old HEAD-only derivation still declares the block (${oldBlocks.join(", ")}), ` +
+        "so this scenario no longer reproduces the bypass and the probe would be vacuous",
+    );
+
+    const result = runChecker(dir, "check-pr-template.mjs", [
+      "--body",
+      "body.md",
+    ]);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /Backend change/);
+  });
+
+  it("2. deleting the whole `## Checklists` block list from the template is RED, naming what was dropped", () => {
+    const dir = scenario("a1-emptied-checklists", (repo) => {
+      write(repo, "scripts/ci/placeholder.mjs", "// touched by the branch\n");
+      write(
+        repo,
+        ".github/pull_request_template.md",
+        withoutSection(
+          readIn(repo, ".github/pull_request_template.md"),
+          "Checklists",
+        ),
+      );
+      // The body keeps `## Checklists` and the one block carrying the review checkbox,
+      // so the RED below cannot come from the section-presence rule or the
+      // exactly-one-review-checkbox rule. It has to come from the union.
+      let body = completeBody();
+      for (const heading of [
+        "Backend change",
+        "Frontend change",
+        "New `packages/ui` primitive",
+        "New feature",
+        "New plugin",
+        "Bug fix",
+        "Phase completion",
+      ]) {
+        body = withoutChecklistBlock(body, heading);
+      }
+      write(repo, "body.md", body);
+    });
+
+    // NON-VACUITY: with the section gone from the template, the old derivation declared
+    // ZERO blocks — and a declared list of zero demands nothing of any body.
+    assert.deepEqual(headOnlyChecklists(dir), []);
+
+    const result = runChecker(dir, "check-pr-template.mjs", [
+      "--body",
+      "body.md",
+    ]);
+    assert.equal(result.status, 1, result.output);
+    assert.match(
+      result.output,
+      /Backend change|REMOVES \d+ required checklist/,
+    );
+  });
+
+  it("3. a body-only checklist deletion stays RED (completeness)", () => {
+    const dir = scenario("a1-body-only", (repo) => {
+      write(repo, "docs/harmless.md", "no security path touched\n");
+      write(repo, "body.md", withoutChecklistBlock(completeBody(), "Bug fix"));
+    });
+    // The template is untouched, so even the old derivation declared the block: this
+    // case was already caught, and it is here so the set is complete.
+    assert.ok(headOnlyChecklists(dir).includes("Bug fix"));
+    const result = runChecker(dir, "check-pr-template.mjs", [
+      "--body",
+      "body.md",
+    ]);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /Bug fix/);
+  });
+
+  it("4. the real template with every block present is GREEN", () => {
+    const dir = scenario("a1-legitimate", (repo) => {
+      write(repo, "docs/harmless.md", "no security path touched\n");
+      write(repo, "body.md", completeBody());
+    });
+    const result = runChecker(dir, "check-pr-template.mjs", [
+      "--body",
+      "body.md",
+    ]);
+    assert.equal(
+      result.status,
+      0,
+      `the checklist union must not catch a complete body:\n${result.output}`,
     );
   });
 });

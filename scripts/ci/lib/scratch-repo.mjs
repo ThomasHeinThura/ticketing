@@ -101,6 +101,21 @@ export function installCheckers(dir) {
     filter: (source) =>
       !source.endsWith(".test.mjs") && !source.includes(`${path.sep}probes`),
   });
+
+  // A5: `check-skips`, `check-env`, `check-vocabulary` and `check-overrides` derive the
+  // directories they scan from pnpm-workspace.yaml, and they FAIL CLOSED when it cannot
+  // be read. That is the behaviour those gates want in CI and it is the behaviour a
+  // scratch repository must reproduce, so the workspace definition travels with the
+  // checkers rather than being remembered by each harness. Installed here, once, because
+  // the alternative — every probe author remembering — is how the previous hardcoded
+  // lists survived four rewrites.
+  //
+  // A probe that wants a DIFFERENT workspace definition simply writes one afterwards;
+  // probes/workspace-membership.test.mjs does exactly that, including the unreadable case.
+  cpSync(
+    path.join(repoRoot, "pnpm-workspace.yaml"),
+    path.join(dir, "pnpm-workspace.yaml"),
+  );
 }
 
 /** Copy one file out of the real repository, at its real path. */
