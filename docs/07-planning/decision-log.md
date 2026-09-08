@@ -17,6 +17,72 @@ Newest first.
 
 ---
 
+### 2026-09-08 · The review binding is over landed commits, and a declared state is not a token match
+
+**Supersedes two sentences** in
+[Three gate controls get a syntax](#2026-09-08--three-gate-controls-get-a-syntax-because-existence-proved-nothing),
+below, which is otherwise unchanged and still operative. Recorded as a new entry rather
+than an edit: the log is append-only, and both sentences were wrong in a way worth having
+on the record.
+
+**Decision 1 — the note binding is over LANDED COMMITS, not the net tree.** That entry
+said *"nothing outside `docs/07-planning/security-reviews/` may have changed since"* the
+reviewed head, and the implementation read that as `git diff <head>..HEAD`. Endpoint
+trees are not history, and the gap is a four-commit bypass:
+
+```
+H1  code                      reviewed
+H2  the note, nothing else     -> green, correctly
+H3  modify non-review code
+H4  exactly revert H3          -> net tree == H1 + note, the diff range is EMPTY,
+                                  and the old review passed again
+```
+
+Measured before the fix: at H4 the checker printed *"is bound to reviewed head …; nothing
+outside docs/07-planning/security-reviews/ has changed since"* and exited **0**, with two
+unreviewed commits landed. Now every commit in `<head>..HEAD` is inspected for the paths
+it contributed. **Reverting does not restore a clearance** — the reverted diff is still in
+the branch's history, it is what a bisect replays, and a revert can itself be wrong, so a
+reviewer has to see both. Merges are attributed honestly: `git rev-list` enumerates the
+commits a merge carried individually, and the merge is judged on its combined diff — its
+own conflict resolution — so nothing is missed and nothing is double-counted. One
+consequence, stated rather than discovered: **merging `main` into a branch after a review
+makes the note stale**, because the tree the reviewer read is not the tree that would
+merge.
+
+**Decision 2 — `## Screens opened` declares a state; prose that mentions `n/a` does not.**
+F9 replaced *"strip `n/a` and see what is left"* with *"does the token `n/a` appear
+anywhere in this section"*. That closed the loophole and opened a worse one: it read a
+**negation as an assertion**. A lane wrote, honestly,
+
+> I am not marking this n/a — that would misrepresent a real gap
+
+and the checker rejected the section for it. The one author who refused to claim the
+exemption was treated as though they had claimed it, and the way to pass was to stop
+explaining. The state is now read from the section's **first meaningful line** —
+`n/a` / `not applicable`, `BLOCKED — <why>`, or the screens themselves — and a later
+mention of `n/a` in explanation carries no state. An explained `BLOCKED` is **accepted as
+an honest gap**; a bare `BLOCKED` is rejected exactly like a bare `n/a`.
+
+**Why not read the sentence.** Sentiment and negation analysis were rejected outright:
+each is a new class of false positive wearing a cleverer hat, and the finding this fixes
+*is* a false positive. A state field is read, not interpreted.
+
+**`BLOCKED` is honest, not permissive.** It means the parser stops calling a declared gap
+a false `n/a`. It does **not** mean the pull request is ready: the screens were not
+opened, [AGENTS.md](../../AGENTS.md) do-not 18 is unsatisfied, and every other
+readiness requirement still applies. CI says so in the accepting run rather than leaving
+the reader to infer it.
+
+**Cost, stated plainly:** a remediation pass that reverts its own work still needs a fresh
+delta review, and a branch that merges `main` after a review needs one too. Both are the
+correct consequence of the invariant being about history.
+
+**Decided by:** Thomas, 2026-09-08, on findings **GPT-F5** (MEDIUM, blocking) and the
+**F9 residual** raised against `cdb5f334616818adb94a91ae5b9b11a428854951`.
+
+---
+
 ### 2026-09-08 · Three gate controls get a syntax, because existence proved nothing
 
 **Decision:** the security-review scope, the committed review note and a waived gate each

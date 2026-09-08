@@ -48,7 +48,7 @@ import {
   checklistPresenceProblems,
   checklistProblems,
   contentOf,
-  effectivelyNotApplicable,
+  declaredState,
   field,
   loadBody,
   loadPullRequestNumber,
@@ -343,24 +343,46 @@ async function main() {
   }
 
   const screensOpened = present.get(normaliseHeading("Screens opened"));
-  // F9: the old test stripped `n/a` and asked whether ANYTHING was left, so a bare
-  // `n/a` failed but `n/a — no UI change` passed: the reason kept the section
-  // non-empty. The message said the section "may not be n/a", so implementation and
-  // message disagreed. When apps/web/** changed, ANY n/a form is rejected -- with or
-  // without a reason -- because do-not 18 asks for the screens you actually opened,
-  // and no reason substitutes for that.
-  if (
-    webTouched &&
-    screensOpened &&
-    effectivelyNotApplicable(screensOpened.text)
-  ) {
-    failures.push(
-      violation(
-        "## Screens opened",
-        "apps/web/** changed, so this section may not be n/a. List every screen you actually " +
-          "opened and used: route — viewport — what was clicked — screenshot (AGENTS.md do-not 18).",
-      ),
-    );
+  // F9: the original test stripped `n/a` and asked whether ANYTHING was left, so a bare
+  // `n/a` failed but `n/a — no UI change` passed: the reason kept the section non-empty.
+  //
+  // F9 RESIDUAL: the replacement matched the token `n/a` ANYWHERE in the section, and so
+  // rejected the one honest sentence a careful author writes — "I am not marking this n/a
+  // — that would misrepresent a real gap" — reading a negation as an assertion. The
+  // section's state now comes from its FIRST meaningful line, the way a status field is
+  // read, and prose that merely mentions `n/a` later carries no state. See
+  // lib/pr-body.mjs § declaredState for why this is structural rather than linguistic.
+  if (webTouched && screensOpened) {
+    const declared = declaredState(screensOpened.text);
+    const complaint =
+      declared.state === "not-applicable"
+        ? `it declares "${declared.first}". apps/web/** changed, so this section may not be ` +
+          "n/a — with or without a reason. List every screen you actually opened and " +
+          "used: route — viewport — what was clicked — screenshot (AGENTS.md do-not 18). " +
+          "If you genuinely could not open them, say so with `BLOCKED — <why>` and name " +
+          "the screens you did not open. That is accepted here as an honest gap; it is " +
+          "not a pass on the rest of the template."
+        : declared.state === "blocked-bare"
+          ? `it declares "${declared.first}" with nothing substantive after it. A BLOCKED ` +
+            "declaration is accepted, but it has to say what blocked you and which " +
+            "screens went unopened — a bare marker is a bare n/a wearing a different word."
+          : declared.state === "empty"
+            ? "empty. apps/web/** changed, so list every screen you actually opened and " +
+              "used: route — viewport — what was clicked — screenshot (AGENTS.md do-not " +
+              "18), or declare `BLOCKED — <why>`."
+            : null;
+
+    if (complaint !== null) {
+      failures.push(violation("## Screens opened", complaint));
+    } else if (declared.state === "blocked") {
+      // Accepted by the parser, and said out loud so nobody reads it as readiness.
+      warnings.push(
+        "## Screens opened declares BLOCKED with an explanation, which this check " +
+          "accepts as an honest gap rather than a false n/a (F9 residual). It is NOT a " +
+          "readiness signal: the screens were not opened, AGENTS.md do-not 18 is not " +
+          "satisfied, and every other requirement in this template still applies.",
+      );
+    }
   }
 
   const gates = present.get(normaliseHeading("Gates"));

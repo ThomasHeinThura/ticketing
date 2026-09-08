@@ -288,19 +288,134 @@ function itemMarkedNotApplicable(line) {
  * already treats it for the H2 list.
  */
 /**
- * F9 — is a section effectively marked "not applicable"?
+ * F9 — what state does a section DECLARE?
  *
- * The old inline test stripped `n/a` and asked whether anything was left, so a bare
+ * The original inline test stripped `n/a` and asked whether anything was left, so a bare
  * `n/a` failed while `n/a — no UI change` PASSED: the reason itself kept the section
- * non-empty. The failure message said the section "may not be n/a", so the code and the
- * message disagreed about the rule.
+ * non-empty. The F9 fix replaced that with "does the token `n/a` appear anywhere in the
+ * section", which closed the loophole and opened a worse one.
+ *
+ * **F9 residual — the predicate read a negation as an assertion.** Lane C wrote, honestly:
+ *
+ *   "I am not marking this n/a — that would misrepresent a real gap"
+ *
+ * and the checker rejected the section, because the token `n/a` is in it. So the one
+ * author who refused to claim the exemption was treated as though they had claimed it,
+ * and the way to pass was to stop explaining. A gate that punishes candour teaches
+ * authors to be less candid, which is the opposite of what `## Screens opened` is for.
+ *
+ * **The fix is structural, and deliberately not linguistic.** No sentiment analysis, no
+ * negation detection, no attempt to read intent out of prose — every one of those is a
+ * new class of false positive wearing a cleverer hat. Instead the section's **declared
+ * state** is read from its **first meaningful line**, the way a status field is read:
+ *
+ *   empty          nothing a human would see (F13's invisibles included)
+ *   not-applicable the first line opens with `n/a` / `N/A` / `n / a` / `not applicable`
+ *   blocked        the first line opens with `BLOCKED`, plus a substantive explanation
+ *   blocked-bare   `BLOCKED` with nothing substantive after it
+ *   provided       anything else — the author answered the question
+ *
+ * Only the first line decides. The token `n/a` appearing later, in explanation, is prose
+ * and carries no state — which is exactly the residual finding. `declaredState` is the
+ * whole mechanism; the two booleans below are named views of it.
+ *
+ * **`blocked` is honest, not permissive.** It means the parser accepts the explanation
+ * instead of calling it a false `n/a`. It does **not** mean the pull request is ready:
+ * every other requirement — the independent-review checkbox, the committed note, the
+ * checklists — still applies, and AGENTS.md do-not 18 still asks for the screens you
+ * actually opened. A section that says BLOCKED is a section that has told the truth about
+ * a gap, and a gap is still a gap.
+ */
+
+/** Leading decoration an author may put before the state word: emphasis, bullets, emoji. */
+function withoutLeadingDecoration(line) {
+  return line.replace(/^[^\p{L}\p{N}]+/u, "");
+}
+
+const NOT_APPLICABLE_OPENER = /^(?:n\s*\/\s*a|not\s+applicable)\b/i;
+const BLOCKED_OPENER = /^blocked\b/i;
+/** Characters of explanation a `BLOCKED` declaration needs before it says anything. */
+const BLOCKED_EXPLANATION_MINIMUM = 40;
+
+/**
+ * The lines of a section that carry content — comments stripped, template scaffolding and
+ * invisible-only lines dropped. Shares its rules with `contentOf` so the two cannot drift.
+ *
+ * @param {string} markdown
+ * @returns {string[]}
+ */
+export function meaningfulLines(markdown) {
+  return stripComments(markdown)
+    .split("\n")
+    .map((line) => line.replace(INVISIBLE, "").trim())
+    .filter(
+      (line) =>
+        line !== "" &&
+        !/^\*\*[^*]+:\*\*$/.test(line) &&
+        !/^-{3,}$/.test(line) &&
+        !/^#{1,6}\s/.test(line),
+    );
+}
+
+/**
+ * @typedef {object} SectionState
+ * @property {"empty"|"not-applicable"|"blocked"|"blocked-bare"|"provided"} state
+ * @property {string} first the first meaningful line, verbatim
+ * @property {string} explanation for `blocked`, what followed the marker
+ */
+
+/**
+ * @param {string} text a section's raw markdown
+ * @returns {SectionState}
+ */
+export function declaredState(text) {
+  const lines = meaningfulLines(text);
+  if (lines.length === 0) {
+    return { state: "empty", first: "", explanation: "" };
+  }
+
+  const first = lines[0];
+  const opener = withoutLeadingDecoration(first);
+
+  if (NOT_APPLICABLE_OPENER.test(opener)) {
+    return { state: "not-applicable", first, explanation: "" };
+  }
+
+  if (BLOCKED_OPENER.test(opener)) {
+    // The explanation may run past the first line, so the whole section counts towards
+    // it — a BLOCKED heading followed by three lines of detail is explained.
+    const explanation = [opener.replace(BLOCKED_OPENER, ""), ...lines.slice(1)]
+      .join(" ")
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
+    return {
+      state:
+        explanation.length >= BLOCKED_EXPLANATION_MINIMUM
+          ? "blocked"
+          : "blocked-bare",
+      first,
+      explanation,
+    };
+  }
+
+  return { state: "provided", first, explanation: "" };
+}
+
+/**
+ * Is the section standing on an exemption it may not claim?
+ *
+ * True for `empty`, `not-applicable` and `blocked-bare` — nothing, a claimed exemption,
+ * or a marker with no substance behind it. False for `blocked` and `provided`: the author
+ * either answered or said plainly that they could not, and neither is an `n/a`.
  *
  * Used for `## Screens opened` when apps/web/** changed, where AGENTS.md do-not 18 asks
  * for the screens you actually opened and no reason substitutes for that.
  */
 export function effectivelyNotApplicable(text) {
-  if (contentOf(text) === "") return true;
-  return /\bn\s*\/\s*a\b|\bnot\s+applicable\b/i.test(stripComments(text));
+  const { state } = declaredState(text);
+  return (
+    state === "empty" || state === "not-applicable" || state === "blocked-bare"
+  );
 }
 
 export function checklistPresenceProblems(raw, declared) {

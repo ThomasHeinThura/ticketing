@@ -220,11 +220,20 @@ Two of those carry a syntax, because existence alone turned out to prove nothing
   **Reviewed head:** `6b32ef316c49cc14cc841b32fdcce637a442b813`
   ```
 
-  The newest declared head must be an ancestor of the pull request's HEAD, and nothing
-  outside `docs/07-planning/security-reviews/` may have changed since. A **note-only**
-  commit recording a reviewed head is the intended shape and passes; a code commit after
-  it makes the note stale until a fresh delta review adds a line for the new head.
-  Recording that line is itself note-only, so the gate closes rather than looping.
+  The newest declared head must be an ancestor of the pull request's HEAD, and **every
+  commit that landed since** must have touched nothing outside
+  `docs/07-planning/security-reviews/`. A **note-only** commit recording a reviewed head
+  is the intended shape and passes; a code commit after it makes the note stale until a
+  fresh delta review adds a line for the new head. Recording that line is itself
+  note-only, so the gate closes rather than looping. It is judged over **landed commits,
+  not the net tree** — reverting a commit does not restore a clearance.
+
+- **`## Screens opened` declares a state** — its first meaningful line is read as `n/a` /
+  `not applicable`, `BLOCKED — <why>`, or the screens themselves. When `apps/web/**`
+  changed, `n/a` is rejected in any form; an explained `BLOCKED` is accepted as an honest
+  gap and is **not** a readiness signal; a bare `BLOCKED` is rejected. Mentioning `n/a`
+  later in explanatory prose carries no state, so refusing to claim the exemption is not
+  read as claiming it.
 
 - **A waived gate cites one decision-log entry by `#anchor`**, and that entry declares the
   waiver on one line:

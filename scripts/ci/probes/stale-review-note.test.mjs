@@ -27,6 +27,7 @@ import {
   commit,
   completeBody,
   evaluateInRepo,
+  git,
   initRepo,
   installCheckers,
   installFromRepo,
@@ -306,5 +307,176 @@ describe("GPT-F2 — the committed note is bound to the code it reviewed", () =>
       bodyWithNote(),
     ]);
     assert.equal(run.status, 0, `exited ${run.status}\n${run.output}`);
+  });
+});
+
+describe("GPT-F5 — the binding is over LANDED COMMITS, not the net tree", () => {
+  it("stays RED after an exact revert, where the endpoint diff is empty", () => {
+    // The bypass, built commit by commit:
+    //
+    //   H1  code                    reviewed
+    //   H2  the note, nothing else  -> GREEN
+    //   H3  modify non-review code  -> RED
+    //   H4  exactly revert H3       -> net tree == H1 + note, so the OLD endpoint
+    //                                 predicate saw an empty range and passed
+    //   fresh review attests H4
+    //   H5  note-only record        -> GREEN again
+    const { dir, h1 } = reviewedScenario();
+
+    write(dir, NOTE_PATH, note([h1]));
+    commit(dir, "docs: the note for H1");
+
+    const atH2 = runChecker(dir, "check-pr-template.mjs", [
+      "--body",
+      bodyWithNote(),
+    ]);
+    assert.equal(atH2.status, 0, `H2 must be GREEN\n${atH2.output}`);
+
+    // H3 — a real change to a security path the reviewer never saw.
+    write(dir, "apps/api/src/auth.ts", "export const secret = 99;\n");
+    const h3 = commit(dir, "feat: H3, an unreviewed change");
+
+    const atH3 = runChecker(dir, "check-pr-template.mjs", [
+      "--body",
+      bodyWithNote(),
+    ]);
+    assert.equal(atH3.status, 1, `H3 must be RED\n${atH3.output}`);
+    assert.match(atH3.output, /is STALE/);
+
+    // H4 — revert H3 exactly. `git revert` rather than rewriting the file by hand, so
+    // the revert is a real landed commit and the trees genuinely coincide.
+    git(dir, ["revert", "--no-edit", h3]);
+    const h4 = git(dir, ["rev-parse", "HEAD"]).trim();
+
+    // ── non-vacuity: the SUPERSEDED endpoint predicate sees an empty range ─────────
+    const endpoint = evaluateInRepo(
+      dir,
+      `import { changedPathsBetween, commitsBetween } from "./scripts/ci/lib/git-baseline.mjs";
+       const net = changedPathsBetween(${JSON.stringify(h1)}, "HEAD");
+       const landed = commitsBetween(${JSON.stringify(h1)}, "HEAD");
+       const prefix = "docs/07-planning/security-reviews/";
+       console.log(JSON.stringify({
+         netOutsideArtefacts: net.filter((f) => !f.startsWith(prefix)),
+         landedCommits: landed.length,
+         landedOutsideArtefacts: landed
+           .filter((c) => c.paths.some((f) => !f.startsWith(prefix)))
+           .map((c) => c.sha.slice(0, 9)),
+       }));`,
+    );
+
+    assert.deepEqual(
+      endpoint.netOutsideArtefacts,
+      [],
+      "the probe is vacuous: the net tree still differs outside the artefact prefix, so " +
+        "the superseded endpoint predicate would ALSO have failed here and the assertion " +
+        "below proves nothing about landed history.\n" +
+        JSON.stringify(endpoint),
+    );
+    assert.equal(
+      endpoint.landedOutsideArtefacts.length,
+      2,
+      "two commits landed after the reviewed head that touched non-review paths — H3 and " +
+        `its revert. Saw: ${JSON.stringify(endpoint.landedOutsideArtefacts)}`,
+    );
+
+    const atH4 = runChecker(dir, "check-pr-template.mjs", [
+      "--body",
+      bodyWithNote(),
+    ]);
+    assert.equal(
+      atH4.status,
+      1,
+      "H4 must STAY RED. An exact revert makes the endpoint trees agree, and the " +
+        "invariant is over landed commits — reverting does not restore a clearance. " +
+        `Exited ${atH4.status}:\n${atH4.output}`,
+    );
+    assert.match(atH4.output, /is STALE/);
+    assert.match(atH4.output, /commit\(s\) that LANDED after it/);
+    assert.match(
+      atH4.output,
+      /reverting a commit does NOT restore the clearance/,
+    );
+    assert.ok(
+      atH4.output.includes(h3.slice(0, 9)),
+      `the failure must name H3 (${h3.slice(0, 9)}) as a landed commit:\n${atH4.output}`,
+    );
+    assert.ok(
+      atH4.output.includes(h4.slice(0, 9)),
+      `and the revert itself (${h4.slice(0, 9)}):\n${atH4.output}`,
+    );
+
+    // ── a fresh review attests H4; H5 records it, note-only ───────────────────────
+    write(dir, NOTE_PATH, note([h1, h4]));
+    commit(dir, "docs: record the delta review of H4");
+
+    const atH5 = runChecker(dir, "check-pr-template.mjs", [
+      "--body",
+      bodyWithNote(),
+    ]);
+    assert.equal(
+      atH5.status,
+      0,
+      "H5 must be GREEN — a fresh review of H4, recorded in a note-only commit, is the " +
+        `only thing that clears this. Exited ${atH5.status}:\n${atH5.output}`,
+    );
+    assert.ok(atH5.output.includes(h4.slice(0, 9)), atH5.output);
+  });
+
+  it("attributes a merge's own contribution, and does not miss what it carried", () => {
+    // A merge is enumerated together with the commits it brought in, so each landed
+    // change is attributed exactly once. Built with a side branch whose commit touches a
+    // security path: the side commit must be reported, and a clean merge contributes
+    // nothing of its own.
+    const { dir, h1 } = reviewedScenario();
+    write(dir, NOTE_PATH, note([h1]));
+    const h2 = commit(dir, "docs: the note for H1");
+
+    git(dir, ["branch", "side", h1]);
+    // Commit onto the side branch without moving the working tree: write a tree by hand.
+    write(dir, "apps/api/src/webhooks/outbound.ts", "export const side = 1;\n");
+    const sideSha = commit(dir, "feat: a change on the side of history");
+    git(dir, ["update-ref", "refs/heads/side", sideSha]);
+    // Put HEAD back where it was, then merge the side branch in.
+    git(dir, ["reset", "--hard", "-q", h2]);
+    git(dir, ["merge", "--no-ff", "--no-edit", "-q", "side"]);
+    const mergeSha = git(dir, ["rev-parse", "HEAD"]).trim();
+
+    const seen = evaluateInRepo(
+      dir,
+      `import { commitsBetween } from "./scripts/ci/lib/git-baseline.mjs";
+       console.log(JSON.stringify(
+         commitsBetween(${JSON.stringify(h1)}, "HEAD").map((c) => ({
+           sha: c.sha.slice(0, 9),
+           parents: c.parents.length,
+           paths: c.paths,
+         })),
+       ));`,
+    );
+
+    const bySha = new Map(seen.map((c) => [c.sha, c]));
+    assert.ok(
+      bySha.has(sideSha.slice(0, 9)),
+      `the side branch's own commit must be enumerated, or a merge hides what it ` +
+        `carried. Saw: ${JSON.stringify(seen)}`,
+    );
+    assert.deepEqual(bySha.get(sideSha.slice(0, 9)).paths, [
+      "apps/api/src/webhooks/outbound.ts",
+    ]);
+    const merge = bySha.get(mergeSha.slice(0, 9));
+    assert.equal(merge.parents, 2, JSON.stringify(seen));
+    assert.deepEqual(
+      merge.paths,
+      [],
+      "a conflict-free merge contributes nothing of its own — the combined diff is " +
+        "empty, and double-counting the side branch here would blame the merge for code " +
+        "it only carried.",
+    );
+
+    const run = runChecker(dir, "check-pr-template.mjs", [
+      "--body",
+      bodyWithNote(),
+    ]);
+    assert.equal(run.status, 1, `exited ${run.status}\n${run.output}`);
+    assert.match(run.output, /apps\/api\/src\/webhooks\/outbound\.ts/);
   });
 });

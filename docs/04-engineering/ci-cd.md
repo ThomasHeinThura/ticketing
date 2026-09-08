@@ -150,13 +150,25 @@ line, the head each review actually read:
 
 Full forty-character SHAs. SHAs written in prose are not parsed — the notes on file cite
 merge bases and post-rebase orphans in the same sentence as reviewed heads. The newest
-declared head must be an ancestor of HEAD, and **nothing outside
-`docs/07-planning/security-reviews/` may have changed between it and HEAD**. So the shape
-is: a code head is reviewed, a **note-only** commit records it and the gate goes green,
-and any later code commit makes the note stale until a fresh delta review adds its own
-`**Reviewed head:**` line for the new head. Recording that new head is itself a note-only
-commit, so closing the gate does not reopen it. Existence of the note was the whole of
-the old check, and existence never expires.
+declared head must be an ancestor of HEAD, and **every commit that LANDED between it and
+HEAD must have touched nothing outside `docs/07-planning/security-reviews/`**. So the
+shape is: a code head is reviewed, a **note-only** commit records it and the gate goes
+green, and any later code commit makes the note stale until a fresh delta review adds its
+own `**Reviewed head:**` line for the new head. Recording that new head is itself a
+note-only commit, so closing the gate does not reopen it. Existence of the note was the
+whole of the old check, and existence never expires.
+
+**Landed commits, not the net tree.** The invariant is over history, and the difference is
+a bypass: a commit that changes code plus a later commit that exactly reverts it leaves
+the two endpoint trees identical, so a `git diff <head>..HEAD` comparison saw an empty
+range and the old review passed with two unreviewed commits landed. **Reverting does not
+restore a clearance** — the reverted diff is still in the branch's history, it is what a
+bisect replays, and a revert can itself be wrong, so a reviewer has to see both. Merges
+are attributed honestly: `git rev-list` enumerates the commits a merge brought in
+individually, and the merge itself is judged on its combined diff — its own conflict
+resolution. One consequence, stated rather than discovered: merging `main` into the branch
+after a review makes the note stale, because the tree the reviewer read is not the tree
+that would merge.
 
 **A waived gate needs a declaration, not a sentence.** `## Gates`' third cell must cite
 one decision-log entry **with its `#anchor`**, and that entry must contain, on one line:
@@ -178,7 +190,18 @@ at the merge button, and CI says so rather than implying it checked.
 The same fast-stage **PR-template check** asserts every fixed section is present, that none
 is empty unless marked `n/a` with a reason, that `## Reviewed by` names a different model or
 session from `## Implemented by`, that `## Screens opened` is non-empty when `apps/web/**`
-changed, and that no checklist box is left unticked and unmarked. **`check:reviews`** fails
+changed, and that no checklist box is left unticked and unmarked.
+
+**`## Screens opened` declares a state, read from its first meaningful line** — `n/a` /
+`not applicable`, `BLOCKED — <why>`, or the screens themselves. When `apps/web/**` changed,
+`n/a` in any form is rejected; an explained `BLOCKED` is **accepted as an honest gap** and
+is explicitly *not* a readiness signal, because the screens still were not opened and
+AGENTS.md do-not 18 is still unsatisfied. A bare `BLOCKED` with nothing after it is
+rejected like a bare `n/a`. Only the first line sets the state: the earlier check matched
+the token `n/a` anywhere in the section and therefore **rejected the honest sentence "I am
+not marking this n/a — that would misrepresent a real gap"**, reading a negation as an
+assertion and teaching authors to explain less. The parser is structural on purpose — no
+sentiment or negation analysis, each of which is a new class of false positive. **`check:reviews`** fails
 when a feature spec named in the diff still has a non-empty section in
 `docs/07-planning/reviews/2026-09-05/` (the `pre-p0-check-fable/` folder is an applied audit
 trail and is excluded). **`check:env`** fails on a `process.env` read outside

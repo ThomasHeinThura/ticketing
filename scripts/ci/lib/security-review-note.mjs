@@ -36,13 +36,20 @@
  * 2. **At least one attested head is an ancestor of HEAD.** A note whose heads are all
  *    orphaned (a rebase) or on another branch reviewed code this branch does not
  *    contain.
- * 3. **The newest attested ancestor to HEAD must be review-artefact-only.** Every path
- *    in `git diff <newest>..HEAD` must sit under `docs/07-planning/security-reviews/`.
- *    This is exactly the agreed model: H1 is reviewed, the note-only H2 records it and
- *    passes, and any H3 that touches anything else is stale until a fresh delta review
- *    adds `**Reviewed head:** <H3>`. Because the rule is stated over the *newest*
- *    attested ancestor, the H1/H2 artefacts cannot be kept to cover an H3 — H1..HEAD
- *    then contains H3's code and fails.
+ * 3. **Every commit that LANDED after the newest attested ancestor must be
+ *    review-artefact-only.** Not the net tree between the two — every commit in
+ *    `<newest>..HEAD`, each judged on the paths it contributed, all of which must sit
+ *    under `docs/07-planning/security-reviews/`. This is exactly the agreed model: H1 is
+ *    reviewed, the note-only H2 records it and passes, and any H3 that touches anything
+ *    else is stale until a fresh delta review adds `**Reviewed head:** <H3>`. Because the
+ *    rule is stated over the *newest* attested ancestor, the H1/H2 artefacts cannot be
+ *    kept to cover an H3 — H3 is in the range and fails.
+ *
+ *    **GPT-F5: it was a net-tree comparison, and that was a bypass.**
+ *    `git diff <newest>..HEAD` sees only the endpoints, so H3 plus an exact revert of H3
+ *    at H4 cancelled out, the range read as empty, and the old review passed with two
+ *    unreviewed commits landed. Reverting does not restore clearance — the reverted diff
+ *    is still in the history a bisect replays, and a revert can itself be wrong.
  * 4. **A head may not attest itself.** Rule 3 alone would be satisfied by a commit that
  *    carried the code AND `**Reviewed head:** <that same commit>`, because the delta to
  *    HEAD would then be empty. Stated honestly: with full forty-character SHAs that
@@ -64,8 +71,8 @@
 
 import {
   BaselineHistoryUnavailableError,
-  changedPathsBetween,
   commitDepth,
+  commitsBetween,
   isAncestor,
   readTextAtCommit,
   resolveCommit,
@@ -123,7 +130,8 @@ function attestsItself(sha, notePath, readNoteAt) {
  * @typedef {object} ReviewBinding
  * @property {"bound"|"unbound"} kind
  * @property {string} [head] the newest valid attested ancestor
- * @property {string[]} [drifted] non-artefact paths changed since `head`
+ * @property {string[]} [drifted] non-artefact paths contributed since `head`
+ * @property {string[]} [offending] the landed commits that contributed them
  * @property {string} [reason] why the note is not bound, when it is not
  * @property {string[]} attested every SHA the note declares
  * @property {string[]} selfAttested declared SHAs rejected by rule 4
@@ -226,35 +234,70 @@ export function reviewBinding({
     }
   }
 
-  const drifted = changedPathsBetween(newest, resolvedHead).filter(
-    (file) => !file.startsWith(REVIEW_ARTEFACT_PREFIX),
-  );
+  // GPT-F5: LANDED COMMITS, not the net tree. `changedPathsBetween(newest, HEAD)` compared
+  // two endpoints, so a commit and a later exact revert of it cancelled out and the range
+  // read as empty — a four-commit bypass past a rule that is stated over history. See
+  // lib/git-baseline.mjs § commitsBetween for the attribution, merges included.
+  const offending = commitsBetween(newest, resolvedHead)
+    .map((commit) => ({
+      ...commit,
+      outside: commit.paths.filter(
+        (file) => !file.startsWith(REVIEW_ARTEFACT_PREFIX),
+      ),
+    }))
+    .filter((commit) => commit.outside.length > 0);
 
-  if (drifted.length > 0) {
+  if (offending.length > 0) {
+    const drifted = [
+      ...new Set(offending.flatMap((commit) => commit.outside)),
+    ].sort();
+    const detail = offending
+      .slice(0, 10)
+      .map(
+        (commit) =>
+          `${commit.sha.slice(0, 9)}${commit.parents.length > 1 ? " (merge)" : ""} — ` +
+          `${commit.outside.slice(0, 6).join(", ")}` +
+          (commit.outside.length > 6
+            ? `, …${commit.outside.length - 6} more`
+            : ""),
+      )
+      .join("\n        ");
+
     return {
       kind: "unbound",
       attested,
       selfAttested,
       head: newest,
       drifted,
+      offending: offending.map((commit) => commit.sha),
       reason:
         `${notePath} is STALE. Its newest usable reviewed head is ${newest.slice(0, 9)}, ` +
-        `and ${drifted.length} path(s) outside ${REVIEW_ARTEFACT_PREFIX} have changed ` +
-        `between it and ${resolvedHead.slice(0, 9)}:\n        ` +
-        drifted.slice(0, 20).join("\n        ") +
-        (drifted.length > 20
-          ? `\n        …and ${drifted.length - 20} more`
+        `and ${offending.length} commit(s) that LANDED after it touched paths outside ` +
+        `${REVIEW_ARTEFACT_PREFIX}:\n        ${detail}` +
+        (offending.length > 10
+          ? `\n        …and ${offending.length - 10} more commit(s)`
           : "") +
         "\n      The reviewer never read this code. A note-only commit after a reviewed " +
         "head is fine and is the intended shape — reviewed head, then the note that " +
         "records it. Anything else needs a fresh delta review of " +
         `${newest.slice(0, 9)}..${resolvedHead.slice(0, 9)}, and that review adds its own ` +
         "**Reviewed head:** line for the new head. Keeping the old lines and pushing " +
-        "code is what this check exists to refuse.",
+        "code is what this check exists to refuse.\n      Judged over LANDED COMMITS, " +
+        "not the net tree (GPT-F5): reverting a commit does NOT restore the clearance. " +
+        "The reverted diff is still in this branch's history, it is what a bisect " +
+        "replays, and a revert can itself be wrong — so a reviewer has to see both. If " +
+        "the revert is the right answer, it is still a fresh delta review.",
     };
   }
 
-  return { kind: "bound", head: newest, attested, selfAttested, drifted: [] };
+  return {
+    kind: "bound",
+    head: newest,
+    attested,
+    selfAttested,
+    drifted: [],
+    offending: [],
+  };
 }
 
 export { BaselineHistoryUnavailableError };

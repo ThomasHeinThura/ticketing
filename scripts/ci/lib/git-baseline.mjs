@@ -181,7 +181,16 @@ export function isAncestor(ancestor, descendant) {
 }
 
 /**
- * Repo-relative paths that differ between two commits.
+ * Repo-relative paths that differ between two commits — the **net tree** difference.
+ *
+ * **Superseded as a gate predicate by `commitsBetween` (GPT-F5).** A net-tree comparison
+ * only sees the endpoints, so a commit that lands and a later commit that exactly reverts
+ * it cancel out and the range reads as empty. Retained and still exported for exactly one
+ * reason: `probes/stale-review-note.test.mjs` asserts that THIS predicate would have
+ * passed the revert shape while the shipped checker fails it. A probe that cannot show the
+ * old answer differing from the new one proves nothing.
+ *
+ * Do not reintroduce it as the binding check.
  *
  * @returns {string[]}
  */
@@ -255,4 +264,95 @@ export function normaliseSection(section, listField) {
     out[key] = [];
   }
   return out;
+}
+
+/**
+ * Every commit that LANDED in `from..to`, with the paths each one contributed.
+ *
+ * **GPT-F5 — the review binding checked net tree state instead of landed history.**
+ * `git diff --name-only <reviewedHead>..HEAD` compares two endpoint trees, and the
+ * invariant the durable decision states is about history: *every landed commit after the
+ * reviewed substantive head must be review-artefact-only until another review attests a
+ * later head*. Those are not the same claim, and the gap is a four-commit bypass:
+ *
+ *   H1  code                      reviewed
+ *   H2  the note, nothing else     -> green, correctly
+ *   H3  modify non-review code
+ *   H4  exactly revert H3          -> net tree == H1 + note, so the endpoint diff is
+ *                                     EMPTY and the old review passed again
+ *
+ * At H4 a non-review commit has landed after the reviewed head — twice — and the reviewer
+ * read neither. Whether the tree happens to have come back to where it started is not the
+ * question the gate is asking. Reverting is also not a neutral act to a reviewer: H3's
+ * content is in the branch's history, its diff is what a bisect will replay, and a revert
+ * can itself be wrong.
+ *
+ * ## Attribution, including merges
+ *
+ * `git rev-list from..to` enumerates every commit reachable from `to` and not from
+ * `from` — which includes the commits a merge brought in, individually. So each commit is
+ * attributed exactly its own contribution and nothing is double-counted:
+ *
+ *   no parents (a root commit) -> `diff-tree --root`
+ *   one parent                 -> `diff-tree`, the ordinary case
+ *   two or more parents        -> `diff-tree -c`, the COMBINED diff, which is the paths
+ *                                 the merge changed relative to *every* parent. That is
+ *                                 the merge's own contribution: its conflict resolution.
+ *                                 The side branch's own commits are separate entries in
+ *                                 this same list, so nothing it carried is missed.
+ *
+ * One consequence worth stating out loud rather than discovering: merging `main` into the
+ * branch after a review puts every one of main's new commits into this range, so the note
+ * goes stale. That is correct — the tree a reviewer read is not the tree that would merge
+ * — and it is not a defect in the attribution.
+ *
+ * @param {string} from exclusive
+ * @param {string} to inclusive
+ * @returns {{sha: string, parents: string[], paths: string[]}[]} oldest first
+ */
+export function commitsBetween(from, to) {
+  const listed = git(["rev-list", "--parents", "--reverse", `${from}..${to}`]);
+  if (listed.status !== 0) {
+    throw new BaselineHistoryUnavailableError(
+      `\`git rev-list --parents ${from}..${to}\` failed: ${listed.stderr.trim()}. ` +
+        "The review binding is stated over LANDED COMMITS, so a range it cannot " +
+        'enumerate is a hard failure — "could not read the history" is not "no commits ' +
+        'landed".',
+    );
+  }
+
+  const commits = [];
+  for (const line of listed.stdout.split("\n")) {
+    const shas = line.trim().split(/\s+/).filter(Boolean);
+    if (shas.length === 0) continue;
+    const [sha, ...parents] = shas;
+
+    const args = [
+      "diff-tree",
+      "--no-commit-id",
+      "--name-only",
+      "-r",
+      "--no-renames",
+    ];
+    if (parents.length === 0) args.push("--root");
+    else if (parents.length > 1) args.push("-c");
+    args.push(sha);
+
+    const shown = git(args);
+    if (shown.status !== 0) {
+      throw new BaselineHistoryUnavailableError(
+        `\`git ${args.join(" ")}\` failed: ${shown.stderr.trim()}`,
+      );
+    }
+    commits.push({
+      sha,
+      parents,
+      paths: shown.stdout
+        .split("\n")
+        .map((path) => path.trim())
+        .filter((path) => path !== ""),
+    });
+  }
+
+  return commits;
 }

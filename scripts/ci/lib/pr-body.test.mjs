@@ -16,9 +16,11 @@ import {
   checklistPresenceProblems,
   checklistProblems,
   contentOf,
+  declaredState,
   effectivelyNotApplicable,
   field,
   markedNotApplicable,
+  meaningfulLines,
   normaliseHeading,
   sections,
   stripComments,
@@ -414,7 +416,7 @@ describe("contentOf — F13, invisible characters are not content", () => {
   });
 });
 
-describe("effectivelyNotApplicable — F9, any n/a form counts", () => {
+describe("declaredState / effectivelyNotApplicable — F9 and its residual", () => {
   it("catches a bare n/a", () => {
     assert.equal(effectivelyNotApplicable("n/a"), true);
   });
@@ -454,5 +456,77 @@ describe("effectivelyNotApplicable — F9, any n/a form counts", () => {
 
   it("does not fire on a word merely containing the letters", () => {
     assert.equal(effectivelyNotApplicable("opened /signage and /nadir"), false);
+  });
+
+  // ── F9 RESIDUAL: a declared state, not a token match ──────────────────────────
+  //
+  // The F9 fix matched the token `n/a` ANYWHERE in the section, so it read a negation as
+  // an assertion and rejected the one honest sentence a careful author writes. The state
+  // now comes from the first meaningful line; a later mention carries none.
+
+  it("does NOT fire on an honest refusal to claim the exemption", () => {
+    const honest =
+      "BLOCKED — the sandbox has no browser, so nothing was opened. I am not marking " +
+      "this n/a — that would misrepresent a real gap. The unopened screens are " +
+      "/app/board and /app/board/:id.";
+    // Non-vacuity: the superseded predicate matched on exactly this token.
+    assert.match(honest, /\bn\/a\b/);
+    assert.equal(declaredState(honest).state, "blocked");
+    assert.equal(effectivelyNotApplicable(honest), false);
+  });
+
+  it("accepts an explained BLOCKED and rejects a bare one", () => {
+    assert.equal(
+      declaredState(
+        "BLOCKED — no headless browser is installed in this environment, so /app/board " +
+          "was not opened.",
+      ).state,
+      "blocked",
+    );
+    assert.equal(declaredState("BLOCKED").state, "blocked-bare");
+    assert.equal(declaredState("BLOCKED —").state, "blocked-bare");
+    assert.equal(effectivelyNotApplicable("BLOCKED"), true);
+  });
+
+  it("reads the state from the FIRST meaningful line only", () => {
+    const tail =
+      " Later I explain why n/a and not applicable are both wrong here.";
+    assert.equal(declaredState(`n/a —${tail}`).state, "not-applicable");
+    assert.equal(
+      declaredState(`/app/board — 1440x900.${tail}`).state,
+      "provided",
+    );
+    assert.equal(
+      declaredState(`BLOCKED — no browser in this sandbox at all.${tail}`)
+        .state,
+      "blocked",
+    );
+  });
+
+  it("looks past emphasis, bullets and emoji to find the state word", () => {
+    assert.equal(declaredState("**n/a** — no UI").state, "not-applicable");
+    assert.equal(declaredState("- n/a, backend only").state, "not-applicable");
+    assert.equal(
+      declaredState(
+        "⛔ **BLOCKED** — the headless browser is not installed in this sandbox.",
+      ).state,
+      "blocked",
+    );
+  });
+
+  it("never lets template scaffolding become the first line", () => {
+    assert.equal(
+      declaredState("<!-- instructions -->\n**Note:**\n---\nn/a — no UI").state,
+      "not-applicable",
+    );
+    assert.equal(declaredState("<!-- only a comment -->").state, "empty");
+  });
+
+  it("meaningfulLines drops exactly what contentOf drops", () => {
+    assert.deepEqual(
+      meaningfulLines("<!-- c -->\n**Model:**\n---\n\n  first  \nsecond\n"),
+      ["first", "second"],
+    );
+    assert.deepEqual(meaningfulLines("\u200b\u2060\ufeff"), []);
   });
 });

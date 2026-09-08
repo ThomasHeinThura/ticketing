@@ -31,8 +31,10 @@ See docs/04-engineering/definition-of-done.md and docs/04-engineering/ci-cd.md.
 link to the committed docs/07-planning/security-reviews/<pr>-<slug>.md. That note must
 declare the head each review read, full 40-character SHA, one per line:
   **Reviewed head:** `<sha>`
-Nothing outside docs/07-planning/security-reviews/ may change after the newest declared
-head, or the note is stale and a fresh delta review is required. See ci-cd.md.
+Every commit that lands after the newest declared head must touch nothing outside
+docs/07-planning/security-reviews/, or the note is stale and a fresh delta review is
+required. Judged over landed commits, not the net tree — a revert does not restore it.
+See ci-cd.md.
 -->
 
 ## Screens opened
@@ -40,7 +42,16 @@ head, or the note is stale and a fresh delta review is required. See ci-cd.md.
 <!--
 One line per screen actually opened and used, not just implemented:
 route — viewport — what was clicked — screenshot
-n/a only if apps/web/** was not touched by this pull request.
+
+The FIRST meaningful line sets this section's state:
+  n/a / not applicable   only if apps/web/** was not touched by this pull request
+  BLOCKED — <why>         you could not open them; say what blocked you and name the
+                          screens you did not open. Accepted as an honest gap, and NOT a
+                          readiness signal — do-not 18 stays unsatisfied.
+  anything else           the screens themselves
+
+Mentioning "n/a" later, in explanation, carries no state. Do not water down a real gap
+into an n/a, and do not avoid explaining one for fear the word will trip the check.
 -->
 
 ## Gates
