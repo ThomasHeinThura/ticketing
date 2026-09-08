@@ -100,7 +100,30 @@ apps/api/src/middleware/**           packages/plugins-contracts/**
 apps/api/src/plugins/**              apps/api/src/scim/**
 apps/api/src/auth*                   apps/api/src/storage/**
 apps/api/src/webhooks/**             any new route file (a new *.ts exporting a Hono router)
+
+.github/**                           package.json
+scripts/ci/**                        **/package.json
+turbo.json                           pnpm-lock.yaml
+docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
+                                     .npmrc
+                                     .pnpmfile.cjs
 ```
+
+**Why the second block exists** (Thomas's decision, 2026-09-08 — see the
+[decision log](../07-planning/decision-log.md)). The first block is the application's
+security surface. The second is the machinery that decides whether ANY surface gets
+reviewed, plus the dependency-control files that decide what code is in the graph at all.
+Without it, the gate could not see changes to itself: PR #19 — the pull request that
+builds this very gate — touched `.github/**`, `scripts/ci/**`, `package.json`,
+`pnpm-workspace.yaml` and `pnpm-lock.yaml`, and the checker correctly reported *"no
+security-review path touched"*. Its own independent review then found a HIGH in
+`scripts/ci/`, a HIGH in the dependency overrides, and a fail-open in
+`scripts/ci/lib/diff.mjs`. All three lived in the blind spot.
+
+A gate that cannot require review of edits to itself is a gate anyone can quietly widen.
+`pnpm-lock.yaml` and `pnpm-workspace.yaml` are here for the same reason: a version floor
+can be deleted without any advisory firing, so `pnpm audit` cannot be the control — a
+human reading the diff is.
 
 The same fast-stage **PR-template check** asserts every fixed section is present, that none
 is empty unless marked `n/a` with a reason, that `## Reviewed by` names a different model or

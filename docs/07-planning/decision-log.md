@@ -17,6 +17,61 @@ Newest first.
 
 ---
 
+### 2026-09-08 · The mandatory security review covers the gate machinery and the dependency graph
+
+**Decision:** the authoritative security-review path list in
+[ci-cd.md](../04-engineering/ci-cd.md) is **expanded** to include the CI and
+dependency-control surfaces, in addition to every existing application glob, which are all
+kept:
+
+```
+.github/**            scripts/ci/**         turbo.json
+package.json          **/package.json       pnpm-lock.yaml
+pnpm-workspace.yaml   .npmrc                .pnpmfile.cjs
+docs/04-engineering/ci-cd.md
+```
+
+A change touching any of them requires a recorded independent Opus security review, on the
+same terms as a change to `apps/api/src/auth*` or `packages/permissions/**`.
+
+**Why:** the gate could not see changes to itself. PR #19 — the pull request that *builds*
+this gate — touched `.github/**`, `scripts/ci/**`, `package.json`, `pnpm-workspace.yaml`
+and `pnpm-lock.yaml`, and `check:pr-template` correctly reported *"no security-review path
+touched (9 globs from ci-cd.md checked)"*. Its independent review then found, inside that
+blind spot: a HIGH where a new `pnpm.overrides` block silently deactivated 30 inherited
+pins and let two version floors be breached with `pnpm audit` still green; a HIGH where the
+independent-review blocker could be closed by deleting one line from a PR body; and a
+fail-open in `scripts/ci/lib/diff.mjs` that turned the security-review requirement into a
+green no-op on an undeterminable diff.
+
+A gate that cannot require review of edits to itself is a gate anyone can quietly widen,
+and the three findings above are what that looks like in practice rather than in theory.
+The two lockfile/workspace entries carry their own argument: deleting a version **floor**
+fires no advisory, so `pnpm audit` structurally cannot be the control for it — a human
+reading the diff is. `check:overrides` now guards the override *source*, but a source can
+be canonical and still wrong.
+
+**Alternatives:**
+- *Leave the list as-is and rely on `check:overrides` plus code review by convention.*
+  Rejected: convention is what failed. #16, #57 and #19 all passed the previous version of
+  the checklist loophole, which is a demonstrated failure mode on this repository, not a
+  hypothetical.
+- *Add only `scripts/ci/**` and `.github/**`.* Rejected: F1 was a dependency-graph
+  regression, not a script defect, and it was invisible to every automated gate.
+- *Require review of every path.* Rejected: it would make the requirement routine and
+  therefore ignored. The list stays a list of surfaces with a stated reason each.
+
+**Cost, stated plainly:** PR #19 now self-triggers the requirement it adds, so it needs a
+committed Opus review note before it can be merge-ready. That is the correct consequence,
+not an obstacle to route around, and the note is written from a completed review — never
+ahead of one.
+
+**Decided by:** Thomas, 2026-09-08, on the F15 question raised by the independent review of
+`b70b3529c81b3d890e430d91ea9dcb98be22583a`
+([issuecomment-5586943706](https://github.com/ThomasHeinThura/ticketing/pull/19#issuecomment-5586943706)).
+
+---
+
 ### 2026-09-08 · Organization create baseline closes at N=9
 
 **Decision:** the frozen inherited S1 baseline for one default
