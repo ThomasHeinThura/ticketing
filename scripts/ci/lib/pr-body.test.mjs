@@ -16,6 +16,7 @@ import {
   checklistPresenceProblems,
   checklistProblems,
   contentOf,
+  effectivelyNotApplicable,
   field,
   markedNotApplicable,
   normaliseHeading,
@@ -410,5 +411,48 @@ describe("contentOf — F13, invisible characters are not content", () => {
   it("still keeps real content that merely contains an invisible character", () => {
     assert.equal(contentOf("re\u200Bviewed"), "reviewed");
     assert.notEqual(contentOf("\u200Bactual text"), "");
+  });
+});
+
+describe("effectivelyNotApplicable — F9, any n/a form counts", () => {
+  it("catches a bare n/a", () => {
+    assert.equal(effectivelyNotApplicable("n/a"), true);
+  });
+
+  it("catches n/a WITH a reason — the case that used to pass", () => {
+    assert.equal(effectivelyNotApplicable("n/a — no UI change"), true);
+    assert.equal(effectivelyNotApplicable("n/a: nothing visual here"), true);
+    assert.equal(effectivelyNotApplicable("N/A, backend only"), true);
+  });
+
+  it("catches spaced and spelled-out forms", () => {
+    assert.equal(effectivelyNotApplicable("n / a — none"), true);
+    assert.equal(effectivelyNotApplicable("Not applicable — no screens"), true);
+  });
+
+  it("catches an empty or invisible-only section", () => {
+    assert.equal(effectivelyNotApplicable(""), true);
+    assert.equal(effectivelyNotApplicable("   \n  "), true);
+    assert.equal(effectivelyNotApplicable("​"), true);
+  });
+
+  it("catches an n/a hidden behind an HTML comment", () => {
+    assert.equal(
+      effectivelyNotApplicable("<!-- ignore me -->\nn/a — no UI"),
+      true,
+    );
+  });
+
+  it("accepts a real answer", () => {
+    assert.equal(
+      effectivelyNotApplicable(
+        "/projects/1 — 1280x800 — clicked New task — screenshot attached",
+      ),
+      false,
+    );
+  });
+
+  it("does not fire on a word merely containing the letters", () => {
+    assert.equal(effectivelyNotApplicable("opened /signage and /nadir"), false);
   });
 });

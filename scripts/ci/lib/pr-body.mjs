@@ -257,6 +257,22 @@ function itemMarkedNotApplicable(line) {
  * `## Checklists` — the template stays the single definition, exactly as `sections()`
  * already treats it for the H2 list.
  */
+/**
+ * F9 — is a section effectively marked "not applicable"?
+ *
+ * The old inline test stripped `n/a` and asked whether anything was left, so a bare
+ * `n/a` failed while `n/a — no UI change` PASSED: the reason itself kept the section
+ * non-empty. The failure message said the section "may not be n/a", so the code and the
+ * message disagreed about the rule.
+ *
+ * Used for `## Screens opened` when apps/web/** changed, where AGENTS.md do-not 18 asks
+ * for the screens you actually opened and no reason substitutes for that.
+ */
+export function effectivelyNotApplicable(text) {
+  if (contentOf(text) === "") return true;
+  return /\bn\s*\/\s*a\b|\bnot\s+applicable\b/i.test(stripComments(text));
+}
+
 export function checklistPresenceProblems(raw, declared) {
   const problems = [];
 

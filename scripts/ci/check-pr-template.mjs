@@ -22,10 +22,17 @@
  */
 
 import path from "node:path";
-import { addedPaths, changedFiles, changedPaths } from "./lib/diff.mjs";
+import {
+  addedPaths,
+  changedFiles,
+  changedPaths,
+  DiffUnavailableError,
+} from "./lib/diff.mjs";
 import {
   checklistPresenceProblems,
   checklistProblems,
+  contentOf,
+  effectivelyNotApplicable,
   field,
   loadBody,
   normaliseHeading,
@@ -70,6 +77,8 @@ function gateRows(text) {
 
 async function securitySurfaceTouched() {
   const { matches, globs } = await readSecurityReviewPaths();
+  // F4: let DiffUnavailableError propagate. The caller turns it into a hard failure
+  // rather than an empty change set that reads as "nothing sensitive was touched".
   const changes = changedFiles();
   const touched = changedPaths(changes).filter((file) => matches(file));
 
@@ -186,7 +195,21 @@ async function main() {
     }
   }
 
-  const { touched, globs } = await securitySurfaceTouched();
+  // F4: a diff we could not compute is a hard failure, never a quiet "nothing
+  // touched". Both the security-review branch and the Screens-opened branch below
+  // depend on the change set, so neither runs on a guess.
+  let touched;
+  let globs;
+  let webTouched = false;
+  try {
+    ({ touched, globs } = await securitySurfaceTouched());
+    webTouched = changedPaths().some((file) => file.startsWith("apps/web/"));
+  } catch (error) {
+    if (!(error instanceof DiffUnavailableError)) throw error;
+    failures.push(violation("changed-file detection", error.message));
+    finish({ name: NAME, failures, warnings, ok: "unreachable" });
+    return;
+  }
   const securityReview = present.get(normaliseHeading("Security review"));
   if (touched.length > 0 && securityReview) {
     const model = field(securityReview.text, "Model");
@@ -226,14 +249,17 @@ async function main() {
     );
   }
 
-  const webTouched = changedPaths().some((file) =>
-    file.startsWith("apps/web/"),
-  );
   const screensOpened = present.get(normaliseHeading("Screens opened"));
+  // F9: the old test stripped `n/a` and asked whether ANYTHING was left, so a bare
+  // `n/a` failed but `n/a — no UI change` passed: the reason kept the section
+  // non-empty. The message said the section "may not be n/a", so implementation and
+  // message disagreed. When apps/web/** changed, ANY n/a form is rejected -- with or
+  // without a reason -- because do-not 18 asks for the screens you actually opened,
+  // and no reason substitutes for that.
   if (
     webTouched &&
     screensOpened &&
-    !/\S/.test(screensOpened.text.replace(/\bn\/a\b/gi, ""))
+    effectivelyNotApplicable(screensOpened.text)
   ) {
     failures.push(
       violation(
@@ -266,13 +292,62 @@ async function main() {
         );
         continue;
       }
-      if (/^waived$/i.test(result) && (link ?? "") === "") {
-        failures.push(
-          violation(
-            "## Gates",
-            `"${gate}" is waived with no decision-log link. Only Thomas may waive a gate, and it needs an entry.`,
-          ),
+      if (/^waived$/i.test(result)) {
+        // F7: `waived` used to need only a NON-EMPTY third cell, so
+        // `| waived | see chat |` passed on all thirteen design gates. The message
+        // claimed "Only Thomas may waive a gate" — an assertion this check cannot
+        // make and must stop making: agents operate through the same repository
+        // identity as Thomas, so nothing readable from a pull-request body proves a
+        // human authorized anything.
+        //
+        // What IS enforceable is a durable, committed decision-log reference that
+        // names the gate being waived. That does not prove who waived it; it means a
+        // waiver leaves a reviewable record in version control instead of pointing at
+        // a chat.
+        const reference = /docs\/07-planning\/decision-log\.md(#[\w-]+)?/.exec(
+          link ?? "",
         );
+        if (!reference) {
+          const shown = (link ?? "") === "" ? "empty" : `"${link}"`;
+          failures.push(
+            violation(
+              "## Gates",
+              `"${gate}" is waived and the link cell is ${shown}. A waiver must cite a ` +
+                "committed entry in docs/07-planning/decision-log.md (optionally with " +
+                "an #anchor). This check CANNOT verify who authored the waiver — " +
+                "agents share the repository identity — so the durable record is the " +
+                "whole control: no entry, no waiver.",
+            ),
+          );
+          continue;
+        }
+        const logPath = path.join(repoRoot, "docs/07-planning/decision-log.md");
+        if (!(await exists(logPath))) {
+          failures.push(
+            violation(
+              "## Gates",
+              `"${gate}" cites docs/07-planning/decision-log.md, which is not present ` +
+                "in this branch.",
+            ),
+          );
+          continue;
+        }
+        // The entry must correspond to THIS gate, not merely exist. Gate rows are
+        // identified by their leading token (G1..G13), or by name when they have none.
+        const decisionLog = await readText(logPath);
+        const identifier = /^\s*(G\d+)\b/.exec(gate)?.[1] ?? gate;
+        const escaped = identifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        if (!new RegExp(`\\b${escaped}\\b`, "i").test(decisionLog)) {
+          failures.push(
+            violation(
+              "## Gates",
+              `"${gate}" is waived citing the decision log, but no entry there ` +
+                `mentions "${identifier}". A waiver has to name the gate it waives, or ` +
+                "the citation is decoration.",
+            ),
+          );
+        }
+        continue;
       }
     }
   }

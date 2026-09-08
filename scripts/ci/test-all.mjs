@@ -70,7 +70,10 @@ const manifest = [
     gate: "pnpm audit",
     stage: "fast",
     run: ["pnpm", "audit", "--audit-level=high"],
-    note: "red today: the inherited dependency graph carries 8 high advisories, every one in devDependencies or build tooling. Fixing them is a lockfile change.",
+    note:
+      "clean at EVERY severity, not only --audit-level=high. The inherited high " +
+      "advisories (js-yaml, nanoid) are closed by the pins in pnpm-workspace.yaml. " +
+      "Nothing is suppressed: no --prod, no ignoreGhsas, no continue-on-error.",
   },
   {
     gate: "gitleaks",

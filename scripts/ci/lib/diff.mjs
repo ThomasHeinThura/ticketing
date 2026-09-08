@@ -18,13 +18,43 @@ export function baseRef() {
  *
  * @returns {{ status: string, file: string }[]}
  */
+export class DiffUnavailableError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "DiffUnavailableError";
+  }
+}
+
 export function changedFiles() {
   const base = baseRef();
   let mergeBase;
   try {
     mergeBase = git(["merge-base", base, "HEAD"]).trim();
-  } catch {
-    return [];
+  } catch (error) {
+    // F4: DO NOT return []. An empty change set is indistinguishable from "the diff
+    // could not be computed", and every caller treats empty as "nothing sensitive was
+    // touched" -- so a shallow clone, a trimmed fetch-depth or a renamed default branch
+    // silently converts the security-review requirement into a green no-op whose output
+    // reads like a successful check. Reproduced: GITHUB_BASE_REF=refs-that-do-not-exist
+    // printed "no security-review path touched" and skipped the branch entirely.
+    //
+    // "the gate did not run" and "the gate ran and found nothing" are different facts,
+    // exactly as the route-policy job's own comment says. Fail closed and say which.
+    throw new DiffUnavailableError(
+      `cannot determine the changed files: \`git merge-base ${base} HEAD\` failed ` +
+        `(${String(error?.message ?? error).split("\n")[0]}). This is a CHECKOUT ` +
+        "problem, not a clean diff. Any path-conditional gate -- the mandatory " +
+        "security review among them -- would silently pass on an empty change set, so " +
+        "it fails here instead. In CI, confirm `fetch-depth: 0` and that the base ref " +
+        "exists; locally, fetch the base branch.",
+    );
+  }
+
+  if (mergeBase === "") {
+    throw new DiffUnavailableError(
+      `\`git merge-base ${base} HEAD\` returned nothing. See above -- this is a ` +
+        "checkout problem, not an empty diff.",
+    );
   }
 
   const output = git([

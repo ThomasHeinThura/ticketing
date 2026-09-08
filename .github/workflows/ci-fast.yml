@@ -20,9 +20,16 @@ on:
   pull_request:
     # `edited` matters: the PR-template and security-review checks read the body.
     types: [opened, synchronize, reopened, ready_for_review, edited]
-  merge_group:
   push:
     branches: [main]
+
+# NO `merge_group:` trigger, deliberately (F5). `## Needs Thomas` asks for the fast jobs
+# to become required status checks. The `pull-request` job below is conditional on
+# `github.event_name == 'pull_request'`, so in a merge-queue run it does not exist — and a
+# required check that never appears leaves the queue nothing to wait on. Rather than make
+# the job report a neutral success in a context where it genuinely cannot read a pull-request
+# body, the trigger is removed until every intended required check has meaningful
+# merge-group semantics. Add it back with that proof, not before.
 
 permissions:
   contents: read
@@ -194,15 +201,22 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
-      - name: pnpm audit
-        # ci-cd.md: high or critical fails. RED TODAY, and left red on purpose. The
-        # inherited graph carries high advisories — js-yaml via @commitlint/cli, nanoid via
-        # apps__web>postcss — every one in devDependencies or build tooling. Fixing them is
-        # a pnpm-lock.yaml change, which this branch does not own.
-        #
-        # Not narrowed to --prod, not lowered to --audit-level=critical, not given
-        # continue-on-error. Any of those would turn a true statement into a green tick.
-        # The gate reports what is true; the lockfile change makes it green.
+        - name: pnpm audit
+          # ci-cd.md: high or critical fails. GREEN — and green by fixing the graph, not by
+          # narrowing the question. The inherited advisories this comment used to call
+          # permanent (js-yaml via @commitlint/cli, nanoid via apps__web>postcss) are closed
+          # by the pins in pnpm-workspace.yaml, which this branch DOES own. `pnpm audit`
+          # reports no known vulnerabilities at EVERY severity, not only at high.
+          #
+          # Nothing is suppressed to get there: no --prod narrowing, no
+          # --audit-level=critical, no continue-on-error, no .npmrc, no .pnpmfile.cjs, no
+          # auditConfig/ignoreGhsas anywhere in the repository. Any of those would turn a
+          # true statement into a green tick, which is the opposite of the point.
+          #
+          # Read pnpm-workspace.yaml for what is pinned and why. Note what this gate CANNOT
+          # see: removing a version FLOOR is invisible to it, because a floor sits exactly
+          # where there is no advisory. `check:overrides` in the registers job guards the
+          # override source itself for that reason.
         run: pnpm audit --audit-level=high
 
   secret-scan:

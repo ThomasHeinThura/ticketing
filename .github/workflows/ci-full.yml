@@ -33,10 +33,16 @@ env:
 jobs:
   integration:
     name: integration - Postgres 18
-    # On a pull request this stage runs only once it is labelled ready-for-review.
-    if: >-
-      github.event_name != 'pull_request' ||
-      contains(github.event.pull_request.labels.*.name, 'ready-for-review')
+    # RUNS ON EVERY PULL REQUEST. No label gate (F5).
+    #
+    # This job used to be conditional on the `ready-for-review` label. GitHub treats a
+    # SKIPPED required check as satisfied, so making it required — which `## Needs Thomas`
+    # asks for — produced a green required gate on precisely the pull requests where it
+    # never ran. That is the trap this file's own header warns about: "a skipped job is not
+    # a passing gate, and treating it as one is how a suite goes green over nothing."
+    #
+    # It costs one Postgres service container and ~90s. If a future expensive matrix needs
+    # label-gating, gate THAT matrix and leave this job unconditional.
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
