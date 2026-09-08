@@ -49,6 +49,7 @@ stages below.
 │ pnpm check:env       no stray process.env        │
 │ pnpm check:vocabulary identifiers registered     │
 │ pnpm check:skips     no .skip / .only            │
+│ pnpm test:ci-scripts  gate checkers + red probes │
 │ pr-template check    sections filled, tiers named│
 │ no-inherited-routes  removals stay removed       │
 ├─ Test ───────────────────────────────────────────┤
@@ -124,6 +125,55 @@ A gate that cannot require review of edits to itself is a gate anyone can quietl
 `pnpm-lock.yaml` and `pnpm-workspace.yaml` are here for the same reason: a version floor
 can be deleted without any advisory firing, so `pnpm audit` cannot be the control — a
 human reading the diff is.
+
+**The list above is not the whole scope. The scope is the UNION of this list at the merge
+base and this list at HEAD.** Expanding the list takes effect immediately; **narrowing it
+does not take effect on the pull request that narrows it**, and narrowing is itself
+security-sensitive — a diff that removes a glob requires the review even if nothing else
+in it matches either list. The reason is the reason the second block exists, one level up:
+the list lives in a document the diff may edit, so a pull request that shrank
+`scripts/ci/**` and `docs/04-engineering/ci-cd.md` out of the list, in the same commit
+that edited `scripts/ci/`, matched nothing and reported *"no security-review path
+touched"*. The files performing the reduction stopped matching the scope because of the
+reduction. If the merge base cannot be resolved, or the document exists there and cannot
+be parsed, the check **fails closed** — "the scope could not be computed" and "nothing
+sensitive was touched" are different facts.
+
+**The committed note is bound to the code it reviewed.** `## Security review`'s
+`**Note:**` must link a committed
+`docs/07-planning/security-reviews/<pr>-<slug>.md`, and that note must declare, on its own
+line, the head each review actually read:
+
+```
+**Reviewed head:** `6b32ef316c49cc14cc841b32fdcce637a442b813`
+```
+
+Full forty-character SHAs. SHAs written in prose are not parsed — the notes on file cite
+merge bases and post-rebase orphans in the same sentence as reviewed heads. The newest
+declared head must be an ancestor of HEAD, and **nothing outside
+`docs/07-planning/security-reviews/` may have changed between it and HEAD**. So the shape
+is: a code head is reviewed, a **note-only** commit records it and the gate goes green,
+and any later code commit makes the note stale until a fresh delta review adds its own
+`**Reviewed head:**` line for the new head. Recording that new head is itself a note-only
+commit, so closing the gate does not reopen it. Existence of the note was the whole of
+the old check, and existence never expires.
+
+**A waived gate needs a declaration, not a sentence.** `## Gates`' third cell must cite
+one decision-log entry **with its `#anchor`**, and that entry must contain, on one line:
+
+```
+**Waives gate:** `G1` · **PR:** #19 · **Follow-up:** #123
+```
+
+The gate identifier is compared exactly, the pull-request number must be the one being
+checked, and the follow-up issue is
+[§ Waiving a gate](../02-design/ux-quality-gates.md#waiving-a-gate) step 3 made mechanical.
+Prose is deliberately not accepted: the previous check looked for the gate identifier
+anywhere in the document, which the sentence *"G1 is not waived"* satisfied. **What is
+still not enforceable is who authorised it** — agents commit through the same repository
+identity Thomas does, so nothing readable from a file proves authorship. The declaration
+provides a durable, specific, gate-bound, PR-scoped record; Thomas confirms the authority
+at the merge button, and CI says so rather than implying it checked.
 
 The same fast-stage **PR-template check** asserts every fixed section is present, that none
 is empty unless marked `n/a` with a reason, that `## Reviewed by` names a different model or

@@ -246,9 +246,25 @@ Sometimes justified — a spike, a proof of concept, a genuine tooling false pos
 1. Say which gate, and why, in the pull request description.
 2. Get explicit approval from Thomas. An AI agent may not self-approve a waiver.
 3. Open a follow-up issue and link it.
-4. Record it in the [decision log](../07-planning/decision-log.md).
+4. Record it in the [decision log](../07-planning/decision-log.md), as an entry whose
+   body carries the waiver **declaration** on one line:
+
+   ```
+   **Waives gate:** `G1` · **PR:** #19 · **Follow-up:** #123
+   ```
+
+5. Put that entry's `#anchor` in the pull request's `## Gates` link cell.
 
 A waiver without a follow-up issue is not a waiver, it is debt with no owner.
+
+Steps 1, 3, 4 and 5 are checked mechanically by the fast-stage PR-template check
+([ci-cd.md](../04-engineering/ci-cd.md)): the anchor must resolve to exactly one entry,
+and the declaration must name this gate, this pull request and a follow-up issue. Prose
+is not accepted — the check that read prose accepted the sentence *"G1 is not waived"* as
+authorisation for waiving G1. **Step 2 is not mechanically checkable** and is not claimed
+to be: agents commit through the same repository identity Thomas does, so nothing readable
+from a committed file proves who wrote a line. The declaration makes a waiver durable,
+specific and reviewable; the authority behind it is Thomas's to confirm.
 
 ## Related
 

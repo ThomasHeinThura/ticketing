@@ -27,7 +27,13 @@ See docs/04-engineering/definition-of-done.md and docs/04-engineering/ci-cd.md.
 **Model:** <!-- must be Opus -->
 **Session:** <!-- session id -->
 **Surfaces examined:** <!-- list them, or state explicitly "no security surface touched" -->
-**Note:** <!-- link to the committed docs/07-planning/security-reviews/<pr>-<slug>.md -->
+**Note:** <!--
+link to the committed docs/07-planning/security-reviews/<pr>-<slug>.md. That note must
+declare the head each review read, full 40-character SHA, one per line:
+  **Reviewed head:** `<sha>`
+Nothing outside docs/07-planning/security-reviews/ may change after the newest declared
+head, or the note is stale and a fresh delta review is required. See ci-cd.md.
+-->
 
 ## Screens opened
 
@@ -57,8 +63,16 @@ n/a only if apps/web/** was not touched by this pull request.
 | Route coverage (`test:permissions`) | | |
 | Permission matrix | | |
 
-A row marked **waived** needs Thomas's explicit approval and a decision-log entry — see
-[UX quality gates § Waiving a gate](../docs/02-design/ux-quality-gates.md#waiving-a-gate).
+A row marked **waived** needs Thomas's explicit approval, and its link cell must cite one
+decision-log entry **by `#anchor`** whose body carries the declaration
+
+```
+**Waives gate:** `G1` · **PR:** #19 · **Follow-up:** #123
+```
+
+— see [UX quality gates § Waiving a gate](../docs/02-design/ux-quality-gates.md#waiving-a-gate).
+CI verifies the declaration binds to this gate, this pull request and a follow-up issue;
+it cannot verify who approved it, so that part is still Thomas's at the merge button.
 A row is not "n/a" because it is inconvenient; it is n/a because the gate does not apply
 to this change.
 

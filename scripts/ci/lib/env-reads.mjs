@@ -166,3 +166,51 @@ export function findEnvReads(source) {
 
   return reads;
 }
+
+/**
+ * A stable identity for one unattributable read.
+ *
+ * **GPT-F3.** `env-baseline.json` recorded unattributable reads as a COUNT per file —
+ * `{ reason, reads: 1 }` — and that count was compared against the merge base by
+ * `addedWithinKeys`, which compares arrays. The value was an object, so the comparison
+ * silently saw two empty lists and returned `[]` for every possible change:
+ *
+ *   base:  "apps/api/src/storage/s3.ts": { reason: "…", reads: 1 }
+ *   diff:  a second computed `process.env[…]` read, plus reads: 1 -> 2
+ *   result: check:env GREEN
+ *
+ * Same-diff bypass, one level below the one F3 closed. A count is also blind to a
+ * replacement: delete one baselined read, add a different one, and the number is
+ * unchanged while the debt is not.
+ *
+ * So the baseline records identities instead. The identity is the read's kind plus the
+ * source line it sits on, whitespace-collapsed, with a 1-based index to separate
+ * genuinely identical lines. Deliberately NOT the line number: inserting an unrelated
+ * function above a baselined read would otherwise register as new debt, and a ratchet
+ * that fires on unrelated edits is a ratchet people delete.
+ *
+ * @param {EnvRead} read
+ * @param {number} index 1-based, among reads sharing this fingerprint body
+ * @returns {string}
+ */
+export function readFingerprint(read, index) {
+  const snippet = read.snippet.replace(/\s+/g, " ").trim();
+  return `${read.kind} #${index}: ${snippet}`;
+}
+
+/**
+ * Fingerprints for a file's unattributable reads, in source order, de-duplicated by
+ * appending an occurrence index.
+ *
+ * @param {EnvRead[]} reads
+ * @returns {string[]}
+ */
+export function readFingerprints(reads) {
+  const seen = new Map();
+  return reads.map((read) => {
+    const body = `${read.kind}: ${read.snippet.replace(/\s+/g, " ").trim()}`;
+    const index = (seen.get(body) ?? 0) + 1;
+    seen.set(body, index);
+    return readFingerprint(read, index);
+  });
+}

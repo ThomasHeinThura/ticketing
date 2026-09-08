@@ -1,5 +1,5 @@
 {
-	"note": "Inherited kaneo environment reads that have not yet completed the migration to the five-plus-six rule (docs/04-engineering/repository-bootstrap.md § 2). This file is a RATCHET: an environment read that is neither approved in docs/05-operations/configuration-reference.md nor listed here fails the build. Entries are removed as the code that reads them is removed or moved into God Mode; entries are never added by hand to make a new violation pass. Shrink it with `pnpm check:env --prune`.",
+	"note": "Inherited kaneo environment reads that have not yet completed the migration to the five-plus-six rule (docs/04-engineering/repository-bootstrap.md § 2). This file is a RATCHET: an environment read that is neither approved in docs/05-operations/configuration-reference.md nor listed here fails the build. Entries are removed as the code that reads them is removed or moved into God Mode; entries are never added by hand to make a new violation pass. Shrink it with `pnpm check:env --prune`. `unattributableReads` records one FINGERPRINT per read, not a count (GPT-F3): a count moved with the diff that grew it, was invisible to the merge-base comparison, and could not see one read being swapped for another at the same total.",
 	"seededFrom": "04e3a55 (origin/main at the time issue #10 started)",
 	"unmigratedNames": {
 		"APPDATA": ["packages/mcp/src/install/targets.ts:71"],
@@ -140,11 +140,14 @@
 	"unattributableReads": {
 		"apps/api/src/storage/s3.ts": {
 			"reason": "The seven S3 connection variables go through a local env(name) helper backed by process.env[name]. Storage becomes God Mode configuration (docs/05-operations/configuration-reference.md § Storage).",
-			"reads": 1
+			"occurrences": ["computed #1: return process.env[name]?.trim() || \"\";"]
 		},
 		"packages/email/src/smtp-config.ts": {
 			"reason": "The eight SMTP_* names arrive through the parameter default `env: SmtpEnv = process.env`. SMTP becomes God Mode configuration (§ Notifications).",
-			"reads": 2
+			"occurrences": [
+				"alias #1: env: SmtpEnv = process.env,",
+				"alias #1: export function isSmtpConfigured(env: SmtpEnv = process.env): boolean {"
+			]
 		}
 	}
 }

@@ -12,11 +12,22 @@
  * ci-cd.md stays the single authoritative list, so these tests read it rather than
  * restating it — the same rule the parser follows. They fail if the decision is silently
  * reverted by editing the document.
+ *
+ * **This file is NOT the control for GPT-F1.** It asserts what ci-cd.md declares today,
+ * and it is as editable in a pull request as ci-cd.md is — a diff that shrinks the list
+ * can shrink these assertions in the same breath. The control for "a diff cannot narrow
+ * its way out of the review requirement" is `probes/security-scope-shrink.test.mjs`,
+ * which runs the real checker against constructed history that a document edit cannot
+ * reach.
  */
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { globToRegExp, readSecurityReviewPaths } from "./security-paths.mjs";
+import {
+  globToRegExp,
+  parseSecurityReviewPaths,
+  readSecurityReviewPaths,
+} from "./security-paths.mjs";
 
 /** Representative paths for each surface the decision names. */
 const MUST_REQUIRE_REVIEW = [
@@ -115,6 +126,32 @@ describe("security-review paths — F15 scope", () => {
     assert.equal(matches("package.json"), true);
     assert.equal(matches("apps/api/package.json"), true);
     assert.equal(matches("packages/email/package.json"), true);
+  });
+
+  it("refuses a document whose list block is gone, instead of reviewing nothing", () => {
+    // The fail-closed floor under the union scope: if the block cannot be found at all,
+    // the parser throws and check:pr-template reports it rather than proceeding with an
+    // empty list, which would read as "nothing sensitive was touched".
+    assert.throws(
+      () => parseSecurityReviewPaths("# CI/CD\n\nNo list here.\n", "a probe"),
+      /Could not find the security-review path list in a probe/,
+    );
+  });
+
+  it("refuses a list shrunk below the point where it could be the whole list", () => {
+    const source = [
+      "# CI/CD",
+      "",
+      "```",
+      "packages/permissions/**",
+      "apps/api/src/auth*",
+      "```",
+      "",
+    ].join("\n");
+    assert.throws(
+      () => parseSecurityReviewPaths(source, "a probe"),
+      /Parsed only 2 security-review path\(s\) from a probe/,
+    );
   });
 
   it("globToRegExp anchors, so a glob cannot match a longer path by accident", () => {

@@ -16,9 +16,24 @@
  * The section list is read from .github/pull_request_template.md, so the template stays
  * the single definition of "every fixed section".
  *
+ * Three of the path-conditional decisions this file makes are answered by libraries
+ * rather than inline, because each turned out to be answerable in a way that looked
+ * right and was not:
+ *
+ *   lib/security-paths.mjs        GPT-F1 — the scope is the union of ci-cd.md's list at
+ *                                 the merge base and at HEAD, so a diff that shrinks the
+ *                                 list does not thereby escape it.
+ *   lib/security-review-note.mjs  GPT-F2 — the committed note must name the head it
+ *                                 reviewed, and nothing but review artefacts may have
+ *                                 landed since.
+ *   lib/gate-waiver.mjs           GPT-F4 — `waived` needs a declaration inside one
+ *                                 anchored decision-log entry, bound to this gate, this
+ *                                 pull request and a follow-up issue.
+ *
  * Usage:
  *   node scripts/ci/check-pr-template.mjs --body <file>
  *   node scripts/ci/check-pr-template.mjs                # reads $GITHUB_EVENT_PATH
+ *   node scripts/ci/check-pr-template.mjs --pr 19        # when no event payload exists
  */
 
 import path from "node:path";
@@ -28,6 +43,7 @@ import {
   changedPaths,
   DiffUnavailableError,
 } from "./lib/diff.mjs";
+import { verifyWaiver } from "./lib/gate-waiver.mjs";
 import {
   checklistPresenceProblems,
   checklistProblems,
@@ -35,14 +51,23 @@ import {
   effectivelyNotApplicable,
   field,
   loadBody,
+  loadPullRequestNumber,
   normaliseHeading,
   sections,
 } from "./lib/pr-body.mjs";
 import { exists, finish, readText, repoRoot, violation } from "./lib/repo.mjs";
 import {
+  CI_CD_RELATIVE_PATH,
   looksLikeHonoRouter,
-  readSecurityReviewPaths,
+  readSecurityReviewScope,
+  SecurityScopeUnavailableError,
 } from "./lib/security-paths.mjs";
+import {
+  BaselineHistoryUnavailableError,
+  REVIEW_ARTEFACT_PREFIX,
+  ReviewBindingUnavailableError,
+  reviewBinding,
+} from "./lib/security-review-note.mjs";
 
 const NAME = "pr-template";
 const templatePath = path.join(repoRoot, ".github/pull_request_template.md");
@@ -76,11 +101,13 @@ function gateRows(text) {
  */
 
 async function securitySurfaceTouched() {
-  const { matches, globs } = await readSecurityReviewPaths();
+  // GPT-F1: the scope is the UNION of ci-cd.md's list at the merge base and at HEAD, so
+  // a diff that shrinks the list cannot thereby escape it. See lib/security-paths.mjs.
+  const scope = await readSecurityReviewScope();
   // F4: let DiffUnavailableError propagate. The caller turns it into a hard failure
   // rather than an empty change set that reads as "nothing sensitive was touched".
   const changes = changedFiles();
-  const touched = changedPaths(changes).filter((file) => matches(file));
+  const touched = changedPaths(changes).filter((file) => scope.matches(file));
 
   for (const file of addedPaths(changes)) {
     if (!/\.tsx?$/.test(file) || touched.includes(file)) {
@@ -95,7 +122,7 @@ async function securitySurfaceTouched() {
     }
   }
 
-  return { touched, globs };
+  return { touched, scope };
 }
 
 async function main() {
@@ -197,28 +224,65 @@ async function main() {
 
   // F4: a diff we could not compute is a hard failure, never a quiet "nothing
   // touched". Both the security-review branch and the Screens-opened branch below
-  // depend on the change set, so neither runs on a guess.
+  // depend on the change set, so neither runs on a guess. GPT-F1 adds the second
+  // undeterminable input: a merge base we cannot resolve means the union scope cannot be
+  // computed, and that is equally not "nothing sensitive was touched".
   let touched;
-  let globs;
+  let scope;
   let webTouched = false;
   try {
-    ({ touched, globs } = await securitySurfaceTouched());
+    ({ touched, scope } = await securitySurfaceTouched());
     webTouched = changedPaths().some((file) => file.startsWith("apps/web/"));
   } catch (error) {
-    if (!(error instanceof DiffUnavailableError)) throw error;
-    failures.push(violation("changed-file detection", error.message));
+    if (error instanceof DiffUnavailableError) {
+      failures.push(violation("changed-file detection", error.message));
+    } else if (error instanceof SecurityScopeUnavailableError) {
+      failures.push(violation("security-review scope", error.message));
+    } else {
+      throw error;
+    }
     finish({ name: NAME, failures, warnings, ok: "unreachable" });
     return;
   }
+
+  // GPT-F1, second half: narrowing the protected list is itself a security-sensitive
+  // act. Union matching already keeps the narrowed-away paths in scope; this keeps the
+  // requirement firing even if a future refactor moved the list somewhere the diff does
+  // not touch, and it says out loud what was removed.
+  if (scope.removed.length > 0) {
+    warnings.push(
+      `${scope.removed.length} security-review glob(s) REMOVED from ${CI_CD_RELATIVE_PATH} ` +
+        `relative to the merge base ${scope.base.sha.slice(0, 9)} (${scope.base.ref}): ` +
+        `${scope.removed.join(", ")}. Narrowing the protected list requires a review of ` +
+        "the narrowing, and this pull request is measured against the UNION of the old " +
+        "and the new list — a reduction does not take effect on the change that makes it.",
+    );
+  }
+  if (scope.previous === null) {
+    warnings.push(
+      `${CI_CD_RELATIVE_PATH} does not exist at the merge base ` +
+        `${scope.base.sha.slice(0, 9)} (${scope.base.ref}), so this branch bootstraps the ` +
+        "security-review scope and only its current list applies.",
+    );
+  }
+
+  const requiresReview = touched.length > 0 || scope.removed.length > 0;
   const securityReview = present.get(normaliseHeading("Security review"));
-  if (touched.length > 0 && securityReview) {
+  if (requiresReview && securityReview) {
+    const why =
+      touched.length > 0
+        ? `touches ${touched.length} security path(s) — ${touched.slice(0, 5).join(", ")}` +
+          `${touched.length > 5 ? ", …" : ""}`
+        : `removes ${scope.removed.length} glob(s) from the security-review list ` +
+          `(${scope.removed.join(", ")})`;
+
     const model = field(securityReview.text, "Model");
     if (!/^opus/i.test(model)) {
       failures.push(
         violation(
           "## Security review",
-          `this pull request touches ${touched.length} security path(s) — ${touched.slice(0, 5).join(", ")}` +
-            `${touched.length > 5 ? ", …" : ""} — so **Model:** must name Opus, and it names "${model || "(nothing)"}". ` +
+          `this pull request ${why} — so **Model:** must name Opus, and it names ` +
+            `"${model || "(nothing)"}". ` +
             "Security review is Opus, always (CLAUDE.md). Never downgrade an unavailable reviewer: " +
             "stop, record what is unreviewed, add a Blocked entry to status.md.",
         ),
@@ -242,10 +306,39 @@ async function main() {
           `the linked review ${note[0]} is not committed in this branch.`,
         ),
       );
+    } else {
+      // GPT-F2: existence is not currency. The note must name the head it reviewed, that
+      // head must be in this branch, and nothing but review artefacts may have landed
+      // since. See lib/security-review-note.mjs for the four rules and why prose SHAs
+      // are not parsed.
+      try {
+        const binding = reviewBinding({
+          notePath: note[0],
+          noteSource: await readText(path.join(repoRoot, note[0])),
+        });
+        if (binding.kind === "unbound") {
+          failures.push(violation("## Security review", binding.reason));
+        } else {
+          warnings.push(
+            `${note[0]} is bound to reviewed head ${binding.head.slice(0, 9)}; nothing ` +
+              `outside ${REVIEW_ARTEFACT_PREFIX} has changed since.`,
+          );
+        }
+      } catch (error) {
+        if (
+          !(error instanceof ReviewBindingUnavailableError) &&
+          !(error instanceof BaselineHistoryUnavailableError)
+        ) {
+          throw error;
+        }
+        failures.push(violation("## Security review", error.message));
+      }
     }
-  } else if (touched.length === 0) {
+  } else if (!requiresReview) {
     warnings.push(
-      `no security-review path touched (${globs.length} globs from ci-cd.md checked).`,
+      `no security-review path touched (${scope.globs.length} glob(s) checked — the union ` +
+        `of ${(scope.previous ?? []).length} at the merge base and ${scope.current.length} ` +
+        `at HEAD, from ${CI_CD_RELATIVE_PATH}).`,
     );
   }
 
@@ -272,6 +365,13 @@ async function main() {
 
   const gates = present.get(normaliseHeading("Gates"));
   if (gates) {
+    // GPT-F4: a waiver is scoped to one pull request, so the number is an input to the
+    // check rather than decoration. Resolved once, whether or not any row is waived.
+    const pullRequest = await loadPullRequestNumber({
+      number: argValue("--pr"),
+      eventPath: process.env.GITHUB_EVENT_PATH,
+      ref: process.env.GITHUB_REF,
+    });
     for (const cells of gateRows(gates.text)) {
       const [gate, result, link] = cells;
       if (result === "") {
@@ -293,60 +393,32 @@ async function main() {
         continue;
       }
       if (/^waived$/i.test(result)) {
-        // F7: `waived` used to need only a NON-EMPTY third cell, so
-        // `| waived | see chat |` passed on all thirteen design gates. The message
-        // claimed "Only Thomas may waive a gate" — an assertion this check cannot
-        // make and must stop making: agents operate through the same repository
-        // identity as Thomas, so nothing readable from a pull-request body proves a
-        // human authorized anything.
-        //
-        // What IS enforceable is a durable, committed decision-log reference that
-        // names the gate being waived. That does not prove who waived it; it means a
-        // waiver leaves a reviewable record in version control instead of pointing at
-        // a chat.
-        const reference = /docs\/07-planning\/decision-log\.md(#[\w-]+)?/.exec(
-          link ?? "",
+        // F7 replaced "any non-empty third cell" with "cites the decision log and the
+        // gate identifier appears somewhere in it". GPT-F4 showed the second half is a
+        // false control: the `#anchor` was optional, the identifier was searched across
+        // the WHOLE 1,400-line document, and the sentence "G1 is not waived" satisfied
+        // it. So the binding moved from prose to a declaration — a specific entry, this
+        // gate, this pull request, a follow-up issue. lib/gate-waiver.mjs carries the
+        // syntax, the adversarial case and the honest statement of what is still not
+        // enforceable (who authored it).
+        const decisionLogRelative = "docs/07-planning/decision-log.md";
+        const logPath = path.join(repoRoot, decisionLogRelative);
+        const verdict = verifyWaiver({
+          gate,
+          link,
+          decisionLog: (await exists(logPath)) ? await readText(logPath) : null,
+          decisionLogPath: decisionLogRelative,
+          pullRequest,
+        });
+        if (!verdict.ok) {
+          failures.push(violation("## Gates", verdict.problem));
+          continue;
+        }
+        warnings.push(
+          `"${gate}" waived by ${decisionLogRelative}#${verdict.anchor}, scoped to ` +
+            `PR #${pullRequest}, follow-up #${verdict.followUp}. Who authorised it is ` +
+            "NOT machine-verifiable and is not claimed — Thomas confirms that at merge.",
         );
-        if (!reference) {
-          const shown = (link ?? "") === "" ? "empty" : `"${link}"`;
-          failures.push(
-            violation(
-              "## Gates",
-              `"${gate}" is waived and the link cell is ${shown}. A waiver must cite a ` +
-                "committed entry in docs/07-planning/decision-log.md (optionally with " +
-                "an #anchor). This check CANNOT verify who authored the waiver — " +
-                "agents share the repository identity — so the durable record is the " +
-                "whole control: no entry, no waiver.",
-            ),
-          );
-          continue;
-        }
-        const logPath = path.join(repoRoot, "docs/07-planning/decision-log.md");
-        if (!(await exists(logPath))) {
-          failures.push(
-            violation(
-              "## Gates",
-              `"${gate}" cites docs/07-planning/decision-log.md, which is not present ` +
-                "in this branch.",
-            ),
-          );
-          continue;
-        }
-        // The entry must correspond to THIS gate, not merely exist. Gate rows are
-        // identified by their leading token (G1..G13), or by name when they have none.
-        const decisionLog = await readText(logPath);
-        const identifier = /^\s*(G\d+)\b/.exec(gate)?.[1] ?? gate;
-        const escaped = identifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        if (!new RegExp(`\\b${escaped}\\b`, "i").test(decisionLog)) {
-          failures.push(
-            violation(
-              "## Gates",
-              `"${gate}" is waived citing the decision log, but no entry there ` +
-                `mentions "${identifier}". A waiver has to name the gate it waives, or ` +
-                "the citation is decoration.",
-            ),
-          );
-        }
       }
     }
   }

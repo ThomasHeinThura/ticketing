@@ -211,6 +211,32 @@ and unmarked; `Reviewed by` names a different session or model from `Implemented
 `apps/web/**` changed; every checklist box ticked or marked `n/a`. See
 [ci-cd.md](ci-cd.md) for the exact check.
 
+Two of those carry a syntax, because existence alone turned out to prove nothing:
+
+- **The committed review note declares the head it reviewed**, one line per head, full
+  forty-character SHA:
+
+  ```
+  **Reviewed head:** `6b32ef316c49cc14cc841b32fdcce637a442b813`
+  ```
+
+  The newest declared head must be an ancestor of the pull request's HEAD, and nothing
+  outside `docs/07-planning/security-reviews/` may have changed since. A **note-only**
+  commit recording a reviewed head is the intended shape and passes; a code commit after
+  it makes the note stale until a fresh delta review adds a line for the new head.
+  Recording that line is itself note-only, so the gate closes rather than looping.
+
+- **A waived gate cites one decision-log entry by `#anchor`**, and that entry declares the
+  waiver on one line:
+
+  ```
+  **Waives gate:** `G1` · **PR:** #19 · **Follow-up:** #123
+  ```
+
+  Gate, pull request and follow-up issue, all bound. Prose does not authorise a waiver —
+  see [§ Waiving a gate](../02-design/ux-quality-gates.md#waiving-a-gate). CI cannot
+  verify **who** authorised it and does not claim to.
+
 ---
 
 ## What "done" is not

@@ -24,6 +24,12 @@
  * it fails the build. Entries may be removed and never added by hand — regenerate with
  * `pnpm check:env --prune` after deleting code, never to make a new violation pass.
  *
+ * Unattributable reads are baselined by FINGERPRINT, one per read, not by a count
+ * (GPT-F3 — see lib/env-reads.mjs). A count moved with the diff that grew it and could
+ * not see a read being swapped for a different one at the same total. `--prune` cannot
+ * launder a change either: it writes the fingerprints it observes, and the merge-base
+ * ratchet then reports every one that was not there before.
+ *
  * Usage:
  *   node scripts/ci/check-env.mjs            verify
  *   node scripts/ci/check-env.mjs --prune    drop baseline entries that no longer apply
@@ -33,11 +39,16 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { readConfigurationReference } from "./lib/configuration-reference.mjs";
-import { findEnvReads, viteBuiltIns } from "./lib/env-reads.mjs";
+import {
+  findEnvReads,
+  readFingerprints,
+  viteBuiltIns,
+} from "./lib/env-reads.mjs";
 import {
   addedKeys,
   addedWithinKeys,
   BaselineHistoryUnavailableError,
+  normaliseSection,
   readBaselineAtMergeBase,
 } from "./lib/git-baseline.mjs";
 import {
@@ -52,10 +63,18 @@ import {
 const NAME = "check:env";
 
 const BASELINE_RELATIVE_PATH = "scripts/ci/env-baseline.json";
-/** Baseline sections the ratchet guards, with a human label for the message. */
+/**
+ * Baseline sections the ratchet guards: the key, a human label for the message, and the
+ * field its per-key identities live under.
+ *
+ * GPT-F3: `unattributableReads` values are objects, and `addedWithinKeys` compares
+ * arrays — so every within-key comparison on that section silently returned nothing.
+ * `normaliseSection` pulls the list out first, and the section now carries stable read
+ * fingerprints rather than a count a same-diff bump could move.
+ */
 const RATCHET_SECTIONS = [
-  ["unmigratedNames", "an unregistered environment name"],
-  ["unattributableReads", "an unattributable environment read"],
+  ["unmigratedNames", "an unregistered environment name", null],
+  ["unattributableReads", "an unattributable environment read", "occurrences"],
 ];
 const baselinePath = path.join(repoRoot, "scripts/ci/env-baseline.json");
 
@@ -175,9 +194,12 @@ async function main() {
     const unattributableReads = {};
     for (const file of Object.keys(baseline.unattributableReads ?? {}).sort()) {
       if (!observedUnattributable.has(file)) continue;
-      // F10: record HOW MANY reads the file was baselined with. A bare reason string
-      // blanket-exempted the file, so a new computed read added beside the inherited
-      // one passed silently — in two files that handle S3 and SMTP credentials.
+      // F10 recorded HOW MANY reads the file was baselined with, because a bare reason
+      // string blanket-exempted the file and a new computed read added beside the
+      // inherited one passed silently — in two files that handle S3 and SMTP
+      // credentials. GPT-F3: a count is the wrong identity. It is invisible to the
+      // merge-base comparison (which compares lists) and blind to a replacement, so the
+      // baseline records each read's fingerprint instead.
       const existing = baseline.unattributableReads[file];
       const reason =
         typeof existing === "object" && existing !== null
@@ -185,7 +207,7 @@ async function main() {
           : existing;
       unattributableReads[file] = {
         reason,
-        reads: observedUnattributable.get(file).length,
+        occurrences: readFingerprints(observedUnattributable.get(file)),
       };
     }
     const next = { ...baseline, unmigratedNames, unattributableReads };
@@ -238,31 +260,63 @@ async function main() {
 
   // F10: a baselined FILE was blanket-exempt, so any NEW computed read added to
   // apps/api/src/storage/s3.ts or packages/email/src/smtp-config.ts — both of which
-  // handle credentials — passed silently. The baseline now records how many reads it
-  // was seeded with per file, and a file that grows past its recorded count fails.
-  const allowedCounts = new Map(
+  // handle credentials — passed silently. F10's answer was a per-file COUNT.
+  //
+  // GPT-F3: a count is the wrong identity, in two ways that both go green.
+  //
+  //   1. It is invisible to the merge-base ratchet. `addedWithinKeys` compares arrays and
+  //      these values are objects, so `reads: 1 -> 2` compared two empty lists and
+  //      reported no growth. Add a second computed read and bump the number in the same
+  //      diff, and check:env passed.
+  //   2. It cannot see a REPLACEMENT. Delete one baselined read, add a different one, and
+  //      the count is identical while the debt is not.
+  //
+  // So the baseline records each read's fingerprint (lib/env-reads.mjs), and the set is
+  // compared both ways: an observed read with no baselined fingerprint is new debt, and a
+  // baselined fingerprint no longer observed is a shrink to be pruned. The count follows
+  // from the set rather than standing in for it.
+  const allowedOccurrences = new Map(
     Object.entries(baseline.unattributableReads ?? {}).map(([file, value]) => [
       file,
-      typeof value === "object" && value !== null && "reads" in value
-        ? Number(value.reads)
-        : Number.POSITIVE_INFINITY,
+      typeof value === "object" && value !== null
+        ? Array.isArray(value.occurrences)
+          ? value.occurrences.map(String)
+          : null
+        : null,
     ]),
   );
 
   for (const [file, reads] of [...observedUnattributable].sort()) {
-    if (allowedCounts.has(file)) {
-      const allowed = allowedCounts.get(file);
-      if (reads.length <= allowed) continue;
-      const detail = reads
-        .map((read) => `line ${read.line} (${read.kind}): ${read.snippet}`)
-        .join("\n      ");
+    if (allowedOccurrences.has(file)) {
+      const allowed = allowedOccurrences.get(file);
+      const observed = readFingerprints(reads);
+
+      if (allowed === null) {
+        failures.push(
+          violation(
+            `${BASELINE_RELATIVE_PATH} (unattributableReads.${file})`,
+            "this entry records no `occurrences` list. A bare reason string, or the " +
+              "pre-GPT-F3 `reads: <n>` count, blanket-exempts the file: neither can " +
+              "distinguish the inherited read from one added beside it, and neither is " +
+              "visible to the merge-base ratchet. Re-seed the entry with " +
+              "`pnpm check:env --prune`, which writes one fingerprint per read.",
+          ),
+        );
+        continue;
+      }
+
+      const unbaselined = observed.filter((item) => !allowed.includes(item));
+      if (unbaselined.length === 0) continue;
       failures.push(
         violation(
           file,
-          `${reads.length} unattributable environment read(s), but the baseline records ` +
-            `${allowed}. This file carries INHERITED debt; it is not a licence to add ` +
-            "more. Read a literal name, or route the read through a central configuration " +
-            `module.\n      ${detail}`,
+          `${unbaselined.length} unattributable environment read(s) here are not in the ` +
+            `baseline's ${allowed.length} recorded occurrence(s). This file carries ` +
+            "INHERITED debt; it is not a licence to add more, and it is not a licence to " +
+            "swap one read for another at the same count. Read a literal name, or route " +
+            "the read through a central configuration module." +
+            `\n      new:\n        ${unbaselined.join("\n        ")}` +
+            `\n      baselined:\n        ${allowed.join("\n        ")}`,
         ),
       );
       continue;
@@ -291,7 +345,7 @@ async function main() {
   try {
     const { base, previous } = readBaselineAtMergeBase(BASELINE_RELATIVE_PATH);
     if (previous) {
-      for (const [section, label] of RATCHET_SECTIONS) {
+      for (const [section, label, listField] of RATCHET_SECTIONS) {
         for (const key of addedKeys(baseline[section], previous[section])) {
           failures.push(
             violation(
@@ -304,9 +358,16 @@ async function main() {
             ),
           );
         }
+        // GPT-F3: normalise first. `addedWithinKeys` compares arrays, and this
+        // section's values are `{ reason, occurrences }` objects — so before this the
+        // comparison saw two empty lists and reported nothing, whatever changed.
         for (const { key, added } of addedWithinKeys(
-          baseline[section],
-          previous[section],
+          listField === null
+            ? baseline[section]
+            : normaliseSection(baseline[section], listField),
+          listField === null
+            ? previous[section]
+            : normaliseSection(previous[section], listField),
         )) {
           failures.push(
             violation(
@@ -330,10 +391,31 @@ async function main() {
   const staleFiles = Object.keys(baseline.unattributableReads ?? {}).filter(
     (file) => !observedUnattributable.has(file),
   );
-  if (staleNames.length > 0 || staleFiles.length > 0) {
+  // GPT-F3: a baselined FINGERPRINT that is no longer observed is a shrink too. The old
+  // count could not express this — a file at `reads: 2` that now has one read simply
+  // passed, and the entry kept licensing a slot nothing occupied.
+  const staleOccurrences = [];
+  for (const [file, allowed] of allowedOccurrences) {
+    if (allowed === null || !observedUnattributable.has(file)) continue;
+    const observed = readFingerprints(observedUnattributable.get(file));
+    const gone = allowed.filter((item) => !observed.includes(item));
+    if (gone.length > 0) staleOccurrences.push({ file, gone });
+  }
+  if (
+    staleNames.length > 0 ||
+    staleFiles.length > 0 ||
+    staleOccurrences.length > 0
+  ) {
     warnings.push(
-      `${staleNames.length} baseline name(s) and ${staleFiles.length} baseline file(s) are ` +
-        "no longer read — run `pnpm check:env --prune` to shrink the ratchet.",
+      `${staleNames.length} baseline name(s), ${staleFiles.length} baseline file(s) and ` +
+        `${staleOccurrences.reduce((total, entry) => total + entry.gone.length, 0)} ` +
+        "baselined read occurrence(s) are no longer read — run `pnpm check:env --prune` " +
+        "to shrink the ratchet." +
+        (staleOccurrences.length > 0
+          ? ` Vacated slots: ${staleOccurrences
+              .map((entry) => `${entry.file} (${entry.gone.length})`)
+              .join(", ")}.`
+          : ""),
     );
   }
 

@@ -168,6 +168,36 @@ export async function loadBody({ bodyFile, eventPath }) {
 }
 
 /**
+ * Which pull request is being checked.
+ *
+ * A waiver is scoped to one pull request (lib/gate-waiver.mjs), so the number is part of
+ * what the gate verifies rather than decoration. Three sources, in order of authority:
+ * an explicit `--pr`, the pull-request event payload, and `GITHUB_REF`'s
+ * `refs/pull/<n>/merge`. `null` when none of them answers — the caller fails closed
+ * rather than accepting an unscoped waiver.
+ *
+ * @returns {Promise<number|null>}
+ */
+export async function loadPullRequestNumber({ number, eventPath, ref }) {
+  if (number !== undefined && number !== null && String(number).trim() !== "") {
+    const parsed = Number(String(number).trim().replace(/^#/, ""));
+    if (Number.isInteger(parsed) && parsed > 0) return parsed;
+  }
+  if (eventPath) {
+    try {
+      const event = JSON.parse(await fs.readFile(eventPath, "utf8"));
+      const fromEvent = event?.pull_request?.number ?? event?.number;
+      if (Number.isInteger(fromEvent) && fromEvent > 0) return fromEvent;
+    } catch {
+      // Fall through to the ref. A malformed payload is not a number.
+    }
+  }
+  const fromRef = /^refs\/pull\/(\d+)\//.exec(ref ?? "");
+  if (fromRef) return Number(fromRef[1]);
+  return null;
+}
+
+/**
  * Words that identify the independent-review checklist item, whatever its wording.
  *
  * Matched against a NORMALISED line — comments stripped, emphasis and backticks

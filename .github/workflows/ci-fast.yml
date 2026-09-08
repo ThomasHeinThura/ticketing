@@ -148,12 +148,39 @@ jobs:
         # Reads the body from the event payload, and the security-review path globs from
         # docs/04-engineering/ci-cd.md.
         run: pnpm check:pr-template
-      - name: pr-body parser unit tests
-        # Not a new gate — it makes the gate above trustworthy. `stripComments` was a
-        # CodeQL HIGH (js/incomplete-multi-character-sanitization): the regex it replaced
-        # could reconstitute the very `<!--` it removed, so an author could hide a section
-        # from a reviewer while this checker counted it as filled in. node:test, so no new
-        # dependency.
+
+  ci-scripts:
+    name: gate checkers + red probes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The probes construct their own throwaway repositories, but the suite also
+          # asserts against THIS repository's real history (the union security scope and
+          # the review-note binding both resolve a merge base), so the full history is
+          # required here as well.
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: pnpm test:ci-scripts
+        # Declared in docs/04-engineering/ci-cd.md's fast stage, so it runs on every push
+        # and not only on a pull request. Two things live here:
+        #
+        #   the checkers' own unit tests — `stripComments` was a CodeQL HIGH
+        #   (js/incomplete-multi-character-sanitization): the regex it replaced could
+        #   reconstitute the very `<!--` it removed, so an author could hide a section
+        #   from a reviewer while the checker counted it as filled in;
+        #
+        #   the adversarial RED PROBES under scripts/ci/probes/ — each builds a
+        #   throwaway git repository in which a known bypass is constructed on purpose
+        #   (a diff that narrows the security-review list, a review note left behind by
+        #   later code, a baseline bumped alongside the read it excuses, a waiver backed
+        #   by a sentence that says the gate is NOT waived) and asserts the real checker
+        #   exits non-zero. Each also asserts the OLD predicate would have passed, so a
+        #   probe cannot go quietly vacuous.
+        #
+        # node:test and git, so no new dependency. Each probe repository sets its own
+        # user.name/user.email, so no ambient git identity is needed.
         run: pnpm test:ci-scripts
 
   test:

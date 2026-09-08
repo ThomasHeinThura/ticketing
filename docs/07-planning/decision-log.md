@@ -17,6 +17,74 @@ Newest first.
 
 ---
 
+### 2026-09-08 · Three gate controls get a syntax, because existence proved nothing
+
+**Decision:** the security-review scope, the committed review note and a waived gate each
+gain a mechanical binding, and the fast-stage PR-template check enforces all three.
+
+1. **Scope is the union of the merge base and HEAD.** A changed path is in security scope
+   when it matches [ci-cd.md](../04-engineering/ci-cd.md)'s list *at the merge base* **or**
+   at HEAD. Widening takes effect at once; **narrowing does not take effect on the pull
+   request that narrows it**, and removing a glob is itself security-sensitive. An
+   unresolvable merge base, or a base document that exists and cannot be parsed, fails
+   closed.
+2. **The note declares the head it reviewed.**
+   `**Reviewed head:** ` + a full forty-character SHA, one line per reviewed head. The
+   newest declared head must be an ancestor of HEAD and nothing outside
+   `docs/07-planning/security-reviews/` may have changed since it. A note-only commit
+   recording a head passes; a code commit after it makes the note stale until a fresh
+   delta review adds a line for the new head — which is itself note-only, so the gate
+   closes instead of looping.
+3. **A waived gate cites one entry, by anchor, that declares the waiver.** The `## Gates`
+   link cell must carry `docs/07-planning/decision-log.md#<anchor>`, the anchor must
+   resolve to exactly one heading, and that entry's body must contain, on one whole line:
+
+   ```
+   **Waives gate:** `<gate>` · **PR:** #<pr> · **Follow-up:** #<issue>
+   ```
+
+**Why:** all three controls were satisfiable without the thing they were supposed to
+establish, and an independent review of `6b32ef3` found each one.
+
+- The scope was read from the working tree — the list the same diff had just written. A
+  commit that removed `scripts/ci/**`, `.github/**` and `ci-cd.md` from the list while
+  editing `scripts/ci/` matched nothing and printed *"no security-review path touched"*.
+  F15 closed "the gate cannot see changes to itself"; reading the list only from HEAD
+  reopened it one level up.
+- The note check verified a model string and a filename. Both are properties of a body and
+  a path, so once a note existed it never expired: reviewed head, note committed, gate
+  green — then any amount of further code, gate still green.
+- `waived` needed the gate identifier to appear *anywhere* in a 1,400-line document, with
+  the `#anchor` optional. The sentence *"G1 is not waived"* authorised waiving G1. That is
+  not a weak control, it is an inverted one.
+
+**Alternatives:**
+- *Read the prose of a decision entry for intent.* Rejected: that is exactly what produced
+  the negation bypass. Intent is declared in a fixed syntax a negation cannot produce.
+- *Remove automated `waived` support entirely* — the finding offers this as the fallback if
+  honest enforcement is impossible. Rejected because it is possible: a specific entry, an
+  exact gate token, this pull request and a follow-up issue are all mechanically
+  checkable. What is **not** checkable is who authorised the waiver, and CI now says so in
+  the passing message rather than implying it verified authorship.
+- *Bind the note by comparing the whole diff to a reviewed tree hash.* Rejected as
+  equivalent but less readable: an ancestor SHA plus a note-only delta is the same
+  guarantee, and a reader can verify it with two git commands.
+- *Let a narrowing take effect immediately and rely on review by convention.* Rejected:
+  convention is the thing that failed, three times, on this repository.
+
+**Cost, stated plainly:** every security-review note from now on carries a
+`**Reviewed head:**` line, and a remediation pass that touches anything other than the
+note requires a fresh delta review before the gate closes. That is the intended cost. It
+also means the review artefacts for #13, #16 and #21 — written before this convention —
+are not retro-fitted; the check only reads the note the pull request under test links.
+
+**Decided by:** Thomas, 2026-09-08, on findings GPT-F1 (HIGH), GPT-F2 (HIGH) and GPT-F4
+(MEDIUM) from the independent review of `6b32ef316c49cc14cc841b32fdcce637a442b813`.
+GPT-F3 (MEDIUM) is a defect fix in the same pass and needed no decision: the
+unattributable-read baseline now records one fingerprint per read instead of a count.
+
+---
+
 ### 2026-09-08 · The mandatory security review covers the gate machinery and the dependency graph
 
 **Decision:** the authoritative security-review path list in

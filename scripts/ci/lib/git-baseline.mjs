@@ -92,17 +92,11 @@ export function readBaselineAtMergeBase(relativePath) {
     );
   }
 
-  const exists = git(["cat-file", "-e", `${base.sha}:${relativePath}`]);
-  if (exists.status !== 0) return { base, previous: null };
+  const shown = readTextAtCommit(base.sha, relativePath);
+  if (shown === null) return { base, previous: null };
 
-  const shown = git(["show", `${base.sha}:${relativePath}`]);
-  if (shown.status !== 0) {
-    throw new BaselineHistoryUnavailableError(
-      `\`git show ${base.sha}:${relativePath}\` failed: ${shown.stderr.trim()}`,
-    );
-  }
   try {
-    return { base, previous: JSON.parse(shown.stdout) };
+    return { base, previous: JSON.parse(shown) };
   } catch (error) {
     throw new BaselineHistoryUnavailableError(
       `${relativePath} at the merge base ${base.sha} is not valid JSON: ${error.message}`,
@@ -142,6 +136,123 @@ export function addedWithinKeys(now, previous) {
     const nowList = Array.isArray(value) ? value : [];
     const added = nowList.filter((item) => !beforeSet.has(item)).sort();
     if (added.length > 0) out.push({ key, added });
+  }
+  return out;
+}
+
+/**
+ * Raw text of a repo-relative path at a commit, or `null` when the path does not exist
+ * there. Shared with lib/security-paths.mjs, which needs the authority document's
+ * content at the merge base for exactly the same reason a baseline does: the current
+ * change cannot rewrite history, so history is the only thing it cannot move.
+ *
+ * @param {string} sha
+ * @param {string} relativePath
+ * @returns {string|null}
+ */
+export function readTextAtCommit(sha, relativePath) {
+  const exists = git(["cat-file", "-e", `${sha}:${relativePath}`]);
+  if (exists.status !== 0) return null;
+
+  const shown = git(["show", `${sha}:${relativePath}`]);
+  if (shown.status !== 0) {
+    throw new BaselineHistoryUnavailableError(
+      `\`git show ${sha}:${relativePath}\` failed: ${shown.stderr.trim()}`,
+    );
+  }
+  return shown.stdout;
+}
+
+/**
+ * True when `ancestor` is an ancestor of `descendant` (or the same commit).
+ * `git merge-base --is-ancestor` exits 0 for yes, 1 for no, and anything else is a
+ * plumbing failure that must not be read as "no".
+ *
+ * @returns {boolean}
+ */
+export function isAncestor(ancestor, descendant) {
+  const result = git(["merge-base", "--is-ancestor", ancestor, descendant]);
+  if (result.status === 0) return true;
+  if (result.status === 1) return false;
+  throw new BaselineHistoryUnavailableError(
+    `\`git merge-base --is-ancestor ${ancestor} ${descendant}\` failed ` +
+      `(status ${result.status}): ${result.stderr.trim()}. "could not tell" is not "no".`,
+  );
+}
+
+/**
+ * Repo-relative paths that differ between two commits.
+ *
+ * @returns {string[]}
+ */
+export function changedPathsBetween(from, to) {
+  const result = git(["diff", "--name-only", "--no-renames", `${from}..${to}`]);
+  if (result.status !== 0) {
+    throw new BaselineHistoryUnavailableError(
+      `\`git diff --name-only ${from}..${to}\` failed: ${result.stderr.trim()}`,
+    );
+  }
+  return result.stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+}
+
+/** How many commits reach `sha`, used only to order attested heads along a history. */
+export function commitDepth(sha) {
+  const result = git(["rev-list", "--count", sha]);
+  if (result.status !== 0) {
+    throw new BaselineHistoryUnavailableError(
+      `\`git rev-list --count ${sha}\` failed: ${result.stderr.trim()}`,
+    );
+  }
+  return Number(result.stdout.trim());
+}
+
+/** Resolve a revision to a full SHA, or `null` when it does not exist. */
+export function resolveCommit(rev) {
+  const result = git(["rev-parse", "--verify", "--quiet", `${rev}^{commit}`]);
+  return result.status === 0 ? result.stdout.trim() : null;
+}
+
+/**
+ * Normalise a ratchet section into `key -> string[]`, whether the value is a bare list
+ * or an object carrying one under `listField`.
+ *
+ * GPT-F3: `unattributableReads` values are objects — `{ reason, occurrences }` — and
+ * `addedWithinKeys` compares arrays. `previous[key]` was an object, so `beforeSet` was
+ * empty AND `nowList` was empty, and the function returned `[]` for every possible
+ * change. Proven before this fix:
+ *
+ *   addedWithinKeys({f:{reason:"x",reads:2}}, {f:{reason:"x",reads:1}})  ->  []
+ *
+ * So the diff that added a second computed `process.env` read and bumped the same
+ * file's baseline from `reads: 1` to `reads: 2` moved both sides of the comparison
+ * together and stayed green — the very same-diff bypass F3 was supposed to close, one
+ * level down. Normalising first makes the existing comparison see the list it was
+ * written for.
+ *
+ * @param {Record<string, unknown>|null|undefined} section
+ * @param {string} listField
+ * @returns {Record<string, string[]>|null}
+ */
+export function normaliseSection(section, listField) {
+  if (!section) return null;
+  const out = {};
+  for (const [key, value] of Object.entries(section)) {
+    if (Array.isArray(value)) {
+      out[key] = value.map(String);
+      continue;
+    }
+    if (value !== null && typeof value === "object") {
+      const list = value[listField];
+      out[key] = Array.isArray(list) ? list.map(String) : [];
+      continue;
+    }
+    // A scalar (the pre-GPT-F3 `reads: 1`) carries no identities at all. An empty list
+    // is the fail-closed reading: every currently observed identity then counts as
+    // ADDED relative to it, which is what "we cannot tell what was there" must mean.
+    out[key] = [];
   }
   return out;
 }

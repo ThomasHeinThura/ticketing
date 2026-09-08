@@ -104,6 +104,17 @@ const manifest = [
   },
   { gate: "pnpm check:skips", stage: "fast", run: ["pnpm", "check:skips"] },
   {
+    gate: "pnpm test:ci-scripts",
+    stage: "fast",
+    run: ["pnpm", "test:ci-scripts"],
+    note:
+      "the gate checkers' own tests, and the adversarial RED PROBES under " +
+      "scripts/ci/probes/ — each builds a throwaway git repository in which a known " +
+      "bypass is constructed on purpose and asserts the real checker exits non-zero. " +
+      "Declared here because a probe nobody runs is a comment: the workflow step that " +
+      "runs it must be reconcilable against this list like every other gate.",
+  },
+  {
     gate: "pr-template check",
     stage: "fast",
     run: ["pnpm", "check:pr-template"],
