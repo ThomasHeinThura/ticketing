@@ -107,7 +107,7 @@ jobs:
         run: pnpm check:i18n
 
   registers:
-    name: registers - env, vocabulary, reviews, skips
+    name: registers - env, vocabulary, reviews, skips, overrides
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -124,6 +124,8 @@ jobs:
         run: pnpm check:reviews
       - name: pnpm check:skips
         run: pnpm check:skips
+      - name: pnpm check:overrides
+        run: pnpm check:overrides
 
   pull-request:
     name: pull request template + security review

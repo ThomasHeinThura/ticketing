@@ -7,6 +7,7 @@
 		"check:env": "node ./scripts/ci/check-env.mjs",
 		"check:i18n": "node ./scripts/i18n/check.mjs",
 		"check:openapi": "node ./scripts/ci/check-openapi.mjs",
+		"check:overrides": "node ./scripts/ci/check-overrides.mjs",
 		"check:pr-template": "node ./scripts/ci/check-pr-template.mjs",
 		"check:reviews": "node ./scripts/ci/check-reviews.mjs",
 		"check:skips": "node ./scripts/ci/check-skips.mjs",
@@ -52,25 +53,5 @@
 	"version": "2.22.0",
 	"dependencies": {
 		"dotenv-mono": "^1.5.1"
-	},
-	"pnpm": {
-		"overrides": {
-			"@hono/node-server": "^1.19.15",
-			"better-auth": "1.6.30",
-			"better-call": "1.3.7",
-			"deepmerge-ts": "^8.0.0",
-			"effect": "^3.22.1",
-			"esbuild": "^0.28.1",
-			"fast-uri": "^3.1.6",
-			"hono": "^4.12.34",
-			"ip-address": "^10.3.1",
-			"js-yaml": "^4.3.1",
-			"lodash": "^4.18.0",
-			"mysql2": "^3.23.1",
-			"nanoid": "^3.3.18",
-			"qs": "^6.16.0",
-			"seroval": "^1.6.4",
-			"valibot": "^1.4.2"
-		}
 	}
 }
