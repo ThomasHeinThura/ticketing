@@ -1,12 +1,16 @@
 # Status
 
-**Last updated:** 2026-09-06
-**Current stage:** P0 · Foundation — not yet started
-**Updated by:** Claude Code (Fable), applying the pre-P0 check at Thomas's direction —
-see the session log
+**Last updated:** 2026-09-08
+**Current stage:** P0 · Foundation — **IN PROGRESS**
+**Updated by:** Claude Code (Opus), operational-snapshot reconciliation after #16, #21,
+#57 and #60 merged
 
-> Update this at the end of every working session. It is the first thing anyone — human or
-> agent — reads when picking the project up cold.
+> **This is a durable snapshot, not a work log.** Update it only on a durable transition: a
+> pull request merges or becomes genuinely review-ready, an issue blocks, unblocks or
+> completes, a throttle state changes, Thomas makes a material decision, or a material
+> repository or deployment fact changes. Intermediate progress goes in pull-request
+> comments. It is the first thing anyone — human or agent — reads when picking the project
+> up cold.
 
 ---
 
@@ -22,7 +26,8 @@ Thomas confirmed the outstanding decisions on 2026-09-06 — the kaneo snapshot 
 (`42bb8011`, upstream main), inheriting kaneo's 45 migrations, the person model, the
 engine boundary rule, an RLS prototype in P0, and the stage/workstream/step/state
 vocabulary. **That procedural gate is closed: the licence pull request merged (#4) and the
-P0 issues exist.** The full documentation corpus exists — thirteen ADRs, an authoritative
+P0 issues exist — and P0 implementation is now underway, with #16, #21, #57 and #60
+merged.** The full documentation corpus exists — thirteen ADRs, an authoritative
 data model including the identity/SCIM and pending-action tables, a formal accelerated
 delivery calendar, a release plan, and a changelog convention. **Application code exists
 too**, and the four-category snapshot below says exactly what is on `main` versus what is
@@ -32,7 +37,8 @@ target, the program may take three to four months, some stages take days — fin
 criteria, never skip a gate, move scope or dates and record it.
 
 ```
-P0 Foundation          ███░░░░░░░  25%   ← in progress (2 of 8 issues done: #4 #5)
+P0 Foundation          ████░░░░░░  40%   ← in progress. 2 of 8 issues closed (#4 #5).
+                                         #16 #21 #57 #60 merged WITHOUT closing #6/#7
 P1 Core work           ░░░░░░░░░░   0%
 P2 Service desk        ░░░░░░░░░░   0%
 P3 Portal + identity   ░░░░░░░░░░   0%
@@ -52,7 +58,7 @@ work gets reported as shipped, so the category is never optional.
 - **#4** licence and provenance — `LICENSE`, `NOTICE`, `THIRD-PARTY-NOTICES.md`. Closed.
 - **#5** the kaneo import at `42bb8011`, de-branded. Closed. `apps/api`, `apps/web`,
   `packages/{permissions,email,libs,mcp,typescript-config}`, `package.json`,
-  `pnpm-lock.yaml`, migrations 0000–0044.
+  `pnpm-lock.yaml`, migrations 0000–0049 (#16 added 0045–0049, the removal migrations).
 - **#11's deployment slice** (PR #20, merged `38ff9ac`) — a root `Dockerfile` that builds
   and runs as uid 10001, `compose.yml` publishing no application port, the local /
   production / UAT / Traefik overlays, `scripts/deploy.sh`, a `charts/taskdesk` that
@@ -64,31 +70,69 @@ work gets reported as shipped, so the category is never optional.
   workflow files**, so nothing runs automatically on a push. Every gate described anywhere
   in this repository as "failing the build" is describing the intended rule, not current
   behaviour, until #19 merges. This is the single most load-bearing fact in this section.
+- **#16** (merged 2026-09-07 as `b75cf02`) — the inherited attack surface is **gone**: the
+  public-project inline route and `is_public`, the six integration routers, billing,
+  anonymous sign-in, account linking, the five-minute session cookie cache,
+  `deviceAuthorization` and `bearer`. `rateLimit.enabled` is now `true` for **every**
+  deployment, not only cloud. **Merging it did not close #6** — the `organization()`
+  retrofit is the remainder.
+- **#21** (merged 2026-09-07 as `cc5d732`) — the policy registry, the evaluator and the
+  route-coverage gate for #7 live in `packages/permissions`, and `pnpm test:permissions`
+  runs. **Merging it did not close #7.** The gate *script* is on `main`; nothing *executes*
+  it automatically, because there is still no CI.
+- **#57** (merged 2026-09-08 as `b4aef99`, carrying reviewed head `95dc928`) —
+  **organization retrofit S1 is COMPLETE.** Five additive integration files under
+  `tests/api-integration/` characterise the inherited `organization()` plugin against a
+  real PostgreSQL 18: 24 tests across 4 files. This is the frozen equivalence baseline
+  S4–S7 must reproduce.
+- **#60** (merged 2026-09-08 as `655df877`) — the control plane reconciled to S1's finding.
+  Documentation only.
 - A GitHub Project board (project 1, *TaskDesk v2 — P0*) with the six agreed columns.
 
 ### IN OPEN PR — real code, not on `main`, do not report as available
 
 | PR | Issue | State |
 | --- | --- | --- |
-| **#16** (draft) | #6 slice | removes the inherited attack surface. Body materially stale; independent security review not done. **Merging it will not close #6.** |
-| **#21** | #7 | policy registry, evaluator, route coverage. Two independent Opus reviews complete: **1 CRITICAL, 6 HIGH, 7 MEDIUM, 7 LOW**. Remediation in progress. **Not merge-ready.** |
-| **#19** | #10 | CI gates, `test:all`, the `check:*` scripts, `tests/api-contract/openapi.json`. Two CodeQL HIGHs fixed. **Not merge-ready** — route-policy coverage fails until #21 lands, and `pnpm audit` is honestly red. |
+| **#19** | #10 | CI gates, `test:all`, the `check:*` scripts, `tests/api-contract/openapi.json`. **The next critical-path pull request** — it is what turns every rule described in this repository as "failing the build" into behaviour, because `main` still has zero workflow files. Independent review of its current head is not done. |
+
+**#16, #21, #57 and #60 have merged** and moved to ON MAIN above. **#19 is the only open
+code pull request**, and nothing enforces a gate on `main` until it lands.
 
 ### BLOCKED
 
-- **#8** — the router retrofit waits for #6's removal surface to settle. Classifying a route
-  that is about to be deleted is wasted review and a false sense of coverage.
+- **#8** — the router retrofit still waits for #6's removal surface to settle. **#16's
+  deletions have landed**, which is half of it; the other half has not, because
+  `organization()` is **still mounted** and retrofit S2–S10 will move those routes to
+  native handlers. Classifying a route that is about to be replaced is wasted review and a
+  false sense of coverage, so this stays blocked on the retrofit, not on the deletions.
 - **#17** — sessions already minted by the removed MCP OAuth and device flows. Deleting an
   endpoint is not revoking a credential; a consent click created a full 30-day session row.
 
 ### DECIDED / NOT YET IMPLEMENTED
 
-- **better-auth `organization()` is removed in P0 — final.** It is still mounted, because
-  it is load-bearing for workspace creation, invitations, members and roles. Load-bearing
-  means it needs a retrofit (S1–S10, #6 work), not that it is kept. **S1 —
-  characterisation tests — has not started and gates everything after it.**
+- **better-auth `organization()` is removed in P0 — final.** It is **still mounted** on
+  `main`, because it is load-bearing for workspace creation, invitations, members and
+  roles. Load-bearing means it needs a retrofit (S1–S10, #6 work), not that it is kept.
+- **Retrofit S1 — characterisation — is COMPLETE** and on `main` (#57). **S2–S10 remain.**
+  **S2 does not start automatically merely because S1 completed**; it needs its own
+  scheduling decision, and a green characterisation suite is not permission to begin.
+- **The frozen organization-create baseline is N = 9 observable effects: eight first-order
+  create effects plus one eventual, one-hop durable notification consequence.** The eight
+  are the `workspace` row, the owner `workspace_member` row, the three seeded
+  `workspace_role` rows, the `workspace.created` event, the default `team` row, its
+  `team_member` row, and — on the **creating session's own row** — `active_organization_id`
+  and `active_team_id`. The ninth is the `workspace_created` `notification` row, produced
+  one hop from the event and asserted as **eventual**: its current pre-response timing is
+  incidental and is explicitly **not** part of the contract. Derived by two independent
+  methods (a full create-path source read, and a row-count diff across all 29 public
+  tables) after the count had been wrong at four, six, seven and eight. Full statement in
+  the [retrofit plan](retrofits/organization-plugin-retrofit.md) and the
+  [decision log](decision-log.md); **S4 must reproduce all nine.**
 - **The OpenAPI baseline is `tests/api-contract/openapi.json`.** The file exists in #19.
 - **Throttle 1's five conditions** are settled in their exact form (below). Four are unmet.
+  **Throttle 1 is not yet satisfied/enforced: the route-policy CI behaviour is implemented
+  and demonstrated on PR #19, but #19 is unmerged, and required-check/ruleset reconciliation
+  still follows it.**
 - **The four application-side gaps that stop v2 UAT coming up** — `TASKDESK_PORT` actually
   being read, live/ready health endpoints, Node static serving, a `storage.filesystem`
   driver — are **#11 prerequisites**. Ownership is assigned when they are scheduled.
@@ -98,14 +142,15 @@ work gets reported as shipped, so the category is never optional.
 **Features:** 0 of **31** shipped — [index](../03-features/README.md) (teams.md was missing from the index until 2026-09-05)
 **ADRs:** 0001–0013 accepted · **Docs:** ~136 files, link check clean · **Security review:** see the breakdown below — the corpus is reviewed, the product is not
 **Security status** — "complete" was a documentation claim being read as a product claim,
-so it is broken out. Five of the seven are impossible before code exists:
+so it is broken out. Two of the seven have moved now that code is on `main`; four remain
+out of reach until later gates:
 
 | | |
 | --- | --- |
 | Architecture review | ✅ done |
 | Threat model | ✅ done |
-| Implementation review | ⬜ no code yet |
-| SAST / dependency scanning | ⬜ no code, no lockfile |
+| Implementation review | 🟡 in progress — #16, #21 and #57 each carried an independent Opus review, and #16's and #21's are recorded in [security-reviews/](security-reviews/). Not a whole-product review |
+| SAST / dependency scanning | ⬜ code and a lockfile now exist, but **nothing scans them automatically** — `main` has zero workflow files. Lands with #19 |
 | Authorization tests (route coverage, role × route matrix, tenant isolation) | ⬜ P0 |
 | Internal red-team pass | ⬜ before the internal go-live gate |
 | External penetration test | ⬜ before the first external paying customer (R19) |
@@ -198,8 +243,17 @@ limits, then GitHub Copilot too, then handed to Claude Code:**
 
 ## Next
 
+**The critical path right now is #19.** It is the next pull request, and it is the one that
+converts every "fails the build" rule in this repository into behaviour — `main` currently
+runs nothing on a push. After it merges, the required-check and ruleset reconciliation
+follows, and only then can Throttle 1's conditions 4 and 5 be claimed.
+
+**Not next, deliberately:** retrofit **S2**. S1 completing does not start S2 — that needs
+its own scheduling decision. Issue **#6 stays OPEN / In Progress** with S2–S10 outstanding,
+and **#7 stays OPEN** even though #21 merged.
+
 **P0 · Foundation.** Order matters — the gates go in before the features. Two things
-changed today: a **step 0** (spec closure — done, see [phases.md](phases.md#p0--foundation))
+changed on 2026-09-06: a **step 0** (spec closure — done, see [phases.md](phases.md#p0--foundation))
 now precedes step 1, and the **kaneo router retrofit** is named as P0's largest security
 task with its own Opus review:
 
@@ -267,12 +321,12 @@ this stops depending on anyone remembering.
   posted, and the Project board exists — project 1, *TaskDesk v2 — P0*, with the six
   agreed columns. Kept as a line rather than deleted because it was the top blocker for a
   day and its absence changed how several things were done.
-- **#6 must relocate the SSRF guard before it deletes anything.**
-  `assertPublicWebhookDestination` lives in `apps/api/src/plugins/generic-webhook/config.ts`
-  — a directory #6 deletes — and is imported by two **retained** files,
-  `notification-preferences/delivery.ts` and `service.ts`. Deleting the directory first
-  breaks the build, and the quick fix is to drop the SSRF validation entirely. This is an
-  ordering precondition, not a suggestion. *Blast radius: the #6 lane.*
+- ~~**#6 must relocate the SSRF guard before it deletes anything.**~~ **RESOLVED by #16
+  (2026-09-07).** `assertPublicWebhookDestination` now lives at
+  `apps/api/src/utils/assert-public-destination.ts`, and both retained importers —
+  `notification-preferences/delivery.ts` and `service.ts` — point at it there. The
+  validation was moved, not dropped, which was the failure mode this entry existed to
+  prevent. Kept as a line because the ordering rule still applies to every future removal.
 - **Deleting the MCP OAuth route does not revoke the sessions it already minted.** A consent
   click created a full 30-day better-auth session row. #6 removes the route; something else
   has to invalidate outstanding tokens. **Needs its own issue.** *Blast radius: one lane.*
@@ -331,24 +385,35 @@ this stops depending on anyone remembering.
 
 ---
 
-## Throttle 1 — not yet open
+## Throttle 1 — not yet satisfied
+
+**Throttle 1 is not yet satisfied/enforced: the route-policy CI behaviour is implemented
+and demonstrated on PR #19, but #19 is unmerged, and required-check/ruleset reconciliation
+still follows it.**
 
 **Four of the five conditions are unmet.** Throttle 1 opens only when **all** are true.
 Note the wording of 2 and 3: the **issue** completes. A slice merging is not the condition,
 and reading it that way would open the throttle while `organization()` is still mounted
-(decision log, 2026-09-06).
+(decision log, 2026-09-06) — which it is.
+
+**Demonstrated is not enforced.** Conditions 4 and 5 are about behaviour on `main`, and
+`main` has **zero workflow files**: `.github/` holds only `pull_request_template.md`. The
+route-policy gate has been built and shown to work on #19, and that is real progress — but
+until #19 merges nothing runs on a push, and until the required-check and ruleset
+reconciliation that **follows** #19 is done, a failing gate cannot block a merge.
 
 | | Condition | State |
 | --- | --- | --- |
 | 1 | **#5** complete | ✅ merged as PR #13 |
-| 2 | **#6 — the ISSUE** complete | ⬜ in progress. PR #16 is a draft slice on `feat/p0-remove-inherited-surfaces`; the `organization()` retrofit S1–S10 has not started |
-| 3 | **#7** complete | ⬜ in progress. **IN OPEN PR #21** — registry, evaluator and route coverage exist there, but two independent reviews found 1 CRITICAL and 6 HIGH, so it is not merge-ready |
-| 4 | route coverage **actually executes** in CI | ⬜ **IN OPEN PR #19** — the `route-policy` job exists and currently fails closed, which is the gate working rather than the condition being met |
-| 5 | adding a route without a policy **fails the build** | ⬜ #19, and not yet demonstrated. The review found that appending a line to `inherited-uncovered.json` currently makes the gate green again, so this condition needs the baseline-monotonicity fix in #21 before it can be claimed |
+| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged, so the inherited attack surface is gone, and #57 merged, so retrofit **S1 is complete**. **S2–S10 remain** and `organization()` is still mounted. #6 is **not** complete |
+| 3 | **#7** complete | ⬜ **OPEN / In Progress.** #21 merged, so the registry, evaluator and route-coverage gate are **on `main`** and `pnpm test:permissions` runs. The issue itself is still open — a merged slice is not a completed issue |
+| 4 | route coverage **actually executes** in CI | ⬜ **implemented and demonstrated on #19, which is unmerged.** `main` has no workflow files, so nothing executes on a push. The gate script itself is on `main` via #21 |
+| 5 | adding a route without a policy **fails the build** | ⬜ **demonstrated on #19**; the shrink-only baseline ratchet that closed the append-a-line loophole merged with #21. Not *enforced*: that needs #19 merged **and** the required-check/ruleset reconciliation that follows it |
 
 Conditions 4 and 5 are the ones most easily forgotten: it is **not enough** that #7 has a
-passing test locally. The check must execute in CI, which means the part of #10 that
-enforces route-policy coverage merges before Throttle 1 opens.
+passing test locally, and it is not enough that #19 has shown the gate working. The check
+must execute in CI on `main`, which means the part of #10 that enforces route-policy
+coverage merges first — and then the required-check and ruleset reconciliation after it.
 
 ---
 
