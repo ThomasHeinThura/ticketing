@@ -19,6 +19,7 @@ import {
   declaredState,
   effectivelyNotApplicable,
   field,
+  isBlank,
   markedNotApplicable,
   meaningfulLines,
   normaliseHeading,
@@ -528,5 +529,37 @@ describe("declaredState / effectivelyNotApplicable — F9 and its residual", () 
       ["first", "second"],
     );
     assert.deepEqual(meaningfulLines("\u200b\u2060\ufeff"), []);
+  });
+});
+
+describe("contentOf — L6, blank-rendering NON-format characters are not content", () => {
+  // Cf was not enough: none of these is a format character, so \p{Cf} never matched
+  // them, and a required section containing only one looked filled in while rendering
+  // as nothing on GitHub. Reproduced per family by the mandatory review.
+  for (const [name, char] of [
+    ["U+2800 braille pattern blank", "⠀"],
+    ["U+3164 hangul filler", "ㅤ"],
+    ["U+115F hangul choseong filler", "ᅟ"],
+    ["U+1160 hangul jungseong filler", "ᅠ"],
+    ["U+FFA0 halfwidth hangul filler", "ﾠ"],
+    ["U+17B4 khmer inherent aq", "឴"],
+    ["U+17B5 khmer inherent aa", "឵"],
+    ["U+3000 ideographic space", "　"],
+  ]) {
+    it(`treats a section containing only ${name} as EMPTY`, () => {
+      assert.equal(contentOf(char), "");
+      assert.equal(isBlank(char), true);
+      assert.equal(contentOf(`${char}${char}\n  ${char}`), "");
+    });
+
+    it(`rejects ${name} as a Screens-opened answer`, () => {
+      // The section-level consequence, which is what the finding is about.
+      assert.equal(effectivelyNotApplicable(char), true);
+    });
+  }
+
+  it("still keeps real content that merely contains one of them", () => {
+    assert.equal(contentOf("re⠀viewed"), "reviewed");
+    assert.notEqual(contentOf("ㅤ/projects/1 — 1280x800 — clicked New"), "");
   });
 });

@@ -21,8 +21,9 @@
  * override set is indistinguishable from "we deleted the protection", so it fails too.
  */
 
+import { readdir } from "node:fs/promises";
 import path from "node:path";
-import { finish, readText, repoRoot, violation } from "./lib/repo.mjs";
+import { exists, finish, readText, repoRoot, violation } from "./lib/repo.mjs";
 
 const NAME = "check:overrides";
 
@@ -46,6 +47,61 @@ function workspaceOverrideKeys(text) {
     if (match) keys.push(match[1].replace(/^['"]|['"]$/g, ""));
   }
   return keys;
+}
+
+/**
+ * L5 — the invariant said "exactly ONE override source may be populated", and the check
+ * inspected two: root `pnpm.overrides` and pnpm-workspace.yaml. A NESTED package.json
+ * `overrides` key was never looked at, and `apps/api/package.json` carried one
+ * (`esbuild: ^0.25.0`) — inert, because pnpm honours overrides only from the workspace
+ * root, and superseded anyway by the root's `^0.28.1`.
+ *
+ * Inert is not the same as harmless: it reads to a human as a live protection, and the
+ * next person to trust it gets a floor that was never applied. The inert entry is
+ * removed, and this now inspects every workspace manifest so the stated invariant and
+ * the inspected surface are the same thing.
+ */
+async function nestedOverrideSources() {
+  const found = [];
+  for (const relative of await workspaceManifests()) {
+    if (relative === "package.json") continue; // the root is checked separately
+    let manifest;
+    try {
+      manifest = JSON.parse(await readText(path.join(repoRoot, relative)));
+    } catch {
+      continue;
+    }
+    const nested = {
+      ...(manifest?.overrides ?? {}),
+      ...(manifest?.pnpm?.overrides ?? {}),
+      ...(manifest?.resolutions ?? {}),
+    };
+    if (Object.keys(nested).length > 0) {
+      found.push({ relative, keys: Object.keys(nested) });
+    }
+  }
+  return found;
+}
+
+/** Every workspace package manifest, from the pnpm-workspace.yaml globs. */
+async function workspaceManifests() {
+  const out = ["package.json"];
+  for (const dir of ["apps", "packages"]) {
+    let entries;
+    try {
+      entries = await readdir(path.join(repoRoot, dir), {
+        withFileTypes: true,
+      });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const relative = `${dir}/${entry.name}/package.json`;
+      if (await exists(path.join(repoRoot, relative))) out.push(relative);
+    }
+  }
+  return out;
 }
 
 async function main() {
@@ -96,6 +152,20 @@ async function main() {
         `overrides live in ${CANONICAL} in this repository. They are declared in ` +
           "package.json instead, which works but relocates a security-relevant surface " +
           "without a record. Move them back, or change this check and say why.",
+      ),
+    );
+  }
+
+  // L5: nested manifests, so the invariant matches the inspected surface.
+  for (const { relative, keys } of await nestedOverrideSources()) {
+    failures.push(
+      violation(
+        relative,
+        `declares ${keys.length} dependency override(s) — ${keys.join(", ")} — in a ` +
+          "NON-ROOT manifest. pnpm honours overrides only from the workspace root, so " +
+          "these are INERT: they read as a protection to anyone reviewing this file and " +
+          `apply to nothing. Move them into ${CANONICAL}, where they take effect, or ` +
+          "delete them.",
       ),
     );
   }

@@ -257,14 +257,25 @@ Sometimes justified — a spike, a proof of concept, a genuine tooling false pos
 
 A waiver without a follow-up issue is not a waiver, it is debt with no owner.
 
-Steps 1, 3, 4 and 5 are checked mechanically by the fast-stage PR-template check
-([ci-cd.md](../04-engineering/ci-cd.md)): the anchor must resolve to exactly one entry,
-and the declaration must name this gate, this pull request and a follow-up issue. Prose
-is not accepted — the check that read prose accepted the sentence *"G1 is not waived"* as
-authorisation for waiving G1. **Step 2 is not mechanically checkable** and is not claimed
-to be: agents commit through the same repository identity Thomas does, so nothing readable
-from a committed file proves who wrote a line. The declaration makes a waiver durable,
-specific and reviewable; the authority behind it is Thomas's to confirm.
+**What is actually checked, and what is not.** The fast-stage PR-template check
+([ci-cd.md](../04-engineering/ci-cd.md)) reads the **declaration line** inside the cited
+decision-log entry. Nothing else. Stated precisely, because an earlier version of this
+paragraph claimed four steps were mechanical when two and a half are:
+
+| Step | Mechanically checked? |
+| --- | --- |
+| 1 — say which gate, and why, in the description | **The gate, yes** — the declaration must name the gate whose row is marked `waived`. **The "why", no.** No check reads the pull-request description for a justification, and none could judge one. |
+| 2 — explicit approval from Thomas | **No, and not claimable.** Agents commit through the same repository identity Thomas does, so nothing readable from a committed file proves who wrote a line. |
+| 3 — open a follow-up issue and link it | **Partly.** The declaration must carry a follow-up issue *number*. Whether that issue exists, is open, or is about this gate is **not** verified — that would need a GitHub API call, and buying a stronger-sounding claim with network dependence in a fast gate is a bad trade. |
+| 4 — record it in the decision log | **Yes.** The cited entry must exist in the committed document, and the declaration must be one whole line inside it. |
+| 5 — put the `#anchor` in the `## Gates` link cell | **Yes.** The anchor is mandatory and must resolve to **exactly one** entry. |
+
+Prose is not accepted for any of it — the check that read prose accepted the sentence
+*"G1 is not waived"* as authorisation for waiving G1.
+
+So the declaration makes a waiver **durable, specific and attributable to a gate, a pull
+request and a named follow-up number**. It does not make it *authorised*: that is Thomas's
+to confirm, and no amount of parsing changes it.
 
 ## Related
 

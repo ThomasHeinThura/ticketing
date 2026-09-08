@@ -42,6 +42,7 @@ stages below.
 │ pnpm check:deps      no cycles, no boundary break│
 │ pnpm check:i18n      en-US complete              │
 │ pnpm audit           high/critical fails         │
+│ pnpm check:overrides one override source only    │
 │ gitleaks             no secrets in the diff      │
 │ pnpm check:queries   no db.select() outside repo │
 │ pnpm check:inventory screen counts match rows    │

@@ -42,11 +42,59 @@ const apiDir = path.join(repoRoot, "apps/api");
 const tsc = path.join(apiDir, "node_modules/.bin/tsc");
 
 /** Every `tsconfig*.json` in apps/api — the configs `pnpm typecheck` actually runs. */
+/**
+ * The tsconfigs the package's `typecheck` script ACTUALLY invokes.
+ *
+ * L4 — this used to read the directory: every `apps/api/tsconfig*.json` that existed.
+ * So an ORPHAN config could satisfy the guard while `pnpm typecheck` never invoked it.
+ * The failure mode is silence in both directions: the orphan includes the test tree, the
+ * guard is happy, and a broken import in that tree still cannot fail typecheck.
+ *
+ * Parsed from the script rather than from the filesystem, so coverage is asserted about
+ * the command that runs. `tsc --noEmit -p a.json && tsc --noEmit -p b.json` yields
+ * ["a.json", "b.json"], in invocation order.
+ */
 async function tsconfigNames() {
-  const names = (await fs.readdir(apiDir))
+  const manifest = JSON.parse(
+    await fs.readFile(path.join(apiDir, "package.json"), "utf8"),
+  );
+  const script = manifest?.scripts?.typecheck;
+  assert.ok(
+    typeof script === "string" && script.trim() !== "",
+    "apps/api has no `typecheck` script, so there is no execution path to tie " +
+      "coverage to. Coverage asserted against a config nobody runs is not coverage.",
+  );
+
+  const names = [...script.matchAll(/-p\s+(\S+)/g)].map((match) => match[1]);
+  assert.ok(
+    names.length > 0,
+    `apps/api's typecheck script invokes no \`-p <tsconfig>\`: ${script}`,
+  );
+
+  for (const name of names) {
+    assert.ok(
+      await fs
+        .access(path.join(apiDir, name))
+        .then(() => true)
+        .catch(() => false),
+      `apps/api's typecheck script invokes ${name}, which does not exist.`,
+    );
+  }
+
+  // An ORPHAN config — present but never invoked — is reported, because its existence is
+  // what made this guard satisfiable without the coverage being real.
+  const onDisk = (await fs.readdir(apiDir))
     .filter((name) => /^tsconfig.*\.json$/.test(name))
     .sort();
-  assert.ok(names.length > 0, "apps/api has no tsconfig files");
+  const orphans = onDisk.filter((name) => !names.includes(name));
+  assert.deepEqual(
+    orphans,
+    [],
+    `apps/api carries ${orphans.length} tsconfig(s) the typecheck script never invokes ` +
+      `— ${orphans.join(", ")}. Either invoke them, or delete them: an uninvoked config ` +
+      "that includes a test tree makes this guard pass while nothing typechecks it.",
+  );
+
   return names;
 }
 

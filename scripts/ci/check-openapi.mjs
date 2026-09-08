@@ -29,6 +29,7 @@
  */
 
 import { execFileSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -55,9 +56,13 @@ function run(command, args) {
       // be weakened; a throwaway value satisfies it. Nothing is signed here --
       // the export writes a document and exits, issuing no session and reaching
       // no database. Overridden only when the caller has not set one.
+      // A per-run ephemeral value, not a literal. The export boots the app only to read
+      // its own /api/openapi document, so the secret's VALUE is irrelevant — but a
+      // hardcoded "not-a-real-secret" string teaches the pattern that a plausible
+      // credential may live in a committed file, and ci-fast.yml's secret-scan job exists
+      // to say otherwise. Generated, so there is nothing to copy.
       TASKDESK_AUTH_SECRET:
-        process.env.TASKDESK_AUTH_SECRET ??
-        "openapi-export-only-not-a-real-secret-32",
+        process.env.TASKDESK_AUTH_SECRET ?? randomBytes(32).toString("hex"),
     },
   });
 }

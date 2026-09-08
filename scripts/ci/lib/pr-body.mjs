@@ -67,10 +67,20 @@ export function stripComments(markdown) {
  * JOINER, U+FEFF ZERO WIDTH NO-BREAK SPACE, U+00AD SOFT HYPHEN, U+180E MONGOLIAN VOWEL
  * SEPARATOR, plus the whole Cf (format) category, which covers the bidi controls.
  *
+ * L6 — Cf was not enough. These render blank and are NOT format characters, so
+ * `\\p{Cf}` never matched them: U+2800 BRAILLE PATTERN BLANK, U+3164 HANGUL FILLER,
+ * U+115F/U+1160 the HANGUL CHOSEONG/JUNGSEONG FILLERS, U+FFA0 HALFWIDTH HANGUL FILLER,
+ * U+17B4/U+17B5 the KHMER INHERENT VOWELS, and U+3000 IDEOGRAPHIC SPACE. A required
+ * section containing only one of them looked filled in and rendered as nothing.
+ *
+ * Deliberately an explicit, closed list — structural and deterministic. No visual
+ * similarity heuristic and no width guessing: a character is on the list because it was
+ * reproduced rendering blank, not because it might.
+ *
  * Applied ONLY when testing emptiness. Visible body content is never mutated by this —
  * the caller keeps the original text for its error messages.
  */
-const INVISIBLE = /[\u200B-\u200D\u2060\uFEFF\u00AD\u180E\p{Cf}]/gu;
+const INVISIBLE = /[\u200B-\u200D\u2060\uFEFF\u00AD\u180E\p{Cf}⠀ㅤᅟᅠﾠ឴឵　]/gu;
 
 /** True when `text` contains nothing a human would see. */
 export function isBlank(text) {

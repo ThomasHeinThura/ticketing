@@ -17,10 +17,19 @@ import {
   rel,
   violation,
 } from "./lib/repo.mjs";
+import { stripCodeComments } from "./lib/strip-code-comments.mjs";
 
 const NAME = "check:skips";
 
-const roots = ["apps", "packages", "tests"];
+// M3: `scripts/ci` was NOT scanned, so a skipped gate checker or red probe was
+// invisible — the machinery that proves the other gates work could be switched off
+// without this gate noticing. Reproduced: `it.skip` on a shipped red probe left
+// check:skips at "161 test file(s), none skipped or focused", exit 0.
+//
+// `isTestFile` below is what keeps this narrow: only *.test.mjs / *.spec.* files and
+// anything under tests/ are read, so ordinary scripts and their comments are never
+// scanned and cannot false-positive.
+const roots = ["apps", "packages", "tests", "scripts/ci"];
 
 const banned = [
   {
@@ -61,7 +70,14 @@ async function main() {
   const failures = [];
 
   for (const absolute of files) {
-    const source = await readText(absolute);
+    // M3: scan CODE, not prose or test data. Comments and string/template contents are
+    // blanked first — a doc comment explaining `.skip` and a probe asserting on its text
+    // are both documentation, not disabled tests, and blocking them enforces nothing. A
+    // genuinely skipped test cannot hide in either and still execute. Line numbers are
+    // preserved by the scanner so the reported location is still the real one.
+    const source = stripCodeComments(await readText(absolute), {
+      blankStrings: true,
+    });
     for (const { pattern, why } of banned) {
       pattern.lastIndex = 0;
       for (

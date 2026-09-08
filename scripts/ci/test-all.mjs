@@ -22,6 +22,10 @@
 import { spawnSync } from "node:child_process";
 import { readDeclaredGates } from "./lib/ci-cd-gates.mjs";
 import { repoRoot } from "./lib/repo.mjs";
+import {
+  readWorkflowGates,
+  WorkflowGatesUnavailableError,
+} from "./lib/workflow-gates.mjs";
 
 const NAME = "test:all";
 
@@ -66,6 +70,15 @@ const manifest = [
     why: "the boundary matrix in docs/01-architecture/monorepo-layout.md is stated over packages/domain, packages/ui and packages/plugins-contracts, none of which exists yet. A cycle check today would assert almost nothing.",
   },
   { gate: "pnpm check:i18n", stage: "fast", run: ["pnpm", "check:i18n"] },
+  {
+    gate: "pnpm check:overrides",
+    stage: "fast",
+    run: ["pnpm", "check:overrides"],
+    note:
+      "exactly ONE dependency-override source may be populated. pnpm honours one and " +
+      "warns about neither, and `pnpm audit` cannot see a deactivated version floor — a " +
+      "floor sits where there is no advisory. See pnpm-workspace.yaml.",
+  },
   {
     gate: "pnpm audit",
     stage: "fast",
@@ -136,6 +149,9 @@ const manifest = [
   },
   {
     gate: "pnpm test:permissions",
+    // M2: CI runs this through the stricter `pnpm check:route-policy` wrapper, so
+    // turbo builds the package first. WORKFLOW_ALIASES records that mapping, and the
+    // reconciliation now checks the workflow rather than only this manifest.
     stage: "fast",
     run: ["pnpm", "test:permissions"],
   },
@@ -232,11 +248,39 @@ function available(command) {
   );
 }
 
+/**
+ * M2 — CI entry points that differ from the gate ci-cd.md declares.
+ *
+ * Left key: the command a workflow runs. Right key: the gate ci-cd.md declares.
+ *
+ *   check:route-policy  runs test:permissions THROUGH turbo so the package build happens
+ *                       first (scripts/ci/route-policy-gate.mjs says why the wrapper
+ *                       exists). CI runs the wrapper because it is the stricter entry.
+ *   check:pr-template / check:openapi / lint:ci
+ *                       ci-cd.md names these by WHAT they check; CI names them by the
+ *                       script that checks it. Both are accurate.
+ *
+ * Declared here rather than resolved by editing one side until today's strings match. An
+ * alias is not an exemption: the gate it points at must still be declared in ci-cd.md AND
+ * enabled in the manifest.
+ */
+const WORKFLOW_ALIASES = new Map([
+  ["pnpm check:route-policy", "pnpm test:permissions"],
+  ["pnpm check:pr-template", "pr-template check"],
+  ["pnpm check:openapi", "pnpm test:contract"],
+  ["pnpm lint:ci", "pnpm lint"],
+]);
+
 async function reconcile() {
   const declared = await readDeclaredGates();
   const problems = [];
   const declaredGates = new Set([...declared.fast, ...declared.full]);
   const manifestGates = new Set(manifest.map((entry) => entry.gate));
+  const enabledManifestGates = new Set(
+    manifest
+      .filter((entry) => entry.run !== null || entry.setup === true)
+      .map((entry) => entry.gate),
+  );
 
   for (const gate of declaredGates) {
     if (!manifestGates.has(gate)) {
@@ -249,6 +293,50 @@ async function reconcile() {
     if (!declaredGates.has(gate)) {
       problems.push(
         `scripts/ci/test-all.mjs runs "${gate}" and ci-cd.md does not declare it.`,
+      );
+    }
+  }
+
+  // ── M2: the third party — what the workflows ACTUALLY execute ────────────────────
+  // The two loops above compare a document with a document. Neither is CI, so a gate
+  // could run unannounced, or be declared while running as something else. Both were
+  // true at the reviewed head. Fails closed when the workflows cannot be read.
+  let workflow;
+  try {
+    workflow = await readWorkflowGates();
+  } catch (error) {
+    if (!(error instanceof WorkflowGatesUnavailableError)) throw error;
+    problems.push(error.message);
+    return problems;
+  }
+
+  for (const executed of workflow.gates) {
+    // test:all is the reconciler; it does not declare itself as one of the gates.
+    if (executed === "pnpm test:all") continue;
+
+    const alias = WORKFLOW_ALIASES.get(executed);
+    const declaredAs = declaredGates.has(executed)
+      ? executed
+      : alias && declaredGates.has(alias)
+        ? alias
+        : null;
+
+    if (declaredAs === null) {
+      problems.push(
+        `CI EXECUTES "${executed}" and ci-cd.md declares neither it${
+          alias ? ` nor its alias "${alias}"` : ""
+        }. ci-cd.md is the authority: a gate that runs unannounced is one nobody agreed ` +
+          "to, and a gate that stops running is one nobody notices. Declare it there, or " +
+          "add an explicit alias in test-all.mjs naming which declared gate it is.",
+      );
+      continue;
+    }
+
+    if (!enabledManifestGates.has(declaredAs)) {
+      problems.push(
+        `CI EXECUTES "${executed}" (declared as "${declaredAs}") but ` +
+          "scripts/ci/test-all.mjs has no ENABLED entry for it. A gate that runs in CI " +
+          'and is "not enabled yet" locally is a claim the manifest cannot make.',
       );
     }
   }

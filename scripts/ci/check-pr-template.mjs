@@ -68,9 +68,14 @@ import {
   ReviewBindingUnavailableError,
   reviewBinding,
 } from "./lib/security-review-note.mjs";
+import {
+  readRequiredSectionsScope,
+  TEMPLATE_RELATIVE_PATH,
+  TemplateScopeUnavailableError,
+  templatePath,
+} from "./lib/template-scope.mjs";
 
 const NAME = "pr-template";
-const templatePath = path.join(repoRoot, ".github/pull_request_template.md");
 
 /** Thomas fills this one in; agents leave it blank on purpose. */
 const thomasOnly = new Set([normaliseHeading("Design review H1–H6")]);
@@ -149,10 +154,39 @@ async function main() {
   }
 
   const template = await readText(templatePath);
-  const required = [...sections(template).values()].map(
-    (section) => section.heading,
-  );
+
+  // H1: the required-section list is the UNION of the template at the merge base and the
+  // template at HEAD. Reading it from HEAD alone let a pull request delete a requirement
+  // and satisfy the checker by deleting it — see lib/template-scope.mjs for the four
+  // outcomes and the reproduction. Fails closed rather than guessing.
+  let templateScope;
+  try {
+    templateScope = await readRequiredSectionsScope();
+  } catch (error) {
+    if (!(error instanceof TemplateScopeUnavailableError)) throw error;
+    failures.push(violation("required-section scope", error.message));
+    finish({ name: NAME, failures, warnings, ok: "unreachable" });
+    return;
+  }
+  const required = templateScope.headings;
   const present = sections(body);
+
+  // Narrowing the template is a governance act, so it is reported on the diff that does
+  // it. The sections themselves stay required by the union above; this says WHY, so the
+  // failure above does not read like an authoring slip.
+  if (templateScope.removed.length > 0) {
+    failures.push(
+      violation(
+        TEMPLATE_RELATIVE_PATH,
+        `this diff REMOVES ${templateScope.removed.length} required section(s) from the ` +
+          `template — ${templateScope.removed.map((heading) => `## ${heading}`).join(", ")}. ` +
+          "Those sections remain required on this pull request: a requirement that applied " +
+          "at the merge base cannot be deleted by the change being checked against it. " +
+          "Removing them from the template is a change to land on main, reviewed on its " +
+          "own terms, not a side effect of the pull request that benefits from it.",
+      ),
+    );
+  }
 
   for (const heading of required) {
     const key = normaliseHeading(heading);
@@ -194,6 +228,26 @@ async function main() {
 
   const implementedBy = present.get(normaliseHeading("Implemented by"));
   const reviewedBy = present.get(normaliseHeading("Reviewed by"));
+  // H1: the distinctness check ran only `if (implementedBy && reviewedBy)`, so deleting
+  // either section silenced it. The union above already requires both; this names the
+  // CHECK the deletion would have removed, so an absence does not read as a missing
+  // heading in a list.
+  for (const [label, section] of [
+    ["Implemented by", implementedBy],
+    ["Reviewed by", reviewedBy],
+  ]) {
+    if (!section) {
+      failures.push(
+        violation(
+          `## ${label}`,
+          "absent, so the check that `## Reviewed by` names a DIFFERENT model and " +
+            "session from `## Implemented by` cannot run. A reviewer who is the author " +
+            "is not a reviewer, and deleting one of the two sections is not how that " +
+            "gets established.",
+        ),
+      );
+    }
+  }
   if (implementedBy && reviewedBy) {
     const implementedModel = field(implementedBy.text, "Model");
     const implementedSession = field(implementedBy.text, "Session");
@@ -268,6 +322,22 @@ async function main() {
 
   const requiresReview = touched.length > 0 || scope.removed.length > 0;
   const securityReview = present.get(normaliseHeading("Security review"));
+  // H1: this was `if (requiresReview && securityReview)`. When a review IS required, the
+  // ABSENCE of the section is the strongest failure available, not a reason to skip the
+  // Opus-model assertion and the committed-note requirement. Reproduced: remove the
+  // section from the body AND from the template in one commit, touch scripts/ci/**, tick
+  // the author-visible checkbox — the old checker exited 0.
+  if (requiresReview && !securityReview) {
+    failures.push(
+      violation(
+        "## Security review",
+        `this pull request touches ${touched.length} security path(s) and carries NO ` +
+          "`## Security review` section. That is not an exemption, it is the requirement " +
+          "deleted. Security review is Opus, always (CLAUDE.md), and it needs a committed " +
+          "note at docs/07-planning/security-reviews/<pr>-<slug>.md. Restore the section.",
+      ),
+    );
+  }
   if (requiresReview && securityReview) {
     const why =
       touched.length > 0
@@ -352,6 +422,18 @@ async function main() {
   // section's state now comes from its FIRST meaningful line, the way a status field is
   // read, and prose that merely mentions `n/a` later carries no state. See
   // lib/pr-body.mjs § declaredState for why this is structural rather than linguistic.
+  // H1: same shape. With apps/web/** changed, an ABSENT `## Screens opened` must fail
+  // rather than skip the rule that rejects every n/a form in it.
+  if (webTouched && !screensOpened) {
+    failures.push(
+      violation(
+        "## Screens opened",
+        "apps/web/** changed and there is NO `## Screens opened` section. Deleting the " +
+          "section does not answer what it asks (AGENTS.md do-not 18): which routes you " +
+          "opened, at what viewport, and what you clicked.",
+      ),
+    );
+  }
   if (webTouched && screensOpened) {
     const declared = declaredState(screensOpened.text);
     const complaint =
@@ -386,6 +468,19 @@ async function main() {
   }
 
   const gates = present.get(normaliseHeading("Gates"));
+  // H1: an absent `## Gates` silenced the pass/n-a/waived validation AND the waiver
+  // binding to a committed decision-log entry. The union requires the section; this
+  // names the lost checks.
+  if (!gates) {
+    failures.push(
+      violation(
+        "## Gates",
+        "absent, so nothing validates the gate results and nothing binds a `waived` row " +
+          "to a committed decision-log entry. A gate table that does not exist is not a " +
+          "table of passing gates.",
+      ),
+    );
+  }
   if (gates) {
     // GPT-F4: a waiver is scoped to one pull request, so the number is an input to the
     // check rather than decoration. Resolved once, whether or not any row is waived.

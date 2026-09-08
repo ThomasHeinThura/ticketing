@@ -236,8 +236,17 @@ jobs:
         # reports no known vulnerabilities at EVERY severity, not only at high.
         #
         # Nothing is suppressed to get there: no --prod narrowing, no
-        # --audit-level=critical, no continue-on-error, no .npmrc, no .pnpmfile.cjs, no
-        # auditConfig/ignoreGhsas anywhere in the repository. Any of those would turn a
+        # --audit-level=critical, no continue-on-error, no .pnpmfile.cjs, no
+        # auditConfig/ignoreGhsas anywhere in the repository.
+        #
+        # `.npmrc` DOES exist at the repository root and is 0 bytes — inherited, empty,
+        # and therefore suppressing nothing. An earlier version of this comment claimed
+        # there was "no .npmrc", which was false: the file is there. What IS true is that
+        # it configures nothing, and that `.npmrc` sits in ci-cd.md's security-review
+        # globs, so giving it content requires an independent review. Claiming absence
+        # was both wrong and weaker than the real position.
+        #
+        # Any of those would turn a
         # true statement into a green tick, which is the opposite of the point.
         #
         # Read pnpm-workspace.yaml for what is pinned and why. Note what this gate CANNOT
