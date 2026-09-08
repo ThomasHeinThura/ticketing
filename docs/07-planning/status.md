@@ -37,8 +37,7 @@ target, the program may take three to four months, some stages take days — fin
 criteria, never skip a gate, move scope or dates and record it.
 
 ```
-P0 Foundation          ████░░░░░░  40%   ← in progress. 2 of 8 issues closed (#4 #5).
-                                         #16 #21 #57 #60 merged WITHOUT closing #6/#7
+P0 Foundation          ← IN PROGRESS
 P1 Core work           ░░░░░░░░░░   0%
 P2 Service desk        ░░░░░░░░░░   0%
 P3 Portal + identity   ░░░░░░░░░░   0%
@@ -47,6 +46,11 @@ P5 Insight + agile     ░░░░░░░░░░   0%
 P6 Import + cutover    ░░░░░░░░░░   0%
 P7 Polish              ░░░░░░░░░░   0%
 ```
+
+**P0 carries no percentage on purpose.** The live *P0 — Foundation* milestone reports
+**2 closed of 10 total**; merged slices do not map onto a defined completion figure, and an
+invented one reads as progress nobody measured. The merged pull requests are listed
+individually under ON MAIN below, which is the honest unit of progress here.
 
 ## Where the code is — the only four categories that mean anything
 
@@ -156,7 +160,9 @@ out of reach until later gates:
 | External penetration test | ⬜ before the first external paying customer (R19) |
 
 **Readiness:** **Conditional GO → condition met.** The [external readiness review](reviews/2026-09-05/readiness-review-external.md)
-asked for one documentation-closure PR before P0 code; that PR is this branch's third commit
+asked for one documentation-closure PR before P0 code. **That PR was #3** ("apply the
+confirmed pre-P0 decisions, and add CLAUDE.md"), merged 2026-09-06 as `1048844`, ahead of
+the first P0 code in #13 (`18ae014`).
 **Target calendar:** **Foundation Technical Preview** by 2026-09-12, go-live by 2026-10-03, full scope by end of
 December 2026 — see [accelerated-delivery-plan.md](accelerated-delivery-plan.md). **This
 is a target, not a deadline held under pressure** — the date is explicitly allowed to move;
@@ -329,7 +335,7 @@ this stops depending on anyone remembering.
   prevent. Kept as a line because the ordering rule still applies to every future removal.
 - **Deleting the MCP OAuth route does not revoke the sessions it already minted.** A consent
   click created a full 30-day better-auth session row. #6 removes the route; something else
-  has to invalidate outstanding tokens. **Needs its own issue.** *Blast radius: one lane.*
+  has to invalidate outstanding tokens. **Tracked by #17.** *Blast radius: one lane.*
 - ~~**`scripts/openapi/` has no destination.**~~ **DECIDED 2026-09-06** (decision log):
   the committed baseline the drift check compares against is
   `tests/api-contract/openapi.json`; a published `apps/site/public/openapi.json` is
@@ -381,7 +387,9 @@ this stops depending on anyone remembering.
   application does not read" table lists four, and none is an email. It was raised rather
   than invented. It does not block this host, which terminates TLS at CloudFront.
   *Blast radius: a future customer install on a bare host.* Unblocked by: Thomas.
-- **The GitHub Project board does not exist.** Same `gh` root cause.
+- ~~**The GitHub Project board does not exist.**~~ **RESOLVED 2026-09-06**, with the `gh`
+  authentication that caused it. The board exists — project 1, *TaskDesk v2 — P0*, with
+  the six agreed columns, and is listed under ON MAIN above.
 
 ---
 
