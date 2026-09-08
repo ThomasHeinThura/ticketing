@@ -257,6 +257,84 @@ ahead of one.
 
 ---
 
+### 2026-09-08 · Native organization routes preserve inherited session-only reach
+
+**Decision:** every native route that replaces a better-auth `organization()` route is
+**session-only** in the runtime that ships it. A personal API key — on `x-api-key` or as a
+`Bearer` token — must not reach workspace, membership, invitation or capability data
+through a native route, and must not reach a workspace mutation. Widening that reach is a
+deliberate decision for the runtime policy layer to take later, on its own terms, not a
+side effect of moving a route.
+
+**Why:** the plugin sets `enableSessionForAPIKeys: false`, so `/organization/*` is
+effectively session-only today. The retrofit recorded this as risk **R10** — noted, and
+undecided. It stopped being hypothetical the moment native routes existed: at PR #65's
+pre-remediation head, all four S2 read routes accepted a valid API key and returned real
+workspace, membership and invitation data with a 200. Nobody widened anything on purpose.
+The reach came along with the move, and the only reason it surfaced is that the lane was
+told to treat a non-session credential on those routes as a stop-and-report event rather
+than as behaviour to describe in a policy file.
+
+That is the general shape worth keeping: **a retrofit inherits the old surface's limits,
+not just its behaviour.** An effect the previous implementation could not produce is a new
+effect, and it needs a decision even when no line of the diff looks like a decision.
+
+**Alternatives:** declare the widened reach as intended and write it into the four policy
+files — rejected, because it converts an accident into a contract, and the surface it
+widens is exactly the one the mandatory security review exists to read. Defer to #7's
+policy layer — rejected: the routes ship before that layer evaluates anything, so
+"deferred" would mean unenforced.
+
+**Implemented by:** `apps/api/src/utils/require-session-only.ts` (PR #65, `24d8236`),
+reproduced RED→GREEN by sabotage against a real PostgreSQL 18; consolidated onto by PR #67
+(`cad15e06`), which had independently grown a second, less precise implementation.
+**Status:** IMPLEMENTED-PENDING-VERIFY. No independent review has run on either head.
+
+**Decided by:** Thomas, 2026-09-08.
+
+---
+
+### 2026-09-08 · The instance-admin bypass is not blessed on S4 mutation routes
+
+**Decision:** workspace-role authority is **preserved** on the native S4 workspace
+mutation routes. An instance admin does not acquire workspace-scoped mutation authority
+their own `workspace_role` row does not grant. `POST /api/workspace` is unaffected — a
+caller creating a workspace has no prior scope to be measured against.
+
+**Why:** `hasWorkspacePermission` short-circuits on `isInstanceAdmin` before it reads the
+caller's workspace role, so an instance admin who is a member passes that function's check
+whatever their role says. Under the inherited plugin a `viewer` could not rename a
+workspace, instance admin or not — better-auth has no instance-admin concept at all. So
+mounting these writes on the shared path handed a new power to every instance admin as a
+side effect of moving a route.
+
+PR #67's inherited batch had already found this and **pinned it as an accepted finding**: a
+test named `A2-P17 FINDING (shared evaluator, unfixed here)` asserted `200` for a
+viewer-who-is-instance-admin calling `PATCH /api/workspace/{id}`. A test that asserts the
+escalation is a test that protects it. It now asserts `403` for update and delete.
+
+**Scope of the fix, stated precisely so it is not over-read:** an additive guard
+(`apps/api/src/utils/require-workspace-role-authority.ts`) resolves the caller's authority
+from their own workspace-role row on these two routes. The shared `hasWorkspacePermission`
+short-circuit is **unchanged** — re-keying it belongs to #7, and #66 owns its second,
+worse half (the fail-open fallback to compiled static roles when a `workspace_role` row is
+absent, where `admin` diverges on 16 of 16 capabilities). This decision closes the bypass
+on two routes. It does not close the evaluator.
+
+**Alternatives:** bless the bypass, on the reasoning that an instance admin can reach the
+data anyway — rejected: "can reach it by another path" is not "may do it on this path", and
+the instance-admin path has no audit or role trail on these routes. Fix the shared
+evaluator here — rejected: it is a shared contract this lane does not own, and a change
+there needs its own pull request and its own review.
+
+**Status:** IMPLEMENTED-PENDING-VERIFY at PR #67 `cad15e06`, both directions reproduced by
+sabotage (guard neutered → `A2-P17` and the delete case flip to 200; restored → 9/9 green).
+**#66 remains OPEN.**
+
+**Decided by:** Thomas, 2026-09-08.
+
+---
+
 ### 2026-09-08 · Organization create baseline closes at N=9
 
 **Decision:** the frozen inherited S1 baseline for one default
