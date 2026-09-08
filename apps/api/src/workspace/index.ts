@@ -5,6 +5,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { requireSessionOnly } from "../utils/require-session-only";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import getUserWorkspacesCtrl from "./controllers/get-user-workspaces";
 import getWorkspaceDetailCtrl from "./controllers/get-workspace-detail";
@@ -26,6 +27,7 @@ const listWorkspacesRoute = createRoute({
   summary: "List the caller's workspaces",
   description:
     "List every workspace the calling user is a member of, each with the caller's own role. Native replacement for authClient.organization.list().",
+  middleware: [requireSessionOnly()] as const,
   responses: {
     200: jsonResponse("The caller's workspaces", workspaceSummaryListSchema),
   },
@@ -39,7 +41,10 @@ const getWorkspaceRoute = createRoute({
   summary: "Get a workspace",
   description:
     "Get a workspace's details, its members, and its pending invitations in one call. Native replacement for authClient.organization.getFullOrganization().",
-  middleware: [workspaceAccess.fromParam("workspaceId")] as const,
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+  ] as const,
   request: { params: workspaceIdParam },
   responses: {
     200: jsonResponse(
@@ -76,7 +81,10 @@ const getWorkspaceInvitationsRoute = createRoute({
   summary: "Get a workspace's pending invitations",
   description:
     "List a workspace's pending, unexpired invitations. Native replacement for authClient.organization.listInvitations().",
-  middleware: [workspaceAccess.fromParam("workspaceId")] as const,
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+  ] as const,
   request: { params: workspaceIdParam },
   responses: {
     200: jsonResponse(

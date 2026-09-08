@@ -22,8 +22,10 @@ import {
   type PolicyMap,
   type PolicyRegistry,
 } from "@taskdesk/permissions";
+import { capabilitiesPolicies } from "./capabilities/policy";
 import { instancePolicies } from "./instance/policy";
 import { projectPolicies } from "./project/policy";
+import { workspacePolicies } from "./workspace/policy";
 
 /**
  * Routes registered directly on the app rather than in a feature router.
@@ -90,6 +92,11 @@ export const POLICY_SOURCES = [
   },
   { name: "apps/api/src/instance/policy.ts", policies: instancePolicies },
   { name: "apps/api/src/project/policy.ts", policies: projectPolicies },
+  { name: "apps/api/src/workspace/policy.ts", policies: workspacePolicies },
+  {
+    name: "apps/api/src/capabilities/policy.ts",
+    policies: capabilitiesPolicies,
+  },
 ];
 
 /**
