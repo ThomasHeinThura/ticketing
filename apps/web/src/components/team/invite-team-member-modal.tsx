@@ -1,5 +1,6 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { useQueryClient } from "@tanstack/react-query";
+import { Button, Input } from "@taskdesk/ui";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -8,7 +9,6 @@ import useInviteWorkspaceUser from "@/hooks/mutations/workspace-user/use-invite-
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
-import { Button } from "../ui/button";
 import {
   Dialog,
   DialogClose,
@@ -26,7 +26,6 @@ import {
   FormLabel,
   FormMessage,
 } from "../ui/form";
-import { Input } from "../ui/input";
 import InvitationLinkField from "./invitation-link-field";
 
 type Props = {

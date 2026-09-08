@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@taskdesk/ui";
 import { cn } from "@/lib/cn";
 
 type TaskDetailsSkeletonProps = {

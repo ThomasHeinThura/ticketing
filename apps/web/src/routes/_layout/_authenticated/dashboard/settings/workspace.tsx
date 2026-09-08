@@ -5,11 +5,11 @@ import {
   redirect,
   useLocation,
 } from "@tanstack/react-router";
+import { Button } from "@taskdesk/ui";
 import { Settings, Shield, Tag } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import SettingsSidebar from "@/components/SettingsSidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   SidebarGroup,
   SidebarGroupContent,

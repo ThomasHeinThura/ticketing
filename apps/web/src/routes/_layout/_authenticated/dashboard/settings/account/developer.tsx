@@ -1,13 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { KeyRound, Plus } from "lucide-react";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import PageTitle from "@/components/page-title";
-import { ApiKeyCreatedModal } from "@/components/settings/api-key-created-modal";
-import { ApiKeyTable } from "@/components/settings/api-key-table";
-import { CreateApiKeyDialog } from "@/components/settings/create-api-key-dialog";
-import { Button } from "@/components/ui/button";
 import {
+  Button,
   Card,
   CardAction,
   CardDescription,
@@ -15,7 +8,14 @@ import {
   CardHeader,
   CardPanel,
   CardTitle,
-} from "@/components/ui/card";
+} from "@taskdesk/ui";
+import { KeyRound, Plus } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import PageTitle from "@/components/page-title";
+import { ApiKeyCreatedModal } from "@/components/settings/api-key-created-modal";
+import { ApiKeyTable } from "@/components/settings/api-key-table";
+import { CreateApiKeyDialog } from "@/components/settings/create-api-key-dialog";
 import useGetApiKeys from "@/hooks/queries/use-get-api-keys";
 import type { CreateApiKeyResponse } from "@/types/api-key";
 

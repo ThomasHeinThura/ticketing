@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { Button, KbdSequence } from "@taskdesk/ui";
 import { Bell } from "lucide-react";
 import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,8 +12,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { KbdSequence } from "@/components/ui/kbd";
 import {
   DropdownMenu,
   DropdownMenuContent,

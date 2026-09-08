@@ -1,9 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@taskdesk/ui";
 import { Trash2, X } from "lucide-react";
 import useDeleteWorkspaceUser from "@/hooks/mutations/workspace-user/use-delete-workspace-user";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { Button } from "../ui/button";
 import { Dialog, DialogClose, DialogPopup, DialogTitle } from "../ui/dialog";
 
 function DeleteTeamMemberModal({

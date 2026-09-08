@@ -1,3 +1,4 @@
+import { Button, Input } from "@taskdesk/ui";
 import type { Editor } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -48,9 +49,7 @@ import {
 import { TaskItemWithCheckbox } from "@/components/task/extensions/task-item-with-checkbox";
 import { TaskDeskIssueLink } from "@/components/task/extensions/taskdesk-issue-link";
 import { TaskDeskMention } from "@/components/task/extensions/taskdesk-mention";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogPopup } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,

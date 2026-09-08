@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { Button, KbdSequence, Separator } from "@taskdesk/ui";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,9 +11,6 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
-import { KbdSequence } from "@/components/ui/kbd";
-import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   Tooltip,

@@ -5,12 +5,12 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
+import { Button } from "@taskdesk/ui";
 import { Eye, GitBranch, Plug, Settings } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import SettingsSidebar from "@/components/SettingsSidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,

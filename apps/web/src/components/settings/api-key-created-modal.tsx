@@ -1,9 +1,8 @@
+import { Alert, AlertDescription, AlertTitle, Button } from "@taskdesk/ui";
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/lib/toast";
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { Button } from "../ui/button";
 import {
   Dialog,
   DialogContent,

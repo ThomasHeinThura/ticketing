@@ -1,3 +1,4 @@
+import { KbdSequence } from "@taskdesk/ui";
 import type { ReactNode } from "react";
 import Layout from "@/components/common/layout";
 import {
@@ -7,7 +8,6 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { KbdSequence } from "@/components/ui/kbd";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   Tooltip,

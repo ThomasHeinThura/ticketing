@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
+import { Button } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 
 export default function WorkspaceCrumbSelect() {

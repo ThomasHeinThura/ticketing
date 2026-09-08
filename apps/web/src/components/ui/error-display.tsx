@@ -1,3 +1,11 @@
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@taskdesk/ui";
 import { AlertTriangle, ExternalLink, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -5,14 +13,6 @@ import {
   getNetworkTroubleshootingSteps,
   parseApiError,
 } from "../../lib/error-handler";
-import { Button } from "./button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./card";
 
 type ErrorDisplayProps = {
   error: unknown;

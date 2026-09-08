@@ -1,6 +1,6 @@
+import { Button } from "@taskdesk/ui";
 import { ChevronsUpDown, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,

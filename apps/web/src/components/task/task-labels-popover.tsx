@@ -1,8 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { Input } from "@taskdesk/ui";
 import { Check, Plus, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,

@@ -1,4 +1,5 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { Alert, AlertDescription } from "@taskdesk/ui";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod/v4";
@@ -7,7 +8,6 @@ import { SignUpForm } from "@/components/auth/sign-up-form";
 import { SSOProviders } from "@/components/auth/sso-providers";
 import { AuthToggle } from "@/components/auth/toggle";
 import PageTitle from "@/components/page-title";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useInstanceStatus from "@/hooks/queries/instance/use-instance-status";
 import { toast } from "@/lib/toast";

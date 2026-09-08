@@ -1,8 +1,8 @@
+import { Button } from "@taskdesk/ui";
 import { KeyRound } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GithubIcon } from "@/components/icons/github-icon";
-import { Button } from "@/components/ui/button";
 import type { GetConfigResponse } from "@/fetchers/config/get-config";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";

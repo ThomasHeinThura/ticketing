@@ -1,3 +1,4 @@
+import { Badge, Button, KbdSequence } from "@taskdesk/ui";
 import {
   Calendar,
   CalendarClock,
@@ -9,9 +10,6 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { KbdSequence } from "@/components/ui/kbd";
 import {
   Tooltip,
   TooltipContent,
