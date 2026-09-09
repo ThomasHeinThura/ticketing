@@ -32,7 +32,13 @@ overrides:
   minimatch: 10.2.3
   postcss: '>=8.5.23'
   rollup: 4.59.0
-  sharp: '>=0.35.0'
+  sharp: ^0.35.4                  # was '>=0.35.0'. RAISED (not dropped): the old floor
+                                  # let 0.35.3 resolve, which is GHSA-rgj7-g3m4-5g8c /
+                                  # GHSA-2jg2-4ch7-h545 (libheif). Patched >=0.35.4 per the
+                                  # advisory; caret-bounded at 0.35.x because sharp only
+                                  # ever enters this graph as next's own optionalDependency
+                                  # "sharp": "^0.35.3" (next@16.3.0) -- 0.36.0 would violate
+                                  # that peer range even though nothing here imports sharp.
   socket.io-parser: '>=4.2.7'
   undici: '>=7.29.0 <8'
   ws: '>=8.20.1'
@@ -67,6 +73,26 @@ overrides:
   valibot: ^1.4.2                 # was '>=1.4.2'
 
   # ── new in #19: no inherited entry existed for these ──
+  next: ^16.3.3                   # closes GHSA-p293-qw3h-jr36 / GHSA-2xp9-vwfh-vxw4
+                                  # (both critical, patched >=16.3.3 per the advisory).
+                                  # next is materialized ONLY as better-auth's optional
+                                  # peer ("next": "^14.0.0 || ^15.0.0 || ^16.0.0", marked
+                                  # optional in peerDependenciesMeta) -- no workspace
+                                  # manifest depends on it, no source file imports it, and
+                                  # it is absent from every built artifact (verified: not in
+                                  # apps/api's esbuild output, not in apps/web's vite dist,
+                                  # and excluded from the Docker image because proddeps'
+                                  # `pnpm install --prod --no-optional` drops optional
+                                  # peers entirely). VERIFIED EFFECT of this override: pnpm
+                                  # does not bump next to 16.3.3 -- it stops auto-installing
+                                  # the optional peer altogether (confirmed by toggling this
+                                  # entry on/off twice; `pnpm why next -r` finds nothing with
+                                  # it present). That is a stronger outcome than a version
+                                  # bump (the package and its ~30 transitive deps, sharp
+                                  # included, leave the graph), but it is an emergent pnpm
+                                  # behavior around overrides + auto-installed optional
+                                  # peers, not one pnpm documents -- re-verify this after any
+                                  # pnpm upgrade rather than trusting it holds.
   better-call: 1.3.7              # partner pin for better-auth 1.6.30
   deepmerge-ts: ^8.0.0
   fast-uri: ^3.1.6

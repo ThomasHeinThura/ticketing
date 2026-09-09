@@ -86,6 +86,9 @@ export const KINDS = {
   labelGated: "label-gated",
   offPullRequest: "off-pull-request",
   unknownCondition: "unknown-condition",
+  unprovenPropagation: "unproven-propagation",
+  unprovenSchedule: "unproven-schedule",
+  unprovenShape: "unproven-shape",
   prContext: "pr-context",
   executes: "executes",
 };
@@ -127,6 +130,119 @@ export const PR_CONTEXT_PROVEN = [
       "either side of the gate.",
   },
 ];
+
+/**
+ * **A7 — three obligations, not one.** A6 asked whether a step's CONDITION let it run. That
+ * is one third of the question. For a required gate to mean anything, all three must hold:
+ *
+ *   SCHEDULED   is the containing job guaranteed to participate in the required pull-request
+ *               execution?  (job `if` — A6; `needs` — A7b; `strategy`; a job-level `uses:`)
+ *   EXECUTED    is the command guaranteed to run?  (step `if` — A6)
+ *   PROPAGATED  is failure of that command guaranteed to fail the required check?
+ *               (`continue-on-error` — A7a; shell error semantics; exit-code masking)
+ *
+ * Each of the three is closed by an ALLOWLIST, never by enumerating dangerous forms. A6 was
+ * itself a denylist and that is exactly why A7a and A7b existed: `continue-on-error: true`
+ * was rejected while `${{ true }}` was not, and `needs:` was not modelled at all.
+ *
+ * So the keys are allowlisted too. A job key that is not known to be inert and not
+ * explicitly handled below makes the occurrence UNPROVEN. The shipped workflows use seven
+ * job keys and seven step keys, all covered, so this costs nothing today and closes the
+ * open end.
+ */
+
+/**
+ * Job keys proven not to affect whether a failing gate fails the required check.
+ *
+ * `services`, `env`, `container`, `permissions`, `concurrency`, `outputs`, `runs-on` and
+ * `timeout-minutes` change WHERE or WITH WHAT a job runs, or what it exposes afterwards —
+ * none changes whether a non-zero exit becomes a red required check.
+ *
+ * `defaults` is deliberately NOT here either, but for a weaker reason than it first looked,
+ * and the difference is worth writing down because I nearly recorded the stronger one.
+ *
+ * `defaults.run.shell: 'bash {0}'` drops `-e`. That sounds like it neutralises a gate, and
+ * it was investigated as such. It does not, for the shape this repository actually ships:
+ * without `-e` a SINGLE-command script still exits with that command's status, so a failing
+ * gate still fails the step — measured, `bash -c 'fail'` exits 1 either way. A false green
+ * needs the gate to be a NON-final command in a multi-command script as well
+ * (`bash -c 'fail; echo after'` exits 0), which is a compound condition and already refused
+ * twice over: by the custom-`shell` check below, and by this list.
+ *
+ * So `defaults` is absent from INERT_JOB_KEYS because nobody has proven it inert — not
+ * because it has been shown to be exploitable. It fails closed as an unreasoned key, which
+ * is the correct strength of claim.
+ */
+const INERT_JOB_KEYS = new Set([
+  "name",
+  "runs-on",
+  "timeout-minutes",
+  "services",
+  "env",
+  "container",
+  "permissions",
+  "concurrency",
+  "outputs",
+  "steps",
+  // A composite action's container is `runs:`, not a job, and `using: composite` declares
+  // which action type it is. It says nothing about scheduling or failure propagation — the
+  // calling job's context governs both, and that context is carried in when the composite
+  // is resolved.
+  "using",
+  "description",
+]);
+
+/** Job keys this scanner reasons about explicitly. Anything outside both sets is unproven. */
+const HANDLED_JOB_KEYS = new Set([
+  "if",
+  "continue-on-error",
+  "needs",
+  "strategy",
+  "uses",
+]);
+
+/** Step keys proven not to affect scheduling, execution or failure propagation. */
+const INERT_STEP_KEYS = new Set([
+  "name",
+  "id",
+  "run",
+  "uses",
+  "with",
+  "env",
+  "working-directory",
+  "timeout-minutes",
+]);
+
+const HANDLED_STEP_KEYS = new Set(["if", "continue-on-error", "shell"]);
+
+/**
+ * Shells whose failure semantics are GitHub's documented default: the script stops on the
+ * first failing command and the step fails. A custom template (`bash {0}`, dropping `-e`)
+ * is not one of them.
+ */
+const PROVEN_SHELLS = new Set(["bash", "sh", "pwsh", "powershell", "python"]);
+
+/**
+ * **A7a.** `continue-on-error` must be PROVEN FALSE, not merely "not the literal `true`".
+ *
+ * Absent is the normal case and means normal semantics. An unquoted YAML boolean `false` is
+ * the one written form that is proven. Everything else fails closed, and the list of things
+ * that means is deliberately not enumerated: `${{ true }}`, `${{ matrix.allow_failure }}`,
+ * `${{ github.event_name == 'pull_request' }}`, the quoted string `'false'`, an empty value
+ * and `null` are all simply NOT the proven form.
+ *
+ * The quoted string is called out because it is the tempting one to wave through. This
+ * scanner does not evaluate YAML types, so it cannot tell a string `'false'` from the
+ * boolean `false` by meaning — only by spelling. Treating the spelling it cannot verify as
+ * safe is how A7a happened.
+ */
+export function continueOnErrorProvenFalse(raw) {
+  if (raw === null || raw === undefined) return true; // absent: normal semantics
+  const value = String(raw)
+    .replace(/\s+#.*$/, "")
+    .trim();
+  return value === "false";
+}
 
 /** Normalise an `if:` expression enough to compare it against the allowlist. */
 function normaliseCondition(expression) {
@@ -234,6 +350,7 @@ function parseStepSequence(lines, stepsLine, stepsIndent, origin) {
   let current = null;
   let blockKey = null;
   let blockIndent = null;
+  let keyIndent = null;
 
   for (let i = stepsLine + 1; i < lines.length; i += 1) {
     const line = lines[i];
@@ -263,6 +380,7 @@ function parseStepSequence(lines, stepsLine, stepsIndent, origin) {
       if (itemIndent === null) itemIndent = item[1].length;
       current = { keys: {}, line: i + 1 };
       steps.push(current);
+      keyIndent = null;
       const rest = item[2];
       if (rest !== "") {
         const pair = /^([A-Za-z][\w.-]*):\s*(.*)$/.exec(rest);
@@ -292,8 +410,16 @@ function parseStepSequence(lines, stepsLine, stepsIndent, origin) {
     }
 
     const pair = /^([A-Za-z][\w.-]*):\s*(.*)$/.exec(line.trim());
-    if (!pair) continue; // a `with:` sub-mapping value, a list item — nothing we read.
+    if (!pair) continue; // a list item, a bare scalar — nothing we read.
     if (indent <= itemIndent) break;
+    // A7: record only the step's OWN keys, at its key column. Anything deeper belongs to
+    // a sub-mapping — `env:`'s variable names, `with:`'s inputs — and recording those as
+    // step keys was harmless while only `if` and `continue-on-error` were read, but it
+    // makes an unknown-key check report `GITHUB_TOKEN` as an unreasoned step property.
+    // A sub-mapping cannot change scheduling, execution or failure propagation; the key
+    // that INTRODUCES it (`env`, `with`) is the one that matters, and that is recorded.
+    if (keyIndent === null) keyIndent = indent;
+    if (indent > keyIndent) continue;
     current.keys[pair[1]] = pair[2];
     if (pair[2].trim() === "|" || pair[2].trim() === ">") {
       current.keys[pair[1]] = "";
@@ -326,6 +452,46 @@ function parseTriggers(lines) {
     }
   }
   return [...triggers];
+}
+
+/**
+ * **A7d — a gate invocation must be able to propagate a non-zero status.**
+ *
+ * Gemini's finding, and it needs no YAML at all: `pnpm check:overrides || true` and
+ * `pnpm check:overrides || exit 0` leave the command visibly present, run it, and discard
+ * its exit code. So does a pipeline without `pipefail`, a `set +e` earlier in the block, an
+ * `if` that consumes the status as a condition, a `&` that never awaits it, a `!` that
+ * inverts it, and a `$( )` that captures it.
+ *
+ * Patching `|| true` would be a denylist, and this pull request has already learned that
+ * lesson twice — A6 was a denylist of forbidden conditions, which is exactly why A7a and
+ * A7b existed. So the SUPPORTED shape is declared instead: a gate must be a simple command,
+ * alone or in an `&&` chain, with no shell operator that can consume its status. Every gate
+ * line in the shipped workflows is exactly that, so this costs nothing today.
+ *
+ * Anything else is NOT PROVEN — including shapes nobody has thought of yet. Adding one is a
+ * deliberate edit to this grammar with the argument for why the status still propagates.
+ */
+const SIMPLE_ARGUMENT = `[A-Za-z0-9_@./:=+,~^-]+|'[^']*'|"[^"]*"`;
+const SIMPLE_COMMAND = new RegExp(
+  String.raw`^[A-Za-z0-9_@./:+-]+(?:\s+(?:${SIMPLE_ARGUMENT}))*$`,
+);
+
+/**
+ * Can a gate in this logical line fail the step?
+ *
+ * `&&` is the one operator that is safe: under GitHub's `bash -e` a failure short-circuits
+ * the chain and the step fails. `;` is handled by the caller, which splits on it — under
+ * errexit a failing command aborts the script rather than continuing.
+ */
+export function exitStatusPropagates(logicalLine) {
+  const parts = logicalLine.split("&&").map((part) => part.trim());
+  return parts.every((part) => {
+    if (part === "") return false;
+    const head = /^([A-Za-z][\w.-]*)/.exec(part)?.[1];
+    if (head !== undefined && SHELL_KEYWORDS.has(head)) return false;
+    return SIMPLE_COMMAND.test(part);
+  });
 }
 
 /**
@@ -374,18 +540,40 @@ function observationsOf(step) {
   if (typeof run === "string" && run.trim() !== "") {
     // `&&`, `;` and newlines all separate commands; a trailing `\` continues one.
     const joined = run.replace(/\\\n/g, " ").replace(/\\$/gm, " ");
-    for (const raw of joined.split(/\n|&&|;/)) {
-      const command = raw.trim().replace(/^[|(]+\s*/, "");
-      if (command === "") continue;
-      const pnpm = /^pnpm\s+(?:--filter\s+\S+\s+)?([a-z][a-z0-9:-]*)/.exec(
-        command,
-      );
-      if (pnpm) {
-        gates.push(`pnpm ${pnpm[1]}`);
-        continue;
+
+    // A7 · PROPAGATED, third mechanism. Neither A7a nor A7b names this one, and it needs
+    // no YAML at all: `pnpm check:overrides || true` leaves the command visibly present,
+    // runs it, and throws its exit code away. So does `|| :`, so does a `set +e` earlier
+    // in the block, and so does a pipeline without `pipefail`, where the shell reports the
+    // LAST element's status. `&&` and `;` are fine: under GitHub's `bash -e` a failure
+    // short-circuits or aborts the script either way.
+    const disablesErrexit = /(^|\s)set\s+(\+e\b|\+o\s+errexit\b)/m.test(joined);
+
+    for (const logical of joined.split(/\n|;/)) {
+      const masksExitCode = !exitStatusPropagates(logical);
+      for (const raw of logical.split("&&")) {
+        const command = raw.trim().replace(/^[|(]+\s*/, "");
+        if (command === "") continue;
+        const pnpm = /^pnpm\s+(?:--filter\s+\S+\s+)?([a-z][a-z0-9:-]*)/.exec(
+          command,
+        );
+        if (pnpm) {
+          gates.push({
+            name: `pnpm ${pnpm[1]}`,
+            propagates: !masksExitCode && !disablesErrexit,
+            masked: masksExitCode
+              ? `its exit status is not proven to propagate: \`${logical.trim().slice(0, 70)}\` ` +
+                "is not a simple command or an `&&` chain of them, so a shell operator can " +
+                "consume or discard the failure (A7d)"
+              : disablesErrexit
+                ? "the block disables errexit with `set +e` before it runs"
+                : null,
+          });
+          continue;
+        }
+        const first = /^([A-Za-z][\w.-]*)/.exec(command);
+        if (first && !SHELL_KEYWORDS.has(first[1])) commands.push(first[1]);
       }
-      const first = /^([A-Za-z][\w.-]*)/.exec(command);
-      if (first && !SHELL_KEYWORDS.has(first[1])) commands.push(first[1]);
     }
   }
 
@@ -435,6 +623,9 @@ export function parseWorkflowFile(source, origin) {
 
     // Job-level conditions, read across the WHOLE job block rather than only above
     // `steps:`, because a YAML mapping is unordered and `if:` may legally follow it.
+    // A7: every job key is captured, because the check is now "is this key known to be
+    // inert or explicitly reasoned about?" — a question three named variables cannot ask.
+    const jobKeys = new Map();
     let jobIf = null;
     let jobContinue = null;
     let jobName = null;
@@ -445,6 +636,7 @@ export function parseWorkflowFile(source, origin) {
       if (indent !== stepsIndent) continue;
       const pair = /^\s*([A-Za-z][\w.-]*):\s*(.*)$/.exec(lines[j]);
       if (!pair) continue;
+      if (!jobKeys.has(pair[1])) jobKeys.set(pair[1], pair[2]);
       if (pair[1] === "if") jobIf = pair[2];
       if (pair[1] === "continue-on-error") jobContinue = pair[2];
       if (pair[1] === "name") jobName = pair[2];
@@ -456,6 +648,7 @@ export function parseWorkflowFile(source, origin) {
         jobName: jobName ?? (job === "runs" ? path.basename(origin) : job),
         jobIf,
         jobContinue,
+        jobKeys,
         stepIf: step.keys.if ?? null,
         stepContinue: step.keys["continue-on-error"] ?? null,
         stepName: step.keys.name ?? null,
@@ -491,14 +684,94 @@ function classify(step, triggers) {
     }
   }
 
+  // ── PROPAGATED (A7a) ─────────────────────────────────────────────────────────────
+  // `continue-on-error` must be PROVEN FALSE. Absent is proven; an unquoted `false` is
+  // proven; everything else — an expression, a context or matrix value, the quoted string
+  // `'false'`, an empty value — is not, and is refused without enumerating the forms.
   for (const [level, flag] of [
     ["job", step.jobContinue],
     ["step", step.stepContinue],
   ]) {
-    if (typeof flag === "string" && /^true$/i.test(flag.trim())) {
+    if (flag === null || flag === undefined) continue;
+    if (continueOnErrorProvenFalse(flag)) continue;
+    const literalTrue = /^true$/i.test(String(flag).trim());
+    return {
+      kind: literalTrue ? KINDS.advisory : KINDS.unprovenPropagation,
+      reason: literalTrue
+        ? `${level} \`continue-on-error: true\` — it runs but cannot fail the build`
+        : `${level} \`continue-on-error: ${String(flag).trim()}\` is not PROVEN FALSE. Only ` +
+          "an absent property or an unquoted `false` is. An expression, a matrix or " +
+          "context value, or a quoted string can evaluate truthy on the very run that " +
+          "gates the pull request, and then the command is present, runs, fails — and the " +
+          "required check still goes green",
+    };
+  }
+
+  // ── SCHEDULED (A7b and its siblings) ──────────────────────────────────────────────
+  // A gate-bearing job must be reachable on its own. `needs` is refused by PRESENCE, in
+  // whatever shape it is written: a scalar id, a flow list, a block list. A prerequisite
+  // that is skipped or fails takes this job with it, and modelling the dependency graph
+  // properly is a decision to take deliberately, not to guess at here.
+  if (step.jobKeys?.has("needs")) {
+    return {
+      kind: KINDS.unprovenSchedule,
+      reason:
+        `job declares \`needs\` (${String(step.jobKeys.get("needs")).trim() || "block list"}), ` +
+        "so whether it participates in the required pull-request execution depends on " +
+        "prerequisite state this scanner does not model. That is the whole finding, and it " +
+        "is deliberately narrower than any claim about what branch protection then does " +
+        "with the result: NOT PROVEN is sufficient to refuse. A job carrying a required " +
+        "gate stands alone until a reviewed proof model for the dependency graph exists",
+    };
+  }
+  if (step.jobKeys?.has("strategy")) {
+    return {
+      kind: KINDS.unprovenSchedule,
+      reason:
+        "job declares `strategy`, so how many jobs exist — possibly none — is computed " +
+        "rather than written. A matrix that produces no combinations produces no run of " +
+        "this gate",
+    };
+  }
+  if (step.jobKeys?.has("uses")) {
+    return {
+      kind: KINDS.unprovenSchedule,
+      reason:
+        "job calls a reusable workflow with `uses`, so what it actually executes lives in " +
+        "another document this scan has not read",
+    };
+  }
+
+  // ── SHAPE: anything not known to be inert and not reasoned about above ────────────
+  for (const key of step.jobKeys?.keys() ?? []) {
+    if (INERT_JOB_KEYS.has(key) || HANDLED_JOB_KEYS.has(key)) continue;
+    return {
+      kind: KINDS.unprovenShape,
+      reason:
+        `job declares \`${key}\`, which this scanner has not reasoned about. Unknown is ` +
+        "NOT PROVEN: `defaults.run.shell` can replace the shell with one that does not " +
+        "stop on error, and a key added to GitHub Actions next month can do something " +
+        "else again. Add it to INERT_JOB_KEYS with the argument for why it cannot affect " +
+        "scheduling, execution or failure propagation, or handle it",
+    };
+  }
+  for (const key of Object.keys(step.keys ?? {})) {
+    if (INERT_STEP_KEYS.has(key) || HANDLED_STEP_KEYS.has(key)) continue;
+    return {
+      kind: KINDS.unprovenShape,
+      reason: `step declares \`${key}\`, which this scanner has not reasoned about`,
+    };
+  }
+  const shell = step.keys?.shell;
+  if (typeof shell === "string" && shell.trim() !== "") {
+    const name = shell.trim().split(/\s+/)[0];
+    if (!PROVEN_SHELLS.has(name) || shell.trim() !== name) {
       return {
-        kind: KINDS.advisory,
-        reason: `${level} \`continue-on-error: true\` — it runs but cannot fail the build`,
+        kind: KINDS.unprovenPropagation,
+        reason:
+          `step sets \`shell: ${shell.trim()}\`. GitHub's documented shells stop on the ` +
+          "first failing command; a custom template such as `bash {0}` drops `-e`, and " +
+          "then a failing gate leaves a passing step",
       };
     }
   }
@@ -643,7 +916,18 @@ export async function readWorkflowGates() {
       const { kind, reason } = classify(step, effective);
       const entry = { kind, reason, where: where(step, relative) };
 
-      for (const gate of step.observations.gates) record(gate, entry);
+      for (const gate of step.observations.gates) {
+        record(
+          gate.name,
+          gate.propagates
+            ? entry
+            : {
+                kind: KINDS.unprovenPropagation,
+                reason: `${gate.masked}, so the command runs and the required check stays green`,
+                where: entry.where,
+              },
+        );
+      }
       for (const command of step.observations.commands) record(command, entry);
       for (const uses of step.observations.uses) {
         record(`uses:${uses}`, entry);

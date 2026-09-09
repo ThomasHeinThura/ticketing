@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: these strings are GitHub Actions expression syntax under test — a literal `${{ … }}` is the attack
 /**
  * M2 red probe — ci-cd.md, the local manifest, and what CI ACTUALLY runs must not
  * silently disagree.
@@ -630,6 +631,363 @@ describe("A6 — an unrecognised condition does NOT count as execution", () => {
         "github.repository == 'definitely/not-this-repo'",
       ),
       false,
+    );
+  });
+});
+
+describe("A7 — SCHEDULED, EXECUTED, PROPAGATED: all three, or the gate is not proven", () => {
+  /**
+   * A6 asked only whether a step's CONDITION let it run. For a required gate to mean
+   * anything, three separate obligations must hold, and each has its own attack:
+   *
+   *   SCHEDULED   is the job guaranteed to participate?      job `if` (A6), `needs` (A7b),
+   *                                                          `strategy`, job-level `uses`
+   *   EXECUTED    is the command guaranteed to run?          step `if` (A6)
+   *   PROPAGATED  does its failure fail the required check?  `continue-on-error` (A7a),
+   *                                                          shell semantics, `|| true`
+   *
+   * Every case below asserts BOTH halves: the shape counted as executing before this
+   * batch, and the shipped reconciliation now refuses it.
+   */
+
+  /** The PRE-A7 verdict for continue-on-error: only the literal `true` was refused. */
+  function preA7RefusedContinueOnError(value) {
+    return /^true$/i.test(String(value).trim());
+  }
+
+  const PROPAGATION = [
+    ["an expression that evaluates true", "continue-on-error: ${{ true }}"],
+    [
+      "a condition that is true on exactly the runs that gate a pull request",
+      "continue-on-error: ${{ github.event_name == 'pull_request' }}",
+    ],
+    [
+      "a matrix-derived value",
+      "continue-on-error: ${{ matrix.allow_failure }}",
+    ],
+    ["the quoted string 'true'", "continue-on-error: 'true'"],
+    [
+      "the quoted string 'false' — spelling this scanner cannot verify",
+      "continue-on-error: 'false'",
+    ],
+  ];
+
+  for (const [name, key] of PROPAGATION) {
+    it(`RED — job continue-on-error: ${name}`, () => {
+      const dir = repoWithWorkflows(
+        `a7a-${name.replace(/[^a-z]+/gi, "-").slice(0, 24)}`,
+        (repo) => {
+          write(
+            repo,
+            ".github/workflows/ci-fast.yml",
+            withJobKey(readWorkflow(repo), "run: pnpm check:overrides", key),
+          );
+        },
+      );
+      // NON-VACUITY: the pre-A7 rule refused only the literal `true`, so it let this pass.
+      assert.equal(
+        preA7RefusedContinueOnError(key.replace(/^continue-on-error:\s*/, "")),
+        false,
+        "the pre-A7 rule must have accepted this, or A7a is not the defect",
+      );
+      const result = runChecker(dir, "test-all.mjs", ["--list"]);
+      assert.equal(result.status, 1, result.output);
+      assert.match(result.output, /not PROVEN FALSE/);
+    });
+  }
+
+  it("RED — step-level continue-on-error is checked too", () => {
+    const dir = repoWithWorkflows("a7a-step", (repo) => {
+      const source = readWorkflow(repo).split("\n");
+      const i = source.findIndex((l) =>
+        l.includes("run: pnpm check:overrides"),
+      );
+      const indent = source[i].length - source[i].trimStart().length;
+      source.splice(
+        i,
+        0,
+        `${" ".repeat(indent)}continue-on-error: \${{ true }}`,
+      );
+      write(repo, ".github/workflows/ci-fast.yml", source.join("\n"));
+    });
+    const result = runChecker(dir, "test-all.mjs", ["--list"]);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /not PROVEN FALSE/);
+  });
+
+  it("GREEN — an unquoted `continue-on-error: false` is the one proven form", () => {
+    const dir = repoWithWorkflows("a7a-false", (repo) => {
+      write(
+        repo,
+        ".github/workflows/ci-fast.yml",
+        withJobKey(
+          readWorkflow(repo),
+          "run: pnpm check:overrides",
+          "continue-on-error: false",
+        ),
+      );
+    });
+    const result = runChecker(dir, "test-all.mjs", ["--list"]);
+    assert.equal(result.status, 0, result.output);
+  });
+
+  const NEEDS_SHAPES = [
+    ["a single job id", "needs: build"],
+    ["a flow list of one", "needs: [build]"],
+    ["a flow list of several", "needs: [build, static, test]"],
+    ["a block list", "needs:\n      - build"],
+    ["a block list of several", "needs:\n      - build\n      - static"],
+  ];
+
+  for (const [name, key] of NEEDS_SHAPES) {
+    it(`RED — a gate-bearing job declaring needs as ${name}`, () => {
+      const dir = repoWithWorkflows(
+        `a7b-${name.replace(/[^a-z]+/gi, "-")}`,
+        (repo) => {
+          write(
+            repo,
+            ".github/workflows/ci-fast.yml",
+            withJobKey(readWorkflow(repo), "run: pnpm check:overrides", key),
+          );
+        },
+      );
+      const result = runChecker(dir, "test-all.mjs", ["--list"]);
+      assert.equal(result.status, 1, result.output);
+      assert.match(result.output, /declares `needs`/);
+      // Gemini: the refusal rests on NOT PROVEN, not on a branch-protection claim.
+      assert.match(result.output, /this scanner does not model|NOT PROVEN/);
+    });
+  }
+
+  /**
+   * Prerequisite STATE, three ways. All three take the same code path — the refusal is by
+   * presence of `needs` — and that is the point: the scanner does not model the graph, so
+   * it cannot tell these apart and does not pretend to. They are probed separately because
+   * a reader asked to trust a presence check deserves to see it hold for each shape the
+   * finding named.
+   */
+  for (const [name, prerequisite] of [
+    [
+      "a prerequisite skipped by if: false",
+      [
+        "  dead-prerequisite:",
+        "    name: never runs",
+        "    if: false",
+        "    runs-on: ubuntu-latest",
+        "    steps:",
+        "      - run: echo unreachable",
+      ],
+    ],
+    [
+      "a prerequisite that fails",
+      [
+        "  failing-prerequisite:",
+        "    name: always fails",
+        "    runs-on: ubuntu-latest",
+        "    steps:",
+        "      - run: exit 1",
+      ],
+    ],
+    [
+      "a prerequisite that is itself skipped transitively",
+      [
+        "  root-skipped:",
+        "    name: root, never runs",
+        "    if: false",
+        "    runs-on: ubuntu-latest",
+        "    steps:",
+        "      - run: echo unreachable",
+        "  dead-prerequisite:",
+        "    name: waits on a skipped root",
+        "    needs: root-skipped",
+        "    runs-on: ubuntu-latest",
+        "    steps:",
+        "      - run: echo also-unreachable",
+      ],
+    ],
+  ]) {
+    it(`RED — ${name}`, () => {
+      const dir = repoWithWorkflows(
+        `a7b-state-${name.replace(/[^a-z]+/gi, "-").slice(0, 22)}`,
+        (repo) => {
+          let source = withJobKey(
+            readWorkflow(repo),
+            "run: pnpm check:overrides",
+            "needs: dead-prerequisite",
+          );
+          source += `\n${prerequisite.join("\n")}\n`;
+          write(repo, ".github/workflows/ci-fast.yml", source);
+        },
+      );
+      const result = runChecker(dir, "test-all.mjs", ["--list"]);
+      assert.equal(result.status, 1, result.output);
+      assert.match(result.output, /declares `needs`/);
+      // The refusal rests on NOT PROVEN, not on a claim about branch protection.
+      assert.match(result.output, /this scanner does not model|NOT PROVEN/);
+    });
+  }
+
+  it("RED — a prerequisite that can never run does not rescue it either", () => {
+    // The reason `needs` is refused by PRESENCE rather than by modelling the graph: the
+    // prerequisite here is `if: false`, so the gate job is skipped, and a skipped required
+    // check reads to GitHub as satisfied. Proving this in general needs a reviewed DAG
+    // model; refusing `needs` outright needs none.
+    const dir = repoWithWorkflows("a7b-dead-prereq", (repo) => {
+      let source = withJobKey(
+        readWorkflow(repo),
+        "run: pnpm check:overrides",
+        "needs: dead-prerequisite",
+      );
+      source += [
+        "",
+        "  dead-prerequisite:",
+        "    name: never runs",
+        "    if: false",
+        "    runs-on: ubuntu-latest",
+        "    steps:",
+        "      - run: echo unreachable",
+        "",
+      ].join("\n");
+      write(repo, ".github/workflows/ci-fast.yml", source);
+    });
+    const result = runChecker(dir, "test-all.mjs", ["--list"]);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /declares `needs`/);
+    // Gemini: the refusal rests on NOT PROVEN, not on a branch-protection claim.
+    assert.match(result.output, /this scanner does not model|NOT PROVEN/);
+  });
+
+  it("RED — a `strategy` decides how many jobs exist, possibly none", () => {
+    const dir = repoWithWorkflows("a7-strategy", (repo) => {
+      write(
+        repo,
+        ".github/workflows/ci-fast.yml",
+        withJobKey(
+          readWorkflow(repo),
+          "run: pnpm check:overrides",
+          "strategy:\n      matrix:\n        shard: []",
+        ),
+      );
+    });
+    const result = runChecker(dir, "test-all.mjs", ["--list"]);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /declares `strategy`/);
+  });
+
+  const MASKING = [
+    ["|| true", "run: pnpm check:overrides || true"],
+    ["|| :", "run: pnpm check:overrides || :"],
+    ["|| exit 0", "run: pnpm check:overrides || exit 0"],
+    ["|| echo ignored", "run: pnpm check:overrides || echo ignored"],
+    [
+      "a pipeline that reports the last element",
+      "run: pnpm check:overrides | tee audit.log",
+    ],
+    ["a background job nobody awaits", "run: pnpm check:overrides &"],
+    [
+      "set +e earlier in the block",
+      "run: |\n          set +e\n          pnpm check:overrides",
+    ],
+  ];
+
+  for (const [name, replacement] of MASKING) {
+    it(`RED — the exit code is thrown away by ${name}`, () => {
+      // Needs no YAML at all: the command is present, it runs, and its failure is
+      // discarded. Neither A7a nor A7b names this; it is the same obligation.
+      const dir = repoWithWorkflows(
+        `a7c-${name.replace(/[^a-z]+/gi, "-")}`,
+        (repo) => {
+          write(
+            repo,
+            ".github/workflows/ci-fast.yml",
+            readWorkflow(repo).replace(
+              "run: pnpm check:overrides",
+              replacement,
+            ),
+          );
+        },
+      );
+      assert.equal(flatScanSaw(dir, "pnpm check:overrides"), true);
+      const result = runChecker(dir, "test-all.mjs", ["--list"]);
+      assert.equal(result.status, 1, result.output);
+      // Two refusal routes, both correct. Where the gate is still a recognisable command
+      // it is observed and marked unproven; where the shell shape means the line is not a
+      // command at all (`if pnpm …`, `! pnpm …`) the gate is not observed, and the reverse
+      // check refuses it for being an enabled gate no workflow executes. Either way it
+      // does not count, which is the invariant.
+      assert.match(
+        result.output,
+        /not proven to propagate|disables errexit|NO workflow executes it/,
+      );
+    });
+  }
+
+  /**
+   * Two more masking shapes, asserted as BEHAVIOUR rather than as bypasses.
+   *
+   * Both were written as A7d cases and the non-vacuity control rejected them: the pre-fix
+   * flat scan did not recognise `pnpm …` inside `if pnpm …` or `'! pnpm …'` as a gate
+   * either, so the old scanner refused them too — by not seeing them at all. They are not
+   * instances of the defect, and keeping them in the controlled list would have made two
+   * of nine cases decorative. They still must stay refused, so they are asserted here.
+   */
+  for (const [name, replacement] of [
+    [
+      "an `if` that consumes the status as a condition",
+      "run: |\n          if pnpm check:overrides; then echo ok; fi",
+    ],
+    ["a negation that inverts it", "run: '! pnpm check:overrides'"],
+  ]) {
+    it(`RED — ${name} (behaviour, not a pre-fix bypass)`, () => {
+      const dir = repoWithWorkflows(
+        `a7d-b-${name.replace(/[^a-z]+/gi, "-").slice(0, 20)}`,
+        (repo) => {
+          write(
+            repo,
+            ".github/workflows/ci-fast.yml",
+            readWorkflow(repo).replace(
+              "run: pnpm check:overrides",
+              replacement,
+            ),
+          );
+        },
+      );
+      const result = runChecker(dir, "test-all.mjs", ["--list"]);
+      assert.equal(result.status, 1, result.output);
+      assert.match(
+        result.output,
+        /not proven to propagate|NO workflow executes it/,
+      );
+    });
+  }
+
+  it("RED — an unknown job key is NOT PROVEN, rather than assumed harmless", () => {
+    // The open end A6 left: enumerating dangerous forms is a denylist, and a denylist is
+    // only correct for the cases someone thought of. `defaults.run.shell` can replace the
+    // shell with one that does not stop on error.
+    const dir = repoWithWorkflows("a7-unknown-key", (repo) => {
+      write(
+        repo,
+        ".github/workflows/ci-fast.yml",
+        withJobKey(
+          readWorkflow(repo),
+          "run: pnpm check:overrides",
+          "defaults:\n      run:\n        shell: bash {0}",
+        ),
+      );
+    });
+    const result = runChecker(dir, "test-all.mjs", ["--list"]);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /has not reasoned about|sets `defaults`/);
+  });
+
+  it("GREEN — the shipped workflows satisfy all three obligations", () => {
+    const dir = repoWithWorkflows("a7-shipped");
+    const result = runChecker(dir, "test-all.mjs", ["--list"]);
+    assert.equal(
+      result.status,
+      0,
+      `the shipped tree must satisfy SCHEDULED, EXECUTED and PROPAGATED:\n${result.output}`,
     );
   });
 });
