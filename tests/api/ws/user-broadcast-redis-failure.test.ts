@@ -78,9 +78,11 @@ describe("broadcastToUser with the redis adapter", () => {
     broadcastToUser("user-1", { type: "NOTIFICATION_CREATED" });
 
     expect(sendMock(ws)).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(sendMock(ws).mock.calls[0][0]).type).toBe(
-      "NOTIFICATION_CREATED",
-    );
+    const [firstSend] = sendMock(ws).mock.calls;
+    if (firstSend === undefined) {
+      throw new Error("expected send() to have been called at least once");
+    }
+    expect(JSON.parse(firstSend[0]).type).toBe("NOTIFICATION_CREATED");
 
     removeUserConnection("user-1", conn);
   });
@@ -106,7 +108,11 @@ describe("broadcastToUser with the redis adapter", () => {
     broadcastToUser("user-1", { type: "NOTIFICATION_CREATED" });
     expect(publish).toHaveBeenCalledTimes(1);
 
-    const published = JSON.parse(publish.mock.calls[0][1]);
+    const [firstPublish] = publish.mock.calls;
+    if (firstPublish === undefined) {
+      throw new Error("expected publish() to have been called at least once");
+    }
+    const published = JSON.parse(firstPublish[1]);
     expect(published.origin).toEqual(expect.any(String));
 
     emitUserBroadcast(published);

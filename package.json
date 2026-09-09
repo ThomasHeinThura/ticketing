@@ -15,7 +15,20 @@
     "test:integration": "turbo test:integration",
     "test:permissions": "turbo test:permissions",
     "typecheck": "turbo typecheck",
-    "prepare": "husky"
+    "prepare": "husky",
+    "check:env": "node ./scripts/ci/check-env.mjs",
+    "check:i18n": "node ./scripts/i18n/check.mjs",
+    "check:openapi": "node ./scripts/ci/check-openapi.mjs",
+    "check:overrides": "node ./scripts/ci/check-overrides.mjs",
+    "check:pr-template": "node ./scripts/ci/check-pr-template.mjs",
+    "check:reviews": "node ./scripts/ci/check-reviews.mjs",
+    "check:route-policy": "node ./scripts/ci/route-policy-gate.mjs",
+    "check:skips": "node ./scripts/ci/check-skips.mjs",
+    "check:vocabulary": "node ./scripts/ci/check-vocabulary.mjs",
+    "lint:ci": "biome ci .",
+    "openapi:write": "node ./scripts/ci/check-openapi.mjs --write",
+    "test:all": "node ./scripts/ci/test-all.mjs",
+    "test:ci-scripts": "node --test 'scripts/ci/**/*.test.mjs'"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.7",

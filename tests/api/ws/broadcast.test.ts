@@ -61,9 +61,12 @@ describe("broadcastToProject", () => {
       { timeout: 300 },
     );
 
-    const sent = JSON.parse(
-      (ws as { send: ReturnType<typeof vi.fn> }).send.mock.calls[0][0],
-    );
+    const [firstCall] = (ws as { send: ReturnType<typeof vi.fn> }).send.mock
+      .calls;
+    if (firstCall === undefined) {
+      throw new Error("expected send() to have been called at least once");
+    }
+    const sent = JSON.parse(firstCall[0]);
     expect(sent.type).toBe("TASK_CREATED");
     expect(sent.taskId).toBe("t1");
 

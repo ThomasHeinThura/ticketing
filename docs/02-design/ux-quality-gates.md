@@ -246,9 +246,36 @@ Sometimes justified — a spike, a proof of concept, a genuine tooling false pos
 1. Say which gate, and why, in the pull request description.
 2. Get explicit approval from Thomas. An AI agent may not self-approve a waiver.
 3. Open a follow-up issue and link it.
-4. Record it in the [decision log](../07-planning/decision-log.md).
+4. Record it in the [decision log](../07-planning/decision-log.md), as an entry whose
+   body carries the waiver **declaration** on one line:
+
+   ```
+   **Waives gate:** `G1` · **PR:** #19 · **Follow-up:** #123
+   ```
+
+5. Put that entry's `#anchor` in the pull request's `## Gates` link cell.
 
 A waiver without a follow-up issue is not a waiver, it is debt with no owner.
+
+**What is actually checked, and what is not.** The fast-stage PR-template check
+([ci-cd.md](../04-engineering/ci-cd.md)) reads the **declaration line** inside the cited
+decision-log entry. Nothing else. Stated precisely, because an earlier version of this
+paragraph claimed four steps were mechanical when two and a half are:
+
+| Step | Mechanically checked? |
+| --- | --- |
+| 1 — say which gate, and why, in the description | **The gate, yes** — the declaration must name the gate whose row is marked `waived`. **The "why", no.** No check reads the pull-request description for a justification, and none could judge one. |
+| 2 — explicit approval from Thomas | **No, and not claimable.** Agents commit through the same repository identity Thomas does, so nothing readable from a committed file proves who wrote a line. |
+| 3 — open a follow-up issue and link it | **Partly.** The declaration must carry a follow-up issue *number*. Whether that issue exists, is open, or is about this gate is **not** verified — that would need a GitHub API call, and buying a stronger-sounding claim with network dependence in a fast gate is a bad trade. |
+| 4 — record it in the decision log | **Yes.** The cited entry must exist in the committed document, and the declaration must be one whole line inside it. |
+| 5 — put the `#anchor` in the `## Gates` link cell | **Yes.** The anchor is mandatory and must resolve to **exactly one** entry. |
+
+Prose is not accepted for any of it — the check that read prose accepted the sentence
+*"G1 is not waived"* as authorisation for waiving G1.
+
+So the declaration makes a waiver **durable, specific and attributable to a gate, a pull
+request and a named follow-up number**. It does not make it *authorised*: that is Thomas's
+to confirm, and no amount of parsing changes it.
 
 ## Related
 

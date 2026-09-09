@@ -1,37 +1,105 @@
 packages:
   - packages/**
   - apps/**
+# ─────────────────────────────────────────────────────────────────────────────
+# THE ONE HOME FOR OVERRIDES.
+#
+# pnpm reads overrides from `pnpm.overrides` in the root package.json OR from the
+# block below — it honours ONE and warns about NEITHER. #19 originally added a
+# 16-entry block to package.json, which silently deactivated the 30 entries here:
+# `path-to-regexp` regained 6.3.0 and `picomatch` regained 2.3.2, and `pnpm audit`
+# stayed green because a floor sits exactly where there is no advisory to find.
+# Nineteen deliberate pins were deactivated and the toolchain said nothing.
+#
+# This file is canonical. package.json carries no `pnpm.overrides` key, and
+# `scripts/ci/check-overrides.mjs` fails the build if a second source appears.
+#
+# SECURITY PIN  — exact version or bounded range closing a known advisory.
+# VERSION FLOOR — '>=x' / '^x' excluding a branch we do not want resolved. A floor
+#                 has no advisory behind it, so `pnpm audit` will never report its
+#                 removal. That is why the collision above was invisible.
+# ─────────────────────────────────────────────────────────────────────────────
 overrides:
+  # ── inherited pins and floors, carried forward unchanged ──
   '@isaacs/brace-expansion': 5.0.1
-  '@hono/node-server': '>=1.19.13'
   ajv: 8.18.0
+  brace-expansion: '>=5.0.9'
   diff: 8.0.3
-  esbuild: 0.28.1
+  engine.io: '>=6.6.7'
   express-rate-limit: 8.2.2
-  hono: '>=4.12.25'
-  lodash: 4.18.0
+  fast-xml-parser: '>=5.5.7'
   markdown-it: 14.1.1
   minimatch: 10.2.3
-  rollup: 4.59.0
-  seroval: '>=1.5.3'
-  effect: '>=3.20.0'
-  fast-xml-parser: '>=5.5.7'
-  socket.io-parser: '>=4.2.7'
-  picomatch: '>=4.0.4'
-  path-to-regexp: '>=8.4.0'
-  brace-expansion: '>=5.0.9'
-  yaml: '>=2.8.3'
-  qs: '>=6.15.2'
-  ws: '>=8.20.1'
-  ip-address: 10.3.1
   postcss: '>=8.5.23'
-  sharp: '>=0.35.0'
-  engine.io: '>=6.6.7'
-  valibot: '>=1.4.2'
-  better-auth: 1.6.25
+  rollup: 4.59.0
+  sharp: ^0.35.4                  # was '>=0.35.0'. RAISED (not dropped): the old floor
+                                  # let 0.35.3 resolve, which is GHSA-rgj7-g3m4-5g8c /
+                                  # GHSA-2jg2-4ch7-h545 (libheif). Patched >=0.35.4 per the
+                                  # advisory; caret-bounded at 0.35.x because sharp only
+                                  # ever enters this graph as next's own optionalDependency
+                                  # "sharp": "^0.35.3" (next@16.3.0) -- 0.36.0 would violate
+                                  # that peer range even though nothing here imports sharp.
+  socket.io-parser: '>=4.2.7'
   undici: '>=7.29.0 <8'
-  js-yaml: '>=4.2.0 <5'
+  ws: '>=8.20.1'
+  yaml: '>=2.8.3'
   '@babel/core': '>=7.29.6 <8'
+
+  # ── floors #19 must NOT drop: both were breached while this block was inert ──
+  # path-to-regexp 6.x and picomatch 2.x came back into the graph at the
+  # pre-remediation head. Neither has an advisory, so the audit gate stayed green.
+  path-to-regexp: '>=8.4.0'
+  picomatch: '>=4.0.4'
+
+  # ── entries #19 raises above the inherited floor, reconciled explicitly ──
+  # Each existed here already; #19 set a HIGHER bound. The higher bound wins, and the
+  # superseded value is recorded so the change is reviewable rather than silent.
+  '@hono/node-server': ^1.19.15   # was '>=1.19.13'. Held at 1.19.x deliberately:
+                                  # @hono/node-ws@1.3.1 peer-depends on ^1.19.11, so
+                                  # 2.x is a peer conflict. apps/api's manifest now
+                                  # declares ^1.19.15 to match (it falsely said ^2.1.0).
+  better-auth: 1.6.30             # was 1.6.25. DELIBERATELY SUPERSEDED: exact 1.6.25
+                                  # violates @better-auth/api-key@1.6.26's peer ^1.6.26,
+                                  # yielding a second better-auth copy and 7 TS errors.
+                                  # better-call 1.3.7 below is its partner pin.
+  effect: ^3.22.1                 # was '>=3.20.0'
+  esbuild: ^0.28.1                # was 0.28.1 — caret admits patch fixes only
+  hono: ^4.12.34                  # was '>=4.12.25'
+  ip-address: ^10.3.1             # was 10.3.1
+  js-yaml: ^4.3.1                 # was '>=4.2.0 <5' — same major bound, higher floor
+  lodash: ^4.18.0                 # was 4.18.0
+  qs: ^6.16.0                     # was '>=6.15.2'
+  seroval: ^1.6.4                 # was '>=1.5.3'
+  valibot: ^1.4.2                 # was '>=1.4.2'
+
+  # ── new in #19: no inherited entry existed for these ──
+  next: ^16.3.3                   # closes GHSA-p293-qw3h-jr36 / GHSA-2xp9-vwfh-vxw4
+                                  # (both critical, patched >=16.3.3 per the advisory).
+                                  # next is materialized ONLY as better-auth's optional
+                                  # peer ("next": "^14.0.0 || ^15.0.0 || ^16.0.0", marked
+                                  # optional in peerDependenciesMeta) -- no workspace
+                                  # manifest depends on it, no source file imports it, and
+                                  # it is absent from every built artifact (verified: not in
+                                  # apps/api's esbuild output, not in apps/web's vite dist,
+                                  # and excluded from the Docker image because proddeps'
+                                  # `pnpm install --prod --no-optional` drops optional
+                                  # peers entirely). VERIFIED EFFECT of this override: pnpm
+                                  # does not bump next to 16.3.3 -- it stops auto-installing
+                                  # the optional peer altogether (confirmed by toggling this
+                                  # entry on/off twice; `pnpm why next -r` finds nothing with
+                                  # it present). That is a stronger outcome than a version
+                                  # bump (the package and its ~30 transitive deps, sharp
+                                  # included, leave the graph), but it is an emergent pnpm
+                                  # behavior around overrides + auto-installed optional
+                                  # peers, not one pnpm documents -- re-verify this after any
+                                  # pnpm upgrade rather than trusting it holds.
+  better-call: 1.3.7              # partner pin for better-auth 1.6.30
+  deepmerge-ts: ^8.0.0
+  fast-uri: ^3.1.6
+  mysql2: ^3.23.1
+  nanoid: ^3.3.18                 # caret-bounded: '>=' let pnpm jump 3.x -> 6.x, which
+                                  # took the audit from 11 findings to 51 with a CRITICAL.
+
 onlyBuiltDependencies:
   - '@biomejs/biome'
   - bcrypt

@@ -42,6 +42,7 @@ stages below.
 │ pnpm check:deps      no cycles, no boundary break│
 │ pnpm check:i18n      en-US complete              │
 │ pnpm audit           high/critical fails         │
+│ pnpm check:overrides one override source only    │
 │ gitleaks             no secrets in the diff      │
 │ pnpm check:queries   no db.select() outside repo │
 │ pnpm check:inventory screen counts match rows    │
@@ -49,6 +50,7 @@ stages below.
 │ pnpm check:env       no stray process.env        │
 │ pnpm check:vocabulary identifiers registered     │
 │ pnpm check:skips     no .skip / .only            │
+│ pnpm test:ci-scripts  gate checkers + red probes │
 │ pr-template check    sections filled, tiers named│
 │ no-inherited-routes  removals stay removed       │
 ├─ Test ───────────────────────────────────────────┤
@@ -100,12 +102,112 @@ apps/api/src/middleware/**           packages/plugins-contracts/**
 apps/api/src/plugins/**              apps/api/src/scim/**
 apps/api/src/auth*                   apps/api/src/storage/**
 apps/api/src/webhooks/**             any new route file (a new *.ts exporting a Hono router)
+
+.github/**                           package.json
+scripts/ci/**                        **/package.json
+turbo.json                           pnpm-lock.yaml
+docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
+                                     .npmrc
+                                     .pnpmfile.cjs
 ```
+
+**Why the second block exists** (Thomas's decision, 2026-09-08 — see the
+[decision log](../07-planning/decision-log.md)). The first block is the application's
+security surface. The second is the machinery that decides whether ANY surface gets
+reviewed, plus the dependency-control files that decide what code is in the graph at all.
+Without it, the gate could not see changes to itself: PR #19 — the pull request that
+builds this very gate — touched `.github/**`, `scripts/ci/**`, `package.json`,
+`pnpm-workspace.yaml` and `pnpm-lock.yaml`, and the checker correctly reported *"no
+security-review path touched"*. Its own independent review then found a HIGH in
+`scripts/ci/`, a HIGH in the dependency overrides, and a fail-open in
+`scripts/ci/lib/diff.mjs`. All three lived in the blind spot.
+
+A gate that cannot require review of edits to itself is a gate anyone can quietly widen.
+`pnpm-lock.yaml` and `pnpm-workspace.yaml` are here for the same reason: a version floor
+can be deleted without any advisory firing, so `pnpm audit` cannot be the control — a
+human reading the diff is.
+
+**The list above is not the whole scope. The scope is the UNION of this list at the merge
+base and this list at HEAD.** Expanding the list takes effect immediately; **narrowing it
+does not take effect on the pull request that narrows it**, and narrowing is itself
+security-sensitive — a diff that removes a glob requires the review even if nothing else
+in it matches either list. The reason is the reason the second block exists, one level up:
+the list lives in a document the diff may edit, so a pull request that shrank
+`scripts/ci/**` and `docs/04-engineering/ci-cd.md` out of the list, in the same commit
+that edited `scripts/ci/`, matched nothing and reported *"no security-review path
+touched"*. The files performing the reduction stopped matching the scope because of the
+reduction. If the merge base cannot be resolved, or the document exists there and cannot
+be parsed, the check **fails closed** — "the scope could not be computed" and "nothing
+sensitive was touched" are different facts.
+
+**The committed note is bound to the code it reviewed.** `## Security review`'s
+`**Note:**` must link a committed
+`docs/07-planning/security-reviews/<pr>-<slug>.md`, and that note must declare, on its own
+line, the head each review actually read:
+
+```
+**Reviewed head:** `6b32ef316c49cc14cc841b32fdcce637a442b813`
+```
+
+Full forty-character SHAs. SHAs written in prose are not parsed — the notes on file cite
+merge bases and post-rebase orphans in the same sentence as reviewed heads. The newest
+declared head must be an ancestor of HEAD, and **every commit that LANDED between it and
+HEAD must have touched nothing outside `docs/07-planning/security-reviews/`**. So the
+shape is: a code head is reviewed, a **note-only** commit records it and the gate goes
+green, and any later code commit makes the note stale until a fresh delta review adds its
+own `**Reviewed head:**` line for the new head. Recording that new head is itself a
+note-only commit, so closing the gate does not reopen it. Existence of the note was the
+whole of the old check, and existence never expires.
+
+**Landed commits, not the net tree.** The invariant is over history, and the difference is
+a bypass: a commit that changes code plus a later commit that exactly reverts it leaves
+the two endpoint trees identical, so a `git diff <head>..HEAD` comparison saw an empty
+range and the old review passed with two unreviewed commits landed. **Reverting does not
+restore a clearance** — the reverted diff is still in the branch's history, it is what a
+bisect replays, and a revert can itself be wrong, so a reviewer has to see both. Merges
+are attributed **conservatively**: `git rev-list` enumerates the commits a merge brought
+in individually, and the merge itself is charged the **union of its per-parent diffs**.
+Not a combined diff — that reports only what differs from *every* parent, so a merge whose
+tree is taken wholesale from an ancestor reports **nothing** while the reviewed content is
+silently replaced (constructible with `git commit-tree`, and constructed as a probe). The
+union can charge a merge with a path a side-branch commit in the same range is also
+charged with; that over-attribution costs a fresh delta review, whereas
+under-attribution ships unreviewed content. One consequence, stated rather than discovered: merging `main` into the branch
+after a review makes the note stale, because the tree the reviewer read is not the tree
+that would merge.
+
+**A waived gate needs a declaration, not a sentence.** `## Gates`' third cell must cite
+one decision-log entry **with its `#anchor`**, and that entry must contain, on one line:
+
+```
+**Waives gate:** `G1` · **PR:** #19 · **Follow-up:** #123
+```
+
+The gate identifier is compared exactly, the pull-request number must be the one being
+checked, and the follow-up issue is
+[§ Waiving a gate](../02-design/ux-quality-gates.md#waiving-a-gate) step 3 made mechanical.
+Prose is deliberately not accepted: the previous check looked for the gate identifier
+anywhere in the document, which the sentence *"G1 is not waived"* satisfied. **What is
+still not enforceable is who authorised it** — agents commit through the same repository
+identity Thomas does, so nothing readable from a file proves authorship. The declaration
+provides a durable, specific, gate-bound, PR-scoped record; Thomas confirms the authority
+at the merge button, and CI says so rather than implying it checked.
 
 The same fast-stage **PR-template check** asserts every fixed section is present, that none
 is empty unless marked `n/a` with a reason, that `## Reviewed by` names a different model or
 session from `## Implemented by`, that `## Screens opened` is non-empty when `apps/web/**`
-changed, and that no checklist box is left unticked and unmarked. **`check:reviews`** fails
+changed, and that no checklist box is left unticked and unmarked.
+
+**`## Screens opened` declares a state, read from its first meaningful line** — `n/a` /
+`not applicable`, `BLOCKED — <why>`, or the screens themselves. When `apps/web/**` changed,
+`n/a` in any form is rejected; an explained `BLOCKED` is **accepted as an honest gap** and
+is explicitly *not* a readiness signal, because the screens still were not opened and
+AGENTS.md do-not 18 is still unsatisfied. A bare `BLOCKED` with nothing after it is
+rejected like a bare `n/a`. Only the first line sets the state: the earlier check matched
+the token `n/a` anywhere in the section and therefore **rejected the honest sentence "I am
+not marking this n/a — that would misrepresent a real gap"**, reading a negation as an
+assertion and teaching authors to explain less. The parser is structural on purpose — no
+sentiment or negation analysis, each of which is a new class of false positive. **`check:reviews`** fails
 when a feature spec named in the diff still has a non-empty section in
 `docs/07-planning/reviews/2026-09-05/` (the `pre-p0-check-fable/` folder is an applied audit
 trail and is excluded). **`check:env`** fails on a `process.env` read outside

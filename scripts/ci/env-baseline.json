@@ -1,0 +1,153 @@
+{
+	"note": "Inherited kaneo environment reads that have not yet completed the migration to the five-plus-six rule (docs/04-engineering/repository-bootstrap.md § 2). This file is a RATCHET: an environment read that is neither approved in docs/05-operations/configuration-reference.md nor listed here fails the build. Entries are removed as the code that reads them is removed or moved into God Mode; entries are never added by hand to make a new violation pass. Shrink it with `pnpm check:env --prune`. `unattributableReads` records one FINGERPRINT per read, not a count (GPT-F3): a count moved with the diff that grew it, was invisible to the merge-base comparison, and could not see one read being swapped for another at the same total.",
+	"seededFrom": "04e3a55 (origin/main at the time issue #10 started)",
+	"unmigratedNames": {
+		"APPDATA": ["packages/mcp/src/install/targets.ts:71"],
+		"COOKIE_DOMAIN": ["apps/api/src/auth.ts:754"],
+		"CORS_ORIGINS": ["apps/api/src/index.ts:140"],
+		"CUSTOM_AUTH_PKCE": ["apps/api/src/auth.ts:460"],
+		"CUSTOM_OAUTH_AUTHORIZATION_URL": ["apps/api/src/auth.ts:452"],
+		"CUSTOM_OAUTH_AUTO_LOGIN": ["apps/api/src/utils/get-settings.ts:26"],
+		"CUSTOM_OAUTH_CLIENT_ID": [
+			"apps/api/src/auth.ts:450",
+			"apps/api/src/utils/get-settings.ts:23"
+		],
+		"CUSTOM_OAUTH_CLIENT_SECRET": [
+			"apps/api/src/auth.ts:451",
+			"apps/api/src/utils/get-settings.ts:24"
+		],
+		"CUSTOM_OAUTH_DISCOVERY_URL": ["apps/api/src/auth.ts:459"],
+		"CUSTOM_OAUTH_LOGOUT_URL": ["apps/api/src/utils/get-settings.ts:27"],
+		"CUSTOM_OAUTH_RESPONSE_TYPE": ["apps/api/src/auth.ts:458"],
+		"CUSTOM_OAUTH_SCOPES": ["apps/api/src/auth.ts:455"],
+		"CUSTOM_OAUTH_TOKEN_URL": ["apps/api/src/auth.ts:453"],
+		"CUSTOM_OAUTH_USER_INFO_URL": ["apps/api/src/auth.ts:454"],
+		"DISABLE_EMAIL_OTP_SIGN_IN": [
+			"apps/api/src/auth.ts:58",
+			"apps/api/src/utils/get-settings.ts:12"
+		],
+		"DISABLE_LOGIN_FORM": [
+			"apps/api/src/auth.ts:56",
+			"apps/api/src/utils/get-settings.ts:25"
+		],
+		"DISABLE_PASSWORD_REGISTRATION": [
+			"apps/api/src/auth.ts:55",
+			"apps/api/src/utils/get-settings.ts:11"
+		],
+		"DISABLE_REGISTRATION": [
+			"apps/api/src/auth.ts:53",
+			"apps/api/src/utils/check-registration-allowed.ts:24",
+			"apps/api/src/utils/get-settings.ts:9"
+		],
+		"DISABLE_WORKSPACE_CREATION": [
+			"apps/api/src/auth.ts:60",
+			"apps/api/src/utils/get-settings.ts:13"
+		],
+		"DISCORD_CLIENT_ID": [
+			"apps/api/src/auth.ts:229",
+			"apps/api/src/utils/get-settings.ts:20"
+		],
+		"DISCORD_CLIENT_SECRET": [
+			"apps/api/src/auth.ts:230",
+			"apps/api/src/utils/get-settings.ts:21"
+		],
+		"GITHUB_CLIENT_ID": ["apps/api/src/utils/github-sso-env.ts:16"],
+		"GITHUB_CLIENT_SECRET": ["apps/api/src/utils/github-sso-env.ts:17"],
+		"GITHUB_OAUTH_CLIENT_ID": ["apps/api/src/utils/github-sso-env.ts:10"],
+		"GITHUB_OAUTH_CLIENT_SECRET": ["apps/api/src/utils/github-sso-env.ts:11"],
+		"GOOGLE_CLIENT_ID": [
+			"apps/api/src/auth.ts:225",
+			"apps/api/src/utils/get-settings.ts:17"
+		],
+		"GOOGLE_CLIENT_SECRET": [
+			"apps/api/src/auth.ts:226",
+			"apps/api/src/utils/get-settings.ts:18"
+		],
+		"KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS": [
+			"apps/api/src/utils/assert-public-destination.ts:83",
+			"apps/api/src/utils/assert-public-destination.ts:84"
+		],
+		"KANEO_API_URL": [
+			"apps/api/scripts/export-openapi.ts:5",
+			"apps/api/src/auth.ts:74",
+			"apps/api/src/index.ts:390",
+			"apps/api/src/index.ts:765",
+			"apps/api/src/task/index.ts:888"
+		],
+		"KANEO_CLOUD": ["apps/api/src/utils/is-cloud.ts:2"],
+		"KANEO_MCP_CLIENT_ID": ["packages/mcp/src/server.ts:17"],
+		"POSTGRES_DB": ["apps/api/src/database/resolve-database-url.ts:72"],
+		"POSTGRES_HOST": [
+			"apps/api/src/database/resolve-database-url.ts:27",
+			"apps/api/src/database/resolve-database-url.ts:70"
+		],
+		"POSTGRES_PASSWORD": [
+			"apps/api/src/database/resolve-database-url.ts:26",
+			"apps/api/src/database/resolve-database-url.ts:62",
+			"apps/api/src/database/resolve-database-url.ts:69"
+		],
+		"POSTGRES_PORT": [
+			"apps/api/src/database/resolve-database-url.ts:28",
+			"apps/api/src/database/resolve-database-url.ts:71"
+		],
+		"POSTGRES_USER": ["apps/api/src/database/resolve-database-url.ts:68"],
+		"REDIS_CLUSTER_NODES": [
+			"apps/api/src/redis/index.ts:12",
+			"apps/api/src/redis/index.ts:100"
+		],
+		"REDIS_PASSWORD": [
+			"apps/api/src/redis/index.ts:105",
+			"apps/api/src/redis/index.ts:115"
+		],
+		"REDIS_SENTINELS": [
+			"apps/api/src/redis/index.ts:11",
+			"apps/api/src/redis/index.ts:109"
+		],
+		"REDIS_SENTINEL_MASTER_NAME": ["apps/api/src/redis/index.ts:114"],
+		"REDIS_SENTINEL_PASSWORD": ["apps/api/src/redis/index.ts:116"],
+		"REDIS_SENTINEL_TLS": ["apps/api/src/redis/index.ts:117"],
+		"S3_FORCE_PATH_STYLE": ["apps/api/src/storage/s3.ts:150"],
+		"S3_MAX_IMAGE_UPLOAD_BYTES": [
+			"apps/api/src/storage/s3.ts:152",
+			"apps/api/src/storage/s3.ts:164"
+		],
+		"S3_PRESIGN_TTL_SECONDS": ["apps/api/src/storage/s3.ts:156"],
+		"SMTP_FROM": [
+			"packages/email/src/send-email.tsx:34",
+			"packages/email/src/send-email.tsx:52",
+			"packages/email/src/send-email.tsx:70",
+			"packages/email/src/send-email.tsx:99",
+			"packages/email/src/send-email.tsx:123",
+			"packages/email/src/send-email.tsx:143"
+		],
+		"VITE_API_URL": [
+			"apps/web/src/fetchers/get-api-url.ts:3",
+			"apps/web/src/fetchers/instance/get-instance-status.ts:9",
+			"apps/web/src/lib/auth-client.ts:17",
+			"packages/libs/src/hono.ts:7"
+		],
+		"VITE_APP_URL": ["apps/web/src/lib/generate-link.ts:3"],
+		"VITE_CLIENT_URL": [
+			"apps/web/src/routes/auth/sign-in.tsx:87",
+			"apps/web/src/routes/auth/sign-in.tsx:104",
+			"apps/web/src/routes/auth/sign-in.tsx:125",
+			"apps/web/src/routes/auth/sign-in.tsx:145",
+			"apps/web/src/routes/auth/sign-in.tsx:165",
+			"apps/web/src/routes/auth/sign-up.tsx:52"
+		],
+		"XDG_CONFIG_HOME": ["packages/mcp/src/auth/token-store.ts:27"]
+	},
+	"unattributableReads": {
+		"apps/api/src/storage/s3.ts": {
+			"reason": "The seven S3 connection variables go through a local env(name) helper backed by process.env[name]. Storage becomes God Mode configuration (docs/05-operations/configuration-reference.md § Storage).",
+			"occurrences": ["computed #1: return process.env[name]?.trim() || \"\";"]
+		},
+		"packages/email/src/smtp-config.ts": {
+			"reason": "The eight SMTP_* names arrive through the parameter default `env: SmtpEnv = process.env`. SMTP becomes God Mode configuration (§ Notifications).",
+			"occurrences": [
+				"alias #1: env: SmtpEnv = process.env,",
+				"alias #1: export function isSmtpConfigured(env: SmtpEnv = process.env): boolean {"
+			]
+		}
+	}
+}

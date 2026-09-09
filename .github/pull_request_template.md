@@ -27,14 +27,31 @@ See docs/04-engineering/definition-of-done.md and docs/04-engineering/ci-cd.md.
 **Model:** <!-- must be Opus -->
 **Session:** <!-- session id -->
 **Surfaces examined:** <!-- list them, or state explicitly "no security surface touched" -->
-**Note:** <!-- link to the committed docs/07-planning/security-reviews/<pr>-<slug>.md -->
+**Note:** <!--
+link to the committed docs/07-planning/security-reviews/<pr>-<slug>.md. That note must
+declare the head each review read, full 40-character SHA, one per line:
+  **Reviewed head:** `<sha>`
+Every commit that lands after the newest declared head must touch nothing outside
+docs/07-planning/security-reviews/, or the note is stale and a fresh delta review is
+required. Judged over landed commits, not the net tree — a revert does not restore it.
+See ci-cd.md.
+-->
 
 ## Screens opened
 
 <!--
 One line per screen actually opened and used, not just implemented:
 route — viewport — what was clicked — screenshot
-n/a only if apps/web/** was not touched by this pull request.
+
+The FIRST meaningful line sets this section's state:
+  n/a / not applicable   only if apps/web/** was not touched by this pull request
+  BLOCKED — <why>         you could not open them; say what blocked you and name the
+                          screens you did not open. Accepted as an honest gap, and NOT a
+                          readiness signal — do-not 18 stays unsatisfied.
+  anything else           the screens themselves
+
+Mentioning "n/a" later, in explanation, carries no state. Do not water down a real gap
+into an n/a, and do not avoid explaining one for fear the word will trip the check.
 -->
 
 ## Gates
@@ -57,8 +74,16 @@ n/a only if apps/web/** was not touched by this pull request.
 | Route coverage (`test:permissions`) | | |
 | Permission matrix | | |
 
-A row marked **waived** needs Thomas's explicit approval and a decision-log entry — see
-[UX quality gates § Waiving a gate](../docs/02-design/ux-quality-gates.md#waiving-a-gate).
+A row marked **waived** needs Thomas's explicit approval, and its link cell must cite one
+decision-log entry **by `#anchor`** whose body carries the declaration
+
+```
+**Waives gate:** `G1` · **PR:** #19 · **Follow-up:** #123
+```
+
+— see [UX quality gates § Waiving a gate](../docs/02-design/ux-quality-gates.md#waiving-a-gate).
+CI verifies the declaration binds to this gate, this pull request and a follow-up issue;
+it cannot verify who approved it, so that part is still Thomas's at the merge button.
 A row is not "n/a" because it is inconvenient; it is n/a because the gate does not apply
 to this change.
 

@@ -1,0 +1,30 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"rootDir": "../..",
+		"paths": {
+			"@taskdesk/permissions": [
+				"../../packages/permissions/src/index.ts"
+			],
+			"vitest": [
+				"./node_modules/vitest"
+			],
+			"hono": [
+				"./node_modules/hono"
+			],
+			"hono/*": [
+				"./node_modules/hono/dist/types/*"
+			],
+			"drizzle-orm": [
+				"./node_modules/drizzle-orm"
+			],
+			"drizzle-orm/*": [
+				"./node_modules/drizzle-orm/*"
+			]
+		}
+	},
+	"include": [
+		"../../tests/api/**/*.ts"
+	]
+}

@@ -45,8 +45,9 @@ on a decision about sessions already minted by the removed flows.
 — but it is still mounted while the retrofit is written. The OpenAPI baseline destination
 is settled as `tests/api-contract/openapi.json`; the file exists only in #19.
 
-If `pnpm test:permissions` fails with "no such script", the checkout is fine — that command
-lands with #19.
+`pnpm test:permissions` is **on `main`** — it landed with #21, not #19, and runs #21's
+canonical suite through turbo. #19 adds `pnpm check:route-policy`, a fail-closed wrapper that
+locates that suite and refuses to pass without it; it does not replace the entry point.
 
 **The licence hard stop is satisfied and no longer applies.** #4 and #5 are both merged and
 closed, so the provenance boundary it protected is behind us: upstream MIT code sits in this

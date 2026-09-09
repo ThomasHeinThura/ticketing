@@ -17,6 +17,246 @@ Newest first.
 
 ---
 
+### 2026-09-08 · A merge is charged the union of its per-parent diffs, never a combined diff
+
+**Supersedes one clause** of
+[The review binding is over landed commits](#2026-09-08--the-review-binding-is-over-landed-commits-and-a-declared-state-is-not-a-token-match),
+below, which said *"the merge is judged on its combined diff — its own conflict
+resolution"*. That clause is **withdrawn**. Everything else in that entry stands.
+
+**Decision:** for the review-binding invariant, a merge commit's contribution is the
+**union of `git diff-tree <parent> <merge>` over every parent**. A combined diff
+(`diff-tree -c`) may **not** be used as the security predicate.
+
+**Why:** a combined diff reports only the paths that differ from *every* parent, which is
+intersection-flavoured. If the merge result equals one parent for a path, that path is
+omitted — even when it differs from the reviewed first parent. Constructed with plumbing
+and measured:
+
+```
+A    f.txt = "old"
+H1   f.txt = "reviewed"          <- the reviewed head, child of A
+M    git commit-tree A^{tree} -p H1 -p A
+
+git rev-list H1..M          ->  M, and only M
+git diff --name-only H1 M   ->  f.txt          (the content DID change)
+git show M:f.txt            ->  "old"          (the review was undone)
+git diff-tree -r -c M       ->  []             <-- the bypass
+union of per-parent diffs   ->  f.txt          <-- the fix
+```
+
+Because A is an ancestor of H1 there is no side-branch commit in the range to catch it
+either: `H1..M` is exactly `{M}`. So the previous attribution would have kept the review of
+H1 valid while shipping a tree that differs from it.
+
+**Alternatives:**
+- *Keep `-c` and add a second check for the first-parent diff.* Rejected as the same
+  answer with more moving parts: the union already includes the first-parent diff, and a
+  predicate assembled from two rules is one refactor away from losing one of them.
+- *Compare the merge's tree to the reviewed tree instead.* Rejected — that is the net-tree
+  comparison GPT-F5 removed, one level down.
+
+**Cost, stated plainly:** the union **over-attributes**. A conflict-free merge is now
+charged with the paths its side branch changed, even though it only carried them, and the
+same path can be charged to two commits in one range. That is accepted deliberately,
+because the only consequence of over-attribution is that a review goes stale and a fresh
+delta review is required, whereas under-attribution ships unreviewed content. A predicate
+that can omit a path is not usable here however precise it is when it works.
+
+**Decided by:** Thomas, 2026-09-08, on finding **GPT-F6** (HIGH, blocking) against
+`b3fd41dbed1bc74cbd666c8b272fb425de5722c8`.
+
+---
+
+### 2026-09-08 · The review binding is over landed commits, and a declared state is not a token match
+
+**Supersedes two sentences** in
+[Three gate controls get a syntax](#2026-09-08--three-gate-controls-get-a-syntax-because-existence-proved-nothing),
+below, which is otherwise unchanged and still operative. Recorded as a new entry rather
+than an edit: the log is append-only, and both sentences were wrong in a way worth having
+on the record.
+
+**Decision 1 — the note binding is over LANDED COMMITS, not the net tree.** That entry
+said *"nothing outside `docs/07-planning/security-reviews/` may have changed since"* the
+reviewed head, and the implementation read that as `git diff <head>..HEAD`. Endpoint
+trees are not history, and the gap is a four-commit bypass:
+
+```
+H1  code                      reviewed
+H2  the note, nothing else     -> green, correctly
+H3  modify non-review code
+H4  exactly revert H3          -> net tree == H1 + note, the diff range is EMPTY,
+                                  and the old review passed again
+```
+
+Measured before the fix: at H4 the checker printed *"is bound to reviewed head …; nothing
+outside docs/07-planning/security-reviews/ has changed since"* and exited **0**, with two
+unreviewed commits landed. Now every commit in `<head>..HEAD` is inspected for the paths
+it contributed. **Reverting does not restore a clearance** — the reverted diff is still in
+the branch's history, it is what a bisect replays, and a revert can itself be wrong, so a
+reviewer has to see both. Merges are attributed honestly: `git rev-list` enumerates the
+commits a merge carried individually, and the merge is judged on its combined diff — its
+own conflict resolution — so nothing is missed and nothing is double-counted. One
+consequence, stated rather than discovered: **merging `main` into a branch after a review
+makes the note stale**, because the tree the reviewer read is not the tree that would
+merge.
+
+**Decision 2 — `## Screens opened` declares a state; prose that mentions `n/a` does not.**
+F9 replaced *"strip `n/a` and see what is left"* with *"does the token `n/a` appear
+anywhere in this section"*. That closed the loophole and opened a worse one: it read a
+**negation as an assertion**. A lane wrote, honestly,
+
+> I am not marking this n/a — that would misrepresent a real gap
+
+and the checker rejected the section for it. The one author who refused to claim the
+exemption was treated as though they had claimed it, and the way to pass was to stop
+explaining. The state is now read from the section's **first meaningful line** —
+`n/a` / `not applicable`, `BLOCKED — <why>`, or the screens themselves — and a later
+mention of `n/a` in explanation carries no state. An explained `BLOCKED` is **accepted as
+an honest gap**; a bare `BLOCKED` is rejected exactly like a bare `n/a`.
+
+**Why not read the sentence.** Sentiment and negation analysis were rejected outright:
+each is a new class of false positive wearing a cleverer hat, and the finding this fixes
+*is* a false positive. A state field is read, not interpreted.
+
+**`BLOCKED` is honest, not permissive.** It means the parser stops calling a declared gap
+a false `n/a`. It does **not** mean the pull request is ready: the screens were not
+opened, [AGENTS.md](../../AGENTS.md) do-not 18 is unsatisfied, and every other
+readiness requirement still applies. CI says so in the accepting run rather than leaving
+the reader to infer it.
+
+**Cost, stated plainly:** a remediation pass that reverts its own work still needs a fresh
+delta review, and a branch that merges `main` after a review needs one too. Both are the
+correct consequence of the invariant being about history.
+
+**Decided by:** Thomas, 2026-09-08, on findings **GPT-F5** (MEDIUM, blocking) and the
+**F9 residual** raised against `cdb5f334616818adb94a91ae5b9b11a428854951`.
+
+---
+
+### 2026-09-08 · Three gate controls get a syntax, because existence proved nothing
+
+**Decision:** the security-review scope, the committed review note and a waived gate each
+gain a mechanical binding, and the fast-stage PR-template check enforces all three.
+
+1. **Scope is the union of the merge base and HEAD.** A changed path is in security scope
+   when it matches [ci-cd.md](../04-engineering/ci-cd.md)'s list *at the merge base* **or**
+   at HEAD. Widening takes effect at once; **narrowing does not take effect on the pull
+   request that narrows it**, and removing a glob is itself security-sensitive. An
+   unresolvable merge base, or a base document that exists and cannot be parsed, fails
+   closed.
+2. **The note declares the head it reviewed.**
+   `**Reviewed head:** ` + a full forty-character SHA, one line per reviewed head. The
+   newest declared head must be an ancestor of HEAD and nothing outside
+   `docs/07-planning/security-reviews/` may have changed since it. A note-only commit
+   recording a head passes; a code commit after it makes the note stale until a fresh
+   delta review adds a line for the new head — which is itself note-only, so the gate
+   closes instead of looping.
+3. **A waived gate cites one entry, by anchor, that declares the waiver.** The `## Gates`
+   link cell must carry `docs/07-planning/decision-log.md#<anchor>`, the anchor must
+   resolve to exactly one heading, and that entry's body must contain, on one whole line:
+
+   ```
+   **Waives gate:** `<gate>` · **PR:** #<pr> · **Follow-up:** #<issue>
+   ```
+
+**Why:** all three controls were satisfiable without the thing they were supposed to
+establish, and an independent review of `6b32ef3` found each one.
+
+- The scope was read from the working tree — the list the same diff had just written. A
+  commit that removed `scripts/ci/**`, `.github/**` and `ci-cd.md` from the list while
+  editing `scripts/ci/` matched nothing and printed *"no security-review path touched"*.
+  F15 closed "the gate cannot see changes to itself"; reading the list only from HEAD
+  reopened it one level up.
+- The note check verified a model string and a filename. Both are properties of a body and
+  a path, so once a note existed it never expired: reviewed head, note committed, gate
+  green — then any amount of further code, gate still green.
+- `waived` needed the gate identifier to appear *anywhere* in a 1,400-line document, with
+  the `#anchor` optional. The sentence *"G1 is not waived"* authorised waiving G1. That is
+  not a weak control, it is an inverted one.
+
+**Alternatives:**
+- *Read the prose of a decision entry for intent.* Rejected: that is exactly what produced
+  the negation bypass. Intent is declared in a fixed syntax a negation cannot produce.
+- *Remove automated `waived` support entirely* — the finding offers this as the fallback if
+  honest enforcement is impossible. Rejected because it is possible: a specific entry, an
+  exact gate token, this pull request and a follow-up issue are all mechanically
+  checkable. What is **not** checkable is who authorised the waiver, and CI now says so in
+  the passing message rather than implying it verified authorship.
+- *Bind the note by comparing the whole diff to a reviewed tree hash.* Rejected as
+  equivalent but less readable: an ancestor SHA plus a note-only delta is the same
+  guarantee, and a reader can verify it with two git commands.
+- *Let a narrowing take effect immediately and rely on review by convention.* Rejected:
+  convention is the thing that failed, three times, on this repository.
+
+**Cost, stated plainly:** every security-review note from now on carries a
+`**Reviewed head:**` line, and a remediation pass that touches anything other than the
+note requires a fresh delta review before the gate closes. That is the intended cost. It
+also means the review artefacts for #13, #16 and #21 — written before this convention —
+are not retro-fitted; the check only reads the note the pull request under test links.
+
+**Decided by:** Thomas, 2026-09-08, on findings GPT-F1 (HIGH), GPT-F2 (HIGH) and GPT-F4
+(MEDIUM) from the independent review of `6b32ef316c49cc14cc841b32fdcce637a442b813`.
+GPT-F3 (MEDIUM) is a defect fix in the same pass and needed no decision: the
+unattributable-read baseline now records one fingerprint per read instead of a count.
+
+---
+
+### 2026-09-08 · The mandatory security review covers the gate machinery and the dependency graph
+
+**Decision:** the authoritative security-review path list in
+[ci-cd.md](../04-engineering/ci-cd.md) is **expanded** to include the CI and
+dependency-control surfaces, in addition to every existing application glob, which are all
+kept:
+
+```
+.github/**            scripts/ci/**         turbo.json
+package.json          **/package.json       pnpm-lock.yaml
+pnpm-workspace.yaml   .npmrc                .pnpmfile.cjs
+docs/04-engineering/ci-cd.md
+```
+
+A change touching any of them requires a recorded independent Opus security review, on the
+same terms as a change to `apps/api/src/auth*` or `packages/permissions/**`.
+
+**Why:** the gate could not see changes to itself. PR #19 — the pull request that *builds*
+this gate — touched `.github/**`, `scripts/ci/**`, `package.json`, `pnpm-workspace.yaml`
+and `pnpm-lock.yaml`, and `check:pr-template` correctly reported *"no security-review path
+touched (9 globs from ci-cd.md checked)"*. Its independent review then found, inside that
+blind spot: a HIGH where a new `pnpm.overrides` block silently deactivated 30 inherited
+pins and let two version floors be breached with `pnpm audit` still green; a HIGH where the
+independent-review blocker could be closed by deleting one line from a PR body; and a
+fail-open in `scripts/ci/lib/diff.mjs` that turned the security-review requirement into a
+green no-op on an undeterminable diff.
+
+A gate that cannot require review of edits to itself is a gate anyone can quietly widen,
+and the three findings above are what that looks like in practice rather than in theory.
+The two lockfile/workspace entries carry their own argument: deleting a version **floor**
+fires no advisory, so `pnpm audit` structurally cannot be the control for it — a human
+reading the diff is. `check:overrides` now guards the override *source*, but a source can
+be canonical and still wrong.
+
+**Alternatives:**
+- *Leave the list as-is and rely on `check:overrides` plus code review by convention.*
+  Rejected: convention is what failed. #16, #57 and #19 all passed the previous version of
+  the checklist loophole, which is a demonstrated failure mode on this repository, not a
+  hypothetical.
+- *Add only `scripts/ci/**` and `.github/**`.* Rejected: F1 was a dependency-graph
+  regression, not a script defect, and it was invisible to every automated gate.
+- *Require review of every path.* Rejected: it would make the requirement routine and
+  therefore ignored. The list stays a list of surfaces with a stated reason each.
+
+**Cost, stated plainly:** PR #19 now self-triggers the requirement it adds, so it needs a
+committed Opus review note before it can be merge-ready. That is the correct consequence,
+not an obstacle to route around, and the note is written from a completed review — never
+ahead of one.
+
+**Decided by:** Thomas, 2026-09-08, on the F15 question raised by the independent review of
+`b70b3529c81b3d890e430d91ea9dcb98be22583a`
+([issuecomment-5586943706](https://github.com/ThomasHeinThura/ticketing/pull/19#issuecomment-5586943706)).
+
+---
+
 ### 2026-09-08 · Organization create baseline closes at N=9
 
 **Decision:** the frozen inherited S1 baseline for one default
