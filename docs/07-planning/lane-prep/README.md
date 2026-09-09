@@ -54,13 +54,16 @@ would therefore have missed the three that are not:
 
 | Plan | Lines carrying pre-split vocabulary |
 |---|---|
-| [`p1-core.md`](p1-core.md) | the roll-up discussion — `WI-19` / `RH-9` / `RH-16`, around **136** and **444** (`state.group in ('completed','cancelled')`) |
+| [`p1-core.md`](p1-core.md) | **80**, **99** and **124** — #23's target schema, described as workspace-scoped `state` plus a project-scoped `project_state` table; and **136** and **444** — the roll-up discussion (`WI-19` / `RH-9` / `RH-16`) keying off `state.group in ('completed','cancelled')` |
 | [`p2-domain.md`](p2-domain.md) | **72** (states workspace-scoped with `project_state` for ordering/default), **300** (the impure edge loading the project's `project_state`), **720** (`project_state` in the table list) |
 
 Re-read those against the current `workflows.md`, `work-items.md`,
 `relations-and-hierarchy.md` and `data-model.md` rather than trusting them as written. A
 pointer that names the wrong section is worse than no pointer, which is why these are line
-numbers and not a description.
+numbers and not a description — and a pointer that names *some* of the lines is the same failure
+one step smaller, which is why both lists are exhaustive. Verified by grep at the time of
+writing: `grep -n "state\.group\|project_state"` returns exactly these five lines for
+`p1-core.md` and exactly these three for `p2-domain.md`, with nothing left over.
 
 ## What has NOT moved — the reason every plan is still a plan
 
