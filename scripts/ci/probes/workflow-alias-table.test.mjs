@@ -40,10 +40,15 @@
  * unnoticed" was false for exactly those three shapes. The fix: `WORKFLOW_ALIASES` now
  * lives in its own file, `scripts/ci/lib/workflow-aliases.mjs`, which has no top-level
  * side effect (it only builds and exports the Map) — so THIS file imports it directly and
- * asserts against the actual runtime `Map`, never its source text. Whatever code ran to
- * build the Map, this test sees the Map's real entries, which closes all three shapes at
- * once: none of them can produce a live sixth alias without that alias showing up in
- * `[...WORKFLOW_ALIASES.entries()]`.
+ * asserts against `[...WORKFLOW_ALIASES]` — a spread, which reads `Symbol.iterator` —
+ * rather than `[...WORKFLOW_ALIASES.entries()]`. That is not cosmetic: `test-all.mjs`
+ * itself never calls `.entries()` either (it reads the Map via `for...of` at its
+ * `aliasSources()`, and `.get()` at `reconcile()`), so a `.entries()`-only assertion pins
+ * a channel the real consumer does not use. A `Proxy` that overrides just `.entries()` to
+ * return a pinned five-entry list — round 3's B2 — sailed through the old `.entries()`
+ * assertion while `test-all.mjs` still reconciled against its true six. Asserting on the
+ * spread closes exactly that gap: see `scripts/ci/lib/workflow-aliases.mjs` for what this
+ * pin catches and what two shapes still evade it.
  *
  * Three things are asserted:
  *
@@ -79,7 +84,7 @@ after(cleanUpScratchRepos);
 describe("WORKFLOW_ALIASES — pinned exact runtime contents (imported, not regexed from source text)", () => {
   it("has exactly the five entries the alias mechanism still needs, in order", () => {
     assert.deepEqual(
-      [...WORKFLOW_ALIASES.entries()],
+      [...WORKFLOW_ALIASES],
       [
         ["pnpm check:route-policy", "pnpm test:permissions"],
         ["pnpm check:pr-template", "pr-template check"],
