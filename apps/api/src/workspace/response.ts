@@ -81,3 +81,26 @@ export const workspaceSchema = z
 export const deletedWorkspaceSchema = z
   .object({ id: z.string() })
   .openapi("DeletedWorkspace");
+
+// S5 -- native membership write routes (issue #6, retrofit plan §3, S5 row).
+
+export const removedWorkspaceMemberSchema = z
+  .object({ userId: z.string() })
+  .openapi("RemovedWorkspaceMember");
+
+export const leftWorkspaceSchema = z
+  .object({ workspaceId: z.string() })
+  .openapi("LeftWorkspace");
+
+export const workspaceMemberRoleSchema = z
+  .object({ userId: z.string(), role: z.string() })
+  .openapi("WorkspaceMemberRole");
+
+export const transferredWorkspaceOwnershipSchema = z
+  .object({
+    workspaceId: z.string(),
+    previousOwnerUserId: z.string(),
+    previousOwnerNewRole: z.string(),
+    newOwnerUserId: z.string(),
+  })
+  .openapi("TransferredWorkspaceOwnership");

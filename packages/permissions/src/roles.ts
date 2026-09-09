@@ -59,8 +59,13 @@ const EVERY_CAPABILITY_EXCEPT_INSTANCE: Capability[] = CAPABILITY_NAMES.filter(
 
 const OWNER_CAPABILITIES = EVERY_CAPABILITY_EXCEPT_INSTANCE;
 
+// `admin` is "everything except deleting the workspace OR transferring its ownership" —
+// `workspace:transfer_ownership` is granted to `owner` alone (rbac.md § Capabilities); an
+// `admin` narrowing a role in the Roles UI must never be able to re-grant a capability
+// nobody in that role holds, and this is the seed data that guardrail checks against.
 const ADMIN_CAPABILITIES = OWNER_CAPABILITIES.filter(
-  (name) => name !== "workspace:delete",
+  (name) =>
+    name !== "workspace:delete" && name !== "workspace:transfer_ownership",
 );
 
 const MANAGER_CAPABILITIES: Capability[] = [

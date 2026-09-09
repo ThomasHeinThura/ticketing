@@ -29,12 +29,27 @@ describe("the built-in roles", () => {
     expect(owner.has("instance:read_audit")).toBe(false);
   });
 
-  it("gives admin exactly owner minus workspace:delete", () => {
+  it("gives admin exactly owner minus workspace:delete and workspace:transfer_ownership", () => {
+    // `workspace:transfer_ownership` is granted to `owner` alone (rbac.md §
+    // Capabilities) — the fix for the hidden second authorization model on
+    // `POST /api/workspace/{workspaceId}/transfer-ownership` (issue #6, S5
+    // follow-up). `admin` must never re-acquire it just by tracking `owner`.
     const owner = new Set<string>(BUILT_IN_ROLES.owner.capabilities);
     const admin = new Set<string>(BUILT_IN_ROLES.admin.capabilities);
     expect(admin.has("workspace:delete")).toBe(false);
+    expect(admin.has("workspace:transfer_ownership")).toBe(false);
     owner.delete("workspace:delete");
+    owner.delete("workspace:transfer_ownership");
     expect([...admin].sort()).toEqual([...owner].sort());
+  });
+
+  it("gives workspace:transfer_ownership to owner alone", () => {
+    for (const key of BUILT_IN_ROLE_KEYS) {
+      const held = expandCapabilities(BUILT_IN_ROLES[key].capabilities).has(
+        "workspace:transfer_ownership",
+      );
+      expect(held, key).toBe(key === "owner");
+    }
   });
 
   it("keeps the customer role off the ladder — and nothing else, ever", () => {

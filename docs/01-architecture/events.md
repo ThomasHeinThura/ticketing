@@ -59,6 +59,7 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 | `work_item.due_soon` | The reminders job finds a due date within the configured window | — | — | ✅ | `dueDate`, `hoursRemaining` |
 | `work_item.overdue` | The reminders job finds a due date passed and the item open | — | ✅ | ✅ | `dueDate`, `hoursOverdue` |
 | `work_item.deleted` | Soft-deleted | — | ✅ | — | `deletedBy` |
+| `work_item.unblocked` | Its last open `blocked_by` relation closes or is removed ([relations-and-hierarchy.md](../03-features/relations-and-hierarchy.md) `RH-18`) | — | ✅ | ✅ | `formerBlockerId` |
 
 ### SLA
 

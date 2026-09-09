@@ -5,6 +5,7 @@ import { workspaceTable, workspaceUserTable } from "../../database/schema";
 import {
   formatBlockedWorkspacesMessage,
   hasOwnerRole,
+  holdsOwnerExactly,
   planAccountDeletion,
   type WorkspaceMembershipSummary,
 } from "../account-deletion";
@@ -49,8 +50,13 @@ async function collectMemberships(
       workspaceName: workspaceMembers[0]?.workspaceName ?? "workspace",
       isOwner: hasOwnerRole(membership.role),
       memberCount: workspaceMembers.length,
-      ownerCount: workspaceMembers.filter((member) => hasOwnerRole(member.role))
-        .length,
+      // EXACT, not `hasOwnerRole`. Over-counting owners makes
+      // `ownerCount <= 1` false, which skips `planAccountDeletion`'s block and
+      // lets a sole owner orphan the workspace. `isOwner` above keeps the
+      // inclusive reading, deliberately -- see `holdsOwnerExactly`'s comment.
+      ownerCount: workspaceMembers.filter((member) =>
+        holdsOwnerExactly(member.role),
+      ).length,
     };
   });
 }

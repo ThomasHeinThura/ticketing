@@ -123,12 +123,19 @@ export function resolveRoleCapabilities(
       continue;
     }
 
-    const asRoleMinus = term.match(/^as\s+`([^`]+)`\s+minus\s+`([^`]+)`$/);
+    // "as `owner` minus `workspace:delete`" (one exclusion), and "as `owner` minus
+    // `workspace:delete` and `workspace:transfer_ownership`" (more than one — joined with
+    // "and", not a comma, so the outer `body.split(",")` above never splits the clause in
+    // two). The second capture is everything after "minus"; every backtick-quoted name in
+    // it is excluded, however many there are.
+    const asRoleMinus = term.match(/^as\s+`([^`]+)`\s+minus\s+(.+)$/);
     if (asRoleMinus?.[1] !== undefined && asRoleMinus[2] !== undefined) {
       for (const capability of resolved.get(asRoleMinus[1]) ?? []) {
         collected.add(capability);
       }
-      removed.add(asRoleMinus[2]);
+      for (const excluded of asRoleMinus[2].matchAll(/`([^`]+)`/g)) {
+        if (excluded[1] !== undefined) removed.add(excluded[1]);
+      }
       continue;
     }
 
