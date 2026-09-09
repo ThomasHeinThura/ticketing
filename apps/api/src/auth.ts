@@ -396,22 +396,34 @@ export const auth = betterAuth({
           // failure response instead of a silent 200 for a workspace only
           // its owner (whose authority is always compiled-in, never a row)
           // could actually use.
-          const existing = await db
-            .select({ role: schema.workspaceRoleTable.role })
-            .from(schema.workspaceRoleTable)
-            .where(eq(schema.workspaceRoleTable.workspaceId, organization.id));
-          const taken = new Set(existing.map((r) => r.role));
-          const now = new Date();
-          const rows = DEFAULT_ROLE_NAMES.filter(
-            (name) => !taken.has(name),
-          ).map((name) => ({
-            workspaceId: organization.id,
-            role: name,
-            permission: JSON.stringify(defaultRolePayloads[name]),
-            createdAt: now,
-            updatedAt: now,
-          }));
+          // The READ is inside the try as well, deliberately. An independent
+          // review of the first version of this fix found the pre-check
+          // SELECT sitting OUTSIDE it, so a connection drop, timeout or
+          // deadlock on the read -- rather than on the insert -- left the
+          // workspace orphaned with no role rows and NO cleanup, which is the
+          // exact state this hook exists to prevent. The failure-injection
+          // test could not reach it either: a BEFORE INSERT trigger cannot
+          // fire on a SELECT. Everything that can throw between "better-auth
+          // has committed the workspace" and "the seed is durable" now shares
+          // one rollback path.
           try {
+            const existing = await db
+              .select({ role: schema.workspaceRoleTable.role })
+              .from(schema.workspaceRoleTable)
+              .where(
+                eq(schema.workspaceRoleTable.workspaceId, organization.id),
+              );
+            const taken = new Set(existing.map((r) => r.role));
+            const now = new Date();
+            const rows = DEFAULT_ROLE_NAMES.filter(
+              (name) => !taken.has(name),
+            ).map((name) => ({
+              workspaceId: organization.id,
+              role: name,
+              permission: JSON.stringify(defaultRolePayloads[name]),
+              createdAt: now,
+              updatedAt: now,
+            }));
             if (rows.length > 0) {
               await db.insert(schema.workspaceRoleTable).values(rows);
             }

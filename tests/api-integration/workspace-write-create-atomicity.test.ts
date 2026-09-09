@@ -312,4 +312,52 @@ describe("S4 native create is atomic with its default-role seed (A2-P6..A2-P10)"
     const workspaces = await db.select().from(schema.workspaceTable);
     expect(workspaces).toHaveLength(5);
   });
+
+  it("A2-P9 rolls back when the seed's READ fails, not only its INSERT — the case a BEFORE INSERT trigger cannot reach", async () => {
+    // Found by an independent review of the first version of the #66 fix.
+    // That version put the compensating delete around the seed INSERT only,
+    // leaving the pre-check SELECT outside it. So a connection drop, timeout
+    // or deadlock on the READ left the workspace orphaned with no role rows
+    // and NO cleanup -- the exact state this hook exists to prevent, reached
+    // by a different door.
+    //
+    // Every other probe in this file injects with a BEFORE INSERT trigger,
+    // and a trigger cannot fire on a SELECT, so none of them could see it.
+    // This one renames the table out from under the hook instead: the seed's
+    // SELECT then raises `relation "workspace_role" does not exist` inside
+    // PostgreSQL, which is a read-path failure and nothing else.
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const before = await snapshotAllTableCounts();
+
+    await db.execute(
+      sql.raw('ALTER TABLE "workspace_role" RENAME TO "workspace_role_hidden"'),
+    );
+    let created: Response;
+    try {
+      created = await createWorkspaceViaPlugin(app, owner.cookie);
+    } finally {
+      await db.execute(
+        sql.raw(
+          'ALTER TABLE "workspace_role_hidden" RENAME TO "workspace_role"',
+        ),
+      );
+    }
+
+    // A real failure, not a silent 200 over a half-built workspace.
+    expect(created.status).toBeGreaterThanOrEqual(500);
+
+    // And the compensating delete ran: the workspace better-auth had already
+    // committed is gone, and everything cascading off it with it.
+    expect(await db.select().from(schema.workspaceTable)).toHaveLength(0);
+    expect(await db.select().from(schema.workspaceUserTable)).toHaveLength(0);
+    expect(await db.select().from(schema.teamTable)).toHaveLength(0);
+    expect(await db.select().from(schema.teamMemberTable)).toHaveLength(0);
+    expect(await db.select().from(schema.workspaceRoleTable)).toHaveLength(0);
+
+    // Whole-database equality, the same oracle A2-P6 uses: nothing anywhere
+    // survived, including session state and notifications.
+    expect(await snapshotAllTableCounts()).toEqual(before);
+    expect(recordedEvents).toHaveLength(0);
+  });
 });
