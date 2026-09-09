@@ -1,6 +1,40 @@
 import fs from "node:fs/promises";
 
 /**
+ * Test-only instrumentation for `stripComments`' complexity, not its behaviour.
+ *
+ * `pr-body.test.mjs` proves this scanner stays O(n) — see the docstring below for why
+ * that matters — by counting the characters this loop actually visits, rather than
+ * timing it with `performance.now()`/`hrtime`. Wall-clock scales with whatever ELSE the
+ * CI runner is doing at that instant, not with the algorithm's real work: a ratio
+ * measured off a ~1.3ms baseline (`large < small * 24`) reproduced two failures in four
+ * concurrent `pnpm test:ci-scripts` runs under ordinary machine load, both landing on
+ * that exact assertion, because a single scheduler preemption lands more easily inside a
+ * LONGER measurement window, not less. A step counter has no such window: it counts the
+ * same thing whether the runner is idle or saturated.
+ *
+ * Deliberately always-on rather than gated behind a test flag — a conditional the
+ * production path never takes is itself untested, and one integer increment per
+ * character is immaterial next to the string work already happening. If a future rewrite
+ * of `stripComments` stops updating this counter, the reader below falls back to a flat
+ * zero, and the tests that depend on it treat "zero regardless of input size" as a
+ * failure — the same self-guard this file already uses for the reconstitution fuzz
+ * below ("if this reaches zero the fuzz has stopped generating the shape the fix is
+ * about").
+ */
+let stripCommentsSteps = 0;
+
+/** Test-only: zero the step counter before a measurement. */
+export function resetStripCommentsStepsForTests() {
+  stripCommentsSteps = 0;
+}
+
+/** Test-only: characters `stripComments` has visited since the last reset. */
+export function stripCommentsStepsForTests() {
+  return stripCommentsSteps;
+}
+
+/**
  * Remove HTML comments — the template's instructions are not content.
  *
  * Scanned by hand rather than with `markdown.replace(/<!--[\s\S]*?-->/g, "")`,
@@ -34,9 +68,23 @@ export function stripComments(markdown) {
   const out = [];
   let i = 0;
 
+  // Charges the step counter with what THIS search actually scanned, not with
+  // how far the cursor ends up moving — so a future change that calls this
+  // more than once per comment (redundant re-scanning, the shape a regression
+  // is likely to take) is charged for every one of those scans, not just the
+  // net distance covered. That is what makes the counter a faithful proxy for
+  // real work rather than a restatement of "the cursor moved forward".
+  const findClose = (from) => {
+    const close = markdown.indexOf("-->", from);
+    const reached = close === -1 ? markdown.length : close;
+    stripCommentsSteps += reached - from;
+    return close;
+  };
+
   while (i < markdown.length) {
     out.push(markdown[i]);
     i += 1;
+    stripCommentsSteps += 1;
 
     const end = out.length;
     if (
@@ -47,7 +95,8 @@ export function stripComments(markdown) {
       out[end - 1] === "-"
     ) {
       out.length = end - 4;
-      const close = markdown.indexOf("-->", i);
+      const close = findClose(i);
+      if (close !== -1) stripCommentsSteps += 3; // the closing marker itself
       i = close === -1 ? markdown.length : close + 3;
     }
   }

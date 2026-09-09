@@ -23,8 +23,10 @@ import {
   markedNotApplicable,
   meaningfulLines,
   normaliseHeading,
+  resetStripCommentsStepsForTests,
   sections,
   stripComments,
+  stripCommentsStepsForTests,
 } from "./pr-body.mjs";
 
 /**
@@ -129,17 +131,37 @@ describe("stripComments", () => {
   it("is linear, so the fix does not trade one scanner finding for another", () => {
     // A fixed-point `while (changed) replace(...)` loop would also close the
     // hole, and would be quadratic on exactly this input — one reconstituted
-    // opener per pass. Measured: ~0.35 ms at 8k chars, ~12.8 ms at 512k.
+    // opener per pass.
+    //
+    // This used to time the call (`performance.now()` before/after, asserting
+    // `elapsedMs < 2_000`) and time is the wrong instrument for it: wall-clock
+    // scales with whatever ELSE the CI runner is doing at that instant, not
+    // with the algorithm's real work. Its sibling a few tests down, which
+    // compared two such measurements as a ratio off a ~1.3ms baseline, was
+    // reproduced flaking under ordinary concurrent CI load — two failures in
+    // four concurrent `pnpm test:ci-scripts` runs, both on that exact
+    // assertion. A generous absolute threshold like this one is far harder to
+    // trip that way, but it is still measuring the same wrong thing, so it is
+    // fixed the same way.
+    //
+    // `stripComments` makes ONE forward pass — its own docstring says so:
+    // "Both cursors only move forward" — so every position from 0 to
+    // length-1 is visited EXACTLY once, either pushed to the output or jumped
+    // over inside a comment. That is an exact invariant, not a ratio: a
+    // reintroduced fixed-point loop makes multiple passes and revisits
+    // characters, so it cannot satisfy "total steps === input length" no
+    // matter how fast or slow the machine underneath it is.
     const adversarial = `${"<!".repeat(128_000)}<!-- -->${"--".repeat(128_000)}`;
 
-    const startedAt = performance.now();
+    resetStripCommentsStepsForTests();
     const stripped = stripComments(adversarial);
-    const elapsedMs = performance.now() - startedAt;
+    const steps = stripCommentsStepsForTests();
 
     assert.ok(!stripped.includes("<!--"));
-    assert.ok(
-      elapsedMs < 2_000,
-      `stripComments took ${elapsedMs.toFixed(0)}ms — quadratic behaviour is back`,
+    assert.equal(
+      steps,
+      adversarial.length,
+      `expected exactly one pass (${adversarial.length} steps), saw ${steps} — a re-scan is back`,
     );
   });
 });
@@ -373,17 +395,44 @@ describe("checklistProblems — applicability is per ITEM, not per block", () =>
   });
 
   it("is linear, so the fix does not trade one scanner finding for another", () => {
-    const time = (n) => {
+    // Was: measure `checklistProblems` with `process.hrtime.bigint()` at two
+    // input sizes and assert `large < small * 24` off a ~1.3ms baseline. An
+    // independent Opus security review of #89 reproduced that assertion
+    // failing under ordinary CI load — two failures ("329 tests, 328 pass, 1
+    // fail") in four concurrent `pnpm test:ci-scripts` runs, and 2 of 20 runs
+    // under artificial CPU load versus 0 of 20 idle — because a 1.3ms signal
+    // is smaller than routine scheduler noise on a shared runner, and a
+    // BIGGER input makes that worse, not better: a longer measurement window
+    // gives a stray preemption more opportunity to land inside it, which is
+    // exactly the "1.36ms -> 129.7ms" shape that reproduced.
+    //
+    // The property worth keeping is real: `checklistProblems` must not
+    // reintroduce the quadratic fixed-point loop `stripComments`'s own
+    // docstring warns about. What was unsound was measuring it in wall-clock
+    // milliseconds. This counts the characters `stripComments` actually
+    // visits across every call `checklistProblems` makes into it instead —
+    // exact, deterministic, and identical on an idle laptop or a saturated
+    // CI runner, because it counts real work rather than elapsed time.
+    const steps = (n) => {
       const body = `### B\n\n${`- [ ] item <!-- ${"a".repeat(n)} -->\n`.repeat(40)}`;
-      const t = process.hrtime.bigint();
+      resetStripCommentsStepsForTests();
       checklistProblems(body);
-      return Number(process.hrtime.bigint() - t) / 1e6;
+      return stripCommentsStepsForTests();
     };
-    time(2_000);
-    const small = Math.max(time(20_000), 0.5);
-    const large = time(160_000);
-    // 8x the input must not cost anywhere near 64x the time.
-    assert.ok(large < small * 24, `non-linear: ${small}ms -> ${large}ms`);
+    const small = steps(2_000);
+    const large = steps(16_000);
+    // Guards the test itself, the same way the reconstitution fuzz above
+    // does: if the scanner stops updating the counter, `small` reads 0 and
+    // the ratio below would pass vacuously.
+    assert.ok(
+      small > 0,
+      "the step counter never engaged — instrumentation is stale",
+    );
+    // 8x the input must not cost anywhere near 64x the steps.
+    assert.ok(
+      large < small * 12,
+      `non-linear: ${small} steps -> ${large} steps`,
+    );
   });
 });
 
