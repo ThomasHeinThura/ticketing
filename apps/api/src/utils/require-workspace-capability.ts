@@ -4,10 +4,10 @@ import {
   type Capability,
   expandCapabilities,
 } from "@taskdesk/permissions";
-import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
+import db from "../database";
+import { workspaceMemberRoles } from "./workspace-member-roles";
 
 /**
  * Require the caller's OWN, freshly-read workspace role to hold `capability` — evaluated
@@ -73,18 +73,20 @@ export function requireWorkspaceCapability(capability: Capability) {
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
 
-    const [member] = await db
-      .select({ role: schema.workspaceUserTable.role })
-      .from(schema.workspaceUserTable)
-      .where(
-        and(
-          eq(schema.workspaceUserTable.workspaceId, workspaceId),
-          eq(schema.workspaceUserTable.userId, userId),
-        ),
-      )
-      .limit(1);
+    // Fail-closed against duplicate `workspace_member` rows for this pair
+    // (`workspace_member` has no unique constraint on
+    // `(workspace_id, user_id)` -- `workspaceMemberRoles`'s doc comment):
+    // the capability is granted only when EVERY row for the pair grants it,
+    // never when an arbitrary one does. `roles.length === 0` is checked
+    // explicitly rather than relying on `.every()` alone -- `[].every(...)`
+    // is vacuously `true` in JS, which would silently grant a non-member
+    // every capability.
+    const roles = await workspaceMemberRoles(db, workspaceId, userId);
 
-    if (!builtInRoleHasCapability(member?.role, capability)) {
+    if (
+      roles.length === 0 ||
+      !roles.every((role) => builtInRoleHasCapability(role, capability))
+    ) {
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
 
@@ -107,7 +109,14 @@ export function builtInRoleHasCapability(
   role: string | null | undefined,
   capability: Capability,
 ): boolean {
-  if (!role || !(role in BUILT_IN_ROLES)) return false;
+  // `Object.hasOwn`, not `role in BUILT_IN_ROLES` -- `in` also matches
+  // `Object.prototype` members, so role values like `"toString"`,
+  // `"constructor"`, `"hasOwnProperty"`, `"valueOf"` and `"__proto__"` would
+  // pass this check with `BUILT_IN_ROLES[key].capabilities === undefined`,
+  // and `expandCapabilities(undefined)` throws `TypeError: stored is not
+  // iterable`. Same idiom already used at
+  // `packages/permissions/src/capabilities.ts`'s `isCapability`.
+  if (!role || !Object.hasOwn(BUILT_IN_ROLES, role)) return false;
   const key = role as BuiltInRoleKey;
   return expandCapabilities(BUILT_IN_ROLES[key].capabilities).has(capability);
 }

@@ -1,6 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
+import { workspaceMemberRoles } from "../../utils/workspace-member-roles";
 import {
   AlreadyOwnerError,
   CallerNotOwnerError,
@@ -78,18 +79,16 @@ async function transferWorkspaceOwnership(
       sql`SELECT pg_advisory_xact_lock(${WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE}, hashtext(${workspaceId}))`,
     );
 
-    const [caller] = await tx
-      .select({ role: schema.workspaceUserTable.role })
-      .from(schema.workspaceUserTable)
-      .where(
-        and(
-          eq(schema.workspaceUserTable.workspaceId, workspaceId),
-          eq(schema.workspaceUserTable.userId, callerId),
-        ),
-      )
-      .limit(1);
+    // An unambiguous answer is required here: the caller's authority must
+    // never be inferred from an arbitrary row when the pair has more than
+    // one (`workspace_member` carries no unique constraint on
+    // `(workspace_id, user_id)` -- see `workspaceMemberRoles`'s doc comment).
+    // More than one row for the caller is refused through this route's
+    // existing forbidden path rather than picking one to trust.
+    const callerRoles = await workspaceMemberRoles(tx, workspaceId, callerId);
     if (
-      !builtInRoleHasCapability(caller?.role, "workspace:transfer_ownership")
+      callerRoles.length !== 1 ||
+      !builtInRoleHasCapability(callerRoles[0], "workspace:transfer_ownership")
     ) {
       throw new CallerNotOwnerError();
     }

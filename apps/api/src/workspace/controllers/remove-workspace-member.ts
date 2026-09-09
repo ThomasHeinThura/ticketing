@@ -1,6 +1,10 @@
 import { and, eq, sql } from "drizzle-orm";
 import db, { schema } from "../../database";
 import {
+  anyRoleIsOwner,
+  workspaceMemberRoles,
+} from "../../utils/workspace-member-roles";
+import {
   LastOwnerCannotLeaveError,
   MemberNotFoundError,
 } from "./workspace-membership-errors";
@@ -32,6 +36,14 @@ import { WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE } from "./workspace-membership-lock
  * remove someone else entirely, and a removed member's other browser tabs
  * must not keep pointing a "current workspace" selection at a workspace they
  * no longer belong to.
+ *
+ * The target's role is read via `workspaceMemberRoles`
+ * (`apps/api/src/utils/workspace-member-roles.ts`), not a bare `.limit(1)`
+ * select -- `workspace_member` has no unique constraint on
+ * `(workspace_id, user_id)`, so a duplicate-row member could otherwise have
+ * their owner-ness missed by an unordered read that returns their OTHER,
+ * non-owner row, skipping the last-owner guard entirely. See that file's
+ * doc comment and `workspace-membership-duplicate-rows.test.ts` (P2).
  */
 async function removeWorkspaceMember(
   workspaceId: string,
@@ -42,21 +54,12 @@ async function removeWorkspaceMember(
       sql`SELECT pg_advisory_xact_lock(${WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE}, hashtext(${workspaceId}))`,
     );
 
-    const [target] = await tx
-      .select({ role: schema.workspaceUserTable.role })
-      .from(schema.workspaceUserTable)
-      .where(
-        and(
-          eq(schema.workspaceUserTable.workspaceId, workspaceId),
-          eq(schema.workspaceUserTable.userId, userId),
-        ),
-      )
-      .limit(1);
-    if (!target) {
+    const targetRoles = await workspaceMemberRoles(tx, workspaceId, userId);
+    if (targetRoles.length === 0) {
       throw new MemberNotFoundError();
     }
 
-    if (target.role === "owner") {
+    if (anyRoleIsOwner(targetRoles)) {
       const owners = await tx
         .select({ userId: schema.workspaceUserTable.userId })
         .from(schema.workspaceUserTable)

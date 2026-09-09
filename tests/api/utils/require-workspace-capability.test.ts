@@ -12,6 +12,17 @@ vi.mock("../../../apps/api/src/database", async () => {
 
   let boundUserId: string | undefined;
 
+  // `require-workspace-capability.ts` now reads every row for the pair via
+  // `workspaceMemberRoles` (`.select().from().where()`, no `.limit()` call
+  // -- see that helper's doc comment for why), so the terminal await point
+  // is `.then()` on the chain itself, not a `.limit()` call. `limit` is kept
+  // as a harmless passthrough in case any other call site still chains it.
+  async function rowsForBoundUser() {
+    if (!boundUserId || !(boundUserId in state.roleByUser)) return [];
+    const role = state.roleByUser[boundUserId];
+    return role === undefined ? [] : [{ role }];
+  }
+
   const chain = {
     select: () => chain,
     from: () => chain,
@@ -22,11 +33,15 @@ vi.mock("../../../apps/api/src/database", async () => {
       boundUserId = typeof userId === "string" ? userId : undefined;
       return chain;
     },
-    limit: async () => {
-      if (!boundUserId || !(boundUserId in state.roleByUser)) return [];
-      const role = state.roleByUser[boundUserId];
-      return role === undefined ? [] : [{ role }];
-    },
+    limit: () => chain,
+    // This mock stands in for Drizzle's own query builder, which is itself thenable --
+    // awaiting `.select()...where()` directly, with no terminal `.limit()`/`.execute()` call,
+    // is exactly what real Drizzle supports and what `workspaceMemberRoles` relies on.
+    // biome-ignore lint/suspicious/noThenProperty: intentionally thenable, matching Drizzle
+    then: (
+      onFulfilled: (rows: Array<{ role: string }>) => unknown,
+      onRejected?: (error: unknown) => unknown,
+    ) => rowsForBoundUser().then(onFulfilled, onRejected),
   };
 
   return { default: chain, schema };
@@ -86,6 +101,34 @@ describe("builtInRoleHasCapability", () => {
     expect(builtInRoleHasCapability("", "workspace:transfer_ownership")).toBe(
       false,
     );
+  });
+
+  /**
+   * `role in BUILT_IN_ROLES` also matches `Object.prototype` members, so a role string of
+   * `"constructor"` or `"__proto__"` would pass that check with
+   * `BUILT_IN_ROLES[key].capabilities === undefined`, and
+   * `expandCapabilities(undefined)` throws `TypeError: stored is not iterable` rather than
+   * returning `false`. `role` is not reachable through the API today (no role-create route
+   * exists; `workspace_role` rows come only from seeding) -- it becomes reachable once the
+   * roles CRUD (#40) ships a role-create route that lets a caller choose a role's `key`.
+   */
+  it("fails closed, without throwing, for role strings that only match Object.prototype members", () => {
+    for (const role of [
+      "constructor",
+      "__proto__",
+      "toString",
+      "hasOwnProperty",
+      "valueOf",
+      "isPrototypeOf",
+    ]) {
+      expect(() =>
+        builtInRoleHasCapability(role, "workspace:transfer_ownership"),
+      ).not.toThrow();
+      expect(
+        builtInRoleHasCapability(role, "workspace:transfer_ownership"),
+        role,
+      ).toBe(false);
+    }
   });
 });
 

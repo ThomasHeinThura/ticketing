@@ -1,6 +1,10 @@
 import { and, eq, sql } from "drizzle-orm";
 import db, { schema } from "../../database";
 import {
+  anyRoleIsOwner,
+  workspaceMemberRoles,
+} from "../../utils/workspace-member-roles";
+import {
   LastOwnerCannotLeaveError,
   NotAMemberError,
 } from "./workspace-membership-errors";
@@ -25,6 +29,11 @@ import { WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE } from "./workspace-membership-lock
  * when either pointed at this workspace, same scope as `deleteWorkspace`
  * (the caller and the affected user are the same person here, unlike
  * `removeWorkspaceMember`, which clears every session of the removed user).
+ *
+ * The caller's role is read via `workspaceMemberRoles`
+ * (`apps/api/src/utils/workspace-member-roles.ts`), not a bare `.limit(1)`
+ * select, for the same duplicate-row reason documented on
+ * `remove-workspace-member.ts` and that file.
  */
 async function leaveWorkspace(
   workspaceId: string,
@@ -36,21 +45,12 @@ async function leaveWorkspace(
       sql`SELECT pg_advisory_xact_lock(${WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE}, hashtext(${workspaceId}))`,
     );
 
-    const [membership] = await tx
-      .select({ role: schema.workspaceUserTable.role })
-      .from(schema.workspaceUserTable)
-      .where(
-        and(
-          eq(schema.workspaceUserTable.workspaceId, workspaceId),
-          eq(schema.workspaceUserTable.userId, userId),
-        ),
-      )
-      .limit(1);
-    if (!membership) {
+    const membershipRoles = await workspaceMemberRoles(tx, workspaceId, userId);
+    if (membershipRoles.length === 0) {
       throw new NotAMemberError();
     }
 
-    if (membership.role === "owner") {
+    if (anyRoleIsOwner(membershipRoles)) {
       const owners = await tx
         .select({ userId: schema.workspaceUserTable.userId })
         .from(schema.workspaceUserTable)
