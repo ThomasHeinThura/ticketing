@@ -39,7 +39,7 @@
  *             section: any backticked, lowercase, dot-namespaced token anywhere in
  *             events.md counts as "declared", including a field or column name the
  *             document happens to backtick that is not an event key at all. Measured on
- *             the tree today, at least SIX tokens are publishable this way, not four:
+ *             the tree today, SIX tokens are publishable this way, not four:
  *             `actor.type`, `outbox.kind`, `approval.state` and
  *             `notification_preference.event_kind` are field/column names; worse,
  *             `mention.in_comment` and `work_item.field_changed` are event-key-shaped
