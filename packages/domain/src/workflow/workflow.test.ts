@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type {
+  Effect,
   Guard,
   GuardContext,
   ProjectStateAdoption,
@@ -1517,6 +1518,122 @@ describe("validateWorkflowVersion — malformed input, fails closed", () => {
       }),
     ];
     expect(validateWorkflowVersion(states, transitions).valid).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // Effect-kind checks — NOT a hypothetical, exactly like the unrecognized-guard-type
+  // case above. `workflow_transition.effects` is a `jsonb` column: `JSON.parse` yields
+  // `any`, which is assignable to `WorkflowTransition["effects"]` with zero type errors,
+  // so a hand-edited row, a migration bug, or a rolled-back deployment can put a `kind`
+  // here this build has never heard of — or, worse, one of `WF-17`/`WF-18`'s automatic
+  // kinds, which `Effect`'s own type deliberately makes impossible for hand-authored
+  // TypeScript to claim (see `AutomaticEffect`, `types.ts`). Casts below mirror the
+  // `rogue` guard fixture above: the whole point is a value the union forbids but the
+  // database allows.
+  // -------------------------------------------------------------------------
+
+  it("accepts a transition carrying all six authored effect kinds", () => {
+    const s = tid("s");
+    const e = tid("e");
+    const states: WorkflowState[] = [
+      { id: s, group: "started" },
+      { id: e, group: "completed" },
+    ];
+    const transitions: WorkflowTransition[] = [
+      transition({
+        id: "kitchen-sink",
+        fromStateTemplateId: s,
+        toStateTemplateId: e,
+        effects: [
+          { kind: "set_assignee", personId: "default" },
+          { kind: "clear_assignee" },
+          { kind: "pause_sla" },
+          { kind: "resume_sla" },
+          { kind: "set_field", field: "cf.impact", value: "high" },
+          {
+            kind: "schedule_transition",
+            afterMinutes: 60,
+            toStateTemplateId: e,
+          },
+        ],
+      }),
+    ];
+    expect(validateWorkflowVersion(states, transitions).valid).toBe(true);
+  });
+
+  it("rejects a transition whose effects contain a kind outside WF-19's six — a workflow_transition.effects jsonb row this build does not understand", () => {
+    const s = tid("s");
+    const e = tid("e");
+    const states: WorkflowState[] = [
+      { id: s, group: "started" },
+      { id: e, group: "completed" },
+    ];
+    const rogue = { kind: "requires_signoff" } as unknown as Effect;
+    const transitions: WorkflowTransition[] = [
+      transition({
+        id: "t",
+        fromStateTemplateId: s,
+        toStateTemplateId: e,
+        effects: [rogue],
+      }),
+    ];
+    const result = validateWorkflowVersion(states, transitions);
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some((err) => err.includes("unrecognised effect kind")),
+    ).toBe(true);
+  });
+
+  it("rejects a transition whose effects contain resolve_sla — WF-17/WF-18's automatic mechanism, which no authored transition may ever declare", () => {
+    const s = tid("s");
+    const e = tid("e");
+    const states: WorkflowState[] = [
+      { id: s, group: "started" },
+      { id: e, group: "completed" },
+    ];
+    const smuggled = { kind: "resolve_sla" } as unknown as Effect;
+    const transitions: WorkflowTransition[] = [
+      transition({
+        id: "t",
+        fromStateTemplateId: s,
+        toStateTemplateId: e,
+        effects: [smuggled],
+      }),
+    ];
+    const result = validateWorkflowVersion(states, transitions);
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some(
+        (err) =>
+          err.includes("resolve_sla") && err.includes("automatic mechanism"),
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects a transition whose effects contain reopen_sla — the other automatic kind, equally never authorable", () => {
+    const s = tid("s");
+    const e = tid("e");
+    const states: WorkflowState[] = [
+      { id: s, group: "started" },
+      { id: e, group: "completed" },
+    ];
+    const smuggled = { kind: "reopen_sla" } as unknown as Effect;
+    const transitions: WorkflowTransition[] = [
+      transition({
+        id: "t",
+        fromStateTemplateId: s,
+        toStateTemplateId: e,
+        effects: [smuggled],
+      }),
+    ];
+    const result = validateWorkflowVersion(states, transitions);
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some(
+        (err) =>
+          err.includes("reopen_sla") && err.includes("automatic mechanism"),
+      ),
+    ).toBe(true);
   });
 });
 
