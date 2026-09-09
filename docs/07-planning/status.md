@@ -221,7 +221,8 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 
 - **#8** — the router retrofit still waits for #6's removal surface to settle. **#16's
   deletions have landed**, which is half of it; the retrofit itself has now started
-  moving (S0, S1, S2 and S4 have landed via #57/#65/#67 — S3, S4b, S5–S9, S10 remain), but
+  moving (S0, S1, S2, S4, S4b and S5 have landed via #57/#65/#67/#85/#77 — S3, S6a, S7, S8a,
+  S9 and S10 remain), but
   `organization()` is **still mounted** end to end. Classifying a route that is about to
   be replaced is wasted review and a false sense of coverage, so this stays blocked on the
   full retrofit, not on the deletions alone.
@@ -256,9 +257,9 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 - **better-auth `organization()` is removed in P0 — final.** It is **still mounted** on
   `main`, because it is load-bearing for workspace creation, invitations, members and
   roles. Load-bearing means it needs a retrofit (S1–S10, #6 work), not that it is kept.
-- **Retrofit S0, S1, S2 and S4 are COMPLETE** and on `main` (#65, #57, #65, #67
-  respectively). **S3, S4b, S5–S9 and S10 remain.** Landing S4 did not start S5; each step
-  needs its own scheduling decision, and a green equivalence suite is not permission to
+- **Retrofit S0, S1, S2, S4, S4b and S5 are COMPLETE** and on `main` (#65, #57, #65, #67,
+  #85, #77 respectively). **S3, S6a, S7, S8a, S9 and S10 remain.** Landing a stage does not
+  start the next; each step needs its own scheduling decision, and a green equivalence suite is not permission to
   begin the next one. Native reads and writes exist **alongside** the plugin, which is
   still what the client actually calls (S3 is the client cut-over and has not happened).
 - **The frozen organization-create baseline is N = 9 observable effects: eight first-order
@@ -408,9 +409,11 @@ issue #6 alone**: retrofit **S3** (moving the client off the plugin for reads, t
 precondition for S5 onward) and the remaining S5–S9/S10 steps. #6 closing is what opens
 Throttle 1.
 
-**Not next, deliberately:** retrofit **S5**. S4 completing does not start S5 — that needs
-its own scheduling decision, and S5's own precondition is S4, not S3 (S3 gates S8a instead).
-Issue **#6 stays OPEN / In Progress** with S3, S4b, S5–S9 and S10 outstanding. **#7 is now
+**S5 has since shipped** (PR #77), as has **S4b** (PR #85) — an earlier version of this
+section listed S5 as "not next, deliberately", which is no longer true. The principle behind
+that note still holds: landing one stage does not start the next, each needs its own
+scheduling decision. Issue **#6 stays OPEN / In Progress** with S3, S6a, S7, S8a, S9 and S10
+outstanding. **#7 is now
 CLOSED** (2026-09-09) — the registry, evaluator, route-coverage gate and the required-
 status-check reconciliation are all done; #6 is the only issue left keeping Throttle 1
 closed.
@@ -592,14 +595,14 @@ and reading it that way would open the throttle while `organization()` is still 
 | | Condition | State |
 | --- | --- | --- |
 | 1 | **#5** complete | ✅ merged as PR #13, closed |
-| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; only **S0, S1, S2 and S4** have landed (#65, #57, #65, #67). S3, S4b (client workspace-write cutover) and S5–S9/S10 (unmount) remain, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
+| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; **S0, S1, S2, S4, S4b and S5** have landed (#65, #57, #65, #67, #85, #77). S3, S6a, S7, S8a, S9 and S10 (unmount) remain, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
 | 3 | **#7** complete | ✅ **met — issue closed 2026-09-09** (`closedAt 2026-09-09T06:29:48Z`). #21 put the registry, evaluator and route-coverage gate on `main`; #19 put `pnpm test:permissions` (74 tests) in CI via `check:route-policy` on every push and pull request. The last open clause — both tests **required status checks** — closed when Thomas updated `protect-main` (ruleset `22365005`): `route policy coverage + permission matrix` now sits among 11 entries in `required_status_checks`, `strict_required_status_checks_policy: true`, `current_user_can_bypass: never` (`updated_at 2026-09-09T06:28:04Z`, re-read directly from `gh api repos/.../rulesets/22365005`, not taken from the closing comment's word) |
 | 4 | route coverage **actually executes** in CI | ✅ **met.** `.github/workflows/ci-fast.yml`'s `route-policy` job runs `pnpm check:route-policy` on every push and pull request, and did on `main`'s first gate-enforcing run (`e11976f`, all 11 applicable jobs green) |
-| 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`, 304 tests, 0 failed) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one |
+| 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one |
 
 **What "met" does not mean.** Four conditions being true is not Throttle 1 being open — all
 five are required, and #6 is not a paperwork gap: it is real, unfinished implementation
-depth (S3 and S5–S10 of the retrofit). Nothing about #7 closing or the ruleset landing
+depth (S3, S6a, S7, S8a, S9 and S10 of the retrofit). Nothing about #7 closing or the ruleset landing
 changes how much of `organization()` is still mounted. Throttle 1 opens the day #6 closes,
 and not before.
 

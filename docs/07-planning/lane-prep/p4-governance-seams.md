@@ -1,7 +1,8 @@
 > ## ⚠ Read this first — this is a PLAN written against an OLDER `main`
 >
-> **Baseline:** `955f8d4d`, the tip of `main` on 2026-09-06. **`main` has moved since**, and
-> as of 2026-09-09 it is `d4510a2` with nine more pull requests merged. Statements below of
+> **Baseline:** `955f8d4d`, the tip of `main` on 2026-09-06. **`main` has moved a long way
+> since** — read [`../status.md`](../status.md)'s snapshot header for where it is now, rather
+> than a commit id written here, which goes stale on the next merge. Statements below of
 > the form "X does not exist on `main`" or "PR #N is open and unmerged" were **true when
 > written and are not true now.**
 >
@@ -10,15 +11,29 @@
 >
 > - `packages/domain` **now exists** (PR #69) — service calendars, 59 tests.
 > - `packages/ui` **now exists** (PR #63) — the first primitive slice.
+> - **Issue #66 is CLOSED** (PR #80, squash `6e6c9ae`) — `hasWorkspacePermission` no longer
+>   falls back to the compiled built-in role definitions when a `workspace_role` row is
+>   absent. A missing row is now a DENY for every role except `owner`, whose authority is
+>   compiled-in by design (retrofit plan R5). **Every statement below that #66 is open, that
+>   it blocks #40 or retrofit S7, or that closing it is outstanding work, is therefore no
+>   longer true.** The *reasoning* in those sections is deliberately left as written: it
+>   records why the constraint existed and what the escalation path was, which is still worth
+>   reading — only its live status has changed. S7's sole remaining blocker is **#82**.
+> - **Retrofit stages S4b (PR #85) and S5 (PR #77) have landed**, in addition to S0/S1/S2/S4.
+>   Do not take any stage count from this document — read
+>   [the retrofit stage ledger](../retrofits/organization-plugin-retrofit.md).
 > - **CI exists on `main`** (PR #19): the `check:*` gates, `test:all`, the OpenAPI baseline,
 >   and eleven required status checks on the `protect-main` ruleset.
 > - Retrofit **S0, S2 and S4 have merged** (PRs #65, #67). S1 was already merged (#57).
 > - Issue **#7 is complete and closed.**
 >
 > **What has NOT changed, and is the reason this plan is still the right starting point:**
-> **Throttle 1 is still shut.** Its condition 2 requires issue #6 through retrofit **S10**;
-> S3 and S5–S11 have not started. Every "do not write code yet" instruction below still
-> stands, unchanged.
+> **Throttle 1 is still shut.** Its condition 2 requires issue #6 through retrofit **S10**,
+> and the retrofit has not run that far. Every "do not write code yet" instruction below still
+> stands, unchanged. **How many stages have landed is deliberately not stated here** — an
+> earlier version said "S3 and S5–S11 have not started", which went stale as stages merged.
+> Read [the retrofit stage ledger](../retrofits/organization-plugin-retrofit.md), which is the
+> authoritative count.
 >
 > This file is committed **as the research artifact it is** — deliberately not rewritten,
 > because rewriting a dated plan to look current is how a snapshot starts lying. Trust its
