@@ -7,6 +7,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  requireRow,
 } from "./helpers/fixtures";
 
 describe("API integration: task image upload finalize", () => {
@@ -32,19 +33,22 @@ describe("API integration: task image upload finalize", () => {
       workspaceId: member.workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        userId: member.user.id,
-        title: "URL test task",
-        status: "to-do",
-        columnId: columns.todo.id,
-        priority: "medium",
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          userId: member.user.id,
+          title: "URL test task",
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -84,19 +88,22 @@ describe("API integration: task image upload finalize", () => {
       workspaceId: member.workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        userId: member.user.id,
-        title: "Proxy test",
-        status: "to-do",
-        columnId: columns.todo.id,
-        priority: "medium",
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          userId: member.user.id,
+          title: "Proxy test",
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -134,19 +141,22 @@ describe("API integration: task image upload finalize", () => {
       workspaceId: member.workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        userId: member.user.id,
-        title: "Fallback test",
-        status: "to-do",
-        columnId: columns.todo.id,
-        priority: "medium",
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          userId: member.user.id,
+          title: "Fallback test",
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -184,19 +194,22 @@ describe("API integration: task image upload finalize", () => {
       workspaceId: member.workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        userId: member.user.id,
-        title: "Persist test",
-        status: "to-do",
-        columnId: columns.todo.id,
-        priority: "medium",
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          userId: member.user.id,
+          title: "Persist test",
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -247,19 +260,22 @@ describe("API integration: task image upload finalize", () => {
       workspaceId: member.workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        userId: member.user.id,
-        title: "Attachment test",
-        status: "to-do",
-        columnId: columns.todo.id,
-        priority: "medium",
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          userId: member.user.id,
+          title: "Attachment test",
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -298,19 +314,22 @@ describe("API integration: task image upload finalize", () => {
       workspaceId: member.workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        userId: member.user.id,
-        title: "Bad key test",
-        status: "to-do",
-        columnId: columns.todo.id,
-        priority: "medium",
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          userId: member.user.id,
+          title: "Bad key test",
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -343,19 +362,22 @@ describe("API integration: task image upload finalize", () => {
       workspaceId: member.workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        userId: member.user.id,
-        title: "Auth test",
-        status: "to-do",
-        columnId: columns.todo.id,
-        priority: "medium",
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          userId: member.user.id,
+          title: "Auth test",
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAnonymousSession();
     const { app } = createApp();
@@ -384,33 +406,39 @@ describe("API integration: task image upload finalize", () => {
     const member = await createWorkspaceMember();
     const outsiderId = `user-${randomUUID()}`;
 
-    const [outsider] = await db
-      .insert(schema.userTable)
-      .values({
-        id: outsiderId,
-        email: `${outsiderId}@example.com`,
-        emailVerified: true,
-        name: "Outsider",
-      })
-      .returning();
+    const outsider = requireRow(
+      await db
+        .insert(schema.userTable)
+        .values({
+          id: outsiderId,
+          email: `${outsiderId}@example.com`,
+          emailVerified: true,
+          name: "Outsider",
+        })
+        .returning(),
+      "outsider",
+    );
 
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        userId: member.user.id,
-        title: "RBAC test",
-        status: "to-do",
-        columnId: columns.todo.id,
-        priority: "medium",
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          userId: member.user.id,
+          title: "RBAC test",
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(outsider);
     const { app } = createApp();
