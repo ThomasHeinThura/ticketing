@@ -11,6 +11,7 @@
  */
 
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
 import { describe, it } from "node:test";
 import {
   checklistPresenceProblems,
@@ -147,10 +148,35 @@ describe("stripComments", () => {
     // `stripComments` makes ONE forward pass — its own docstring says so:
     // "Both cursors only move forward" — so every position from 0 to
     // length-1 is visited EXACTLY once, either pushed to the output or jumped
-    // over inside a comment. That is an exact invariant, not a ratio: a
-    // reintroduced fixed-point loop makes multiple passes and revisits
-    // characters, so it cannot satisfy "total steps === input length" no
-    // matter how fast or slow the machine underneath it is.
+    // over inside a comment. That is an exact invariant, not a ratio.
+    //
+    // PRECISELY WHAT THIS PROVES, AND NO MORE (corrected 2026-09-09). An
+    // independent Opus security review of #89 found the paragraph that used to
+    // stand here false: it claimed a reintroduced fixed-point loop "cannot
+    // satisfy total steps === input length no matter how fast or slow the
+    // machine underneath it is." `stripCommentsSteps` is written by the very
+    // function this test measures — every charge site lives inside
+    // `stripComments`, and `findClose` is a closure local to it — so a rewrite
+    // is under no obligation to route its scanning through `findClose`, or even
+    // to compute the number honestly. The review built three behaviourally
+    // identical rewrites that pass this assertion unchanged, one of them the
+    // exact "while (changed) replace(...)" shape named above with one line
+    // added — `steps += markdown.length` — and one of them a hand-rolled
+    // O(n) re-scan per comment that was, at scale, ~180x slower in real
+    // wall-clock while reporting a byte-identical count.
+    //
+    // So: this assertion proves `stripComments`, AS SHIPPED TODAY, does not
+    // route a re-scan through the instrumented `findClose` path without
+    // charging for it. It does NOT prove stripComments is linear independently
+    // of what stripComments chooses to report — no counter a function
+    // maintains about its own work can prove that about a hostile rewrite of
+    // that same function, for the structural reason CLAUDE.md's own account of
+    // this repository's history calls out: a control that derives its
+    // authority from a convenient proxy rather than from the artifact that
+    // actually runs is not a control on that artifact. The two tests below are
+    // independent of this counter — one reads `stripComments`' own source, one
+    // reads a clock — specifically because this counter cannot rule out either
+    // of the shapes they check for.
     const adversarial = `${"<!".repeat(128_000)}<!-- -->${"--".repeat(128_000)}`;
 
     resetStripCommentsStepsForTests();
@@ -163,6 +189,119 @@ describe("stripComments", () => {
       adversarial.length,
       `expected exactly one pass (${adversarial.length} steps), saw ${steps} — a re-scan is back`,
     );
+  });
+
+  it("HIGH 1c — does not re-route its scan through a `.replace()`-based rescan, whatever the counter says", () => {
+    // The counter above trusts stripComments to report its own work honestly.
+    // This does not: it reads stripComments' OWN SOURCE — `Function.prototype
+    // .toString()`, not anything the function computes or could misreport —
+    // and asserts it contains no call to `.replace(`. `.replace()` is not
+    // banned in general; it is banned INSIDE stripComments specifically because
+    // the one regression this file exists to prevent, CodeQL alert #4, IS a
+    // `.replace()` call, and the fixed-point loop the docstring above warns
+    // about IS built out of one ("text.replace(/<!--[\s\S]*?-->/g, "")" inside
+    // "while (changed)"). A rewrite is free to report any step count it likes;
+    // it cannot make this line find `.replace(` absent when the source
+    // contains it.
+    //
+    // What this does NOT catch, stated plainly: an implementation that does
+    // the SAME excess work without ever calling `.replace()` — an extra
+    // `indexOf` call, a hand-rolled character-by-character re-scan, or any
+    // other rescan built without that one method name. The test after this one
+    // is the backstop for that gap, and names its own limit too.
+    assert.ok(
+      !/\.replace\s*\(/.test(stripComments.toString()),
+      "stripComments now calls .replace() — the fixed-point loop CodeQL flagged " +
+        "is back, regardless of what the step counter reports",
+    );
+  });
+
+  it("HIGH 1d — does not blow up in absolute wall-clock either, within a deliberately generous margin", () => {
+    // The second, independent backstop: not the counter, not source text — the
+    // actual clock — for the class HIGH 1c cannot see, real extra work done
+    // WITHOUT `.replace()`. An independent Opus security review of #89 built
+    // exactly that shape: `findClose` re-scanning positions it had already
+    // covered, through a bare `markdown.indexOf` rather than through the
+    // counted helper. Byte-identical output, byte-identical step count,
+    // genuinely quadratic wall-clock.
+    //
+    // Deliberately an ABSOLUTE ceiling, not a ratio. A ratio is what flaked
+    // here before (see the comment on the test above): comparing two
+    // measurements against each other lets a SINGLE stray scheduler
+    // preemption manufacture a false relationship between them. An absolute
+    // number does not compare anything — it can only ever be tripped by making
+    // one run itself slower — so the margin below is chosen to make that not
+    // enough. Measured on the reference machine: the shipped implementation
+    // strips a single ~1,000,000-character comment body in ~1-2ms. A rescan
+    // that revisits every position inside that body once more — the exact
+    // shape named above — costs whole seconds at this size, because it is
+    // genuinely O(n²) rather than O(n). 2000ms is on the order of 1,000x the
+    // observed honest cost: nowhere near routine CI noise, but nowhere near a
+    // real regression's cost either.
+    //
+    // What this does NOT catch, stated plainly: excess work small enough, or
+    // an input small enough, to stay under 2000ms in absolute terms despite
+    // being asymptotically wrong — a constant-factor-slower linear rewrite, or
+    // the identical defect exercised on a smaller body than this test happens
+    // to send it. This is a coarse tripwire for a catastrophic regression, not
+    // a proof of linearity, and it does not claim to be one.
+    const bigComment = `<!-- ${"a".repeat(1_000_000)} -->`;
+    const start = process.hrtime.bigint();
+    stripComments(bigComment);
+    const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6;
+
+    assert.ok(
+      elapsedMs < 2_000,
+      `stripComments took ${elapsedMs.toFixed(1)}ms on a single ~1,000,000-character ` +
+        "comment body (expected low single-digit ms) — something is re-scanning it",
+    );
+  });
+});
+
+describe("stripComments' complexity guard cannot be deleted quietly", () => {
+  it("this file still names the tests that carry the O(n) guarantee (MEDIUM, #89)", async () => {
+    // An independent Opus security review of #89 deleted the exact-invariant
+    // complexity test above entirely — not `.skip`, which `check:skips` would
+    // catch — and found `pnpm test:ci-scripts` still green (340 -> 339),
+    // `check:skips` and `biome ci` both clean. Nothing noticed a guard
+    // disappearing, and this PR's own `status.md` edit separately removes the
+    // last recorded test count that a human might have noticed drift against.
+    //
+    // This is the same self-guard the reconstitution fuzz and the ratio test
+    // in this file already use on themselves — "if this reaches zero, the
+    // check above is no longer exercising the defect" — applied one level up:
+    // instead of a number staying nonzero, the TEST NAMES that carry the O(n)
+    // guarantee must still be literally present in this file's own source.
+    // Delete one and this is what goes red, not a passing suite that quietly
+    // dropped a count nobody was watching.
+    const ownSource = await fs.readFile(new URL(import.meta.url), "utf8");
+
+    // Matches the `it(` DECLARATION specifically, not this test's own mention of
+    // the name a few lines below (or this comment) — a bare-string count would
+    // over-count itself the moment it describes what it is counting.
+    const sharedName =
+      "is linear, so the fix does not trade one scanner finding for another";
+    const sharedNameCount = (
+      ownSource.match(
+        /it\(\s*"is linear, so the fix does not trade one scanner finding for another"/g,
+      ) ?? []
+    ).length;
+    assert.equal(
+      sharedNameCount,
+      2,
+      `expected 2 tests named "${sharedName}" (stripComments' exact invariant, ` +
+        `checklistProblems' ratio guard) — found ${sharedNameCount}`,
+    );
+
+    for (const requiredTestName of [
+      "HIGH 1c — does not re-route its scan through a `.replace()`-based rescan, whatever the counter says",
+      "HIGH 1d — does not blow up in absolute wall-clock either, within a deliberately generous margin",
+    ]) {
+      assert.ok(
+        ownSource.includes(requiredTestName),
+        `required complexity-guard test "${requiredTestName}" is missing from this file`,
+      );
+    }
   });
 });
 
@@ -477,10 +616,15 @@ describe("checklistProblems — applicability is per ITEM, not per block", () =>
     // The property worth keeping is real: `checklistProblems` must not
     // reintroduce the quadratic fixed-point loop `stripComments`'s own
     // docstring warns about. What was unsound was measuring it in wall-clock
-    // milliseconds. This counts the characters `stripComments` actually
-    // visits across every call `checklistProblems` makes into it instead —
-    // exact, deterministic, and identical on an idle laptop or a saturated
-    // CI runner, because it counts real work rather than elapsed time.
+    // milliseconds. This counts the characters `stripComments` SAYS it visits
+    // across every call `checklistProblems` makes into it instead — identical
+    // on an idle laptop or a saturated CI runner, because a clock never enters
+    // into it. It shares the exact-invariant test's corrected limitation above
+    // (2026-09-09): the count is `stripComments` reporting on its own work, so
+    // this proves stripComments-as-shipped does not re-scan through the
+    // counted path, not that no rewrite could report this number dishonestly.
+    // HIGH 1c and 1d, in the `stripComments` suite above, are the independent
+    // backstops for that gap and say plainly what they do and do not catch.
     const steps = (n) => {
       const body = `### B\n\n${`- [ ] item <!-- ${"a".repeat(n)} -->\n`.repeat(40)}`;
       resetStripCommentsStepsForTests();
