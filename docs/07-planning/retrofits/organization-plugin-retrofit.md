@@ -19,19 +19,43 @@ As of 2026-09-09, `main` at `d4510a2`:
 | **S5** — native membership writes | ❌ **NOT STARTED** | — | Precondition S4 satisfied; may start |
 | **S6a** — native invitation writes | ❌ **NOT STARTED** | — | Blocked on S5 |
 | **S6b** — hashed invitation tokens | ⏸️ **DEFERRED out of P0** | — | Needs a migration and a link-invalidation decision |
-| **S7** — native role writes | ❌ **NOT STARTED** | — | Precondition S4 satisfied; may start |
+| **S7** — native role writes | ⛔ **BLOCKED BY #66** | — | S4 is satisfied, but #66 — `hasWorkspacePermission` falls back to compiled built-in roles when a `workspace_role` row is absent — is a privilege-restoration fail-open on the very table S7 writes. **Do not author native role-delete routes until #66 is merged and independently cleared.** |
 | **S8a** — active workspace | ❌ **NOT STARTED** | — | Blocked on S3 |
 | **S8b** — rename the column back | ⏸️ **DEFERRED out of P0** | — | Needs a migration |
 | **S9** — teams decision | ❌ **NOT STARTED** | — | Needs an explicit confirmation that nothing reaches teams |
 | **S10** — unmount (the tripwire commit) | ❌ **NOT STARTED** | — | Needs S3–S9 all merged. `tests/api-contract/openapi.json` still declares six `/auth/organization/*` invitation operations, which is exactly what S10 removes |
 | **S11** — cut the last better-auth AC dependency | ❌ **NOT STARTED** | — | Belongs to #7 / Lane B, **not** to this retrofit |
 
-**So: four of the fourteen stages have landed — S0, S1, S2, S4 — and S10 has not.** Issue #6
-is therefore **not complete**, and **Throttle 1 cannot open**: its condition 2 requires the
-retrofit to have run through S10. The other four Throttle 1 conditions are met (#5 complete,
-#7 complete and closed, route-policy coverage executing in CI, an unclassified route
-demonstrated to fail CI). Condition 2 is the single blocker, and it is arithmetic rather
-than judgement — nine stages remain, three of them (S3, S5, S7) startable today.
+### Progress, stated the way it is actually useful
+
+**"Four of fourteen" is a misleading denominator** and should not be quoted on its own: it
+counts two stages that are deferred out of P0 and one that belongs to a different issue, so
+it understates how close S10 is. State it in four buckets instead:
+
+| Bucket | Stages | Count |
+| --- | --- | --- |
+| **Landed** | S0, S1, S2, S4 | **4** |
+| **Required to reach S10, outstanding** | S3, S5, S6a, S7, S8a, S9, S10 | **7** |
+| **Deferred outside P0** | S6b, S8b | 2 — do **not** count these against Throttle 1 |
+| **Separately owned** | S11 | 1 — belongs to #7 / Lane B, **never** folded into this retrofit |
+
+So the live figure is **4 landed of 11 required**, with **7 outstanding**, and S10 last
+because everything else feeds it.
+
+**Issue #6 is therefore not complete and Throttle 1 cannot open** — condition 2 requires the
+retrofit through S10. The other four conditions are met: #5 complete, #7 complete and
+closed, route-policy coverage executing in CI, and an unclassified route demonstrated to
+fail CI.
+
+**What is startable right now, and what is not:**
+
+- **S3** — in flight, PR #76. Must not merge before S5: see the S3 row.
+- **S5** — in flight, PR #77. In security-review scope.
+- **S7** — ⛔ **BLOCKED BY #66.** Not a scheduling preference: #66 is a fail-open on
+  `workspace_role`, the exact table S7 writes, so authoring role writes first would build on
+  a known privilege-restoration defect.
+- **S6a** — needs S5. **S8a** — needs S3. **S9** — analysis may begin; it needs an explicit
+  confirmation that nothing reaches teams. **S10** — needs all of the above.
 
 **S2 and S4 shipping does not narrow S10's work.** Both are additive: they added native
 routes beside the plugin without unmounting anything. The plugin route surface `main`

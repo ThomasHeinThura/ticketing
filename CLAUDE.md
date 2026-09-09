@@ -26,7 +26,7 @@ Then the feature spec for what you are doing, and any ADR it cites.
 **There is application code, and this section is where you find out what is actually
 true.** Say it in four categories, always, and never let one blur into another:
 
-**ON MAIN**, as of 2026-09-09 at `8aba7db`. Ten pull requests merged that day; **nothing
+**ON MAIN**, as of 2026-09-09 at `5270954`. **Eleven** pull requests merged that day; **nothing
 carrying code is open.** The kaneo import at `42bb8011`, de-branded (#5). Licence and
 provenance files (#4). The deployment slice — root `Dockerfile`, `compose.yml`, the `deploy/`
 overlays, `scripts/deploy.sh`, a hardened `charts/taskdesk`, `docs/05-operations/proxy-topology-evidence.md`
@@ -52,7 +52,7 @@ without it. It does not replace the entry point.
 
 **IN OPEN PR.** Nothing. A dependabot bump may be open at any time; those are routine.
 
-**READ THIS BEFORE ACTING ON ANY OF IT.** All ten of those merges happened **without the
+**READ THIS BEFORE ACTING ON ANY OF IT.** All eleven of those merges happened **without the
 mandatory Opus security review** — Thomas waived the gate explicitly and merged on Sonnet
 review. Five touched security-scope paths. See the two 2026-09-09 decision-log entries. The
 waiver is recorded, not hidden, and `check:pr-template` still fails on the untickable
@@ -74,8 +74,10 @@ but it is **still mounted**, and `tests/api-contract/openapi.json` still declare
 demonstrated to fail CI ✓. **Condition 2 — issue #6 complete *through retrofit S10* — is the
 sole blocker**, and it is arithmetic rather than judgement: the
 [stage ledger](docs/07-planning/retrofits/organization-plugin-retrofit.md) records four of
-fourteen stages landed (S0, S1, S2, S4). **S3, S5 and S7 have their preconditions satisfied
-and can start today**; they are the shortest path to opening the throttle. Do not re-derive
+fourteen stages landed (S0, S1, S2, S4). **S3 and S5 are in flight** (PRs #76 and #77);
+**S7 is ⛔ BLOCKED BY #66**, a privilege-restoration fail-open on the very table S7 writes.
+Do not re-derive any of this — read the ledger, which states progress as 4 landed of 11
+required rather than the misleading "4 of 14". Do not re-derive
 this — read the ledger.
 
 **What is startable while the throttle is shut**, per the blocking taxonomy: the retrofit
@@ -99,10 +101,12 @@ do. **Only Thomas merges.**
 
 `main` is protected by the `protect-main` ruleset: a pull request is required, deletion and
 non-fast-forward pushes are blocked, stale approvals are dismissed on push, merges are
-squashed, and — since 2026-09-09 — **eleven fast-stage status checks are required**, with
+squashed, and — since 2026-09-09 — **twelve status checks are required**, with
 strict up-to-date enforcement and **zero bypass actors**. Until that day it required no
 status checks at all. The template/security-review job is deliberately **not** among the
-eleven; the decision log says why. **Required approving reviews is `0`, and Require review from Code Owners is
+twelve. **As of later that same day the template gate IS required** — Thomas ordered it
+added as the twelfth context, so no pull request can merge without committed review
+evidence. **Required approving reviews is `0`, and Require review from Code Owners is
 off** — both deliberately (decision log, 2026-09-06).
 
 Do not wait for an approval that is not configured, and do not read the zero as permission.

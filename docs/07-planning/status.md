@@ -154,29 +154,43 @@ work gets reported as shipped, so the category is never optional.
 
 ### IN OPEN PR — real code, not on `main`, do not report as available
 
-**None. Every pull request carrying real code has merged.**
+`main` is **`5270954`**. **Eleven** pull requests merged on 2026-09-09 — #64, #62, #65,
+#67, #19, #68, #63, #69, #71, #72, #73 — on top of #16, #21, #57, #60 and #61 earlier. CI
+is green on `main`.
 
-Eight merged on 2026-09-09 — **#64, #62, #65, #67, #19, #68, #63, #69** — on top of #16,
-#21, #57, #60 and #61 earlier. `main` is `5adf25b6`, and its CI is green on all eleven
-required jobs.
+Three pull requests are open again, all opened 2026-09-09 after that wave:
+
+| PR | Stage / issue | State | Why it is not merged |
+| --- | --- | --- | --- |
+| **#77** | retrofit **S5** — native membership writes | green locally, in **security-review scope** (`apps/api/src/workspace/policy.ts`) | Needs the mandatory Opus security review. Also `BEHIND` — strict status-check policy requires it current with `main` |
+| **#76** | retrofit **S3** — client reads off the plugin | green locally | **Must not merge before #77.** After S3, no client read returns the `workspace_member` row id that the two still-on-plugin mutations need, so role-change and ownership-transfer are force-disabled. S5's routes are userId-keyed and fix it by construction |
+| **#75** | **#31** P2 workflow-transition domain module | **DRAFT — blocked** | `check:reviews` correctly refuses it: `docs/03-features/workflows.md` carries verdict *not-ready* with 4 High, 4 Medium, 2 Low open findings. AGENTS.md do-not 15 — a feature is not started while its review section is non-empty. The first High is an unresolved data-model contradiction only Thomas can settle |
 
 A dependabot dependency-bump pull request may be open at any time; those are routine and
-not tracked in this table.
+not tracked here.
 
-**Read the two 2026-09-09 decision-log entries before trusting the review state of that
-code.** All eight merged under Thomas's explicit authorisation on the strength of
-independent **Sonnet** review, with the mandatory **Opus** security-review gate **waived**.
-Five of the eight touched security-review-scope paths. No review note was written and no
-independent-review checkbox was ticked, so `check:pr-template` still fails on those two
-blockers — deliberately left out of the required checks so the gate stays visibly red
-rather than quietly satisfied. Thomas's GPT-5.6 Sol and Gemini 3.8 Flash confirmation of
-`main` is the outstanding follow-up.
+**The twelfth required status check.** As of 2026-09-09, `pull request template + security
+review` **is a required context** on `protect-main`, on Thomas's explicit instruction —
+twelve contexts, strict up-to-date policy, zero bypass actors, `current_user_can_bypass:
+never`. Verified by re-reading the live ruleset after the write. **Consequence: no pull
+request can merge without committed review evidence.** That is the intended effect and it
+is why #76 and #77 sit open rather than merging on green tests.
 
-**Corrected 2026-09-09, twice.** An earlier revision listed #19 alone and called it *"the
-only open code pull request"*, which was false for six of the seven then open. That is
-exactly the failure this file exists to prevent — a snapshot that reads as authoritative
-while describing a repository that no longer exists. Found by an independent review of this
-document against the live repository, not by anyone reading it.
+**Read the two 2026-09-09 decision-log entries before trusting the review state of what is
+on `main`.** All eleven merged under Thomas's explicit authorisation on the strength of
+independent **Sonnet** review, with the mandatory **Opus** gate **waived**. Five touched
+security-review-scope paths. No review note was written and no independent-review checkbox
+was ticked. **That waiver was given once, for those pull requests, and does not carry
+forward** — which is exactly what making the gate required now enforces. An independent
+**Opus** audit of `main@5270954` is in progress; its findings are the follow-up, alongside
+Thomas's own GPT-5.6 Sol and Gemini 3.8 Flash confirmation.
+
+**Corrected three times on 2026-09-09.** An earlier revision listed #19 alone as *"the only
+open code pull request"*, false for six of the seven then open; the next said *"none"*,
+which stopped being true within the hour. That is the failure this file exists to prevent —
+a snapshot that reads as authoritative while describing a repository that no longer exists.
+Each correction was found by checking this document against the live repository, never by
+reading it.
 
 ### BLOCKED
 
@@ -188,6 +202,22 @@ document against the live repository, not by anyone reading it.
   full retrofit, not on the deletions alone.
 - **#17** — sessions already minted by the removed MCP OAuth and device flows. Deleting an
   endpoint is not revoking a credential; a consent click created a full 30-day session row.
+- **Retrofit S7 (native role writes) — ⛔ BLOCKED BY #66.** Not a scheduling preference.
+  #66 is a privilege-restoration fail-open: `hasWorkspacePermission` falls back to the
+  compiled built-in role definitions when a `workspace_role` row is absent, so a role an
+  administrator has *narrowed* — or deleted — silently regains its built-in privileges. S7
+  writes that exact table. Authoring role writes, and especially role **deletion**, on top
+  of a known fail-open on the row being deleted is how the delete-after-narrow escalation
+  becomes shippable. **Do not author native role-delete routes until #66 is merged and
+  independently cleared.** #66 remediation is in flight.
+- **#31 (P2 workflows) — blocked by AGENTS.md do-not 15.** `docs/03-features/workflows.md`
+  has verdict *not-ready* with 4 High, 4 Medium and 2 Low open findings in
+  `docs/07-planning/reviews/2026-09-05/features-core-servicedesk.md` § 10, and a feature is
+  not started while its review section is non-empty. `check:reviews` enforces it. The
+  domain code exists on a draft pull request (#75) and already satisfies three of the
+  review's own recommended fixes, but **the first High is a data-model contradiction —
+  workflows are workspace-scoped while states are project-scoped — that no agent may
+  choose.** It needs Thomas.
 
 ### DECIDED / NOT YET IMPLEMENTED
 
