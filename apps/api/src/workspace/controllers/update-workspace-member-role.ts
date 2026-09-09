@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import db, { schema } from "../../database";
 import {
   anyRoleIsOwner,
+  roleGrantsOwner,
   workspaceMemberRoles,
 } from "../../utils/workspace-member-roles";
 import {
@@ -53,7 +54,9 @@ async function updateWorkspaceMemberRole(
   userId: string,
   role: string,
 ): Promise<{ userId: string; role: string }> {
-  if (role === "owner") {
+  // Comma-aware for the same reason as `add-workspace-member.ts`: `"owner,admin"`
+  // grants owner and must not be assignable through this route either.
+  if (roleGrantsOwner(role)) {
     throw new OwnerRoleNotAssignableHereError();
   }
 

@@ -1,5 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import db, { schema } from "../../database";
+import { roleGrantsOwner } from "../../utils/workspace-member-roles";
 import {
   OwnerRoleNotAssignableHereError,
   TargetUserNotFoundError,
@@ -45,7 +46,12 @@ export type AddedWorkspaceMember = {
 async function addWorkspaceMember(
   input: AddWorkspaceMemberInput,
 ): Promise<AddedWorkspaceMember> {
-  if (input.role === "owner") {
+  // `roleGrantsOwner`, not `=== "owner"`: a comma-joined incoming value like
+  // `"owner,admin"` also grants owner and must be refused here too. An exact
+  // match let it through to the role-row lookup, which would accept it if a
+  // role with that literal name existed -- and `create-role` only lowercases
+  // names, so one is creatable. Issue #82 removes the value at its source.
+  if (roleGrantsOwner(input.role)) {
     throw new OwnerRoleNotAssignableHereError();
   }
 

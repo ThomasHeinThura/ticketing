@@ -68,8 +68,10 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   inviteAndAcceptAsNewMember,
   signUpUser,
+  updateMemberRoleViaPlugin,
 } from "./helpers/organization-http";
 import {
+  addWorkspaceMemberNative,
   leaveWorkspaceNative,
   removeWorkspaceMemberNative,
   transferWorkspaceOwnershipNative,
@@ -145,6 +147,56 @@ async function ownerRowCount(workspaceId: string): Promise<number> {
       ),
     );
   return owners.length;
+}
+
+/**
+ * Distinct users whose row GRANTS owner when read COMMA-AWARE -- independent of `ownerCount`
+ * above, which stays an EXACT `role = "owner"` match on purpose (mirroring the deliberate
+ * asymmetry `distinctOwnerUserCount`'s own doc comment explains). The N1 probes below seed a
+ * SINGLE row per pair whose value is the comma-joined `"owner,admin"`, not a duplicate row --
+ * `ownerCount` would misreport zero owners for a workspace that plainly still has one, so this
+ * is what "the workspace still has an owner" means for those probes specifically.
+ */
+async function ownerCountInclusive(workspaceId: string): Promise<number> {
+  const rows = await db
+    .select({
+      userId: schema.workspaceUserTable.userId,
+      role: schema.workspaceUserTable.role,
+    })
+    .from(schema.workspaceUserTable)
+    .where(eq(schema.workspaceUserTable.workspaceId, workspaceId));
+  const owners = rows.filter((row) =>
+    row.role
+      .split(",")
+      .map((piece) => piece.trim().toLowerCase())
+      .includes("owner"),
+  );
+  return new Set(owners.map((row) => row.userId)).size;
+}
+
+/**
+ * The `workspace_member.id` PRIMARY KEY for one `(workspaceId, userId)` pair -- required by
+ * `updateMemberRoleViaPlugin`, which (matching better-auth's own `updateMemberRole` body
+ * schema, `crud-members.mjs:219-222`) addresses a member by row id, never by `userId`. Assumes
+ * the pair is unambiguous -- every N1 probe below seeds exactly one row per pair before calling
+ * this, never a duplicate.
+ */
+async function memberRowId(
+  workspaceId: string,
+  userId: string,
+): Promise<string> {
+  const [row] = await db
+    .select({ id: schema.workspaceUserTable.id })
+    .from(schema.workspaceUserTable)
+    .where(
+      and(
+        eq(schema.workspaceUserTable.workspaceId, workspaceId),
+        eq(schema.workspaceUserTable.userId, userId),
+      ),
+    )
+    .limit(1);
+  if (!row) throw new Error("memberRowId: no row for that workspace/user pair");
+  return row.id;
 }
 
 async function insertDuplicateRow(
@@ -497,7 +549,7 @@ describe("R1-R4: a duplicated OWNER must never let a workspace reach zero owners
     expect(await ownerCount(workspaceId)).toBe(1);
   });
 
-  it('R4 the capability gate and the transfer controller AGREE on ["owner","owner"] -- both refuse', async () => {
+  it('R4 the capability GATE itself refuses ["owner","owner"] -- the controller never runs, which is what proves cardinality decided it and not `.every(...)`', async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "R4 Agree");
@@ -512,7 +564,8 @@ describe("R1-R4: a duplicated OWNER must never let a workspace reach zero owners
     // `.every(...)` and GRANTED (both rows say "owner"), while the controller reduced with
     // `length !== 1` and REFUSED. Fail-closed, so never an escalation -- but it locked the
     // only owner out of the transfer route while nobody else held the capability, leaving
-    // ownership unmovable without database surgery. They now share one predicate.
+    // ownership unmovable without database surgery. They now share one predicate,
+    // `isUnambiguousMembership`, today.
     await insertDuplicateRow(workspaceId, owner.user.id, "owner");
 
     const response = await transferWorkspaceOwnershipNative(
@@ -522,12 +575,291 @@ describe("R1-R4: a duplicated OWNER must never let a workspace reach zero owners
       { newOwnerUserId: target.user.id },
     );
 
-    // One refusal, from whichever layer sees it first -- what matters is that they do not
-    // disagree, and that the outcome is a refusal rather than a partial transfer.
-    expect(response.status).not.toBe(200);
+    // THIS IS THE FIX FOR THE VACUOUS ORIGINAL VERSION OF THIS PROBE. An earlier version of
+    // this test asserted only `expect(response.status).not.toBe(200)`, and BOTH readings
+    // return 403 for this route: `.every(...)` grants at the gate (both rows say "owner"), so
+    // the request reaches `transferWorkspaceOwnership`'s own in-transaction re-check, which
+    // independently uses `isUnambiguousMembership` and throws `CallerNotOwnerError` -- also
+    // 403 (`apps/api/src/workspace/index.ts`'s `CallerNotOwnerError` handler). Reverting the
+    // reduction to `.every(...)` therefore leaves this file at 361/361 green, exactly the
+    // vacuity the independent review found. Confirmed empirically against this codebase: the
+    // two readings' HTTP status codes for this route are IDENTICAL (403/403) -- the status
+    // code cannot distinguish them, so this probe does not use it as the distinguishing
+    // assertion.
+    //
+    // The response BODY can, because `HTTPException.getResponse()` (hono) returns the
+    // exception's own `message` as the entire response text with no wrapping, and the two
+    // layers throw different messages: `requireWorkspaceCapability` always throws
+    // "Insufficient permissions"; `CallerNotOwnerError` is "Only the current owner can
+    // transfer ownership". Only the GATE's message is reachable if cardinality, not
+    // `.every(...)`, is what refused this request -- `.every(...)` would let the request past
+    // the gate entirely and the message seen would be the CONTROLLER's instead. So asserting
+    // the exact gate message is what makes this probe distinguish the two reductions rather
+    // than merely re-confirm "some layer said no".
+    expect(response.status).toBe(403);
+    expect(await response.text()).toBe("Insufficient permissions");
     expect(await rolesForPair(workspaceId, target.user.id)).not.toContain(
       "owner",
     );
     expect(await ownerCount(workspaceId)).toBe(1);
+  });
+});
+
+/**
+ * N1a-N1d -- THE COMMA-JOINED OWNER DEFECT, a different shape from P1-P4/R1-R4 above.
+ *
+ * Those probes are about DUPLICATE ROWS: two `workspace_member` rows for one
+ * `(workspace_id, user_id)` pair. N1 is about a SINGLE row whose `role` column holds a
+ * COMMA-JOINED value -- `"owner,admin"` -- because better-auth's `parseRoles` comma-joins an
+ * array (`organization.mjs:18-20`) when the still-mounted plugin route `POST
+ * /api/auth/organization/update-member-role` is given `role: ["owner","admin"]`.
+ *
+ * THE DEFECT: an independent Opus security review found that `anyRoleIsOwner` used to be
+ * `roles.includes("owner")` -- an EXACT match per row. `"owner,admin"` does not equal
+ * `"owner"`, so that match returned FALSE for a sole owner's row holding that value, and every
+ * last-owner guard built on it (`leave-workspace.ts`, `remove-workspace-member.ts`,
+ * `update-workspace-member-role.ts`) never recognised the workspace creator as an owner at
+ * all. Measured by the reviewer on real PostgreSQL over real HTTP, against better-auth's own
+ * routes as the control:
+ *
+ * | with a sole `"owner,admin"` owner | native, before the fix | better-auth |
+ * | --- | --- | --- |
+ * | that owner leaves                 | **200, zero owners** | 400, refused |
+ * | an admin removes them             | **200, zero owners** | n/a |
+ * | an admin PATCHes them to `viewer` | **200, zero owners** | 403 |
+ *
+ * The setup step is authorized and ordinary -- the owner grants THEMSELVES `role:
+ * ["owner","admin"]` through the still-mounted plugin route, which returns 200 and persists the
+ * value verbatim (already established by
+ * `multi-role-membership-characterization.test.ts`'s `"owner,admin"` persistence probe). Then a
+ * plain admin holding only `member:update` can demote the workspace creator -- an authority
+ * better-auth explicitly denies them. UNRECOVERABLE: with zero owners nobody can ever transfer
+ * ownership again.
+ *
+ * THE FIX: `roleGrantsOwner` (`apps/api/src/utils/workspace-member-roles.ts`) comma-splits
+ * before matching, and `anyRoleIsOwner` is now `roles.some(roleGrantsOwner)`.
+ * `distinctOwnerUserCount` deliberately stays an EXACT `role = 'owner'` match -- see that
+ * file's doc comments for why the asymmetry is the mechanism, not a bug. N1a-N1c below produce
+ * the state THE WAY THE REVIEWER DID (the plugin route, not a direct `db.update`) precisely so
+ * they prove the defect is API-reachable, not merely schema-permitted. N1d is the separate
+ * INCOMING-value guard: `add-workspace-member.ts` and `update-workspace-member-role.ts` now
+ * refuse a `role` argument that itself grants owner comma-joined, before either route ever
+ * opens a transaction.
+ */
+describe('N1a-N1d: a comma-joined "owner,admin" row must still be recognised as an owner', () => {
+  it('N1a a sole owner whose row is "owner,admin" cannot leave through the native route, and the workspace keeps its owner', async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "N1a Leave");
+    // A second member, so `memberCount <= 1` is not what refuses the leave -- the last-OWNER
+    // guard is, matching R1's rationale above.
+    await inviteAndAcceptAsNewMember(app, owner.cookie, workspaceId, "member");
+
+    // PRODUCE THE STATE THE WAY THE REVIEWER DID: the owner grants THEMSELVES role:
+    // ["owner","admin"] through the still-mounted plugin route -- authorized and ordinary, an
+    // API-reachable path, not a bypass.
+    const ownerMemberId = await memberRowId(workspaceId, owner.user.id);
+    const selfGrant = await updateMemberRoleViaPlugin(
+      app,
+      owner.cookie,
+      workspaceId,
+      ownerMemberId,
+      ["owner", "admin"],
+    );
+    expect(selfGrant.status).toBe(200);
+    expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
+      "owner,admin",
+    ]);
+
+    // THE BETTER-AUTH CONTROL: the reviewer's own oracle. The plugin's OWN `/organization/leave`
+    // refuses this exact caller with 400 (crud-members.mjs's `leaveOrganization`:
+    // `member.role.split(",").includes(creatorRole)` is true for "owner,admin", and the
+    // creator-role member count is 1) -- so the native route below is held to a bar the
+    // surface it replaces already meets.
+    const pluginControl = await app.request("/api/auth/organization/leave", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: owner.cookie },
+      body: JSON.stringify({ organizationId: workspaceId }),
+    });
+    expect(pluginControl.status).toBe(400);
+    expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
+      "owner,admin",
+    ]);
+
+    const response = await leaveWorkspaceNative(app, owner.cookie, workspaceId);
+
+    // POST-FIX: `anyRoleIsOwner` is comma-aware (`roleGrantsOwner`), so the guard recognises
+    // "owner,admin" as an owner row and refuses. PRE-FIX (`roles.includes("owner")`, an exact
+    // match) this returned false for this row, the last-owner guard never ran, and the leave
+    // deleted the pair's only row -- zero owners, exactly the reviewer's measured row above.
+    expect(response.status).toBe(400);
+    expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
+      "owner,admin",
+    ]);
+    expect(await ownerCountInclusive(workspaceId)).toBeGreaterThanOrEqual(1);
+  });
+
+  it('N1b an admin cannot remove the sole owner whose row is "owner,admin", and the owner row is untouched', async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "N1b Remove");
+    const admin = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "admin",
+    );
+
+    const ownerMemberId = await memberRowId(workspaceId, owner.user.id);
+    const selfGrant = await updateMemberRoleViaPlugin(
+      app,
+      owner.cookie,
+      workspaceId,
+      ownerMemberId,
+      ["owner", "admin"],
+    );
+    expect(selfGrant.status).toBe(200);
+    expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
+      "owner,admin",
+    ]);
+
+    const response = await removeWorkspaceMemberNative(
+      app,
+      admin.cookie,
+      workspaceId,
+      owner.user.id,
+    );
+
+    // POST-FIX: the same comma-aware `anyRoleIsOwner` recognises the owner row and refuses.
+    // PRE-FIX this returned 200 and deleted the pair's only row -- zero owners, exactly the
+    // reviewer's measured "200, zero owners" row for "an admin removes them" (better-auth has
+    // no equivalent control here: its own `removeMember` refuses removing the creator
+    // regardless of who is asking, an authority shape this route deliberately does not mirror
+    // -- marked "n/a" in the table above).
+    expect(response.status).toBe(400);
+    expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
+      "owner,admin",
+    ]);
+  });
+
+  it('N1c an admin cannot demote the sole owner whose row is "owner,admin" to viewer, and the owner row is unchanged', async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "N1c Demote");
+    const admin = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "admin",
+    );
+
+    const ownerMemberId = await memberRowId(workspaceId, owner.user.id);
+    const selfGrant = await updateMemberRoleViaPlugin(
+      app,
+      owner.cookie,
+      workspaceId,
+      ownerMemberId,
+      ["owner", "admin"],
+    );
+    expect(selfGrant.status).toBe(200);
+    expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
+      "owner,admin",
+    ]);
+
+    // THE BETTER-AUTH CONTROL: the plugin's OWN `/organization/update-member-role` refuses this
+    // actor -- a plain "admin" is not the creator (`updaterIsCreator` false), the target IS the
+    // creator (`isUpdatingCreator` true, from splitting "owner,admin"), and
+    // `isUpdatingCreator && !updaterIsCreator` throws FORBIDDEN (403) before any specific
+    // permission is even checked (crud-members.mjs:290-292).
+    const pluginControl = await updateMemberRoleViaPlugin(
+      app,
+      admin.cookie,
+      workspaceId,
+      ownerMemberId,
+      "viewer",
+    );
+    expect(pluginControl.status).toBe(403);
+    expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
+      "owner,admin",
+    ]);
+
+    const response = await updateWorkspaceMemberRoleNative(
+      app,
+      admin.cookie,
+      workspaceId,
+      owner.user.id,
+      { role: "viewer" },
+    );
+
+    // POST-FIX: comma-aware `anyRoleIsOwner` recognises "owner,admin" and throws
+    // `CannotChangeOwnerRoleHereError`. PRE-FIX this returned 200 and silently demoted the
+    // owner -- exactly the reviewer's measured "200, zero owners" row, and LESS safe than the
+    // plugin route it replaces, which refused the identical actor and operation with 403.
+    expect(response.status).toBe(400);
+    expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
+      "owner,admin",
+    ]);
+  });
+
+  describe("N1d the incoming-value guard: a role argument that itself grants owner comma-joined is refused, before either route opens a transaction", () => {
+    it('PATCH /members/{id}/role with "owner,admin" is refused, and the target row is unchanged', async () => {
+      const { app } = createApp();
+      const owner = await signUpUser(app);
+      const workspaceId = await createWorkspace(app, owner.cookie, "N1d Patch");
+      const admin = await inviteAndAcceptAsNewMember(
+        app,
+        owner.cookie,
+        workspaceId,
+        "admin",
+      );
+      const target = await inviteAndAcceptAsNewMember(
+        app,
+        owner.cookie,
+        workspaceId,
+        "member",
+      );
+
+      const response = await updateWorkspaceMemberRoleNative(
+        app,
+        admin.cookie,
+        workspaceId,
+        target.user.id,
+        { role: "owner,admin" },
+      );
+
+      // POST-FIX: `roleGrantsOwner("owner,admin")` is true (comma-split, includes "owner"), so
+      // `update-workspace-member-role.ts` refuses before the transaction even opens. PRE-FIX
+      // the guard was an exact `role === "owner"` match, which "owner,admin" does not satisfy,
+      // so this value would have sailed through to the role-row lookup -- and would have been
+      // ACCEPTED had a role literally named "owner,admin" existed (`create-role` only
+      // lowercases names, so one is creatable).
+      expect(response.status).toBe(400);
+      expect(await rolesForPair(workspaceId, target.user.id)).toEqual([
+        "member",
+      ]);
+    });
+
+    it('POST /members with role "owner,admin" is refused the same way, by add-workspace-member.ts\'s identical guard, and no row is created', async () => {
+      const { app } = createApp();
+      const owner = await signUpUser(app);
+      const workspaceId = await createWorkspace(app, owner.cookie, "N1d Add");
+      const admin = await inviteAndAcceptAsNewMember(
+        app,
+        owner.cookie,
+        workspaceId,
+        "admin",
+      );
+      const notYetMember = await signUpUser(app);
+
+      const response = await addWorkspaceMemberNative(
+        app,
+        admin.cookie,
+        workspaceId,
+        { userId: notYetMember.user.id, role: "owner,admin" },
+      );
+
+      expect(response.status).toBe(400);
+      expect(await rolesForPair(workspaceId, notYetMember.user.id)).toEqual([]);
+    });
   });
 });

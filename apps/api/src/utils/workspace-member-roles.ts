@@ -71,18 +71,42 @@ export async function workspaceMemberRoles(
 }
 
 /**
- * Does ANY row in `roles` (as returned by `workspaceMemberRoles`) hold role
- * `"owner"`?
+ * Does this single stored role value grant owner -- **including when it is a
+ * comma-joined value like `"owner,admin"`**?
  *
- * The most restrictive direction for an owner guard: a duplicate-row member
- * with roles `["viewer", "owner"]` must still be treated as an owner for the
- * last-owner guard (`remove-workspace-member.ts`, `leave-workspace.ts`) and
- * the self-demote guard (`update-workspace-member-role.ts`) -- missing the
- * `"owner"` row because an unordered read happened to return the other one
- * first is exactly the defect this file exists to close.
+ * THE DEFECT THIS CLOSES, because it was BLOCKING and it is not obvious. An
+ * earlier version of `anyRoleIsOwner` was `roles.includes("owner")` -- an exact
+ * match per row. But `workspace_member.role` can hold `"owner,admin"` as ONE
+ * row's value: better-auth's `parseRoles` comma-joins an array
+ * (`organization.mjs:18-20`), and issue #82 tracks that. An exact match returns
+ * FALSE for that row, so the last-owner guards did not recognise the workspace
+ * creator as an owner at all.
+ *
+ * Measured by the independent Opus review of this pull request, on real
+ * PostgreSQL over real HTTP, against better-auth's own routes as the control:
+ *
+ * | with a sole `"owner,admin"` owner | native (before) | better-auth |
+ * | --- | --- | --- |
+ * | that owner leaves                 | **200, zero owners** | 400, refused |
+ * | an admin removes them             | **200, zero owners** | n/a |
+ * | an admin PATCHes them to `viewer` | **200, zero owners** | 403 |
+ *
+ * The setup step is authorized and ordinary -- the owner gives *themselves*
+ * `role: ["owner","admin"]` through the still-mounted plugin route -- and then a
+ * plain admin holding only `member:update` can demote the workspace creator, an
+ * authority better-auth explicitly denies them. **Unrecoverable**: with zero
+ * owners nobody can ever transfer ownership. So these native routes were LESS
+ * safe than the plugin routes they replace, for that one input.
  */
+export function roleGrantsOwner(role: string): boolean {
+  return role
+    .split(",")
+    .map((piece) => piece.trim().toLowerCase())
+    .includes("owner");
+}
+
 export function anyRoleIsOwner(roles: string[]): boolean {
-  return roles.includes("owner");
+  return roles.some(roleGrantsOwner);
 }
 
 /**
@@ -104,6 +128,25 @@ export function anyRoleIsOwner(roles: string[]): boolean {
  * transferring to a duplicated member produced exactly the two-owner-rows
  * state this guard then misread. Both halves are fixed; this is the half that
  * makes the invariant hold even if some other path produces duplicates.
+ *
+ * **AND A SECOND ASYMMETRY, WHICH IS THE POINT AND IS COUNTER-INTUITIVE, SO IT
+ * IS SPELLED OUT: this count stays an EXACT `role = 'owner'` match while
+ * `anyRoleIsOwner` is comma-AWARE.** That combination is what makes the guard
+ * refuse in the corrupt case:
+ *
+ *   sole owner whose row says `"owner,admin"`
+ *     -> `anyRoleIsOwner` is TRUE  (comma-aware, inclusive) -> enter the guard
+ *     -> `distinctOwnerUserCount` is 0 (exact, so it does not count them)
+ *     -> `0 <= 1` -> REFUSE
+ *
+ * Make the count comma-aware too and it returns 1, `1 <= 1` still refuses --
+ * fine here. But make `anyRoleIsOwner` exact and the guard is never entered at
+ * all, which was the BLOCKING defect. And in
+ * `delete-account-data.ts` the same pair runs the other way round: its guard is
+ * `isOwner && ownerCount <= 1 -> block`, so **over**-counting owners SKIPS the
+ * block and orphans the workspace. One predicate cannot serve both questions:
+ * "is this member an owner" wants the inclusive reading, "how many owners are
+ * there" wants the exact one. Do not "simplify" them into one.
  *
  * Note the asymmetry with `workspaceMemberRoles`, and that it is deliberate:
  * "what is THIS user's role" must refuse to guess when the answer is
