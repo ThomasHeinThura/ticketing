@@ -178,6 +178,61 @@ export async function loadBody({ bodyFile, eventPath }) {
 }
 
 /**
+ * The pull request's OWN head SHA, from the event payload — not `HEAD`.
+ *
+ * **Why this exists.** GitHub checks a pull request out at `refs/pull/N/merge`, which is a
+ * SYNTHETIC MERGE COMMIT of the branch into the base. So in CI `HEAD` is not any commit the
+ * author pushed, and it has two parents: the base tip and the real branch head.
+ *
+ * That broke the security-review-note binding, and broke it in the worst direction — a
+ * control that could never be satisfied. `commitsBetween` attributes a merge commit's paths
+ * against EVERY parent (deliberately, see lib/git-baseline.mjs), so diffing the synthetic
+ * merge against its BASE parent yields the branch's entire diff. Every one of those files
+ * then reads as "landed after the reviewed head", and the note is declared stale no matter
+ * what it says. Measured on PR #81: against the pushed branch head the range was
+ * `outside=0`; against the synthetic merge it was `outside=4`, listing the branch's own
+ * reviewed code.
+ *
+ * A gate that cannot be satisfied is not strict, it is broken: it produces a permanently red
+ * required check, and a permanently red check is one nobody can distinguish from a real
+ * finding. Hence: bind to the head the author actually pushed and the reviewer actually read.
+ *
+ * @returns {Promise<string | null>} the head SHA, or null when there is no payload (a local
+ *   run, or a `push` event) — in which case the caller falls back to `HEAD`, which is
+ *   correct there because `HEAD` really is the branch head.
+ */
+export async function loadPullRequestHead({ eventPath }) {
+  if (!eventPath) {
+    return null;
+  }
+  let event;
+  try {
+    event = JSON.parse(await fs.readFile(eventPath, "utf8"));
+  } catch (error) {
+    // Fail CLOSED. A payload we were told about but cannot read is not the same as no
+    // payload: silently falling back to HEAD would bind the note to the merge ref again.
+    throw new Error(
+      `Could not read the event payload at ${eventPath}: ${error.message}. ` +
+        "Refusing to fall back to HEAD, which in a pull-request checkout is a synthetic " +
+        "merge commit and would mis-bind the security-review note.",
+    );
+  }
+  const sha = event?.pull_request?.head?.sha;
+  if (typeof sha !== "string" || !/^[0-9a-f]{40}$/.test(sha)) {
+    // A push event has no pull_request key at all, which is fine and returns null.
+    // Null covers two shapes a caller must treat the SAME way, so they are not
+    // distinguished: a `push` event, which has no `pull_request` key at all and is normal;
+    // and a `pull_request` payload whose head SHA is missing or malformed. An earlier
+    // revision returned a ternary yielding null on BOTH branches — dead code advertising a
+    // distinction it never implemented, flagged by review. Both mean "no usable head from
+    // the payload"; the CALLER decides what that means, and it refuses to fall back to a
+    // merge ref.
+    return null;
+  }
+  return sha;
+}
+
+/**
  * Which pull request is being checked.
  *
  * A waiver is scoped to one pull request (lib/gate-waiver.mjs), so the number is part of

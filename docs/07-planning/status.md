@@ -1,4 +1,25 @@
-# Status
+# Status — a POINT-IN-TIME SNAPSHOT
+
+> ## ⚠ How to read this file
+>
+> **Snapshot taken:** 2026-09-09
+> **`main` at that moment:** `5270954` (`52709541365a5ea8616a20650ea01f570f768168`)
+> **Stage:** P0 · Foundation — IN PROGRESS
+> **Throttle 1:** SHUT — 4 of 5 conditions met; condition 2 (issue #6 through retrofit S10)
+> is the sole blocker
+>
+> **LIVE pull-request and issue state is NOT in this file and must be read from GitHub:**
+> `gh pr list --state open`, `gh pr view <n>`, `gh issue list --state open`.
+>
+> This file records the state of the repository **at the SHA above**. It is not synchronised
+> when a subagent opens a branch, and it should not be. Enumerating open pull requests here
+> was tried on 2026-09-09 and abandoned: the list went stale within the hour and cost three
+> independent review rounds. **If this file and GitHub disagree about what is open, GitHub is
+> right and this file is simply older.**
+>
+> What this file IS good for: the stage and throttle state, which issues are blocked and
+> why, material decisions taken, and the durable repository and deployment facts — the things
+> that do not change when someone pushes a branch.
 
 **Last updated:** 2026-09-09
 **Current stage:** P0 · Foundation — **IN PROGRESS**
@@ -152,42 +173,69 @@ work gets reported as shipped, so the category is never optional.
   orchestrator; not something this lane may resolve by writing the note itself.
 - A GitHub Project board (project 1, *TaskDesk v2 — P0*) with the six agreed columns.
 
-### IN OPEN PR — real code, not on `main`, do not report as available
+### IN OPEN PR — read this from GitHub, not from here
 
-**None. Every pull request carrying real code has merged.**
+**`gh pr list --state open`.** This section deliberately no longer enumerates open pull
+requests, for the reason given in the header: the enumeration went stale within the hour it
+was written, and correcting it consumed three independent review rounds while further
+branches opened underneath it.
 
-Eight merged on 2026-09-09 — **#64, #62, #65, #67, #19, #68, #63, #69** — on top of #16,
-#21, #57, #60 and #61 earlier. `main` is `5adf25b6`, and its CI is green on all eleven
-required jobs.
+At the snapshot SHA above, what is durably true and worth recording:
 
-A dependabot dependency-bump pull request may be open at any time; those are routine and
-not tracked in this table.
+- **Eleven pull requests merged on 2026-09-09** — #64, #62, #65, #67, #19, #68, #63, #69,
+  #71, #72, #73 — on top of #16, #21, #57, #60 and #61 earlier. That is history and it does
+  not go stale.
+- **Nothing in an open pull request is on `main`.** Do not describe it as available, and do
+  not rebuild it. Check GitHub.
+- **A branch existing releases nothing.** Only a merge releases a dependent retrofit stage,
+  and the dependencies live in the
+  [retrofit stage ledger](retrofits/organization-plugin-retrofit.md).
 
-**Read the two 2026-09-09 decision-log entries before trusting the review state of that
-code.** All eight merged under Thomas's explicit authorisation on the strength of
-independent **Sonnet** review, with the mandatory **Opus** security-review gate **waived**.
-Five of the eight touched security-review-scope paths. No review note was written and no
-independent-review checkbox was ticked, so `check:pr-template` still fails on those two
-blockers — deliberately left out of the required checks so the gate stays visibly red
-rather than quietly satisfied. Thomas's GPT-5.6 Sol and Gemini 3.8 Flash confirmation of
-`main` is the outstanding follow-up.
-
-**Corrected 2026-09-09, twice.** An earlier revision listed #19 alone and called it *"the
-only open code pull request"*, which was false for six of the seven then open. That is
-exactly the failure this file exists to prevent — a snapshot that reads as authoritative
-while describing a repository that no longer exists. Found by an independent review of this
-document against the live repository, not by anyone reading it.
+**The review state of what is on `main` is the part that does not go stale, so read it here.**
+All eleven merged under Thomas's explicit authorisation on the strength of independent
+**Sonnet** review, with the mandatory **Opus** gate **waived**. Five touched
+security-review-scope paths. No review note was written and no independent-review checkbox
+was ticked. **That waiver was given once, for those pull requests, and does not carry
+forward.** Since 2026-09-09 the template/security-review job is the **twelfth required status
+check**, so a pull request can no longer merge without committed review evidence — see the
+newest decision-log entry. Any findings from further security audits of `main`, and their
+remediation status, are tracked as GitHub issues and pull requests — read them there
+(`gh issue list --state open`, `gh pr list --state open`), not here.
 
 ### BLOCKED
 
 - **#8** — the router retrofit still waits for #6's removal surface to settle. **#16's
   deletions have landed**, which is half of it; the retrofit itself has now started
-  moving (S0, S1, S2 and S4 have landed via #57/#65/#67 — S3, S5–S9, S10 remain), but
+  moving (S0, S1, S2 and S4 have landed via #57/#65/#67 — S3, S4b, S5–S9, S10 remain), but
   `organization()` is **still mounted** end to end. Classifying a route that is about to
   be replaced is wasted review and a false sense of coverage, so this stays blocked on the
   full retrofit, not on the deletions alone.
 - **#17** — sessions already minted by the removed MCP OAuth and device flows. Deleting an
   endpoint is not revoking a credential; a consent click created a full 30-day session row.
+- **Retrofit S7 (native role writes) — ⛔ BLOCKED BY #66, and independently by #82.** Not a
+  scheduling preference. #66 is a privilege-restoration fail-open: `hasWorkspacePermission`
+  falls back to the compiled built-in role definitions when a `workspace_role` row is absent,
+  so a role an administrator has *narrowed* — or deleted — silently regains its built-in
+  privileges. S7 writes that exact table. Authoring role writes, and especially role
+  **deletion**, on top of a known fail-open on the row being deleted is how the
+  delete-after-narrow escalation becomes shippable. **Do not author native role-delete routes
+  until #66 is merged and independently cleared.** #82 is a second, independent P0 security
+  blocker on S7: TaskDesk's canonical rule is one workspace membership = exactly one role,
+  and the two authorization surfaces currently disagree on malformed multi-role values — see
+  the decision log. **S7's release condition is #66 cleared AND multi-role (#82) cleared**,
+  each independently reviewed. Check GitHub for both issues' current state (`gh issue view
+  66`, `gh issue view 82`) — do not infer it from this file. When either remediation lands it
+  needs its own independent review before S7 is released.
+- **#31 (P2 workflows) — blocked by AGENTS.md do-not 15.** `docs/03-features/workflows.md`
+  is the subject of a *not-ready* review verdict — the verdict and its 4 High, 4 Medium and
+  2 Low findings live in the review document, not in the spec itself, which has no review
+  section — recorded in
+  `docs/07-planning/reviews/2026-09-05/features-core-servicedesk.md` § 10, and a feature is
+  not started while its review section is non-empty. `check:reviews` enforces it. The
+  domain code exists on a draft pull request — check GitHub for it — and already satisfies three of the
+  review's own recommended fixes, but **the first High is a data-model contradiction —
+  workflows are workspace-scoped while states are project-scoped — that no agent may
+  choose.** It needs Thomas.
 
 ### DECIDED / NOT YET IMPLEMENTED
 
@@ -195,7 +243,7 @@ document against the live repository, not by anyone reading it.
   `main`, because it is load-bearing for workspace creation, invitations, members and
   roles. Load-bearing means it needs a retrofit (S1–S10, #6 work), not that it is kept.
 - **Retrofit S0, S1, S2 and S4 are COMPLETE** and on `main` (#65, #57, #65, #67
-  respectively). **S3, S5–S9 and S10 remain.** Landing S4 did not start S5; each step
+  respectively). **S3, S4b, S5–S9 and S10 remain.** Landing S4 did not start S5; each step
   needs its own scheduling decision, and a green equivalence suite is not permission to
   begin the next one. Native reads and writes exist **alongside** the plugin, which is
   still what the client actually calls (S3 is the client cut-over and has not happened).
@@ -348,7 +396,7 @@ Throttle 1.
 
 **Not next, deliberately:** retrofit **S5**. S4 completing does not start S5 — that needs
 its own scheduling decision, and S5's own precondition is S4, not S3 (S3 gates S8a instead).
-Issue **#6 stays OPEN / In Progress** with S3, S5–S9 and S10 outstanding. **#7 is now
+Issue **#6 stays OPEN / In Progress** with S3, S4b, S5–S9 and S10 outstanding. **#7 is now
 CLOSED** (2026-09-09) — the registry, evaluator, route-coverage gate and the required-
 status-check reconciliation are all done; #6 is the only issue left keeping Throttle 1
 closed.
@@ -429,11 +477,13 @@ during this same reconciliation pass (`updated_at 2026-09-09T06:28:04Z`), closin
 `build`, `registers - env, vocabulary, reviews, skips, overrides`, `route policy coverage +
 permission matrix`, `gate checkers + red probes`, `contract - OpenAPI drift`, `CI matches
 ci-cd.md`, `supply chain - dependency audit`, `supply chain - secret scan`, `helm lint +
-template` — **eleven jobs, and `pull request template + security review` is not one of
-them.** So the exact gap #19 fell through — a security-path pull request merging with its
-review checkbox unticked and no committed note — is **still not mechanically blocked** by
-GitHub after today's ruleset change. "Stops depending on anyone remembering" describes the
-other ten gates now; this one gate still depends on it.
+template` — and, **since later on 2026-09-09, `pull request template + security review` IS
+the twelfth required context**, on Thomas's explicit instruction. So the exact gap #19 fell
+through — a security-path pull request merging with its review checkbox unticked and no
+committed note — **is now mechanically blocked** by GitHub. "Stops depending on anyone
+remembering" describes all twelve gates. **This paragraph said the opposite until it was
+corrected**, which is why it is worth reading the newest decision-log entry rather than this
+file's older prose.
 
 ### Open
 
@@ -528,7 +578,7 @@ and reading it that way would open the throttle while `organization()` is still 
 | | Condition | State |
 | --- | --- | --- |
 | 1 | **#5** complete | ✅ merged as PR #13, closed |
-| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; only **S0, S1, S2 and S4** have landed (#65, #57, #65, #67). S3 (client cut-over off the plugin) and S5–S9/S10 (unmount) remain, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
+| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; only **S0, S1, S2 and S4** have landed (#65, #57, #65, #67). S3, S4b (client workspace-write cutover) and S5–S9/S10 (unmount) remain, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
 | 3 | **#7** complete | ✅ **met — issue closed 2026-09-09** (`closedAt 2026-09-09T06:29:48Z`). #21 put the registry, evaluator and route-coverage gate on `main`; #19 put `pnpm test:permissions` (74 tests) in CI via `check:route-policy` on every push and pull request. The last open clause — both tests **required status checks** — closed when Thomas updated `protect-main` (ruleset `22365005`): `route policy coverage + permission matrix` now sits among 11 entries in `required_status_checks`, `strict_required_status_checks_policy: true`, `current_user_can_bypass: never` (`updated_at 2026-09-09T06:28:04Z`, re-read directly from `gh api repos/.../rulesets/22365005`, not taken from the closing comment's word) |
 | 4 | route coverage **actually executes** in CI | ✅ **met.** `.github/workflows/ci-fast.yml`'s `route-policy` job runs `pnpm check:route-policy` on every push and pull request, and did on `main`'s first gate-enforcing run (`e11976f`, all 11 applicable jobs green) |
 | 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`, 304 tests, 0 failed) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one |

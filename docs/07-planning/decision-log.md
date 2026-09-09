@@ -17,6 +17,118 @@ Newest first.
 
 ---
 
+### 2026-09-09 · Multi-role membership is invalid — one membership, exactly one role, fail closed
+
+**Decision:** **One workspace membership = exactly one role.** Values like `admin,viewer` or
+`owner,admin` are **invalid**. TaskDesk v2 does **not** implement union semantics for
+membership role strings — a membership row either names one known role, or it is malformed.
+Behaviour on a malformed value must **fail closed**.
+
+**Why:** found by an independent review of PR #80 (the #66 fail-open remediation), which
+reproduced it against a real PostgreSQL rather than reasoning about it. `workspace_member.role`
+is an unconstrained `text` column, and the still-mounted better-auth plugin route
+`POST /api/auth/organization/update-member-role` accepts `role` as **either a string or an
+array** and comma-joins an array before persisting. The two authorization surfaces then
+disagree on a comma-joined value: the plugin's own `has-permission` splits on comma and ORs
+the roles (granting whatever any one of them grants), while TaskDesk's `/api/capabilities` →
+`hasWorkspacePermission` does an exact-string lookup and denies everything. Implementing
+comma-splitting to match the plugin was considered and rejected: that would encode a
+union/OR authorization semantic that has never been specified or reviewed, purely to agree
+with an inherited route this project is removing. The chosen fix is to refuse the ambiguity
+outright rather than give it a meaning.
+
+**This is a P0 security blocker for retrofit stage S7** (native role writes reuse the same
+evaluator; if S7 inherits the single-role-string assumption without enforcing it, or ships
+while legacy comma-joined rows exist, the divergence becomes reachable through TaskDesk's own
+surface rather than only the inherited one). **It does not block PR #80** once #80's own
+scope clears — #80 closes the missing/deleted-row fail-open, a narrower and separate defect
+from this one. **S7's release condition is therefore `#80/#66 cleared AND multi-role
+cleared`**, each independently reviewed; neither clearing alone is sufficient.
+
+**Alternatives:** comma-splitting / union semantics to match the plugin — rejected, for the
+reason above. Silently normalising malformed rows at read time instead of failing closed —
+not decided here; it needs its own migration/recovery strategy and is left to the tracked
+scope of the work this decision creates, not invented in this entry.
+
+**Decided by:** Thomas, 2026-09-09. Tracked as issue **#82** (P0 security, blocks S7).
+
+---
+
+### 2026-09-09 · Workspace ownership transfer — owner-only, no sixth policy kind, and explicit step-up debt
+
+**Decision:** Ownership transfer is its own explicit capability, `workspace:transfer_ownership`,
+**owner-only**. No sixth policy kind was added for it — route policy, the permission matrix,
+and effective runtime authority are the same thing, asserted by a policy-layer-only test, not
+a parallel mechanism invented for this one action. The transactional fresh-owner re-read
+inside the transfer endpoint is retained as **race safety** (the acting owner is re-validated
+inside the transaction against a concurrent change), **not** as a substitute for
+authorization — it must not be read as already satisfying the elevation question below.
+
+**And the elevation decision:** ownership transfer genuinely *is* the kind of action that
+should eventually require a fresh, elevated authentication step — it reassigns ultimate
+control of a workspace. But P0 has no step-up mechanism at all, and marking the route
+`elevated: true` today would be a policy flag that no code path enforces. **No decorative
+`elevated: true` that enforces nowhere.** For now, the control is: session-only access
+(not reachable via API key), the owner-only capability above, transactional fresh-owner
+validation for the race case, and this entry as the **explicitly documented temporary
+step-up debt**. When a real step-up mechanism lands, ownership transfer **must** become
+elevated — this is not a closed question, it is a deferred one, recorded so it is not
+rediscovered as a surprise later.
+
+**Why:** an unenforced `elevated: true` is exactly the failure this project's own operating
+principle warns against — a rule that closes a process defect needs a test, not a sentence,
+and a flag nothing checks is worse than no flag, because it reads as protection that is not
+there. Session-only access and the owner-only capability are real, enforced controls
+available today; claiming more than that would misstate what is actually gated.
+
+**Alternatives:** ship `elevated: true` now as a forward-looking marker — rejected, for the
+reason above. Allow `admin` (not only `owner`) to transfer ownership — rejected: ownership
+transfer is the single highest-consequence membership mutation in the workspace, and
+narrower roles already have narrower capabilities everywhere else in the matrix.
+
+**Decided by:** Thomas, 2026-09-09.
+
+---
+
+### 2026-09-09 · The template gate IS required — twelve status checks, superseding this morning's exclusion
+
+**Supersedes** the third bullet of *"`protect-main` requires eleven status checks; the
+template gate is not among them"* (below, same day). That entry said of
+`pull request template + security review`: *"It remains a non-required check, so it fails
+visibly on every pull request without blocking merge."* **Both halves are now false.** The
+entry is not edited — the log is append-only — so this is the correcting record.
+
+**Decision:** `pull request template + security review` is the **twelfth required status
+check** on `protect-main` (`22365005`). Twelve contexts, `strict_required_status_checks_policy:
+true`, zero bypass actors, `current_user_can_bypass: never`. The `deletion`,
+`non_fast_forward` and `pull_request` rules are unchanged. Verified by re-reading the live
+ruleset after the write, and independently re-verified by an Opus reviewer who counted the
+contexts itself.
+
+**Why:** the earlier entry's own reasoning was that requiring it *"would make the mandatory
+Opus security-review gate mechanical, which is what this project exists to do"*, and that
+the choice was **"a policy decision for Thomas, not one an agent should take by configuring
+a ruleset."** Thomas took it, explicitly and in writing, and instructed that it be added.
+That is precisely the event this log exists to record.
+
+**Consequence, stated plainly because it is stronger than it sounds:** the template checker
+treats an unticked independent-review checklist item as a **blocker**, and `CLAUDE.md`'s
+third absolute means it *cannot* be marked `n/a` — only a completed review at the required
+tier closes it. So **no pull request can merge without committed review evidence, including
+a documentation-only one.** The repository's `gate-waiver` mechanism
+(`scripts/ci/lib/gate-waiver.mjs`) binds a waiver to a gate identifier, a pull request and a
+follow-up issue — but it covers the **G1–G13 design gates only** and has no path for the
+review item. That is deliberate and is not to be widened to make autonomous merging easier.
+
+**Alternatives:** leaving it non-required, so the red stayed an honest signal that nothing
+enforced — rejected by Thomas. Weakening the checker so `n/a` could close the review item —
+rejected: that is the "route around a gate" failure this repository exists to refuse.
+
+**Decided by:** Thomas, 2026-09-09, in the Continuous Parallel Execution Directive. Applied
+and verified by the orchestrator.
+
+---
+
 ### 2026-09-09 · `protect-main` requires eleven status checks; the template gate is not among them
 
 **Decision:** the `protect-main` ruleset (`22365005`) now carries a `required_status_checks`

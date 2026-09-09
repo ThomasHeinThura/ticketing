@@ -8,6 +8,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  requireRow,
 } from "./helpers/fixtures";
 
 async function createTaskFixture() {
@@ -15,19 +16,22 @@ async function createTaskFixture() {
   const { project, columns } = await createProjectFixture({
     workspaceId: member.workspace.id,
   });
-  const [task] = await db
-    .insert(schema.taskTable)
-    .values({
-      projectId: project.id,
-      title: "Original title",
-      description: "Activity test task",
-      status: "to-do",
-      columnId: columns.todo.id,
-      priority: "medium",
-      number: 1,
-      position: 1,
-    })
-    .returning();
+  const task = requireRow(
+    await db
+      .insert(schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Original title",
+        description: "Activity test task",
+        status: "to-do",
+        columnId: columns.todo.id,
+        priority: "medium",
+        number: 1,
+        position: 1,
+      })
+      .returning(),
+    "createTaskFixture: task",
+  );
 
   return { member, task };
 }
