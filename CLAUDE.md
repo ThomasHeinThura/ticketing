@@ -91,7 +91,6 @@ fourteen stages landed (S0, S1, S2, S4). **S3 and S5 are in flight** (PRs #76 an
 **S7 is ⛔ BLOCKED BY #66**, a privilege-restoration fail-open on the very table S7 writes.
 Do not re-derive any of this — read the ledger, which states progress as **4 landed of 11
 required** rather than the misleading "4 of 14".
-this — read the ledger.
 
 **What is startable while the throttle is shut**, per the blocking taxonomy: the retrofit
 stages above, further pure `packages/domain` modules, `packages/ui` primitives, CI tooling,
@@ -113,8 +112,8 @@ branch, commit to it, push, open a pull request that says what you did and what 
 do. **Only Thomas merges.**
 
 `main` is protected by the `protect-main` ruleset: a pull request is required, deletion and
-non-fast-forward pushes are blocked, stale approvals are dismissed on push, merges are
-stale approvals are dismissed on push, and — since 2026-09-09 — **twelve status checks are
+non-fast-forward pushes are blocked, stale approvals are dismissed on push, and — since
+2026-09-09 — **twelve status checks are
 required**, with strict up-to-date enforcement and **zero bypass actors**
 (`current_user_can_bypass: never`). Until that day it required **no status checks at all**.
 

@@ -463,11 +463,13 @@ during this same reconciliation pass (`updated_at 2026-09-09T06:28:04Z`), closin
 `build`, `registers - env, vocabulary, reviews, skips, overrides`, `route policy coverage +
 permission matrix`, `gate checkers + red probes`, `contract - OpenAPI drift`, `CI matches
 ci-cd.md`, `supply chain - dependency audit`, `supply chain - secret scan`, `helm lint +
-template` — **eleven jobs, and `pull request template + security review` is not one of
-them.** So the exact gap #19 fell through — a security-path pull request merging with its
-review checkbox unticked and no committed note — is **still not mechanically blocked** by
-GitHub after today's ruleset change. "Stops depending on anyone remembering" describes the
-other ten gates now; this one gate still depends on it.
+template` — and, **since later on 2026-09-09, `pull request template + security review` IS
+the twelfth required context**, on Thomas's explicit instruction. So the exact gap #19 fell
+through — a security-path pull request merging with its review checkbox unticked and no
+committed note — **is now mechanically blocked** by GitHub. "Stops depending on anyone
+remembering" describes all twelve gates. **This paragraph said the opposite until it was
+corrected**, which is why it is worth reading the newest decision-log entry rather than this
+file's older prose.
 
 ### Open
 

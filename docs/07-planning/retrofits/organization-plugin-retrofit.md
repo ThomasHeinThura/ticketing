@@ -37,7 +37,7 @@ it understates how close S10 is. State it in four buckets instead:
 | **Landed** | S0, S1, S2, S4 | **4** |
 | **Required to reach S10, outstanding** | S3, S5, S6a, S7, S8a, S9, S10 | **7** |
 | **Deferred outside P0** | S6b, S8b | 2 — do **not** count these against Throttle 1 |
-| **Separately owned** | S11 | 1 — belongs to #7 / Lane B, **never** folded into this retrofit |
+| **Separately owned — but its owner is CLOSED** | S11 | 1 — **not** this retrofit's, and **#7 is closed**, so S11 currently has no owner. See the S11 row. Never fold it into #6 to make the ledger tidy |
 
 So the live figure is **4 landed of 11 required**, with **7 outstanding**, and S10 last
 because everything else feeds it.
@@ -332,7 +332,7 @@ Grounded in `docs/01-architecture/data-model.md:98-118` and `docs/01-architectur
 
 ### 2.2 Legend
 
-`IMPL` already implemented in TaskDesk · `PART` partially implemented · `MISS` missing · `MIG` needs data migration · `ROUTE` needs route replacement · `TEST` needs behaviour test · `CONTRACT` needs shared-contract change (**owned by #7 / Lane B — do not invent here**)
+`IMPL` already implemented in TaskDesk · `PART` partially implemented · `MISS` missing · `MIG` needs data migration · `ROUTE` needs route replacement · `TEST` needs behaviour test · `CONTRACT` needs shared-contract change (**owned by #7 / Lane B (now CLOSED — see the S11 row; this work is currently UNOWNED) — do not invent here**)
 
 Exactly one mark per responsibility, per the brief; where a second consideration matters it is stated in the note rather than as a second mark.
 
@@ -526,9 +526,9 @@ The independent instrument that closed the S1 gate is **PR #57 review [`pullrequ
 | **S8b — rename the column back** *(defer out of P0)* | `active_organization_id → active_workspace_id`, reversing `apps/api/src/utils/migrate-session-column.ts`. | S8a and the plugin fully unmounted. | — | **Yes**. Also lets `migrate-session-column.ts` be deleted. Not worth a migration number during P0. |
 | **S9 — teams decision** | Confirm nothing in `apps/web/src` reaches teams (the sweep found no caller), then drop `teams: { enabled: true, ... }` (`auth.ts:287-291`) and the nine team routes. **Keep the `team` / `team_member` tables** — dropping them is a migration and the target model still wants them (`data-model.md:113-114`). | An explicit confirmation that no client or integration reaches teams. | Suite green; a grep-based assertion that no `/organization/*team*` route is referenced. | No |
 | **S10 — unmount (the tripwire commit)** | Remove `organization()` (`auth.ts:269-445`) and its imports (`auth.ts:27,28`). Remove the six plugin-only adapter entries (`auth.ts:165-170`) and the aliases (`schema.ts:895-900`). Remove `organizationClient()` (`apps/web/src/lib/auth-client.ts:11,35-49`). Delete `apps/api/src/auth-openapi.ts` (1175 lines) and its registration (`index.ts:15,376`). Update `tests/api-integration/openapi.test.ts:71` to expect `POST /workspace` instead of `POST /auth/organization/create`. | S3–S9 all merged; nothing references `authClient.organization` or `/organization/*`. | Full suite; a grep gate asserting zero occurrences of `authClient.organization` in `apps/web/src` and zero `/organization/` in `apps/api/src`. | No |
-| **S11 — cut the last better-auth AC dependency** | `packages/permissions/src/index.ts:1-7` still imports `createAccessControl`, `defaultStatements`, `memberAc`, `adminAc`, `ownerAc` from `better-auth/plugins/organization/access`. | — | — | **#7 / Lane B — do NOT do this here.** Removing `organization()` from `auth.ts` does not remove this import; the package keeps compiling and working. |
+| **S11 — cut the last better-auth AC dependency** | `packages/permissions/src/index.ts:1-7` still imports `createAccessControl`, `defaultStatements`, `memberAc`, `adminAc`, `ownerAc` from `better-auth/plugins/organization/access`. | — | — | **NOT this retrofit's — and #7, its former owner, is CLOSED, so it is currently UNOWNED.** Removing `organization()` from `auth.ts` does not remove this import; the package keeps compiling and working. |
 
-### 3.1 Shared-contract changes — owned by #7 / Lane B, not to be invented here
+### 3.1 Shared-contract changes — NOT this retrofit's, and #7 (their former owner) is closed
 
 Anything in this list must be *requested* of #7, not authored in this lane:
 
