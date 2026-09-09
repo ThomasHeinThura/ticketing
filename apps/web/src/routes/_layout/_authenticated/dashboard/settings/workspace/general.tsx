@@ -65,27 +65,15 @@ function normalizeWorkspaceValues(
   };
 }
 
-/** Better Auth persists description as an organization additional field (DB column), not only inside metadata. */
+// S3 (issue #6, retrofit plan §3): `workspace` here now comes from the
+// native GET /api/workspace list (apps/api/src/workspace/response.ts's
+// workspaceSummarySchema), where `description` is always a plain column --
+// there is no metadata-fallback case left to handle (that was a better-auth
+// `additionalFields` quirk on the plugin's own return shape).
 function getWorkspaceDescription(
-  workspace:
-    | { description?: string | null; metadata?: unknown }
-    | null
-    | undefined,
+  workspace: { description?: string | null } | null | undefined,
 ): string {
-  if (!workspace) return "";
-  if (typeof workspace.description === "string") {
-    return workspace.description;
-  }
-  if (
-    typeof workspace.metadata === "object" &&
-    workspace.metadata &&
-    "description" in workspace.metadata
-  ) {
-    return String(
-      (workspace.metadata as { description?: unknown }).description ?? "",
-    );
-  }
-  return "";
+  return workspace?.description ?? "";
 }
 
 function RouteComponent() {
@@ -130,10 +118,25 @@ function RouteComponent() {
 
   // Ownership transfer is owner-only. Eligible recipients are any current
   // member who isn't the owner themselves.
+  //
+  // S3 (issue #6, retrofit plan §3) defect, not fixed here -- see the S3
+  // report: `useTransferWorkspaceOwnership` still calls the better-auth
+  // plugin's `updateMemberRole` twice (promote + demote), which each require
+  // the PLUGIN's own `workspace_member.id` row (verified against
+  // node_modules/better-auth/dist/plugins/organization/routes/
+  // crud-members.mjs:216,289 -- `findMemberById(ctx.body.memberId)`). The
+  // native GET /api/workspace/{id} member list this page now reads
+  // (apps/api/src/workspace/controllers/get-workspace-members.ts) has no
+  // such id -- its `id` field is the user's own id, and there is no longer
+  // any client read that returns the plugin's row id. Passing it would 400
+  // MEMBER_NOT_FOUND on every attempt, so the picker below still renders
+  // (informational) but the actual transfer action is force-disabled until
+  // S5 (native membership writes) ships an id scheme this can use safely.
+  const canTransferOwnership = false;
   const members = fullWorkspace?.members ?? [];
   const currentOwnerMember = members.find((m) => m.role === "owner");
   const eligibleNewOwners = members.filter(
-    (m) => m.role !== "owner" && m.userId !== currentUser?.id,
+    (m) => m.role !== "owner" && m.id !== currentUser?.id,
   );
   const selectedMember = eligibleNewOwners.find(
     (m) => m.id === selectedNewOwnerId,
@@ -228,7 +231,16 @@ function RouteComponent() {
   );
 
   const handleTransferOwnership = useCallback(async () => {
-    if (!workspace?.id || !currentOwnerMember || !selectedMember) return;
+    // Defense-in-depth: the trigger button and confirm action are both
+    // already disabled by !canTransferOwnership (see its declaration above),
+    // but refuse here too in case this is ever wired up without that guard.
+    if (
+      !canTransferOwnership ||
+      !workspace?.id ||
+      !currentOwnerMember ||
+      !selectedMember
+    )
+      return;
 
     try {
       await transferOwnership({
@@ -462,15 +474,14 @@ function RouteComponent() {
                         )}
                       >
                         {selectedMember
-                          ? selectedMember.user.name ||
-                            selectedMember.user.email
+                          ? selectedMember.name || selectedMember.email
                           : null}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {eligibleNewOwners.map((m) => (
                         <SelectItem key={m.id} value={m.id}>
-                          {m.user.name} ({m.user.email})
+                          {m.name} ({m.email})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -479,7 +490,11 @@ function RouteComponent() {
                     variant="outline"
                     size="sm"
                     type="button"
-                    disabled={!selectedNewOwnerId || isTransferring}
+                    disabled={
+                      !canTransferOwnership ||
+                      !selectedNewOwnerId ||
+                      isTransferring
+                    }
                     onClick={() => setIsTransferModalOpen(true)}
                   >
                     {t("settings:workspaceGeneral.transferOwnership.button", {
@@ -544,10 +559,7 @@ function RouteComponent() {
                   {
                     defaultValue:
                       "{{name}} will become the sole owner of {{workspace}}. You'll keep admin access but lose owner-only abilities like deleting the workspace or transferring it again.",
-                    name:
-                      selectedMember?.user.name ||
-                      selectedMember?.user.email ||
-                      "",
+                    name: selectedMember?.name || selectedMember?.email || "",
                     workspace: workspace?.name ?? "",
                   },
                 )}
@@ -569,7 +581,7 @@ function RouteComponent() {
                 render={
                   <Button
                     size="sm"
-                    disabled={isTransferring}
+                    disabled={!canTransferOwnership || isTransferring}
                     onClick={handleTransferOwnership}
                   />
                 }
