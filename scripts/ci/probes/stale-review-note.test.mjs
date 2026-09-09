@@ -19,6 +19,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
 import { after, describe, it } from "node:test";
 import { repoRoot } from "../lib/repo.mjs";
 import {
@@ -651,5 +652,139 @@ describe("GPT-F6 — merge attribution may not use combined-diff semantics", () 
        ));`,
     );
     assert.deepEqual(measured, [[]]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The merge-ref binding. This one is not a hypothetical: the control was
+// UNSATISFIABLE in CI until it was fixed, and this probe is what refuses the
+// regression.
+//
+// GitHub checks a pull request out at `refs/pull/N/merge` — a SYNTHETIC MERGE
+// of the branch into the base. So in CI `HEAD` is not any commit the author
+// pushed, and it has two parents. `commitsBetween` attributes a merge commit's
+// paths against EVERY parent (deliberately — see lib/git-baseline.mjs), so
+// diffing that synthetic merge against its BASE parent yields the branch's
+// entire diff. Every reviewed file then reads as "landed after the reviewed
+// head", and the note is declared stale no matter what it says.
+//
+// Measured on the real PR #81 before the fix: against the pushed branch head
+// the range was `outside=0`; against the synthetic merge, `outside=4`, listing
+// the branch's own reviewed code. A required check that can never go green is
+// not strict — it is broken, and a permanently red gate is one nobody can tell
+// apart from a real finding.
+// ---------------------------------------------------------------------------
+
+describe("the note binds to the pull request's head, not to the merge ref", () => {
+  /** Reviewed code, then a note-only commit, then GitHub's synthetic merge. */
+  function mergeRefScenario() {
+    const { dir, base, h1 } = reviewedScenario();
+    write(dir, NOTE_PATH, note([h1]));
+    const noteHead = commit(
+      dir,
+      "docs: commit the security-review note for H1",
+    );
+    // Exactly the shape of refs/pull/N/merge: base first, branch head second.
+    const tree = git(dir, ["rev-parse", `${noteHead}^{tree}`]).trim();
+    const mergeRef = git(dir, [
+      "commit-tree",
+      "-p",
+      base,
+      "-p",
+      noteHead,
+      "-m",
+      "Merge pull request",
+      tree,
+    ]).trim();
+    // Detach onto it, exactly as actions/checkout leaves a pull-request build.
+    git(dir, ["checkout", "--quiet", mergeRef]);
+    return { dir, noteHead, mergeRef };
+  }
+
+  function eventPayload(dir, headSha) {
+    const file = `${dir}/event.json`;
+    writeFileSync(
+      file,
+      JSON.stringify({ pull_request: { number: 19, head: { sha: headSha } } }),
+    );
+    return file;
+  }
+
+  it("REPRODUCES the defect: on the merge ref with no payload, the note reads STALE", () => {
+    // The non-vacuity control, and the historical bug. Without a payload the checker
+    // falls back to HEAD — which here IS the synthetic merge — and the branch's own
+    // reviewed code is attributed as having landed after the review. If this ever stops
+    // failing, the hazard is gone and this probe is decoration: delete it rather than
+    // leave it passing over nothing.
+    const { dir } = mergeRefScenario();
+    const run = runChecker(dir, "check-pr-template.mjs", [
+      "--body",
+      bodyWithNote(),
+    ]);
+    assert.notEqual(run.status, 0);
+    assert.match(
+      `${run.stdout}${run.stderr}`,
+      /is STALE/,
+      "the merge ref must still look stale without a payload — that is the defect the " +
+        "payload lookup exists to route around",
+    );
+  });
+
+  it("end to end: HEAD is the merge ref, the payload names the real head, and the gate PASSES", () => {
+    const { dir, noteHead } = mergeRefScenario();
+    const run = runChecker(
+      dir,
+      "check-pr-template.mjs",
+      ["--body", bodyWithNote()],
+      { GITHUB_EVENT_PATH: eventPayload(dir, noteHead) },
+    );
+    const output = `${run.stdout}${run.stderr}`;
+    assert.doesNotMatch(
+      output,
+      /ENOENT|SyntaxError|Cannot find module/,
+      "the gate must pass or fail on its own logic, not on a broken scratch repo",
+    );
+    assert.equal(
+      run.status,
+      0,
+      "the note is bound to the pushed head and only the note landed after it, so the " +
+        `gate must pass. Output:\n${output}`,
+    );
+    assert.match(output, /is bound to reviewed head/);
+  });
+
+  it("still refuses a genuinely stale note even when the payload is present", () => {
+    // The payload must not become a way around the rule. Code that lands AFTER the
+    // reviewed head is still code the reviewer never read, whatever HEAD is.
+    const { dir } = mergeRefScenario();
+    git(dir, ["checkout", "--quiet", "-B", "probe-branch"]);
+    write(dir, "apps/api/src/auth.ts", "export const secret = 3;\n");
+    const afterCode = commit(dir, "feat: land code after the review");
+    const run = runChecker(
+      dir,
+      "check-pr-template.mjs",
+      ["--body", bodyWithNote()],
+      { GITHUB_EVENT_PATH: eventPayload(dir, afterCode) },
+    );
+    assert.notEqual(run.status, 0);
+    assert.match(`${run.stdout}${run.stderr}`, /is STALE/);
+  });
+
+  it("fails CLOSED when the payload is named but unreadable", () => {
+    // Silently falling back to HEAD would re-bind to the merge ref and resurrect the
+    // unsatisfiable gate, so an unreadable payload must be loud.
+    const { dir } = mergeRefScenario();
+    const run = runChecker(
+      dir,
+      "check-pr-template.mjs",
+      ["--body", bodyWithNote()],
+      { GITHUB_EVENT_PATH: `${dir}/does-not-exist.json` },
+    );
+    assert.notEqual(run.status, 0);
+    assert.match(
+      `${run.stdout}${run.stderr}`,
+      /Could not read the event payload|Refusing to fall back/,
+      "an unreadable payload must be reported, not swallowed",
+    );
   });
 });

@@ -49,6 +49,7 @@ import {
   declaredState,
   field,
   loadBody,
+  loadPullRequestHead,
   loadPullRequestNumber,
   normaliseHeading,
   sections,
@@ -388,9 +389,18 @@ async function main() {
       // since. See lib/security-review-note.mjs for the four rules and why prose SHAs
       // are not parsed.
       try {
+        // Bind to the pull request's OWN head, not `HEAD`. In CI `HEAD` is
+        // `refs/pull/N/merge`, a synthetic merge whose base-side diff re-expresses the
+        // whole branch as "landed after the reviewed head" — see
+        // lib/pr-body.mjs § loadPullRequestHead. Falls back to `HEAD` only where that
+        // genuinely IS the branch head (local runs, push events).
+        const prHead = await loadPullRequestHead({
+          eventPath: process.env.GITHUB_EVENT_PATH,
+        });
         const binding = reviewBinding({
           notePath: note[0],
           noteSource: await readText(path.join(repoRoot, note[0])),
+          ...(prHead === null ? {} : { head: prHead }),
         });
         if (binding.kind === "unbound") {
           failures.push(violation("## Security review", binding.reason));
