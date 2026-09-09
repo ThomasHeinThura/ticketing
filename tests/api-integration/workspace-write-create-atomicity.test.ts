@@ -133,7 +133,7 @@ afterEach(async () => {
   armedTables.clear();
 });
 
-describe("S4 native create is atomic with its default-role seed (A2-P6..A2-P10)", () => {
+describe("S4 native create is atomic with its default-role seed (A2-P6..A2-P10, A2-P24)", () => {
   it("A2-P6 rolls the ENTIRE creation back when default-role seeding fails — no workspace, member, team, team_member or session state survives", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
@@ -313,7 +313,14 @@ describe("S4 native create is atomic with its default-role seed (A2-P6..A2-P10)"
     expect(workspaces).toHaveLength(5);
   });
 
-  it("A2-P9 rolls back when the seed's READ fails, not only its INSERT — the case a BEFORE INSERT trigger cannot reach", async () => {
+  it("A2-P24 rolls back when the seed's READ fails, not only its INSERT — the case a BEFORE INSERT trigger cannot reach", async () => {
+    // A2-P24, a NEW probe id rather than a reuse of A2-P9. `A2-P*` labels a
+    // requirement, not a test -- several tests may legitimately share one
+    // (A2-P17 labels four, and the decision log cites it by that name). But
+    // A2-P9 is "a retry after the failure clears produces exactly ONE complete
+    // workspace", which is a different requirement from this one, so carrying
+    // its id here would claim coverage this test does not provide. A2-P23 was
+    // the highest id in use across `tests/`; this takes the next free one.
     // Found by an independent review of the first version of the #66 fix.
     // That version put the compensating delete around the seed INSERT only,
     // leaving the pre-check SELECT outside it. So a connection drop, timeout
