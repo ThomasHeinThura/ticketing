@@ -39,9 +39,14 @@
  *             section: any backticked, lowercase, dot-namespaced token anywhere in
  *             events.md counts as "declared", including a field or column name the
  *             document happens to backtick that is not an event key at all. Measured on
- *             the tree today, `actor.type`, `outbox.kind`, `approval.state` and
- *             `notification_preference.event_kind` are four such tokens — a
- *             `publishEvent(...)` call using one of those names would pass this check
+ *             the tree today, at least SIX tokens are publishable this way, not four:
+ *             `actor.type`, `outbox.kind`, `approval.state` and
+ *             `notification_preference.event_kind` are field/column names; worse,
+ *             `mention.in_comment` and `work_item.field_changed` are event-key-shaped
+ *             names events.md backticks only to DISOWN — the former as the retired
+ *             predecessor `work_item.mentioned` replaced, the latter in bold as "not a
+ *             key; it is `work_item.updated` with a condition on `changes[].field`". A
+ *             `publishEvent(...)` call using any of these six names would pass this check
  *             without ever being genuinely registered as an event (round 1's LOW 8,
  *             unfixed). The fix is a section-scoped parse — the current-canon Catalogue
  *             and the inherited-compatibility section only — rather than a whole-file
