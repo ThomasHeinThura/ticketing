@@ -421,24 +421,34 @@ function itemMarkedNotApplicable(line) {
   if (!opener) {
     return false; // the clause opens with something other than n/a — including a negation
   }
-  // The reason must be SIX VISIBLE CHARACTERS. Stripping `INVISIBLE` here is
-  // the fix for the hole the independent Opus review of #89 found: the length
-  // test counted raw code points, so `n/a` followed by six U+200B zero-width
-  // spaces satisfied it while rendering on GitHub byte-identically to a bare
-  // `n/a`, which must fail. Fifteen of the seventeen blank-rendering
+  // The reason must contain SIX MEANINGFUL CHARACTERS. Stripping `INVISIBLE` here
+  // is the fix for the first hole the independent Opus review of #89 found: the
+  // length test counted raw code points, so `n/a` followed by six U+200B
+  // zero-width spaces satisfied it while rendering on GitHub byte-identically to
+  // a bare `n/a`, which must fail. Fifteen of the seventeen blank-rendering
   // characters in `INVISIBLE` worked; only U+FEFF and U+3000 were caught, and
   // then only incidentally by `trim()`. This is the F13/L6 defect class
-  // reappearing one level down, so it is closed with the SAME class the rest
-  // of this file already uses for emptiness rather than with a second list.
+  // reappearing one level down, so it is closed with the SAME class the rest of
+  // this file already uses for emptiness rather than with a second list.
   //
-  // `!` and `?` join the punctuation strip for the same reason: `n/a ??????`
-  // is not a reason either.
-  const remainder = clause
-    .slice(opener[0].length)
-    .replace(INVISIBLE, "")
-    .replace(/^[\s.,:;!?—–`'"-]+/, "")
-    .trim();
-  return remainder.length >= 6; // six VISIBLE characters, not six code points
+  // The SAME review found a second hole in the fix for the first one: an
+  // enumerated punctuation strip (`.,:;!?—–`'"-`) closed the four spellings the
+  // paired test tried and left the family open — `n/a ******`, `n/a ______`,
+  // and sixteen more single-symbol pads all still excused a required checkbox,
+  // because none of those symbols was on the list either. Rather than adding a
+  // fifth, sixth and n-th spelling to a list that will always be missing the
+  // next one, the reason is now a PROPERTY: it must contain at least six
+  // characters that are `\p{L}` (a letter, any script) or `\p{N}` (a digit) —
+  // not "not on the strip list", but "actually a word or a number". Punctuation
+  // and symbol characters are never in either class, so a reason made only of
+  // them is never sufficient, however it is spelled, without maintaining a
+  // second list of the ones that fail. The count is taken from the string with
+  // `INVISIBLE` already removed so a blank-rendering Hangul filler — itself
+  // `\p{L}` (see `INVISIBLE`'s own doc comment) — cannot be counted as a letter
+  // and reopen the F13/L6 hole this same fix relies on `INVISIBLE` to close.
+  const remainder = clause.slice(opener[0].length).replace(INVISIBLE, "");
+  const meaningfulChars = (remainder.match(/[\p{L}\p{N}]/gu) ?? []).length;
+  return meaningfulChars >= 6; // six letters-or-digits, not six characters of any kind
 }
 
 /**

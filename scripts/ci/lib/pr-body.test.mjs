@@ -309,16 +309,84 @@ describe("checklistProblems — applicability is per ITEM, not per block", () =>
     );
   });
 
-  it("HIGH 1b — punctuation is not a reason either", () => {
-    for (const pad of ["??????", "!!!!!!", "......", "------"]) {
+  it("HIGH 1b — punctuation is not a reason either, and neither is any OTHER symbol (2026-09-09)", () => {
+    // The first fix here closed exactly four spellings — an enumerated strip class
+    // — and an independent Opus review of #89 found the family still open: 18 of
+    // 18 untested punctuation and symbol pads it tried were still EXCUSED, because
+    // none of the 18 was on the list either. `n/a ******` satisfied a REQUIRED
+    // checkbox with no visible reason at all.
+    //
+    // The fix is a property (six `\p{L}`/`\p{N}` characters), not a longer list, so
+    // this test proves the family rather than re-testing four more spellings: the
+    // original four, PLUS the review's own 18, PLUS every printable ASCII symbol
+    // that is neither a letter nor a digit — one assertion per character, so a
+    // single symbol slipping through fails on its own line rather than being
+    // averaged away inside a loop.
+    const originalFour = ["??????", "!!!!!!", "......", "------"];
+    const reviewsEighteen = [
+      "******",
+      "______",
+      "~~~~~~",
+      "++++++",
+      "//////",
+      ">>>>>>",
+      "((((((",
+      "======",
+      "^^^^^^",
+      "||||||",
+      "&&&&&&",
+      "%%%%%%",
+      "######",
+      "$$$$$$",
+      "@@@@@@",
+      "\\\\\\\\\\\\",
+      "[[[[[[",
+      "{{{{{{",
+    ];
+    const everyAsciiSymbol = [];
+    for (let code = 0x21; code <= 0x7e; code += 1) {
+      const ch = String.fromCharCode(code);
+      if (/[\p{L}\p{N}]/u.test(ch)) continue; // letters and digits are real reasons
+      everyAsciiSymbol.push(ch.repeat(6));
+    }
+    // Non-vacuity: the ASCII sweep above must actually find symbol characters to
+    // pad with, or the loop below asserts nothing.
+    assert.ok(
+      everyAsciiSymbol.length > 20,
+      `ASCII symbol sweep found only ${everyAsciiSymbol.length} candidates`,
+    );
+
+    for (const pad of [
+      ...originalFour,
+      ...reviewsEighteen,
+      ...everyAsciiSymbol,
+    ]) {
       assert.equal(
         checklistProblems(
           `### Backend change\n\n- [ ] Route policies — n/a ${pad}\n`,
         ).length,
         1,
-        `n/a followed by ${pad} must NOT be excused`,
+        `n/a followed by ${JSON.stringify(pad)} must NOT be excused`,
       );
     }
+
+    // The paired control, same as HIGH 1's: a real reason of comparable length is
+    // still excused, so closing the family did not make every n/a fail.
+    assert.deepEqual(
+      checklistProblems(
+        "### Backend change\n\n- [ ] Route policies — n/a, this change adds no route\n",
+      ),
+      [],
+    );
+
+    // And the independent-review item stays NOT bypassable by any of these shapes
+    // either — the review verified this explicitly and asked that it stay true.
+    assert.equal(
+      checklistProblems(
+        "### Backend change\n\n- [ ] Independent security review — n/a ******\n",
+      ).length,
+      1,
+    );
   });
 
   it("HIGH 2 — a GFM task list written with * or + is enforced, not skipped", () => {
