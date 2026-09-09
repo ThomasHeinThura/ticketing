@@ -1,6 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
 import { client } from "@taskdesk/libs";
-import { refreshWorkspaceStores } from "@/lib/utils/refresh-workspace-stores";
 
 type UpdateWorkspaceRequest = {
   workspaceId: string;
@@ -71,10 +70,6 @@ function useUpdateWorkspace() {
         const error = await response.text();
         throw new Error(error || "Failed to update workspace");
       }
-
-      // S4b: the native route hits no plugin path, so the plugin's own
-      // atomListeners never fire and the displayed name goes stale.
-      refreshWorkspaceStores();
 
       return await response.json();
     },
