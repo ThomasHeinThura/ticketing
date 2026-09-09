@@ -186,3 +186,28 @@ export async function inviteAndAcceptAsNewMember(
 
   return member;
 }
+
+/**
+ * Drives the still-mounted plugin route `POST
+ * /api/auth/organization/update-member-role` (better-auth's
+ * `crud-members.mjs`, `updateMemberRoleBodySchema` at line 215) exactly as
+ * an admin/owner client would. `role` is typed as `string | string[]`
+ * deliberately -- the body schema accepts
+ * `z.union([z.string(), z.array(z.string())])`, and it is the array shape
+ * that lets a caller ask for more than one role at once (issue #82). This
+ * returns the raw `Response` so callers can assert on status as well as on
+ * the `workspace_member` row the route writes.
+ */
+export async function updateMemberRoleViaPlugin(
+  app: App,
+  actingCookie: string,
+  organizationId: string,
+  memberId: string,
+  role: string | string[],
+): Promise<Response> {
+  return app.request("/api/auth/organization/update-member-role", {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie: actingCookie },
+    body: JSON.stringify({ organizationId, memberId, role }),
+  });
+}
