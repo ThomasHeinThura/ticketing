@@ -311,22 +311,39 @@ describe("S4 native writes: cross-workspace and role boundaries (A2-P11..A2-P15)
     expect(row?.name).toBe("Before Narrowing");
   });
 
-  // A2-P15. Issue #66, PINNED, NOT FIXED — and deliberately not weakened.
+  // A2-P15 — PINNED OPEN DEBT. Issue #66 is OPEN and lives in
+  // `hasWorkspacePermission`, a SHARED authorization file this lane does not
+  // own (AGENTS.md shared-contract ownership) — this lane may not fix it.
   //
-  // Deleting the narrowed row restores the COMPILED admin definition through
-  // `hasWorkspacePermission`'s documented fallback, so a narrowing can be
-  // undone by a delete. That is the escalation #66 describes, and its second
-  // ordered fix ("remove the fail-open fallback, or replace it with a
-  // fail-closed / explicit recovery mechanism") is blocked behind S7 and
-  // explicitly out of this batch's scope.
+  // A test that asserts an escalation is a test that protects it — the
+  // sharper lesson this batch already learned and closed for A2-P17 (below),
+  // which used to assert 200 for a viewer-who-is-instance-admin until the
+  // bypass it measured was closed. This case pins the SAME shape of defect
+  // in code this lane does not own, so it cannot close it the same way — but
+  // it must not read as an assertion that the defect is correct behaviour.
+  //
+  // THE DEFECT: `hasWorkspacePermission` falls back to the COMPILED static
+  // role definitions whenever a `workspace_role` DB row is absent, and
+  // `admin`'s compiled definition diverges from the seeded DB row on 16 of
+  // 16 capabilities. Deleting the narrowed admin row therefore silently
+  // RESTORES full compiled admin authority — a narrowing undone by a delete.
+  // #66's second ordered fix ("remove the fail-open fallback, or replace it
+  // with a fail-closed / explicit recovery mechanism") is blocked behind S7
+  // and is explicitly out of this batch's scope.
   //
   // What S4 DOES change is the supply: after this batch, no native create can
   // produce this state, because the seed is inside the create transaction
   // (see workspace-write-create-atomicity.test.ts). Reaching it still needs
-  // raw database access, exactly as #65 measured. This test asserts the
-  // CURRENT behaviour so the day it is fixed, it fails here and is read
-  // rather than silently absorbed.
-  it("A2-P15 FINDING (#66, unfixed here): deleting the narrowed admin row restores compiled admin authority", async () => {
+  // raw database access, exactly as #65 measured.
+  //
+  // THE ASSERTION BELOW IS THE CURRENT (DEFECTIVE) VALUE, NOT THE CORRECT
+  // ONE. The expected value AFTER #66 closes is 403 (a refusal) — the moment
+  // the fail-open fallback is removed or made fail-closed, this test FAILS
+  // LOUDLY here ("expected 200, received 403"), and that failure is the
+  // signal: update the assertion to `403` in the SAME commit that closes
+  // #66. Leaving it at 200 past that point would turn this test from a
+  // pin into a guard for the escalation.
+  it("A2-P15 PINNED (#66 OPEN, not this lane's to fix): deleting the narrowed admin row currently re-escalates via the compiled-role fallback — must become 403 when #66 closes", async () => {
     const { app } = createApp();
     await bootstrapInstanceAdmin(app);
     const owner = await signUpUser(app);
@@ -364,9 +381,12 @@ describe("S4 native writes: cross-workspace and role boundaries (A2-P11..A2-P15)
       workspaceId,
       { name: "Escalated" },
     );
-    // 200 is the DEFECT, asserted so it cannot drift unnoticed. When #66's
-    // second step lands this becomes 403 and this expectation must be
-    // updated in the same commit, with #66 closed.
+    // CURRENT (DEFECTIVE) VALUE — pinned open debt, issue #66, not this
+    // lane's to fix. This is NOT an assertion that 200 is correct behaviour;
+    // it is the reproduction, kept green so the escalation stays visible
+    // instead of silently fixed-and-forgotten or silently protected.
+    // EXPECTED VALUE AFTER #66 CLOSES: 403. Change this line to
+    // `.toBe(403)` in the SAME commit that closes #66.
     expect(afterDelete.status).toBe(200);
   });
 });

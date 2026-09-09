@@ -120,3 +120,73 @@ describe("session-only enforcement on the S2 native read routes", () => {
     });
   }
 });
+
+/**
+ * Session-only enforcement on `GET /api/workspace/{workspaceId}/members` —
+ * the one sibling of the four S2 native reads above that shipped with no
+ * `requireSessionOnly()` guard at all, closed as a follow-up finding.
+ *
+ * This route is deliberately kept SEPARATE from the `describe` block above:
+ * it is pre-existing inherited surface awaiting issue #8's classification
+ * (`apps/api/src/workspace/policy.ts` documents it as deliberately absent
+ * from the policy registry, and it remains listed, unmodified, in
+ * `tests/permissions/inherited-uncovered.json`), not one of the four native
+ * S2 reads that policy file already covers. The middleware fix is runtime
+ * enforcement only — identical in mechanism to the four cases above — and
+ * does not declare a route policy.
+ *
+ * Membership data is exactly what the 2026-09-08 decision names: a native
+ * route that replaces a better-auth `organization()` route must not let a
+ * personal API key reach workspace, membership, invitation or capability
+ * data. `enableSessionForAPIKeys: false` made `/organization/*` session-only
+ * for the plugin this route replaces; without this guard the retrofit
+ * silently widened reach relative to what it replaced (retrofit plan risk
+ * R10).
+ */
+describe("session-only enforcement on GET /api/workspace/{workspaceId}/members", () => {
+  const path = (workspaceId: string) => `/api/workspace/${workspaceId}/members`;
+
+  it("refuses a valid API key with 403, never 200", async () => {
+    const { user, workspace } = await createWorkspaceMember({
+      role: "owner",
+    });
+    const rawKey = await insertApiKeyFor(user.id);
+    const { app } = createApp();
+
+    const response = await app.request(path(workspace.id), {
+      headers: { "x-api-key": rawKey },
+    });
+
+    expect(response.status).toBe(403);
+    const body = await response.text();
+    expect(body.toLowerCase()).toContain("session_required");
+  });
+
+  it("refuses the same valid API key presented as a Bearer token", async () => {
+    const { user, workspace } = await createWorkspaceMember({
+      role: "owner",
+    });
+    const rawKey = await insertApiKeyFor(user.id);
+    const { app } = createApp();
+
+    const response = await app.request(path(workspace.id), {
+      headers: { Authorization: `Bearer ${rawKey}` },
+    });
+
+    expect(response.status).toBe(403);
+    const body = await response.text();
+    expect(body.toLowerCase()).toContain("session_required");
+  });
+
+  it("accepts a genuine browser session", async () => {
+    const { user, workspace } = await createWorkspaceMember({
+      role: "owner",
+    });
+    mockAuthenticatedSession(user);
+    const { app } = createApp();
+
+    const response = await app.request(path(workspace.id));
+
+    expect(response.status).toBe(200);
+  });
+});

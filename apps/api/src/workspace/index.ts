@@ -81,7 +81,21 @@ const getWorkspaceMembersRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Get workspace members",
   description: "Get all members of a workspace, with their role.",
-  middleware: [workspaceAccess.fromParam("workspaceId")] as const,
+  // `requireSessionOnly()` closes the one gap on this router: every sibling
+  // read below (`GET /api/workspace`, `GET /api/workspace/{workspaceId}`,
+  // `GET /api/workspace/{workspaceId}/invitations`) already carries it, and
+  // membership data is exactly what the 2026-09-08 decision names ("workspace,
+  // membership, invitation or capability data"). This route is pre-existing
+  // inherited surface awaiting #8's classification (`workspace/policy.ts`
+  // documents it as deliberately absent, and it stays listed, unmodified, in
+  // `tests/permissions/inherited-uncovered.json`) — adding this middleware is
+  // runtime enforcement only, exactly like the three siblings' own
+  // `requireSessionOnly()` calls, and does NOT declare a route policy: #8
+  // still owns classifying this route's capability/scope shape.
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+  ] as const,
   request: { params: workspaceIdParam },
   responses: {
     200: jsonResponse("List of workspace members", workspaceMemberListSchema),
