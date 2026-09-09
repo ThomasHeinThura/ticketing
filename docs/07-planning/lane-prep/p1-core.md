@@ -16,9 +16,12 @@
 > - Issue **#7 is complete and closed.**
 >
 > **What has NOT changed, and is the reason this plan is still the right starting point:**
-> **Throttle 1 is still shut.** Its condition 2 requires issue #6 through retrofit **S10**;
-> S3 and S5–S11 have not started. Every "do not write code yet" instruction below still
-> stands, unchanged.
+> **Throttle 1 is still shut.** Its condition 2 requires issue #6 through retrofit **S10**,
+> and the retrofit has not run that far. Every "do not write code yet" instruction below still
+> stands, unchanged. **How many stages have landed is deliberately not stated here** — an
+> earlier version said "S3 and S5–S11 have not started", which went stale as stages merged.
+> Read [the retrofit stage ledger](../retrofits/organization-plugin-retrofit.md), which is the
+> authoritative count.
 >
 > This file is committed **as the research artifact it is** — deliberately not rewritten,
 > because rewriting a dated plan to look current is how a snapshot starts lying. Trust its

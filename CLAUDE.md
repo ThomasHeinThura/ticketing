@@ -26,7 +26,9 @@ Then the feature spec for what you are doing, and any ADR it cites.
 **There is application code, and this section is where you find out what is actually
 true.** Say it in four categories, always, and never let one blur into another:
 
-**ON MAIN**, as of 2026-09-09 at `5270954`. **Eleven** pull requests merged that day.
+**ON MAIN.** For the dated snapshot — which commit, how many merges — read
+[`status.md`](docs/07-planning/status.md)'s snapshot header, the one place authorised to
+assert it; this section lists only what durably landed, never a count or a `main` SHA.
 **Code is open again**, and this list is not the whole repository — run `gh pr list --state open` for what is in flight. The kaneo import at `42bb8011`, de-branded (#5). Licence and
 provenance files (#4). The deployment slice — root `Dockerfile`, `compose.yml`, the `deploy/`
 overlays, `scripts/deploy.sh`, a hardened `charts/taskdesk`, `docs/05-operations/proxy-topology-evidence.md`
@@ -71,36 +73,47 @@ What IS durable, and belongs here:
 - Dependabot bumps are routine and are nobody's blocker.
 
 
-**READ THIS BEFORE ACTING ON ANY OF IT.** All eleven of those merges happened **without the
-mandatory Opus security review** — Thomas waived the gate explicitly and merged on Sonnet
-review. Five touched security-scope paths. See the two 2026-09-09 decision-log entries. The
+**READ THIS BEFORE ACTING ON ANY OF IT.** The eleven merges up to `5270954` — everything in
+the table above — happened **without the mandatory Opus security review**. Thomas waived the
+gate explicitly and merged on Sonnet review; five of the eleven touched security-scope paths.
+**Merges after `5270954` are not covered by that waiver and did not use it:** each carried
+either an independent Opus review, or, where the classifier put the change outside security
+scope, independent Sonnet reviews — recorded per pull request in
+`docs/07-planning/security-reviews/`. See the two 2026-09-09 decision-log entries. The
 waiver is recorded, not hidden, and `check:pr-template` still fails on the untickable
 independent-review box, deliberately, so the gap stays visible. **This does not make the
 waiver reusable: it was Thomas's to give, once, for those pull requests.** The rule below —
 never downgrade an unavailable reviewer — is unchanged.
 
-**BLOCKED.** #8 (the router retrofit) waits for #6's removal surface to settle. #17 waits
-on a decision about sessions already minted by the removed flows. #66 — `hasWorkspacePermission`
-falls back to compiled static roles when a `workspace_role` row is absent — must close before
-#40's `DELETE /api/roles/{id}` ships.
+**BLOCKED.** Two long-standing blocks, and their *reasons* are what belongs here — **their
+current open/closed state does not, so check GitHub** (`gh issue view 8`, `gh issue view 17`).
+#8, the router retrofit, waits for #6's removal surface to settle, because classifying a route
+that is about to be deleted is wasted review and a false sense of coverage. #17 waits on a
+decision about sessions already minted by the removed flows: deleting an endpoint is not
+revoking a credential. #66 — `hasWorkspacePermission` falling back to
+compiled static roles when a `workspace_role` row was absent — **is closed**, so it no longer
+blocks #40's `DELETE /api/roles/{id}`. A missing row is now a DENY for every role but
+`owner`, whose authority is compiled-in by design.
 
 **DECIDED / NOT YET IMPLEMENTED.** better-auth's `organization()` is removed in P0 — final —
 but it is **still mounted**, and `tests/api-contract/openapi.json` still declares six
 `/auth/organization/*` invitation operations. Unmounting is **S10**, and S10 has not started.
 
-**Throttle 1 is SHUT, and this is the number to know: four of its five conditions are met.**
-#5 complete ✓, #7 complete ✓, route-policy coverage executing in CI ✓, an unclassified route
-demonstrated to fail CI ✓. **Condition 2 — issue #6 complete *through retrofit S10* — is the
-sole blocker**, and it is arithmetic rather than judgement: the
-[stage ledger](docs/07-planning/retrofits/organization-plugin-retrofit.md) records four of
-fifteen stages landed (S0, S1, S2, S4). **S3 and S5 have branches in flight** — check
-GitHub for their numbers and state rather than trusting a number written here;
-**S7 is ⛔ BLOCKED BY #66** (and, independently, by #82 — see the decision log), a
-privilege-restoration fail-open on the very table S7 writes.
-Do not re-derive any of this — read the ledger, which states progress as **4 landed of 12
-required** rather than the misleading "4 of 15". The extra required stage is **S4b**
-(client workspace-write cutover), added 2026-09-09 — it was always required, just not
-previously written down as its own row.
+**Throttle 1 is SHUT, and the durable fact is WHICH condition holds it shut, not how many are
+met** — a tally is exactly the live-state number this file may not assert, and
+[`status.md`](docs/07-planning/status.md)'s dated conditions table is where it is counted.
+Conditions 1, 3, 4 and 5 (#5 complete, #7 complete, route-policy coverage executing in CI, an
+unclassified route demonstrated to fail CI) were all satisfied on 2026-09-09 and are not the
+kind of thing that regresses. **Condition 2 — issue #6 complete *through retrofit S10* — is
+the one that holds it**, and it is arithmetic rather than judgement: the
+[stage ledger](docs/07-planning/retrofits/organization-plugin-retrofit.md) is the
+authoritative count, and **this file deliberately does not repeat it** — a number written
+here goes stale the next time a stage lands, which is exactly how this section was wrong
+before. Read the ledger's four-bucket table, which separates stages landed, stages still
+required to reach S10, the two deferred out of P0, and S11's separately-owned work. Quote its
+"landed of 12 required" figure rather than the misleading "of 15" denominator.
+**S7 is blocked by #82 alone** — #66, the privilege-restoration fail-open on the very table
+S7 writes, is closed. Check GitHub for #82's state rather than trusting this sentence.
 
 **What is startable while the throttle is shut**, per the blocking taxonomy: the retrofit
 stages above, further pure `packages/domain` modules, `packages/ui` primitives, CI tooling,
@@ -136,9 +149,10 @@ merges without committed review evidence — a documentation-only one included.*
 review item, deliberately.
 
 **Merges are not restricted to squash.** The ruleset's `allowed_merge_methods` is
-`["merge","squash","rebase"]` and `main` carries twelve merge commits. An earlier version of
-this file said "merges are squashed", which was a convention, not a control — squash-merging
-is the practice, nothing enforces it. **Required approving reviews is `0`, and Require review
+`["merge","squash","rebase"]`, and `main` carries merge commits as well as squashes — check
+`git log --merges origin/main` rather than a number written here, which is the live count this
+file may not assert. An earlier version said "merges are squashed", which was a convention,
+not a control: squash-merging is the practice, nothing enforces it. **Required approving reviews is `0`, and Require review
 from Code Owners is off** — both deliberately (decision log, 2026-09-06).
 
 Do not wait for an approval that is not configured, and do not read the zero as permission.
