@@ -154,22 +154,29 @@ work gets reported as shipped, so the category is never optional.
 
 ### IN OPEN PR — real code, not on `main`, do not report as available
 
-| PR | Issue | State |
-| --- | --- | --- |
-| **#63** | #9 | First `packages/ui` extraction slice and an import-boundary checker. `## Screens opened` is honestly **BLOCKED** — no browser binary on the host. |
-| **#68** | — | The two 2026-09-08 authorization decisions (session-only reach, the instance-admin bypass), and this correction to `status.md`. |
-| **#69** | #33 | `packages/domain` bootstrapped with service-calendar arithmetic — the **first P1–P4 implementation work**, pure functions with exhaustive tests, no HTTP endpoint yet. Started under the blocking taxonomy (Throttle 1 is not open; this touches no file any in-flight security-path PR owns). |
+**None. Every pull request carrying real code has merged.**
 
-**Only three pull requests carry real code and remain open: #63, #68 and #69.** #16, #21,
-#57, #60, #61, #64, #62, #65, #67 and #19 have all merged and moved to ON MAIN above.
-(A dependabot dependency-bump PR, #70, is also open — routine, not implementation work,
-and not tracked in this table.)
+Eight merged on 2026-09-09 — **#64, #62, #65, #67, #19, #68, #63, #69** — on top of #16,
+#21, #57, #60 and #61 earlier. `main` is `5adf25b6`, and its CI is green on all eleven
+required jobs.
 
-**Corrected 2026-09-09.** An earlier revision of this table listed #19 alone and stated it
-was *"the only open code pull request"*. That was false for six of the seven then open,
-and it is exactly the failure this file exists to prevent — a snapshot that reads as
-authoritative while describing a repository that no longer exists. Found by an
-independent review of this document against the live repository, not by anyone reading it.
+A dependabot dependency-bump pull request may be open at any time; those are routine and
+not tracked in this table.
+
+**Read the two 2026-09-09 decision-log entries before trusting the review state of that
+code.** All eight merged under Thomas's explicit authorisation on the strength of
+independent **Sonnet** review, with the mandatory **Opus** security-review gate **waived**.
+Five of the eight touched security-review-scope paths. No review note was written and no
+independent-review checkbox was ticked, so `check:pr-template` still fails on those two
+blockers — deliberately left out of the required checks so the gate stays visibly red
+rather than quietly satisfied. Thomas's GPT-5.6 Sol and Gemini 3.8 Flash confirmation of
+`main` is the outstanding follow-up.
+
+**Corrected 2026-09-09, twice.** An earlier revision listed #19 alone and called it *"the
+only open code pull request"*, which was false for six of the seven then open. That is
+exactly the failure this file exists to prevent — a snapshot that reads as authoritative
+while describing a repository that no longer exists. Found by an independent review of this
+document against the live repository, not by anyone reading it.
 
 ### BLOCKED
 
