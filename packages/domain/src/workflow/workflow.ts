@@ -166,6 +166,23 @@ export function evaluateGuard(
         ? satisfied()
         : blocked();
     }
+    default:
+      // A guard type the union does not know about. NOT unreachable: guards live in a
+      // `jsonb` column, so this union constrains callers of this module and nothing
+      // else — a later migration, a hand-edited row, or a rolled-back deployment can
+      // all put an unknown `type` here.
+      //
+      // Before this branch existed the switch fell through, returned `undefined`, and
+      // `offerTransition` died on `TypeError: Cannot read properties of undefined
+      // (reading 'ok')`. That happened to block the transition, but only by crashing —
+      // and the safety depended on the ABSENCE of a null check. The next person to
+      // "fix the crash" with `r?.ok` would have turned it into a silent pass, which is
+      // an authorization hole wearing the costume of a null-safety fix.
+      //
+      // So: fail closed, with a reason code of its own. An unknown guard is never
+      // satisfied, and the operator can tell "malformed workflow row" apart from
+      // "server bug".
+      return { guard, ok: false, reasonCode: "guard.unrecognized" };
   }
 }
 

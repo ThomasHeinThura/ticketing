@@ -133,11 +133,20 @@ export interface GuardContext {
   changeRiskLevel: ChangeRiskLevel | null;
 }
 
-/** The result of evaluating one guard. `reasonCode` is `guard.<type>` when blocked (`WF-16`), never a message. */
+/**
+ * The result of evaluating one guard. `reasonCode` is `guard.<type>` when blocked
+ * (`WF-16`), never a message.
+ *
+ * `"guard.unrecognized"` is the code for a guard whose `type` is not in the `Guard`
+ * union. That is reachable: guards are stored in a `jsonb` column, and TypeScript's
+ * exhaustiveness check constrains this module's callers, not the database. A row written
+ * by a later migration, by a hand edit, or by a downgrade fails CLOSED with this code
+ * rather than being silently skipped.
+ */
 export interface GuardResult {
   guard: Guard;
   ok: boolean;
-  reasonCode: `guard.${GuardType}` | null;
+  reasonCode: `guard.${GuardType}` | "guard.unrecognized" | null;
 }
 
 /**
@@ -157,7 +166,7 @@ export interface TransitionOfferContext extends GuardContext {
 
 /** One reason an offered transition is currently blocked — a stable code, never a free-text message (`WF-16`). */
 export type BlockReason =
-  | { kind: "guard"; reasonCode: `guard.${GuardType}` }
+  | { kind: "guard"; reasonCode: `guard.${GuardType}` | "guard.unrecognized" }
   | { kind: "approval"; reasonCode: "approval.pending" }
   | { kind: "cab"; reasonCode: "cab.pending" }
   | { kind: "note"; reasonCode: "note.required" };
