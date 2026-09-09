@@ -27,7 +27,7 @@ Then the feature spec for what you are doing, and any ADR it cites.
 true.** Say it in four categories, always, and never let one blur into another:
 
 **ON MAIN**, as of 2026-09-09 at `5270954`. **Eleven** pull requests merged that day.
-**Code is open again** — see IN OPEN PR below; do not read this list as the whole repository. The kaneo import at `42bb8011`, de-branded (#5). Licence and
+**Code is open again**, and this list is not the whole repository — run `gh pr list --state open` for what is in flight. The kaneo import at `42bb8011`, de-branded (#5). Licence and
 provenance files (#4). The deployment slice — root `Dockerfile`, `compose.yml`, the `deploy/`
 overlays, `scripts/deploy.sh`, a hardened `charts/taskdesk`, `docs/05-operations/proxy-topology-evidence.md`
 (#20 of #11). And then:
@@ -50,20 +50,26 @@ overlays, `scripts/deploy.sh`, a hardened `charts/taskdesk`, `docs/05-operations
 `pnpm check:route-policy`, a fail-closed wrapper that locates that suite and refuses to pass
 without it. It does not replace the entry point.
 
-**IN OPEN PR — real code, not on `main`.** Three, all opened 2026-09-09 after the merge
-wave. **None of it is available; do not build on it and do not rebuild it.**
+**IN OPEN PR — and this file deliberately does NOT list them.**
 
-- **#77** — retrofit **S5**, native membership writes (five routes, atomic ownership
-  transfer). Green locally, **in security-review scope** (`apps/api/src/workspace/policy.ts`).
-  Waiting on the mandatory Opus review.
-- **#76** — retrofit **S3**, client reads off the plugin. Green locally. **Must not merge
-  before #77:** after S3 no client read returns the `workspace_member` row id that the two
-  still-on-plugin mutations need, so role-change and ownership-transfer are force-disabled
-  until S5's userId-keyed routes land.
-- **#75** — **#31** P2 workflow-transition domain module. **DRAFT, blocked by do-not 15**:
-  `workflows.md` has open review findings, and `check:reviews` enforces it.
+**Run `gh pr list --state open` and read it there.** Enumerating open pull requests here was
+tried on 2026-09-09 and abandoned the same day: the list was stale within the hour, three
+independent review rounds were spent partly on correcting it, and new branches kept opening
+while it sat under review. **A file that must be edited every time a subagent opens a branch
+is not durable truth — it is a dashboard, and GitHub already is one.**
 
-A dependabot bump may also be open at any time; those are routine and not tracked here.
+What IS durable, and belongs here:
+
+- **Nothing in an open pull request is available.** Do not build on it and do not rebuild it.
+  Check with `gh pr list` and `gh pr view <n>` before assuming a thing exists.
+- **A branch existing unblocks nothing.** Only a *merged* change releases a dependent stage.
+  Dependencies are recorded in
+  [the retrofit stage ledger](docs/07-planning/retrofits/organization-plugin-retrofit.md), not
+  here.
+- **Anything touching a security-review path needs the mandatory Opus review before merge**,
+  and neither the author nor a Sonnet agent can supply it. See the three absolutes below.
+- Dependabot bumps are routine and are nobody's blocker.
+
 
 **READ THIS BEFORE ACTING ON ANY OF IT.** All eleven of those merges happened **without the
 mandatory Opus security review** — Thomas waived the gate explicitly and merged on Sonnet
@@ -87,7 +93,8 @@ but it is **still mounted**, and `tests/api-contract/openapi.json` still declare
 demonstrated to fail CI ✓. **Condition 2 — issue #6 complete *through retrofit S10* — is the
 sole blocker**, and it is arithmetic rather than judgement: the
 [stage ledger](docs/07-planning/retrofits/organization-plugin-retrofit.md) records four of
-fourteen stages landed (S0, S1, S2, S4). **S3 and S5 are in flight** (PRs #76 and #77);
+fourteen stages landed (S0, S1, S2, S4). **S3 and S5 have branches in flight** — check
+GitHub for their numbers and state rather than trusting a number written here;
 **S7 is ⛔ BLOCKED BY #66**, a privilege-restoration fail-open on the very table S7 writes.
 Do not re-derive any of this — read the ledger, which states progress as **4 landed of 11
 required** rather than the misleading "4 of 14".

@@ -1,4 +1,25 @@
-# Status
+# Status — a POINT-IN-TIME SNAPSHOT
+
+> ## ⚠ How to read this file
+>
+> **Snapshot taken:** 2026-09-09
+> **`main` at that moment:** `5270954` (`52709541365a5ea8616a20650ea01f570f768168`)
+> **Stage:** P0 · Foundation — IN PROGRESS
+> **Throttle 1:** SHUT — 4 of 5 conditions met; condition 2 (issue #6 through retrofit S10)
+> is the sole blocker
+>
+> **LIVE pull-request and issue state is NOT in this file and must be read from GitHub:**
+> `gh pr list --state open`, `gh pr view <n>`, `gh issue list --state open`.
+>
+> This file records the state of the repository **at the SHA above**. It is not synchronised
+> when a subagent opens a branch, and it should not be. Enumerating open pull requests here
+> was tried on 2026-09-09 and abandoned: the list went stale within the hour and cost three
+> independent review rounds. **If this file and GitHub disagree about what is open, GitHub is
+> right and this file is simply older.**
+>
+> What this file IS good for: the stage and throttle state, which issues are blocked and
+> why, material decisions taken, and the durable repository and deployment facts — the things
+> that do not change when someone pushes a branch.
 
 **Last updated:** 2026-09-09
 **Current stage:** P0 · Foundation — **IN PROGRESS**
@@ -152,45 +173,34 @@ work gets reported as shipped, so the category is never optional.
   orchestrator; not something this lane may resolve by writing the note itself.
 - A GitHub Project board (project 1, *TaskDesk v2 — P0*) with the six agreed columns.
 
-### IN OPEN PR — real code, not on `main`, do not report as available
+### IN OPEN PR — read this from GitHub, not from here
 
-`main` is **`5270954`**. **Eleven** pull requests merged on 2026-09-09 — #64, #62, #65,
-#67, #19, #68, #63, #69, #71, #72, #73 — on top of #16, #21, #57, #60 and #61 earlier. CI
-is green on `main`.
+**`gh pr list --state open`.** This section deliberately no longer enumerates open pull
+requests, for the reason given in the header: the enumeration went stale within the hour it
+was written, and correcting it consumed three independent review rounds while further
+branches opened underneath it.
 
-Three pull requests are open again, all opened 2026-09-09 after that wave:
+At the snapshot SHA above, what is durably true and worth recording:
 
-| PR | Stage / issue | State | Why it is not merged |
-| --- | --- | --- | --- |
-| **#77** | retrofit **S5** — native membership writes | green locally, in **security-review scope** (`apps/api/src/workspace/policy.ts`) | Needs the mandatory Opus security review. Also `BEHIND` — strict status-check policy requires it current with `main` |
-| **#76** | retrofit **S3** — client reads off the plugin | green locally | **Must not merge before #77.** After S3, no client read returns the `workspace_member` row id that the two still-on-plugin mutations need, so role-change and ownership-transfer are force-disabled. S5's routes are userId-keyed and fix it by construction |
-| **#75** | **#31** P2 workflow-transition domain module | **DRAFT — blocked** | `check:reviews` correctly refuses it: the 2026-09-05 review of `docs/03-features/workflows.md` returned verdict *not-ready* and its 4 High / 4 Medium / 2 Low findings are still open in the review document. AGENTS.md do-not 15 — a feature is not started while its review section is non-empty. The first High is an unresolved data-model contradiction only Thomas can settle |
+- **Eleven pull requests merged on 2026-09-09** — #64, #62, #65, #67, #19, #68, #63, #69,
+  #71, #72, #73 — on top of #16, #21, #57, #60 and #61 earlier. That is history and it does
+  not go stale.
+- **Nothing in an open pull request is on `main`.** Do not describe it as available, and do
+  not rebuild it. Check GitHub.
+- **A branch existing releases nothing.** Only a merge releases a dependent retrofit stage,
+  and the dependencies live in the
+  [retrofit stage ledger](retrofits/organization-plugin-retrofit.md).
 
-A dependabot dependency-bump pull request may be open at any time; those are routine and
-not tracked here.
-
-**The twelfth required status check.** As of 2026-09-09, `pull request template + security
-review` **is a required context** on `protect-main`, on Thomas's explicit instruction —
-twelve contexts, strict up-to-date policy, zero bypass actors, `current_user_can_bypass:
-never`. Verified by re-reading the live ruleset after the write. **Consequence: no pull
-request can merge without committed review evidence.** That is the intended effect and it
-is why #76 and #77 sit open rather than merging on green tests.
-
-**Read the two 2026-09-09 decision-log entries before trusting the review state of what is
-on `main`.** All eleven merged under Thomas's explicit authorisation on the strength of
-independent **Sonnet** review, with the mandatory **Opus** gate **waived**. Five touched
+**The review state of what is on `main` is the part that does not go stale, so read it here.**
+All eleven merged under Thomas's explicit authorisation on the strength of independent
+**Sonnet** review, with the mandatory **Opus** gate **waived**. Five touched
 security-review-scope paths. No review note was written and no independent-review checkbox
 was ticked. **That waiver was given once, for those pull requests, and does not carry
-forward** — which is exactly what making the gate required now enforces. An independent
-**Opus** audit of `main@5270954` is in progress; its findings are the follow-up, alongside
-Thomas's own GPT-5.6 Sol and Gemini 3.8 Flash confirmation.
-
-**Corrected three times on 2026-09-09.** An earlier revision listed #19 alone as *"the only
-open code pull request"*, false for six of the seven then open; the next said *"none"*,
-which stopped being true within the hour. That is the failure this file exists to prevent —
-a snapshot that reads as authoritative while describing a repository that no longer exists.
-Each correction was found by checking this document against the live repository, never by
-reading it.
+forward.** Since 2026-09-09 the template/security-review job is the **twelfth required status
+check**, so a pull request can no longer merge without committed review evidence — see the
+newest decision-log entry. An independent audit of `main@5270954` has already produced one
+HIGH finding (the authorization enforcement layer sat outside the security-review scope) and
+its remediation is in flight.
 
 ### BLOCKED
 
