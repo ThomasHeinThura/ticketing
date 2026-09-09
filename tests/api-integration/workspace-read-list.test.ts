@@ -4,7 +4,7 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember } from "./helpers/fixtures";
+import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 
 // GET /api/workspace -- the native replacement for
 // authClient.organization.list() (retrofit plan, S2 row, issue #6). Read
@@ -58,15 +58,18 @@ describe("GET /api/workspace", () => {
 
   it("returns an empty list for a user who belongs to no workspace", async () => {
     const userId = `user-${randomUUID()}`;
-    const [user] = await db
-      .insert(schema.userTable)
-      .values({
-        id: userId,
-        email: `${userId}@example.com`,
-        emailVerified: true,
-        name: "No Workspace User",
-      })
-      .returning();
+    const user = requireRow(
+      await db
+        .insert(schema.userTable)
+        .values({
+          id: userId,
+          email: `${userId}@example.com`,
+          emailVerified: true,
+          name: "No Workspace User",
+        })
+        .returning(),
+      "user",
+    );
 
     mockAuthenticatedSession(user);
     const { app } = createApp();

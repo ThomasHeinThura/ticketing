@@ -7,6 +7,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  requireRow,
 } from "./helpers/fixtures";
 
 describe("API integration: task comments", () => {
@@ -19,18 +20,21 @@ describe("API integration: task comments", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        title: "Shared comments",
-        status: "to-do",
-        columnId: columns.todo.id,
-        priority: "medium",
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Shared comments",
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -100,18 +104,21 @@ describe("API integration: task comments", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        title: "Imported",
-        status: "to-do",
-        columnId: columns.todo.id,
-        priority: "medium",
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Imported",
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -127,12 +134,15 @@ describe("API integration: task comments", () => {
     });
     expect(attributed.status).toBe(200);
 
-    const [row] = await db
-      .select()
-      .from(schema.activityTable)
-      .where(eq(schema.activityTable.taskId, task.id));
-    expect(row?.externalUserName).toBe("Sam");
-    expect(row?.externalSource).toBe("planka");
+    const row = requireRow(
+      await db
+        .select()
+        .from(schema.activityTable)
+        .where(eq(schema.activityTable.taskId, task.id)),
+      "row",
+    );
+    expect(row.externalUserName).toBe("Sam");
+    expect(row.externalSource).toBe("planka");
   });
 
   it("ignores an external name with no source, so it cannot look like a real user", async () => {
@@ -140,18 +150,21 @@ describe("API integration: task comments", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        title: "Unattributed",
-        status: "to-do",
-        columnId: columns.todo.id,
-        priority: "medium",
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Unattributed",
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -162,11 +175,14 @@ describe("API integration: task comments", () => {
       body: JSON.stringify({ content: "Nice try", externalUserName: "Andrej" }),
     });
 
-    const [row] = await db
-      .select()
-      .from(schema.activityTable)
-      .where(eq(schema.activityTable.taskId, task.id));
-    expect(row?.externalUserName).toBeNull();
+    const row = requireRow(
+      await db
+        .select()
+        .from(schema.activityTable)
+        .where(eq(schema.activityTable.taskId, task.id)),
+      "row",
+    );
+    expect(row.externalUserName).toBeNull();
   });
 
   it("rejects an unknown external source", async () => {
@@ -174,18 +190,21 @@ describe("API integration: task comments", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        title: "Bad source",
-        status: "to-do",
-        columnId: columns.todo.id,
-        priority: "medium",
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Bad source",
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();

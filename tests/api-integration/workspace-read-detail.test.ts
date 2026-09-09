@@ -5,7 +5,7 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember } from "./helpers/fixtures";
+import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 
 // GET /api/workspace/{id} -- the native replacement for
 // authClient.organization.getFullOrganization() (retrofit plan, S2 row,
@@ -13,16 +13,19 @@ import { createWorkspaceMember } from "./helpers/fixtures";
 
 async function createInstanceAdmin() {
   const id = `admin-${randomUUID()}`;
-  const [admin] = await db
-    .insert(schema.userTable)
-    .values({
-      id,
-      email: `${id}@example.com`,
-      emailVerified: true,
-      name: "Instance Admin",
-      role: "admin",
-    })
-    .returning();
+  const admin = requireRow(
+    await db
+      .insert(schema.userTable)
+      .values({
+        id,
+        email: `${id}@example.com`,
+        emailVerified: true,
+        name: "Instance Admin",
+        role: "admin",
+      })
+      .returning(),
+    "admin",
+  );
   return admin;
 }
 
