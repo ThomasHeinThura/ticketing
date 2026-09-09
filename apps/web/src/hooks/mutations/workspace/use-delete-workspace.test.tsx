@@ -6,7 +6,6 @@ import useDeleteWorkspace from "./use-delete-workspace";
 
 const mocks = vi.hoisted(() => ({
   del: vi.fn(),
-  refresh: vi.fn(),
 }));
 
 vi.mock("@taskdesk/libs", () => ({
@@ -17,13 +16,6 @@ vi.mock("@taskdesk/libs", () => ({
       },
     },
   },
-}));
-
-// The S4b store-refresh shim is mocked so this file can assert WHETHER it runs.
-// Without an assertion the fix would be unprobed: reverting the call leaves the
-// rest of this suite green, which is the defect #81's finding C-4 named.
-vi.mock("@/lib/utils/refresh-workspace-stores", () => ({
-  refreshWorkspaceStores: mocks.refresh,
 }));
 
 function createWrapper() {
@@ -41,7 +33,6 @@ function createWrapper() {
 describe("useDeleteWorkspace", () => {
   beforeEach(() => {
     mocks.del.mockReset();
-    mocks.refresh.mockReset();
   });
 
   it("deletes via the native workspace route", async () => {
@@ -82,36 +73,6 @@ describe("useDeleteWorkspace", () => {
         result.current.mutateAsync({ workspaceId: "missing" }),
       ).rejects.toThrow("Workspace not found");
     });
-  });
-
-  it("refreshes the plugin's workspace stores after a successful native DELETE", async () => {
-    mocks.del.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
-
-    const { result } = renderHook(() => useDeleteWorkspace(), {
-      wrapper: createWrapper(),
-    });
-
-    await act(async () => {
-      await result.current.mutateAsync({ workspaceId: "workspace-1" });
-    });
-
-    expect(mocks.refresh).toHaveBeenCalledTimes(1);
-  });
-
-  it("does NOT refresh the stores when the native DELETE fails", async () => {
-    mocks.del.mockResolvedValue({ ok: false, text: async () => "Forbidden" });
-
-    const { result } = renderHook(() => useDeleteWorkspace(), {
-      wrapper: createWrapper(),
-    });
-
-    await act(async () => {
-      await expect(
-        result.current.mutateAsync({ workspaceId: "workspace-1" }),
-      ).rejects.toThrow("Forbidden");
-    });
-
-    expect(mocks.refresh).not.toHaveBeenCalled();
   });
 
   it("falls back to a readable message when the failed response body is EMPTY", async () => {

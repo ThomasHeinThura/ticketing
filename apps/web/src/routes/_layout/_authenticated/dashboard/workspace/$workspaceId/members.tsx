@@ -46,7 +46,7 @@ function RouteComponent() {
         <MembersTable
           workspaceId={workspaceId}
           users={workspace?.members ?? []}
-          invitations={workspace?.invitations ?? []}
+          invitations={workspace?.pendingInvitations ?? []}
         />
 
         <InviteTeamMemberModal

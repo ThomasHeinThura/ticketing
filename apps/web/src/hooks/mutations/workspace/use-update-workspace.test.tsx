@@ -6,7 +6,6 @@ import useUpdateWorkspace from "./use-update-workspace";
 
 const mocks = vi.hoisted(() => ({
   patch: vi.fn(),
-  refresh: vi.fn(),
 }));
 
 vi.mock("@taskdesk/libs", () => ({
@@ -17,13 +16,6 @@ vi.mock("@taskdesk/libs", () => ({
       },
     },
   },
-}));
-
-// The S4b store-refresh shim is mocked so this file can assert WHETHER it runs.
-// Without an assertion the fix would be unprobed: reverting the call leaves the
-// rest of this suite green, which is the defect #81's finding C-4 named.
-vi.mock("@/lib/utils/refresh-workspace-stores", () => ({
-  refreshWorkspaceStores: mocks.refresh,
 }));
 
 function createWrapper() {
@@ -38,10 +30,24 @@ function createWrapper() {
   };
 }
 
+// Exposes the QueryClient instance alongside the wrapper so a test can spy on
+// its invalidateQueries method -- createWrapper() above intentionally hides
+// it because the other tests in this file don't need it.
+function createWrapperWithClient() {
+  const queryClient = new QueryClient({
+    defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
+  });
+
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+
+  return { Wrapper, queryClient };
+}
+
 describe("useUpdateWorkspace", () => {
   beforeEach(() => {
     mocks.patch.mockReset();
-    mocks.refresh.mockReset();
     mocks.patch.mockResolvedValue({
       ok: true,
       json: async () => ({ id: "workspace-1" }),
@@ -186,52 +192,6 @@ describe("useUpdateWorkspace", () => {
     });
   });
 
-  it("refreshes the plugin's workspace stores after a successful native PATCH", async () => {
-    // The regression this guards was found in a browser, not by a unit test:
-    // after a successful `PATCH /api/workspace/{id}` the settings sidebar and
-    // the delete-confirmation dialog both still showed the PREVIOUS name,
-    // because `use-active-workspace`/`use-get-workspaces` read better-auth's
-    // nanostores and those are refreshed only by the plugin's own
-    // `atomListeners`, which match on PLUGIN route paths. The native route hits
-    // none, so nothing invalidated them.
-    const { result } = renderHook(() => useUpdateWorkspace(), {
-      wrapper: createWrapper(),
-    });
-
-    await act(async () => {
-      await result.current.mutateAsync({
-        workspaceId: "workspace-1",
-        name: "Renamed",
-      });
-    });
-
-    expect(mocks.refresh).toHaveBeenCalledTimes(1);
-  });
-
-  it("does NOT refresh the stores when the native PATCH fails", async () => {
-    // Fail-closed on the display side too: a refused write must not make the
-    // UI re-read as though something had changed.
-    mocks.patch.mockResolvedValue({
-      ok: false,
-      text: async () => "Forbidden",
-    });
-
-    const { result } = renderHook(() => useUpdateWorkspace(), {
-      wrapper: createWrapper(),
-    });
-
-    await act(async () => {
-      await expect(
-        result.current.mutateAsync({
-          workspaceId: "workspace-1",
-          name: "Renamed",
-        }),
-      ).rejects.toThrow("Forbidden");
-    });
-
-    expect(mocks.refresh).not.toHaveBeenCalled();
-  });
-
   it("falls back to a readable message when the failed response body is EMPTY", async () => {
     // A REGRESSION this pull request introduced and a reviewer caught. The
     // plugin-era code had `error.message || "Failed to update workspace"`; the
@@ -257,5 +217,60 @@ describe("useUpdateWorkspace", () => {
         }),
       ).rejects.toThrow("Failed to update workspace");
     });
+  });
+
+  // general.tsx's `saveWorkspace` reads the workspace it just renamed through
+  // two caches this hook does not itself own: `use-active-workspace` (via
+  // `use-get-workspaces`, key ["workspaces"]) and `use-get-full-workspace`
+  // (key ["workspace", "full", workspaceId]). The native PATCH hits no
+  // plugin route, so nothing else refreshes them -- a rename would keep
+  // showing the previous name until an unrelated refetch. This asserts the
+  // exact keys and count so a future edit that drops or renames one of them
+  // fails here rather than being caught by chance in a browser.
+  it("invalidates the workspaces list and this workspace's full-detail cache on success", async () => {
+    const { Wrapper, queryClient } = createWrapperWithClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const { result } = renderHook(() => useUpdateWorkspace(), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        workspaceId: "workspace-1",
+        name: "Renamed",
+      });
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledTimes(2);
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["workspaces"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["workspace", "full", "workspace-1"],
+    });
+  });
+
+  it("does not invalidate any cache when the update fails", async () => {
+    mocks.patch.mockResolvedValue({
+      ok: false,
+      text: async () => "That workspace slug is already taken",
+    });
+
+    const { Wrapper, queryClient } = createWrapperWithClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const { result } = renderHook(() => useUpdateWorkspace(), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          workspaceId: "workspace-1",
+          name: "Renamed",
+        }),
+      ).rejects.toThrow();
+    });
+
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 });

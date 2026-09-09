@@ -1,6 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
 import { client } from "@taskdesk/libs";
-import { refreshWorkspaceStores } from "@/lib/utils/refresh-workspace-stores";
 
 type DeleteWorkspaceRequest = {
   workspaceId: string;
@@ -25,9 +24,6 @@ function useDeleteWorkspace() {
         const error = await response.text();
         throw new Error(error || "Failed to delete workspace");
       }
-
-      // S4b: keep the plugin's workspace stores in step with the native write.
-      refreshWorkspaceStores();
 
       return await response.json();
     },
