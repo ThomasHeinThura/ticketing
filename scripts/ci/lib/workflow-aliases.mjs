@@ -49,10 +49,20 @@
  * complementary rather than belt-and-braces: the seal closes the outside, the source pin
  * closes the inside.
  *
- * Stated as narrowly as it can be and stay true: **changing what this map holds requires
- * editing this file, and editing this file fails the probe.** That is not the same as "the
- * five entries below are the only ones that can ever exist", which an earlier version of
- * this comment claimed and which the pre-seal `.set()` above disproves.
+ * **What is actually true, after three earlier versions of this sentence were each
+ * falsified by review:** the probe pins this file, so this file cannot be edited without the
+ * probe failing. The seal raises the cost of casual mutation elsewhere. It does **not** make
+ * the map immutable — `Map.prototype.set.call(WORKFLOW_ALIASES, k, v)` from any other module
+ * mutates it on every channel (size, spread, `.get`, `.has`, `.keys`), because the seal
+ * shadows the *property* and not the internal slot, and `Object.preventExtensions` does not
+ * protect `Map.prototype`. Note that `Object.isFrozen(WORKFLOW_ALIASES)` reports `true`
+ * throughout, so the obvious probe agrees with the wrong answer.
+ *
+ * **No further defence placed on this object can close that** — anything asserted in the
+ * probe's process can be undone in the consumer's. The complete fix asserts the five pairs
+ * inside `test-all.mjs`'s own process, and is tracked as **#102** rather than attempted here.
+ * Three successive claims in this comment were wrong; this one is deliberately the weakest
+ * statement that survives the attacks measured against it.
  */
 const sealed = new Map([
   ["pnpm check:route-policy", "pnpm test:permissions"],
