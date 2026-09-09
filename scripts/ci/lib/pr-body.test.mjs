@@ -249,6 +249,87 @@ describe("checklistProblems — applicability is per ITEM, not per block", () =>
     assert.match(problems[0], /cannot be\s+marked n\/a/);
   });
 
+  /**
+   * The two HIGH findings from the independent Opus security review of #89, each
+   * paired so it cannot go quietly vacuous.
+   *
+   * Both are the same defect family as F13/L6 and the `n/a` negation bypass this
+   * pull request already closed: a control reading a convenient proxy — raw code
+   * points, one bullet marker — instead of the thing it means. Fixing the named
+   * instance and leaving the family open is what this repository keeps doing, so
+   * the two are probed together.
+   */
+  it("HIGH 1 — invisible characters are not a reason (six U+200B does not excuse a box)", () => {
+    // The reason test counted RAW CODE POINTS, so `n/a` followed by six
+    // zero-width spaces satisfied `length >= 6` while rendering on GitHub
+    // byte-identically to a bare `n/a`, which must fail. Fifteen of the
+    // seventeen blank-rendering characters in the file's own INVISIBLE class
+    // worked; only U+FEFF and U+3000 were caught, and only incidentally by
+    // `trim()`. The fix applies INVISIBLE before the length test.
+    const blanks = ["\u200B", "\u200C", "\u200D", "\u2060", "\u00AD", "\u180E"];
+    for (const ch of blanks) {
+      const problems = checklistProblems(
+        `### Backend change\n\n- [ ] Route policies — n/a${ch.repeat(8)}\n`,
+      );
+      assert.equal(
+        problems.length,
+        1,
+        `n/a padded with ${JSON.stringify(ch)} must NOT be excused`,
+      );
+    }
+    // The paired control: a REAL reason of the same visible length is still
+    // excused, so the fix did not simply make every n/a fail.
+    assert.deepEqual(
+      checklistProblems(
+        "### Backend change\n\n- [ ] Route policies — n/a, this change adds no route\n",
+      ),
+      [],
+    );
+  });
+
+  it("HIGH 1b — punctuation is not a reason either", () => {
+    for (const pad of ["??????", "!!!!!!", "......", "------"]) {
+      assert.equal(
+        checklistProblems(
+          `### Backend change\n\n- [ ] Route policies — n/a ${pad}\n`,
+        ).length,
+        1,
+        `n/a followed by ${pad} must NOT be excused`,
+      );
+    }
+  });
+
+  it("HIGH 2 — a GFM task list written with * or + is enforced, not skipped", () => {
+    // `ANY_BOX`/`OPEN_BOX` required a `-` marker. GitHub-flavoured Markdown
+    // renders task lists with any of `-`, `*` and `+`, so a whole `###` block
+    // written with `*` had `boxes.length === 0` and was SKIPPED ENTIRELY —
+    // unticked required items, no n/a, no reason, and zero reported problems.
+    for (const marker of ["*", "+"]) {
+      const block =
+        "### Backend change\n\n" +
+        `${marker} [ ] Route policies written for every new route\n` +
+        `${marker} [ ] Screens opened\n` +
+        `${marker} [ ] Tenant isolation checked\n`;
+      const problems = checklistProblems(block);
+      assert.equal(
+        problems.length,
+        3,
+        `three unticked "${marker}" boxes must all be flagged, got ${problems.length}`,
+      );
+    }
+    // Paired control: the same markers still work for the ACCEPTED shapes, so
+    // widening the marker class did not break ticking or a real n/a.
+    for (const marker of ["-", "*", "+"]) {
+      assert.deepEqual(
+        checklistProblems(
+          `### Backend change\n\n${marker} [x] Route policies written\n${marker} [ ] Screens opened — n/a, no UI in this change\n`,
+        ),
+        [],
+        `ticked and properly-n/a'd "${marker}" boxes must be accepted`,
+      );
+    }
+  });
+
   it("the independent-review item cannot be bypassed by an HTML comment", () => {
     for (const line of [
       "- [ ] Independent security review <!-- n/a, skipped -->",

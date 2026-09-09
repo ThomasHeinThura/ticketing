@@ -335,8 +335,8 @@ remediation status, are tracked as GitHub issues and pull requests — read them
     previously said #3 was unmet because required-status-check reconciliation needed a
     ruleset change only Thomas could make. **Thomas made it, moments before this document
     was corrected**: `protect-main` (ruleset `22365005`, `updated_at
-    2026-09-09T06:28:04Z`) now lists `route policy coverage + permission matrix` among
-    eleven `required_status_checks`, `current_user_can_bypass: never` — verified by
+    2026-09-09T06:28:04Z`) now lists `route policy coverage + permission matrix` among the
+    `required_status_checks`, `current_user_can_bypass: never` — verified by
     re-reading the live ruleset via the API, not by trusting the closing comment on #7.
     Issue #7 closed the same window (`closedAt 2026-09-09T06:29:48Z`). #3 is **met.**
   **Throttle 1 is still not open** — all five conditions are required, and #6 alone keeps

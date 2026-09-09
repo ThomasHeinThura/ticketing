@@ -271,10 +271,23 @@ export async function loadPullRequestNumber({ number, eventPath, ref }) {
  */
 const REVIEW_ITEM = /\bindependent\b[^\n]*\breview\b|\bsecurity\s+review\b/;
 
-/** A checkbox line, ticked or not. */
-const ANY_BOX = /^\s*-\s*\[[ xX]\]/;
-/** An UNticked checkbox line. */
-const OPEN_BOX = /^\s*-\s*\[\s\]/;
+/**
+ * A checkbox line, ticked or not.
+ *
+ * **The marker class is `[-*+]`, not `-`, and that is a fix rather than a
+ * flourish.** GitHub-flavoured Markdown renders a task list with any of the
+ * three bullet markers, and these patterns only matched `-`. A whole `###`
+ * block written with `*` therefore had `boxes.length === 0`, so
+ * `checklistProblems` and `checklistPresenceProblems` both **skipped it
+ * entirely** — three unticked required items, no `n/a`, no reason, and zero
+ * reported problems. Found by the independent Opus security review of pull
+ * request #89. The independent-review item itself was not reachable that way
+ * (verified on both routes), so what this voided was the rest of the
+ * definition-of-done enforcement rather than the review gate.
+ */
+const ANY_BOX = /^\s*[-*+]\s*\[[ xX]\]/;
+/** An UNticked checkbox line. Same marker class, same reason. */
+const OPEN_BOX = /^\s*[-*+]\s*\[\s\]/;
 
 /**
  * Strips the decoration an author could hide behind: HTML comments, emphasis
@@ -359,11 +372,24 @@ function itemMarkedNotApplicable(line) {
   if (!opener) {
     return false; // the clause opens with something other than n/a — including a negation
   }
+  // The reason must be SIX VISIBLE CHARACTERS. Stripping `INVISIBLE` here is
+  // the fix for the hole the independent Opus review of #89 found: the length
+  // test counted raw code points, so `n/a` followed by six U+200B zero-width
+  // spaces satisfied it while rendering on GitHub byte-identically to a bare
+  // `n/a`, which must fail. Fifteen of the seventeen blank-rendering
+  // characters in `INVISIBLE` worked; only U+FEFF and U+3000 were caught, and
+  // then only incidentally by `trim()`. This is the F13/L6 defect class
+  // reappearing one level down, so it is closed with the SAME class the rest
+  // of this file already uses for emptiness rather than with a second list.
+  //
+  // `!` and `?` join the punctuation strip for the same reason: `n/a ??????`
+  // is not a reason either.
   const remainder = clause
     .slice(opener[0].length)
-    .replace(/^[\s.,:;—–`'"-]+/, "")
+    .replace(INVISIBLE, "")
+    .replace(/^[\s.,:;!?—–`'"-]+/, "")
     .trim();
-  return remainder.length >= 6; // a reason, not just the two letters
+  return remainder.length >= 6; // six VISIBLE characters, not six code points
 }
 
 /**
