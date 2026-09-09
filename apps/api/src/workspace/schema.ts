@@ -45,3 +45,28 @@ export const updateWorkspaceBody = z
   .refine((body) => Object.keys(body).length > 0, {
     message: "At least one field must be supplied",
   });
+
+// S5 -- native membership write routes (issue #6, retrofit plan §3, S5 row).
+
+export const workspaceMemberIdParam = z.object({
+  workspaceId: z.string(),
+  userId: z.string(),
+});
+
+// `role` is a plain string, not an enum: it is validated against this
+// workspace's OWN `workspace_role` rows in the controller (ROLE_NOT_FOUND
+// semantics), not against a fixed list -- custom roles are workspace data,
+// not a compile-time constant. `"owner"` is a legal STRING here (the schema
+// cannot see which workspace this is); the controller is what refuses it.
+export const addWorkspaceMemberBody = z.object({
+  userId: z.string().min(1),
+  role: z.string().min(1),
+});
+
+export const updateWorkspaceMemberRoleBody = z.object({
+  role: z.string().min(1),
+});
+
+export const transferWorkspaceOwnershipBody = z.object({
+  newOwnerUserId: z.string().min(1),
+});
