@@ -17,6 +17,7 @@
     "typecheck": "turbo typecheck",
     "prepare": "husky",
     "check:env": "node ./scripts/ci/check-env.mjs",
+    "check:events": "node ./scripts/ci/check-events.mjs",
     "check:i18n": "node ./scripts/i18n/check.mjs",
     "check:openapi": "node ./scripts/ci/check-openapi.mjs",
     "check:overrides": "node ./scripts/ci/check-overrides.mjs",

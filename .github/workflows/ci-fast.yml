@@ -114,7 +114,7 @@ jobs:
         run: pnpm check:i18n
 
   registers:
-    name: registers - env, vocabulary, reviews, skips, overrides
+    name: registers - env, vocabulary, events, reviews, skips, overrides
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -127,6 +127,14 @@ jobs:
         run: pnpm check:env
       - name: pnpm check:vocabulary
         run: pnpm check:vocabulary
+      - name: pnpm check:events
+        # #86's mechanical published-vs-declared reconciliation for event keys — see
+        # scripts/ci/check-events.mjs. ci-cd.md already scopes check:vocabulary over "a
+        # table, capability, event key or job name absent from its authority document";
+        # this script is that promise's concrete implementation for event keys, so
+        # test-all.mjs's reconciliation treats it as an alias of the declared
+        # `pnpm check:vocabulary` gate rather than as an undeclared one.
+        run: pnpm check:events
       - name: pnpm check:reviews
         run: pnpm check:reviews
       - name: pnpm check:skips
