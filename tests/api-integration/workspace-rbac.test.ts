@@ -8,6 +8,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  requireRow,
 } from "./helpers/fixtures";
 
 type CreateTaskBody = {
@@ -23,21 +24,23 @@ async function seedTask(
   userId?: string,
   status = "to-do",
 ) {
-  const [task] = await db
-    .insert(schema.taskTable)
-    .values({
-      projectId,
-      title: "Seeded task",
-      description: "Existing",
-      priority: "medium",
-      status,
-      columnId,
-      number: 1,
-      position: 1,
-      ...(userId ? { userId } : {}),
-    })
-    .returning();
-  return task;
+  return requireRow(
+    await db
+      .insert(schema.taskTable)
+      .values({
+        projectId,
+        title: "Seeded task",
+        description: "Existing",
+        priority: "medium",
+        status,
+        columnId,
+        number: 1,
+        position: 1,
+        ...(userId ? { userId } : {}),
+      })
+      .returning(),
+    "seedTask",
+  );
 }
 
 async function createWorkspaceRoleRow(
@@ -214,15 +217,18 @@ describe("API integration: workspace RBAC enforcement", () => {
       });
 
       const outsiderId = `user-${randomUUID()}`;
-      const [outsider] = await db
-        .insert(schema.userTable)
-        .values({
-          id: outsiderId,
-          email: `${outsiderId}@example.com`,
-          emailVerified: true,
-          name: "Outsider",
-        })
-        .returning();
+      const outsider = requireRow(
+        await db
+          .insert(schema.userTable)
+          .values({
+            id: outsiderId,
+            email: `${outsiderId}@example.com`,
+            emailVerified: true,
+            name: "Outsider",
+          })
+          .returning(),
+        "outsider",
+      );
 
       mockAuthenticatedSession(outsider);
       const { app } = createApp();
@@ -455,14 +461,17 @@ describe("API integration: workspace RBAC enforcement", () => {
         workspaceId: member.workspace.id,
       });
       const task = await seedTask(project.id, columns.todo.id);
-      const [foreignLabel] = await db
-        .insert(schema.labelTable)
-        .values({
-          name: "private",
-          color: "#000000",
-          workspaceId: foreign.workspace.id,
-        })
-        .returning();
+      const foreignLabel = requireRow(
+        await db
+          .insert(schema.labelTable)
+          .values({
+            name: "private",
+            color: "#000000",
+            workspaceId: foreign.workspace.id,
+          })
+          .returning(),
+        "foreignLabel",
+      );
 
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
@@ -975,15 +984,18 @@ describe("API integration: workspace RBAC enforcement", () => {
       const task = await seedTask(project.id, columns.todo.id);
       // deleteLabel requires the label to be attached to a task; without a
       // taskId the controller rejects with 400 before checking permissions.
-      const [label] = await db
-        .insert(schema.labelTable)
-        .values({
-          name: "scratch",
-          color: "#abcdef",
-          workspaceId: member.workspace.id,
-          taskId: task.id,
-        })
-        .returning();
+      const label = requireRow(
+        await db
+          .insert(schema.labelTable)
+          .values({
+            name: "scratch",
+            color: "#abcdef",
+            workspaceId: member.workspace.id,
+            taskId: task.id,
+          })
+          .returning(),
+        "label",
+      );
 
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
@@ -1000,15 +1012,18 @@ describe("API integration: workspace RBAC enforcement", () => {
         workspaceId: member.workspace.id,
       });
       const task = await seedTask(project.id, columns.todo.id);
-      const [label] = await db
-        .insert(schema.labelTable)
-        .values({
-          name: "scratch",
-          color: "#abcdef",
-          workspaceId: member.workspace.id,
-          taskId: task.id,
-        })
-        .returning();
+      const label = requireRow(
+        await db
+          .insert(schema.labelTable)
+          .values({
+            name: "scratch",
+            color: "#abcdef",
+            workspaceId: member.workspace.id,
+            taskId: task.id,
+          })
+          .returning(),
+        "label",
+      );
 
       mockAuthenticatedSession(member.user);
       const { app } = createApp();

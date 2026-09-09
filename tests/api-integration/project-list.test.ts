@@ -6,6 +6,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  requireRow,
 } from "./helpers/fixtures";
 
 type ProjectListEntry = typeof schema.projectTable.$inferSelect & {
@@ -62,7 +63,8 @@ describe("API integration: project list payload", () => {
 
     // The list endpoint is a summary view. Task rows must not ride along:
     // the payload grows without bound as a project fills up.
-    expect(payload[0].tasks).toBeUndefined();
+    const entry = requireRow(payload, "payload");
+    expect(entry.tasks).toBeUndefined();
   });
 
   it("still reports accurate task statistics without embedding tasks", async () => {
@@ -90,11 +92,12 @@ describe("API integration: project list payload", () => {
     const payload = (await response.json()) as ProjectListEntry[];
 
     // done + archived count as completed: 2 of 4 => 50%
-    expect(payload[0].statistics).toMatchObject({
+    const entry = requireRow(payload, "payload");
+    expect(entry.statistics).toMatchObject({
       totalTasks: 4,
       completionPercentage: 50,
     });
-    expect(new Date(payload[0].statistics.dueDate as string)).toEqual(earliest);
+    expect(new Date(entry.statistics.dueDate as string)).toEqual(earliest);
   });
 
   it("reports zeroed statistics for a project with no tasks", async () => {
@@ -109,12 +112,13 @@ describe("API integration: project list payload", () => {
     );
     const payload = (await response.json()) as ProjectListEntry[];
 
-    expect(payload[0].statistics).toMatchObject({
+    const entry = requireRow(payload, "payload");
+    expect(entry.statistics).toMatchObject({
       totalTasks: 0,
       completionPercentage: 0,
       dueDate: null,
     });
-    expect(payload[0].tasks).toBeUndefined();
+    expect(entry.tasks).toBeUndefined();
   });
 
   it("keeps statistics isolated per project", async () => {

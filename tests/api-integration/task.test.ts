@@ -8,6 +8,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  requireRow,
 } from "./helpers/fixtures";
 
 describe("API integration: task creation", () => {
@@ -132,15 +133,18 @@ describe("API integration: task creation", () => {
       workspaceId: member.workspace.id,
     });
 
-    const [outsider] = await db
-      .insert(schema.userTable)
-      .values({
-        id: outsiderId,
-        email: `${outsiderId}@example.com`,
-        emailVerified: true,
-        name: "Task Outsider",
-      })
-      .returning();
+    const outsider = requireRow(
+      await db
+        .insert(schema.userTable)
+        .values({
+          id: outsiderId,
+          email: `${outsiderId}@example.com`,
+          emailVerified: true,
+          name: "Task Outsider",
+        })
+        .returning(),
+      "outsider",
+    );
 
     mockAuthenticatedSession(outsider);
     const { app } = createApp();
