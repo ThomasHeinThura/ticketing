@@ -36,33 +36,20 @@
  * green is worse than one that costs a documentation row, so `check:events` has its own
  * row in ci-cd.md and its own manifest entry in test-all.mjs instead.
  *
- * **This map lives in its own file (review PR #91, MEDIUM 1) and cannot be mutated after
- * load:** `set`/`delete`/`clear` throw, and no new own property can be added (so a
- * consumer cannot shadow `.get()` either — see the test that proves both, in
- * `scripts/ci/probes/workflow-alias-table.test.mjs`).
+ * **This map lives in its own file** (review PR #91, MEDIUM 1) and the probe at
+ * `scripts/ci/probes/workflow-alias-table.test.mjs` pins its five entries, its `.get()`
+ * channel, and this file's comment-stripped body.
  *
- * **The seal alone is not enough, and the reason is worth keeping.** It stops anything
- * OUTSIDE this file changing the map. It does not stop code INSIDE this file, above the
- * seal, from calling `.set()` before the map is frozen — that was measured, and the map
- * really does end up holding six entries while the five literals below are untouched. So
- * the probe also pins this file's **exact comment-stripped source**. The two defences are
- * complementary rather than belt-and-braces: the seal closes the outside, the source pin
- * closes the inside.
+ * **What that does and does not close is deliberately NOT described here.** Four successive
+ * versions of this comment tried, and independent review falsified every one — including the
+ * version that was itself a correction of the previous falsification, and whose own commit was
+ * the counter-example to the sentence it added. The property being described is defeasible in
+ * more ways than a comment reliably tracks, and a stale guarantee in a guard is worse than no
+ * guarantee, because it is read as one.
  *
- * **What is actually true, after three earlier versions of this sentence were each
- * falsified by review:** the probe pins this file, so this file cannot be edited without the
- * probe failing. The seal raises the cost of casual mutation elsewhere. It does **not** make
- * the map immutable — `Map.prototype.set.call(WORKFLOW_ALIASES, k, v)` from any other module
- * mutates it on every channel (size, spread, `.get`, `.has`, `.keys`), because the seal
- * shadows the *property* and not the internal slot, and `Object.preventExtensions` does not
- * protect `Map.prototype`. Note that `Object.isFrozen(WORKFLOW_ALIASES)` reports `true`
- * throughout, so the obvious probe agrees with the wrong answer.
- *
- * **No further defence placed on this object can close that** — anything asserted in the
- * probe's process can be undone in the consumer's. The complete fix asserts the five pairs
- * inside `test-all.mjs`'s own process, and is tracked as **#102** rather than attempted here.
- * Three successive claims in this comment were wrong; this one is deliberately the weakest
- * statement that survives the attacks measured against it.
+ * **See issue #102**, which carries the current analysis — the known bypasses, the reason a
+ * defence placed on this object is not sufficient on its own, and the proposed consumer-process
+ * assertion — and which is maintained. Do not restore a summary of it here.
  */
 const sealed = new Map([
   ["pnpm check:route-policy", "pnpm test:permissions"],
