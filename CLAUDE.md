@@ -26,28 +26,63 @@ Then the feature spec for what you are doing, and any ADR it cites.
 **There is application code, and this section is where you find out what is actually
 true.** Say it in four categories, always, and never let one blur into another:
 
-**ON MAIN.** The kaneo import at `42bb8011`, de-branded (#5). `apps/api`, `apps/web`,
-`packages/{permissions,email,libs,mcp,typescript-config}`, `package.json`, `pnpm-lock.yaml`.
-Licence and provenance files (#4). A root `Dockerfile`, `compose.yml`, the `deploy/`
-overlays, `scripts/deploy.sh`, a hardened `charts/taskdesk`, and
-`docs/05-operations/proxy-topology-evidence.md` — all from #11's deployment slice (#20).
-`pnpm install | dev | lint | typecheck | test | test:integration` all run.
+**ON MAIN**, as of 2026-09-09 at `8aba7db`. Ten pull requests merged that day; **nothing
+carrying code is open.** The kaneo import at `42bb8011`, de-branded (#5). Licence and
+provenance files (#4). The deployment slice — root `Dockerfile`, `compose.yml`, the `deploy/`
+overlays, `scripts/deploy.sh`, a hardened `charts/taskdesk`, `docs/05-operations/proxy-topology-evidence.md`
+(#20 of #11). And then:
 
-**IN OPEN PR.** #16 (draft) removes the inherited attack surface — a slice of #6. #21
-builds the policy registry, evaluator and route-coverage gate for #7. #19 adds the CI
-gates, `test:all`, the `check:*` scripts and the OpenAPI baseline for #10. **None of this
-is on `main`.** Do not describe it as available and do not rebuild it.
+| On `main` | Landed via |
+| --- | --- |
+| Inherited attack surface removed — public-project inline route and `is_public`, six integration routers, billing, anonymous sign-in, account linking, the cookie cache, `deviceAuthorization`, `bearer` | #16 |
+| `packages/permissions` — policy registry, evaluator, route-coverage gate. **Issue #7 is complete and CLOSED** | #21, #7 |
+| CI — `test:all`, the `check:*` scripts, the OpenAPI baseline at `tests/api-contract/openapi.json`, the gate checkers and red probes | #19 of #10 |
+| `packages/ui` — the first coherent primitive slice | #63 of #9 |
+| `packages/domain` — service-calendar arithmetic, 59 exhaustive tests, no new dependency | #69 (P2) |
+| Retrofit **S1** characterization (24 tests, real PostgreSQL 18) | #57 |
+| Retrofit **S0 + S2** — dead-code sweep, native workspace/capabilities read routes | #65 |
+| Retrofit **S4** — native workspace writes, transactional default-role seed. Ships **dark** | #67 |
+| Build fixes — `packages/email` stale `tsBuildInfoFile`; `@taskdesk/permissions` ESM specifiers | #64, #62 |
+| Control-plane records — the two authorization decisions, the ruleset, the waived Opus gate, the retrofit **stage ledger**, the P1–P4 preparation plans | #60, #61, #68, #71, #72 |
+
+`pnpm install | dev | lint | typecheck | test | test:integration | test:all` all run.
+`pnpm test:permissions` is on `main` — it landed with #21, and #19 added
+`pnpm check:route-policy`, a fail-closed wrapper that locates that suite and refuses to pass
+without it. It does not replace the entry point.
+
+**IN OPEN PR.** Nothing. A dependabot bump may be open at any time; those are routine.
+
+**READ THIS BEFORE ACTING ON ANY OF IT.** All ten of those merges happened **without the
+mandatory Opus security review** — Thomas waived the gate explicitly and merged on Sonnet
+review. Five touched security-scope paths. See the two 2026-09-09 decision-log entries. The
+waiver is recorded, not hidden, and `check:pr-template` still fails on the untickable
+independent-review box, deliberately, so the gap stays visible. **This does not make the
+waiver reusable: it was Thomas's to give, once, for those pull requests.** The rule below —
+never downgrade an unavailable reviewer — is unchanged.
 
 **BLOCKED.** #8 (the router retrofit) waits for #6's removal surface to settle. #17 waits
-on a decision about sessions already minted by the removed flows.
+on a decision about sessions already minted by the removed flows. #66 — `hasWorkspacePermission`
+falls back to compiled static roles when a `workspace_role` row is absent — must close before
+#40's `DELETE /api/roles/{id}` ships.
 
-**DECIDED / NOT YET IMPLEMENTED.** better-auth's `organization()` is removed in P0 — final
-— but it is still mounted while the retrofit is written. The OpenAPI baseline destination
-is settled as `tests/api-contract/openapi.json`; the file exists only in #19.
+**DECIDED / NOT YET IMPLEMENTED.** better-auth's `organization()` is removed in P0 — final —
+but it is **still mounted**, and `tests/api-contract/openapi.json` still declares six
+`/auth/organization/*` invitation operations. Unmounting is **S10**, and S10 has not started.
 
-`pnpm test:permissions` is **on `main`** — it landed with #21, not #19, and runs #21's
-canonical suite through turbo. #19 adds `pnpm check:route-policy`, a fail-closed wrapper that
-locates that suite and refuses to pass without it; it does not replace the entry point.
+**Throttle 1 is SHUT, and this is the number to know: four of its five conditions are met.**
+#5 complete ✓, #7 complete ✓, route-policy coverage executing in CI ✓, an unclassified route
+demonstrated to fail CI ✓. **Condition 2 — issue #6 complete *through retrofit S10* — is the
+sole blocker**, and it is arithmetic rather than judgement: the
+[stage ledger](docs/07-planning/retrofits/organization-plugin-retrofit.md) records four of
+fourteen stages landed (S0, S1, S2, S4). **S3, S5 and S7 have their preconditions satisfied
+and can start today**; they are the shortest path to opening the throttle. Do not re-derive
+this — read the ledger.
+
+**What is startable while the throttle is shut**, per the blocking taxonomy: the retrofit
+stages above, further pure `packages/domain` modules, `packages/ui` primitives, CI tooling,
+fixtures and docs. All are "no block" work. Anything **route-shaped** for P1 or P3 is not,
+and the [P1–P4 preparation plans](docs/07-planning/lane-prep/) are plans for exactly that
+reason.
 
 **The licence hard stop is satisfied and no longer applies.** #4 and #5 are both merged and
 closed, so the provenance boundary it protected is behind us: upstream MIT code sits in this
@@ -63,8 +98,11 @@ branch, commit to it, push, open a pull request that says what you did and what 
 do. **Only Thomas merges.**
 
 `main` is protected by the `protect-main` ruleset: a pull request is required, deletion and
-non-fast-forward pushes are blocked, stale approvals are dismissed on push, and merges are
-squashed. **Required approving reviews is `0`, and Require review from Code Owners is
+non-fast-forward pushes are blocked, stale approvals are dismissed on push, merges are
+squashed, and — since 2026-09-09 — **eleven fast-stage status checks are required**, with
+strict up-to-date enforcement and **zero bypass actors**. Until that day it required no
+status checks at all. The template/security-review job is deliberately **not** among the
+eleven; the decision log says why. **Required approving reviews is `0`, and Require review from Code Owners is
 off** — both deliberately (decision log, 2026-09-06).
 
 Do not wait for an approval that is not configured, and do not read the zero as permission.
