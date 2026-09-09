@@ -48,10 +48,19 @@ sentences to re-verify instead.
 |---|---|
 | `state` is workspace-scoped, with `project_state` for per-project order/default/enablement, and "open"/"closed" keys off a bare `state.group` column | **Superseded.** `state_template` (workspace-scoped) is the shared catalogue a workflow's transitions reference; `state` (project-scoped) is a project's own concrete row, mapped to exactly one template via `state_template_id`. `project_state` is **retired** — its job now lives on `state` directly. `state` carries no `group` column: "open"/"closed" resolve through the join to `state_template.group`. See [data-model.md §3](../../01-architecture/data-model.md) and [ADR 0011](../../01-architecture/adr/0011-ticket-lifecycle-engine.md), which is final. |
 
-`p1-core.md`'s roll-up discussion (`WI-19`/`RH-9`/`RH-16`) and `p2-domain.md`'s workflow
-acceptance criteria both cite the pre-split vocabulary and should be re-read against the
-current `workflows.md`, `work-items.md` and `relations-and-hierarchy.md` rather than trusted
-as written.
+The sentences to re-verify, located rather than described — an earlier version of this note
+sent a reader to `p2-domain.md`'s "Acceptance criteria per issue" section, which is clean, and
+would therefore have missed the three that are not:
+
+| Plan | Lines carrying pre-split vocabulary |
+|---|---|
+| [`p1-core.md`](p1-core.md) | the roll-up discussion — `WI-19` / `RH-9` / `RH-16`, around **136** and **444** (`state.group in ('completed','cancelled')`) |
+| [`p2-domain.md`](p2-domain.md) | **72** (states workspace-scoped with `project_state` for ordering/default), **300** (the impure edge loading the project's `project_state`), **720** (`project_state` in the table list) |
+
+Re-read those against the current `workflows.md`, `work-items.md`,
+`relations-and-hierarchy.md` and `data-model.md` rather than trusting them as written. A
+pointer that names the wrong section is worse than no pointer, which is why these are line
+numbers and not a description.
 
 ## What has NOT moved — the reason every plan is still a plan
 
