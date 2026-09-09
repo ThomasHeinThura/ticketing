@@ -1,47 +1,42 @@
 import { useQuery } from "@tanstack/react-query";
+import { client } from "@taskdesk/libs";
 import { useMemo } from "react";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUser } from "@/hooks/queries/workspace-users/use-active-workspace-user";
-import { authClient } from "@/lib/auth-client";
 
 export type PermissionLevel = "owner" | "admin" | "member";
 
-// Capabilities are named permission bundles checked against the SERVER via
-// better-auth's `/organization/has-permission` endpoint. Going through the
-// server is what makes custom workspace roles work in the UI: the local
-// `checkRolePermission` only knows about the four static roles compiled
-// into the auth client, so it would silently return false for any custom
-// role that grants the permission.
-const CAPABILITIES = {
-  manageProjects: { project: ["create", "update", "delete"] },
-  createProjects: { project: ["create"] },
-  updateProjects: { project: ["update"] },
-  deleteProjects: { project: ["delete"] },
-  updateTasks: { task: ["update"] },
-  createTasks: { task: ["create"] },
-  deleteTasks: { task: ["delete"] },
-  assignTasks: { task: ["assign"] },
-  createLabels: { label: ["create"] },
-  updateLabels: { label: ["update"] },
-  deleteLabels: { label: ["delete"] },
-  manageWorkspace: { workspace: ["update", "manage_settings"] },
-  deleteWorkspace: { workspace: ["delete"] },
-  inviteUsers: { invitation: ["create"] },
-  manageTeam: { member: ["update", "delete"] },
-  removeMembers: { member: ["delete"] },
-} as const satisfies Record<string, Record<string, string[]>>;
-
-type Capability = keyof typeof CAPABILITIES;
+// S3 (issue #6, retrofit plan §3, matrix row 15): native replacement for the
+// 16-way authClient.organization.hasPermission() fan-out, replaced by one
+// call to GET /api/capabilities (apps/api/src/capabilities/index.ts), which
+// computes the exact same 16 keys server-side over hasWorkspacePermission --
+// see apps/api/src/capabilities/capability-checks.ts, a deliberate
+// server-side duplicate of the map this file used to carry.
+type Capability = keyof typeof EMPTY_CAPABILITIES;
 
 type CapabilityMap = Record<Capability, boolean>;
 
-function emptyCapabilityMap(): CapabilityMap {
-  const out = {} as CapabilityMap;
-  for (const key of Object.keys(CAPABILITIES) as Capability[]) {
-    out[key] = false;
-  }
-  return out;
-}
+// Mirrors apps/api/src/capabilities/response.ts's capabilitiesResponseSchema
+// key-for-key. Used only as the "no data yet" fallback -- the real values
+// always come from the server.
+const EMPTY_CAPABILITIES = {
+  manageProjects: false,
+  createProjects: false,
+  updateProjects: false,
+  deleteProjects: false,
+  updateTasks: false,
+  createTasks: false,
+  deleteTasks: false,
+  assignTasks: false,
+  createLabels: false,
+  updateLabels: false,
+  deleteLabels: false,
+  manageWorkspace: false,
+  deleteWorkspace: false,
+  inviteUsers: false,
+  manageTeam: false,
+  removeMembers: false,
+} as const satisfies Record<string, boolean>;
 
 export function useWorkspacePermission() {
   const { data: activeWorkspace } = useActiveWorkspace();
@@ -49,10 +44,14 @@ export function useWorkspacePermission() {
   const workspaceId = activeWorkspace?.id;
   const role = activeMember?.role as string | undefined;
 
-  // One query that fans out to all capability checks in parallel and caches
-  // the resulting map by (workspaceId, role). Refetches when either changes,
-  // e.g., when the admin edits the role's permissions in the Roles UI and
-  // we invalidate this key.
+  // One query per (workspaceId, role) that replaces all 16 round trips with
+  // a single GET /api/capabilities call. Refetches when either changes,
+  // e.g. when the admin edits the role's permissions in the Roles UI and we
+  // invalidate this key -- see use-update-workspace-user-role.ts and
+  // use-transfer-workspace-ownership.ts, which both already invalidate
+  // ["workspace-capabilities", workspaceId] on role changes, and keep doing
+  // so unmodified: this key's first two elements are unchanged, so those
+  // existing invalidations still match this query.
   const {
     data: capabilities,
     isLoading,
@@ -62,32 +61,19 @@ export function useWorkspacePermission() {
     enabled: Boolean(workspaceId && role),
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<CapabilityMap> => {
-      const entries = Object.entries(CAPABILITIES) as Array<
-        [Capability, Record<string, string[]>]
-      >;
-      const results = await Promise.all(
-        entries.map(async ([key, permissions]) => {
-          try {
-            const res = await authClient.organization.hasPermission({
-              organizationId: workspaceId,
-              permissions,
-            });
-            return [key, res.data?.success === true] as const;
-          } catch (error) {
-            console.error(`hasPermission check failed for ${key}:`, error);
-            return [key, false] as const;
-          }
-        }),
-      );
-      const map = emptyCapabilityMap();
-      for (const [key, value] of results) {
-        map[key] = value;
+      const response = await client.capabilities.$get({
+        query: { workspaceId: workspaceId as string },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get capabilities");
       }
-      return map;
+
+      return response.json();
     },
   });
 
-  const can: CapabilityMap = capabilities ?? emptyCapabilityMap();
+  const can: CapabilityMap = capabilities ?? EMPTY_CAPABILITIES;
 
   const helpers = useMemo(() => {
     return {
@@ -107,22 +93,8 @@ export function useWorkspacePermission() {
       canInviteUsers: () => can.inviteUsers,
       canManageTeam: () => can.manageTeam,
       canRemoveMembers: () => can.removeMembers,
-      // Escape hatch for ad-hoc permission checks (uncached). Prefer adding
-      // a capability above.
-      hasPermission: async (permissions: Record<string, string[]>) => {
-        try {
-          const res = await authClient.organization.hasPermission({
-            organizationId: workspaceId,
-            permissions,
-          });
-          return res.data?.success === true;
-        } catch (error) {
-          console.error("hasPermission check failed:", error);
-          return false;
-        }
-      },
     };
-  }, [can, workspaceId]);
+  }, [can]);
 
   return {
     ...helpers,

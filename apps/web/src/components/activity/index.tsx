@@ -39,13 +39,16 @@ function getEventDataRecord(
   return eventData as Record<string, unknown>;
 }
 
+// S3 (issue #6, retrofit plan §3): flat, matching the native
+// GET /api/workspace/{workspaceId}/members response
+// (apps/api/src/workspace/response.ts's workspaceMemberSchema) that
+// use-get-workspace-users.ts now reads -- no nested `.user`, and `id` is
+// already the user's own id.
 type WorkspaceUser = {
-  user?: {
-    id?: string;
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-  } | null;
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
 };
 
 function getActivityTypeIcon(type: string) {
@@ -91,8 +94,7 @@ function toDisplayCase(value: string) {
 function findUserByName(users: WorkspaceUser[] | undefined, name: string) {
   if (!users) return null;
   const matches = users.filter(
-    (member) =>
-      member.user?.name?.toLowerCase().trim() === name.toLowerCase().trim(),
+    (member) => member.name?.toLowerCase().trim() === name.toLowerCase().trim(),
   );
 
   if (matches.length !== 1) return null;
@@ -106,7 +108,7 @@ function UserHoverName({
   user: WorkspaceUser | null;
   fallbackName: string;
 }) {
-  if (!user?.user) {
+  if (!user) {
     return <span className="font-medium text-foreground">{fallbackName}</span>;
   }
 
@@ -114,27 +116,22 @@ function UserHoverName({
     <HoverCard>
       <HoverCardTrigger asChild>
         <span className="cursor-pointer font-medium text-foreground transition-colors hover:text-primary">
-          {user.user.name}
+          {user.name}
         </span>
       </HoverCardTrigger>
       <HoverCardContent className="w-52 p-3">
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
-            <AvatarImage
-              src={user.user.image ?? ""}
-              alt={user.user.name || ""}
-            />
+            <AvatarImage src={user.image ?? ""} alt={user.name || ""} />
             <AvatarFallback className="bg-muted text-xs font-medium">
-              {getInitials(user.user.name)}
+              {getInitials(user.name)}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-foreground leading-none">
-              {user.user.name}
+              {user.name}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {user.user.email}
-            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{user.email}</p>
           </div>
         </div>
       </HoverCardContent>
@@ -151,7 +148,7 @@ function ActorAvatar({
 }) {
   return (
     <Avatar className="size-6">
-      <AvatarImage src={user?.user?.image ?? ""} alt={fallbackName} />
+      <AvatarImage src={user?.image ?? ""} alt={fallbackName} />
       <AvatarFallback className="bg-muted text-[11px] font-medium">
         {getInitials(fallbackName)}
       </AvatarFallback>
@@ -305,12 +302,12 @@ function renderActivityContent({
       const targetId = String(eventData.newAssigneeId ?? "");
       const targetName = String(eventData.newAssignee ?? "");
       const targetUser =
-        workspaceUsers?.find((member) => member.user?.id === targetId) || null;
+        workspaceUsers?.find((member) => member.id === targetId) || null;
 
       return (
         <span className="text-sm text-muted-foreground">
           {t("activity:assignedTo", {
-            name: targetUser?.user?.name ?? targetName,
+            name: targetUser?.name ?? targetName,
           })}
         </span>
       );
@@ -330,12 +327,12 @@ function renderActivityContent({
     if (tokenMatch) {
       const [, targetId, targetName] = tokenMatch;
       const targetUser =
-        workspaceUsers?.find((member) => member.user?.id === targetId) || null;
+        workspaceUsers?.find((member) => member.id === targetId) || null;
 
       return (
         <span className="text-sm text-muted-foreground">
           {t("activity:assignedTo", {
-            name: targetUser?.user?.name ?? targetName,
+            name: targetUser?.name ?? targetName,
           })}
         </span>
       );
@@ -348,7 +345,7 @@ function renderActivityContent({
       return (
         <span className="text-sm text-muted-foreground">
           {t("activity:assignedTo", {
-            name: targetUser?.user?.name ?? targetName,
+            name: targetUser?.name ?? targetName,
           })}
         </span>
       );
@@ -427,12 +424,12 @@ function Activity({
 
   const user = activity.userId
     ? workspaceUsers?.find(
-        (workspaceUser) => workspaceUser.user?.id === activity.userId,
+        (workspaceUser) => workspaceUser.id === activity.userId,
       )
     : null;
 
   const isExternalComment = Boolean(activity.externalSource);
-  const actorName = user?.user?.name || t("common:people.someone");
+  const actorName = user?.name || t("common:people.someone");
 
   if (isCommentActivity(activity)) {
     const commentUser = isExternalComment
@@ -443,10 +440,10 @@ function Activity({
           image: activity.externalUserAvatar ?? undefined,
         }
       : {
-          id: user?.user?.id,
-          name: user?.user?.name,
-          email: user?.user?.email,
-          image: user?.user?.image,
+          id: user?.id,
+          name: user?.name,
+          email: user?.email,
+          image: user?.image,
         };
 
     return (

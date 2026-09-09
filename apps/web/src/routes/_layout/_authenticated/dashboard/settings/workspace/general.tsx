@@ -65,27 +65,15 @@ function normalizeWorkspaceValues(
   };
 }
 
-/** Better Auth persists description as an organization additional field (DB column), not only inside metadata. */
+// S3 (issue #6, retrofit plan §3): `workspace` here now comes from the
+// native GET /api/workspace list (apps/api/src/workspace/response.ts's
+// workspaceSummarySchema), where `description` is always a plain column --
+// there is no metadata-fallback case left to handle (that was a better-auth
+// `additionalFields` quirk on the plugin's own return shape).
 function getWorkspaceDescription(
-  workspace:
-    | { description?: string | null; metadata?: unknown }
-    | null
-    | undefined,
+  workspace: { description?: string | null } | null | undefined,
 ): string {
-  if (!workspace) return "";
-  if (typeof workspace.description === "string") {
-    return workspace.description;
-  }
-  if (
-    typeof workspace.metadata === "object" &&
-    workspace.metadata &&
-    "description" in workspace.metadata
-  ) {
-    return String(
-      (workspace.metadata as { description?: unknown }).description ?? "",
-    );
-  }
-  return "";
+  return workspace?.description ?? "";
 }
 
 function RouteComponent() {
@@ -130,10 +118,19 @@ function RouteComponent() {
 
   // Ownership transfer is owner-only. Eligible recipients are any current
   // member who isn't the owner themselves.
+  //
+  // S5 (issue #6, retrofit plan §3) shipped the atomic native
+  // transfer-ownership route (apps/api/src/workspace/controllers/
+  // transfer-workspace-ownership.ts), keyed by user id, so this no longer
+  // needs to be force-disabled. `isOwner` is a client-side convenience only
+  // -- the route's own `requireWorkspaceCapability("workspace:transfer_ownership")`
+  // middleware and the controller's own re-read of the caller's role are the
+  // real authority gate.
+  const canTransferOwnership = isOwner;
   const members = fullWorkspace?.members ?? [];
   const currentOwnerMember = members.find((m) => m.role === "owner");
   const eligibleNewOwners = members.filter(
-    (m) => m.role !== "owner" && m.userId !== currentUser?.id,
+    (m) => m.role !== "owner" && m.id !== currentUser?.id,
   );
   const selectedMember = eligibleNewOwners.find(
     (m) => m.id === selectedNewOwnerId,
@@ -198,15 +195,18 @@ function RouteComponent() {
           updatePayload.description = normalizedData.description;
         }
 
+        // useUpdateWorkspace's own onSuccess invalidates ["workspaces"] and
+        // ["workspace", "full", workspaceId] -- the keys `use-active-workspace`
+        // and this page's own `use-get-full-workspace` read -- before this
+        // await resolves, so the sidebar and this form don't show the
+        // previous name after a rename. See that hook for why (it used to
+        // live here, invalidating the dead ["active-organization"] key).
         await updateWorkspace(updatePayload);
 
         workspaceForm.reset(normalizedData, { keepDirty: false });
         lastSavedRef.current = normalizedData;
         queuedSaveRef.current = null;
 
-        await queryClient.invalidateQueries({
-          queryKey: ["active-organization"],
-        });
         toast.success(t("settings:workspaceGeneral.toastUpdated"));
       } catch (error) {
         toast.error(
@@ -224,17 +224,25 @@ function RouteComponent() {
         }
       }
     },
-    [workspace, updateWorkspace, queryClient, workspaceForm, t],
+    [workspace, updateWorkspace, workspaceForm, t],
   );
 
   const handleTransferOwnership = useCallback(async () => {
-    if (!workspace?.id || !currentOwnerMember || !selectedMember) return;
+    // Defense-in-depth: the trigger button and confirm action are both
+    // already disabled by !canTransferOwnership (see its declaration above),
+    // but refuse here too in case this is ever wired up without that guard.
+    if (
+      !canTransferOwnership ||
+      !workspace?.id ||
+      !currentOwnerMember ||
+      !selectedMember
+    )
+      return;
 
     try {
       await transferOwnership({
         workspaceId: workspace.id,
-        newOwnerMemberId: selectedMember.id,
-        currentOwnerMemberId: currentOwnerMember.id,
+        newOwnerUserId: selectedMember.id,
       });
       toast.success(
         t("settings:workspaceGeneral.transferOwnership.toastSuccess", {
@@ -252,7 +260,14 @@ function RouteComponent() {
             }),
       );
     }
-  }, [workspace?.id, currentOwnerMember, selectedMember, transferOwnership, t]);
+  }, [
+    canTransferOwnership,
+    workspace?.id,
+    currentOwnerMember,
+    selectedMember,
+    transferOwnership,
+    t,
+  ]);
 
   const handleDeleteWorkspace = useCallback(async () => {
     if (!workspace?.id) return;
@@ -261,11 +276,11 @@ function RouteComponent() {
       await deleteWorkspace({ workspaceId: workspace.id });
       toast.success(t("settings:workspaceGeneral.toastDeleted"));
 
-      // Invalidate all workspace-related queries
+      // Invalidate all workspace-related queries. (["active-organization"]
+      // was invalidated here too before -- nothing subscribes to that key,
+      // same as the identical dead call removed from saveWorkspace above and
+      // from use-transfer-workspace-ownership.ts's onSuccess.)
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
-      await queryClient.invalidateQueries({
-        queryKey: ["active-organization"],
-      });
 
       navigate({ to: "/dashboard" });
     } catch (error) {
@@ -462,15 +477,14 @@ function RouteComponent() {
                         )}
                       >
                         {selectedMember
-                          ? selectedMember.user.name ||
-                            selectedMember.user.email
+                          ? selectedMember.name || selectedMember.email
                           : null}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {eligibleNewOwners.map((m) => (
                         <SelectItem key={m.id} value={m.id}>
-                          {m.user.name} ({m.user.email})
+                          {m.name} ({m.email})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -479,7 +493,11 @@ function RouteComponent() {
                     variant="outline"
                     size="sm"
                     type="button"
-                    disabled={!selectedNewOwnerId || isTransferring}
+                    disabled={
+                      !canTransferOwnership ||
+                      !selectedNewOwnerId ||
+                      isTransferring
+                    }
                     onClick={() => setIsTransferModalOpen(true)}
                   >
                     {t("settings:workspaceGeneral.transferOwnership.button", {
@@ -544,10 +562,7 @@ function RouteComponent() {
                   {
                     defaultValue:
                       "{{name}} will become the sole owner of {{workspace}}. You'll keep admin access but lose owner-only abilities like deleting the workspace or transferring it again.",
-                    name:
-                      selectedMember?.user.name ||
-                      selectedMember?.user.email ||
-                      "",
+                    name: selectedMember?.name || selectedMember?.email || "",
                     workspace: workspace?.name ?? "",
                   },
                 )}
@@ -569,7 +584,7 @@ function RouteComponent() {
                 render={
                   <Button
                     size="sm"
-                    disabled={isTransferring}
+                    disabled={!canTransferOwnership || isTransferring}
                     onClick={handleTransferOwnership}
                   />
                 }

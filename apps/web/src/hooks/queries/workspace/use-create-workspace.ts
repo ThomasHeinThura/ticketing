@@ -5,7 +5,6 @@ import {
   createUniqueWorkspaceSlug,
   isWorkspaceSlugCollisionError,
 } from "@/lib/utils/create-workspace-slug";
-import { refreshWorkspaceStores } from "@/lib/utils/refresh-workspace-stores";
 
 type CreateWorkspaceRequest = {
   name: string;
@@ -62,11 +61,6 @@ function useCreateWorkspace() {
         });
 
         if (response.ok) {
-          // S4b: keep the plugin's workspace stores in step with the native
-          // write. Create currently survives without this because the caller
-          // hits `organization/set-active` straight afterwards; that is a side
-          // effect, not a guarantee.
-          refreshWorkspaceStores();
           return await response.json();
         }
 

@@ -7,8 +7,6 @@ import useCreateWorkspace from "./use-create-workspace";
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),
   list: vi.fn(),
-  notify: vi.fn(),
-  refresh: vi.fn(),
 }));
 
 vi.mock("@taskdesk/libs", () => ({
@@ -24,21 +22,7 @@ vi.mock("@/lib/auth-client", () => ({
     organization: {
       list: mocks.list,
     },
-    // `refreshWorkspaceStores` notifies the plugin's own nanostore atoms after
-    // a native write, because no plugin route path is hit any more and the
-    // plugin's `atomListeners` therefore never fire. See
-    // `@/lib/utils/refresh-workspace-stores`.
-    $store: {
-      notify: mocks.notify,
-    },
   },
-}));
-
-// The S4b store-refresh shim is mocked so this file can assert WHETHER it runs.
-// Without an assertion the fix would be unprobed: reverting the call leaves the
-// rest of this suite green, which is the defect #81's finding C-4 named.
-vi.mock("@/lib/utils/refresh-workspace-stores", () => ({
-  refreshWorkspaceStores: mocks.refresh,
 }));
 
 function createWrapper() {
@@ -57,8 +41,6 @@ describe("useCreateWorkspace", () => {
   beforeEach(() => {
     mocks.post.mockReset();
     mocks.list.mockReset();
-    mocks.notify.mockReset();
-    mocks.refresh.mockReset();
     mocks.list.mockResolvedValue({ data: [] });
   });
 
@@ -115,42 +97,11 @@ describe("useCreateWorkspace", () => {
     });
 
     expect(mocks.post).toHaveBeenCalledTimes(2);
-    // The shim fires once per *successful* create, not once per POST
-    // attempt: the failed collision attempt must not trigger it, only the
-    // eventual success does. A count of 2 here (matching mocks.post) would
-    // mean the refresh happened alongside the doomed first attempt too,
-    // which is not what "refresh after a successful write" means.
-    expect(mocks.refresh).toHaveBeenCalledTimes(1);
   });
 
-  it("refreshes the plugin's workspace stores after a successful native POST", async () => {
-    // The regression this guards: after a successful `POST /api/workspace`
-    // the settings sidebar and workspace switcher both still showed stale
-    // data, because `use-active-workspace`/`use-get-workspaces` read
-    // better-auth's nanostores and those are refreshed only by the plugin's
-    // own `atomListeners`, which match on PLUGIN route paths. The native
-    // route hits none, so nothing invalidated them.
-    mocks.post.mockResolvedValue({
-      ok: true,
-      json: async () => ({ id: "workspace-1", name: "Acme" }),
-    });
-
-    const { result } = renderHook(() => useCreateWorkspace(), {
-      wrapper: createWrapper(),
-    });
-
-    await act(async () => {
-      await result.current.mutateAsync({ name: "Acme", slug: "acme" });
-    });
-
-    expect(mocks.refresh).toHaveBeenCalledTimes(1);
-  });
-
-  it("does NOT refresh the stores when the native POST fails", async () => {
-    // Fail-closed on the display side too: a refused write must not make the
-    // UI re-read as though something had changed. A slug is supplied
-    // explicitly so the retry-on-collision path is never taken here —
-    // this failure must propagate immediately, on the very first attempt.
+  it("propagates a non-collision failure immediately without retrying when a slug was explicitly supplied", async () => {
+    // A slug is supplied explicitly so the retry-on-collision path is never
+    // taken here — this failure must propagate on the very first attempt.
     mocks.post.mockResolvedValue({
       ok: false,
       text: async () => "Forbidden",
@@ -167,6 +118,5 @@ describe("useCreateWorkspace", () => {
     });
 
     expect(mocks.post).toHaveBeenCalledTimes(1);
-    expect(mocks.refresh).not.toHaveBeenCalled();
   });
 });
