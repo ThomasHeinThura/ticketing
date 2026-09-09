@@ -198,30 +198,34 @@ security-review-scope paths. No review note was written and no independent-revie
 was ticked. **That waiver was given once, for those pull requests, and does not carry
 forward.** Since 2026-09-09 the template/security-review job is the **twelfth required status
 check**, so a pull request can no longer merge without committed review evidence — see the
-newest decision-log entry. An independent audit of `main@5270954` has already produced one
-HIGH finding (the authorization enforcement layer sat outside the security-review scope) and
-its remediation is in flight.
+newest decision-log entry. Any findings from further security audits of `main`, and their
+remediation status, are tracked as GitHub issues and pull requests — read them there
+(`gh issue list --state open`, `gh pr list --state open`), not here.
 
 ### BLOCKED
 
 - **#8** — the router retrofit still waits for #6's removal surface to settle. **#16's
   deletions have landed**, which is half of it; the retrofit itself has now started
-  moving (S0, S1, S2 and S4 have landed via #57/#65/#67 — S3, S5–S9, S10 remain), but
+  moving (S0, S1, S2 and S4 have landed via #57/#65/#67 — S3, S4b, S5–S9, S10 remain), but
   `organization()` is **still mounted** end to end. Classifying a route that is about to
   be replaced is wasted review and a false sense of coverage, so this stays blocked on the
   full retrofit, not on the deletions alone.
 - **#17** — sessions already minted by the removed MCP OAuth and device flows. Deleting an
   endpoint is not revoking a credential; a consent click created a full 30-day session row.
-- **Retrofit S7 (native role writes) — ⛔ BLOCKED BY #66.** Not a scheduling preference.
-  #66 is a privilege-restoration fail-open: `hasWorkspacePermission` falls back to the
-  compiled built-in role definitions when a `workspace_role` row is absent, so a role an
-  administrator has *narrowed* — or deleted — silently regains its built-in privileges. S7
-  writes that exact table. Authoring role writes, and especially role **deletion**, on top
-  of a known fail-open on the row being deleted is how the delete-after-narrow escalation
-  becomes shippable. **Do not author native role-delete routes until #66 is merged and
-  independently cleared.** Remediation is **being authored** as of 2026-09-09 — there is no
-  pull request and no pushed branch yet, so do not read this as "nearly done". When it
-  lands it needs its own independent review before S7 is released.
+- **Retrofit S7 (native role writes) — ⛔ BLOCKED BY #66, and independently by #82.** Not a
+  scheduling preference. #66 is a privilege-restoration fail-open: `hasWorkspacePermission`
+  falls back to the compiled built-in role definitions when a `workspace_role` row is absent,
+  so a role an administrator has *narrowed* — or deleted — silently regains its built-in
+  privileges. S7 writes that exact table. Authoring role writes, and especially role
+  **deletion**, on top of a known fail-open on the row being deleted is how the
+  delete-after-narrow escalation becomes shippable. **Do not author native role-delete routes
+  until #66 is merged and independently cleared.** #82 is a second, independent P0 security
+  blocker on S7: TaskDesk's canonical rule is one workspace membership = exactly one role,
+  and the two authorization surfaces currently disagree on malformed multi-role values — see
+  the decision log. **S7's release condition is #66 cleared AND multi-role (#82) cleared**,
+  each independently reviewed. Check GitHub for both issues' current state (`gh issue view
+  66`, `gh issue view 82`) — do not infer it from this file. When either remediation lands it
+  needs its own independent review before S7 is released.
 - **#31 (P2 workflows) — blocked by AGENTS.md do-not 15.** `docs/03-features/workflows.md`
   is the subject of a *not-ready* review verdict — the verdict and its 4 High, 4 Medium and
   2 Low findings live in the review document, not in the spec itself, which has no review
@@ -574,7 +578,7 @@ and reading it that way would open the throttle while `organization()` is still 
 | | Condition | State |
 | --- | --- | --- |
 | 1 | **#5** complete | ✅ merged as PR #13, closed |
-| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; only **S0, S1, S2 and S4** have landed (#65, #57, #65, #67). S3 (client cut-over off the plugin) and S5–S9/S10 (unmount) remain, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
+| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; only **S0, S1, S2 and S4** have landed (#65, #57, #65, #67). S3, S4b (client workspace-write cutover) and S5–S9/S10 (unmount) remain, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
 | 3 | **#7** complete | ✅ **met — issue closed 2026-09-09** (`closedAt 2026-09-09T06:29:48Z`). #21 put the registry, evaluator and route-coverage gate on `main`; #19 put `pnpm test:permissions` (74 tests) in CI via `check:route-policy` on every push and pull request. The last open clause — both tests **required status checks** — closed when Thomas updated `protect-main` (ruleset `22365005`): `route policy coverage + permission matrix` now sits among 11 entries in `required_status_checks`, `strict_required_status_checks_policy: true`, `current_user_can_bypass: never` (`updated_at 2026-09-09T06:28:04Z`, re-read directly from `gh api repos/.../rulesets/22365005`, not taken from the closing comment's word) |
 | 4 | route coverage **actually executes** in CI | ✅ **met.** `.github/workflows/ci-fast.yml`'s `route-policy` job runs `pnpm check:route-policy` on every push and pull request, and did on `main`'s first gate-enforcing run (`e11976f`, all 11 applicable jobs green) |
 | 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`, 304 tests, 0 failed) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one |

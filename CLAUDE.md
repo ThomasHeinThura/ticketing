@@ -93,11 +93,14 @@ but it is **still mounted**, and `tests/api-contract/openapi.json` still declare
 demonstrated to fail CI ✓. **Condition 2 — issue #6 complete *through retrofit S10* — is the
 sole blocker**, and it is arithmetic rather than judgement: the
 [stage ledger](docs/07-planning/retrofits/organization-plugin-retrofit.md) records four of
-fourteen stages landed (S0, S1, S2, S4). **S3 and S5 have branches in flight** — check
+fifteen stages landed (S0, S1, S2, S4). **S3 and S5 have branches in flight** — check
 GitHub for their numbers and state rather than trusting a number written here;
-**S7 is ⛔ BLOCKED BY #66**, a privilege-restoration fail-open on the very table S7 writes.
-Do not re-derive any of this — read the ledger, which states progress as **4 landed of 11
-required** rather than the misleading "4 of 14".
+**S7 is ⛔ BLOCKED BY #66** (and, independently, by #82 — see the decision log), a
+privilege-restoration fail-open on the very table S7 writes.
+Do not re-derive any of this — read the ledger, which states progress as **4 landed of 12
+required** rather than the misleading "4 of 15". The extra required stage is **S4b**
+(client workspace-write cutover), added 2026-09-09 — it was always required, just not
+previously written down as its own row.
 
 **What is startable while the throttle is shut**, per the blocking taxonomy: the retrofit
 stages above, further pure `packages/domain` modules, `packages/ui` primitives, CI tooling,
@@ -178,6 +181,17 @@ every session — is withdrawn. Update it only on a durable transition: a pull r
 genuinely review-ready or merges, an issue blocks, unblocks or completes, a throttle state
 changes, Thomas makes a material decision, or a material repository or deployment fact
 changes. Intermediate progress goes in pull-request comments.
+
+**The governing rule, stated once so it can be applied as a property rather than re-derived
+as a set of edits:** no sentence in `CLAUDE.md` or `status.md` may assert live pull-request,
+branch, issue-count or finding-count state. Either the sentence is dated inside `status.md`'s
+snapshot header, or it defers to GitHub (`gh pr list`, `gh pr view <n>`, `gh issue list`,
+`gh issue view <n>`). This was learned the expensive way: four independent reviews of the
+same correcting pull request kept finding a *different* sentence in one of these two files
+still naming a live PR number, an in-flight status or a finding count, because each prior
+fix patched the specific sentence a reviewer had pointed at instead of this property. Apply
+it to the whole file, every time either file is touched — not only to the section a review
+happened to name.
 
 **The decision log is append-only.** When Thomas reverses something, add a new newest-first
 entry naming what it supersedes and why, then update the operative documents. Never rewrite
