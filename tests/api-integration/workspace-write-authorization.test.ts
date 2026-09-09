@@ -678,4 +678,69 @@ describe("A2-P25/A2-P26 the evaluator refuses an ambiguous membership rather tha
     );
     expect(response.status).toBe(403);
   });
+
+  it("A2-P27 the INSTANCE-ADMIN path refuses an ambiguous membership -- the only probe that reaches the twin guard", async () => {
+    // WHY THIS PROBE EXISTS, and it is the more interesting half of the fix.
+    //
+    // `requireWorkspacePermission` short-circuits to `true` for an instance
+    // admin (`require-workspace-permission.ts:105-107`) BEFORE it reads
+    // membership at all. So for that one caller the membership read that
+    // decides authority is NOT the one in `requireWorkspacePermission` -- it is
+    // the one in `require-workspace-role-authority.ts`, the twin, which
+    // early-returns `next()` for everybody else.
+    //
+    // A2-P25 and A2-P26 use an ordinary invited `admin`, so they never execute
+    // the twin: the first guard refuses them and the request never gets there.
+    // Which means the twin's half of this fix was UNTESTED, and the commit that
+    // introduced it claimed both twins were "fixed together" while its
+    // non-vacuity evidence covered only one -- the exact failure mode that
+    // commit message itself named. Found by the independent Opus delta review
+    // of #80, which showed the twin's guard could be deleted outright with the
+    // entire 41-file suite still green.
+    const { app } = createApp();
+
+    // The first user to sign up on a fresh instance becomes the instance admin.
+    const instanceAdmin = await signUpUser(app);
+    const [adminRow] = await db
+      .select({ role: schema.userTable.role })
+      .from(schema.userTable)
+      .where(eq(schema.userTable.id, instanceAdmin.user.id));
+    expect(adminRow?.role).toBe("admin");
+
+    // They must also be a MEMBER, or `requireWorkspaceMembership` refuses first
+    // and the twin is still never reached -- so they create the workspace
+    // themselves and own it.
+    const workspaceId = await createWorkspace(
+      app,
+      instanceAdmin.cookie,
+      "A2-P27",
+    );
+
+    // Baseline: one row, allowed. Without this the refusal below could be
+    // passing for an unrelated reason.
+    const before = await updateWorkspaceNative(
+      app,
+      instanceAdmin.cookie,
+      workspaceId,
+      { name: "Renamed With One Row" },
+    );
+    expect(before.status).toBe(200);
+
+    // Two rows: ambiguous. The first guard still grants (instance-admin
+    // short-circuit), so a 403 here can ONLY have come from the twin.
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId,
+      userId: instanceAdmin.user.id,
+      role: "viewer",
+      joinedAt: new Date(),
+    });
+
+    const after = await updateWorkspaceNative(
+      app,
+      instanceAdmin.cookie,
+      workspaceId,
+      { name: "Renamed While Ambiguous" },
+    );
+    expect(after.status).toBe(403);
+  });
 });

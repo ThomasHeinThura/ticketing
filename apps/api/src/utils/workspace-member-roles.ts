@@ -57,15 +57,21 @@ export async function workspaceMemberRoles(
 }
 
 /**
- * Does ANY row in `roles` (as returned by `workspaceMemberRoles`) hold role
- * `"owner"`?
+ * Is this pair's role answer UNAMBIGUOUS -- exactly one row?
  *
- * The most restrictive direction for an owner guard: a duplicate-row member
- * with roles `["viewer", "owner"]` must still be treated as an owner for the
- * last-owner guard (`remove-workspace-member.ts`, `leave-workspace.ts`) and
- * the self-demote guard (`update-workspace-member-role.ts`) -- missing the
- * `"owner"` row because an unordered read happened to return the other one
- * first is exactly the defect this file exists to close.
+ * The single predicate every authority decision in this branch uses, so two
+ * call sites cannot reduce the same rows differently. Cardinality, deliberately
+ * NOT agreement: `["owner", "owner"]` is refused too, because a duplicated
+ * membership row is a corrupt authorization state whatever it says. #77's
+ * reviewer showed what happens when two reductions disagree on exactly that
+ * shape -- one granted, the other refused, and the only owner was locked out of
+ * their own transfer route with nobody else holding the capability.
+ *
+ * (An earlier version of this file carried #77's JSDoc for `anyRoleIsOwner`
+ * here without the function, so it sat above this one describing the OPPOSITE
+ * rule and naming three controllers that do not exist on this branch. Caught by
+ * the independent Opus delta review of #80. #77's copy of this file keeps both
+ * functions and both comments correctly.)
  */
 
 export function isUnambiguousMembership(roles: string[]): boolean {

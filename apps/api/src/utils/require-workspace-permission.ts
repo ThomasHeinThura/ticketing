@@ -119,9 +119,14 @@ export async function hasWorkspacePermission(
   // `UNIQUE (workspace_id, user_id)` constraint that makes it unreachable.
   const roles = await workspaceMemberRoles(db, workspaceId, userId);
   if (!isUnambiguousMembership(roles)) return false;
-  const member = { role: roles[0] };
-
-  if (!member?.role) return false;
+  // `roles[0]` is `string | undefined` under `noUncheckedIndexedAccess`, and
+  // `length === 1` does not narrow an index access. This check is therefore
+  // load-bearing for the compiler even though it is unreachable at runtime --
+  // which is why the previous `if (!member?.role)` was not the pure dead code a
+  // reviewer's nit took it for. Written as an explicit undefined test so the
+  // reason is on the page rather than hidden in an optional chain.
+  const role = roles[0];
+  if (role === undefined) return false;
 
   // Issue #66. `owner` is deliberately the ONE role never seeded a
   // `workspace_role` row (retrofit plan R5): its authority stays
@@ -148,9 +153,9 @@ export async function hasWorkspacePermission(
   // and reports the failure to the caller instead of returning success
   // for a workspace with no role rows behind it.
   const statements =
-    member.role === "owner"
+    role === "owner"
       ? builtInRoleStatements("owner")
-      : await customRoleStatements(workspaceId, member.role);
+      : await customRoleStatements(workspaceId, role);
 
   return Boolean(statements && satisfies(statements, permissions));
 }

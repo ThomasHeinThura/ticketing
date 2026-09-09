@@ -75,16 +75,18 @@ export function requireWorkspaceRoleAuthority(permissions: PermissionMap) {
     if (!isUnambiguousMembership(roles)) {
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
-    const member = { role: roles[0] };
-
-    if (!member?.role) {
+    // Load-bearing for the compiler, not dead: `roles[0]` is
+    // `string | undefined` under `noUncheckedIndexedAccess` and `length === 1`
+    // does not narrow an index access. Unreachable at runtime.
+    const role = roles[0];
+    if (role === undefined) {
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
 
     const statements =
-      member.role === "owner"
+      role === "owner"
         ? (builtInRoles.owner.statements as Record<string, readonly string[]>)
-        : await ownRoleStatements(workspaceId, member.role);
+        : await ownRoleStatements(workspaceId, role);
 
     if (!statements || !satisfies(statements, permissions)) {
       throw new HTTPException(403, { message: "Insufficient permissions" });
