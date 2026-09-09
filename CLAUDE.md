@@ -85,8 +85,12 @@ independent-review box, deliberately, so the gap stays visible. **This does not 
 waiver reusable: it was Thomas's to give, once, for those pull requests.** The rule below —
 never downgrade an unavailable reviewer — is unchanged.
 
-**BLOCKED.** #8 (the router retrofit) waits for #6's removal surface to settle. #17 waits
-on a decision about sessions already minted by the removed flows. #66 — `hasWorkspacePermission` falling back to
+**BLOCKED.** Two long-standing blocks, and their *reasons* are what belongs here — **their
+current open/closed state does not, so check GitHub** (`gh issue view 8`, `gh issue view 17`).
+#8, the router retrofit, waits for #6's removal surface to settle, because classifying a route
+that is about to be deleted is wasted review and a false sense of coverage. #17 waits on a
+decision about sessions already minted by the removed flows: deleting an endpoint is not
+revoking a credential. #66 — `hasWorkspacePermission` falling back to
 compiled static roles when a `workspace_role` row was absent — **is closed**, so it no longer
 blocks #40's `DELETE /api/roles/{id}`. A missing row is now a DENY for every role but
 `owner`, whose authority is compiled-in by design.
@@ -95,10 +99,13 @@ blocks #40's `DELETE /api/roles/{id}`. A missing row is now a DENY for every rol
 but it is **still mounted**, and `tests/api-contract/openapi.json` still declares six
 `/auth/organization/*` invitation operations. Unmounting is **S10**, and S10 has not started.
 
-**Throttle 1 is SHUT, and this is the number to know: four of its five conditions are met.**
-#5 complete ✓, #7 complete ✓, route-policy coverage executing in CI ✓, an unclassified route
-demonstrated to fail CI ✓. **Condition 2 — issue #6 complete *through retrofit S10* — is the
-sole blocker**, and it is arithmetic rather than judgement: the
+**Throttle 1 is SHUT, and the durable fact is WHICH condition holds it shut, not how many are
+met** — a tally is exactly the live-state number this file may not assert, and
+[`status.md`](docs/07-planning/status.md)'s dated conditions table is where it is counted.
+Conditions 1, 3, 4 and 5 (#5 complete, #7 complete, route-policy coverage executing in CI, an
+unclassified route demonstrated to fail CI) were all satisfied on 2026-09-09 and are not the
+kind of thing that regresses. **Condition 2 — issue #6 complete *through retrofit S10* — is
+the one that holds it**, and it is arithmetic rather than judgement: the
 [stage ledger](docs/07-planning/retrofits/organization-plugin-retrofit.md) is the
 authoritative count, and **this file deliberately does not repeat it** — a number written
 here goes stale the next time a stage lands, which is exactly how this section was wrong
