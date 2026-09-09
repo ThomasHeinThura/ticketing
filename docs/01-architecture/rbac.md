@@ -44,7 +44,7 @@ so a role stored without the implied entry still behaves correctly.
 | | `workspace:delete` | `workspace:update` | Delete the workspace |
 | | `workspace:manage_members` | `workspace:read` | Add and remove workspace members |
 | | `workspace:manage_roles` | `workspace:read` | Create and edit roles |
-| | `workspace:manage_settings` | `workspace:read` | Types, workflows, SLA policies, calendars, request types, custom fields, labels, estimates, automations, canned responses, work item templates, workspace terminology |
+| | `workspace:manage_settings` | `workspace:read` | Types, workflows, SLA policies, calendars, request types, custom fields, labels, estimates, automations, canned responses, workspace terminology |
 | **Projects** | `project:create` | | Create a project or managed service |
 | | `project:read` | | See a project in reach |
 | | `project:update` | `project:read` | Edit project fields, health, milestones, prerequisites, stakeholders, document links — **not** `parent_id` or `owner_team_id` |
