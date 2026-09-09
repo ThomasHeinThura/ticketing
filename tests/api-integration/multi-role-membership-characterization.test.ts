@@ -10,9 +10,23 @@
  * reading the actual file the assertion is about, driven over real HTTP against a real
  * PostgreSQL, and asserting on DATABASE STATE and on BOTH evaluators -- never on a response
  * shape alone. It is not investigation-only prose; every number and every file:line citation
- * in the comments was re-verified against the tree this file was written against
- * (`node_modules/.pnpm/better-auth@1.6.25.../better-auth/dist/plugins/organization/**`,
- * pinned by the lockfile) before being written down.
+ * in the comments was re-verified against **better-auth 1.6.30** -- the version
+ * `pnpm-lock.yaml` actually pins -- at
+ * `node_modules/.pnpm/better-auth@1.6.30.../better-auth/dist/plugins/organization/**`.
+ *
+ * An earlier version of this header said `1.6.25` "pinned by the lockfile", and BOTH halves
+ * of that were wrong: the lockfile pins 1.6.30, and 1.6.25 was merely also present in the
+ * pnpm store from an older install, which is what an early reproduction happened to resolve.
+ * Every `file:line` citation below was then re-checked against 1.6.30 and all of them hold
+ * unchanged -- `crud-members.mjs:259` (the flatMap/split/trim of `ctx.body.role`), `:294`
+ * (`isUpdatingCreator` via `.split(",").includes(creatorRole)`), `:295`
+ * (`updaterIsCreator`), `:314` (`allowCreatorAllPermissions: true`),
+ * `organization.mjs:18-20` (`parseRoles` comma-joining an array), and `permission.mjs:2-11`
+ * (the comma-split-and-OR, and the `isCreator && allowCreatorsAllPermissions` short-circuit
+ * that returns `true` before any specific permission is checked). So the substance was never
+ * in doubt; only the provenance attribution was, and getting the version of a security claim
+ * right matters more than usual -- an assertion verified against a version you do not ship
+ * proves nothing about what you ship.
  *
  * WHY THIS EXISTS, and why it does not fix anything. `apps/api/src/utils/
  * require-workspace-permission.ts` does an EXACT-STRING lookup of `workspace_member.role`
