@@ -9,10 +9,12 @@ import {
 import { checkWorkspaceName } from "../utils/check-workspace-name";
 import { requireWorkspaceCreationAllowed } from "../utils/require-session";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { requireWorkspaceRoleAuthority } from "../utils/require-workspace-role-authority";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import addWorkspaceMemberCtrl from "./controllers/add-workspace-member";
 import createWorkspaceCtrl, {
   WorkspaceSlugTakenError,
 } from "./controllers/create-workspace";
@@ -21,19 +23,46 @@ import getUserWorkspacesCtrl from "./controllers/get-user-workspaces";
 import getWorkspaceDetailCtrl from "./controllers/get-workspace-detail";
 import getWorkspaceInvitationsCtrl from "./controllers/get-workspace-invitations";
 import getWorkspaceMembersCtrl from "./controllers/get-workspace-members";
+import leaveWorkspaceCtrl from "./controllers/leave-workspace";
+import removeWorkspaceMemberCtrl from "./controllers/remove-workspace-member";
+import transferWorkspaceOwnershipCtrl from "./controllers/transfer-workspace-ownership";
 import updateWorkspaceCtrl from "./controllers/update-workspace";
+import updateWorkspaceMemberRoleCtrl from "./controllers/update-workspace-member-role";
+import {
+  AlreadyOwnerError,
+  AmbiguousMembershipError,
+  CallerNotOwnerError,
+  CannotChangeOwnerRoleHereError,
+  LastOwnerCannotLeaveError,
+  MemberNotFoundError,
+  NewOwnerNotAMemberError,
+  NotAMemberError,
+  OwnerRoleNotAssignableHereError,
+  TargetUserNotFoundError,
+  UserAlreadyMemberError,
+  WorkspaceRoleNotFoundError,
+} from "./controllers/workspace-membership-errors";
 import {
   deletedWorkspaceSchema,
+  leftWorkspaceSchema,
+  removedWorkspaceMemberSchema,
+  transferredWorkspaceOwnershipSchema,
   workspaceDetailSchema,
   workspaceInvitationListSchema,
   workspaceMemberListSchema,
+  workspaceMemberRoleSchema,
+  workspaceMemberSchema,
   workspaceSchema,
   workspaceSummaryListSchema,
 } from "./response";
 import {
+  addWorkspaceMemberBody,
   createWorkspaceBody,
+  transferWorkspaceOwnershipBody,
   updateWorkspaceBody,
+  updateWorkspaceMemberRoleBody,
   workspaceIdParam,
+  workspaceMemberIdParam,
 } from "./schema";
 
 const listWorkspacesRoute = createRoute({
@@ -235,6 +264,201 @@ const deleteWorkspaceRoute = createRoute({
   },
 });
 
+// ── S5: the native membership write routes ───────────────────────────────
+// Issue #6, retrofit plan §3 (S5 row). Additive and still ships dark: the
+// `organization()` plugin stays mounted and every client still writes
+// through it until S3/S8a repoint them.
+//
+// Same authorization shape as S4's two mutation routes above --
+// `requireWorkspaceMembership` first (closes the instance-admin-non-member
+// gap), then `requireWorkspacePermission` against the INHERITED `member`
+// resource (the actions the seeded `workspace_role` rows actually carry --
+// see `policy.ts`), then `requireWorkspaceRoleAuthority` to close the
+// instance-admin bypass on the capability check itself -- EXCEPT
+// `transfer-ownership` and `leave`.
+//
+// `transfer-ownership` never calls `hasWorkspacePermission`/
+// `requireWorkspacePermission` at all -- the INHERITED better-auth statements
+// those read have no concept of `workspace:transfer_ownership` (or of
+// `manager`/`lead`/`customer`, the TaskDesk roles that must be refused it).
+// Its own gate, `requireWorkspaceCapability("workspace:transfer_ownership")`
+// (`apps/api/src/utils/require-workspace-capability.ts`), evaluates the
+// canonical `@taskdesk/permissions` capability data instead, granted to
+// `owner` alone, and -- like the hardcoded check it replaced -- never calls
+// `isInstanceAdmin`, so there is no bypass to close here either. See that
+// file and `transfer-workspace-ownership.ts` for the full reasoning.
+//
+// `leave` carries no capability check because leaving is a self-action
+// every member has.
+
+const addWorkspaceMemberRoute = createRoute({
+  method: "post",
+  operationId: "addWorkspaceMember",
+  path: "/{workspaceId}/members",
+  tags: ["Workspaces"],
+  summary: "Add a member to a workspace",
+  description:
+    "Add an existing platform user directly to a workspace by id. New surface -- the inherited plugin never exposed this as a public route.",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspacePermission({ member: ["create"] }),
+    requireWorkspaceRoleAuthority({ member: ["create"] }),
+  ] as const,
+  request: {
+    params: workspaceIdParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: addWorkspaceMemberBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The added member", workspaceMemberSchema),
+    400: errorResponse(
+      "Invalid body, an unknown role, or the role was 'owner'",
+    ),
+    401: errorResponse("No credential at all"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), no workspace access, or missing member:create permission",
+    ),
+    404: errorResponse("The target user does not exist"),
+    409: errorResponse("The target user is already a member"),
+  },
+});
+
+const removeWorkspaceMemberRoute = createRoute({
+  method: "delete",
+  operationId: "removeWorkspaceMember",
+  path: "/{workspaceId}/members/{userId}",
+  tags: ["Workspaces"],
+  summary: "Remove a workspace member",
+  description:
+    "Remove a member from a workspace. Native replacement for authClient.organization.removeMember().",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspacePermission({ member: ["delete"] }),
+    requireWorkspaceRoleAuthority({ member: ["delete"] }),
+  ] as const,
+  request: { params: workspaceMemberIdParam },
+  responses: {
+    200: jsonResponse(
+      "The removed member's user id",
+      removedWorkspaceMemberSchema,
+    ),
+    401: errorResponse("No credential at all"),
+    400: errorResponse("Cannot remove the workspace's only owner"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), no workspace access, or missing member:delete permission",
+    ),
+    404: errorResponse("The target is not a member of this workspace"),
+  },
+});
+
+const updateWorkspaceMemberRoleRoute = createRoute({
+  method: "patch",
+  operationId: "updateWorkspaceMemberRole",
+  path: "/{workspaceId}/members/{userId}/role",
+  tags: ["Workspaces"],
+  summary: "Change a member's role",
+  description:
+    "Change a member's assigned role. Native replacement for authClient.organization.updateMemberRole(). Can never grant or touch the owner role -- use transfer-ownership for that.",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspacePermission({ member: ["update"] }),
+    requireWorkspaceRoleAuthority({ member: ["update"] }),
+  ] as const,
+  request: {
+    params: workspaceMemberIdParam,
+    body: {
+      required: true,
+      content: {
+        "application/json": { schema: updateWorkspaceMemberRoleBody },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse("The member's new role", workspaceMemberRoleSchema),
+    400: errorResponse(
+      "Invalid body, an unknown role, the role was 'owner', or the target is currently the owner",
+    ),
+    401: errorResponse("No credential at all"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), no workspace access, or missing member:update permission",
+    ),
+    404: errorResponse("The target is not a member of this workspace"),
+  },
+});
+
+const leaveWorkspaceRoute = createRoute({
+  method: "post",
+  operationId: "leaveWorkspace",
+  path: "/{workspaceId}/leave",
+  tags: ["Workspaces"],
+  summary: "Leave a workspace",
+  description:
+    "The caller leaves a workspace of their own accord. Native replacement for authClient.organization.leave(). Refused when the caller is the workspace's only owner.",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+  ] as const,
+  request: { params: workspaceIdParam },
+  responses: {
+    200: jsonResponse("The workspace left", leftWorkspaceSchema),
+    400: errorResponse("The caller is the workspace's only owner"),
+    401: errorResponse("No credential at all"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), or no workspace access",
+    ),
+    404: errorResponse("The caller is not a member of this workspace"),
+  },
+});
+
+const transferWorkspaceOwnershipRoute = createRoute({
+  method: "post",
+  operationId: "transferWorkspaceOwnership",
+  path: "/{workspaceId}/transfer-ownership",
+  tags: ["Workspaces"],
+  summary: "Transfer workspace ownership",
+  description:
+    "Atomically install a new owner and demote the caller in one transaction. Replaces the client's promote/demote pair (use-transfer-workspace-ownership.ts). Callable only by the workspace's current owner.",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspaceCapability("workspace:transfer_ownership"),
+  ] as const,
+  request: {
+    params: workspaceIdParam,
+    body: {
+      required: true,
+      content: {
+        "application/json": { schema: transferWorkspaceOwnershipBody },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "The transfer result",
+      transferredWorkspaceOwnershipSchema,
+    ),
+    400: errorResponse("The new owner is the caller themselves"),
+    401: errorResponse("No credential at all"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), no workspace access, or the caller is not the current owner",
+    ),
+    404: errorResponse("The new owner is not a member of this workspace"),
+    409: errorResponse(
+      "The new owner has more than one membership row in this workspace, so no single role can be trusted; repair the duplicate first",
+    ),
+  },
+});
+
 /**
  * `checkWorkspaceName` is the security control on the name, moved off
  * `beforeCreateOrganization` unchanged. It runs before anything is written.
@@ -336,6 +560,116 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       throw new HTTPException(404, { message: "Workspace not found" });
     }
     return c.json(deleted, 200);
+  })
+  .openapi(addWorkspaceMemberRoute, async (c) => {
+    const body = c.req.valid("json");
+    try {
+      const added = await addWorkspaceMemberCtrl({
+        workspaceId: c.get("workspaceId"),
+        userId: body.userId,
+        role: body.role,
+      });
+      return c.json(added, 200);
+    } catch (error) {
+      if (error instanceof OwnerRoleNotAssignableHereError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof WorkspaceRoleNotFoundError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof TargetUserNotFoundError) {
+        throw new HTTPException(404, { message: error.message });
+      }
+      if (error instanceof UserAlreadyMemberError) {
+        throw new HTTPException(409, { message: error.message });
+      }
+      throw error;
+    }
+  })
+  .openapi(removeWorkspaceMemberRoute, async (c) => {
+    try {
+      const removed = await removeWorkspaceMemberCtrl(
+        c.get("workspaceId"),
+        c.req.valid("param").userId,
+      );
+      return c.json(removed, 200);
+    } catch (error) {
+      if (error instanceof MemberNotFoundError) {
+        throw new HTTPException(404, { message: error.message });
+      }
+      if (error instanceof LastOwnerCannotLeaveError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      throw error;
+    }
+  })
+  .openapi(updateWorkspaceMemberRoleRoute, async (c) => {
+    const body = c.req.valid("json");
+    try {
+      const updated = await updateWorkspaceMemberRoleCtrl(
+        c.get("workspaceId"),
+        c.req.valid("param").userId,
+        body.role,
+      );
+      return c.json(updated, 200);
+    } catch (error) {
+      if (error instanceof OwnerRoleNotAssignableHereError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof CannotChangeOwnerRoleHereError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof WorkspaceRoleNotFoundError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof MemberNotFoundError) {
+        throw new HTTPException(404, { message: error.message });
+      }
+      throw error;
+    }
+  })
+  .openapi(leaveWorkspaceRoute, async (c) => {
+    try {
+      const left = await leaveWorkspaceCtrl(
+        c.get("workspaceId"),
+        c.get("userId"),
+        requireSessionId(c),
+      );
+      return c.json(left, 200);
+    } catch (error) {
+      if (error instanceof NotAMemberError) {
+        throw new HTTPException(404, { message: error.message });
+      }
+      if (error instanceof LastOwnerCannotLeaveError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      throw error;
+    }
+  })
+  .openapi(transferWorkspaceOwnershipRoute, async (c) => {
+    const body = c.req.valid("json");
+    try {
+      const transferred = await transferWorkspaceOwnershipCtrl(
+        c.get("workspaceId"),
+        c.get("userId"),
+        body.newOwnerUserId,
+      );
+      return c.json(transferred, 200);
+    } catch (error) {
+      if (error instanceof AlreadyOwnerError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof CallerNotOwnerError) {
+        throw new HTTPException(403, { message: error.message });
+      }
+      if (error instanceof AmbiguousMembershipError) {
+        throw new HTTPException(409, { message: error.message });
+      }
+      if (error instanceof NewOwnerNotAMemberError) {
+        throw new HTTPException(404, { message: error.message });
+      }
+      throw error;
+    }
   });
 
 export default workspace;
