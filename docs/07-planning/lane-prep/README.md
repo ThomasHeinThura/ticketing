@@ -67,15 +67,22 @@ writing: `grep -n "state\.group\|project_state"` returns exactly these five line
 
 ## What has NOT moved — the reason every plan is still a plan
 
-**Throttle 1 is shut.** Condition 2 requires issue #6 complete *through retrofit S10*, and
-[the retrofit stage ledger](../retrofits/organization-plugin-retrofit.md) records **four of
-fourteen stages landed** — S0, S1, S2, S4. S3 and S5–S11 have not started. The other four
-conditions are met.
+**Throttle 1 is shut.** Condition 2 requires issue #6 complete *through retrofit S10*. The
+other four conditions are met.
+
+**How far the retrofit has run is NOT restated here.** Read
+[the retrofit stage ledger](../retrofits/organization-plugin-retrofit.md) — it is the
+authoritative count, and its four-bucket table separates stages landed, stages still required
+to reach S10, the two deferred out of P0, and S11's separately-owned work. An earlier version
+of this section carried its own figure ("four of fourteen"), which was a **third denominator**
+competing with the ledger's two and went stale the moment a stage landed. A number copied into
+a second document is a number that will disagree with the first.
 
 So the instruction common to all four plans — *plan now, write code when the throttle
-opens* — stands unchanged. Three retrofit stages (**S3, S5, S7**) have their preconditions
-satisfied and can start today; they are the shortest path to opening the throttle, and they
-are retrofit work rather than P1–P4 work.
+opens* — stands unchanged. Several retrofit stages have their preconditions satisfied and can
+start today; the ledger's "what is startable right now" section names which, and is kept
+current there rather than duplicated here. They are the shortest path to opening the throttle,
+and they are retrofit work rather than P1–P4 work.
 
 **One exception, already taken:** P2's plan is explicit that `packages/domain` holds *pure
 functions with exhaustive tests, before any HTTP endpoint exists*. Pure domain functions
