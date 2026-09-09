@@ -19,9 +19,16 @@
  *
  * Also checks the inverse failure: a canonical source that has gone EMPTY. An empty
  * override set is indistinguishable from "we deleted the protection", so it fails too.
+ *
+ * And checks a third thing, for the overrides whose security value is not a version bump
+ * but a package leaving the graph entirely (`next`, and `sharp` riding along as its
+ * transitive dependency — see `lib/override-removal.mjs`): that pnpm-lock.yaml, the
+ * artifact that actually shows what got resolved, still shows no entry for either one. A
+ * comment saying "verified once by hand" is not a check; this reads the lockfile itself.
  */
 
 import path from "node:path";
+import { readBrokenRemovalInvariants } from "./lib/override-removal.mjs";
 import { finish, readText, repoRoot, violation } from "./lib/repo.mjs";
 import { readWorkspaceManifests } from "./lib/workspace-membership.mjs";
 
@@ -140,6 +147,24 @@ async function main() {
         `overrides live in ${CANONICAL} in this repository. They are declared in ` +
           "package.json instead, which works but relocates a security-relevant surface " +
           "without a record. Move them back, or change this check and say why.",
+      ),
+    );
+  }
+
+  // The override's protection is "this package does not resolve at all" -- verify that
+  // against pnpm-lock.yaml itself rather than trusting the override's own comment.
+  for (const {
+    name,
+    advisories,
+    note,
+  } of await readBrokenRemovalInvariants()) {
+    failures.push(
+      violation(
+        `pnpm-lock.yaml \`${name}@...\``,
+        `a resolved "${name}" entry exists even though pnpm-workspace.yaml still carries ` +
+          `an override for it. ${note} A resolved entry means that protection is no ` +
+          "longer in effect -- and `pnpm audit` cannot see this, because a deactivated " +
+          `floor has no advisory to report. Closes: ${advisories.join(", ")}.`,
       ),
     );
   }

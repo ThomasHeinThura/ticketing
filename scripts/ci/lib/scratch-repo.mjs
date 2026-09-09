@@ -116,6 +116,18 @@ export function installCheckers(dir) {
     path.join(repoRoot, "pnpm-workspace.yaml"),
     path.join(dir, "pnpm-workspace.yaml"),
   );
+
+  // `check-overrides` also reads pnpm-lock.yaml (the removal-invariant check: does a
+  // resolved `next@`/`sharp@` entry exist while the override is still declared) and FAILS
+  // CLOSED when it cannot be read. Same reasoning as the workspace file above: install it
+  // once here so every scratch repo can run check-overrides without crashing on a file
+  // this fix made it depend on. A probe that wants a DIFFERENT lockfile — to construct the
+  // removal invariant itself — simply writes one afterwards;
+  // probes/override-removal-effect.test.mjs does exactly that.
+  cpSync(
+    path.join(repoRoot, "pnpm-lock.yaml"),
+    path.join(dir, "pnpm-lock.yaml"),
+  );
 }
 
 /** Copy one file out of the real repository, at its real path. */
