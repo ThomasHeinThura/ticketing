@@ -23,6 +23,7 @@ import { spawnSync } from "node:child_process";
 import { readDeclaredGates } from "./lib/ci-cd-gates.mjs";
 import { repoRoot } from "./lib/repo.mjs";
 import {
+  DEFAULT_PULL_REQUEST_TYPES,
   isExecuting,
   readWorkflowGates,
   WorkflowGatesUnavailableError,
@@ -308,6 +309,102 @@ function aliasSources() {
   return inverse;
 }
 
+/**
+ * **A8 invariant 6 — gate -> enforcement stage -> AUTHORIZED workflow.**
+ *
+ * Until now any workflow triggered on `pull_request` could satisfy any gate. So a pull
+ * request could delete `pnpm check:overrides` from `ci-fast.yml`, add it to a new
+ * `sneaky.yml` of its own, and the reconciliation would be satisfied — the gate "runs on
+ * pull requests", just not in the pipeline the ruleset makes required. Worse and quieter:
+ * a FAST gate could be satisfied by an occurrence in `ci-full.yml`, which does not run on
+ * `opened` at all, so the gate would be enforced later than it claims or not at all.
+ *
+ * Stage membership is not invented here: `docs/04-engineering/ci-cd.md` already declares
+ * which gates belong to the fast stage and which to the full stage, and this binds each
+ * stage to the ONE workflow authorized to satisfy it.
+ *
+ * **Invariant 7 lives in the same table**, because authority and trigger coverage are the
+ * same question asked twice: a workflow is only authoritative for a stage if it actually
+ * runs in every pull-request context where that stage is required.
+ */
+const STAGE_AUTHORITY = new Map([
+  [
+    "fast",
+    {
+      workflow: ".github/workflows/ci-fast.yml",
+      // Fast gates block the pull request itself, so the workflow must run in every
+      // context where a pull request gains or changes code. That is exactly GitHub's
+      // default `pull_request` type set; a NARROWED list would leave contexts unguarded.
+      // A superset is fine and is what ships: ci-fast.yml adds `ready_for_review` and
+      // `edited` on top of the three defaults (`edited` is why a body change re-runs the
+      // template gate, which is itself a required check).
+      requirePullRequestTypes: DEFAULT_PULL_REQUEST_TYPES,
+      requireTriggers: ["pull_request"],
+      why:
+        "PR-blocking and Throttle 1 gates are required on the pull request, so the " +
+        "authorized workflow must cover every default pull_request context.",
+    },
+  ],
+  [
+    "full",
+    {
+      workflow: ".github/workflows/ci-full.yml",
+      // ci-cd.md: "Full — required before merge, runs on the merge queue (or on the
+      // `ready-for-review` label)". Required BEFORE MERGE, not on every push. Its
+      // `pull_request` list is deliberately narrowed to [labeled, synchronize,
+      // ready_for_review] and therefore does NOT cover `opened` — which is sound only
+      // because `merge_group` covers the boundary where the stage is actually required.
+      // That is the whole proof, and it is why `requireTriggers` names merge_group: strip
+      // it and the narrowing stops being defensible, and this check goes red.
+      requirePullRequestTypes: null,
+      requireTriggers: ["merge_group"],
+      why:
+        "Full is required before merge and runs on the merge queue, so merge_group is " +
+        "the trigger that carries the obligation; the narrowed pull_request list is " +
+        "acceptable only because of it.",
+    },
+  ],
+]);
+
+/** Does `workflow` actually run everywhere `stage` is required? */
+function stageTriggerProblems(stage, authority, triggers) {
+  const problems = [];
+  const observed = triggers.get(authority.workflow);
+  if (observed === undefined) {
+    problems.push(
+      `the ${stage} stage is authorized to ${authority.workflow}, and that workflow was ` +
+        "not read. A stage whose authorized workflow is absent is a stage that does not run.",
+    );
+    return problems;
+  }
+  for (const trigger of authority.requireTriggers) {
+    if (!observed.names.includes(trigger)) {
+      problems.push(
+        `${authority.workflow} does not trigger on \`${trigger}\`, which the ${stage} ` +
+          `stage requires. ${authority.why}`,
+      );
+    }
+  }
+  if (authority.requirePullRequestTypes !== null) {
+    const declared = observed.pullRequestTypes;
+    const missing =
+      declared === null
+        ? []
+        : authority.requirePullRequestTypes.filter(
+            (type) => !declared.includes(type),
+          );
+    if (missing.length > 0) {
+      problems.push(
+        `${authority.workflow} narrows \`pull_request.types\` to ` +
+          `[${declared.join(", ")}], which omits [${missing.join(", ")}]. A ${stage} gate ` +
+          "is required in those contexts and this workflow does not run in them. A " +
+          "superset of the defaults is fine; a narrowing is NOT PROVEN.",
+      );
+    }
+  }
+  return problems;
+}
+
 async function reconcile() {
   const declared = await readDeclaredGates();
   const problems = [];
@@ -392,6 +489,12 @@ async function reconcile() {
   // workflow that does not trigger on `pull_request` are all reported here rather than
   // counted, because GitHub treats a SKIPPED required check as satisfied and a
   // cannot-fail step as a pass.
+  // A8 invariant 7: prove each stage's authorized workflow runs where the stage is
+  // required, before asking anything about individual gates.
+  for (const [stage, authority] of STAGE_AUTHORITY) {
+    problems.push(...stageTriggerProblems(stage, authority, workflow.triggers));
+  }
+
   const sources = aliasSources();
   for (const gate of enabledManifestGates) {
     const candidates = [
@@ -425,6 +528,30 @@ async function reconcile() {
           `it CANNOT FAIL A PULL REQUEST — ${shapes}. A skipped required check reads as ` +
           "satisfied and a `continue-on-error` step reads as a pass, so this is a gate in " +
           "name only. Either make it run, or mark the entry not-enabled with the reason.",
+      );
+      continue;
+    }
+
+    // ── A8 invariant 6: the proven occurrence must be in the AUTHORIZED workflow ──────
+    // `declared` came from ci-cd.md, which is where stage membership is decided. A gate
+    // in both lists is required at the earlier stage, so fast wins.
+    const stage = declared.fast.includes(gate) ? "fast" : "full";
+    const authority = STAGE_AUTHORITY.get(stage);
+    if (authority === undefined) continue;
+    const proven = found.filter((occurrence) => isExecuting(occurrence.kind));
+    if (
+      !proven.some((occurrence) => occurrence.workflow === authority.workflow)
+    ) {
+      const elsewhere = [
+        ...new Set(proven.map((occurrence) => occurrence.workflow)),
+      ].join(", ");
+      problems.push(
+        `"${gate}" is a ${stage.toUpperCase()}-stage gate, so it must be satisfied by its ` +
+          `authorized workflow ${authority.workflow}. It is proven only in ${elsewhere}. ` +
+          "A gate that runs in some other workflow runs outside the pipeline the ruleset " +
+          "makes required — and an occurrence in ci-full.yml can never rescue a missing " +
+          "fast-stage one, because ci-full.yml does not run on `opened` at all. " +
+          `${authority.why}`,
       );
     }
   }

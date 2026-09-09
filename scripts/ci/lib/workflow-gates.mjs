@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: a diagnostic message quotes GitHub's `${{ … }}` expression syntax back to the reader; it is prose, not a template
 /**
  * The gates the workflows ACTUALLY execute — the third party to the reconciliation.
  *
@@ -175,7 +176,6 @@ export const PR_CONTEXT_PROVEN = [
  */
 const INERT_JOB_KEYS = new Set([
   "name",
-  "runs-on",
   "timeout-minutes",
   "services",
   "env",
@@ -199,7 +199,47 @@ const HANDLED_JOB_KEYS = new Set([
   "needs",
   "strategy",
   "uses",
+  // A8 invariant 3: `runs-on` was in INERT_JOB_KEYS, and it is not inert. The runner
+  // decides the DEFAULT SHELL, and the default shell decides whether a failing command
+  // fails the step. `runs-on: windows-latest` with no explicit shell runs PowerShell,
+  // where a native command's non-zero exit does not by itself fail the step.
+  "runs-on",
 ]);
+
+/**
+ * Runners whose default shell is PROVEN, and why.
+ *
+ * GitHub's hosted Linux and macOS images run `run:` steps through `bash -e {0}` unless a
+ * step says otherwise, so a failing command fails the step. That is the property being
+ * relied on, and it is a property of the IMAGE, not of the workflow — which is why the
+ * image has to be named rather than assumed.
+ *
+ * Windows is deliberately absent: its default is PowerShell, where a failing NATIVE
+ * command sets `$LASTEXITCODE` without terminating the script, so a gate can fail and the
+ * step still succeed. A self-hosted label says nothing about the image at all, and a
+ * `${{ … }}` expression says nothing until the run happens. All three are NOT PROVEN here
+ * and must instead declare an explicit proven shell on the step.
+ */
+const PROVEN_RUNNER_DEFAULT_SHELL = new Set([
+  "ubuntu-latest",
+  "ubuntu-24.04",
+  "ubuntu-22.04",
+  "ubuntu-20.04",
+  "macos-latest",
+  "macos-15",
+  "macos-14",
+  "macos-13",
+]);
+
+/** Is this `runs-on` value a single named runner whose default shell is proven? */
+export function runnerDefaultShellProven(raw) {
+  if (typeof raw !== "string") return false;
+  const value = raw.replace(/\s+#.*$/, "").trim();
+  if (value === "") return false;
+  // A matrix expression, a group/label mapping or a list is not a single named image.
+  if (/[$[\]{}]/.test(value)) return false;
+  return PROVEN_RUNNER_DEFAULT_SHELL.has(value);
+}
 
 /** Step keys proven not to affect scheduling, execution or failure propagation. */
 const INERT_STEP_KEYS = new Set([
@@ -220,7 +260,7 @@ const HANDLED_STEP_KEYS = new Set(["if", "continue-on-error", "shell"]);
  * first failing command and the step fails. A custom template (`bash {0}`, dropping `-e`)
  * is not one of them.
  */
-const PROVEN_SHELLS = new Set(["bash", "sh", "pwsh", "powershell", "python"]);
+const PROVEN_SHELLS = new Set(["bash", "sh"]);
 
 /**
  * **A7a.** `continue-on-error` must be PROVEN FALSE, not merely "not the literal `true`".
@@ -344,6 +384,48 @@ function isLabelGated(expression) {
  * is taken from its first `- ` item; the block ends at the first non-blank line shallower
  * than that, or at a sibling key of `steps:` itself.
  */
+/**
+ * **A8 invariant 5 — "cannot parse" must never become "nothing exists".**
+ *
+ * The old reader accepted exactly two block indicators, `|` and `>`, and treated every
+ * other scalar form as an inline value. So `run: |-` stored the literal string `"|-"`, the
+ * commands underneath it were never read, and a gate moved into one simply vanished — a
+ * silent discard, which is F7 and the worst possible failure mode for a gate scanner.
+ *
+ * Now every `run:` scalar form is classified. `|` is deliberately implemented, because the
+ * shipped workflows use it and its lines must still be READ so a gate hidden there is seen
+ * (and then refused as non-atomic). Every other multiline indicator — `|-`, `|+`, `|2`,
+ * `>`, `>-`, `>+`, `|8` and anything else — is a HARD FAILURE rather than a guess.
+ *
+ * Scoped to `run:` on purpose: `options: >-` on a service container is ordinary and
+ * harmless, and refusing it would be a gate failing over something that cannot hide a
+ * command.
+ */
+function classifyScalar(key, value, origin, lineNumber) {
+  const trimmed = value.trim();
+  const indicator = /^([|>])([+-]?)(\d*)([+-]?)\s*$/.exec(trimmed);
+  if (!indicator) {
+    // A plain inline scalar. `run: pnpm x` — the only shape an atomic gate can have.
+    return { kind: "plain", value };
+  }
+  const [, style, chompA, digits, chompB] = indicator;
+  if (style === "|" && chompA === "" && digits === "" && chompB === "") {
+    return { kind: "literal-block", value: "" };
+  }
+  if (key !== "run") {
+    // Not a command carrier; read it as a block we ignore the shape of.
+    return { kind: "literal-block", value: "" };
+  }
+  throw new WorkflowGatesUnavailableError(
+    `${origin}:${lineNumber} writes \`run: ${trimmed}\`, a block scalar form this scanner ` +
+      "does not deliberately implement. It is refused rather than read as the literal " +
+      `string "${trimmed}": the previous reader did exactly that, and every command ` +
+      "underneath such a step became invisible to the gate scan (F7). Implement the form " +
+      "here with a written argument for how its content is extracted, or write the step as " +
+      "a single-line `run:` — which is what an atomic gate invocation needs anyway.",
+  );
+}
+
 function parseStepSequence(lines, stepsLine, stepsIndent, origin) {
   const steps = [];
   let itemIndent = null;
@@ -373,7 +455,29 @@ function parseStepSequence(lines, stepsLine, stepsIndent, origin) {
     if (isBlank(line)) continue;
     const indent = indentOf(line);
 
-    if (indent <= stepsIndent) break;
+    if (indent <= stepsIndent) {
+      // A8 invariant 5 / F7: YAML permits a sequence flush with its key —
+      //     steps:
+      //     - name: ...
+      // which is valid and which this indentation walk cannot attribute, because it looks
+      // exactly like the end of the block. The old reader broke here and returned ZERO
+      // steps for a job full of them: a silent discard, not an error.
+      if (
+        /^\s*-\s/.test(line) &&
+        indent === stepsIndent &&
+        steps.length === 0
+      ) {
+        throw new WorkflowGatesUnavailableError(
+          `${origin}:${i + 1} writes the \`steps:\` sequence FLUSH with its key (\`- \` at ` +
+            "the same indentation). That is valid YAML and this scanner reads steps by " +
+            "indentation, so it cannot tell the first item from the end of the block — and " +
+            "the previous reader silently returned no steps at all for such a job, which " +
+            "made every gate in it invisible. Indent the sequence under `steps:`, or teach " +
+            "this reader the flush form deliberately.",
+        );
+      }
+      break;
+    }
 
     const item = /^(\s*)-\s*(.*)$/.exec(line);
     if (item && (itemIndent === null || item[1].length === itemIndent)) {
@@ -391,9 +495,10 @@ function parseStepSequence(lines, stepsLine, stepsIndent, origin) {
               "whose commands it cannot see.",
           );
         }
-        current.keys[pair[1]] = pair[2];
-        if (pair[2].trim() === "|" || pair[2].trim() === ">") {
-          current.keys[pair[1]] = "";
+        const scalar = classifyScalar(pair[1], pair[2], origin, i + 1);
+        current.keys[pair[1]] = scalar.value;
+        if (pair[1] === "run") current.plainRun = scalar.kind === "plain";
+        if (scalar.kind === "literal-block") {
           blockKey = pair[1];
           blockIndent = item[1].length + 2;
         }
@@ -410,7 +515,28 @@ function parseStepSequence(lines, stepsLine, stepsIndent, origin) {
     }
 
     const pair = /^([A-Za-z][\w.-]*):\s*(.*)$/.exec(line.trim());
-    if (!pair) continue; // a list item, a bare scalar — nothing we read.
+    if (!pair) {
+      // A8 invariant 5: a plain scalar may continue on following, more-indented lines —
+      //     run: pnpm check:overrides
+      //       --some-flag
+      // YAML folds that into one value; the old reader kept only the first line and
+      // discarded the rest, so a gate's real arguments were invisible. Refused rather
+      // than half-read.
+      if (
+        current !== null &&
+        current.plainRun === true &&
+        keyIndent !== null &&
+        indent > keyIndent
+      ) {
+        throw new WorkflowGatesUnavailableError(
+          `${origin}:${i + 1} continues a plain \`run:\` scalar onto another line. YAML ` +
+            "folds those into a single value; this scanner read only the first line and " +
+            "silently dropped the rest. Write the command on one line — an atomic gate " +
+            "invocation is one command anyway — or implement folding here deliberately.",
+        );
+      }
+      continue;
+    }
     if (indent <= itemIndent) break;
     // A7: record only the step's OWN keys, at its key column. Anything deeper belongs to
     // a sub-mapping — `env:`'s variable names, `with:`'s inputs — and recording those as
@@ -420,15 +546,58 @@ function parseStepSequence(lines, stepsLine, stepsIndent, origin) {
     // that INTRODUCES it (`env`, `with`) is the one that matters, and that is recorded.
     if (keyIndent === null) keyIndent = indent;
     if (indent > keyIndent) continue;
-    current.keys[pair[1]] = pair[2];
-    if (pair[2].trim() === "|" || pair[2].trim() === ">") {
-      current.keys[pair[1]] = "";
+    const scalar = classifyScalar(pair[1], pair[2], origin, i + 1);
+    current.keys[pair[1]] = scalar.value;
+    if (pair[1] === "run") current.plainRun = scalar.kind === "plain";
+    if (scalar.kind === "literal-block") {
       blockKey = pair[1];
       blockIndent = indent;
     }
   }
 
   return steps;
+}
+
+/**
+ * **A8 invariant 7 — the default `pull_request` types, and why the list matters.**
+ *
+ * With no `types:`, GitHub runs a `pull_request` workflow on `opened`, `synchronize` and
+ * `reopened` — every context in which a pull request gains or changes code. Narrowing the
+ * list removes contexts, and a stage that is required in a context its workflow does not
+ * run in is a stage that is not enforced there.
+ */
+export const DEFAULT_PULL_REQUEST_TYPES = ["opened", "synchronize", "reopened"];
+
+/** The explicit `types:` under `on: pull_request`, or null when the default applies. */
+function parsePullRequestTypes(lines) {
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^\s{2}pull_request:\s*$/.test(lines[i])) continue;
+    for (let j = i + 1; j < lines.length; j += 1) {
+      if (isBlank(lines[j])) continue;
+      const indent = indentOf(lines[j]);
+      if (indent <= 2) break;
+      const types = /^\s+types:\s*(.*)$/.exec(lines[j]);
+      if (!types) continue;
+      const inline = types[1].trim();
+      if (inline !== "") {
+        return inline
+          .replace(/^\[|\]$/g, "")
+          .split(",")
+          .map((name) => name.trim())
+          .filter(Boolean);
+      }
+      const listed = [];
+      for (let k = j + 1; k < lines.length; k += 1) {
+        if (isBlank(lines[k])) continue;
+        const item = /^\s+-\s*(\S+)\s*$/.exec(lines[k]);
+        if (!item) break;
+        listed.push(item[1]);
+      }
+      return listed;
+    }
+    return null;
+  }
+  return null;
 }
 
 /** The `on:` triggers a workflow declares. A composite action has none. */
@@ -472,33 +641,87 @@ function parseTriggers(lines) {
  * Anything else is NOT PROVEN — including shapes nobody has thought of yet. Adding one is a
  * deliberate edit to this grammar with the argument for why the status still propagates.
  */
-const SIMPLE_ARGUMENT = `[A-Za-z0-9_@./:=+,~^-]+|'[^']*'|"[^"]*"`;
-const SIMPLE_COMMAND = new RegExp(
-  String.raw`^[A-Za-z0-9_@./:+-]+(?:\s+(?:${SIMPLE_ARGUMENT}))*$`,
+/**
+ * **A8 invariant 1 — stop parsing shell programs; require an ATOMIC invocation.**
+ *
+ * A7d declared a grammar of "a simple command or an `&&` chain", and that was still a
+ * partial shell parser: it had to decide what `&&`, `;`, `|`, `$( )`, `!` and a background
+ * `&` each do to an exit status. Every one of those decisions is a place to be wrong, and
+ * F1–F4 are the proof — `set +ex`, a gate inside an uncalled function, a gate inside
+ * heredoc data, a gate after an unconditional `exit 0`, a gate in a zero-iteration loop.
+ * A parser that models shell will always have one more shape.
+ *
+ * So the model changes rather than the rule list. A required gate counts only when its
+ * step runs **exactly one command and nothing else**. Then there is no control flow to
+ * reason about, no dead code to detect, no shell state to track, and `set`/`shopt` are
+ * refused for free because they would be a second statement.
+ *
+ * This is an ALLOWLIST of one shape, not a denylist of many. Everything below is
+ * consequence, not enumeration: no pipeline, no `||`, no `&&`, no `;`, no backgrounding,
+ * no substitution, no inversion, no redirection, no heredoc, no function, no loop, no
+ * case, no continuation. None of them is a rule; they are all "not one command".
+ *
+ * Every gate line in the shipped workflows already is exactly one command, so the strictest
+ * available model costs nothing here.
+ */
+const ATOMIC_ARGUMENT = `[A-Za-z0-9_@./:=+,~^-]+|'[^']*'|"[^"]*"`;
+const ATOMIC_COMMAND = new RegExp(
+  `^[A-Za-z0-9_@./:+-]+(?:[ \\t]+(?:${ATOMIC_ARGUMENT}))*$`,
 );
 
 /**
- * Can a gate in this logical line fail the step?
+ * Is this `run:` value one atomic command?
  *
- * `&&` is the one operator that is safe: under GitHub's `bash -e` a failure short-circuits
- * the chain and the step fails. `;` is handled by the caller, which splits on it — under
- * errexit a failing command aborts the script rather than continuing.
+ * `plain` says the YAML scalar was a single-line plain scalar. A block scalar is never
+ * atomic — not because block scalars are forbidden, but because a gate written as one is
+ * not provably a lone statement, and this function's whole job is to answer "provably".
  */
-export function exitStatusPropagates(logicalLine) {
-  const parts = logicalLine.split("&&").map((part) => part.trim());
-  return parts.every((part) => {
-    if (part === "") return false;
-    const head = /^([A-Za-z][\w.-]*)/.exec(part)?.[1];
-    if (head !== undefined && SHELL_KEYWORDS.has(head)) return false;
-    return SIMPLE_COMMAND.test(part);
-  });
+export function atomicGateInvocation(runValue, { plain } = {}) {
+  if (plain !== true) {
+    return {
+      atomic: false,
+      why: "the `run:` value is not a single-line plain scalar",
+    };
+  }
+  if (typeof runValue !== "string") {
+    return {
+      atomic: false,
+      why: "the `run:` value is not a scalar this scanner read",
+    };
+  }
+  const command = runValue.trim();
+  if (command === "") {
+    return { atomic: false, why: "the `run:` value is empty" };
+  }
+  if (/\r|\n/.test(runValue)) {
+    return { atomic: false, why: "the `run:` value spans more than one line" };
+  }
+  const head = /^([A-Za-z][\w.-]*)/.exec(command)?.[1];
+  if (head !== undefined && SHELL_KEYWORDS.has(head)) {
+    return {
+      atomic: false,
+      why: `it begins with the shell keyword \`${head}\`, so it is control flow rather than a command`,
+    };
+  }
+  if (head === "set" || head === "shopt") {
+    return {
+      atomic: false,
+      why: `it is a \`${head}\` builtin, which changes shell state instead of running the gate`,
+    };
+  }
+  if (!ATOMIC_COMMAND.test(command)) {
+    return {
+      atomic: false,
+      why:
+        "it is not one command with simple arguments — a pipeline, `&&`, `||`, `;`, a " +
+        "background `&`, a substitution, a redirection, an inversion or a continuation is " +
+        "a second statement, and this scanner proves one statement rather than reasoning " +
+        "about what the others do to an exit status",
+    };
+  }
+  return { atomic: true, why: null };
 }
 
-/**
- * Shell grammar, not gates. Recording `if`/`then`/`fi` as executed commands made the
- * observation set unreadable and would let a gate NAMED after a shell keyword match
- * something that is not it.
- */
 const SHELL_KEYWORDS = new Set([
   "if",
   "then",
@@ -538,42 +761,36 @@ function observationsOf(step) {
 
   const run = step.keys.run;
   if (typeof run === "string" && run.trim() !== "") {
-    // `&&`, `;` and newlines all separate commands; a trailing `\` continues one.
-    const joined = run.replace(/\\\n/g, " ").replace(/\\$/gm, " ");
+    // A8 invariant 1. A gate is still OBSERVED wherever it textually appears — moving one
+    // into a heredoc, a function body or a `run: |` block must never make it invisible,
+    // because invisible is how F2 worked. What changes is whether the occurrence is
+    // PROVEN: only an atomic single-command plain scalar is.
+    const verdict = atomicGateInvocation(run, {
+      plain: step.plainRun === true,
+    });
 
-    // A7 · PROPAGATED, third mechanism. Neither A7a nor A7b names this one, and it needs
-    // no YAML at all: `pnpm check:overrides || true` leaves the command visibly present,
-    // runs it, and throws its exit code away. So does `|| :`, so does a `set +e` earlier
-    // in the block, and so does a pipeline without `pipefail`, where the shell reports the
-    // LAST element's status. `&&` and `;` are fine: under GitHub's `bash -e` a failure
-    // short-circuits or aborts the script either way.
-    const disablesErrexit = /(^|\s)set\s+(\+e\b|\+o\s+errexit\b)/m.test(joined);
-
-    for (const logical of joined.split(/\n|;/)) {
-      const masksExitCode = !exitStatusPropagates(logical);
-      for (const raw of logical.split("&&")) {
-        const command = raw.trim().replace(/^[|(]+\s*/, "");
-        if (command === "") continue;
-        const pnpm = /^pnpm\s+(?:--filter\s+\S+\s+)?([a-z][a-z0-9:-]*)/.exec(
-          command,
+    // Scan every line for gate NAMES so nothing is silently discarded, then attach the
+    // one verdict for the step. There is deliberately no per-line shell reasoning here:
+    // that was A7d's model, and F1–F4 are what it missed.
+    for (const rawLine of run.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (line === "") continue;
+      const pnpm =
+        /(?:^|[\s;&|(`$])pnpm\s+(?:--filter\s+\S+\s+)?([a-z][a-z0-9:-]*)/.exec(
+          line,
         );
-        if (pnpm) {
-          gates.push({
-            name: `pnpm ${pnpm[1]}`,
-            propagates: !masksExitCode && !disablesErrexit,
-            masked: masksExitCode
-              ? `its exit status is not proven to propagate: \`${logical.trim().slice(0, 70)}\` ` +
-                "is not a simple command or an `&&` chain of them, so a shell operator can " +
-                "consume or discard the failure (A7d)"
-              : disablesErrexit
-                ? "the block disables errexit with `set +e` before it runs"
-                : null,
-          });
-          continue;
-        }
-        const first = /^([A-Za-z][\w.-]*)/.exec(command);
-        if (first && !SHELL_KEYWORDS.has(first[1])) commands.push(first[1]);
+      if (pnpm) {
+        gates.push({
+          name: `pnpm ${pnpm[1]}`,
+          propagates: verdict.atomic,
+          masked: verdict.atomic
+            ? null
+            : `the step is not an atomic gate invocation — ${verdict.why}`,
+        });
+        continue;
       }
+      const first = /^([A-Za-z][\w.-]*)/.exec(line);
+      if (first && !SHELL_KEYWORDS.has(first[1])) commands.push(first[1]);
     }
   }
 
@@ -660,7 +877,11 @@ export function parseWorkflowFile(source, origin) {
     }
   }
 
-  return { triggers, steps: collected };
+  return {
+    triggers,
+    pullRequestTypes: parsePullRequestTypes(lines),
+    steps: collected,
+  };
 }
 
 /**
@@ -762,16 +983,50 @@ function classify(step, triggers) {
       reason: `step declares \`${key}\`, which this scanner has not reasoned about`,
     };
   }
+  // ── A8 invariants 2 and 3: WHICH SHELL actually runs the gate ──────────────────────
+  // Two independent ways to prove it, and a gate needs one of them:
+  //   * the step names a proven shell explicitly, or
+  //   * the job runs on a named runner whose DEFAULT shell is proven.
+  // `runs-on: windows-latest` with no explicit shell is the shape that matters: PowerShell
+  // sets $LASTEXITCODE for a failing native command without terminating the script, so the
+  // gate fails and the step passes. A `${{ … }}` runner or a self-hosted label proves
+  // nothing about the image, so they must name a shell instead.
   const shell = step.keys?.shell;
-  if (typeof shell === "string" && shell.trim() !== "") {
-    const name = shell.trim().split(/\s+/)[0];
-    if (!PROVEN_SHELLS.has(name) || shell.trim() !== name) {
+  const shellDeclared = typeof shell === "string" && shell.trim() !== "";
+  if (shellDeclared) {
+    const declared = shell.trim();
+    const name = declared.split(/\s+/)[0];
+    if (!PROVEN_SHELLS.has(name) || declared !== name) {
       return {
         kind: KINDS.unprovenPropagation,
         reason:
-          `step sets \`shell: ${shell.trim()}\`. GitHub's documented shells stop on the ` +
-          "first failing command; a custom template such as `bash {0}` drops `-e`, and " +
-          "then a failing gate leaves a passing step",
+          `step sets \`shell: ${declared}\`, which is not a proven shell. Only bare \`bash\` ` +
+          "and bare `sh` are: both stop on the first failing command. A custom template " +
+          "such as `bash {0}` drops `-e`; `pwsh`, `powershell` and `python` each have their " +
+          "own failure semantics and were removed from the proven set precisely because " +
+          "assuming they behave like bash is the mistake",
+      };
+    }
+  } else {
+    const runsOn = step.jobKeys?.get("runs-on");
+    if (runsOn === undefined) {
+      return {
+        kind: KINDS.unprovenShape,
+        reason:
+          "the gate's job declares no `runs-on` and the step names no shell, so which " +
+          "shell runs the command — and therefore whether its failure fails the step — is " +
+          "not determined by anything this scanner can read",
+      };
+    }
+    if (!runnerDefaultShellProven(runsOn)) {
+      return {
+        kind: KINDS.unprovenPropagation,
+        reason:
+          `the job runs on \`${String(runsOn).trim()}\` and the step names no shell. That ` +
+          "runner's default shell is not proven: Windows defaults to PowerShell, where a " +
+          "failing native command does not by itself fail the step; a `${{ … }}` " +
+          "expression or a self-hosted label says nothing about the image at all. Either " +
+          "run on a named Linux/macOS image, or declare `shell: bash`",
       };
     }
   }
@@ -879,6 +1134,7 @@ export async function readWorkflowGates() {
   }
 
   const occurrences = new Map();
+  const triggers = new Map();
   const read = [];
 
   const record = (name, entry) => {
@@ -886,7 +1142,12 @@ export async function readWorkflowGates() {
     occurrences.get(name).push(entry);
   };
 
-  const ingest = async (relative, triggers, visited) => {
+  const ingest = async (
+    relative,
+    inheritedTriggers,
+    visited,
+    entryWorkflow,
+  ) => {
     if (visited.has(relative)) return;
     visited.add(relative);
     read.push(relative);
@@ -903,7 +1164,13 @@ export async function readWorkflowGates() {
     }
 
     const parsed = parseWorkflowFile(source, relative);
-    const effective = triggers ?? parsed.triggers;
+    if (inheritedTriggers === null) {
+      triggers.set(relative, {
+        names: parsed.triggers,
+        pullRequestTypes: parsed.pullRequestTypes,
+      });
+    }
+    const effective = inheritedTriggers ?? parsed.triggers;
     if (parsed.steps.length === 0) {
       throw new WorkflowGatesUnavailableError(
         `${relative} declares no steps at all. A workflow that executes nothing is ` +
@@ -914,7 +1181,20 @@ export async function readWorkflowGates() {
 
     for (const step of parsed.steps) {
       const { kind, reason } = classify(step, effective);
-      const entry = { kind, reason, where: where(step, relative) };
+      const entry = {
+        kind,
+        reason,
+        where: where(step, relative),
+        // A8 invariant 6: an occurrence's WORKFLOW is part of its identity — a gate proven
+        // in some other workflow does not satisfy the stage that requires it.
+        //
+        // `workflow` is the ENTRY POINT, not the file the step happens to be written in.
+        // `pnpm install --frozen-lockfile` is written in .github/actions/setup, and it is
+        // authorized because ci-fast.yml CALLS that composite action: authority follows the
+        // pipeline that reaches the step. `definedIn` keeps the real location for messages.
+        workflow: entryWorkflow ?? relative,
+        definedIn: relative,
+      };
 
       for (const gate of step.observations.gates) {
         record(
@@ -960,14 +1240,14 @@ export async function readWorkflowGates() {
                 "than an empty set.",
             );
           }
-          await ingest(resolved, effective, visited);
+          await ingest(resolved, effective, visited, entryWorkflow ?? relative);
         }
       }
     }
   };
 
   for (const relative of files) {
-    await ingest(relative, null, new Set());
+    await ingest(relative, null, new Set(), relative);
   }
 
   const gates = [...occurrences.keys()].filter((name) =>
@@ -982,5 +1262,6 @@ export async function readWorkflowGates() {
     gates: gates.sort(),
     executed: executed.sort(),
     occurrences,
+    triggers,
   };
 }

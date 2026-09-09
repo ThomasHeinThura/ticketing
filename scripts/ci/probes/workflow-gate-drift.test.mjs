@@ -470,6 +470,12 @@ describe("A6 — an unrecognised condition does NOT count as execution", () => {
    * mentions no label, was classified `conditional` and counted as executed. A denylist
    * solving an allowlist problem.
    *
+   * A8 note: these cases still go RED, but the REASON changed. A7d refused them with
+   * per-mechanism shell reasoning ("a pipeline reports its last element", "`set +e`
+   * disables errexit"); A8 refuses them with one sentence — the step is not an atomic gate
+   * invocation. That is strictly stronger and much smaller: there is no longer a shell
+   * model to be incomplete. The assertions below therefore match the atomic message.
+   *
    * Each case pins BOTH halves — the pre-A6 predicate counted it as executing, and the
    * shipped reconciliation is red. Without the first half these would be assertions that
    * merely happen to pass.
@@ -917,7 +923,7 @@ describe("A7 — SCHEDULED, EXECUTED, PROPAGATED: all three, or the gate is not 
       // does not count, which is the invariant.
       assert.match(
         result.output,
-        /not proven to propagate|disables errexit|NO workflow executes it/,
+        /not an atomic gate invocation|NO workflow executes it/,
       );
     });
   }
@@ -956,7 +962,7 @@ describe("A7 — SCHEDULED, EXECUTED, PROPAGATED: all three, or the gate is not 
       assert.equal(result.status, 1, result.output);
       assert.match(
         result.output,
-        /not proven to propagate|NO workflow executes it/,
+        /not an atomic gate invocation|NO workflow executes it/,
       );
     });
   }
