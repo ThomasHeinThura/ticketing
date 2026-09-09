@@ -261,10 +261,14 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   roles. Load-bearing means it needs a retrofit (S1–S10, #6 work), not that it is kept.
 - **Retrofit S0, S1, S2, S3, S4, S4b and S5 are COMPLETE** and on `main` (#65, #57, #65, #76,
   #67, #85, #77 respectively). **S6a, S7, S8a, S9 and S10 remain**, and S6a and S8a are both
-  now unblocked. Landing a stage does not
-  start the next; each step needs its own scheduling decision, and a green equivalence suite is not permission to
-  begin the next one. Native reads and writes exist **alongside** the plugin, which is
-  still what the client actually calls (S3 is the client cut-over and has not happened).
+  now unblocked. Landing a stage does not start the next; each step needs its own scheduling
+  decision, and a green equivalence suite is not permission to begin the next one.
+  **What the client calls now, stated precisely, because "alongside the plugin" is no longer
+  the whole picture:** the client is off the plugin for workspace **reads** (S3), workspace
+  **CRUD writes** (S4b) and **membership writes** including the atomic ownership transfer
+  (S5, repointed by S3). It still calls the plugin for **invitations** (S6a), **role writes**
+  (S7), **`setActive`** (S8a) and **teams** (S9). That is why `organization()` is still
+  mounted, and why S10 cannot run yet.
 - **The frozen organization-create baseline is N = 9 observable effects: eight first-order
   create effects plus one eventual, one-hop durable notification consequence.** The eight
   are the `workspace` row, the owner `workspace_member` row, the three seeded
