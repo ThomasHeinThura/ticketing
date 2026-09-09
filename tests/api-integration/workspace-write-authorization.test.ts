@@ -577,3 +577,105 @@ describe("S4 native writes: the instance-admin boundary (A2-P16..A2-P17)", () =>
     expect(remove.status).toBe(200);
   });
 });
+
+/**
+ * A2-P25/A2-P26 -- the RBAC evaluator's own membership read must not be
+ * nondeterministic.
+ *
+ * Three independent reviewers converged on this from opposite sides: the
+ * independent Opus security review of this pull request (as its MEDIUM 1), the
+ * correctness-lens Sonnet reviewer of this pull request (as a HIGH, flagged as
+ * an authorization-boundary defect), and the independent Opus review of #77 (as
+ * its H2). All three named the same two functions.
+ *
+ * `require-workspace-permission.ts` and `require-workspace-role-authority.ts`
+ * both read the caller's membership with `.limit(1)` and no `ORDER BY`, over a
+ * table (`workspace_member`) with no UNIQUE constraint on
+ * `(workspace_id, user_id)`. So with two rows for one pair the evaluator could
+ * return either role and therefore GRANT or DENY depending on scan order --
+ * measured by the reviewer at owner-row-first 200 versus viewer-row-first 403,
+ * stable over twelve runs. The grant direction is the escalation direction.
+ *
+ * It was not a regression -- the reviewer enumerated every case and found no
+ * input where the pre-#80 code denied and this head granted -- but on merge it
+ * would have become the one uncovered read of seven, with #77 skipping these
+ * two files precisely because #80 lands first. Fixed here instead of handed
+ * over, so nothing depends on remembering.
+ *
+ * Both now read ALL rows and refuse when the answer is ambiguous. Fail-closed:
+ * a corrupt authorization state is refused, never resolved by guessing. Issue
+ * #88's `UNIQUE (workspace_id, user_id)` constraint makes the case unreachable,
+ * at which point these two probes become vacuous -- and that is the correct
+ * failure, not a false one.
+ */
+describe("A2-P25/A2-P26 the evaluator refuses an ambiguous membership rather than guessing", () => {
+  it("A2-P25 a member with TWO rows is denied, whichever row a scan would return first", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "A2-P25");
+    const member = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "admin",
+    );
+
+    // Baseline: one row, real "admin" authority, the update succeeds. Without
+    // this the denial below could be passing for an unrelated reason.
+    const before = await updateWorkspaceNative(
+      app,
+      member.cookie,
+      workspaceId,
+      {
+        name: "Renamed By Admin",
+      },
+    );
+    expect(before.status).toBe(200);
+
+    // Now the same member holds a second, lower row. The rows disagree, so the
+    // answer is not derivable and must be refused -- regardless of order.
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId,
+      userId: member.user.id,
+      role: "viewer",
+      joinedAt: new Date(),
+    });
+
+    const after = await updateWorkspaceNative(app, member.cookie, workspaceId, {
+      name: "Renamed While Ambiguous",
+    });
+    expect(after.status).toBe(403);
+  });
+
+  it("A2-P26 two rows that AGREE are still refused -- the rule is one row, not one distinct role", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "A2-P26");
+    const member = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "admin",
+    );
+
+    // Deliberately duplicate the SAME role. A reduction that asked "do all rows
+    // agree?" would grant here; the rule is cardinality, because a duplicated
+    // membership row is a corrupt state whatever it says, and #77's reviewer
+    // showed that two reductions disagreeing on exactly this shape locked an
+    // owner out of their own transfer route.
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId,
+      userId: member.user.id,
+      role: "admin",
+      joinedAt: new Date(),
+    });
+
+    const response = await updateWorkspaceNative(
+      app,
+      member.cookie,
+      workspaceId,
+      { name: "Renamed With Duplicate Admin" },
+    );
+    expect(response.status).toBe(403);
+  });
+});

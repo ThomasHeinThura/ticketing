@@ -4,6 +4,10 @@ import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import { isInstanceAdmin } from "./is-instance-admin";
+import {
+  isUnambiguousMembership,
+  workspaceMemberRoles,
+} from "./workspace-member-roles";
 
 type PermissionMap = Record<string, string[]>;
 
@@ -105,16 +109,17 @@ export async function hasWorkspacePermission(
   const userId = c.get("userId");
   if (!userId) return false;
 
-  const [member] = await db
-    .select({ role: schema.workspaceUserTable.role })
-    .from(schema.workspaceUserTable)
-    .where(
-      and(
-        eq(schema.workspaceUserTable.workspaceId, workspaceId),
-        eq(schema.workspaceUserTable.userId, userId),
-      ),
-    )
-    .limit(1);
+  // ALL rows for the pair, and refuse to answer if there is more than one.
+  // This used to be `.limit(1)` with no `ORDER BY`, so the evaluator could
+  // select either row of a duplicated membership and therefore grant or deny
+  // NONDETERMINISTICALLY -- measured at owner-row-first 200 versus
+  // viewer-row-first 403, stable over twelve runs. Three independent reviewers
+  // of this pull request and of #77 converged on it. Fail-closed: a corrupt
+  // membership state is refused, never resolved by guessing. #88 tracks the
+  // `UNIQUE (workspace_id, user_id)` constraint that makes it unreachable.
+  const roles = await workspaceMemberRoles(db, workspaceId, userId);
+  if (!isUnambiguousMembership(roles)) return false;
+  const member = { role: roles[0] };
 
   if (!member?.role) return false;
 
