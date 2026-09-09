@@ -2238,6 +2238,66 @@
           "id"
         ]
       },
+      "RemovedWorkspaceMember": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
+      "WorkspaceMemberRole": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "role"
+        ]
+      },
+      "LeftWorkspace": {
+        "type": "object",
+        "properties": {
+          "workspaceId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspaceId"
+        ]
+      },
+      "TransferredWorkspaceOwnership": {
+        "type": "object",
+        "properties": {
+          "workspaceId": {
+            "type": "string"
+          },
+          "previousOwnerUserId": {
+            "type": "string"
+          },
+          "previousOwnerNewRole": {
+            "type": "string"
+          },
+          "newOwnerUserId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspaceId",
+          "previousOwnerUserId",
+          "previousOwnerNewRole",
+          "newOwnerUserId"
+        ]
+      },
       "UserAvatar": {
         "type": "object",
         "properties": {
@@ -9869,6 +9929,110 @@
             }
           }
         }
+      },
+      "post": {
+        "operationId": "addWorkspaceMember",
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Add a member to a workspace",
+        "description": "Add an existing platform user directly to a workspace by id. New surface -- the inherited plugin never exposed this as a public route.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "role": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "userId",
+                  "role"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The added member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceMember"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, an unknown role, or the role was 'owner'",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An API key or impersonation session (session_required), no workspace access, or missing member:create permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The target user does not exist",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The target user is already a member",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/workspace/{workspaceId}/invitations": {
@@ -9918,6 +10082,358 @@
           },
           "403": {
             "description": "No access to the workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/members/{userId}": {
+      "delete": {
+        "operationId": "removeWorkspaceMember",
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Remove a workspace member",
+        "description": "Remove a member from a workspace. Native replacement for authClient.organization.removeMember().",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The removed member's user id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemovedWorkspaceMember"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cannot remove the workspace's only owner",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An API key or impersonation session (session_required), no workspace access, or missing member:delete permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The target is not a member of this workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/members/{userId}/role": {
+      "patch": {
+        "operationId": "updateWorkspaceMemberRole",
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Change a member's role",
+        "description": "Change a member's assigned role. Native replacement for authClient.organization.updateMemberRole(). Can never grant or touch the owner role -- use transfer-ownership for that.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "role"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The member's new role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceMemberRole"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, an unknown role, the role was 'owner', or the target is currently the owner",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An API key or impersonation session (session_required), no workspace access, or missing member:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The target is not a member of this workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/leave": {
+      "post": {
+        "operationId": "leaveWorkspace",
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Leave a workspace",
+        "description": "The caller leaves a workspace of their own accord. Native replacement for authClient.organization.leave(). Refused when the caller is the workspace's only owner.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The workspace left",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeftWorkspace"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The caller is the workspace's only owner",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An API key or impersonation session (session_required), or no workspace access",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The caller is not a member of this workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/transfer-ownership": {
+      "post": {
+        "operationId": "transferWorkspaceOwnership",
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Transfer workspace ownership",
+        "description": "Atomically install a new owner and demote the caller in one transaction. Replaces the client's promote/demote pair (use-transfer-workspace-ownership.ts). Callable only by the workspace's current owner.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "newOwnerUserId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "newOwnerUserId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The transfer result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferredWorkspaceOwnership"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The new owner is the caller themselves",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An API key or impersonation session (session_required), no workspace access, or the caller is not the current owner",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The new owner is not a member of this workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The new owner has more than one membership row in this workspace, so no single role can be trusted; repair the duplicate first",
             "content": {
               "text/plain": {
                 "schema": {

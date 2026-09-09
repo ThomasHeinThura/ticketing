@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth-client";
-import { createSlug } from "@/lib/utils/create-slug";
+import { client } from "@taskdesk/libs";
+import { refreshWorkspaceStores } from "@/lib/utils/refresh-workspace-stores";
 
 type UpdateWorkspaceRequest = {
   workspaceId: string;
@@ -8,6 +8,12 @@ type UpdateWorkspaceRequest = {
   description?: string;
   slug?: string;
   logo?: string;
+  /**
+   * Plugin-era option, kept only so existing call sites still type-check.
+   * The native `PATCH /api/workspace/{workspaceId}` body has no `metadata`
+   * field — `description` is its own column, not a metadata entry — and no
+   * call site passes this.
+   */
   metadata?: Record<string, unknown>;
 };
 
@@ -19,21 +25,21 @@ function useUpdateWorkspace() {
       description,
       slug,
       logo,
-      metadata,
     }: UpdateWorkspaceRequest) => {
       const updateData: {
         name?: string;
         description?: string;
         slug?: string;
         logo?: string;
-        metadata?: Record<string, unknown>;
       } = {};
 
+      // A rename must NOT re-derive the slug: the server contract
+      // (apps/api/src/workspace/controllers/update-workspace.ts) is explicit
+      // that the slug is part of already-shared URLs and only changes when
+      // the caller asks for it. Sending a derived slug here would move it
+      // out from under existing links on every plain rename.
       if (name !== undefined) {
         updateData.name = name;
-        if (slug === undefined) {
-          updateData.slug = createSlug(name);
-        }
       }
 
       if (slug !== undefined) {
@@ -48,20 +54,29 @@ function useUpdateWorkspace() {
         updateData.logo = logo;
       }
 
-      if (metadata !== undefined) {
-        updateData.metadata = metadata;
-      }
-
-      const { data, error } = await authClient.organization.update({
-        data: updateData,
-        organizationId: workspaceId,
+      // S4b: native replacement for authClient.organization.update().
+      const response = await client.workspace[":workspaceId"].$patch({
+        param: { workspaceId },
+        json: updateData,
       });
 
-      if (error) {
-        throw new Error(error.message || "Failed to update workspace");
+      if (!response.ok) {
+        // `|| "Failed to update workspace"` restores the fallback the plugin-era code
+        // had (`error.message || ...`). Without it an empty non-2xx body -- a
+        // reverse-proxy 502/504 that never reaches Hono's own error handler, which
+        // always supplies a message -- becomes `new Error("")`, and general.tsx's
+        // `error instanceof Error ? error.message : t(...)` then shows a BLANK toast
+        // instead of the translated fallback. The create path kept its fallback; these
+        // two lost theirs in the cutover, which made it a regression rather than a gap.
+        const error = await response.text();
+        throw new Error(error || "Failed to update workspace");
       }
 
-      return data;
+      // S4b: the native route hits no plugin path, so the plugin's own
+      // atomListeners never fire and the displayed name goes stale.
+      refreshWorkspaceStores();
+
+      return await response.json();
     },
   });
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -73,6 +73,59 @@ describe("API integration: account deletion", () => {
       .where(eq(schema.workspaceTable.id, owner.workspace.id));
 
     expect(workspaces).toHaveLength(1);
+  });
+
+  it("refuses when the only OTHER 'owner' is a role merely NAMED \"owner,x\" -- ownerCount must be exact", async () => {
+    // THE COVERAGE GAP THIS CLOSES, and it was found in the fix's own review.
+    //
+    // `planAccountDeletion` blocks on `isOwner && ownerCount <= 1`, so the two
+    // inputs want OPPOSITE readings of a comma-joined role value:
+    //   - `isOwner`    wants the INCLUSIVE reading -- a false isOwner skips the block
+    //   - `ownerCount` wants the EXACT reading -- OVER-counting also skips the block
+    //
+    // Deriving `ownerCount` with the inclusive `hasOwnerRole` counted a member
+    // holding a role merely NAMED "owner,x" as a second owner, so the genuine
+    // sole owner's deletion stopped being blocked and the workspace was
+    // orphaned. An independent Opus reviewer measured exactly that:
+    // `realOwnersAfter = []`.
+    //
+    // The fix uses `holdsOwnerExactly` for the count. **It had NO coverage** --
+    // reverting it to `hasOwnerRole` left the entire suite green, which is the
+    // class issue #93 tracks. This probe is the witness.
+    const owner = await createWorkspaceMember({
+      role: "owner",
+      workspaceName: "Exactly",
+    });
+    const impostor = await addMember(owner.workspace.id, "member");
+
+    // A role value that GRANTS owner when read inclusively but is not the
+    // literal "owner". Seeded directly: `create-role` only lowercases names, so
+    // such a role is creatable in product, and the native write guards now
+    // refuse it -- this pins the READ side regardless of how the row arrived.
+    await db
+      .update(schema.workspaceUserTable)
+      .set({ role: "owner,x" })
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, owner.workspace.id),
+          eq(schema.workspaceUserTable.userId, impostor.id),
+        ),
+      );
+
+    // Exact counting sees ONE real owner, so the block fires.
+    await expect(deleteAccountData(owner.user.id)).rejects.toThrow(
+      /only owner of "Exactly"/,
+    );
+
+    // And the workspace still has its genuine owner -- the assertion that would
+    // have caught the original defect, where this came back empty.
+    const realOwnersAfter = await db
+      .select({ userId: schema.workspaceUserTable.userId })
+      .from(schema.workspaceUserTable)
+      .where(eq(schema.workspaceUserTable.workspaceId, owner.workspace.id));
+    expect(realOwnersAfter.some((row) => row.userId === owner.user.id)).toBe(
+      true,
+    );
   });
 
   it("leaves a shared workspace that keeps another owner", async () => {
