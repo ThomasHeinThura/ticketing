@@ -27,8 +27,9 @@ export const ciCdPath = path.join(repoRoot, CI_CD_RELATIVE_PATH);
 // **raising it was tried and reverted**, because it is not safely actionable as stated: the
 // red probes in `scripts/ci/probes/` construct SYNTHETIC ci-cd.md files with deliberately
 // small glob lists — `stale-review-note.test.mjs` writes ten — and a floor above that turns
-// every one of them into a parse error instead of the scenario it was built to test. At 16,
-// six probes failed.
+// every one of them into a parse error instead of the scenario it was built to test.
+// Measured, after an independent review corrected an earlier guess of "six probes": at 16,
+// **14 tests across 3 suites in 2 files** fail.
 //
 // So the floor stays at 8 and the finding is answered honestly rather than closed: a floor
 // tied to a number cannot distinguish "the block format broke" from "a probe wrote a small
