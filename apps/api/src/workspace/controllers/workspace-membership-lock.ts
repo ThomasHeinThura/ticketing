@@ -16,7 +16,15 @@
  * shape of race the quality bar for this repository calls out: "count in the
  * database, inside the same transaction as the write, or the check races."
  *
- * Two owner-count races this makes impossible:
+ * Two owner-count races this makes impossible AMONG NATIVE CALLERS -- and
+ * that qualifier is load-bearing. The better-auth plugin's own
+ * `/api/auth/organization/leave`, `remove-member` and `update-member-role`
+ * routes are STILL MOUNTED and take no lock at all, so a native `leave` and a
+ * plugin `leave` running concurrently can both read "2 owners, safe" and land
+ * on zero -- with no duplicate rows involved. That hole closes when retrofit
+ * S10 unmounts the plugin, not here. Found by the independent security review
+ * of pull request #77, which corrected an earlier version of this comment that
+ * claimed the races were impossible outright:
  *  - two concurrent `leave`/`remove` calls each reading "2 owners, safe to
  *    proceed" before either commits its delete, landing on zero;
  *  - two concurrent `transferWorkspaceOwnership` calls from the SAME owner,

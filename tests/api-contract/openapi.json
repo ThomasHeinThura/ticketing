@@ -10431,6 +10431,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "The new owner has more than one membership row in this workspace, so no single role can be trusted; repair the duplicate first",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }

@@ -30,6 +30,7 @@ import updateWorkspaceCtrl from "./controllers/update-workspace";
 import updateWorkspaceMemberRoleCtrl from "./controllers/update-workspace-member-role";
 import {
   AlreadyOwnerError,
+  AmbiguousMembershipError,
   CallerNotOwnerError,
   CannotChangeOwnerRoleHereError,
   LastOwnerCannotLeaveError,
@@ -452,6 +453,9 @@ const transferWorkspaceOwnershipRoute = createRoute({
       "An API key or impersonation session (session_required), no workspace access, or the caller is not the current owner",
     ),
     404: errorResponse("The new owner is not a member of this workspace"),
+    409: errorResponse(
+      "The new owner has more than one membership row in this workspace, so no single role can be trusted; repair the duplicate first",
+    ),
   },
 });
 
@@ -657,6 +661,9 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       }
       if (error instanceof CallerNotOwnerError) {
         throw new HTTPException(403, { message: error.message });
+      }
+      if (error instanceof AmbiguousMembershipError) {
+        throw new HTTPException(409, { message: error.message });
       }
       if (error instanceof NewOwnerNotAMemberError) {
         throw new HTTPException(404, { message: error.message });

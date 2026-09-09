@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import db, { schema } from "../../database";
 import {
   anyRoleIsOwner,
+  distinctOwnerUserCount,
   workspaceMemberRoles,
 } from "../../utils/workspace-member-roles";
 import {
@@ -60,16 +61,12 @@ async function removeWorkspaceMember(
     }
 
     if (anyRoleIsOwner(targetRoles)) {
-      const owners = await tx
-        .select({ userId: schema.workspaceUserTable.userId })
-        .from(schema.workspaceUserTable)
-        .where(
-          and(
-            eq(schema.workspaceUserTable.workspaceId, workspaceId),
-            eq(schema.workspaceUserTable.role, "owner"),
-          ),
-        );
-      if (owners.length <= 1) {
+      // DISTINCT USERS, not rows. Counting rows let a single owner user with
+      // two `"owner"` rows read as "two owners", so this guard passed and the
+      // delete below -- which matches `(workspaceId, userId)` and therefore
+      // removes EVERY row for the pair -- left the workspace with zero owners.
+      // Found by the independent security review of this pull request.
+      if ((await distinctOwnerUserCount(tx, workspaceId)) <= 1) {
         throw new LastOwnerCannotLeaveError();
       }
     }

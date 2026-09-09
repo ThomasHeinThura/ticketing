@@ -1,9 +1,13 @@
 import { and, eq, sql } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
-import { workspaceMemberRoles } from "../../utils/workspace-member-roles";
+import {
+  isUnambiguousMembership,
+  workspaceMemberRoles,
+} from "../../utils/workspace-member-roles";
 import {
   AlreadyOwnerError,
+  AmbiguousMembershipError,
   CallerNotOwnerError,
   NewOwnerNotAMemberError,
 } from "./workspace-membership-errors";
@@ -87,24 +91,31 @@ async function transferWorkspaceOwnership(
     // existing forbidden path rather than picking one to trust.
     const callerRoles = await workspaceMemberRoles(tx, workspaceId, callerId);
     if (
-      callerRoles.length !== 1 ||
+      !isUnambiguousMembership(callerRoles) ||
       !builtInRoleHasCapability(callerRoles[0], "workspace:transfer_ownership")
     ) {
       throw new CallerNotOwnerError();
     }
 
-    const [newOwner] = await tx
-      .select({ userId: schema.workspaceUserTable.userId })
-      .from(schema.workspaceUserTable)
-      .where(
-        and(
-          eq(schema.workspaceUserTable.workspaceId, workspaceId),
-          eq(schema.workspaceUserTable.userId, newOwnerUserId),
-        ),
-      )
-      .limit(1);
-    if (!newOwner) {
+    // The INCOMING owner's membership must be unambiguous too, symmetric with
+    // the caller check above. This used to be a bare existence read, and the
+    // `UPDATE` below matches `(workspaceId, userId)` -- so transferring to a
+    // member who held two rows set BOTH to `"owner"`, manufacturing exactly
+    // the two-owner-rows-for-one-user state the last-owner guards then
+    // misread. Found by the independent security review of this pull request,
+    // which walked the whole chain to a zero-owner workspace with no
+    // unauthorized step in it. Refusing here removes the manufacturing step;
+    // `distinctOwnerUserCount` removes the misreading step.
+    const newOwnerRoles = await workspaceMemberRoles(
+      tx,
+      workspaceId,
+      newOwnerUserId,
+    );
+    if (newOwnerRoles.length === 0) {
       throw new NewOwnerNotAMemberError();
+    }
+    if (!isUnambiguousMembership(newOwnerRoles)) {
+      throw new AmbiguousMembershipError();
     }
 
     await tx

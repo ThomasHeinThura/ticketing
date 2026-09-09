@@ -70,7 +70,9 @@ import {
   signUpUser,
 } from "./helpers/organization-http";
 import {
+  leaveWorkspaceNative,
   removeWorkspaceMemberNative,
+  transferWorkspaceOwnershipNative,
   updateWorkspaceMemberRoleNative,
 } from "./helpers/workspace-membership-write-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
@@ -106,9 +108,35 @@ async function rolesForPair(
   return rows.map((row) => row.role);
 }
 
+/**
+ * How many DISTINCT USER IDS hold `role = "owner"`.
+ *
+ * This helper used to return `owners.length` -- a count of ROWS -- which is
+ * the identical confusion the production code had, so `expect(ownerCount).toBe(1)`
+ * could not tell "one owner user" from "one owner row". The independent
+ * security review of this pull request found the production defect precisely
+ * because the test helper shared it: no probe could ever have caught it.
+ * Recorded here because a test that mirrors the bug it is meant to catch is
+ * worse than no test, and the next person editing this file needs to know why
+ * the deduplication is deliberate.
+ */
 async function ownerCount(workspaceId: string): Promise<number> {
   const owners = await db
     .select({ userId: schema.workspaceUserTable.userId })
+    .from(schema.workspaceUserTable)
+    .where(
+      and(
+        eq(schema.workspaceUserTable.workspaceId, workspaceId),
+        eq(schema.workspaceUserTable.role, "owner"),
+      ),
+    );
+  return new Set(owners.map((row) => row.userId)).size;
+}
+
+/** Raw `role = "owner"` ROW count, for probes that must distinguish the two. */
+async function ownerRowCount(workspaceId: string): Promise<number> {
+  const owners = await db
+    .select({ id: schema.workspaceUserTable.id })
     .from(schema.workspaceUserTable)
     .where(
       and(
@@ -362,5 +390,144 @@ describe("P4 capability-gate divergence", () => {
 
     // POST-FIX: fail-closed, same as the sibling test -- both orderings now agree.
     expect(res.status).toBe(403);
+  });
+});
+
+/**
+ * R1-R4 -- the ZERO-OWNER chain, and the reason this group exists.
+ *
+ * The independent Opus security review of this pull request found that the first version of
+ * the duplicate-row fix was conservative in one direction only. It made "is the TARGET an
+ * owner" conservative (`anyRoleIsOwner`, any row counts) and left "are there OTHER owners"
+ * row-based: `select(userId).where(role='owner')` then `owners.length <= 1`. So a workspace
+ * whose ONLY owner user held two `"owner"` rows counted 2, the last-owner guard passed, and
+ * the delete -- which matches `(workspaceId, userId)` and therefore removes EVERY row for the
+ * pair -- landed on **zero owners**.
+ *
+ * And the ownership transfer manufactured exactly that precondition: it set `role = "owner"`
+ * on every row of the incoming owner, so transferring to a duplicated member produced the
+ * two-owner-rows-for-one-user state the guard then misread. The full chain had no
+ * unauthorized step in it.
+ *
+ * **Why the original probes could not catch it: this file's own `ownerCount()` helper had the
+ * identical row-versus-user confusion**, so `expect(ownerCount).toBe(1)` could not distinguish
+ * one owner user from one owner row. The helper is fixed above and deduplicates now, and
+ * `ownerRowCount()` exists for the probes that must tell the two apart. A test that mirrors
+ * the bug it is meant to catch is worse than no test.
+ *
+ * Both halves are fixed: `distinctOwnerUserCount` removes the misreading, and the transfer
+ * refusing an ambiguous incoming owner removes the manufacturing.
+ */
+describe("R1-R4: a duplicated OWNER must never let a workspace reach zero owners", () => {
+  it("R1 the sole owner holding TWO owner rows cannot leave -- the guard counts users, not rows", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "R1 Leave");
+    // A second member exists, so `memberCount <= 1` is not what refuses the leave -- the
+    // last-OWNER guard is, which is the thing under test.
+    await inviteAndAcceptAsNewMember(app, owner.cookie, workspaceId, "member");
+
+    await insertDuplicateRow(workspaceId, owner.user.id, "owner");
+    expect(await ownerRowCount(workspaceId)).toBe(2);
+    expect(await ownerCount(workspaceId)).toBe(1); // ...but only ONE owner user
+
+    const response = await leaveWorkspaceNative(app, owner.cookie, workspaceId);
+
+    expect(response.status).not.toBe(200);
+    // The invariant, asserted on the database rather than on the status alone.
+    expect(await ownerCount(workspaceId)).toBeGreaterThanOrEqual(1);
+  });
+
+  it("R2 an admin cannot remove the sole owner who holds TWO owner rows", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "R2 Remove");
+    const admin = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "admin",
+    );
+
+    await insertDuplicateRow(workspaceId, owner.user.id, "owner");
+    expect(await ownerRowCount(workspaceId)).toBe(2);
+    expect(await ownerCount(workspaceId)).toBe(1);
+
+    const response = await removeWorkspaceMemberNative(
+      app,
+      admin.cookie,
+      workspaceId,
+      owner.user.id,
+    );
+
+    expect(response.status).not.toBe(200);
+    expect(await ownerCount(workspaceId)).toBeGreaterThanOrEqual(1);
+  });
+
+  it("R3 transferring to a member with duplicate rows is REFUSED with 409, so two owner rows are never manufactured", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "R3 Transfer");
+    const target = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
+
+    await insertDuplicateRow(workspaceId, target.user.id, "viewer");
+    expect(await rolesForPair(workspaceId, target.user.id)).toHaveLength(2);
+
+    const response = await transferWorkspaceOwnershipNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { newOwnerUserId: target.user.id },
+    );
+
+    // 409, not 404 and not 403: a corrupt membership row is a conflict an operator must be
+    // able to tell apart from "not a member" and from "insufficient permissions". Issue #82's
+    // own scope item asks for exactly that distinguishability.
+    expect(response.status).toBe(409);
+    // Nothing moved: the target did not become an owner, and the real owner still is one.
+    expect(await rolesForPair(workspaceId, target.user.id)).not.toContain(
+      "owner",
+    );
+    expect(await rolesForPair(workspaceId, owner.user.id)).toEqual(["owner"]);
+    expect(await ownerCount(workspaceId)).toBe(1);
+  });
+
+  it('R4 the capability gate and the transfer controller AGREE on ["owner","owner"] -- both refuse', async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "R4 Agree");
+    const target = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
+
+    // The state the two reductions used to disagree about: the gate reduced with
+    // `.every(...)` and GRANTED (both rows say "owner"), while the controller reduced with
+    // `length !== 1` and REFUSED. Fail-closed, so never an escalation -- but it locked the
+    // only owner out of the transfer route while nobody else held the capability, leaving
+    // ownership unmovable without database surgery. They now share one predicate.
+    await insertDuplicateRow(workspaceId, owner.user.id, "owner");
+
+    const response = await transferWorkspaceOwnershipNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { newOwnerUserId: target.user.id },
+    );
+
+    // One refusal, from whichever layer sees it first -- what matters is that they do not
+    // disagree, and that the outcome is a refusal rather than a partial transfer.
+    expect(response.status).not.toBe(200);
+    expect(await rolesForPair(workspaceId, target.user.id)).not.toContain(
+      "owner",
+    );
+    expect(await ownerCount(workspaceId)).toBe(1);
   });
 });

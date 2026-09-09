@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, countDistinct, eq } from "drizzle-orm";
 import type db from "../database";
 import { schema } from "../database";
 
@@ -83,4 +83,62 @@ export async function workspaceMemberRoles(
  */
 export function anyRoleIsOwner(roles: string[]): boolean {
   return roles.includes("owner");
+}
+
+/**
+ * How many DISTINCT USERS hold `role = "owner"` in this workspace.
+ *
+ * WHY THIS IS NOT `rows.length`, and why getting it wrong was a privilege
+ * defect rather than a tidiness one. The last-owner guards in
+ * `leave-workspace.ts` and `remove-workspace-member.ts` ask "would this
+ * removal leave the workspace with no owner?". Before this function they
+ * answered it by counting owner ROWS. With no unique constraint on
+ * `(workspace_id, user_id)` a single owner user can hold two `"owner"` rows,
+ * so the count returned 2, the guard concluded "there is another owner", and
+ * the delete -- which matches on `(workspaceId, userId)` and therefore removes
+ * EVERY row for that pair -- left the workspace with **zero owners**.
+ *
+ * Found by the independent security review of this pull request, which also
+ * showed the route that manufactures the precondition: the ownership transfer
+ * used to set `role = "owner"` on every row of the incoming owner, so
+ * transferring to a duplicated member produced exactly the two-owner-rows
+ * state this guard then misread. Both halves are fixed; this is the half that
+ * makes the invariant hold even if some other path produces duplicates.
+ *
+ * Note the asymmetry with `workspaceMemberRoles`, and that it is deliberate:
+ * "what is THIS user's role" must refuse to guess when the answer is
+ * ambiguous, while "how many owner USERS are there" has a correct answer even
+ * when rows are duplicated -- so one denies on ambiguity and the other
+ * deduplicates.
+ */
+export async function distinctOwnerUserCount(
+  executor: DbOrTx,
+  workspaceId: string,
+): Promise<number> {
+  const [row] = await executor
+    .select({ owners: countDistinct(schema.workspaceUserTable.userId) })
+    .from(schema.workspaceUserTable)
+    .where(
+      and(
+        eq(schema.workspaceUserTable.workspaceId, workspaceId),
+        eq(schema.workspaceUserTable.role, "owner"),
+      ),
+    );
+  return Number(row?.owners ?? 0);
+}
+
+/**
+ * Is this pair's role answer UNAMBIGUOUS -- exactly one row?
+ *
+ * The single predicate every authority decision uses, so two call sites
+ * cannot reduce the same rows differently. The review of this pull request
+ * found exactly that: the capability middleware reduced with `.every(...)`
+ * while the transfer controller reduced with `length !== 1`, so for
+ * `["owner", "owner"]` the middleware granted and the controller refused --
+ * fail-closed, but it locked the only owner out of the transfer route with no
+ * other holder of the capability, making ownership unmovable without database
+ * surgery.
+ */
+export function isUnambiguousMembership(roles: string[]): boolean {
+  return roles.length === 1;
 }

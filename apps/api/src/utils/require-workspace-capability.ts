@@ -7,7 +7,10 @@ import {
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import { workspaceMemberRoles } from "./workspace-member-roles";
+import {
+  isUnambiguousMembership,
+  workspaceMemberRoles,
+} from "./workspace-member-roles";
 
 /**
  * Require the caller's OWN, freshly-read workspace role to hold `capability` — evaluated
@@ -83,9 +86,26 @@ export function requireWorkspaceCapability(capability: Capability) {
     // every capability.
     const roles = await workspaceMemberRoles(db, workspaceId, userId);
 
+    // ONE predicate, shared with `transferWorkspaceOwnership`'s own
+    // in-transaction check, so the two cannot reduce the same rows
+    // differently. They used to: this gate reduced with `.every(...)` while
+    // the controller reduced with `length !== 1`, so for `["owner", "owner"]`
+    // the gate GRANTED and the controller REFUSED. Fail-closed, and therefore
+    // not an escalation -- but it locked the only owner out of the transfer
+    // route while nobody else held the capability, making ownership unmovable
+    // without database surgery. Found by the independent security review of
+    // pull request #77.
+    //
+    // `isUnambiguousMembership` subsumes the old `roles.length === 0` guard
+    // (which existed because `[].every(...)` is vacuously `true` in JS and
+    // would have granted a non-member every capability) and additionally
+    // denies the duplicated-row case instead of reasoning about it. Refusing
+    // to answer when the membership state is corrupt is the fail-closed
+    // reading, and issue #88's `UNIQUE (workspace_id, user_id)` constraint
+    // makes that case unreachable once it lands.
     if (
-      roles.length === 0 ||
-      !roles.every((role) => builtInRoleHasCapability(role, capability))
+      !isUnambiguousMembership(roles) ||
+      !builtInRoleHasCapability(roles[0], capability)
     ) {
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
@@ -116,6 +136,15 @@ export function builtInRoleHasCapability(
   // and `expandCapabilities(undefined)` throws `TypeError: stored is not
   // iterable`. Same idiom already used at
   // `packages/permissions/src/capabilities.ts`'s `isCapability`.
+  //
+  // AND IT IS REACHABLE TODAY -- an earlier version of this comment said it
+  // was not, and that was wrong. The independent security review of pull
+  // request #77 measured it: `dynamicAccessControl` is enabled
+  // (`apps/api/src/auth.ts`) and the plugin's `create-role` validates the role
+  // name as a bare `z.string()`, so `create-role` with `role: "constructor"`
+  // returns 200 and writes a real `workspace_role` row, which can then be
+  // assigned to a member. So this is a live guard, not a defensive one against
+  // a hypothetical future route.
   if (!role || !Object.hasOwn(BUILT_IN_ROLES, role)) return false;
   const key = role as BuiltInRoleKey;
   return expandCapabilities(BUILT_IN_ROLES[key].capabilities).has(capability);

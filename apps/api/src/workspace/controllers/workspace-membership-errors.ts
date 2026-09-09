@@ -128,3 +128,25 @@ export class AlreadyOwnerError extends Error {
     this.name = "AlreadyOwnerError";
   }
 }
+
+/**
+ * The target's membership is AMBIGUOUS -- more than one `workspace_member` row
+ * for the same `(workspace_id, user_id)` pair -- so no single role can be
+ * trusted and the write is refused rather than guessing.
+ *
+ * This is a corrupt-state condition, not an authorization failure, and it is
+ * reported DISTINGUISHABLY (409) rather than folded into 404 "not a member" or
+ * 403 "insufficient permissions". An operator has to be able to tell "this
+ * membership row is broken, repair it" from "this user legitimately lacks
+ * this". That distinguishability is issue #82's own scope item, and issue #88
+ * tracks the durable fix -- a `UNIQUE (workspace_id, user_id)` constraint --
+ * after which this error becomes unreachable and can be removed.
+ */
+export class AmbiguousMembershipError extends Error {
+  constructor() {
+    super(
+      "That member has more than one membership row in this workspace; repair the duplicate before changing ownership",
+    );
+    this.name = "AmbiguousMembershipError";
+  }
+}
