@@ -3,7 +3,7 @@
 > ## ⚠ How to read this file
 >
 > **Snapshot taken:** 2026-09-09
-> **`main` at that moment:** `5270954` (`52709541365a5ea8616a20650ea01f570f768168`)
+> **`main` at that moment:** `a9abf9a` (`a9abf9a1f0f9447673b4635ae8911fc5cb5937af`)
 > **Stage:** P0 · Foundation — IN PROGRESS
 > **Throttle 1:** SHUT — 4 of 5 conditions met; condition 2 (issue #6 through retrofit S10)
 > is the sole blocker
@@ -154,7 +154,8 @@ work gets reported as shipped, so the category is never optional.
   stacked on #65. Closed the instance-admin bypass on its two mutation routes with an
   additive `require-workspace-role-authority.ts` guard; that bypass had been **pinned as
   an accepted finding** by an earlier session (`A2-P17`). The shared `hasWorkspacePermission`
-  short-circuit is unchanged — re-keying it is #7's, and #66 stays open for its worse half.
+  short-circuit is unchanged — re-keying it is #7's. **#66, its worse half, is now closed**
+  (PR #80): a missing `workspace_role` row is a DENY for every role but `owner`.
   **Status: IMPLEMENTED-PENDING-VERIFY** — no independent Opus review has run on this head.
 - **#19** (merged as `e11976f`) — the CI gates, `test:all`, the `check:*` scripts and the
   OpenAPI baseline described above, for issue #10. Nine remediation rounds surfaced real
@@ -182,9 +183,22 @@ branches opened underneath it.
 
 At the snapshot SHA above, what is durably true and worth recording:
 
-- **Eleven pull requests merged on 2026-09-09** — #64, #62, #65, #67, #19, #68, #63, #69,
-  #71, #72, #73 — on top of #16, #21, #57, #60 and #61 earlier. That is history and it does
-  not go stale.
+- **Nineteen pull requests merged on 2026-09-09**, and they fall into two groups with
+  *different review bases*, which is the distinction worth recording:
+  - **The eleven up to `5270954`** — #64, #62, #65, #67, #19, #68, #63, #69, #71, #72, #73 —
+    on top of #16, #21, #57, #60 and #61 earlier. **These are the waived set** (see below).
+  - **The eight since `5270954`** — #78, #81, #79, #80, #84, #77, #83, #85 — which did
+    **not** use the waiver. Each carries committed review evidence at the tier its own
+    changed files required, and the two tiers are recorded in **different places**:
+    - **In security scope — #81, #79, #80, #77.** Independent **Opus** review, written up as
+      a committed note in `docs/07-planning/security-reviews/`, named by pull-request number
+      and declaring the exact reviewed head.
+    - **Out of security scope — #78, #84, #83, #85.** Independent **Sonnet** reviews,
+      recorded **in the pull-request bodies**, not as review notes. Do not read the absence
+      of a file in `security-reviews/` as an absent review; read it as the classifier having
+      put that change outside security scope.
+  A count of merges "that day" is not the durable fact and an earlier version of this line
+  claimed it was; the *review basis of each group* is.
 - **Nothing in an open pull request is on `main`.** Do not describe it as available, and do
   not rebuild it. Check GitHub.
 - **A branch existing releases nothing.** Only a merge releases a dependent retrofit stage,
@@ -192,11 +206,12 @@ At the snapshot SHA above, what is durably true and worth recording:
   [retrofit stage ledger](retrofits/organization-plugin-retrofit.md).
 
 **The review state of what is on `main` is the part that does not go stale, so read it here.**
-All eleven merged under Thomas's explicit authorisation on the strength of independent
-**Sonnet** review, with the mandatory **Opus** gate **waived**. Five touched
+**The eleven up to `5270954`** merged under Thomas's explicit authorisation on the strength of
+independent **Sonnet** review, with the mandatory **Opus** gate **waived**. Five touched
 security-review-scope paths. No review note was written and no independent-review checkbox
 was ticked. **That waiver was given once, for those pull requests, and does not carry
-forward.** Since 2026-09-09 the template/security-review job is the **twelfth required status
+forward** — the eight merges since then each carry their own committed review evidence at the
+tier their changed files required, and none invoked it. Since 2026-09-09 the template/security-review job is the **twelfth required status
 check**, so a pull request can no longer merge without committed review evidence — see the
 newest decision-log entry. Any findings from further security audits of `main`, and their
 remediation status, are tracked as GitHub issues and pull requests — read them there
@@ -212,20 +227,19 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   full retrofit, not on the deletions alone.
 - **#17** — sessions already minted by the removed MCP OAuth and device flows. Deleting an
   endpoint is not revoking a credential; a consent click created a full 30-day session row.
-- **Retrofit S7 (native role writes) — ⛔ BLOCKED BY #66, and independently by #82.** Not a
-  scheduling preference. #66 is a privilege-restoration fail-open: `hasWorkspacePermission`
-  falls back to the compiled built-in role definitions when a `workspace_role` row is absent,
-  so a role an administrator has *narrowed* — or deleted — silently regains its built-in
-  privileges. S7 writes that exact table. Authoring role writes, and especially role
-  **deletion**, on top of a known fail-open on the row being deleted is how the
-  delete-after-narrow escalation becomes shippable. **Do not author native role-delete routes
-  until #66 is merged and independently cleared.** #82 is a second, independent P0 security
-  blocker on S7: TaskDesk's canonical rule is one workspace membership = exactly one role,
-  and the two authorization surfaces currently disagree on malformed multi-role values — see
-  the decision log. **S7's release condition is #66 cleared AND multi-role (#82) cleared**,
-  each independently reviewed. Check GitHub for both issues' current state (`gh issue view
-  66`, `gh issue view 82`) — do not infer it from this file. When either remediation lands it
-  needs its own independent review before S7 is released.
+- **Retrofit S7 (native role writes) — ⛔ BLOCKED BY #82 ALONE.** Not a scheduling
+  preference. **#66 is CLOSED** — PR #80 removed the privilege-restoration fail-open where
+  `hasWorkspacePermission` fell back to the compiled built-in role definitions when a
+  `workspace_role` row was absent, so a role an administrator had *narrowed*, or deleted,
+  silently regained its built-in privileges. S7 writes that exact table, and the
+  delete-after-narrow escalation it would have made shippable is gone: a missing row is now a
+  DENY for every role but `owner`, whose authority is compiled-in by design (retrofit plan
+  R5). **#82 remains, and it is sufficient on its own to keep S7 shut:** TaskDesk's canonical
+  rule is one workspace membership = exactly one role, and the two authorization surfaces
+  disagree on malformed multi-role values — see the decision log. PR #84 has characterized the
+  divergence and pinned the four target behaviours; the remediation itself is not written.
+  **S7's release condition is now multi-role (#82) cleared, independently reviewed.** Check
+  GitHub for #82's current state (`gh issue view 82`) — do not infer it from this file.
 - **#31 (P2 workflows) — blocked by AGENTS.md do-not 15.** `docs/03-features/workflows.md`
   is the subject of a *not-ready* review verdict — the verdict and its 4 High, 4 Medium and
   2 Low findings live in the review document, not in the spec itself, which has no review
