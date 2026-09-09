@@ -1,53 +1,22 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth-client";
+import transferWorkspaceOwnership from "@/fetchers/workspace/transfer-workspace-ownership";
 
 type TransferOwnershipRequest = {
   workspaceId: string;
-  newOwnerMemberId: string;
-  currentOwnerMemberId: string;
+  newOwnerUserId: string;
 };
 
-// better-auth 1.6.9 has no dedicated transfer-ownership endpoint, so we
-// perform two sequential updateMemberRole calls:
-//
-//   1. promote the new owner (allowed because the current user is owner)
-//   2. demote the old owner to admin (now safe: the workspace still has
-//      another owner, so the "you cannot leave the organization as the only
-//      owner" check passes)
-//
-// Order matters: if we demoted first, step 2 would 403 because no owner
-// would be left. If step 2 fails, the workspace ends up with two owners,
-// which is recoverable by re-running the demote.
+// S5 (issue #6, retrofit plan §3): repoints this off the former
+// promote/demote pair (two sequential
+// authClient.organization.updateMemberRole() calls -- see the fetcher's own
+// comment for the hazard that created) and onto the atomic native
+// transfer-ownership route. The "last owner" rule is no longer implemented
+// here at all: the server derives and enforces it inside one transaction.
 function useTransferWorkspaceOwnership() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      workspaceId,
-      newOwnerMemberId,
-      currentOwnerMemberId,
-    }: TransferOwnershipRequest) => {
-      const promote = await authClient.organization.updateMemberRole({
-        memberId: newOwnerMemberId,
-        organizationId: workspaceId,
-        role: "owner",
-      });
-      if (promote.error) {
-        throw new Error(promote.error.message || "Failed to promote new owner");
-      }
-
-      const demote = await authClient.organization.updateMemberRole({
-        memberId: currentOwnerMemberId,
-        organizationId: workspaceId,
-        role: "admin",
-      });
-      if (demote.error) {
-        throw new Error(
-          demote.error.message || "Failed to demote previous owner",
-        );
-      }
-
-      return demote.data;
-    },
+    mutationFn: (request: TransferOwnershipRequest) =>
+      transferWorkspaceOwnership(request),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["workspace", "full", variables.workspaceId],

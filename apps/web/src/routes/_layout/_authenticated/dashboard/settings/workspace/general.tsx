@@ -119,20 +119,14 @@ function RouteComponent() {
   // Ownership transfer is owner-only. Eligible recipients are any current
   // member who isn't the owner themselves.
   //
-  // S3 (issue #6, retrofit plan §3) defect, not fixed here -- see the S3
-  // report: `useTransferWorkspaceOwnership` still calls the better-auth
-  // plugin's `updateMemberRole` twice (promote + demote), which each require
-  // the PLUGIN's own `workspace_member.id` row (verified against
-  // node_modules/better-auth/dist/plugins/organization/routes/
-  // crud-members.mjs:216,289 -- `findMemberById(ctx.body.memberId)`). The
-  // native GET /api/workspace/{id} member list this page now reads
-  // (apps/api/src/workspace/controllers/get-workspace-members.ts) has no
-  // such id -- its `id` field is the user's own id, and there is no longer
-  // any client read that returns the plugin's row id. Passing it would 400
-  // MEMBER_NOT_FOUND on every attempt, so the picker below still renders
-  // (informational) but the actual transfer action is force-disabled until
-  // S5 (native membership writes) ships an id scheme this can use safely.
-  const canTransferOwnership = false;
+  // S5 (issue #6, retrofit plan §3) shipped the atomic native
+  // transfer-ownership route (apps/api/src/workspace/controllers/
+  // transfer-workspace-ownership.ts), keyed by user id, so this no longer
+  // needs to be force-disabled. `isOwner` is a client-side convenience only
+  // -- the route's own `requireWorkspaceCapability("workspace:transfer_ownership")`
+  // middleware and the controller's own re-read of the caller's role are the
+  // real authority gate.
+  const canTransferOwnership = isOwner;
   const members = fullWorkspace?.members ?? [];
   const currentOwnerMember = members.find((m) => m.role === "owner");
   const eligibleNewOwners = members.filter(
@@ -207,8 +201,17 @@ function RouteComponent() {
         lastSavedRef.current = normalizedData;
         queuedSaveRef.current = null;
 
+        // The native PATCH hits no plugin route, so nothing else refreshes
+        // the caches this page's own reads depend on: `use-active-workspace`
+        // (via `use-get-workspaces`, key ["workspaces"]) and this page's own
+        // `use-get-full-workspace` (key ["workspace", "full", workspaceId]).
+        // Invalidate both explicitly so the sidebar and this form don't show
+        // the previous name after a rename. (["active-organization"] was
+        // invalidated here before, but nothing subscribes to that key --
+        // see the now-deleted refresh-workspace-stores shim's doc comment.)
+        await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
         await queryClient.invalidateQueries({
-          queryKey: ["active-organization"],
+          queryKey: ["workspace", "full", workspace.id],
         });
         toast.success(t("settings:workspaceGeneral.toastUpdated"));
       } catch (error) {
@@ -245,8 +248,7 @@ function RouteComponent() {
     try {
       await transferOwnership({
         workspaceId: workspace.id,
-        newOwnerMemberId: selectedMember.id,
-        currentOwnerMemberId: currentOwnerMember.id,
+        newOwnerUserId: selectedMember.id,
       });
       toast.success(
         t("settings:workspaceGeneral.transferOwnership.toastSuccess", {
@@ -264,7 +266,14 @@ function RouteComponent() {
             }),
       );
     }
-  }, [workspace?.id, currentOwnerMember, selectedMember, transferOwnership, t]);
+  }, [
+    canTransferOwnership,
+    workspace?.id,
+    currentOwnerMember,
+    selectedMember,
+    transferOwnership,
+    t,
+  ]);
 
   const handleDeleteWorkspace = useCallback(async () => {
     if (!workspace?.id) return;
