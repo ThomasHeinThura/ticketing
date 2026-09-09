@@ -60,26 +60,6 @@ Strong spec: 29 numbered rules, a permissions table, a route list with a capabil
 
 ## 3. `projects-and-engagements.md` — P1 (structure in P2)
 
-**Verdict: ready-with-fixes**
-
-Good conceptual content and a clear project/managed-service split that matches `project.kind` in the data model. Permissions table present, route list present, edge cases present, Open questions empty.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| High | `PR-6` "A project must have exactly one **project manager**" — there is no such role. rbac.md's built-in roles are `owner/admin/manager/lead/member/viewer/customer`, and `stakeholder.role` is a free-text column. The implementer must guess whether the PM is a membership whose role key is `manager`, a stakeholder with `role = 'pm'`, or a new `project.manager_id` column. This rule is validated at save, so a guess is load-bearing. | Define it concretely — recommend `project.manager_id → person.id` as a real column, or state "a project-scope membership whose role key is `manager`". Add the chosen form to the data model. |
-| High | The composition rules are introduced as "warned about rather than blocked **where reasonable**", but `PR-9` ("a managed service must have a support level and a service calendar") is **blocking** per the edge-case table ("Managed service with no calendar → Refused"), while `PR-7` is non-blocking ("Project with no members → Allowed"). For `PR-6`, `PR-8` and `PR-10` there is nothing to tell the implementer which. | Mark every one of `PR-6`–`PR-10` explicitly `blocking` or `warning`. This is a one-word-per-rule fix and it removes three guesses. |
-| High | Same archive/soft-delete collision as work items: `PR-15` (archive → read-only) and `PR-16` (soft delete for 30 days) against a `project` table that has only `archived_at`. | Add `deleted_at` to `project`; state which one hides from navigation and which one starts the purge timer. |
-| Medium | **No `## Data` section.** The template mandates it, and this is the one spec in the group where the reader most needs it — the feature spans `project`, `project_feature_flag`, `state`, `milestone`, `prerequisite`, `stakeholder`, `document_link`, `membership`. | Add the Data section listing those tables with a link to the data model. |
-| Medium | `PR-17` "Each project has its own states, **derived from a template on creation**" — no state-template table or seed definition exists in the data model or any spec. | Either name the seed set inline (kaneo's To Do / In Progress / Done with their `group` values) or add a `state_template` table. This blocks project creation, so it must be answered before P1. |
-| Medium | The API list is incomplete against the behaviour: `POST` exists for stakeholders and members but there is **no PATCH/DELETE for milestones, prerequisites, stakeholders, members or document links**, and no route to *set* health (`GET .../health` only) despite health being explicitly person-set. rbac.md's route-coverage test forces a policy per route, so each missing route is a missing policy. | Complete the route table with the update/delete routes and their capabilities, and add a write route for health. |
-| Medium | "Manage members → `workspace:manage_members`". Adding one person to one project therefore requires a **workspace-wide** capability; a project lead cannot run their own roster without being granted workspace-wide member management. There is no `project:manage_members` capability in rbac.md. | Either add `project:manage_members` to rbac.md's capability list, or state deliberately in the spec that project rosters are a workspace-level act and why. |
-| Medium | `PR-13` "unique **per instance**" for project keys, but `project` is workspace-scoped and the data model declares no unique index on `project.key`. Uniqueness scope determines whether work-item keys can collide across workspaces. | Add `create unique index on project (key)` to the data model's index list, and say the constraint is instance-wide deliberately (because `work_item.key` is instance-unique). |
-| Low | `PR-19` "A project serves exactly one customer organisation" — the data model does not say whether `project.organisation_id` is nullable, and internal (non-customer) projects presumably need it null. | State nullability and what happens in the portal when it is null. |
-| Low | Routes use `/api/projects/{key}` while `api-design.md`'s canonical shape is `/api/projects/{projectId}`. | Pick one. |
-| Low | `PR-8` "Staff and customer roles cannot be mixed in the same **membership**" — a membership has exactly one `role_id`, so mixing within one is impossible; the rule presumably means within one project. | Reword to the intended scope. |
-
----
-
 ## 4. `relations-and-hierarchy.md` — P1
 
 **Verdict: not-ready** (one direct contradiction with a sibling spec, plus three required sections missing)
