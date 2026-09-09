@@ -40,7 +40,8 @@ whether it is an epic, and which custom fields apply.
 
 ## Data
 
-`work_item`, `work_item_type`, `work_item_relation`, `watcher`, `label`,
+`work_item`, `work_item_type`, `work_item_key_alias`, `work_item_template`,
+`checklist_template`, `checklist_item`, `work_item_relation`, `watcher`, `label`,
 `work_item_label`. See [data model](../01-architecture/data-model.md).
 
 ## Behaviour
@@ -53,16 +54,25 @@ whether it is an epic, and which custom fields apply.
   after deletion.
 - `WI-3` Title is required, 1–500 characters. Everything else is optional unless a custom
   field is marked required for that type.
-- `WI-4` Initial state is the project's default state (`project_state.is_default`), which
-  must be a state the type's workflow can leave — validated when the default is set.
-- `WI-5` Creating from a template copies title, description, labels, custom field values
-  and checklist, but never assignee or dates.
+- `WI-4` Initial state is the project's own default state (`state.is_default`) — `state`
+  carries this directly; `project_state` does not exist, its job folded into the
+  project-scoped `state` row itself ([data model](../01-architecture/data-model.md) §3,
+  `PR-17`). Must be a state the type's workflow can leave — validated when the default is
+  set.
+- `WI-5` Creating from a `work_item_template` copies title, description, labels, custom
+  field values and its linked `checklist_template`'s items, but never assignee or dates.
+  Managing templates (create, edit, archive) is a workspace-settings action —
+  `workspace:manage_settings` — since `work_item_template` is workspace-scoped; using one
+  to create a work item only needs `work_item:create` on the target project.
 
 **Editing**
 
 - `WI-6` Every field change writes an `activity` row with the old and new value.
-- `WI-7` Concurrent edits use optimistic concurrency on `version`. A mismatch returns 409
-  with both versions so the UI can offer a resolution.
+- `WI-7` Concurrent edits use optimistic concurrency on `version` (`work_item.version`,
+  `api-design.md`'s `If-Match` convention). A mismatch returns 409 with both versions so the
+  UI can offer a resolution. The one exception is rank: changes go through
+  `POST /work-items/{key}/rank` (`WI-11`), are exempt from `If-Match`, and are
+  last-write-wins — every other field write is version-checked.
 - `WI-8` Title, description, priority, dates, labels and custom fields may be changed by
   anyone with `work_item:update` on the project.
 - `WI-9` State changes go through the workflow — see [workflows](workflows.md). They are
@@ -73,8 +83,10 @@ whether it is an epic, and which custom fields apply.
 
 - `WI-11` Manual ordering uses fractional positions, so inserting between two items
   changes one row, not many.
-- `WI-12` Positions rebalance in the background when the gap between neighbours becomes
-  too small to bisect.
+- `WI-12` `work_item.position` is `numeric(20,10)`. Positions rebalance in the background
+  when the gap between two neighbours falls below `1e-6`: the `position-rebalance` job
+  ([background-jobs.md](../01-architecture/background-jobs.md)) renumbers the whole
+  affected state (or backlog) partition to evenly-spaced values in one transaction.
 - `WI-13` Customers may re-rank only work items in their own organisation's backlog.
 
 **Hierarchy**
@@ -86,15 +98,21 @@ whether it is an epic, and which custom fields apply.
 - `WI-17` Depth is capped at 5 levels.
 - `WI-18` Closing a parent does not close its children. Attempting to warns and lists the
   open children.
-- `WI-19` A parent shows rolled-up progress over its **whole subtree**: items whose
-  `state.group in ('completed', 'cancelled')` / total — defined once here; `RH-9` and
-  `RH-14` cite it.
+- `WI-19` A parent shows rolled-up progress over its **whole subtree**: items whose mapped
+  `state_template.group in ('completed', 'cancelled')` / total, resolved through each
+  item's `state.state_template_id` — `state` itself carries no `group`
+  ([data model](../01-architecture/data-model.md) §3/§4 — a query needs the join) — defined
+  once here; `RH-9` and `RH-14` cite it.
 
 **Deletion and archiving**
 
-- `WI-20` Archiving hides an item from views but preserves it and its history.
-- `WI-21` Deletion is soft for 30 days, then purged with its comments, activity and
-  attachments.
+- `WI-20` Archiving (`work_item.archived_at`) hides an item from views but preserves it and
+  its history.
+- `WI-21` Deletion is soft for 30 days (`work_item.deleted_at`), then purged with its
+  comments, activity and attachments. `archived_at` and `deleted_at` are independent
+  columns: archiving does not start the 30-day purge timer, and an item need not be
+  archived before it can be deleted. The default list/board/search filters exclude rows
+  where either is set; an explicit filter reveals archived or deleted items.
 - `WI-22` Deleting a parent orphans its children rather than cascading. The user is told.
 - `WI-23` Deletion requires `work_item:delete` and goes through a **pending action**
   ([pending-actions.md](../01-architecture/pending-actions.md)): `DELETE` returns `202`,
@@ -106,7 +124,8 @@ whether it is an epic, and which custom fields apply.
 **Bulk operations**
 
 - `WI-24` Multi-select supports: change state, assign, set priority, add/remove label,
-  move to cycle or module, archive, delete.
+  archive, delete — and, gated behind `feature.cycles` (P5, [agile.md](agile.md)), move to
+  cycle or module.
 - `WI-25` Bulk operations are transactional per item, not per batch: 47 of 50 succeeding
   reports 3 failures with reasons rather than rolling everything back.
 - `WI-26` Bulk operations respect workflow legality per item — an illegal transition for
@@ -117,7 +136,9 @@ whether it is an epic, and which custom fields apply.
 
 - `WI-28` Anyone with read access may watch. Watchers receive notifications per their
   preferences.
-- `WI-29` Assignee and requester are watchers implicitly and may opt out.
+- `WI-29` Assignee and requester are watchers implicitly (`watcher.source = 'implicit'`)
+  and may opt out — opting out sets `watcher.muted`, a suppression flag, rather than
+  deleting the row, so an unmute later needs no new implicit watch to be recreated.
 
 ## Permissions
 
@@ -133,6 +154,8 @@ whether it is an epic, and which custom fields apply.
 | Re-rank | `work_item:rank` | Customers: own organisation only |
 | Delete | `work_item:delete` | Pending action — explicit click; bulk additionally requires the typed count (`WI-23`) |
 | Archive | `work_item:update` | |
+| Watch / unwatch | `work_item:read` | Deliberate — `WI-28` already lets anyone with read access watch; this is not an omission |
+| Manage work item templates | `workspace:manage_settings` | `work_item_template` is workspace-scoped (`WI-5`) |
 
 ## Screens
 
@@ -146,19 +169,24 @@ sections. v1's twenty-plus-field header is the specific mistake being avoided.
 ## API
 
 ```
-GET    /api/projects/{projectId}/work-items       work_item:read
-POST   /api/projects/{projectId}/work-items       work_item:create
-POST   /api/work-items/search                     work_item:read
-GET    /api/work-items/{key}                      work_item:read
-PATCH  /api/work-items/{key}                      work_item:update
-DELETE /api/work-items/{key}                      work_item:delete
-POST   /api/work-items/{key}/transition           work_item:transition
-POST   /api/work-items/{key}/assign               work_item:assign
-POST   /api/work-items/{key}/rank                 work_item:rank
-POST   /api/work-items/{key}/watch                work_item:read
-DELETE /api/work-items/{key}/watch                work_item:read
-POST   /api/work-items/bulk                       work_item:read  (workspace) — then each item is re-checked against its own capability; failures reported per WI-25
-GET    /api/work-items/{key}/activity             work_item:read
+GET    /api/projects/{projectId}/work-items                            work_item:read
+POST   /api/projects/{projectId}/work-items                            work_item:create
+POST   /api/work-items/search                                          work_item:read
+GET    /api/work-items/{key}                                            work_item:read
+PATCH  /api/work-items/{key}                                            work_item:update
+DELETE /api/work-items/{key}                                            work_item:delete
+POST   /api/work-items/{key}/transition                                 work_item:transition
+POST   /api/work-items/{key}/assign                                     work_item:assign
+POST   /api/work-items/{key}/rank                                       work_item:rank  — exempt from If-Match, last-write-wins (WI-7)
+POST   /api/work-items/{key}/watch                                      work_item:read  — deliberate, see Permissions
+DELETE /api/work-items/{key}/watch                                      work_item:read  — deliberate, see Permissions
+POST   /api/work-items/bulk                                             work_item:read  (workspace) — then each item is re-checked against its own capability; failures reported per WI-25
+GET    /api/work-items/{key}/activity                                   work_item:read
+GET    /api/workspaces/{id}/work-item-templates                        workspace:read
+POST   /api/workspaces/{id}/work-item-templates                        workspace:manage_settings
+PATCH  /api/workspaces/{id}/work-item-templates/{templateId}            workspace:manage_settings
+DELETE /api/workspaces/{id}/work-item-templates/{templateId}           workspace:manage_settings
+POST   /api/projects/{projectId}/work-items/from-template/{templateId}  work_item:create
 ```
 
 ## Edge cases
@@ -166,7 +194,7 @@ GET    /api/work-items/{key}/activity             work_item:read
 | Case | Behaviour |
 | --- | --- |
 | Project key renamed | Existing keys keep the old prefix. Renaming is discouraged and warns |
-| Moved to another project | Key is retained. A redirect alias is created so old links work |
+| Moved to another project | Key is retained. A `work_item_key_alias` row redirects the old key so old links work |
 | Type changed | Allowed. State maps to the new workflow's default if the current state does not exist there. Written to activity |
 | Assignee leaves | Assignment retained and shown as "(inactive)". Not silently unassigned |
 | Custom field deleted | Values retained but hidden. Restorable for 30 days |

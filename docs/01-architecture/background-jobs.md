@@ -84,6 +84,7 @@ finally { clearInterval(heartbeat); await lease.release(); }
 | `timer-sweeper` | 15 min | 5 min | Stops `running_timer` rows older than 12 h, writing a capped `time_entry` |
 | `plugin-health` | 10 min | 2 min | Pings configured plugins **and each enabled `identity_connection`'s OIDC discovery document** (`IP-25`); surfaces failures in God Mode → Health |
 | `backup-check` | hourly | 2 min | Raises the Health warning when no `backup_run` succeeded in 48 h |
+| `position-rebalance` | on demand | 5 min | Triggered when a rank write leaves the gap between two neighbouring `work_item.position` (`numeric(20,10)`) values below `1e-6`; renumbers the whole affected state (or backlog) partition to evenly-spaced values in one transaction (`WI-12`) |
 | `import-run` | on demand | 1 h, renewed | Executes a queued import, chunked and resumable, on the **bulk write path** |
 | `report-export` | on demand | 30 min | Renders a large export to storage and emails an **authenticated** link (`RP-10`) |
 | `secrets-rekey` | on demand | 30 min | Re-encrypts every `instance_plugin_config.secrets` **and `identity_connection.client_secret`** from `TASKDESK_ENCRYPTION_KEY_PREVIOUS` to the current key, writing `key_id` per row — see the [runbook](../05-operations/runbook.md) |

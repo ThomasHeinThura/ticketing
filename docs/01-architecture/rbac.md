@@ -625,7 +625,8 @@ if (user.role === 'admin') { … }
 if (identity.reach.kind === 'all') { allowEdit(); }
 
 // ✗ matching a work item type or state by name
-if (type.name === 'Change') { requireCab(); }        // use type.is_change; use state.group
+if (type.name === 'Change') { requireCab(); }        // use type.is_change; use the state's
+                                                      // mapped state_template.group
 
 // ✗ frontend-only gate
 {isAdmin && <DeleteButton />}   // fine as UX, NEVER as the only check
