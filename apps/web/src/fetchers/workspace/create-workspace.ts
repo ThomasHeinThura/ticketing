@@ -1,15 +1,14 @@
+import { client } from "@taskdesk/libs";
+import type { InferRequestType } from "hono/client";
 import { authClient } from "@/lib/auth-client";
 import {
   createUniqueWorkspaceSlug,
   isWorkspaceSlugCollisionError,
 } from "@/lib/utils/create-workspace-slug";
 
-export type CreateWorkspaceRequest = {
-  name: string;
-  description?: string;
-  slug?: string;
-  logo?: string;
-};
+export type CreateWorkspaceRequest = InferRequestType<
+  (typeof client)["workspace"]["$post"]
+>["json"];
 
 const createWorkspace = async ({
   name,
@@ -17,7 +16,8 @@ const createWorkspace = async ({
   slug,
   logo,
 }: CreateWorkspaceRequest) => {
-  const metadata = description ? { description } : undefined;
+  // S3 scope, left untouched (PR #76 repoints this): the plugin's `list` call
+  // is only used here to seed the local slug-collision check below.
   const existingWorkspaces = slug
     ? []
     : ((await authClient.organization.list()).data ?? []);
@@ -29,20 +29,25 @@ const createWorkspace = async ({
       );
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const { data, error } = await authClient.organization.create({
-      name,
-      slug: workspaceSlug,
-      logo,
-      metadata,
+    // S4b: native replacement for authClient.organization.create().
+    const response = await client.workspace.$post({
+      json: {
+        name,
+        slug: workspaceSlug,
+        logo,
+        // Preserves the plugin-era behaviour of omitting an empty
+        // description rather than persisting "" (createWorkspaceCtrl stores
+        // `input.description ?? null`).
+        description: description || undefined,
+      },
     });
 
-    if (!error) {
-      return data;
+    if (response.ok) {
+      return await response.json();
     }
 
-    const createError = new Error(
-      error.message || "Failed to create workspace",
-    );
+    const message = await response.text();
+    const createError = new Error(message || "Failed to create workspace");
 
     if (slug || !isWorkspaceSlugCollisionError(createError)) {
       throw createError;

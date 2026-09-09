@@ -4,6 +4,10 @@ import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import { isInstanceAdmin } from "./is-instance-admin";
+import {
+  isUnambiguousMembership,
+  workspaceMemberRoles,
+} from "./workspace-member-roles";
 
 type PermissionMap = Record<string, string[]>;
 
@@ -61,25 +65,28 @@ export function requireWorkspaceRoleAuthority(permissions: PermissionMap) {
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
 
-    const [member] = await db
-      .select({ role: schema.workspaceUserTable.role })
-      .from(schema.workspaceUserTable)
-      .where(
-        and(
-          eq(schema.workspaceUserTable.workspaceId, workspaceId),
-          eq(schema.workspaceUserTable.userId, userId),
-        ),
-      )
-      .limit(1);
-
-    if (!member?.role) {
+    // ALL rows, and refuse on ambiguity -- the twin of the same fix in
+    // `require-workspace-permission.ts`. Both were unordered `.limit(1)` reads
+    // over a table with no unique constraint on `(workspace_id, user_id)`, so
+    // either could grant or deny depending on scan order. Fixed together
+    // because fixing one and leaving its twin is this repository's signature
+    // defect.
+    const roles = await workspaceMemberRoles(db, workspaceId, userId);
+    if (!isUnambiguousMembership(roles)) {
+      throw new HTTPException(403, { message: "Insufficient permissions" });
+    }
+    // Load-bearing for the compiler, not dead: `roles[0]` is
+    // `string | undefined` under `noUncheckedIndexedAccess` and `length === 1`
+    // does not narrow an index access. Unreachable at runtime.
+    const role = roles[0];
+    if (role === undefined) {
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
 
     const statements =
-      member.role === "owner"
+      role === "owner"
         ? (builtInRoles.owner.statements as Record<string, readonly string[]>)
-        : await ownRoleStatements(workspaceId, member.role);
+        : await ownRoleStatements(workspaceId, role);
 
     if (!statements || !satisfies(statements, permissions)) {
       throw new HTTPException(403, { message: "Insufficient permissions" });

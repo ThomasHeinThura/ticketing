@@ -39,6 +39,13 @@ chart, or a delivery project with an SLA it can never meet.
 | **Milestone** | A dated marker — kick-off, go-live, quarterly review |
 | **Prerequisite** | Something that must be true before work can proceed, with an owner |
 
+## Data
+
+`project`, `project_feature_flag`, `state` (project-scoped; each row maps to a
+workspace-scoped `state_template`, `PR-17`), `milestone`, `prerequisite`, `stakeholder`,
+`document_link`, `membership` (project-scoped roster rows). See
+[data model](../01-architecture/data-model.md) for full columns.
+
 ## Hierarchy
 
 Borrowed from OpenProject.
@@ -56,13 +63,27 @@ This gives portfolio and programme structure without a separate "portfolio" conc
 
 ## Composition rules
 
-From v1. Validated at save, warned about rather than blocked where reasonable.
+From v1. Validated at save. Every rule below is **warning**-only by default — the save
+succeeds and the violation appears as a persistent banner on the project overview —
+except where marked **blocking**, which refuses the save (`422`) naming the failing rule.
+`PR-9` is the one blocking rule: a managed service's SLA cannot be computed at all without
+a calendar, which is a technical impossibility rather than a stylistic preference. Every
+other rule below already has its blocking/warning behaviour confirmed by the edge-case
+table further down.
 
-- `PR-6` A project must have exactly one project manager.
-- `PR-7` A project must have at least one team member.
-- `PR-8` Staff and customer roles cannot be mixed in the same membership.
-- `PR-9` A managed service must have a support level and a service calendar.
-- `PR-10` A project must have a start date; an end date is optional but warned about.
+- `PR-6` **(warning)** A project must have exactly one project manager
+  (`project.manager_id → person`; see [data model](../01-architecture/data-model.md)).
+- `PR-7` **(warning)** A project must have at least one team member.
+- `PR-8` **(structural — not a save-time check)** Staff and customer access can never be
+  mixed on one project's roster. This needs no validation because it cannot occur: the
+  `customer` role is the one system role scoped to `organisation`
+  ([rbac.md](../01-architecture/rbac.md)); every other built-in role is scoped to
+  `workspace` or `project`; and a `membership` row carries exactly one `role_id`. A
+  project-scoped `membership` can therefore never hold the `customer` role, and there is
+  nothing for this rule to warn about or block.
+- `PR-9` **(blocking)** A managed service must have a support level and a service
+  calendar.
+- `PR-10` **(warning)** A project must have a start date; an end date is optional.
 
 Rule violations appear as a persistent banner on the project overview rather than blocking
 work, because half-configured projects exist in reality and blocking them makes people
@@ -96,24 +117,32 @@ Customer visibility is off by default.
 
 ## Behaviour
 
-- `PR-13` A project key is 2–8 uppercase characters, unique per instance, and becomes the
-  prefix of every work item key.
+- `PR-13` A project key is 2–8 uppercase characters, unique per instance (enforced by
+  `create unique index on project (key)` — [data model](../01-architecture/data-model.md)),
+  and becomes the prefix of every work item key.
 - `PR-14` Renaming a key is allowed but discouraged; existing work items keep the old
   prefix and a warning explains this before confirming.
-- `PR-15` Archiving hides a project from navigation and makes its work read-only. Data is
-  retained.
-- `PR-16` Deletion is soft for 30 days, then purges work items, comments, attachments and
-  time entries.
-- `PR-17` States are defined once per **workspace** (`state`); each project enables an
-  ordered subset with its own default (`project_state`), seeded from the workspace's
-  default set on creation and editable thereafter on Project settings → States. A project
-  cannot enable a state its types' workflows have no transition out of. See
-  [ADR 0011](../01-architecture/adr/0011-ticket-lifecycle-engine.md).
+- `PR-15` Archiving (`project.archived_at`) hides a project from navigation and makes its
+  work read-only. Data is retained.
+- `PR-16` Deletion is soft for 30 days (`project.deleted_at`), then purges work items,
+  comments, attachments and time entries. `archived_at` and `deleted_at` are independent
+  columns: archiving does not start the 30-day purge timer, and a project need not be
+  archived before it can be deleted. The default project list excludes rows where either
+  is set; an explicit filter reveals archived or deleted projects.
+- `PR-17` State **templates** are defined once per **workspace** (`state_template`); each
+  project owns its own concrete **states** (`state`), each mapped to exactly one
+  template, with their own order and default, seeded from the workspace's default
+  templates on creation and editable thereafter on Project settings → States. A project
+  cannot create a concrete state for a template its types' workflows have no transition
+  out of. See [ADR 0011](../01-architecture/adr/0011-ticket-lifecycle-engine.md) and
+  [workflows.md](workflows.md) `WF-2`.
 - `PR-18` Feature flags are per project, so a simple project shows a simple interface.
 - `PR-19` A project serves exactly one customer organisation, which determines who can see
-  it in the portal.
+  it in the portal. `project.organisation_id` is **nullable**: null means an internal
+  project with no customer organisation, and it never appears in the portal — there is no
+  organisation for a portal session to match against ([data model](../01-architecture/data-model.md)).
 - `PR-20` **Deleting a project is a pending action**
-  ([pending-actions.md](../01-architecture/pending-actions.md)): `DELETE /api/projects/{key}`
+  ([pending-actions.md](../01-architecture/pending-actions.md)): `DELETE /api/projects/{projectId}`
   returns `202`; the dialog shows the affected work items, members, attachments and
   integrations and the 30-day recovery / purge behaviour (`PR-16`); the requester approves
   with the **typed project key + step-up**. The same applies from the API and from MCP; a
@@ -126,9 +155,9 @@ Customer visibility is off by default.
 | --- | --- |
 | See | `project:read` + reach |
 | Create | `project:create` |
-| Edit settings | `project:manage_settings` |
-| Manage members | `workspace:manage_members` |
-| Manage stakeholders, milestones, prerequisites | `project:update` |
+| Edit settings | `project:manage_settings` — never `parent_id` or `owner_team_id` |
+| Manage members; re-parent; change owning team | `project:manage_members` — the two reach-affecting fields (`parent_id`, `owner_team_id`) go through `PATCH /api/projects/{projectId}/ownership`, not the general settings route ([rbac.md](../01-architecture/rbac.md)) |
+| Manage stakeholders, milestones, prerequisites, document links; set health | `project:update` |
 | Archive | `project:archive` |
 | Delete | `project:delete` — a **pending action**: typed project key + step-up, approved by the requester in the browser ([pending-actions.md](../01-architecture/pending-actions.md)) |
 
@@ -144,19 +173,34 @@ activity — and nothing else.
 ## API
 
 ```
-GET    /api/projects                              project:read
-POST   /api/projects                              project:create
-GET    /api/projects/{key}                        project:read
-PATCH  /api/projects/{key}                        project:manage_settings
-POST   /api/projects/{key}/archive                project:archive
-DELETE /api/projects/{key}                        project:delete  E  → 202 pending action (typed key + step-up; PR-20)
-GET    /api/projects/{key}/members                project:read
-POST   /api/projects/{key}/members                workspace:manage_members
-GET    /api/projects/{key}/stakeholders           project:read
-POST   /api/projects/{key}/stakeholders           project:update
-GET    /api/projects/{key}/milestones             project:read
-GET    /api/projects/{key}/prerequisites          project:read
-GET    /api/projects/{key}/health                 project:read
+GET    /api/projects                                          project:read
+POST   /api/projects                                          project:create
+GET    /api/projects/{projectId}                              project:read
+PATCH  /api/projects/{projectId}                              project:manage_settings  — never parent_id or owner_team_id
+PATCH  /api/projects/{projectId}/ownership                    project:manage_members   — parent_id and/or owner_team_id only; re-parenting requires it on both the child and the prospective parent
+POST   /api/projects/{projectId}/archive                      project:archive
+DELETE /api/projects/{projectId}                              project:delete  E  → 202 pending action (typed key + step-up; PR-20)
+GET    /api/projects/{projectId}/members                      project:read
+POST   /api/projects/{projectId}/members                      project:manage_members
+PATCH  /api/projects/{projectId}/members/{personId}           project:manage_members   — role change
+DELETE /api/projects/{projectId}/members/{personId}           project:manage_members
+GET    /api/projects/{projectId}/stakeholders                 project:read
+POST   /api/projects/{projectId}/stakeholders                 project:update
+PATCH  /api/projects/{projectId}/stakeholders/{id}            project:update
+POST   /api/projects/{projectId}/stakeholders/{id}/stand-down project:update           — PR-12: stood down, never deleted
+GET    /api/projects/{projectId}/milestones                   project:read
+POST   /api/projects/{projectId}/milestones                   project:update
+PATCH  /api/projects/{projectId}/milestones/{id}              project:update
+DELETE /api/projects/{projectId}/milestones/{id}              project:update
+GET    /api/projects/{projectId}/prerequisites                project:read
+POST   /api/projects/{projectId}/prerequisites                project:update
+PATCH  /api/projects/{projectId}/prerequisites/{id}           project:update
+DELETE /api/projects/{projectId}/prerequisites/{id}           project:update
+GET    /api/projects/{projectId}/document-links               project:read
+POST   /api/projects/{projectId}/document-links               project:update
+DELETE /api/projects/{projectId}/document-links/{id}          project:update  — no PATCH: a link is add-or-remove only; editing its url or title is remove-then-re-add
+GET    /api/projects/{projectId}/health                       project:read
+PATCH  /api/projects/{projectId}/health                       project:update
 ```
 
 ## Edge cases

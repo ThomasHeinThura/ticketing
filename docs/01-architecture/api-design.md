@@ -165,7 +165,9 @@ document, sent as `POST /api/work-items/search` and stored verbatim as
 - `entity` ∈ `work_item | submission | time_entry | sla_event`. A queue over submissions
   *and* work items is two saved views presented together, not one document.
 - **Fields are whitelisted per entity**; `cf.<key>` addresses a custom field; `organisation`
-  resolves through `project.organisation_id`; `sla.state` and `sla.due_at` resolve against
+  resolves through `project.organisation_id`; `state.group` is not a stored column — it
+  resolves through the join `state.state_template_id → state_template.group`
+  ([data-model.md](data-model.md) §3); `sla.state` and `sla.due_at` resolve against
   `work_item_sla_cache` and are **eventually consistent** (five-minute refresh) — the
   detail endpoint always recomputes, and where they disagree the computed value wins
   ([ADR 0009](adr/0009-lazy-sla-evaluation.md)).

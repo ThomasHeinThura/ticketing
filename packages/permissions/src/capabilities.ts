@@ -119,6 +119,33 @@ export const CAPABILITIES = {
     description:
       "Types, workflows, SLA policies, calendars, request types, custom fields, labels, estimates, automations, canned responses, workspace terminology",
   },
+  /**
+   * The fix for the hidden second authorization model (issue #6, S5 follow-up,
+   * Thomas's decision 2026-09-08+).
+   *
+   * `POST /api/workspace/{workspaceId}/transfer-ownership` used to declare
+   * `workspace:manage_members` — the closest existing match — while its ACTUAL runtime
+   * check was an undocumented, stronger rule: a fresh re-read of the caller's own
+   * `workspace_member.role` requiring it to literally equal `"owner"`. That made the
+   * permission-matrix fixture (generated from the declared capability) read `manager →
+   * allow` for a route only the owner could ever actually call — route policy, matrix and
+   * runtime authority disagreed on who may transfer ownership, three different answers to
+   * one question.
+   *
+   * `workspace:transfer_ownership` is the named authority for exactly that one action, so
+   * the three now agree: the route declares it, `owner`'s built-in capability list (below)
+   * is the only one that carries it, and `apps/api/src/utils/require-workspace-capability.ts`
+   * evaluates the SAME capability data at runtime, before the handler runs — see that file
+   * and `apps/api/src/workspace/controllers/transfer-workspace-ownership.ts` for how the
+   * in-transaction fresh-role-read is retained ALONGSIDE it, as a race-safety check, not as
+   * the only check.
+   */
+  "workspace:transfer_ownership": {
+    group: "Workspace",
+    implies: ["workspace:read"],
+    description:
+      "Transfer ownership of the workspace to another existing member",
+  },
   "project:create": {
     group: "Projects",
     implies: [],
