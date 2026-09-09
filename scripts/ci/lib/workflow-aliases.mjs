@@ -36,45 +36,28 @@
  * green is worse than one that costs a documentation row, so `check:events` has its own
  * row in ci-cd.md and its own manifest entry in test-all.mjs instead.
  *
- * **This map lives in its own file (review PR #91, MEDIUM 1) so its probe can pin the
- * ACTUAL RUNTIME VALUE, not a guess reconstructed from source text.**
- * `scripts/ci/probes/workflow-alias-table.test.mjs` used to regex this map's entries out
- * of `test-all.mjs`'s source text — never `import()`ing that file, because it self-executes
- * `await main()` at its top level. A regex over source text is fooled by anything Node
- * still executes correctly but the regex cannot parse: a `WORKFLOW_ALIASES.set(...)` call
- * after this literal, a comment interposed between one entry's two strings, or
- * `new Map([...someOtherArray, ...])`. Each of those installed a live sixth alias while the
- * old text-regex pin, `pnpm test:all --list` and `pnpm lint:ci` all stayed green — so the
- * pin's claim ("cannot be added, retargeted or removed unnoticed") was false for exactly
- * those three shapes. This file has no top-level side effect of its own — it only defines
- * and exports the Map — so the probe imports it directly and asserts against
- * `[...WORKFLOW_ALIASES]` (a spread, which reads via `Symbol.iterator`) rather than
- * `[...WORKFLOW_ALIASES.entries()]` — the same channel `test-all.mjs` itself reads
- * (`for...of` plus `.get()`, never `.entries()`). That closes the three shapes above,
- * structurally, plus a fourth found in review PR #91 round 3 (LOW 1): a `Proxy` whose
- * `.entries()` returns a pinned five-entry list while `Symbol.iterator` and `.get()` still
- * see the real six — invisible to a pin that asserts on `.entries()`, caught by one that
- * doesn't.
- *
- * **This does not close every way of mutating the Map, and two shapes still evade it,
- * both found in the same round:**
- *
- *   - A `.set()` call gated on an environment variable the test runner's own child
- *     process sets but a real `pnpm test:all` run does not (e.g.
- *     `if (!process.env.NODE_TEST_CONTEXT) WORKFLOW_ALIASES.set(...)`). The pin and the
- *     reconciler observe genuinely different Maps here, for a reason outside this file's
- *     control — no assertion this pin makes runs in the reconciler's process.
- *   - A `.set()` performed by the CONSUMER, `test-all.mjs`, on its own imported reference
- *     to this Map, after import. The probe only ever reads the Map as this file exports
- *     it, in its own process; it cannot observe a mutation a different file applies to its
- *     copy in a different process afterward.
- *
- * Both are real gaps in what this pin can catch, not claimed to be closed here.
+ * **This map lives in its own file (review PR #91, MEDIUM 1) and cannot be mutated after
+ * load:** `set`/`delete`/`clear` throw, and no new own property can be added (so a
+ * consumer cannot shadow `.get()` either — see the test that proves both, in
+ * `scripts/ci/probes/workflow-alias-table.test.mjs`). That probe also pins this file's
+ * exact comment-stripped source, so the five entries below are the only ones that can
+ * ever exist — a change to what this Map contains is a change to the two lines below.
  */
-export const WORKFLOW_ALIASES = new Map([
+const sealed = new Map([
   ["pnpm check:route-policy", "pnpm test:permissions"],
   ["pnpm check:pr-template", "pr-template check"],
   ["pnpm check:openapi", "pnpm test:contract"],
   ["pnpm lint:ci", "pnpm lint"],
   ["pnpm install", "pnpm install --frozen-lockfile"],
 ]);
+for (const method of ["set", "delete", "clear"]) {
+  Object.defineProperty(sealed, method, {
+    value: () => {
+      throw new Error(
+        `WORKFLOW_ALIASES.${method}() — this Map is pinned; edit the literal in scripts/ci/lib/workflow-aliases.mjs instead.`,
+      );
+    },
+  });
+}
+Object.preventExtensions(sealed);
+export const WORKFLOW_ALIASES = sealed;
