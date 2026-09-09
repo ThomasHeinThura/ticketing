@@ -371,8 +371,41 @@ export const auth = betterAuth({
           // role's permissions are derived from the compiled-in defaults
           // in `@taskdesk/permissions`; admins can later replace them in the
           // Roles UI. We skip names that somehow already exist (this hook
-          // is best-effort idempotent; the boot-time backfill is the
-          // belt-and-braces path).
+          // is idempotent; the boot-time backfill is the belt-and-braces
+          // path for workspaces that predate it).
+          //
+          // Issue #66. This used to run inside a `try/catch` that logged a
+          // seed failure and quietly returned -- leaving a fully
+          // "successful" workspace (the plugin had already committed the
+          // organization/member/team rows above this hook, unwrapped in
+          // any transaction of its own) with no viewer/member/admin rows
+          // behind it, for however long it takes the boot-time backfill to
+          // run. That silent gap is exactly the state that let a
+          // missing-row lookup fall back to full compiled-in privileges
+          // (require-workspace-permission.ts). This plugin route has no
+          // transaction spanning the organization/member/team inserts
+          // better-auth already performed before calling this hook, so a
+          // seed failure here cannot be rolled back the way the native
+          // `POST /api/workspace` transaction rolls back
+          // (`workspace/controllers/create-workspace.ts`). What it CAN do,
+          // and now does, is compensate: every row this create wrote --
+          // `workspace_member`, `team`, `team_member`, and any partial
+          // `workspace_role` insert -- references `workspace.id` with
+          // `ON DELETE CASCADE`, so deleting the just-created workspace on
+          // a seed failure removes all of it, and the caller gets a real
+          // failure response instead of a silent 200 for a workspace only
+          // its owner (whose authority is always compiled-in, never a row)
+          // could actually use.
+          // The READ is inside the try as well, deliberately. An independent
+          // review of the first version of this fix found the pre-check
+          // SELECT sitting OUTSIDE it, so a connection drop, timeout or
+          // deadlock on the read -- rather than on the insert -- left the
+          // workspace orphaned with no role rows and NO cleanup, which is the
+          // exact state this hook exists to prevent. The failure-injection
+          // test could not reach it either: a BEFORE INSERT trigger cannot
+          // fire on a SELECT. Everything that can throw between "better-auth
+          // has committed the workspace" and "the seed is durable" now shares
+          // one rollback path.
           try {
             const existing = await db
               .select({ role: schema.workspaceRoleTable.role })
@@ -396,10 +429,22 @@ export const auth = betterAuth({
             }
           } catch (error) {
             console.error(
-              "Failed to seed default workspace roles for workspace",
+              "Failed to seed default workspace roles for workspace -- rolling the workspace back",
               organization.id,
               error,
             );
+            try {
+              await db
+                .delete(schema.workspaceTable)
+                .where(eq(schema.workspaceTable.id, organization.id));
+            } catch (cleanupError) {
+              console.error(
+                "Failed to roll back workspace after a default-role seed failure -- manual cleanup needed for workspace",
+                organization.id,
+                cleanupError,
+              );
+            }
+            throw error;
           }
 
           publishEvent("workspace.created", {

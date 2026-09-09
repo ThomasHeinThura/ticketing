@@ -130,14 +130,26 @@ export async function distinctOwnerUserCount(
 /**
  * Is this pair's role answer UNAMBIGUOUS -- exactly one row?
  *
- * The single predicate every authority decision uses, so two call sites
- * cannot reduce the same rows differently. The review of this pull request
- * found exactly that: the capability middleware reduced with `.every(...)`
- * while the transfer controller reduced with `length !== 1`, so for
- * `["owner", "owner"]` the middleware granted and the controller refused --
- * fail-closed, but it locked the only owner out of the transfer route with no
- * other holder of the capability, making ownership unmovable without database
- * surgery.
+ * The single predicate every authority decision uses, so two call sites cannot
+ * reduce the same rows differently. **Cardinality, deliberately NOT
+ * agreement:** `["owner", "owner"]` is refused too, because a duplicated
+ * membership row is a corrupt authorization state whatever it says.
+ *
+ * The review of this pull request found what happens when two reductions
+ * disagree on exactly that shape: the capability middleware reduced with
+ * `.every(...)` while the transfer controller reduced with `length !== 1`, so
+ * for `["owner", "owner"]` the middleware granted and the controller refused --
+ * fail-closed, so never an escalation, but it locked the only owner out of
+ * their own transfer route with nobody else holding the capability, making
+ * ownership unmovable without database surgery.
+ *
+ * This file arrived on `main` twice, from #80 and from this pull request, and
+ * the add/add conflict resolved to this pull request's superset -- #80 shipped
+ * only `workspaceMemberRoles` and `isUnambiguousMembership`, both byte-identical
+ * to the copies here, while `anyRoleIsOwner` and `distinctOwnerUserCount` are
+ * this pull request's. #80's independent reviewer specifically warned that
+ * "keep the superset" would discard #80's better wording for this predicate, so
+ * that wording is kept above rather than lost.
  */
 export function isUnambiguousMembership(roles: string[]): boolean {
   return roles.length === 1;
