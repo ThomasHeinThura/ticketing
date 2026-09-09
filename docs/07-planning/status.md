@@ -268,8 +268,9 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   `grep -rn 'authClient\.organization\.' apps/web/src` for the live surface, excluding the
   `// Native replacement for authClient.organization.X()` comments, which is exactly the trap
   that produced the wrong list. The client **is** off the plugin for workspace CRUD writes
-  (S4b), the six reads S3 enumerated, and the role-change and ownership-transfer mutations
-  (S5, repointed by S3). It is **not** fully off it for reads or membership writes.
+  (S4b), the reads S3 repointed (**enumerated in PR #76's own commit message** — not counted
+  here, because a count written down here is the fourth thing in this one bullet to be measured
+  wrong), and the role-change and ownership-transfer mutations (S5, repointed by S3). It is **not** fully off it for reads or membership writes.
   **This file no longer states how many call sites remain**, and the reason is worth keeping:
   three successive attempts to write that number down — "fifteen", and two enumerations before
   it — were each measured wrong, because a naive grep counts the `// Native replacement for
