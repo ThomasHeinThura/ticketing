@@ -3,7 +3,7 @@
 > ## ⚠ How to read this file
 >
 > **Snapshot taken:** 2026-09-09
-> **`main` at that moment:** `a9abf9a` (`a9abf9a1f0f9447673b4635ae8911fc5cb5937af`)
+> **`main` at that moment:** `3e78450` (PR #76, retrofit S3)
 > **Stage:** P0 · Foundation — IN PROGRESS
 > **Throttle 1:** SHUT — 4 of 5 conditions met; condition 2 (issue #6 through retrofit S10)
 > is the sole blocker
@@ -183,12 +183,14 @@ branches opened underneath it.
 
 At the snapshot SHA above, what is durably true and worth recording:
 
-- **Nineteen pull requests merged on 2026-09-09**, and they fall into two groups with
-  *different review bases*, which is the distinction worth recording:
+- **Many pull requests merged on 2026-09-09 — the count is deliberately NOT stated here.** It
+  moved three times while this very file was being corrected, and each move left a sentence
+  false. `gh pr list --state merged` has it. What is durable, and the only reason to record
+  anything, is that they fall into two groups with *different review bases*:
   - **The eleven up to `5270954`** — #64, #62, #65, #67, #19, #68, #63, #69, #71, #72, #73 —
     on top of #16, #21, #57, #60 and #61 earlier. **These are the waived set** (see below).
-  - **The eight since `5270954`** — #78, #81, #79, #80, #84, #77, #83, #85 — which did
-    **not** use the waiver. Each carries committed review evidence at the tier its own
+  - **Everything since `5270954`** — #78, #81, #79, #80, #84, #77, #83, #85, #92, #96 and #76
+    as this was written, and more may have landed since — which did **not** use the waiver. Each carries committed review evidence at the tier its own
     changed files required, and the two tiers are recorded in **different places**:
     - **In security scope — #81, #79, #80, #77.** Independent **Opus** review, written up as
       a committed note in `docs/07-planning/security-reviews/`, named by pull-request number
@@ -221,8 +223,8 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 
 - **#8** — the router retrofit still waits for #6's removal surface to settle. **#16's
   deletions have landed**, which is half of it; the retrofit itself has now started
-  moving (S0, S1, S2, S4, S4b and S5 have landed via #57/#65/#67/#85/#77 — S3, S6a, S7, S8a,
-  S9 and S10 remain), but
+  moving (S0, S1, S2, S3, S4, S4b and S5 have landed via #57/#65/#67/#76/#85/#77 — S6a, S7,
+  S8a, S9 and S10 remain), but
   `organization()` is **still mounted** end to end. Classifying a route that is about to
   be replaced is wasted review and a false sense of coverage, so this stays blocked on the
   full retrofit, not on the deletions alone.
@@ -257,8 +259,9 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 - **better-auth `organization()` is removed in P0 — final.** It is **still mounted** on
   `main`, because it is load-bearing for workspace creation, invitations, members and
   roles. Load-bearing means it needs a retrofit (S1–S10, #6 work), not that it is kept.
-- **Retrofit S0, S1, S2, S4, S4b and S5 are COMPLETE** and on `main` (#65, #57, #65, #67,
-  #85, #77 respectively). **S3, S6a, S7, S8a, S9 and S10 remain.** Landing a stage does not
+- **Retrofit S0, S1, S2, S3, S4, S4b and S5 are COMPLETE** and on `main` (#65, #57, #65, #76,
+  #67, #85, #77 respectively). **S6a, S7, S8a, S9 and S10 remain**, and S6a and S8a are both
+  now unblocked. Landing a stage does not
   start the next; each step needs its own scheduling decision, and a green equivalence suite is not permission to
   begin the next one. Native reads and writes exist **alongside** the plugin, which is
   still what the client actually calls (S3 is the client cut-over and has not happened).
@@ -279,7 +282,7 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 - **Throttle 1's five conditions are settled in their exact form** (full table below).
   **Four of five are now met** (1, 3, 4, 5); **one is not** (2), precisely:
   - **#2 unmet** — issue #6 needs the `organization()` retrofit through **S10**, and it has
-    not run that far: S0, S1, S2, S4, S4b and S5 have landed; S3, S6a, S7, S8a, S9 and S10
+    not run that far: S0, S1, S2, S3, S4, S4b and S5 have landed; S6a, S7, S8a, S9 and S10
     have not. `organization()` is still mounted end to end. The
     [stage ledger](retrofits/organization-plugin-retrofit.md) is the authoritative count —
     this bullet is the fifth place in this file that had to be corrected for the same fact.
@@ -415,7 +418,7 @@ Throttle 1.
 **S5 has since shipped** (PR #77), as has **S4b** (PR #85) — an earlier version of this
 section listed S5 as "not next, deliberately", which is no longer true. The principle behind
 that note still holds: landing one stage does not start the next, each needs its own
-scheduling decision. Issue **#6 stays OPEN / In Progress** with S3, S6a, S7, S8a, S9 and S10
+scheduling decision. Issue **#6 stays OPEN / In Progress** with S6a, S7, S8a, S9 and S10
 outstanding. **#7 is now
 CLOSED** (2026-09-09) — the registry, evaluator, route-coverage gate and the required-
 status-check reconciliation are all done; #6 is the only issue left keeping Throttle 1
@@ -598,14 +601,14 @@ and reading it that way would open the throttle while `organization()` is still 
 | | Condition | State |
 | --- | --- | --- |
 | 1 | **#5** complete | ✅ merged as PR #13, closed |
-| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; **S0, S1, S2, S4, S4b and S5** have landed (#65, #57, #65, #67, #85, #77). S3, S6a, S7, S8a, S9 and S10 (unmount) remain, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
+| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; **S0, S1, S2, S3, S4, S4b and S5** have landed (#65, #57, #65, #76, #67, #85, #77). S6a, S7, S8a, S9 and S10 (unmount) remain, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
 | 3 | **#7** complete | ✅ **met — issue closed 2026-09-09** (`closedAt 2026-09-09T06:29:48Z`). #21 put the registry, evaluator and route-coverage gate on `main`; #19 put `pnpm test:permissions` (74 tests) in CI via `check:route-policy` on every push and pull request. The last open clause — both tests **required status checks** — closed when Thomas updated `protect-main` (ruleset `22365005`): `route policy coverage + permission matrix` now sits among 11 entries in `required_status_checks`, `strict_required_status_checks_policy: true`, `current_user_can_bypass: never` (`updated_at 2026-09-09T06:28:04Z`, re-read directly from `gh api repos/.../rulesets/22365005`, not taken from the closing comment's word) |
 | 4 | route coverage **actually executes** in CI | ✅ **met.** `.github/workflows/ci-fast.yml`'s `route-policy` job runs `pnpm check:route-policy` on every push and pull request, and did on `main`'s first gate-enforcing run (`e11976f`, all 11 applicable jobs green) |
 | 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one |
 
 **What "met" does not mean.** Four conditions being true is not Throttle 1 being open — all
 five are required, and #6 is not a paperwork gap: it is real, unfinished implementation
-depth (S3, S6a, S7, S8a, S9 and S10 of the retrofit). Nothing about #7 closing or the ruleset landing
+depth (S6a, S7, S8a, S9 and S10 of the retrofit). Nothing about #7 closing or the ruleset landing
 changes how much of `organization()` is still mounted. Throttle 1 opens the day #6 closes,
 and not before.
 
