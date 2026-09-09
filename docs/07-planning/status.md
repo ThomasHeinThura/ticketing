@@ -63,11 +63,19 @@ work gets reported as shipped, so the category is never optional.
 - **#5** the kaneo import at `42bb8011`, de-branded. Closed. `apps/api`, `apps/web`,
   `packages/{permissions,email,libs,mcp,typescript-config}`, `package.json`,
   `pnpm-lock.yaml`, migrations 0000–0049 (#16 added 0045–0049, the removal migrations).
-- **#11's deployment slice** (PR #20, merged `38ff9ac`) — a root `Dockerfile` that builds
-  and runs as uid 10001, `compose.yml` publishing no application port, the local /
-  production / UAT / Traefik overlays, `scripts/deploy.sh`, a `charts/taskdesk` that
-  fails closed on every bootstrap secret, and
+- **#11's deployment slice** (PR #20, merged `38ff9ac`) — a root `Dockerfile` running as
+  uid 10001, `compose.yml` publishing no application port, the local / production / UAT /
+  Traefik overlays, `scripts/deploy.sh`, a `charts/taskdesk` that fails closed on every
+  bootstrap secret, and
   [proxy-topology-evidence.md](../05-operations/proxy-topology-evidence.md).
+
+  **The image builds; the artifact did not boot, and that is issue #59.** This bullet
+  previously said the Dockerfile "builds and runs" with no caveat.
+  `@taskdesk/permissions` emitted extensionless relative ESM specifiers, so
+  `node apps/api/dist/index.js` failed with `ERR_MODULE_NOT_FOUND` **even though
+  `pnpm build` exited 0**. **PR #62 fixes it and is open**, so a deployable image is not
+  available on `main` today. Recorded because the shape keeps recurring: an exit code is
+  not evidence that the thing it built works.
 - Commands that run: `pnpm install | dev | build | lint | typecheck | test |
   test:integration`, the five `i18n:*` scripts, and `scripts/deploy.sh`.
 - **No CI.** `.github/` on `main` holds only `pull_request_template.md` — there are **zero
@@ -97,10 +105,22 @@ work gets reported as shipped, so the category is never optional.
 
 | PR | Issue | State |
 | --- | --- | --- |
-| **#19** | #10 | CI gates, `test:all`, the `check:*` scripts, `tests/api-contract/openapi.json`. **The next critical-path pull request** — it is what turns every rule described in this repository as "failing the build" into behaviour, because `main` still has zero workflow files. Independent review of its current head is not done. |
+| **#19** | #10 | CI gates, `test:all`, the `check:*` scripts, `tests/api-contract/openapi.json`, and the dependency-security overrides. **The critical-path pull request** — it is what turns every rule this repository describes as "failing the build" into behaviour, because `main` still has **zero workflow files**. Nine remediation rounds. Reviewed by mandatory Opus 5, GPT-5.6 Sol and Gemini 3.8 Flash at earlier heads; **no head has been CLEARED by a mandatory Opus review**, and its own template gate is red on exactly that. |
+| **#62** | #59 | `@taskdesk/permissions` emits explicit `.js` ESM specifiers so the built artifact can boot, plus a turbo override making its guard test self-sufficient. |
+| **#63** | #9 | First `packages/ui` extraction slice and an import-boundary checker. `## Screens opened` is honestly **BLOCKED** — no browser binary on the host. |
+| **#64** | — | `packages/email` built nothing and exited 0 after a stale `tsBuildInfoFile`. One file. Kimi and GPT both CLEAR. |
+| **#65** | #6 | S0 + S2 of the `organization()` retrofit: four native read routes, their policy declarations, and the session-only runtime guard. Found and fixed a real widening — API keys had reached workspace data. |
+| **#67** | #6 | S4: native workspace writes, stacked on #65. Closed the instance-admin bypass on its two mutation routes; that bypass had been **pinned as an accepted finding** by an earlier session. |
+| **#68** | — | The two 2026-09-08 authorization decisions, and this correction. |
 
-**#16, #21, #57 and #60 have merged** and moved to ON MAIN above. **#19 is the only open
-code pull request**, and nothing enforces a gate on `main` until it lands.
+**#16, #21, #57, #60 and #61 have merged** and moved to ON MAIN above. **Seven pull
+requests are open**, and nothing enforces a gate on `main` until #19 lands.
+
+**Corrected 2026-09-09.** This table previously listed #19 alone and stated it was *"the
+only open code pull request"*. That was false for six of the seven, and it is exactly the
+failure this file exists to prevent — a snapshot that reads as authoritative while
+describing a repository that no longer exists. Found by an independent review of this
+document against the live repository, not by anyone reading it.
 
 ### BLOCKED
 
