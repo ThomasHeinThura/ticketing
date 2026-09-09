@@ -350,6 +350,14 @@ describe("check:events — the fail-closed RESIDUAL SCAN itself refuses, rather 
   // chosen because each is a couple of lines and neither is a call shape the review's
   // HIGH 4 cases (H/I/J/K/L, above) already cover — so deleting the residual scan cannot
   // hide behind those probes passing.
+  //
+  // Review round 3, LOW 2: both cases above spell `publishEvent` directly, so neither
+  // exercises the scan's ALIAS arm — `for (const name of names)` iterating only the
+  // tracked aliases, not just the canonical name. Narrowing that loop to
+  // `for (const name of ["publishEvent"])` passed both cases above (0 probe failures)
+  // and let `const emit = publishEvent; emit?.("k")` return to a silent
+  // "0 published event key(s)". The third case below uses an ALIASED name so that
+  // narrowing is caught.
   const residualShapes = [
     {
       label: 'optional chaining (`publishEvent?.("…")`)',
@@ -372,6 +380,20 @@ describe("check:events — the fail-closed RESIDUAL SCAN itself refuses, rather 
         'import { publishEvent } from "../../events";',
         "export async function handler() {",
         '  await publishEvent<A<A<string>>>("probe.review91_residual_nested_generic", { id: "x" });',
+        "}",
+        "",
+      ].join("\n"),
+    },
+    {
+      label:
+        'an ALIASED name via optional chaining (`const emit = publishEvent; emit?.("…")`)',
+      slug: "aliased-optional-chaining",
+      key: "probe.review91_residual_aliased_optional_chaining",
+      body: [
+        'import { publishEvent } from "../../events";',
+        "export async function handler() {",
+        "  const emit = publishEvent;",
+        '  await emit?.("probe.review91_residual_aliased_optional_chaining", { id: "x" });',
         "}",
         "",
       ].join("\n"),
