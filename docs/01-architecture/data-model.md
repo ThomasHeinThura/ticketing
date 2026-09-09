@@ -48,8 +48,9 @@ erDiagram
     WORKSPACE ||--o{ PROJECT : contains
     WORKSPACE ||--o{ ROLE : defines
     WORKSPACE ||--o{ MEMBERSHIP : has
-    WORKSPACE ||--o{ STATE : defines
-    PROJECT ||--o{ PROJECT_STATE : enables
+    WORKSPACE ||--o{ STATE_TEMPLATE : defines
+    PROJECT ||--o{ STATE : owns
+    STATE }o--|| STATE_TEMPLATE : "maps to"
     PROJECT ||--o{ WORK_ITEM : contains
     PROJECT }o--|| ORGANISATION : "customer of"
     PROJECT ||--o{ PROJECT : "parent of"
@@ -143,21 +144,43 @@ organisation FK and the SCIM link cannot live in `config jsonb`; non-OIDC auth p
 | --- | --- |
 | `project` | `workspace_id`, `parent_id`, `key` (**unique per instance**), `name`, `icon` (a lucide icon name from the checked-in allowlist), `kind` (`project`\|`managed_service`), `organisation_id` **nullable** (null = internal), `manager_id` → `person` (the "exactly one project manager" of `PR-6`), `owner_team_id` null (reach step 5 in [rbac.md](rbac.md)), `start_date`, `end_date`, `support_level`, `service_calendar_id`, `sla_policy_id` null, `default_assignee_id`, `default_billable` (default true), `default_comment_visibility` (`internal`), `cycle_rollover_policy`, `health` (RAG), `archived_at`, `deleted_at`, `last_work_item_number`. **v** |
 | `project_feature_flag` | `project_id`, `feature_key`, `enabled` |
-| `state` | **Workspace-scoped**: `workspace_id`, `key`, `name`, `group` (`backlog`\|`unstarted`\|`started`\|`completed`\|`cancelled`), `colour`, `archived_at` — hidden from pickers, still referenceable. Archiving is what "removing a state" ([ADR 0011](adr/0011-ticket-lifecycle-engine.md)) does; a state with `work_item` or `activity` rows pointing at it is never deleted. The five `group` values are the only fixed lifecycle vocabulary — [ADR 0011](adr/0011-ticket-lifecycle-engine.md). `group` is a SQL reserved word and is written `"group"` in the DDL |
-| `project_state` | `project_id`, `state_id`, `position`, `is_default`, `enabled`. Which workspace states a project uses, in what order, and which is the default for new work items. A project's "own states" (`PR-17`) are its rows here, seeded from the workspace's default set at creation |
+| `state_template` | **Workspace-scoped**: `workspace_id`, `key`, `name`, `group` (`backlog`\|`unstarted`\|`started`\|`completed`\|`cancelled`), `colour`, `archived_at` — hidden from the picker a project uses to adopt a new state, still referenceable by every project's concrete `state` rows already mapped to it; a template with any `state` row pointing at it is never deleted. The five `group` values are the only fixed lifecycle vocabulary — [ADR 0011](adr/0011-ticket-lifecycle-engine.md). `group` is a SQL reserved word and is written `"group"` in the DDL. This is the row a workspace-scoped `workflow`'s transitions reference (`workflow_transition.from_state_template_id`/`to_state_template_id`, §6) — **never** a project's concrete state directly, which is what lets one workflow serve every project that adopts it |
+| `state` | **Project-scoped**: `project_id`, `state_template_id` → `state_template` (**not null**, `ON DELETE RESTRICT`), `position`, `is_default`, `archived_at` — hidden from pickers, still referenceable. Archiving is what "removing a state" ([ADR 0011](adr/0011-ticket-lifecycle-engine.md)) does at the project level; a `state` with `work_item` or `activity` rows pointing at it is never deleted. This is a project's **own** concrete lifecycle position: which templates it has adopted, in what order, and which is the default for new work items (`PR-17`). `work_item.state_id` (§4) references this table — **never** `state_template` directly. `state` carries no `group` column of its own: a concrete state's group is its mapped template's `state_template.group` |
 | `milestone` | `project_id`, `name`, `date`, `reached_at` |
 | `prerequisite` | `project_id`, `title`, `owner_side`, `due_date`, `is_blocking`, `completed_at` |
 | `stakeholder` | `project_id`, `person_id`, `role`, `escalation_order`, `escalation_wait_minutes`, `active` |
 | `document_link` | `project_id`, `url`, `title`, `customer_visible` |
 
-**Why states moved to the workspace (2026-09-05).** Workflows and work item types are
-workspace-scoped; transitions reference states. With project-scoped states a workspace
-workflow could serve exactly one project — the review found this made
-[ADR 0011](adr/0011-ticket-lifecycle-engine.md)'s "one lifecycle engine" unbuildable.
-States are now workspace rows; `project_state` gives each project its ordering, default
-and enabled subset, which is what "each project has its own states" actually meant. A
-workflow validation error is raised when a project enables a state its workflow has no
-transitions for (`WF-9`).
+**Why a state has two levels — `state_template` and `state` (corrected 2026-09-09).**
+Workflows and work item types are workspace-scoped, and one workflow must be able to serve
+every project that uses it — [ADR 0011](adr/0011-ticket-lifecycle-engine.md)'s "one
+lifecycle engine" claim. At the same time each project owns its own concrete lifecycle
+position (`PR-17`: "each project has its own states"), and those are not the same
+requirement solved by the same table. `state_template` is the workspace-level catalogue a
+workflow's transitions reference; `state` is a project's own row, mapped to exactly one
+template via `state_template_id`. A workflow attached to a work item type is portable
+across every project that has **adopted** — created a concrete `state` row for — the
+templates its transitions need. [workflows.md](../../03-features/workflows.md) `WF-2` and
+"Resolving a transition to a project's state" specify exactly how a transition's template
+reference resolves to a project's concrete row at runtime; nothing here is left for an
+implementer to invent.
+
+*(Corrected 2026-09-09, superseding the correction below: making `state` itself
+workspace-scoped, with `project_state` as a per-project enable/order/default overlay,
+fixed cross-project workflow reuse but broke the other half of the same problem — a
+project's concrete lifecycle position stopped being its own and became workspace-global,
+the opposite of what `PR-17`'s "each project has its own states" was written to guarantee.
+`project_state` is retired; its job (`position`, `is_default`) now lives directly on the
+project-scoped `state` row above, and "enabled" is simply whether a project has created a
+`state` row for a template at all. This is Thomas's decision, recorded in
+[the review](../../07-planning/reviews/2026-09-05/features-core-servicedesk.md) §10: do
+not move concrete `state` rows back to the workspace, and do not make workflows
+project-scoped.)*
+
+*(2026-09-05 note, retained for history: the very first draft made `state` project-scoped
+with no shared workspace concept at all, which meant a workspace-level workflow could serve
+exactly one project — the opposite failure the correction above was written against. Both
+of these superseded attempts are why the split above exists instead of a single table.)*
 
 `kind` distinguishes a dated **project** from an indefinite **managed service** — v1's
 most useful structural idea. Managed services have a support level and a cover window and
@@ -207,21 +230,28 @@ Formats: `text`, `long_text`, `number`, `decimal`, `date`, `datetime`, `boolean`
 | --- | --- |
 | `workflow` | `workspace_id`, `key`, `name`, `active_version_id`. **v** |
 | `workflow_version` | `workflow_id`, `number`, `published_at`, `published_by` |
-| `workflow_transition` | `version_id`, `from_state_id` **nullable** (null = from any state, `WF-5`), `to_state_id`, `role_id` (null = all), `note_policy` (`none`\|`optional`\|`required`), `note_visibility`, `requires_approval`, `approval_policy` (`any`\|`all`), `requires_cab`, `is_reopen boolean not null default false` (**at most one per workflow version** — partial unique index `(version_id) where is_reopen`; this is "the" reopen transition `WF-21` and `CP-8` resolve), `guards jsonb`, `effects jsonb` |
-| `scheduled_transition` | `work_item_id`, `transition_id`, `from_state_id` (the state the item was in when the effect fired — the row is cancelled if the item has since left it), `to_state_id`, `due_at`, `state` (`pending`\|`fired`\|`cancelled`), `created_at`. Written by the `schedule_transition` effect below; scanned and fired by `reminder-scan` ([background-jobs.md](background-jobs.md)). Index on `(due_at) where state = 'pending'` |
+| `workflow_transition` | `version_id`, `from_state_template_id` → `state_template`, **nullable** (null = from any state template, `WF-5`), `to_state_template_id` → `state_template` (**not null**), `role_id` (null = all), `note_policy` (`none`\|`optional`\|`required`), `note_visibility`, `requires_approval`, `approval_policy` (`any`\|`all`), `requires_cab`, `is_reopen boolean not null default false` (**at most one per workflow version** — partial unique index `(version_id) where is_reopen`; this is "the" reopen transition `WF-21` and `CP-8` resolve), `guards jsonb`, `effects jsonb`. References templates, never a project's concrete `state` — see §3 and [workflows.md](../03-features/workflows.md) "Resolving a transition to a project's state" |
+| `scheduled_transition` | `work_item_id`, `transition_id`, `from_state_id` → `state` (the work item's **concrete, project-scoped** state at the moment the effect fired — the row is cancelled if the item has since left it), `to_state_id` → `state` (**concrete**, resolved from the effect's `to_state_template_id` against the work item's own project at write time — see below), `due_at`, `state` (`pending`\|`fired`\|`cancelled`), `created_at`. Written by the `schedule_transition` effect below; scanned and fired by `reminder-scan` ([background-jobs.md](background-jobs.md)), which executes the already-resolved concrete transition — no template lookup happens at fire time. Index on `(due_at) where state = 'pending'` |
 
 `guards` and `effects` are arrays drawn from **closed vocabularies owned by
 [workflows.md](../03-features/workflows.md)**:
 
-- guards — `children_closed`, `no_open_blockers`, `assignee_present`,
-  `field_required { field }` (native or `cf.<key>` or a satellite such as
-  `change.rollback_plan`), `change_risk_at_most { level }`; each has a reason code
-  `guard.<type>` returned in the problem detail (`WF-16`).
+- guards — a JSON array, each element shaped `{ "type": "<guard-type>", ...fields }`. The
+  five recognised types: `children_closed`, `no_open_blockers`, `assignee_present`,
+  `field_required` (`{ "type": "field_required", "field": "<key>" }` — `field` is native,
+  `cf.<key>`, or a satellite such as `change.rollback_plan`), `change_risk_at_most`
+  (`{ "type": "change_risk_at_most", "level": "low"|"medium"|"high" }`). All guards on a
+  transition must pass. Each has a reason code `guard.<type>` returned in the problem
+  detail when it blocks (`WF-16`); a guard object whose `type` is none of the five —
+  written by a newer build, a hand edit, or a downgrade — fails **closed** with
+  `guard.unrecognized`, never silently skipped.
 - effects — `set_assignee { personId | 'default' }`, `clear_assignee`, `pause_sla`,
   `resume_sla`, `set_field { field, value }`, `schedule_transition { after_minutes,
-  to_state_id }` (the "pending until" pattern — writes a `scheduled_transition` row with
-  `due_at = now() + after_minutes` and the current state as `from_state_id`; the row is the
-  only record of the pending transition, and `reminder-scan` is what fires it). Entering a `completed`-group state writes
+  to_state_template_id }` (the "pending until" pattern — `to_state_template_id` is
+  resolved immediately, against the work item's own project, to a concrete `state` row
+  and stored as such in the `scheduled_transition` row above, together with the item's
+  current concrete state as `from_state_id`; the row is the only record of the pending
+  transition, and `reminder-scan` is what fires it). Entering a `completed`-group state writes
   an `sla_pause` row with reason `resolved`; leaving it closes that row — which is how
   `WF-18` "resumes rather than restarts" is implemented against a never-stored SLA state.
 

@@ -104,11 +104,13 @@ Customer visibility is off by default.
   retained.
 - `PR-16` Deletion is soft for 30 days, then purges work items, comments, attachments and
   time entries.
-- `PR-17` States are defined once per **workspace** (`state`); each project enables an
-  ordered subset with its own default (`project_state`), seeded from the workspace's
-  default set on creation and editable thereafter on Project settings → States. A project
-  cannot enable a state its types' workflows have no transition out of. See
-  [ADR 0011](../01-architecture/adr/0011-ticket-lifecycle-engine.md).
+- `PR-17` State **templates** are defined once per **workspace** (`state_template`); each
+  project owns its own concrete **states** (`state`), each mapped to exactly one
+  template, with their own order and default, seeded from the workspace's default
+  templates on creation and editable thereafter on Project settings → States. A project
+  cannot create a concrete state for a template its types' workflows have no transition
+  out of. See [ADR 0011](../01-architecture/adr/0011-ticket-lifecycle-engine.md) and
+  [workflows.md](workflows.md) `WF-2`.
 - `PR-18` Feature flags are per project, so a simple project shows a simple interface.
 - `PR-19` A project serves exactly one customer organisation, which determines who can see
   it in the portal.
