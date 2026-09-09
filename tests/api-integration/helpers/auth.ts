@@ -17,7 +17,18 @@ function createSession(userId: string): Session {
   };
 }
 
-export function mockAuthenticatedSession(user: User) {
+/**
+ * The instance-admin bypass (`apps/api/src/utils/is-instance-admin.ts`) reads
+ * `user.role` off the session with its own cast, because `role` is a plain
+ * `userTable` column, not a better-auth `additionalFields` entry — so the
+ * library's own `User` type never carries it. Mirroring that same optional,
+ * nullable shape here (rather than widening to the full DB row) lets tests
+ * mock a session with `role` set, unset, or explicitly `null`, without
+ * masking a real narrowing defect behind a broader type.
+ */
+type MockSessionUser = User & { role?: string | null };
+
+export function mockAuthenticatedSession(user: MockSessionUser) {
   return vi.spyOn(auth.api, "getSession").mockResolvedValue({
     session: createSession(user.id),
     user,

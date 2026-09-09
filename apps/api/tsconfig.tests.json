@@ -3,6 +3,7 @@
 	"compilerOptions": {
 		"noEmit": true,
 		"rootDir": "../..",
+		"jsx": "react-jsx",
 		"paths": {
 			"@taskdesk/permissions": [
 				"../../packages/permissions/src/index.ts"
@@ -21,10 +22,17 @@
 			],
 			"drizzle-orm/*": [
 				"./node_modules/drizzle-orm/*"
+			],
+			"pg": [
+				"./node_modules/@types/pg"
+			],
+			"better-auth/types": [
+				"./node_modules/better-auth/dist/types/index.d.mts"
 			]
 		}
 	},
 	"include": [
-		"../../tests/api/**/*.ts"
+		"../../tests/api/**/*.ts",
+		"../../tests/api-integration/**/*.ts"
 	]
 }

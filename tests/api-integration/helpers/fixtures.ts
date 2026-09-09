@@ -7,6 +7,22 @@ export type SeededMemberContext = {
   workspace: typeof schema.workspaceTable.$inferSelect;
 };
 
+/**
+ * `drizzle-orm`'s `.returning()` types as `T[]`, and `noUncheckedIndexedAccess` makes
+ * `rows[0]` (and array destructuring, which is sugar for the same index access) `T |
+ * undefined`. In a seeded integration test that row is always expected to exist — its
+ * absence means the insert itself failed — so this throws a clear, attributable error
+ * instead of letting every caller re-derive the same "possibly undefined" narrowing, or
+ * silently propagate `| undefined` into a type that does not expect it.
+ */
+export function requireRow<T>(rows: readonly T[], context: string): T {
+  const [row] = rows;
+  if (row === undefined) {
+    throw new Error(`${context}: insert returned no row`);
+  }
+  return row;
+}
+
 export async function createWorkspaceMember(
   overrides?: Partial<{
     userName: string;
@@ -17,25 +33,31 @@ export async function createWorkspaceMember(
   const userId = `user-${randomUUID()}`;
   const workspaceId = `workspace-${randomUUID()}`;
 
-  const [user] = await db
-    .insert(schema.userTable)
-    .values({
-      id: userId,
-      email: `${userId}@example.com`,
-      emailVerified: true,
-      name: overrides?.userName || "Integration Test User",
-    })
-    .returning();
+  const user = requireRow(
+    await db
+      .insert(schema.userTable)
+      .values({
+        id: userId,
+        email: `${userId}@example.com`,
+        emailVerified: true,
+        name: overrides?.userName || "Integration Test User",
+      })
+      .returning(),
+    "createWorkspaceMember: user",
+  );
 
-  const [workspace] = await db
-    .insert(schema.workspaceTable)
-    .values({
-      id: workspaceId,
-      createdAt: new Date(),
-      name: overrides?.workspaceName || "Integration Test Workspace",
-      slug: `workspace-${randomUUID()}`,
-    })
-    .returning();
+  const workspace = requireRow(
+    await db
+      .insert(schema.workspaceTable)
+      .values({
+        id: workspaceId,
+        createdAt: new Date(),
+        name: overrides?.workspaceName || "Integration Test Workspace",
+        slug: `workspace-${randomUUID()}`,
+      })
+      .returning(),
+    "createWorkspaceMember: workspace",
+  );
 
   await db.insert(schema.workspaceUserTable).values({
     workspaceId: workspace.id,
@@ -58,15 +80,18 @@ export async function createProjectFixture({
   icon?: string;
   slug?: string;
 }) {
-  const [project] = await db
-    .insert(schema.projectTable)
-    .values({
-      workspaceId,
-      name,
-      icon,
-      slug,
-    })
-    .returning();
+  const project = requireRow(
+    await db
+      .insert(schema.projectTable)
+      .values({
+        workspaceId,
+        name,
+        icon,
+        slug,
+      })
+      .returning(),
+    "createProjectFixture: project",
+  );
 
   const insertedColumns: (typeof schema.columnTable.$inferSelect)[] = [];
 

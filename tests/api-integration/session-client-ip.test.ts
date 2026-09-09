@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
+import { requireRow } from "./helpers/fixtures";
 
 /**
  * A throwaway sign-up password, assembled at runtime rather than written down.
@@ -36,19 +37,23 @@ async function signUpWithForwardedFor(forwardedFor: string) {
 
   expect(response.status).toBeLessThan(400);
 
-  const [user] = await db
-    .select()
-    .from(schema.userTable)
-    .where(eq(schema.userTable.email, email));
+  const user = requireRow(
+    await db
+      .select()
+      .from(schema.userTable)
+      .where(eq(schema.userTable.email, email)),
+    "user",
+  );
 
-  const [session] = await db
-    .select()
-    .from(schema.sessionTable)
-    .where(eq(schema.sessionTable.userId, user.id))
-    .orderBy(desc(schema.sessionTable.createdAt))
-    .limit(1);
-
-  return session;
+  return requireRow(
+    await db
+      .select()
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, user.id))
+      .orderBy(desc(schema.sessionTable.createdAt))
+      .limit(1),
+    "session",
+  );
 }
 
 /**
@@ -112,16 +117,22 @@ describe("the client IP recorded on a session", () => {
     });
     expect(response.status).toBeLessThan(400);
 
-    const [user] = await db
-      .select()
-      .from(schema.userTable)
-      .where(eq(schema.userTable.email, email));
-    const [session] = await db
-      .select()
-      .from(schema.sessionTable)
-      .where(eq(schema.sessionTable.userId, user.id))
-      .orderBy(desc(schema.sessionTable.createdAt))
-      .limit(1);
+    const user = requireRow(
+      await db
+        .select()
+        .from(schema.userTable)
+        .where(eq(schema.userTable.email, email)),
+      "user",
+    );
+    const session = requireRow(
+      await db
+        .select()
+        .from(schema.sessionTable)
+        .where(eq(schema.sessionTable.userId, user.id))
+        .orderBy(desc(schema.sessionTable.createdAt))
+        .limit(1),
+      "session",
+    );
 
     expect(session.ipAddress).toBe("203.0.113.77");
     expect(session.ipAddress).not.toBe("198.51.100.99");
@@ -148,16 +159,22 @@ describe("the client IP recorded on a session", () => {
     });
     expect(response.status).toBeLessThan(400);
 
-    const [user] = await db
-      .select()
-      .from(schema.userTable)
-      .where(eq(schema.userTable.email, email));
-    const [session] = await db
-      .select()
-      .from(schema.sessionTable)
-      .where(eq(schema.sessionTable.userId, user.id))
-      .orderBy(desc(schema.sessionTable.createdAt))
-      .limit(1);
+    const user = requireRow(
+      await db
+        .select()
+        .from(schema.userTable)
+        .where(eq(schema.userTable.email, email)),
+      "user",
+    );
+    const session = requireRow(
+      await db
+        .select()
+        .from(schema.sessionTable)
+        .where(eq(schema.sessionTable.userId, user.id))
+        .orderBy(desc(schema.sessionTable.createdAt))
+        .limit(1),
+      "session",
+    );
 
     expect(session.ipAddress).toBe("203.0.113.88");
     expect(session.ipAddress).not.toBe("198.51.100.123");
