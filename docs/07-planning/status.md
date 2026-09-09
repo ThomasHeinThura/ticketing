@@ -263,12 +263,17 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   #67, #85, #77 respectively). **S6a, S7, S8a, S9 and S10 remain**, and S6a and S8a are both
   now unblocked. Landing a stage does not start the next; each step needs its own scheduling
   decision, and a green equivalence suite is not permission to begin the next one.
-  **What the client calls now, stated precisely, because "alongside the plugin" is no longer
-  the whole picture:** the client is off the plugin for workspace **reads** (S3), workspace
-  **CRUD writes** (S4b) and **membership writes** including the atomic ownership transfer
-  (S5, repointed by S3). It still calls the plugin for **invitations** (S6a), **role writes**
-  (S7), **`setActive`** (S8a) and **teams** (S9). That is why `organization()` is still
-  mounted, and why S10 cannot run yet.
+  **What the client calls now — and this is stated as a command rather than a list, because an
+  earlier version of this bullet enumerated it and got three of seven claims wrong:** run
+  `grep -rn 'authClient\.organization\.' apps/web/src` for the live surface, excluding the
+  `// Native replacement for authClient.organization.X()` comments, which is exactly the trap
+  that produced the wrong list. The client **is** off the plugin for workspace CRUD writes
+  (S4b), the six reads S3 enumerated, and the role-change and ownership-transfer mutations
+  (S5, repointed by S3). It is **not** fully off it for reads or membership writes: as of
+  `3e78450` fifteen live call sites remain, and **#100 records that six of those method
+  families are claimed by no remaining stage at all** — including `removeMember`, a membership
+  write, and two `listMembers` reads. That, not "alongside the plugin", is why `organization()`
+  is still mounted and why S10 cannot run yet.
 - **The frozen organization-create baseline is N = 9 observable effects: eight first-order
   create effects plus one eventual, one-hop durable notification consequence.** The eight
   are the `workspace` row, the owner `workspace_member` row, the three seeded
