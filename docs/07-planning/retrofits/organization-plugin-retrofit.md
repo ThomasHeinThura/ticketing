@@ -5,6 +5,21 @@
 **Status of the decision:** settled — `organization()` IS removed in P0. This document maps the retrofit; it does not re-argue it.
 **Constraint:** #7 (`packages/permissions`, separate lane) replaces **policy + evaluation only** — never persistence, workspace/membership lifecycle, invitations, teams, plugin hooks, or route surface.
 
+**⚠ Read this before acting on any "#7's" attribution below.** This document attributes a
+dozen shared-contract items to **#7** — the capability vocabulary, `rank`/`is_system`/
+`is_editable`/`version` on `workspace_role`, the route-policy registry, `resolveIdentity`,
+the `/api/capabilities` response vocabulary, the `better-auth` access-control import (S11),
+and the "which routes are `sessionOnly`" decision. **#7 is CLOSED.** So every one of those
+attributions now points at a closed issue, which means **none of them currently has an
+owner** — they are not "someone else's problem", they are nobody's.
+
+This is stated once, here, rather than annotated at each of the twelve sites, because
+correcting them one at a time is exactly how this document has already contradicted itself
+three times: a row gets fixed and the sentence beside it is left stale. **Do not fold any of
+them into #6 to make the ledger tidy, and do not author them in this lane.** They need an
+owner assigned — either #7 reopened with a stated reason, or a new tracking issue — and that
+assignment is a decision for Thomas, not a renaming an agent may do.
+
 **STAGE LEDGER — the authoritative answer to "how far has the retrofit run?"** Throttle 1's
 condition 2 is measured here, so this ledger is the thing to read, not the prose below it.
 As of 2026-09-09, `main` at `5270954`:
@@ -29,8 +44,9 @@ As of 2026-09-09, `main` at `5270954`:
 ### Progress, stated the way it is actually useful
 
 **"Four of fourteen" is a misleading denominator** and should not be quoted on its own: it
-counts two stages that are deferred out of P0 and one that belongs to a different issue, so
-it understates how close S10 is. State it in four buckets instead:
+counts two stages that are deferred out of P0 and one (S11) that was never this retrofit's
+and whose owner **#7 is now closed**, so it understates how close S10 is. State it in four
+buckets instead:
 
 | Bucket | Stages | Count |
 | --- | --- | --- |
@@ -530,7 +546,9 @@ The independent instrument that closed the S1 gate is **PR #57 review [`pullrequ
 
 ### 3.1 Shared-contract changes — NOT this retrofit's, and #7 (their former owner) is closed
 
-Anything in this list must be *requested* of #7, not authored in this lane:
+Anything in this list must be **requested of whoever owns it, and right now nobody does** —
+these were #7's, and **#7 is closed**. Do not author them in this lane, and do not fold them
+into #6 to make the ledger tidy. They need an owner assigned before anyone acts on them:
 
 1. **`packages/permissions` capability vocabulary** — the move from better-auth `statement` shape (`packages/permissions/src/index.ts:9-15`) to the `capabilities.ts` capability strings named in `docs/01-architecture/rbac.md:29,118` (which does not exist yet — finding D5).
 2. **The better-auth AC import in `packages/permissions`** — `packages/permissions/src/index.ts:1-7`. Both `apps/api/src/auth.ts:7-12` and `apps/web/src/lib/permissions.ts:1-10` consume this package; changing its exports is a two-app breaking change.
