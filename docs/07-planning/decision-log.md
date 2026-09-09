@@ -17,6 +17,95 @@ Newest first.
 
 ---
 
+### 2026-09-09 · `protect-main` requires eleven status checks; the template gate is not among them
+
+**Decision:** the `protect-main` ruleset (`22365005`) now carries a `required_status_checks`
+rule naming the eleven substantive fast-stage jobs — `static`, `unit + component`, `build`,
+`registers - env, vocabulary, reviews, skips, overrides`,
+`route policy coverage + permission matrix`, `gate checkers + red probes`,
+`contract - OpenAPI drift`, `CI matches ci-cd.md`, `supply chain - dependency audit`,
+`supply chain - secret scan`, `helm lint + template` — with
+`strict_required_status_checks_policy: true` and **zero bypass actors**
+(`current_user_can_bypass: never`).
+
+**Why:** until today the ruleset required a pull request, blocked deletion and
+non-fast-forward pushes, and required **no status checks at all**. That is why nothing
+mechanically stopped a merge, and it is the gap issue #10 called F8. #7's *"Done when"*
+clause — *"both tests run in the fast CI stage **and are required**"* — could not be
+satisfied without it, so Throttle 1's condition 3 was blocked on a repository setting
+rather than on code. Verified by re-reading the live configuration after the write, not by
+trusting that the write succeeded.
+
+**Three things deliberately NOT required, each for a reason:**
+
+- **`pull request template + security review`.** Requiring it would make the mandatory Opus
+  security-review gate *mechanical*, which is what this project exists to do — and would
+  block every pull request until a committed review note exists. That is a policy decision
+  for Thomas, not one an agent should take by configuring a ruleset. **It remains a
+  non-required check, so it fails visibly on every pull request without blocking merge.**
+- **The four `NOT ENABLED` jobs** in `ci-full.yml` (e2e, a11y G4, visual G8, performance
+  G11). They are disabled with `if: false` because there is no Playwright suite, no
+  deployable application to point one at, and no chosen visual-regression tool. **GitHub
+  treats a skipped required check as satisfied**, so requiring them would manufacture a
+  green gate over nothing — the trap `ci-full.yml`'s own header warns about and F5 removed
+  from the integration job.
+- **`integration - Postgres 18`.** `ci-full.yml` narrows `pull_request.types` to
+  `[labeled, synchronize, ready_for_review]` and therefore does not run on `opened`.
+  Requiring it would block pull requests where it never ran.
+
+**Alternatives:** requiring the display name of the workflow rather than the job contexts —
+rejected, because the ruleset binds contexts at the check level and a workflow-level name
+would not name what actually blocks. Leaving the rule out until the retrofit finishes —
+rejected: the checks are green on `main` today and an unenforced gate is the thing this
+repository is built to refuse.
+
+**Decided by:** Thomas, 2026-09-09 (delegated: *"fix all issues and all ci issues"*).
+
+---
+
+### 2026-09-09 · Eight pull requests merged on Sonnet review, with the mandatory Opus gate waived
+
+**Decision:** Thomas authorised the orchestrator to merge on the strength of independent
+**Sonnet** review — *"if you review and no issues and very strong review come back just
+merge by yourself with gh"* — and to confirm afterwards with GPT-5.6 Sol and Gemini 3.8
+Flash. Eight pull requests merged under that authorisation: **#64, #62, #65, #67, #19, #68,
+#63, #69**.
+
+**This is a waived gate and it is recorded as one.** `CLAUDE.md`'s third absolute is that an
+agent may never downgrade an unavailable reviewer, and its model-tier table says security
+review is **Opus, always, every pull request, every stage gate**. **No mandatory Opus
+security review ran on any of the eight merged heads.** Five of them touched
+security-review-scope paths: #19 (56 paths), #62 (12, all `packages/permissions`), #63 (3),
+#65 (2 policy files) and #67 (1). Only Thomas can waive that gate, and he did.
+
+**What was done instead, stated so nobody mistakes it for the review it replaced:** four
+independent Sonnet review lanes with six adversarial verifiers over every open pull request
+and the status record — six confirmed findings, **zero blocking**, three lanes CLEAR; every
+finding then fixed and re-verified; the whole set integrated into one tree and run through
+the complete gate matrix before any merge; and each merge verified on `main` afterwards.
+Earlier heads of #19 were reviewed by a mandatory Opus session, GPT-5.6 Sol and Gemini 3.8
+Flash, but **no head was ever CLEARED by a mandatory Opus review**, and none of those
+verdicts transfers to what merged.
+
+**No review note was written and no independent-review checkbox was ticked** on any pull
+request. `check:pr-template` still fails on exactly those two blockers, which is why it was
+left out of the required checks: the gate stays visibly red rather than being quietly
+satisfied. That red is the honest record of this waiver.
+
+**Alternatives:** parking the five security-scope pull requests at frozen SHAs until an
+independent Opus review ran — offered to Thomas and declined in favour of post-merge
+cross-model confirmation. Ticking the box or writing a note to make CI green — refused
+outright; it would have falsified the record, and a review recorded at the wrong tier is
+worse than no review because it closes the field that would otherwise stay visibly open.
+
+**Follow-up required:** Thomas's GPT-5.6 Sol and Gemini 3.8 Flash confirmation of `main` at
+`5adf25b6`. If either finds a defect, it is now a defect on `main` rather than in a pull
+request, and that is the cost this waiver bought speed with.
+
+**Decided by:** Thomas, 2026-09-09.
+
+---
+
 ### 2026-09-08 · A merge is charged the union of its per-parent diffs, never a combined diff
 
 **Supersedes one clause** of
