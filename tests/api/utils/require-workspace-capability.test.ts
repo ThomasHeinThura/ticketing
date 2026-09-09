@@ -1,5 +1,9 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { roleGrantsOwner } from "../../../apps/api/src/utils/workspace-member-roles";
+import { CallerNotOwnerError } from "../../../apps/api/src/workspace/controllers/workspace-membership-errors";
 
 const { state } = vi.hoisted(() => ({
   state: { roleByUser: {} as Record<string, string | undefined> },
@@ -185,5 +189,84 @@ describe("requireWorkspaceCapability", () => {
   it("refuses a caller with no workspace_member row at all", async () => {
     const res = await probe("stranger-with-no-row");
     expect(res.status).toBe(403);
+  });
+
+  /**
+   * L1 from the independent Opus delta review of #77.
+   *
+   * The integration probe R4 distinguishes the capability GATE's refusal from
+   * the transfer CONTROLLER's by asserting the gate's message body exactly,
+   * because both layers return 403 and only the body differs. That makes R4
+   * silently depend on the two messages NOT coinciding — reword
+   * `CallerNotOwnerError` to "Insufficient permissions" and R4 goes green again
+   * while testing nothing, restoring the exact vacuity it was written to fix.
+   *
+   * This pins the dependency where it lives, so the reword fails HERE rather
+   * than quietly disarming a probe three files away.
+   */
+  it("L1 the gate's refusal message differs from the transfer controller's, which is what R4 relies on", () => {
+    const gateMessage = "Insufficient permissions";
+    const controllerMessage = new CallerNotOwnerError().message;
+
+    expect(controllerMessage).not.toBe(gateMessage);
+    // And the gate really does use that literal — if this drifts, R4's
+    // assertion is asserting a string nothing produces.
+    expect(
+      readFileSync(
+        resolve(
+          import.meta.dirname,
+          "../../../apps/api/src/utils/require-workspace-capability.ts",
+        ),
+        "utf8",
+      ),
+    ).toContain(`message: "${gateMessage}"`);
+  });
+
+  /**
+   * L2 from the independent Opus delta review of #77.
+   *
+   * `roleGrantsOwner` splits on comma and compares whole pieces. A
+   * "simplification" to `role.includes("owner")` — a substring test — would
+   * pass the entire rest of the suite while silently making every
+   * legitimately-named custom role containing those five letters unassignable
+   * and un-removable. Nothing pinned that, so this does.
+   *
+   * The false-positive direction matters as much as the false-negative one: the
+   * comma-aware widening exists to REFUSE destructive actions on a corrupt
+   * owner value, and refusing them on `"co-owner"` instead would be a
+   * regression wearing a security fix's clothes.
+   */
+  it("L2 roleGrantsOwner matches a comma-separated PIECE, never a substring", () => {
+    const grants = [
+      "owner",
+      "owner,admin",
+      "admin,owner",
+      "OWNER",
+      " owner ",
+      "owner, admin",
+      "owner,owner",
+    ];
+    const allowed = [
+      "co-owner",
+      "ownership-admin",
+      "downer",
+      "co-owner,viewer",
+      "viewer",
+      "",
+      "   ",
+    ];
+
+    for (const role of grants) {
+      expect(
+        roleGrantsOwner(role),
+        `${JSON.stringify(role)} must GRANT owner`,
+      ).toBe(true);
+    }
+    for (const role of allowed) {
+      expect(
+        roleGrantsOwner(role),
+        `${JSON.stringify(role)} must NOT grant owner`,
+      ).toBe(false);
+    }
   });
 });
