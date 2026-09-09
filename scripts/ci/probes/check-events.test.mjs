@@ -339,6 +339,69 @@ describe("check:events — call-detector shapes the review measured as silently 
   }
 });
 
+describe("check:events — the fail-closed RESIDUAL SCAN itself refuses, rather than silently reporting 0 keys (review round 2, MEDIUM 2)", () => {
+  // Security review round 2, MEDIUM 2: the residual scan at the bottom of
+  // `publishedKeysIn` — the control that is supposed to catch every call shape this
+  // extractor does not specifically recognise, rather than reporting the file as though
+  // the usage does not exist — had NO test of its own. Deleting it outright left
+  // `pnpm test:ci-scripts` at 354/354 green, and seven measured shapes (this describe
+  // block exercises two of them) silently returned to "0 published event key(s)". These
+  // two cases are two of the ten the review measured the scan as genuinely refusing on,
+  // chosen because each is a couple of lines and neither is a call shape the review's
+  // HIGH 4 cases (H/I/J/K/L, above) already cover — so deleting the residual scan cannot
+  // hide behind those probes passing.
+  const residualShapes = [
+    {
+      label: 'optional chaining (`publishEvent?.("…")`)',
+      slug: "optional-chaining",
+      key: "probe.review91_residual_optional_chaining",
+      body: [
+        'import { publishEvent } from "../../events";',
+        "export async function handler() {",
+        '  await publishEvent?.("probe.review91_residual_optional_chaining", { id: "x" });',
+        "}",
+        "",
+      ].join("\n"),
+    },
+    {
+      label:
+        "a generic argument nested two levels deep (`publishEvent<A<A<string>>>(...)`)",
+      slug: "nested-generic",
+      key: "probe.review91_residual_nested_generic",
+      body: [
+        'import { publishEvent } from "../../events";',
+        "export async function handler() {",
+        '  await publishEvent<A<A<string>>>("probe.review91_residual_nested_generic", { id: "x" });',
+        "}",
+        "",
+      ].join("\n"),
+    },
+  ];
+
+  for (const shape of residualShapes) {
+    it(`${shape.label}: refuses to run rather than reporting "0 published event key(s)"`, () => {
+      const dir = bareRepo(`residual-${shape.slug}`);
+      write(dir, "apps/api/src/probe/case.ts", shape.body);
+
+      const result = runChecker(dir, "check-events.mjs");
+      assert.notEqual(result.status, 0, result.output);
+      assert.match(
+        result.output,
+        /is used in a shape this extractor does not recognise/,
+      );
+      // NON-VACUITY, the exact tell the review used: if the residual scan is deleted or
+      // neutered, this run reports the file as though the call does not exist instead of
+      // refusing — the "0 published event key(s)" silent-green this whole file exists to
+      // prevent. Assert this run is not that, and never mentions the key it could not see.
+      assert.doesNotMatch(result.output, /0 published event key/);
+      assert.doesNotMatch(
+        result.output,
+        new RegExp(shape.key.replace(/\./g, "\\.")),
+      );
+    });
+  }
+});
+
 describe("check:events — probe gaps the review found (MEDIUM): KEY_SHAPE, and both fail-closed refusals", () => {
   it("a bare, non-dot-namespaced key throws rather than silently passing — catches a widened KEY_SHAPE", () => {
     // Review mutation M5: widening KEY_SHAPE from a strict lowercase/dot-namespaced
