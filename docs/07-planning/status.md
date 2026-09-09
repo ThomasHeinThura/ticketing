@@ -243,7 +243,7 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   `main`, because it is load-bearing for workspace creation, invitations, members and
   roles. Load-bearing means it needs a retrofit (S1–S10, #6 work), not that it is kept.
 - **Retrofit S0, S1, S2 and S4 are COMPLETE** and on `main` (#65, #57, #65, #67
-  respectively). **S3, S5–S9 and S10 remain.** Landing S4 did not start S5; each step
+  respectively). **S3, S4b, S5–S9 and S10 remain.** Landing S4 did not start S5; each step
   needs its own scheduling decision, and a green equivalence suite is not permission to
   begin the next one. Native reads and writes exist **alongside** the plugin, which is
   still what the client actually calls (S3 is the client cut-over and has not happened).
@@ -396,7 +396,7 @@ Throttle 1.
 
 **Not next, deliberately:** retrofit **S5**. S4 completing does not start S5 — that needs
 its own scheduling decision, and S5's own precondition is S4, not S3 (S3 gates S8a instead).
-Issue **#6 stays OPEN / In Progress** with S3, S5–S9 and S10 outstanding. **#7 is now
+Issue **#6 stays OPEN / In Progress** with S3, S4b, S5–S9 and S10 outstanding. **#7 is now
 CLOSED** (2026-09-09) — the registry, evaluator, route-coverage gate and the required-
 status-check reconciliation are all done; #6 is the only issue left keeping Throttle 1
 closed.
