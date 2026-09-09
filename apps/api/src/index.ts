@@ -13,6 +13,7 @@ import { HTTPException } from "hono/http-exception";
 import activity from "./activity";
 import { auth } from "./auth";
 import { organizationRoutes } from "./auth-openapi";
+import capabilities from "./capabilities";
 import column from "./column";
 import comment from "./comment";
 import config from "./config";
@@ -536,6 +537,7 @@ export function createApp() {
   });
 
   const oauthApi = api.route("/oauth", oauth);
+  const capabilitiesApi = api.route("/capabilities", capabilities);
   const projectApi = api.route("/project", project);
   const taskApi = api.route("/task", task);
   const columnApi = api.route("/column", column);
@@ -685,6 +687,7 @@ export function createApp() {
     api,
     injectWebSocket,
     activityApi,
+    capabilitiesApi,
     columnApi,
     commentApi,
     configApi,
@@ -794,6 +797,7 @@ const {
   app,
   injectWebSocket,
   activityApi,
+  capabilitiesApi,
   columnApi,
   commentApi,
   configApi,
@@ -843,6 +847,7 @@ export type AppType =
   | typeof workspaceApi
   | typeof userApi
   | typeof invitationPublicApi
-  | typeof oauthApi;
+  | typeof oauthApi
+  | typeof capabilitiesApi;
 
 export default app;
