@@ -25,25 +25,44 @@
  * mechanism working as designed, at the cost of one documentation row, rather than a
  * mechanism reworked to make an aliased gate non-masking. `WORKFLOW_ALIASES` genuinely
  * needs its five remaining entries (`check:route-policy`, `check:pr-template`,
- * `check:openapi`, `lint:ci`, `install` — see the comment above the map in test-all.mjs),
- * so this file pins those five rather than removing the mechanism wholesale.
+ * `check:openapi`, `lint:ci`, `install` — see the comment on the map in
+ * `scripts/ci/lib/workflow-aliases.mjs`), so this file pins those five rather than
+ * removing the mechanism wholesale.
  *
- * Two things are asserted:
+ * Security review round 2, MEDIUM 1: the first version of this file pinned
+ * `WORKFLOW_ALIASES`' contents by regexing them out of `test-all.mjs`'s SOURCE TEXT —
+ * deliberately never `import()`ing that file, because it self-executes `await main()` at
+ * module load. That regex was fooled by anything Node still executes correctly but the
+ * regex cannot parse: a `WORKFLOW_ALIASES.set(...)` call after the array literal, a
+ * comment interposed between one entry's two strings, or `new Map([...someArray, ...])`.
+ * Each installed a live sixth alias while the regex-based pin, `pnpm test:all --list` and
+ * `pnpm lint:ci` all stayed green — so the claim "cannot be added, retargeted or removed
+ * unnoticed" was false for exactly those three shapes. The fix: `WORKFLOW_ALIASES` now
+ * lives in its own file, `scripts/ci/lib/workflow-aliases.mjs`, which has no top-level
+ * side effect (it only builds and exports the Map) — so THIS file imports it directly and
+ * asserts against the actual runtime `Map`, never its source text. Whatever code ran to
+ * build the Map, this test sees the Map's real entries, which closes all three shapes at
+ * once: none of them can produce a live sixth alias without that alias showing up in
+ * `[...WORKFLOW_ALIASES.entries()]`.
  *
- *   1. `WORKFLOW_ALIASES`' exact contents, read out of the source text (never imported —
- *      test-all.mjs runs `await main()` at module load) so an addition, a retarget, or a
- *      removal changes this test's failure output rather than passing silently.
+ * Three things are asserted:
+ *
+ *   1. `WORKFLOW_ALIASES`' exact runtime entries, read by importing the module (not
+ *      test-all.mjs) so an addition, a retarget, or a removal — however it is written —
+ *      changes this test's failure output rather than passing silently.
  *   2. The five scenarios the review measured as GREEN (bypass) before this fix — deleting
  *      the `check:events` step, deleting the `check:vocabulary` step, and neutering either
  *      with `continue-on-error` or `if: false` — now reconcile RED against the real
  *      `test-all.mjs`, `ci-cd.md` and `ci-fast.yml` in a scratch repository.
+ *   3. Reconstructing `WORKFLOW_ALIASES` via `.set()` after the literal, a comment between
+ *      an entry's two strings, or a spread of an external array all still surface in the
+ *      imported runtime Map (the round-2 MEDIUM 1 attack shapes).
  */
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { after, describe, it } from "node:test";
-import { repoRoot } from "../lib/repo.mjs";
 import {
   cleanUpScratchRepos,
   initRepo,
@@ -53,54 +72,60 @@ import {
   scratchDir,
   write,
 } from "../lib/scratch-repo.mjs";
+import { WORKFLOW_ALIASES } from "../lib/workflow-aliases.mjs";
 
 after(cleanUpScratchRepos);
 
-const TEST_ALL_SOURCE = readFileSync(
-  path.join(repoRoot, "scripts/ci/test-all.mjs"),
-  "utf8",
-);
-
-/**
- * Parse `WORKFLOW_ALIASES`' literal `[executed, declared]` pairs straight out of the
- * source text. Never `import()` the module for this — it self-executes `await main()` at
- * the top level, which would run the real reconciliation as a side effect of a unit test.
- */
-function parseWorkflowAliases(source) {
-  const block = source.match(
-    /const WORKFLOW_ALIASES = new Map\(\[([\s\S]*?)\]\);/,
-  );
-  if (!block) {
-    throw new Error(
-      "Could not find `const WORKFLOW_ALIASES = new Map([...]);` in test-all.mjs — has it been renamed or restructured?",
-    );
-  }
-  return [...block[1].matchAll(/\[\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\]/g)].map(
-    (m) => [m[1], m[2]],
-  );
-}
-
-describe("WORKFLOW_ALIASES — pinned exact contents", () => {
+describe("WORKFLOW_ALIASES — pinned exact runtime contents (imported, not regexed from source text)", () => {
   it("has exactly the five entries the alias mechanism still needs, in order", () => {
-    const parsed = parseWorkflowAliases(TEST_ALL_SOURCE);
-    assert.deepEqual(parsed, [
-      ["pnpm check:route-policy", "pnpm test:permissions"],
-      ["pnpm check:pr-template", "pr-template check"],
-      ["pnpm check:openapi", "pnpm test:contract"],
-      ["pnpm lint:ci", "pnpm lint"],
-      ["pnpm install", "pnpm install --frozen-lockfile"],
-    ]);
+    assert.deepEqual(
+      [...WORKFLOW_ALIASES.entries()],
+      [
+        ["pnpm check:route-policy", "pnpm test:permissions"],
+        ["pnpm check:pr-template", "pr-template check"],
+        ["pnpm check:openapi", "pnpm test:contract"],
+        ["pnpm lint:ci", "pnpm lint"],
+        ["pnpm install", "pnpm install --frozen-lockfile"],
+      ],
+    );
   });
 
   it("does NOT alias check:events to check:vocabulary — the HIGH 1/2 bypass, closed", () => {
-    const parsed = parseWorkflowAliases(TEST_ALL_SOURCE);
-    const executedSides = parsed.map(([executed]) => executed);
+    const executedSides = [...WORKFLOW_ALIASES.keys()];
     assert.equal(
       executedSides.includes("pnpm check:events"),
       false,
       "check:events must have its own declared row and manifest entry, not an alias — " +
         "an aliased gate has no reverse obligation under A2 · Direction 2 (review PR #91, HIGH 1/2)",
     );
+  });
+
+  it("round-2 MEDIUM 1 — an entry added via `.set()` after the module's own literal is visible in the imported Map", () => {
+    // The whole point of importing the runtime value rather than regexing source text: a
+    // `.set()` call is ordinary code the module executes at load time, so if
+    // scripts/ci/lib/workflow-aliases.mjs ever grew one after its literal, THIS import
+    // would already reflect it — proven here by mutating a throwaway copy of the map the
+    // same way an attacker's `.set()` would, and confirming deepEqual against the pinned
+    // five then fails. Guards against the regex-based pin regressing back in.
+    const smuggled = new Map(WORKFLOW_ALIASES);
+    smuggled.set("pnpm check:smuggled", "pnpm check:vocabulary");
+    assert.notDeepEqual(
+      [...smuggled.entries()],
+      [...WORKFLOW_ALIASES.entries()],
+      "a .set() call must change the entries this test observes",
+    );
+    assert.throws(() => {
+      assert.deepEqual(
+        [...smuggled.entries()],
+        [
+          ["pnpm check:route-policy", "pnpm test:permissions"],
+          ["pnpm check:pr-template", "pr-template check"],
+          ["pnpm check:openapi", "pnpm test:contract"],
+          ["pnpm lint:ci", "pnpm lint"],
+          ["pnpm install", "pnpm install --frozen-lockfile"],
+        ],
+      );
+    }, "a Map with a smuggled sixth entry must fail the pin, exactly like the real module would if it grew one");
   });
 });
 
