@@ -266,6 +266,13 @@ function available(command) {
  *                       .github/actions/setup rather than in a workflow file. Found by
  *                       A2's reverse direction on its first run, which is the direction
  *                       working: a gate the scanner had never been able to see.
+ *   check:events        #86's published-vs-declared reconciliation for event keys
+ *                       (scripts/ci/check-events.mjs). ci-cd.md already scopes
+ *                       check:vocabulary over "a table, capability, event key or job name
+ *                       absent from its authority document" — this script is that
+ *                       promise's concrete implementation for event keys specifically, so
+ *                       it aliases to the gate ci-cd.md already declares rather than
+ *                       needing a new row there for the same promise.
  *
  * Declared here rather than resolved by editing one side until today's strings match. An
  * alias is not an exemption: the gate it points at must still be declared in ci-cd.md AND
@@ -281,6 +288,7 @@ const WORKFLOW_ALIASES = new Map([
   ["pnpm check:openapi", "pnpm test:contract"],
   ["pnpm lint:ci", "pnpm lint"],
   ["pnpm install", "pnpm install --frozen-lockfile"],
+  ["pnpm check:events", "pnpm check:vocabulary"],
 ]);
 
 /**

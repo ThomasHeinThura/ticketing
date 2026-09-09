@@ -99,6 +99,17 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 | `prerequisite.overdue` | The reminders job finds a blocking prerequisite past due | — | ✅ | ✅ | `prerequisiteId`, `dueDate` |
 | `budget.threshold_reached` | Actual + committed crosses 75 % or 90 % of planned | — | ✅ | ✅ | `budgetId`, `threshold`, `currency` |
 
+### Workspace
+
+**Current canon, not inherited.** Unlike every `task.*` / `comment.*` key in the
+[inherited compatibility section](#inherited-compatibility-vocabulary-interim) below,
+`workspace.created` is genuinely native TaskDesk code, in TaskDesk's own vocabulary already —
+it needs no rename and no migration.
+
+| Key | Emitted when | A | W | N | Payload, beyond key + url |
+| --- | --- | :-: | :-: | :-: | --- |
+| `workspace.created` | A workspace is created | — | — | ✅ | `workspaceId`, `workspaceName`, `ownerId`. Emitted from the native `POST /api/workspace` controller (`apps/api/src/workspace/controllers/create-workspace.ts`, retrofit **S4**). The inherited better-auth `organization()` plugin hook (`apps/api/src/auth.ts`'s `afterCreateOrganization`) still emits the same key too, pending its removal at retrofit **S10** — see the [organization-plugin retrofit ledger](../07-planning/retrofits/organization-plugin-retrofit.md). Not yet an automation trigger or a webhook event: no webhook can be scoped to a workspace before that workspace exists |
+
 ### Platform
 
 | Key | Emitted when | A | W | N | Payload |
@@ -124,6 +135,63 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 - **`work_item.field_changed`** — not a key; it is `work_item.updated` with a condition on
   `changes[].field`. Kept as the automation picker's label, resolved to `work_item.updated`
   when the rule is saved.
+
+## Inherited compatibility vocabulary (interim)
+
+**These 23 keys are not TaskDesk vocabulary. Do not treat them as permanent, do not extend
+them, and do not add a 24th.** They are the kaneo `task.*` / `comment.*` / … event names the
+inherited controllers still publish, unmigrated. Issue #86 found the API publishing keys
+from this vocabulary while this document declared only the target `work_item.*` / `sla.*` /
+`approval.*` model above, with **zero** overlap between the two — the code had never been
+registered anywhere. Thomas's decision: this is an explicit, temporary compatibility
+vocabulary, catalogued here so it stops being unregistered, not a second permanent event
+model. The real fix is migrating the emitters, tracked as the **P1** vocabulary migration
+(`docs/07-planning/status.md` § P1 core) — **not** a mass rename done in passing here.
+
+`workspace.created` is **not** on this list — it is current canon, in the Catalogue's
+[Workspace](#workspace) section above, because the code that emits it is native, not
+inherited. Every other key any inherited controller under `apps/api/src` publishes is here.
+
+**Mechanically regenerated, never hand-edited.** The list below (and the CI gate that
+enforces it, `pnpm check:events` / `scripts/ci/check-events.mjs`) is produced by extracting
+every literal first argument to `publishEvent(...)` under `apps/api/src`:
+
+```
+grep -rhoE 'publishEvent\("[a-zA-Z0-9_.-]+"' apps/api/src --include=*.ts \
+  | grep -oE '"[a-zA-Z0-9_.-]+"$' | tr -d '"' | sort -u
+```
+
+(Issue #86's narrower `[a-z_]+\.[a-z_]+` pattern — no hyphen — finds 20 of these 23; it
+misses `task-relation.created`, `task-relation.deleted`, `task-relation.refresh` and
+`time-entry.created`, which are published from hyphenated controller/module names. They are
+registered here too: a gate meant to catch every published-but-undeclared key must not
+itself skip keys shaped differently from the ones the issue happened to count.)
+
+| Emitted key | Target TaskDesk key | Compatibility status | Migration owner / stage |
+| --- | --- | --- | --- |
+| `comment.created` | `work_item.commented` | Compatible — "A comment is added" matches. Payload gap: no `visibility: public\|internal` | P1 |
+| `comment.deleted` | *(none declared)* | Comment deletion has no target-model event; only creation (`work_item.commented`) is catalogued | P1 |
+| `comment.updated` | *(none declared)* | Comment editing has no target-model event at all | P1 |
+| `notification.created` | *(none — not a domain event)* | Internal plumbing: fires after any notification row is inserted, purely to push it over the realtime channel. Not one of this catalogue's domain events and not expected to become one | P1 |
+| `task-relation.created` | *(none declared)* | `work_item_relation` exists in [data-model.md](data-model.md), but no relation event is catalogued yet | P1 |
+| `task-relation.deleted` | *(none declared)* | Same as above | P1 |
+| `task-relation.refresh` | *(none — not a domain event)* | A client cache-invalidation signal ("re-fetch this project's relations"), not a semantic event even in the inherited model | P1 |
+| `task.assignee_changed` | `work_item.assigned` | Direct rename — "Assignee set or changed" | P1 |
+| `task.created` | `work_item.created` | Direct rename | P1 |
+| `task.deleted` | `work_item.deleted` | Direct rename in name, not yet in behaviour — inherited does a hard delete; the target is "Soft-deleted" | P1 |
+| `task.description_changed` | `work_item.updated` (`changes[].field = "description"`) | Folds — the target has no separate description-changed key by design | P1 |
+| `task.due_date_changed` | `work_item.updated` (`changes[].field = "dueDate"`) | Folds. Distinct from `work_item.due_soon` / `work_item.overdue`, which are the reminders job's output, not an edit to the field | P1 |
+| `task.label_assigned` | *(none declared)* | Label assignment has no catalogued event; `work_item.updated`'s `changes[].field` model is a scalar from/to, not an established fit for a multi-value label add | P1 |
+| `task.label_created` | *(none declared)* | The workspace `label` table's own lifecycle has no catalogued event, unlike `project.created` / `project.archived` | P1 |
+| `task.label_deleted` | *(none declared)* | Same as above | P1 |
+| `task.label_unassigned` | *(none declared)* | Same reasoning as `task.label_assigned` | P1 |
+| `task.moved` | *(none — no single equivalent)* | Compound: reassigns `projectId` **and** implicitly changes state/column together. The target model splits these (`work_item.updated` for a field, `work_item.transitioned` for state) and has no combined event for "moved" | P1 |
+| `task.priority_changed` | `work_item.updated` (`changes[].field = "priority"`) | Folds — a plain edit, not `work_item.escalated`, which is specifically the escalate action | P1 |
+| `task.status_changed` | `work_item.transitioned` | Direct rename — "State changes through the lifecycle engine" | P1 |
+| `task.title_changed` | `work_item.updated` (`changes[].field = "title"`) | Folds | P1 |
+| `task.unassigned` | `work_item.unassigned` | Direct rename — "Assignee cleared" | P1 |
+| `task.updated` | `work_item.updated` | Compatible, generic catch-all fired alongside the specific keys above. Payload gap: inherited sends raw current field values; the target expects structured `changes: [{ field, from, to }]` | P1 |
+| `time-entry.created` | *(none declared)* | `time_entry` exists in [data-model.md](data-model.md), but no time-entry event is catalogued yet | P1 |
 
 ## Rules
 
