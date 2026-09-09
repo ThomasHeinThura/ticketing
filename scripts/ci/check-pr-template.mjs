@@ -36,6 +36,7 @@
  *   node scripts/ci/check-pr-template.mjs --pr 19        # when no event payload exists
  */
 
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import {
   changedFiles,
@@ -102,6 +103,27 @@ function gateRows(text) {
  * either pasted and ticked, or marked n/a with a reason — never left blank, and never
  * deleted.
  */
+
+/**
+ * `HEAD`'s parent SHAs, in order.
+ *
+ * For `refs/pull/N/merge` this is `[base tip, pull request head]` — GitHub documents the
+ * second parent as the head. Used to refuse an event payload that names a head the
+ * checked-out tree does not agree with (M-1). Returns `[]` when HEAD cannot be read, which
+ * makes the check inert rather than wrongly rejecting: the caller only rejects on a
+ * POSITIVE disagreement, never on an absence of information.
+ */
+function headParents() {
+  const shown = spawnSync("git", ["rev-list", "--parents", "-n", "1", "HEAD"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  });
+  if (shown.status !== 0) {
+    return [];
+  }
+  // `<commit> <parent>...`
+  return shown.stdout.trim().split(/\s+/).slice(1);
+}
 
 async function securitySurfaceTouched() {
   // GPT-F1: the scope is the UNION of ci-cd.md's list at the merge base and at HEAD, so
@@ -394,9 +416,42 @@ async function main() {
         // whole branch as "landed after the reviewed head" — see
         // lib/pr-body.mjs § loadPullRequestHead. Falls back to `HEAD` only where that
         // genuinely IS the branch head (local runs, push events).
-        const prHead = await loadPullRequestHead({
-          eventPath: process.env.GITHUB_EVENT_PATH,
-        });
+        let prHead = null;
+        try {
+          prHead = await loadPullRequestHead({
+            eventPath: process.env.GITHUB_EVENT_PATH,
+          });
+        } catch (error) {
+          // Typed, so the caller below COLLECTS it with every other template failure
+          // instead of the process dying on an untyped throw and reporting nothing else.
+          // Still fail-closed: a collected failure is a non-zero exit.
+          throw new ReviewBindingUnavailableError(error.message);
+        }
+
+        // M-1, from the independent delta review of 074aae3: the payload SHA was trusted
+        // without being checked against the checkout, so a payload naming an EARLIER
+        // commit on the branch — the reviewed head itself, or the note commit — would
+        // make a stale note pass. Reachable only by controlling the payload, which
+        // already requires editing files inside the security-review list, so the trust
+        // boundary was unchanged; but it was newly WIDENED, and that is worth closing
+        // rather than arguing about.
+        //
+        // `refs/pull/N/merge` has exactly two parents: the base tip first, the pull
+        // request's head second. So when HEAD is a merge, the claimed head must BE one of
+        // its parents. Anything else is a payload disagreeing with the tree it was handed,
+        // and the only safe reading of that is to refuse.
+        if (prHead !== null) {
+          const parents = headParents();
+          if (parents.length > 1 && !parents.includes(prHead)) {
+            throw new ReviewBindingUnavailableError(
+              `the event payload names ${prHead.slice(0, 9)} as this pull request's head, ` +
+                `but the checked-out merge commit's parents are ` +
+                `${parents.map((p) => p.slice(0, 9)).join(", ")}. A payload that disagrees ` +
+                "with the tree cannot be used to decide which code was reviewed — it would " +
+                "let an earlier commit stand in for the head and revive a stale note.",
+            );
+          }
+        }
         const binding = reviewBinding({
           notePath: note[0],
           noteSource: await readText(path.join(repoRoot, note[0])),

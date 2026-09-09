@@ -770,6 +770,85 @@ describe("the note binds to the pull request's head, not to the merge ref", () =
     assert.match(`${run.stdout}${run.stderr}`, /is STALE/);
   });
 
+  it("M-1: a payload naming an EARLIER branch commit cannot revive a stale note", () => {
+    // From the independent delta review of 074aae3, rated MEDIUM. The payload SHA was
+    // trusted without being checked against the checkout, so naming the reviewed head
+    // itself — or the note commit — made a note pass over code that landed after it.
+    // `refs/pull/N/merge`'s second parent IS the pull request head, so a payload naming
+    // anything else is disagreeing with the tree it was handed.
+    const { dir, noteHead } = mergeRefScenario();
+
+    // Land code AFTER the note, then rebuild the merge ref over it, so the honest answer
+    // is "stale". The payload will lie and name the older, clean head.
+    git(dir, ["checkout", "--quiet", "-B", "m1-branch", noteHead]);
+    write(dir, "apps/api/src/auth.ts", "export const secret = 99;\n");
+    const afterCode = commit(dir, "feat: land code after the review");
+    const base = git(dir, ["rev-parse", "origin/main"]).trim();
+    const tree = git(dir, ["rev-parse", `${afterCode}^{tree}`]).trim();
+    const mergeRef = git(dir, [
+      "commit-tree",
+      "-p",
+      base,
+      "-p",
+      afterCode,
+      "-m",
+      "Merge pull request",
+      tree,
+    ]).trim();
+    git(dir, ["checkout", "--quiet", mergeRef]);
+
+    const run = runChecker(
+      dir,
+      "check-pr-template.mjs",
+      ["--body", bodyWithNote()],
+      { GITHUB_EVENT_PATH: eventPayload(dir, noteHead) },
+    );
+    assert.notEqual(
+      run.status,
+      0,
+      "a payload naming a commit that is not a parent of the checked-out merge must be " +
+        "refused, not used to decide which code was reviewed",
+    );
+    assert.match(
+      `${run.stdout}${run.stderr}`,
+      /disagrees with the tree|are\s|parents/,
+      "the refusal must name the disagreement between the payload and the tree",
+    );
+  });
+
+  it("a malformed but READABLE payload does not silently bind to the merge ref", () => {
+    // The reviewer's mutation M4 survived all four earlier probes: valid JSON with no
+    // usable head falls back to HEAD, which is only safe BECAUSE HEAD is the merge ref
+    // and therefore reads stale. Asserted explicitly so the safety is not accidental.
+    const { dir } = mergeRefScenario();
+    const shapes = [
+      {},
+      { pull_request: {} },
+      { pull_request: { head: {} } },
+      { pull_request: { head: { sha: "not-a-sha" } } },
+    ];
+    for (const shape of shapes) {
+      const file = `${dir}/malformed.json`;
+      writeFileSync(file, JSON.stringify(shape));
+      const run = runChecker(
+        dir,
+        "check-pr-template.mjs",
+        ["--body", bodyWithNote()],
+        { GITHUB_EVENT_PATH: file },
+      );
+      assert.notEqual(
+        run.status,
+        0,
+        `payload ${JSON.stringify(shape)} must not produce a pass`,
+      );
+      assert.match(
+        `${run.stdout}${run.stderr}`,
+        /is STALE/,
+        `payload ${JSON.stringify(shape)} should fall back to HEAD and read stale`,
+      );
+    }
+  });
+
   it("fails CLOSED when the payload is named but unreadable", () => {
     // Silently falling back to HEAD would re-bind to the merge ref and resurrect the
     // unsatisfiable gate, so an unreadable payload must be loud.

@@ -178,17 +178,6 @@ export async function loadBody({ bodyFile, eventPath }) {
 }
 
 /**
- * Which pull request is being checked.
- *
- * A waiver is scoped to one pull request (lib/gate-waiver.mjs), so the number is part of
- * what the gate verifies rather than decoration. Three sources, in order of authority:
- * an explicit `--pr`, the pull-request event payload, and `GITHUB_REF`'s
- * `refs/pull/<n>/merge`. `null` when none of them answers — the caller fails closed
- * rather than accepting an unscoped waiver.
- *
- * @returns {Promise<number|null>}
- */
-/**
  * The pull request's OWN head SHA, from the event payload — not `HEAD`.
  *
  * **Why this exists.** GitHub checks a pull request out at `refs/pull/N/merge`, which is a
@@ -231,11 +220,29 @@ export async function loadPullRequestHead({ eventPath }) {
   const sha = event?.pull_request?.head?.sha;
   if (typeof sha !== "string" || !/^[0-9a-f]{40}$/.test(sha)) {
     // A push event has no pull_request key at all, which is fine and returns null.
-    return event?.pull_request === undefined ? null : null;
+    // Null covers two shapes a caller must treat the SAME way, so they are not
+    // distinguished: a `push` event, which has no `pull_request` key at all and is normal;
+    // and a `pull_request` payload whose head SHA is missing or malformed. An earlier
+    // revision returned a ternary yielding null on BOTH branches — dead code advertising a
+    // distinction it never implemented, flagged by review. Both mean "no usable head from
+    // the payload"; the CALLER decides what that means, and it refuses to fall back to a
+    // merge ref.
+    return null;
   }
   return sha;
 }
 
+/**
+ * Which pull request is being checked.
+ *
+ * A waiver is scoped to one pull request (lib/gate-waiver.mjs), so the number is part of
+ * what the gate verifies rather than decoration. Three sources, in order of authority:
+ * an explicit `--pr`, the pull-request event payload, and `GITHUB_REF`'s
+ * `refs/pull/<n>/merge`. `null` when none of them answers — the caller fails closed
+ * rather than accepting an unscoped waiver.
+ *
+ * @returns {Promise<number|null>}
+ */
 export async function loadPullRequestNumber({ number, eventPath, ref }) {
   if (number !== undefined && number !== null && String(number).trim() !== "") {
     const parsed = Number(String(number).trim().replace(/^#/, ""));
