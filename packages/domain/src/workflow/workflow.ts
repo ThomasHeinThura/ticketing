@@ -10,6 +10,13 @@
  * **A state change is never a plain field update.** Every rule below exists so the
  * legality of a transition — who may make it, from where, blocked by what — is decided
  * in one place and cannot be bypassed by a `PATCH`.
+ *
+ * **A state has two levels** (`data-model.md` §3): a workspace-level `state_template`
+ * (carries `group`) and a project's own concrete `state` (carries no `group` of its own —
+ * a concrete state's group is its template's). Transitions reference templates only, so
+ * legality below is decided entirely at the template level; resolving a template to a
+ * project's own concrete row is the separate, later step `resolveStateTemplateForProject`
+ * performs.
  */
 
 import type {
@@ -19,8 +26,11 @@ import type {
   Guard,
   GuardContext,
   GuardResult,
+  ProjectStateAdoption,
   ProjectStateValidationResult,
   StateGroup,
+  StateTemplateId,
+  StateTemplateResolution,
   TransitionOffer,
   TransitionOfferContext,
   Workflow,
@@ -33,7 +43,9 @@ import { CHANGE_RISK_LEVELS } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // State groups — ADR 0011's fixed vocabulary. "Closed" means `group` is `completed` or
-// `cancelled`; "open" means anything else — never a state name (`WF-15`).
+// `cancelled`; "open" means anything else — never a state name (`WF-15`). `group` always
+// arrives here already resolved to a `state_template`'s own value (`WorkflowState.group`)
+// — a project's concrete `state` carries no `group` column for this function to read.
 // ---------------------------------------------------------------------------
 
 const CLOSED_GROUPS: ReadonlySet<StateGroup> = new Set([
@@ -47,54 +59,67 @@ export function isClosedGroup(group: StateGroup): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Legality — WF-3, WF-4, WF-5.
+// Legality — WF-2, WF-3, WF-4, WF-5. Decided entirely at the state-**template** level:
+// a transition's `fromStateTemplateId`/`toStateTemplateId` are templates, and so is
+// `currentStateTemplateId`/`targetStateTemplateId` below — the work item's current
+// concrete state, resolved by the caller to its own template via
+// `state.state_template_id` before it ever reaches this function ("How a transition
+// resolves to a project's state", `workflows.md`).
 // ---------------------------------------------------------------------------
 
-/** Whether `transition` may be taken from `currentStateId` by an actor holding `actorRoleIds`. */
+/**
+ * Whether `transition` may be taken from `currentStateTemplateId` by an actor holding
+ * `actorRoleIds`.
+ */
 function isLegalFor(
   transition: WorkflowTransition,
-  currentStateId: string,
+  currentStateTemplateId: StateTemplateId,
   actorRoleIds: readonly string[],
 ): boolean {
   const fromMatches =
-    transition.fromStateId === null ||
-    transition.fromStateId === currentStateId;
+    transition.fromStateTemplateId === null ||
+    transition.fromStateTemplateId === currentStateTemplateId;
   const roleMatches =
     transition.roleId === null || actorRoleIds.includes(transition.roleId);
   return fromMatches && roleMatches;
 }
 
 /**
- * Every transition legal from `currentStateId` for an actor holding any of
+ * Every transition legal from `currentStateTemplateId` for an actor holding any of
  * `actorRoleIds` — the union-of-roles rule (`WF-3`/`WF-4`/`WF-5`): a `null` `roleId`
- * matches every actor, and a `null` `fromStateId` matches every current state (used for
- * Cancel). Returns `[]` rather than throwing when nothing matches — the caller (which
- * knows whether the actor held `work_item:transition` at all) decides between 403 and
- * 409 (`WF-4`); this function only ever answers "not from here", never "you may not".
+ * matches every actor, and a `null` `fromStateTemplateId` matches every current state
+ * template (used for Cancel). Returns `[]` rather than throwing when nothing matches —
+ * the caller (which knows whether the actor held `work_item:transition` at all) decides
+ * between 403 and 409 (`WF-4`); this function only ever answers "not from here", never
+ * "you may not".
  */
 export function legalTransitions(
   transitions: readonly WorkflowTransition[],
-  currentStateId: string,
+  currentStateTemplateId: StateTemplateId,
   actorRoleIds: readonly string[],
 ): WorkflowTransition[] {
-  return transitions.filter((t) => isLegalFor(t, currentStateId, actorRoleIds));
+  return transitions.filter((t) =>
+    isLegalFor(t, currentStateTemplateId, actorRoleIds),
+  );
 }
 
 /**
- * The one transition (if any) matching `(currentStateId, targetStateId, one of
- * actorRoleIds)` exactly — `WF-4`'s own phrasing. `undefined` means the transition is
- * illegal: not from here, not for this actor, or both. The caller returns 409 with the
+ * The one transition (if any) matching `(currentStateTemplateId, targetStateTemplateId,
+ * one of actorRoleIds)` exactly — `WF-4`'s own phrasing. `undefined` means the transition
+ * is illegal: not from here, not for this actor, or both. The caller returns 409 with the
  * reason; this function never decides which HTTP status applies.
  */
 export function findLegalTransition(
   transitions: readonly WorkflowTransition[],
-  currentStateId: string,
-  targetStateId: string,
+  currentStateTemplateId: StateTemplateId,
+  targetStateTemplateId: StateTemplateId,
   actorRoleIds: readonly string[],
 ): WorkflowTransition | undefined {
-  return legalTransitions(transitions, currentStateId, actorRoleIds).find(
-    (t) => t.toStateId === targetStateId,
-  );
+  return legalTransitions(
+    transitions,
+    currentStateTemplateId,
+    actorRoleIds,
+  ).find((t) => t.toStateTemplateId === targetStateTemplateId);
 }
 
 /**
@@ -111,6 +136,46 @@ export function filterOfferableForType(
     return [...transitions];
   }
   return transitions.filter((t) => !t.requiresCab);
+}
+
+// ---------------------------------------------------------------------------
+// Resolution — "Resolving a transition to a project's state" (workflows.md, WF-2),
+// reused verbatim for schedule_transition's own to_state_template_id (WF-19).
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolves one `state_template.id` to `adoptedStates`' concrete `state.id` for this
+ * project — the pure half of "Resolving a transition to a project's state" (`workflows.md`
+ * `WF-2`). Legality itself is decided purely at the template level, above, by comparing
+ * the work item's current template against `fromStateTemplateId`; only the *target* of an
+ * already-legal transition — its `toStateTemplateId` — is ever resolved to a concrete
+ * row, because that concrete row is what `work_item.state_id` must become. The identical
+ * resolution is reused, unchanged, for `schedule_transition`'s own `toStateTemplateId`
+ * (`WF-19`) — pass `effect.toStateTemplateId` instead of `transition.toStateTemplateId`
+ * and the same function answers both; this module does not duplicate the lookup.
+ *
+ * The interesting outcome is the failure, not the success: a workflow attached to a work
+ * item type is shared by every project that uses it, and a project that has not yet
+ * created a concrete `state` for the transition's target template is not a bug — it is
+ * WF-2's own "if no such row exists, the transition is not available in this project"
+ * (filtered out of `GET /transitions`; a stale attempt refused with the same 409 as "no
+ * matching transition", `WF-4`). So this returns a named result, never an exception and
+ * never a bare `undefined` a caller could forget to check — the same style `evaluateGuard`
+ * uses for `GuardResult`, below.
+ */
+export function resolveStateTemplateForProject(
+  stateTemplateId: StateTemplateId,
+  adoptedStates: ProjectStateAdoption,
+): StateTemplateResolution {
+  const stateId = adoptedStates.get(stateTemplateId);
+  if (stateId === undefined) {
+    return {
+      ok: false,
+      reason: "template_not_adopted",
+      stateTemplateId,
+    };
+  }
+  return { ok: true, stateId };
 }
 
 // ---------------------------------------------------------------------------
@@ -212,8 +277,8 @@ export function noteBlocked(
 // ---------------------------------------------------------------------------
 
 /**
- * Whether an already role/state-legal transition is available right now, and if not,
- * every distinguishable reason it is blocked. Role and CAB-type-gate exclusions
+ * Whether an already role/state-template-legal transition is available right now, and if
+ * not, every distinguishable reason it is blocked. Role and CAB-type-gate exclusions
  * (`WF-14`) are decided earlier, by `legalTransitions`/`filterOfferableForType` — a
  * transition that fails either of those is *absent*, never passed to this function
  * ("The state select": illegal transitions are not shown at all, only blocked ones are
@@ -252,11 +317,13 @@ export function offerTransition(
  * defines them (`WF-19`). This is the *only* seam that reads the effects vocabulary —
  * every executor (`apps/api`) imports this instead of touching `transition.effects`
  * directly. It never executes an effect: writing the `sla_pause` row a `pause_sla`
- * instruction implies, resolving `'default'` for `set_assignee`, and computing
- * `due_at = now() + afterMinutes` for `schedule_transition` are all the caller's job —
- * this function does not thread a clock through at all, deliberately (see the P2 plan's
- * `now`-shape note for `#31`: `schedule_transition`'s absolute `due_at` is one-line
- * arithmetic done where the row is written, not inside the pure core).
+ * instruction implies, resolving `'default'` for `set_assignee`, computing
+ * `due_at = now() + afterMinutes` for `schedule_transition`, and resolving that effect's
+ * own `toStateTemplateId` against the work item's project (`resolveStateTemplateForProject`,
+ * above) are all the caller's job — this function does not thread a clock, or a project's
+ * adopted states, through at all, deliberately (see the P2 plan's `now`-shape note for
+ * `#31`: `schedule_transition`'s absolute `due_at` is one-line arithmetic done where the
+ * row is written, not inside the pure core).
  */
 export function resolveEffects(transition: WorkflowTransition): Effect[] {
   return [...transition.effects];
@@ -303,59 +370,65 @@ export function selectActiveVersion(
 // ---------------------------------------------------------------------------
 // Structural analysis — the validation panel's pure core (`workflows.md` § Screens,
 // "Workflow editor"). These *report*; they do not refuse. WF-2's actual refusal is
-// `validateProjectStateSelection`, below.
+// `validateProjectStateSelection`, below. Every id here is a `state_template.id`: a
+// workflow's transitions connect templates, never a project's concrete `state` rows, so
+// "the graph" this section reasons about is always the template graph.
 // ---------------------------------------------------------------------------
 
 /**
- * States with no way out at all: no transition has `fromStateId` equal to the state,
- * and no transition has `fromStateId: null` (an "any state" transition, which — because
- * it can be taken from any current state — counts as an outbound path for every state,
- * including this one). A state reported here is a genuine dead end: nothing (`WF-9`'s
- * "stuck") ever leaves it, terminal by data, never by a hardcoded state name.
+ * State templates with no way out at all: no transition has `fromStateTemplateId` equal
+ * to the template, and no transition has `fromStateTemplateId: null` (an "any state
+ * template" transition, which — because it can be taken from any current template —
+ * counts as an outbound path for every template, including this one). A template
+ * reported here is a genuine dead end: nothing (`WF-9`'s "stuck") ever leaves it,
+ * terminal by data, never by a hardcoded template name.
  */
 export function noOutboundStateIds(
   states: readonly WorkflowState[],
   transitions: readonly WorkflowTransition[],
-): string[] {
-  const hasAnyStateTransition = transitions.some((t) => t.fromStateId === null);
+): StateTemplateId[] {
+  const hasAnyStateTransition = transitions.some(
+    (t) => t.fromStateTemplateId === null,
+  );
   if (hasAnyStateTransition) {
     return [];
   }
   const withOutbound = new Set(
     transitions
-      .map((t) => t.fromStateId)
-      .filter((id): id is string => id !== null),
+      .map((t) => t.fromStateTemplateId)
+      .filter((id): id is StateTemplateId => id !== null),
   );
   return states.filter((s) => !withOutbound.has(s.id)).map((s) => s.id);
 }
 
 /**
- * States nothing ever transitions into, starting the search from `initialStateIds`
- * (the project's default state(s) — `project_state.is_default`; a workflow version
- * carries no "initial state" of its own, see `validateProjectStateSelection`). An
- * `fromStateId: null` transition can be taken the moment *any* state is reachable, so
- * its `toStateId` becomes reachable as soon as the reachable set is non-empty — not
- * only from a specific origin.
+ * State templates nothing ever transitions into, starting the search from
+ * `initialStateIds` (the template(s) realised by the project's own default concrete
+ * state — `state.is_default`, `data-model.md` §3; the retired `project_state` table this
+ * once lived on is gone). A workflow version carries no "initial state" of its own — see
+ * `validateProjectStateSelection`. An `fromStateTemplateId: null` transition can be taken
+ * the moment *any* template is reachable, so its `toStateTemplateId` becomes reachable as
+ * soon as the reachable set is non-empty — not only from a specific origin.
  */
 export function unreachableStates(
   states: readonly WorkflowState[],
   transitions: readonly WorkflowTransition[],
-  initialStateIds: readonly string[],
-): string[] {
-  const reachable = new Set(initialStateIds);
+  initialStateIds: readonly StateTemplateId[],
+): StateTemplateId[] {
+  const reachable = new Set<StateTemplateId>(initialStateIds);
   let changed = true;
   while (changed) {
     changed = false;
     for (const t of transitions) {
-      if (reachable.has(t.toStateId)) {
+      if (reachable.has(t.toStateTemplateId)) {
         continue;
       }
       const reachableFromHere =
-        t.fromStateId === null
+        t.fromStateTemplateId === null
           ? reachable.size > 0
-          : reachable.has(t.fromStateId);
+          : reachable.has(t.fromStateTemplateId);
       if (reachableFromHere) {
-        reachable.add(t.toStateId);
+        reachable.add(t.toStateTemplateId);
         changed = true;
       }
     }
@@ -390,13 +463,13 @@ export function rolesWithNoLegalTransition(
 // ---------------------------------------------------------------------------
 
 /**
- * Validates a workflow version's shape: every `states` id is unique, every
- * transition's `fromStateId`/`toStateId` names a state that exists, no two transitions
- * share the same `(fromStateId, toStateId, roleId)` tuple, and at most one transition
- * is marked `isReopen` (`WF-21`, otherwise enforced only by the database's partial
- * unique index — this catches it before a version is even persisted). A version with
- * no states at all is rejected outright: a workflow that can hold no work item is
- * malformed, not merely empty.
+ * Validates a workflow version's shape: every `states` (state template) id is unique,
+ * every transition's `fromStateTemplateId`/`toStateTemplateId` names a template that
+ * exists, no two transitions share the same `(fromStateTemplateId, toStateTemplateId,
+ * roleId)` tuple, and at most one transition is marked `isReopen` (`WF-21`, otherwise
+ * enforced only by the database's partial unique index — this catches it before a
+ * version is even persisted). A version with no state templates at all is rejected
+ * outright: a workflow that can hold no work item is malformed, not merely empty.
  */
 export function validateWorkflowVersion(
   states: readonly WorkflowState[],
@@ -408,7 +481,7 @@ export function validateWorkflowVersion(
     errors.push("workflow version has no states");
   }
 
-  const stateIds = new Set<string>();
+  const stateIds = new Set<StateTemplateId>();
   for (const s of states) {
     if (stateIds.has(s.id)) {
       errors.push(`duplicate state id: ${s.id}`);
@@ -419,20 +492,23 @@ export function validateWorkflowVersion(
   const seenTuples = new Set<string>();
   let reopenCount = 0;
   for (const t of transitions) {
-    if (t.fromStateId !== null && !stateIds.has(t.fromStateId)) {
+    if (
+      t.fromStateTemplateId !== null &&
+      !stateIds.has(t.fromStateTemplateId)
+    ) {
       errors.push(
-        `transition ${t.id} names a from-state that does not exist: ${t.fromStateId}`,
+        `transition ${t.id} names a from-state that does not exist: ${t.fromStateTemplateId}`,
       );
     }
-    if (!stateIds.has(t.toStateId)) {
+    if (!stateIds.has(t.toStateTemplateId)) {
       errors.push(
-        `transition ${t.id} names a to-state that does not exist: ${t.toStateId}`,
+        `transition ${t.id} names a to-state that does not exist: ${t.toStateTemplateId}`,
       );
     }
-    const tuple = `${t.fromStateId ?? "*"}→${t.toStateId}·${t.roleId ?? "*"}`;
+    const tuple = `${t.fromStateTemplateId ?? "*"}→${t.toStateTemplateId}·${t.roleId ?? "*"}`;
     if (seenTuples.has(tuple)) {
       errors.push(
-        `duplicate transition: ${t.fromStateId ?? "(any)"} → ${t.toStateId} for role ${t.roleId ?? "(any)"}`,
+        `duplicate transition: ${t.fromStateTemplateId ?? "(any)"} → ${t.toStateTemplateId} for role ${t.roleId ?? "(any)"}`,
       );
     }
     seenTuples.add(tuple);
@@ -450,9 +526,14 @@ export function validateWorkflowVersion(
 }
 
 /**
- * `WF-2`: "A project may not enable a state its types' workflows have no transition
- * out of; the validation panel refuses it." `defaultStateId` is the project's default
- * state (`project_state.is_default`) — a workflow version has no "initial state" field
+ * `WF-2`/`WF-9`: "A project may not create a concrete state for a template with no
+ * outbound transition anywhere in the workflows its types use; the validation panel
+ * refuses it." `enabledStateIds`/`defaultStateId` are `state_template.id`s — the
+ * templates this project has adopted, or is choosing to adopt — never a project's
+ * concrete `state.id`s directly; see `ProjectStateValidationResult`'s own doc comment for
+ * why this function reasons at the template level. `defaultStateId` is the template
+ * realised by the project's default concrete state (`state.is_default`, replacing the
+ * retired `project_state.is_default`) — a workflow version has no "initial state" field
  * of its own, so a project with no default selected at all (`defaultStateId: null`) is
  * itself refused: work items need somewhere to start. Assumes `transitions` is already
  * structurally valid (`validateWorkflowVersion`); this function fails closed on the
@@ -460,8 +541,8 @@ export function validateWorkflowVersion(
  */
 export function validateProjectStateSelection(
   transitions: readonly WorkflowTransition[],
-  enabledStateIds: readonly string[],
-  defaultStateId: string | null,
+  enabledStateIds: readonly StateTemplateId[],
+  defaultStateId: StateTemplateId | null,
 ): ProjectStateValidationResult {
   const errors: string[] = [];
 
@@ -475,10 +556,12 @@ export function validateProjectStateSelection(
 
   const withOutbound = new Set(
     transitions
-      .map((t) => t.fromStateId)
-      .filter((id): id is string => id !== null),
+      .map((t) => t.fromStateTemplateId)
+      .filter((id): id is StateTemplateId => id !== null),
   );
-  const hasAnyStateTransition = transitions.some((t) => t.fromStateId === null);
+  const hasAnyStateTransition = transitions.some(
+    (t) => t.fromStateTemplateId === null,
+  );
   const refusedStateIds = hasAnyStateTransition
     ? []
     : enabledStateIds.filter((id) => !withOutbound.has(id));

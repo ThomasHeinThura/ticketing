@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import type {
   Guard,
   GuardContext,
+  ProjectStateAdoption,
   TransitionOfferContext,
   Workflow,
   WorkflowState,
   WorkflowTransition,
   WorkflowVersion,
 } from "./types.js";
+import { asStateId, asStateTemplateId } from "./types.js";
 import {
   evaluateGuard,
   evaluateGuards,
@@ -20,6 +22,7 @@ import {
   noteBlocked,
   offerTransition,
   resolveEffects,
+  resolveStateTemplateForProject,
   rolesWithNoLegalTransition,
   selectActiveVersion,
   unreachableStates,
@@ -27,28 +30,43 @@ import {
   validateWorkflowVersion,
 } from "./workflow.js";
 
+// Shorthand for the two branded constructors (types.ts) — used throughout this file's
+// fixtures exactly as a real caller would use them at the one sanctioned boundary, just
+// applied per-literal here since fixtures are literals rather than database rows.
+const tid = asStateTemplateId;
+const sid = asStateId;
+
 // ---------------------------------------------------------------------------
 // Fixtures — a seeded incident-style workflow, matching the spec's own worked example
 // ("A member may move Open → In Progress. Only a lead may move In Progress →
 // Resolved.") plus a cycle (in_progress ⇄ waiting_customer), a global Cancel
-// (fromStateId: null, WF-5) and a reopen transition (WF-21).
+// (fromStateTemplateId: null, WF-5) and a reopen transition (WF-21). Every id here is a
+// state **template** id — this module's transitions never reference a project's concrete
+// state directly (`data-model.md` §3/§6).
 // ---------------------------------------------------------------------------
 
+const OPEN = tid("open");
+const IN_PROGRESS = tid("in_progress");
+const WAITING_CUSTOMER = tid("waiting_customer");
+const RESOLVED = tid("resolved");
+const CLOSED = tid("closed");
+const CANCELLED = tid("cancelled");
+
 const STATES: WorkflowState[] = [
-  { id: "open", group: "unstarted" },
-  { id: "in_progress", group: "started" },
-  { id: "waiting_customer", group: "started" },
-  { id: "resolved", group: "completed" },
-  { id: "closed", group: "completed" },
-  { id: "cancelled", group: "cancelled" },
+  { id: OPEN, group: "unstarted" },
+  { id: IN_PROGRESS, group: "started" },
+  { id: WAITING_CUSTOMER, group: "started" },
+  { id: RESOLVED, group: "completed" },
+  { id: CLOSED, group: "completed" },
+  { id: CANCELLED, group: "cancelled" },
 ];
 
 function transition(
   overrides: Partial<WorkflowTransition> &
-    Pick<WorkflowTransition, "id" | "toStateId">,
+    Pick<WorkflowTransition, "id" | "toStateTemplateId">,
 ): WorkflowTransition {
   return {
-    fromStateId: null,
+    fromStateTemplateId: null,
     roleId: null,
     notePolicy: "none",
     noteVisibility: "internal",
@@ -64,14 +82,14 @@ function transition(
 
 const T_OPEN_TO_PROGRESS = transition({
   id: "t1",
-  fromStateId: "open",
-  toStateId: "in_progress",
+  fromStateTemplateId: OPEN,
+  toStateTemplateId: IN_PROGRESS,
   roleId: null, // "a member may" — no restriction excludes anyone
 });
 const T_PROGRESS_TO_RESOLVED = transition({
   id: "t2",
-  fromStateId: "in_progress",
-  toStateId: "resolved",
+  fromStateTemplateId: IN_PROGRESS,
+  toStateTemplateId: RESOLVED,
   roleId: "lead", // "only a lead may"
   notePolicy: "required",
   noteVisibility: "public",
@@ -85,32 +103,32 @@ const T_PROGRESS_TO_RESOLVED = transition({
 });
 const T_PROGRESS_TO_WAITING = transition({
   id: "t3",
-  fromStateId: "in_progress",
-  toStateId: "waiting_customer",
+  fromStateTemplateId: IN_PROGRESS,
+  toStateTemplateId: WAITING_CUSTOMER,
   roleId: null,
 });
 const T_WAITING_TO_PROGRESS = transition({
   id: "t4",
-  fromStateId: "waiting_customer",
-  toStateId: "in_progress",
+  fromStateTemplateId: WAITING_CUSTOMER,
+  toStateTemplateId: IN_PROGRESS,
   roleId: null,
 });
 const T_RESOLVED_TO_CLOSED = transition({
   id: "t5",
-  fromStateId: "resolved",
-  toStateId: "closed",
+  fromStateTemplateId: RESOLVED,
+  toStateTemplateId: CLOSED,
   roleId: "lead",
 });
 const T_CANCEL = transition({
   id: "t6",
-  fromStateId: null, // WF-5 — from any state
-  toStateId: "cancelled",
+  fromStateTemplateId: null, // WF-5 — from any state template
+  toStateTemplateId: CANCELLED,
   roleId: null,
 });
 const T_REOPEN = transition({
   id: "t7",
-  fromStateId: "closed",
-  toStateId: "in_progress",
+  fromStateTemplateId: CLOSED,
+  toStateTemplateId: IN_PROGRESS,
   roleId: null,
   isReopen: true,
   effects: [{ kind: "resume_sla" }],
@@ -155,24 +173,22 @@ function offerContext(
 
 describe("legalTransitions — every (from, to, role) combination in the seeded workflow", () => {
   it("a member may move open → in_progress (null role matches everyone)", () => {
-    const legal = legalTransitions(SEEDED_TRANSITIONS, "open", ["member"]);
+    const legal = legalTransitions(SEEDED_TRANSITIONS, OPEN, ["member"]);
     expect(legal.map((t) => t.id)).toEqual(["t1", "t6"]); // plus the global Cancel
     expect(legal).toContainEqual(T_OPEN_TO_PROGRESS);
   });
 
   it("a member may NOT move in_progress → resolved — that transition is simply absent", () => {
-    const legal = legalTransitions(SEEDED_TRANSITIONS, "in_progress", [
-      "member",
-    ]);
+    const legal = legalTransitions(SEEDED_TRANSITIONS, IN_PROGRESS, ["member"]);
     expect(legal.map((t) => t.id)).toEqual(["t3", "t6"]); // waiting + cancel only, never t2
   });
 
   it("a lead may move in_progress → resolved", () => {
-    const legal = legalTransitions(SEEDED_TRANSITIONS, "in_progress", ["lead"]);
+    const legal = legalTransitions(SEEDED_TRANSITIONS, IN_PROGRESS, ["lead"]);
     expect(legal.map((t) => t.id)).toContain("t2");
   });
 
-  it("every state offers the global Cancel transition (WF-5, fromStateId: null)", () => {
+  it("every state offers the global Cancel transition (WF-5, fromStateTemplateId: null)", () => {
     for (const state of STATES) {
       const legal = legalTransitions(SEEDED_TRANSITIONS, state.id, ["member"]);
       expect(legal.some((t) => t.id === "t6")).toBe(true);
@@ -180,12 +196,12 @@ describe("legalTransitions — every (from, to, role) combination in the seeded 
   });
 
   it("an actor holding no recognised role still gets null-role transitions, never a crash", () => {
-    const legal = legalTransitions(SEEDED_TRANSITIONS, "open", ["nobody"]);
+    const legal = legalTransitions(SEEDED_TRANSITIONS, OPEN, ["nobody"]);
     expect(legal.map((t) => t.id)).toEqual(["t1", "t6"]);
   });
 
   it("an actor holding zero roles at all still gets null-role transitions", () => {
-    const legal = legalTransitions(SEEDED_TRANSITIONS, "open", []);
+    const legal = legalTransitions(SEEDED_TRANSITIONS, OPEN, []);
     expect(legal.map((t) => t.id)).toEqual(["t1", "t6"]);
   });
 
@@ -193,73 +209,79 @@ describe("legalTransitions — every (from, to, role) combination in the seeded 
     const onlyLeadOnly: WorkflowTransition[] = [
       transition({
         id: "x",
-        fromStateId: "open",
-        toStateId: "closed",
+        fromStateTemplateId: OPEN,
+        toStateTemplateId: CLOSED,
         roleId: "lead",
       }),
     ];
-    expect(legalTransitions(onlyLeadOnly, "open", ["member"])).toEqual([]);
+    expect(legalTransitions(onlyLeadOnly, OPEN, ["member"])).toEqual([]);
   });
 
   it("the empty workflow (no transitions at all) legalises nothing from any state", () => {
-    expect(legalTransitions([], "open", ["member", "lead"])).toEqual([]);
+    expect(legalTransitions([], OPEN, ["member", "lead"])).toEqual([]);
   });
 });
 
 describe("legalTransitions — union of transitions for a multi-role actor", () => {
+  const S = tid("s");
   const roleGated: WorkflowTransition[] = [
     transition({
       id: "a",
-      fromStateId: "s",
-      toStateId: "a-out",
+      fromStateTemplateId: S,
+      toStateTemplateId: tid("a-out"),
       roleId: "role-a",
     }),
     transition({
       id: "b",
-      fromStateId: "s",
-      toStateId: "b-out",
+      fromStateTemplateId: S,
+      toStateTemplateId: tid("b-out"),
       roleId: "role-b",
     }),
     transition({
       id: "c",
-      fromStateId: "s",
-      toStateId: "c-out",
+      fromStateTemplateId: S,
+      toStateTemplateId: tid("c-out"),
       roleId: "role-c",
     }),
-    transition({ id: "n", fromStateId: "s", toStateId: "n-out", roleId: null }),
+    transition({
+      id: "n",
+      fromStateTemplateId: S,
+      toStateTemplateId: tid("n-out"),
+      roleId: null,
+    }),
   ];
 
   it("an actor holding role-a and role-b gets the union: a, b and the null-role one — never c", () => {
-    const legal = legalTransitions(roleGated, "s", ["role-a", "role-b"]);
+    const legal = legalTransitions(roleGated, S, ["role-a", "role-b"]);
     expect(legal.map((t) => t.id).sort()).toEqual(["a", "b", "n"]);
   });
 
   it("an actor holding only role-c gets exactly c and the null-role one", () => {
-    const legal = legalTransitions(roleGated, "s", ["role-c"]);
+    const legal = legalTransitions(roleGated, S, ["role-c"]);
     expect(legal.map((t) => t.id).sort()).toEqual(["c", "n"]);
   });
 });
 
 describe("legalTransitions — self-transitions and cycles", () => {
-  it("a self-transition (fromStateId === toStateId) is legal like any other", () => {
+  it("a self-transition (fromStateTemplateId === toStateTemplateId) is legal like any other", () => {
     const selfLoop = transition({
       id: "reassign",
-      fromStateId: "in_progress",
-      toStateId: "in_progress",
+      fromStateTemplateId: IN_PROGRESS,
+      toStateTemplateId: IN_PROGRESS,
       roleId: null,
     });
-    const legal = legalTransitions([selfLoop], "in_progress", ["member"]);
+    const legal = legalTransitions([selfLoop], IN_PROGRESS, ["member"]);
     expect(legal).toEqual([selfLoop]);
   });
 
   it("a two-state cycle (in_progress ⇄ waiting_customer) is legal in both directions", () => {
     expect(
-      legalTransitions(SEEDED_TRANSITIONS, "in_progress", ["member"]).map(
+      legalTransitions(SEEDED_TRANSITIONS, IN_PROGRESS, ["member"]).map(
         (t) => t.id,
       ),
     ).toContain("t3");
     expect(
-      legalTransitions(SEEDED_TRANSITIONS, "waiting_customer", ["member"]).map(
+      legalTransitions(SEEDED_TRANSITIONS, WAITING_CUSTOMER, ["member"]).map(
         (t) => t.id,
       ),
     ).toContain("t4");
@@ -269,15 +291,13 @@ describe("legalTransitions — self-transitions and cycles", () => {
 describe("findLegalTransition — WF-4's exact (current, target, role) match", () => {
   it("finds the transition when it is legal for this actor", () => {
     expect(
-      findLegalTransition(SEEDED_TRANSITIONS, "in_progress", "resolved", [
-        "lead",
-      ]),
+      findLegalTransition(SEEDED_TRANSITIONS, IN_PROGRESS, RESOLVED, ["lead"]),
     ).toBe(T_PROGRESS_TO_RESOLVED);
   });
 
   it("returns undefined — never throws — when the actor lacks the matching role (409, not a crash)", () => {
     expect(
-      findLegalTransition(SEEDED_TRANSITIONS, "in_progress", "resolved", [
+      findLegalTransition(SEEDED_TRANSITIONS, IN_PROGRESS, RESOLVED, [
         "member",
       ]),
     ).toBeUndefined();
@@ -285,13 +305,13 @@ describe("findLegalTransition — WF-4's exact (current, target, role) match", (
 
   it("returns undefined when the target state is simply not reachable from here at all", () => {
     expect(
-      findLegalTransition(SEEDED_TRANSITIONS, "open", "closed", ["lead"]),
+      findLegalTransition(SEEDED_TRANSITIONS, OPEN, CLOSED, ["lead"]),
     ).toBeUndefined();
   });
 
   it("returns undefined for a transition naming a target that isn't in this from-state's legal set even if it exists elsewhere", () => {
     expect(
-      findLegalTransition(SEEDED_TRANSITIONS, "closed", "resolved", ["lead"]),
+      findLegalTransition(SEEDED_TRANSITIONS, CLOSED, RESOLVED, ["lead"]),
     ).toBeUndefined();
   });
 });
@@ -317,16 +337,17 @@ describe("isClosedGroup", () => {
 // ---------------------------------------------------------------------------
 
 describe("filterOfferableForType — WF-14, never matched by a type's name", () => {
+  const S = tid("s");
   const cabTransition = transition({
     id: "cab",
-    fromStateId: "s",
-    toStateId: "e",
+    fromStateTemplateId: S,
+    toStateTemplateId: tid("e"),
     requiresCab: true,
   });
   const plainTransition = transition({
     id: "plain",
-    fromStateId: "s",
-    toStateId: "f",
+    fromStateTemplateId: S,
+    toStateTemplateId: tid("f"),
   });
   const mixed = [cabTransition, plainTransition];
 
@@ -348,6 +369,91 @@ describe("filterOfferableForType — WF-14, never matched by a type's name", () 
     expect(filterOfferableForType([plainTransition], false)).toEqual([
       plainTransition,
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveStateTemplateForProject — "Resolving a transition to a project's state"
+// (workflows.md, WF-2), reused verbatim by schedule_transition's own resolution (WF-19).
+// ---------------------------------------------------------------------------
+
+describe("resolveStateTemplateForProject — WF-2's template-to-project-state resolution", () => {
+  it("resolves a template this project has adopted to its own concrete state id", () => {
+    const projectResolved = sid("resolved-42");
+    const adopted: ProjectStateAdoption = new Map([
+      [RESOLVED, projectResolved],
+    ]);
+    expect(resolveStateTemplateForProject(RESOLVED, adopted)).toEqual({
+      ok: true,
+      stateId: projectResolved,
+    });
+  });
+
+  it("fails explicitly — never throws, never guesses — when the project has not adopted this template", () => {
+    const adopted: ProjectStateAdoption = new Map([[OPEN, sid("open-1")]]); // no RESOLVED entry
+    expect(resolveStateTemplateForProject(RESOLVED, adopted)).toEqual({
+      ok: false,
+      reason: "template_not_adopted",
+      stateTemplateId: RESOLVED,
+    });
+  });
+
+  it("an empty adoption map fails the same way for any template", () => {
+    const adopted: ProjectStateAdoption = new Map();
+    expect(resolveStateTemplateForProject(OPEN, adopted)).toEqual({
+      ok: false,
+      reason: "template_not_adopted",
+      stateTemplateId: OPEN,
+    });
+  });
+
+  it("resolves the target of a real seeded transition when the project has adopted every template it needs", () => {
+    const projectA: ProjectStateAdoption = new Map([
+      [OPEN, sid("a-open")],
+      [IN_PROGRESS, sid("a-in-progress")],
+      [WAITING_CUSTOMER, sid("a-waiting")],
+      [RESOLVED, sid("a-resolved")],
+      [CLOSED, sid("a-closed")],
+      [CANCELLED, sid("a-cancelled")],
+    ]);
+    expect(
+      resolveStateTemplateForProject(
+        T_PROGRESS_TO_RESOLVED.toStateTemplateId,
+        projectA,
+      ),
+    ).toEqual({ ok: true, stateId: sid("a-resolved") });
+  });
+
+  it("the same transition, resolved against a project that never adopted the target template, fails — a workflow shared by many projects meets exactly this", () => {
+    const projectB: ProjectStateAdoption = new Map([
+      [OPEN, sid("b-open")],
+      [IN_PROGRESS, sid("b-in-progress")],
+      // projectB never created a concrete state for RESOLVED.
+    ]);
+    expect(
+      resolveStateTemplateForProject(
+        T_PROGRESS_TO_RESOLVED.toStateTemplateId,
+        projectB,
+      ),
+    ).toEqual({
+      ok: false,
+      reason: "template_not_adopted",
+      stateTemplateId: RESOLVED,
+    });
+  });
+
+  it("resolves schedule_transition's own toStateTemplateId with the identical function — WF-19 reuses WF-2's resolution, not a second one", () => {
+    const scheduleEffect = {
+      kind: "schedule_transition" as const,
+      afterMinutes: 60,
+      toStateTemplateId: tid("escalated"),
+    };
+    const adopted: ProjectStateAdoption = new Map([
+      [scheduleEffect.toStateTemplateId, sid("proj-escalated")],
+    ]);
+    expect(
+      resolveStateTemplateForProject(scheduleEffect.toStateTemplateId, adopted),
+    ).toEqual({ ok: true, stateId: sid("proj-escalated") });
   });
 });
 
@@ -603,8 +709,8 @@ describe("evaluateGuard — an unrecognized guard type fails CLOSED, and does no
   it("offerTransition refuses the transition instead of throwing", () => {
     const t = transition({
       id: "t-rogue",
-      fromStateId: "open",
-      toStateId: "done",
+      fromStateTemplateId: OPEN,
+      toStateTemplateId: tid("done"),
       guards: [rogue],
     });
     const offer = offerTransition(t, offerContext());
@@ -617,8 +723,8 @@ describe("evaluateGuard — an unrecognized guard type fails CLOSED, and does no
   it("an unknown guard alongside satisfied real guards still blocks", () => {
     const t = transition({
       id: "t-mixed",
-      fromStateId: "open",
-      toStateId: "done",
+      fromStateTemplateId: OPEN,
+      toStateTemplateId: tid("done"),
       guards: [{ type: "assignee_present" }, rogue],
     });
     const offer = offerTransition(t, offerContext({ assigneePresent: true }));
@@ -673,8 +779,8 @@ describe("noteBlocked — WF-10, every policy value × whether a note was suppli
     (policy, hasNote, expected) => {
       const t = transition({
         id: "n",
-        fromStateId: "s",
-        toStateId: "e",
+        fromStateTemplateId: tid("s"),
+        toStateTemplateId: tid("e"),
         notePolicy: policy,
       });
       expect(noteBlocked(t, hasNote)).toBe(expected);
@@ -687,6 +793,9 @@ describe("noteBlocked — WF-10, every policy value × whether a note was suppli
 // ---------------------------------------------------------------------------
 
 describe("offerTransition", () => {
+  const S = tid("s");
+  const E = tid("e");
+
   it("is available with no blockers when every gate is satisfied", () => {
     const offer = offerTransition(T_PROGRESS_TO_RESOLVED, offerContext());
     expect(offer.available).toBe(true);
@@ -730,8 +839,8 @@ describe("offerTransition", () => {
   it("ignores approvalSatisfied entirely when the transition does not require approval", () => {
     const noApproval = transition({
       id: "x",
-      fromStateId: "s",
-      toStateId: "e",
+      fromStateTemplateId: S,
+      toStateTemplateId: E,
     });
     const offer = offerTransition(
       noApproval,
@@ -741,7 +850,11 @@ describe("offerTransition", () => {
   });
 
   it("ignores cabSatisfied entirely when the transition does not require CAB", () => {
-    const noCab = transition({ id: "x", fromStateId: "s", toStateId: "e" });
+    const noCab = transition({
+      id: "x",
+      fromStateTemplateId: S,
+      toStateTemplateId: E,
+    });
     const offer = offerTransition(noCab, offerContext({ cabSatisfied: false }));
     expect(offer.available).toBe(true);
   });
@@ -749,8 +862,8 @@ describe("offerTransition", () => {
   it("reports cab.pending, distinctly, when the transition requires CAB and it is not yet satisfied", () => {
     const requiresCab = transition({
       id: "x",
-      fromStateId: "s",
-      toStateId: "e",
+      fromStateTemplateId: S,
+      toStateTemplateId: E,
       requiresCab: true,
     });
     const offer = offerTransition(
@@ -766,8 +879,8 @@ describe("offerTransition", () => {
   it("ignores hasNote entirely when the note policy is not required", () => {
     const optionalNote = transition({
       id: "x",
-      fromStateId: "s",
-      toStateId: "e",
+      fromStateTemplateId: S,
+      toStateTemplateId: E,
       notePolicy: "optional",
     });
     const offer = offerTransition(
@@ -813,7 +926,11 @@ describe("resolveEffects — the full effects vocabulary, named but not run", ()
   });
 
   it("returns [] for a transition with no effects", () => {
-    const t = transition({ id: "x", fromStateId: "s", toStateId: "e" });
+    const t = transition({
+      id: "x",
+      fromStateTemplateId: tid("s"),
+      toStateTemplateId: tid("e"),
+    });
     expect(resolveEffects(t)).toEqual([]);
   });
 
@@ -825,8 +942,8 @@ describe("resolveEffects — the full effects vocabulary, named but not run", ()
   it("preserves every effect kind exactly, for a transition that carries all six", () => {
     const allSix = transition({
       id: "kitchen-sink",
-      fromStateId: "s",
-      toStateId: "e",
+      fromStateTemplateId: tid("s"),
+      toStateTemplateId: tid("e"),
       effects: [
         { kind: "set_assignee", personId: "default" },
         { kind: "set_assignee", personId: "p123" },
@@ -837,7 +954,7 @@ describe("resolveEffects — the full effects vocabulary, named but not run", ()
         {
           kind: "schedule_transition",
           afterMinutes: 60,
-          toStateId: "escalated",
+          toStateTemplateId: tid("escalated"),
         },
       ],
     });
@@ -900,50 +1017,60 @@ describe("selectActiveVersion", () => {
 });
 
 // ---------------------------------------------------------------------------
-// noOutboundStateIds — the validation panel's "stuck" / terminal-state core.
+// noOutboundStateIds — the validation panel's "stuck" / terminal-template core.
 // ---------------------------------------------------------------------------
 
-describe("noOutboundStateIds — terminal states: nothing leaves them", () => {
-  it("a state with zero transitions naming it as fromStateId, and no any-state transition, is reported", () => {
-    const states: WorkflowState[] = [{ id: "dead_end", group: "completed" }];
+describe("noOutboundStateIds — terminal state templates: nothing leaves them", () => {
+  it("a template with zero transitions naming it as fromStateTemplateId, and no any-template transition, is reported", () => {
+    const states: WorkflowState[] = [
+      { id: tid("dead_end"), group: "completed" },
+    ];
     expect(noOutboundStateIds(states, [])).toEqual(["dead_end"]);
   });
 
-  it("legalTransitions independently confirms the same state offers nothing to anyone", () => {
+  it("legalTransitions independently confirms the same template offers nothing to anyone", () => {
     const deadEndTransitions: WorkflowTransition[] = [
-      transition({ id: "into", fromStateId: "open", toStateId: "dead_end" }),
+      transition({
+        id: "into",
+        fromStateTemplateId: OPEN,
+        toStateTemplateId: tid("dead_end"),
+      }),
     ];
     expect(
-      legalTransitions(deadEndTransitions, "dead_end", ["member", "lead"]),
+      legalTransitions(deadEndTransitions, tid("dead_end"), ["member", "lead"]),
     ).toEqual([]);
   });
 
-  it("a global Cancel (fromStateId: null) counts as an outbound path for every state, including otherwise dead ends", () => {
+  it("a global Cancel (fromStateTemplateId: null) counts as an outbound path for every template, including otherwise dead ends", () => {
     const states: WorkflowState[] = [
-      { id: "a", group: "started" },
-      { id: "b", group: "completed" },
+      { id: tid("a"), group: "started" },
+      { id: tid("b"), group: "completed" },
     ];
     const withCancel: WorkflowTransition[] = [T_CANCEL];
     expect(noOutboundStateIds(states, withCancel)).toEqual([]);
   });
 
-  it("in the seeded workflow, every state has an outbound path (Cancel covers all)", () => {
+  it("in the seeded workflow, every template has an outbound path (Cancel covers all)", () => {
     expect(noOutboundStateIds(STATES, SEEDED_TRANSITIONS)).toEqual([]);
   });
 
-  it("without the global Cancel, only states with a genuine outbound transition are clear", () => {
+  it("without the global Cancel, only templates with a genuine outbound transition are clear", () => {
     const withoutCancel = SEEDED_TRANSITIONS.filter((t) => t.id !== "t6");
     // "cancelled" has no outbound transition of its own once Cancel itself is removed.
     expect(noOutboundStateIds(STATES, withoutCancel)).toEqual(["cancelled"]);
   });
 
-  it("a state referenced only as a to-state, never a from-state, is reported (without a global any-state transition)", () => {
+  it("a template referenced only as a to-template, never a from-template, is reported (without a global any-template transition)", () => {
     const states: WorkflowState[] = [
-      { id: "start", group: "unstarted" },
-      { id: "terminal", group: "completed" },
+      { id: tid("start"), group: "unstarted" },
+      { id: tid("terminal"), group: "completed" },
     ];
     const transitions: WorkflowTransition[] = [
-      transition({ id: "t", fromStateId: "start", toStateId: "terminal" }),
+      transition({
+        id: "t",
+        fromStateTemplateId: tid("start"),
+        toStateTemplateId: tid("terminal"),
+      }),
     ];
     expect(noOutboundStateIds(states, transitions)).toEqual(["terminal"]);
   });
@@ -954,48 +1081,62 @@ describe("noOutboundStateIds — terminal states: nothing leaves them", () => {
 // ---------------------------------------------------------------------------
 
 describe("unreachableStates", () => {
-  it("every state in the seeded workflow is reachable from open", () => {
-    expect(unreachableStates(STATES, SEEDED_TRANSITIONS, ["open"])).toEqual([]);
+  it("every template in the seeded workflow is reachable from open", () => {
+    expect(unreachableStates(STATES, SEEDED_TRANSITIONS, [OPEN])).toEqual([]);
   });
 
-  it("a state with no inbound transition at all, and no any-state transition reaching it, is unreachable", () => {
+  it("a template with no inbound transition at all, and no any-template transition reaching it, is unreachable", () => {
+    const start = tid("start");
+    const island = tid("island");
     const states: WorkflowState[] = [
-      { id: "start", group: "unstarted" },
-      { id: "island", group: "started" },
+      { id: start, group: "unstarted" },
+      { id: island, group: "started" },
     ];
-    expect(unreachableStates(states, [], ["start"])).toEqual(["island"]);
+    expect(unreachableStates(states, [], [start])).toEqual(["island"]);
   });
 
   it("a two-state cycle (A ⇄ B) is fully reachable once entered — a cycle is not itself unreachable", () => {
+    const start = tid("start");
+    const a = tid("a");
+    const b = tid("b");
     const states: WorkflowState[] = [
-      { id: "start", group: "unstarted" },
-      { id: "a", group: "started" },
-      { id: "b", group: "started" },
+      { id: start, group: "unstarted" },
+      { id: a, group: "started" },
+      { id: b, group: "started" },
     ];
     const transitions: WorkflowTransition[] = [
-      transition({ id: "into", fromStateId: "start", toStateId: "a" }),
-      transition({ id: "ab", fromStateId: "a", toStateId: "b" }),
-      transition({ id: "ba", fromStateId: "b", toStateId: "a" }),
+      transition({
+        id: "into",
+        fromStateTemplateId: start,
+        toStateTemplateId: a,
+      }),
+      transition({ id: "ab", fromStateTemplateId: a, toStateTemplateId: b }),
+      transition({ id: "ba", fromStateTemplateId: b, toStateTemplateId: a }),
     ];
-    expect(unreachableStates(states, transitions, ["start"])).toEqual([]);
+    expect(unreachableStates(states, transitions, [start])).toEqual([]);
   });
 
-  it("an any-state transition's target becomes reachable the moment anything at all is reachable", () => {
+  it("an any-template transition's target becomes reachable the moment anything at all is reachable", () => {
+    const start = tid("start");
     const states: WorkflowState[] = [
-      { id: "start", group: "unstarted" },
-      { id: "cancelled", group: "cancelled" },
+      { id: start, group: "unstarted" },
+      { id: CANCELLED, group: "cancelled" },
     ];
     const transitions: WorkflowTransition[] = [T_CANCEL];
-    expect(unreachableStates(states, transitions, ["start"])).toEqual([]);
+    expect(unreachableStates(states, transitions, [start])).toEqual([]);
   });
 
-  it("with no initial state supplied at all, nothing is reachable except via an any-state transition — everything else is reported", () => {
+  it("with no initial template supplied at all, nothing is reachable except via an any-template transition — everything else is reported", () => {
     const states: WorkflowState[] = [
-      { id: "open", group: "unstarted" },
-      { id: "in_progress", group: "started" },
+      { id: OPEN, group: "unstarted" },
+      { id: IN_PROGRESS, group: "started" },
     ];
     const transitions: WorkflowTransition[] = [
-      transition({ id: "t", fromStateId: "open", toStateId: "in_progress" }),
+      transition({
+        id: "t",
+        fromStateTemplateId: OPEN,
+        toStateTemplateId: IN_PROGRESS,
+      }),
     ];
     expect(unreachableStates(states, transitions, [])).toEqual([
       "open",
@@ -1003,9 +1144,10 @@ describe("unreachableStates", () => {
     ]);
   });
 
-  it("the single-state workflow with no transitions: the lone state is reachable exactly because it is the initial state", () => {
-    const states: WorkflowState[] = [{ id: "only", group: "unstarted" }];
-    expect(unreachableStates(states, [], ["only"])).toEqual([]);
+  it("the single-template workflow with no transitions: the lone template is reachable exactly because it is the initial template", () => {
+    const only = tid("only");
+    const states: WorkflowState[] = [{ id: only, group: "unstarted" }];
+    expect(unreachableStates(states, [], [only])).toEqual([]);
   });
 });
 
@@ -1016,14 +1158,24 @@ describe("unreachableStates", () => {
 describe("rolesWithNoLegalTransition", () => {
   it("a role named on a transition is never reported", () => {
     const transitions: WorkflowTransition[] = [
-      transition({ id: "t", fromStateId: "a", toStateId: "b", roleId: "lead" }),
+      transition({
+        id: "t",
+        fromStateTemplateId: tid("a"),
+        toStateTemplateId: tid("b"),
+        roleId: "lead",
+      }),
     ];
     expect(rolesWithNoLegalTransition(transitions, ["lead"])).toEqual([]);
   });
 
   it("a role never named anywhere, with no null-role transition either, is reported", () => {
     const transitions: WorkflowTransition[] = [
-      transition({ id: "t", fromStateId: "a", toStateId: "b", roleId: "lead" }),
+      transition({
+        id: "t",
+        fromStateTemplateId: tid("a"),
+        toStateTemplateId: tid("b"),
+        roleId: "lead",
+      }),
     ];
     expect(rolesWithNoLegalTransition(transitions, ["lead", "viewer"])).toEqual(
       ["viewer"],
@@ -1060,9 +1212,10 @@ describe("validateWorkflowVersion — the well-formed seeded workflow", () => {
 
 describe("validateWorkflowVersion — malformed input, fails closed", () => {
   it("rejects a workflow with a duplicate state id", () => {
+    const dup = tid("dup");
     const states: WorkflowState[] = [
-      { id: "dup", group: "started" },
-      { id: "dup", group: "completed" },
+      { id: dup, group: "started" },
+      { id: dup, group: "completed" },
     ];
     const result = validateWorkflowVersion(states, []);
     expect(result.valid).toBe(false);
@@ -1072,9 +1225,13 @@ describe("validateWorkflowVersion — malformed input, fails closed", () => {
   });
 
   it("rejects a transition naming a from-state that does not exist", () => {
-    const states: WorkflowState[] = [{ id: "a", group: "started" }];
+    const states: WorkflowState[] = [{ id: tid("a"), group: "started" }];
     const transitions: WorkflowTransition[] = [
-      transition({ id: "t", fromStateId: "ghost", toStateId: "a" }),
+      transition({
+        id: "t",
+        fromStateTemplateId: tid("ghost"),
+        toStateTemplateId: tid("a"),
+      }),
     ];
     const result = validateWorkflowVersion(states, transitions);
     expect(result.valid).toBe(false);
@@ -1084,9 +1241,13 @@ describe("validateWorkflowVersion — malformed input, fails closed", () => {
   });
 
   it("rejects a transition naming a to-state that does not exist", () => {
-    const states: WorkflowState[] = [{ id: "a", group: "started" }];
+    const states: WorkflowState[] = [{ id: tid("a"), group: "started" }];
     const transitions: WorkflowTransition[] = [
-      transition({ id: "t", fromStateId: "a", toStateId: "ghost" }),
+      transition({
+        id: "t",
+        fromStateTemplateId: tid("a"),
+        toStateTemplateId: tid("ghost"),
+      }),
     ];
     const result = validateWorkflowVersion(states, transitions);
     expect(result.valid).toBe(false);
@@ -1095,10 +1256,14 @@ describe("validateWorkflowVersion — malformed input, fails closed", () => {
     ).toBe(true);
   });
 
-  it("accepts fromStateId: null (any-state) without treating it as a dangling reference", () => {
-    const states: WorkflowState[] = [{ id: "a", group: "started" }];
+  it("accepts fromStateTemplateId: null (any-state) without treating it as a dangling reference", () => {
+    const states: WorkflowState[] = [{ id: tid("a"), group: "started" }];
     const transitions: WorkflowTransition[] = [
-      transition({ id: "t", fromStateId: null, toStateId: "a" }),
+      transition({
+        id: "t",
+        fromStateTemplateId: null,
+        toStateTemplateId: tid("a"),
+      }),
     ];
     expect(validateWorkflowVersion(states, transitions).valid).toBe(true);
   });
@@ -1110,21 +1275,23 @@ describe("validateWorkflowVersion — malformed input, fails closed", () => {
   });
 
   it("rejects more than one isReopen transition per version", () => {
+    const a = tid("a");
+    const b = tid("b");
     const states: WorkflowState[] = [
-      { id: "a", group: "started" },
-      { id: "b", group: "completed" },
+      { id: a, group: "started" },
+      { id: b, group: "completed" },
     ];
     const transitions: WorkflowTransition[] = [
       transition({
         id: "r1",
-        fromStateId: "b",
-        toStateId: "a",
+        fromStateTemplateId: b,
+        toStateTemplateId: a,
         isReopen: true,
       }),
       transition({
         id: "r2",
-        fromStateId: "b",
-        toStateId: "a",
+        fromStateTemplateId: b,
+        toStateTemplateId: a,
         roleId: "lead",
         isReopen: true,
       }),
@@ -1137,37 +1304,41 @@ describe("validateWorkflowVersion — malformed input, fails closed", () => {
   });
 
   it("accepts exactly one isReopen transition", () => {
+    const a = tid("a");
+    const b = tid("b");
     const states: WorkflowState[] = [
-      { id: "a", group: "started" },
-      { id: "b", group: "completed" },
+      { id: a, group: "started" },
+      { id: b, group: "completed" },
     ];
     const transitions: WorkflowTransition[] = [
       transition({
         id: "r1",
-        fromStateId: "b",
-        toStateId: "a",
+        fromStateTemplateId: b,
+        toStateTemplateId: a,
         isReopen: true,
       }),
     ];
     expect(validateWorkflowVersion(states, transitions).valid).toBe(true);
   });
 
-  it("rejects a duplicate (fromStateId, toStateId, roleId) transition tuple", () => {
+  it("rejects a duplicate (fromStateTemplateId, toStateTemplateId, roleId) transition tuple", () => {
+    const a = tid("a");
+    const b = tid("b");
     const states: WorkflowState[] = [
-      { id: "a", group: "started" },
-      { id: "b", group: "completed" },
+      { id: a, group: "started" },
+      { id: b, group: "completed" },
     ];
     const transitions: WorkflowTransition[] = [
       transition({
         id: "t1",
-        fromStateId: "a",
-        toStateId: "b",
+        fromStateTemplateId: a,
+        toStateTemplateId: b,
         roleId: "lead",
       }),
       transition({
         id: "t2",
-        fromStateId: "a",
-        toStateId: "b",
+        fromStateTemplateId: a,
+        toStateTemplateId: b,
         roleId: "lead",
       }),
     ];
@@ -1178,11 +1349,22 @@ describe("validateWorkflowVersion — malformed input, fails closed", () => {
     );
   });
 
-  it("rejects a duplicate among two any-state (fromStateId: null) transitions too", () => {
-    const states: WorkflowState[] = [{ id: "a", group: "cancelled" }];
+  it("rejects a duplicate among two any-state (fromStateTemplateId: null) transitions too", () => {
+    const a = tid("a");
+    const states: WorkflowState[] = [{ id: a, group: "cancelled" }];
     const transitions: WorkflowTransition[] = [
-      transition({ id: "t1", fromStateId: null, toStateId: "a", roleId: null }),
-      transition({ id: "t2", fromStateId: null, toStateId: "a", roleId: null }),
+      transition({
+        id: "t1",
+        fromStateTemplateId: null,
+        toStateTemplateId: a,
+        roleId: null,
+      }),
+      transition({
+        id: "t2",
+        fromStateTemplateId: null,
+        toStateTemplateId: a,
+        roleId: null,
+      }),
     ];
     const result = validateWorkflowVersion(states, transitions);
     expect(result.valid).toBe(false);
@@ -1192,21 +1374,23 @@ describe("validateWorkflowVersion — malformed input, fails closed", () => {
   });
 
   it("the same (from, to) pair for two DIFFERENT roles is not a duplicate", () => {
+    const a = tid("a");
+    const b = tid("b");
     const states: WorkflowState[] = [
-      { id: "a", group: "started" },
-      { id: "b", group: "completed" },
+      { id: a, group: "started" },
+      { id: b, group: "completed" },
     ];
     const transitions: WorkflowTransition[] = [
       transition({
         id: "t1",
-        fromStateId: "a",
-        toStateId: "b",
+        fromStateTemplateId: a,
+        toStateTemplateId: b,
         roleId: "lead",
       }),
       transition({
         id: "t2",
-        fromStateId: "a",
-        toStateId: "b",
+        fromStateTemplateId: a,
+        toStateTemplateId: b,
         roleId: "member",
       }),
     ];
@@ -1216,7 +1400,8 @@ describe("validateWorkflowVersion — malformed input, fails closed", () => {
 
 describe("validateWorkflowVersion — the single-state workflow", () => {
   it("a single state and zero transitions is structurally valid (though noOutboundStateIds flags it as a dead end)", () => {
-    const states: WorkflowState[] = [{ id: "only", group: "unstarted" }];
+    const only = tid("only");
+    const states: WorkflowState[] = [{ id: only, group: "unstarted" }];
     expect(validateWorkflowVersion(states, []).valid).toBe(true);
     expect(noOutboundStateIds(states, [])).toEqual(["only"]);
   });
@@ -1226,17 +1411,18 @@ describe("validateWorkflowVersion — the single-state workflow", () => {
 // validateProjectStateSelection — WF-2, and the "no initial state" malformed case.
 //
 // A workflow version carries no "initial state" field of its own (data-model.md: the
-// default is `project_state.is_default`, a *project* setting). The generic state-machine
+// default is realised by `state.is_default` on the project's own concrete row — the
+// retired `project_state` table this once lived on is gone). The generic state-machine
 // expectation "a workflow with no initial state must fail closed" is modelled here as
-// exactly that: a project with no default state selected at all.
+// exactly that: a project with no default template selected at all.
 // ---------------------------------------------------------------------------
 
 describe("validateProjectStateSelection — WF-2", () => {
-  it("is valid when every enabled state has an outbound transition and a default is selected", () => {
+  it("is valid when every enabled template has an outbound transition and a default is selected", () => {
     const result = validateProjectStateSelection(
       SEEDED_TRANSITIONS,
-      ["open", "in_progress"],
-      "open",
+      [OPEN, IN_PROGRESS],
+      OPEN,
     );
     expect(result).toEqual({ valid: true, refusedStateIds: [], errors: [] });
   });
@@ -1244,7 +1430,7 @@ describe("validateProjectStateSelection — WF-2", () => {
   it("fails closed — 'no initial state' — when no default state is selected at all", () => {
     const result = validateProjectStateSelection(
       SEEDED_TRANSITIONS,
-      ["open", "in_progress"],
+      [OPEN, IN_PROGRESS],
       null,
     );
     expect(result.valid).toBe(false);
@@ -1256,8 +1442,8 @@ describe("validateProjectStateSelection — WF-2", () => {
   it("fails closed when the selected default is not one of the enabled states", () => {
     const result = validateProjectStateSelection(
       SEEDED_TRANSITIONS,
-      ["open"],
-      "in_progress",
+      [OPEN],
+      IN_PROGRESS,
     );
     expect(result.valid).toBe(false);
     expect(
@@ -1267,24 +1453,24 @@ describe("validateProjectStateSelection — WF-2", () => {
     ).toBe(true);
   });
 
-  it("refuses enabling a state the workflow has no outbound transition from, and names it", () => {
+  it("refuses enabling a template the workflow has no outbound transition from, and names it", () => {
     const noOutboundTransitions = SEEDED_TRANSITIONS.filter(
       (t) => t.id !== "t6",
     ); // drop global Cancel
     const result = validateProjectStateSelection(
       noOutboundTransitions,
-      ["open", "cancelled"],
-      "open",
+      [OPEN, CANCELLED],
+      OPEN,
     );
     expect(result.valid).toBe(false);
     expect(result.refusedStateIds).toEqual(["cancelled"]);
   });
 
-  it("a global any-state transition (Cancel) means no enabled state is ever refused on this ground", () => {
+  it("a global any-state transition (Cancel) means no enabled template is ever refused on this ground", () => {
     const result = validateProjectStateSelection(
       SEEDED_TRANSITIONS,
       STATES.map((s) => s.id),
-      "open",
+      OPEN,
     );
     expect(result.refusedStateIds).toEqual([]);
   });
@@ -1300,9 +1486,9 @@ describe("the empty workflow", () => {
   });
 
   it("legalTransitions and findLegalTransition both answer 'nothing', not throw", () => {
-    expect(legalTransitions([], "anything", ["any-role"])).toEqual([]);
+    expect(legalTransitions([], tid("anything"), ["any-role"])).toEqual([]);
     expect(
-      findLegalTransition([], "anything", "else", ["any-role"]),
+      findLegalTransition([], tid("anything"), tid("else"), ["any-role"]),
     ).toBeUndefined();
   });
 

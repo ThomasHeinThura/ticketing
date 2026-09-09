@@ -10,6 +10,15 @@
  * `workflow_transition` row and its `guards`/`effects` jsonb, not a second registration
  * of them).
  *
+ * **A state has two levels (corrected 2026-09-09, `data-model.md` §3).** `state_template`
+ * is the workspace-level lifecycle-position catalogue a workflow's transitions reference
+ * (`from_state_template_id`/`to_state_template_id`) — it alone carries the fixed `group`
+ * vocabulary. `state` is a project's own concrete lifecycle position, mapped to exactly
+ * one template via `state_template_id`; it carries **no `group` column of its own** — a
+ * concrete state's group is its template's. `work_item.state_id` always points at a
+ * concrete `state`, never at a template. This module reasons about both, deliberately
+ * never letting one stand in for the other — see `StateTemplateId`/`StateId` below.
+ *
  * **Guard and approval facts are entirely caller-supplied.** `GuardContext` fields
  * (`allChildrenClosed`, `hasOpenBlockers`, ...) are resolved by the impure edge
  * (`apps/api`, querying child work items, blocker relations, the approvals module)
@@ -18,8 +27,49 @@
  */
 
 /**
+ * Two identities this module must never confuse: a workspace's `state_template.id` and a
+ * project's own concrete `state.id`. A `workflow_transition` references only the former
+ * (`data-model.md` §3: "This is the row a workspace-scoped `workflow`'s transitions
+ * reference ... **never** a project's concrete state directly, which is what lets one
+ * workflow serve every project that adopts it"); `work_item.state_id` and
+ * `scheduled_transition.from_state_id`/`to_state_id` hold only the latter. Both are, at
+ * the database, an ordinary `uuid`/`text` primary key — nothing about the *value* tells
+ * them apart, so the type system has to.
+ *
+ * Each is branded with a distinct phantom tag so `tsc` refuses a value of one where the
+ * other is required. The brand does not exist at runtime — both are, underneath, plain
+ * strings — so it costs nothing, and it proves nothing about *where* a string actually
+ * came from, only that it was deliberately promoted through the matching constructor
+ * below rather than assigned implicitly. That is a real, if partial, guarantee: a
+ * concrete `state.id` read off a row and passed straight into a `StateTemplateId` slot is
+ * a compile error, not a runtime surprise three calls later.
+ */
+export type StateTemplateId = string & { readonly __brand: "StateTemplateId" };
+export type StateId = string & { readonly __brand: "StateId" };
+
+/**
+ * The one sanctioned way to produce a `StateTemplateId` from a raw string: at the impure
+ * edge, once, wherever a `state_template.id` column is read off a row (or in this
+ * module's own tests, where a fixture already knows, by construction, that a literal
+ * names a template). Everywhere else, a `StateTemplateId` flows through already typed —
+ * this is deliberately the *only* place a `string` is coerced into one, so a reviewer
+ * auditing "did a concrete state id leak in here" has exactly one call site per source to
+ * check, not every function signature in the module.
+ */
+export function asStateTemplateId(id: string): StateTemplateId {
+  return id as StateTemplateId;
+}
+
+/** The one sanctioned way to produce a `StateId` from a raw string — see `asStateTemplateId`. */
+export function asStateId(id: string): StateId {
+  return id as StateId;
+}
+
+/**
  * The five fixed lifecycle groups (ADR 0011). "Closed" means `group` is `completed` or
- * `cancelled`; "open" means anything else — never a state name (`WF-15`).
+ * `cancelled`; "open" means anything else — never a state name (`WF-15`). `group` lives
+ * on `state_template` only; a project's concrete `state` carries no `group` column of its
+ * own — its group is whichever group its template has.
  */
 export const STATE_GROUPS = [
   "backlog",
@@ -31,9 +81,15 @@ export const STATE_GROUPS = [
 
 export type StateGroup = (typeof STATE_GROUPS)[number];
 
-/** A workspace `state` row, reduced to what this module needs: its identity and group. */
+/**
+ * A `state_template` row, reduced to what this module needs: its identity and group — the
+ * workspace-level lifecycle position a workflow's transitions reference (`data-model.md`
+ * §3/§6). This is never a project's concrete `state`: that row is project-scoped and
+ * carries no `group` of its own (a concrete state's group is its template's, resolved via
+ * `state.state_template_id`).
+ */
 export interface WorkflowState {
-  id: string;
+  id: StateTemplateId;
   group: StateGroup;
 }
 
@@ -72,6 +128,13 @@ export type GuardType = Guard["type"];
  * transition carries (`resolveEffects`) — it never executes one; writing the
  * `sla_pause` row, calling the assignment resolver, or inserting the
  * `scheduled_transition` row are all the impure edge's job.
+ *
+ * `schedule_transition`'s `toStateTemplateId` is a **template** reference, exactly like a
+ * transition's own `toStateTemplateId` (`WF-19`): the impure edge resolves it,
+ * immediately, against the work item's own project — the identical resolution `WF-2`
+ * specifies for a transition (`resolveStateTemplateForProject` in `workflow.ts`) — to a
+ * concrete `state` row, stored as such in `scheduled_transition.to_state_id` before
+ * `reminder-scan` ever fires it. No template lookup happens at fire time.
  */
 export type Effect =
   | { kind: "set_assignee"; personId: string | "default" }
@@ -79,19 +142,31 @@ export type Effect =
   | { kind: "pause_sla" }
   | { kind: "resume_sla" }
   | { kind: "set_field"; field: string; value: unknown }
-  | { kind: "schedule_transition"; afterMinutes: number; toStateId: string };
+  | {
+      kind: "schedule_transition";
+      afterMinutes: number;
+      toStateTemplateId: StateTemplateId;
+    };
 
 export type EffectKind = Effect["kind"];
 
 /**
- * A `workflow_transition` row, reduced to what this module needs. `fromStateId: null`
- * means "from any state" (`WF-5`, used for Cancel); `roleId: null` means all roles
- * (`WF-3`). `approvalPolicy` is meaningful only when `requiresApproval` is true.
+ * A `workflow_transition` row, reduced to what this module needs. Both state references
+ * are **state templates**, never a project's concrete `state` (`data-model.md` §3/§6):
+ * `fromStateTemplateId: null` means "from any state template" (`WF-5`, used for Cancel);
+ * `toStateTemplateId` is never null. `roleId: null` means all roles (`WF-3`).
+ * `approvalPolicy` is meaningful only when `requiresApproval` is true.
+ *
+ * Legality (`legalTransitions`/`findLegalTransition`, below) is decided entirely at the
+ * template level — comparing a work item's current template against
+ * `fromStateTemplateId`. Resolving `toStateTemplateId` to *this project's own* concrete
+ * `state` row is a separate, later step: `resolveStateTemplateForProject`'s job, not this
+ * type's — see "Resolving a transition to a project's state" (`workflows.md`, `WF-2`).
  */
 export interface WorkflowTransition {
   id: string;
-  fromStateId: string | null;
-  toStateId: string;
+  fromStateTemplateId: StateTemplateId | null;
+  toStateTemplateId: StateTemplateId;
   roleId: string | null;
   notePolicy: NotePolicy;
   noteVisibility: NoteVisibility;
@@ -121,7 +196,7 @@ export interface Workflow {
  * it only asks whether the already-resolved facts satisfy the guard.
  */
 export interface GuardContext {
-  /** `children_closed` — every child work item's state is in the `completed`/`cancelled` group. */
+  /** `children_closed` — every child work item's concrete state is, via its own template, in the `completed`/`cancelled` group (a concrete state carries no `group` of its own). */
   allChildrenClosed: boolean;
   /** `no_open_blockers` — true if at least one blocking relation is still open. */
   hasOpenBlockers: boolean;
@@ -150,10 +225,10 @@ export interface GuardResult {
 }
 
 /**
- * Everything beyond role/state legality and the CAB type-gate (`WF-14`) that decides
- * whether an already-legal transition is available right now. `approvalSatisfied` and
- * `cabSatisfied` are resolved by the approvals module (#36) against `approval.transition_id`
- * (`WF-13`) — this module never folds approval decisions itself.
+ * Everything beyond role/state-template legality and the CAB type-gate (`WF-14`) that
+ * decides whether an already-legal transition is available right now. `approvalSatisfied`
+ * and `cabSatisfied` are resolved by the approvals module (#36) against
+ * `approval.transition_id` (`WF-13`) — this module never folds approval decisions itself.
  */
 export interface TransitionOfferContext extends GuardContext {
   /** Whether every approval this transition's gate requires (`requires_approval`) is satisfied. Ignored when `requiresApproval` is false. */
@@ -185,12 +260,51 @@ export interface WorkflowValidationResult {
 }
 
 /**
- * The result of checking whether a project may enable a given set of states (`WF-2`).
- * `refusedStateIds` names exactly which of `enabledStateIds` the workflow has no
+ * The result of checking whether a project may enable a given set of state **templates**
+ * (`WF-2`, `WF-9`): "a project may not create a concrete `state` for a template with no
+ * outbound transition anywhere in the workflows its types use." The `enabledStateIds`/
+ * `defaultStateId` arguments to `validateProjectStateSelection` (`workflow.ts`) are
+ * `state_template.id`s — the templates a project has adopted, or is choosing to adopt —
+ * never a project's concrete `state.id` directly; each adopted template is realised by
+ * exactly one of that project's own concrete `state` rows (`state.state_template_id`,
+ * `state.is_default` — replacing the retired `project_state` table, `data-model.md` §3's
+ * correction note). This function reasons entirely at the template level, because that is
+ * what a workflow's transitions reference; resolving an adopted template to *this
+ * project's own* concrete `state.id` is `resolveStateTemplateForProject`'s job, not this
+ * one's. `refusedStateIds` names exactly which of `enabledStateIds` the workflow has no
  * outbound transition from — the validation panel's own list, not a bare boolean.
  */
 export interface ProjectStateValidationResult {
   valid: boolean;
-  refusedStateIds: string[];
+  refusedStateIds: StateTemplateId[];
   errors: string[];
 }
+
+/**
+ * A project's own adoption map: which of its concrete `state` rows realises each
+ * `state_template` it has adopted, keyed by `state_template_id` (`data-model.md` §3). Built
+ * by the caller from that project's `state` rows — this module never queries them. Used by
+ * `resolveStateTemplateForProject` (`workflow.ts`) to answer "Resolving a transition to a
+ * project's state" (`workflows.md`, `WF-2`), the identical resolution `WF-19` reuses for
+ * `schedule_transition`'s own `toStateTemplateId`.
+ */
+export type ProjectStateAdoption = ReadonlyMap<StateTemplateId, StateId>;
+
+/**
+ * The result of resolving one `state_template.id` to a project's own concrete `state.id`
+ * ("Resolving a transition to a project's state", `workflows.md`; `WF-2`). The failure
+ * case is the interesting one, in the same style as `BlockReason` above: a workflow
+ * shared by every project whose work item types use it will routinely meet a project that
+ * has not created a concrete `state` for the template a transition targets — WF-2's "if
+ * no such row exists, the transition is not available in this project". That is a named
+ * outcome for the caller to act on (filter the transition out of `GET /transitions`, or
+ * refuse a stale attempt with the same 409 as "no matching transition", `WF-4`), never a
+ * thrown exception and never a bare `undefined` a caller could forget to check.
+ */
+export type StateTemplateResolution =
+  | { ok: true; stateId: StateId }
+  | {
+      ok: false;
+      reason: "template_not_adopted";
+      stateTemplateId: StateTemplateId;
+    };
