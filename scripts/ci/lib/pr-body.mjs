@@ -301,13 +301,69 @@ function normaliseItem(line) {
  * n/a` would pass with no reason at all. An item is different: the reason has to
  * come AFTER the `n/a`, because the words before it are the thing being excused.
  *
- * Linear: one `n/a`, one optional separator, then a run of non-space. No nested
- * quantifier over the same input.
+ * **The negation bypass (found 2026-09-09, not a hypothetical).** The first version of
+ * this predicate detected `n/a` as a bare substring found ANYWHERE on the line — the same
+ * mistake F9 made at block granularity, fixed there by reading a DECLARED state instead
+ * of searching for a token. One level down, at the checkbox line, the substring search
+ * survived: `- [ ] Screens opened — this is definitely NOT n/a, I simply did not...`
+ * contains the substring `n/a` followed by 6+ more characters, so it satisfied the old
+ * regex and excused the box — even though the author explicitly denied being n/a. That
+ * was hit by an author writing honestly, on the first attempt, not a hypothetical.
+ *
+ * The fix is the same shape as F9's: `n/a` must be a STATE DECLARATION — the first thing
+ * after the item's own text and its separator — not a token found anywhere on the line.
+ * `n/a` is looked for at the START of the clause that follows the item's separator, never
+ * inside it. That is deliberately structural rather than linguistic (no negation
+ * word-list, no sentiment reading): "this is definitely NOT n/a" does not OPEN with
+ * `n/a` — it opens with "this" — so it is rejected the same way any other wrong opening
+ * word would be, not because the checker recognised "NOT" as a negation. `not n/a`,
+ * `isn't n/a` and `never n/a` are rejected for the identical, non-linguistic reason: none
+ * of them is the literal sequence `n`, optional space, `/` (or `\` or `.`, the spellings
+ * `normaliseItem` already folds elsewhere in this file), optional space, `a` — the clause
+ * opens with "not"/"isn't"/"never", not with the n/a token itself.
+ *
+ * Linear: one separator search, one anchored opener match, no nested quantifier over the
+ * same input.
  */
+
+/**
+ * The separator between an item's own text and its declared state: a typographic dash, or
+ * a spaced hyphen. Deliberately NOT a bare colon, semicolon or unspaced hyphen — every
+ * real n/a in this file's own convention follows an em dash, and `` `pnpm
+ * test:permissions` `` inside an item's own label (definition-of-done.md) has a colon of
+ * its own that must never be misread as the item/state boundary. A colon still works
+ * fine AFTER the declaration — "n/a: this PR adds no routes" — because by then `n/a` has
+ * already matched as the opener and the colon is just part of the reason.
+ */
+const ITEM_SEPARATOR = /—|–|\s-\s/;
+
+/**
+ * `n/a`, spelled with a slash, backslash or dot — as an OPENER only, never a substring
+ * match. `not n/a` does not match this: after the leading `n` it expects (optional
+ * whitespace, then) a slash-like character, and `not` has an `o` there instead.
+ */
+const ITEM_NOT_APPLICABLE_OPENER = /^n\s*[/.\\]\s*a\b/i;
+
 function itemMarkedNotApplicable(line) {
-  return /\bn\/a\b\s*[\u2014\u2013:,;.-]?\s*\S[^\n]{5,}/i.test(
-    stripComments(line),
+  const withoutBox = stripComments(line)
+    .replace(OPEN_BOX, "")
+    .replace(ANY_BOX, "");
+  const split = ITEM_SEPARATOR.exec(withoutBox);
+  if (!split) {
+    return false; // no separator at all: there is no declared state to read
+  }
+  const clause = withoutLeadingDecoration(
+    withoutBox.slice(split.index + split[0].length),
   );
+  const opener = ITEM_NOT_APPLICABLE_OPENER.exec(clause);
+  if (!opener) {
+    return false; // the clause opens with something other than n/a — including a negation
+  }
+  const remainder = clause
+    .slice(opener[0].length)
+    .replace(/^[\s.,:;—–`'"-]+/, "")
+    .trim();
+  return remainder.length >= 6; // a reason, not just the two letters
 }
 
 /**

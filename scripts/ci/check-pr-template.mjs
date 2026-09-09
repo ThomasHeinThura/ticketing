@@ -36,7 +36,6 @@
  *   node scripts/ci/check-pr-template.mjs --pr 19        # when no event payload exists
  */
 
-import { spawnSync } from "node:child_process";
 import path from "node:path";
 import {
   changedFiles,
@@ -44,6 +43,7 @@ import {
   DiffUnavailableError,
 } from "./lib/diff.mjs";
 import { verifyWaiver } from "./lib/gate-waiver.mjs";
+import { headAgreesWithPayload } from "./lib/head-binding.mjs";
 import {
   checklistPresenceProblems,
   checklistProblems,
@@ -103,27 +103,6 @@ function gateRows(text) {
  * either pasted and ticked, or marked n/a with a reason — never left blank, and never
  * deleted.
  */
-
-/**
- * `HEAD`'s parent SHAs, in order.
- *
- * For `refs/pull/N/merge` this is `[base tip, pull request head]` — GitHub documents the
- * second parent as the head. Used to refuse an event payload that names a head the
- * checked-out tree does not agree with (M-1). Returns `[]` when HEAD cannot be read, which
- * makes the check inert rather than wrongly rejecting: the caller only rejects on a
- * POSITIVE disagreement, never on an absence of information.
- */
-function headParents() {
-  const shown = spawnSync("git", ["rev-list", "--parents", "-n", "1", "HEAD"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  });
-  if (shown.status !== 0) {
-    return [];
-  }
-  // `<commit> <parent>...`
-  return shown.stdout.trim().split(/\s+/).slice(1);
-}
 
 async function securitySurfaceTouched() {
   // GPT-F1: the scope is the UNION of ci-cd.md's list at the merge base and at HEAD, so
@@ -437,18 +416,19 @@ async function main() {
         // rather than arguing about.
         //
         // `refs/pull/N/merge` has exactly two parents: the base tip first, the pull
-        // request's head second. So when HEAD is a merge, the claimed head must BE one of
-        // its parents. Anything else is a payload disagreeing with the tree it was handed,
-        // and the only safe reading of that is to refuse.
+        // request's head second. So when HEAD is a merge, the claimed head must be its
+        // SECOND parent SPECIFICALLY (C-2 — accepting any parent let a payload naming the
+        // base tip through) — see lib/head-binding.mjs for the full reasoning, including
+        // why a non-merge HEAD is checked too even though it cannot occur in this
+        // repository's CI today (C-1), and why a git failure here refuses rather than
+        // silently reading as "not a merge" (C-3).
         if (prHead !== null) {
-          const parents = headParents();
-          if (parents.length > 1 && !parents.includes(prHead)) {
+          const agreement = headAgreesWithPayload(repoRoot, prHead);
+          if (!agreement.agrees) {
             throw new ReviewBindingUnavailableError(
-              `the event payload names ${prHead.slice(0, 9)} as this pull request's head, ` +
-                `but the checked-out merge commit's parents are ` +
-                `${parents.map((p) => p.slice(0, 9)).join(", ")}. A payload that disagrees ` +
-                "with the tree cannot be used to decide which code was reviewed — it would " +
-                "let an earlier commit stand in for the head and revive a stale note.",
+              `${agreement.reason} A payload that disagrees with the tree cannot be used ` +
+                "to decide which code was reviewed — it would let an earlier or unrelated " +
+                "commit stand in for the head and revive a stale note.",
             );
           }
         }

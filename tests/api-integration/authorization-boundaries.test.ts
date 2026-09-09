@@ -82,7 +82,7 @@ describe("task assignees stay inside the workspace", () => {
           description: "",
           priority: "low",
           status: "to-do",
-          columnId: columns.todo?.id ?? null,
+          columnId: columns.todo.id,
           number: 1,
           position: 1,
         })
@@ -120,7 +120,7 @@ describe("activity attribution", () => {
           description: "",
           priority: "low",
           status: "to-do",
-          columnId: columns.todo?.id ?? null,
+          columnId: columns.todo.id,
           number: 1,
           position: 1,
         })
@@ -166,7 +166,7 @@ describe("every assignee write path is workspace scoped", () => {
           description: "",
           priority: "low",
           status: "to-do",
-          columnId: columns.todo?.id ?? null,
+          columnId: columns.todo.id,
           number: 1,
           position: 1,
         })
@@ -317,7 +317,7 @@ describe("every assignee write path is workspace scoped", () => {
           description: "",
           priority: "low",
           status: "to-do",
-          columnId: columns.todo?.id ?? null,
+          columnId: columns.todo.id,
           number: 1,
           position: 1,
           userId: user.id,
@@ -363,7 +363,7 @@ describe("every assignee write path is workspace scoped", () => {
           description: "",
           priority: "low",
           status: "to-do",
-          columnId: columns.todo?.id ?? null,
+          columnId: columns.todo.id,
           number: 1,
           position: 1,
         })
@@ -409,7 +409,7 @@ describe("every assignee write path is workspace scoped", () => {
           description: "",
           priority: "low",
           status: "to-do",
-          columnId: columns.todo?.id ?? null,
+          columnId: columns.todo.id,
           number: 1,
           position: 1,
         })

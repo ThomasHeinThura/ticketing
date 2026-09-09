@@ -866,4 +866,40 @@ describe("the note binds to the pull request's head, not to the merge ref", () =
       "an unreadable payload must be reported, not swallowed",
     );
   });
+
+  it("C-4: the unreadable-payload refusal is a COLLECTED problem, not a crash — the non-vacuity control for the typed-error fix", () => {
+    // PR #81 LOW C-4. `loadPullRequestHead`'s read failure is wrapped as
+    // `ReviewBindingUnavailableError` specifically so the outer catch in
+    // check-pr-template.mjs COLLECTS it into `failures` and reaches `finish()`, instead of
+    // an untyped `Error` propagating uncaught out of `main()` (there is no top-level
+    // try/catch) and crashing the process.
+    //
+    // The test just above cannot tell these apart: a Node crash still prints the error's
+    // MESSAGE in its stack trace, so "fails CLOSED when the payload is named but
+    // unreadable" would stay green even if the typed-error wrap were reverted to a plain
+    // `throw new Error(...)` — exactly the vacuous-probe shape this batch is closing.
+    // Distinguish on two OBSERVABLES instead of the message: `finish()` is the only thing
+    // that ever prints "<name>: N problem(s)", and it is only reached if main() did NOT
+    // throw past its collecting try/catch; a crash never prints that line, and DOES print
+    // a stack trace with file:// frames.
+    const { dir } = mergeRefScenario();
+    const run = runChecker(
+      dir,
+      "check-pr-template.mjs",
+      ["--body", bodyWithNote()],
+      { GITHUB_EVENT_PATH: `${dir}/does-not-exist.json` },
+    );
+    const output = `${run.stdout}${run.stderr}`;
+    assert.notEqual(run.status, 0);
+    assert.match(
+      output,
+      /pr-template: \d+ problem\(s\)/,
+      "the failure must be COLLECTED and reported by finish(), not an uncaught crash",
+    );
+    assert.doesNotMatch(
+      output,
+      /at file:\/\/|at async main|node:internal\/(?:modules|process)/,
+      "a Node stack trace here means the process crashed instead of reporting a problem",
+    );
+  });
 });

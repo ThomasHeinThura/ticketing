@@ -306,6 +306,114 @@ describe("checklistProblems — applicability is per ITEM, not per block", () =>
   });
 });
 
+describe("checklistProblems — item-level n/a is a DECLARATION, not a substring (2026-09-09)", () => {
+  // The F9 defect one level down. The block-level fix (declaredState, above) reads the
+  // section's state from its FIRST MEANINGFUL LINE rather than searching for the token
+  // `n/a` anywhere. The item-level check kept the substring search, so a checkbox line
+  // that explicitly DENIED being n/a still satisfied `\bn\/a\b` and excused the box. Hit
+  // by an author writing honestly, on the first attempt — not a hypothetical. Five
+  // variants, measured through the real checker.
+
+  it("1. no n/a at all is flagged", () => {
+    const problems = checklistProblems(
+      "### Frontend change\n\n- [ ] Screens opened\n",
+    );
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /Screens opened/);
+  });
+
+  it("2. prose with no n/a token is flagged", () => {
+    const problems = checklistProblems(
+      "### Frontend change\n\n" +
+        "- [ ] Screens opened — deliberately left undone, no time this pass\n",
+    );
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /Screens opened/);
+  });
+
+  it("3. a line that DENIES being n/a is flagged, not excused — the defect itself", () => {
+    const line =
+      "- [ ] Screens opened — this is definitely NOT n/a, I simply did not get to it";
+    const problems = checklistProblems(`### Frontend change\n\n${line}\n`);
+    // Non-vacuity: BEFORE this fix, itemMarkedNotApplicable matched `\bn\/a\b` as a bare
+    // substring anywhere on the line, so THIS EXACT LINE was EXCUSED — checklistProblems
+    // returned [] for it, because the token `n/a` appears on the line followed by six-plus
+    // more characters. That is the defect: an author explicitly refusing the exemption was
+    // treated as though they had claimed it. It must now be flagged.
+    assert.equal(problems.length, 1, "was wrongly EXCUSED before this fix");
+    assert.match(problems[0], /Screens opened/);
+  });
+
+  it("4. a bare n/a with no reason is flagged", () => {
+    const problems = checklistProblems(
+      "### Frontend change\n\n- [ ] Screens opened — n/a\n",
+    );
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /Screens opened/);
+  });
+
+  it("5. a genuine n/a with a reason is excused", () => {
+    assert.deepEqual(
+      checklistProblems(
+        "### Frontend change\n\n- [ ] Screens opened — n/a because there is no UI\n",
+      ),
+      [],
+    );
+  });
+
+  it("rejects 'not', 'isn't' and 'never' n/a too — structurally, not by a word list", () => {
+    // None of these opens the clause with the n/a token itself, so none excuses the box —
+    // the SAME reason case 3 above is rejected, not a separate negation check.
+    for (const line of [
+      "- [ ] Screens opened — not n/a, there is a real reason I skipped it",
+      "- [ ] Screens opened — NOT n/a either",
+      "- [ ] Screens opened — isn't n/a, genuinely blocked",
+      "- [ ] Screens opened — never n/a, this always applies",
+    ]) {
+      const problems = checklistProblems(`### Frontend change\n\n${line}\n`);
+      assert.equal(problems.length, 1, `expected a blocker for: ${line}`);
+    }
+  });
+
+  it("folds n\\a and n.a. spellings the same way, genuine and negated", () => {
+    // The spellings `normaliseItem` already folds elsewhere in this file (stripping
+    // everything but letters and digits collapses n/a, n\a, n.a. and N/A to the same
+    // "n a"). The item-level opener recognises the same three punctuation marks.
+    assert.deepEqual(
+      checklistProblems(
+        "### Frontend change\n\n- [ ] Screens opened — n\\a because there is no UI\n",
+      ),
+      [],
+    );
+    assert.deepEqual(
+      checklistProblems(
+        "### Frontend change\n\n- [ ] Screens opened — N.A. because there is no UI\n",
+      ),
+      [],
+    );
+    for (const line of [
+      "- [ ] Screens opened — not n\\a, a real reason follows",
+      "- [ ] Screens opened — never N.A., this always applies",
+    ]) {
+      const problems = checklistProblems(`### Frontend change\n\n${line}\n`);
+      assert.equal(problems.length, 1, `expected a blocker for: ${line}`);
+    }
+  });
+
+  it("does not misread a colon inside the item's own label as the n/a separator", () => {
+    // `pnpm test:permissions` names a real checklist item (definition-of-done.md). Its
+    // own colon must not be mistaken for the item/state boundary — only the em dash after
+    // the label counts, so the genuine n/a right after it is still recognised.
+    assert.deepEqual(
+      checklistProblems(
+        "### Backend change\n\n" +
+          "- [ ] `pnpm test:permissions` green — n/a, no route changes in this PR\n",
+      ),
+      [],
+    );
+  });
+});
+
 describe("checklistPresenceProblems — F2, presence not just state", () => {
   const declared = ["Any change", "Backend change", "Phase completion"];
 
