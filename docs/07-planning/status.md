@@ -228,7 +228,7 @@ its remediation is in flight.
   section — recorded in
   `docs/07-planning/reviews/2026-09-05/features-core-servicedesk.md` § 10, and a feature is
   not started while its review section is non-empty. `check:reviews` enforces it. The
-  domain code exists on a draft pull request (#75) and already satisfies three of the
+  domain code exists on a draft pull request — check GitHub for it — and already satisfies three of the
   review's own recommended fixes, but **the first High is a data-model contradiction —
   workflows are workspace-scoped while states are project-scoped — that no agent may
   choose.** It needs Thomas.
