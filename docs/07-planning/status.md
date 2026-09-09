@@ -1,9 +1,10 @@
 # Status
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-09-09
 **Current stage:** P0 · Foundation — **IN PROGRESS**
-**Updated by:** Claude Code (Opus), operational-snapshot reconciliation after #16, #21,
-#57 and #60 merged
+**Updated by:** Claude Code (Sonnet), reconciliation on PR #68 after #64, #62, #65, #67
+and **#19** merged — #19 is the big one: `main` gained the CI workflows and all nine
+`check:*` gates for the first time, where before it had none
 
 > **This is a durable snapshot, not a work log.** Update it only on a durable transition: a
 > pull request merges or becomes genuinely review-ready, an issue blocks, unblocks or
@@ -26,8 +27,10 @@ Thomas confirmed the outstanding decisions on 2026-09-06 — the kaneo snapshot 
 (`42bb8011`, upstream main), inheriting kaneo's 45 migrations, the person model, the
 engine boundary rule, an RLS prototype in P0, and the stage/workstream/step/state
 vocabulary. **That procedural gate is closed: the licence pull request merged (#4) and the
-P0 issues exist — and P0 implementation is now underway, with #16, #21, #57 and #60
-merged.** The full documentation corpus exists — thirteen ADRs, an authoritative
+P0 issues exist — and P0 implementation is now underway, with #16, #21, #57, #60, #64,
+#62, #65, #67 and #19 merged.** #19 is the load-bearing one: `main` runs CI for the first
+time — a full gate matrix on every push, not just documented intent. The full
+documentation corpus exists — thirteen ADRs, an authoritative
 data model including the identity/SCIM and pending-action tables, a formal accelerated
 delivery calendar, a release plan, and a changelog convention. **Application code exists
 too**, and the four-category snapshot below says exactly what is on `main` versus what is
@@ -48,9 +51,10 @@ P7 Polish              ░░░░░░░░░░   0%
 ```
 
 **P0 carries no percentage on purpose.** The live *P0 — Foundation* milestone reports
-**2 closed of 10 total**; merged slices do not map onto a defined completion figure, and an
-invented one reads as progress nobody measured. The merged pull requests are listed
-individually under ON MAIN below, which is the honest unit of progress here.
+**3 closed of 10 total** (#4, #5, #7 — #7 closed 2026-09-09, corrected from the previous
+count of 2); merged slices do not map onto a defined completion figure, and an invented
+one reads as progress nobody measured. The merged pull requests are listed individually
+under ON MAIN below, which is the honest unit of progress here.
 
 ## Where the code is — the only four categories that mean anything
 
@@ -63,17 +67,38 @@ work gets reported as shipped, so the category is never optional.
 - **#5** the kaneo import at `42bb8011`, de-branded. Closed. `apps/api`, `apps/web`,
   `packages/{permissions,email,libs,mcp,typescript-config}`, `package.json`,
   `pnpm-lock.yaml`, migrations 0000–0049 (#16 added 0045–0049, the removal migrations).
-- **#11's deployment slice** (PR #20, merged `38ff9ac`) — a root `Dockerfile` that builds
-  and runs as uid 10001, `compose.yml` publishing no application port, the local /
-  production / UAT / Traefik overlays, `scripts/deploy.sh`, a `charts/taskdesk` that
-  fails closed on every bootstrap secret, and
+- **#11's deployment slice** (PR #20, merged `38ff9ac`) — a root `Dockerfile` running as
+  uid 10001, `compose.yml` publishing no application port, the local / production / UAT /
+  Traefik overlays, `scripts/deploy.sh`, a `charts/taskdesk` that fails closed on every
+  bootstrap secret, and
   [proxy-topology-evidence.md](../05-operations/proxy-topology-evidence.md).
+
+  **The image builds and the artifact boots.** This bullet previously said the Dockerfile
+  "builds and runs" with no caveat, then had to record that `node apps/api/dist/index.js`
+  failed with `ERR_MODULE_NOT_FOUND` even though `pnpm build` exited 0. **PR #62 fixed
+  it and is merged**: `@taskdesk/permissions` now emits explicit `.js` ESM specifiers.
+  Recorded because the shape keeps recurring: an exit code is not evidence that the thing
+  it built works.
 - Commands that run: `pnpm install | dev | build | lint | typecheck | test |
-  test:integration`, the five `i18n:*` scripts, and `scripts/deploy.sh`.
-- **No CI.** `.github/` on `main` holds only `pull_request_template.md` — there are **zero
-  workflow files**, so nothing runs automatically on a push. Every gate described anywhere
-  in this repository as "failing the build" is describing the intended rule, not current
-  behaviour, until #19 merges. This is the single most load-bearing fact in this section.
+  test:integration | test:permissions | test:all | test:ci-scripts`, the nine `check:*`
+  scripts, the five `i18n:*` scripts, `audit`, and `scripts/deploy.sh`.
+- **CI now runs on every push and pull request, for the first time.** `#19` merged
+  (`e11976f`) and added `.github/workflows/ci-fast.yml` and `ci-full.yml`. Its own first
+  gate-enforcing run on `main` went **green on all 11 applicable jobs** (a twelfth, the
+  pull-request-template/security-review job, correctly **skips** on a direct push to
+  `main` — it only runs on a pull request). This is the single most load-bearing fact in
+  this section, and it reverses the previous one: every gate this repository describes as
+  "failing the build" now genuinely can.
+- **All nine `check:*` gates are on `main`**: `check:env`, `check:vocabulary`,
+  `check:reviews`, `check:skips`, `check:overrides`, `check:openapi`, `check:i18n`,
+  `check:route-policy`, `check:pr-template` — plus `test:all` (the aggregate gate-status
+  reporter), `lint:ci`, `test:ci-scripts` (the gate machinery's own test suite), and
+  `audit --audit-level=high`. All green as of `e11976f` / `1e0bfef`.
+- **The OpenAPI baseline is real and enforced**: `tests/api-contract/openapi.json` is
+  committed and `check:openapi` confirms it matches the live API (122 operations).
+- **The dependency-security overrides are on `main`**: `pnpm-workspace.yaml` carries 36
+  pins/floors (inherited plus two raised, e.g. `sharp` for GHSA-rgj7-g3m4-5g8c), and
+  `check:overrides` confirms no competing source silently deactivates one.
 - **#16** (merged 2026-09-07 as `b75cf02`) — the inherited attack surface is **gone**: the
   public-project inline route and `is_public`, the six integration routers, billing,
   anonymous sign-in, account linking, the five-minute session cookie cache,
@@ -82,8 +107,10 @@ work gets reported as shipped, so the category is never optional.
   retrofit is the remainder.
 - **#21** (merged 2026-09-07 as `cc5d732`) — the policy registry, the evaluator and the
   route-coverage gate for #7 live in `packages/permissions`, and `pnpm test:permissions`
-  runs. **Merging it did not close #7.** The gate *script* is on `main`; nothing *executes*
-  it automatically, because there is still no CI.
+  runs (74 tests, 10 files). **Issue #7 closed 2026-09-09** (verified: `closedAt
+  2026-09-09T06:29:48Z`) — not on #21 merging, but once its "Done when" was independently
+  re-verified against `main` at `e11976f`, including the required-status-check clause (see
+  the ruleset note under Throttle 1 below).
 - **#57** (merged 2026-09-08 as `b4aef99`, carrying reviewed head `95dc928`) —
   **organization retrofit S1 is COMPLETE.** Five additive integration files under
   `tests/api-integration/` characterise the inherited `organization()` plugin against a
@@ -91,24 +118,67 @@ work gets reported as shipped, so the category is never optional.
   S4–S7 must reproduce.
 - **#60** (merged 2026-09-08 as `655df877`) — the control plane reconciled to S1's finding.
   Documentation only.
+- **#64** (merged) — `packages/email` build fixed: it built nothing and exited 0 after a
+  stale `tsBuildInfoFile`. One file.
+- **#65** (merged as `24d8236`) — organization retrofit **S0 + S2**: the dead-code sweep
+  (`migrate-organizations.ts` and the unused `SEAT_RECONCILIATION_LEASE` export, both
+  deleted), plus four native read routes (`GET /api/workspace`, `GET /api/workspace/{id}`,
+  `GET /api/workspace/{id}/invitations`, `GET /api/capabilities`) with their policy
+  declarations and the `requireSessionOnly()` runtime guard. Found and fixed a real
+  widening in the process — a personal API key had reached workspace, membership and
+  invitation data through these routes before remediation. **Status: IMPLEMENTED-PENDING-
+  VERIFY** — no independent Opus review has run on this head (decision log, 2026-09-08).
+- **#67** (merged as `cad15e06`) — organization retrofit **S4**: native workspace writes
+  (`POST /api/workspace`, `PATCH /api/workspace/{id}`, `DELETE /api/workspace/{id}`),
+  stacked on #65. Closed the instance-admin bypass on its two mutation routes with an
+  additive `require-workspace-role-authority.ts` guard; that bypass had been **pinned as
+  an accepted finding** by an earlier session (`A2-P17`). The shared `hasWorkspacePermission`
+  short-circuit is unchanged — re-keying it is #7's, and #66 stays open for its worse half.
+  **Status: IMPLEMENTED-PENDING-VERIFY** — no independent Opus review has run on this head.
+- **#19** (merged as `e11976f`) — the CI gates, `test:all`, the `check:*` scripts and the
+  OpenAPI baseline described above, for issue #10. Nine remediation rounds surfaced real
+  findings against the gate machinery itself (the review-scope list read from the working
+  tree rather than HEAD, a note-binding check verifiable without expiring, a `waived`
+  token satisfiable by negation) — all fixed and recorded in the decision log.
+  **Uncorrected until now: #19 merged with its own `check:pr-template` gate FAILING**, on
+  the identical two problems this document's own PR (#68) carries — an unticked
+  independent-security-review checkbox and no committed note at
+  `docs/07-planning/security-reviews/19-*.md`. Verified on the actual merged commit
+  (`4c24b8a4`, checked 06:23:13Z; merged 06:22:54Z per `gh pr view 19`/`gh run view`). No
+  decision-log entry records this as an authorised deviation the way
+  [PR #13's is recorded](#process-deviation--recorded-corrected-not-waived) below.
+  That is a gap in the record, not a claim that #19 is somehow unmerged — it is on `main`
+  and its CI is green on every job that actually gates a push. Flagged here for the
+  orchestrator; not something this lane may resolve by writing the note itself.
 - A GitHub Project board (project 1, *TaskDesk v2 — P0*) with the six agreed columns.
 
 ### IN OPEN PR — real code, not on `main`, do not report as available
 
 | PR | Issue | State |
 | --- | --- | --- |
-| **#19** | #10 | CI gates, `test:all`, the `check:*` scripts, `tests/api-contract/openapi.json`. **The next critical-path pull request** — it is what turns every rule described in this repository as "failing the build" into behaviour, because `main` still has zero workflow files. Independent review of its current head is not done. |
+| **#63** | #9 | First `packages/ui` extraction slice and an import-boundary checker. `## Screens opened` is honestly **BLOCKED** — no browser binary on the host. |
+| **#68** | — | The two 2026-09-08 authorization decisions (session-only reach, the instance-admin bypass), and this correction to `status.md`. |
+| **#69** | #33 | `packages/domain` bootstrapped with service-calendar arithmetic — the **first P1–P4 implementation work**, pure functions with exhaustive tests, no HTTP endpoint yet. Started under the blocking taxonomy (Throttle 1 is not open; this touches no file any in-flight security-path PR owns). |
 
-**#16, #21, #57 and #60 have merged** and moved to ON MAIN above. **#19 is the only open
-code pull request**, and nothing enforces a gate on `main` until it lands.
+**Only three pull requests carry real code and remain open: #63, #68 and #69.** #16, #21,
+#57, #60, #61, #64, #62, #65, #67 and #19 have all merged and moved to ON MAIN above.
+(A dependabot dependency-bump PR, #70, is also open — routine, not implementation work,
+and not tracked in this table.)
+
+**Corrected 2026-09-09.** An earlier revision of this table listed #19 alone and stated it
+was *"the only open code pull request"*. That was false for six of the seven then open,
+and it is exactly the failure this file exists to prevent — a snapshot that reads as
+authoritative while describing a repository that no longer exists. Found by an
+independent review of this document against the live repository, not by anyone reading it.
 
 ### BLOCKED
 
 - **#8** — the router retrofit still waits for #6's removal surface to settle. **#16's
-  deletions have landed**, which is half of it; the other half has not, because
-  `organization()` is **still mounted** and retrofit S2–S10 will move those routes to
-  native handlers. Classifying a route that is about to be replaced is wasted review and a
-  false sense of coverage, so this stays blocked on the retrofit, not on the deletions.
+  deletions have landed**, which is half of it; the retrofit itself has now started
+  moving (S0, S1, S2 and S4 have landed via #57/#65/#67 — S3, S5–S9, S10 remain), but
+  `organization()` is **still mounted** end to end. Classifying a route that is about to
+  be replaced is wasted review and a false sense of coverage, so this stays blocked on the
+  full retrofit, not on the deletions alone.
 - **#17** — sessions already minted by the removed MCP OAuth and device flows. Deleting an
   endpoint is not revoking a credential; a consent click created a full 30-day session row.
 
@@ -117,9 +187,11 @@ code pull request**, and nothing enforces a gate on `main` until it lands.
 - **better-auth `organization()` is removed in P0 — final.** It is **still mounted** on
   `main`, because it is load-bearing for workspace creation, invitations, members and
   roles. Load-bearing means it needs a retrofit (S1–S10, #6 work), not that it is kept.
-- **Retrofit S1 — characterisation — is COMPLETE** and on `main` (#57). **S2–S10 remain.**
-  **S2 does not start automatically merely because S1 completed**; it needs its own
-  scheduling decision, and a green characterisation suite is not permission to begin.
+- **Retrofit S0, S1, S2 and S4 are COMPLETE** and on `main` (#65, #57, #65, #67
+  respectively). **S3, S5–S9 and S10 remain.** Landing S4 did not start S5; each step
+  needs its own scheduling decision, and a green equivalence suite is not permission to
+  begin the next one. Native reads and writes exist **alongside** the plugin, which is
+  still what the client actually calls (S3 is the client cut-over and has not happened).
 - **The frozen organization-create baseline is N = 9 observable effects: eight first-order
   create effects plus one eventual, one-hop durable notification consequence.** The eight
   are the `workspace` row, the owner `workspace_member` row, the three seeded
@@ -131,12 +203,23 @@ code pull request**, and nothing enforces a gate on `main` until it lands.
   methods (a full create-path source read, and a row-count diff across all 29 public
   tables) after the count had been wrong at four, six, seven and eight. Full statement in
   the [retrofit plan](retrofits/organization-plugin-retrofit.md) and the
-  [decision log](decision-log.md); **S4 must reproduce all nine.**
-- **The OpenAPI baseline is `tests/api-contract/openapi.json`.** The file exists in #19.
-- **Throttle 1's five conditions** are settled in their exact form (below). Four are unmet.
-  **Throttle 1 is not yet satisfied/enforced: the route-policy CI behaviour is implemented
-  and demonstrated on PR #19, but #19 is unmerged, and required-check/ruleset reconciliation
-  still follows it.**
+  [decision log](decision-log.md); **S4 reproduced all nine on `main`.**
+- **The OpenAPI baseline is `tests/api-contract/openapi.json`, committed and enforced.**
+  `check:openapi` confirms it matches the live API (122 operations) on every push.
+- **Throttle 1's five conditions are settled in their exact form** (full table below).
+  **Four of five are now met** (1, 3, 4, 5); **one is not** (2), precisely:
+  - **#2 unmet** — issue #6 needs the `organization()` retrofit through **S10**, and only
+    S0/S1/S2/S4 have landed. `organization()` is still mounted end to end.
+  - **#3 — corrected 2026-09-09, live during this very reconciliation pass.** This section
+    previously said #3 was unmet because required-status-check reconciliation needed a
+    ruleset change only Thomas could make. **Thomas made it, moments before this document
+    was corrected**: `protect-main` (ruleset `22365005`, `updated_at
+    2026-09-09T06:28:04Z`) now lists `route policy coverage + permission matrix` among
+    eleven `required_status_checks`, `current_user_can_bypass: never` — verified by
+    re-reading the live ruleset via the API, not by trusting the closing comment on #7.
+    Issue #7 closed the same window (`closedAt 2026-09-09T06:29:48Z`). #3 is **met.**
+  **Throttle 1 is still not open** — all five conditions are required, and #6 alone keeps
+  it closed. Do not round "four of five" up to open.
 - **The four application-side gaps that stop v2 UAT coming up** — `TASKDESK_PORT` actually
   being read, live/ready health endpoints, Node static serving, a `storage.filesystem`
   driver — are **#11 prerequisites**. Ownership is assigned when they are scheduled.
@@ -146,16 +229,16 @@ code pull request**, and nothing enforces a gate on `main` until it lands.
 **Features:** 0 of **31** shipped — [index](../03-features/README.md) (teams.md was missing from the index until 2026-09-05)
 **ADRs:** 0001–0013 accepted · **Docs:** ~136 files, link check clean · **Security review:** see the breakdown below — the corpus is reviewed, the product is not
 **Security status** — "complete" was a documentation claim being read as a product claim,
-so it is broken out. Two of the seven have moved now that code is on `main`; four remain
+so it is broken out. Three of the seven have moved now that CI exists; four remain
 out of reach until later gates:
 
 | | |
 | --- | --- |
 | Architecture review | ✅ done |
 | Threat model | ✅ done |
-| Implementation review | 🟡 in progress — #16, #21 and #57 each carried an independent Opus review, and #16's and #21's are recorded in [security-reviews/](security-reviews/). Not a whole-product review |
-| SAST / dependency scanning | ⬜ code and a lockfile now exist, but **nothing scans them automatically** — `main` has zero workflow files. Lands with #19 |
-| Authorization tests (route coverage, role × route matrix, tenant isolation) | ⬜ P0 |
+| Implementation review | 🟡 in progress — #16, #21, #57, #19 each carried independent review rounds; #16's, #21's and #13's are recorded in [security-reviews/](security-reviews/) as committed notes. **#19 merged with its own review checkbox unticked and no committed note** (see Blocked → Process deviation) — not yet recorded as an authorised deviation. #65 and #67 (native workspace routes) are **IMPLEMENTED-PENDING-VERIFY**, no independent review run on either head. Not a whole-product review |
+| SAST / dependency scanning | ✅ **on `main` since #19.** `.github/workflows/ci-fast.yml` runs `pnpm audit --audit-level=high` and a dependency-audit job on every push and pull request; GitHub CodeQL and GitGuardian also run. Currently 2 moderate advisories, 0 high/critical |
+| Authorization tests (route coverage, role × route matrix, tenant isolation) | ✅ `pnpm test:permissions` (74 tests) runs in CI via `check:route-policy` and is now a **required status check** on `main` (`protect-main` ruleset, updated 2026-09-09) — Throttle 1 condition 3 is met. Tenant isolation itself is still P0/#8 scope, not yet exercised |
 | Internal red-team pass | ⬜ before the internal go-live gate |
 | External penetration test | ⬜ before the first external paying customer (R19) |
 
@@ -249,14 +332,19 @@ limits, then GitHub Copilot too, then handed to Claude Code:**
 
 ## Next
 
-**The critical path right now is #19.** It is the next pull request, and it is the one that
-converts every "fails the build" rule in this repository into behaviour — `main` currently
-runs nothing on a push. After it merges, the required-check and ruleset reconciliation
-follows, and only then can Throttle 1's conditions 4 and 5 be claimed.
+**#19 merged, and the required-check/ruleset reconciliation is also now done** — Thomas
+updated `protect-main` while this document was being corrected, and #7 closed the same
+window. Throttle 1's conditions 1, 3, 4 and 5 are now all met. **The critical path is
+issue #6 alone**: retrofit **S3** (moving the client off the plugin for reads, the
+precondition for S5 onward) and the remaining S5–S9/S10 steps. #6 closing is what opens
+Throttle 1.
 
-**Not next, deliberately:** retrofit **S2**. S1 completing does not start S2 — that needs
-its own scheduling decision. Issue **#6 stays OPEN / In Progress** with S2–S10 outstanding,
-and **#7 stays OPEN** even though #21 merged.
+**Not next, deliberately:** retrofit **S5**. S4 completing does not start S5 — that needs
+its own scheduling decision, and S5's own precondition is S4, not S3 (S3 gates S8a instead).
+Issue **#6 stays OPEN / In Progress** with S3, S5–S9 and S10 outstanding. **#7 is now
+CLOSED** (2026-09-09) — the registry, evaluator, route-coverage gate and the required-
+status-check reconciliation are all done; #6 is the only issue left keeping Throttle 1
+closed.
 
 **P0 · Foundation.** Order matters — the gates go in before the features. Two things
 changed on 2026-09-06: a **step 0** (spec closure — done, see [phases.md](phases.md#p0--foundation))
@@ -320,6 +408,26 @@ pass. **From now on a security-path pull request does not merge until its review
 recorded on it** — and once #10 lands, the fast CI job becomes a required status check so
 this stops depending on anyone remembering.
 
+**Corrected 2026-09-09: #10 has landed (as #19) and the prediction above is only half
+true.** `check:pr-template` on PR #19's own final commit (`4c24b8a4`) reported exactly the
+two problems this rule exists to catch — an unticked independent-security-review checkbox
+and no committed note — and **failed**, one second before Thomas merged it (`e11976f`,
+06:22:54Z). No decision-log entry records this as an authorised deviation the way #13's is
+recorded above.
+
+**The fast CI job is now a required status check — but not the part that would have
+caught this.** `protect-main` (ruleset `22365005`) gained a `required_status_checks` rule
+during this same reconciliation pass (`updated_at 2026-09-09T06:28:04Z`), closing Throttle
+1's condition 3. Its list, re-read directly from the API, is `static`, `unit + component`,
+`build`, `registers - env, vocabulary, reviews, skips, overrides`, `route policy coverage +
+permission matrix`, `gate checkers + red probes`, `contract - OpenAPI drift`, `CI matches
+ci-cd.md`, `supply chain - dependency audit`, `supply chain - secret scan`, `helm lint +
+template` — **eleven jobs, and `pull request template + security review` is not one of
+them.** So the exact gap #19 fell through — a security-path pull request merging with its
+review checkbox unticked and no committed note — is **still not mechanically blocked** by
+GitHub after today's ruleset change. "Stops depending on anyone remembering" describes the
+other ten gates now; this one gate still depends on it.
+
 ### Open
 
 - ~~**`gh` is not authenticated.**~~ **RESOLVED 2026-09-06.** `gh` is authenticated and
@@ -339,9 +447,10 @@ this stops depending on anyone remembering.
 - ~~**`scripts/openapi/` has no destination.**~~ **DECIDED 2026-09-06** (decision log):
   the committed baseline the drift check compares against is
   `tests/api-contract/openapi.json`; a published `apps/site/public/openapi.json` is
-  generated output, not the baseline. **IN OPEN PR #19** — `scripts/ci/check-openapi.mjs`
-  and the baseline file exist there and the `contract - OpenAPI drift` job passes. **Not on
-  `main`.** *Blast radius: one lane.*
+  generated output, not the baseline. **RESOLVED, on `main` since #19 (2026-09-09).**
+  `scripts/ci/check-openapi.mjs` and the baseline file are on `main`, and the `contract -
+  OpenAPI drift` job passes on every push (122 operations, verified with `check:openapi`).
+  *Blast radius: one lane.*
 - **v2 UAT is not deployable yet, and the remaining reasons are application-side.**
   The deployment skeleton is **ON MAIN** — PR #20 merged 2026-09-06 as `38ff9ac`. A
   `Dockerfile` that builds, base + local + production + UAT compose files, Traefik
@@ -393,35 +502,35 @@ this stops depending on anyone remembering.
 
 ---
 
-## Throttle 1 — not yet satisfied
+## Throttle 1 — not yet open (four of five conditions met)
 
-**Throttle 1 is not yet satisfied/enforced: the route-policy CI behaviour is implemented
-and demonstrated on PR #19, but #19 is unmerged, and required-check/ruleset reconciliation
-still follows it.**
+**Corrected 2026-09-09, twice in the same pass.** First correction: #19 merged (`e11976f`),
+so conditions 1, 4 and 5 became objectively met. **Second correction, made minutes into
+writing the first one, because the repository kept moving while this document was being
+fixed:** condition 3 was drafted here as unmet — needing a required-status-check ruleset
+change "only Thomas can make" — and then Thomas made exactly that change while this section
+was being written. Re-read from the live API rather than left as first drafted. **Only
+condition 2 (#6, the issue) remains unmet. Throttle 1 itself is still NOT open** — all
+five conditions are required, and #6 alone keeps it closed. Do not round "four of five" up
+to open.
 
-**Four of the five conditions are unmet.** Throttle 1 opens only when **all** are true.
 Note the wording of 2 and 3: the **issue** completes. A slice merging is not the condition,
 and reading it that way would open the throttle while `organization()` is still mounted
 (decision log, 2026-09-06) — which it is.
 
-**Demonstrated is not enforced.** Conditions 4 and 5 are about behaviour on `main`, and
-`main` has **zero workflow files**: `.github/` holds only `pull_request_template.md`. The
-route-policy gate has been built and shown to work on #19, and that is real progress — but
-until #19 merges nothing runs on a push, and until the required-check and ruleset
-reconciliation that **follows** #19 is done, a failing gate cannot block a merge.
-
 | | Condition | State |
 | --- | --- | --- |
-| 1 | **#5** complete | ✅ merged as PR #13 |
-| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged, so the inherited attack surface is gone, and #57 merged, so retrofit **S1 is complete**. **S2–S10 remain** and `organization()` is still mounted. #6 is **not** complete |
-| 3 | **#7** complete | ⬜ **OPEN / In Progress.** #21 merged, so the registry, evaluator and route-coverage gate are **on `main`** and `pnpm test:permissions` runs. The issue itself is still open — a merged slice is not a completed issue |
-| 4 | route coverage **actually executes** in CI | ⬜ **implemented and demonstrated on #19, which is unmerged.** `main` has no workflow files, so nothing executes on a push. The gate script itself is on `main` via #21 |
-| 5 | adding a route without a policy **fails the build** | ⬜ **demonstrated on #19**; the shrink-only baseline ratchet that closed the append-a-line loophole merged with #21. Not *enforced*: that needs #19 merged **and** the required-check/ruleset reconciliation that follows it |
+| 1 | **#5** complete | ✅ merged as PR #13, closed |
+| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; only **S0, S1, S2 and S4** have landed (#65, #57, #65, #67). S3 (client cut-over off the plugin) and S5–S9/S10 (unmount) remain, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
+| 3 | **#7** complete | ✅ **met — issue closed 2026-09-09** (`closedAt 2026-09-09T06:29:48Z`). #21 put the registry, evaluator and route-coverage gate on `main`; #19 put `pnpm test:permissions` (74 tests) in CI via `check:route-policy` on every push and pull request. The last open clause — both tests **required status checks** — closed when Thomas updated `protect-main` (ruleset `22365005`): `route policy coverage + permission matrix` now sits among 11 entries in `required_status_checks`, `strict_required_status_checks_policy: true`, `current_user_can_bypass: never` (`updated_at 2026-09-09T06:28:04Z`, re-read directly from `gh api repos/.../rulesets/22365005`, not taken from the closing comment's word) |
+| 4 | route coverage **actually executes** in CI | ✅ **met.** `.github/workflows/ci-fast.yml`'s `route-policy` job runs `pnpm check:route-policy` on every push and pull request, and did on `main`'s first gate-enforcing run (`e11976f`, all 11 applicable jobs green) |
+| 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`, 304 tests, 0 failed) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one |
 
-Conditions 4 and 5 are the ones most easily forgotten: it is **not enough** that #7 has a
-passing test locally, and it is not enough that #19 has shown the gate working. The check
-must execute in CI on `main`, which means the part of #10 that enforces route-policy
-coverage merges first — and then the required-check and ruleset reconciliation after it.
+**What "met" does not mean.** Four conditions being true is not Throttle 1 being open — all
+five are required, and #6 is not a paperwork gap: it is real, unfinished implementation
+depth (S3 and S5–S10 of the retrofit). Nothing about #7 closing or the ruleset landing
+changes how much of `organization()` is still mounted. Throttle 1 opens the day #6 closes,
+and not before.
 
 ---
 
@@ -459,6 +568,52 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-09 · PR #68 rebased onto #19; status.md reconciled against a moving repository
+
+Branch `docs/session-only-and-instance-admin-decisions` (PR #68) was cut before #19 merged
+and had never run the gate matrix #19 introduced. Rebased once onto `origin/main`
+(`955f8d4` → `e11976f`); one conflict, in `decision-log.md` (both branches had inserted
+newest-first entries at the same point) — resolved by keeping both entry sets intact, PR
+#19's four gate-machinery entries first, then this branch's two, verified afterwards with
+`git diff origin/main..HEAD` showing **zero removed lines** in that file.
+
+**Full gate matrix run and green**, real counts, not copied from the task brief: `lint:ci`
+(1031 files, 53 warnings, 0 errors), `check:env`/`check:vocabulary`/`check:reviews`/
+`check:skips`/`check:overrides`/`check:openapi` (122 operations match)/`check:i18n`, all
+exit 0; `check:route-policy` and `test:permissions` both 10 files / 74 tests; `test:all
+--list` 0/0/17-not-enabled; `audit --audit-level=high` 2 moderate, exit 0; `test:ci-scripts`
+45 suites / 304 tests; `typecheck --force` and `build --force` both green; `test --force`
+114 files / 728 tests across 6 packages. Only the known, intentional blocker remains:
+`check:pr-template` red on the unticked independent-security-review box and the missing
+committed note — not fixed, per instruction.
+
+**status.md brought forward across five merged PRs (#64, #62, #65, #67, #19)** — the ON
+MAIN / IN OPEN PR / BLOCKED / DECIDED sections, the security-status table and the Throttle
+1 table all rewritten against the live repository rather than the prior snapshot. #19 is
+the load-bearing fact: `main` runs CI and all nine `check:*` gates for the first time.
+
+**Found in passing, verified rather than assumed:** PR #19 itself merged with its own
+`check:pr-template` gate **failing** — the same two problems this PR's gate will show —
+one second before Thomas merged it (`4c24b8a4` checked 06:23:13Z, merged 06:22:54Z). No
+decision-log entry records it as an authorised deviation the way #13's is. Recorded in
+ON MAIN and Blocked → Process deviation; not something this lane may resolve.
+
+**The repository changed under this correction while it was being written**, and the
+second change is the more important one to get right: Throttle 1's condition 3 was
+drafted here as unmet — needing a required-status-check ruleset change "only Thomas can
+make" — and then Thomas made exactly that change (`protect-main` ruleset `22365005`,
+`updated_at 2026-09-09T06:28:04Z`) and closed issue #7 (`closedAt 06:29:48Z`) minutes
+later, live, during this session. Re-verified against the API rather than left as first
+drafted or trusted from the closing comment's own claim. Throttle 1 is now four of five
+conditions met — only issue #6 (the retrofit through S10; only S0/S1/S2/S4 have landed)
+keeps it closed. Stated precisely rather than rounded up: **Throttle 1 is still not
+open.**
+
+**Not done:** the security-review checkbox and note (by design — not this lane's to
+satisfy); no decision-log entry added for #19's deviation (flagged for the orchestrator,
+per control-plane ownership); no attempt to advance retrofit S3 or later (out of scope for
+this PR).
 
 ### 2026-09-06 · #11 deployment skeleton built and measured on the real host
 
