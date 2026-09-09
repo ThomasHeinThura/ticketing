@@ -246,22 +246,6 @@ The search half is strong: `SV-3` (scoped to reach, out-of-reach records simply 
 
 ## 12. `service-calendars.md` — P2
 
-**Verdict: ready-with-fixes** (the strongest spec in the group — the only real gaps are one JSON shape that cannot express a stated rule, and one word that collides with `sla.md`)
-
-`CAL-6`/`CAL-7` (IANA tz database; spring-forward hour skipped, fall-back hour counted once) are the kind of precision that prevents a whole class of bugs, and the test list matches them one-for-one. Permissions and every route carry a capability that exists in rbac.md. Data matches `service_calendar` exactly. Open questions: None.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| High | `CAL-5` "A calendar with no windows … produces **`none`** for every SLA measured against it" collides with `sla.md`, where `none` means specifically "**No policy applies**. A delivery project with no service commitment". A zero-cover calendar *does* have a policy — its clock simply never advances, which under `sla.md`'s own state table is `ok` forever. Two documents give one state value two meanings, and SLA state drives badges, filters and reports. | Pick one: either add a distinct state (`no_cover`) to `sla.md`'s table, or reword `CAL-5` to "the clock never advances, so such items remain `ok` indefinitely — which is why zero cover is warned about at save". |
-| Medium | `CAL-12` "A recurring holiday (every 25 December) is stored as a **rule** and expanded per year", but the `holidays` jsonb schema shown in the Data section supports only `{date, name}` and `{from, to, name}` — there is no rule form. The implementer must invent the recurrence representation, and it must round-trip through the editor and the `.ics` importer. | Extend the documented JSON with the recurrence variant (e.g. `{ "recurs": "annually", "month": 12, "day": 25, "name": "…" }`) and say whether expansion happens at write or at read. |
-| Medium | `CAL-10` offers three holiday sources — manual, `.ics` import, and **country presets for a given year** — but only `POST /holidays/import` exists in the API list. Preset generation has no route (hence no policy under rbac.md's coverage test) and no stated data source (bundled dataset? library? which one?). | Add the route with its capability, and name the preset data source and its update cadence. `CAL-11` already sets the right expectation that presets are advisory. |
-| Medium | `CAL-3` "A window ending at `24:00` means midnight at the end of that day", but the schema shows `"HH:MM"` strings and `24:00` is not a valid time in most parsers (and the 24×7 preset is written `00:00–24:00`). | State the encoding explicitly — minutes-from-midnight `0..1440`, or `"24:00"` as a documented sentinel with a named parser — and add a validation test for it. |
-| Low | Both this spec and `sla.md` guard calendars with `sla_policy:read`/`sla_policy:manage`. Consistent between the two documents, but a calendar is not a policy, and rbac.md has no calendar capability. | Either add `service_calendar:manage` to rbac.md, or add one line here saying the reuse is deliberate so a reviewer does not read it as an error. |
-| Low | `CAL-9` "A calendar in use cannot be deleted … the UI lists them" — the listing needs a route (usage/references) that the API section does not include. | Add `GET /api/service-calendars/{id}/usage` with `sla_policy:read`. |
-| Low | **Depends on: nothing**, yet the feature flag is `feature.sla` — so the calendar editor is invisible unless SLA is enabled, which is a dependency in practice. | Note that the flag is shared with SLA deliberately. |
-
----
-
 ## 13. `request-types-and-catalogue.md` — P2
 
 **Verdict: not-ready** (the per-organisation catalogue — a tenant-visibility control — is specified in prose with no storage, no route and no test)

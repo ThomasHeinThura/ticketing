@@ -41,31 +41,37 @@ Seeded on workspace creation, all editable, all clonable.
 ```jsonc
 {
   "windows": {
-    "mon": [{ "from": "09:00", "to": "17:00" }],
-    "tue": [{ "from": "09:00", "to": "17:00" }],
-    "wed": [{ "from": "09:00", "to": "12:00" }, { "from": "13:00", "to": "17:00" }],
+    "mon": [{ "from": 540, "to": 1020 }],
+    "tue": [{ "from": 540, "to": 1020 }],
+    "wed": [{ "from": 540, "to": 720 }, { "from": 780, "to": 1020 }],
     "sat": [],
     "sun": []
   },
   "holidays": [
     { "date": "2026-12-25", "name": "Christmas Day" },
-    { "from": "2026-12-27", "to": "2026-12-31", "name": "Company shutdown" }
+    { "from": "2026-12-27", "to": "2026-12-31", "name": "Company shutdown" },
+    { "recurs": "annually", "month": 1, "day": 1, "name": "New Year's Day" }
   ]
 }
 ```
 
-Multiple windows per day are supported, which is how a lunch break or a split shift is
-expressed.
+`windows[].from`/`.to` are minutes-from-midnight, `0..1440` (`09:00` = `540`, `17:00` =
+`1020`) — not `"HH:MM"` strings; see `CAL-3`. Multiple windows per day are supported,
+which is how a lunch break or a split shift is expressed. `holidays` takes three shapes —
+a single date, an inclusive range, or a `{recurs, month, day}` rule for a date that
+repeats every year (`CAL-12`).
 
 ## Behaviour
 
 - `CAL-1` A calendar has exactly one timezone. All windows are interpreted in it.
 - `CAL-2` Windows may not overlap within a day. Overlaps are rejected at save.
-- `CAL-3` A window ending at `24:00` means midnight at the end of that day. A window may
-  not span midnight; use two windows on consecutive days.
+- `CAL-3` Window boundaries are minutes-from-midnight, `0..1440` (see Data, above). A
+  window ending at `1440` means midnight at the end of that day; `1440` never appears as
+  a window's `from`. A window may not span midnight; use two windows on consecutive days.
 - `CAL-4` A holiday removes all cover for that date, regardless of windows.
 - `CAL-5` A calendar with no windows on any day provides zero cover. Allowed, warned
-  about, and produces `none` for every SLA measured against it.
+  about at save — the clock never advances, so items measured against it remain `ok`
+  indefinitely.
 - `CAL-6` Timezone handling uses a real IANA timezone database. DST transitions are
   handled by the library, never by arithmetic on offsets.
 - `CAL-7` During a DST spring-forward, an hour that does not exist is skipped. During
@@ -74,16 +80,21 @@ expressed.
   because SLA state is computed on read. The editor warns and shows how many open work
   items are affected.
 - `CAL-9` A calendar in use cannot be deleted. It must be replaced on every policy and
-  project referencing it first, and the UI lists them.
+  project referencing it first, and the UI lists them (`GET
+  /api/service-calendars/{id}/usage`, below).
 
 ## Holiday management
 
 - `CAL-10` Holidays are entered manually, imported from an `.ics` file, or generated from
-  a country preset for a given year.
+  a country preset for a given year (`POST .../holidays/preset`, below). Preset data is a
+  versioned dataset bundled with the release — no external service call at request time —
+  refreshed each release; per `CAL-11`, it is a starting point, never authority.
 - `CAL-11` Country presets are shipped for common jurisdictions and are a starting point,
   not authority — the administrator confirms them.
-- `CAL-12` A recurring holiday (every 25 December) is stored as a rule and expanded
-  per year.
+- `CAL-12` A recurring holiday (every 25 December) is stored as a `{recurs: "annually",
+  month, day}` rule (see Data, above) and expanded at read time: `isHoliday` and every
+  coverage query check the rule directly against the date in question. Nothing is
+  pre-expanded or persisted per year.
 - `CAL-13` Adding a holiday retroactively moves deadlines later. Warned about, with a
   count of affected items.
 
@@ -93,6 +104,11 @@ expressed.
 | --- | --- |
 | Read | `sla_policy:read` |
 | Create, edit, delete | `sla_policy:manage` |
+
+Deliberately reused rather than a `service_calendar:*` capability of its own: a calendar
+has no independent lifecycle outside the SLA policies that reference it. The feature flag
+`feature.sla` is shared with [SLA](sla.md) for the same reason — a calendar editor is
+meaningless with SLA turned off.
 
 ## Screens
 
@@ -115,7 +131,9 @@ GET    /api/service-calendars/{id}            sla_policy:read
 PATCH  /api/service-calendars/{id}            sla_policy:manage
 DELETE /api/service-calendars/{id}            sla_policy:manage
 POST   /api/service-calendars/{id}/holidays/import   sla_policy:manage
+POST   /api/service-calendars/{id}/holidays/preset?country={cc}&year={yyyy} sla_policy:manage
 GET    /api/service-calendars/{id}/preview?year=2026 sla_policy:read
+GET    /api/service-calendars/{id}/usage             sla_policy:read
 ```
 
 ## Edge cases
