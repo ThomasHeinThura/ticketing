@@ -8,9 +8,9 @@
  * make a forgotten elevation a build failure rather than a shipped hole.
  */
 
-import type { Capability } from "./capabilities";
-import { isCapabilityPolicy, type RouteKey } from "./policy";
-import type { PolicyRegistry, RegistryEntry } from "./registry";
+import type { Capability } from "./capabilities.js";
+import { isCapabilityPolicy, type RouteKey } from "./policy.js";
+import type { PolicyRegistry, RegistryEntry } from "./registry.js";
 
 /**
  * Capabilities that mint or widen authority. A route requiring one of these must carry

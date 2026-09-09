@@ -10,8 +10,8 @@
  * small dedicated pull request, never by a feature agent in passing.
  */
 
-import type { Capability, CapabilityTier } from "./capabilities";
-import type { RoleScope } from "./roles";
+import type { Capability, CapabilityTier } from "./capabilities.js";
+import type { RoleScope } from "./roles.js";
 
 /** Which portal a person belongs to. One person, one organisation; a customer is never staff. */
 export type Side = "staff" | "customer";

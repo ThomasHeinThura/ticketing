@@ -7,7 +7,7 @@
  * entry fails at boot rather than at request time (ADR 0010 §1).
  */
 
-import { type Capability, isCapability } from "./capabilities";
+import { type Capability, isCapability } from "./capabilities.js";
 import {
   BODY_PREDICATES,
   DELEGATED_SURFACES,
@@ -26,7 +26,7 @@ import {
   type RouteKey,
   SCOPE_SOURCES,
   SCOPES,
-} from "./policy";
+} from "./policy.js";
 
 /** One feature folder's `policy.ts`. */
 export type PolicySource = {

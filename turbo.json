@@ -40,6 +40,18 @@
 			"cache": false,
 			"outputs": ["coverage/**"]
 		},
+		"@taskdesk/permissions#test": {
+			// #62-F1: "test".dependsOn is ["^build"], which builds a package's
+			// DEPENDENCIES, not the package itself -- packages/permissions has no
+			// workspace dependencies, so its own "test" task had nothing forcing
+			// "build" to run first. dist-esm-specifiers.test.ts reads dist/**/*.js
+			// and hard-fails when it is missing, so this package's own build must be
+			// an explicit, deterministic prerequisite of its own test task rather
+			// than something other packages happen to pull in as a side effect.
+			"dependsOn": ["^build", "build"],
+			"cache": false,
+			"outputs": ["coverage/**"]
+		},
 		"test:permissions": {
 			"dependsOn": ["^build"],
 			"cache": false,
