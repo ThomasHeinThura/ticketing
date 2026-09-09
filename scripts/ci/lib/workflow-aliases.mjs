@@ -48,10 +48,28 @@
  * pin's claim ("cannot be added, retargeted or removed unnoticed") was false for exactly
  * those three shapes. This file has no top-level side effect of its own — it only defines
  * and exports the Map — so the probe imports it directly and asserts against
- * `[...WORKFLOW_ALIASES.entries()]` itself. Whatever code ran to build the Map, the probe
- * sees the Map's actual entries: all three shapes above (and any other way of mutating it)
- * are closed at once, because none of them can produce a live sixth alias without it
- * showing up in this export.
+ * `[...WORKFLOW_ALIASES]` (a spread, which reads via `Symbol.iterator`) rather than
+ * `[...WORKFLOW_ALIASES.entries()]` — the same channel `test-all.mjs` itself reads
+ * (`for...of` plus `.get()`, never `.entries()`). That closes the three shapes above,
+ * structurally, plus a fourth found in review PR #91 round 3 (LOW 1): a `Proxy` whose
+ * `.entries()` returns a pinned five-entry list while `Symbol.iterator` and `.get()` still
+ * see the real six — invisible to a pin that asserts on `.entries()`, caught by one that
+ * doesn't.
+ *
+ * **This does not close every way of mutating the Map, and two shapes still evade it,
+ * both found in the same round:**
+ *
+ *   - A `.set()` call gated on an environment variable the test runner's own child
+ *     process sets but a real `pnpm test:all` run does not (e.g.
+ *     `if (!process.env.NODE_TEST_CONTEXT) WORKFLOW_ALIASES.set(...)`). The pin and the
+ *     reconciler observe genuinely different Maps here, for a reason outside this file's
+ *     control — no assertion this pin makes runs in the reconciler's process.
+ *   - A `.set()` performed by the CONSUMER, `test-all.mjs`, on its own imported reference
+ *     to this Map, after import. The probe only ever reads the Map as this file exports
+ *     it, in its own process; it cannot observe a mutation a different file applies to its
+ *     copy in a different process afterward.
+ *
+ * Both are real gaps in what this pin can catch, not claimed to be closed here.
  */
 export const WORKFLOW_ALIASES = new Map([
   ["pnpm check:route-policy", "pnpm test:permissions"],
