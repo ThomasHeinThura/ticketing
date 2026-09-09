@@ -3,7 +3,7 @@
 > ## ⚠ How to read this file
 >
 > **Snapshot taken:** 2026-09-09
-> **`main` at that moment:** `5270954` (`52709541365a5ea8616a20650ea01f570f768168`)
+> **`main` at that moment:** `a9abf9a` (`a9abf9a1f0f9447673b4635ae8911fc5cb5937af`)
 > **Stage:** P0 · Foundation — IN PROGRESS
 > **Throttle 1:** SHUT — 4 of 5 conditions met; condition 2 (issue #6 through retrofit S10)
 > is the sole blocker
@@ -154,7 +154,8 @@ work gets reported as shipped, so the category is never optional.
   stacked on #65. Closed the instance-admin bypass on its two mutation routes with an
   additive `require-workspace-role-authority.ts` guard; that bypass had been **pinned as
   an accepted finding** by an earlier session (`A2-P17`). The shared `hasWorkspacePermission`
-  short-circuit is unchanged — re-keying it is #7's, and #66 stays open for its worse half.
+  short-circuit is unchanged — re-keying it is #7's. **#66, its worse half, is now closed**
+  (PR #80): a missing `workspace_role` row is a DENY for every role but `owner`.
   **Status: IMPLEMENTED-PENDING-VERIFY** — no independent Opus review has run on this head.
 - **#19** (merged as `e11976f`) — the CI gates, `test:all`, the `check:*` scripts and the
   OpenAPI baseline described above, for issue #10. Nine remediation rounds surfaced real
@@ -182,9 +183,22 @@ branches opened underneath it.
 
 At the snapshot SHA above, what is durably true and worth recording:
 
-- **Eleven pull requests merged on 2026-09-09** — #64, #62, #65, #67, #19, #68, #63, #69,
-  #71, #72, #73 — on top of #16, #21, #57, #60 and #61 earlier. That is history and it does
-  not go stale.
+- **Nineteen pull requests merged on 2026-09-09**, and they fall into two groups with
+  *different review bases*, which is the distinction worth recording:
+  - **The eleven up to `5270954`** — #64, #62, #65, #67, #19, #68, #63, #69, #71, #72, #73 —
+    on top of #16, #21, #57, #60 and #61 earlier. **These are the waived set** (see below).
+  - **The eight since `5270954`** — #78, #81, #79, #80, #84, #77, #83, #85 — which did
+    **not** use the waiver. Each carries committed review evidence at the tier its own
+    changed files required, and the two tiers are recorded in **different places**:
+    - **In security scope — #81, #79, #80, #77.** Independent **Opus** review, written up as
+      a committed note in `docs/07-planning/security-reviews/`, named by pull-request number
+      and declaring the exact reviewed head.
+    - **Out of security scope — #78, #84, #83, #85.** Independent **Sonnet** reviews,
+      recorded **in the pull-request bodies**, not as review notes. Do not read the absence
+      of a file in `security-reviews/` as an absent review; read it as the classifier having
+      put that change outside security scope.
+  A count of merges "that day" is not the durable fact and an earlier version of this line
+  claimed it was; the *review basis of each group* is.
 - **Nothing in an open pull request is on `main`.** Do not describe it as available, and do
   not rebuild it. Check GitHub.
 - **A branch existing releases nothing.** Only a merge releases a dependent retrofit stage,
@@ -192,11 +206,12 @@ At the snapshot SHA above, what is durably true and worth recording:
   [retrofit stage ledger](retrofits/organization-plugin-retrofit.md).
 
 **The review state of what is on `main` is the part that does not go stale, so read it here.**
-All eleven merged under Thomas's explicit authorisation on the strength of independent
-**Sonnet** review, with the mandatory **Opus** gate **waived**. Five touched
+**The eleven up to `5270954`** merged under Thomas's explicit authorisation on the strength of
+independent **Sonnet** review, with the mandatory **Opus** gate **waived**. Five touched
 security-review-scope paths. No review note was written and no independent-review checkbox
 was ticked. **That waiver was given once, for those pull requests, and does not carry
-forward.** Since 2026-09-09 the template/security-review job is the **twelfth required status
+forward** — the eight merges since then each carry their own committed review evidence at the
+tier their changed files required, and none invoked it. Since 2026-09-09 the template/security-review job is the **twelfth required status
 check**, so a pull request can no longer merge without committed review evidence — see the
 newest decision-log entry. Any findings from further security audits of `main`, and their
 remediation status, are tracked as GitHub issues and pull requests — read them there
@@ -206,26 +221,26 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 
 - **#8** — the router retrofit still waits for #6's removal surface to settle. **#16's
   deletions have landed**, which is half of it; the retrofit itself has now started
-  moving (S0, S1, S2 and S4 have landed via #57/#65/#67 — S3, S4b, S5–S9, S10 remain), but
+  moving (S0, S1, S2, S4, S4b and S5 have landed via #57/#65/#67/#85/#77 — S3, S6a, S7, S8a,
+  S9 and S10 remain), but
   `organization()` is **still mounted** end to end. Classifying a route that is about to
   be replaced is wasted review and a false sense of coverage, so this stays blocked on the
   full retrofit, not on the deletions alone.
 - **#17** — sessions already minted by the removed MCP OAuth and device flows. Deleting an
   endpoint is not revoking a credential; a consent click created a full 30-day session row.
-- **Retrofit S7 (native role writes) — ⛔ BLOCKED BY #66, and independently by #82.** Not a
-  scheduling preference. #66 is a privilege-restoration fail-open: `hasWorkspacePermission`
-  falls back to the compiled built-in role definitions when a `workspace_role` row is absent,
-  so a role an administrator has *narrowed* — or deleted — silently regains its built-in
-  privileges. S7 writes that exact table. Authoring role writes, and especially role
-  **deletion**, on top of a known fail-open on the row being deleted is how the
-  delete-after-narrow escalation becomes shippable. **Do not author native role-delete routes
-  until #66 is merged and independently cleared.** #82 is a second, independent P0 security
-  blocker on S7: TaskDesk's canonical rule is one workspace membership = exactly one role,
-  and the two authorization surfaces currently disagree on malformed multi-role values — see
-  the decision log. **S7's release condition is #66 cleared AND multi-role (#82) cleared**,
-  each independently reviewed. Check GitHub for both issues' current state (`gh issue view
-  66`, `gh issue view 82`) — do not infer it from this file. When either remediation lands it
-  needs its own independent review before S7 is released.
+- **Retrofit S7 (native role writes) — ⛔ BLOCKED BY #82 ALONE.** Not a scheduling
+  preference. **#66 is CLOSED** — PR #80 removed the privilege-restoration fail-open where
+  `hasWorkspacePermission` fell back to the compiled built-in role definitions when a
+  `workspace_role` row was absent, so a role an administrator had *narrowed*, or deleted,
+  silently regained its built-in privileges. S7 writes that exact table, and the
+  delete-after-narrow escalation it would have made shippable is gone: a missing row is now a
+  DENY for every role but `owner`, whose authority is compiled-in by design (retrofit plan
+  R5). **#82 remains, and it is sufficient on its own to keep S7 shut:** TaskDesk's canonical
+  rule is one workspace membership = exactly one role, and the two authorization surfaces
+  disagree on malformed multi-role values — see the decision log. PR #84 has characterized the
+  divergence and pinned the four target behaviours; the remediation itself is not written.
+  **S7's release condition is now multi-role (#82) cleared, independently reviewed.** Check
+  GitHub for #82's current state (`gh issue view 82`) — do not infer it from this file.
 - **#31 (P2 workflows) — blocked by AGENTS.md do-not 15.** `docs/03-features/workflows.md`
   is the subject of a *not-ready* review verdict — the verdict and its 4 High, 4 Medium and
   2 Low findings live in the review document, not in the spec itself, which has no review
@@ -242,9 +257,9 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 - **better-auth `organization()` is removed in P0 — final.** It is **still mounted** on
   `main`, because it is load-bearing for workspace creation, invitations, members and
   roles. Load-bearing means it needs a retrofit (S1–S10, #6 work), not that it is kept.
-- **Retrofit S0, S1, S2 and S4 are COMPLETE** and on `main` (#65, #57, #65, #67
-  respectively). **S3, S4b, S5–S9 and S10 remain.** Landing S4 did not start S5; each step
-  needs its own scheduling decision, and a green equivalence suite is not permission to
+- **Retrofit S0, S1, S2, S4, S4b and S5 are COMPLETE** and on `main` (#65, #57, #65, #67,
+  #85, #77 respectively). **S3, S6a, S7, S8a, S9 and S10 remain.** Landing a stage does not
+  start the next; each step needs its own scheduling decision, and a green equivalence suite is not permission to
   begin the next one. Native reads and writes exist **alongside** the plugin, which is
   still what the client actually calls (S3 is the client cut-over and has not happened).
 - **The frozen organization-create baseline is N = 9 observable effects: eight first-order
@@ -263,8 +278,11 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   `check:openapi` confirms it matches the live API (122 operations) on every push.
 - **Throttle 1's five conditions are settled in their exact form** (full table below).
   **Four of five are now met** (1, 3, 4, 5); **one is not** (2), precisely:
-  - **#2 unmet** — issue #6 needs the `organization()` retrofit through **S10**, and only
-    S0/S1/S2/S4 have landed. `organization()` is still mounted end to end.
+  - **#2 unmet** — issue #6 needs the `organization()` retrofit through **S10**, and it has
+    not run that far: S0, S1, S2, S4, S4b and S5 have landed; S3, S6a, S7, S8a, S9 and S10
+    have not. `organization()` is still mounted end to end. The
+    [stage ledger](retrofits/organization-plugin-retrofit.md) is the authoritative count —
+    this bullet is the fifth place in this file that had to be corrected for the same fact.
   - **#3 — corrected 2026-09-09, live during this very reconciliation pass.** This section
     previously said #3 was unmet because required-status-check reconciliation needed a
     ruleset change only Thomas could make. **Thomas made it, moments before this document
@@ -394,9 +412,11 @@ issue #6 alone**: retrofit **S3** (moving the client off the plugin for reads, t
 precondition for S5 onward) and the remaining S5–S9/S10 steps. #6 closing is what opens
 Throttle 1.
 
-**Not next, deliberately:** retrofit **S5**. S4 completing does not start S5 — that needs
-its own scheduling decision, and S5's own precondition is S4, not S3 (S3 gates S8a instead).
-Issue **#6 stays OPEN / In Progress** with S3, S4b, S5–S9 and S10 outstanding. **#7 is now
+**S5 has since shipped** (PR #77), as has **S4b** (PR #85) — an earlier version of this
+section listed S5 as "not next, deliberately", which is no longer true. The principle behind
+that note still holds: landing one stage does not start the next, each needs its own
+scheduling decision. Issue **#6 stays OPEN / In Progress** with S3, S6a, S7, S8a, S9 and S10
+outstanding. **#7 is now
 CLOSED** (2026-09-09) — the registry, evaluator, route-coverage gate and the required-
 status-check reconciliation are all done; #6 is the only issue left keeping Throttle 1
 closed.
@@ -578,14 +598,14 @@ and reading it that way would open the throttle while `organization()` is still 
 | | Condition | State |
 | --- | --- | --- |
 | 1 | **#5** complete | ✅ merged as PR #13, closed |
-| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; only **S0, S1, S2 and S4** have landed (#65, #57, #65, #67). S3, S4b (client workspace-write cutover) and S5–S9/S10 (unmount) remain, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
+| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; **S0, S1, S2, S4, S4b and S5** have landed (#65, #57, #65, #67, #85, #77). S3, S6a, S7, S8a, S9 and S10 (unmount) remain, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
 | 3 | **#7** complete | ✅ **met — issue closed 2026-09-09** (`closedAt 2026-09-09T06:29:48Z`). #21 put the registry, evaluator and route-coverage gate on `main`; #19 put `pnpm test:permissions` (74 tests) in CI via `check:route-policy` on every push and pull request. The last open clause — both tests **required status checks** — closed when Thomas updated `protect-main` (ruleset `22365005`): `route policy coverage + permission matrix` now sits among 11 entries in `required_status_checks`, `strict_required_status_checks_policy: true`, `current_user_can_bypass: never` (`updated_at 2026-09-09T06:28:04Z`, re-read directly from `gh api repos/.../rulesets/22365005`, not taken from the closing comment's word) |
 | 4 | route coverage **actually executes** in CI | ✅ **met.** `.github/workflows/ci-fast.yml`'s `route-policy` job runs `pnpm check:route-policy` on every push and pull request, and did on `main`'s first gate-enforcing run (`e11976f`, all 11 applicable jobs green) |
-| 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`, 304 tests, 0 failed) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one |
+| 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one |
 
 **What "met" does not mean.** Four conditions being true is not Throttle 1 being open — all
 five are required, and #6 is not a paperwork gap: it is real, unfinished implementation
-depth (S3 and S5–S10 of the retrofit). Nothing about #7 closing or the ruleset landing
+depth (S3, S6a, S7, S8a, S9 and S10 of the retrofit). Nothing about #7 closing or the ruleset landing
 changes how much of `organization()` is still mounted. Throttle 1 opens the day #6 closes,
 and not before.
 
