@@ -30,7 +30,12 @@ function useTransferWorkspaceOwnership() {
       queryClient.invalidateQueries({
         queryKey: ["workspace-capabilities", variables.workspaceId],
       });
-      queryClient.invalidateQueries({ queryKey: ["active-organization"] });
+      // Deliberately NOT invalidating ["active-organization"]: nothing in
+      // apps/web/src subscribes to that key post-S3 (use-active-workspace
+      // now derives from ["workspaces"] and the session's own
+      // activeOrganizationId, not a react-query read keyed this way). It was
+      // invalidated here before; removed as dead code alongside the
+      // identical calls in general.tsx.
     },
   });
 }

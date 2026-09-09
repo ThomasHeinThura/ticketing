@@ -282,11 +282,11 @@ function RouteComponent() {
       await deleteWorkspace({ workspaceId: workspace.id });
       toast.success(t("settings:workspaceGeneral.toastDeleted"));
 
-      // Invalidate all workspace-related queries
+      // Invalidate all workspace-related queries. (["active-organization"]
+      // was invalidated here too before -- nothing subscribes to that key,
+      // same as the identical dead call removed from saveWorkspace above and
+      // from use-transfer-workspace-ownership.ts's onSuccess.)
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
-      await queryClient.invalidateQueries({
-        queryKey: ["active-organization"],
-      });
 
       navigate({ to: "/dashboard" });
     } catch (error) {
