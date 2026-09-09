@@ -17,27 +17,6 @@
 
 ## 1. `work-items.md` — P1
 
-**Verdict: ready-with-fixes** (close to ready; the gaps are data-model gaps, not behavioural ones)
-
-Strong spec: 29 numbered rules, a permissions table, a route list with a capability per route, a real edge-case table, tests, and "Open questions: None". Every capability it names (`work_item:read/create/update/transition/assign/set_priority/escalate_priority/rank/delete`) exists in rbac.md. `WI-9` correctly routes state changes through the workflow rather than a field write, matching ADR 0011.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| High | `WI-20` "Archiving hides an item from views but preserves it" and `WI-21` "Deletion is soft for 30 days, then purged" describe **two distinct lifecycles**, but `work_item` in the data model has only one nullable column, `archived_at`. An implementer must invent how a soft-deleted item is distinguished from an archived one — and the wrong guess makes archived items silently purgeable. | Add `deleted_at timestamptz` to `work_item` in the data model, state that `archived_at` and `deleted_at` are independent, and say which one the default list filter excludes. Same fix needed for `project` (see §3). |
-| High | Edge case "Moved to another project → Key is retained. A redirect alias is created so old links work" is unimplementable as written: the data model declares `work_item.key` as **generated** from `{project.key}-{number}` via a trigger off `project.last_work_item_number`, and no alias/redirect table exists anywhere in the data model. | Decide one: (a) key becomes a stored, non-generated column set once at insert, plus a new `work_item_key_alias (old_key, work_item_id)` table; or (b) cross-project move re-keys and the old key 301s via an alias table. Either way add the table to the data model and add the rule as a numbered `WI-n`. |
-| High | `WI-5` "Creating from a template copies title, description, labels, custom field values and **checklist**" references two things that exist nowhere: no work-item template table, and no checklist entity in the data model or in any other spec. | Either delete `WI-5` and move templates to a P4 spec, or specify `work_item_template` + `checklist_item` tables, their permissions, and their API routes. As written the implementer invents a schema. |
-| Medium | `WI-7` "optimistic concurrency on `version`" — `api-design.md` confirms the `version`/`If-Match` convention, but `work_item` in the data model lists no `version` column. | Add `version integer not null default 1` to `work_item` (and to `comment`, `workflow`, `sla_policy`, which `api-design.md` also claims carry it). |
-| Medium | `WI-7` (409 on version mismatch) versus edge case "Two people drag the same card → **Last write wins** on position". Position is a field; the spec does not say it is exempt from the version check, so an implementer either breaks drag-and-drop with 409s or silently drops the version check on PATCH. | State explicitly: rank changes go through `POST /work-items/{key}/rank`, which is exempt from `If-Match` and is last-write-wins; all other field writes are version-checked. |
-| Medium | `WI-12` "Positions rebalance in the background when the gap between neighbours becomes too small to bisect" — no threshold, no algorithm (float bisect? LexoRank? numeric(20,10)?), no named job. `work_item.position` has no declared type in the data model. | Name the encoding and the threshold (e.g. `position numeric`, rebalance the whole state partition when any gap < 1e-6), and name the background job so `background-jobs.md` can own it. |
-| Medium | `WI-29` "Assignee and requester are watchers **implicitly and may opt out**" — the `watcher` table is `(work_item_id, person_id)` only. There is no way to record "implicitly watching but opted out"; the implementer will either materialise implicit watchers (breaking opt-out) or add a column on their own. | Add `watcher.source ('explicit'\|'implicit')` and `muted boolean`, or state that opting out inserts a suppression row. |
-| Medium | `POST /api/work-items/bulk → (per-item capability)` is not a policy. rbac.md's route-coverage CI test requires every route to declare `{ capability, scope }` or `{ public: true, reason }`; "per-item" satisfies neither and will fail the build. | Declare the route's own policy (e.g. `{ capability: 'work_item:read', scope: 'workspace' }`) and add a numbered rule saying each item is then re-checked against its own project's capability, with failures reported per `WI-25`. |
-| Medium | `WI-19` "A parent shows rolled-up progress: children completed / total" does not say whether "children" is direct children or the whole subtree, nor what "completed" means. `relations-and-hierarchy.md` `RH-14` says an epic aggregates "its whole subtree" — so the two rules differ and neither says which. | Define once: roll-up counts the whole subtree, and "completed" means `state.group in ('completed','cancelled')` — or whatever the intent is — keyed off `group`, never off state name (ADR 0011). |
-| Low | `POST /api/work-items/{key}/watch` guarded by `work_item:read` — a write guarded by a read capability. Defensible (`WI-28` says anyone with read may watch) but it reads like an omission. | Add a one-line note next to the route saying the read capability is deliberate. |
-| Low | `WI-24` bulk actions include "move to cycle or module", which are P5 (`agile.md`), inside a P1 spec. | Mark those two bulk actions as P5-gated behind `feature.cycles`. |
-| Low | Route parameters are `{key}` here but `{projectId}` / `{id}` in rbac.md's policy example. | Harmonise; state the convention once in `api-design.md` and follow it. |
-
----
-
 ## 2. `views.md` — P1
 
 **Verdict: ready-with-fixes** (behaviour is excellent; the template sections that guard security are the weak part)
@@ -61,24 +40,6 @@ Strong spec: 29 numbered rules, a permissions table, a route list with a capabil
 ## 3. `projects-and-engagements.md` — P1 (structure in P2)
 
 ## 4. `relations-and-hierarchy.md` — P1
-
-**Verdict: not-ready** (one direct contradiction with a sibling spec, plus three required sections missing)
-
-The relation model itself is well thought out — `RH-1`/`RH-2` (store once, render both ends) matches the data model's single `work_item_relation.type` enum exactly, and `RH-4` (hidden relations show a count only) is a genuinely good tenant-isolation rule consistent with rbac.md's 404-not-403 stance.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| High | **Direct contradiction.** `RH-6` "Parent and child must be in the same project" versus `RH-12` "Moving a parent between projects offers to move its children too. **Declining breaks the hierarchy**". `work-items.md` `WI-15` restates `RH-6`. So the same document both forbids and permits cross-project parentage, and an implementer must pick — with opposite database constraints (a CHECK/trigger versus none). | Decide: either the move is refused unless children move too (keeps the invariant, allows a DB constraint), or "declining **detaches** the children — they are orphaned in the old project, the parent link is removed" — which preserves `RH-6`. Reword `RH-12` and align `WI-15`. |
-| High | `RH-16` "A workflow guard may require that no `blocked_by` relation points at an **open** work item". "Open" is not vocabulary this system has — ADR 0011 is emphatic that the five `state.group` values are "the entire fixed vocabulary" and that no literal state name appears in domain logic. The implementer must guess whether "open" means `not completed`, or `not in (completed, cancelled)`, or `group = started`. | Restate as `state.group not in ('completed','cancelled')`. The guard type itself does exist — `workflows.md` `WF-15` lists "no blocking relations open" — but `WF-15` uses the same undefined word, so fix both together. |
-| Medium | **No `## Permissions` table, no `## Data` section, no `## Out of scope`, and no `## Open questions` section at all.** The README rule is "Open questions must be empty before implementation starts" — an absent section cannot be verified as empty, and the missing permissions table is the one the template calls out as required. | Add the four sections. The permissions content already exists as prose and just needs tabulating (create/remove relation → `work_item:update` on both ends; read → reach on each end independently). |
-| Medium | Edge case "Relation to a deleted work item → **Removed with the deletion**" contradicts `WI-21` (deletion is soft for 30 days, then purged). If relations are dropped at soft-delete, restoring within 30 days silently loses them. | Say relations are hidden while the item is soft-deleted and removed only at purge; restoring restores them. |
-| Medium | `RH-9` (parent: "children completed / total") versus `RH-14` (epic: "aggregate progress across its **whole subtree**"). Two different aggregation semantics for the same UI element, and `WI-19` restates the first. Neither defines "completed" in terms of `state.group`. | Unify: define roll-up once, over the subtree, keyed on `state.group`, and delete the duplicate statements from `work-items.md`. |
-| Medium | `RH-13` "A work item type marked `is_epic` … may have children but no parent" — but nothing says what constrains a **sub-task** type, and `RH-7`'s depth-5 cap interacts with `is_epic` in an unspecified way (does an epic occupy level 1 always?). | State the type-level parentage rules for all default types, or say only `is_epic` is constrained and depth is otherwise free to 5. |
-| Low | `POST /api/work-items/{key}/parent` requires update on both ends; `DELETE .../parent` requires it on **one**. Detaching mutates the parent's roll-up too. | Make both ends required for both, or explain the asymmetry. |
-| Low | `RH-18` "the assignee of the blocked item is notified" names no notification kind, so `notifications.md` has nothing to bind to. | Name the event kind, e.g. `work_item.unblocked`. |
-| Low | `RH-3` says relations may cross projects "within the same workspace", but the edge case contemplates projects later being "split across workspaces" — a project move between workspaces is not specified anywhere. | Either state that projects cannot change workspace, or point at the spec that owns the move. |
-
----
 
 ## 5. `comments-and-activity.md` — P1
 

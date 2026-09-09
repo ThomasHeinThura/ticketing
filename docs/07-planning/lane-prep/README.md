@@ -38,6 +38,21 @@ Nine pull requests merged on 2026-09-09. What the plans would get wrong:
 | issue #7 is open | **Complete and closed** |
 | Throttle 1 conditions 4 and 5 unproven | **Both proven** — demonstrated by mutating the live router: an undeclared route fails CI |
 
+## Further reconciliation: the `state_template` split (2026-09-09, after `d4510a2`)
+
+Both plans still describe the lifecycle model as it stood before this correction, and are
+**not rewritten**, per the rule above — this note exists so a reader knows which of their
+sentences to re-verify instead.
+
+| A plan says | Actually, now |
+|---|---|
+| `state` is workspace-scoped, with `project_state` for per-project order/default/enablement, and "open"/"closed" keys off a bare `state.group` column | **Superseded.** `state_template` (workspace-scoped) is the shared catalogue a workflow's transitions reference; `state` (project-scoped) is a project's own concrete row, mapped to exactly one template via `state_template_id`. `project_state` is **retired** — its job now lives on `state` directly. `state` carries no `group` column: "open"/"closed" resolve through the join to `state_template.group`. See [data-model.md §3](../../01-architecture/data-model.md) and [ADR 0011](../../01-architecture/adr/0011-ticket-lifecycle-engine.md), which is final. |
+
+`p1-core.md`'s roll-up discussion (`WI-19`/`RH-9`/`RH-16`) and `p2-domain.md`'s workflow
+acceptance criteria both cite the pre-split vocabulary and should be re-read against the
+current `workflows.md`, `work-items.md` and `relations-and-hierarchy.md` rather than trusted
+as written.
+
 ## What has NOT moved — the reason every plan is still a plan
 
 **Throttle 1 is shut.** Condition 2 requires issue #6 complete *through retrofit S10*, and

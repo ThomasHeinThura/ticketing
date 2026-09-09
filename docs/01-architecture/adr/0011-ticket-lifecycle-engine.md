@@ -94,10 +94,9 @@ concrete lifecycle position stopped being its own and became workspace-global,
 contradicting [projects-and-engagements.md](../../03-features/projects-and-engagements.md)
 `PR-17`'s "each project has its own states". The model above — a workspace-level
 `state_template` a workflow's transitions reference, and a project-level `state` mapped to
-exactly one template — is Thomas's decision, recorded in
-[the review](../../07-planning/reviews/2026-09-05/features-core-servicedesk.md) §10, and is
-final: do not move concrete `state` rows back to the workspace, and do not make workflows
-project-scoped.)*
+exactly one template — is Thomas's decision, recorded in the **Decision** section above,
+and is final: do not move concrete `state` rows back to the workspace, and do not make
+workflows project-scoped.)*
 - The **noun** used to describe a work item, a project, a cycle and so on (`"Ticket"` vs
   `"Issue"` vs `"Case"`) is a *separate* concern, covered by
   [ADR 0012](0012-terminology-overlay.md). This ADR is about the **states** a work item

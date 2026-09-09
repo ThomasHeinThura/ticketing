@@ -172,9 +172,9 @@ project's concrete lifecycle position stopped being its own and became workspace
 the opposite of what `PR-17`'s "each project has its own states" was written to guarantee.
 `project_state` is retired; its job (`position`, `is_default`) now lives directly on the
 project-scoped `state` row above, and "enabled" is simply whether a project has created a
-`state` row for a template at all. This is Thomas's decision, recorded in
-[the review](../../07-planning/reviews/2026-09-05/features-core-servicedesk.md) §10: do
-not move concrete `state` rows back to the workspace, and do not make workflows
+`state` row for a template at all. This is Thomas's decision — see
+[ADR 0011](adr/0011-ticket-lifecycle-engine.md), which is **Accepted** and records it in
+full: do not move concrete `state` rows back to the workspace, and do not make workflows
 project-scoped.)*
 
 *(2026-09-05 note, retained for history: the very first draft made `state` project-scoped
@@ -209,8 +209,15 @@ no cycles; projects have dates and a backlog.
 Point-in-time reconstruction, baselines and the audit trail all derive from it — borrowed
 from OpenProject's `Journal`/`Change` design.
 
-**"Open" and "closed"**, wherever a spec uses the words: closed ⇔
-`state.group in ('completed', 'cancelled')`; open ⇔ anything else. Never a state name.
+**"Open" and "closed"**, wherever a spec uses the words: a concrete `state` row carries no
+`group` column of its own (§3) — its group is its mapped template's `state_template.group`,
+reached through `state.state_template_id`. So closed ⇔
+`state_template.group in ('completed', 'cancelled')`, resolved for a given `state` (or
+`work_item.state_id`) by joining through that foreign key — never a bare `state.group`
+column, which does not exist; open ⇔ anything else. Never a state name. In SQL:
+`... from work_item join state on state.id = work_item.state_id join state_template on
+state_template.id = state.state_template_id where state_template.group in
+('completed', 'cancelled') ...`.
 
 ## 5. Custom fields
 

@@ -121,8 +121,11 @@ Jira has this and charges for it. Plane and kaneo do not have it at all.
   "field": "<key>" }` — a native column, `cf.<key>`, or a satellite such as
   `change.rollback_plan`), and `change_risk_at_most` (`{ "type": "change_risk_at_most",
   "level": "low"|"medium"|"high" }`). All guards on a transition must pass (logical AND).
-  **"Closed" means `state.group in ('completed', 'cancelled')`; "open" means anything
-  else** — never a state name.
+  **"Closed" and "open"** resolve exactly as [data-model.md](../01-architecture/data-model.md)
+  §4 defines them: a work item's `state` row carries no `group` of its own, so a guard
+  evaluates its concrete state's mapped `state_template.group` (joined through
+  `state.state_template_id`) — "closed" means that group is `completed` or `cancelled`;
+  "open" means anything else. Never a state name, and never a bare `state.group` column.
 - `WF-16` Guards are evaluated server-side and the reason for a blocked transition is
   returned in the problem detail as a reason code `guard.<type>` (e.g.
   `guard.children_closed`) so the UI can explain it. A guard object whose `type` is not
@@ -245,7 +248,9 @@ reason; a transition with a required note but no note returns 422; every guard t
 returns its `guard.<type>` reason code.
 
 Named tests: `wf-4-403-vs-409.spec.ts`, `wf-13-approval-gate-matches-transition.spec.ts`,
-`wf-15-guard-unrecognized-fails-closed.spec.ts`,
+`wf-16-guard-unrecognized-fails-closed.spec.ts` (the fail-closed behaviour for an
+unrecognized guard `type` is `WF-16`'s rule, not `WF-15`'s — `WF-15` only defines the guard
+vocabulary),
 `wf-17-completed-writes-sla-pause.spec.ts`, `wf-19-effects-vocabulary.spec.ts`,
 `wf-21-customer-reopen-system-actor.spec.ts`.
 

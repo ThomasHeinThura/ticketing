@@ -198,7 +198,7 @@ PATCH  /api/projects/{projectId}/prerequisites/{id}           project:update
 DELETE /api/projects/{projectId}/prerequisites/{id}           project:update
 GET    /api/projects/{projectId}/document-links               project:read
 POST   /api/projects/{projectId}/document-links               project:update
-DELETE /api/projects/{projectId}/document-links/{id}          project:update
+DELETE /api/projects/{projectId}/document-links/{id}          project:update  — no PATCH: a link is add-or-remove only; editing its url or title is remove-then-re-add
 GET    /api/projects/{projectId}/health                       project:read
 PATCH  /api/projects/{projectId}/health                       project:update
 ```

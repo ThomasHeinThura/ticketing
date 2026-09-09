@@ -44,7 +44,7 @@ so a role stored without the implied entry still behaves correctly.
 | | `workspace:delete` | `workspace:update` | Delete the workspace |
 | | `workspace:manage_members` | `workspace:read` | Add and remove workspace members |
 | | `workspace:manage_roles` | `workspace:read` | Create and edit roles |
-| | `workspace:manage_settings` | `workspace:read` | Types, workflows, SLA policies, calendars, request types, custom fields, labels, estimates, automations, canned responses, workspace terminology |
+| | `workspace:manage_settings` | `workspace:read` | Types, workflows, SLA policies, calendars, request types, custom fields, labels, estimates, automations, canned responses, work item templates, workspace terminology |
 | **Projects** | `project:create` | | Create a project or managed service |
 | | `project:read` | | See a project in reach |
 | | `project:update` | `project:read` | Edit project fields, health, milestones, prerequisites, stakeholders, document links — **not** `parent_id` or `owner_team_id` |
@@ -610,7 +610,8 @@ if (user.role === 'admin') { … }
 if (identity.reach.kind === 'all') { allowEdit(); }
 
 // ✗ matching a work item type or state by name
-if (type.name === 'Change') { requireCab(); }        // use type.is_change; use state.group
+if (type.name === 'Change') { requireCab(); }        // use type.is_change; use the state's
+                                                      // mapped state_template.group
 
 // ✗ frontend-only gate
 {isAdmin && <DeleteButton />}   // fine as UX, NEVER as the only check
