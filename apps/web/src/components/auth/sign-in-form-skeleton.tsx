@@ -1,5 +1,5 @@
+import { Skeleton } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export function SignInFormSkeleton() {
   const { t } = useTranslation();

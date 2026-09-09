@@ -1,6 +1,6 @@
+import { Button } from "@taskdesk/ui";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Button } from "@/components/ui/button";
 import type Task from "@/types/task";
 import TaskStatusPopover from "./task-status-popover";
 

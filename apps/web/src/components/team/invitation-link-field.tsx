@@ -1,10 +1,9 @@
+import { Button, Input } from "@taskdesk/ui";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useCopyInvitationLink } from "@/hooks/use-copy-invitation-link";
 import { buildInvitationLink } from "@/lib/invitation-link";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
 
 type Props = {
   invitationId: string;

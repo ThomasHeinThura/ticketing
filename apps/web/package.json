@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "biome check --write .",
+    "lint": "biome check --write . && node scripts/check-ui-boundaries.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts"
@@ -106,6 +106,7 @@
     "@babel/core": "^8.0.1",
     "@taskdesk/libs": "workspace:*",
     "@taskdesk/permissions": "workspace:*",
+    "@taskdesk/ui": "workspace:*",
     "@rolldown/plugin-babel": "^0.2.3",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.0",

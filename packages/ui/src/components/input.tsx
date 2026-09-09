@@ -4,7 +4,7 @@ import { Input as InputPrimitive } from "@base-ui/react/input";
 import type { useRender } from "@base-ui/react/use-render";
 import type * as React from "react";
 
-import { cn } from "@/lib/cn";
+import { cn } from "../lib/cn";
 
 type InputProps = Omit<
   InputPrimitive.Props & React.RefAttributes<HTMLInputElement>,

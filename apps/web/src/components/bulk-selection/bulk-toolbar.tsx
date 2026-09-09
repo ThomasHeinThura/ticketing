@@ -1,3 +1,4 @@
+import { Button } from "@taskdesk/ui";
 import {
   Archive,
   ArrowDownToLine,
@@ -49,7 +50,6 @@ import { getPriorityIcon } from "@/lib/priority";
 import { toast } from "@/lib/toast";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
-import { Button } from "../ui/button";
 import { Toolbar, ToolbarGroup, ToolbarSeparator } from "../ui/toolbar";
 
 type BulkActionItem = {

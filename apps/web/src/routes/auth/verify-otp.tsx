@@ -1,5 +1,6 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { createFileRoute, useRouter, useSearch } from "@tanstack/react-router";
+import { Alert, AlertDescription, Button } from "@taskdesk/ui";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { ArrowLeft, RefreshCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -7,8 +8,6 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod/v4";
 import PageTitle from "@/components/page-title";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,

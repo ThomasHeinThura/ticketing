@@ -1,8 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
+import { Button } from "@taskdesk/ui";
 import { Maximize2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   Tooltip,

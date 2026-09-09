@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from "@tanstack/react-router";
+import { Button, KbdSequence } from "@taskdesk/ui";
 import {
   CalendarDays,
   CalendarRange,
@@ -12,8 +13,6 @@ import ProjectCrumbSelect from "@/components/common/header/project-crumb-select"
 import WorkspaceCrumbSelect from "@/components/common/header/workspace-crumb-select";
 import Layout from "@/components/common/layout";
 import CreateProjectModal from "@/components/shared/modals/create-project-modal";
-import { Button } from "@/components/ui/button";
-import { KbdSequence } from "@/components/ui/kbd";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   Tooltip,

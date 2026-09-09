@@ -1,6 +1,6 @@
+import { Label } from "@taskdesk/ui";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { useId } from "react";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 

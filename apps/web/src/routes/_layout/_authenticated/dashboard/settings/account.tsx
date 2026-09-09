@@ -4,12 +4,12 @@ import {
   Outlet,
   useLocation,
 } from "@tanstack/react-router";
+import { Button } from "@taskdesk/ui";
 import { Bell, Code, Settings, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import SettingsSidebar from "@/components/SettingsSidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   SidebarGroup,
   SidebarGroupContent,

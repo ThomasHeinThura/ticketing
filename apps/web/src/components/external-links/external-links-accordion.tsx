@@ -1,3 +1,4 @@
+import { Button } from "@taskdesk/ui";
 import {
   ChevronDown,
   ChevronRight,
@@ -8,7 +9,6 @@ import {
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GithubIcon } from "@/components/icons/github-icon";
-import { Button } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,

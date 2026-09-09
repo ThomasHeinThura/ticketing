@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@taskdesk/ui";
 import { resolveLabelColor } from "@/lib/label-color";
 import type Task from "@/types/task";
 

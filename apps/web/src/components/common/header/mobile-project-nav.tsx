@@ -1,3 +1,4 @@
+import { Button } from "@taskdesk/ui";
 import {
   CalendarDays,
   CalendarRange,
@@ -7,7 +8,6 @@ import {
   SquareKanban,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,

@@ -1,0 +1,42 @@
+/*
+ * Duration and easing tokens (design-tokens.md#reduced-motion).
+ *
+ * The easing curves themselves (--ease-out, --ease-in-out) are declared inside
+ * theme.css's @theme inline block, exactly where kaneo defines them — they are not
+ * duplicated here. This file carries the other motion token: the reduced-motion
+ * override, copied verbatim from kaneo's apps/web/src/index.css at extraction.
+ * It deliberately does NOT collapse every duration to zero — it keeps the opacity
+ * feedback and drops only movement and container morphs.
+ */
+/* Reduced motion: keep opacity feedback, drop movement (scale/translate) and
+   container morphs. Tailwind v4 scale/translate utilities use the standalone
+   CSS properties, so forcing them here neutralizes entrance/exit movement
+   while transition-property keeps the fade. */
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="popover-popup"],
+  [data-slot="select-popup"],
+  [data-slot="menu-popup"],
+  [data-slot="menu-sub-content"],
+  [data-slot="tooltip-popup"],
+  [data-slot="dialog-popup"],
+  [data-slot="alert-dialog-popup"],
+  [data-slot="command-dialog-popup"],
+  [data-slot="sheet-popup"],
+  [data-slot="toast-popup"] {
+    transition-property: opacity !important;
+  }
+
+  [data-slot="sidebar-gap"],
+  [data-slot="sidebar-container"],
+  [data-slot="sidebar-group-content"],
+  [data-slot="sidebar-menu-badge"] {
+    transition: none !important;
+  }
+
+  /* dnd-kit writes the shuffle transition inline, so this needs !important. The
+     dragged element still tracks the pointer; only the reflow is neutralized. */
+  [data-taskdesk-sortable] {
+    transition: none !important;
+  }
+}
+

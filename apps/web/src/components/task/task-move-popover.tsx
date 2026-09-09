@@ -1,9 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
+import { Button, Label } from "@taskdesk/ui";
 import { ArrowRightLeft } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,

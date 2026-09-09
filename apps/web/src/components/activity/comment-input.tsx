@@ -1,10 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { Button, KbdSequence } from "@taskdesk/ui";
 import { ArrowUp, Paperclip } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
-import { Button } from "@/components/ui/button";
-import { KbdSequence } from "@/components/ui/kbd";
 import {
   Tooltip,
   TooltipContent,

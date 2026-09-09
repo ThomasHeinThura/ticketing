@@ -4,6 +4,7 @@ import {
   useNavigate,
   useParams,
 } from "@tanstack/react-router";
+import { Alert, AlertDescription, Button } from "@taskdesk/ui";
 import {
   AlertCircle,
   CheckCircle,
@@ -17,8 +18,6 @@ import {
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { useGetInvitationDetails } from "@/hooks/queries/invitation/use-get-invitation-details";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "@/lib/toast";

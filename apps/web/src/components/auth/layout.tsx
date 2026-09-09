@@ -1,11 +1,11 @@
-import { Logo } from "../common/logo";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../ui/card";
+} from "@taskdesk/ui";
+import { Logo } from "../common/logo";
 
 type AuthLayoutProps = {
   children: React.ReactNode;

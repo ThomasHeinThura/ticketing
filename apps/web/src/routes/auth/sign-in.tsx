@@ -3,14 +3,13 @@ import {
   useNavigate,
   useSearch,
 } from "@tanstack/react-router";
+import { Alert, AlertDescription, Button } from "@taskdesk/ui";
 import { KeyRound } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod/v4";
 import { GithubIcon } from "@/components/icons/github-icon";
 import PageTitle from "@/components/page-title";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useInstanceStatus from "@/hooks/queries/instance/use-instance-status";
 import { authClient } from "@/lib/auth-client";

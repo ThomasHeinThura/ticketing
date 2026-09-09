@@ -1,3 +1,4 @@
+import { Badge, Button, Frame, FramePanel } from "@taskdesk/ui";
 import { Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,9 +15,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
-import { Frame, FramePanel } from "../ui/frame";
 import {
   Table,
   TableBody,
