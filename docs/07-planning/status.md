@@ -164,7 +164,7 @@ Three pull requests are open again, all opened 2026-09-09 after that wave:
 | --- | --- | --- | --- |
 | **#77** | retrofit **S5** — native membership writes | green locally, in **security-review scope** (`apps/api/src/workspace/policy.ts`) | Needs the mandatory Opus security review. Also `BEHIND` — strict status-check policy requires it current with `main` |
 | **#76** | retrofit **S3** — client reads off the plugin | green locally | **Must not merge before #77.** After S3, no client read returns the `workspace_member` row id that the two still-on-plugin mutations need, so role-change and ownership-transfer are force-disabled. S5's routes are userId-keyed and fix it by construction |
-| **#75** | **#31** P2 workflow-transition domain module | **DRAFT — blocked** | `check:reviews` correctly refuses it: `docs/03-features/workflows.md` carries verdict *not-ready* with 4 High, 4 Medium, 2 Low open findings. AGENTS.md do-not 15 — a feature is not started while its review section is non-empty. The first High is an unresolved data-model contradiction only Thomas can settle |
+| **#75** | **#31** P2 workflow-transition domain module | **DRAFT — blocked** | `check:reviews` correctly refuses it: the 2026-09-05 review of `docs/03-features/workflows.md` returned verdict *not-ready* and its 4 High / 4 Medium / 2 Low findings are still open in the review document. AGENTS.md do-not 15 — a feature is not started while its review section is non-empty. The first High is an unresolved data-model contradiction only Thomas can settle |
 
 A dependabot dependency-bump pull request may be open at any time; those are routine and
 not tracked here.
@@ -209,9 +209,13 @@ reading it.
   writes that exact table. Authoring role writes, and especially role **deletion**, on top
   of a known fail-open on the row being deleted is how the delete-after-narrow escalation
   becomes shippable. **Do not author native role-delete routes until #66 is merged and
-  independently cleared.** #66 remediation is in flight.
+  independently cleared.** Remediation is **being authored** as of 2026-09-09 — there is no
+  pull request and no pushed branch yet, so do not read this as "nearly done". When it
+  lands it needs its own independent review before S7 is released.
 - **#31 (P2 workflows) — blocked by AGENTS.md do-not 15.** `docs/03-features/workflows.md`
-  has verdict *not-ready* with 4 High, 4 Medium and 2 Low open findings in
+  is the subject of a *not-ready* review verdict — the verdict and its 4 High, 4 Medium and
+  2 Low findings live in the review document, not in the spec itself, which has no review
+  section — recorded in
   `docs/07-planning/reviews/2026-09-05/features-core-servicedesk.md` § 10, and a feature is
   not started while its review section is non-empty. `check:reviews` enforces it. The
   domain code exists on a draft pull request (#75) and already satisfies three of the

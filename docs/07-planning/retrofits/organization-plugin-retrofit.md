@@ -7,24 +7,24 @@
 
 **STAGE LEDGER — the authoritative answer to "how far has the retrofit run?"** Throttle 1's
 condition 2 is measured here, so this ledger is the thing to read, not the prose below it.
-As of 2026-09-09, `main` at `d4510a2`:
+As of 2026-09-09, `main` at `5270954`:
 
 | Stage | State | Landed via | Evidence |
 |---|---|---|---|
 | **S0** — dead-code sweep | ✅ **COMPLETE** | PR #65, squash `b735bee4471488926fd37a771bb8682210895001` | `apps/api/src/utils/migrate-organizations.ts` absent from `main`; `SEAT_RECONCILIATION_LEASE` occurs 0 times in `apps/api/src/scheduler/leader-lock.ts` |
 | **S1** — characterization tests | ✅ **COMPLETE** | PR #57, squash `b4aef999238d8848563860449432db588207c2d4` (reviewed head `95dc9280b9011f2d5615be1381d0993360a26368`) | 24 tests / 4 files, green against a real PostgreSQL 18. The equivalence oracle for S4–S7 |
 | **S2** — native read routes | ✅ **COMPLETE** | PR #65, squash `b735bee4471488926fd37a771bb8682210895001` (reviewed head `24d8236316a9cc309ad8b3d4ccf3ee8ee9da00e5`) | `tests/api-contract/openapi.json` on `main` declares `GET /workspace`, `GET /workspace/{workspaceId}`, `GET /workspace/{workspaceId}/invitations`, `GET /capabilities`, `GET /workspace/{workspaceId}/members` |
-| **S3** — client reads move off the plugin | ❌ **NOT STARTED** | — | `apps/web` still calls the plugin. S2 merged, so its precondition is satisfied |
+| **S3** — client reads move off the plugin | 🔄 **IN FLIGHT — PR #76** | — | Reads repointed at the S2 routes. **Must not merge before #77 (S5):** after S3 no client read returns the `workspace_member` row id that the two still-on-plugin mutations (`updateMemberRole`, the promote/demote transfer) require, so both are force-disabled on that branch until S5's userId-keyed routes land |
 | **S4** — native workspace writes | ✅ **COMPLETE** | PR #67, squash `2388b0c7f4ae25d6084067bcff20a98528d8b400` (reviewed head `073e75f067846807b538150457f2db8280b12804`) | Baseline declares `POST /workspace`, `PATCH /workspace/{workspaceId}`, `DELETE /workspace/{workspaceId}`. Ships **dark** — the client is still on plugin writes |
-| **S5** — native membership writes | ❌ **NOT STARTED** | — | Precondition S4 satisfied; may start |
+| **S5** — native membership writes | 🔄 **IN FLIGHT — PR #77** | — | Five routes plus an atomic ownership transfer; green locally, in security-review scope, waiting on the mandatory Opus review. **Merge before #76** — see the S3 row below |
 | **S6a** — native invitation writes | ❌ **NOT STARTED** | — | Blocked on S5 |
 | **S6b** — hashed invitation tokens | ⏸️ **DEFERRED out of P0** | — | Needs a migration and a link-invalidation decision |
 | **S7** — native role writes | ⛔ **BLOCKED BY #66** | — | S4 is satisfied, but #66 — `hasWorkspacePermission` falls back to compiled built-in roles when a `workspace_role` row is absent — is a privilege-restoration fail-open on the very table S7 writes. **Do not author native role-delete routes until #66 is merged and independently cleared.** |
 | **S8a** — active workspace | ❌ **NOT STARTED** | — | Blocked on S3 |
 | **S8b** — rename the column back | ⏸️ **DEFERRED out of P0** | — | Needs a migration |
-| **S9** — teams decision | ❌ **NOT STARTED** | — | Needs an explicit confirmation that nothing reaches teams |
+| **S9** — teams decision | ❌ **NOT STARTED — precondition corrected, see below** | — | The ledger previously said this needs only *"confirmation that nothing reaches teams"*. That is necessary and **not sufficient** — see **§ S9's real precondition** |
 | **S10** — unmount (the tripwire commit) | ❌ **NOT STARTED** | — | Needs S3–S9 all merged. `tests/api-contract/openapi.json` still declares six `/auth/organization/*` invitation operations, which is exactly what S10 removes |
-| **S11** — cut the last better-auth AC dependency | ❌ **NOT STARTED** | — | Belongs to #7 / Lane B, **not** to this retrofit |
+| **S11** — cut the last better-auth AC dependency | ❌ **NOT STARTED — UNOWNED** | — | `packages/permissions/src/index.ts` still imports `createAccessControl`, `defaultStatements`, `memberAc`, `adminAc`, `ownerAc` from `better-auth/plugins/organization/access`. Was **#7's**, but #7 is **CLOSED**, so this now has no owner. **Not this retrofit's** — removing `organization()` in S10 does not remove that import, and the package keeps compiling. Needs a home before it is silently forgotten |
 
 ### Progress, stated the way it is actually useful
 
@@ -54,8 +54,53 @@ fail CI.
 - **S7** — ⛔ **BLOCKED BY #66.** Not a scheduling preference: #66 is a fail-open on
   `workspace_role`, the exact table S7 writes, so authoring role writes first would build on
   a known privilege-restoration defect.
-- **S6a** — needs S5. **S8a** — needs S3. **S9** — analysis may begin; it needs an explicit
-  confirmation that nothing reaches teams. **S10** — needs all of the above.
+- **S6a** — needs S5. **S8a** — needs S3. **S10** — needs all of the above.
+- **S9** — see § S9's real precondition immediately below. Its analysis is **done**, and it
+  changed the answer.
+
+### S9's real precondition — corrected 2026-09-09, and demonstrated
+
+The ledger asked for *"an explicit confirmation that nothing reaches teams."* That
+confirmation holds: **0** callers in `apps/web/src` of any team route, `useListTeams`,
+`useActiveTeam` or `authClient.organization.*Team*` (the `@/components/team/…` imports are a
+UI directory name for workspace members, not the teams feature), and exactly **9**
+team-shaped paths in `tests/api-contract/openapi.json`, matching this document's "nine team
+routes".
+
+**It is not sufficient, because `teams.enabled` is not only a route switch.** In
+`better-auth/dist/plugins/organization/routes/crud-org.mjs:106`, organization-create reads:
+
+```js
+if (options?.teams?.enabled && options.teams.defaultTeam?.enabled !== false) {
+```
+
+and line 128 sets the created session's team from the team it makes. So dropping
+`teams: { enabled: true }` (`apps/api/src/auth.ts:287-291`) removes **effects 5, 6 and 8** of
+§2.5's nine-effect create contract — the default `team` row, the creator's `team_member`
+row, and the session's `active_team_id`. **And S4 ships dark: the client still creates
+workspaces through the plugin**, so that is a live-user regression, not a dark one.
+
+**Demonstrated rather than argued.** Mutating `teams.enabled` to `false` and running the S1
+characterization:
+
+```
+× create writes all NINE contract effects -- EIGHT first-order ... plus ONE one-hop durable
+  FAIL tests/api-integration/organization-plugin-characterization.test.ts
+       316|  expect(teamRows).toHaveLength(1);
+  Tests  1 failed | 19 passed (20)
+```
+
+The S1 oracle catches it, so the regression is loud rather than silent — which is the job
+that suite exists to do.
+
+**The native path is unaffected**:
+`apps/api/src/workspace/controllers/create-workspace.ts:152,165,181` inserts `teamTable`,
+`teamMemberTable` and sets `activeTeamId` through Drizzle, independent of the plugin's
+config; `delete-workspace.ts:28` clears both session columns.
+
+**So S9's precondition is: the client must be off plugin workspace creation** — native
+writes live — not merely that nothing calls a team route. **S9 gains a dependency edge from
+the client-write cutover** and is not startable in parallel with it.
 
 **S2 and S4 shipping does not narrow S10's work.** Both are additive: they added native
 routes beside the plugin without unmounting anything. The plugin route surface `main`

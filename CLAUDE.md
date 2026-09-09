@@ -26,8 +26,8 @@ Then the feature spec for what you are doing, and any ADR it cites.
 **There is application code, and this section is where you find out what is actually
 true.** Say it in four categories, always, and never let one blur into another:
 
-**ON MAIN**, as of 2026-09-09 at `5270954`. **Eleven** pull requests merged that day; **nothing
-carrying code is open.** The kaneo import at `42bb8011`, de-branded (#5). Licence and
+**ON MAIN**, as of 2026-09-09 at `5270954`. **Eleven** pull requests merged that day.
+**Code is open again** — see IN OPEN PR below; do not read this list as the whole repository. The kaneo import at `42bb8011`, de-branded (#5). Licence and
 provenance files (#4). The deployment slice — root `Dockerfile`, `compose.yml`, the `deploy/`
 overlays, `scripts/deploy.sh`, a hardened `charts/taskdesk`, `docs/05-operations/proxy-topology-evidence.md`
 (#20 of #11). And then:
@@ -50,7 +50,20 @@ overlays, `scripts/deploy.sh`, a hardened `charts/taskdesk`, `docs/05-operations
 `pnpm check:route-policy`, a fail-closed wrapper that locates that suite and refuses to pass
 without it. It does not replace the entry point.
 
-**IN OPEN PR.** Nothing. A dependabot bump may be open at any time; those are routine.
+**IN OPEN PR — real code, not on `main`.** Three, all opened 2026-09-09 after the merge
+wave. **None of it is available; do not build on it and do not rebuild it.**
+
+- **#77** — retrofit **S5**, native membership writes (five routes, atomic ownership
+  transfer). Green locally, **in security-review scope** (`apps/api/src/workspace/policy.ts`).
+  Waiting on the mandatory Opus review.
+- **#76** — retrofit **S3**, client reads off the plugin. Green locally. **Must not merge
+  before #77:** after S3 no client read returns the `workspace_member` row id that the two
+  still-on-plugin mutations need, so role-change and ownership-transfer are force-disabled
+  until S5's userId-keyed routes land.
+- **#75** — **#31** P2 workflow-transition domain module. **DRAFT, blocked by do-not 15**:
+  `workflows.md` has open review findings, and `check:reviews` enforces it.
+
+A dependabot bump may also be open at any time; those are routine and not tracked here.
 
 **READ THIS BEFORE ACTING ON ANY OF IT.** All eleven of those merges happened **without the
 mandatory Opus security review** — Thomas waived the gate explicitly and merged on Sonnet
@@ -76,8 +89,8 @@ sole blocker**, and it is arithmetic rather than judgement: the
 [stage ledger](docs/07-planning/retrofits/organization-plugin-retrofit.md) records four of
 fourteen stages landed (S0, S1, S2, S4). **S3 and S5 are in flight** (PRs #76 and #77);
 **S7 is ⛔ BLOCKED BY #66**, a privilege-restoration fail-open on the very table S7 writes.
-Do not re-derive any of this — read the ledger, which states progress as 4 landed of 11
-required rather than the misleading "4 of 14". Do not re-derive
+Do not re-derive any of this — read the ledger, which states progress as **4 landed of 11
+required** rather than the misleading "4 of 14".
 this — read the ledger.
 
 **What is startable while the throttle is shut**, per the blocking taxonomy: the retrofit
@@ -101,13 +114,23 @@ do. **Only Thomas merges.**
 
 `main` is protected by the `protect-main` ruleset: a pull request is required, deletion and
 non-fast-forward pushes are blocked, stale approvals are dismissed on push, merges are
-squashed, and — since 2026-09-09 — **twelve status checks are required**, with
-strict up-to-date enforcement and **zero bypass actors**. Until that day it required no
-status checks at all. The template/security-review job is deliberately **not** among the
-twelve. **As of later that same day the template gate IS required** — Thomas ordered it
-added as the twelfth context, so no pull request can merge without committed review
-evidence. **Required approving reviews is `0`, and Require review from Code Owners is
-off** — both deliberately (decision log, 2026-09-06).
+stale approvals are dismissed on push, and — since 2026-09-09 — **twelve status checks are
+required**, with strict up-to-date enforcement and **zero bypass actors**
+(`current_user_can_bypass: never`). Until that day it required **no status checks at all**.
+
+**`pull request template + security review` IS the twelfth**, on Thomas's explicit
+instruction (decision log, 2026-09-09, the entry that supersedes the morning's exclusion).
+The consequence is stronger than it sounds: the checker treats an unticked
+independent-review item as a **blocker** and it cannot be marked `n/a`, so **no pull request
+merges without committed review evidence — a documentation-only one included.** The
+`gate-waiver` mechanism covers the **G1–G13 design gates only**; it has no path for the
+review item, deliberately.
+
+**Merges are not restricted to squash.** The ruleset's `allowed_merge_methods` is
+`["merge","squash","rebase"]` and `main` carries twelve merge commits. An earlier version of
+this file said "merges are squashed", which was a convention, not a control — squash-merging
+is the practice, nothing enforces it. **Required approving reviews is `0`, and Require review
+from Code Owners is off** — both deliberately (decision log, 2026-09-06).
 
 Do not wait for an approval that is not configured, and do not read the zero as permission.
 `CODEOWNERS` is **ownership metadata** — it says who to ask, not a gate. The control that

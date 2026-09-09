@@ -17,6 +17,45 @@ Newest first.
 
 ---
 
+### 2026-09-09 · The template gate IS required — twelve status checks, superseding this morning's exclusion
+
+**Supersedes** the third bullet of *"`protect-main` requires eleven status checks; the
+template gate is not among them"* (below, same day). That entry said of
+`pull request template + security review`: *"It remains a non-required check, so it fails
+visibly on every pull request without blocking merge."* **Both halves are now false.** The
+entry is not edited — the log is append-only — so this is the correcting record.
+
+**Decision:** `pull request template + security review` is the **twelfth required status
+check** on `protect-main` (`22365005`). Twelve contexts, `strict_required_status_checks_policy:
+true`, zero bypass actors, `current_user_can_bypass: never`. The `deletion`,
+`non_fast_forward` and `pull_request` rules are unchanged. Verified by re-reading the live
+ruleset after the write, and independently re-verified by an Opus reviewer who counted the
+contexts itself.
+
+**Why:** the earlier entry's own reasoning was that requiring it *"would make the mandatory
+Opus security-review gate mechanical, which is what this project exists to do"*, and that
+the choice was **"a policy decision for Thomas, not one an agent should take by configuring
+a ruleset."** Thomas took it, explicitly and in writing, and instructed that it be added.
+That is precisely the event this log exists to record.
+
+**Consequence, stated plainly because it is stronger than it sounds:** the template checker
+treats an unticked independent-review checklist item as a **blocker**, and `CLAUDE.md`'s
+third absolute means it *cannot* be marked `n/a` — only a completed review at the required
+tier closes it. So **no pull request can merge without committed review evidence, including
+a documentation-only one.** The repository's `gate-waiver` mechanism
+(`scripts/ci/lib/gate-waiver.mjs`) binds a waiver to a gate identifier, a pull request and a
+follow-up issue — but it covers the **G1–G13 design gates only** and has no path for the
+review item. That is deliberate and is not to be widened to make autonomous merging easier.
+
+**Alternatives:** leaving it non-required, so the red stayed an honest signal that nothing
+enforced — rejected by Thomas. Weakening the checker so `n/a` could close the review item —
+rejected: that is the "route around a gate" failure this repository exists to refuse.
+
+**Decided by:** Thomas, 2026-09-09, in the Continuous Parallel Execution Directive. Applied
+and verified by the orchestrator.
+
+---
+
 ### 2026-09-09 · `protect-main` requires eleven status checks; the template gate is not among them
 
 **Decision:** the `protect-main` ruleset (`22365005`) now carries a `required_status_checks`
