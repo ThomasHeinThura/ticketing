@@ -1,0 +1,30 @@
+{
+	"name": "@taskdesk/domain",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"license": "MIT",
+	"scripts": {
+		"build": "tsc",
+		"lint": "biome check --write .",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"test": "vitest run --config vitest.config.ts",
+		"test:watch": "vitest --config vitest.config.ts",
+		"test:coverage": "vitest run --config vitest.config.ts --coverage"
+	},
+	"devDependencies": {
+		"@taskdesk/typescript-config": "workspace:*",
+		"@vitest/coverage-v8": "^4.1.10",
+		"typescript": "^7.0.2",
+		"vite": "^8.2.0",
+		"vitest": "^4.1.10"
+	}
+}
