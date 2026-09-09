@@ -83,19 +83,49 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * check: leaving is a self-action every member has, including a `viewer`
  * (`apps/api/src/workspace/controllers/leave-workspace.ts`).
  *
- * **`POST /api/workspace/{workspaceId}/transfer-ownership` is declared `capability` (kind 1)
- * with `workspace:manage_members`, but the RUNTIME check is not a capability check at all.**
- * `transfer-workspace-ownership.ts` reads the caller's OWN `workspace_member.role` fresh from
- * the database and requires it to literally equal `"owner"` — there is no `workspace_role` row
- * for `owner` to check against (R5: it is never seeded one) and therefore no capability string
- * that could gate it honestly. `workspace:manage_members` is declared here only because the
- * `Capability` union has no better match and every capability-kind policy requires one; this is
- * the same category of declared/enforced mismatch as the two points above, recorded rather than
- * invented around. One consequence worth stating plainly: because this route never calls
- * `hasWorkspacePermission`/`isInstanceAdmin` at all, it is NOT gated by
- * `requireWorkspaceRoleAuthority` the way the two S4 mutation routes and the three sibling S5
- * writes above are — there is no instance-admin bypass to close here, because there is no
- * bypass-capable check on this path in the first place.
+ * **`POST /api/workspace/{workspaceId}/transfer-ownership` declares `capability` (kind 1)
+ * with `workspace:transfer_ownership` — NOT `workspace:manage_members`, and this is the one
+ * capability-kind entry in this file where the declaration now matches the runtime exactly.**
+ *
+ * It used to declare `workspace:manage_members` (the closest match the `Capability` union
+ * admitted at the time) while the actual runtime check was a hardcoded string comparison
+ * inside `transferWorkspaceOwnership`'s transaction — `caller.role !== "owner"` — with no
+ * capability check anywhere on the path. That produced three different answers to "who may
+ * transfer ownership": the route policy said `workspace:manage_members`, the permission-matrix
+ * fixture (generated FROM the route policy) therefore read `manager → allow`, and the only
+ * role that could actually call the route successfully was `owner`. `workspace:manage_members`
+ * is a real, separate capability — `manager` holds it (rbac.md:187) and legitimately adds and
+ * removes ordinary members — but ownership transfer is a different, narrower authority, so
+ * reusing that name here was the defect, not merely an imprecise label.
+ *
+ * `workspace:transfer_ownership` (rbac.md § Capabilities) is granted to `owner` alone —
+ * `admin`, `manager`, `lead`, `member`, `viewer`, `customer` and instance-admin all lack it.
+ * `apps/api/src/utils/require-workspace-capability.ts` evaluates that exact capability, before
+ * the handler runs, against the caller's OWN freshly-read `workspace_member.role` — reusing
+ * the same compiled `BUILT_IN_ROLES` capability data the permission-matrix fixture and this
+ * policy declaration both draw from, so all three can no longer independently drift.
+ * `transferWorkspaceOwnership`'s in-transaction re-read of that same role, under
+ * `pg_advisory_xact_lock`, stays exactly where it was — it is what makes two concurrent
+ * transfers from the same owner mutually exclusive — but it is now a race-safety / invariant
+ * check ALONGSIDE the capability gate, not the only authority check on this path. Both call
+ * the identical `builtInRoleHasCapability` function, so they cannot disagree.
+ *
+ * Like `POST /api/workspace/{workspaceId}/members` and the role-update route above,
+ * `workspace:transfer_ownership` sits in `AUTHORITY_GRANTING`'s SHADOW but not the set
+ * itself: it obviously mints authority (it hands over the single most powerful role in the
+ * workspace), but rbac.md's single elevated-action table does not carry a row for ownership
+ * transfer, and `AUTHORITY_GRANTING` (`elevated.ts`) is exactly the capabilities that table's
+ * rows are reachable through — adding it there without a corresponding table row would be
+ * this lane deciding, unilaterally, a question rbac.md leaves open. `elevated: false` is kept
+ * below for the same reason it was kept before: no step-up mechanism
+ * (`POST /api/me/step-up`) exists anywhere in this codebase to enforce `elevated: true`
+ * honestly against, and whether ownership transfer SHOULD require step-up once one exists is
+ * recorded as a judgement call for Thomas, not decided here.
+ *
+ * There remains no instance-admin bypass to close on this route, and that is unchanged and
+ * deliberate: `requireWorkspaceCapability` never calls `isInstanceAdmin`, exactly like the
+ * hardcoded check it replaces — see that file's own doc comment for why adding one now would
+ * be inventing new behaviour this route never had, not preserving old behaviour.
  */
 export const workspacePolicies = {
   // List the caller's own workspace memberships. There is no separate resource this addresses
@@ -257,24 +287,31 @@ export const workspacePolicies = {
   },
 
   // S5 — the atomic ownership-transfer endpoint that replaces the client's promote/demote
-  // pair. Declared `capability` because every capability-kind policy requires one, but the
-  // runtime check is NOT a capability check at all — see the file comment.
+  // pair. Declared `capability` with `workspace:transfer_ownership` (rbac.md § Capabilities,
+  // granted to `owner` alone) — the runtime check, `requireWorkspaceCapability` in this
+  // route's own middleware, now evaluates that exact capability. See the file comment for
+  // the defect this closes (the declaration used to say `workspace:manage_members` while the
+  // runtime enforced a hardcoded `role === "owner"` check with no capability check at all)
+  // and for why the in-transaction re-read stays, as a race-safety check alongside this gate
+  // rather than the only one.
   //
-  // Same `AUTHORITY_GRANTING` mechanics as the two routes above (`workspace:manage_members` is
-  // on that list), and the same absence of a built step-up mechanism to enforce `elevated: true`
-  // against honestly. Recorded here as a JUDGEMENT CALL rather than an obvious exemption,
-  // because unlike the other two this route hands over the single most powerful role in the
-  // workspace: an argument that this SHOULD be `elevated: true` the moment `POST
-  // /api/me/step-up` exists is reasonable, and is a human decision, not one this lane makes
-  // unilaterally by picking `false` here.
+  // `workspace:transfer_ownership` is NOT in `AUTHORITY_GRANTING` (`elevated.ts`) — that set
+  // is exactly the capabilities rbac.md's single elevated-action table has a row for, and
+  // that table has no row for ownership transfer. Adding it to `AUTHORITY_GRANTING`
+  // unilaterally, without rbac.md settling the question, would be inventing a step-up policy
+  // this lane was told not to invent. Recorded here as a JUDGEMENT CALL rather than an
+  // obvious exemption: this route hands over the single most powerful role in the workspace,
+  // and an argument that it SHOULD be `elevated: true` the moment `POST /api/me/step-up`
+  // exists is reasonable — that decision is Thomas's, not this lane's to make by picking
+  // `false` here.
   "POST /api/workspace/{workspaceId}/transfer-ownership": {
-    capability: "workspace:manage_members",
+    capability: "workspace:transfer_ownership",
     scope: "workspace",
     scopeSource: "request",
     reach: "required",
     sessionOnly: true,
     elevated: false,
     elevationExemptionReason:
-      "hands over the owner role atomically; grants no sees_all/reach change (rbac.md's one elevated action under workspace:manage_members) and no step-up mechanism exists in this codebase yet to enforce elevated: true honestly -- flagged as a judgement call for a human decision once that mechanism lands, given this is the single most powerful role transfer a workspace has",
+      "hands over the owner role atomically; workspace:transfer_ownership is not in AUTHORITY_GRANTING because rbac.md's elevated-action table carries no row for ownership transfer, and no step-up mechanism exists in this codebase yet to enforce elevated: true honestly -- flagged as a judgement call for a human decision once that mechanism lands, given this is the single most powerful role transfer a workspace has",
   },
 } as const satisfies PolicyMap;

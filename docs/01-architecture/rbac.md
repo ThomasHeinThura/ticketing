@@ -45,6 +45,7 @@ so a role stored without the implied entry still behaves correctly.
 | | `workspace:manage_members` | `workspace:read` | Add and remove workspace members |
 | | `workspace:manage_roles` | `workspace:read` | Create and edit roles |
 | | `workspace:manage_settings` | `workspace:read` | Types, workflows, SLA policies, calendars, request types, custom fields, labels, estimates, automations, canned responses, workspace terminology |
+| | `workspace:transfer_ownership` | `workspace:read` | Transfer ownership of the workspace to another existing member |
 | **Projects** | `project:create` | | Create a project or managed service |
 | | `project:read` | | See a project in reach |
 | | `project:update` | `project:read` | Edit project fields, health, milestones, prerequisites, stakeholders, document links — **not** `parent_id` or `owner_team_id` |
@@ -183,12 +184,26 @@ up in review as a diff.
 | Key | Rank | Intent | Capabilities |
 | --- | --- | --- | --- |
 | `owner` | 100 | Everything, including deleting the workspace. Not editable | every capability except `instance:*` |
-| `admin` | 80 | Everything except deleting the workspace | as `owner` minus `workspace:delete` |
+| `admin` | 80 | Everything except deleting the workspace or transferring its ownership | as `owner` minus `workspace:delete` and `workspace:transfer_ownership` |
 | `manager` | 60 | Runs delivery: projects, members, policies, workflows | `workspace:read`, `workspace:manage_settings`, `workspace:manage_members`, `project:create`, `project:read`, `project:update`, `project:manage_members`, `project:manage_settings`, `project:archive`, all `work_item:*`, all `comment:*`, all `attachment:*`, `label:manage`, `custom_field:manage`, `saved_view:create`, `saved_view:share`, `sla_policy:manage`, `workflow:manage`, `request_type:manage`, `intake:triage`, `approval:request_cab`, `approval:decide`, all `time_entry:*`, `budget:manage`, `report:read_all`, `report:export`, `kb_article:publish`, `service:manage`, `change:manage`, `release:manage`, `member:invite`, `member:remove`, `webhook:manage`, `automation:manage` |
 | `lead` | 50 | Assigns work, triages intake, decides approvals within reach | `workspace:read`, `project:read`, `project:update`, `project:manage_members`, `work_item:create`, `work_item:update`, `work_item:delete`, `work_item:assign`, `work_item:transition`, `work_item:rank`, `work_item:set_priority`, `work_item:export`, `comment:create_internal`, `comment:update_own`, `comment:delete_own`, `attachment:create`, `attachment:delete_own`, `label:manage`, `saved_view:share`, `sla_policy:read`, `workflow:read`, `request_type:read`, `intake:triage`, `approval:request`, `approval:decide`, `time_entry:create`, `time_entry:update_own`, `time_entry:delete_own`, `time_entry:read_any`, `time_entry:log_backdated`, `budget:read`, `report:read`, `report:export`, `kb_article:write`, `service:read`, `member:invite`, `automation:manage` |
 | `member` | 40 | Creates and updates work items, comments internally, self-assigns | `workspace:read`, `project:read`, `work_item:create`, `work_item:update`, `work_item:transition`, `work_item:rank`, `work_item:set_priority`, `comment:create_internal`, `comment:update_own`, `comment:delete_own`, `attachment:create`, `attachment:delete_own`, `saved_view:create`, `sla_policy:read`, `workflow:read`, `request_type:read`, `approval:request`, `approval:decide`, `time_entry:create`, `time_entry:update_own`, `time_entry:delete_own`, `budget:read`, `report:read`, `kb_article:write`, `service:read` |
 | `viewer` | 20 | Read-only | `workspace:read`, `project:read`, `work_item:read`, `saved_view:read`, `sla_policy:read`, `workflow:read`, `request_type:read`, `report:read`, `kb_article:read`, `service:read` |
 | `customer` | 10 | Portal only. Off the ladder — see below | `work_item:read`, `comment:create`, `attachment:create`, `work_item:rank`, `work_item:escalate_priority`, `approval:decide`, `kb_article:read` — and nothing else, ever |
+
+**`workspace:transfer_ownership` is deliberately narrower than `workspace:manage_members`,**
+and the two must not be confused. `POST /api/workspace/{workspaceId}/transfer-ownership`
+used to declare `workspace:manage_members` — the closest match the capability list had —
+while its actual runtime check was a fresh re-read of the caller's own
+`workspace_member.role`, requiring it to literally equal `"owner"`. That made the
+permission-matrix fixture read `manager → allow` for a route only the owner could ever
+call: the route policy, the matrix and the effective runtime authority disagreed. Handing
+over the workspace's ownership is not the same authority as adding or removing members —
+`manager` holds `workspace:manage_members` (above) and must **not** be able to transfer
+ownership — so this is a separate capability, held by `owner` alone, never by `admin` or
+any other role. `apps/api/src/utils/require-workspace-capability.ts` evaluates it before the
+handler runs, and the in-transaction re-read of `workspace_member.role` stays as a
+race-safety check for two concurrent transfers, not as the only check.
 
 Self-assignment by a `member` is `work_item:update` on an item where the new assignee is
 the actor — the `orSelfTarget` body predicate below, not `work_item:assign`

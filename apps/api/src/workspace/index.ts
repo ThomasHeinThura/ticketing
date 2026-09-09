@@ -9,6 +9,7 @@ import {
 import { checkWorkspaceName } from "../utils/check-workspace-name";
 import { requireWorkspaceCreationAllowed } from "../utils/require-session";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { requireWorkspaceRoleAuthority } from "../utils/require-workspace-role-authority";
@@ -273,10 +274,21 @@ const deleteWorkspaceRoute = createRoute({
 // resource (the actions the seeded `workspace_role` rows actually carry --
 // see `policy.ts`), then `requireWorkspaceRoleAuthority` to close the
 // instance-admin bypass on the capability check itself -- EXCEPT
-// `transfer-ownership`, which never calls `hasWorkspacePermission` at all
-// and so has no bypass to close (see `transfer-workspace-ownership.ts`), and
-// `leave`, which carries no capability check because leaving is a
-// self-action every member has.
+// `transfer-ownership` and `leave`.
+//
+// `transfer-ownership` never calls `hasWorkspacePermission`/
+// `requireWorkspacePermission` at all -- the INHERITED better-auth statements
+// those read have no concept of `workspace:transfer_ownership` (or of
+// `manager`/`lead`/`customer`, the TaskDesk roles that must be refused it).
+// Its own gate, `requireWorkspaceCapability("workspace:transfer_ownership")`
+// (`apps/api/src/utils/require-workspace-capability.ts`), evaluates the
+// canonical `@taskdesk/permissions` capability data instead, granted to
+// `owner` alone, and -- like the hardcoded check it replaced -- never calls
+// `isInstanceAdmin`, so there is no bypass to close here either. See that
+// file and `transfer-workspace-ownership.ts` for the full reasoning.
+//
+// `leave` carries no capability check because leaving is a self-action
+// every member has.
 
 const addWorkspaceMemberRoute = createRoute({
   method: "post",
@@ -418,6 +430,7 @@ const transferWorkspaceOwnershipRoute = createRoute({
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
     requireWorkspaceMembership,
+    requireWorkspaceCapability("workspace:transfer_ownership"),
   ] as const,
   request: {
     params: workspaceIdParam,

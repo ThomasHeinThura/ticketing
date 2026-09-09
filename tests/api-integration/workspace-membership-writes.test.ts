@@ -573,6 +573,219 @@ describe("S5 transfer ownership (POST /api/workspace/{id}/transfer-ownership)", 
     expect(await membershipRole(workspaceId, owner.user.id)).toBe("owner");
   });
 
+  // The remaining native roles that must be refused `workspace:transfer_ownership`
+  // (rbac.md § Capabilities — granted to `owner` alone). `admin` above is the
+  // shape every one of these follows: attempt the transfer, assert 403, and
+  // assert BOTH roles are unchanged in the database afterwards — the invariant
+  // this batch closes is that the capability check refuses the request before
+  // any row is touched, not merely that the response looks like a refusal.
+  //
+  // `manager` and `lead` are the two that matter most: `manager` is the role
+  // the permission-matrix fixture used to read `allow` for on this exact route
+  // (the defect this batch fixes), and `lead` sits directly below it on the
+  // rank ladder. Neither better-auth's organization plugin nor the seeded
+  // `workspace_role` rows know about `manager`/`lead`/`customer` (they are
+  // TaskDesk additions with no seeded row and no better-auth `ac` role), so
+  // those three memberships are inserted directly — the same technique
+  // `workspace-write-authorization.test.ts`'s A2-P17 probe uses to give an
+  // instance admin a plain `workspace_member` row without going through the
+  // invite flow.
+  it("rejects a caller who is a manager", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "Not Manager");
+    const manager = await signUpUser(app);
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId,
+      userId: manager.user.id,
+      role: "manager",
+      joinedAt: new Date(),
+    });
+    const member = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
+
+    const transferred = await transferWorkspaceOwnershipNative(
+      app,
+      manager.cookie,
+      workspaceId,
+      { newOwnerUserId: member.user.id },
+    );
+    expect(transferred.status).toBe(403);
+    expect(await membershipRole(workspaceId, member.user.id)).toBe("member");
+    expect(await membershipRole(workspaceId, owner.user.id)).toBe("owner");
+  });
+
+  it("rejects a caller who is a lead", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "Not Lead");
+    const lead = await signUpUser(app);
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId,
+      userId: lead.user.id,
+      role: "lead",
+      joinedAt: new Date(),
+    });
+    const member = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
+
+    const transferred = await transferWorkspaceOwnershipNative(
+      app,
+      lead.cookie,
+      workspaceId,
+      { newOwnerUserId: member.user.id },
+    );
+    expect(transferred.status).toBe(403);
+    expect(await membershipRole(workspaceId, member.user.id)).toBe("member");
+    expect(await membershipRole(workspaceId, owner.user.id)).toBe("owner");
+  });
+
+  it("rejects a caller who is a plain member", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "Not Member");
+    const member = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
+    const other = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
+
+    const transferred = await transferWorkspaceOwnershipNative(
+      app,
+      member.cookie,
+      workspaceId,
+      { newOwnerUserId: other.user.id },
+    );
+    expect(transferred.status).toBe(403);
+    expect(await membershipRole(workspaceId, other.user.id)).toBe("member");
+    expect(await membershipRole(workspaceId, owner.user.id)).toBe("owner");
+  });
+
+  it("rejects a caller who is a viewer", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "Not Viewer");
+    const viewer = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "viewer",
+    );
+    const member = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
+
+    const transferred = await transferWorkspaceOwnershipNative(
+      app,
+      viewer.cookie,
+      workspaceId,
+      { newOwnerUserId: member.user.id },
+    );
+    expect(transferred.status).toBe(403);
+    expect(await membershipRole(workspaceId, member.user.id)).toBe("member");
+    expect(await membershipRole(workspaceId, owner.user.id)).toBe("owner");
+  });
+
+  it("rejects a caller who is a customer", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Not Customer",
+    );
+    const customer = await signUpUser(app);
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId,
+      userId: customer.user.id,
+      role: "customer",
+      joinedAt: new Date(),
+    });
+    const member = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
+
+    const transferred = await transferWorkspaceOwnershipNative(
+      app,
+      customer.cookie,
+      workspaceId,
+      { newOwnerUserId: member.user.id },
+    );
+    expect(transferred.status).toBe(403);
+    expect(await membershipRole(workspaceId, member.user.id)).toBe("member");
+    expect(await membershipRole(workspaceId, owner.user.id)).toBe("owner");
+  });
+
+  // The instance-admin boundary, same shape as `workspace-write-authorization.
+  // test.ts`'s A2-P17: an instance admin who IS a member of this workspace,
+  // but whose OWN workspace role does not grant the capability, must be
+  // refused exactly like anyone else — `requireWorkspaceCapability` never
+  // calls `isInstanceAdmin`, so there is no bypass to probe here, only its
+  // absence. `databaseHooks.user.create.after` promotes the FIRST user on the
+  // instance to instance admin (`apps/api/src/auth.ts`), so the instance
+  // admin is signed up before the owner, matching that same file's
+  // `bootstrapInstanceAdmin` ordering.
+  it("rejects an instance admin who is not this workspace's owner", async () => {
+    const { app } = createApp();
+    const instanceAdmin = await signUpUser(app);
+    const [adminRow] = await db
+      .select({ role: schema.userTable.role })
+      .from(schema.userTable)
+      .where(eq(schema.userTable.id, instanceAdmin.user.id));
+    expect(adminRow?.role).toBe("admin");
+
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Not Instance Admin's",
+    );
+    // A plain member row -- an ordinary workspace role, deliberately not "owner".
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId,
+      userId: instanceAdmin.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    const target = await inviteAndAcceptAsNewMember(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
+
+    const transferred = await transferWorkspaceOwnershipNative(
+      app,
+      instanceAdmin.cookie,
+      workspaceId,
+      { newOwnerUserId: target.user.id },
+    );
+    expect(transferred.status).toBe(403);
+    expect(await membershipRole(workspaceId, target.user.id)).toBe("member");
+    expect(await membershipRole(workspaceId, owner.user.id)).toBe("owner");
+  });
+
   it("rejects a new owner who is not a member of this workspace", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);

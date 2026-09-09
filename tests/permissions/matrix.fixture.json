@@ -14,6 +14,7 @@
 			"workspace:manage_members",
 			"workspace:manage_roles",
 			"workspace:manage_settings",
+			"workspace:transfer_ownership",
 			"project:create",
 			"project:read",
 			"project:update",
@@ -1015,11 +1016,11 @@
 				"outOfReach": "404 not_found"
 			},
 			"admin": {
-				"inReach": "allow",
+				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
 			},
 			"manager": {
-				"inReach": "allow",
+				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
 			},
 			"lead": {

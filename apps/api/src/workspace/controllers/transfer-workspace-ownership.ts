@@ -1,5 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import db, { schema } from "../../database";
+import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
 import {
   AlreadyOwnerError,
   CallerNotOwnerError,
@@ -33,16 +34,26 @@ export type TransferredWorkspaceOwnership = {
  * demoted, or neither happens.
  *
  * NOT gated by `requireWorkspacePermission`/`requireWorkspaceRoleAuthority`
- * at all -- unlike every other S4/S5 mutation route. Ownership is never a
- * `workspace_role` row (retrofit plan R5: `owner` is deliberately never
- * seeded one), so there is no capability to check it against, and
- * `hasWorkspacePermission`'s instance-admin bypass is therefore structurally
- * unreachable here: this function reads the caller's OWN
- * `workspace_member.role` fresh from the database and requires it to
- * literally equal `"owner"`. An instance admin who is not this workspace's
- * owner fails that read exactly like anyone else -- there is no bypass
- * branch that could apply, because none of this function's checks go
- * through `isInstanceAdmin` in the first place.
+ * at all -- unlike every other S4/S5 mutation route, because those read the
+ * INHERITED better-auth-shaped statements, which have no concept of
+ * `workspace:transfer_ownership` (or of `owner` as a distinct grantable
+ * entry: retrofit plan R5, `owner` is deliberately never seeded a
+ * `workspace_role` row). The route's own middleware,
+ * `requireWorkspaceCapability("workspace:transfer_ownership")`
+ * (`apps/api/src/utils/require-workspace-capability.ts`), is the PRIMARY
+ * authority gate and runs before this function at all -- it evaluates the
+ * SAME capability the route policy declares, against the caller's own
+ * freshly-read role, using the canonical `@taskdesk/permissions` capability
+ * data rather than the inherited statements. It never calls
+ * `isInstanceAdmin` either, so an instance admin who is not this workspace's
+ * owner is refused there already, before this function ever runs.
+ *
+ * This function's OWN check below -- `caller.role` must still resolve to
+ * `workspace:transfer_ownership` at the moment the lock is held -- is
+ * RETAINED as a race-safety / invariant check, not as the only authority
+ * check on this path anymore. Both call the identical
+ * `builtInRoleHasCapability`, so the pre-check and this re-check can never
+ * independently disagree about who holds the capability.
  *
  * Both the "am I the owner" read and the "is the new owner a member" read,
  * and both writes, run inside `lockWorkspaceMembership`'s advisory lock, so
@@ -50,8 +61,8 @@ export type TransferredWorkspaceOwnership = {
  * cannot both succeed: whichever commits first demotes the caller, and the
  * second transaction's own re-read of the caller's role -- taken AFTER it
  * acquires the lock the first transaction just released -- finds `"admin"`,
- * not `"owner"`, and refuses. See `workspace-membership-writes-negative.
- * test.ts` for the concurrent probe.
+ * which does not hold `workspace:transfer_ownership`, and refuses. See
+ * `workspace-membership-writes-negative.test.ts` for the concurrent probe.
  */
 async function transferWorkspaceOwnership(
   workspaceId: string,
@@ -77,7 +88,9 @@ async function transferWorkspaceOwnership(
         ),
       )
       .limit(1);
-    if (caller?.role !== "owner") {
+    if (
+      !builtInRoleHasCapability(caller?.role, "workspace:transfer_ownership")
+    ) {
       throw new CallerNotOwnerError();
     }
 
