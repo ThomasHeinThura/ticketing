@@ -115,7 +115,13 @@ const manifest = [
     gate: "pnpm check:vocabulary",
     stage: "fast",
     run: ["pnpm", "check:vocabulary"],
-    note: "tables only for now — capabilities, event keys and background jobs are checked as soon as the files that declare them exist (#7 and P1).",
+    note: "tables only for now — capabilities and background jobs are checked as soon as the files that declare them exist (#7 and P1). Event keys are check:events's own gate (#86), declared separately in ci-cd.md rather than folded in here.",
+  },
+  {
+    gate: "pnpm check:events",
+    stage: "fast",
+    run: ["pnpm", "check:events"],
+    note: "#86's published-vs-declared reconciliation for event keys (scripts/ci/check-events.mjs). Its own row, not an alias of check:vocabulary: an aliased gate has no reverse obligation under A2 · Direction 2, so its step could be deleted, given continue-on-error, or given if: false with the whole suite staying green — and the alias additionally let check:vocabulary's own step be removed the same way. See the pinning test in scripts/ci/probes/workflow-alias-table.test.mjs.",
   },
   { gate: "pnpm check:skips", stage: "fast", run: ["pnpm", "check:skips"] },
   {
@@ -266,13 +272,6 @@ function available(command) {
  *                       .github/actions/setup rather than in a workflow file. Found by
  *                       A2's reverse direction on its first run, which is the direction
  *                       working: a gate the scanner had never been able to see.
- *   check:events        #86's published-vs-declared reconciliation for event keys
- *                       (scripts/ci/check-events.mjs). ci-cd.md already scopes
- *                       check:vocabulary over "a table, capability, event key or job name
- *                       absent from its authority document" — this script is that
- *                       promise's concrete implementation for event keys specifically, so
- *                       it aliases to the gate ci-cd.md already declares rather than
- *                       needing a new row there for the same promise.
  *
  * Declared here rather than resolved by editing one side until today's strings match. An
  * alias is not an exemption: the gate it points at must still be declared in ci-cd.md AND
@@ -281,6 +280,22 @@ function available(command) {
  * Read in both directions. Direction 1 maps an executed command to the gate it satisfies;
  * direction 2 inverts this map to ask which executed command would satisfy a gate the
  * manifest calls enabled.
+ *
+ * **`check:events` is deliberately NOT an entry here.** An earlier version of this change
+ * aliased it to `pnpm check:vocabulary`, reasoning that ci-cd.md already scopes
+ * `check:vocabulary` over "a table, capability, event key or job name absent from its
+ * authority document". That reasoning is fine for DECLARATION but the alias mechanism also
+ * governs ENFORCEMENT, and those are different questions: `aliasSources()` folds an
+ * aliased gate's occurrences into its target's candidate set, so Direction 2 is satisfied
+ * the moment *either* command executes. Concretely, that made the `check:events` step
+ * deletable, `continue-on-error`-able, or `if: false`-able with `pnpm test:all` staying
+ * exit 0 — Direction 2 never asks about `check:events` on its own, because it is not a
+ * declared gate — and it let `check:vocabulary`'s OWN step be removed or neutered the same
+ * way, since `check:events` covered for it. A gate that can vanish with the reconciler
+ * green is worse than one that costs a documentation row, so `check:events` has its own
+ * row in ci-cd.md and its own manifest entry below instead. See
+ * scripts/ci/probes/workflow-alias-table.test.mjs, which pins this map's exact contents so
+ * a future entry cannot be added, retargeted or removed unnoticed.
  */
 const WORKFLOW_ALIASES = new Map([
   ["pnpm check:route-policy", "pnpm test:permissions"],
@@ -288,7 +303,6 @@ const WORKFLOW_ALIASES = new Map([
   ["pnpm check:openapi", "pnpm test:contract"],
   ["pnpm lint:ci", "pnpm lint"],
   ["pnpm install", "pnpm install --frozen-lockfile"],
-  ["pnpm check:events", "pnpm check:vocabulary"],
 ]);
 
 /**
