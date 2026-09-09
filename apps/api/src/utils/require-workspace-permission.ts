@@ -118,15 +118,34 @@ export async function hasWorkspacePermission(
 
   if (!member?.role) return false;
 
-  // Prefer the DB row when present so admin-edited defaults
-  // (viewer/member/admin) take effect immediately. Falls back to the
-  // compiled-in static definitions only when no row exists, which protects
-  // viewer/member/admin users from a 403 if their workspace somehow
-  // missed the seed (e.g., seed failed during workspace creation and
-  // the boot-time backfill hasn't run yet).
+  // Issue #66. `owner` is deliberately the ONE role never seeded a
+  // `workspace_role` row (retrofit plan R5): its authority stays
+  // compiled-in so an admin can never edit the workspace creator's own
+  // authority away. For every other role name -- the three seeded
+  // defaults (viewer/member/admin) and any custom role -- a missing row
+  // means DENY, not "fall back to the compiled definition". The previous
+  // behavior here fell back to `builtInRoleStatements` whenever no row
+  // matched, which meant deleting (or simply never seeding) a role's row
+  // silently RESTORED that role's full compiled-in privileges -- undoing
+  // any narrowing an admin had made, and reachable with nothing more than
+  // a missing/removed database row. See
+  // `apps/api/src/utils/require-workspace-role-authority.ts` for the twin
+  // implementation of this exact rule, written first for the two S4
+  // mutation routes while this shared file's fallback was still someone
+  // else's to fix.
+  //
+  // This is safe to fail closed on because default-role seeding is now
+  // guaranteed at every creation path this codebase controls: the native
+  // `POST /api/workspace` seeds inside its own transaction
+  // (`workspace/controllers/create-workspace.ts`), and the still-mounted
+  // `organization()` plugin's `afterCreateOrganization` hook (`auth.ts`)
+  // no longer swallows a seed failure -- it now rolls the workspace back
+  // and reports the failure to the caller instead of returning success
+  // for a workspace with no role rows behind it.
   const statements =
-    (await customRoleStatements(workspaceId, member.role)) ??
-    builtInRoleStatements(member.role);
+    member.role === "owner"
+      ? builtInRoleStatements("owner")
+      : await customRoleStatements(workspaceId, member.role);
 
   return Boolean(statements && satisfies(statements, permissions));
 }

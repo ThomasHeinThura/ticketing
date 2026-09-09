@@ -27,11 +27,16 @@
  *     `apps/api/src/utils/require-workspace-role-authority.ts`, and A2-P17
  *     below asserts the closed behaviour rather than the defect.
  *
- *  4. #66. Authority must not become broader because a role row is absent.
- *     The half S4 owns is the SOURCE of that state (see the atomicity file).
- *     The shared fail-open fallback in `hasWorkspacePermission` is #66's
- *     second step, is blocked behind S7, and is pinned here — preserved as
- *     evidence, not fixed, and not weakened.
+ *  4. #66, CLOSED. Authority must not become broader because a role row is
+ *     absent. The half S4 owned was the SOURCE of that state (see the
+ *     atomicity file) — S4 guaranteed the seed for its own native create
+ *     transaction, but the shared fail-open fallback in
+ *     `hasWorkspacePermission` was a different file's fix. #66 removed that
+ *     fallback: a missing row now denies for every role but `owner`. A2-P15
+ *     below used to be a PINNED reproduction of the escalation, kept green
+ *     on purpose to make the open gap visible; it now asserts the closed
+ *     behaviour (403), the same shape A2-P17 already went through for the
+ *     instance-admin bypass.
  */
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -311,39 +316,23 @@ describe("S4 native writes: cross-workspace and role boundaries (A2-P11..A2-P15)
     expect(row?.name).toBe("Before Narrowing");
   });
 
-  // A2-P15 — PINNED OPEN DEBT. Issue #66 is OPEN and lives in
-  // `hasWorkspacePermission`, a SHARED authorization file this lane does not
-  // own (AGENTS.md shared-contract ownership) — this lane may not fix it.
+  // A2-P15 — CLOSED by issue #66. This test used to be PINNED OPEN DEBT:
+  // `hasWorkspacePermission` fell back to the COMPILED static role
+  // definitions whenever a `workspace_role` DB row was absent, and
+  // `admin`'s compiled definition diverged from the seeded DB row on 16 of
+  // 16 capabilities — so deleting the narrowed admin row silently RESTORED
+  // full compiled admin authority, a narrowing undone by a delete. #66
+  // removed that fallback: `require-workspace-permission.ts` now denies
+  // (rather than falls back) for any role other than `owner` when no row
+  // matches, exactly the rule `require-workspace-role-authority.ts` already
+  // used for the instance-admin boundary below.
   //
-  // A test that asserts an escalation is a test that protects it — the
-  // sharper lesson this batch already learned and closed for A2-P17 (below),
-  // which used to assert 200 for a viewer-who-is-instance-admin until the
-  // bypass it measured was closed. This case pins the SAME shape of defect
-  // in code this lane does not own, so it cannot close it the same way — but
-  // it must not read as an assertion that the defect is correct behaviour.
-  //
-  // THE DEFECT: `hasWorkspacePermission` falls back to the COMPILED static
-  // role definitions whenever a `workspace_role` DB row is absent, and
-  // `admin`'s compiled definition diverges from the seeded DB row on 16 of
-  // 16 capabilities. Deleting the narrowed admin row therefore silently
-  // RESTORES full compiled admin authority — a narrowing undone by a delete.
-  // #66's second ordered fix ("remove the fail-open fallback, or replace it
-  // with a fail-closed / explicit recovery mechanism") is blocked behind S7
-  // and is explicitly out of this batch's scope.
-  //
-  // What S4 DOES change is the supply: after this batch, no native create can
-  // produce this state, because the seed is inside the create transaction
-  // (see workspace-write-create-atomicity.test.ts). Reaching it still needs
-  // raw database access, exactly as #65 measured.
-  //
-  // THE ASSERTION BELOW IS THE CURRENT (DEFECTIVE) VALUE, NOT THE CORRECT
-  // ONE. The expected value AFTER #66 closes is 403 (a refusal) — the moment
-  // the fail-open fallback is removed or made fail-closed, this test FAILS
-  // LOUDLY here ("expected 200, received 403"), and that failure is the
-  // signal: update the assertion to `403` in the SAME commit that closes
-  // #66. Leaving it at 200 past that point would turn this test from a
-  // pin into a guard for the escalation.
-  it("A2-P15 PINNED (#66 OPEN, not this lane's to fix): deleting the narrowed admin row currently re-escalates via the compiled-role fallback — must become 403 when #66 closes", async () => {
+  // What S4 changed was the supply: no native create can produce this state,
+  // because the seed is inside the create transaction (see
+  // workspace-write-create-atomicity.test.ts). Reaching it still needs raw
+  // database access, exactly as #65 measured — this probe constructs it
+  // directly, as the attack does.
+  it("A2-P15 deleting the narrowed admin row does NOT re-escalate — it stays 403 (issue #66 closed)", async () => {
     const { app } = createApp();
     await bootstrapInstanceAdmin(app);
     const owner = await signUpUser(app);
@@ -365,7 +354,7 @@ describe("S4 native writes: cross-workspace and role boundaries (A2-P11..A2-P15)
       ).status,
     ).toBe(403);
 
-    // The delete-after-narrow escalation.
+    // The delete-after-narrow escalation attempt.
     await db
       .delete(schema.workspaceRoleTable)
       .where(
@@ -381,13 +370,15 @@ describe("S4 native writes: cross-workspace and role boundaries (A2-P11..A2-P15)
       workspaceId,
       { name: "Escalated" },
     );
-    // CURRENT (DEFECTIVE) VALUE — pinned open debt, issue #66, not this
-    // lane's to fix. This is NOT an assertion that 200 is correct behaviour;
-    // it is the reproduction, kept green so the escalation stays visible
-    // instead of silently fixed-and-forgotten or silently protected.
-    // EXPECTED VALUE AFTER #66 CLOSES: 403. Change this line to
-    // `.toBe(403)` in the SAME commit that closes #66.
-    expect(afterDelete.status).toBe(200);
+    // The narrowing survives the delete: no compiled-role fallback, no
+    // escalation.
+    expect(afterDelete.status).toBe(403);
+
+    const [row] = await db
+      .select()
+      .from(schema.workspaceTable)
+      .where(eq(schema.workspaceTable.id, workspaceId));
+    expect(row?.name).toBe("Fallback");
   });
 });
 

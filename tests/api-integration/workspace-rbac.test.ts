@@ -45,6 +45,21 @@ async function createWorkspaceRoleRow(
   role: string,
   permission: Record<string, string[]> | string,
 ) {
+  // Delete-then-insert rather than a blind insert: `createWorkspaceMember`
+  // now auto-seeds a `workspace_role` row for default role names (issue
+  // #66), so a test that overrides one of those roles' permissions (e.g.
+  // "viewer") would otherwise leave TWO rows for the same
+  // (workspaceId, role) pair -- there is no unique constraint on that pair
+  // at the DB level -- and which one `hasWorkspacePermission`'s
+  // unordered `.limit(1)` picks would be undefined.
+  await db
+    .delete(schema.workspaceRoleTable)
+    .where(
+      and(
+        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
+        eq(schema.workspaceRoleTable.role, role),
+      ),
+    );
   await db.insert(schema.workspaceRoleTable).values({
     workspaceId,
     role,
@@ -568,9 +583,18 @@ describe("API integration: workspace RBAC enforcement", () => {
       expect(response.status).toBe(200);
     });
 
-    it("falls back to built-in role when no workspace_role row exists for the name", async () => {
-      // No workspace_role row, role is the compiled-in "admin"; should work.
-      const member = await createWorkspaceMember({ role: "admin" });
+    it("issue #66: denies (does not fall back to the compiled built-in role) when no workspace_role row exists for a non-owner name", async () => {
+      // No workspace_role row for "admin", and "admin" is not "owner" -- so
+      // this must DENY, not silently grant the compiled-in admin's full
+      // privileges. Before #66 closed, this fell back to the compiled
+      // definition and returned 200; every real creation path now
+      // guarantees this row exists, so its absence here is deliberately
+      // constructed (seedDefaultRoleRow: false), not a realistic steady
+      // state -- but the evaluator must still refuse it.
+      const member = await createWorkspaceMember({
+        role: "admin",
+        seedDefaultRoleRow: false,
+      });
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
@@ -579,7 +603,7 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { app } = createApp();
 
       const response = await postCreateTask(app, project.id);
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(403);
     });
   });
 
