@@ -107,11 +107,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
   const { data: allWorkspaceRoles = [] } = useWorkspaceRoles(workspaceId);
   const { canManageTeam, canRemoveMembers, canInviteUsers } =
     useWorkspacePermission();
-  // S3 (issue #6, retrofit plan §3) defect (see handleChangeRole below):
-  // role-change is unreachable until S5 ships a userId-keyed native route.
-  // Forced false rather than deleted so restoring the Select is a one-line
-  // revert (drop the `false &&`) once S5 lands.
-  const canChangeRoles = false && Boolean(canManageTeam());
+  const canChangeRoles = Boolean(canManageTeam());
   const canRemove = Boolean(canRemoveMembers());
   const canInvite = Boolean(canInviteUsers());
 
@@ -132,25 +128,22 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
     (inv) => inv.status !== "accepted" && inv.status !== "canceled",
   );
 
-  // S3 (issue #6, retrofit plan §3) defect, not fixed here -- see the S3
-  // report: `useUpdateWorkspaceUserRole` still calls the better-auth plugin's
-  // `updateMemberRole`, which requires the PLUGIN's own `workspace_member.id`
-  // row (verified against
-  // node_modules/better-auth/dist/plugins/organization/routes/
-  // crud-members.mjs:216,289 -- `findMemberById(ctx.body.memberId)`). The
-  // native GET /api/workspace/{id}/members response this table now reads
-  // (apps/api/src/workspace/controllers/get-workspace-members.ts) has no
-  // such id -- its `id` field is the user's own id. There is no longer any
-  // client read that returns the plugin's row id, so `member.id` can no
-  // longer identify the right row for that call, and passing it would 400
-  // MEMBER_NOT_FOUND on every attempt. S5 (native membership writes) plans a
-  // `PATCH /api/workspace/{id}/members/{userId}`-shaped route, which fixes
-  // this by construction. Until S5 ships, this handler is unreachable: the
-  // Select below is replaced by a read-only badge.
+  // S5 (issue #6, retrofit plan §3) shipped the userId-keyed native route --
+  // PATCH /api/workspace/{workspaceId}/members/{userId}/role
+  // (apps/api/src/workspace/controllers/update-workspace-member-role.ts) --
+  // so this keys by `member.id`, which IS the user's own id on the native
+  // member shape (see the WorkspaceUser type), not the plugin's
+  // `workspace_member.id` row. The server refuses a new role of `"owner"`
+  // and refuses to touch a target whose CURRENT role is `"owner"` (ownership
+  // moves only through the transfer-ownership flow in workspace settings).
+  // Neither case should reach this handler from the UI -- the Select never
+  // offers `"owner"`, and an owner row renders as a read-only badge above --
+  // but if either refusal reaches the client anyway, the server's message is
+  // surfaced through the toast below rather than swallowed.
   const handleChangeRole = async (member: WorkspaceUser, role: string) => {
     if (role === member.role) return;
     try {
-      await updateMemberRole({ workspaceId, memberId: member.id, role });
+      await updateMemberRole({ workspaceId, userId: member.id, role });
       toast.success(t("team:membersTable.roleUpdateSuccess"));
     } catch (error) {
       toast.error(
@@ -288,10 +281,11 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                         <SelectItem value="admin">
                           {t("team:roles.admin", { defaultValue: "Admin" })}
                         </SelectItem>
-                        {/* Owner is intentionally NOT offered here: the better-auth
-                            organization plugin requires an explicit ownership
-                            transfer flow (a workspace must have exactly one owner).
-                            That UI lives in workspace settings (TODO). */}
+                        {/* Owner is intentionally NOT offered here: ownership
+                            moves only through the dedicated transfer-ownership
+                            flow in workspace settings, never through this
+                            per-row role picker -- and the server enforces the
+                            same rule (see update-workspace-member-role.ts). */}
                         {customRoles.map((r) => (
                           <SelectItem key={r.id} value={r.role}>
                             {capitalize(r.role)}

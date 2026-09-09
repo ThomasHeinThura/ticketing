@@ -1,34 +1,23 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth-client";
+import updateWorkspaceMemberRole from "@/fetchers/workspace-user/update-workspace-member-role";
 
 type UpdateWorkspaceUserRoleRequest = {
   workspaceId: string;
-  memberId: string;
+  userId: string;
   role: string;
 };
 
+// S5 (issue #6, retrofit plan §3): native replacement for
+// authClient.organization.updateMemberRole() -- PATCH
+// /api/workspace/{workspaceId}/members/{userId}/role, keyed by the target's
+// own user id rather than the plugin's `workspace_member.id` row. See
+// update-workspace-member-role.ts (the fetcher) for the server's refusal
+// rules around the `"owner"` role.
 function useUpdateWorkspaceUserRole() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      workspaceId,
-      memberId,
-      role,
-    }: UpdateWorkspaceUserRoleRequest) => {
-      const { data, error } = await authClient.organization.updateMemberRole({
-        memberId,
-        organizationId: workspaceId,
-        role: role as "admin" | "member" | "owner",
-      });
-
-      if (error) {
-        throw new Error(
-          error.message || "Failed to update workspace member role",
-        );
-      }
-
-      return data;
-    },
+    mutationFn: (request: UpdateWorkspaceUserRoleRequest) =>
+      updateWorkspaceMemberRole(request),
     onSuccess: (_data, variables) => {
       // The members page reads from useGetFullWorkspace which keys by
       // ["workspace", "full", workspaceId], so invalidate that exact prefix
