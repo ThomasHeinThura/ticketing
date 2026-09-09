@@ -9,20 +9,24 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  requireRow,
 } from "./helpers/fixtures";
 
 async function addMember(workspaceId: string, role: string) {
   const userId = `user-${randomUUID()}`;
 
-  const [user] = await db
-    .insert(schema.userTable)
-    .values({
-      id: userId,
-      email: `${userId}@example.com`,
-      emailVerified: true,
-      name: "Other Member",
-    })
-    .returning();
+  const user = requireRow(
+    await db
+      .insert(schema.userTable)
+      .values({
+        id: userId,
+        email: `${userId}@example.com`,
+        emailVerified: true,
+        name: "Other Member",
+      })
+      .returning(),
+    "user",
+  );
 
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
@@ -97,75 +101,96 @@ describe("API integration: account deletion", () => {
       workspaceId: host.workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        userId: guest.id,
-        title: "Assigned to the leaving user",
-        status: "to-do",
-        priority: "medium",
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          userId: guest.id,
+          title: "Assigned to the leaving user",
+          status: "to-do",
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
-    const [timeEntry] = await db
-      .insert(schema.timeEntryTable)
-      .values({
-        taskId: task.id,
-        userId: guest.id,
-        startTime: new Date(),
-        duration: 60,
-      })
-      .returning();
+    const timeEntry = requireRow(
+      await db
+        .insert(schema.timeEntryTable)
+        .values({
+          taskId: task.id,
+          userId: guest.id,
+          startTime: new Date(),
+          duration: 60,
+        })
+        .returning(),
+      "timeEntry",
+    );
 
-    const [activity] = await db
-      .insert(schema.activityTable)
-      .values({
-        taskId: task.id,
-        userId: guest.id,
-        type: "comment",
-        content: "Worth keeping",
-      })
-      .returning();
+    const activity = requireRow(
+      await db
+        .insert(schema.activityTable)
+        .values({
+          taskId: task.id,
+          userId: guest.id,
+          type: "comment",
+          content: "Worth keeping",
+        })
+        .returning(),
+      "activity",
+    );
 
     await deleteAccountData(guest.id);
     await db.delete(schema.userTable).where(eq(schema.userTable.id, guest.id));
 
-    const [remainingTask] = await db
-      .select()
-      .from(schema.taskTable)
-      .where(eq(schema.taskTable.id, task.id));
-    const [remainingTimeEntry] = await db
-      .select()
-      .from(schema.timeEntryTable)
-      .where(eq(schema.timeEntryTable.id, timeEntry.id));
-    const [remainingActivity] = await db
-      .select()
-      .from(schema.activityTable)
-      .where(eq(schema.activityTable.id, activity.id));
+    const remainingTask = requireRow(
+      await db
+        .select()
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.id, task.id)),
+      "remainingTask",
+    );
+    const remainingTimeEntry = requireRow(
+      await db
+        .select()
+        .from(schema.timeEntryTable)
+        .where(eq(schema.timeEntryTable.id, timeEntry.id)),
+      "remainingTimeEntry",
+    );
+    const remainingActivity = requireRow(
+      await db
+        .select()
+        .from(schema.activityTable)
+        .where(eq(schema.activityTable.id, activity.id)),
+      "remainingActivity",
+    );
 
-    expect(remainingTask?.title).toBe("Assigned to the leaving user");
-    expect(remainingTask?.userId).toBeNull();
-    expect(remainingTimeEntry?.duration).toBe(60);
-    expect(remainingTimeEntry?.userId).toBeNull();
-    expect(remainingActivity?.content).toBe("Worth keeping");
-    expect(remainingActivity?.userId).toBeNull();
+    expect(remainingTask.title).toBe("Assigned to the leaving user");
+    expect(remainingTask.userId).toBeNull();
+    expect(remainingTimeEntry.duration).toBe(60);
+    expect(remainingTimeEntry.userId).toBeNull();
+    expect(remainingActivity.content).toBe("Worth keeping");
+    expect(remainingActivity.userId).toBeNull();
   });
 
   it("removes the stored avatar with the account", async () => {
     const member = await createWorkspaceMember({ role: "owner" });
 
-    const [avatar] = await db
-      .insert(schema.userAvatarTable)
-      .values({
-        userId: member.user.id,
-        mimeType: "image/png",
-        size: 8,
-        data: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-      })
-      .returning();
+    const avatar = requireRow(
+      await db
+        .insert(schema.userAvatarTable)
+        .values({
+          userId: member.user.id,
+          mimeType: "image/png",
+          size: 8,
+          data: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        })
+        .returning(),
+      "avatar",
+    );
 
     await db
       .delete(schema.userTable)

@@ -8,6 +8,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  requireRow,
 } from "./helpers/fixtures";
 
 beforeEach(async () => {
@@ -72,19 +73,22 @@ describe("task assignees stay inside the workspace", () => {
       workspaceId: workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        title: "Seeded",
-        description: "",
-        priority: "low",
-        status: "to-do",
-        columnId: columns.todo?.id ?? null,
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Seeded",
+          description: "",
+          priority: "low",
+          status: "to-do",
+          columnId: columns.todo?.id ?? null,
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(user);
     const { app } = createApp();
@@ -107,19 +111,22 @@ describe("activity attribution", () => {
       workspaceId: workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        title: "Seeded",
-        description: "",
-        priority: "low",
-        status: "to-do",
-        columnId: columns.todo?.id ?? null,
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Seeded",
+          description: "",
+          priority: "low",
+          status: "to-do",
+          columnId: columns.todo?.id ?? null,
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(user);
     const { app } = createApp();
@@ -150,19 +157,22 @@ describe("every assignee write path is workspace scoped", () => {
       workspaceId: workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        title: "Seeded",
-        description: "",
-        priority: "low",
-        status: "to-do",
-        columnId: columns.todo?.id ?? null,
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Seeded",
+          description: "",
+          priority: "low",
+          status: "to-do",
+          columnId: columns.todo?.id ?? null,
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(user);
     const { app } = createApp();
@@ -281,10 +291,13 @@ describe("every assignee write path is workspace scoped", () => {
 
     expect(response.status).toBe(200);
 
-    const [stored] = await db
-      .select({ userId: schema.taskTable.userId })
-      .from(schema.taskTable)
-      .where(eq(schema.taskTable.projectId, project.id));
+    const stored = requireRow(
+      await db
+        .select({ userId: schema.taskTable.userId })
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.projectId, project.id)),
+      "stored",
+    );
 
     expect(stored.userId).toBe(user.id);
   });
@@ -295,20 +308,23 @@ describe("every assignee write path is workspace scoped", () => {
       workspaceId: workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        title: "Seeded",
-        description: "",
-        priority: "low",
-        status: "to-do",
-        columnId: columns.todo?.id ?? null,
-        number: 1,
-        position: 1,
-        userId: user.id,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Seeded",
+          description: "",
+          priority: "low",
+          status: "to-do",
+          columnId: columns.todo?.id ?? null,
+          number: 1,
+          position: 1,
+          userId: user.id,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(user);
     const { app } = createApp();
@@ -321,10 +337,13 @@ describe("every assignee write path is workspace scoped", () => {
 
     expect(response.status).toBe(200);
 
-    const [after] = await db
-      .select({ userId: schema.taskTable.userId })
-      .from(schema.taskTable)
-      .where(eq(schema.taskTable.id, task.id));
+    const after = requireRow(
+      await db
+        .select({ userId: schema.taskTable.userId })
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.id, task.id)),
+      "after",
+    );
 
     expect(after.userId).toBeNull();
   });
@@ -335,19 +354,22 @@ describe("every assignee write path is workspace scoped", () => {
       workspaceId: workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        title: "Seeded",
-        description: "",
-        priority: "low",
-        status: "to-do",
-        columnId: columns.todo?.id ?? null,
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Seeded",
+          description: "",
+          priority: "low",
+          status: "to-do",
+          columnId: columns.todo?.id ?? null,
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(user);
     const { app } = createApp();
@@ -360,10 +382,13 @@ describe("every assignee write path is workspace scoped", () => {
 
     expect(response.status).toBe(200);
 
-    const [after] = await db
-      .select({ userId: schema.taskTable.userId })
-      .from(schema.taskTable)
-      .where(eq(schema.taskTable.id, task.id));
+    const after = requireRow(
+      await db
+        .select({ userId: schema.taskTable.userId })
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.id, task.id)),
+      "after",
+    );
 
     expect(after.userId).toBe(user.id);
   });
@@ -375,19 +400,22 @@ describe("every assignee write path is workspace scoped", () => {
       workspaceId: workspace.id,
     });
 
-    const [task] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: project.id,
-        title: "Seeded",
-        description: "",
-        priority: "low",
-        status: "to-do",
-        columnId: columns.todo?.id ?? null,
-        number: 1,
-        position: 1,
-      })
-      .returning();
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Seeded",
+          description: "",
+          priority: "low",
+          status: "to-do",
+          columnId: columns.todo?.id ?? null,
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
 
     mockAuthenticatedSession(user);
     const { app } = createApp();

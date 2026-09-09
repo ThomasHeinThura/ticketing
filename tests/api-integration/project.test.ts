@@ -4,7 +4,7 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember } from "./helpers/fixtures";
+import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 
 describe("API integration: project creation", () => {
   beforeEach(async () => {
@@ -96,15 +96,18 @@ describe("API integration: project creation", () => {
     const member = await createWorkspaceMember();
     const outsiderId = "user-outsider";
 
-    const [outsider] = await db
-      .insert(schema.userTable)
-      .values({
-        id: outsiderId,
-        email: `${outsiderId}@example.com`,
-        emailVerified: true,
-        name: "Outsider",
-      })
-      .returning();
+    const outsider = requireRow(
+      await db
+        .insert(schema.userTable)
+        .values({
+          id: outsiderId,
+          email: `${outsiderId}@example.com`,
+          emailVerified: true,
+          name: "Outsider",
+        })
+        .returning(),
+      "outsider",
+    );
 
     mockAuthenticatedSession(outsider);
     const { app } = createApp();
