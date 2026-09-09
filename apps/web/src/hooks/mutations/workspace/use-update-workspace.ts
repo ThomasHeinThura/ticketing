@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth-client";
+import { client } from "@taskdesk/libs";
 import { createSlug } from "@/lib/utils/create-slug";
 
 type UpdateWorkspaceRequest = {
@@ -8,6 +8,12 @@ type UpdateWorkspaceRequest = {
   description?: string;
   slug?: string;
   logo?: string;
+  /**
+   * Plugin-era option, kept only so existing call sites still type-check.
+   * The native `PATCH /api/workspace/{workspaceId}` body has no `metadata`
+   * field — `description` is its own column, not a metadata entry — and no
+   * call site passes this.
+   */
   metadata?: Record<string, unknown>;
 };
 
@@ -19,14 +25,12 @@ function useUpdateWorkspace() {
       description,
       slug,
       logo,
-      metadata,
     }: UpdateWorkspaceRequest) => {
       const updateData: {
         name?: string;
         description?: string;
         slug?: string;
         logo?: string;
-        metadata?: Record<string, unknown>;
       } = {};
 
       if (name !== undefined) {
@@ -48,20 +52,18 @@ function useUpdateWorkspace() {
         updateData.logo = logo;
       }
 
-      if (metadata !== undefined) {
-        updateData.metadata = metadata;
-      }
-
-      const { data, error } = await authClient.organization.update({
-        data: updateData,
-        organizationId: workspaceId,
+      // S4b: native replacement for authClient.organization.update().
+      const response = await client.workspace[":workspaceId"].$patch({
+        param: { workspaceId },
+        json: updateData,
       });
 
-      if (error) {
-        throw new Error(error.message || "Failed to update workspace");
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error);
       }
 
-      return data;
+      return await response.json();
     },
   });
 }

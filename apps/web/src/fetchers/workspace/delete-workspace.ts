@@ -1,19 +1,19 @@
-import { authClient } from "@/lib/auth-client";
+import { client } from "@taskdesk/libs";
 
-type DeleteWorkspaceRequest = {
-  id: string;
-};
+export type DeleteWorkspaceRequest = { id: string };
 
 const deleteWorkspace = async ({ id }: DeleteWorkspaceRequest) => {
-  const { data, error } = await authClient.organization.delete({
-    organizationId: id,
+  // S4b: native replacement for authClient.organization.delete().
+  const response = await client.workspace[":workspaceId"].$delete({
+    param: { workspaceId: id },
   });
 
-  if (error) {
-    throw new Error(error.message || "Failed to delete workspace");
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error);
   }
 
-  return data;
+  return await response.json();
 };
 
 export default deleteWorkspace;
