@@ -18,6 +18,24 @@ export const CI_CD_RELATIVE_PATH = "docs/04-engineering/ci-cd.md";
 export const ciCdPath = path.join(repoRoot, CI_CD_RELATIVE_PATH);
 
 /** The parser needs at least this many globs before it believes it read the whole list. */
+// A PARSE-SANITY floor, not the anti-narrowing control — that is
+// `readSecurityReviewScope`, which unions the list at the merge base with the list at HEAD
+// so a diff cannot escape scope by shrinking it.
+//
+// An independent Opus audit of `main@5270954` flagged this as LOW: 8 against a real list of
+// 23 means a parse regression could silently drop fifteen globs and still "pass". True, and
+// **raising it was tried and reverted**, because it is not safely actionable as stated: the
+// red probes in `scripts/ci/probes/` construct SYNTHETIC ci-cd.md files with deliberately
+// small glob lists — `stale-review-note.test.mjs` writes ten — and a floor above that turns
+// every one of them into a parse error instead of the scenario it was built to test. At 16,
+// six probes failed.
+//
+// So the floor stays at 8 and the finding is answered honestly rather than closed: a floor
+// tied to a number cannot distinguish "the block format broke" from "a probe wrote a small
+// list on purpose". The durable fix is a floor derived from the document being parsed rather
+// than a constant — e.g. refusing a block whose token count fell since the merge base, which
+// is the same baseline comparison the anti-narrowing control already does. Recorded, not
+// done, because it belongs with that control and not with a constant.
 const MINIMUM_GLOBS = 8;
 
 export class SecurityScopeUnavailableError extends Error {
@@ -231,5 +249,23 @@ export async function readSecurityReviewScope() {
  * which is a property of the file's contents rather than of its path.
  */
 export function looksLikeHonoRouter(source) {
-  return /new\s+(?:OpenAPI)?Hono\s*[<(]/.test(source);
+  // `new Hono(` / `new OpenAPIHono(` matched exactly TWO files in this repository —
+  // `apps/api/src/openapi.ts` and `apps/api/src/index.ts` — while **20** route modules
+  // declare themselves with `apiRouter()`, the local factory that wraps
+  // `new OpenAPIHono({ defaultHook })` (`apps/api/src/openapi.ts:25-26`). So the "any new
+  // route file" clause in ci-cd.md was, in practice, matching nothing: a brand-new
+  // authenticated route surface added as `apps/api/src/thing/index.ts` triggered no
+  // security review. Found by an independent Opus audit of `main@5270954`.
+  //
+  // This is a TEXTUAL PROXY for "declares a router", and it is the weaker half of the
+  // control on purpose. The strong half is now ci-cd.md's `apps/api/src/**/index.ts` path
+  // glob, which covers every route module by location rather than by how it happens to be
+  // written. Keep this as the backstop for a router declared somewhere unexpected.
+  //
+  // The durable version derives the surface from the artifact instead of from source text
+  // — `collectRoutes(await loadApiApp())` in `tests/permissions/api-app.ts` boots the real
+  // app and enumerates what is actually mounted. That is the right answer and it is not
+  // done here, because booting the API inside the pull-request-template check is a larger
+  // change than this fix. Recorded rather than pretended.
+  return /new\s+(?:OpenAPI)?Hono\s*[<(]|\bapiRouter\s*[<(]/.test(source);
 }

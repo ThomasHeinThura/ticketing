@@ -38,7 +38,6 @@
 
 import path from "node:path";
 import {
-  addedPaths,
   changedFiles,
   changedPaths,
   DiffUnavailableError,
@@ -112,16 +111,24 @@ async function securitySurfaceTouched() {
   const changes = changedFiles();
   const touched = changedPaths(changes).filter((file) => scope.matches(file));
 
-  for (const file of addedPaths(changes)) {
+  // Every CHANGED .ts/.tsx file, not only added ones. This loop used to read
+  // the ADDED-files list only, so **modifying** an existing router — adding a route to it,
+  // or removing a middleware from one — matched nothing unless a path glob caught it.
+  // "Any new route file" was the documented clause, but the risk is not confined to new
+  // files: deleting `requireSessionOnly()` from an existing router is a bigger change
+  // than adding a router. Found by an independent Opus audit of `main@5270954`.
+  for (const file of changedPaths(changes)) {
     if (!/\.tsx?$/.test(file) || touched.includes(file)) {
       continue;
     }
     const absolute = path.join(repoRoot, file);
     if (!(await exists(absolute))) {
+      // Deleted, or renamed away. A file that is gone cannot be read; the path globs
+      // above have already had their say on it.
       continue;
     }
     if (looksLikeHonoRouter(await readText(absolute))) {
-      touched.push(`${file} (new file exporting a Hono router)`);
+      touched.push(`${file} (declares a Hono router)`);
     }
   }
 
