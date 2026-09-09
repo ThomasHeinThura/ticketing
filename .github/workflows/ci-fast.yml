@@ -138,11 +138,12 @@ jobs:
         run: pnpm check:vocabulary
       - name: pnpm check:events
         # #86's mechanical published-vs-declared reconciliation for event keys — see
-        # scripts/ci/check-events.mjs. ci-cd.md already scopes check:vocabulary over "a
-        # table, capability, event key or job name absent from its authority document";
-        # this script is that promise's concrete implementation for event keys, so
-        # test-all.mjs's reconciliation treats it as an alias of the declared
-        # `pnpm check:vocabulary` gate rather than as an undeclared one.
+        # scripts/ci/check-events.mjs. Declared as its OWN row in ci-cd.md and its own
+        # enabled entry in test-all.mjs's manifest — not an alias of `pnpm check:vocabulary`.
+        # An earlier version aliased it, and the alias made this step deletable (or
+        # `continue-on-error`/`if: false`-able) with `pnpm test:all` staying green, and let
+        # `check:vocabulary`'s own step be removed the same way. Both gates are protected on
+        # their own terms now; see scripts/ci/probes/workflow-alias-table.test.mjs.
         run: pnpm check:events
       - name: pnpm check:reviews
         run: pnpm check:reviews
