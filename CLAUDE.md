@@ -26,8 +26,8 @@ Then the feature spec for what you are doing, and any ADR it cites.
 **There is application code, and this section is where you find out what is actually
 true.** Say it in four categories, always, and never let one blur into another:
 
-**ON MAIN**, as of 2026-09-09 at `8aba7db`. Ten pull requests merged that day; **nothing
-carrying code is open.** The kaneo import at `42bb8011`, de-branded (#5). Licence and
+**ON MAIN**, as of 2026-09-09 at `5270954`. **Eleven** pull requests merged that day.
+**Code is open again**, and this list is not the whole repository — run `gh pr list --state open` for what is in flight. The kaneo import at `42bb8011`, de-branded (#5). Licence and
 provenance files (#4). The deployment slice — root `Dockerfile`, `compose.yml`, the `deploy/`
 overlays, `scripts/deploy.sh`, a hardened `charts/taskdesk`, `docs/05-operations/proxy-topology-evidence.md`
 (#20 of #11). And then:
@@ -50,9 +50,28 @@ overlays, `scripts/deploy.sh`, a hardened `charts/taskdesk`, `docs/05-operations
 `pnpm check:route-policy`, a fail-closed wrapper that locates that suite and refuses to pass
 without it. It does not replace the entry point.
 
-**IN OPEN PR.** Nothing. A dependabot bump may be open at any time; those are routine.
+**IN OPEN PR — and this file deliberately does NOT list them.**
 
-**READ THIS BEFORE ACTING ON ANY OF IT.** All ten of those merges happened **without the
+**Run `gh pr list --state open` and read it there.** Enumerating open pull requests here was
+tried on 2026-09-09 and abandoned the same day: the list was stale within the hour, three
+independent review rounds were spent partly on correcting it, and new branches kept opening
+while it sat under review. **A file that must be edited every time a subagent opens a branch
+is not durable truth — it is a dashboard, and GitHub already is one.**
+
+What IS durable, and belongs here:
+
+- **Nothing in an open pull request is available.** Do not build on it and do not rebuild it.
+  Check with `gh pr list` and `gh pr view <n>` before assuming a thing exists.
+- **A branch existing unblocks nothing.** Only a *merged* change releases a dependent stage.
+  Dependencies are recorded in
+  [the retrofit stage ledger](docs/07-planning/retrofits/organization-plugin-retrofit.md), not
+  here.
+- **Anything touching a security-review path needs the mandatory Opus review before merge**,
+  and neither the author nor a Sonnet agent can supply it. See the three absolutes below.
+- Dependabot bumps are routine and are nobody's blocker.
+
+
+**READ THIS BEFORE ACTING ON ANY OF IT.** All eleven of those merges happened **without the
 mandatory Opus security review** — Thomas waived the gate explicitly and merged on Sonnet
 review. Five touched security-scope paths. See the two 2026-09-09 decision-log entries. The
 waiver is recorded, not hidden, and `check:pr-template` still fails on the untickable
@@ -74,9 +93,14 @@ but it is **still mounted**, and `tests/api-contract/openapi.json` still declare
 demonstrated to fail CI ✓. **Condition 2 — issue #6 complete *through retrofit S10* — is the
 sole blocker**, and it is arithmetic rather than judgement: the
 [stage ledger](docs/07-planning/retrofits/organization-plugin-retrofit.md) records four of
-fourteen stages landed (S0, S1, S2, S4). **S3, S5 and S7 have their preconditions satisfied
-and can start today**; they are the shortest path to opening the throttle. Do not re-derive
-this — read the ledger.
+fifteen stages landed (S0, S1, S2, S4). **S3 and S5 have branches in flight** — check
+GitHub for their numbers and state rather than trusting a number written here;
+**S7 is ⛔ BLOCKED BY #66** (and, independently, by #82 — see the decision log), a
+privilege-restoration fail-open on the very table S7 writes.
+Do not re-derive any of this — read the ledger, which states progress as **4 landed of 12
+required** rather than the misleading "4 of 15". The extra required stage is **S4b**
+(client workspace-write cutover), added 2026-09-09 — it was always required, just not
+previously written down as its own row.
 
 **What is startable while the throttle is shut**, per the blocking taxonomy: the retrofit
 stages above, further pure `packages/domain` modules, `packages/ui` primitives, CI tooling,
@@ -98,12 +122,24 @@ branch, commit to it, push, open a pull request that says what you did and what 
 do. **Only Thomas merges.**
 
 `main` is protected by the `protect-main` ruleset: a pull request is required, deletion and
-non-fast-forward pushes are blocked, stale approvals are dismissed on push, merges are
-squashed, and — since 2026-09-09 — **eleven fast-stage status checks are required**, with
-strict up-to-date enforcement and **zero bypass actors**. Until that day it required no
-status checks at all. The template/security-review job is deliberately **not** among the
-eleven; the decision log says why. **Required approving reviews is `0`, and Require review from Code Owners is
-off** — both deliberately (decision log, 2026-09-06).
+non-fast-forward pushes are blocked, stale approvals are dismissed on push, and — since
+2026-09-09 — **twelve status checks are
+required**, with strict up-to-date enforcement and **zero bypass actors**
+(`current_user_can_bypass: never`). Until that day it required **no status checks at all**.
+
+**`pull request template + security review` IS the twelfth**, on Thomas's explicit
+instruction (decision log, 2026-09-09, the entry that supersedes the morning's exclusion).
+The consequence is stronger than it sounds: the checker treats an unticked
+independent-review item as a **blocker** and it cannot be marked `n/a`, so **no pull request
+merges without committed review evidence — a documentation-only one included.** The
+`gate-waiver` mechanism covers the **G1–G13 design gates only**; it has no path for the
+review item, deliberately.
+
+**Merges are not restricted to squash.** The ruleset's `allowed_merge_methods` is
+`["merge","squash","rebase"]` and `main` carries twelve merge commits. An earlier version of
+this file said "merges are squashed", which was a convention, not a control — squash-merging
+is the practice, nothing enforces it. **Required approving reviews is `0`, and Require review
+from Code Owners is off** — both deliberately (decision log, 2026-09-06).
 
 Do not wait for an approval that is not configured, and do not read the zero as permission.
 `CODEOWNERS` is **ownership metadata** — it says who to ask, not a gate. The control that
@@ -145,6 +181,17 @@ every session — is withdrawn. Update it only on a durable transition: a pull r
 genuinely review-ready or merges, an issue blocks, unblocks or completes, a throttle state
 changes, Thomas makes a material decision, or a material repository or deployment fact
 changes. Intermediate progress goes in pull-request comments.
+
+**The governing rule, stated once so it can be applied as a property rather than re-derived
+as a set of edits:** no sentence in `CLAUDE.md` or `status.md` may assert live pull-request,
+branch, issue-count or finding-count state. Either the sentence is dated inside `status.md`'s
+snapshot header, or it defers to GitHub (`gh pr list`, `gh pr view <n>`, `gh issue list`,
+`gh issue view <n>`). This was learned the expensive way: four independent reviews of the
+same correcting pull request kept finding a *different* sentence in one of these two files
+still naming a live PR number, an in-flight status or a finding count, because each prior
+fix patched the specific sentence a reviewer had pointed at instead of this property. Apply
+it to the whole file, every time either file is touched — not only to the section a review
+happened to name.
 
 **The decision log is append-only.** When Thomas reverses something, add a new newest-first
 entry naming what it supersedes and why, then update the operative documents. Never rewrite
