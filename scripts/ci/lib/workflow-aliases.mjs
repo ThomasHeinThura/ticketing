@@ -39,9 +39,20 @@
  * **This map lives in its own file (review PR #91, MEDIUM 1) and cannot be mutated after
  * load:** `set`/`delete`/`clear` throw, and no new own property can be added (so a
  * consumer cannot shadow `.get()` either — see the test that proves both, in
- * `scripts/ci/probes/workflow-alias-table.test.mjs`). That probe also pins this file's
- * exact comment-stripped source, so the five entries below are the only ones that can
- * ever exist — a change to what this Map contains is a change to the two lines below.
+ * `scripts/ci/probes/workflow-alias-table.test.mjs`).
+ *
+ * **The seal alone is not enough, and the reason is worth keeping.** It stops anything
+ * OUTSIDE this file changing the map. It does not stop code INSIDE this file, above the
+ * seal, from calling `.set()` before the map is frozen — that was measured, and the map
+ * really does end up holding six entries while the five literals below are untouched. So
+ * the probe also pins this file's **exact comment-stripped source**. The two defences are
+ * complementary rather than belt-and-braces: the seal closes the outside, the source pin
+ * closes the inside.
+ *
+ * Stated as narrowly as it can be and stay true: **changing what this map holds requires
+ * editing this file, and editing this file fails the probe.** That is not the same as "the
+ * five entries below are the only ones that can ever exist", which an earlier version of
+ * this comment claimed and which the pre-seal `.set()` above disproves.
  */
 const sealed = new Map([
   ["pnpm check:route-policy", "pnpm test:permissions"],
