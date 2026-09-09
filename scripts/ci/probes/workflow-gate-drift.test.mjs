@@ -219,23 +219,40 @@ describe("M2 — three-way gate reconciliation", () => {
   });
 });
 
-describe("A2 — a gate that cannot fail a pull request is not an executed gate", () => {
-  /** Wrap the job that runs `gate` in a condition, by inserting a job-level key. */
-  function withJobKey(source, gateLine, key) {
-    const lines = source.split("\n");
-    const step = lines.findIndex((line) => line.includes(gateLine));
-    assert.notEqual(step, -1, `the harness could not find "${gateLine}"`);
-    // Walk back to the job header: the nearest two-space `id:` line above the step.
-    let job = step;
-    while (job >= 0 && !/^ {2}[a-z0-9_-]+:\s*$/.test(lines[job])) job -= 1;
-    assert.ok(job >= 0, "no job header above the step");
-    return [
-      ...lines.slice(0, job + 1),
-      `    ${key}`,
-      ...lines.slice(job + 1),
-    ].join("\n");
-  }
+/** Wrap the job that runs `gate` in a condition, by inserting a job-level key. */
+function withJobKey(source, gateLine, key) {
+  const lines = source.split("\n");
+  const step = lines.findIndex((line) => line.includes(gateLine));
+  assert.notEqual(step, -1, `the harness could not find "${gateLine}"`);
+  // Walk back to the job header: the nearest two-space `id:` line above the step.
+  let job = step;
+  while (job >= 0 && !/^ {2}[a-z0-9_-]+:\s*$/.test(lines[job])) job -= 1;
+  assert.ok(job >= 0, "no job header above the step");
+  return [
+    ...lines.slice(0, job + 1),
+    `    ${key}`,
+    ...lines.slice(job + 1),
+  ].join("\n");
+}
 
+/**
+ * The PRE-A6 verdict: any `if:` that was neither statically false nor label-gated was
+ * classified `conditional`, and `isExecuting()` accepted `conditional`. This is the
+ * non-vacuity control for every A6 case — each one asserts the old predicate said "this
+ * executes".
+ */
+function preA6CountedAsExecuting(expression) {
+  const trimmed = expression
+    .trim()
+    .replace(/^\$\{\{\s*/, "")
+    .replace(/\s*\}\}$/, "")
+    .trim();
+  if (/^(false|'false'|"false"|0)$/i.test(trimmed)) return false; // never
+  if (/labels/.test(expression)) return false; // label-gated
+  return true; // -> "conditional" -> isExecuting() === true
+}
+
+describe("A2 — a gate that cannot fail a pull request is not an executed gate", () => {
   it("1. `if: false` on the job is RED, and the flat scan called it executed", () => {
     const dir = repoWithWorkflows("if-false", (repo) => {
       write(
@@ -441,6 +458,178 @@ describe("A2 — a gate that cannot fail a pull request is not an executed gate"
       result.status,
       0,
       `both directions must be clean on the shipped tree:\n${result.output}`,
+    );
+  });
+});
+
+describe("A6 — an unrecognised condition does NOT count as execution", () => {
+  /**
+   * A2 enumerated three forbidden shapes and let everything else through, so the general
+   * case survived: a condition that is false on every real run, is not `false`, and
+   * mentions no label, was classified `conditional` and counted as executed. A denylist
+   * solving an allowlist problem.
+   *
+   * Each case pins BOTH halves — the pre-A6 predicate counted it as executing, and the
+   * shipped reconciliation is red. Without the first half these would be assertions that
+   * merely happen to pass.
+   */
+  const ALWAYS_FALSE_IN_PRACTICE = [
+    [
+      "a repository comparison that can never match",
+      "if: github.repository == 'definitely/not-this-repo'",
+    ],
+    [
+      "a ref comparison against a branch that does not exist",
+      "if: github.ref == 'refs/heads/a-branch-that-does-not-exist'",
+    ],
+    [
+      "an event a pull request never produces",
+      "if: github.event_name == 'schedule'",
+    ],
+    [
+      "a disjunction hiding an escape hatch beside a proven atom",
+      "if: github.event_name == 'pull_request' || github.repository == 'not/this'",
+    ],
+    [
+      "an actor comparison",
+      "if: github.actor == 'somebody-who-will-never-open-this-pr'",
+    ],
+  ];
+
+  for (const [name, key] of ALWAYS_FALSE_IN_PRACTICE) {
+    it(`RED — ${name}`, () => {
+      const dir = repoWithWorkflows(
+        `a6-${name.replace(/[^a-z]+/gi, "-")}`,
+        (repo) => {
+          write(
+            repo,
+            ".github/workflows/ci-fast.yml",
+            withJobKey(readWorkflow(repo), "run: pnpm check:overrides", key),
+          );
+        },
+      );
+
+      // NON-VACUITY, two halves: the flat scan saw the gate at all, and the pre-A6
+      // classification counted it as executing.
+      assert.equal(flatScanSaw(dir, "pnpm check:overrides"), true);
+      assert.equal(
+        preA6CountedAsExecuting(key.replace(/^if:\s*/, "")),
+        true,
+        "the pre-A6 predicate must have counted this as executing, or A6 is not the defect",
+      );
+
+      const result = runChecker(dir, "test-all.mjs", ["--list"]);
+      assert.equal(result.status, 1, result.output);
+      assert.match(result.output, /CANNOT FAIL A PULL REQUEST/);
+      assert.match(result.output, /not a condition this scanner can PROVE/);
+    });
+  }
+
+  it("RED remains — a label-gated job", () => {
+    const dir = repoWithWorkflows("a6-label", (repo) => {
+      write(
+        repo,
+        ".github/workflows/ci-fast.yml",
+        withJobKey(
+          readWorkflow(repo),
+          "run: pnpm check:overrides",
+          "if: contains(github.event.pull_request.labels.*.name, 'ready-for-review')",
+        ),
+      );
+    });
+    const result = runChecker(dir, "test-all.mjs", ["--list"]);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /LABEL/);
+  });
+
+  it("RED remains — a literal false", () => {
+    const dir = repoWithWorkflows("a6-false", (repo) => {
+      write(
+        repo,
+        ".github/workflows/ci-fast.yml",
+        withJobKey(
+          readWorkflow(repo),
+          "run: pnpm check:overrides",
+          "if: false",
+        ),
+      );
+    });
+    const result = runChecker(dir, "test-all.mjs", ["--list"]);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /never runs/);
+  });
+
+  it("RED remains — continue-on-error", () => {
+    const dir = repoWithWorkflows("a6-advisory", (repo) => {
+      write(
+        repo,
+        ".github/workflows/ci-fast.yml",
+        withJobKey(
+          readWorkflow(repo),
+          "run: pnpm check:overrides",
+          "continue-on-error: true",
+        ),
+      );
+    });
+    const result = runChecker(dir, "test-all.mjs", ["--list"]);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /cannot fail the build/i);
+  });
+
+  it("GREEN — the one PROVEN conditional shape still counts as executing", () => {
+    // Why this is sound rather than convenient: the required context IS the
+    // pull_request run, so `github.event_name == 'pull_request'` is true on every run
+    // that gates a pull request. It skips the workflow's `push` runs, which gate nothing
+    // and are not what the ruleset requires. That argument is carried in the allowlist
+    // entry itself, and the last test in this block enforces that it is written down.
+    const dir = repoWithWorkflows("a6-proven", (repo) => {
+      write(
+        repo,
+        ".github/workflows/ci-fast.yml",
+        withJobKey(
+          readWorkflow(repo),
+          "run: pnpm check:overrides",
+          "if: github.event_name == 'pull_request'",
+        ),
+      );
+    });
+    const result = runChecker(dir, "test-all.mjs", ["--list"]);
+    assert.equal(
+      result.status,
+      0,
+      `a proven pull-request condition must not be refused:\n${result.output}`,
+    );
+  });
+
+  it("GREEN — the unconditional shipped workflow", () => {
+    const dir = repoWithWorkflows("a6-shipped");
+    const result = runChecker(dir, "test-all.mjs", ["--list"]);
+    assert.equal(result.status, 0, result.output);
+  });
+
+  it("every allowlist entry carries its argument, and the shape the tree uses is on it", async () => {
+    // The allowlist IS the proof, so an entry without a reason is the denylist again.
+    const { PR_CONTEXT_PROVEN, provenInPullRequestContext } = await import(
+      "../lib/workflow-gates.mjs"
+    );
+    assert.ok(PR_CONTEXT_PROVEN.length > 0);
+    for (const entry of PR_CONTEXT_PROVEN) {
+      assert.ok(entry.pattern instanceof RegExp);
+      assert.ok(
+        typeof entry.why === "string" && entry.why.trim().length > 60,
+        `the allowlist entry for ${entry.pattern} has no real argument for why it always ` +
+          "participates in the required pull-request context",
+      );
+    }
+    assert.equal(
+      provenInPullRequestContext("github.event_name == 'pull_request'"),
+      true,
+    );
+    assert.equal(
+      provenInPullRequestContext(
+        "github.repository == 'definitely/not-this-repo'",
+      ),
+      false,
     );
   });
 });

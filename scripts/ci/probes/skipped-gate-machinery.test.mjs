@@ -6,10 +6,8 @@
  * `it.skip` on a shipped red probe left it reporting "161 test file(s), none skipped or
  * focused", exit 0.
  *
- * The marker is ASSEMBLED at runtime rather than written literally, because this file is
- * itself scanned now — a probe that embeds the string it forbids would fail the gate it
- * is testing. That is not a trick; it is the same reason `stripComments`'s tests keep
- * their inputs in a data table.
+ * The markers below are PLAIN LITERALS, and the history of that line is the interesting
+ * part — see the comment on `SKIP`.
  */
 
 import assert from "node:assert/strict";
@@ -26,12 +24,24 @@ import {
 after(cleanUpScratchRepos);
 
 /**
- * The banned markers, assembled at RUNTIME from parts.
+ * The banned markers, as plain literals — and the reason that is safe is the whole point.
  *
- * This file is scanned by the very gate it tests, so it must not contain the literal it
- * forbids. A template literal was the first attempt and `biome check --write` folded it
- * straight back into the literal — caught by this gate in a clean checkout, which is the
- * gate working. `Array.prototype.join` is not constant-folded, so the parts stay parts.
+ * This file is scanned by the very gate it tests. The first version therefore tried to
+ * avoid containing the literal it forbids: a template literal, which `biome check --write`
+ * folded straight back into the literal, and the gate caught it in a clean checkout. The
+ * second version assembled the string from parts via `Array.prototype.join`, which is not
+ * constant-folded.
+ *
+ * Neither is needed any more, and this comment used to claim the second one was still in
+ * force after the code had gone back to literals — a stale comment describing a defence
+ * that no longer existed, which is worse than no comment. M3's second half taught the
+ * scanner to blank the CONTENTS of strings and templates before matching
+ * (`lib/strip-code-comments.mjs`), and A3 made that blanking correct inside `${…}` too. A
+ * disabled test cannot hide in a string and still execute, so a string holding
+ * `it.skip(` is data and the gate is right to ignore it.
+ *
+ * The literal is the honest form: it says what the probe feeds the checker, with nothing
+ * between the reader and it.
  */
 const SKIP = "it.skip(";
 const ONLY = "it.only(";

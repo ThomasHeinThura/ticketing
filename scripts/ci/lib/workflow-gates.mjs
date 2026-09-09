@@ -37,6 +37,29 @@
  *    The directory is enumerated now, and local composite actions are resolved in the
  *    calling job's context.
  *
+ * **A6 — "I do not recognise this condition" was treated as "it runs".** A2 classified
+ * occurrences and then `isExecuting()` accepted `executes` OR `conditional`, where
+ * `conditional` meant *any* `if:` that was not statically false and not label-gated. So the
+ * shape A2 exists to refuse survived in the general case:
+ *
+ *     if: github.repository == 'definitely/not-this-repo'
+ *     run: pnpm check:overrides
+ *
+ * false on every real run, classified `conditional`, counted as executed. Three forbidden
+ * forms were enumerated and everything else was waved through — an allowlist problem solved
+ * with a denylist, which is the same mistake as trusting a proxy: it is correct only for the
+ * cases someone thought of.
+ *
+ * So the default is inverted. A condition counts as executing ONLY when it matches an
+ * explicitly allowlisted shape that is PROVEN to hold in the required pull-request context,
+ * and every allowlisted shape carries the argument for why in `PR_CONTEXT_PROVEN`. Anything
+ * else — an unrecognised expression, a disjunction, a comparison against a repository, a ref
+ * or an actor — is `unknown-condition`, which does not execute. The class this closes is:
+ * *a gate may be present in YAML and still not be guaranteed to participate in the required
+ * pull-request execution.*
+ *
+ * Growing the allowlist is deliberate, reviewable and cheap. Guessing is none of those.
+ *
  * Still deliberately not a YAML dependency: the repository has no YAML parser at the root
  * and adding one is a dependency change to a frozen manifest. It is no longer a flat text
  * scan either. This walks structure by indentation, attributes every step to its job, and
@@ -51,19 +74,87 @@ import { readText, repoRoot } from "./repo.mjs";
 
 export const WORKFLOWS_RELATIVE_DIR = ".github/workflows";
 
-/** Occurrence kinds, worst to best. `executes` is the only one that gates a pull request. */
+/**
+ * Occurrence kinds, worst to best.
+ *
+ * Only `executes` and `prContext` gate a pull request. `unknownCondition` is deliberately
+ * NOT one of them: before A6 its equivalent was, and that is precisely the hole.
+ */
 export const KINDS = {
   never: "never",
   advisory: "advisory",
   labelGated: "label-gated",
   offPullRequest: "off-pull-request",
-  conditional: "conditional",
+  unknownCondition: "unknown-condition",
+  prContext: "pr-context",
   executes: "executes",
 };
 
-/** Which kinds actually gate a pull request. */
+/** Which kinds actually gate a pull request. Fail closed: the list is short on purpose. */
 export function isExecuting(kind) {
-  return kind === KINDS.executes || kind === KINDS.conditional;
+  return kind === KINDS.executes || kind === KINDS.prContext;
+}
+
+/**
+ * Conditions PROVEN to hold whenever a pull request is being gated.
+ *
+ * Every entry needs the argument, not just the pattern — the entry IS the proof, and a
+ * future reader adding one has to write the same kind of sentence. An entry without a
+ * reason is the denylist again, wearing an allowlist's clothes.
+ */
+export const PR_CONTEXT_PROVEN = [
+  {
+    pattern: /^github\.event_name\s*==\s*'pull_request'$/,
+    why:
+      "the required context IS the pull_request run, so on every run that gates a pull " +
+      "request this is true by construction. It skips the workflow's `push` runs, which " +
+      "gate nothing and are not what the ruleset requires.",
+  },
+  {
+    pattern: /^success\(\)$/,
+    why:
+      "the implicit default when no `if:` is written at all. Stating it changes nothing " +
+      "about whether the step participates.",
+  },
+  {
+    pattern: /^always\(\)$/,
+    why: "runs regardless of what came before, which is strictly more participation.",
+  },
+  {
+    pattern: /^!\s*cancelled\(\)$/,
+    why:
+      "runs unless the run was cancelled, and a cancelled run produces no verdict for " +
+      "either side of the gate.",
+  },
+];
+
+/** Normalise an `if:` expression enough to compare it against the allowlist. */
+function normaliseCondition(expression) {
+  return expression
+    .trim()
+    .replace(/^\$\{\{\s*/, "")
+    .replace(/\s*\}\}$/, "")
+    .replace(/"/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Is this whole condition proven to hold in the required pull-request context?
+ *
+ * An `&&` chain of proven atoms is proven — every conjunct must hold, and each one does.
+ * A disjunction is NOT: `||` is exactly how an escape hatch would be smuggled in beside a
+ * harmless-looking atom, and nothing in this repository needs one. If something ever does,
+ * it gets an allowlist entry and the sentence explaining why.
+ */
+export function provenInPullRequestContext(expression) {
+  const normalised = normaliseCondition(expression);
+  if (normalised === "") return false;
+  if (/\|\|/.test(normalised)) return false;
+  const atoms = normalised.split("&&").map((atom) => atom.trim());
+  return atoms.every((atom) =>
+    PR_CONTEXT_PROVEN.some((entry) => entry.pattern.test(atom)),
+  );
 }
 
 export class WorkflowGatesUnavailableError extends Error {
@@ -431,11 +522,31 @@ function classify(step, triggers) {
     };
   }
 
+  // A6: the default is NOT "unknown means it runs". A condition counts only when every
+  // part of it is on the proven list, and the first one that is not is named.
+  const unproven = conditions.filter(
+    ([, expression]) => !provenInPullRequestContext(expression),
+  );
+  if (unproven.length > 0) {
+    const [level, expression] = unproven[0];
+    return {
+      kind: KINDS.unknownCondition,
+      reason:
+        `${level} \`if: ${expression.trim()}\` is not a condition this scanner can PROVE ` +
+        "holds in the required pull-request context, so it does not count as execution. " +
+        "A gate can be present in YAML and still never participate — " +
+        "`github.repository == '…'`, a ref or actor comparison, or a disjunction hiding " +
+        "an escape hatch all read as ordinary conditions. If this one genuinely always " +
+        "holds on a pull request, add it to PR_CONTEXT_PROVEN in " +
+        "scripts/ci/lib/workflow-gates.mjs with the argument for why",
+    };
+  }
+
   if (conditions.length > 0) {
     const [level, expression] = conditions[0];
     return {
-      kind: KINDS.conditional,
-      reason: `${level} \`if: ${expression.trim()}\``,
+      kind: KINDS.prContext,
+      reason: `${level} \`if: ${expression.trim()}\` — proven to hold on a pull request`,
     };
   }
 
