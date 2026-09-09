@@ -72,16 +72,7 @@ import { recordedTscProjects } from "./tsc-invocations.mjs";
  * tree cannot be added without appearing here, and an entry that is no longer needed
  * fails the guard so it gets deleted rather than lingering as folklore.
  */
-const EXEMPT = new Map([
-  [
-    "tests/api-integration",
-    "34 files, 0 in any program. Adding the tree to apps/api/tsconfig.tests.json " +
-      "compiles with 359 pre-existing TS18048-class errors (it has never been " +
-      "typechecked), and lanes are actively adding files to it. Closing it is its own " +
-      "pull request; this exemption exists so the gap is reported rather than assumed " +
-      "away, which is exactly what the hardcoded `covered` list did.",
-  ],
-]);
+const EXEMPT = new Map();
 
 /**
  * Every test tree on disk that holds TypeScript, minus the declared exemptions.

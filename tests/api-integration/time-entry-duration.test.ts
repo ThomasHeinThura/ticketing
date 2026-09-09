@@ -8,23 +8,27 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  requireRow,
 } from "./helpers/fixtures";
 
 async function seedTaskFor(workspaceId: string) {
   const { project, columns } = await createProjectFixture({ workspaceId });
-  const [task] = await db
-    .insert(schema.taskTable)
-    .values({
-      projectId: project.id,
-      title: "Tracked task",
-      description: "",
-      priority: "low",
-      status: "to-do",
-      columnId: columns.todo?.id ?? null,
-      number: 1,
-      position: 1,
-    })
-    .returning();
+  const task = requireRow(
+    await db
+      .insert(schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Tracked task",
+        description: "",
+        priority: "low",
+        status: "to-do",
+        columnId: columns.todo?.id ?? null,
+        number: 1,
+        position: 1,
+      })
+      .returning(),
+    "task",
+  );
   return task;
 }
 
@@ -115,24 +119,30 @@ describe("time entry duration backfill", () => {
     const { user, workspace } = await createWorkspaceMember({ role: "owner" });
     const task = await seedTaskFor(workspace.id);
 
-    const [entry] = await db
-      .insert(schema.timeEntryTable)
-      .values({
-        taskId: task.id,
-        userId: user.id,
-        description: "",
-        startTime: new Date("2026-01-01T09:00:00.000Z"),
-        endTime: new Date("2026-01-01T10:30:00.000Z"),
-        duration: 0,
-      })
-      .returning();
+    const entry = requireRow(
+      await db
+        .insert(schema.timeEntryTable)
+        .values({
+          taskId: task.id,
+          userId: user.id,
+          description: "",
+          startTime: new Date("2026-01-01T09:00:00.000Z"),
+          endTime: new Date("2026-01-01T10:30:00.000Z"),
+          duration: 0,
+        })
+        .returning(),
+      "entry",
+    );
 
     await runDurationBackfillMigration();
 
-    const [repaired] = await db
-      .select()
-      .from(schema.timeEntryTable)
-      .where(eq(schema.timeEntryTable.id, entry.id));
+    const repaired = requireRow(
+      await db
+        .select()
+        .from(schema.timeEntryTable)
+        .where(eq(schema.timeEntryTable.id, entry.id)),
+      "repaired",
+    );
 
     expect(repaired.duration).toBe(5400);
   });
@@ -141,24 +151,30 @@ describe("time entry duration backfill", () => {
     const { user, workspace } = await createWorkspaceMember({ role: "owner" });
     const task = await seedTaskFor(workspace.id);
 
-    const [entry] = await db
-      .insert(schema.timeEntryTable)
-      .values({
-        taskId: task.id,
-        userId: user.id,
-        description: "",
-        startTime: new Date("2026-01-01T09:00:00.000Z"),
-        endTime: null,
-        duration: 0,
-      })
-      .returning();
+    const entry = requireRow(
+      await db
+        .insert(schema.timeEntryTable)
+        .values({
+          taskId: task.id,
+          userId: user.id,
+          description: "",
+          startTime: new Date("2026-01-01T09:00:00.000Z"),
+          endTime: null,
+          duration: 0,
+        })
+        .returning(),
+      "entry",
+    );
 
     await runDurationBackfillMigration();
 
-    const [repaired] = await db
-      .select()
-      .from(schema.timeEntryTable)
-      .where(eq(schema.timeEntryTable.id, entry.id));
+    const repaired = requireRow(
+      await db
+        .select()
+        .from(schema.timeEntryTable)
+        .where(eq(schema.timeEntryTable.id, entry.id)),
+      "repaired",
+    );
 
     expect(repaired.duration).toBeNull();
   });
@@ -167,24 +183,30 @@ describe("time entry duration backfill", () => {
     const { user, workspace } = await createWorkspaceMember({ role: "owner" });
     const task = await seedTaskFor(workspace.id);
 
-    const [entry] = await db
-      .insert(schema.timeEntryTable)
-      .values({
-        taskId: task.id,
-        userId: user.id,
-        description: "",
-        startTime: new Date("2026-01-01T09:00:00.000Z"),
-        endTime: new Date("2026-01-01T09:30:00.000Z"),
-        duration: 1800,
-      })
-      .returning();
+    const entry = requireRow(
+      await db
+        .insert(schema.timeEntryTable)
+        .values({
+          taskId: task.id,
+          userId: user.id,
+          description: "",
+          startTime: new Date("2026-01-01T09:00:00.000Z"),
+          endTime: new Date("2026-01-01T09:30:00.000Z"),
+          duration: 1800,
+        })
+        .returning(),
+      "entry",
+    );
 
     await runDurationBackfillMigration();
 
-    const [after] = await db
-      .select()
-      .from(schema.timeEntryTable)
-      .where(eq(schema.timeEntryTable.id, entry.id));
+    const after = requireRow(
+      await db
+        .select()
+        .from(schema.timeEntryTable)
+        .where(eq(schema.timeEntryTable.id, entry.id)),
+      "after",
+    );
 
     expect(after.duration).toBe(1800);
   });
@@ -312,24 +334,30 @@ describe("backfill tolerates legacy rows the API would now reject", () => {
     const { user, workspace } = await createWorkspaceMember({ role: "owner" });
     const task = await seedTaskFor(workspace.id);
 
-    const [entry] = await db
-      .insert(schema.timeEntryTable)
-      .values({
-        taskId: task.id,
-        userId: user.id,
-        description: "",
-        startTime: new Date("1900-01-01T00:00:00.000Z"),
-        endTime: new Date("2026-01-01T00:00:00.000Z"),
-        duration: 0,
-      })
-      .returning();
+    const entry = requireRow(
+      await db
+        .insert(schema.timeEntryTable)
+        .values({
+          taskId: task.id,
+          userId: user.id,
+          description: "",
+          startTime: new Date("1900-01-01T00:00:00.000Z"),
+          endTime: new Date("2026-01-01T00:00:00.000Z"),
+          duration: 0,
+        })
+        .returning(),
+      "entry",
+    );
 
     await runDurationBackfillMigration();
 
-    const [after] = await db
-      .select()
-      .from(schema.timeEntryTable)
-      .where(eq(schema.timeEntryTable.id, entry.id));
+    const after = requireRow(
+      await db
+        .select()
+        .from(schema.timeEntryTable)
+        .where(eq(schema.timeEntryTable.id, entry.id)),
+      "after",
+    );
 
     expect(after.duration).toBe(0);
   });
@@ -341,24 +369,30 @@ describe("backfill repairs every invalid legacy state", () => {
     const task = await seedTaskFor(workspace.id);
     const at = new Date("2026-01-01T09:00:00.000Z");
 
-    const [entry] = await db
-      .insert(schema.timeEntryTable)
-      .values({
-        taskId: task.id,
-        userId: user.id,
-        description: "",
-        startTime: at,
-        endTime: at,
-        duration: null,
-      })
-      .returning();
+    const entry = requireRow(
+      await db
+        .insert(schema.timeEntryTable)
+        .values({
+          taskId: task.id,
+          userId: user.id,
+          description: "",
+          startTime: at,
+          endTime: at,
+          duration: null,
+        })
+        .returning(),
+      "entry",
+    );
 
     await runDurationBackfillMigration();
 
-    const [after] = await db
-      .select()
-      .from(schema.timeEntryTable)
-      .where(eq(schema.timeEntryTable.id, entry.id));
+    const after = requireRow(
+      await db
+        .select()
+        .from(schema.timeEntryTable)
+        .where(eq(schema.timeEntryTable.id, entry.id)),
+      "after",
+    );
 
     expect(after.duration).toBe(0);
   });
@@ -367,24 +401,30 @@ describe("backfill repairs every invalid legacy state", () => {
     const { user, workspace } = await createWorkspaceMember({ role: "owner" });
     const task = await seedTaskFor(workspace.id);
 
-    const [entry] = await db
-      .insert(schema.timeEntryTable)
-      .values({
-        taskId: task.id,
-        userId: user.id,
-        description: "",
-        startTime: new Date("2026-01-01T09:00:00.000Z"),
-        endTime: null,
-        duration: 999,
-      })
-      .returning();
+    const entry = requireRow(
+      await db
+        .insert(schema.timeEntryTable)
+        .values({
+          taskId: task.id,
+          userId: user.id,
+          description: "",
+          startTime: new Date("2026-01-01T09:00:00.000Z"),
+          endTime: null,
+          duration: 999,
+        })
+        .returning(),
+      "entry",
+    );
 
     await runDurationBackfillMigration();
 
-    const [after] = await db
-      .select()
-      .from(schema.timeEntryTable)
-      .where(eq(schema.timeEntryTable.id, entry.id));
+    const after = requireRow(
+      await db
+        .select()
+        .from(schema.timeEntryTable)
+        .where(eq(schema.timeEntryTable.id, entry.id)),
+      "after",
+    );
 
     expect(after.duration).toBeNull();
   });

@@ -7,6 +7,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  requireRow,
 } from "./helpers/fixtures";
 
 describe("API integration: labels", () => {
@@ -77,15 +78,18 @@ describe("API integration: labels", () => {
     const member = await createWorkspaceMember();
     const outsiderId = "user-label-outsider";
 
-    const [outsider] = await db
-      .insert(schema.userTable)
-      .values({
-        id: outsiderId,
-        email: `${outsiderId}@example.com`,
-        emailVerified: true,
-        name: "Label Outsider",
-      })
-      .returning();
+    const outsider = requireRow(
+      await db
+        .insert(schema.userTable)
+        .values({
+          id: outsiderId,
+          email: `${outsiderId}@example.com`,
+          emailVerified: true,
+          name: "Label Outsider",
+        })
+        .returning(),
+      "outsider",
+    );
 
     mockAuthenticatedSession(outsider);
     const { app } = createApp();
@@ -122,65 +126,80 @@ describe("API integration: labels", () => {
       });
 
       // Create two tasks to assign labels to
-      const [taskA] = await db
-        .insert(schema.taskTable)
-        .values({
-          projectId: project.id,
-          userId: member.user.id,
-          title: "Task A",
-          status: "to-do",
-          columnId: columns.todo.id,
-          priority: "medium",
-          number: 1,
-          position: 1,
-        })
-        .returning();
+      const taskA = requireRow(
+        await db
+          .insert(schema.taskTable)
+          .values({
+            projectId: project.id,
+            userId: member.user.id,
+            title: "Task A",
+            status: "to-do",
+            columnId: columns.todo.id,
+            priority: "medium",
+            number: 1,
+            position: 1,
+          })
+          .returning(),
+        "taskA",
+      );
 
-      const [taskB] = await db
-        .insert(schema.taskTable)
-        .values({
-          projectId: project.id,
-          userId: member.user.id,
-          title: "Task B",
-          status: "to-do",
-          columnId: columns.todo.id,
-          priority: "medium",
-          number: 2,
-          position: 2,
-        })
-        .returning();
+      const taskB = requireRow(
+        await db
+          .insert(schema.taskTable)
+          .values({
+            projectId: project.id,
+            userId: member.user.id,
+            title: "Task B",
+            status: "to-do",
+            columnId: columns.todo.id,
+            priority: "medium",
+            number: 2,
+            position: 2,
+          })
+          .returning(),
+        "taskB",
+      );
 
       // Create a workspace-level label
-      const [workspaceLabel] = await db
-        .insert(schema.labelTable)
-        .values({
-          name: "Bug",
-          color: "#ef4444",
-          workspaceId: member.workspace.id,
-          taskId: null,
-        })
-        .returning();
+      const workspaceLabel = requireRow(
+        await db
+          .insert(schema.labelTable)
+          .values({
+            name: "Bug",
+            color: "#ef4444",
+            workspaceId: member.workspace.id,
+            taskId: null,
+          })
+          .returning(),
+        "workspaceLabel",
+      );
 
       // Create task-level copies (simulating assigning the label to tasks)
-      const [_taskLabelA] = await db
-        .insert(schema.labelTable)
-        .values({
-          name: "Bug",
-          color: "#ef4444",
-          workspaceId: member.workspace.id,
-          taskId: taskA.id,
-        })
-        .returning();
+      const _taskLabelA = requireRow(
+        await db
+          .insert(schema.labelTable)
+          .values({
+            name: "Bug",
+            color: "#ef4444",
+            workspaceId: member.workspace.id,
+            taskId: taskA.id,
+          })
+          .returning(),
+        "_taskLabelA",
+      );
 
-      const [_taskLabelB] = await db
-        .insert(schema.labelTable)
-        .values({
-          name: "Bug",
-          color: "#ef4444",
-          workspaceId: member.workspace.id,
-          taskId: taskB.id,
-        })
-        .returning();
+      const _taskLabelB = requireRow(
+        await db
+          .insert(schema.labelTable)
+          .values({
+            name: "Bug",
+            color: "#ef4444",
+            workspaceId: member.workspace.id,
+            taskId: taskB.id,
+          })
+          .returning(),
+        "_taskLabelB",
+      );
 
       // Verify all three labels exist
       const before = await db.query.labelTable.findMany({
@@ -211,40 +230,49 @@ describe("API integration: labels", () => {
         workspaceId: member.workspace.id,
       });
 
-      const [task] = await db
-        .insert(schema.taskTable)
-        .values({
-          projectId: project.id,
-          userId: member.user.id,
-          title: "Task",
-          status: "to-do",
-          columnId: columns.todo.id,
-          priority: "medium",
-          number: 1,
-          position: 1,
-        })
-        .returning();
+      const task = requireRow(
+        await db
+          .insert(schema.taskTable)
+          .values({
+            projectId: project.id,
+            userId: member.user.id,
+            title: "Task",
+            status: "to-do",
+            columnId: columns.todo.id,
+            priority: "medium",
+            number: 1,
+            position: 1,
+          })
+          .returning(),
+        "task",
+      );
 
       // Create two different workspace labels
-      const [labelBug] = await db
-        .insert(schema.labelTable)
-        .values({
-          name: "Bug",
-          color: "#ef4444",
-          workspaceId: member.workspace.id,
-          taskId: null,
-        })
-        .returning();
+      const labelBug = requireRow(
+        await db
+          .insert(schema.labelTable)
+          .values({
+            name: "Bug",
+            color: "#ef4444",
+            workspaceId: member.workspace.id,
+            taskId: null,
+          })
+          .returning(),
+        "labelBug",
+      );
 
-      const [labelFeature] = await db
-        .insert(schema.labelTable)
-        .values({
-          name: "Feature",
-          color: "#3b82f6",
-          workspaceId: member.workspace.id,
-          taskId: null,
-        })
-        .returning();
+      const labelFeature = requireRow(
+        await db
+          .insert(schema.labelTable)
+          .values({
+            name: "Feature",
+            color: "#3b82f6",
+            workspaceId: member.workspace.id,
+            taskId: null,
+          })
+          .returning(),
+        "labelFeature",
+      );
 
       // Create task-level copies for both
       await db.insert(schema.labelTable).values({
@@ -254,15 +282,18 @@ describe("API integration: labels", () => {
         taskId: task.id,
       });
 
-      const [featureCopy] = await db
-        .insert(schema.labelTable)
-        .values({
-          name: "Feature",
-          color: "#3b82f6",
-          workspaceId: member.workspace.id,
-          taskId: task.id,
-        })
-        .returning();
+      const featureCopy = requireRow(
+        await db
+          .insert(schema.labelTable)
+          .values({
+            name: "Feature",
+            color: "#3b82f6",
+            workspaceId: member.workspace.id,
+            taskId: task.id,
+          })
+          .returning(),
+        "featureCopy",
+      );
 
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
