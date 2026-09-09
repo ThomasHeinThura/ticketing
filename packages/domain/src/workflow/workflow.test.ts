@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type {
+  Guard,
   GuardContext,
   TransitionOfferContext,
   Workflow,
@@ -529,6 +530,111 @@ describe("evaluateGuards — preserves order and reports every guard, satisfied 
 
   it("an empty guard list is trivially all-satisfied (vacuously)", () => {
     expect(evaluateGuards([], guardContext())).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A guard type the `Guard` union does not know about.
+//
+// NOT a hypothetical. `workflow_transition.guards` is a `jsonb` column, so the union
+// constrains this module's CALLERS and nothing else. A later migration, a hand-edited
+// row, or a rolled-back deployment can all put an unknown `type` there.
+//
+// MEASURED BEFORE THE FIX, so these are not vacuous assertions:
+//   evaluateGuard({type:"requires_signoff"}, ctx)  =>  undefined
+//   offerTransition(... guards:[that] ...)         =>  THREW TypeError:
+//                                                      Cannot read properties of
+//                                                      undefined (reading 'ok')
+// The switch had no `default:`, fell through, and returned `undefined`. That blocked
+// the transition — but only by crashing, and only because nothing null-checked the
+// result. The next person to "fix the crash" with `r?.ok` would have converted it into
+// a silent pass: an authorization hole dressed as a null-safety fix.
+// ---------------------------------------------------------------------------
+
+describe("evaluateGuard — an unrecognized guard type fails CLOSED, and does not crash", () => {
+  // Cast because the whole point is a value the union forbids but the database allows.
+  const rogue = { type: "requires_signoff" } as unknown as Guard;
+
+  it("is blocked, not satisfied", () => {
+    const result = evaluateGuard(rogue, guardContext());
+    expect(result.ok).toBe(false);
+  });
+
+  it("returns a defined result — nothing downstream can read `.ok` off undefined", () => {
+    const result = evaluateGuard(rogue, guardContext());
+    expect(result).not.toBeUndefined();
+    expect(result.guard).toBe(rogue);
+  });
+
+  it("carries its OWN reason code, distinguishable from every real guard", () => {
+    expect(evaluateGuard(rogue, guardContext()).reasonCode).toBe(
+      "guard.unrecognized",
+    );
+  });
+
+  it("does not masquerade as a known guard's failure", () => {
+    const code = evaluateGuard(rogue, guardContext()).reasonCode;
+    for (const known of [
+      "guard.children_closed",
+      "guard.no_open_blockers",
+      "guard.assignee_present",
+      "guard.field_required",
+      "guard.change_risk_at_most",
+    ]) {
+      expect(code).not.toBe(known);
+    }
+  });
+
+  it("blocks even when EVERY real fact in the context is satisfied", () => {
+    // The context below satisfies every guard the union does know about. If the
+    // unknown guard were skipped rather than refused, this transition would be offered.
+    const result = evaluateGuard(
+      rogue,
+      guardContext({
+        allChildrenClosed: true,
+        hasOpenBlockers: false,
+        assigneePresent: true,
+        changeRiskLevel: "low",
+      }),
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it("offerTransition refuses the transition instead of throwing", () => {
+    const t = transition({
+      id: "t-rogue",
+      fromStateId: "open",
+      toStateId: "done",
+      guards: [rogue],
+    });
+    const offer = offerTransition(t, offerContext());
+    expect(offer.available).toBe(false);
+    expect(offer.blockedBy).toEqual([
+      { kind: "guard", reasonCode: "guard.unrecognized" },
+    ]);
+  });
+
+  it("an unknown guard alongside satisfied real guards still blocks", () => {
+    const t = transition({
+      id: "t-mixed",
+      fromStateId: "open",
+      toStateId: "done",
+      guards: [{ type: "assignee_present" }, rogue],
+    });
+    const offer = offerTransition(t, offerContext({ assigneePresent: true }));
+    expect(offer.available).toBe(false);
+    expect(offer.blockedBy.map((b) => b.reasonCode)).toEqual([
+      "guard.unrecognized",
+    ]);
+  });
+
+  it("evaluateGuards maps it in order like any other guard", () => {
+    const results = evaluateGuards(
+      [rogue, { type: "assignee_present" }],
+      guardContext({ assigneePresent: true }),
+    );
+    expect(results.map((r) => r.ok)).toEqual([false, true]);
+    expect(results[0]?.reasonCode).toBe("guard.unrecognized");
   });
 });
 
