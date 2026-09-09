@@ -102,6 +102,8 @@ apps/api/src/middleware/**           packages/plugins-contracts/**
 apps/api/src/plugins/**              apps/api/src/scim/**
 apps/api/src/auth*                   apps/api/src/storage/**
 apps/api/src/webhooks/**             any new route file (a new *.ts exporting a Hono router)
+apps/api/src/utils/**                apps/api/src/index.ts
+apps/api/src/**/index.ts             apps/api/src/capabilities/**
 
 .github/**                           package.json
 scripts/ci/**                        **/package.json
@@ -110,6 +112,34 @@ docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
                                      .npmrc
                                      .pnpmfile.cjs
 ```
+
+**Why the last two lines of the first block were added** (2026-09-09, from an independent
+Opus audit of `main@5270954`). They were missing, and their absence meant **the entire
+authorization enforcement layer sat outside this list.** Demonstrated by running the
+repository's own `lib/security-paths.mjs` over real paths: `require-workspace-permission.ts`
+— the authorization engine — `require-session-only.ts`, `validate-workspace-access.ts`,
+`is-instance-admin.ts`, `verify-api-key.ts`, `apps/api/src/index.ts` (the app-wide guard,
+whose own comment warns that breaking it makes "every request through this guard succeed
+unauthenticated"), `workspace/index.ts` (the native write routes) and
+`capabilities/capability-checks.ts` **all reported OUT of scope.** Only `**/policy.ts` and
+`auth*` were in.
+
+The sharpest instance: **the fix for #66 — a privilege-restoration fail-open — edits
+`require-workspace-permission.ts`, which this list did not cover.** A P0 security fix would
+not have tripped its own gate.
+
+`apps/api/src/**/index.ts` is here because that is where every router module lives: the 20
+route modules are declared with `apiRouter()` (`apps/api/src/openapi.ts:25`), and a route's
+middleware chain — which is what actually enforces authorization — is written in that file
+next to the route. Covering it **by path** makes the "any new route file" clause below a
+backstop rather than the primary control, which matters because that clause was matching
+almost nothing (see the note on `looksLikeHonoRouter` in `lib/security-paths.mjs`).
+
+Four globs in the first block — `apps/api/src/middleware/**`, `apps/api/src/scim/**`,
+`apps/api/src/webhooks/**`, `packages/plugins-contracts/**` — point at paths that **do not
+exist yet**. They are deliberately kept: SCIM is P3 and webhooks are P4, and a glob that is
+in place before the directory appears is scope that cannot be forgotten at the moment it
+starts to matter. They are not evidence the list was reviewed.
 
 **Why the second block exists** (Thomas's decision, 2026-09-08 — see the
 [decision log](../07-planning/decision-log.md)). The first block is the application's
