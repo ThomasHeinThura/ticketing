@@ -6,6 +6,7 @@ import useUpdateWorkspace from "./use-update-workspace";
 
 const mocks = vi.hoisted(() => ({
   patch: vi.fn(),
+  refresh: vi.fn(),
 }));
 
 vi.mock("@taskdesk/libs", () => ({
@@ -16,6 +17,13 @@ vi.mock("@taskdesk/libs", () => ({
       },
     },
   },
+}));
+
+// The S4b store-refresh shim is mocked so this file can assert WHETHER it runs.
+// Without an assertion the fix would be unprobed: reverting the call leaves the
+// rest of this suite green, which is the defect #81's finding C-4 named.
+vi.mock("@/lib/utils/refresh-workspace-stores", () => ({
+  refreshWorkspaceStores: mocks.refresh,
 }));
 
 function createWrapper() {
@@ -33,6 +41,7 @@ function createWrapper() {
 describe("useUpdateWorkspace", () => {
   beforeEach(() => {
     mocks.patch.mockReset();
+    mocks.refresh.mockReset();
     mocks.patch.mockResolvedValue({
       ok: true,
       json: async () => ({ id: "workspace-1" }),
@@ -112,5 +121,51 @@ describe("useUpdateWorkspace", () => {
         }),
       ).rejects.toThrow("already taken");
     });
+  });
+
+  it("refreshes the plugin's workspace stores after a successful native PATCH", async () => {
+    // The regression this guards was found in a browser, not by a unit test:
+    // after a successful `PATCH /api/workspace/{id}` the settings sidebar and
+    // the delete-confirmation dialog both still showed the PREVIOUS name,
+    // because `use-active-workspace`/`use-get-workspaces` read better-auth's
+    // nanostores and those are refreshed only by the plugin's own
+    // `atomListeners`, which match on PLUGIN route paths. The native route hits
+    // none, so nothing invalidated them.
+    const { result } = renderHook(() => useUpdateWorkspace(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        workspaceId: "workspace-1",
+        name: "Renamed",
+      });
+    });
+
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT refresh the stores when the native PATCH fails", async () => {
+    // Fail-closed on the display side too: a refused write must not make the
+    // UI re-read as though something had changed.
+    mocks.patch.mockResolvedValue({
+      ok: false,
+      text: async () => "Forbidden",
+    });
+
+    const { result } = renderHook(() => useUpdateWorkspace(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          workspaceId: "workspace-1",
+          name: "Renamed",
+        }),
+      ).rejects.toThrow("Forbidden");
+    });
+
+    expect(mocks.refresh).not.toHaveBeenCalled();
   });
 });

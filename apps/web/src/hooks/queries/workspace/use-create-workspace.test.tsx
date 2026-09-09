@@ -7,6 +7,8 @@ import useCreateWorkspace from "./use-create-workspace";
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),
   list: vi.fn(),
+  notify: vi.fn(),
+  refresh: vi.fn(),
 }));
 
 vi.mock("@taskdesk/libs", () => ({
@@ -22,7 +24,21 @@ vi.mock("@/lib/auth-client", () => ({
     organization: {
       list: mocks.list,
     },
+    // `refreshWorkspaceStores` notifies the plugin's own nanostore atoms after
+    // a native write, because no plugin route path is hit any more and the
+    // plugin's `atomListeners` therefore never fire. See
+    // `@/lib/utils/refresh-workspace-stores`.
+    $store: {
+      notify: mocks.notify,
+    },
   },
+}));
+
+// The S4b store-refresh shim is mocked so this file can assert WHETHER it runs.
+// Without an assertion the fix would be unprobed: reverting the call leaves the
+// rest of this suite green, which is the defect #81's finding C-4 named.
+vi.mock("@/lib/utils/refresh-workspace-stores", () => ({
+  refreshWorkspaceStores: mocks.refresh,
 }));
 
 function createWrapper() {
@@ -41,6 +57,8 @@ describe("useCreateWorkspace", () => {
   beforeEach(() => {
     mocks.post.mockReset();
     mocks.list.mockReset();
+    mocks.notify.mockReset();
+    mocks.refresh.mockReset();
     mocks.list.mockResolvedValue({ data: [] });
   });
 
