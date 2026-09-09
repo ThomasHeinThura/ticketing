@@ -231,4 +231,31 @@ describe("useUpdateWorkspace", () => {
 
     expect(mocks.refresh).not.toHaveBeenCalled();
   });
+
+  it("falls back to a readable message when the failed response body is EMPTY", async () => {
+    // A REGRESSION this pull request introduced and a reviewer caught. The
+    // plugin-era code had `error.message || "Failed to update workspace"`; the
+    // cutover dropped the fallback here while the CREATE path kept its own, so
+    // the two siblings diverged.
+    //
+    // An empty non-2xx body is reachable: a reverse-proxy 502/504 never reaches
+    // Hono's own error handler, which always supplies a message. Without the
+    // fallback that becomes `new Error("")`, and general.tsx's
+    // `error instanceof Error ? error.message : t(...)` shows a BLANK toast —
+    // the untranslated worst case, because the empty string is still an Error.
+    mocks.patch.mockResolvedValue({ ok: false, text: async () => "" });
+
+    const { result } = renderHook(() => useUpdateWorkspace(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          workspaceId: "workspace-1",
+          name: "Renamed",
+        }),
+      ).rejects.toThrow("Failed to update workspace");
+    });
+  });
 });
