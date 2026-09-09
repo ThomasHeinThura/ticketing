@@ -1049,6 +1049,18 @@ describe("resolveAutomaticEffects — WF-17 (entering completed) / WF-18 (leavin
     ]);
   });
 
+  it("returns a fresh array each call, never a shared reference across calls — a caller cannot mutate one call's result and corrupt every later call of the same kind (mirrors resolveEffects' own fresh-array guarantee, above)", () => {
+    const resolveA = resolveAutomaticEffects("started", "completed");
+    const resolveB = resolveAutomaticEffects("started", "completed");
+    expect(resolveA).not.toBe(resolveB);
+    expect(resolveA).toEqual(resolveB);
+
+    const reopenA = resolveAutomaticEffects("completed", "started");
+    const reopenB = resolveAutomaticEffects("completed", "started");
+    expect(reopenA).not.toBe(reopenB);
+    expect(reopenA).toEqual(reopenB);
+  });
+
   it("moving between two completed-group states (Resolved → Closed) fires nothing — already completed, not a boundary crossing", () => {
     expect(resolveAutomaticEffects("completed", "completed")).toEqual([]);
   });
