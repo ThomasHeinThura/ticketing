@@ -34,16 +34,46 @@
 		"typecheck": {
 			"dependsOn": ["^build"],
 			"outputs": [],
+			// `$TURBO_DEFAULT$` FIRST AND ALWAYS. Declaring `inputs` REPLACES default
+			// per-package hashing rather than extending it, so dropping the sentinel
+			// would stop a package's own source from busting its cache -- the same
+			// defect, moved. Demonstrated: with the sentinel removed, touching
+			// apps/api/src/index.ts left the hash at f492613dfbde7892, unchanged.
+			//
+			// `../../tests/**` is here because apps/api/tsconfig.tests.json includes
+			// ../../tests/api/**/*.ts and ../../tests/api-integration/**/*.ts, which
+			// live OUTSIDE every package and are therefore invisible to default
+			// hashing. `*.json` rather than `tsconfig*.json`: a superset, so a
+			// load-bearing .json in those trees cannot be missed the way
+			// matrix.fixture.json would have been.
 			"inputs": [
 				"$TURBO_DEFAULT$",
 				"../../tests/**/*.ts",
-				"../../tests/**/tsconfig*.json"
+				"../../tests/**/*.json"
 			]
+		},
+		// apps/web's typecheck reaches out of its package too, at a DIFFERENT path:
+		// apps/web/tsconfig.app.json:30 is `"include": ["src", "../../i18n"]`. Found by
+		// an independent audit, and it is the point of the checker in
+		// scripts/ci/lib/typecheck-coverage.test.mjs -- the bug had already reacquired
+		// in a second package on the same branch that fixed the first one. A
+		// package-specific entry REPLACES the generic `typecheck` config wholesale, so
+		// dependsOn and outputs are repeated here on purpose.
+		"@taskdesk/web#typecheck": {
+			"dependsOn": ["^build"],
+			"outputs": [],
+			"inputs": ["$TURBO_DEFAULT$", "../../i18n/**"]
 		},
 		"test": {
 			"dependsOn": ["^build"],
 			"cache": false,
-			"outputs": ["coverage/**"]
+			"outputs": ["coverage/**"],
+			// INERT TODAY, declared deliberately. `cache: false` means turbo re-executes
+			// regardless of hash ("cache bypass, force executing"), so the out-of-package
+			// gap cannot bite here right now. It is declared so that flipping `cache` to
+			// true later -- an easy, plausible optimisation -- cannot silently reopen it.
+			// apps/api/vitest.config.ts includes ../../tests/api/**/*.test.ts.
+			"inputs": ["$TURBO_DEFAULT$", "../../tests/**"]
 		},
 		"@taskdesk/permissions#test": {
 			// #62-F1: "test".dependsOn is ["^build"], which builds a package's
@@ -60,13 +90,24 @@
 		"test:permissions": {
 			"dependsOn": ["^build"],
 			"cache": false,
-			"outputs": []
+			"outputs": [],
+			// Inert today (`cache: false`), declared for the same reason as `test`.
+			// This one matters most if `cache` is ever flipped: the suite compares
+			// generated output against tests/permissions/matrix.fixture.json, the
+			// project's review artifact for access widening. A cached pass over a
+			// WIDENED fixture would hide exactly what that file exists to expose, and a
+			// `*.ts`-only glob would not have covered it.
+			"inputs": ["$TURBO_DEFAULT$", "../../tests/**"]
 		},
 		"test:integration": {
 			"dependsOn": ["^build"],
 			"cache": false,
 			"outputs": ["coverage/**"],
-			"env": ["DATABASE_URL"]
+			"env": ["DATABASE_URL"],
+			// Inert today (`cache: false`), declared for the same reason. This suite is
+			// the only real-PostgreSQL authorization oracle in the project, so a cached
+			// pass here would be a security control that did not run.
+			"inputs": ["$TURBO_DEFAULT$", "../../tests/**"]
 		}
 	}
 }

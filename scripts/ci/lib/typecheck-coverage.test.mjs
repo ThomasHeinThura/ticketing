@@ -205,6 +205,170 @@ async function walk(dir, out = []) {
   return out;
 }
 
+/**
+ * JSONC -> object. tsconfigs and turbo.json both carry `//` comments and trailing
+ * commas, and `JSON.parse` rejects both.
+ *
+ * This THROWS on anything it cannot parse, deliberately. A first attempt at the check
+ * below skipped unparsable files, and the two it silently skipped were exactly
+ * `apps/web/tsconfig.app.json` and `tsconfig.node.json` — the pair holding the one
+ * out-of-package reach that was still uncovered. A checker that shrugs at what it cannot
+ * read reports "all clear" over the only thing it was built to find.
+ */
+function parseJsonc(source, origin) {
+  // A scanner, not a regex. tsconfigs here carry BOTH `//` line comments and `/* */`
+  // block comments (`apps/web/tsconfig.app.json:10` is `/* Bundler mode */`), and
+  // turbo.json carries `//`. A regex that strips comment-looking text also strips a `//`
+  // or `/*` that happens to sit inside a string value — which is precisely the bug
+  // `scripts/ci/lib/strip-code-comments.mjs` was rewritten to fix, so it is not repeated
+  // here. This walks the text tracking whether it is inside a string, a line comment or a
+  // block comment, and only removes the latter two.
+  let out = "";
+  let i = 0;
+  let inString = false;
+  while (i < source.length) {
+    const c = source[i];
+    const next = source[i + 1];
+    if (inString) {
+      out += c;
+      if (c === "\\") {
+        out += next ?? "";
+        i += 2;
+        continue;
+      }
+      if (c === '"') inString = false;
+      i += 1;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      out += c;
+      i += 1;
+      continue;
+    }
+    if (c === "/" && next === "/") {
+      while (i < source.length && source[i] !== "\n") i += 1;
+      continue;
+    }
+    if (c === "/" && next === "*") {
+      i += 2;
+      while (i < source.length && !(source[i] === "*" && source[i + 1] === "/"))
+        i += 1;
+      i += 2;
+      continue;
+    }
+    out += c;
+    i += 1;
+  }
+  // Trailing commas are legal in tsconfig and illegal in JSON.
+  const stripped = out.replace(/,(\s*[}\]])/g, "$1");
+  try {
+    return JSON.parse(stripped);
+  } catch (error) {
+    throw new Error(
+      `Could not parse ${origin}: ${error.message}. This check refuses to skip a file ` +
+        "it cannot read — an unparsed tsconfig is an unchecked tsconfig.",
+    );
+  }
+}
+
+describe("every out-of-package tsconfig reach is declared to turbo", () => {
+  /**
+   * The class fix, not the two instances.
+   *
+   * `typecheck` compiles whatever a package's tsconfigs `include`. When an `include`
+   * points OUTSIDE the package — `../../tests`, `../../i18n` — turbo's default
+   * per-package hashing cannot see it, and a cached run can report a pass over a tree it
+   * never compiled. Two separate instances of this existed simultaneously on the branch
+   * that fixed the first one:
+   *
+   *   apps/api/tsconfig.tests.json       -> ../../tests/api, ../../tests/api-integration
+   *   apps/api/tsconfig.permissions.json -> ../../tests/permissions
+   *   apps/web/tsconfig.app.json         -> ../../i18n          <- found by audit, after
+   *
+   * So this does not hardcode either list. It DERIVES the reaches from the tsconfigs and
+   * requires turbo to declare each one, which is what makes the NEXT package fail closed
+   * instead of silently reacquiring the bug.
+   */
+  it("each `../../` include has a matching turbo `typecheck` input glob", async () => {
+    const turbo = parseJsonc(
+      await fs.readFile(path.join(repoRoot, "turbo.json"), "utf8"),
+      "turbo.json",
+    );
+    const tasks = turbo.tasks ?? turbo.pipeline ?? {};
+
+    const packages = [];
+    for (const group of ["apps", "packages"]) {
+      const dir = path.join(repoRoot, group);
+      for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+        if (entry.isDirectory()) packages.push(`${group}/${entry.name}`);
+      }
+    }
+
+    const problems = [];
+    let reaches = 0;
+
+    for (const pkg of packages) {
+      const pkgDir = path.join(repoRoot, pkg);
+      let manifest;
+      try {
+        manifest = parseJsonc(
+          await fs.readFile(path.join(pkgDir, "package.json"), "utf8"),
+          `${pkg}/package.json`,
+        );
+      } catch {
+        continue; // not a package
+      }
+      if (!manifest.scripts?.typecheck) continue;
+
+      const files = (await fs.readdir(pkgDir)).filter(
+        (f) => f.startsWith("tsconfig") && f.endsWith(".json"),
+      );
+
+      // The package-specific entry REPLACES the generic one wholesale, so resolve in
+      // that order rather than merging them.
+      const resolved =
+        tasks[`${manifest.name}#typecheck`] ?? tasks.typecheck ?? {};
+      const inputs = resolved.inputs ?? [];
+
+      for (const file of files) {
+        const config = parseJsonc(
+          await fs.readFile(path.join(pkgDir, file), "utf8"),
+          `${pkg}/${file}`,
+        );
+        for (const include of config.include ?? []) {
+          if (!String(include).startsWith("../../")) continue;
+          reaches += 1;
+          // The first path segment after ../../ is the out-of-package root.
+          const root = String(include).slice("../../".length).split("/")[0];
+          const covered = inputs.some((glob) =>
+            String(glob).includes(`../../${root}`),
+          );
+          if (!covered) {
+            problems.push(
+              `${pkg}/${file} includes "${include}", which is outside ${pkg}, but ` +
+                `turbo's typecheck inputs for ${manifest.name} do not mention ` +
+                `../../${root}. Default hashing cannot see it, so a cached typecheck ` +
+                "can pass over a tree it never compiled. Inputs are: " +
+                `${JSON.stringify(inputs)}`,
+            );
+          }
+        }
+      }
+    }
+
+    assert.ok(
+      reaches > 0,
+      "no `../../` includes found at all — the derivation broke, and a check that " +
+        "finds nothing to check is not passing, it is blind",
+    );
+    assert.deepEqual(problems, [], `\n${problems.join("\n\n")}\n`);
+    console.log(
+      `note — ${reaches} out-of-package tsconfig include(s), every one declared to turbo.`,
+    );
+  });
+});
+
 describe("turbo must actually re-run typecheck when a test tree changes", () => {
   // A gate that can pass without checking is worth less than no gate. `pnpm typecheck`
   // runs through turbo, and turbo's `typecheck` task declared NO `inputs`, so it used
