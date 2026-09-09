@@ -1,6 +1,8 @@
 # Pre-merge security review — PR #80 (#66, the missing-`workspace_role` fail-open)
 
 **Reviewed head:** `e618e407f071db1ce5864195e0e1668871dea36c`
+**Reviewed head:** `7666139de8584602d0041df918e037f2c3071bcf`
+**Reviewed head:** `a3e78f3ad0fb537f8eb9a623b5862b778c61d218`
 
 **Verdict: CLEAR** — **no BLOCKING, no HIGH.** One MEDIUM and three LOW, none blocking, none a
 weakening.
@@ -80,3 +82,75 @@ pinned `capabilities.createTasks === true` divergence). Test count 62 → 65.
 Mutations applied to a scratch mirror with byte-identity verified on restore; the lane was
 never written to. Full findings: `/home/ubuntu/.taskdesk-scratch/reviews/review-80.md`
 (428 lines, written incrementally so a stall-watchdog death would have cost nothing).
+
+---
+
+## Delta review 1 — `0a147c3..7666139de`, verdict CLEAR
+
+A **content** commit landed after the baseline clearance and voided it, exactly as the
+stale-note rule requires. It closed the finding **three** reviewers had converged on from
+opposite sides — this note's own MEDIUM 1, this pull request's correctness-lens Sonnet reviewer
+(as a HIGH, flagged as an authorization-boundary defect), and the independent Opus review of
+#77 (as its H2): `require-workspace-permission.ts` and `require-workspace-role-authority.ts`
+both read membership with `.limit(1)` and no `ORDER BY`, so the evaluator could grant or deny by
+scan order. Both now read all rows and refuse on ambiguity.
+
+**A fresh independent Opus reviewer established, by measurement:**
+
+- Fail-closed in **all four row-states at both call sites** — 0 rows, 1 row, 2 agreeing, 2
+  disagreeing. **No input exists where the pre-delta code denied and this head grants.** Unlike
+  #77's earlier attempt, this one is stricter in both directions rather than one.
+- **The `owner` is not locked out** — a genuine owner with exactly one row still gets 200 on
+  PATCH and DELETE, and #66's rule still denies after its `workspace_role` row is deleted.
+- **Lockout, answered rather than reassured:** a duplicated row *does* lock that user out of the
+  whole `requireWorkspacePermission` surface — but **no HTTP route on this head can create a
+  duplicate row for another user.** `createInvitation` refuses an existing member, lowercases the
+  email so no case-variant second invite, and refuses a second pending invitation; **8 concurrent
+  invites from 8 distinct IPs produced exactly one pending invitation**; `acceptInvitation` is a
+  compare-and-set. So one member cannot lock another out. The path opens when #77/S5's native
+  member routes land, which makes **#88**'s `UNIQUE (workspace_id, user_id)` a must-land-with
+  dependency at that point. Recovery needs no database surgery. **LOW.**
+- The **byte-identity claim against #77** holds (md5-verified on both functions), and "keep
+  #77's superset" is a safe conflict resolution.
+- Both new probes discriminate what they claim: swapping cardinality for an *agreement* rule
+  turns A2-P26 alone red.
+
+**MEDIUM (closed by delta 2): half the fix was untested.** Removing **only** the twin's guard
+left the whole 41-file suite green, because `requireWorkspacePermission` short-circuits to `true`
+for an instance admin *before* reading membership and the twin early-returns for everyone else —
+so probes using an ordinary invited `admin` never execute it. The commit had claimed both twins
+were "fixed together"; its non-vacuity evidence covered one.
+
+## Delta review 2 — `7666139de..a3e78f3ad`, verdict CLEAR
+
+**No BLOCKING, no HIGH, no MEDIUM.** A third fresh independent Opus reviewer verified each claim
+by measurement:
+
+- **A2-P27 is exactly as targeted as claimed.** Middleware order traced statically
+  (`requireWorkspaceMembership` branches on row *existence*, never role, so two rows admit
+  deterministically), then mutated: removing only the twin's three-line guard gives
+  **1 failed / 11 passed**, the single failure being A2-P27 with `expected 200 to be 403`. The
+  same request returning **200** with the guard gone proves every earlier frame grants and the
+  403 can only come from the twin.
+- **The replaced JSDoc is accurate**, and no longer names controllers absent from this branch.
+- **The `TS2345` report is true** — `noUncheckedIndexedAccess` lives in the shared base config,
+  and removing both `if (role === undefined)` checks produces exactly two errors, one per site.
+  So the earlier "dead optional chain" nit was half wrong, and applying it blindly broke the
+  build.
+- **And the one thing the rewrite could have widened, checked:** `!member?.role` also caught
+  `null` and `""`, which `=== undefined` does not. **No widening** — `role` is
+  `text().default("member").notNull()`, so `null` is unreachable, and `""` still denies one frame
+  later because no `workspace_role` row is named `""` and both statement lookups return `null`.
+  Fail-closed either way. *(This was not in the delta's own reasoning; the reviewer found it.)*
+- Test file is **+65 / −0** — zero deletions, so nothing could have gone vacuous.
+
+Measured, on private databases to avoid the shared-`taskdesk_test` flake this note already
+records as LOW 1: integration **41 files / 298 tests**, `test:permissions` **74**,
+`check:openapi` **122 operations**, `lint:ci` exit 0, `typecheck --force` **8/8, 0 cached**.
+
+**Remaining LOW, neither blocking and both recorded rather than closed:** the file's merge advice
+still says "byte-identical" while this delta rewrote one JSDoc block (the claim was scoped to the
+function *bodies*, which are unchanged — but whoever rebases #77 should know keeping #77's
+superset discards this delta's better wording); and the **mount-order dependency** — the twin is
+correct only because both mounts place it after `requireWorkspacePermission`, and nothing
+enforces that. A2-P27 now at least pins the composed behaviour at one mount.
