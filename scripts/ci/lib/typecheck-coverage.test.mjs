@@ -205,6 +205,57 @@ async function walk(dir, out = []) {
   return out;
 }
 
+describe("turbo must actually re-run typecheck when a test tree changes", () => {
+  // A gate that can pass without checking is worth less than no gate. `pnpm typecheck`
+  // runs through turbo, and turbo's `typecheck` task declared NO `inputs`, so it used
+  // default per-package hashing — which never sees `tests/`, because those trees live
+  // OUTSIDE every package. Measured on this repository: warm the cache, append
+  // `import "./does-not-exist"` to a file under `tests/api-integration`, run
+  // `pnpm typecheck`, and it reported "8 cached, 8 successful". `--force` failed
+  // correctly. So the cached answer was a false pass, and the CI job runs the cached
+  // command.
+  //
+  // This is asserted against `turbo.json` itself, which is the artifact turbo reads —
+  // not a proxy for it. Deleting the `inputs` line brings the false pass back, and this
+  // test is what refuses it.
+  it("the typecheck task declares the out-of-package test trees as inputs", async () => {
+    const raw = await fs.readFile(path.join(repoRoot, "turbo.json"), "utf8");
+    // turbo.json is JSONC — it carries `//` comments, which JSON.parse rejects. Drop
+    // whole comment lines only; never touch a line that also holds data, so a `//` inside
+    // a string value cannot be mangled.
+    const config = JSON.parse(
+      raw
+        .split("\n")
+        .filter((line) => !line.trim().startsWith("//"))
+        .join("\n"),
+    );
+    const tasks = config.tasks ?? config.pipeline ?? {};
+    const typecheck = tasks.typecheck;
+    assert.ok(typecheck, "turbo.json must define a `typecheck` task");
+    const inputs = typecheck.inputs ?? [];
+    assert.ok(
+      inputs.length > 0,
+      "the `typecheck` task must declare `inputs`; with none, turbo hashes only each " +
+        "package's own directory and a change under tests/ yields a CACHED FALSE PASS",
+    );
+    // The trees that live outside every package, and so cannot be reached by default
+    // hashing. Each must be named by at least one input glob.
+    for (const tree of ["tests/"]) {
+      assert.ok(
+        inputs.some((glob) => String(glob).includes(tree)),
+        `no \`typecheck\` input glob mentions ${tree}; a change there would be invisible ` +
+          "to turbo's cache key",
+      );
+    }
+    assert.ok(
+      inputs.includes("$TURBO_DEFAULT$"),
+      "keep $TURBO_DEFAULT$ alongside the added globs, or declaring `inputs` REPLACES " +
+        "the default package hashing and a change to the package's own source stops " +
+        "invalidating the cache — the same defect, moved",
+    );
+  });
+});
+
 describe("typecheck coverage of the test trees", () => {
   it("every file under tests/api and tests/permissions is in a real tsc program", async () => {
     const names = await tsconfigNames();

@@ -33,7 +33,12 @@
 		},
 		"typecheck": {
 			"dependsOn": ["^build"],
-			"outputs": []
+			"outputs": [],
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				"../../tests/**/*.ts",
+				"../../tests/**/tsconfig*.json"
+			]
 		},
 		"test": {
 			"dependsOn": ["^build"],
