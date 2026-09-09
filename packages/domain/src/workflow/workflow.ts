@@ -20,6 +20,7 @@
  */
 
 import type {
+  AutomaticEffect,
   BlockReason,
   ChangeRiskLevel,
   Effect,
@@ -53,9 +54,27 @@ const CLOSED_GROUPS: ReadonlySet<StateGroup> = new Set([
   "cancelled",
 ]);
 
-/** `WF-15`'s own definition of "closed", as reusable code rather than restated prose each call site. */
+/**
+ * `WF-15`'s own definition of "closed", as reusable code rather than restated prose each
+ * call site. This is the **guard**-resolution predicate — a caller (the impure edge)
+ * uses it to build `GuardContext.allChildrenClosed` and similar facts before this module
+ * ever sees them. It is deliberately **not** used for `WF-17`/`WF-18` (`resolveAutomaticEffects`,
+ * below): that mechanism keys on the narrower `completed` group alone, never on `closed`'s
+ * `completed` ∪ `cancelled` — see `isCompletedGroup` and `AutomaticEffect` (`types.ts`).
+ */
 export function isClosedGroup(group: StateGroup): boolean {
   return CLOSED_GROUPS.has(group);
+}
+
+/**
+ * `WF-17`/`WF-18`'s own, narrower predicate: `completed` only, never `cancelled`. `SLA-8`
+ * ("resolution stops when the work item enters a state in the **completed** group") and
+ * `WF-17`'s "Entering a `completed`-group state..." both name this group specifically — a
+ * cancelled item was never resolved, so it must never be confused with `isClosedGroup`'s
+ * broader `completed` ∪ `cancelled`.
+ */
+export function isCompletedGroup(group: StateGroup): boolean {
+  return group === "completed";
 }
 
 // ---------------------------------------------------------------------------
@@ -309,24 +328,67 @@ export function offerTransition(
 }
 
 // ---------------------------------------------------------------------------
-// Effects — WF-17, WF-18, WF-19. Named, never executed.
+// Effects — WF-19 (authored) and WF-17/WF-18 (automatic). Named, never executed.
 // ---------------------------------------------------------------------------
 
 /**
- * The ordered list of effects a transition carries, exactly as `workflow_transition.effects`
- * defines them (`WF-19`). This is the *only* seam that reads the effects vocabulary —
- * every executor (`apps/api`) imports this instead of touching `transition.effects`
- * directly. It never executes an effect: writing the `sla_pause` row a `pause_sla`
- * instruction implies, resolving `'default'` for `set_assignee`, computing
+ * The ordered list of **authored** effects a transition carries, exactly as
+ * `workflow_transition.effects` defines them (`WF-19` only — see `Effect`'s doc comment
+ * in `types.ts` for the 2026-09-09 correction). This is the *only* seam that reads that
+ * jsonb vocabulary — every executor (`apps/api`) imports this instead of touching
+ * `transition.effects` directly. It never executes an effect: writing the `sla_pause` row
+ * a `pause_sla` instruction implies, resolving `'default'` for `set_assignee`, computing
  * `due_at = now() + afterMinutes` for `schedule_transition`, and resolving that effect's
  * own `toStateTemplateId` against the work item's project (`resolveStateTemplateForProject`,
  * above) are all the caller's job — this function does not thread a clock, or a project's
  * adopted states, through at all, deliberately (see the P2 plan's `now`-shape note for
  * `#31`: `schedule_transition`'s absolute `due_at` is one-line arithmetic done where the
  * row is written, not inside the pure core).
+ *
+ * **This function does not, and structurally cannot, name `WF-17`/`WF-18`'s automatic
+ * completed-group mechanism** — it only ever reads `transition.effects`, and that
+ * mechanism is never stored there. Call `resolveAutomaticEffects`, below, alongside this
+ * one; a caller executing a transition needs both lists, not either alone.
  */
 export function resolveEffects(transition: WorkflowTransition): Effect[] {
   return [...transition.effects];
+}
+
+/**
+ * The automatic `AutomaticEffect`s a transition carries purely by virtue of which
+ * `state_template.group` it enters or leaves (`WF-17`/`WF-18`) — never authored, never
+ * read from `transition.effects`, computed the same way for every transition in every
+ * workflow. `fromGroup`/`toGroup` are the work item's current and target state
+ * **templates'** own `group` (`WorkflowState.group`), exactly as already resolved for
+ * every other group-aware rule in this module (`isClosedGroup`, above) — this function
+ * does not look either up itself.
+ *
+ * - Entering `completed` from anywhere else → `[{ kind: "resolve_sla" }]` (`WF-17`).
+ * - Leaving `completed` for anywhere else → `[{ kind: "reopen_sla" }]` (`WF-18`).
+ * - Anything else — staying inside `completed`, staying outside it, or moving between two
+ *   non-`completed` groups (including `cancelled`, which is not `completed`) — → `[]`.
+ *
+ * Keyed on `isCompletedGroup`, never `isClosedGroup`: `WF-17`/`WF-18` and `SLA-8` both name
+ * the `completed` group specifically, not WF-15's broader `completed` ∪ `cancelled`
+ * "closed" — a cancelled item was never resolved, so entering `cancelled` must never set
+ * `resolved_at` or open a `resolved` `sla_pause` row. Like `resolveEffects` above, this
+ * function never executes anything and never threads a clock through: it only names which
+ * of the two automatic effects apply, for the caller (the impure edge) to act on.
+ */
+export function resolveAutomaticEffects(
+  fromGroup: StateGroup,
+  toGroup: StateGroup,
+): AutomaticEffect[] {
+  const wasCompleted = isCompletedGroup(fromGroup);
+  const isCompleted = isCompletedGroup(toGroup);
+
+  if (!wasCompleted && isCompleted) {
+    return [{ kind: "resolve_sla" }];
+  }
+  if (wasCompleted && !isCompleted) {
+    return [{ kind: "reopen_sla" }];
+  }
+  return [];
 }
 
 // ---------------------------------------------------------------------------

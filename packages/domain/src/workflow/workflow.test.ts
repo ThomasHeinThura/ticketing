@@ -9,7 +9,7 @@ import type {
   WorkflowTransition,
   WorkflowVersion,
 } from "./types.js";
-import { asStateId, asStateTemplateId } from "./types.js";
+import { asStateId, asStateTemplateId, STATE_GROUPS } from "./types.js";
 import {
   evaluateGuard,
   evaluateGuards,
@@ -17,10 +17,12 @@ import {
   findLegalTransition,
   findReopenTransition,
   isClosedGroup,
+  isCompletedGroup,
   legalTransitions,
   noOutboundStateIds,
   noteBlocked,
   offerTransition,
+  resolveAutomaticEffects,
   resolveEffects,
   resolveStateTemplateForProject,
   rolesWithNoLegalTransition,
@@ -329,6 +331,30 @@ describe("isClosedGroup", () => {
     ["cancelled", true],
   ] as const)("group=%s → closed=%s", (group, expected) => {
     expect(isClosedGroup(group)).toBe(expected);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isCompletedGroup — WF-17/WF-18's own, narrower predicate: `completed` only, never
+// `cancelled`. Deliberately a different answer from `isClosedGroup` for `cancelled`,
+// which is the entire point of the two existing separately (SLA-8, WF-17/WF-18 name
+// `completed`; WF-15 names `completed` ∪ `cancelled`).
+// ---------------------------------------------------------------------------
+
+describe("isCompletedGroup", () => {
+  it.each([
+    ["backlog", false],
+    ["unstarted", false],
+    ["started", false],
+    ["completed", true],
+    ["cancelled", false],
+  ] as const)("group=%s → completed=%s", (group, expected) => {
+    expect(isCompletedGroup(group)).toBe(expected);
+  });
+
+  it("disagrees with isClosedGroup on cancelled — the distinction the two predicates exist to keep apart", () => {
+    expect(isCompletedGroup("cancelled")).toBe(false);
+    expect(isClosedGroup("cancelled")).toBe(true);
   });
 });
 
@@ -914,10 +940,13 @@ describe("offerTransition", () => {
 });
 
 // ---------------------------------------------------------------------------
-// resolveEffects — WF-17, WF-18, WF-19. Named, never executed.
+// resolveEffects — WF-19's authored vocabulary only. Named, never executed.
+// `WF-17`/`WF-18`'s automatic mechanism is `resolveAutomaticEffects`, below — a
+// deliberately separate function and type, never folded into this one (see `Effect`'s
+// doc comment in `types.ts`, corrected 2026-09-09).
 // ---------------------------------------------------------------------------
 
-describe("resolveEffects — the full effects vocabulary, named but not run", () => {
+describe("resolveEffects — the authored WF-19 vocabulary only, named but not run", () => {
   it("returns the transition's effects, in order", () => {
     expect(resolveEffects(T_PROGRESS_TO_RESOLVED)).toEqual([
       { kind: "pause_sla" },
@@ -963,6 +992,99 @@ describe("resolveEffects — the full effects vocabulary, named but not run", ()
 
   it("the reopen transition's effect vocabulary names resume_sla — WF-21's resume-not-restart, at the naming level", () => {
     expect(resolveEffects(T_REOPEN)).toEqual([{ kind: "resume_sla" }]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveAutomaticEffects — WF-17/WF-18. The automatic completed-group mechanism
+// `resolveEffects` (above) structurally cannot compute, because it is never stored in
+// `transition.effects` and never authored. Named, never executed, exactly like
+// `resolveEffects`.
+// ---------------------------------------------------------------------------
+
+describe("resolveAutomaticEffects — WF-17 (entering completed) / WF-18 (leaving completed)", () => {
+  // The exhaustive 5×5 matrix over every StateGroup pair. Independent of the
+  // implementation's own `isCompletedGroup` helper — the expectation below is spelled
+  // out in plain `=== "completed"` terms, not by importing the predicate under test.
+  it.each(
+    STATE_GROUPS.flatMap((fromGroup) =>
+      STATE_GROUPS.map((toGroup) => {
+        const wasCompleted = fromGroup === "completed";
+        const isCompleted = toGroup === "completed";
+        const expected =
+          !wasCompleted && isCompleted
+            ? [{ kind: "resolve_sla" }]
+            : wasCompleted && !isCompleted
+              ? [{ kind: "reopen_sla" }]
+              : [];
+        return [fromGroup, toGroup, expected] as const;
+      }),
+    ),
+  )("from=%s to=%s → %j", (fromGroup, toGroup, expected) => {
+    expect(resolveAutomaticEffects(fromGroup, toGroup)).toEqual(expected);
+  });
+
+  it("WF-17 — entering completed from started returns resolve_sla", () => {
+    expect(resolveAutomaticEffects("started", "completed")).toEqual([
+      { kind: "resolve_sla" },
+    ]);
+  });
+
+  it("WF-17 — entering completed from unstarted returns resolve_sla", () => {
+    expect(resolveAutomaticEffects("unstarted", "completed")).toEqual([
+      { kind: "resolve_sla" },
+    ]);
+  });
+
+  it("WF-18 — leaving completed for started returns reopen_sla", () => {
+    expect(resolveAutomaticEffects("completed", "started")).toEqual([
+      { kind: "reopen_sla" },
+    ]);
+  });
+
+  it("WF-18 — leaving completed for backlog returns reopen_sla", () => {
+    expect(resolveAutomaticEffects("completed", "backlog")).toEqual([
+      { kind: "reopen_sla" },
+    ]);
+  });
+
+  it("moving between two completed-group states (Resolved → Closed) fires nothing — already completed, not a boundary crossing", () => {
+    expect(resolveAutomaticEffects("completed", "completed")).toEqual([]);
+  });
+
+  it("moving between two non-completed states fires nothing", () => {
+    expect(resolveAutomaticEffects("started", "unstarted")).toEqual([]);
+  });
+
+  it("the completed-vs-closed distinction: entering cancelled is never entering completed, so nothing fires — this is exactly where isClosedGroup would have been the wrong predicate", () => {
+    expect(resolveAutomaticEffects("started", "cancelled")).toEqual([]);
+  });
+
+  it("the completed-vs-closed distinction, the other direction: cancelled was never completed, so leaving it fires nothing either", () => {
+    expect(resolveAutomaticEffects("cancelled", "started")).toEqual([]);
+  });
+
+  it("integrates with resolveEffects: the reopen transition's full instruction set is its authored resume_sla plus the automatic reopen_sla, not either alone", () => {
+    // T_REOPEN: CLOSED ("completed") → IN_PROGRESS ("started") — WF-21's reopen, and a
+    // real WF-18 boundary crossing.
+    const authored = resolveEffects(T_REOPEN);
+    const automatic = resolveAutomaticEffects("completed", "started");
+    expect([...authored, ...automatic]).toEqual([
+      { kind: "resume_sla" },
+      { kind: "reopen_sla" },
+    ]);
+  });
+
+  it("integrates with resolveEffects: resolving a ticket carries its authored effects plus the automatic resolve_sla", () => {
+    // T_PROGRESS_TO_RESOLVED: IN_PROGRESS ("started") → RESOLVED ("completed") — a real
+    // WF-17 boundary crossing.
+    const authored = resolveEffects(T_PROGRESS_TO_RESOLVED);
+    const automatic = resolveAutomaticEffects("started", "completed");
+    expect([...authored, ...automatic]).toEqual([
+      { kind: "pause_sla" },
+      { kind: "set_field", field: "resolution", value: "fixed" },
+      { kind: "resolve_sla" },
+    ]);
   });
 });
 
