@@ -278,8 +278,11 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   `check:openapi` confirms it matches the live API (122 operations) on every push.
 - **Throttle 1's five conditions are settled in their exact form** (full table below).
   **Four of five are now met** (1, 3, 4, 5); **one is not** (2), precisely:
-  - **#2 unmet** — issue #6 needs the `organization()` retrofit through **S10**, and only
-    S0/S1/S2/S4 have landed. `organization()` is still mounted end to end.
+  - **#2 unmet** — issue #6 needs the `organization()` retrofit through **S10**, and it has
+    not run that far: S0, S1, S2, S4, S4b and S5 have landed; S3, S6a, S7, S8a, S9 and S10
+    have not. `organization()` is still mounted end to end. The
+    [stage ledger](retrofits/organization-plugin-retrofit.md) is the authoritative count —
+    this bullet is the fifth place in this file that had to be corrected for the same fact.
   - **#3 — corrected 2026-09-09, live during this very reconciliation pass.** This section
     previously said #3 was unmet because required-status-check reconciliation needed a
     ruleset change only Thomas could make. **Thomas made it, moments before this document

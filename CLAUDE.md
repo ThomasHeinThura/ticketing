@@ -149,9 +149,10 @@ merges without committed review evidence — a documentation-only one included.*
 review item, deliberately.
 
 **Merges are not restricted to squash.** The ruleset's `allowed_merge_methods` is
-`["merge","squash","rebase"]` and `main` carries twelve merge commits. An earlier version of
-this file said "merges are squashed", which was a convention, not a control — squash-merging
-is the practice, nothing enforces it. **Required approving reviews is `0`, and Require review
+`["merge","squash","rebase"]`, and `main` carries merge commits as well as squashes — check
+`git log --merges origin/main` rather than a number written here, which is the live count this
+file may not assert. An earlier version said "merges are squashed", which was a convention,
+not a control: squash-merging is the practice, nothing enforces it. **Required approving reviews is `0`, and Require review
 from Code Owners is off** — both deliberately (decision log, 2026-09-06).
 
 Do not wait for an approval that is not configured, and do not read the zero as permission.
