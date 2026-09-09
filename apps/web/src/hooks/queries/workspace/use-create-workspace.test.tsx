@@ -115,5 +115,58 @@ describe("useCreateWorkspace", () => {
     });
 
     expect(mocks.post).toHaveBeenCalledTimes(2);
+    // The shim fires once per *successful* create, not once per POST
+    // attempt: the failed collision attempt must not trigger it, only the
+    // eventual success does. A count of 2 here (matching mocks.post) would
+    // mean the refresh happened alongside the doomed first attempt too,
+    // which is not what "refresh after a successful write" means.
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes the plugin's workspace stores after a successful native POST", async () => {
+    // The regression this guards: after a successful `POST /api/workspace`
+    // the settings sidebar and workspace switcher both still showed stale
+    // data, because `use-active-workspace`/`use-get-workspaces` read
+    // better-auth's nanostores and those are refreshed only by the plugin's
+    // own `atomListeners`, which match on PLUGIN route paths. The native
+    // route hits none, so nothing invalidated them.
+    mocks.post.mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "workspace-1", name: "Acme" }),
+    });
+
+    const { result } = renderHook(() => useCreateWorkspace(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({ name: "Acme", slug: "acme" });
+    });
+
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT refresh the stores when the native POST fails", async () => {
+    // Fail-closed on the display side too: a refused write must not make the
+    // UI re-read as though something had changed. A slug is supplied
+    // explicitly so the retry-on-collision path is never taken here —
+    // this failure must propagate immediately, on the very first attempt.
+    mocks.post.mockResolvedValue({
+      ok: false,
+      text: async () => "Forbidden",
+    });
+
+    const { result } = renderHook(() => useCreateWorkspace(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({ name: "Acme", slug: "acme" }),
+      ).rejects.toThrow("Forbidden");
+    });
+
+    expect(mocks.post).toHaveBeenCalledTimes(1);
+    expect(mocks.refresh).not.toHaveBeenCalled();
   });
 });
