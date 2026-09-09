@@ -3,10 +3,11 @@
 **Reviewed head:** `0eecc4b9639bcda8531fee0eaea51cb5ee7dd5a3`
 **Reviewed head:** `074aae3f1c3af0882c85743cbedc00514909733a`
 **Reviewed head:** `0bb15c9b1ad6449ee16c836305c20177d47fa216`
+**Reviewed head:** `825b84c6106fe519ede19f1470fad59a0b555d23`
 
-**Three independent Opus reviews, three heads, chaining without a gap** — `0eecc4b`, then
-`0eecc4b..074aae3`, then `074aae3..0bb15c9`. **`0bb15c9` is the CURRENT clearance and the code
-that would merge.** The two earlier lines are **still standing for their own heads** and
+**Four independent Opus reviews, four heads, chaining without a gap** — `0eecc4b`, then
+`0eecc4b..074aae3`, then `074aae3..0bb15c9`, then `0bb15c9..825b84c`. **`825b84c` is the
+CURRENT clearance and the code that would merge.** The two earlier lines are **still standing for their own heads** and
 **superseded as the current clearance**; they are kept, not withdrawn, because each reviewed
 real code and a reader must be able to tell which head is current. Every reviewer was a fresh,
 review-only Opus context that authored no part of the change.
@@ -15,15 +16,16 @@ review-only Opus context that authored no part of the change.
 | --- | --- | --- |
 | `0eecc4b` | CLEAR WITH FINDINGS (4 LOW, 2 MEDIUM) | the scope repair: glob list, router predicate, changed-vs-added |
 | `074aae3` | CLEAR WITH FINDINGS (1 MEDIUM, 4 LOW) | the merge-ref binding fix |
-| **`0bb15c9`** | **CLEAR** (4 LOW, none blocking) | the M-1 payload/tree-agreement fix and four LOWs |
+| `0bb15c9` | CLEAR (4 LOW, none blocking) | the M-1 payload/tree-agreement fix and four LOWs |
+| **`825b84c`** | **CLEAR** | the base merge of `origin/main` at `74f10a6` |
 
-**CURRENT VERDICT: CLEAR at `0bb15c9`** — four LOW findings, none blocking, none a
+**CURRENT VERDICT: CLEAR at `825b84c`** — four LOW findings, none blocking, none a
 weakening. The two earlier rounds each returned CLEAR WITH FINDINGS against their own heads;
 their findings were fixed, which is what produced the later heads. Round-by-round detail
 below, newest round last.
 
 **Status of the gate:** these reviews ran **before** merge and are complete. The gate is
-closed for **`0bb15c9`**, the current head and the code that would merge — **and for that head
+closed for **`825b84c`**, the current head and the code that would merge — **and for that head
 only.** A later content commit voids it and requires a fresh delta review; that has already
 happened twice on this pull request, which is why there are three heads rather than one. Nothing
 here is a merge, and nothing here waives a gate — no waiver was authorized for this pull
@@ -80,7 +82,7 @@ request puts **in** scope. A defence-in-depth gap, not a bypass.
 
 **These are ROUND 1's findings, against `0eecc4b`.** LOW A–D and MEDIUM E–F were recorded
 rather than fixed, and remain so: **nothing outside `docs/07-planning/security-reviews/` may
-land after `0bb15c9`** without voiding the current clearance. Round 2's and round 3's findings
+land after `825b84c`** without voiding the current clearance. Round 2's and round 3's findings
 are in their own sections below.
 
 - **LOW A** — `probes/security-scope-enforcement-layer.test.mjs:277-283` asserts a local
@@ -166,3 +168,56 @@ line — the dead ternary collapsing to `return null`).
   the whole suite green, because a crash also satisfies "non-zero exit and message present".
 
 Both regions in C-1 and C-2 were **strictly worse** at `074aae3`, so this is a narrowing.
+
+---
+
+## Round 4 — `0bb15c9..825b84c`, the base merge, verdict CLEAR
+
+`origin/main` moved when PR #78 merged, the strict up-to-date ruleset put this branch
+`BEHIND`, and `main` at `74f10a6` was merged in. That merge — plus the note-only commit
+`f3fb25e` — is the whole delta.
+
+**Verified at blob level rather than by filename.** All six files this pull request owns are
+**byte-identical** between `0bb15c9` and `825b84c`: `ci-cd.md` `71c6f47c`,
+`check-pr-template.mjs` `e2dd8852`, `pr-body.mjs` `d11df7d0`, `security-paths.mjs`
+`dfa38e8a`, and both probes `11144114` / `c4a80fa7`.
+
+**The merge contributed nothing of its own.** `git diff-tree --cc` emits no hunks, and at
+tuple level all **1342** mode+blob+path entries in the merged tree came verbatim from one
+parent, with nothing dropped from either side. On the merged tree — a configuration no prior
+review saw — `test:ci-scripts` is **320/320** and `stale-review-note.test.mjs` is **17/17**.
+
+**The incoming content was checked rather than assumed**, because `gate-waiver.mjs` reads
+`decision-log.md`: #78's additions *tighten*, making the template gate the twelfth required
+check and recording that the waiver mechanism covers the G1–G13 design gates only with no path
+to the security-review gate. **Nothing relaxes anything this pull request depends on.**
+
+### The structural question, and my proposal being refuted
+
+Strict up-to-date plus this stale-note rule means every merge to `main` puts each remaining
+security-scope pull request `BEHIND`, and updating lands base commits after its reviewed head.
+I proposed excluding commits already reachable from the base. **The reviewer measured it and
+it does not work:** `git rev-list 0bb15c9..825b84c --not 74f10a6` still returns the merge
+commit — *a merge commit is not reachable from the base it merged* — and the union attribution
+still charges it 11 paths, 6 of which carry **zero** content change. First-parent-only
+attribution does not fix it either. Implemented as stated it would have removed **zero**
+confirmation reviews.
+
+What would work is a **base-tip blob test** rather than a commit exclusion: for a merge whose
+non-first parents are all base-reachable, attribute only paths differing from **both** the
+first parent and the base tip, keeping the conservative union for every other merge — which is
+the case GPT-F6 exists for. That belongs in its own pull request with its own probes,
+**not** as an amendment here.
+
+**And the operational answer is the one to use now.** The O(n²) only materialises if pull
+requests are reviewed *before* being updated. Under **update before review**, each is reviewed
+once. The reviewer's judgement: the author's mitigation is a correct fix, not a workaround, and
+the practical ask is to run security-scope pull requests consecutively and batch the docs-only
+ones — #78, a docs-only change, is what restaled this one.
+
+**One note for whoever revisits the merge-queue idea** (`ci-cd.md` contemplates it):
+`ci-fast.yml` deliberately carries no `merge_group:` trigger, and `loadPullRequestHead` reads
+`event.pull_request.head.sha`, which a `merge_group` payload lacks — so it would fall back to
+the queue candidate and go stale for exactly the same reason. Worth recording the other
+direction too: **this pull request's own `074aae3` fix is a prerequisite for a merge queue ever
+working here.**
