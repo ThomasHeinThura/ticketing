@@ -269,10 +269,17 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   `// Native replacement for authClient.organization.X()` comments, which is exactly the trap
   that produced the wrong list. The client **is** off the plugin for workspace CRUD writes
   (S4b), the six reads S3 enumerated, and the role-change and ownership-transfer mutations
-  (S5, repointed by S3). It is **not** fully off it for reads or membership writes: as of
-  `3e78450` fifteen live call sites remain, and **#100 records that six of those method
-  families are claimed by no remaining stage at all** — including `removeMember`, a membership
-  write, and two `listMembers` reads. That, not "alongside the plugin", is why `organization()`
+  (S5, repointed by S3). It is **not** fully off it for reads or membership writes.
+  **This file no longer states how many call sites remain**, and the reason is worth keeping:
+  three successive attempts to write that number down — "fifteen", and two enumerations before
+  it — were each measured wrong, because a naive grep counts the `// Native replacement for
+  authClient.organization.X()` comments as live calls. The **fourteen method families** still
+  reached are `setActive`, `acceptInvitation`, `rejectInvitation`, `list`, `inviteMember`,
+  `listMembers`, `removeMember`, `getInvitation`, `listUserInvitations`, `listRoles`,
+  `createRole`, `updateRole`, `deleteRole` and `cancelInvitation`; run the grep for the sites.
+  **#100 records that six of those families are claimed by no remaining stage at all** —
+  including `removeMember`, a membership write, and two `listMembers` reads — and that some of
+  the call sites sit in files nothing imports. That, not "alongside the plugin", is why `organization()`
   is still mounted and why S10 cannot run yet.
 - **The frozen organization-create baseline is N = 9 observable effects: eight first-order
   create effects plus one eventual, one-hop durable notification consequence.** The eight
@@ -420,9 +427,9 @@ limits, then GitHub Copilot too, then handed to Claude Code:**
 **#19 merged, and the required-check/ruleset reconciliation is also now done** — Thomas
 updated `protect-main` while this document was being corrected, and #7 closed the same
 window. Throttle 1's conditions 1, 3, 4 and 5 are now all met. **The critical path is
-issue #6 alone**: retrofit **S3** (moving the client off the plugin for reads, the
-precondition for S5 onward) and the remaining S5–S9/S10 steps. #6 closing is what opens
-Throttle 1.
+issue #6 alone**. **S3 and S5 have both since shipped** — this sentence previously named them
+as the critical path, which was true when written and is not now; the remaining steps are
+**S6a, S7, S8a, S9 and S10**. #6 closing is what opens Throttle 1.
 
 **S5 has since shipped** (PR #77), as has **S4b** (PR #85) — an earlier version of this
 section listed S5 as "not next, deliberately", which is no longer true. The principle behind
