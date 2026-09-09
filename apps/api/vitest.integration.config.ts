@@ -24,6 +24,17 @@ export default defineConfig({
         __dirname,
         "../../tests/api-integration/mocks/email.ts",
       ),
+      // `tests/api-integration/helpers/fixtures.ts` lives in `tests/`,
+      // outside any package, same as `tests/permissions/` -- see that
+      // suite's own `vitest.permissions.config.ts` alias for why this
+      // points at source rather than relying on plain node_modules
+      // resolution (which would only work by accident of apps/api's own
+      // dependency graph, not because anything in `tests/` actually
+      // depends on this package).
+      "@taskdesk/permissions": resolve(
+        __dirname,
+        "../../packages/permissions/src/index.ts",
+      ),
     },
   },
 });
