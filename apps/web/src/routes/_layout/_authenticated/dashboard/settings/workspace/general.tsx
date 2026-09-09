@@ -195,24 +195,18 @@ function RouteComponent() {
           updatePayload.description = normalizedData.description;
         }
 
+        // useUpdateWorkspace's own onSuccess invalidates ["workspaces"] and
+        // ["workspace", "full", workspaceId] -- the keys `use-active-workspace`
+        // and this page's own `use-get-full-workspace` read -- before this
+        // await resolves, so the sidebar and this form don't show the
+        // previous name after a rename. See that hook for why (it used to
+        // live here, invalidating the dead ["active-organization"] key).
         await updateWorkspace(updatePayload);
 
         workspaceForm.reset(normalizedData, { keepDirty: false });
         lastSavedRef.current = normalizedData;
         queuedSaveRef.current = null;
 
-        // The native PATCH hits no plugin route, so nothing else refreshes
-        // the caches this page's own reads depend on: `use-active-workspace`
-        // (via `use-get-workspaces`, key ["workspaces"]) and this page's own
-        // `use-get-full-workspace` (key ["workspace", "full", workspaceId]).
-        // Invalidate both explicitly so the sidebar and this form don't show
-        // the previous name after a rename. (["active-organization"] was
-        // invalidated here before, but nothing subscribes to that key --
-        // see the now-deleted refresh-workspace-stores shim's doc comment.)
-        await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
-        await queryClient.invalidateQueries({
-          queryKey: ["workspace", "full", workspace.id],
-        });
         toast.success(t("settings:workspaceGeneral.toastUpdated"));
       } catch (error) {
         toast.error(
@@ -230,7 +224,7 @@ function RouteComponent() {
         }
       }
     },
-    [workspace, updateWorkspace, queryClient, workspaceForm, t],
+    [workspace, updateWorkspace, workspaceForm, t],
   );
 
   const handleTransferOwnership = useCallback(async () => {

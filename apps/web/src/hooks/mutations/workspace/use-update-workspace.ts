@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { client } from "@taskdesk/libs";
 
 type UpdateWorkspaceRequest = {
@@ -17,6 +17,7 @@ type UpdateWorkspaceRequest = {
 };
 
 function useUpdateWorkspace() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       workspaceId,
@@ -72,6 +73,23 @@ function useUpdateWorkspace() {
       }
 
       return await response.json();
+    },
+    onSuccess: (_data, variables) => {
+      // The native PATCH hits no plugin route, so nothing else refreshes the
+      // caches this hook's one caller (general.tsx) reads:
+      // `use-active-workspace` (via `use-get-workspaces`, key ["workspaces"])
+      // and `use-get-full-workspace` (key ["workspace", "full", workspaceId]).
+      // Invalidate both explicitly so the sidebar and the settings form
+      // don't show the previous name after a rename. This used to live
+      // inline in general.tsx's `saveWorkspace` and invalidated the dead
+      // ["active-organization"] key before that (nothing subscribes to it —
+      // see the sibling cleanup in use-transfer-workspace-ownership.ts and
+      // general.tsx's handleDeleteWorkspace); moved here so it is covered by
+      // this hook's own test rather than living untested in the route.
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      queryClient.invalidateQueries({
+        queryKey: ["workspace", "full", variables.workspaceId],
+      });
     },
   });
 }

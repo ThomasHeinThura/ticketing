@@ -30,6 +30,21 @@ function createWrapper() {
   };
 }
 
+// Exposes the QueryClient instance alongside the wrapper so a test can spy on
+// its invalidateQueries method -- createWrapper() above intentionally hides
+// it because the other tests in this file don't need it.
+function createWrapperWithClient() {
+  const queryClient = new QueryClient({
+    defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
+  });
+
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+
+  return { Wrapper, queryClient };
+}
+
 describe("useUpdateWorkspace", () => {
   beforeEach(() => {
     mocks.patch.mockReset();
@@ -202,5 +217,60 @@ describe("useUpdateWorkspace", () => {
         }),
       ).rejects.toThrow("Failed to update workspace");
     });
+  });
+
+  // general.tsx's `saveWorkspace` reads the workspace it just renamed through
+  // two caches this hook does not itself own: `use-active-workspace` (via
+  // `use-get-workspaces`, key ["workspaces"]) and `use-get-full-workspace`
+  // (key ["workspace", "full", workspaceId]). The native PATCH hits no
+  // plugin route, so nothing else refreshes them -- a rename would keep
+  // showing the previous name until an unrelated refetch. This asserts the
+  // exact keys and count so a future edit that drops or renames one of them
+  // fails here rather than being caught by chance in a browser.
+  it("invalidates the workspaces list and this workspace's full-detail cache on success", async () => {
+    const { Wrapper, queryClient } = createWrapperWithClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const { result } = renderHook(() => useUpdateWorkspace(), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        workspaceId: "workspace-1",
+        name: "Renamed",
+      });
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledTimes(2);
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["workspaces"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["workspace", "full", "workspace-1"],
+    });
+  });
+
+  it("does not invalidate any cache when the update fails", async () => {
+    mocks.patch.mockResolvedValue({
+      ok: false,
+      text: async () => "That workspace slug is already taken",
+    });
+
+    const { Wrapper, queryClient } = createWrapperWithClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const { result } = renderHook(() => useUpdateWorkspace(), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          workspaceId: "workspace-1",
+          name: "Renamed",
+        }),
+      ).rejects.toThrow();
+    });
+
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 });
