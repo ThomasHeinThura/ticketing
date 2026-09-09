@@ -123,10 +123,13 @@ export type Guard =
 export type GuardType = Guard["type"];
 
 /**
- * The lifecycle side-effect vocabulary (`WF-17`/`WF-18`/`WF-19`), the *only* place
- * lifecycle side-effects are defined. This module only names which effects a
- * transition carries (`resolveEffects`) — it never executes one; writing the
- * `sla_pause` row, calling the assignment resolver, or inserting the
+ * The **authored** lifecycle side-effect vocabulary (`WF-19` only — corrected
+ * 2026-09-09: an earlier draft of this comment cited `WF-17`/`WF-18` here too, which was
+ * wrong and is exactly what let a pull-request body go on to claim `resolveEffects`
+ * implements them when it structurally cannot). These six kinds, and only these, are what
+ * a workflow designer may write into `workflow_transition.effects jsonb` — this module
+ * only names which of them a transition carries (`resolveEffects`) — it never executes
+ * one; writing the `sla_pause` row, calling the assignment resolver, or inserting the
  * `scheduled_transition` row are all the impure edge's job.
  *
  * `schedule_transition`'s `toStateTemplateId` is a **template** reference, exactly like a
@@ -135,6 +138,12 @@ export type GuardType = Guard["type"];
  * specifies for a transition (`resolveStateTemplateForProject` in `workflow.ts`) — to a
  * concrete `state` row, stored as such in `scheduled_transition.to_state_id` before
  * `reminder-scan` ever fires it. No template lookup happens at fire time.
+ *
+ * `WF-17`/`WF-18`'s automatic completed-group mechanism is a **separate, never-authored**
+ * vocabulary — see `AutomaticEffect`, directly below, and `resolveAutomaticEffects` in
+ * `workflow.ts`. It is deliberately not a member of this union: nothing here should let a
+ * hand-authored transition claim an effect that this module derives on its own from state
+ * groups, whether or not the transition names any effect at all.
  */
 export type Effect =
   | { kind: "set_assignee"; personId: string | "default" }
@@ -149,6 +158,40 @@ export type Effect =
     };
 
 export type EffectKind = Effect["kind"];
+
+/**
+ * The automatic lifecycle-effect vocabulary `WF-17`/`WF-18` name — a *different* type
+ * from `Effect` above, deliberately never a member of it. `Effect` is exactly the six
+ * kinds a workflow designer can author into `workflow_transition.effects jsonb` (`WF-19`);
+ * an `AutomaticEffect` is never stored there and can never be authored. It is derived
+ * purely from which `state_template.group` (`WorkflowState.group`) a transition enters or
+ * leaves — computed every time, for every transition, independent of whatever that
+ * transition's own `effects` array does or does not contain:
+ *
+ * - `resolve_sla` — `WF-17`: entering a `completed`-group state from a non-`completed`
+ *   one. The impure edge sets `work_item.resolved_at` to the current time and opens an
+ *   `sla_pause` row with reason `resolved`, for every metric this item's SLA policy
+ *   tracks (`sla.md` `SLA-11`). Neither a clock nor a metric list is threaded through
+ *   here, for the same reason `resolveEffects`'s own doc comment gives for
+ *   `schedule_transition`'s `due_at`: that work belongs where the row is written, not in
+ *   the pure core — and, like `pause_sla`/`resume_sla` above, per-metric fan-out is
+ *   already the impure edge's job, not something any `Effect` carries today either.
+ * - `reopen_sla` — `WF-18`: leaving a `completed`-group state, having been in one. The
+ *   impure edge clears `resolved_at` back to `null` and closes that same `resolved` pause
+ *   row, so the clock resumes from where `SLA-9` says it stopped, never from zero.
+ *
+ * **Deliberately keyed on `completed`, never on `isClosedGroup`'s "closed"
+ * (`completed` ∪ `cancelled`, `WF-15`).** `WF-17`/`WF-18` and `SLA-8` ("resolution stops
+ * when the work item enters a state in the **completed** group") all name the narrower
+ * group specifically: a cancelled item was never resolved, so entering `cancelled` must
+ * never set `resolved_at` or open a `resolved` pause. `isClosedGroup` stays exactly what
+ * it always was — WF-15's guard-resolution predicate, for a caller building
+ * `GuardContext.allChildrenClosed` — and `isCompletedGroup` (`workflow.ts`) is the
+ * distinct, narrower predicate this mechanism actually needs.
+ */
+export type AutomaticEffect = { kind: "resolve_sla" } | { kind: "reopen_sla" };
+
+export type AutomaticEffectKind = AutomaticEffect["kind"];
 
 /**
  * A `workflow_transition` row, reduced to what this module needs. Both state references
