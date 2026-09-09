@@ -114,7 +114,16 @@ jobs:
         run: pnpm check:i18n
 
   registers:
-    name: registers - env, vocabulary, events, reviews, skips, overrides
+    # DO NOT RENAME THIS JOB. The `protect-main` ruleset binds its required status checks
+    # to a job's DISPLAY NAME, as an exact string: "registers - env, vocabulary, reviews,
+    # skips, overrides". Renaming the job does not add a check under the new name — it
+    # silently removes the required one, because the name the ruleset waits for stops
+    # being reported. A pull request then cannot merge, and worse, a ruleset edited to
+    # chase the new name would have dropped a required gate from `main` in between.
+    # `check:events` is added as a STEP below instead: the gate runs, the required check
+    # keeps reporting, and no ruleset change is needed. Changing this string is Thomas's
+    # call and needs the ruleset updated in the same breath.
+    name: registers - env, vocabulary, reviews, skips, overrides
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
