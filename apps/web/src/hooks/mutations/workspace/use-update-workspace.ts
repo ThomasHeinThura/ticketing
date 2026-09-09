@@ -1,6 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
 import { client } from "@taskdesk/libs";
-import { createSlug } from "@/lib/utils/create-slug";
 import { refreshWorkspaceStores } from "@/lib/utils/refresh-workspace-stores";
 
 type UpdateWorkspaceRequest = {
@@ -34,11 +33,13 @@ function useUpdateWorkspace() {
         logo?: string;
       } = {};
 
+      // A rename must NOT re-derive the slug: the server contract
+      // (apps/api/src/workspace/controllers/update-workspace.ts) is explicit
+      // that the slug is part of already-shared URLs and only changes when
+      // the caller asks for it. Sending a derived slug here would move it
+      // out from under existing links on every plain rename.
       if (name !== undefined) {
         updateData.name = name;
-        if (slug === undefined) {
-          updateData.slug = createSlug(name);
-        }
       }
 
       if (slug !== undefined) {

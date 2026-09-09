@@ -48,7 +48,13 @@ describe("useUpdateWorkspace", () => {
     });
   });
 
-  it("auto-derives a slug from the new name when no slug is given, preserving prior client behaviour", async () => {
+  // A slug is part of already-shared URLs (see the comment on
+  // updateWorkspace in apps/api/src/workspace/controllers/update-workspace.ts,
+  // around line 20). Renaming must NOT re-derive it — a name-only rename has
+  // to send no `slug` key at all, and the workspace's slug must stay put.
+  // This replaces a pre-existing test that asserted the opposite (the
+  // defect: every rename silently moved the slug too).
+  it("sends no slug key when only the name changes, and the slug does not move", async () => {
     const { result } = renderHook(() => useUpdateWorkspace(), {
       wrapper: createWrapper(),
     });
@@ -60,13 +66,33 @@ describe("useUpdateWorkspace", () => {
       });
     });
 
+    const [[body]] = mocks.patch.mock.calls;
+    expect(body).toEqual({
+      param: { workspaceId: "workspace-1" },
+      json: { name: "Brand New Name" },
+    });
+    expect(body.json).not.toHaveProperty("slug");
+  });
+
+  it("changes the slug when a slug is explicitly supplied", async () => {
+    const { result } = renderHook(() => useUpdateWorkspace(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        workspaceId: "workspace-1",
+        slug: "new-explicit-slug",
+      });
+    });
+
     expect(mocks.patch).toHaveBeenCalledWith({
       param: { workspaceId: "workspace-1" },
-      json: { name: "Brand New Name", slug: "brand-new-name" },
+      json: { slug: "new-explicit-slug" },
     });
   });
 
-  it("does not override an explicitly supplied slug", async () => {
+  it("does not override an explicitly supplied slug with a derived one when name and slug are both given", async () => {
     const { result } = renderHook(() => useUpdateWorkspace(), {
       wrapper: createWrapper(),
     });
@@ -79,9 +105,46 @@ describe("useUpdateWorkspace", () => {
       });
     });
 
+    // Both keys are sent, and the explicit slug wins — it is never
+    // recomputed from `name` and overwritten.
     expect(mocks.patch).toHaveBeenCalledWith({
       param: { workspaceId: "workspace-1" },
       json: { name: "Brand New Name", slug: "kept-slug" },
+    });
+  });
+
+  it("cannot hit slug-collision behaviour on a name-only rename, only on an explicit slug change", async () => {
+    // Simulate a server that rejects any request carrying a `slug` key as a
+    // collision, regardless of value. A name-only rename must never reach
+    // that path because it must never carry a `slug` key in the first
+    // place; an explicit slug change must still reach it.
+    mocks.patch.mockImplementation(async ({ json }) => {
+      if ("slug" in json) {
+        return { ok: false, text: async () => "Slug already taken" };
+      }
+      return { ok: true, json: async () => ({ id: "workspace-1" }) };
+    });
+
+    const { result } = renderHook(() => useUpdateWorkspace(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          workspaceId: "workspace-1",
+          name: "Totally Fine Rename",
+        }),
+      ).resolves.toEqual({ id: "workspace-1" });
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          workspaceId: "workspace-1",
+          slug: "colliding-slug",
+        }),
+      ).rejects.toThrow("already taken");
     });
   });
 
