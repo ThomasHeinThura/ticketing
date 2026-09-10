@@ -14,10 +14,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import useAcceptInvitation from "@/hooks/mutations/workspace-user/use-accept-invitation";
 import useRejectInvitation from "@/hooks/mutations/workspace-user/use-reject-invitation";
 import { usePendingInvitations } from "@/hooks/queries/invitation/use-pending-invitations";
-import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { formatDateMedium } from "@/lib/format";
 import { toast } from "@/lib/toast";
@@ -55,9 +55,10 @@ function InvitationsPage() {
         invitationId,
       });
 
-      await authClient.organization.setActive({
-        organizationId: data.invitation.workspaceId || organizationId,
-      });
+      // S8a: native replacement for authClient.organization.setActive().
+      // The invitation shape is S6a's native one (PR #112): `workspaceId`, and
+      // `mutateAsync` throws rather than returning an `error` field.
+      await activateWorkspace(data.invitation.workspaceId || organizationId);
 
       toast.success(t("invitations:toast.acceptSuccess"));
 

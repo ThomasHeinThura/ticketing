@@ -2330,6 +2330,17 @@
           "id"
         ]
       },
+      "ActivatedWorkspace": {
+        "type": "object",
+        "properties": {
+          "workspaceId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspaceId"
+        ]
+      },
       "RemovedWorkspaceMember": {
         "type": "object",
         "properties": {
@@ -10505,6 +10516,58 @@
           },
           "429": {
             "description": "Too many invitations from this client recently",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/activate": {
+      "post": {
+        "operationId": "activateWorkspace",
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Set the caller's active workspace",
+        "description": "Set the calling session's active workspace. Native replacement for authClient.organization.setActive().",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The activated workspace's id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivatedWorkspace"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An API key or impersonation session (session_required), or no workspace access",
             "content": {
               "text/plain": {
                 "schema": {
