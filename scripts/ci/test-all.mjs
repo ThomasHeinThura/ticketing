@@ -22,6 +22,7 @@
 import { spawnSync } from "node:child_process";
 import { readDeclaredGates } from "./lib/ci-cd-gates.mjs";
 import { repoRoot } from "./lib/repo.mjs";
+import { WORKFLOW_ALIASES } from "./lib/workflow-aliases.mjs";
 import {
   DEFAULT_PULL_REQUEST_TYPES,
   isExecuting,
@@ -115,7 +116,13 @@ const manifest = [
     gate: "pnpm check:vocabulary",
     stage: "fast",
     run: ["pnpm", "check:vocabulary"],
-    note: "tables only for now — capabilities, event keys and background jobs are checked as soon as the files that declare them exist (#7 and P1).",
+    note: "tables only for now — capabilities and background jobs are checked as soon as the files that declare them exist (#7 and P1). Event keys are check:events's own gate (#86), declared separately in ci-cd.md rather than folded in here.",
+  },
+  {
+    gate: "pnpm check:events",
+    stage: "fast",
+    run: ["pnpm", "check:events"],
+    note: "#86's published-vs-declared reconciliation for event keys (scripts/ci/check-events.mjs). Its own row, not an alias of check:vocabulary: an aliased gate has no reverse obligation under A2 · Direction 2, so its step could be deleted, given continue-on-error, or given if: false with the whole suite staying green — and the alias additionally let check:vocabulary's own step be removed the same way. See the pinning test in scripts/ci/probes/workflow-alias-table.test.mjs.",
   },
   { gate: "pnpm check:skips", stage: "fast", run: ["pnpm", "check:skips"] },
   {
@@ -253,35 +260,19 @@ function available(command) {
 /**
  * M2 — CI entry points that differ from the gate ci-cd.md declares.
  *
- * Left key: the command a workflow runs. Right key: the gate ci-cd.md declares.
- *
- *   check:route-policy  runs test:permissions THROUGH turbo so the package build happens
- *                       first (scripts/ci/route-policy-gate.mjs says why the wrapper
- *                       exists). CI runs the wrapper because it is the stricter entry.
- *   check:pr-template / check:openapi / lint:ci
- *                       ci-cd.md names these by WHAT they check; CI names them by the
- *                       script that checks it. Both are accurate.
- *   install             ci-cd.md declares the gate with its flag; the scanner records
- *                       `pnpm <script>` and drops flags, and this one executes inside
- *                       .github/actions/setup rather than in a workflow file. Found by
- *                       A2's reverse direction on its first run, which is the direction
- *                       working: a gate the scanner had never been able to see.
- *
- * Declared here rather than resolved by editing one side until today's strings match. An
- * alias is not an exemption: the gate it points at must still be declared in ci-cd.md AND
- * enabled in the manifest, and — since A2 — must actually execute.
+ * `WORKFLOW_ALIASES` itself lives in `./lib/workflow-aliases.mjs` (see that file for the
+ * per-entry rationale and why `check:events` is deliberately not one of them) — imported
+ * above rather than defined here, so `scripts/ci/probes/workflow-alias-table.test.mjs` can
+ * pin its actual runtime entries instead of regexing this file's source text for them
+ * (review PR #91, MEDIUM 1: a source-text regex missed a `.set()` call after the literal,
+ * a comment between an entry's two strings, and a spread of an external array — all three
+ * install a live extra alias while such a regex, `pnpm test:all --list` and `pnpm lint:ci`
+ * stay green).
  *
  * Read in both directions. Direction 1 maps an executed command to the gate it satisfies;
- * direction 2 inverts this map to ask which executed command would satisfy a gate the
- * manifest calls enabled.
+ * direction 2 inverts this map (`aliasSources()` below) to ask which executed command
+ * would satisfy a gate the manifest calls enabled.
  */
-const WORKFLOW_ALIASES = new Map([
-  ["pnpm check:route-policy", "pnpm test:permissions"],
-  ["pnpm check:pr-template", "pr-template check"],
-  ["pnpm check:openapi", "pnpm test:contract"],
-  ["pnpm lint:ci", "pnpm lint"],
-  ["pnpm install", "pnpm install --frozen-lockfile"],
-]);
 
 /**
  * A2, the reverse direction: what to look for when a gate's manifest name is not the
