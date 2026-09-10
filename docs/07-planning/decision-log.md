@@ -17,6 +17,46 @@ Newest first.
 
 ---
 
+### 2026-09-10 · S9 closes as documentation-only — `teams.enabled` stays until S10 (Path B)
+
+**Decision:** better-auth's `teams: { enabled: true, … }` config and the nine
+`/organization/*team*` routes it registers **stay exactly as they are for as long as the
+`organization()` plugin is mounted.** Retrofit stage **S9** therefore closes as a
+**documentation-only** stage: its deliverable is the confirmation that nothing in the
+repository reaches teams. **S10 removes the flag, the nine routes and the S1 characterization
+file that exercises them, in one commit.** The `team` and `team_member` tables are kept — the
+target model still wants them (`data-model.md:113-114`) and dropping them is a migration.
+
+**Why:** `teams.enabled` is the single gate for two things at once — it registers the nine team
+endpoints (`organization.mjs:403` and `:550`) **and** gates `crud-org.mjs:106`'s default-team
+side effect on organization create — with no finer-grained knob to separate them. The S1
+characterization oracle drives the plugin's create route over real HTTP, independent of what the
+client does, so flipping the flag breaks it regardless of client repointing: reproduced twice
+independently as **19 passed / 1 failed** on `expect(teamRows).toHaveLength(1)`
+(`tests/api-integration/organization-plugin-characterization.test.ts:316`).
+
+The only way to make the suite green between S9 and S10 would be to edit the characterization.
+That is forbidden — S1 must not be broken in order to make the plugin removable — so removing
+the flag early would buy a **throwaway intermediate configuration that exists only in the
+S9-to-S10 window**, at the cost of editing a characterization whose subject is about to be
+deleted anyway. Nothing observable is deferred: native workspace create already writes all nine
+contract effects unconditionally (`create-workspace.ts:148-183`, one transaction, no config
+check), proven by a green `workspace-write-create-contract.test.ts`.
+
+**Alternatives:** *narrow the S1 oracle's team assertions now* and drop the flag in S9
+(rejected — it edits a characterization to accommodate a configuration that lives only between
+two stages, and the whole product of that work is discarded at S10); *drop the nine routes but
+keep the create side effect* (not available — one flag gates both).
+
+**Decided by:** Thomas, 2026-09-10.
+
+**Recorded here because it was a session instruction.** An independent review of PR #104 found
+its ledger text citing "the P0 velocity addendum, §12" — a real instruction, quoted accurately,
+but one that exists **nowhere in this repository**, so no reader could check it. A governance
+rule cited as though it were a checkable artifact, when it is not, is worse than an honest
+"decided in session": it invites the reader to trust a reference they cannot follow. This entry
+is that citation's referent, and the ledger now points here.
+
 ### 2026-09-10 · An unrecognised transition effect kind fails closed (`WF-22`)
 
 **Decision:** An authored transition effect whose `kind` falls outside `WF-19`'s vocabulary
