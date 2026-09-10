@@ -194,6 +194,59 @@ export async function distinctOwnerUserCount(
  * "keep the superset" would discard #80's better wording for this predicate, so
  * that wording is kept above rather than lost.
  */
+/**
+ * The ONE `workspace_role.permission` payload for a `(workspaceId, role)` pair, or `null`
+ * when the answer is absent or ambiguous.
+ *
+ * THE TWIN OF `workspaceMemberRoles`, ONE TABLE OVER, AND IT WAS MISSED. Everything the
+ * module comment above says about `workspace_member` is also true of `workspace_role`:
+ * `apps/api/drizzle/0030_smart_umar.sql:11-12` creates `workspace_role_workspaceId_idx` and
+ * `workspace_role_role_idx` as plain, NON-unique indexes, and `schema.ts` confirms
+ * `index(...)` rather than `uniqueIndex(...)`. Measured against a real PostgreSQL 18: the
+ * only unique constraint on the table is `workspace_role_pkey`, on `id`. Two rows for
+ * `('w','manager')` carrying DIFFERENT `permission` payloads insert cleanly, and an
+ * unordered `LIMIT 1` then returns one of them arbitrarily.
+ *
+ * REACHABLE TODAY, AND NOT EVEN AS A RACE. better-auth's `createOrgRole`
+ * (`crud-access-control.mjs`) normalises the role name, counts existing roles against
+ * `maximumRolesPerOrganization`, and creates -- with NO duplicate-name check anywhere in it:
+ * no `ROLE_ALREADY_EXISTS`, no pre-insert lookup on the name. Two `create-role` calls with
+ * the same name through the still-mounted `organization()` plugin produce two rows
+ * unconditionally. Tracked as #118; the `UNIQUE (workspace_id, role)` constraint that makes
+ * the state unreachable is the other half and lands with the migration.
+ *
+ * WIDER BLAST RADIUS THAN #88's. A duplicated `workspace_member` row affects one
+ * `(workspace, user)` pair. A duplicated `workspace_role` row affects EVERY member holding
+ * that role name, on every request -- and because the two rows can carry deliberately
+ * different permission sets, the divergence is not a tie between equal values.
+ *
+ * Returns the raw `permission` string so each caller keeps its own parsing: the capability
+ * evaluator tolerates a malformed payload differently from the role-authority evaluator, and
+ * collapsing that here would change behaviour this function is not meant to touch.
+ *
+ * `null` already means DENY at both call sites, so refusing on ambiguity is fail-closed
+ * without any new branch: a corrupt role definition is refused, never resolved by guessing.
+ */
+export async function workspaceRolePermission(
+  executor: DbOrTx,
+  workspaceId: string,
+  role: string,
+): Promise<string | null> {
+  const rows = await executor
+    .select({ permission: schema.workspaceRoleTable.permission })
+    .from(schema.workspaceRoleTable)
+    .where(
+      and(
+        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
+        eq(schema.workspaceRoleTable.role, role),
+      ),
+    );
+
+  // NOT `.limit(1)`, and NOT `rows[0]`. Exactly one row, or no answer.
+  if (rows.length !== 1) return null;
+  return rows[0]?.permission ?? null;
+}
+
 export function isUnambiguousMembership(roles: string[]): boolean {
   return roles.length === 1;
 }
