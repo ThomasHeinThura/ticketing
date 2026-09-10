@@ -161,6 +161,15 @@ the **only** place lifecycle side-effects are defined; `sla.md` and `assignment.
   at most one per workflow version); if the active version has
   none, the action is accepted, the item stays resolved, and a flagged activity row asks
   staff to look. One mechanism for all three call sites.
+- `WF-22` An authored transition effect whose `kind` falls outside `WF-19`'s vocabulary makes
+  the workflow version **invalid**. `resolve_sla` and `reopen_sla` are the automatic
+  `WF-17`/`WF-18` effects and are never authorable — a `workflow_transition.effects` array
+  containing either is invalid by name. **Fails closed**, mirroring `WF-16`'s treatment of an
+  unrecognised guard `type`: an unknown kind is refused, never ignored and never passed
+  through. Thomas's decision, 2026-09-10. The rule exists because `Effect` is a TypeScript
+  union and `workflow_transition.effects` is a **jsonb column** — `JSON.parse` yields `any`,
+  which satisfies the union with zero type errors, so the compile-time barrier does not reach
+  the data. Validation is the only thing that does.
 
 ## The state select
 
