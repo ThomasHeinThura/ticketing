@@ -250,7 +250,7 @@ describe("stripComments", () => {
     // stripComments' OWN SOURCE — `Function.prototype.toString()` — and
     // asserted it contained no call to `.replace(`. A second Opus review
     // evaded it with four one-line respellings of the IDENTICAL fixed-point
-    // loop that all pass the full 82-test suite: `.replaceAll(`, the
+    // loop that all pass the full suite: `.replaceAll(`, the
     // `RE[Symbol.replace](text, "")` internal-slot spelling, bracket-string
     // method access (`text["rep" + "lace"](...)`), and the same loop moved
     // into a module-level helper — `.toString()` does not even see a helper
@@ -266,12 +266,44 @@ describe("stripComments", () => {
     // shipped code disagree on a real (if small) fraction of inputs, because a
     // single `.replace()` sweep never re-examines a "<!--" freshly assembled
     // from a leftover "<!" and a leftover "--" that the deleted comment used
-    // to keep apart. That wrongness is what this test measures, and it is
-    // invisible to respelling: `.replaceAll`, `Symbol.replace`, bracket-string
-    // access and the module-level helper are ALL still the same one-pass
-    // sweep, so they ALL still produce the same wrong output on the same
-    // inputs, and this oracle catches every one of them without knowing any
-    // of their names.
+    // to keep apart. That reconstitution defect is real — it is what CodeQL
+    // alert #4 named — and it is invisible to respelling regardless:
+    // `.replaceAll`, `Symbol.replace`, bracket-string access and the
+    // module-level helper are ALL still the same one-pass sweep, so they ALL
+    // still disagree with the reference on the same inputs, and this oracle
+    // catches every one of them without knowing any of their names.
+    //
+    // CORRECTED 2026-09-10 (review 3, independent Opus). This comment used to
+    // call the 200,000 draws below "200,000 structured inputs" and say the
+    // fixed-point family's failures were reconstitution failures. Both were
+    // wrong, from the same root cause: for a 31-bit seed, `seed * 1103515245`
+    // is ~1e18-2e18, far past `Number.MAX_SAFE_INTEGER` (~9e15), so
+    // `& 0x7fffffff` was masking floating-point rounding noise, not the LCG's
+    // real output. Measured: the seed stream re-entered a cycle after 5,355
+    // draws with period 10,466, so 200,000 draws produced only 1,377 DISTINCT
+    // strings, of which just 3 ever disagreed with a reintroduced fixed-point
+    // loop — the "401/200000" this test used to report was those 3 strings
+    // counted ~134 times each, not 401 independent findings. And every one of
+    // those 3 was a `<!--` with no closer anywhere in the raw input: none
+    // needed a second `.replace()` pass to reach the wrong answer, so none
+    // actually exercised RECONSTITUTION (an opener created by deleting the
+    // comment between it and a leftover `--`) — contrary to what this comment
+    // used to claim.
+    //
+    // Fixed below with `Math.imul`, which performs the 32-bit integer
+    // multiplication the masked arithmetic was supposed to do. Re-measured
+    // after the fix: 200,000 draws now produce 154,684 DISTINCT strings, and
+    // a reintroduced fixed-point loop disagrees with the reference on 500 of
+    // them (495 distinct). The axis finding still holds even at that size,
+    // though: of those 500 disagreements, 0 needed a second `.replace()` pass
+    // to reach the wrong answer. This generator's short, 7-character alphabet
+    // makes the multi-segment shape genuine reconstitution needs (an `<!`,
+    // then a nested `<!--...-->`, then a leftover `--`, at least 11
+    // characters in the right order) too rare to show up reliably even at
+    // 154,684 distinct strings. The oracle still CATCHES the fixed-point
+    // family on single-pass wrongness alone, which is a real and sufficient
+    // defect — it just does not exercise reconstitution specifically, and
+    // this comment no longer claims an axis the fuzz does not cover.
     //
     // What this does NOT catch, stated plainly: an implementation that is
     // output-IDENTICAL to `stripComments` but costs more to compute it — extra
@@ -279,13 +311,29 @@ describe("stripComments", () => {
     // `advG` (an uncharged re-scan inside one comment, and an uncharged
     // re-scan once per comment) are exactly that: correct output, wrong cost.
     // No oracle comparing outputs can see a cost difference. HIGH 1d below is
-    // the backstop for that gap, and it is why 1d's input has to be
-    // comment-dense rather than one giant comment — see its own comment for
-    // why.
+    // the backstop for `advQ` and `advG` specifically — see its own comment
+    // for which shape catches which.
+    //
+    // It is NOT the backstop for every output-correct-but-expensive rewrite.
+    // `advR` — the literal alert-#4 `while (changed) { text.replace(...) }`
+    // loop with a three-line fail-closed post-pass appended — is ALSO
+    // output-identical to shipped (verified over 31.5 million exhaustive
+    // inputs) and IS genuinely quadratic, but it converges in exactly 2 passes
+    // on both of HIGH 1d's input shapes, so wall-clock never sees it either:
+    // this oracle cannot see it because it is output-correct, and 1d cannot
+    // see it because it is fast on the shapes 1d sends. That is exactly why
+    // the source-text check immediately below exists ALONGSIDE this oracle
+    // rather than instead of it — a source ban catches a known-bad construct
+    // that is output-right, which neither an output oracle nor a cost ceiling
+    // can, by construction, ever see. The three instruments are complementary,
+    // not a ladder; each one's blind spot is exactly what the other two cover.
     const alphabet = ["<", "!", "-", ">", " ", "a", "\n"];
     let seed = 987654321;
     const next = () => {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      // Math.imul does true 32-bit integer multiplication, so the low 31 bits
+      // kept by `& 0x7fffffff` are the LCG's real output rather than
+      // floating-point rounding noise (see the comment above this test).
+      seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff;
       return seed / 0x7fffffff;
     };
 
@@ -310,7 +358,58 @@ describe("stripComments", () => {
       mismatches,
       0,
       "stripComments disagrees with the independent reference implementation on " +
-        `${mismatches}/200000 structured inputs — first: ${JSON.stringify(firstMismatch)}`,
+        `${mismatches}/200000 draws — first: ${JSON.stringify(firstMismatch)}`,
+    );
+  });
+
+  it("HIGH (restored) — refuses to call `.replace()` inside stripComments' own source, the literal CodeQL-alert-#4 shape an output oracle cannot see", () => {
+    // RESTORED 2026-09-10 (review 3, independent Opus). This exact check
+    // existed under the name "HIGH 1c" and was DELETED when the differential
+    // oracle above was added, on the reasoning — in the task brief that
+    // produced that change, not in this file — that the oracle "makes this
+    // largely redundant". That reasoning was wrong, and it cost real
+    // coverage: `advR`, the literal alert-#4 shape —
+    // `text.replace(/<!--[\s\S]*?-->/g, "")` inside `while (changed)`, plus a
+    // three-line fail-closed post-pass that makes its OUTPUT match shipped —
+    // is output-equivalent to `stripComments` over 31,536,625 exhaustive
+    // inputs (every string over the comment metacharacters up to length 12).
+    // The oracle above cannot see it, by construction: it only compares
+    // OUTPUTS, and this rewrite's output is correct. It is also genuinely
+    // quadratic — one fixed-point pass per reconstituted opener, measured at
+    // 214x slower than shipped at GitHub's own 64KB pull-request-body size
+    // cap — but it converges in exactly 2 passes on both of HIGH 1d's input
+    // shapes below, so wall-clock never sees it either. Measured: this check
+    // was RED at the commit where it still existed (it caught `advR`) and is
+    // GREEN at the commit that deleted it.
+    //
+    // The three instruments in this file are complementary, not a ladder, and
+    // that is the point of restoring this one rather than trusting the
+    // oracle alone: the differential oracle above catches an implementation
+    // that is output-WRONG, whatever it is spelled like; this check catches a
+    // SPECIFIC known-bad construct that happens to be output-RIGHT; HIGH 1d
+    // below catches expensive-but-correct work, for whichever input shape it
+    // is actually given. Each one's blind spot is exactly what the other two
+    // are for. Replacing one with another trades coverage rather than
+    // improving it, which is what happened here and is what this restores.
+    //
+    // What this does NOT catch, stated plainly, unchanged from when this
+    // check was first written and deleted once already for exactly this
+    // reason: `Function.prototype.toString()` sees only the text of the
+    // function it is called on, so it cannot see a fixed-point loop moved into
+    // a module-level helper that `stripComments` merely calls; and every
+    // respelling of the literal token `.replace(` — `.replaceAll(`,
+    // `RE[Symbol.replace](`, `text["rep" + "lace"](` — evades a check that
+    // only ever looks for that one substring. That is fine, and not a gap left
+    // quietly open: every one of those rewrites is still the identical
+    // one-pass sweep, so it is still OUTPUT-WRONG on the same fraction of
+    // inputs the oracle above draws, and the oracle catches every one of them
+    // without needing to read a single character of source.
+    assert.ok(
+      !/\.replace\s*\(/.test(stripComments.toString()),
+      "stripComments now calls .replace() — the fixed-point loop CodeQL " +
+        "flagged is back. The differential oracle above and the step counter " +
+        "can both stay green against a rewrite like this (see their own " +
+        "comments for why); this check does not depend on either of them.",
     );
   });
 
@@ -319,22 +418,42 @@ describe("stripComments", () => {
     // — the actual clock — for excess work that is output-IDENTICAL to the
     // shipped implementation and therefore invisible to a differential oracle
     // (HIGH 1c's own limits paragraph names this gap). An independent Opus
-    // security review of #89 built exactly that shape twice: `advQ`, an
-    // uncharged re-scan inside a single comment, and `advG`, an uncharged
-    // FULL-INPUT re-scan once per comment — O(comments x length) instead of
-    // O(length). Both are byte-identical to the shipped output and
-    // byte-identical on the step counter; only wall-clock sees them.
+    // security review of #89 built exactly that shape twice, and the two need
+    // OPPOSITE input shapes to show up:
     //
-    // CORRECTED 2026-09-09 (review 2). This test used to send ONE giant
-    // comment (`<!-- ${"a".repeat(1_000_000)} -->`). Review 2 measured that
-    // `advG`'s excess cost is charged PER COMMENT, so an input with only one
-    // comment pays that excess exactly once — 0.6ms, indistinguishable from
-    // honest, passing this test outright while failing every other check by
-    // 5,000x on a comment-dense body. A PR template is comment-dense by
-    // construction (a `<!-- instruction -->` per field), so that was the
-    // wrong shape to defend. This sends 48,000 separate small comments
-    // instead of one large one — same idea as `advG`'s own cost table, scaled
-    // to give a comfortable failure margin on this machine class.
+    //   `advQ` — an uncharged bare-`indexOf` re-scan INSIDE `findClose`,
+    //   quadratic in the length of a SINGLE comment body. A comment-dense
+    //   body of many small comments never triggers it, because each comment
+    //   is short; it needs one huge comment. Caught below by the
+    //   single-giant-comment shape.
+    //
+    //   `advG` — an uncharged FULL-INPUT re-scan once PER comment, so its
+    //   cost is O(comments x length) rather than O(length). A single giant
+    //   comment pays that excess exactly once, indistinguishable from honest
+    //   cost; it needs MANY comments. Caught below by the
+    //   forty-eight-thousand-small-comments shape.
+    //
+    // Both are byte-identical to the shipped output and byte-identical on the
+    // step counter; only wall-clock sees them, and only when this test sends
+    // the shape each one actually needs.
+    //
+    // CORRECTED 2026-09-09 (review 2). This test used to send ONLY one giant
+    // comment (`<!-- ${"a".repeat(1_000_000)} -->`), which catches `advQ` but
+    // not `advG` — a PR template is comment-dense by construction (a
+    // `<!-- instruction -->` per field), so `advG` is the realistic shape and
+    // review 2 was right to add it. What review 2 got wrong was REPLACING the
+    // giant-comment input rather than keeping it alongside the new one: that
+    // traded away `advQ` — the adversary this test was ORIGINALLY written
+    // for — when nothing forced that choice.
+    //
+    // RESTORED 2026-09-10 (review 3, independent Opus). Measured: with only
+    // the comment-dense input, `advQ` (reconstructed with its `indexOf`
+    // result accumulated, so V8 cannot dead-code-eliminate the whole re-scan)
+    // costs 6.2ms — 645x UNDER this test's ceiling — where the giant-comment
+    // input costs it 5,124.6ms, comfortably over. Both shapes are run below
+    // for exactly that reason: no single input catches both adversaries at a
+    // comparable byte budget, and keeping both costs about 7ms of combined
+    // honest runtime.
     //
     // Deliberately an ABSOLUTE ceiling, not a ratio — a ratio is what flaked
     // here before (see the comment on the exact-invariant test above):
@@ -343,36 +462,49 @@ describe("stripComments", () => {
     // absolute number does not compare anything, so it can only be tripped by
     // making one run itself slower.
     //
-    // Measured, not assumed (review 2, and reproduced here): the shipped
-    // implementation strips this 384,000-byte / 48,000-comment body in
-    // 5-8ms unloaded. Under sustained 4-5x CPU oversubscription (up to 80
-    // spinning hogs on 16 cores, load average peaking above 46), 8,400
-    // samples across several concurrent rounds had a worst observed wall time
-    // of 145ms — the margin to this 4,000ms ceiling is therefore >27x, not a
-    // hair's-breadth ratio. `advG` on the SAME shape measured 27,000ms+ on
-    // this machine (independently reproduced from review 2's cost table,
-    // which found 66ms -> 16,453ms as input doubles from 16,000 to 256,000
-    // bytes) — comfortably more than 4,000ms even allowing for a CI runner
-    // several times faster than the one this was measured on.
+    // Measured, not assumed: the shipped implementation strips the
+    // 384,000-byte / 48,000-comment body and the 1,000,009-byte / 1-comment
+    // body in low single-digit ms unloaded, combined. Under sustained 4-5x CPU
+    // oversubscription (up to 80 spinning hogs on 16 cores, load average
+    // peaking at 89), 8,400 samples of this exact assertion had a worst
+    // observed wall time of 167.35ms — a margin of nearly 24x to this 4,000ms
+    // ceiling, and nothing came within 10x of it. `advG` on the comment-dense
+    // shape measured 26,606-32,518ms on this machine; `advQ` on the
+    // giant-comment shape measured 5,124.6ms — both comfortably over 4,000ms.
     //
     // What this does NOT catch, stated plainly: excess work small enough, or
     // an input small enough, to stay under 4,000ms in absolute terms despite
     // being asymptotically wrong — a constant-factor-slower linear rewrite, or
-    // the identical defect exercised on a smaller or less comment-dense body
-    // than this test happens to send it. This is a coarse tripwire for a
-    // catastrophic regression, not a proof of linearity, and it does not
-    // claim to be one.
-    const commentDense = "<!-- -->".repeat(48_000);
-    const start = process.hrtime.bigint();
-    stripComments(commentDense);
-    const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6;
+    // either defect exercised on a smaller body than the two shapes below
+    // happen to send it. Nor does either shape catch `advR`, the
+    // output-correct fixed-point-loop shape the restored source-text check
+    // above covers: `advR` converges in exactly 2 passes on BOTH shapes
+    // below, so it is fast here regardless of input size. This is a coarse
+    // tripwire for a catastrophic wall-clock regression, not a proof of
+    // linearity, and it does not claim to catch every output-correct rewrite.
+    const shapes = [
+      {
+        label: "48,000-comment, 384,000-byte comment-dense body",
+        input: "<!-- -->".repeat(48_000),
+      },
+      {
+        label: "single 1,000,009-byte comment",
+        input: `<!-- ${"a".repeat(1_000_000)} -->`,
+      },
+    ];
 
-    assert.ok(
-      elapsedMs < 4_000,
-      `stripComments took ${elapsedMs.toFixed(1)}ms on a ${commentDense.length}-byte, ` +
-        "48,000-comment body (expected low single-digit ms) — something is re-scanning " +
-        "the whole input once per comment",
-    );
+    for (const { label, input } of shapes) {
+      const start = process.hrtime.bigint();
+      stripComments(input);
+      const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6;
+
+      assert.ok(
+        elapsedMs < 4_000,
+        `stripComments took ${elapsedMs.toFixed(1)}ms on the ${label} ` +
+          "(expected low single-digit ms) — something is re-scanning more " +
+          "than it should",
+      );
+    }
   });
 });
 
@@ -777,10 +909,11 @@ describe("checklistProblems — applicability is per ITEM, not per block", () =>
     // (2026-09-09): the count is `stripComments` reporting on its own work, so
     // this proves stripComments-as-shipped does not re-scan through the
     // counted path, not that no rewrite could report this number dishonestly.
-    // HIGH 1c and 1d, in the `stripComments` suite above, are the independent
-    // backstops for that gap — a differential oracle and an absolute
-    // wall-clock ceiling on a comment-dense body — and say plainly what they
-    // do and do not catch.
+    // The three checks in the `stripComments` suite above are the independent
+    // backstops for that gap — a differential oracle, a source-text ban on
+    // the exact CodeQL-alert-#4 construct, and an absolute wall-clock ceiling
+    // on two comment shapes — and each says plainly what it does and does not
+    // catch.
     const steps = (n) => {
       const body = `### B\n\n${`- [ ] item <!-- ${"a".repeat(n)} -->\n`.repeat(40)}`;
       resetStripCommentsStepsForTests();
