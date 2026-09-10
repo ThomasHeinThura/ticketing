@@ -64,6 +64,7 @@ configured to run before merge is enforced unless its exact context appears in t
 │ pnpm check:vocabulary identifiers registered     │
 │ pnpm check:events    published keys registered   │
 │ pnpm check:skips     no .skip / .only            │
+│ pnpm check:organization-callers zero live callers│
 │ pnpm test:ci-scripts  gate checkers + red probes │
 │ pr-template check    sections filled, tiers named│
 │ no-inherited-routes  removals stay removed       │

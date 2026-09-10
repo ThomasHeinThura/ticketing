@@ -60,6 +60,10 @@
  *     the two alias forms. A client re-bound under a new name could reach `.organization`
  *     by a route this module never looks at again.
  *   - malformed/unbalanced generic type arguments between a method name and its call.
+ *   - a **re-export** of the auth-client module, `export { authClient } from "…"` or
+ *     `export * from "…"`. A demonstrated bypass of this gate rather than a hypothetical:
+ *     see `EXPORT_FROM_STATEMENT` below for the exact shape that produced a clean exit 0
+ *     with a real live caller planted behind it.
  *
  * None of these shapes exists in this repository today (verified by running this scanner
  * over `apps/web/src` at HEAD), which is exactly why the gate can ship green: the refusal
@@ -332,6 +336,33 @@ export async function resolveExistingFile(candidateNoExtension) {
 const IMPORT_STATEMENT = /import\s+([^;]*?)\s+from\s*["']([^"']+)["'];?/g;
 
 /**
+ * `export ... from "<specifier>"` — a re-export declaration, in both its named
+ * (`export { authClient } from "./auth-client"`) and star (`export * from "./auth-client"`)
+ * forms.
+ *
+ * This exists because a re-export was a **live bypass of this whole gate**, demonstrated
+ * rather than imagined. With
+ *
+ *     // apps/web/src/lib/barrel.ts
+ *     export { authClient } from "./auth-client";
+ *     // apps/web/src/anywhere.ts
+ *     import { authClient } from "./lib/barrel";
+ *     await authClient.organization.setActive({ organizationId });
+ *
+ * the scanner reported its usual count and **exit 0**: it neither counted the call nor
+ * refused it. The reason is structural — `scanFiles` treats an import as the auth client only
+ * when its specifier resolves to the definition file, and a consumer of the barrel resolves
+ * to the barrel. Following re-exports transitively would mean re-deriving module resolution
+ * one level deeper for every module in the tree; refusing is cheaper and is what this module
+ * already commits to for any shape it cannot prove safe.
+ *
+ * Nothing in `apps/web/src` re-exports the binding today — the only `export` of it is its own
+ * definition — so the rule is green on the current tree and armed for the commit that would
+ * otherwise have slipped a caller past S10's precondition.
+ */
+const EXPORT_FROM_STATEMENT = /export\s+([^;]*?)\s+from\s*["']([^"']+)["'];?/g;
+
+/**
  * @typedef {object} ImportClause
  * @property {"named"|"namespace"|"unrecognized"} kind
  * @property {{name: string, alias: string, typeOnly: boolean}[]} [named]
@@ -401,6 +432,24 @@ function findImportStatements(code) {
       specifier: match[2],
       startLine: lineOf(code, match.index),
       endLine: lineOf(code, match.index + match[0].length),
+    });
+  }
+  return statements;
+}
+
+/** Every `export ... from "<specifier>"` in the file, with its clause and specifier. */
+function findExportFromStatements(code) {
+  const statements = [];
+  EXPORT_FROM_STATEMENT.lastIndex = 0;
+  for (
+    let match = EXPORT_FROM_STATEMENT.exec(code);
+    match !== null;
+    match = EXPORT_FROM_STATEMENT.exec(code)
+  ) {
+    statements.push({
+      clause: match[1].trim(),
+      specifier: match[2],
+      startLine: lineOf(code, match.index),
     });
   }
   return statements;
@@ -637,7 +686,14 @@ export async function scanFiles({
 
   for (const absolute of files) {
     const source = await readFile(absolute);
-    if (!source.includes(exportName)) continue; // fast path: cannot mention the binding
+    // Fast path. It cannot be "does this file mention the binding" alone: `export * from
+    // "./auth-client"` re-exports it without ever spelling `authClient`, and skipping such
+    // a file on that basis is exactly what let the star form past the re-export refusal
+    // below — found by that refusal's own red probe, not by review. A file must therefore
+    // also be read whenever it could carry a re-export at all.
+    const mentionsBinding = source.includes(exportName);
+    const couldReExport = source.includes("export") && source.includes("from");
+    if (!mentionsBinding && !couldReExport) continue;
 
     const code = stripCodeComments(source);
     const statements = findImportStatements(code);
@@ -645,6 +701,28 @@ export async function scanFiles({
     const rootAliasNames = new Set();
     const importLines = new Set();
     const refusals = [];
+
+    // A re-export of the binding puts it behind a module path that no consumer's import
+    // will resolve to the definition, so every caller reached through it is invisible to
+    // this scanner. Refuse, rather than report a count that is silently incomplete.
+    for (const reExport of findExportFromStatements(code)) {
+      const reExportBase = resolveImportPath(
+        absolute,
+        reExport.specifier,
+        aliasRules,
+      );
+      if (reExportBase === null) continue;
+      if ((await resolveExistingFile(reExportBase)) !== definitionAbsolutePath)
+        continue;
+      refusals.push({
+        line: reExport.startLine,
+        snippet: `export ${reExport.clause} from "${reExport.specifier}"`,
+        reason:
+          "re-export of the auth-client module. Callers reaching the binding through " +
+          "this module path are not traced by this scanner, so the count it reports " +
+          "would be incomplete.",
+      });
+    }
 
     for (const statement of statements) {
       const resolvedBase = resolveImportPath(
