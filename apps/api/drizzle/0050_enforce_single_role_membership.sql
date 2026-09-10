@@ -48,29 +48,21 @@
 -- untrimmed -- a real gap in a backstop whose stated job is to guard routes nobody
 -- remembered to check.
 --
--- Every `btrim` below therefore takes an explicit two-argument character list -- space,
--- tab, newline, carriage return, form feed, vertical tab (`E' \t\n\r\f\v'`) -- covering
--- every ASCII shape `trim()` strips. This is NOT full parity: `trim()` also strips NBSP
--- (U+00A0) and the other Unicode space separators, which PostgreSQL's `btrim` cannot be
--- handed as one convenient literal, and this migration does not attempt it. A value padded
--- with one of those Unicode code points instead of ASCII whitespace still passes this
--- CHECK and is still rejected by the TypeScript layer -- a known, narrow, documented gap,
--- not the risk this migration exists to close.
+-- Every `btrim` below therefore takes an explicit two-argument character list covering the
+-- complete ECMAScript `trim()` set. `chr()` keeps invisible Unicode characters reviewable.
 --
--- So: the repair rule here and `repairableMembershipRole()` agree on ASCII whitespace, and
--- `membership-role-value.test.ts` pins that agreement, including the tab/newline shapes
--- that exposed the one-argument drift. They are NOT "the same rule in two languages" for
--- every input JS can produce -- see the Unicode gap above.
+-- So: the repair rule here and `repairableMembershipRole()` are the same rule in two
+-- languages; `membership-role-value.test.ts` and the migration integration tests pin that.
 
 UPDATE "workspace_member" AS m
 SET "role" = r.only_role
 FROM (
   SELECT s.id, min(s.segment) AS only_role
   FROM (
-    SELECT wm.id, btrim(piece, E' \t\n\r\f\v') AS segment
+    SELECT wm.id, btrim(piece, E' \t\n\r\f\v' || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279)) AS segment
     FROM "workspace_member" wm,
          unnest(string_to_array(wm."role", ',')) AS piece
-    WHERE btrim(piece, E' \t\n\r\f\v') <> ''
+    WHERE btrim(piece, E' \t\n\r\f\v' || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279)) <> ''
   ) s
   GROUP BY s.id
   HAVING count(DISTINCT s.segment) = 1
@@ -88,15 +80,15 @@ BEGIN
     INTO offending
   FROM "workspace_member"
   WHERE position(',' in "role") > 0
-     OR "role" <> btrim("role", E' \t\n\r\f\v')
-     OR btrim("role", E' \t\n\r\f\v') = '';
+    OR "role" <> btrim("role", E' \t\n\r\f\v' || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279))
+    OR btrim("role", E' \t\n\r\f\v' || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279)) = '';
 
   IF offending IS NOT NULL THEN
     RAISE EXCEPTION E'Issue #82: % membership row(s) hold more than one role, and this migration will not choose which one to keep.\n%\nAssign each of these members exactly one role, then re-run the migration. See apps/api/drizzle/0050_enforce_single_role_membership.sql for the queries.',
       (SELECT count(*) FROM "workspace_member"
         WHERE position(',' in "role") > 0
-           OR "role" <> btrim("role", E' \t\n\r\f\v')
-           OR btrim("role", E' \t\n\r\f\v') = ''),
+           OR "role" <> btrim("role", E' \t\n\r\f\v' || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279))
+           OR btrim("role", E' \t\n\r\f\v' || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279)) = ''),
       offending;
   END IF;
 END $$;--> statement-breakpoint
@@ -105,6 +97,6 @@ ALTER TABLE "workspace_member"
   ADD CONSTRAINT "workspace_member_role_single_value"
   CHECK (
     position(',' in "role") = 0
-    AND "role" = btrim("role", E' \t\n\r\f\v')
-    AND btrim("role", E' \t\n\r\f\v') <> ''
+    AND "role" = btrim("role", E' \t\n\r\f\v' || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279))
+    AND btrim("role", E' \t\n\r\f\v' || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279)) <> ''
   );

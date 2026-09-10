@@ -79,7 +79,7 @@ async function restoreRoleConstraint(): Promise<void> {
   // Built with `chr()` rather than a `\t`-style literal so this JS template string cannot
   // have its own escaping silently reinterpret what reaches Postgres.
   await db.execute(
-    sql`ALTER TABLE "workspace_member" ADD CONSTRAINT "workspace_member_role_single_value" CHECK (position(',' in "role") = 0 AND "role" = btrim("role", chr(32) || chr(9) || chr(10) || chr(13) || chr(12) || chr(11)) AND btrim("role", chr(32) || chr(9) || chr(10) || chr(13) || chr(12) || chr(11)) <> '') NOT VALID`,
+    sql`ALTER TABLE "workspace_member" ADD CONSTRAINT "workspace_member_role_single_value" CHECK (position(',' in "role") = 0 AND "role" = btrim("role", chr(32) || chr(9) || chr(10) || chr(13) || chr(12) || chr(11) || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279)) AND btrim("role", chr(32) || chr(9) || chr(10) || chr(13) || chr(12) || chr(11) || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279)) <> '') NOT VALID`,
   );
 }
 
@@ -365,6 +365,8 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
       // two-argument `btrim` this migration now uses must actually strip the tab/newline.
       { raw: "\tadmin", repaired: "admin" },
       { raw: "admin\n", repaired: "admin" },
+      { raw: "\u00a0admin", repaired: "admin" },
+      { raw: "admin\ufeff", repaired: "admin" },
     ];
 
     const [repair] = await migrationStatements();
@@ -442,7 +444,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
     await restoreRoleConstraint();
   });
 
-  it.each(["\t", "\n"])(
+  it.each(["\t", "\n", "\u00a0", "\ufeff"])(
     "REFUSES a value that is whitespace-only (%j) rather than silently accepting it -- a one-argument `btrim` strips only the space character, so this value would previously have satisfied `role = btrim(role)` and slipped past both the repair and the CHECK as if it were already a well-formed role",
     async (raw) => {
       const { app } = createApp();

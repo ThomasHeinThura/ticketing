@@ -217,7 +217,9 @@ stopping is safe rather than urgent:
 
 ```sql
 SELECT id, workspace_id, user_id, role FROM workspace_member
- WHERE position(',' in role) > 0 OR role <> btrim(role) OR btrim(role) = '';
+ WHERE position(',' in role) > 0
+    OR role <> btrim(role, E' \t\n\r\f\v' || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279))
+    OR btrim(role, E' \t\n\r\f\v' || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279)) = '';
 UPDATE workspace_member SET role = 'admin' WHERE id = '<id>';
 ```
 
