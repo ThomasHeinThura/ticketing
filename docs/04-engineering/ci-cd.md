@@ -104,6 +104,9 @@ apps/api/src/auth*                   apps/api/src/storage/**
 apps/api/src/webhooks/**             any new route file (a new *.ts exporting a Hono router)
 apps/api/src/utils/**                apps/api/src/index.ts
 apps/api/src/**/index.ts             apps/api/src/capabilities/**
+apps/api/src/**/controllers/**       apps/api/drizzle/*.sql
+apps/api/src/policy-registry.ts      apps/api/src/database/**
+packages/mcp/src/auth/**
 
 .github/**                           package.json
 scripts/ci/**                        **/package.json
@@ -140,6 +143,78 @@ Four globs in the first block — `apps/api/src/middleware/**`, `apps/api/src/sc
 exist yet**. They are deliberately kept: SCIM is P3 and webhooks are P4, and a glob that is
 in place before the directory appears is scope that cannot be forgotten at the moment it
 starts to matter. They are not evidence the list was reviewed.
+
+**Why five more globs were added to the first block** (2026-09-10, issue #115, measured the
+same way as the 2026-09-09 audit above: running `parseSecurityReviewPaths` and
+`globToRegExp` over every file under `apps/api/src`, `apps/api/drizzle`, `packages/*/src`
+and `apps/web/src`). The sharpest instance: **PR #110's own
+`apps/api/drizzle/0050_enforce_single_role_membership.sql` — the CHECK constraint that
+enforces the single-role membership invariant — matched no glob in this list.** Nor did
+`apps/api/src/policy-registry.ts` (the assembly root of the entire route-policy system,
+which is Throttle 1 conditions 4 and 5) or `apps/api/src/database/schema.ts` (the
+RBAC/membership tables). All three reported OUT of scope.
+
+**Stated precisely, because an earlier draft of this passage overstated it.** This closes a
+path-coverage gap in ONE of TWO overlapping controls; it does not close a hole through which
+unreviewed code was merging. PR #110 trips the gate today anyway, via
+`apps/api/src/index.ts`, `apps/api/src/utils/**` and `apps/api/src/capabilities/**`. And
+independently of any path match, `checklistProblems()` in `scripts/ci/lib/pr-body.mjs` runs
+unconditionally on every pull request's `## Checklists`: the Definition of Done's
+"Opus security review completed and recorded" line matches `REVIEW_ITEM`, **cannot be marked
+`n/a`**, and a global rule fails the check if no independent-review checkbox exists anywhere.
+So a migration-only backend change was already required to record an Opus review. The
+migrations cited below as precedent (`0045`-`0049`, `0026`) landed *before* this CI check
+existed (added in `e11976f`, #19, 2026-09-09) — they were not let through a blind spot.
+What these globs add is that such a change now trips the **path** half too, on its own
+evidence rather than on whichever `.ts` file it happens to touch alongside.
+
+`apps/api/src/openapi.ts` is deliberately **NOT** added: it is already covered by the
+content-based half of the gate. `looksLikeHonoRouter()` in `lib/security-paths.mjs` is
+applied by `check-pr-template.mjs`'s `securitySurfaceTouched()` to every changed `.ts`/`.tsx`
+file — not only new ones — and that function's own comment names `openapi.ts` as one of only
+two files in the repository matching `new (OpenAPI)?Hono(`. Measured: `matches()` returns
+false for it while `looksLikeHonoRouter()` returns true, and that result drives
+`requiresReview`. A path glob for it would be redundant.
+
+So did every controller. `apps/api/src/**/controllers/**` adds 92 files — 68 of them
+mutating endpoints — including `workspace/controllers/update-workspace-member-role.ts`
+(the two hard-coded rules that keep an owner-role change safe),
+`transfer-workspace-ownership.ts`, `add-workspace-member.ts`,
+`remove-workspace-member.ts`, `delete-workspace.ts`,
+`invitation/controllers/accept-invitation.ts` (the entire #88 duplicate-member race fix),
+`task/controllers/require-task-permission.ts` — authorization middleware filed under
+`controllers`, not `utils`, so no existing glob reached it —
+`user/controllers/delete-account-data.ts` (destructive account deletion), and
+`oauth/controllers/get-id-token.ts` (returns a stored OAuth id_token).
+
+`apps/api/drizzle/*.sql` adds the 50 migration files, including `0045` through `0049` —
+the SQL half of #6's removal surface; `0048` and `0049` each carry a comment warning that
+"dropping this table is NOT revocation" — and
+`0026_encrypt_notification_preference_secrets.sql`. **Deliberately `*.sql`, not
+`apps/api/drizzle/**` bare**: the bare glob was measured and rejected because it doubles
+the captured set, pulling in drizzle-kit's 44 auto-generated `meta/*.json` snapshots plus
+`_journal.json` — a mechanical mirror of the same migrations with no independent review
+signal of its own.
+
+`apps/api/src/openapi.ts` (the `apiRouter()` factory every route module declares itself
+with — see the paragraph above) and `apps/api/src/database/**` (`schema.ts`,
+`relations.ts`, and the two files that resolve and prepare the database connection at
+startup) close the rest of the `apps/api` gap. `packages/mcp/src/auth/**` covers the MCP
+CLI's credential store, the one place outside `apps/api` this pass added.
+
+A blanket `apps/api/src/*/*.ts` feature-root catch-all was measured and rejected too: it
+would have added 57 files to reach roughly five sensitive ones, mostly `schema.ts` /
+`response.ts` field-shape pairs that carry no independent review signal — a glob that
+broad turns into something people route around rather than read, which is a real cost and
+not a free win. `apps/api/src/notification-preferences/{secrets,service,delivery}.ts` was
+also measured and, on balance, left out as a named-file candidate rather than added: the
+files are real (secret handling for notification delivery), but the investigation rated
+them LOW next to the six globs above, and a scope list earns more by staying precise than
+by chasing every plausible file individually.
+
+Net effect, measured over the same 925-file walk: the list carried 23 globs matching 110
+files before this pass, and 29 globs matching 262 after — 152 files newly in scope, all of
+them accounted for by the six globs above.
 
 **Why the second block exists** (Thomas's decision, 2026-09-08 — see the
 [decision log](../07-planning/decision-log.md)). The first block is the application's
