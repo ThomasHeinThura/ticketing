@@ -105,8 +105,8 @@ apps/api/src/webhooks/**             any new route file (a new *.ts exporting a 
 apps/api/src/utils/**                apps/api/src/index.ts
 apps/api/src/**/index.ts             apps/api/src/capabilities/**
 apps/api/src/**/controllers/**       apps/api/drizzle/*.sql
-apps/api/src/openapi.ts              apps/api/src/policy-registry.ts
-apps/api/src/database/**             packages/mcp/src/auth/**
+apps/api/src/policy-registry.ts      apps/api/src/database/**
+packages/mcp/src/auth/**
 
 .github/**                           package.json
 scripts/ci/**                        **/package.json
@@ -144,15 +144,37 @@ exist yet**. They are deliberately kept: SCIM is P3 and webhooks are P4, and a g
 in place before the directory appears is scope that cannot be forgotten at the moment it
 starts to matter. They are not evidence the list was reviewed.
 
-**Why six more lines were added to the first block** (2026-09-10, issue #115, measured the
+**Why five more globs were added to the first block** (2026-09-10, issue #115, measured the
 same way as the 2026-09-09 audit above: running `parseSecurityReviewPaths` and
 `globToRegExp` over every file under `apps/api/src`, `apps/api/drizzle`, `packages/*/src`
 and `apps/web/src`). The sharpest instance: **PR #110's own
 `apps/api/drizzle/0050_enforce_single_role_membership.sql` — the CHECK constraint that
-enforces the single-role membership invariant — would not have tripped this gate.** Nor
-would `apps/api/src/policy-registry.ts` (the assembly root of the entire route-policy
-system, which is Throttle 1 conditions 4 and 5) or `apps/api/src/database/schema.ts` (the
+enforces the single-role membership invariant — matched no glob in this list.** Nor did
+`apps/api/src/policy-registry.ts` (the assembly root of the entire route-policy system,
+which is Throttle 1 conditions 4 and 5) or `apps/api/src/database/schema.ts` (the
 RBAC/membership tables). All three reported OUT of scope.
+
+**Stated precisely, because an earlier draft of this passage overstated it.** This closes a
+path-coverage gap in ONE of TWO overlapping controls; it does not close a hole through which
+unreviewed code was merging. PR #110 trips the gate today anyway, via
+`apps/api/src/index.ts`, `apps/api/src/utils/**` and `apps/api/src/capabilities/**`. And
+independently of any path match, `checklistProblems()` in `scripts/ci/lib/pr-body.mjs` runs
+unconditionally on every pull request's `## Checklists`: the Definition of Done's
+"Opus security review completed and recorded" line matches `REVIEW_ITEM`, **cannot be marked
+`n/a`**, and a global rule fails the check if no independent-review checkbox exists anywhere.
+So a migration-only backend change was already required to record an Opus review. The
+migrations cited below as precedent (`0045`-`0049`, `0026`) landed *before* this CI check
+existed (added in `e11976f`, #19, 2026-09-09) — they were not let through a blind spot.
+What these globs add is that such a change now trips the **path** half too, on its own
+evidence rather than on whichever `.ts` file it happens to touch alongside.
+
+`apps/api/src/openapi.ts` is deliberately **NOT** added: it is already covered by the
+content-based half of the gate. `looksLikeHonoRouter()` in `lib/security-paths.mjs` is
+applied by `check-pr-template.mjs`'s `securitySurfaceTouched()` to every changed `.ts`/`.tsx`
+file — not only new ones — and that function's own comment names `openapi.ts` as one of only
+two files in the repository matching `new (OpenAPI)?Hono(`. Measured: `matches()` returns
+false for it while `looksLikeHonoRouter()` returns true, and that result drives
+`requiresReview`. A path glob for it would be redundant.
 
 So did every controller. `apps/api/src/**/controllers/**` adds 92 files — 68 of them
 mutating endpoints — including `workspace/controllers/update-workspace-member-role.ts`

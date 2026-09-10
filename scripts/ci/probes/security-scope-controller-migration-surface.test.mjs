@@ -19,11 +19,11 @@
  *   entire #88 duplicate-member race fix).
  *
  * The fix adds six globs to `docs/04-engineering/ci-cd.md`'s first block:
- * `apps/api/src/**\/controllers/**`, `apps/api/drizzle/*.sql`, `apps/api/src/openapi.ts`,
+ * `apps/api/src/**\/controllers/**`, `apps/api/drizzle/*.sql`,
  * `apps/api/src/policy-registry.ts`, `apps/api/src/database/**`, `packages/mcp/src/auth/**`.
- * That widens the list to 29 globs matching 262 of the same 925 files — 152 newly in scope,
+ * That widens the list to 28 globs. `openapi.ts` is NOT among them -- see section 4.
  * all of them accounted for by these six globs (92 controllers + 50 migrations + 5 database
- * files + 3 mcp/auth files + 2 named files: `openapi.ts`, `policy-registry.ts`).
+ * files + 3 mcp/auth files + 1 named file: `policy-registry.ts`).
  *
  * Every "in scope now" assertion below reads the WORKING-TREE `docs/04-engineering/ci-cd.md`
  * via `readSecurityReviewPaths()` (`lib/security-paths.mjs`'s `ciCdPath`), so this probe is
@@ -40,9 +40,13 @@
  */
 
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { describe, it } from "node:test";
+import { repoRoot } from "../lib/repo.mjs";
 import {
   globToRegExp,
+  looksLikeHonoRouter,
   readSecurityReviewPaths,
 } from "../lib/security-paths.mjs";
 
@@ -86,7 +90,8 @@ describe("the security-review list covers privileged controllers and migrations"
   const PRIVILEGED_SURFACE = [
     // the assembly root and the schema underneath it
     "apps/api/src/policy-registry.ts",
-    "apps/api/src/openapi.ts",
+    // NOTE: `apps/api/src/openapi.ts` is deliberately absent. It is covered by the gate's
+    // CONTENT half (`looksLikeHonoRouter`), not by a path glob — pinned separately below.
     "apps/api/src/database/schema.ts",
     "apps/api/src/database/relations.ts",
     "apps/api/src/database/resolve-database-url.ts",
@@ -125,7 +130,7 @@ describe("the security-review list covers privileged controllers and migrations"
       missed,
       [],
       `${missed.length} privileged-write path(s) are not matched by ci-cd.md's list ` +
-        `(currently ${globs.length} globs). Restore the six issue-#115 globs to ` +
+        `(currently ${globs.length} globs). Restore the five issue-#115 globs to ` +
         `docs/04-engineering/ci-cd.md:\n  ${missed.join("\n  ")}`,
     );
   });
@@ -226,15 +231,15 @@ describe("the deliberately rejected broader globs are NOT in scope", () => {
 // 3. The count moved the way the investigation measured, not further and not less.
 // ---------------------------------------------------------------------------
 
-describe("the list grew by exactly the six issue-#115 globs", () => {
-  it("29 globs now, all 23 pre-#115 globs still present", async () => {
+describe("the list grew by exactly the five issue-#115 globs", () => {
+  // NOT an exact `globs.length` assertion, deliberately. An earlier draft asserted
+  // `globs.length === 29`, which breaks on every LEGITIMATE later addition and is the same
+  // stale-number defect this repository has been removing from `status.md` (PRs #99 and
+  // #89) and that `MINIMUM_GLOBS` in `lib/security-paths.mjs` documents at length. Naming
+  // the globs that must be PRESENT is strictly stronger than counting them: it catches a
+  // drop, it catches a rename, and it does not fire on an unrelated future widening.
+  it("every pre-#115 glob and every issue-#115 glob is present", async () => {
     const { globs } = await readSecurityReviewPaths();
-    assert.equal(
-      globs.length,
-      29,
-      `expected 23 pre-#115 globs + 6 issue-#115 globs = 29; found ${globs.length}. ` +
-        "Either a glob was dropped or an extra one was added beyond what was measured.",
-    );
     for (const glob of OLD_GLOBS) {
       assert.ok(
         globs.includes(glob),
@@ -244,15 +249,51 @@ describe("the list grew by exactly the six issue-#115 globs", () => {
     for (const glob of [
       "apps/api/src/**/controllers/**",
       "apps/api/drizzle/*.sql",
-      "apps/api/src/openapi.ts",
       "apps/api/src/policy-registry.ts",
       "apps/api/src/database/**",
       "packages/mcp/src/auth/**",
     ]) {
       assert.ok(
         globs.includes(glob),
-        `${glob} is one of issue #115's six globs and is missing from ci-cd.md`,
+        `${glob} is one of issue #115's five globs and is missing from ci-cd.md`,
       );
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. `openapi.ts` is covered, but by the CONTENT half — pin that, not a glob.
+// ---------------------------------------------------------------------------
+//
+// An earlier draft of issue #115's fix added `apps/api/src/openapi.ts` as a path glob. An
+// independent verification refuted it: the gate has TWO halves, and this file was already in
+// the second one. `check-pr-template.mjs`'s `securitySurfaceTouched()` runs
+// `looksLikeHonoRouter()` over every changed `.ts`/`.tsx` file — not only added ones — and
+// that function's own comment names `openapi.ts` as one of only two files in the repository
+// matching `new (OpenAPI)?Hono(`. So a glob for it would have been redundant.
+//
+// It is pinned HERE instead, because "covered by the other half" is only true while the other
+// half still recognises it. If `apiRouter()` is ever rewritten so the textual proxy stops
+// matching, this fails and whoever did it has to decide deliberately — either restore
+// detection or add the path glob — rather than silently dropping the file out of scope.
+
+describe("openapi.ts is covered by the content half, not by a path glob", () => {
+  it("matches() is false for it, and looksLikeHonoRouter() is true", async () => {
+    const { matches } = await readSecurityReviewPaths();
+    const relative = "apps/api/src/openapi.ts";
+    assert.equal(
+      matches(relative),
+      false,
+      `${relative} now matches a path glob. That is not wrong, but it makes this probe's ` +
+        "premise stale — the file was covered by the content half alone. Decide which half " +
+        "owns it and update this probe.",
+    );
+    const source = await readFile(path.join(repoRoot, relative), "utf8");
+    assert.ok(
+      looksLikeHonoRouter(source),
+      `looksLikeHonoRouter() no longer recognises ${relative}, so it has fallen OUT of the ` +
+        "security-review scope entirely: no path glob covers it and the textual proxy that " +
+        "did has stopped matching. Add the path glob, or restore the declaration shape.",
+    );
   });
 });
