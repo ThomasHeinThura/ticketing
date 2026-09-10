@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth-client";
+import cancelInvitation from "@/fetchers/invitation/cancel-invitation";
 import queryClient from "@/query-client";
 
 type CancelInvitationRequest = {
@@ -7,18 +7,13 @@ type CancelInvitationRequest = {
   workspaceId: string;
 };
 
+// S6a (issue #6, retrofit plan §3): native replacement for
+// authClient.organization.cancelInvitation() -- see
+// apps/web/src/fetchers/invitation/cancel-invitation.ts.
 function useCancelInvitation() {
   return useMutation({
     mutationFn: async ({ invitationId }: CancelInvitationRequest) => {
-      const { data, error } = await authClient.organization.cancelInvitation({
-        invitationId,
-      });
-
-      if (error) {
-        throw new Error(error.message || "Failed to cancel invitation");
-      }
-
-      return data;
+      return cancelInvitation(invitationId);
     },
     onSuccess: (_, { workspaceId }) => {
       // Invalidate all workspace-related queries
