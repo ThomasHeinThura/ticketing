@@ -40,16 +40,27 @@
  * `scripts/ci/probes/workflow-alias-table.test.mjs` pins its five entries, its `.get()`
  * channel, and this file's comment-stripped body.
  *
- * **What that does and does not close is deliberately NOT described here.** Four successive
- * versions of this comment tried, and independent review falsified every one — including the
- * version that was itself a correction of the previous falsification, and whose own commit was
- * the counter-example to the sentence it added. The property being described is defeasible in
- * more ways than a comment reliably tracks, and a stale guarantee in a guard is worse than no
- * guarantee, because it is read as one.
+ * **Three measured facts, which is what this comment carries instead of a guarantee.** Each
+ * was reproduced by independent review and none can decay, because each is a negative
+ * observation rather than a promise:
  *
- * **See issue #102**, which carries the current analysis — the known bypasses, the reason a
- * defence placed on this object is not sufficient on its own, and the proposed consumer-process
- * assertion — and which is maintained. Do not restore a summary of it here.
+ *   1. The seal is **not** immutability.
+ *   2. `Map.prototype.set.call(WORKFLOW_ALIASES, k, v)` mutates it on every channel — size,
+ *      spread, `.get`, `.has`, `.keys` — because the seal shadows the *property* and not the
+ *      internal slot, and `Object.preventExtensions` does not protect `Map.prototype`.
+ *   3. `Object.isFrozen(WORKFLOW_ALIASES)` reports **`true`** throughout, so the obvious probe
+ *      agrees with the wrong answer.
+ *
+ * **What this comment does NOT state is any guarantee about what the guard closes.** Five
+ * successive versions tried, and independent review falsified every one — including the
+ * version that was itself a correction of the previous falsification, and whose own commit was
+ * the counter-example to the sentence it added. The distinction is the lesson: a guarantee
+ * decays as the code moves around it and is read as current; a measured negative fact cannot.
+ * Keep facts here, keep guarantees nowhere.
+ *
+ * **See issue #102** for the analysis and the candidate fixes — including that an object-side
+ * defence may in fact work, which an earlier version of that issue denied. Add measurements
+ * here if you make them; do not add a summary of #102's conclusions.
  */
 const sealed = new Map([
   ["pnpm check:route-policy", "pnpm test:permissions"],

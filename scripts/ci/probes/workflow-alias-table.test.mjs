@@ -20,10 +20,14 @@
  * spread only pins ONE of the two channels `test-all.mjs` actually reads (`for...of` at
  * `aliasSources()`, `.get()` at `reconcile()`) — a `Map` with an own `get` override
  * passed every prior version of this file 10/10 while answering a smuggled key. This
- * version closes that the same way `scripts/ci/lib/workflow-aliases.mjs` now does at
- * runtime: the Map cannot be mutated or extended after load, so there is no `.get()` (or
- * anything else) left to override — direct assertions below prove it throws, and the
- * whole-body source assertion proves nothing was added to make it lie some other way.
+ * version pins the `.get()` channel directly as well as the spread.
+ *
+ * **It does NOT make the Map immutable, and an earlier version of this paragraph said it
+ * did.** Round 5 measured `Map.prototype.set.call(WORKFLOW_ALIASES, k, v)` mutating it on
+ * every channel — the seal shadows the property, not the internal slot. That sentence was
+ * removed from `workflow-aliases.mjs` and survived here, two lines above its own "do not
+ * restore a summary" note, which is exactly the stale-neighbour defect this project keeps
+ * producing. See #102.
  */
 
 import assert from "node:assert/strict";
