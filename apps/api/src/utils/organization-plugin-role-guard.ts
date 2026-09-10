@@ -35,9 +35,15 @@ import { resolveMembershipRole } from "./workspace-member-roles";
  * shapes are refused here, before the handler runs, with `400`.
  *
  * **2. No request may READ a multi-role value.** The write half cannot help a deployment that
- * ALREADY has such a row — migration `0050` repairs the unambiguous ones and refuses the
- * rest, so an operator may be sitting on a genuine `"owner,admin"` for as long as it takes
- * them to decide. While that row exists the plugin would still OR it, so any organization
+ * ALREADY has such a row — migration `0050` repairs the unambiguous ones and `RAISE`s on the
+ * rest, and `startServer` exits non-zero when a migration fails, so a deployment holding an
+ * unrepairable `"owner,admin"` does not serve at all until an administrator resolves it. (An
+ * earlier version of this paragraph said such an operator "may be sitting on" that row while
+ * the application ran. False, and it overstated the case for this half.) The half is still
+ * warranted: it is what makes the two evaluators agree on any malformed row that reaches a
+ * running process — one written before `0050`'s CHECK was validated, or in a deployment where
+ * that constraint has since been dropped. While such a row exists the plugin would still OR
+ * it, so any organization
  * route on which the caller's own role is an authorization input is refused `409` when that
  * role is malformed. This is what makes the two evaluators agree rather than merely making
  * one of them stricter: native denies, and the plugin is never asked.
@@ -114,26 +120,35 @@ type RoleWriteProblem = { field: string; message: string };
  * by the guard, and `role: "owner,admin"` landed in the column. A privilege escalation
  * reachable by changing one character of a header.
  *
- * ## What better-auth actually does, measured rather than assumed
+ * ## What better-auth actually does — read at source, after two wrong answers
  *
  * The first draft of this fix asserted that better-auth "reads the body with `request.json()`
- * and never consults `Content-Type`". **That was wrong**, and the oracle in
- * `multi-role-membership-content-type.test.ts` caught it. Driving the real mounted route with
- * a legitimate single-role body under fifteen media types gives:
+ * and never consults `Content-Type`". **Wrong** — the oracle in
+ * `multi-role-membership-content-type.test.ts` caught it: `text/plain`, `garbage` and an
+ * absent header all get **415** and are never parsed, so they were never bypass vectors.
  *
- * | Content-Type | better-auth |
- * | --- | --- |
- * | `application/json`, `Application/JSON`, `APPLICATION/JSON` | **200, body parsed** |
- * | `application/json; charset=utf-8`, `application/json ; charset=UTF-8`, `application/json;charset=utf-8` | **200, body parsed** |
- * | `application/json-patch+json`, `application/JSON+foo` | **200, body parsed** |
- * | `application/vnd.api+json`, `text/json`, `text/plain`, `application/x-www-form-urlencoded`, `garbage`, `""`, absent | **415, body never parsed** |
+ * The second draft then measured fifteen media types, saw that every accepted one began
+ * `application/json`, and wrote `startsWith("application/json")` down as "better-auth's
+ * rule". **Also wrong** — an inference from a sample, stated as a measurement. An independent
+ * review found a spelling where the two disagree: `application/x+jsonapplication/json` is
+ * parsed by better-auth and was classified not-parsed here.
  *
- * So better-auth's rule is: **lower-case the header and check it starts with
- * `application/json`.** `text/plain` and an absent header were never bypass vectors — 415
- * refuses them before any parsing. The genuine gap was only ever the spellings better-auth
- * accepts and `includes` missed, and note that set is wider than the exact essence
- * `application/json`: a guard matching only that would still be bypassable through
- * `application/json-patch+json`.
+ * So the rule below is not inferred. It is `better-call@1.3.7`'s `getBody`
+ * (`dist/utils.mjs:4-55`), read directly, with `allowedMediaTypes: ["application/json"]` as
+ * `better-auth/dist/api/index.mjs:161` configures it. Two stages:
+ *
+ *   1. **the 415 gate** — `contentType.toLowerCase().split(";")[0].trim()` must **contain**
+ *      the substring `application/json`. Otherwise `getBody` throws
+ *      `415 UNSUPPORTED_MEDIA_TYPE` and the body is never read at all.
+ *   2. **the JSON branch** — the body is parsed as JSON iff
+ *      `/^application\/([a-z0-9.+-]*\+)?json/i` matches the lower-cased header, parameters
+ *      included. A type that clears the gate but fails this regex falls through to
+ *      better-call's form and text branches, where a `role` key cannot survive.
+ *
+ * Neither stage is `startsWith`. Stage 1 admits `application/json.`, `application/json/`,
+ * `application/jsonx` and `application/x+jsonapplication/json`, and rejects
+ * `application/vnd.api+json` and `text/json`, which look JSON-ish and are not accepted.
+ * Stage 2 is what excludes `x-application/json`, which clears stage 1.
  *
  * ## The rule here
  *
@@ -164,17 +179,34 @@ type BodyPeek =
 const BODILESS_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 /**
- * Whether better-auth will parse this request's body, per the measured table above:
- * case-insensitive, parameters tolerated, and any subtype whose name begins `json` included —
- * because better-auth accepts `application/json-patch+json` and `application/JSON+foo`.
+ * better-call's JSON branch, copied from `better-call@1.3.7/dist/utils.mjs:4`, kept as a
+ * named constant so the two stages below read as the two stages they mirror.
+ */
+const BETTER_CALL_JSON_MEDIA_TYPE = /^application\/([a-z0-9.+-]*\+)?json/i;
+
+/**
+ * Whether better-auth will parse this request's body as JSON — the two stages documented
+ * above, in better-call's own order.
  *
- * Pinned by the ORACLE group in `multi-role-membership-content-type.test.ts`: if a
- * better-auth upgrade widens or narrows its own rule, that group fails and this function has
- * to be re-measured rather than quietly drifting out of agreement with it.
+ * What pins this to better-auth's behaviour is **not** the ORACLE group, despite an earlier
+ * comment here saying so. The review that found this function wrong also found that the
+ * ORACLE group *cannot* detect the error, because it drives only well-formed bodies, which
+ * the right rule and the wrong one both accept. What discriminates is the **UNREADABLE
+ * group's malformed-JSON probes** — the only requests whose refusal depends on whether this
+ * function says better-auth would have parsed that body. They are parametrised over the whole
+ * media-type table for exactly that reason.
  */
 function betterAuthWillParseBody(value: string | undefined): boolean {
   if (!value) return false;
-  return value.trim().toLowerCase().startsWith("application/json");
+  const normalized = value.toLowerCase();
+  // Stage 1 — better-call's 415 gate, against the media type without its parameters.
+  // `split` always yields at least one element, so `?? normalized` is unreachable; it is
+  // here because `noUncheckedIndexedAccess` types the index access as possibly undefined,
+  // and the safe fallback is the whole header rather than the empty string.
+  const essence = (normalized.split(";")[0] ?? normalized).trim();
+  if (!essence.includes("application/json")) return false;
+  // Stage 2 — its JSON branch, against the whole header, parameters included.
+  return BETTER_CALL_JSON_MEDIA_TYPE.test(normalized);
 }
 
 async function peekJsonBody(c: Context): Promise<BodyPeek> {
@@ -283,17 +315,47 @@ function roleWriteProblems(
   return null;
 }
 
-/** The organization this request acts on, or `null` when it names none. */
-function targetOrganizationId(
+/**
+ * **Every** organization this request could be acting on — not the first one that resolves.
+ *
+ * The single-value version of this function was steerable, and the escalation was
+ * demonstrated rather than theorised. It resolved body → query → session-active and returned
+ * the first hit. But better-auth's `update-member-role` resolves
+ * `ctx.body.organizationId || session.session.activeOrganizationId` and **never reads the
+ * query string** (`crud-members.mjs:256`). So appending `?organizationId=<any id>` to a body
+ * that omits `organizationId` pointed this guard at an organization the caller holds no row
+ * in — which resolves to `no-membership`, a state half 2 deliberately does not refuse — while
+ * better-auth went on to act on the caller's **session-active** organization, whose row was
+ * the malformed one. Measured: the control request returned `409
+ * MALFORMED_MEMBERSHIP_ROLE`; the same request with `?organizationId=<random id>` returned
+ * **200 and the write landed.**
+ *
+ * The mismatch is not confined to one route. `add-member`, `invite-member`, `remove-member`,
+ * `create-team` and `update-team` are body-only like `update-member-role`, and
+ * `list-invitations`, `get-full-organization`, `list-roles`, `get-role` and
+ * `get-active-member` read the query — so a guard preferring either source is wrong for the
+ * other half of the surface.
+ *
+ * Rather than encode a per-route table of which source each better-auth handler happens to
+ * consult — a table that would go stale the first time better-auth changed one — this returns
+ * all of them and the caller refuses if **any** resolves to a malformed role. A request that
+ * names two different organizations is already outside anything the product does; refusing on
+ * the union of them costs nothing real and cannot be steered by adding a parameter the target
+ * handler ignores.
+ */
+function candidateOrganizationIds(
   body: Record<string, unknown> | null,
   c: Context,
   activeOrganizationId: string | null,
-): string | null {
+): string[] {
+  const candidates: string[] = [];
   const fromBody = body?.organizationId;
-  if (typeof fromBody === "string" && fromBody.length > 0) return fromBody;
+  if (typeof fromBody === "string" && fromBody.length > 0)
+    candidates.push(fromBody);
   const fromQuery = c.req.query("organizationId");
-  if (fromQuery) return fromQuery;
-  return activeOrganizationId;
+  if (fromQuery) candidates.push(fromQuery);
+  if (activeOrganizationId) candidates.push(activeOrganizationId);
+  return [...new Set(candidates)];
 }
 
 type SessionReader = (
@@ -370,28 +432,32 @@ export function organizationPluginRoleGuard(readSession: SessionReader) {
     const session = await readSession(c.req.raw.headers);
     if (!session) return null; // Unauthenticated: better-auth's own 401 to issue.
 
-    const organizationId = targetOrganizationId(
+    const organizationIds = candidateOrganizationIds(
       body,
       c,
       session.activeOrganizationId,
     );
-    if (!organizationId) return null;
+    if (organizationIds.length === 0) return null;
 
-    const membership = await resolveMembershipRole(
-      db,
-      organizationId,
-      session.userId,
-    );
-    if (membership.ok === false && membership.reason === "malformed-role") {
-      return c.json(
-        {
-          error: "MALFORMED_MEMBERSHIP_ROLE",
-          message:
-            "This workspace membership does not hold exactly one role, so no authorization decision can be made from it. An administrator must reassign a single role to this member.",
-          problem: membership.problem,
-        },
-        409,
+    // Refuse if ANY candidate resolves to a malformed role. Checking only the one this
+    // guard guesses the handler will use is what made the single-value version steerable.
+    for (const organizationId of organizationIds) {
+      const membership = await resolveMembershipRole(
+        db,
+        organizationId,
+        session.userId,
       );
+      if (membership.ok === false && membership.reason === "malformed-role") {
+        return c.json(
+          {
+            error: "MALFORMED_MEMBERSHIP_ROLE",
+            message:
+              "This workspace membership does not hold exactly one role, so no authorization decision can be made from it. An administrator must reassign a single role to this member.",
+            problem: membership.problem,
+          },
+          409,
+        );
+      }
     }
 
     return null;

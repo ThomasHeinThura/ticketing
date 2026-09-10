@@ -35,6 +35,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createWorkspaceViaPlugin,
   inviteAndAcceptAsNewMember,
+  plantLegacyMembershipRole,
   signUpUser,
   updateMemberRoleViaPluginRaw,
 } from "./helpers/organization-http";
@@ -99,8 +100,14 @@ async function scenario(app: App) {
 const MEDIA_TYPES: ReadonlyArray<{
   label: string;
   value: string | null;
-  /** What better-auth answers a legitimate single-role write under this media type. */
-  betterAuth: 200 | 415;
+  /**
+   * What better-auth answers a legitimate single-role write under this media type.
+   *
+   * `200` — parsed and written. `415` — refused at better-call's media-type gate, body never
+   * read. `400` — cleared the gate, failed the JSON regex, so better-call fell through to its
+   * text branch and better-auth's own schema rejected a string where an object was required.
+   */
+  betterAuth: 200 | 400 | 415;
 }> = [
   {
     label: "application/json (the canonical spelling)",
@@ -142,6 +149,32 @@ const MEDIA_TYPES: ReadonlyArray<{
     label: "application/JSON+foo (better-auth parses this too)",
     value: "application/JSON+foo",
     betterAuth: 200,
+  },
+  // The four below were missing from the first draft's fifteen-type sample, and the third is
+  // the spelling on which `startsWith` and better-auth's real rule actually disagree.
+  {
+    label:
+      "application/json. (trailing dot — clears the gate, matches the regex)",
+    value: "application/json.",
+    betterAuth: 200,
+  },
+  {
+    label:
+      "application/jsonx (a longer subtype that still starts application/json)",
+    value: "application/jsonx",
+    betterAuth: 200,
+  },
+  {
+    label:
+      "application/x+jsonapplication/json (startsWith says no, better-auth parses it)",
+    value: "application/x+jsonapplication/json",
+    betterAuth: 200,
+  },
+  {
+    label:
+      "x-application/json (clears better-call's gate, FAILS its JSON regex — the case stage 2 exists for)",
+    value: "x-application/json",
+    betterAuth: 400,
   },
   {
     label: "application/vnd.api+json (a +json type better-auth does NOT parse)",
@@ -230,73 +263,69 @@ describe("#82 the role guard is not steerable by Content-Type", () => {
 
 describe("#82 a body whose shape cannot be established is refused, not waved through", () => {
   /**
-   * `expected` is what the caller must see. Where better-auth WOULD have parsed the body,
-   * this guard has to refuse it itself — that is the fail-closed requirement. Where
-   * better-auth would answer 415 and never parse, its own refusal is the right answer and
-   * the guard has nothing to add; inventing a second one would change behaviour for
-   * requests that were never a threat.
+   * **This is the group that pins `betterAuthWillParseBody`**, and it is worth saying why,
+   * because an earlier comment credited the ORACLE group and an independent review showed
+   * that was wrong.
+   *
+   * The ORACLE drives well-formed bodies. A guard with the right media-type rule and a guard
+   * with a wrong one both accept those, so the ORACLE cannot tell them apart. A **malformed**
+   * body can: where better-auth would have parsed it, this guard must refuse it itself
+   * (`400 UNREADABLE_REQUEST_BODY`), and where better-auth would not, better-auth's own
+   * `415` is the right answer and the guard must stay out of the way. Getting the media-type
+   * rule wrong swaps those two, on exactly the spellings where the rules disagree — so the
+   * probe is parametrised over the full table rather than spot-checked.
    */
-  const UNREADABLE: ReadonlyArray<{
-    label: string;
-    body: string;
-    contentType: string | null;
-    expected: 400 | 415;
-  }> = [
-    {
-      label: "malformed JSON while declaring application/json",
-      body: '{"organizationId":"x","role":["owner"',
-      contentType: "application/json",
-      expected: 400,
-    },
-    {
-      label: "malformed JSON while declaring Application/JSON",
-      body: "{not json at all",
-      contentType: "Application/JSON",
-      expected: 400,
-    },
-    {
-      label:
-        "malformed JSON while declaring application/json-patch+json (which better-auth parses)",
-      body: "{{{",
-      contentType: "application/json-patch+json",
-      expected: 400,
-    },
+  for (const media of MEDIA_TYPES) {
+    const expected = media.betterAuth === 415 ? 415 : 400;
+    // WHO must refuse is the discriminating question, not merely the status code. This
+    // guard owes a refusal only where better-auth would have PARSED the body — that is the
+    // fail-closed obligation. Where better-auth clears its media-type gate but does not
+    // treat the body as JSON (`x-application/json`), better-call falls through to its text
+    // branch and better-auth's own schema returns a 400 of its own; the guard has nothing
+    // to add and must not pre-empt it. An earlier version of this probe asserted
+    // `UNREADABLE_REQUEST_BODY` for every 400 and failed on exactly that case.
+    const guardMustRefuse = media.betterAuth === 200;
+    it(`refuses a malformed body sent as ${media.label} with ${expected}, from ${guardMustRefuse ? "the guard" : "better-auth"}`, async () => {
+      const { app } = createApp();
+      const { owner, workspace, target } = await scenario(app);
+
+      const response = await updateMemberRoleViaPluginRaw(
+        app,
+        owner.cookie,
+        '{"organizationId":"x","role":["owner"',
+        media.value,
+      );
+
+      expect(response.status).toBe(expected);
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (guardMustRefuse) {
+        expect(body.error).toBe("UNREADABLE_REQUEST_BODY");
+      } else {
+        // Refused, but not by this guard.
+        expect(body.error).not.toBe("UNREADABLE_REQUEST_BODY");
+      }
+
+      const after = await getMemberRole(workspace.id, target.user.id);
+      expect(after.role).toBe("viewer");
+    });
+  }
+
+  const NON_OBJECT: ReadonlyArray<{ label: string; body: string }> = [
     {
       label: "a JSON array rather than an object",
       body: '[{"role":["owner","admin"]}]',
-      contentType: "application/json",
-      expected: 400,
     },
     {
       label: "a bare JSON string rather than an object",
       body: '"owner,admin"',
-      contentType: "application/json",
-      expected: 400,
     },
-    {
-      label: "JSON null rather than an object",
-      body: "null",
-      contentType: "application/json",
-      expected: 400,
-    },
-    {
-      label:
-        "malformed JSON with no Content-Type — better-auth's 415 already refuses it",
-      body: "{not json at all",
-      contentType: null,
-      expected: 415,
-    },
-    {
-      label:
-        "malformed JSON declaring text/plain — better-auth's 415 already refuses it",
-      body: "role=owner,admin",
-      contentType: "text/plain",
-      expected: 415,
-    },
+    { label: "JSON null rather than an object", body: "null" },
   ];
 
-  for (const probe of UNREADABLE) {
-    it(`refuses ${probe.label} with ${probe.expected}`, async () => {
+  for (const probe of NON_OBJECT) {
+    it(`refuses ${probe.label}`, async () => {
       const { app } = createApp();
       const { owner, workspace, target } = await scenario(app);
 
@@ -304,14 +333,12 @@ describe("#82 a body whose shape cannot be established is refused, not waved thr
         app,
         owner.cookie,
         probe.body,
-        probe.contentType,
+        "application/json",
       );
 
-      expect(response.status).toBe(probe.expected);
-      if (probe.expected === 400) {
-        const body = (await response.json()) as { error?: string };
-        expect(body.error).toBe("UNREADABLE_REQUEST_BODY");
-      }
+      expect(response.status).toBe(400);
+      const body = (await response.json()) as { error?: string };
+      expect(body.error).toBe("UNREADABLE_REQUEST_BODY");
 
       const after = await getMemberRole(workspace.id, target.user.id);
       expect(after.role).toBe("viewer");
@@ -356,27 +383,98 @@ describe("#82 THE ORACLE — the guard admits everything better-auth admits, and
         media.value,
       );
 
-      // THIS is the assertion that makes every refusal above meaningful. A guard that
-      // simply refused everything would satisfy the rest of this file; a guard that
-      // turned better-auth's 415s into its own 400s would too. Both are wrong, and only
-      // this group can tell.
+      // This group's job is to catch a guard that refuses more than it should — one that
+      // failed closed on everything, or turned better-auth's 415s into its own 400s. It
+      // CANNOT catch a wrong media-type rule: a well-formed body is accepted under either.
+      // The UNREADABLE group above is what does that.
       expect(response.status).toBe(media.betterAuth);
 
       const after = await getMemberRole(workspace.id, target.user.id);
       expect(after.role).toBe(media.betterAuth === 200 ? "admin" : "viewer");
     });
   }
+});
 
-  it("pins better-auth's rule itself: it parses exactly the media types that lower-case to a prefix of application/json", () => {
-    // If a better-auth upgrade widens or narrows this, the loop above fails and
-    // `betterAuthWillParseBody` in organization-plugin-role-guard.ts must be re-measured
-    // rather than left to drift out of agreement with it.
-    for (const media of MEDIA_TYPES) {
-      const parses = (media.value ?? "")
-        .trim()
-        .toLowerCase()
-        .startsWith("application/json");
-      expect(parses).toBe(media.betterAuth === 200);
-    }
+describe("#82 NB-1 — the read half cannot be steered by a query parameter the handler ignores", () => {
+  /**
+   * The escalation this pins, before it was closed:
+   *
+   * half 2 resolved the target organization as body → **query** → session-active and took the
+   * first hit. better-auth's `update-member-role` resolves
+   * `ctx.body.organizationId || session.session.activeOrganizationId` and never reads the
+   * query (`crud-members.mjs:256`). So a body omitting `organizationId`, plus
+   * `?organizationId=<any id>`, pointed the guard at an organization the caller holds no row
+   * in — `no-membership`, which half 2 deliberately does not refuse — while better-auth acted
+   * on the caller's session-active organization, whose row was the malformed one.
+   *
+   * Measured before the fix: the control returned 409, the steered request returned **200 and
+   * the write landed.** The guard now checks every candidate and refuses if any is malformed.
+   */
+  it("refuses when the SESSION-ACTIVE membership is malformed, even though a query parameter names an unrelated workspace", async () => {
+    const { app } = createApp();
+    const { owner, workspace, target, memberId } = await scenario(app);
+
+    // The actor's own row in the workspace better-auth will act on is the malformed one.
+    await plantLegacyMembershipRole(workspace.id, owner.user.id, "owner,admin");
+
+    const response = await updateMemberRoleViaPluginRaw(
+      app,
+      owner.cookie,
+      // No `organizationId` in the body, so better-auth falls back to session-active.
+      JSON.stringify({ memberId, role: "admin" }),
+      "application/json",
+      // A workspace the caller has no membership row in at all.
+      "?organizationId=steered-at-an-unrelated-workspace",
+    );
+
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { error?: string };
+    expect(body.error).toBe("MALFORMED_MEMBERSHIP_ROLE");
+
+    // The oracle for this probe: the write must not have landed.
+    const after = await getMemberRole(workspace.id, target.user.id);
+    expect(after.role).toBe("viewer");
+  });
+
+  it("still refuses without the query parameter — the control the steered request was compared against", async () => {
+    const { app } = createApp();
+    const { owner, workspace, target, memberId } = await scenario(app);
+
+    await plantLegacyMembershipRole(workspace.id, owner.user.id, "owner,admin");
+
+    const response = await updateMemberRoleViaPluginRaw(
+      app,
+      owner.cookie,
+      JSON.stringify({ memberId, role: "admin" }),
+      "application/json",
+    );
+
+    expect(response.status).toBe(409);
+    const after = await getMemberRole(workspace.id, target.user.id);
+    expect(after.role).toBe("viewer");
+  });
+
+  it("a malformed role in a workspace named ONLY by the query is refused too, so neither source is trusted over the other", async () => {
+    const { app } = createApp();
+    const { owner, workspace, target, memberId } = await scenario(app);
+
+    // A second workspace the caller owns, malformed there, named only in the query. The
+    // query-reading plugin routes (`list-invitations`, `list-roles`, `get-role`, …) would act
+    // on this one, so a guard that only looked at the body would miss it.
+    const secondCreated = await createWorkspaceViaPlugin(app, owner.cookie);
+    const second = (await secondCreated.json()) as { id: string };
+    await plantLegacyMembershipRole(second.id, owner.user.id, "owner,admin");
+
+    const response = await updateMemberRoleViaPluginRaw(
+      app,
+      owner.cookie,
+      JSON.stringify({ organizationId: workspace.id, memberId, role: "admin" }),
+      "application/json",
+      `?organizationId=${second.id}`,
+    );
+
+    expect(response.status).toBe(409);
+    const after = await getMemberRole(workspace.id, target.user.id);
+    expect(after.role).toBe("viewer");
   });
 });

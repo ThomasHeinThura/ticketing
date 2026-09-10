@@ -206,14 +206,24 @@ export async function updateMemberRoleViaPluginRaw(
   actingCookie: string,
   rawBody: string,
   contentType: string | null,
+  /**
+   * An optional query string, leading `?` included. better-auth's `update-member-role` never
+   * reads the query — which is precisely why it is worth being able to send one: a guard that
+   * resolved its target from the query could be pointed somewhere the handler will not act,
+   * and issue #82's NB-1 was exactly that.
+   */
+  queryString = "",
 ): Promise<Response> {
   const headers: Record<string, string> = { cookie: actingCookie };
   if (contentType !== null) headers["content-type"] = contentType;
-  return app.request("/api/auth/organization/update-member-role", {
-    method: "POST",
-    headers,
-    body: rawBody,
-  });
+  return app.request(
+    `/api/auth/organization/update-member-role${queryString}`,
+    {
+      method: "POST",
+      headers,
+      body: rawBody,
+    },
+  );
 }
 
 /**
