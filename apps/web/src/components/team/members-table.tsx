@@ -154,12 +154,20 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
     }
   };
 
+  // The native route is DELETE /api/workspace/{workspaceId}/members/{userId}
+  // and its path parameter is a USER ID. The plugin call this replaced --
+  // authClient.organization.removeMember() -- took `memberIdOrEmail`, so an
+  // email worked there; the repoint corrected `handleChangeRole` above (see its
+  // comment on `member.id` being the user's own id on the native member shape)
+  // and left this call still passing `email`, which the native route cannot
+  // resolve. `id` on WorkspaceUser is the user id, the same field the role
+  // change keys by. Regression-guarded in members-table.test.tsx.
   const handleDeleteMember = async () => {
     if (!memberToDelete) return;
     try {
       await deleteWorkspaceUser({
         workspaceId,
-        userId: memberToDelete.email,
+        userId: memberToDelete.id,
       });
       toast.success(t("team:membersTable.removeSuccess"));
     } catch (error) {
