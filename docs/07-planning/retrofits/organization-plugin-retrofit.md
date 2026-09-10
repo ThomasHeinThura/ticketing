@@ -31,7 +31,7 @@ Throttle 1's conditions** unless Thomas changes that contract.
 
 **STAGE LEDGER — the authoritative answer to "how far has the retrofit run?"** Throttle 1's
 condition 2 is measured here, so this ledger is the thing to read, not the prose below it.
-As of 2026-09-09, `main` at `3e78450`:
+As of 2026-09-10, `main` at `050a4fd`:
 
 | Stage | State | Landed via | Evidence |
 |---|---|---|---|
@@ -47,8 +47,8 @@ As of 2026-09-09, `main` at `3e78450`:
 | **S7** — native role list and writes | ⛔ **BLOCKED BY #82 ONLY** | — | **#66 is closed**, fixed by PR #80 (squash `6e6c9ae`) and verified on `main`: a missing `workspace_role` row is now a DENY for every role but `owner`, whose authority is compiled-in by design (retrofit plan R5). The privilege-restoration fail-open on the very table S7 writes is therefore gone. **The sole remaining blocker is #82** — one membership = exactly one role, where multi-role values diverge between the two evaluators (see the decision log). Check GitHub for its state rather than trusting this row. **SCOPE WIDENED, 2026-09-10:** S7 also owns the native role **list** route and the repointing of all four remaining client callers — `listRoles`, `createRole`, `updateRole`, `deleteRole`. The original row scoped S7 to the three write verbs only, which would have retired three of the four callers and left the `listRoles` **read** live, leaving S10's zero-caller precondition unmet by exactly one family. A review of PR #99 caught that. **S7's exit criterion is zero executable `authClient.organization.*` callers in `apps/web/src`, not "routes implemented".** |
 | **S8a** — active workspace | ✅ **COMPLETE** | PR #109, squash `86c23b2` (reviewed head `889794619d456d6e06c17072b5eff41a3c360362`) | `POST /api/workspace/{workspaceId}/activate`, writing the **calling session's own** `active_organization_id` — demonstrated, not asserted: an injection attempt naming a victim's `sessionId`, `userId` and `workspaceId` in both the query string and the body moved only the caller's row. Membership is enforced by route middleware (`workspaceAccess.fromParam` + `requireWorkspaceMembership`), not by the declarative policy, whose row is `allow`/`allow` for every role exactly as the pre-existing `leave` row is. Independent Opus review CLEAR WITH FINDINGS, zero blocking, note at `docs/07-planning/security-reviews/109-native-set-active.md`. **The closing invariant held: zero live `authClient.organization.setActive` callers remain** |
 | **S8b** — rename the column back | ⏸️ **DEFERRED out of P0** | — | Needs a migration |
-| **S9** — teams decision | ❌ **NOT STARTED — UNBLOCKED, precondition now SATISFIED** | — | The ledger previously said this needs only *"confirmation that nothing reaches teams"*. That is necessary and **not sufficient**: the real precondition is the named stage **S4b**, which has now merged (PR #85). See **§ S9's real precondition**. What remains is the confirmation itself, not a blocking dependency |
-| **S10** — unmount (the tripwire commit) | ❌ **NOT STARTED** | — | S3, S4b, S5, S6a and S8a are merged. Still needs **S7** (blocked on #82 only) and **S9**. `tests/api-contract/openapi.json` still declares the `/auth/organization/*` operations that S10 removes. Two obligations inherited from the stages that landed: **NB-1 from S6a** — add a per-workspace pending-invitation ceiling, or unmounting `organization()` leaves the invite surface with no cap at all, the same abuse class as the 2026-05-28 phishing incident; and **closing #88**, which S6a fixed at source but cannot close while the plugin route is mounted |
+| **S9** — teams decision | ✅ **COMPLETE as a documentation-only stage** (resolved Path B, 2026-09-10) | PR #104 | **The confirmation is done**: zero team callers anywhere in `apps/`, `packages/` or `tests/`, in all ten plugin spellings, and native create already writes all nine effects unconditionally. **The `auth.ts` flag drop moves into S10** rather than breaking the S1 oracle — recorded in [`decision-log.md`](../decision-log.md), entry 2026-09-10. Preserved as the evidence for Path B: flipping `teams: { enabled: true }` to `false` independently breaks the still-live **S1** oracle (19 passed / 1 failed, same assertion as before), and that is mechanically unavoidable — `teams.enabled` is the one flag that both registers the nine team routes and gates `crud-org.mjs`'s default-team side effect, with no finer-grained knob to split them. Editing S1 to absorb that is out of this stage's scope. See **§ S9 — why Path B, with the experiment that settles it** |
+| **S10** — unmount (the tripwire commit) | ❌ **NOT STARTED** | — | S3, S4b, S5, S6a and S8a are merged, and **S9 is resolved** (Path B). Still needs **S7** (blocked on #82 only). **S9's resolution moved its `auth.ts` edit — dropping `teams.enabled` and the nine team routes — into this stage's tripwire commit**; see the S9 row and § S9 — why Path B. `tests/api-contract/openapi.json` still declares the `/auth/organization/*` operations that S10 removes. Two obligations inherited from the stages that landed: **NB-1 from S6a** — add a per-workspace pending-invitation ceiling, or unmounting `organization()` leaves the invite surface with no cap at all, the same abuse class as the 2026-05-28 phishing incident; and **closing #88**, which S6a fixed at source but cannot close while the plugin route is mounted |
 | **S11** — remove legacy Better Auth access-control shim and dependency from `packages/permissions` | ❌ **NOT STARTED — OWNED, separate work item** | — | `packages/permissions/src/index.ts` still imports `createAccessControl`, `defaultStatements`, `memberAc`, `adminAc`, `ownerAc` from `better-auth/plugins/organization/access`. Was **#7's**; #7 is **CLOSED**. Thomas has assigned it a dedicated work item: remove the transitional shim, remove the final `better-auth` dependency from `packages/permissions`, regenerate the lockfile, prove no consumers remain. **Dependency: S10 → S11** — S10 must unmount the plugin first. **Not this retrofit's**, and **stays outside Throttle 1's conditions** unless Thomas changes that contract |
 
 ### Progress, stated the way it is actually useful
@@ -59,12 +59,12 @@ item, so it understates how close S10 is. State it in four buckets instead:
 
 | Bucket | Stages | Count |
 | --- | --- | --- |
-| **Landed** | S0, S1, S2, S3, S4, S4b, S5, S6a, S8a | **9** |
-| **Required to reach S10, outstanding** | S7, S9, S10 | **3** |
+| **Landed** | S0, S1, S2, S3, S4, S4b, S5, S6a, S8a, S9 | **10** |
+| **Required to reach S10, outstanding** | S7, S10 | **2** |
 | **Deferred outside P0** | S6b, S8b | 2 — do **not** count these against Throttle 1 |
 | **Separately owned — now has a dedicated work item** | S11 | 1 — **not** this retrofit's; #7, its former owner, is closed, and Thomas has assigned it a new work item (dependency S10 → S11). See the S11 row. Never fold it into #6 to make the ledger tidy. **Stays outside Throttle 1** |
 
-So the live figure is **9 landed of 12 required**, with **3 outstanding**, and S10 last
+So the live figure is **10 landed of 12 required**, with **2 outstanding**, and S10 last
 because everything else feeds it. (**S4b was new to this count** when it was added on
 2026-09-09 — it was always required work, just not previously written down as its own row;
 it has since landed. See the S4b row.)
@@ -86,11 +86,13 @@ fail CI.
   privilege defect.
 - **S6a** — ✅ **LANDED** via PR #112 (squash `6bfc0f4`). **S8a** — ✅ **LANDED** via PR #109
   (squash `86c23b2`).
-- **S9** — its precondition is satisfied (S4b landed via PR #85) and **the decision itself has
-  been made: Path B**, 2026-09-10. The stage is nonetheless still **open** — PR #104 carries
-  it, is not merged, and its title still reads "blocked on a Thomas decision", which is now
-  false. S9 is documentation-only work under Path B, not analysis.
-- **S10** — needs **S7 and S9**, and nothing else. Its own tripwire gate is PR #107.
+- **S9** — ✅ **RESOLVED — Path B, 2026-09-10.** Documentation-only: the confirmation that
+  nothing reaches teams is done and independently re-verified (zero callers across `apps/`,
+  `packages/` and `tests/`, all ten plugin spellings); the `auth.ts` flag drop and the nine
+  team routes move into S10's tripwire commit. See **§ S9 — why Path B, with the experiment
+  that settles it**.
+- **S10** — needs **S7** only. S9 is resolved and folds its `auth.ts` edit into this stage.
+  Its own tripwire gate is PR #107.
 
 ### S9's real precondition — corrected 2026-09-09, and demonstrated
 
@@ -109,7 +111,7 @@ if (options?.teams?.enabled && options.teams.defaultTeam?.enabled !== false) {
 ```
 
 and line 128 sets the created session's team from the team it makes. So dropping
-`teams: { enabled: true }` (`apps/api/src/auth.ts:287-291`) removes **effects 5, 6 and 8** of
+`teams: { enabled: true }` (`apps/api/src/auth.ts:282-286`) removes **effects 5, 6 and 8** of
 §2.5's nine-effect create contract — the default `team` row, the creator's `team_member`
 row, and the session's `active_team_id`. **And S4 ships dark: the client still creates
 workspaces through the plugin**, so that is a live-user regression, not a dark one.
@@ -140,6 +142,133 @@ with it. **That edge is now satisfied — S4b merged as PR #85 — so S9 is star
 **S2 and S4 shipping does not narrow S10's work.** Both are additive: they added native
 routes beside the plugin without unmounting anything. The plugin route surface `main`
 exposes today is the same surface S10 must remove.
+
+### S9 — why Path B, with the experiment that settles it (2026-09-10)
+
+> **Read this as settled history, not as an open question.** The heading of this section used
+> to read "blocked pending a Thomas decision". It is kept, rewritten, because the experiment
+> below is the *evidence for* Path B and is worth preserving — but the decision is made and
+> **must not be reopened**. `teams.enabled` stays `true` for as long as the
+> `organization()` plugin is mounted; S10 removes both together.
+
+**"S9 is startable" (above) is incomplete, and this PR does not act on it.** That
+conclusion is reasoned entirely from *production* risk — no live user hits the plugin's
+create route once S4b lands — and never checks what happens to the **S1 oracle test
+itself**, which drives the plugin's create route over real HTTP via
+`createWorkspaceViaPlugin`, completely independent of what the client does. That test does
+not care whether a human ever calls it; it calls it itself, every run.
+
+**Independently reproduced, not just re-read.** This lane re-ran the exact experiment the
+paragraphs above describe, from a clean `git diff`: flipped `apps/api/src/auth.ts`'s
+`teams.enabled` from `true` to `false` (only that field — a naive `sed` first caught two
+unrelated `enabled: true` flags nearby and was discarded before anything ran), ran
+`tests/api-integration/organization-plugin-characterization.test.ts` against real
+PostgreSQL, got **19 passed / 1 failed**, same assertion, same line:
+
+```
+FAIL create writes all NINE contract effects ...
+     316|  expect(teamRows).toHaveLength(1);
+AssertionError: expected [] to have a length of 1 but got +0
+```
+
+then reverted (`git diff apps/api/src/auth.ts` is clean in this PR).
+
+**This is not incidental drift — it is structurally forced.** Reading the plugin source
+(`better-auth`'s `organization.mjs:403` and `:550`, `crud-org.mjs:106`): `teams.enabled` is
+the *single* flag that (a) registers the nine team endpoints into the plugin's route table
+and (b) gates the `if (options?.teams?.enabled && …)` check that makes `createOrganization`
+write the default `team` / `team_member` rows and the session's `active_team_id`. The
+nested `teams.defaultTeam.enabled` sub-flag cannot rescue this — it is only reached *after*
+the parent `teams.enabled` check already passed, so no config shape in this plugin version
+keeps the create-side effects while dropping the nine routes. It is both or neither.
+
+**Independently re-verified the "zero callers" claim beyond `apps/web/src`.** Grepped all of
+`apps/`, `packages/`, and `tests/` (not only `apps/web/src`) for `auth.api.*Team*` and
+`authClient.organization.*Team*` in every spelling the plugin exposes (`createTeam`,
+`listTeams`, `removeTeam`, `updateTeam`, `setActiveTeam`, `listTeamMembers`,
+`addTeamMember`, `removeTeamMember`, `listOrganizationTeams`, `listUserTeams`) — **zero hits
+anywhere in the repo**, not only in the client. And confirmed, by reading
+`apps/api/src/workspace/controllers/create-workspace.ts` and running
+`tests/api-integration/workspace-write-create-contract.test.ts` (green), that native create
+already writes all nine effects — including the `team` and `team_member` rows and
+`active_team_id` — independent of the plugin's `teams` config, exactly as this section
+already asserted. **So the "does the application need the team rows before the plugin stops
+making them" question has a clean, evidenced answer: no gap. Native already produces them,
+today, unconditionally.** That part of S9 is genuinely done.
+
+**What had to be settled was a test-suite policy question, not an application-behaviour
+question. It is settled — Path B — and the two options are recorded below only so the reason
+survives. Path A is NOT available:**
+
+- **Path A.** Treat the S1 oracle's `team` / `team_member` / `active_team_id` assertions in
+  its `create` block as pinned to a plugin *configuration* that S9 is deliberately changing,
+  and narrow that block accordingly — an intentional, reviewed edit to the characterization,
+  reasoned here — accepting that from S9 onward the still-mounted plugin's own create route
+  legitimately stops producing those three effects, which the S4 contract test
+  (`workspace-write-create-contract.test.ts`) already independently proves the *native*
+  route never depended on.
+- **Path B.** Leave `teams.enabled: true` and the nine routes exactly as they are until
+  **S10**, and fold "drop `teams.enabled` and the nine team routes" into S10's tripwire
+  commit instead of giving it its own stage — S10 removes the whole plugin (and, with it,
+  the S1 file that exercises it) in one shot, so nothing is ever asked to keep passing
+  through a config state the oracle was never written to characterize. Under this path, S9
+  contributes only the "nothing reaches teams" confirmation above (already true and
+  independently re-verified in this PR) and closes as a documentation-only stage; the
+  `auth.ts` edit happens at S10 instead.
+
+This lane's explicit governing instruction was not to make this call by editing the test —
+*"if the characterization would have to change, stop and report why, rather than editing
+the test"* — and Path A is exactly editing the test, only with a justification attached. So
+this lane correctly stopped and made no change to `apps/api/src/auth.ts` or to
+`tests/api-integration/organization-plugin-characterization.test.ts`.
+
+### Resolved 2026-09-10 — **Path B**, and it needed no new decision
+
+> **S9's closure record, in one paragraph.** Team behaviour remains **intentionally enabled**
+> for as long as the better-Auth `organization()` plugin is mounted. `teams.enabled: true`
+> stays exactly as it is; the nine team routes stay registered; the `team` and `team_member`
+> tables stay. That is not an oversight deferred, it is the resolution: removing the flag
+> before S10 would require a throwaway intermediate configuration that exists only between S9
+> and S10, and the only way to make the S1 characterization green in that window is to edit
+> the characterization — which the governing instruction forbids. **S10 removes
+> `teams.enabled`, the team routes and the S1 file that exercises them in one commit.** S9 is
+> therefore complete as a documentation-only stage, and no part of it awaits a decision.
+
+**The governing rule is that S1 must not be broken in order to make the plugin removable**, and
+Path A is precisely that. Path B is therefore that rule applied, not a fresh choice.
+
+That rule reached this lane as a **session instruction**, and an earlier version of this
+paragraph cited it as a numbered section of a "P0 velocity addendum" — quoted accurately, but
+naming a document that exists **nowhere in this repository**, so no reader could check it. An
+independent review of PR #104 caught that. A rule cited as though it were a checkable artifact,
+when it is not, is worse than an honest "decided in session": it invites trust in a reference
+the reader cannot follow. The decision is therefore written where this project's own rules say
+it belongs — [`decision-log.md`](../decision-log.md), entry **2026-09-10 · S9 closes as
+documentation-only** — and this section cites that.
+
+Three things make it the right answer independently of that:
+
+1. **Nothing is lost.** The substantive question — does the application still get the team rows
+   once the plugin stops writing them — is answered and evidenced above: native create already
+   writes all nine effects unconditionally, proven by a green
+   `workspace-write-create-contract.test.ts`. Deferring the flag changes no observable
+   behaviour.
+2. **The intermediate state never needs to exist.** S10 removes `organization()` *and* the S1
+   file that exercises it in one commit. Path A would edit a characterization to accommodate a
+   configuration that lives only between S9 and S10 — work whose entire product is discarded at
+   S10.
+3. **It is strictly faster to S10**, which is the current primary metric: it removes a stage's
+   worth of implementation and a contested test edit from the critical path.
+
+**So S9 closes as a documentation-only stage.** Its deliverable — the confirmation that nothing
+anywhere in the repo reaches teams — is done and independently re-verified (zero callers across
+`apps/`, `packages/` and `tests/`, in all ten plugin spellings). **The `auth.ts` edit (dropping
+`teams: { enabled: true, … }` and the nine team routes) moves into S10's tripwire commit**, and
+S10's row records that.
+
+**To reverse:** if S10 slips far enough that the nine team routes need to go sooner, Path A
+becomes live again — narrow the S1 `create` block's three team assertions with the reasoning
+above attached, since the native contract test already proves the effects survive.
 
 **The single most important correction this document has taken.** §3's S1 row originally listed **four** headline create side effects. Executed characterization measured **NINE**. §2.5 is now the authoritative statement of the inherited create contract, and **S4's equivalence obligation is NINE, not four.** Read §2.5 before planning S4.
 
@@ -188,15 +317,15 @@ Drizzle tables the plugin actually writes (all live in `apps/api/src/database/sc
 
 | Item | Evidence |
 |---|---|
-| `ac: ac as unknown as AccessControl` — TaskDesk statement widened to satisfy the plugin generic | `apps/api/src/auth.ts:275` |
-| `roles: { owner }` — only `owner` is static/compiled-in; the rest are DB rows | `apps/api/src/auth.ts:282` |
-| `dynamicAccessControl: { enabled: true, maximumRolesPerOrganization: 25 }` | `apps/api/src/auth.ts:283-286` |
+| `ac: ac as unknown as AccessControl` — TaskDesk statement widened to satisfy the plugin generic | `apps/api/src/auth.ts:270` |
+| `roles: { owner }` — only `owner` is static/compiled-in; the rest are DB rows | `apps/api/src/auth.ts:277` |
+| `dynamicAccessControl: { enabled: true, maximumRolesPerOrganization: 25 }` | `apps/api/src/auth.ts:278-281` |
 
 ### 1.4 Teams
 
 | Item | Evidence |
 |---|---|
-| `teams: { enabled: true, maximumTeams: 10, allowRemovingAllTeams: false }` | `apps/api/src/auth.ts:287-291` |
+| `teams: { enabled: true, maximumTeams: 10, allowRemovingAllTeams: false }` | `apps/api/src/auth.ts:282-286` |
 
 ### 1.5 Lifecycle hooks still present
 
@@ -403,8 +532,8 @@ Exactly one mark per responsibility, per the brief; where a second consideration
 | 15 | Role **resolution** for the UI (client) | `authClient.organization.hasPermission` fan-out over 16 capabilities — `apps/web/src/hooks/use-workspace-permission.ts:15-32,71,114` | a TaskDesk capability endpoint | `ROUTE` | The plugin's `has-permission` (`auth-openapi.ts:455`) is the **only live authorization consumer of the plugin**. A single `GET /api/capabilities` (named in `docs/01-architecture/rbac.md:347`) replaces 16 round-trips. Its *response vocabulary* was #7's contract (now unowned — see the note at the top of this document); the route is not. |
 | 16 | `workspace_role` CRUD (the Roles UI) | `create-role` / `update-role` / `delete-role` / `list-roles` / `get-role` — `auth-openapi.ts:208,1078,319,615,443`; client at `apps/web/src/hooks/queries/workspace/use-workspace-roles.ts:37` and the three mutation hooks | `role` CRUD with rank guardrails (`rbac.md:159-175`) | `ROUTE` | Persistence already lands in TaskDesk's own `workspace_role` table and is already read natively. Only the **write** path is the plugin's. The guardrails in `rbac.md:159-175` (cannot grant what you do not hold; rank comparisons; last-administrator check) exist in **no** current code — verified absent from `require-workspace-permission.ts` and `seed-default-workspace-roles.ts`. |
 | 17 | Default-role seeding on workspace create | `auth.ts:369-411` (hook) + boot backfill `seed-default-workspace-roles.ts:19` | seeded by TaskDesk's own workspace-create service | `PART` | The seeding *logic* is already TaskDesk code operating on TaskDesk tables; only its **trigger** is the plugin hook. Re-pointing it at a TaskDesk create service is a small, safe move. The boot backfill needs no change at all. |
-| 18 | `dynamicAccessControl` (DB-backed roles resolved at check time) | `auth.ts:283-286` | capability evaluation in `packages/permissions` | `CONTRACT` | Only `has-permission` consumes it (client side). `require-workspace-permission.ts:127-131` already reimplements the same "DB row wins, static fallback" precedence natively. |
-| 19 | `ac` / `statement` access-control object | `packages/permissions/src/index.ts:9-49`, cast in at `auth.ts:275` and `apps/web/src/lib/auth-client.ts:39` | `capabilities.ts` capability vocabulary (`rbac.md:29,118`) | `CONTRACT` | **Hard coupling to better-auth remains even after the plugin is gone**: `packages/permissions/src/index.ts:1-7` imports `createAccessControl`, `defaultStatements`, `memberAc`, `adminAc`, `ownerAc` from `better-auth/plugins/organization/access`. Removing the plugin from `auth.ts` does **not** remove this import. Cutting it is **S11** now (dependency S10 → S11; see the S11 row) — no longer #7's, and no longer unowned, since #7 closed. |
+| 18 | `dynamicAccessControl` (DB-backed roles resolved at check time) | `auth.ts:278-281` | capability evaluation in `packages/permissions` | `CONTRACT` | Only `has-permission` consumes it (client side). `require-workspace-permission.ts:127-131` already reimplements the same "DB row wins, static fallback" precedence natively. |
+| 19 | `ac` / `statement` access-control object | `packages/permissions/src/index.ts:9-49`, cast in at `auth.ts:270` and `apps/web/src/lib/auth-client.ts:39` | `capabilities.ts` capability vocabulary (`rbac.md:29,118`) | `CONTRACT` | **Hard coupling to better-auth remains even after the plugin is gone**: `packages/permissions/src/index.ts:1-7` imports `createAccessControl`, `defaultStatements`, `memberAc`, `adminAc`, `ownerAc` from `better-auth/plugins/organization/access`. Removing the plugin from `auth.ts` does **not** remove this import. Cutting it is **S11** now (dependency S10 → S11; see the S11 row) — no longer #7's, and no longer unowned, since #7 closed. |
 | 20 | Invitation **create + email** | `invite-member` (`auth-openapi.ts:495`), email at `auth.ts:413-444`, rate limit `auth.ts:520`, cloud abuse gate `auth.ts:630-651` | TaskDesk invite route + hashed token (`auth-and-identity.md:357-370`) | `ROUTE` | Two guards are keyed on the **plugin's route string** (`auth.ts:520`, `auth.ts:630`) and silently become dead the moment the path changes. Both must move to the replacement route in the *same* commit. |
 | 21 | Invitation **accept / reject / cancel** | `auth-openapi.ts:16,748,106`; client `use-accept-invitation.ts:11`, `use-reject-invitation.ts:11`, `use-cancel-invitation.ts:13`, `routes/invitation/accept.$inviteId.tsx:53` | TaskDesk routes; acceptance creates the membership and consumes the invitation (`auth-and-identity.md:368-369`) | `ROUTE` | `requireEmailVerificationOnInvitation: false` (`auth.ts:361`) is a deliberate deviation whose rationale (`auth.ts:355-360`) must be carried into the replacement — and reconciled against `auth-and-identity.md:360-363`, which *requires* the accepting account to verify the invited address. **The docs and the code disagree here.** |
 | 22 | Invitation **lookup** | `get-invitation` (`auth-openapi.ts:408`), `list-invitations` (`:591`), `list-user-invitations` (`:696`) | TaskDesk routes — **partly already exist** | `PART` | `GET /api/invitation/{id}` and `GET /api/invitation/pending` already exist natively (routes `apps/api/src/invitation/index.ts:10-38`, handlers `:40-50`, mounted at `apps/api/src/index.ts:555`; controllers `get-invitation-details.ts`, `get-user-pending-invitations.ts`; plus the unauthenticated `GET /invitation/public/:id` at `apps/api/src/index.ts:215-219`), backed by `check-registration-allowed.ts:85-98,133-146`. Missing: the per-workspace `list-invitations` the admin UI uses. |
@@ -457,7 +586,7 @@ The count was revised four times before it closed, and the shape of the error is
 | 7 | the **creating session's** `active_organization_id`: `null → workspace.id` | same session row, column mutation — not a new row |
 | 8 | the **creating session's** `active_team_id`: `null → team.id` | same session row, column mutation — not a new row |
 
-Effects 5 and 6 exist because `teams.enabled: true` with `teams.defaultTeam` left unset (`auth.ts:287-291`) satisfies better-auth's `teams.enabled && defaultTeam?.enabled !== false` — `undefined !== false` is true.
+Effects 5 and 6 exist because `teams.enabled: true` with `teams.defaultTeam` left unset (`auth.ts:282-286`) satisfies better-auth's `teams.enabled && defaultTeam?.enabled !== false` — `undefined !== false` is true.
 
 **Effect 4 — the exact payload contract.** `publishEvent("workspace.created", …)` at `auth.ts:405`. The contract at the event-bus boundary is:
 
@@ -566,13 +695,13 @@ The independent instrument that closed the S1 gate is **PR #57 review [`pullrequ
 | **S4 — native workspace writes** — ✅ **COMPLETE, merged via PR #67** | `POST /api/workspace`, `PATCH /api/workspace/{id}`, `DELETE /api/workspace/{id}`. Move over, unchanged: `checkWorkspaceName` (`auth.ts:363-368`), the `DEFAULT_ROLE_NAMES` seed (`auth.ts:376-403`) — **without** the `catch` that swallows failures, `publishEvent("workspace.created")` (`auth.ts:405-410`), and the `DISABLE_WORKSPACE_CREATION` instance-admin gate (`auth.ts:346-354`). Generate + dedupe `slug` (NOT NULL UNIQUE, `schema.ts:146`) and write `description` (`schema.ts:149`). **Must also reproduce effects 5–9 of §2.5**, which the plugin performs and which no code in this step inherits for free: the default `team` row, the creator `team_member` row, the creating session's `active_organization_id` and `active_team_id`, and the `workspace.created` payload shape that effect 9's notification is built from. | S1 — **satisfied, merged.** Client still on plugin writes — this step ships dark (see **S4b**). | **Equivalence obligation is NINE, not four** (§2.5). S1 assertions re-pointed at the new routes and passing identically — **all nine effects**, with effect 9 asserted as *eventual*, never as synchronous pre-response persistence. Duplicate-slug returns 409, not a 500. | No |
 | **S4b — client workspace-write cutover** — ✅ **COMPLETE, merged via PR #85** | Repoint `authClient.organization.create` / `.update` / `.delete` onto the native S4 routes at the six client call sites: `apps/web/src/fetchers/workspace/create-workspace.ts:32`, `apps/web/src/hooks/queries/workspace/use-create-workspace.ts:39`, `apps/web/src/fetchers/workspace/update-workspace.ts:20`, `apps/web/src/hooks/mutations/workspace/use-update-workspace.ts:55`, `apps/web/src/fetchers/workspace/delete-workspace.ts:8`, `apps/web/src/hooks/mutations/workspace/use-delete-workspace.ts:11`. Not S5/S6a/S7/S8a's job — none of their scopes cover workspace CRUD. | S4 — satisfied, merged. | Manual pass over create/update/delete workspace flows; a grep gate that `authClient.organization.{create,update,delete}` has zero remaining callers in `apps/web/src`. | No |
 | **S5 — native membership writes** — ✅ **COMPLETE, merged via PR #77** | `POST /api/workspace/{id}/members`, `DELETE /api/workspace/{id}/members/{userId}`, `PATCH .../role`, `POST /api/workspace/{id}/leave`. Re-express the plugin's "last owner cannot leave" rule server-side — today the client fakes it with a promote/demote pair (`apps/web/src/hooks/mutations/workspace/use-transfer-workspace-ownership.ts:29,38`), which should collapse into one atomic transfer endpoint. | S4. | S1 assertions re-pointed; new negative tests: last owner cannot leave, cannot self-demote, cannot remove a member of another workspace. | No |
-| **S6a — native invitation writes** | `POST /api/workspace/{id}/invitations` (create + send), `POST /api/invitation/{id}/accept`, `.../reject`, `DELETE /api/invitation/{id}`. **In the same commit**, move the two path-keyed guards off better-auth: the rate-limit rule (`auth.ts:520`) and the cloud anonymous/disposable-email gate (`auth.ts:626-651`) onto the new route's middleware. Keep the existing link format (`auth.ts:414`) and `status` vocabulary (`pending`/`accepted`/`canceled`, `check-registration-allowed.ts:67,158-159`) byte-identical. | S5. | S1 assertions re-pointed. A test that the invite rate limit still fires, and one that a disposable-email invite is still rejected on cloud — neither exists today. Existing `tests/api-integration/registration-invitation.test.ts` must stay green untouched. | No |
+| **S6a — native invitation writes** — ✅ **COMPLETE, merged via PR #112** | `POST /api/workspace/{id}/invitations` (create + send), `POST /api/invitation/{id}/accept`, `.../reject`, `DELETE /api/invitation/{id}`. **In the same commit**, move the two path-keyed guards off better-auth: the rate-limit rule (`auth.ts:520`) and the cloud anonymous/disposable-email gate (`auth.ts:626-651`) onto the new route's middleware. Keep the existing link format (`auth.ts:414`) and `status` vocabulary (`pending`/`accepted`/`canceled`, `check-registration-allowed.ts:67,158-159`) byte-identical. | S5. | S1 assertions re-pointed. A test that the invite rate limit still fires, and one that a disposable-email invite is still rejected on cloud — neither exists today. Existing `tests/api-integration/registration-invitation.test.ts` must stay green untouched. | No |
 | **S6b — hashed invitation tokens** *(defer out of P0)* | Move to CSPRNG token + SHA-256 hash per `docs/01-architecture/auth-and-identity.md:358-363`. | S6a; an explicit decision to invalidate outstanding links. | — | **Yes** — adds `invitation.token_hash`. Do not bundle with S6a. |
 | **S7 — native role list and writes** | `GET/POST/PATCH/DELETE /api/workspace/{id}/roles` over `workspace_role` — the **read** included, because `listRoles` is one of the four client callers S7 must retire and S10's precondition is zero of them. Persistence and the existing permission gate only. The `rbac.md:159-175` guardrails (cannot grant what you do not hold, rank comparison, last-administrator check) depend on `rank` / `is_system` / capability vocabulary that do not exist — **do not implement them here; they are currently unowned (#7 is closed — see the note at the top of this document)** and record the gap. Also blocked by #82 — **#66 is closed** (PR #80); see the main stage table. | S4 (seeding path settled). | S1 role assertions re-pointed; a test that editing `admin` in workspace A does not affect workspace B. | No |
-| **S8a — active workspace** | Replace the `organization.setActive` calls — **derive the list with `grep -rn 'authClient\.organization\.setActive(' apps/web/src`, which currently returns nine.** The four this row used to name (`workspace-switcher.tsx`, `onboarding-flow.tsx`, `create-workspace-modal.tsx`, `accept.$inviteId.tsx`) are real but are not all of them; see #100. Recommended: keep writing the existing `session.active_organization_id` column via a small `POST /api/workspace/{id}/activate`, and keep the sign-in backfill at `auth.ts:713-733` exactly as it is. | S3. | Switching workspace survives a reload; a pre-existing session keeps its workspace. | No |
+| **S8a — active workspace** — ✅ **COMPLETE, merged via PR #109** | Replace the `organization.setActive` calls — **derive the list with `grep -rn 'authClient\.organization\.setActive(' apps/web/src`, which currently returns nine.** The four this row used to name (`workspace-switcher.tsx`, `onboarding-flow.tsx`, `create-workspace-modal.tsx`, `accept.$inviteId.tsx`) are real but are not all of them; see #100. Recommended: keep writing the existing `session.active_organization_id` column via a small `POST /api/workspace/{id}/activate`, and keep the sign-in backfill at `auth.ts:713-733` exactly as it is. | S3. | Switching workspace survives a reload; a pre-existing session keeps its workspace. | No |
 | **S8b — rename the column back** *(defer out of P0)* | `active_organization_id → active_workspace_id`, reversing `apps/api/src/utils/migrate-session-column.ts`. | S8a and the plugin fully unmounted. | — | **Yes**. Also lets `migrate-session-column.ts` be deleted. Not worth a migration number during P0. |
-| **S9 — teams decision** | Confirm nothing in `apps/web/src` reaches teams (the sweep found no caller), then drop `teams: { enabled: true, ... }` (`auth.ts:287-291`) and the nine team routes. **Keep the `team` / `team_member` tables** — dropping them is a migration and the target model still wants them (`data-model.md:113-114`). | **S4b merged — SATISFIED**, PR #85 (the client must be off plugin workspace creation — see § S9's real precondition); what remains is an explicit confirmation that no client or integration reaches teams. | Suite green; a grep-based assertion that no `/organization/*team*` route is referenced. | No |
-| **S10 — unmount (the tripwire commit)** | Remove `organization()` (`auth.ts:269-445`) and its imports (`auth.ts:27,28`). Remove the six plugin-only adapter entries (`auth.ts:165-170`) and the aliases (`schema.ts:895-900`). Remove `organizationClient()` (`apps/web/src/lib/auth-client.ts:11,35-49`). Delete `apps/api/src/auth-openapi.ts` (1175 lines) and its registration (`index.ts:15,376`). Update `tests/api-integration/openapi.test.ts:71` to expect `POST /workspace` instead of `POST /auth/organization/create`. | S3, S4b and S5–S9 all merged; nothing references `authClient.organization` or `/organization/*`. | Full suite; a grep gate asserting zero occurrences of `authClient.organization` in `apps/web/src` and zero `/organization/` in `apps/api/src`. | No |
+| **S9 — teams decision** | Confirm nothing anywhere in the repo reaches teams (re-verified — no caller), then drop `teams: { enabled: true, ... }` (`auth.ts:282-286`) and the nine team routes. **Keep the `team` / `team_member` tables** — dropping them is a migration and the target model still wants them (`data-model.md:113-114`). | ✅ **RESOLVED — Path B, 2026-09-10.** S4b cleared the production-regression concern; flipping `teams.enabled` independently breaks the still-live S1 oracle (reproduced: 19 passed / 1 failed), and editing S1 to absorb that is forbidden by this stage's governing instructions. So the flag stays and its removal moves into S10 — no throwaway intermediate state is created purely to satisfy an ordering preference. See § S9 — why Path B, with the experiment that settles it for Path A / Path B. | Suite green (unattainable without either editing S1 [Path A] or deferring the `auth.ts` edit to S10 [Path B] — see § S9 — why Path B, with the experiment that settles it); a grep-based assertion that no `/organization/*team*` route is referenced (independently re-verified with zero live callers repo-wide). | No |
+| **S10 — unmount (the tripwire commit)** | **Also carries S9's `auth.ts` edit** — dropping `teams: { enabled: true, … }` (`auth.ts:282-286`) and the nine team routes moved here on 2026-09-10 (Path B, see § S9), because `teams.enabled` is a single flag gating both the routes and the default-team create side effect, so flipping it earlier breaks the S1 oracle for a configuration that only exists between S9 and S10. Keep the `team` / `team_member` **tables**. Then: remove `organization()` (`auth.ts:269-445`) and its imports (`auth.ts:27,28`). Remove the six plugin-only adapter entries (`auth.ts:165-170`) and the aliases (`schema.ts:895-900`). Remove `organizationClient()` (`apps/web/src/lib/auth-client.ts:11,35-49`). Delete `apps/api/src/auth-openapi.ts` (1175 lines) and its registration (`index.ts:15,376`). Update `tests/api-integration/openapi.test.ts:71` to expect `POST /workspace` instead of `POST /auth/organization/create`. | S3, S4b and S5–S9 all merged; nothing references `authClient.organization` or `/organization/*`. | Full suite; a grep gate asserting zero occurrences of `authClient.organization` in `apps/web/src` and zero `/organization/` in `apps/api/src`. | No |
 | **S11 — remove legacy Better Auth access-control shim and dependency from `packages/permissions`** *(separate work item, NOT this retrofit's)* | `packages/permissions/src/index.ts:1-7` still imports `createAccessControl`, `defaultStatements`, `memberAc`, `adminAc`, `ownerAc` from `better-auth/plugins/organization/access`. Remove the transitional shim, remove the final `better-auth` dependency from `packages/permissions`, regenerate the lockfile, prove no consumers remain. #7, its former owner, is **CLOSED**; Thomas has assigned this a dedicated tracking item rather than reopening #7. **Stays outside Throttle 1's conditions** unless Thomas changes that contract. | **S10** (the plugin must be unmounted before proving no consumers remain). Dependency: **S10 → S11**. | A grep/lockfile check that `better-auth` no longer appears as a `packages/permissions` dependency, and that nothing still imports from `better-auth/plugins/organization/access`. | Possibly — regenerating the lockfile, no schema migration. |
 
 ### 3.1 Shared-contract changes — NOT this retrofit's, and #7 (their former owner) is closed
@@ -622,7 +751,7 @@ Also note `requireEmailVerificationOnInvitation: false` (`auth.ts:361`): today a
 ### R4 — Role resolution changes meaning during the cutover
 There are **two different evaluators** running right now with different fallbacks:
 - Server: `require-workspace-permission.ts:127-131` — DB row from `workspace_role` wins, falls back to `builtInRoles` (`viewer`/`member`/`admin`/`owner`), plus an **instance-admin bypass** at `:101-103`.
-- Client: `authClient.organization.hasPermission` against a plugin registered with `roles: { owner }` only (`auth.ts:282`) and `dynamicAccessControl` (`auth.ts:283-286`), while the *client* plugin registers all four statically (`apps/web/src/lib/auth-client.ts:40-45`). No instance-admin bypass.
+- Client: `authClient.organization.hasPermission` against a plugin registered with `roles: { owner }` only (`auth.ts:277`) and `dynamicAccessControl` (`auth.ts:278-281`), while the *client* plugin registers all four statically (`apps/web/src/lib/auth-client.ts:40-45`). No instance-admin bypass.
 Consolidating the UI onto a server endpoint (S2's `/api/capabilities`) will therefore **change what the UI shows** — most visibly for instance admins, who will gain buttons they did not have. That is a correctness improvement, but it will read as a regression if not called out. Mitigation: S2 diffs the two evaluators over fixtures before S3 flips the client.
 
 ### R5 — Data already in `workspace_member`
