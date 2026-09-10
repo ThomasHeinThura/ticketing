@@ -50,6 +50,7 @@ stages below.
 │ pnpm check:env       no stray process.env        │
 │ pnpm check:vocabulary identifiers registered     │
 │ pnpm check:skips     no .skip / .only            │
+│ pnpm check:organization-callers zero live callers│
 │ pnpm test:ci-scripts  gate checkers + red probes │
 │ pr-template check    sections filled, tiers named│
 │ no-inherited-routes  removals stay removed       │
