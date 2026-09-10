@@ -281,8 +281,11 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   `pnpm check:organization-callers` (PR #107), a comment-aware scanner that fails closed on any
   shape it cannot analyse.
 
-  **Four families remain**, and they are exactly one stage's surface: `createRole`,
-  `updateRole`, `deleteRole` and `listRoles` — **S7's**, released by #82. Every other family is
+  **Four families remain**: `createRole`, `updateRole`, `deleteRole` and `listRoles`. All four
+  are **S7's** to retire, released by #82 — but note that S7's original ledger scope was role
+  *writes only* (`POST/PATCH/DELETE`), which would have left the `listRoles` **read** behind and
+  the S10 zero-caller precondition unmet. S7's scope now explicitly includes the native role
+  **list** route, and its rows say so; a review of this file caught the gap. Every other family is
   gone. Measurements at named commits, which cannot go stale because each row names its own
   tree (this is a record of measurements, not the standing count the bullet above refuses to
   keep):
@@ -296,9 +299,17 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 
   Each figure was produced by two independent implementations agreeing: a comment-stripping
   counter, validated by reproducing the documented 31/26/14 on `3e78450` before being trusted
-  on anything later, and #107's scanner. **#100 is closed by #105.** The remaining reason
-  `organization()` is still mounted is S7 (blocked on #82, whose remediation is PR #110) and
-  S9; S10 unmounts it once those clear.
+  on anything later, and #107's scanner.
+
+  **#100 is NOT closed, and an earlier version of this bullet said it was.** #105 closed five
+  of the six families #100 raised — `inviteMember`, `listMembers`, `removeMember`,
+  `organization.list` and the two invitation reads — and its own "Not done" section states that
+  it left **`listRoles` live**. #100 stays OPEN until that last family goes, and it goes in S7
+  (see the S7 row, which now names the read route as well as the three writes). The claim was
+  checkable and false, which is the worst kind to put in this file.
+
+  The remaining reason `organization()` is still mounted is **S7** (blocked on #82, whose
+  remediation is PR #110) and **S9**; S10 unmounts it once those clear.
 - **The frozen organization-create baseline is N = 9 observable effects: eight first-order
   create effects plus one eventual, one-hop durable notification consequence.** The eight
   are the `workspace` row, the owner `workspace_member` row, the three seeded
