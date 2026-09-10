@@ -49,6 +49,7 @@ import { migrateNotificationPreferencesSchema } from "./utils/migrate-notificati
 import { migrateSessionColumn } from "./utils/migrate-session-column";
 import { migrateWorkspaceUserEmail } from "./utils/migrate-workspace-user-email";
 import { normalizeApiServerUrl } from "./utils/openapi-spec";
+import { organizationPluginRoleGuard } from "./utils/organization-plugin-role-guard";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { validateWorkspaceAccess } from "./utils/validate-workspace-access";
 import workflowRule from "./workflow-rule";
@@ -485,7 +486,42 @@ export function createApp() {
     },
   );
 
+  // Issue #82 — the compatibility boundary over the still-mounted `organization()` plugin.
+  // Deliberately a plain function called from inside the `/auth/*` handler below rather than
+  // an `api.use(...)` middleware: registering middleware here would add an `ALL /api/auth/*`
+  // router entry, which `packages/permissions`'s route-coverage gate counts as an undeclared
+  // route on the `auth` surface. See `organization-plugin-role-guard.ts` for the full note.
+  const organizationRoleGuard = organizationPluginRoleGuard(async (headers) => {
+    // A COPY, never the live request's own `Headers`. better-auth's session pipeline treats
+    // the headers it is handed as scratch space (the cookie-cache path writes to them), and
+    // mutating the object the request itself carries would corrupt the request this guard is
+    // about to let through — observed as intermittent 401s and INVITATION_NOT_FOUND on
+    // routes that were merely being inspected.
+    const session = await auth.api.getSession({
+      headers: new Headers(headers),
+    });
+    if (!session?.user) return null;
+    // `activeOrganizationId` is a column the `organization()` plugin adds to `session`
+    // (`schema.sessionTable` declares it, and `create-workspace.ts` writes it), but the
+    // inferred `getSession` return type does not carry the plugin's session extensions, so
+    // it is read through an explicit narrow cast rather than widened globally.
+    const activeOrganizationId = (
+      session.session as { activeOrganizationId?: string | null } | undefined
+    )?.activeOrganizationId;
+    return {
+      userId: session.user.id,
+      activeOrganizationId: activeOrganizationId ?? null,
+    };
+  });
+
   api.on(["POST", "GET", "PUT", "PATCH", "DELETE"], "/auth/*", async (c) => {
+    // Issue #82. First thing in the handler, before any branch that could forward the
+    // request to better-auth: the guard refuses a body that would persist a comma-joined
+    // role, and refuses any organization route whose authorization would be decided from a
+    // membership row that already holds one.
+    const refusal = await organizationRoleGuard(c);
+    if (refusal) return refusal;
+
     const authHeader = c.req.header("Authorization");
     const apiKeyHeader = c.req.header("x-api-key");
     const bearerToken = authHeader?.match(/^Bearer\s+(\S+)$/i)?.[1];

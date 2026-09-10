@@ -1,3 +1,7 @@
+import {
+  type MembershipRoleProblem,
+  membershipRoleProblem,
+} from "@taskdesk/permissions";
 import { and, countDistinct, eq } from "drizzle-orm";
 import type db from "../database";
 import { schema } from "../database";
@@ -196,4 +200,73 @@ export async function distinctOwnerUserCount(
  */
 export function isUnambiguousMembership(roles: string[]): boolean {
   return roles.length === 1;
+}
+
+/**
+ * The ONE resolution every authorization surface uses to turn a pair's stored rows into
+ * either a single usable role name or a named refusal — issue #82.
+ *
+ * WHY A RESULT TYPE RATHER THAN A `string | null`. Issue #82 requires the native evaluator
+ * to fail closed on a malformed value *and to do so DISTINGUISHABLY*, "so an operator can
+ * tell 'malformed membership row' from 'role has no such capability'". A bare `null` cannot
+ * carry that difference, and the two cases genuinely need different answers: a role that
+ * simply lacks a capability is a correct 403, while a corrupt membership row is a data fault
+ * the caller can do nothing about and an operator must be told about. `GET /api/capabilities`
+ * turns `malformed-role` into an explicit 409 for exactly that reason; every other route
+ * still just denies, because a route's job is to refuse, not to diagnose.
+ *
+ * WHY THE MALFORMED CASE IS NOT MERELY THEORETICAL, and why it must be refused rather than
+ * interpreted. `workspace_member.role` is an unconstrained `text` column, and the
+ * still-mounted better-auth plugin comma-JOINS an array of roles into it while its own
+ * evaluator comma-SPLITS the column back apart and ORs across the pieces
+ * (`permission.mjs:2-11`). So the same stored `"owner,admin"` means "the union of owner and
+ * admin" to the plugin and "an unknown role name" to this code. Splitting here to match
+ * would import the union — and the union is the vulnerability, not the fix. Issue #82 says
+ * so in as many words: "Do **not** implement comma-splitting to match the plugin."
+ *
+ * As of migration `0050` a `CHECK` constraint makes this state unreachable for new writes,
+ * and `organizationPluginRoleGuard`
+ * (`apps/api/src/utils/organization-plugin-role-guard.ts`) refuses the plugin write that
+ * used to create it. This resolution is what still holds for a row that predates both — a
+ * deployment that was already carrying one when the fix shipped. It is deliberately kept
+ * even though the constraint "should" make it dead: the constraint is a backstop for this
+ * rule, not a replacement for it, and a future migration that has to drop the constraint
+ * must not silently re-open the union.
+ */
+export type MembershipRoleResolution =
+  | { ok: true; role: string }
+  | { ok: false; reason: "no-membership" }
+  | { ok: false; reason: "ambiguous-rows"; rowCount: number }
+  | { ok: false; reason: "malformed-role"; problem: MembershipRoleProblem };
+
+export function resolveMembershipRoleFrom(
+  roles: string[],
+): MembershipRoleResolution {
+  if (roles.length === 0) return { ok: false, reason: "no-membership" };
+  if (!isUnambiguousMembership(roles)) {
+    return { ok: false, reason: "ambiguous-rows", rowCount: roles.length };
+  }
+  // Load-bearing for the compiler, not dead code: `roles[0]` is `string | undefined` under
+  // `noUncheckedIndexedAccess`, and `length === 1` does not narrow an index access. The
+  // same explicit test appears at both former call sites, and is kept here now that they
+  // share this function, so the reason stays on the page.
+  const role = roles[0];
+  if (role === undefined) return { ok: false, reason: "no-membership" };
+
+  const problem = membershipRoleProblem(role);
+  if (problem !== null) {
+    return { ok: false, reason: "malformed-role", problem };
+  }
+  return { ok: true, role };
+}
+
+/** `resolveMembershipRoleFrom` over this pair's rows, read through `workspaceMemberRoles`. */
+export async function resolveMembershipRole(
+  executor: DbOrTx,
+  workspaceId: string,
+  userId: string,
+): Promise<MembershipRoleResolution> {
+  return resolveMembershipRoleFrom(
+    await workspaceMemberRoles(executor, workspaceId, userId),
+  );
 }

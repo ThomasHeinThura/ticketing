@@ -184,6 +184,33 @@
           "removeMembers"
         ]
       },
+      "MalformedMembershipRole": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": [
+              "MALFORMED_MEMBERSHIP_ROLE"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "problem": {
+            "type": "string",
+            "enum": [
+              "empty",
+              "multi-valued",
+              "untrimmed"
+            ]
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "problem"
+        ]
+      },
       "ProjectListItem": {
         "allOf": [
           {
@@ -4596,6 +4623,16 @@
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The caller's membership row does not hold exactly one role, so no capability answer can be computed from it (issue #82)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MalformedMembershipRole"
                 }
               }
             }

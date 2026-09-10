@@ -11,6 +11,7 @@ import {
   createWorkspaceMember,
   requireRow,
 } from "./helpers/fixtures";
+import { plantLegacyMembershipRole } from "./helpers/organization-http";
 
 async function addMember(workspaceId: string, role: string) {
   const userId = `user-${randomUUID()}`;
@@ -99,18 +100,14 @@ describe("API integration: account deletion", () => {
     const impostor = await addMember(owner.workspace.id, "member");
 
     // A role value that GRANTS owner when read inclusively but is not the
-    // literal "owner". Seeded directly: `create-role` only lowercases names, so
-    // such a role is creatable in product, and the native write guards now
-    // refuse it -- this pins the READ side regardless of how the row arrived.
-    await db
-      .update(schema.workspaceUserTable)
-      .set({ role: "owner,x" })
-      .where(
-        and(
-          eq(schema.workspaceUserTable.workspaceId, owner.workspace.id),
-          eq(schema.workspaceUserTable.userId, impostor.id),
-        ),
-      );
+    // literal "owner". Planted rather than written normally: this pins the READ
+    // side regardless of how the row arrived, and after issue #82 there is no
+    // longer any way for it to arrive through a route -- the organization write
+    // boundary refuses the request and migration `0050`'s CHECK constraint
+    // refuses the row, so `plantLegacyMembershipRole` (which drops and re-adds
+    // the constraint `NOT VALID`) is what a pre-fix deployment's data looks
+    // like. That is precisely the case this probe exists for.
+    await plantLegacyMembershipRole(owner.workspace.id, impostor.id, "owner,x");
 
     // Exact counting sees ONE real owner, so the block fires.
     await expect(deleteAccountData(owner.user.id)).rejects.toThrow(
