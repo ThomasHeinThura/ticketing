@@ -555,16 +555,35 @@ file's older prose.
 
 ### Open
 
-- **SECURITY RE-REVIEW PENDING — OPUS CAPACITY. The org's monthly spend limit was reached on
-  2026-09-10, and every independent reviewer failed on it mid-round.** Seven exact-head Sonnet
-  reviewers (#89 x2, #91 x2, #104 x1, #116 x2) and one implementation agent all returned
-  `You've hit your org's monthly spend limit`. **No pull request below may merge until an
-  independent reviewer at the required tier is available again.** Per CLAUDE.md this is a wait,
-  not a downgrade: capacity exhaustion never lowers the tier, and a review recorded at the wrong
-  tier is worse than no review because it closes a field that would otherwise stay visibly open.
-  The orchestrator did **not** review its own work to fill the gap, and did not merge anything.
-  *Blast radius: every open pull request — this is a shared-contract block on the review gate
-  itself, not one lane.*
+- **INDEPENDENT REVIEW UNAVAILABLE — SUBAGENT MODEL MISROUTED. Needs one owner action.**
+  Every spawned subagent, at every tier, fails with
+  `model_not_found` / HTTP 404 / `model sent to the API: cc/claude-sonnet-5`.
+  **Diagnosed, and it is not a quota problem.** The session environment carries
+  `CLAUDE_CODE_SUBAGENT_MODEL=cc/claude-sonnet-5` together with
+  `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1`. The `cc/` prefix is leftover 9Router routing config
+  that the current orchestrator directive supersedes; `ANTHROPIC_BASE_URL` is already the
+  native `https://api.anthropic.com`. The prefix happens to resolve for the main session
+  (`ANTHROPIC_MODEL=cc/claude-opus-5`, which is why this session runs) but there is no
+  `cc/claude-sonnet-5`. **The `_FORCE=1` flag also overrides the `model` parameter**, so
+  requesting `sonnet` *or* `opus` explicitly still sends `cc/claude-sonnet-5` — verified by
+  probing all three.
+  **Fix (owner action, cannot be done from inside the session):** unset
+  `CLAUDE_CODE_SUBAGENT_MODEL` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`, or set the model to a
+  valid native id (`claude-sonnet-5`). An environment variable outranks `settings.json`, so no
+  in-repo change can override it.
+  **Consequence, precisely:** no independent review of any tier can be produced, so **no pull
+  request below may merge**. Per CLAUDE.md this is a wait, not a downgrade — a review recorded
+  at the wrong tier is worse than no review, because it closes a field that would otherwise
+  stay visibly open. The orchestrator did **not** review its own work to fill the gap and has
+  merged nothing. It is **not** a stop on the programme: measurement, local verification,
+  rebases, documentation reconciliation and dependency-safe preparation all continued.
+  *Blast radius: the merge step of every open pull request. Not one lane, and not the work.*
+
+  **An earlier revision of this entry named the org monthly spend limit.** That was true when
+  written — seven reviewers did fail on it — but it is no longer the operative blocker, and the
+  distinction matters: a spend limit resets on its own, whereas this needs someone to change an
+  environment variable. Recorded rather than overwritten so the record does not read as though
+  the diagnosis was right the first time.
 
   What is unreviewed, by head, all pushed and all with CI green except the security-review gate
   (which is red **correctly**, because the review genuinely has not happened):
@@ -572,14 +591,35 @@ file's older prose.
   | PR | Head | Tier needed | State |
   | --- | --- | --- | --- |
   | #89 | `8f1d7cd` | Sonnet panel (rebase resolution) + Opus | reviewed CLEAR at the *previous* head `ce3c728`; the orchestrator's hand-resolved `status.md` conflict from the rebase onto `050a4fd` is unreviewed |
-  | #91 | `c85e5df` | Sonnet panel + Opus | new head: CodeQL fix (2 real `js/incomplete-sanitization` alerts closed, now 0 open) + a false-attribution correction. Unreviewed at this head |
+  | #91 | `3fd2855` | Sonnet panel + Opus | CodeQL fix (2 real `js/incomplete-sanitization` alerts closed, now 0 open), plus #86's decision recorded in the decision log so `events.md` can state it plainly instead of hedging. Unreviewed at this head |
   | #104 | `74779b2` | Sonnet only (docs) | rebased onto `050a4fd`, conflict resolved, `auth.ts` citations corrected. Unreviewed at this head |
   | #107 | `aff9d27` | Sonnet panel + Opus | four fail-open scanner gaps closed, baseline pruned 10 -> 4, 8 new probes. Unreviewed at this head |
-  | #110 | `d0c3062` | Sonnet panel + **a different clean Opus context** | see the provenance entry below |
+  | #110 | `eba3df8` | Sonnet panel + **a different clean Opus context** | rebased onto `050a4fd`; green at 53 files / 503 tests / exit 0. No special blocker — see the provenance entry below |
   | #116 | `b22b8a8` | Sonnet panel + Opus | new PR for issue #115. Unreviewed |
 
-- **#110's branch carries three commits of unclear provenance, and its head is therefore
-  unverified by this session.** `4994ff2` (12:46:01Z), `fc3f333` (13:42:08Z) and `d0c3062`
+- ~~**#110's branch carries three commits of unclear provenance, and its head is therefore
+  unverified by this session.**~~ **RESOLVED as a blocker 2026-09-10 — it is not one.** The
+  author metadata is still unattributed, but everything governance actually needs was
+  established by reading the diff rather than the byline: the surviving change is (a) the `0050`
+  migration's `btrim` character list widened from ASCII whitespace to the full ECMAScript set
+  via `chr()` concatenation, (b) a comment in `packages/permissions/src/membership-role-value.ts`
+  updated to match it — **comment only, no predicate logic touched**, (c) documented `400`/`409`
+  response schemas for the guard's `multi-valued` / `untrimmed` / `empty` error shapes across the
+  mounted organization operations, and (d) one test tweak. The contract growth that looked
+  alarming (+2036 lines in `tests/api-contract/openapi.json`) adds **no route** — paths are 106
+  before and after — and the regeneration is faithful: `node scripts/ci/check-openapi.mjs` exits
+  0, "matches the API (132 operations)", and the `contract - OpenAPI drift` check passes. The
+  head is green at **53 files / 503 tests / exit 0**, 53 matching the 53 test files on disk.
+  So #110 carries **no special blocker** — it waits on the same missing independent review as
+  every other pull request. Kept as a line, not deleted, because "green is not reviewed" still
+  holds and because an earlier revision of this entry escalated the provenance to Thomas as a
+  merge blocker, which overstated it. *Blast radius: none of its own.*
+
+- **Superseded detail, retained:** the three commits are `4994ff2`, `fc3f333` and `d0c3062`,
+  authored `tmp <tmp@example.invalid>`, landing after this session's verified run of `07622f6`.
+  They were **not** reverted or reauthored — rewriting pushed history unilaterally on a P0
+  security branch would be worse than recording it. #110 has since been rebased onto `050a4fd`
+  and its head is now `eba3df8`. `4994ff2` (12:46:01Z), `fc3f333` (13:42:08Z) and `d0c3062`
   (13:58:01Z) are authored `tmp <tmp@example.invalid>`, carry no `#82` scope and no
   `Co-Authored-By` trailer, and landed **after** this session's verified run of `07622f6`
   finished at 11:08:06Z. They were pushed to the remote. They edit the `0050` migration, the
