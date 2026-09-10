@@ -1,12 +1,12 @@
 import { builtInRoles } from "@taskdesk/permissions";
-import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
+import db from "../database";
 import { isInstanceAdmin } from "./is-instance-admin";
 import {
   isUnambiguousMembership,
   workspaceMemberRoles,
+  workspaceRolePermission,
 } from "./workspace-member-roles";
 
 type PermissionMap = Record<string, string[]>;
@@ -104,22 +104,13 @@ async function ownRoleStatements(
   workspaceId: string,
   role: string,
 ): Promise<Record<string, readonly string[]> | null> {
-  const [row] = await db
-    .select({ permission: schema.workspaceRoleTable.permission })
-    .from(schema.workspaceRoleTable)
-    .where(
-      and(
-        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-        eq(schema.workspaceRoleTable.role, role),
-      ),
-    )
-    .limit(1);
-
-  if (!row?.permission) return null;
+  // #118: ALL rows, refusing on more than one. See `workspaceRolePermission`.
+  const permission = await workspaceRolePermission(db, workspaceId, role);
+  if (!permission) return null;
 
   let value: unknown;
   try {
-    value = JSON.parse(row.permission);
+    value = JSON.parse(permission);
   } catch {
     return null;
   }
