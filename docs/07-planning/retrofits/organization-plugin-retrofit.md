@@ -42,13 +42,13 @@ As of 2026-09-09, `main` at `3e78450`:
 | **S4** — native workspace writes | ✅ **COMPLETE** | PR #67, squash `2388b0c7f4ae25d6084067bcff20a98528d8b400` (reviewed head `073e75f067846807b538150457f2db8280b12804`) | Baseline declares `POST /workspace`, `PATCH /workspace/{workspaceId}`, `DELETE /workspace/{workspaceId}`. Ships **dark** — the client is still on plugin writes (see **S4b**) |
 | **S4b** — client workspace-write cutover | ✅ **COMPLETE** | PR #85, squash `a9abf9a1f0f9447673b4635ae8911fc5cb5937af` | Repointed `authClient.organization.create` / `.update` / `.delete` — six client call sites (`apps/web/src/fetchers/workspace/{create,update,delete}-workspace.ts`, `apps/web/src/hooks/queries/workspace/use-create-workspace.ts`, `apps/web/src/hooks/mutations/workspace/use-{update,delete}-workspace.ts`) — onto the native S4 routes. S4 no longer ships dark. Out of security-review scope (all fourteen files are `apps/web`), so cleared by **seven** independent Sonnet reviews rather than an Opus one. Carries an interim shim, `apps/web/src/lib/utils/refresh-workspace-stores.ts`: the displayed workspace name comes from the plugin's own nanostores, whose `atomListeners` match on **plugin route paths**, so a native write notified nothing and the name went stale until reload. **The shim and its test are deleted by S3**, which repoints the reads off those stores. |
 | **S5** — native membership writes | ✅ **COMPLETE** | PR #77, squash `2b569a8dffa1c3d71ee24eae65cbaf75de7fd891` (reviewed heads `58ed36683cb6632f42e3435de932c00ce30a1b0f`, `4629511c26119c41a152270162aafc4869c03139`) | Five routes plus an atomic ownership transfer. In security-review scope; cleared by independent Opus review after two CHANGES REQUIRED rounds. The decisive finding was reached by controlled comparison rather than by reading: for a comma-joined `"owner,admin"` value the first draft's native routes were **less safe than the better-auth routes they replaced**. Resolved by a deliberate asymmetry in `apps/api/src/utils/workspace-member-roles.ts` — `anyRoleIsOwner` is comma-aware so the guard is entered, while `distinctOwnerUserCount` stays exact so a sole comma-joined owner counts 0 and the last-owner guard refuses |
-| **S6a** — native invitation writes | ❌ **NOT STARTED — UNBLOCKED, startable now** | — | S5 landed via PR #77, which was its only blocker. Four native invitation routes; in security-review scope. In the same commit, move the rate-limit rule and the cloud disposable-email gate off the plugin, and keep the invitation link format and `status` vocabulary byte-identical. **Closes #88's duplicate-membership path at source** |
+| **S6a** — native invitation writes | ✅ **COMPLETE** | PR #112, squash `6bfc0f4` (reviewed head `614b73fe4e0e4364415962286c3ba52a5aee16c3`) | Four native invitation routes — create, accept, reject, cancel — with the rate-limit rule and the cloud disposable-email gate moved off the plugin, and the invitation link format and `status` vocabulary kept byte-identical (reject writes `canceled`, **not** `rejected`, which `check-registration-allowed.ts:158-159` and `members-table.tsx:128` both depend on). Independent Opus review CLEAR WITH FINDINGS, zero blocking, note at `docs/07-planning/security-reviews/112-native-invitation-writes.md`. **#88's duplicate-membership path is closed at source here but #88 does NOT close until S10** — the identical unguarded path stays reachable through the still-mounted `POST /api/auth/organization/accept-invitation`. **NB-1 carries forward: the plugin's default 100-pending-invitations-per-organization cap is not reproduced natively, so S10 must add a ceiling or unmount into an uncapped invite surface** |
 | **S6b** — hashed invitation tokens | ⏸️ **DEFERRED out of P0** | — | Needs a migration and a link-invalidation decision |
 | **S7** — native role writes | ⛔ **BLOCKED BY #82 ONLY** | — | **#66 is closed**, fixed by PR #80 (squash `6e6c9ae`) and verified on `main`: a missing `workspace_role` row is now a DENY for every role but `owner`, whose authority is compiled-in by design (retrofit plan R5). The privilege-restoration fail-open on the very table S7 writes is therefore gone. **The sole remaining blocker is #82** — one membership = exactly one role, where multi-role values diverge between the two evaluators (see the decision log). Check GitHub for its state rather than trusting this row. |
-| **S8a** — active workspace | ❌ **NOT STARTED — UNBLOCKED, startable now** | — | S3 landed via PR #76, which was its only blocker. Replace the `organization.setActive` calls with the native equivalent — **`grep -rn 'authClient\.organization\.setActive(' apps/web/src` for the list, do not take a count from this row.** An earlier version of this very row said "four"; there are nine, and #100 records that under-scoping |
+| **S8a** — active workspace | ✅ **COMPLETE** | PR #109, squash `86c23b2` (reviewed head `889794619d456d6e06c17072b5eff41a3c360362`) | `POST /api/workspace/{workspaceId}/activate`, writing the **calling session's own** `active_organization_id` — demonstrated, not asserted: an injection attempt naming a victim's `sessionId`, `userId` and `workspaceId` in both the query string and the body moved only the caller's row. Membership is enforced by route middleware (`workspaceAccess.fromParam` + `requireWorkspaceMembership`), not by the declarative policy, whose row is `allow`/`allow` for every role exactly as the pre-existing `leave` row is. Independent Opus review CLEAR WITH FINDINGS, zero blocking, note at `docs/07-planning/security-reviews/109-native-set-active.md`. **The closing invariant held: zero live `authClient.organization.setActive` callers remain** |
 | **S8b** — rename the column back | ⏸️ **DEFERRED out of P0** | — | Needs a migration |
 | **S9** — teams decision | ❌ **NOT STARTED — UNBLOCKED, precondition now SATISFIED** | — | The ledger previously said this needs only *"confirmation that nothing reaches teams"*. That is necessary and **not sufficient**: the real precondition is the named stage **S4b**, which has now merged (PR #85). See **§ S9's real precondition**. What remains is the confirmation itself, not a blocking dependency |
-| **S10** — unmount (the tripwire commit) | ❌ **NOT STARTED** | — | S3, S4b and S5 are merged; still needs S6a, S7, S8a and S9. `tests/api-contract/openapi.json` still declares six `/auth/organization/*` invitation operations, which is exactly what S10 removes |
+| **S10** — unmount (the tripwire commit) | ❌ **NOT STARTED** | — | S3, S4b, S5, S6a and S8a are merged. Still needs **S7** (blocked on #82 only) and **S9**. `tests/api-contract/openapi.json` still declares the `/auth/organization/*` operations that S10 removes. Two obligations inherited from the stages that landed: **NB-1 from S6a** — add a per-workspace pending-invitation ceiling, or unmounting `organization()` leaves the invite surface with no cap at all, the same abuse class as the 2026-05-28 phishing incident; and **closing #88**, which S6a fixed at source but cannot close while the plugin route is mounted |
 | **S11** — remove legacy Better Auth access-control shim and dependency from `packages/permissions` | ❌ **NOT STARTED — OWNED, separate work item** | — | `packages/permissions/src/index.ts` still imports `createAccessControl`, `defaultStatements`, `memberAc`, `adminAc`, `ownerAc` from `better-auth/plugins/organization/access`. Was **#7's**; #7 is **CLOSED**. Thomas has assigned it a dedicated work item: remove the transitional shim, remove the final `better-auth` dependency from `packages/permissions`, regenerate the lockfile, prove no consumers remain. **Dependency: S10 → S11** — S10 must unmount the plugin first. **Not this retrofit's**, and **stays outside Throttle 1's conditions** unless Thomas changes that contract |
 
 ### Progress, stated the way it is actually useful
@@ -59,12 +59,12 @@ item, so it understates how close S10 is. State it in four buckets instead:
 
 | Bucket | Stages | Count |
 | --- | --- | --- |
-| **Landed** | S0, S1, S2, S3, S4, S4b, S5 | **7** |
-| **Required to reach S10, outstanding** | S6a, S7, S8a, S9, S10 | **5** |
+| **Landed** | S0, S1, S2, S3, S4, S4b, S5, S6a, S8a | **9** |
+| **Required to reach S10, outstanding** | S7, S9, S10 | **3** |
 | **Deferred outside P0** | S6b, S8b | 2 — do **not** count these against Throttle 1 |
 | **Separately owned — now has a dedicated work item** | S11 | 1 — **not** this retrofit's; #7, its former owner, is closed, and Thomas has assigned it a new work item (dependency S10 → S11). See the S11 row. Never fold it into #6 to make the ledger tidy. **Stays outside Throttle 1** |
 
-So the live figure is **7 landed of 12 required**, with **5 outstanding**, and S10 last
+So the live figure is **9 landed of 12 required**, with **3 outstanding**, and S10 last
 because everything else feeds it. (**S4b was new to this count** when it was added on
 2026-09-09 — it was always required work, just not previously written down as its own row;
 it has since landed. See the S4b row.)
@@ -84,9 +84,13 @@ fail CI.
   one membership = exactly one role, where multi-role values diverge between the two
   evaluators. Not a scheduling preference — authoring role writes first would build on a known
   privilege defect.
-- **S6a** — **unblocked**, S5 has landed. **S8a** — **unblocked**, S3 has landed. **S10** — needs all of the above.
-- **S9** — **unblocked**: its real precondition is S4b, which landed via PR #85. See § S9's
-  real precondition immediately below — its analysis is **done**, and it changed the answer.
+- **S6a** — ✅ **LANDED** via PR #112 (squash `6bfc0f4`). **S8a** — ✅ **LANDED** via PR #109
+  (squash `86c23b2`).
+- **S9** — its precondition is satisfied (S4b landed via PR #85) and **the decision itself has
+  been made: Path B**, 2026-09-10. The stage is nonetheless still **open** — PR #104 carries
+  it, is not merged, and its title still reads "blocked on a Thomas decision", which is now
+  false. S9 is documentation-only work under Path B, not analysis.
+- **S10** — needs **S7 and S9**, and nothing else. Its own tripwire gate is PR #107.
 
 ### S9's real precondition — corrected 2026-09-09, and demonstrated
 
@@ -269,6 +273,17 @@ The plugin mounts its route family under `basePath: "/api/auth"` (`apps/api/src/
 Caveat I did not verify: `auth-openapi.ts` is a hand-written OpenAPI *description*; the plugin may mount routes it does not document (e.g. `set-active-team`/`list-user-teams` variants) and may document ones it does not mount. Treat this table as the **client-visible contract**, and re-derive the mounted set from better-auth itself before deleting anything.
 
 ### 1.9 Frontend callers (`apps/web/src`)
+
+> **This table is the S1 characterization, frozen as of `3e78450` (2026-09-09), and is
+> deliberately NOT updated as stages land.** It records what the client called when the
+> retrofit was characterised, which is what later stages are checked against; rewriting it to
+> match today's tree would destroy the baseline the equivalence work depends on. Most rows
+> below are now historical — `setActive`, `acceptInvitation`, `rejectInvitation`,
+> `cancelInvitation`, `getInvitation`, `listUserInvitations`, `inviteMember`, `listMembers`,
+> `removeMember` and `list` have all been repointed since. **For what the client calls *now*,
+> run `pnpm check:organization-callers`** (PR #107), which derives it and fails closed on any
+> shape it cannot analyse. Do not read a line count off this section.
+
 
 The client plugin is mounted at `apps/web/src/lib/auth-client.ts:35-48` (`organizationClient` imported at `:11`), carrying its own `ac` cast (`:39`), a **static four-role map** `{ viewer, member, admin, owner }` (`:40-45`) — note this diverges from the server, which registers only `owner` — and `dynamicAccessControl.enabled: true` (`:46-47`). `ac` and the roles come from `apps/web/src/lib/permissions.ts:1` (a re-export of `@taskdesk/permissions`).
 
