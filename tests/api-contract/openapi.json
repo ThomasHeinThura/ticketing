@@ -4251,8 +4251,18 @@
                     "description": "The email address of the user to invite"
                   },
                   "role": {
-                    "type": "string",
-                    "description": "The single role to assign to the user. Eg: \"member\""
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    ],
+                    "description": "Exactly one role to assign, as a string or one-element array. Eg: \"member\""
                   },
                   "organizationId": {
                     "type": "string",
@@ -5189,39 +5199,6 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
-          },
-          "409": {
-            "description": "The caller has a malformed workspace membership role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "field": {
-                      "type": "string"
-                    },
-                    "problem": {
-                      "type": "string",
-                      "enum": [
-                        "multi-valued",
-                        "untrimmed",
-                        "empty"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "error",
-                    "message"
-                  ]
-                }
-              }
-            }
           }
         }
       }
@@ -6057,8 +6034,18 @@
                 "type": "object",
                 "properties": {
                   "role": {
-                    "type": "string",
-                    "description": "The single role to apply. Eg: \"admin\""
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    ],
+                    "description": "Exactly one role to apply, as a string or one-element array. Eg: \"admin\""
                   },
                   "memberId": {
                     "type": "string",

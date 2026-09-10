@@ -29,6 +29,7 @@ const membershipCheckExemptActions = new Set([
   "list",
   "set-active",
   "list-user-invitations",
+  "list-user-teams",
   "get-invitation",
   "accept-invitation",
   "reject-invitation",
@@ -559,10 +560,12 @@ export function organizationRoutes(
               email: z.string().openapi({
                 description: "The email address of the user to invite",
               }),
-              role: z.string().openapi({
-                description:
-                  'The single role to assign to the user. Eg: "member"',
-              }),
+              role: z
+                .union([z.string(), z.array(z.string()).length(1)])
+                .openapi({
+                  description:
+                    'Exactly one role to assign, as a string or one-element array. Eg: "member"',
+                }),
               organizationId: z.string().optional().openapi({
                 description: "The organization ID to invite the user to",
               }),
@@ -1090,9 +1093,12 @@ export function organizationRoutes(
         content: {
           "application/json": {
             schema: z.object({
-              role: z.string().openapi({
-                description: 'The single role to apply. Eg: "admin"',
-              }),
+              role: z
+                .union([z.string(), z.array(z.string()).length(1)])
+                .openapi({
+                  description:
+                    'Exactly one role to apply, as a string or one-element array. Eg: "admin"',
+                }),
               memberId: z.string().openapi({
                 description:
                   'The member id to apply the role update to. Eg: "member-id"',
