@@ -143,12 +143,13 @@ them, and do not add a 24th.** They are the kaneo `task.*` / `comment.*` / … e
 inherited controllers still publish, unmigrated. Issue #86 found the API publishing keys
 from this vocabulary while this document declared only the target `work_item.*` / `sla.*` /
 `approval.*` model above, with **zero** overlap between the two — the code had never been
-registered anywhere. **Proposed, pending Thomas's decision on #86:** treat these as an
-explicit, temporary compatibility vocabulary, catalogued here so they stop being
-unregistered, rather than a second permanent event model. The catalogue below is
-reversible: if the decision goes the other way, these rows are renamed, not deleted. Either
-way the real fix is migrating the emitters, tracked as the **P1** vocabulary migration
-(`docs/07-planning/status.md` § P1 core) — **not** a mass rename done in passing here.
+registered anywhere. **Decided by Thomas, 2026-09-10** (decision log): treat these as an
+explicit, **temporary compatibility vocabulary** — catalogued here with the target key each
+one maps to, so they stop being unregistered — rather than a second permanent event model.
+This document stays authoritative for event keys. The inherited emitters are **not** mass-renamed
+during P0; the `task.*` → `work_item.*` migration is **P1** work
+(`docs/07-planning/status.md` § P1 core). Native keys register as current canon in the
+Catalogue above; only the inherited, unmigrated ones live here.
 
 `workspace.created` is **not** on this list — it is current canon, in the Catalogue's
 [Workspace](#workspace) section above, because the code that emits it is native, not

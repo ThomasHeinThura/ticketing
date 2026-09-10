@@ -17,6 +17,40 @@ Newest first.
 
 ---
 
+### 2026-09-10 · The inherited event keys are a temporary compatibility vocabulary (`#86`)
+
+**Decision:** `docs/01-architecture/events.md` remains the single authoritative home for
+event keys. The 23 event keys the inherited kaneo controllers still publish are registered
+there as an explicit **temporary compatibility vocabulary**, each row carrying the target
+key it maps to, so the published surface stops being unregistered. They are not a second
+permanent event model, they are not extended, and no 24th is added. Natively emitted keys
+(today, `workspace.created`) register as current canon in the Catalogue instead. The
+inherited emitters are **not** mass-renamed during P0; migrating `task.*` → `work_item.*`
+is **P1** work.
+
+**Why:** issue #86 found the API publishing keys from a vocabulary this document did not
+declare at all — zero overlap between what the code emitted and what the register listed.
+Two things had to be true at once: the gate must be able to say "every published key is
+registered" (otherwise `check:events` is vacuous), and P0 must not absorb a rename of every
+inherited emitter. Cataloguing the keys with their target mapping satisfies both, and keeps
+the eventual migration a mechanical diff against a written table rather than an
+archaeological exercise.
+
+**Alternatives:** (a) mass-rename the inherited emitters to the target vocabulary during P0
+— rejected, it is P1-sized work on a surface P0 is trying to stop touching, and it would
+have widened #6's blast radius; (b) leave the keys unregistered and narrow the gate to the
+target vocabulary only — rejected, that is a gate whose green means nothing, which is the
+failure class this project exists to avoid; (c) declare the inherited names permanent canon
+— rejected, they are kaneo's domain language, not TaskDesk's.
+
+**Decided by:** Thomas, 2026-09-10, in the orchestrator directive that superseded the
+9Router routing instructions. Recorded here because `events.md` asserts it as normative
+prose, and an earlier revision of that document claimed a Thomas decision on #86 that no
+source recorded — issue #86 had zero comments and this log had no entry. This entry is that
+missing source. Raised as issue #86; implemented by PR #91.
+
+---
+
 ### 2026-09-10 · An unrecognised transition effect kind fails closed (`WF-22`)
 
 **Decision:** An authored transition effect whose `kind` falls outside `WF-19`'s vocabulary
