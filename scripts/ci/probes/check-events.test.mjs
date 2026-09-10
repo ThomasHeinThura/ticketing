@@ -41,6 +41,20 @@ import {
   write,
 } from "../lib/scratch-repo.mjs";
 
+/**
+ * Escape a string for literal use inside a `RegExp(...)` constructor.
+ *
+ * Was `key.replace(/\./g, "\\.")`, which escaped dots and nothing else. CodeQL's
+ * `js/incomplete-sanitization` flagged both call sites below as high severity on PR #91,
+ * and the rule is right: a key containing a backslash would be mis-encoded. No fixture
+ * key contains one today, so no assertion changes -- this closes the alert and stops the
+ * helper being a partial escaper that a future fixture could walk into. Same expression
+ * as `escapeRegExp` in `scripts/ci/check-events.mjs`, the checker these probes run.
+ */
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 after(cleanUpScratchRepos);
 
 /** A scratch repo carrying the real checker, the real events.md, and an empty API tree. */
@@ -318,7 +332,7 @@ describe("check:events — call-detector shapes the review measured as silently 
 
       const result = runChecker(dir, "check-events.mjs");
       assert.equal(result.status, 1, result.output);
-      assert.match(result.output, new RegExp(shape.key.replace(/\./g, "\\.")));
+      assert.match(result.output, new RegExp(escapeRegExp(shape.key)));
       // The tell the review named: a real publish reported as "0 published event key(s)".
       assert.doesNotMatch(result.output, /0 published event key/);
     });
@@ -416,10 +430,7 @@ describe("check:events — the fail-closed RESIDUAL SCAN itself refuses, rather 
       // refusing — the "0 published event key(s)" silent-green this whole file exists to
       // prevent. Assert this run is not that, and never mentions the key it could not see.
       assert.doesNotMatch(result.output, /0 published event key/);
-      assert.doesNotMatch(
-        result.output,
-        new RegExp(shape.key.replace(/\./g, "\\.")),
-      );
+      assert.doesNotMatch(result.output, new RegExp(escapeRegExp(shape.key)));
     });
   }
 });
