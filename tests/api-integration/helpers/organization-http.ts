@@ -272,6 +272,64 @@ export async function updateMemberRoleViaPlugin(
  * the row just planted. So the guard stays live for the rest of the test — a test that
  * plants a legacy row does not thereby switch the constraint off for everything after it.
  */
+/**
+ * Any `POST /api/auth/organization/<action>` with an arbitrary JSON body.
+ *
+ * The guard's read half is reached by every non-exempt organization action, and the two
+ * escalations found against it went through actions no purpose-built helper covered —
+ * `cancel-invitation`, whose organization better-auth derives from the invitation row, and
+ * `update-team`, which reads `body.data.organizationId`. A helper per action would have
+ * produced a helper per action the reviewer thought to try; this one takes the action as a
+ * parameter so a probe can reach anything the plugin mounts.
+ */
+export async function organizationActionViaPlugin(
+  app: App,
+  actingCookie: string,
+  action: string,
+  body: Record<string, unknown>,
+  /**
+   * A UNIQUE client address per call by default, for the reason `signUpUser` has one:
+   * `auth.ts:520` rate-limits `/organization/invite-member` to **5 per 60 seconds per client
+   * IP**, and that is a real control (#16 turned it on for every deployment, where kaneo had
+   * it cloud-only). A probe file issuing several invitations is several *different* callers,
+   * and modelling them as one is what is wrong — not the limit. Without this, a suite's
+   * fourth invitation returns `429` and the probe fails for a reason unrelated to what it
+   * tests. Pass a fixed address to pin the bucket deliberately.
+   */
+  clientIp: string = nextClientIp(),
+): Promise<Response> {
+  return app.request(`/api/auth/organization/${action}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      cookie: actingCookie,
+      "x-forwarded-for": clientIp,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * The caller's pending invitations in a workspace, read straight from the table.
+ *
+ * Probes against `cancel-invitation` must assert the invitation's own status rather than the
+ * response code: the escalation returned `200` and the row moved to `canceled`, so a probe
+ * checking only the status would have reported the bypass as a pass.
+ */
+export async function invitationStatus(invitationId: string): Promise<string> {
+  const { eq } = await import("drizzle-orm");
+  const { default: db, schema } = await import(
+    "../../../apps/api/src/database"
+  );
+  const [row] = await db
+    .select({ status: schema.invitationTable.status })
+    .from(schema.invitationTable)
+    .where(eq(schema.invitationTable.id, invitationId))
+    .limit(1);
+  if (!row) throw new Error(`invitationStatus: no invitation ${invitationId}`);
+  return row.status;
+}
+
 export async function plantLegacyMembershipRole(
   workspaceId: string,
   userId: string,

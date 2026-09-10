@@ -4,7 +4,7 @@ import {
 } from "@taskdesk/permissions";
 import type { Context } from "hono";
 import db from "../database";
-import { resolveMembershipRole } from "./workspace-member-roles";
+import { firstMalformedMembershipRole } from "./workspace-member-roles";
 
 /**
  * The compatibility boundary in front of the still-mounted better-auth `organization()`
@@ -43,9 +43,9 @@ import { resolveMembershipRole } from "./workspace-member-roles";
  * warranted: it is what makes the two evaluators agree on any malformed row that reaches a
  * running process — one written before `0050`'s CHECK was validated, or in a deployment where
  * that constraint has since been dropped. While such a row exists the plugin would still OR
- * it, so any organization
- * route on which the caller's own role is an authorization input is refused `409` when that
- * role is malformed. This is what makes the two evaluators agree rather than merely making
+ * it, so **every non-exempt** organization route is refused `409` while the caller holds such
+ * a row — not merely the routes whose target organization this middleware can work out, which
+ * is what the two demonstrated bypasses turned on. This is what makes the two evaluators agree rather than merely making
  * one of them stricter: native denies, and the plugin is never asked.
  *
  * ## What is deliberately NOT guarded, and why
@@ -143,7 +143,13 @@ type RoleWriteProblem = { field: string; message: string };
  *   2. **the JSON branch** — the body is parsed as JSON iff
  *      `/^application\/([a-z0-9.+-]*\+)?json/i` matches the lower-cased header, parameters
  *      included. A type that clears the gate but fails this regex falls through to
- *      better-call's form and text branches, where a `role` key cannot survive.
+ *      one of better-call's non-JSON branches, where a `role` key cannot survive. In Node
+ *      that branch is `request.body instanceof ReadableStream` (`utils.mjs:51`), which
+ *      returns the raw stream — **not** the `text()` fallback an earlier version of this
+ *      comment named, since `request.body` is always a `ReadableStream` there. The observable
+ *      result is the same 400 from better-auth's own schema either way; the branch is named
+ *      correctly here because a comment that misdescribes the dependency is how the
+ *      `startsWith` error above got written in the first place.
  *
  * Neither stage is `startsWith`. Stage 1 admits `application/json.`, `application/json/`,
  * `application/jsonx` and `application/x+jsonapplication/json`, and rejects
@@ -315,49 +321,6 @@ function roleWriteProblems(
   return null;
 }
 
-/**
- * **Every** organization this request could be acting on — not the first one that resolves.
- *
- * The single-value version of this function was steerable, and the escalation was
- * demonstrated rather than theorised. It resolved body → query → session-active and returned
- * the first hit. But better-auth's `update-member-role` resolves
- * `ctx.body.organizationId || session.session.activeOrganizationId` and **never reads the
- * query string** (`crud-members.mjs:256`). So appending `?organizationId=<any id>` to a body
- * that omits `organizationId` pointed this guard at an organization the caller holds no row
- * in — which resolves to `no-membership`, a state half 2 deliberately does not refuse — while
- * better-auth went on to act on the caller's **session-active** organization, whose row was
- * the malformed one. Measured: the control request returned `409
- * MALFORMED_MEMBERSHIP_ROLE`; the same request with `?organizationId=<random id>` returned
- * **200 and the write landed.**
- *
- * The mismatch is not confined to one route. `add-member`, `invite-member`, `remove-member`,
- * `create-team` and `update-team` are body-only like `update-member-role`, and
- * `list-invitations`, `get-full-organization`, `list-roles`, `get-role` and
- * `get-active-member` read the query — so a guard preferring either source is wrong for the
- * other half of the surface.
- *
- * Rather than encode a per-route table of which source each better-auth handler happens to
- * consult — a table that would go stale the first time better-auth changed one — this returns
- * all of them and the caller refuses if **any** resolves to a malformed role. A request that
- * names two different organizations is already outside anything the product does; refusing on
- * the union of them costs nothing real and cannot be steered by adding a parameter the target
- * handler ignores.
- */
-function candidateOrganizationIds(
-  body: Record<string, unknown> | null,
-  c: Context,
-  activeOrganizationId: string | null,
-): string[] {
-  const candidates: string[] = [];
-  const fromBody = body?.organizationId;
-  if (typeof fromBody === "string" && fromBody.length > 0)
-    candidates.push(fromBody);
-  const fromQuery = c.req.query("organizationId");
-  if (fromQuery) candidates.push(fromQuery);
-  if (activeOrganizationId) candidates.push(activeOrganizationId);
-  return [...new Set(candidates)];
-}
-
 type SessionReader = (
   headers: Headers,
 ) => Promise<{ userId: string; activeOrganizationId: string | null } | null>;
@@ -432,32 +395,26 @@ export function organizationPluginRoleGuard(readSession: SessionReader) {
     const session = await readSession(c.req.raw.headers);
     if (!session) return null; // Unauthenticated: better-auth's own 401 to issue.
 
-    const organizationIds = candidateOrganizationIds(
-      body,
-      c,
-      session.activeOrganizationId,
-    );
-    if (organizationIds.length === 0) return null;
-
-    // Refuse if ANY candidate resolves to a malformed role. Checking only the one this
-    // guard guesses the handler will use is what made the single-value version steerable.
-    for (const organizationId of organizationIds) {
-      const membership = await resolveMembershipRole(
-        db,
-        organizationId,
-        session.userId,
+    // No target is resolved, on purpose. Every previous version of this asked "which
+    // organization is this request about?" and every answer was steerable, because the
+    // answer lives inside better-auth and differs per route: `update-member-role` ignores
+    // the query string, `cancel-invitation` derives it from the invitation row, and
+    // `update-team` reads `body.data.organizationId`. Two of those produced a landed write
+    // past this guard. Asking instead whether the CALLER holds a malformed role anywhere
+    // removes the target from the question, so no request shape can point it elsewhere and
+    // there is no empty-candidate case to fall through. See
+    // `firstMalformedMembershipRole` for the trade this makes and what stays reachable.
+    const malformed = await firstMalformedMembershipRole(db, session.userId);
+    if (malformed !== null) {
+      return c.json(
+        {
+          error: "MALFORMED_MEMBERSHIP_ROLE",
+          message:
+            "This account holds a workspace membership that does not name exactly one role, so no authorization decision can be made from it. An administrator must reassign a single role to that member. Leaving the workspace, switching workspaces and responding to invitations remain available.",
+          problem: malformed.problem,
+        },
+        409,
       );
-      if (membership.ok === false && membership.reason === "malformed-role") {
-        return c.json(
-          {
-            error: "MALFORMED_MEMBERSHIP_ROLE",
-            message:
-              "This workspace membership does not hold exactly one role, so no authorization decision can be made from it. An administrator must reassign a single role to this member.",
-            problem: membership.problem,
-          },
-          409,
-        );
-      }
     }
 
     return null;

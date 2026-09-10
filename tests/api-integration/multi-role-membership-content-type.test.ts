@@ -88,12 +88,21 @@ async function scenario(app: App) {
  * legitimate single-role write.
  *
  * That column is the point of the file. better-auth does consult `Content-Type` — an earlier
- * draft of the fix assumed it did not, and the ORACLE group below is what caught that. Its
- * rule, measured against the real mounted route rather than read out of a bundled dependency,
- * is: **lower-case the header and check it starts with `application/json`.** So
- * `application/json-patch+json` and `application/JSON+foo` are parsed, while
- * `application/vnd.api+json` and `text/json` are not — which matters, because a guard matching
- * only the exact essence `application/json` would leave the first pair bypassable.
+ * draft of the fix assumed it did not, and the ORACLE group below is what caught that.
+ *
+ * **Its rule is NOT "starts with `application/json`".** That was a second wrong answer: an
+ * inference from a fifteen-type sample, written down as though it had been measured, and
+ * falsified by a spelling the sample did not contain. The rule is `better-call@1.3.7`'s
+ * `getBody` (`dist/utils.mjs:4-55`) with `allowedMediaTypes: ["application/json"]`, in two
+ * stages — the media type minus its parameters must **contain** `application/json`, and only
+ * then is the body parsed as JSON, iff `/^application\/([a-z0-9.+-]*\+)?json/i` matches.
+ * `organization-plugin-role-guard.ts`'s `betterAuthWillParseBody` mirrors exactly that.
+ *
+ * So `application/json-patch+json` and `application/JSON+foo` are parsed while
+ * `application/vnd.api+json` and `text/json` are not; `application/x+jsonapplication/json`
+ * is parsed and is the case the two rules disagree on; and `x-application/json` clears
+ * stage 1 but fails stage 2, which is why it has its own outcome below. A guard matching only
+ * the exact essence `application/json` would leave several of these bypassable.
  *
  * `value: null` means no `Content-Type` header at all.
  */
@@ -151,7 +160,8 @@ const MEDIA_TYPES: ReadonlyArray<{
     betterAuth: 200,
   },
   // The four below were missing from the first draft's fifteen-type sample, and the third is
-  // the spelling on which `startsWith` and better-auth's real rule actually disagree.
+  // the spelling on which the superseded `startsWith` rule and better-auth's real two-stage
+  // rule actually disagree.
   {
     label:
       "application/json. (trailing dot — clears the gate, matches the regex)",
@@ -166,7 +176,7 @@ const MEDIA_TYPES: ReadonlyArray<{
   },
   {
     label:
-      "application/x+jsonapplication/json (startsWith says no, better-auth parses it)",
+      "application/x+jsonapplication/json (the superseded startsWith rule said no; better-auth parses it)",
     value: "application/x+jsonapplication/json",
     betterAuth: 200,
   },

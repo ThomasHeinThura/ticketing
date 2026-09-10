@@ -260,6 +260,75 @@ export function resolveMembershipRoleFrom(
   return { ok: true, role };
 }
 
+/**
+ * The caller's first malformed `workspace_member.role` value **in any workspace**, or `null`
+ * when every row they hold names exactly one role.
+ *
+ * ## Why this is keyed on the user alone, and not on a workspace
+ *
+ * `organization-plugin-role-guard.ts`'s read half used to resolve *which* organization a
+ * request acted on — body, then query string, then the session's active organization — and
+ * check that one. Three independent reviews found that steerable, twice with a landed write:
+ *
+ *  1. better-auth's `update-member-role` never reads the query string, so
+ *     `?organizationId=<any id>` pointed the guard at an organization the caller held no row
+ *     in while the handler acted on the session-active one. Control 409, steered **200, write
+ *     landed**.
+ *  2. After that was closed by checking all three sources, `cancel-invitation` resolved its
+ *     organization from `invitation.organizationId` — a **fourth** source, named by none of
+ *     them. With the session's active organization unset (`set-active` with `null`, which is
+ *     exempt and therefore reachable while holding the malformed row), all three candidates
+ *     were empty, the guard returned early, and the plugin read `"owner,admin"` and ORed it.
+ *     `update-team` was the same shape through `body.data.organizationId`.
+ *
+ * The defect was never the missing source. It was **resolving a target at all**: every
+ * enumeration is a guess about what a dependency does internally, it is wrong per route, and
+ * it goes stale the first time better-auth changes one. So this asks a question with no
+ * target in it — *does this caller hold a malformed role anywhere* — which no request shape
+ * can steer, and which has no empty-candidate case to fall through.
+ *
+ * ## The trade, stated rather than buried
+ *
+ * This is **stricter** than the per-workspace check: a caller holding one malformed row is
+ * refused on every non-exempt organization route, including routes acting on a different,
+ * healthy workspace. That is deliberate. The precondition is a malformed row in a running
+ * process, which after migration `0050` means its `CHECK` was dropped or the row predates
+ * validation — a deployment already requiring administrator repair. Refusing every
+ * role-derived decision until that repair is the fail-closed answer, and
+ * `EXEMPT_FROM_MEMBERSHIP_CHECK` still preserves recovery: the caller can list their
+ * workspaces, switch active workspace, create a new one, accept or reject invitations, and
+ * **leave the workspace whose row is broken**.
+ *
+ * ## Read in TypeScript, filtered by the canonical predicate
+ *
+ * Deliberately not a SQL `WHERE role LIKE '%,%'`: "malformed" means comma-joined **or**
+ * empty **or** untrimmed, and `membershipRoleProblem` is the one definition of that.
+ * Re-expressing it in SQL would create a second, drifting copy — and this project's recurring
+ * defect is exactly a control deriving its answer from a convenient proxy rather than from
+ * the artifact that decides. `workspace_member_userId_idx` covers the read, and a user holds
+ * a handful of rows.
+ */
+export async function firstMalformedMembershipRole(
+  executor: DbOrTx,
+  userId: string,
+): Promise<{ workspaceId: string; problem: MembershipRoleProblem } | null> {
+  const rows = await executor
+    .select({
+      workspaceId: schema.workspaceUserTable.workspaceId,
+      role: schema.workspaceUserTable.role,
+    })
+    .from(schema.workspaceUserTable)
+    .where(eq(schema.workspaceUserTable.userId, userId));
+
+  for (const row of rows) {
+    const problem = membershipRoleProblem(row.role);
+    if (problem !== null) {
+      return { workspaceId: row.workspaceId, problem };
+    }
+  }
+  return null;
+}
+
 /** `resolveMembershipRoleFrom` over this pair's rows, read through `workspaceMemberRoles`. */
 export async function resolveMembershipRole(
   executor: DbOrTx,
