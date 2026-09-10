@@ -335,8 +335,8 @@ remediation status, are tracked as GitHub issues and pull requests — read them
     previously said #3 was unmet because required-status-check reconciliation needed a
     ruleset change only Thomas could make. **Thomas made it, moments before this document
     was corrected**: `protect-main` (ruleset `22365005`, `updated_at
-    2026-09-09T06:28:04Z`) now lists `route policy coverage + permission matrix` among
-    eleven `required_status_checks`, `current_user_can_bypass: never` — verified by
+    2026-09-09T06:28:04Z`) now lists `route policy coverage + permission matrix` among the
+    `required_status_checks`, `current_user_can_bypass: never` — verified by
     re-reading the live ruleset via the API, not by trusting the closing comment on #7.
     Issue #7 closed the same window (`closedAt 2026-09-09T06:29:48Z`). #3 is **met.**
   **Throttle 1 is still not open** — all five conditions are required, and #6 alone keeps
@@ -647,9 +647,9 @@ and reading it that way would open the throttle while `organization()` is still 
 | --- | --- | --- |
 | 1 | **#5** complete | ✅ merged as PR #13, closed |
 | 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; **S0, S1, S2, S3, S4, S4b, S5, S6a and S8a** have landed (#65, #57, #65, #76, #67, #85, #77, #112, #109). S7, S9 and S10 (unmount) remain, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
-| 3 | **#7** complete | ✅ **met — issue closed 2026-09-09** (`closedAt 2026-09-09T06:29:48Z`). #21 put the registry, evaluator and route-coverage gate on `main`; #19 put `pnpm test:permissions` (74 tests) in CI via `check:route-policy` on every push and pull request. The last open clause — both tests **required status checks** — closed when Thomas updated `protect-main` (ruleset `22365005`): `route policy coverage + permission matrix` now sits among 11 entries in `required_status_checks`, `strict_required_status_checks_policy: true`, `current_user_can_bypass: never` (`updated_at 2026-09-09T06:28:04Z`, re-read directly from `gh api repos/.../rulesets/22365005`, not taken from the closing comment's word) |
+| 3 | **#7** complete | ✅ **met — issue closed 2026-09-09** (`closedAt 2026-09-09T06:29:48Z`). #21 put the registry, evaluator and route-coverage gate on `main`; #19 put `pnpm test:permissions` (74 tests) in CI via `check:route-policy` on every push and pull request. The last open clause — both tests **required status checks** — closed when Thomas updated `protect-main` (ruleset `22365005`): `route policy coverage + permission matrix` now sits among the entries in `required_status_checks`, `strict_required_status_checks_policy: true`, `current_user_can_bypass: never` (`updated_at 2026-09-09T06:28:04Z`, re-read directly from `gh api repos/.../rulesets/22365005`, not taken from the closing comment's word) |
 | 4 | route coverage **actually executes** in CI | ✅ **met.** `.github/workflows/ci-fast.yml`'s `route-policy` job runs `pnpm check:route-policy` on every push and pull request, and did on `main`'s first gate-enforcing run (`e11976f`, all 11 applicable jobs green) |
-| 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one |
+| 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one. **The count is deliberately not stated here**: it moves with every gate change, and a stale number in this file is the exact defect the governing rule in `CLAUDE.md` exists to prevent. Run `pnpm test:ci-scripts` for it |
 
 **What "met" does not mean.** Four conditions being true is not Throttle 1 being open — all
 five are required, and #6 is not a paperwork gap: it is real, unfinished implementation

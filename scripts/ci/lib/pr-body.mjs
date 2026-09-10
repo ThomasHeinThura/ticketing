@@ -1,6 +1,40 @@
 import fs from "node:fs/promises";
 
 /**
+ * Test-only instrumentation for `stripComments`' complexity, not its behaviour.
+ *
+ * `pr-body.test.mjs` proves this scanner stays O(n) — see the docstring below for why
+ * that matters — by counting the characters this loop actually visits, rather than
+ * timing it with `performance.now()`/`hrtime`. Wall-clock scales with whatever ELSE the
+ * CI runner is doing at that instant, not with the algorithm's real work: a ratio
+ * measured off a ~1.3ms baseline (`large < small * 24`) reproduced two failures in four
+ * concurrent `pnpm test:ci-scripts` runs under ordinary machine load, both landing on
+ * that exact assertion, because a single scheduler preemption lands more easily inside a
+ * LONGER measurement window, not less. A step counter has no such window: it counts the
+ * same thing whether the runner is idle or saturated.
+ *
+ * Deliberately always-on rather than gated behind a test flag — a conditional the
+ * production path never takes is itself untested, and one integer increment per
+ * character is immaterial next to the string work already happening. If a future rewrite
+ * of `stripComments` stops updating this counter, the reader below falls back to a flat
+ * zero, and the tests that depend on it treat "zero regardless of input size" as a
+ * failure — the same self-guard this file already uses for the reconstitution fuzz
+ * below ("if this reaches zero the fuzz has stopped generating the shape the fix is
+ * about").
+ */
+let stripCommentsSteps = 0;
+
+/** Test-only: zero the step counter before a measurement. */
+export function resetStripCommentsStepsForTests() {
+  stripCommentsSteps = 0;
+}
+
+/** Test-only: characters `stripComments` has visited since the last reset. */
+export function stripCommentsStepsForTests() {
+  return stripCommentsSteps;
+}
+
+/**
  * Remove HTML comments — the template's instructions are not content.
  *
  * Scanned by hand rather than with `markdown.replace(/<!--[\s\S]*?-->/g, "")`,
@@ -34,9 +68,23 @@ export function stripComments(markdown) {
   const out = [];
   let i = 0;
 
+  // Charges the step counter with what THIS search actually scanned, not with
+  // how far the cursor ends up moving — so a future change that calls this
+  // more than once per comment (redundant re-scanning, the shape a regression
+  // is likely to take) is charged for every one of those scans, not just the
+  // net distance covered. That is what makes the counter a faithful proxy for
+  // real work rather than a restatement of "the cursor moved forward".
+  const findClose = (from) => {
+    const close = markdown.indexOf("-->", from);
+    const reached = close === -1 ? markdown.length : close;
+    stripCommentsSteps += reached - from;
+    return close;
+  };
+
   while (i < markdown.length) {
     out.push(markdown[i]);
     i += 1;
+    stripCommentsSteps += 1;
 
     const end = out.length;
     if (
@@ -47,7 +95,8 @@ export function stripComments(markdown) {
       out[end - 1] === "-"
     ) {
       out.length = end - 4;
-      const close = markdown.indexOf("-->", i);
+      const close = findClose(i);
+      if (close !== -1) stripCommentsSteps += 3; // the closing marker itself
       i = close === -1 ? markdown.length : close + 3;
     }
   }
@@ -271,10 +320,23 @@ export async function loadPullRequestNumber({ number, eventPath, ref }) {
  */
 const REVIEW_ITEM = /\bindependent\b[^\n]*\breview\b|\bsecurity\s+review\b/;
 
-/** A checkbox line, ticked or not. */
-const ANY_BOX = /^\s*-\s*\[[ xX]\]/;
-/** An UNticked checkbox line. */
-const OPEN_BOX = /^\s*-\s*\[\s\]/;
+/**
+ * A checkbox line, ticked or not.
+ *
+ * **The marker class is `[-*+]`, not `-`, and that is a fix rather than a
+ * flourish.** GitHub-flavoured Markdown renders a task list with any of the
+ * three bullet markers, and these patterns only matched `-`. A whole `###`
+ * block written with `*` therefore had `boxes.length === 0`, so
+ * `checklistProblems` and `checklistPresenceProblems` both **skipped it
+ * entirely** — three unticked required items, no `n/a`, no reason, and zero
+ * reported problems. Found by the independent Opus security review of pull
+ * request #89. The independent-review item itself was not reachable that way
+ * (verified on both routes), so what this voided was the rest of the
+ * definition-of-done enforcement rather than the review gate.
+ */
+const ANY_BOX = /^\s*[-*+]\s*\[[ xX]\]/;
+/** An UNticked checkbox line. Same marker class, same reason. */
+const OPEN_BOX = /^\s*[-*+]\s*\[\s\]/;
 
 /**
  * Strips the decoration an author could hide behind: HTML comments, emphasis
@@ -301,13 +363,92 @@ function normaliseItem(line) {
  * n/a` would pass with no reason at all. An item is different: the reason has to
  * come AFTER the `n/a`, because the words before it are the thing being excused.
  *
- * Linear: one `n/a`, one optional separator, then a run of non-space. No nested
- * quantifier over the same input.
+ * **The negation bypass (found 2026-09-09, not a hypothetical).** The first version of
+ * this predicate detected `n/a` as a bare substring found ANYWHERE on the line — the same
+ * mistake F9 made at block granularity, fixed there by reading a DECLARED state instead
+ * of searching for a token. One level down, at the checkbox line, the substring search
+ * survived: `- [ ] Screens opened — this is definitely NOT n/a, I simply did not...`
+ * contains the substring `n/a` followed by 6+ more characters, so it satisfied the old
+ * regex and excused the box — even though the author explicitly denied being n/a. That
+ * was hit by an author writing honestly, on the first attempt, not a hypothetical.
+ *
+ * The fix is the same shape as F9's: `n/a` must be a STATE DECLARATION — the first thing
+ * after the item's own text and its separator — not a token found anywhere on the line.
+ * `n/a` is looked for at the START of the clause that follows the item's separator, never
+ * inside it. That is deliberately structural rather than linguistic (no negation
+ * word-list, no sentiment reading): "this is definitely NOT n/a" does not OPEN with
+ * `n/a` — it opens with "this" — so it is rejected the same way any other wrong opening
+ * word would be, not because the checker recognised "NOT" as a negation. `not n/a`,
+ * `isn't n/a` and `never n/a` are rejected for the identical, non-linguistic reason: none
+ * of them is the literal sequence `n`, optional space, `/` (or `\` or `.`, the spellings
+ * `normaliseItem` already folds elsewhere in this file), optional space, `a` — the clause
+ * opens with "not"/"isn't"/"never", not with the n/a token itself.
+ *
+ * Linear: one separator search, one anchored opener match, no nested quantifier over the
+ * same input.
  */
+
+/**
+ * The separator between an item's own text and its declared state: a typographic dash, or
+ * a spaced hyphen. Deliberately NOT a bare colon, semicolon or unspaced hyphen — every
+ * real n/a in this file's own convention follows an em dash, and `` `pnpm
+ * test:permissions` `` inside an item's own label (definition-of-done.md) has a colon of
+ * its own that must never be misread as the item/state boundary. A colon still works
+ * fine AFTER the declaration — "n/a: this PR adds no routes" — because by then `n/a` has
+ * already matched as the opener and the colon is just part of the reason.
+ */
+const ITEM_SEPARATOR = /—|–|\s-\s/;
+
+/**
+ * `n/a`, spelled with a slash, backslash or dot — as an OPENER only, never a substring
+ * match. `not n/a` does not match this: after the leading `n` it expects (optional
+ * whitespace, then) a slash-like character, and `not` has an `o` there instead.
+ */
+const ITEM_NOT_APPLICABLE_OPENER = /^n\s*[/.\\]\s*a\b/i;
+
 function itemMarkedNotApplicable(line) {
-  return /\bn\/a\b\s*[\u2014\u2013:,;.-]?\s*\S[^\n]{5,}/i.test(
-    stripComments(line),
+  const withoutBox = stripComments(line)
+    .replace(OPEN_BOX, "")
+    .replace(ANY_BOX, "");
+  const split = ITEM_SEPARATOR.exec(withoutBox);
+  if (!split) {
+    return false; // no separator at all: there is no declared state to read
+  }
+  const clause = withoutLeadingDecoration(
+    withoutBox.slice(split.index + split[0].length),
   );
+  const opener = ITEM_NOT_APPLICABLE_OPENER.exec(clause);
+  if (!opener) {
+    return false; // the clause opens with something other than n/a — including a negation
+  }
+  // The reason must contain SIX MEANINGFUL CHARACTERS. Stripping `INVISIBLE` here
+  // is the fix for the first hole the independent Opus review of #89 found: the
+  // length test counted raw code points, so `n/a` followed by six U+200B
+  // zero-width spaces satisfied it while rendering on GitHub byte-identically to
+  // a bare `n/a`, which must fail. Fifteen of the seventeen blank-rendering
+  // characters in `INVISIBLE` worked; only U+FEFF and U+3000 were caught, and
+  // then only incidentally by `trim()`. This is the F13/L6 defect class
+  // reappearing one level down, so it is closed with the SAME class the rest of
+  // this file already uses for emptiness rather than with a second list.
+  //
+  // The SAME review found a second hole in the fix for the first one: an
+  // enumerated punctuation strip (`.,:;!?—–`'"-`) closed the four spellings the
+  // paired test tried and left the family open — `n/a ******`, `n/a ______`,
+  // and sixteen more single-symbol pads all still excused a required checkbox,
+  // because none of those symbols was on the list either. Rather than adding a
+  // fifth, sixth and n-th spelling to a list that will always be missing the
+  // next one, the reason is now a PROPERTY: it must contain at least six
+  // characters that are `\p{L}` (a letter, any script) or `\p{N}` (a digit) —
+  // not "not on the strip list", but "actually a word or a number". Punctuation
+  // and symbol characters are never in either class, so a reason made only of
+  // them is never sufficient, however it is spelled, without maintaining a
+  // second list of the ones that fail. The count is taken from the string with
+  // `INVISIBLE` already removed so a blank-rendering Hangul filler — itself
+  // `\p{L}` (see `INVISIBLE`'s own doc comment) — cannot be counted as a letter
+  // and reopen the F13/L6 hole this same fix relies on `INVISIBLE` to close.
+  const remainder = clause.slice(opener[0].length).replace(INVISIBLE, "");
+  const meaningfulChars = (remainder.match(/[\p{L}\p{N}]/gu) ?? []).length;
+  return meaningfulChars >= 6; // six letters-or-digits, not six characters of any kind
 }
 
 /**

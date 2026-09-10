@@ -22,7 +22,7 @@ async function seedTaskFor(workspaceId: string) {
         description: "",
         priority: "low",
         status: "to-do",
-        columnId: columns.todo?.id ?? null,
+        columnId: columns.todo.id,
         number: 1,
         position: 1,
       })

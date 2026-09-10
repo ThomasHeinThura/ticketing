@@ -98,12 +98,15 @@ cite it and do not restate it:
 
 ```
 apps/api/src/**/policy.ts            packages/permissions/**
-apps/api/src/middleware/**           packages/plugins-contracts/**
-apps/api/src/plugins/**              apps/api/src/scim/**
-apps/api/src/auth*                   apps/api/src/storage/**
-apps/api/src/webhooks/**             any new route file (a new *.ts exporting a Hono router)
-apps/api/src/utils/**                apps/api/src/index.ts
-apps/api/src/**/index.ts             apps/api/src/capabilities/**
+apps/api/src/plugins/**              apps/api/src/storage/**
+apps/api/src/auth*                   apps/api/src/index.ts
+apps/api/src/utils/**                apps/api/src/capabilities/**
+apps/api/src/**/index.ts             any new route file (a new *.ts exporting a Hono router)
+
+apps/api/src/middleware/**           (path does not exist yet)
+apps/api/src/webhooks/**             (path does not exist yet, P4)
+apps/api/src/scim/**                 (path does not exist yet, P3)
+packages/plugins-contracts/**        (path does not exist yet)
 
 .github/**                           package.json
 scripts/ci/**                        **/package.json
@@ -135,11 +138,16 @@ next to the route. Covering it **by path** makes the "any new route file" clause
 backstop rather than the primary control, which matters because that clause was matching
 almost nothing (see the note on `looksLikeHonoRouter` in `lib/security-paths.mjs`).
 
-Four globs in the first block — `apps/api/src/middleware/**`, `apps/api/src/scim/**`,
-`apps/api/src/webhooks/**`, `packages/plugins-contracts/**` — point at paths that **do not
-exist yet**. They are deliberately kept: SCIM is P3 and webhooks are P4, and a glob that is
-in place before the directory appears is scope that cannot be forgotten at the moment it
-starts to matter. They are not evidence the list was reviewed.
+Four globs point at paths that **do not exist yet**, and they are marked as such **in the
+block above** — `(path does not exist yet)` — rather than only here. That placement is the
+point: an independent review of #81 found this note correct and the block silent, so a reader
+who consulted only the authoritative list could not tell which entries were aspirational. The
+annotations are parser-safe by construction (the tokeniser splits on two-or-more spaces and
+discards any token containing a space), and the parsed set is unchanged at 23 globs.
+
+They are deliberately kept: SCIM is P3 and webhooks are P4, and a glob that is in place
+before the directory appears is scope that cannot be forgotten at the moment it starts to
+matter. They are not evidence the list was reviewed.
 
 **Why the second block exists** (Thomas's decision, 2026-09-08 — see the
 [decision log](../07-planning/decision-log.md)). The first block is the application's
