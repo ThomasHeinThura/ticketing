@@ -1,6 +1,6 @@
 import { client } from "@taskdesk/libs";
 import type { InferRequestType } from "hono/client";
-import { authClient } from "@/lib/auth-client";
+import getWorkspaces from "@/fetchers/workspace/get-workspaces";
 import {
   createUniqueWorkspaceSlug,
   isWorkspaceSlugCollisionError,
@@ -16,11 +16,11 @@ const createWorkspace = async ({
   slug,
   logo,
 }: CreateWorkspaceRequest) => {
-  // S3 scope, left untouched (PR #76 repoints this): the plugin's `list` call
-  // is only used here to seed the local slug-collision check below.
-  const existingWorkspaces = slug
-    ? []
-    : ((await authClient.organization.list()).data ?? []);
+  // Issue #100 (S3 gap): native replacement for authClient.organization.list(),
+  // used only to seed the local slug-collision check below. getWorkspaces()
+  // (GET /api/workspace, S3's own native read) returns the same caller's-own-
+  // workspaces set the plugin call did.
+  const existingWorkspaces = slug ? [] : await getWorkspaces();
   let workspaceSlug = slug
     ? slug
     : createUniqueWorkspaceSlug(

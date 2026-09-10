@@ -3,7 +3,7 @@ import createWorkspace from "./create-workspace";
 
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),
-  list: vi.fn(),
+  getWorkspaces: vi.fn(),
 }));
 
 vi.mock("@taskdesk/libs", () => ({
@@ -14,19 +14,15 @@ vi.mock("@taskdesk/libs", () => ({
   },
 }));
 
-vi.mock("@/lib/auth-client", () => ({
-  authClient: {
-    organization: {
-      list: mocks.list,
-    },
-  },
+vi.mock("@/fetchers/workspace/get-workspaces", () => ({
+  default: mocks.getWorkspaces,
 }));
 
 describe("createWorkspace", () => {
   beforeEach(() => {
     mocks.post.mockReset();
-    mocks.list.mockReset();
-    mocks.list.mockResolvedValue({ data: [] });
+    mocks.getWorkspaces.mockReset();
+    mocks.getWorkspaces.mockResolvedValue([]);
   });
 
   it("posts to the native workspace route and returns the created workspace", async () => {
@@ -37,7 +33,7 @@ describe("createWorkspace", () => {
 
     const result = await createWorkspace({ name: "Acme", slug: "acme" });
 
-    expect(mocks.list).not.toHaveBeenCalled();
+    expect(mocks.getWorkspaces).not.toHaveBeenCalled();
     expect(mocks.post).toHaveBeenCalledWith({
       json: {
         name: "Acme",
@@ -84,9 +80,10 @@ describe("createWorkspace", () => {
   });
 
   it("derives a slug from existing workspaces when none is supplied", async () => {
-    mocks.list.mockResolvedValue({
-      data: [{ slug: "acme" }, { slug: "other" }],
-    });
+    mocks.getWorkspaces.mockResolvedValue([
+      { slug: "acme" },
+      { slug: "other" },
+    ]);
     mocks.post.mockResolvedValue({
       ok: true,
       json: async () => ({ id: "workspace-2" }),
@@ -94,7 +91,7 @@ describe("createWorkspace", () => {
 
     await createWorkspace({ name: "Acme" });
 
-    expect(mocks.list).toHaveBeenCalledTimes(1);
+    expect(mocks.getWorkspaces).toHaveBeenCalledTimes(1);
     const sentSlug = mocks.post.mock.calls[0]?.[0]?.json?.slug;
     expect(sentSlug).toMatch(/^acme-[0-9a-f]{12}$/);
   });
