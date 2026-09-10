@@ -167,6 +167,14 @@ jobs:
         # KNOWN-RADIX.md — currently zero rows, since both real Radix imports
         # (form.tsx, timeline.tsx) were replaced by a local `Slot` in the same change.
         run: pnpm check:ui
+      - name: pnpm check:organization-callers
+        # S10 zero-live-caller tripwire. REPORTS today (shrink-only ratchet in
+        # scripts/ci/organization-callers-baseline.json) and FAILS the moment that count
+        # would rise — a new call site not already baselined, or the baseline itself
+        # growing relative to the merge base with main. It also fails unconditionally on
+        # any use of the auth client its scanner cannot classify as a clean call. See
+        # scripts/ci/check-organization-callers.mjs.
+        run: pnpm check:organization-callers
 
   pull-request:
     name: pull request template + security review
