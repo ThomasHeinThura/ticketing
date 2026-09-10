@@ -20,6 +20,8 @@
  */
 
 import assert from "node:assert/strict";
+import { mkdirSync, symlinkSync } from "node:fs";
+import path from "node:path";
 import { after, describe, it } from "node:test";
 import {
   cleanUpScratchRepos,
@@ -86,6 +88,34 @@ function scenario(
   write(dir, BASELINE, baselineWith(headBaseline));
   commit(dir, "feat: the scenario under probe");
   return dir;
+}
+
+/**
+ * The bootstrap half of `scenario()`, exposed on its own for probes below that need to add
+ * something `scenario()`'s file-content map cannot express — a symlink, or a second
+ * tsconfig — between the bootstrap commit and the head commit under probe. Same shape,
+ * same reason: a fresh scratch repository with an empty baseline, a real `origin/main`
+ * ref so `readBaselineAtMergeBase` has history to compare against instead of raising
+ * `BaselineHistoryUnavailableError` (which would fail the probe for the wrong reason).
+ */
+function baseSetup(prefix) {
+  const dir = scratchDir(prefix);
+  initRepo(dir);
+  installCheckers(dir);
+  installFromRepo(dir, TSCONFIG);
+  write(dir, AUTH_CLIENT, AUTH_CLIENT_SOURCE);
+  write(dir, BASELINE, baselineWith({}));
+  const base = commit(dir, "chore: bootstrap");
+  setOriginMain(dir, base);
+  return dir;
+}
+
+/** A symlink at `dir/relativeLinkPath`, pointing at the absolute path `absoluteTarget`
+ * (inside or outside `dir` — the caller decides which case it is building). */
+function symlink(dir, relativeLinkPath, absoluteTarget) {
+  const linkAbsolute = path.join(dir, relativeLinkPath);
+  mkdirSync(path.dirname(linkAbsolute), { recursive: true });
+  symlinkSync(absoluteTarget, linkAbsolute);
 }
 
 /** What a naive `grep -c "authClient.organization.<method>("`-style substring count would
@@ -315,5 +345,239 @@ describe("S10 — authClient.organization.* callers cannot grow unnoticed", () =
     const run = runChecker(dir, "check-organization-callers.mjs");
     assert.equal(run.status, 1, `exited ${run.status}:\n${run.output}`);
     assert.match(run.output, /namespace import/);
+  });
+
+  it("H: a dynamic import() of the auth-client module fails closed (F1)", () => {
+    const FILE = "apps/web/src/hooks/use-dynamic-activate.ts";
+    const source = [
+      "export async function activateA(id: string) {",
+      '  const { authClient } = await import("@/lib/auth-client");',
+      "  await authClient.organization.createRole({ organizationId: id });",
+      "}",
+      "",
+      "export async function activateB(id: string) {",
+      '  await (await import("@/lib/auth-client")).authClient.organization.deleteRole({',
+      "    organizationId: id,",
+      "  });",
+      "}",
+      "",
+    ].join("\n");
+
+    const dir = scenario("org-dynamic-import", {
+      baseFiles: {},
+      baseBaseline: {},
+      headFiles: { [FILE]: source },
+      headBaseline: {},
+    });
+
+    const run = runChecker(dir, "check-organization-callers.mjs");
+    assert.equal(
+      run.status,
+      1,
+      "a dynamic import() of the client must fail closed rather than silently score " +
+        `zero. Exited ${run.status}:\n${run.output}`,
+    );
+    assert.match(run.output, /dynamic `import\(/);
+    assert.ok(run.output.includes(FILE), run.output);
+  });
+
+  it("I: a symlinked FILE reaching a live caller is not silently skipped (F2)", () => {
+    const REAL = "external-code/real-caller.ts";
+    const LINK = "apps/web/src/hooks/use-symlinked-file.ts";
+    const dir = baseSetup("org-symlink-file");
+    write(dir, REAL, setActiveCallFile());
+    symlink(dir, LINK, path.join(dir, REAL));
+    commit(dir, "feat: reach the client through a symlinked file");
+
+    const run = runChecker(dir, "check-organization-callers.mjs");
+    assert.equal(
+      run.status,
+      1,
+      "a live call reached only through a symlinked file must not be silently omitted " +
+        "— the blanket `isSymbolicLink() -> skip` bug this closes. Exited " +
+        `${run.status}:\n${run.output}`,
+    );
+    assert.ok(run.output.includes(REAL), run.output);
+  });
+
+  it("J: a symlinked DIRECTORY reaching a live caller is not silently skipped (F2)", () => {
+    const REAL_DIR = "external-code/roles";
+    const REAL_FILE = `${REAL_DIR}/activate.ts`;
+    const LINK_DIR = "apps/web/src/hooks/external-roles";
+    const dir = baseSetup("org-symlink-dir");
+    write(dir, REAL_FILE, setActiveCallFile());
+    symlink(dir, LINK_DIR, path.join(dir, REAL_DIR));
+    commit(dir, "feat: reach the client through a symlinked directory");
+
+    const run = runChecker(dir, "check-organization-callers.mjs");
+    assert.equal(
+      run.status,
+      1,
+      "a live call reached only through a symlinked directory must not be silently " +
+        `omitted. Exited ${run.status}:\n${run.output}`,
+    );
+    assert.ok(run.output.includes(REAL_FILE), run.output);
+  });
+
+  it("K: a symlink resolving outside the repository is refused, not silently followed (F2)", () => {
+    const outside = scratchDir("org-symlink-outside-target");
+    write(outside, "real-caller.ts", setActiveCallFile());
+
+    const LINK = "apps/web/src/hooks/use-outside-symlink.ts";
+    const dir = baseSetup("org-symlink-outside");
+    symlink(dir, LINK, path.join(outside, "real-caller.ts"));
+    commit(
+      dir,
+      "feat: reach the client through a symlink pointing outside the repository",
+    );
+
+    const run = runChecker(dir, "check-organization-callers.mjs");
+    assert.equal(
+      run.status,
+      1,
+      "a symlink resolving outside the repository must be refused, not silently " +
+        `followed OR silently skipped. Exited ${run.status}:\n${run.output}`,
+    );
+    assert.match(run.output, /outside the repository/);
+    assert.ok(run.output.includes(LINK), run.output);
+  });
+
+  it("L: a barrel OUTSIDE the scanned root, re-exporting the client, is not a silent bypass (F3)", () => {
+    const BARREL = "external-lib/barrel.ts";
+    const CONSUMER = "apps/web/src/hooks/use-external-barrel.ts";
+    const dir = baseSetup("org-external-barrel");
+    write(
+      dir,
+      BARREL,
+      'export { authClient } from "../apps/web/src/lib/auth-client";\n',
+    );
+    write(
+      dir,
+      CONSUMER,
+      [
+        'import { authClient } from "../../../../external-lib/barrel";',
+        "",
+        "export async function activate(id: string) {",
+        "  await authClient.organization.createRole({ organizationId: id });",
+        "}",
+        "",
+      ].join("\n"),
+    );
+    commit(dir, "feat: reach the client through a barrel outside apps/web/src");
+
+    const run = runChecker(dir, "check-organization-callers.mjs");
+    assert.equal(
+      run.status,
+      1,
+      "a barrel living outside apps/web/src, re-exporting the client, must not be a " +
+        `complete silent bypass. Exited ${run.status}:\n${run.output}`,
+    );
+    assert.match(run.output, /does not resolve directly to the auth-client/);
+    assert.ok(run.output.includes(CONSUMER), run.output);
+  });
+
+  it("M: a CommonJS require() of the auth-client module fails closed (F4)", () => {
+    const FILE = "apps/web/src/scripts/legacy-activate.cjs";
+    const source = [
+      'const { authClient } = require("../lib/auth-client");',
+      "",
+      "async function activate(id) {",
+      "  await authClient.organization.createRole({ organizationId: id });",
+      "}",
+      "",
+      "module.exports = { activate };",
+      "",
+    ].join("\n");
+
+    const dir = scenario("org-cjs-require", {
+      baseFiles: {},
+      baseBaseline: {},
+      headFiles: { [FILE]: source },
+      headBaseline: {},
+    });
+
+    const run = runChecker(dir, "check-organization-callers.mjs");
+    assert.equal(
+      run.status,
+      1,
+      "a CommonJS require() of the client must fail closed rather than silently score " +
+        `zero — the ESM-only import grammar never matches it. Exited ${run.status}:\n` +
+        run.output,
+    );
+    assert.match(run.output, /CommonJS `require\(/);
+    assert.ok(run.output.includes(FILE), run.output);
+  });
+
+  it("N: tsconfig `paths` moved behind `references` does not collapse the alias map (F6)", () => {
+    const FILE = "apps/web/src/hooks/use-activate.ts";
+    const dir = baseSetup("org-tsconfig-references");
+    // The ordinary refactor this pins: `paths` moves OUT of the root tsconfig.json and
+    // into the project it already `references`, exactly like `tsconfig.app.json` holds it
+    // for real in this repository today, duplicated in the root file only by accident.
+    write(
+      dir,
+      TSCONFIG,
+      JSON.stringify({
+        files: [],
+        references: [{ path: "./tsconfig.app.json" }],
+        compilerOptions: {},
+      }),
+    );
+    write(
+      dir,
+      "apps/web/tsconfig.app.json",
+      JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } }),
+    );
+    write(dir, FILE, setActiveCallFile());
+    commit(dir, "feat: dedupe tsconfig paths behind references");
+
+    const run = runChecker(dir, "check-organization-callers.mjs");
+    assert.equal(
+      run.status,
+      1,
+      "a live call reached through an `@/`-aliased import must still be detected once " +
+        "`paths` lives only behind a tsconfig `references` entry — the alias map must " +
+        `not silently collapse to empty. Exited ${run.status}:\n${run.output}`,
+    );
+    assert.match(
+      run.output,
+      /not in scripts\/ci\/organization-callers-baseline\.json/,
+      "this must fail as an ORDINARY newly-observed caller (the alias resolved and the " +
+        "call was found), not merely fail for some other reason — output:\n" +
+        run.output,
+    );
+    assert.ok(run.output.includes(FILE), run.output);
+  });
+
+  it("O: an IN-ROOT barrel re-exporting the client is refused end-to-end (F5)", () => {
+    const BARREL = "apps/web/src/lib/barrel.ts";
+    const CONSUMER = "apps/web/src/hooks/use-barrel-consumer.ts";
+    const dir = scenario("org-inroot-barrel-e2e", {
+      baseFiles: {},
+      baseBaseline: {},
+      headFiles: {
+        [BARREL]: 'export { authClient } from "@/lib/auth-client";\n',
+        [CONSUMER]: [
+          'import { authClient } from "@/lib/barrel";',
+          "",
+          "export async function activate(id: string) {",
+          "  await authClient.organization.setActive({ organizationId: id });",
+          "}",
+          "",
+        ].join("\n"),
+      },
+      headBaseline: {},
+    });
+
+    const run = runChecker(dir, "check-organization-callers.mjs");
+    assert.equal(
+      run.status,
+      1,
+      "an in-root barrel re-exporting the client must be refused end-to-end, through the " +
+        `real checker binary — not only in the lib-level unit test. Exited ${run.status}` +
+        `:\n${run.output}`,
+    );
+    assert.match(run.output, /re-export of the auth-client module/);
+    assert.ok(run.output.includes(BARREL), run.output);
   });
 });

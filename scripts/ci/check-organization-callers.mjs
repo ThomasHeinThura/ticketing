@@ -55,19 +55,13 @@ import {
   readBaselineAtMergeBase,
 } from "./lib/git-baseline.mjs";
 import {
+  collectScanFiles,
   findAuthClientDefinition,
   loadPathAliases,
   OrganizationCallerScanUnavailableError,
   scanFiles,
 } from "./lib/organization-callers.mjs";
-import {
-  codeFilesUnder,
-  finish,
-  readText,
-  rel,
-  repoRoot,
-  violation,
-} from "./lib/repo.mjs";
+import { finish, readText, rel, repoRoot, violation } from "./lib/repo.mjs";
 import { stripCodeComments } from "./lib/strip-code-comments.mjs";
 
 const NAME = "check:organization-callers";
@@ -117,7 +111,10 @@ async function main() {
       ? "report"
       : "verify";
 
-  const files = await codeFilesUnder([SCAN_ROOT]);
+  const { files, refusals: symlinkRefusals } = await collectScanFiles(
+    SCAN_ROOT,
+    repoRoot,
+  );
   const failures = [];
   const warnings = [];
 
@@ -149,6 +146,14 @@ async function main() {
   // over apps/web/src today — see the pull request for the reconciliation against the
   // manual count.
   const refusalFailures = [];
+  for (const refusal of symlinkRefusals) {
+    refusalFailures.push(
+      violation(
+        rel(refusal.absolute),
+        `cannot include this path in the scan — ${refusal.reason}`,
+      ),
+    );
+  }
   for (const result of results) {
     for (const refusal of result.refusals) {
       refusalFailures.push(
