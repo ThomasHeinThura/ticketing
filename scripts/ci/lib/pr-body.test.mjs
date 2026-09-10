@@ -498,16 +498,26 @@ describe("stripComments", () => {
     // linearity, and it does not claim to catch every output-correct rewrite.
     const shapes = [
       {
-        // Comments carry CONTENT. Both shapes were previously empty (`<!-- -->`, and a
-        // comment of one repeated character), so a scanner whose cost scales with comment
-        // BODY size was invisible at any input size -- measured at 4,166ms for a 64KB body,
-        // over this test's own ceiling, while the test passed.
-        label: "48,000-comment, comment-dense body with content",
+        label: "48,000-comment, comment-dense body",
         input: "<!-- abc def -->".repeat(48_000),
       },
       {
-        label: "single ~1MB comment with varied content",
-        input: `<!-- ${"abc def ghi ".repeat(83_333)} -->`,
+        // The dimension the first two shapes cannot see: **RETAINED** content -- text that
+        // survives stripping. Both of those are pure comment and strip to ZERO bytes
+        // (measured: 768,000 -> 0 and 1,000,005 -> 0), so a scanner whose cost scales with
+        // what it KEEPS is invisible at any size, however large the input or however much
+        // text sits inside the comments. An earlier version of this file tried to close that
+        // by putting words inside the comments; that changed nothing, because the comments
+        // are still removed. This shape interleaves retained text with comments, so the
+        // stripped output is ~64KB rather than empty.
+        label: "interleaved: ~65KB input retaining ~64KB after stripping",
+        input: `${"lorem ipsum dolor sit amet ".repeat(12)}<!-- c -->`.repeat(
+          200,
+        ),
+      },
+      {
+        label: "single ~1MB comment",
+        input: `<!-- ${"a".repeat(1_000_000)} -->`,
       },
     ];
 
