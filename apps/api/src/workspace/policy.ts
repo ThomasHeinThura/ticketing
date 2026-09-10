@@ -215,6 +215,25 @@ export const workspacePolicies = {
     sessionOnly: true,
   },
 
+  // S8a — set the caller's own active workspace, by path id. `self`, kind 2, same shape as
+  // `POST /api/workspace/{workspaceId}/leave` below: the route writes only the CALLING
+  // session's own `activeOrganizationId` column (`activate-workspace.ts`), never another
+  // user's row, so there is no capability to check against a separate resource — membership
+  // in the target workspace is enforced by this route's own middleware
+  // (`workspaceAccess.fromParam` + `requireWorkspaceMembership`), the same restored
+  // precondition the two mutation routes above use, mirroring the plugin's own
+  // `checkMembership` refusal on `/organization/set-active`.
+  "POST /api/workspace/{workspaceId}/activate": {
+    authenticated: true,
+    self: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason:
+        "sets the caller's own active workspace pointer; the route names no person parameter because the caller is the person",
+    },
+    sessionOnly: true,
+  },
+
   // S5 — add an existing platform user directly to a workspace. Runtime check is
   // `requireWorkspacePermission({ member: ["create"] })`; see the file comment for the
   // capability-name gap.

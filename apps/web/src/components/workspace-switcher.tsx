@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import { UserAvatar } from "@/components/user-avatar";
 import { shortcuts } from "@/constants/shortcuts";
+import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
@@ -56,9 +57,8 @@ export function WorkspaceSwitcher() {
 
       setIsSwitching(true);
       try {
-        await authClient.organization.setActive({
-          organizationId: selectedWorkspace.id,
-        });
+        // S8a: native replacement for authClient.organization.setActive().
+        await activateWorkspace(selectedWorkspace.id);
 
         setTimeout(() => {
           navigate({

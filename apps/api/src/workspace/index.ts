@@ -16,6 +16,7 @@ import { requireWorkspaceMembership } from "../utils/require-workspace-membershi
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { requireWorkspaceRoleAuthority } from "../utils/require-workspace-role-authority";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import activateWorkspaceCtrl from "./controllers/activate-workspace";
 import addWorkspaceMemberCtrl from "./controllers/add-workspace-member";
 import createWorkspaceCtrl, {
   WorkspaceSlugTakenError,
@@ -47,6 +48,7 @@ import {
   WorkspaceRoleNotFoundError,
 } from "./controllers/workspace-membership-errors";
 import {
+  activatedWorkspaceSchema,
   deletedWorkspaceSchema,
   leftWorkspaceSchema,
   removedWorkspaceMemberSchema,
@@ -267,6 +269,37 @@ const deleteWorkspaceRoute = createRoute({
       "An API key or impersonation session (session_required), no workspace access, or missing organization:delete permission",
     ),
     404: errorResponse("Workspace not found"),
+  },
+});
+
+// ── S8a: the native set-active route ──────────────────────────────────────
+// Issue #6, retrofit plan §3 (S8a row). Same authorization shape as the
+// S5 self-actions below (`leaveWorkspaceRoute`): `requireWorkspaceMembership`
+// alone, no capability check, because setting one's own active workspace is
+// a self-action every member has -- exactly what the plugin's own
+// `checkMembership` refusal (`USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION`,
+// `plugins/organization/routes/crud-org.mjs`) already gated on.
+
+const activateWorkspaceRoute = createRoute({
+  method: "post",
+  operationId: "activateWorkspace",
+  path: "/{workspaceId}/activate",
+  tags: ["Workspaces"],
+  summary: "Set the caller's active workspace",
+  description:
+    "Set the calling session's active workspace. Native replacement for authClient.organization.setActive().",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+  ] as const,
+  request: { params: workspaceIdParam },
+  responses: {
+    200: jsonResponse("The activated workspace's id", activatedWorkspaceSchema),
+    401: errorResponse("No credential at all"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), or no workspace access",
+    ),
   },
 });
 
@@ -630,6 +663,13 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       throw new HTTPException(404, { message: "Workspace not found" });
     }
     return c.json(deleted, 200);
+  })
+  .openapi(activateWorkspaceRoute, async (c) => {
+    const activated = await activateWorkspaceCtrl(
+      c.get("workspaceId"),
+      requireSessionId(c),
+    );
+    return c.json(activated, 200);
   })
   .openapi(addWorkspaceMemberRoute, async (c) => {
     const body = c.req.valid("json");

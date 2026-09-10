@@ -5,8 +5,8 @@ import { Building2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import useCreateWorkspace from "@/hooks/queries/workspace/use-create-workspace";
-import { authClient } from "@/lib/auth-client";
 import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute(
@@ -41,9 +41,8 @@ function RouteComponent() {
       toast.success(t("workspace:create.success"));
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
 
-      await authClient.organization.setActive({
-        organizationId: createdWorkspace.id,
-      });
+      // S8a: native replacement for authClient.organization.setActive().
+      await activateWorkspace(createdWorkspace.id);
 
       navigate({
         to: "/dashboard/workspace/$workspaceId",
