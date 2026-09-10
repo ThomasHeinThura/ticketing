@@ -82,6 +82,12 @@ export const deletedWorkspaceSchema = z
   .object({ id: z.string() })
   .openapi("DeletedWorkspace");
 
+// S8a -- native set-active route (issue #6, retrofit plan §3, S8a row).
+
+export const activatedWorkspaceSchema = z
+  .object({ workspaceId: z.string() })
+  .openapi("ActivatedWorkspace");
+
 // S5 -- native membership write routes (issue #6, retrofit plan §3, S5 row).
 
 export const removedWorkspaceMemberSchema = z

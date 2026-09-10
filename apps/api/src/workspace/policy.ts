@@ -215,6 +215,25 @@ export const workspacePolicies = {
     sessionOnly: true,
   },
 
+  // S8a — set the caller's own active workspace, by path id. `self`, kind 2, same shape as
+  // `POST /api/workspace/{workspaceId}/leave` below: the route writes only the CALLING
+  // session's own `activeOrganizationId` column (`activate-workspace.ts`), never another
+  // user's row, so there is no capability to check against a separate resource — membership
+  // in the target workspace is enforced by this route's own middleware
+  // (`workspaceAccess.fromParam` + `requireWorkspaceMembership`), the same restored
+  // precondition the two mutation routes above use, mirroring the plugin's own
+  // `checkMembership` refusal on `/organization/set-active`.
+  "POST /api/workspace/{workspaceId}/activate": {
+    authenticated: true,
+    self: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason:
+        "sets the caller's own active workspace pointer; the route names no person parameter because the caller is the person",
+    },
+    sessionOnly: true,
+  },
+
   // S5 — add an existing platform user directly to a workspace. Runtime check is
   // `requireWorkspacePermission({ member: ["create"] })`; see the file comment for the
   // capability-name gap.
@@ -313,5 +332,28 @@ export const workspacePolicies = {
     elevated: false,
     elevationExemptionReason:
       "hands over the owner role atomically; workspace:transfer_ownership is not in AUTHORITY_GRANTING because rbac.md's elevated-action table carries no row for ownership transfer, and no step-up mechanism exists in this codebase yet to enforce elevated: true honestly -- flagged as a judgement call for a human decision once that mechanism lands, given this is the single most powerful role transfer a workspace has",
+  },
+
+  // S6a — invite a user, by email, into the workspace (issue #6, retrofit plan §3, S6a row).
+  // `member:invite` is an exact match in rbac.md's Members group. Runtime check is
+  // `requireWorkspacePermission({ invitation: ["create"] })` against the INHERITED
+  // `invitation` resource the seeded `workspace_role` rows actually carry (better-auth's own
+  // `defaultStatements.invitation`, `packages/permissions/src/
+  // legacy-better-auth-access-control.ts`) -- same transitional gap as `workspace:update`
+  // above: re-keying to the canonical vocabulary is #7's, not this lane's.
+  //
+  // `scopeSource: "request"`: the controller (`invite-workspace-member.ts`) never loads the
+  // `workspace` row for authority purposes, only `workspaceId` off the path -- same shape as
+  // the S5 member routes above.
+  //
+  // `member:invite` is NOT in `AUTHORITY_GRANTING` (`elevated.ts`), so no `elevated` field is
+  // declared -- this route mints no fresh authority the elevation-coverage test would demand
+  // a written exemption for; it only creates a pending, revocable invitation row.
+  "POST /api/workspace/{workspaceId}/invitations": {
+    capability: "member:invite",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+    sessionOnly: true,
   },
 } as const satisfies PolicyMap;

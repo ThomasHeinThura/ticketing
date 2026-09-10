@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentType, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -56,7 +57,22 @@ function renderSignedOutInvitation() {
     error: null,
   });
 
-  render(<AcceptInvitation />);
+  // S6a: AcceptInvitation now calls useAcceptInvitation(), a react-query
+  // useMutation hook (native replacement for
+  // authClient.organization.acceptInvitation()), so it needs a
+  // QueryClientProvider ancestor -- it didn't before this change.
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+  render(
+    <QueryClientProvider client={queryClient}>
+      <AcceptInvitation />
+    </QueryClientProvider>,
+  );
 }
 
 afterEach(() => {

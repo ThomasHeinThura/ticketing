@@ -7,6 +7,8 @@ import {
   jsonResponse,
 } from "../openapi";
 import { checkWorkspaceName } from "../utils/check-workspace-name";
+import { requireInviteAbuseGate } from "../utils/require-invite-abuse-gate";
+import { requireInviteRateLimit } from "../utils/require-invite-rate-limit";
 import { requireWorkspaceCreationAllowed } from "../utils/require-session";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
@@ -14,6 +16,7 @@ import { requireWorkspaceMembership } from "../utils/require-workspace-membershi
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { requireWorkspaceRoleAuthority } from "../utils/require-workspace-role-authority";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import activateWorkspaceCtrl from "./controllers/activate-workspace";
 import addWorkspaceMemberCtrl from "./controllers/add-workspace-member";
 import createWorkspaceCtrl, {
   WorkspaceSlugTakenError,
@@ -23,11 +26,13 @@ import getUserWorkspacesCtrl from "./controllers/get-user-workspaces";
 import getWorkspaceDetailCtrl from "./controllers/get-workspace-detail";
 import getWorkspaceInvitationsCtrl from "./controllers/get-workspace-invitations";
 import getWorkspaceMembersCtrl from "./controllers/get-workspace-members";
+import inviteWorkspaceMemberCtrl from "./controllers/invite-workspace-member";
 import leaveWorkspaceCtrl from "./controllers/leave-workspace";
 import removeWorkspaceMemberCtrl from "./controllers/remove-workspace-member";
 import transferWorkspaceOwnershipCtrl from "./controllers/transfer-workspace-ownership";
 import updateWorkspaceCtrl from "./controllers/update-workspace";
 import updateWorkspaceMemberRoleCtrl from "./controllers/update-workspace-member-role";
+import { InvitationAlreadyPendingError } from "./controllers/workspace-invitation-errors";
 import {
   AlreadyOwnerError,
   AmbiguousMembershipError,
@@ -43,12 +48,14 @@ import {
   WorkspaceRoleNotFoundError,
 } from "./controllers/workspace-membership-errors";
 import {
+  activatedWorkspaceSchema,
   deletedWorkspaceSchema,
   leftWorkspaceSchema,
   removedWorkspaceMemberSchema,
   transferredWorkspaceOwnershipSchema,
   workspaceDetailSchema,
   workspaceInvitationListSchema,
+  workspaceInvitationSchema,
   workspaceMemberListSchema,
   workspaceMemberRoleSchema,
   workspaceMemberSchema,
@@ -58,6 +65,7 @@ import {
 import {
   addWorkspaceMemberBody,
   createWorkspaceBody,
+  inviteWorkspaceMemberBody,
   transferWorkspaceOwnershipBody,
   updateWorkspaceBody,
   updateWorkspaceMemberRoleBody,
@@ -264,6 +272,37 @@ const deleteWorkspaceRoute = createRoute({
   },
 });
 
+// ── S8a: the native set-active route ──────────────────────────────────────
+// Issue #6, retrofit plan §3 (S8a row). Same authorization shape as the
+// S5 self-actions below (`leaveWorkspaceRoute`): `requireWorkspaceMembership`
+// alone, no capability check, because setting one's own active workspace is
+// a self-action every member has -- exactly what the plugin's own
+// `checkMembership` refusal (`USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION`,
+// `plugins/organization/routes/crud-org.mjs`) already gated on.
+
+const activateWorkspaceRoute = createRoute({
+  method: "post",
+  operationId: "activateWorkspace",
+  path: "/{workspaceId}/activate",
+  tags: ["Workspaces"],
+  summary: "Set the caller's active workspace",
+  description:
+    "Set the calling session's active workspace. Native replacement for authClient.organization.setActive().",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+  ] as const,
+  request: { params: workspaceIdParam },
+  responses: {
+    200: jsonResponse("The activated workspace's id", activatedWorkspaceSchema),
+    401: errorResponse("No credential at all"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), or no workspace access",
+    ),
+  },
+});
+
 // ── S5: the native membership write routes ───────────────────────────────
 // Issue #6, retrofit plan §3 (S5 row). Additive and still ships dark: the
 // `organization()` plugin stays mounted and every client still writes
@@ -459,6 +498,70 @@ const transferWorkspaceOwnershipRoute = createRoute({
   },
 });
 
+// ── S6a: the native invitation-create write route ───────────────────────
+// Issue #6, retrofit plan §3 (S6a row). This is the one S6a route scoped
+// under `/workspace` rather than `/invitation` — creating an invitation
+// needs a workspace id the caller supplies, where accept/reject/cancel only
+// ever need the invitation's own id (see `apps/api/src/invitation/index.ts`).
+//
+// Same authorization shape as S4/S5's mutation routes:
+// `requireWorkspaceMembership` first, then `requireWorkspacePermission`
+// against the INHERITED `invitation` resource (`{ create: [...] }` /
+// `{ cancel: [...] }` on `viewer`/`member`/`admin`/`owner` — see
+// `packages/permissions/src/legacy-better-auth-access-control.ts`, which
+// mirrors better-auth's own `defaultStatements.invitation`), then
+// `requireWorkspaceRoleAuthority` to close the instance-admin bypass, same
+// as every other S4/S5 mutation.
+//
+// TWO ADDITIONAL, INVITE-SPECIFIC GUARDS not needed by any S4/S5 route:
+// `requireInviteRateLimit()` and `requireInviteAbuseGate()` — the native
+// equivalents of the two path-keyed better-auth controls this same change
+// moves off the plugin (`apps/api/src/auth.ts`'s `rateLimit.customRules`
+// and cloud disposable-email/anonymous gate). See those two middleware
+// modules' own doc comments.
+const inviteWorkspaceMemberRoute = createRoute({
+  method: "post",
+  operationId: "inviteWorkspaceMember",
+  path: "/{workspaceId}/invitations",
+  tags: ["Workspaces"],
+  summary: "Invite a user to a workspace",
+  description:
+    "Invite a user, by email, into a workspace. Native replacement for authClient.organization.inviteMember(). Sends the invitation email on success.",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspacePermission({ invitation: ["create"] }),
+    requireWorkspaceRoleAuthority({ invitation: ["create"] }),
+    requireInviteRateLimit(),
+    requireInviteAbuseGate(),
+  ] as const,
+  request: {
+    params: workspaceIdParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: inviteWorkspaceMemberBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "The created (or resent) invitation",
+      workspaceInvitationSchema,
+    ),
+    400: errorResponse(
+      "Invalid body, an unknown role, or the role was 'owner'",
+    ),
+    401: errorResponse("No credential at all"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), no workspace access, missing invitation:create permission, a guest account inviting on cloud, or a disposable-email invitee on cloud",
+    ),
+    409: errorResponse(
+      "The target email is already a member, or already has a pending invitation and resend was not set",
+    ),
+    429: errorResponse("Too many invitations from this client recently"),
+  },
+});
+
 /**
  * `checkWorkspaceName` is the security control on the name, moved off
  * `beforeCreateOrganization` unchanged. It runs before anything is written.
@@ -560,6 +663,13 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       throw new HTTPException(404, { message: "Workspace not found" });
     }
     return c.json(deleted, 200);
+  })
+  .openapi(activateWorkspaceRoute, async (c) => {
+    const activated = await activateWorkspaceCtrl(
+      c.get("workspaceId"),
+      requireSessionId(c),
+    );
+    return c.json(activated, 200);
   })
   .openapi(addWorkspaceMemberRoute, async (c) => {
     const body = c.req.valid("json");
@@ -667,6 +777,33 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       }
       if (error instanceof NewOwnerNotAMemberError) {
         throw new HTTPException(404, { message: error.message });
+      }
+      throw error;
+    }
+  })
+  .openapi(inviteWorkspaceMemberRoute, async (c) => {
+    const body = c.req.valid("json");
+    try {
+      const invitation = await inviteWorkspaceMemberCtrl({
+        workspaceId: c.get("workspaceId"),
+        email: body.email,
+        role: body.role,
+        resend: body.resend,
+        inviterId: c.get("userId"),
+      });
+      return c.json(invitation, 200);
+    } catch (error) {
+      if (error instanceof OwnerRoleNotAssignableHereError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof WorkspaceRoleNotFoundError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof UserAlreadyMemberError) {
+        throw new HTTPException(409, { message: error.message });
+      }
+      if (error instanceof InvitationAlreadyPendingError) {
+        throw new HTTPException(409, { message: error.message });
       }
       throw error;
     }
