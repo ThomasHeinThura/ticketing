@@ -96,28 +96,129 @@ const ROLE_BEARING_FIELDS = ["role", "roleName"] as const;
 type RoleWriteProblem = { field: string; message: string };
 
 /**
- * Reads the JSON body WITHOUT consuming the request.
+ * What this guard could establish about the request's body.
  *
- * `buildAuthRequest` forwards the original request to better-auth as
- * `new Request(c.req.raw, { headers })`, which reuses `c.req.raw`'s body stream. Reading
- * that stream here — including via Hono's own `c.req.json()`, which delegates to
+ * ## The bypass this replaces
+ *
+ * This middleware is the write boundary that stops a multi-role value ever reaching
+ * `workspace_member.role`, because better-auth's evaluator comma-SPLITS that column and ORs
+ * the parts while TaskDesk's matches it exactly. It used to decide whether to look at the
+ * body like this:
+ *
+ *     const contentType = c.req.header("content-type") ?? "";
+ *     if (!contentType.includes("application/json")) return null;   // = "nothing to check"
+ *
+ * `String.includes` is case-SENSITIVE. RFC 9110 §8.3 makes a media type's type and subtype
+ * case-INSENSITIVE, **and better-auth agrees with the specification** — it accepts and parses
+ * `Content-Type: Application/JSON`. So that one spelling was parsed by better-auth and skipped
+ * by the guard, and `role: "owner,admin"` landed in the column. A privilege escalation
+ * reachable by changing one character of a header.
+ *
+ * ## What better-auth actually does, measured rather than assumed
+ *
+ * The first draft of this fix asserted that better-auth "reads the body with `request.json()`
+ * and never consults `Content-Type`". **That was wrong**, and the oracle in
+ * `multi-role-membership-content-type.test.ts` caught it. Driving the real mounted route with
+ * a legitimate single-role body under fifteen media types gives:
+ *
+ * | Content-Type | better-auth |
+ * | --- | --- |
+ * | `application/json`, `Application/JSON`, `APPLICATION/JSON` | **200, body parsed** |
+ * | `application/json; charset=utf-8`, `application/json ; charset=UTF-8`, `application/json;charset=utf-8` | **200, body parsed** |
+ * | `application/json-patch+json`, `application/JSON+foo` | **200, body parsed** |
+ * | `application/vnd.api+json`, `text/json`, `text/plain`, `application/x-www-form-urlencoded`, `garbage`, `""`, absent | **415, body never parsed** |
+ *
+ * So better-auth's rule is: **lower-case the header and check it starts with
+ * `application/json`.** `text/plain` and an absent header were never bypass vectors — 415
+ * refuses them before any parsing. The genuine gap was only ever the spellings better-auth
+ * accepts and `includes` missed, and note that set is wider than the exact essence
+ * `application/json`: a guard matching only that would still be bypassable through
+ * `application/json-patch+json`.
+ *
+ * ## The rule here
+ *
+ * `betterAuthWillParseBody` mirrors the table above, so the guard inspects everything
+ * better-auth would parse. Within that set, a body whose shape cannot be established is
+ * **refused** rather than waved through — fail-closed, because a control whose failure mode is
+ * silence must not fail open.
+ *
+ * Outside that set, the guard still *tries* to parse, and still refuses a role-bearing object
+ * it finds there. That is deliberate defence in depth: it means this boundary does not derive
+ * its safety from better-auth continuing to answer 415, which is exactly the kind of
+ * borrowed-authority assumption that produced the original defect. What it does not do is
+ * invent a new refusal for bodies better-auth will reject anyway — a `text/plain` request with
+ * no role in it still gets better-auth's own 415, unchanged.
+ *
+ * Reads the body WITHOUT consuming the request: `buildAuthRequest` forwards the original to
+ * better-auth as `new Request(c.req.raw, { headers })`, which reuses `c.req.raw`'s body stream.
+ * Reading that stream here — including via Hono's own `c.req.json()`, which delegates to
  * `this.raw.json()` — would leave the forwarded request with a spent body and every guarded
  * route would break. Cloning first is what keeps the original intact.
  */
-async function peekJsonBody(
-  c: Context,
-): Promise<Record<string, unknown> | null> {
-  const contentType = c.req.header("content-type") ?? "";
-  if (!contentType.includes("application/json")) return null;
+type BodyPeek =
+  | { kind: "none" }
+  | { kind: "object"; body: Record<string, unknown> }
+  | { kind: "unreadable"; reason: string };
+
+/** Methods that carry no body, so this guard has nothing to inspect on them. */
+const BODILESS_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/**
+ * Whether better-auth will parse this request's body, per the measured table above:
+ * case-insensitive, parameters tolerated, and any subtype whose name begins `json` included —
+ * because better-auth accepts `application/json-patch+json` and `application/JSON+foo`.
+ *
+ * Pinned by the ORACLE group in `multi-role-membership-content-type.test.ts`: if a
+ * better-auth upgrade widens or narrows its own rule, that group fails and this function has
+ * to be re-measured rather than quietly drifting out of agreement with it.
+ */
+function betterAuthWillParseBody(value: string | undefined): boolean {
+  if (!value) return false;
+  return value.trim().toLowerCase().startsWith("application/json");
+}
+
+async function peekJsonBody(c: Context): Promise<BodyPeek> {
+  if (BODILESS_METHODS.has(c.req.method.toUpperCase())) return { kind: "none" };
+
+  const willParse = betterAuthWillParseBody(c.req.header("content-type"));
+
+  let raw: string;
   try {
-    const value: unknown = await c.req.raw.clone().json();
-    if (!value || typeof value !== "object" || Array.isArray(value))
-      return null;
-    return value as Record<string, unknown>;
+    raw = await c.req.raw.clone().text();
   } catch {
-    // A malformed body is better-auth's own 400 to issue, not this guard's to pre-empt.
-    return null;
+    return willParse
+      ? { kind: "unreadable", reason: "the request body could not be read" }
+      : { kind: "none" };
   }
+
+  // No body at all carries no role, and better-auth's own schema will reject the request if
+  // the route needed one. Failing closed here would break every bodiless route for no gain.
+  if (raw.trim() === "") return { kind: "none" };
+
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    // Fail closed only where better-auth WOULD have parsed it. Elsewhere its 415 is the
+    // right answer and this guard has nothing to add.
+    return willParse
+      ? {
+          kind: "unreadable",
+          reason:
+            "the request declares a JSON media type and its body is not valid JSON",
+        }
+      : { kind: "none" };
+  }
+
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return willParse
+      ? { kind: "unreadable", reason: "the request body is not a JSON object" }
+      : { kind: "none" };
+  }
+
+  // A JSON object, whatever the header claimed. Inspected either way: see the
+  // defence-in-depth paragraph above.
+  return { kind: "object", body: value as Record<string, unknown> };
 }
 
 /** The refusal reason for one role-bearing value, or `null` when it is exactly one role. */
@@ -230,7 +331,22 @@ export function organizationPluginRoleGuard(readSession: SessionReader) {
     if (markerIndex === -1) return null;
     const action = path.slice(markerIndex + marker.length);
 
-    const body = await peekJsonBody(c);
+    const peek = await peekJsonBody(c);
+
+    // Fail closed. A body this guard could not read is a body it could not check, and
+    // better-auth does not need a well-formed `Content-Type` to parse one — so letting it
+    // through is the bypass, not the courtesy.
+    if (peek.kind === "unreadable") {
+      return c.json(
+        {
+          error: "UNREADABLE_REQUEST_BODY",
+          message: `This request cannot be checked against the one-membership-one-role invariant (issue #82), so it is refused: ${peek.reason}. Send a JSON object body with \`Content-Type: application/json\`.`,
+        },
+        400,
+      );
+    }
+
+    const body = peek.kind === "object" ? peek.body : null;
 
     // Half 1 — no request may CREATE a multi-role value. Applies to every organization
     // route, including the ones exempt from the membership check below.

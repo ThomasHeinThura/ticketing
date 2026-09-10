@@ -188,6 +188,35 @@ export async function inviteAndAcceptAsNewMember(
 }
 
 /**
+ * The same plugin route as `updateMemberRoleViaPlugin`, but with the request's **media type
+ * and raw body under the caller's control** — including omitting `Content-Type` entirely.
+ *
+ * This exists because `organization-plugin-role-guard.ts` decides whether to inspect a body,
+ * and an earlier version made that decision from a case-SENSITIVE
+ * `contentType.includes("application/json")`. `Content-Type: Application/JSON` therefore
+ * skipped the guard while better-auth — which parses with `request.json()` and never consults
+ * the header — went on to write the multi-role value. Testing that needs a client that can
+ * spell the header differently and can send a body that is not valid JSON at all, neither of
+ * which `JSON.stringify` plus a fixed header can do.
+ *
+ * Pass `contentType: null` to send **no** `Content-Type` header.
+ */
+export async function updateMemberRoleViaPluginRaw(
+  app: App,
+  actingCookie: string,
+  rawBody: string,
+  contentType: string | null,
+): Promise<Response> {
+  const headers: Record<string, string> = { cookie: actingCookie };
+  if (contentType !== null) headers["content-type"] = contentType;
+  return app.request("/api/auth/organization/update-member-role", {
+    method: "POST",
+    headers,
+    body: rawBody,
+  });
+}
+
+/**
  * Drives the still-mounted plugin route `POST
  * /api/auth/organization/update-member-role` (better-auth's
  * `crud-members.mjs`, `updateMemberRoleBodySchema` at line 215) exactly as
