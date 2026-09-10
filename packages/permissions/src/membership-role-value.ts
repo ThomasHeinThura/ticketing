@@ -116,9 +116,12 @@ export function legacyMembershipRoleSegments(value: string): string[] {
  * The single role a malformed value can be repaired to WITHOUT making a privilege decision,
  * or `null` when there is no such value and a human must choose.
  *
- * Mirrors migration `0050`'s SQL exactly; `membership-role-value.test.ts` pins that they
- * agree, because a repair rule that drifts from the migration that ran it is worse than no
- * repair rule at all.
+ * Mirrors migration `0050`'s SQL for every ASCII-whitespace shape -- the migration's
+ * `btrim` calls take an explicit space/tab/newline/CR/FF/VT character list to match this
+ * function's `trim()`, but do not reach the non-ASCII whitespace `trim()` also strips (NBSP
+ * and the Unicode space separators); see `0050_enforce_single_role_membership.sql` for that
+ * gap. `membership-role-value.test.ts` pins the ASCII agreement, because a repair rule that
+ * drifts from the migration that ran it is worse than no repair rule at all.
  */
 export function repairableMembershipRole(value: string): string | null {
   if (isSingleMembershipRole(value)) return value;

@@ -44,6 +44,13 @@ describe("membershipRoleProblem", () => {
     expect(membershipRoleProblem("   ")).toBe("empty");
   });
 
+  it("treats tab and newline padding the same as space padding -- migration 0050's CHECK must agree on exactly this shape (Finding 3): a one-argument `btrim` strips only the space character and would have called these well-formed", () => {
+    expect(membershipRoleProblem("\tadmin")).toBe("untrimmed");
+    expect(membershipRoleProblem("admin\n")).toBe("untrimmed");
+    expect(membershipRoleProblem("\t")).toBe("empty");
+    expect(membershipRoleProblem("\n")).toBe("empty");
+  });
+
   it("reports the multi-valued problem in preference to the untrimmed one, because that is the half with a privilege consequence", () => {
     expect(membershipRoleProblem(" admin,viewer")).toBe("multi-valued");
   });

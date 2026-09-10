@@ -22,6 +22,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { resolveMembershipRole } from "../../apps/api/src/utils/workspace-member-roles";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createWorkspaceViaPlugin,
@@ -73,8 +74,12 @@ async function restoreRoleConstraint(): Promise<void> {
   await db.execute(
     sql`ALTER TABLE "workspace_member" DROP CONSTRAINT IF EXISTS "workspace_member_role_single_value"`,
   );
+  // Mirrors the CHECK migration 0050 actually ships -- two-argument `btrim` over
+  // space/tab/newline/CR/FF/VT, matching JS `trim()`'s ASCII shapes (see Finding 3 fix).
+  // Built with `chr()` rather than a `\t`-style literal so this JS template string cannot
+  // have its own escaping silently reinterpret what reaches Postgres.
   await db.execute(
-    sql`ALTER TABLE "workspace_member" ADD CONSTRAINT "workspace_member_role_single_value" CHECK (position(',' in "role") = 0 AND "role" = btrim("role") AND btrim("role") <> '') NOT VALID`,
+    sql`ALTER TABLE "workspace_member" ADD CONSTRAINT "workspace_member_role_single_value" CHECK (position(',' in "role") = 0 AND "role" = btrim("role", chr(32) || chr(9) || chr(10) || chr(13) || chr(12) || chr(11)) AND btrim("role", chr(32) || chr(9) || chr(10) || chr(13) || chr(12) || chr(11)) <> '') NOT VALID`,
   );
 }
 
@@ -124,6 +129,23 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
       member.user.id,
       "admin,viewer",
     );
+
+    // Pin the MECHANISM, not just the status code. `"admin,viewer"` also names no row in
+    // `workspace_role`, so an accidental deny -- the exact-match lookup finding nothing --
+    // would ALSO return 403 with the malformed-role check deleted entirely, and the
+    // assertion below on `refused.status` would not notice the difference. Assert directly
+    // on the resolution `hasWorkspacePermission` actually consults, which is the one thing
+    // that distinguishes "refused because malformed" from "refused because no such role".
+    const resolution = await resolveMembershipRole(
+      db,
+      workspace.id,
+      member.user.id,
+    );
+    expect(resolution).toEqual({
+      ok: false,
+      reason: "malformed-role",
+      problem: "multi-valued",
+    });
 
     const refused = await app.request("/api/project", {
       method: "POST",
@@ -337,6 +359,12 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
       { raw: ",admin", repaired: "admin" },
       { raw: " admin ", repaired: "admin" },
       { raw: "admin, admin", repaired: "admin" },
+      // Finding 3: a one-argument `btrim` strips only the space character, so it would
+      // have left these two BYTE-IDENTICAL to `raw` -- no repair at all -- and the CHECK
+      // below would then have accepted the untrimmed value as well-formed. The
+      // two-argument `btrim` this migration now uses must actually strip the tab/newline.
+      { raw: "\tadmin", repaired: "admin" },
+      { raw: "admin\n", repaired: "admin" },
     ];
 
     const [repair] = await migrationStatements();
@@ -413,6 +441,51 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
 
     await restoreRoleConstraint();
   });
+
+  it.each(["\t", "\n"])(
+    "REFUSES a value that is whitespace-only (%j) rather than silently accepting it -- a one-argument `btrim` strips only the space character, so this value would previously have satisfied `role = btrim(role)` and slipped past both the repair and the CHECK as if it were already a well-formed role",
+    async (raw) => {
+      const { app } = createApp();
+      const { workspace, member } = await workspaceWithMember(app, "viewer");
+
+      await withoutRoleConstraint();
+      await db.execute(
+        sql`UPDATE "workspace_member" SET "role" = ${raw} WHERE "workspace_id" = ${workspace.id} AND "user_id" = ${member.user.id}`,
+      );
+
+      const [repair, refuse] = await migrationStatements();
+      if (!repair || !refuse)
+        throw new Error("migration 0050 is missing statements");
+
+      // Whitespace-only has no non-empty comma-segment at all, so the repair pass must
+      // leave it untouched -- there is nothing here for it to collapse to.
+      await db.execute(sql.raw(repair));
+      const [afterRepair] = await db
+        .select({ role: schema.workspaceUserTable.role })
+        .from(schema.workspaceUserTable)
+        .where(
+          and(
+            eq(schema.workspaceUserTable.workspaceId, workspace.id),
+            eq(schema.workspaceUserTable.userId, member.user.id),
+          ),
+        );
+      expect(afterRepair?.role).toBe(raw);
+
+      // And the refusal pass must catch it as empty-after-trim, the same way it already
+      // catches a literal `""`. Drizzle wraps the driver error; the RAISE text is on
+      // `cause`, not the outer message.
+      const failure = await db.execute(sql.raw(refuse)).then(
+        () => null,
+        (error: unknown) => error as { cause?: { message?: string } },
+      );
+      expect(failure, `raw: ${JSON.stringify(raw)}`).not.toBeNull();
+      const raised = failure?.cause?.message ?? "";
+      expect(raised).toMatch(/#82/);
+      expect(raised).toContain(member.user.id);
+
+      await restoreRoleConstraint();
+    },
+  );
 
   it("passes silently when every row is already canonical -- the migration must be a no-op on a healthy deployment, or nobody can deploy it", async () => {
     const { app } = createApp();

@@ -28,26 +28,49 @@
 --
 --      To find them before deploying:
 --        SELECT id, workspace_id, user_id, role FROM workspace_member
---         WHERE position(',' in role) > 0 OR role <> btrim(role) OR btrim(role) = '';
+--         WHERE position(',' in role) > 0
+--            OR role <> btrim(role, E' \t\n\r\f\v')
+--            OR btrim(role, E' \t\n\r\f\v') = '';
 --      To resolve one, assign the single role that member should have:
 --        UPDATE workspace_member SET role = 'admin' WHERE id = '<id>';
 --
 --   3. CONSTRAIN, so the state cannot come back through a route nobody thought to guard --
 --      including the native S7 role-write routes that land after this.
 --
--- The repair rule here and `repairableMembershipRole()` in
--- `packages/permissions/src/membership-role-value.ts` are the same rule in two languages;
--- `membership-role-value.test.ts` pins that they agree.
+-- THE WHITESPACE CLASS, STATED EXPLICITLY BECAUSE IT ONCE DRIFTED SILENTLY. PostgreSQL's
+-- one-argument `btrim(x)` strips only the literal space character (0x20). JS
+-- `String.prototype.trim()` -- what `membershipRoleProblem()` and `repairableMembershipRole()`
+-- in `packages/permissions/src/membership-role-value.ts` actually run -- strips the full
+-- ECMAScript WhiteSpace/LineTerminator set: tab, newline, carriage return, form feed,
+-- vertical tab, NBSP, and several other Unicode space separators. A one-argument `btrim`
+-- CHECK measurably let `"\t"`, `"\n"`, `"\tadmin"` and `"admin\n"` all through as
+-- well-formed, while the TypeScript layer calls every one of them either empty or
+-- untrimmed -- a real gap in a backstop whose stated job is to guard routes nobody
+-- remembered to check.
+--
+-- Every `btrim` below therefore takes an explicit two-argument character list -- space,
+-- tab, newline, carriage return, form feed, vertical tab (`E' \t\n\r\f\v'`) -- covering
+-- every ASCII shape `trim()` strips. This is NOT full parity: `trim()` also strips NBSP
+-- (U+00A0) and the other Unicode space separators, which PostgreSQL's `btrim` cannot be
+-- handed as one convenient literal, and this migration does not attempt it. A value padded
+-- with one of those Unicode code points instead of ASCII whitespace still passes this
+-- CHECK and is still rejected by the TypeScript layer -- a known, narrow, documented gap,
+-- not the risk this migration exists to close.
+--
+-- So: the repair rule here and `repairableMembershipRole()` agree on ASCII whitespace, and
+-- `membership-role-value.test.ts` pins that agreement, including the tab/newline shapes
+-- that exposed the one-argument drift. They are NOT "the same rule in two languages" for
+-- every input JS can produce -- see the Unicode gap above.
 
 UPDATE "workspace_member" AS m
 SET "role" = r.only_role
 FROM (
   SELECT s.id, min(s.segment) AS only_role
   FROM (
-    SELECT wm.id, btrim(piece) AS segment
+    SELECT wm.id, btrim(piece, E' \t\n\r\f\v') AS segment
     FROM "workspace_member" wm,
          unnest(string_to_array(wm."role", ',')) AS piece
-    WHERE btrim(piece) <> ''
+    WHERE btrim(piece, E' \t\n\r\f\v') <> ''
   ) s
   GROUP BY s.id
   HAVING count(DISTINCT s.segment) = 1
@@ -65,13 +88,15 @@ BEGIN
     INTO offending
   FROM "workspace_member"
   WHERE position(',' in "role") > 0
-     OR "role" <> btrim("role")
-     OR btrim("role") = '';
+     OR "role" <> btrim("role", E' \t\n\r\f\v')
+     OR btrim("role", E' \t\n\r\f\v') = '';
 
   IF offending IS NOT NULL THEN
     RAISE EXCEPTION E'Issue #82: % membership row(s) hold more than one role, and this migration will not choose which one to keep.\n%\nAssign each of these members exactly one role, then re-run the migration. See apps/api/drizzle/0050_enforce_single_role_membership.sql for the queries.',
       (SELECT count(*) FROM "workspace_member"
-        WHERE position(',' in "role") > 0 OR "role" <> btrim("role") OR btrim("role") = ''),
+        WHERE position(',' in "role") > 0
+           OR "role" <> btrim("role", E' \t\n\r\f\v')
+           OR btrim("role", E' \t\n\r\f\v') = ''),
       offending;
   END IF;
 END $$;--> statement-breakpoint
@@ -80,6 +105,6 @@ ALTER TABLE "workspace_member"
   ADD CONSTRAINT "workspace_member_role_single_value"
   CHECK (
     position(',' in "role") = 0
-    AND "role" = btrim("role")
-    AND btrim("role") <> ''
+    AND "role" = btrim("role", E' \t\n\r\f\v')
+    AND btrim("role", E' \t\n\r\f\v') <> ''
   );

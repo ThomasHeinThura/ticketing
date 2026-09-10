@@ -201,6 +201,12 @@ Enforced in three places, none of which is a substitute for another:
 | `require-workspace-permission.ts`, `require-workspace-role-authority.ts` | refuse the read, by name, through one shared resolution; `GET /api/capabilities` reports it as a distinguishable **409** |
 | migration `0050` | repairs rows that have only one meaning, refuses to guess at genuine unions, and adds a `CHECK` constraint |
 
+**The 409 above is scoped to the caller, not to the workspace named in the request.** It is
+keyed on `user_id`: if any one of the caller's memberships, in any workspace, holds a
+malformed `role`, every non-exempt `/organization/*` action by that caller is refused —
+including one that names only a different, healthy workspace — until an administrator
+repairs the malformed row.
+
 **Recovery for a deployment that already holds an invalid row.** Migration `0050` repairs
 automatically only where the repair decides nothing — a value whose comma-separated pieces
 all name the *same* role (`"admin,admin"`, `"admin,"`, `" admin "`) collapses to that role.
