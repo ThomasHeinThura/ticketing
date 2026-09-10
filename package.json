@@ -19,6 +19,7 @@
     "check:env": "node ./scripts/ci/check-env.mjs",
     "check:i18n": "node ./scripts/i18n/check.mjs",
     "check:openapi": "node ./scripts/ci/check-openapi.mjs",
+    "check:organization-callers": "node ./scripts/ci/check-organization-callers.mjs",
     "check:overrides": "node ./scripts/ci/check-overrides.mjs",
     "check:pr-template": "node ./scripts/ci/check-pr-template.mjs",
     "check:reviews": "node ./scripts/ci/check-reviews.mjs",

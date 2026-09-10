@@ -119,6 +119,21 @@ const manifest = [
   },
   { gate: "pnpm check:skips", stage: "fast", run: ["pnpm", "check:skips"] },
   {
+    gate: "pnpm check:organization-callers",
+    stage: "fast",
+    run: ["pnpm", "check:organization-callers"],
+    note:
+      "the S10 zero-live-caller tripwire: a shrink-only ratchet over live " +
+      "`authClient.organization.*` call sites in apps/web/src (scripts/ci/organization-" +
+      "callers-baseline.json). REPORTS today — 31 live call sites are real, current debt " +
+      "and this gate is green with them present — but FAILS the moment a new call site " +
+      "appears that is not already in the baseline, or the baseline grows relative to the " +
+      "merge base with main. It is its own declared gate here, not an entry in " +
+      "WORKFLOW_ALIASES: aliasing it to an existing gate would make its step deletable " +
+      "with this reconciler still green, which is the exact bypass WORKFLOW_ALIASES was " +
+      "found to enable once already.",
+  },
+  {
     gate: "pnpm test:ci-scripts",
     stage: "fast",
     run: ["pnpm", "test:ci-scripts"],
