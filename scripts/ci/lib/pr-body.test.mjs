@@ -332,7 +332,15 @@ describe("stripComments", () => {
     // rather than instead of it — a source ban catches a known-bad construct
     // that is output-right, which neither an output oracle nor a cost ceiling
     // can, by construction, ever see. The three instruments are complementary,
-    // not a ladder; each one's blind spot is exactly what the other two cover.
+    // not a ladder. Each covers cases the others miss — but they do NOT jointly cover
+    // everything, and an earlier version of this comment said they did. Measured
+    // counter-example: the literal CodeQL-alert-#4 loop, respelled to evade the source ban
+    // (`.replaceAll`, `RegExp[Symbol.replace]`, a computed member, or a module-level helper
+    // `toString()` cannot see) AND given the same three-line fail-closed post-pass documented
+    // for advR, is output-identical over 31,536,628 exhaustive inputs, is 234x slower at
+    // GitHub's 64KB body cap, converges in 2 passes so neither 1d shape sees it — and passes
+    // all three instruments. Tracked, not closed here: it requires commit access to
+    // scripts/ci/**, which is itself in security-review scope. Recorded as issue #106.
     const alphabet = ["<", "!", "-", ">", " ", "a", "\n"];
     let seed = 987654321;
     const next = () => {
@@ -490,12 +498,16 @@ describe("stripComments", () => {
     // linearity, and it does not claim to catch every output-correct rewrite.
     const shapes = [
       {
-        label: "48,000-comment, 384,000-byte comment-dense body",
-        input: "<!-- -->".repeat(48_000),
+        // Comments carry CONTENT. Both shapes were previously empty (`<!-- -->`, and a
+        // comment of one repeated character), so a scanner whose cost scales with comment
+        // BODY size was invisible at any input size -- measured at 4,166ms for a 64KB body,
+        // over this test's own ceiling, while the test passed.
+        label: "48,000-comment, comment-dense body with content",
+        input: "<!-- abc def -->".repeat(48_000),
       },
       {
-        label: "single 1,000,009-byte comment",
-        input: `<!-- ${"a".repeat(1_000_000)} -->`,
+        label: "single ~1MB comment with varied content",
+        input: `<!-- ${"abc def ghi ".repeat(83_333)} -->`,
       },
     ];
 
@@ -585,6 +597,10 @@ describe("stripComments' complexity guard cannot be deleted quietly", () => {
     };
 
     for (const requiredTestName of [
+      // The restored source ban belongs here because it has ALREADY been deleted once --
+      // that deletion is the regression this pull request exists to repair. Without this
+      // entry, deleting it again leaves the suite 82/82 green and nothing notices.
+      "HIGH (restored) — refuses to call `.replace()` inside stripComments' own source, the literal CodeQL-alert-#4 shape an output oracle cannot see",
       "HIGH 1c — an independent reference implementation must agree with stripComments, catching the CodeQL-alert-#4 shape in every spelling (differential oracle)",
       "HIGH 1d — does not blow up in absolute wall-clock on a COMMENT-DENSE body either, within a deliberately generous margin",
     ]) {
