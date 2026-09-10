@@ -1,18 +1,6 @@
 {
 	"note": "S10 zero-live-caller tripwire. Shrink-only ratchet over authClient.organization.* call sites in apps/web/src, mechanically derived by scripts/ci/lib/organization-callers.mjs -- never hand-add an entry here for a NEW call site; see scripts/ci/check-organization-callers.mjs.",
 	"callers": {
-		"apps/web/src/components/onboarding/onboarding-flow.tsx": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": ["setActive #1: await authClient.organization.setActive({"]
-		},
-		"apps/web/src/components/shared/modals/create-workspace-modal.tsx": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": ["setActive #1: await authClient.organization.setActive({"]
-		},
-		"apps/web/src/components/workspace-switcher.tsx": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": ["setActive #1: await authClient.organization.setActive({"]
-		},
 		"apps/web/src/fetchers/workspace-user/delete-workspace-user.ts": {
 			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
 			"occurrences": [
@@ -31,46 +19,16 @@
 				"listMembers #1: const { data, error } = await authClient.organization.listMembers({"
 			]
 		},
-		"apps/web/src/fetchers/workspace-user/invite-workspace-member.ts": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": [
-				"inviteMember #1: const { data, error } = await authClient.organization.inviteMember({"
-			]
-		},
 		"apps/web/src/fetchers/workspace/create-workspace.ts": {
 			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
 			"occurrences": [
 				"list #1: : ((await authClient.organization.list()).data ?? []);"
 			]
 		},
-		"apps/web/src/hooks/mutations/workspace-user/use-accept-invitation.ts": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": [
-				"acceptInvitation #1: const { data, error } = await authClient.organization.acceptInvitation({"
-			]
-		},
-		"apps/web/src/hooks/mutations/workspace-user/use-cancel-invitation.ts": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": [
-				"cancelInvitation #1: const { data, error } = await authClient.organization.cancelInvitation({"
-			]
-		},
 		"apps/web/src/hooks/mutations/workspace-user/use-delete-workspace-user.ts": {
 			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
 			"occurrences": [
 				"removeMember #1: const { data, error } = await authClient.organization.removeMember({"
-			]
-		},
-		"apps/web/src/hooks/mutations/workspace-user/use-invite-workspace-user.ts": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": [
-				"inviteMember #1: const { data, error } = await authClient.organization.inviteMember({"
-			]
-		},
-		"apps/web/src/hooks/mutations/workspace-user/use-reject-invitation.ts": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": [
-				"rejectInvitation #1: const { data, error } = await authClient.organization.rejectInvitation({"
 			]
 		},
 		"apps/web/src/hooks/mutations/workspace/use-create-workspace-role.ts": {
@@ -91,18 +49,6 @@
 				"updateRole #1: const { data, error } = await authClient.organization.updateRole({"
 			]
 		},
-		"apps/web/src/hooks/queries/workspace-users/use-get-invitation.ts": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": [
-				"getInvitation #1: const { data, error } = await authClient.organization.getInvitation({"
-			]
-		},
-		"apps/web/src/hooks/queries/workspace-users/use-get-user-invitations.ts": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": [
-				"listUserInvitations #1: await authClient.organization.listUserInvitations();"
-			]
-		},
 		"apps/web/src/hooks/queries/workspace/use-create-workspace.ts": {
 			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
 			"occurrences": [
@@ -113,41 +59,6 @@
 			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
 			"occurrences": [
 				"listRoles #1: const result = await authClient.organization.listRoles({"
-			]
-		},
-		"apps/web/src/routes/_layout/_authenticated/dashboard/index.tsx": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": ["setActive #1: authClient.organization.setActive({"]
-		},
-		"apps/web/src/routes/_layout/_authenticated/dashboard/invitations.tsx": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": [
-				"acceptInvitation #1: const { data, error } = await authClient.organization.acceptInvitation({",
-				"setActive #1: await authClient.organization.setActive({",
-				"rejectInvitation #1: const { error } = await authClient.organization.rejectInvitation({"
-			]
-		},
-		"apps/web/src/routes/_layout/_authenticated/dashboard/settings/workspace.tsx": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": ["setActive #1: await authClient.organization.setActive({"]
-		},
-		"apps/web/src/routes/_layout/_authenticated/dashboard/workspace/create.tsx": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": ["setActive #1: await authClient.organization.setActive({"]
-		},
-		"apps/web/src/routes/_layout/_authenticated/invitations.tsx": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": [
-				"acceptInvitation #1: const { data, error } = await authClient.organization.acceptInvitation({",
-				"setActive #1: await authClient.organization.setActive({",
-				"rejectInvitation #1: const { error } = await authClient.organization.rejectInvitation({"
-			]
-		},
-		"apps/web/src/routes/invitation/accept.$inviteId.tsx": {
-			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
-			"occurrences": [
-				"acceptInvitation #1: const { data, error } = await authClient.organization.acceptInvitation({",
-				"setActive #1: await authClient.organization.setActive({"
 			]
 		}
 	}

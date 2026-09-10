@@ -257,6 +257,65 @@ describe("scanFiles — must NOT be flagged", () => {
   });
 });
 
+describe("scanFiles — a re-export of the client fails closed", () => {
+  /**
+   * These three exist because the re-export was a **demonstrated bypass of the whole gate**,
+   * not a hypothesis. Before the refusal, a barrel of one line —
+   * `export { authClient } from "./auth-client"` — plus a consumer importing from the barrel
+   * and calling `authClient.organization.setActive(...)` produced the scanner's usual count
+   * and **exit 0**. The call was neither counted nor refused.
+   *
+   * The star form is here for its own reason: it was still missed after the named form was
+   * closed, because `export * from "./auth-client"` never spells `authClient` and the
+   * per-file fast path skipped it unread. That was found by red-probing the new refusal
+   * rather than by reading it, which is the only reason it is covered at all.
+   *
+   * The third test is the green control. Without it, "refuse every re-export" would satisfy
+   * the first two and quietly fail the repository's many unrelated barrels.
+   */
+  it("a NAMED re-export of the auth-client module", async () => {
+    const dir = fixtureDir();
+    const result = await scanOne(
+      dir,
+      'export { authClient } from "@/lib/auth-client";',
+      "apps/web/src/lib/barrel.ts",
+    );
+    assert.equal(result.calls.length, 0);
+    assert.equal(result.refusals.length, 1);
+    assert.match(
+      result.refusals[0].reason,
+      /re-export of the auth-client module/,
+    );
+  });
+
+  it("a STAR re-export, which never spells the binding at all", async () => {
+    const dir = fixtureDir();
+    const result = await scanOne(
+      dir,
+      'export * from "@/lib/auth-client";',
+      "apps/web/src/lib/barrel.ts",
+    );
+    assert.equal(result.calls.length, 0);
+    assert.equal(result.refusals.length, 1);
+    assert.match(
+      result.refusals[0].reason,
+      /re-export of the auth-client module/,
+    );
+  });
+
+  it("but a re-export of an UNRELATED module is not refused", async () => {
+    const dir = fixtureDir();
+    write(dir, "apps/web/src/lib/cn.ts", "export const cn = () => {};");
+    const result = await scanOne(
+      dir,
+      'export { cn } from "@/lib/cn";',
+      "apps/web/src/lib/barrel.ts",
+    );
+    assert.equal(result.calls.length, 0);
+    assert.equal(result.refusals.length, 0);
+  });
+});
+
 describe("scanFiles — fails closed", () => {
   it("computed member access on the client", async () => {
     const dir = fixtureDir();

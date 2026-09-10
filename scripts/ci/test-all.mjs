@@ -125,8 +125,11 @@ const manifest = [
     note:
       "the S10 zero-live-caller tripwire: a shrink-only ratchet over live " +
       "`authClient.organization.*` call sites in apps/web/src (scripts/ci/organization-" +
-      "callers-baseline.json). REPORTS today — 31 live call sites are real, current debt " +
-      "and this gate is green with them present — but FAILS the moment a new call site " +
+      "callers-baseline.json). REPORTS today — the live call sites still present are real, " +
+      "current debt, and this gate is green with them present. The count is deliberately " +
+      "NOT written down here: four successive attempts to state it elsewhere on this " +
+      "retrofit were each wrong, so run the checker, which prints it. It FAILS the moment " +
+      "a new call site " +
       "appears that is not already in the baseline, or the baseline grows relative to the " +
       "merge base with main. It is its own declared gate here, not an entry in " +
       "WORKFLOW_ALIASES: aliasing it to an existing gate would make its step deletable " +
