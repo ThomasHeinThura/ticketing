@@ -37,6 +37,38 @@ as authored; these corrections govern.
   `update-workspace-member-role.ts` has no authority-ceiling check of its own — harmless
   alone, but it is the second link if S7 ever ships without the ceiling check.
 
+## A third prerequisite, found by CI rather than by reading
+
+**S7 cannot start until `roles-and-permissions-ui.md`'s open review findings are closed.**
+`pnpm check:reviews` enforces it, and it fired on the very pull request that committed this
+document:
+
+```
+docs/07-planning/reviews/2026-09-05/features-governance-design.md — 1. `roles-and-permissions-ui.md`
+    `roles-and-permissions-ui.md` still has open review findings (24 lines). Close them in
+    the owning document first — a feature is not started while its review section is
+    non-empty (AGENTS.md do-not 15).
+```
+
+This is CLAUDE.md's spec interaction rule made mechanical: *"Open findings in
+`docs/07-planning/reviews/2026-09-05/` → close them before implementing — the Definition of
+Done enforces it, and reviewers check it, not the author."* `roles-and-permissions-ui.md` is
+the spec that owns `RL-3`, the ceiling check § 8's F2 is really about, so S7 depends on that
+document twice over: for the requirement, and for its review section being empty.
+
+The blueprint's § 4 build order does not mention this. Treat it as step 0. It is not
+satisfied today, and it is a documentation task rather than an implementation one — 24 lines
+of findings in the owning spec, closed by editing that spec, which is its own reviewable
+change.
+
+**Why this document's own pull request is allowed to cite the spec anyway.** A spec counts as
+"named in this change" when the branch edits `docs/03-features/<spec>.md` **or** when the pull
+request body's `**Spec:**` field points at one (`scripts/ci/check-reviews.mjs:13-14`). This
+branch edits no feature spec, and it implements nothing, so its `**Spec:**` field is
+correctly `n/a`; the `RL-3` reference lives in the prose, where it informs rather than
+declares. That is the accurate answer to the question the gate asks, not an evasion of it —
+the gate asks which spec a change *implements*.
+
 ## Open questions in § 7 — current status
 
 - **Q1 (`roleId` vs role name in the path)** — **decided, and reversible.** Key on the opaque
