@@ -555,6 +555,48 @@ file's older prose.
 
 ### Open
 
+- **SECURITY RE-REVIEW PENDING — OPUS CAPACITY. The org's monthly spend limit was reached on
+  2026-09-10, and every independent reviewer failed on it mid-round.** Seven exact-head Sonnet
+  reviewers (#89 x2, #91 x2, #104 x1, #116 x2) and one implementation agent all returned
+  `You've hit your org's monthly spend limit`. **No pull request below may merge until an
+  independent reviewer at the required tier is available again.** Per CLAUDE.md this is a wait,
+  not a downgrade: capacity exhaustion never lowers the tier, and a review recorded at the wrong
+  tier is worse than no review because it closes a field that would otherwise stay visibly open.
+  The orchestrator did **not** review its own work to fill the gap, and did not merge anything.
+  *Blast radius: every open pull request — this is a shared-contract block on the review gate
+  itself, not one lane.*
+
+  What is unreviewed, by head, all pushed and all with CI green except the security-review gate
+  (which is red **correctly**, because the review genuinely has not happened):
+
+  | PR | Head | Tier needed | State |
+  | --- | --- | --- | --- |
+  | #89 | `8f1d7cd` | Sonnet panel (rebase resolution) + Opus | reviewed CLEAR at the *previous* head `ce3c728`; the orchestrator's hand-resolved `status.md` conflict from the rebase onto `050a4fd` is unreviewed |
+  | #91 | `c85e5df` | Sonnet panel + Opus | new head: CodeQL fix (2 real `js/incomplete-sanitization` alerts closed, now 0 open) + a false-attribution correction. Unreviewed at this head |
+  | #104 | `74779b2` | Sonnet only (docs) | rebased onto `050a4fd`, conflict resolved, `auth.ts` citations corrected. Unreviewed at this head |
+  | #107 | `aff9d27` | Sonnet panel + Opus | four fail-open scanner gaps closed, baseline pruned 10 -> 4, 8 new probes. Unreviewed at this head |
+  | #110 | `d0c3062` | Sonnet panel + **a different clean Opus context** | see the provenance entry below |
+  | #116 | `b22b8a8` | Sonnet panel + Opus | new PR for issue #115. Unreviewed |
+
+- **#110's branch carries three commits of unclear provenance, and its head is therefore
+  unverified by this session.** `4994ff2` (12:46:01Z), `fc3f333` (13:42:08Z) and `d0c3062`
+  (13:58:01Z) are authored `tmp <tmp@example.invalid>`, carry no `#82` scope and no
+  `Co-Authored-By` trailer, and landed **after** this session's verified run of `07622f6`
+  finished at 11:08:06Z. They were pushed to the remote. They edit the `0050` migration, the
+  API contract baseline (`tests/api-contract/openapi.json`, 61 lines), `auth-openapi.ts` and
+  `rbac.md`. On inspection the change is defensible — it widens the migration's `btrim`
+  character class from ASCII whitespace to the full ECMAScript set via `chr()` concatenation,
+  which closes the documented parity subset and disproves the preceding commit's claim that
+  `btrim` "cannot" reach NBSP. **The head is green: 53 files / 503 tests / exit 0 against a
+  lane-private database.** But green is not reviewed, and unattributed commits on a P0 security
+  branch are a control-plane fact worth recording rather than absorbing. **Thomas: this needs
+  attribution before #110 merges.** *Blast radius: one lane (#110), which blocks S7.*
+
+- **#110 additionally requires a *different clean Opus context*, not merely an Opus one.** Its
+  PR body records `Implemented by: Opus 5`, and the orchestrator has since directed its
+  remediation, so neither the author nor the orchestrator can satisfy its independent security
+  review (CLAUDE.md: the orchestrator may not call its own remediation an independent review).
+
 - ~~**`gh` is not authenticated.**~~ **RESOLVED 2026-09-06.** `gh` is authenticated and
   carries the Project scope. Pull requests are opened from the CLI, the PR #13 review is
   posted, and the Project board exists — project 1, *TaskDesk v2 — P0*, with the six
