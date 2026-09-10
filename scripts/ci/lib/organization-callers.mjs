@@ -64,14 +64,39 @@
  *     `export * from "…"`. A demonstrated bypass of this gate rather than a hypothetical:
  *     see `EXPORT_FROM_STATEMENT` below for the exact shape that produced a clean exit 0
  *     with a real live caller planted behind it.
+ *   - a **re-export chain rooted outside the scanned root** (`apps/web/src`): an in-root
+ *     import resolving to a barrel file elsewhere in the repository (or a chain of such
+ *     barrels) that itself re-exports the auth client. The direct in-root case above is
+ *     caught because the barrel file is itself scanned; a barrel living outside the
+ *     scanned root never is, so the only place left to notice it is the in-root import
+ *     that resolves to it — see `reexportsDefinitionTransitively`.
+ *   - a **dynamic `import("…")`** of the auth-client module — `await import(...)`, awaited
+ *     or not, destructured or member-accessed afterward in any shape. Tracing the
+ *     resolved promise's value would mean re-deriving this whole alias analysis for an
+ *     expression rather than a declaration; refused outright instead.
+ *   - a **CommonJS `require("…")`** of the auth-client module. This module's import
+ *     grammar is ESM-only (`import … from`); a `require()` of the same specifier is a
+ *     different grammar this scanner does not parse, so it is refused rather than
+ *     silently unmatched.
+ *   - a **symlink** anywhere under the scanned root that resolves (by realpath) outside
+ *     the repository. This scanner does not read content it cannot check into the same
+ *     tree the gate is run against; a symlinked file or directory that resolves INSIDE
+ *     the repository is instead followed like the real file/directory it names — see
+ *     `collectScanFiles`.
+ *   - a tsconfig whose path-alias map (`compilerOptions.paths`, followed through
+ *     `extends` and `references`) cannot be found at all — see `loadPathAliases`. An
+ *     alias table this scanner cannot prove is exactly the shape that would otherwise let
+ *     an ordinary tsconfig refactor collapse the whole gate to a false "0 calls, 0
+ *     refusals" with no error anywhere.
  *
- * None of these shapes exists in this repository today (verified by running this scanner
- * over `apps/web/src` at HEAD), which is exactly why the gate can ship green: the refusal
- * path is armed but silent until something actually needs it.
+ * None of the shapes above exists in this repository today (verified by running this
+ * scanner over `apps/web/src` at HEAD), which is exactly why the gate can ship green: the
+ * refusal path is armed but silent until something actually needs it.
  */
 
 import fs from "node:fs/promises";
 import path from "node:path";
+import { generatedFiles, ignoredDirectories } from "./repo.mjs";
 import { stripCodeComments } from "./strip-code-comments.mjs";
 
 /** Thrown when the auth-client definition itself cannot be pinned down. Always fatal. */
@@ -194,6 +219,127 @@ function matchPropertyAccess(text, pos) {
   return { name: identifier[0], end: i + identifier[0].length };
 }
 
+// ── 0. Symlink-safe file collection under a root ─────────────────────────────────────
+
+const CODE_EXTENSION_SET = new Set(CODE_EXTENSIONS);
+
+/** True when the repo-relative path is TypeScript or JavaScript source — the same rule
+ * `repo.mjs`'s `isCode` applies, kept local so this walker has no other coupling to it. */
+function isCodeFile(relativePath) {
+  return CODE_EXTENSION_SET.has(path.extname(relativePath));
+}
+
+/**
+ * Walk `rootRelative` (a repo-relative directory) the way `repo.mjs`'s `walk` does, with
+ * one deliberate difference: a symlink is never blanket-skipped.
+ *
+ * `repo.mjs`'s `walk` is shared by fourteen other gates, none of which police a surface
+ * that a symlink could be used to hide from, and changing its symlink handling would be a
+ * blast-radius change to every one of them for a risk none of them carry. This scanner
+ * gets its own walker instead of changing the shared one — see the pull request for why.
+ *
+ * A symlink encountered during the walk is handled three ways:
+ *
+ *   - it does not resolve at all (a broken link) -> skipped. There is no content to read,
+ *     and no OS-level cycle (`ELOOP`) resolves either, so this also catches a mutual
+ *     symlink pair without ever hanging.
+ *   - it resolves (via `fs.realpath`) to a location INSIDE the repository -> followed, as
+ *     if the entry were the real file or directory at that location. A `visitedRealPaths`
+ *     set, keyed by realpath, makes revisiting an already-walked real location through a
+ *     second symlink a no-op rather than an infinite descent — this is what stops a
+ *     symlink that (directly or through a chain) points back at one of its own ancestor
+ *     directories from looping forever.
+ *   - it resolves to a location OUTSIDE the repository -> refused. This scanner does not
+ *     read content it cannot check into the same tree the gate runs against; silently
+ *     skipping it (the shared walker's current behaviour) is exactly the bypass this
+ *     exists to close.
+ *
+ * @param {string} rootRelative repo-relative directory to walk
+ * @param {string} repoRootAbsolute the repository root; symlinks resolving outside it are refused
+ * @returns {Promise<{ files: string[], refusals: {absolute: string, reason: string}[] }>}
+ */
+export async function collectScanFiles(rootRelative, repoRootAbsolute) {
+  const files = [];
+  const refusals = [];
+  const visitedRealPaths = new Set();
+  const rootAbsolute = path.join(repoRootAbsolute, rootRelative);
+
+  async function walkDir(dirAbsolute) {
+    let entries;
+    try {
+      entries = await fs.readdir(dirAbsolute, { withFileTypes: true });
+    } catch (error) {
+      if (error.code === "ENOENT") return;
+      throw error;
+    }
+
+    for (const entry of entries) {
+      const absolute = path.join(dirAbsolute, entry.name);
+
+      if (entry.isSymbolicLink()) {
+        let real;
+        try {
+          real = await fs.realpath(absolute);
+        } catch {
+          continue; // broken link, or an OS-detected symlink cycle: nothing to read
+        }
+        const relativeToRepo = path.relative(repoRootAbsolute, real);
+        const insideRepo =
+          relativeToRepo === "" ||
+          (!relativeToRepo.startsWith(`..${path.sep}`) &&
+            relativeToRepo !== ".." &&
+            !path.isAbsolute(relativeToRepo));
+        if (!insideRepo) {
+          refusals.push({
+            absolute,
+            reason:
+              `symlink resolves to ${real}, outside the repository. This scanner cannot ` +
+              "prove a target it does not check into the same tree has no live " +
+              "`authClient.organization.*` caller, so it refuses rather than silently " +
+              "omitting whatever the link points to.",
+          });
+          continue;
+        }
+        if (visitedRealPaths.has(real)) continue; // already walked via some other path
+        visitedRealPaths.add(real);
+
+        let targetStat;
+        try {
+          targetStat = await fs.stat(real);
+        } catch {
+          continue; // resolved, but vanished between realpath and stat — nothing to read
+        }
+        if (targetStat.isDirectory()) {
+          if (ignoredDirectories.has(path.basename(real))) continue;
+          await walkDir(real);
+          continue;
+        }
+        if (targetStat.isFile()) {
+          if (generatedFiles.has(path.basename(real))) continue;
+          if (isCodeFile(path.relative(repoRootAbsolute, real)))
+            files.push(real);
+        }
+        continue;
+      }
+
+      if (entry.isDirectory()) {
+        if (ignoredDirectories.has(entry.name)) continue;
+        visitedRealPaths.add(absolute);
+        await walkDir(absolute);
+        continue;
+      }
+
+      if (!entry.isFile() || generatedFiles.has(entry.name)) continue;
+      if (isCodeFile(path.relative(repoRootAbsolute, absolute)))
+        files.push(absolute);
+    }
+  }
+
+  visitedRealPaths.add(rootAbsolute);
+  await walkDir(rootAbsolute);
+  return { files: files.sort(), refusals };
+}
+
 // ── 1. Locate the client definition ──────────────────────────────────────────────────
 
 const CREATE_AUTH_CLIENT =
@@ -242,27 +388,11 @@ export function findAuthClientDefinition(candidates) {
 
 // ── 2. Resolve import specifiers the same way tsconfig's `paths` do ─────────────────
 
-/**
- * Read `compilerOptions.paths` out of a tsconfig (JSONC — comments stripped first, no
- * dependency added) and turn it into ordered prefix → target-directory rules. This is
- * "derive the surface": the alias table a caller can use is exactly the one the real
- * compiler resolves against, never a hand-copied guess at what `@/` means.
- *
- * @returns {{ prefix: string, targetDir: string }[]} longest prefix first
- */
-export async function loadPathAliases(tsconfigAbsolutePath) {
-  const raw = await fs.readFile(tsconfigAbsolutePath, "utf8");
-  let parsed;
-  try {
-    parsed = JSON.parse(stripCodeComments(raw));
-  } catch (error) {
-    throw new OrganizationCallerScanUnavailableError(
-      `${tsconfigAbsolutePath} could not be parsed as JSON once comments were stripped: ` +
-        `${error.message}. Refusing to guess its path aliases.`,
-    );
-  }
+/** `compilerOptions.paths` on an already-parsed tsconfig, turned into prefix →
+ * target-directory rules relative to `baseDir` — unsorted; the caller merges rules from
+ * more than one file and sorts once at the end. */
+function extractPathRules(parsed, baseDir) {
   const paths = parsed.compilerOptions?.paths ?? {};
-  const baseDir = path.dirname(tsconfigAbsolutePath);
   const rules = [];
   for (const [key, targets] of Object.entries(paths)) {
     if (!key.endsWith("/*") || !Array.isArray(targets) || targets.length === 0)
@@ -273,6 +403,128 @@ export async function loadPathAliases(tsconfigAbsolutePath) {
       prefix: key.slice(0, -1), // keep the trailing "/"
       targetDir: path.resolve(baseDir, target.slice(0, -1)),
     });
+  }
+  return rules;
+}
+
+/** Resolve a tsconfig `extends` or `references[].path` entry to an actual file on disk.
+ * Either may name the config file directly, name it without its `.json` suffix, or name
+ * a directory that itself contains a `tsconfig.json` — the same three shapes the real
+ * compiler accepts. @returns {Promise<string | null>} */
+async function resolveTsconfigReference(baseDir, specifier) {
+  const candidate = path.resolve(baseDir, specifier);
+  const attempts = [
+    candidate,
+    ...(candidate.endsWith(".json") ? [] : [`${candidate}.json`]),
+    path.join(candidate, "tsconfig.json"),
+  ];
+  for (const attempt of attempts) {
+    try {
+      await fs.access(attempt);
+      return attempt;
+    } catch {
+      // try the next shape
+    }
+  }
+  return null;
+}
+
+/**
+ * `compilerOptions.paths`, followed through `extends` and `references` when the file
+ * itself declares none — unsorted; `loadPathAliases` sorts the merged result once.
+ *
+ * This is the fix for a live foot-gun, not an attack: today every one of this
+ * repository's real `authClient` importers resolves through the `@/` alias, and that
+ * alias is declared TWICE — once in `apps/web/tsconfig.json` (which this scanner reads)
+ * and once more in `apps/web/tsconfig.app.json` (which `tsconfig.json` `references` and
+ * which is what the build and the editor actually resolve against). An entirely ordinary
+ * deduplication — dropping the duplicate `paths` from the root file, leaving only the
+ * `references` — would make the OLD single-file read here return `[]` with no error, and
+ * from that commit on every `@/`-aliased import would fail to resolve: not a caller
+ * missed, ALL of them, silently, as "0 calls, 0 refusals". Following `extends`/
+ * `references` when the root file's own `paths` is empty closes that; `visited` stops a
+ * cycle between configs from recursing forever.
+ *
+ * @returns {Promise<{ prefix: string, targetDir: string }[]>} unsorted
+ */
+async function collectPathRules(tsconfigAbsolutePath, visited = new Set()) {
+  if (visited.has(tsconfigAbsolutePath)) return [];
+  visited.add(tsconfigAbsolutePath);
+
+  let raw;
+  try {
+    raw = await fs.readFile(tsconfigAbsolutePath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return []; // a referenced/extended config that vanished
+    throw error;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(stripCodeComments(raw));
+  } catch (error) {
+    throw new OrganizationCallerScanUnavailableError(
+      `${tsconfigAbsolutePath} could not be parsed as JSON once comments were stripped: ` +
+        `${error.message}. Refusing to guess its path aliases.`,
+    );
+  }
+
+  const baseDir = path.dirname(tsconfigAbsolutePath);
+  const ownRules = extractPathRules(parsed, baseDir);
+  if (ownRules.length > 0) return ownRules;
+
+  if (typeof parsed.extends === "string") {
+    const extended = await resolveTsconfigReference(baseDir, parsed.extends);
+    if (extended !== null) {
+      const inherited = await collectPathRules(extended, visited);
+      if (inherited.length > 0) return inherited;
+    }
+  }
+
+  if (Array.isArray(parsed.references)) {
+    const merged = [];
+    const seenPrefixes = new Set();
+    for (const reference of parsed.references) {
+      if (!reference || typeof reference.path !== "string") continue;
+      const referenced = await resolveTsconfigReference(
+        baseDir,
+        reference.path,
+      );
+      if (referenced === null) continue;
+      for (const rule of await collectPathRules(referenced, visited)) {
+        if (seenPrefixes.has(rule.prefix)) continue;
+        seenPrefixes.add(rule.prefix);
+        merged.push(rule);
+      }
+    }
+    if (merged.length > 0) return merged;
+  }
+
+  return [];
+}
+
+/**
+ * Read `compilerOptions.paths` out of a tsconfig (JSONC — comments stripped first, no
+ * dependency added), following `extends`/`references` when the file itself declares none,
+ * and turn it into ordered prefix → target-directory rules. This is "derive the surface":
+ * the alias table a caller can use is exactly the one the real compiler resolves against,
+ * never a hand-copied guess at what `@/` means.
+ *
+ * Fails closed rather than returning `[]` when no alias map can be found anywhere in the
+ * `extends`/`references` chain — see `collectPathRules`'s docstring for the exact
+ * collapse an empty-but-unnoticed alias map would cause.
+ *
+ * @returns {Promise<{ prefix: string, targetDir: string }[]>} longest prefix first
+ */
+export async function loadPathAliases(tsconfigAbsolutePath) {
+  const rules = await collectPathRules(tsconfigAbsolutePath);
+  if (rules.length === 0) {
+    throw new OrganizationCallerScanUnavailableError(
+      `${tsconfigAbsolutePath} declares no compilerOptions.paths, directly or through its ` +
+        "extends/references chain. This scanner resolves every alias-style import " +
+        "(`@/...`) through that map; without it every such import would silently fail to " +
+        "resolve and this scanner would report a caller count of zero it cannot back up. " +
+        "Refusing to guess.",
+    );
   }
   rules.sort((a, b) => b.prefix.length - a.prefix.length);
   return rules;
@@ -453,6 +705,47 @@ function findExportFromStatements(code) {
     });
   }
   return statements;
+}
+
+/**
+ * A dynamic `import("<specifier>")` call — `await import(...)` or otherwise. Distinguished
+ * from the static `IMPORT_STATEMENT` grammar above by having no `from` clause at all: this
+ * is a call expression, not a declaration. Always refused when its specifier resolves to
+ * the auth-client definition (see the call site in `scanFiles`) — tracing what the awaited
+ * value is destructured or member-accessed into afterward would mean re-deriving this
+ * whole alias analysis for an expression rather than a name bound at parse time, for a
+ * shape nothing in this repository uses today.
+ */
+const DYNAMIC_IMPORT_CALL = /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g;
+
+/**
+ * A CommonJS `require("<specifier>")` call. This module's whole import grammar
+ * (`IMPORT_STATEMENT`, `EXPORT_FROM_STATEMENT`) is ESM-only; `require(...)` is a different
+ * grammar it was never taught, so — same as the dynamic import above — a `require()` that
+ * resolves to the auth-client definition is always refused rather than silently unmatched.
+ * `.cjs`/`.cts` files are exactly the shape most likely to use this, but the check applies
+ * to every scanned file: a `.ts` file can `require()` too (build scripts, interop shims).
+ */
+const REQUIRE_CALL = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
+
+/** Every match of `pattern` (a `/g` regex with one capture group: the specifier) in
+ * `code`, as `{specifier, line, snippet}`. Shared by the dynamic-import and require scans;
+ * neither needs anything beyond "where is this specifier, and what resolves it". */
+function findSpecifierCalls(code, pattern) {
+  const found = [];
+  pattern.lastIndex = 0;
+  for (
+    let match = pattern.exec(code);
+    match !== null;
+    match = pattern.exec(code)
+  ) {
+    found.push({
+      specifier: match[1],
+      line: lineOf(code, match.index),
+      snippet: snippetAt(code, match.index),
+    });
+  }
+  return found;
 }
 
 // ── 4. Per-file alias discovery: import bindings, plus the two recognised local-alias
@@ -663,6 +956,64 @@ function scanOccurrences(code, aliasKinds, consumedLines) {
   return { calls, refusals };
 }
 
+/**
+ * Does `fromAbsolute` (an existing file) reach the auth-client definition through a chain
+ * of `export ... from` re-exports — however many hops, wherever those hops live?
+ *
+ * This is what closes F3: `SCAN_ROOT` is `apps/web/src`, and a barrel file OUTSIDE it that
+ * re-exports the client is never itself walked or read by anything else in this module —
+ * `findExportFromStatements` only ever runs on files `scanFiles` was handed, and a barrel
+ * rooted outside the scanned root is not one of them. The only remaining observation point
+ * is an IN-ROOT import that resolves TO such a barrel; this is what that resolution calls
+ * once it finds the target is not the definition file directly.
+ *
+ * `visited` is shared across the whole recursive descent (not per-branch) so a cycle
+ * between re-exporting files terminates rather than exploring the same file twice.
+ *
+ * @returns {Promise<boolean>}
+ */
+async function reexportsDefinitionTransitively(
+  fromAbsolute,
+  aliasRules,
+  definitionAbsolutePath,
+  readFile,
+  visited,
+) {
+  if (fromAbsolute === definitionAbsolutePath) return true;
+  if (visited.has(fromAbsolute)) return false;
+  visited.add(fromAbsolute);
+
+  let source;
+  try {
+    source = await readFile(fromAbsolute);
+  } catch {
+    return false; // unreadable: cannot prove a chain runs through it either
+  }
+  const code = stripCodeComments(source);
+  for (const reExport of findExportFromStatements(code)) {
+    const base = resolveImportPath(
+      fromAbsolute,
+      reExport.specifier,
+      aliasRules,
+    );
+    if (base === null) continue;
+    const resolved = await resolveExistingFile(base);
+    if (resolved === null) continue;
+    if (
+      await reexportsDefinitionTransitively(
+        resolved,
+        aliasRules,
+        definitionAbsolutePath,
+        readFile,
+        visited,
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // ── 6. Orchestration ──────────────────────────────────────────────────────────────────
 
 /**
@@ -693,7 +1044,14 @@ export async function scanFiles({
     // also be read whenever it could carry a re-export at all.
     const mentionsBinding = source.includes(exportName);
     const couldReExport = source.includes("export") && source.includes("from");
-    if (!mentionsBinding && !couldReExport) continue;
+    // F1/F4: a dynamic `import(...)` or a `require(...)` of the client reaches it without
+    // ever spelling a static `import ... from` clause, and (for the direct member-access
+    // shape, e.g. `(await import("...")).authClient…`) without necessarily spelling
+    // `exportName` either if the specifier alone is what resolves — so either substring is
+    // its own reason to read the file, same as `couldReExport` already is for `export`.
+    const couldDynamicOrRequire =
+      source.includes("import(") || source.includes("require(");
+    if (!mentionsBinding && !couldReExport && !couldDynamicOrRequire) continue;
 
     const code = stripCodeComments(source);
     const statements = findImportStatements(code);
@@ -704,7 +1062,10 @@ export async function scanFiles({
 
     // A re-export of the binding puts it behind a module path that no consumer's import
     // will resolve to the definition, so every caller reached through it is invisible to
-    // this scanner. Refuse, rather than report a count that is silently incomplete.
+    // this scanner. Refuse, rather than report a count that is silently incomplete. This
+    // also covers a re-export that reaches the definition through a further chain of
+    // `export ... from` hops (F3) — `resolved` need not equal `definitionAbsolutePath`
+    // directly for the chain to still end there.
     for (const reExport of findExportFromStatements(code)) {
       const reExportBase = resolveImportPath(
         absolute,
@@ -712,15 +1073,67 @@ export async function scanFiles({
         aliasRules,
       );
       if (reExportBase === null) continue;
-      if ((await resolveExistingFile(reExportBase)) !== definitionAbsolutePath)
-        continue;
+      const resolved = await resolveExistingFile(reExportBase);
+      if (resolved === null) continue;
+      const isDirect = resolved === definitionAbsolutePath;
+      const isChained =
+        !isDirect &&
+        (await reexportsDefinitionTransitively(
+          resolved,
+          aliasRules,
+          definitionAbsolutePath,
+          readFile,
+          new Set([absolute]),
+        ));
+      if (!isDirect && !isChained) continue;
       refusals.push({
         line: reExport.startLine,
         snippet: `export ${reExport.clause} from "${reExport.specifier}"`,
+        reason: isDirect
+          ? "re-export of the auth-client module. Callers reaching the binding through " +
+            "this module path are not traced by this scanner, so the count it reports " +
+            "would be incomplete."
+          : `"${reExport.specifier}" re-exports the auth-client module through a further ` +
+            "chain of one or more files. Callers reaching the binding through this " +
+            "module path are not traced by this scanner, so the count it reports would " +
+            "be incomplete.",
+      });
+    }
+
+    // F1: a dynamic `import("<specifier>")` of the definition. The awaited value's shape
+    // afterward (destructured, member-accessed, reassigned) is not traced — refused
+    // outright, the same choice this module already makes for a namespace import.
+    for (const call of findSpecifierCalls(code, DYNAMIC_IMPORT_CALL)) {
+      const base = resolveImportPath(absolute, call.specifier, aliasRules);
+      if (base === null) continue;
+      if ((await resolveExistingFile(base)) !== definitionAbsolutePath)
+        continue;
+      refusals.push({
+        line: call.line,
+        snippet: call.snippet,
         reason:
-          "re-export of the auth-client module. Callers reaching the binding through " +
-          "this module path are not traced by this scanner, so the count it reports " +
-          "would be incomplete.",
+          `dynamic \`import("${call.specifier}")\` of the auth-client module. This ` +
+          "scanner only traces the binding through a static `import ... from` " +
+          "declaration; a dynamically imported value could reach `.organization` " +
+          "through any shape at all, and none of them are checked here.",
+      });
+    }
+
+    // F4: a CommonJS `require("<specifier>")` of the definition — a different grammar
+    // this scanner's `IMPORT_STATEMENT`/`EXPORT_FROM_STATEMENT` regexes were never taught,
+    // so (same reasoning as the dynamic import above) always refused rather than traced.
+    for (const call of findSpecifierCalls(code, REQUIRE_CALL)) {
+      const base = resolveImportPath(absolute, call.specifier, aliasRules);
+      if (base === null) continue;
+      if ((await resolveExistingFile(base)) !== definitionAbsolutePath)
+        continue;
+      refusals.push({
+        line: call.line,
+        snippet: call.snippet,
+        reason:
+          `CommonJS \`require("${call.specifier}")\` of the auth-client module. This ` +
+          "scanner's import grammar is ESM-only (`import ... from`); a `require()` " +
+          "of the same module is not traced by it at all.",
       });
     }
 
@@ -732,7 +1145,33 @@ export async function scanFiles({
       );
       if (resolvedBase === null) continue;
       const resolved = await resolveExistingFile(resolvedBase);
-      if (resolved !== definitionAbsolutePath) continue;
+      if (resolved === null) continue;
+      if (resolved !== definitionAbsolutePath) {
+        // F3: not the definition file directly — but does it get there through a further
+        // chain of re-exports, possibly rooted entirely outside the scanned root? If so,
+        // this import is not "unrelated"; it is the only place left to notice the chain.
+        if (
+          await reexportsDefinitionTransitively(
+            resolved,
+            aliasRules,
+            definitionAbsolutePath,
+            readFile,
+            new Set([absolute]),
+          )
+        ) {
+          refusals.push({
+            line: statement.startLine,
+            snippet: `import ... from "${statement.specifier}"`,
+            reason:
+              `"${statement.specifier}" does not resolve directly to the auth-client ` +
+              "definition, but re-exports it through a chain of one or more further " +
+              "files (possibly outside apps/web/src). This scanner does not trace " +
+              "re-export chains rooted outside the file it is reading, and refuses " +
+              "rather than silently treating the import as unrelated.",
+          });
+        }
+        continue;
+      }
 
       for (
         let line = statement.startLine;
