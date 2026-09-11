@@ -230,7 +230,7 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   full retrofit, not on the deletions alone.
 - **#17** — sessions already minted by the removed MCP OAuth and device flows. Deleting an
   endpoint is not revoking a credential; a consent click created a full 30-day session row.
-- **Retrofit S7 (native role writes) — ⛔ BLOCKED BY #82 ALONE.** Not a scheduling
+- **Retrofit S7 (native role writes) — ⛔ BLOCKED BY #82 AND #118.** Not a scheduling
   preference. **#66 is CLOSED** — PR #80 removed the privilege-restoration fail-open where
   `hasWorkspacePermission` fell back to the compiled built-in role definitions when a
   `workspace_role` row was absent, so a role an administrator had *narrowed*, or deleted,
@@ -241,8 +241,15 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   rule is one workspace membership = exactly one role, and the two authorization surfaces
   disagree on malformed multi-role values — see the decision log. PR #84 has characterized the
   divergence and pinned the four target behaviours; the remediation itself is not written.
-  **S7's release condition is now multi-role (#82) cleared, independently reviewed.** Check
-  GitHub for #82's current state (`gh issue view 82`) — do not infer it from this file.
+  **Corrected 2026-09-11: #82 is no longer the only blocker.** **#118** records the matching
+  defect one table over — `workspace_role` has no `UNIQUE (workspace_id, role)`, so duplicate
+  rows for one pair can carry different permission payloads and both evaluators read them with an
+  unordered `LIMIT 1`. S7 adds the first native write path to that table, so the constraint is a
+  release prerequisite, not follow-up hardening. S7's release condition is therefore **#82 and
+  #118 cleared, each independently reviewed**, plus `roles-and-permissions-ui.md`'s review
+  section closed (the step-0 gate recorded in the S7 blueprint). Check
+  GitHub for each issue's current state (`gh issue view 82`, `gh issue view 118`) — do not infer
+  it from this file.
 - **#31 (P2 workflows) — blocked by AGENTS.md do-not 15.** `docs/03-features/workflows.md`
   is the subject of a *not-ready* review verdict — the verdict and its 4 High, 4 Medium and
   2 Low findings live in the review document, not in the spec itself, which has no review

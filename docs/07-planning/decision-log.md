@@ -17,6 +17,57 @@ Newest first.
 
 ---
 
+### 2026-09-11 · Router aliases are execution pools, not review tiers — `model=sonnet` is not formal Sonnet
+
+**Decision:** the routing aliases are recorded with their real semantics, and the tier a review
+satisfies is fixed to the **explicit alias**, never to the provider label:
+
+| Alias | Role |
+| --- | --- |
+| `main[1m]` | operational general pool — implementation, debugging, integration, fallback |
+| `prep[1m]` | high-throughput preparation and mechanical work |
+| `audit[1m]` | diverse multi-model adversarial **pre-review** |
+| `review-sonnet[1m]` | **explicit** formal ordinary Claude review |
+| `review-opus[1m]` | **explicit** formal Claude security review |
+
+Claude Code's **default Sonnet slot is deliberately mapped to the general pool**, because the
+harness's own tool-safety classifier resolves through that slot and must never depend on a scarce
+formal-review route. The direct consequence, stated so nobody infers the opposite:
+
+> **`model=sonnet` is NOT formal Sonnet evidence.** Formal ordinary review requires the explicit
+> `review-sonnet[1m]` alias in a fresh independent top-level context on the exact frozen SHA.
+> Formal security review requires the explicit `review-opus[1m]` alias in a different fresh
+> independent context on that same SHA.
+
+**Why:** during a quota-constrained window the two roles were conflated by a single environment
+variable, and a degraded formal-review route then blocked unrelated engineering work at the
+tool-classifier layer. Separating "who may clear this candidate" from "which pool runs this task"
+keeps the formal gate scarce and meaningful while ordinary execution fails over freely.
+
+**Also recorded, because each has already been got wrong once:**
+
+- one provider or model outage never blocks unrelated engineering — mark only that route degraded
+  and continue;
+- mixed/Fusion output is **never** formal Claude clearance, however strong the finding;
+- a model's self-reported version string is not identity proof — identity comes from the route and
+  the request/response metadata, never from asking the model what it is;
+- exact-head review discipline is unchanged: any substantive SHA change invalidates clearance;
+- frozen candidates stay frozen while review capacity is unavailable.
+
+**Deliberately NOT recorded here:** any provider inventory, balance, or quota percentage. Those are
+volatile runtime facts, not governance, and writing today's exhaustion into a durable document is
+how a temporary condition becomes a standing excuse.
+
+**Alternatives:** map the default Sonnet slot to `review-sonnet` so ordinary subagents run on the
+formal pool — rejected: it makes the tool-safety classifier depend on a scarce route and it invites
+the exact downgrade the third absolute forbids. Leave the aliases undocumented and rely on
+convention — rejected, for the reason this entry exists.
+
+**Decided by:** Thomas, 2026-09-11 (routing directive issued this session). Recorded by the
+orchestrator. This entry records routing semantics only; it grants no merge authority.
+
+---
+
 ### 2026-09-10 · An unrecognised transition effect kind fails closed (`WF-22`)
 
 **Decision:** An authored transition effect whose `kind` falls outside `WF-19`'s vocabulary
