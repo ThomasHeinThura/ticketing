@@ -4,6 +4,7 @@ import {
 } from "@taskdesk/permissions";
 import type { Context } from "hono";
 import db from "../database";
+import { ROLE_INDEPENDENT_ORGANIZATION_ACTION_SET } from "./organization-exempt-actions";
 import { firstMalformedMembershipRole } from "./workspace-member-roles";
 
 /**
@@ -50,8 +51,9 @@ import { firstMalformedMembershipRole } from "./workspace-member-roles";
  *
  * ## What is deliberately NOT guarded, and why
  *
- * `EXEMPT_FROM_MEMBERSHIP_CHECK` below lists the organization routes where the caller's
- * existing role in the active organization is not an authorization input. Guarding those
+ * `ROLE_INDEPENDENT_ORGANIZATION_ACTION_SET` (`./organization-exempt-actions.ts`) lists the
+ * organization routes where the caller's existing role in the active organization is not an
+ * authorization input. Guarding those
  * would take a real defect — a corrupt row in workspace A — and turn it into an unrelated
  * outage: unable to create workspace B, unable to list their own invitations, unable even to
  * leave the workspace whose row is broken. Fail-closed means refusing the decisions that
@@ -67,27 +69,6 @@ import { firstMalformedMembershipRole } from "./workspace-member-roles";
  * altogether, and the `CHECK` constraint from migration `0050` is the backstop underneath
  * both — so a route this middleware has not anticipated still cannot persist a union.
  */
-
-/**
- * Organization routes where the caller's own membership role is NOT an authorization input,
- * so a malformed row of theirs must not refuse the request. Each entry is a path suffix
- * under `/organization/`.
- */
-const EXEMPT_FROM_MEMBERSHIP_CHECK = new Set([
-  // Acts on no existing organization at all.
-  "create",
-  "check-slug",
-  // Scoped to the caller's own user, not to a role in an organization.
-  "list",
-  "set-active",
-  "list-user-invitations",
-  "get-invitation",
-  // Creates or declines a membership; the caller's EXISTING role is not consulted, and
-  // better-auth runs its own last-owner guard on `leave`.
-  "accept-invitation",
-  "reject-invitation",
-  "leave",
-]);
 
 /**
  * Body fields that carry a role and are written to `workspace_member.role` or to
@@ -389,7 +370,7 @@ export function organizationPluginRoleGuard(readSession: SessionReader) {
       }
     }
 
-    if (EXEMPT_FROM_MEMBERSHIP_CHECK.has(action)) return null;
+    if (ROLE_INDEPENDENT_ORGANIZATION_ACTION_SET.has(action)) return null;
 
     // Half 2 — no request may READ a multi-role value.
     const session = await readSession(c.req.raw.headers);

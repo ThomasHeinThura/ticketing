@@ -193,6 +193,38 @@ describe("#82 B-1 — cancel-invitation cannot be steered by emptying every cand
   });
 });
 
+describe("#82 role-independent organization actions remain available during recovery", () => {
+  it("list-user-teams is not rejected for a malformed role elsewhere, while a role-dependent action still fails closed", async () => {
+    const { app } = createApp();
+    const { actor, workspaceA, workspaceB } = await scenario(app);
+    await plantLegacyMembershipRole(workspaceB, actor.user.id, "owner,admin");
+
+    const roleIndependent = await app.request(
+      "/api/auth/organization/list-user-teams",
+      {
+        method: "GET",
+        headers: { cookie: actor.cookie },
+      },
+    );
+    expect(roleIndependent.status).toBe(200);
+
+    const roleDependent = await organizationActionViaPlugin(
+      app,
+      actor.cookie,
+      "invite-member",
+      {
+        organizationId: workspaceA,
+        email: "blocked-by-malformed-role@healthy.test",
+        role: "member",
+      },
+    );
+    expect(roleDependent.status).toBe(409);
+    expect(((await roleDependent.json()) as { error?: string }).error).toBe(
+      "MALFORMED_MEMBERSHIP_ROLE",
+    );
+  });
+});
+
 describe("#82 B-1 — update-team cannot be steered through body.data.organizationId", () => {
   it("refuses a rename whose workspace is named only inside `data`", async () => {
     const { app } = createApp();

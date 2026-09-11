@@ -295,9 +295,9 @@ export function resolveMembershipRoleFrom(
  * process, which after migration `0050` means its `CHECK` was dropped or the row predates
  * validation — a deployment already requiring administrator repair. Refusing every
  * role-derived decision until that repair is the fail-closed answer, and
- * `EXEMPT_FROM_MEMBERSHIP_CHECK` still preserves recovery: the caller can list their
- * workspaces, switch active workspace, create a new one, accept or reject invitations, and
- * **leave the workspace whose row is broken**.
+ * `ROLE_INDEPENDENT_ORGANIZATION_ACTION_SET` still preserves recovery: the caller can list
+ * their workspaces, switch active workspace, create a new one, accept or reject invitations,
+ * and **leave the workspace whose row is broken**.
  *
  * ## Read in TypeScript, filtered by the canonical predicate
  *

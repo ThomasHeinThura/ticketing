@@ -1,5 +1,6 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { z } from "./openapi";
+import { ROLE_INDEPENDENT_ORGANIZATION_ACTION_SET } from "./utils/organization-exempt-actions";
 
 const guardErrorSchema = z.object({
   error: z.string(),
@@ -23,19 +24,6 @@ const organizationGuardConflict = {
   },
 };
 
-const membershipCheckExemptActions = new Set([
-  "create",
-  "check-slug",
-  "list",
-  "set-active",
-  "list-user-invitations",
-  "list-user-teams",
-  "get-invitation",
-  "accept-invitation",
-  "reject-invitation",
-  "leave",
-]);
-
 // Better Auth serves /api/auth/* from its own handler, so these operations have
 // no route of ours to hang documentation off. They are registered directly on
 // the OpenAPI registry instead.
@@ -58,7 +46,7 @@ export function organizationRoutes(
         responses: {
           ...route.responses,
           ...organizationGuardBadRequest,
-          ...(membershipCheckExemptActions.has(action)
+          ...(ROLE_INDEPENDENT_ORGANIZATION_ACTION_SET.has(action)
             ? {}
             : organizationGuardConflict),
         },
