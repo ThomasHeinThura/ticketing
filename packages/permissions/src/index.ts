@@ -117,6 +117,14 @@ export {
   viewer,
 } from "./legacy-better-auth-access-control.js";
 export {
+  isSingleMembershipRole,
+  legacyMembershipRoleSegments,
+  MEMBERSHIP_ROLE_SEPARATOR,
+  type MembershipRoleProblem,
+  membershipRoleProblem,
+  repairableMembershipRole,
+} from "./membership-role-value.js";
+export {
   BODY_PREDICATES,
   type BodyPredicate,
   type CapabilityPolicy,

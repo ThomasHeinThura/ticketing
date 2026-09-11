@@ -1,5 +1,28 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { z } from "./openapi";
+import { ROLE_INDEPENDENT_ORGANIZATION_ACTION_SET } from "./utils/organization-exempt-actions";
+
+const guardErrorSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  field: z.string().optional(),
+  problem: z.enum(["multi-valued", "untrimmed", "empty"]).optional(),
+});
+
+const organizationGuardBadRequest = {
+  400: {
+    description:
+      "The request body cannot be checked or a role value is invalid",
+    content: { "application/json": { schema: guardErrorSchema } },
+  },
+};
+
+const organizationGuardConflict = {
+  409: {
+    description: "The caller has a malformed workspace membership role",
+    content: { "application/json": { schema: guardErrorSchema } },
+  },
+};
 
 // Better Auth serves /api/auth/* from its own handler, so these operations have
 // no route of ours to hang documentation off. They are registered directly on
@@ -10,7 +33,26 @@ import { z } from "./openapi";
 // generator plus ~200 lines of spec rewriting (operationId/summary/tag
 // normalization, ref pruning, and a 3.1-to-3.0 downgrade). Regenerate and diff
 // this file when upgrading Better Auth.
-export function organizationRoutes(registry: OpenAPIHono["openAPIRegistry"]) {
+export function organizationRoutes(
+  rawRegistry: OpenAPIHono["openAPIRegistry"],
+) {
+  const registry = {
+    registerPath: (
+      route: Parameters<typeof rawRegistry.registerPath>[0],
+    ): ReturnType<typeof rawRegistry.registerPath> => {
+      const action = route.path.slice("/auth/organization/".length);
+      return rawRegistry.registerPath({
+        ...route,
+        responses: {
+          ...route.responses,
+          ...organizationGuardBadRequest,
+          ...(ROLE_INDEPENDENT_ORGANIZATION_ACTION_SET.has(action)
+            ? {}
+            : organizationGuardConflict),
+        },
+      });
+    },
+  };
   registry.registerPath({
     method: "post",
     path: "/auth/organization/accept-invitation",
@@ -506,10 +548,12 @@ export function organizationRoutes(registry: OpenAPIHono["openAPIRegistry"]) {
               email: z.string().openapi({
                 description: "The email address of the user to invite",
               }),
-              role: z.union([z.string(), z.array(z.string())]).openapi({
-                description:
-                  'The role(s) to assign to the user. It can be `admin`, `member`, owner. Eg: "member"',
-              }),
+              role: z
+                .union([z.string(), z.array(z.string()).length(1)])
+                .openapi({
+                  description:
+                    'Exactly one role to assign, as a string or one-element array. Eg: "member"',
+                }),
               organizationId: z.string().optional().openapi({
                 description: "The organization ID to invite the user to",
               }),
@@ -1037,10 +1081,12 @@ export function organizationRoutes(registry: OpenAPIHono["openAPIRegistry"]) {
         content: {
           "application/json": {
             schema: z.object({
-              role: z.union([z.string(), z.array(z.string())]).openapi({
-                description:
-                  'The new role to be applied. This can be a string or array of strings representing the roles. Eg: ["admin", "sale"]',
-              }),
+              role: z
+                .union([z.string(), z.array(z.string()).length(1)])
+                .openapi({
+                  description:
+                    'Exactly one role to apply, as a string or one-element array. Eg: "admin"',
+                }),
               memberId: z.string().openapi({
                 description:
                   'The member id to apply the role update to. Eg: "member-id"',

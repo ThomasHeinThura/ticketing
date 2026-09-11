@@ -4,10 +4,7 @@ import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import { isInstanceAdmin } from "./is-instance-admin";
-import {
-  isUnambiguousMembership,
-  workspaceMemberRoles,
-} from "./workspace-member-roles";
+import { resolveMembershipRole } from "./workspace-member-roles";
 
 type PermissionMap = Record<string, string[]>;
 
@@ -65,23 +62,26 @@ export function requireWorkspaceRoleAuthority(permissions: PermissionMap) {
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
 
-    // ALL rows, and refuse on ambiguity -- the twin of the same fix in
-    // `require-workspace-permission.ts`. Both were unordered `.limit(1)` reads
-    // over a table with no unique constraint on `(workspace_id, user_id)`, so
-    // either could grant or deny depending on scan order. Fixed together
-    // because fixing one and leaving its twin is this repository's signature
-    // defect.
-    const roles = await workspaceMemberRoles(db, workspaceId, userId);
-    if (!isUnambiguousMembership(roles)) {
+    // ALL rows, refuse on ambiguity, and -- issue #82 -- refuse on a value that is not
+    // exactly one role. The twin of the same fix in `require-workspace-permission.ts`, and
+    // now literally the same function: both were unordered `.limit(1)` reads over a table
+    // with no unique constraint on `(workspace_id, user_id)`, so either could grant or deny
+    // depending on scan order, and both then compared the value with `=== "owner"` or an
+    // exact DB lookup, so both denied `"owner,admin"` by accident rather than by decision.
+    // Fixed together, through one shared resolution, because fixing one and leaving its
+    // twin is this repository's signature defect -- and because two call sites reducing the
+    // same rows differently is the exact shape of #82 itself.
+    //
+    // This guard runs only for instance admins (see the early return above), so the
+    // malformed case here is the narrow one `hasWorkspacePermission` deliberately leaves
+    // alone: an instance admin who is ALSO a member of this workspace through a corrupt
+    // row. Refusing is right and costs nothing -- this middleware exists precisely to stop
+    // the instance-admin bypass from standing in for a workspace role it never read.
+    const membership = await resolveMembershipRole(db, workspaceId, userId);
+    if (!membership.ok) {
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
-    // Load-bearing for the compiler, not dead: `roles[0]` is
-    // `string | undefined` under `noUncheckedIndexedAccess` and `length === 1`
-    // does not narrow an index access. Unreachable at runtime.
-    const role = roles[0];
-    if (role === undefined) {
-      throw new HTTPException(403, { message: "Insufficient permissions" });
-    }
+    const role = membership.role;
 
     const statements =
       role === "owner"

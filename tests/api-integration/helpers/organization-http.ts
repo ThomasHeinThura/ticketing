@@ -188,6 +188,45 @@ export async function inviteAndAcceptAsNewMember(
 }
 
 /**
+ * The same plugin route as `updateMemberRoleViaPlugin`, but with the request's **media type
+ * and raw body under the caller's control** — including omitting `Content-Type` entirely.
+ *
+ * This exists because `organization-plugin-role-guard.ts` decides whether to inspect a body,
+ * and an earlier version made that decision from a case-SENSITIVE
+ * `contentType.includes("application/json")`. `Content-Type: Application/JSON` therefore
+ * skipped the guard while better-auth — which parses with `request.json()` and never consults
+ * the header — went on to write the multi-role value. Testing that needs a client that can
+ * spell the header differently and can send a body that is not valid JSON at all, neither of
+ * which `JSON.stringify` plus a fixed header can do.
+ *
+ * Pass `contentType: null` to send **no** `Content-Type` header.
+ */
+export async function updateMemberRoleViaPluginRaw(
+  app: App,
+  actingCookie: string,
+  rawBody: string,
+  contentType: string | null,
+  /**
+   * An optional query string, leading `?` included. better-auth's `update-member-role` never
+   * reads the query — which is precisely why it is worth being able to send one: a guard that
+   * resolved its target from the query could be pointed somewhere the handler will not act,
+   * and issue #82's NB-1 was exactly that.
+   */
+  queryString = "",
+): Promise<Response> {
+  const headers: Record<string, string> = { cookie: actingCookie };
+  if (contentType !== null) headers["content-type"] = contentType;
+  return app.request(
+    `/api/auth/organization/update-member-role${queryString}`,
+    {
+      method: "POST",
+      headers,
+      body: rawBody,
+    },
+  );
+}
+
+/**
  * Drives the still-mounted plugin route `POST
  * /api/auth/organization/update-member-role` (better-auth's
  * `crud-members.mjs`, `updateMemberRoleBodySchema` at line 215) exactly as
@@ -210,4 +249,102 @@ export async function updateMemberRoleViaPlugin(
     headers: { "content-type": "application/json", cookie: actingCookie },
     body: JSON.stringify({ organizationId, memberId, role }),
   });
+}
+
+/**
+ * Writes a role value into `workspace_member` that migration `0050`'s CHECK constraint
+ * forbids — the ONLY way to reproduce a legacy malformed row once #82's remediation is in
+ * place, and therefore load-bearing rather than a convenience.
+ *
+ * WHY THIS IS NOT CHEATING. After #82 there are three controls in the way of a multi-role
+ * value: `organizationPluginRoleGuard` refuses the write, the evaluator refuses the read,
+ * and `workspace_member_role_single_value` refuses the row. Together they make the state
+ * unreachable through any route — which is the point, and which also means a test can no
+ * longer create it the way the characterization suite used to, by asking the plugin nicely.
+ * But "unreachable through a route" is not "impossible": a deployment that upgrades INTO
+ * this fix may already hold such a row, written months ago by the plugin when nothing
+ * stopped it. That row is exactly what the read-side remediation exists for, so it must
+ * still be testable. This helper reproduces it the only way it can now arise — as data that
+ * predates the constraint.
+ *
+ * The constraint is re-added `NOT VALID`, which is what makes this safe to use mid-suite:
+ * PostgreSQL then enforces it on every subsequent INSERT and UPDATE while not re-checking
+ * the row just planted. So the guard stays live for the rest of the test — a test that
+ * plants a legacy row does not thereby switch the constraint off for everything after it.
+ */
+/**
+ * Any `POST /api/auth/organization/<action>` with an arbitrary JSON body.
+ *
+ * The guard's read half is reached by every non-exempt organization action, and the two
+ * escalations found against it went through actions no purpose-built helper covered —
+ * `cancel-invitation`, whose organization better-auth derives from the invitation row, and
+ * `update-team`, which reads `body.data.organizationId`. A helper per action would have
+ * produced a helper per action the reviewer thought to try; this one takes the action as a
+ * parameter so a probe can reach anything the plugin mounts.
+ */
+export async function organizationActionViaPlugin(
+  app: App,
+  actingCookie: string,
+  action: string,
+  body: Record<string, unknown>,
+  /**
+   * A UNIQUE client address per call by default, for the reason `signUpUser` has one:
+   * `auth.ts:520` rate-limits `/organization/invite-member` to **5 per 60 seconds per client
+   * IP**, and that is a real control (#16 turned it on for every deployment, where kaneo had
+   * it cloud-only). A probe file issuing several invitations is several *different* callers,
+   * and modelling them as one is what is wrong — not the limit. Without this, a suite's
+   * fourth invitation returns `429` and the probe fails for a reason unrelated to what it
+   * tests. Pass a fixed address to pin the bucket deliberately.
+   */
+  clientIp: string = nextClientIp(),
+): Promise<Response> {
+  return app.request(`/api/auth/organization/${action}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      cookie: actingCookie,
+      "x-forwarded-for": clientIp,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * The caller's pending invitations in a workspace, read straight from the table.
+ *
+ * Probes against `cancel-invitation` must assert the invitation's own status rather than the
+ * response code: the escalation returned `200` and the row moved to `canceled`, so a probe
+ * checking only the status would have reported the bypass as a pass.
+ */
+export async function invitationStatus(invitationId: string): Promise<string> {
+  const { eq } = await import("drizzle-orm");
+  const { default: db, schema } = await import(
+    "../../../apps/api/src/database"
+  );
+  const [row] = await db
+    .select({ status: schema.invitationTable.status })
+    .from(schema.invitationTable)
+    .where(eq(schema.invitationTable.id, invitationId))
+    .limit(1);
+  if (!row) throw new Error(`invitationStatus: no invitation ${invitationId}`);
+  return row.status;
+}
+
+export async function plantLegacyMembershipRole(
+  workspaceId: string,
+  userId: string,
+  role: string,
+): Promise<void> {
+  const { sql } = await import("drizzle-orm");
+  const { default: db } = await import("../../../apps/api/src/database");
+
+  await db.execute(
+    sql`ALTER TABLE "workspace_member" DROP CONSTRAINT IF EXISTS "workspace_member_role_single_value"`,
+  );
+  await db.execute(
+    sql`UPDATE "workspace_member" SET "role" = ${role} WHERE "workspace_id" = ${workspaceId} AND "user_id" = ${userId}`,
+  );
+  await db.execute(
+    sql`ALTER TABLE "workspace_member" ADD CONSTRAINT "workspace_member_role_single_value" CHECK (position(',' in "role") = 0 AND "role" = btrim("role") AND btrim("role") <> '') NOT VALID`,
+  );
 }
