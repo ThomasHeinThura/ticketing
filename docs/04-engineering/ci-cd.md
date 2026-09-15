@@ -50,7 +50,11 @@ stages below.
 │ pnpm check:env       no stray process.env        │
 │ pnpm check:vocabulary identifiers registered     │
 │ pnpm check:skips     no .skip / .only            │
-│ pnpm check:organization-callers zero live callers│
+│ pnpm check:organization-callers                  │
+│                      S10 tripwire — shrink-only  │
+│                      ratchet on live             │
+│                      authClient.organization.*   │
+│                      callers                     │
 │ pnpm test:ci-scripts  gate checkers + red probes │
 │ pr-template check    sections filled, tiers named│
 │ no-inherited-routes  removals stay removed       │
@@ -245,6 +249,13 @@ trail and is excluded). **`check:env`** fails on a `process.env` read outside
 [configuration-reference.md](../05-operations/configuration-reference.md)'s list;
 **`check:vocabulary`** on a table, capability, event key or job name absent from its
 authority document; **`check:skips`** on `.skip(`, `.only(` or `describe.skip`.
+**`check:organization-callers`** enforces a **shrink-only ratchet**, not a zero-tolerance
+gate, over every live `authClient.organization.*` call site in `apps/web/src`
+(`scripts/ci/organization-callers-baseline.json`) — S10 may only unmount `organization()`
+once this reaches zero. It reports today's 4 live call sites (4 families) as tracked debt
+and only fails if that count would rise, if the baseline itself grew relative to the merge
+base with `main`, or if a use of the auth client cannot be mechanically classified as a
+clean call (an unconditional failure, independent of the ratchet).
 **`tests/permissions/no-inherited-integration-routes.test.ts`** asserts no route matches
 `public-project|github|gitea|slack|discord|telegram|generic-webhook`, that `octokit` and
 `@octokit/webhooks` are absent from the lockfile, and that the better-auth plugin list equals
