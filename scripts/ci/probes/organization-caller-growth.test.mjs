@@ -717,4 +717,38 @@ describe("S10 — authClient.organization.* callers cannot grow unnoticed", () =
     );
     assert.match(run.output, /not a simple string literal/);
   });
+
+  it("T: a plain, unobfuscated call placed directly in the auth-client DEFINITION file itself is not silently skipped (formal review's third bypass, F9)", () => {
+    // No eval, no dynamic import, no computed anything -- the plainest possible call,
+    // placed in the one file most likely to receive an ad-hoc "wire up a default org on
+    // load" during this exact retrofit: the file that constructs the client. Before F9,
+    // this file was never reached by `scanOccurrences` at all, because `rootAliasNames`
+    // is populated only by files that IMPORT the export -- the defining file never does.
+    const modifiedAuthClient = [
+      AUTH_CLIENT_SOURCE,
+      "// bootstrap: make sure a default org is active on load",
+      'authClient.organization.setActive({ organizationId: "default" });',
+      "",
+    ].join("\n");
+
+    const dir = scenario("org-definition-file-call", {
+      baseFiles: {},
+      baseBaseline: {},
+      headFiles: { [AUTH_CLIENT]: modifiedAuthClient },
+      headBaseline: {},
+    });
+
+    const run = runChecker(dir, "check-organization-callers.mjs");
+    // This is a genuine, resolvable, non-obfuscated call -- it should be COUNTED, not
+    // merely refused, and its growth (0 -> 1 in the definition file, unbaselined) must
+    // fail the shrink-only ratchet exactly like any other new caller would.
+    assert.equal(
+      run.status,
+      1,
+      "a plain call inside the auth-client definition file must be detected, not silently " +
+        `scored zero. Exited ${run.status}:\n${run.output}`,
+    );
+    assert.ok(run.output.includes(AUTH_CLIENT), run.output);
+    assert.match(run.output, /setActive/);
+  });
 });

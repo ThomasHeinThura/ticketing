@@ -1306,10 +1306,27 @@ export async function scanFiles({
       }
     }
 
-    // The defining module itself never IMPORTS the export — it declares it — so it never
-    // reaches `rootAliasNames` through the loop above. Its declaration line is still text
-    // containing `exportName =`, which `scanOccurrences`'s declaration-keyword check skips
-    // directly; nothing extra is needed here.
+    // F9: the defining module itself never IMPORTS the export — it declares it — so it
+    // never reaches `rootAliasNames` through the loop above, and without this seed the
+    // file falls straight through the skip-gate below and is NEVER SCANNED AT ALL if
+    // nothing else in it trips a top-level check. Found by a formal review, reproduced
+    // live against the real checker: a plain `authClient.organization.setActive({...})`
+    // placed directly in the definition file, right after its own `export const
+    // authClient = createAuthClient(...)`, produced exit 0 / "0 live call sites" / zero
+    // refusals — no obfuscation, no eval, no dynamic import, just an ordinary call in the
+    // one file most likely to receive an ad-hoc "wire up a default org on load" during
+    // this exact retrofit. An earlier version of this comment claimed "nothing extra is
+    // needed here" and reasoned only about the declaration line itself not misfiring as a
+    // false positive — true, but it never addressed that every OTHER line in the same
+    // file was consequently never examined at all. Seeding the definition file's own
+    // export name into `rootAliasNames` reuses the exact same `scanOccurrences` machinery
+    // already proven correct for importing files; the existing `DECLARATION_KEYWORDS`
+    // check in `scanOccurrences` (see its own comment) already correctly skips the
+    // declaration line itself, so this seed cannot turn the declaration into a false
+    // positive.
+    if (absolute === definitionAbsolutePath) {
+      rootAliasNames.add(exportName);
+    }
 
     if (rootAliasNames.size === 0 && refusals.length === 0) continue;
 
