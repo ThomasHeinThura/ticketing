@@ -191,6 +191,28 @@ export function createApp() {
     return c.json({ status: "ok" });
   });
 
+  // Liveness: the process is up, touches no dependency. A Postgres blip must never
+  // restart a healthy container — see docs/05-operations/deployment.md § Health and
+  // readiness, and charts/taskdesk/values.yaml's comment on the same separation.
+  api.get("/public/health/live", (c) => {
+    return c.json({ status: "ok" });
+  });
+
+  // Readiness: database reachable. Migrations are a separate, earlier concern —
+  // runStartupTasks() runs them and blocks serve() from ever accepting a connection
+  // until they succeed, so by the time this handler can run at all, migrations have
+  // already applied; a second check here would only re-assert what booting already
+  // guaranteed.
+  api.get("/public/health/ready", async (c) => {
+    try {
+      await getDatabase().execute(sql`SELECT 1`);
+      return c.json({ status: "ok" });
+    } catch (error) {
+      console.error("Readiness check failed: database unreachable", error);
+      return c.json({ status: "error" }, 503);
+    }
+  });
+
   api.openapi(
     createRoute({
       method: "get",
@@ -745,9 +767,11 @@ export async function runStartupTasks() {
   await initializeWebSocketAdapter();
 }
 
+const DEFAULT_PORT = 5173;
+
 export async function startServer(
   injectWebSocket: ReturnType<typeof createNodeWebSocket>["injectWebSocket"],
-  port = 1337,
+  port = DEFAULT_PORT,
 ) {
   try {
     await runStartupTasks();
@@ -765,7 +789,7 @@ export async function startServer(
     },
     () => {
       console.log(
-        `⚡ API is running at ${process.env.KANEO_API_URL || "http://localhost:1337"}`,
+        `⚡ API is running at ${process.env.KANEO_API_URL || `http://localhost:${port}`}`,
       );
     },
   );
@@ -825,7 +849,20 @@ const isMainModule =
   import.meta.url === pathToFileURL(entrypoint).href;
 
 if (isMainModule) {
-  void startServer(injectWebSocket);
+  const rawPort = process.env.TASKDESK_PORT;
+  const parsedPort = rawPort === undefined ? Number.NaN : Number(rawPort);
+  const port =
+    Number.isInteger(parsedPort) && parsedPort > 0 ? parsedPort : DEFAULT_PORT;
+  if (
+    rawPort !== undefined &&
+    port === DEFAULT_PORT &&
+    parsedPort !== DEFAULT_PORT
+  ) {
+    console.warn(
+      `⚠ TASKDESK_PORT="${rawPort}" is not a positive integer — falling back to ${DEFAULT_PORT}`,
+    );
+  }
+  void startServer(injectWebSocket, port);
 }
 
 export type AppType =

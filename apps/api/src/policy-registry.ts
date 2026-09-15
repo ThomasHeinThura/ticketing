@@ -84,6 +84,19 @@ export const platformPolicies = {
     reason:
       "liveness probe for the container runtime and load balancer; returns a constant",
   },
+
+  // Documented contract (docs/05-operations/deployment.md § Health and readiness):
+  // liveness touches no dependency so a database blip never restarts a healthy
+  // container; readiness checks the database so the proxy stops routing to a pod
+  // that can't actually serve a request.
+  "GET /api/public/health/live": {
+    public: true,
+    reason: "liveness probe — process is up, touches no dependency",
+  },
+  "GET /api/public/health/ready": {
+    public: true,
+    reason: "readiness probe — checks database reachability",
+  },
 } as const satisfies PolicyMap;
 
 export const POLICY_SOURCES = [
