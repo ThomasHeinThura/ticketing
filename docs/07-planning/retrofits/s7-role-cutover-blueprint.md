@@ -15,14 +15,23 @@ which became issue #118. Leaving it in a session scratchpad would have thrown th
 Two of the blueprint's own findings have moved since it was written. The body below is kept
 as authored; these corrections govern.
 
-- **F1 (`workspace_role` has no `UNIQUE (workspace_id, role)`) — CONFIRMED, and now tracked.**
-  Verified against real PostgreSQL 18: the only unique constraint is `workspace_role_pkey`,
-  on `id`. Two rows for one `(workspace_id, role)` pair with different `permission` payloads
-  insert cleanly. Reachable without a race, because better-auth's `createOrgRole` has no
-  duplicate-name check at all. Filed as **#118**. The **evaluator half** — both reads refuse
-  on ambiguity instead of taking an arbitrary row — is implemented in PR #119. The
-  **`UNIQUE` constraint half** is still outstanding and waits on #110 for its migration
-  number. S7 must not add native write paths to that table until both halves are in.
+- **F1 (`workspace_role` has no `UNIQUE (workspace_id, role)`) — CONFIRMED, and now CLOSED.**
+  **Corrected here, found by formal review**: an earlier draft of this entry left both halves
+  as outstanding; both have since landed. Originally verified against real PostgreSQL 18: the
+  only unique constraint was `workspace_role_pkey`, on `id` — two rows for one
+  `(workspace_id, role)` pair with different `permission` payloads inserted cleanly.
+  Reachable without a race: better-auth's `createOrgRole` **does** call a duplicate-name
+  check (`checkIfRoleNameIsTakenByRoleInDB`, confirmed by reading the installed package
+  directly) — it is a check-then-insert TOCTOU race with no lock, not an absent check, the
+  same class of defect migration `0051`'s own header comment documents for this exact table.
+  Filed as **#118**. Both halves are now on `main`: the **evaluator half** (PR #119) — both
+  reads refuse on ambiguity instead of taking an arbitrary row; the **`UNIQUE` constraint
+  half** (PR #122, migration `0051_workspace_role_unique.sql`, journal `idx 51`) — a second
+  unique constraint now exists alongside `workspace_role_pkey`. **S7's gating condition (both
+  halves in before adding native write paths to this table) is satisfied**; the advisory-lock
+  recommendation in §8 below may still be worth keeping for a clean `409` on a race rather
+  than a raw constraint-violation error, but it is no longer a hard prerequisite blocking S7
+  from starting.
 
 - **F2 ("you cannot grant a capability you do not hold") — REAL AS A REQUIREMENT, WRONGLY
   RATED AS A CURRENT VULNERABILITY.** An independent verification refuted the exploit chain,
