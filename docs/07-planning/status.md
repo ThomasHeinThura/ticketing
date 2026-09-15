@@ -138,6 +138,11 @@ gap specifically, not just for the one gap that remains unstarted.
 - Anything **route-shaped** for P1 or P3 — waits for Throttle 1, per the blocking taxonomy
   this project has used since 2026-09-06 (pure/non-route work is never blocked by it)
 - Standing up a **live** UAT deployment — waits on the four gaps above landing first
+- `sections()` in `scripts/ci/lib/pr-body.mjs` lets a comment-hidden duplicate `##` heading
+  silently replace the real one, defeating the whole PR-template gate (issue #146,
+  CRITICAL, confirmed live on `main`) — needs Thomas's decision on fix direction (targeted
+  patch to `sections()` vs. the broader parser-rewrite question this whole file's 11-round
+  review history has raised) before further work on `scripts/ci/lib/pr-body.mjs` continues.
 
 ### DEFERRED (valid, not useful yet)
 
@@ -195,6 +200,17 @@ P7 Polish              ░░░░░░░░░░   0%
 count of 2); merged slices do not map onto a defined completion figure, and an invented
 one reads as progress nobody measured. The merged pull requests are listed individually
 under ON MAIN below, which is the honest unit of progress here.
+
+**A CRITICAL finding, filed as issue #146, is DECISION REQUIRED for Thomas.** `sections()`
+in `scripts/ci/lib/pr-body.mjs` splits a PR body on raw `##` headings with no HTML-comment
+awareness and keeps only the last of any duplicate heading, so a PR body containing a
+comment-hidden fake `## Checklists`/`## Security review` heading silently replaces the real
+section's content before any of the PR-template gate's checking functions ever run.
+Confirmed live on `main` today, and explicitly **not** introduced by the PR that found it
+(PR #89's final Opus security review, independently reproduced). Open question for Thomas:
+fix this as a targeted patch to `sections()` alone, or treat it as the point that tips
+`pr-body.mjs` toward the structural rewrite (a real GFM/CommonMark parser) raised
+repeatedly across the file's review history — see issue #146.
 
 ## Where the code is — the only four categories that mean anything
 
