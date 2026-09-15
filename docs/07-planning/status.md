@@ -2,30 +2,43 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-09
-> **`main` at that moment:** `3e78450` (PR #76, retrofit S3)
+> **Snapshot taken:** 2026-09-15
+> **`main` at that moment:** `3baf2bf` (PR #129, governance reset)
 > **Stage:** P0 · Foundation — IN PROGRESS
 > **Throttle 1:** SHUT — 4 of 5 conditions met; condition 2 (issue #6 through retrofit S10)
-> is the sole blocker
+> is the sole blocker. **Correction, 2026-09-15: S7's own release condition inside that
+> path is #82 AND #118 (not #82 alone) — see Blocked, below.** The `## Scheduler` section
+> is the current live-state-to-action mapping; read it alongside this header, not instead
+> of it.
 >
-> **LIVE pull-request and issue state is NOT in this file and must be read from GitHub:**
-> `gh pr list --state open`, `gh pr view <n>`, `gh issue list --state open`.
+> **LIVE pull-request and issue state is NOT durably recorded in this file and must be
+> re-verified from GitHub:** `gh pr list --state open`, `gh pr view <n>`,
+> `gh issue list --state open`.
 >
 > This file records the state of the repository **at the SHA above**. It is not synchronised
-> when a subagent opens a branch, and it should not be. Enumerating open pull requests here
-> was tried on 2026-09-09 and abandoned: the list went stale within the hour and cost three
-> independent review rounds. **If this file and GitHub disagree about what is open, GitHub is
-> right and this file is simply older.**
+> when a subagent opens a branch, and it should not be. Enumerating open pull requests as a
+> **durably-maintained list** was tried on 2026-09-09 and abandoned: the list went stale
+> within the hour and cost three independent review rounds. **If this file and GitHub
+> disagree about what is open, GitHub is right and this file is simply older.**
+>
+> **The `## Scheduler` section is the one deliberate exception, and the distinction matters:**
+> it names specific PR/issue numbers, same as the abandoned 2026-09-09 attempt did — but as a
+> **same-session dispatch table dated to this snapshot**, not a claim of durable accuracy. It
+> carries its own re-verify instruction and is expected to go stale and be regenerated next
+> session, the same way the rest of this file is. Trust it exactly as far as the snapshot date
+> above, no further.
 >
 > What this file IS good for: the stage and throttle state, which issues are blocked and
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-09
+**Last updated:** 2026-09-15
 **Current stage:** P0 · Foundation — **IN PROGRESS**
-**Updated by:** Claude Code (Sonnet), reconciliation on PR #68 after #64, #62, #65, #67
-and **#19** merged — #19 is the big one: `main` gained the CI workflows and all nine
-`check:*` gates for the first time, where before it had none
+**Updated by:** Claude Code (Sonnet), reconciliation after PR #111 (issue #108
+characterization) and **#129** (governance reset — merge delegation, Sonnet/Opus model
+tiers, UAT deployment made active priority) merged. Corrected S7's real dependency (#82
+AND #118, not #82 alone) against PR #123's diff and live issue state, and added the
+`## Scheduler` section below.
 
 > **This is a durable snapshot, not a work log.** Update it only on a durable transition: a
 > pull request merges or becomes genuinely review-ready, an issue blocks, unblocks or
@@ -33,6 +46,82 @@ and **#19** merged — #19 is the big one: `main` gained the CI workflows and al
 > repository or deployment fact changes. Intermediate progress goes in pull-request
 > comments. It is the first thing anyone — human or agent — reads when picking the project
 > up cold.
+
+---
+
+## Scheduler
+
+**Added 2026-09-15, per Thomas's request for a live P0→P7 execution scheduler.** This
+section is dependency-aware, not stage-number-gated: P1–P7 work is classified by what it
+actually depends on, never by "P0 isn't finished yet." It carries live PR/issue numbers, so
+— like the rest of this file, and unlike `AGENTS.md`/`CLAUDE.md` — it is refreshed here
+rather than kept permanently accurate; re-check `gh pr list`/`gh issue list` before trusting
+a row that looks old.
+
+**States:** `CRITICAL_NOW` (directly advances the current bottleneck) ·
+`NEXT_DEPENDENCY` (becomes critical the moment the current blocker clears) ·
+`SAFE_PARALLEL` (real work, genuinely independent of the blocked security/architecture
+decisions) · `BLOCKED` · `DEFERRED` (valid, not useful yet) · `SUPERSEDED`.
+
+### CRITICAL_NOW — the P0 security path that opens Throttle 1
+
+| Item | State | Terminal outcome |
+| --- | --- | --- |
+| PR #110 (#82 fix) | 3 formal Sonnet reviews already PASS, zero blocking, at head `450144d`. **Only the Opus security review is outstanding.** | #82 closed |
+| PR #119 (#118 evaluator half) | Authored by an Opus orchestrator session; **zero independent review of any tier**. Needs 2 fresh Sonnet + 1 Opus. | #118 (evaluator side) closed |
+| PR #122 (#118 DB/migration half) | **Zero independent review of any tier.** Needs 2 fresh Sonnet + 1 Opus. Must land before or with S7's native writes to `workspace_role`. | #118 (DB side) closed |
+
+### NEXT_DEPENDENCY — becomes critical the moment #82 and #118 both close
+
+| Item | Depends on | Terminal outcome |
+| --- | --- | --- |
+| S7 — native role list + writes, repointing `listRoles`/`createRole`/`updateRole`/`deleteRole` | #82 AND #118 closed, plus `roles-and-permissions-ui.md` review closed (already satisfied, PR #128) | Zero executable `authClient.organization.*` callers except the four role-family ones being retired here |
+| PR #104 (S9 — teams decision, Path B) | Independent of S7; precondition already satisfied per the retrofit ledger. **Startable now**, not blocked. | S9 resolved, teams stay enabled until S10 |
+| PR #107 (S10 — zero-caller tripwire) | S7 AND S9 both landed | `pnpm check:organization-callers` ratchets to zero; `organization()` unmountable |
+| Issue #6 closes → Throttle 1 opens | S7 → S9 → S10 all landed | Full P1–P4 parallel lane authorization |
+
+### SAFE_PARALLEL — real work, independent of the P0 security decisions above
+
+- Pure `packages/domain` modules (P2 SLA / workflow / approvals logic — no I/O, exhaustive tests)
+- `packages/ui` primitives, Storybook, a11y
+- CI/tooling LOW findings (e.g. #93, #95, #98, #102, #106)
+- The four UAT/deployability gaps below — genuinely unblocked by the retrofit
+- Docs reconciliation not touching live security/architecture state
+
+### UAT/deployability lane — first-class, per Thomas 2026-09-15
+
+Verified live against `main` on 2026-09-15 (not assumed from an earlier snapshot):
+
+| Gap | Verified state | Classification |
+| --- | --- | --- |
+| `TASKDESK_PORT` not read; `apps/api/src/index.ts` hardcodes `1337` | Still true — `grep` for `TASKDESK_PORT` in `index.ts` returns nothing | SAFE_PARALLEL, startable now |
+| No `/api/public/health/{live,ready}` | Still true — no match for either route | SAFE_PARALLEL, startable now |
+| No static file serving in the Node process | Still true — no `serveStatic`/`express.static` match in `apps/api/src` | SAFE_PARALLEL, startable now |
+| No `storage.filesystem` driver | Still true — `apps/api/src/storage/` holds only `s3.ts` and `cleanup-assets.ts` | SAFE_PARALLEL, startable now |
+
+**UAT-0** (per the milestone shape Thomas asked for): `docker build` succeeds, container
+boots, a health endpoint answers `200` — achievable once the port and health-endpoint gaps
+close, independent of the other two. **Full UAT stand-up** needs all four gaps closed plus
+an actual redeploy — that step is `NEXT_DEPENDENCY` on this lane, not startable until the
+gaps themselves land.
+
+### BLOCKED
+
+- Anything **route-shaped** for P1 or P3 — waits for Throttle 1, per the blocking taxonomy
+  this project has used since 2026-09-06 (pure/non-route work is never blocked by it)
+- Standing up a **live** UAT deployment — waits on the four gaps above landing first
+
+### DEFERRED (valid, not useful yet)
+
+- P5/P6/P7 feature work — genuinely depends on P1–P4 governance seams landing, not merely
+  stage-number convention
+- S6b (hashed invitation tokens), S8b (rename the `active_organization_id` column) —
+  explicitly deferred out of P0 scope already
+
+### SUPERSEDED
+
+- Any earlier statement in this file or `decision-log.md` that S7 is "blocked by #82 alone"
+  — corrected 2026-09-15, see Blocked, below, and the Scheduler header above.
 
 ---
 
@@ -230,19 +319,27 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   full retrofit, not on the deletions alone.
 - **#17** — sessions already minted by the removed MCP OAuth and device flows. Deleting an
   endpoint is not revoking a credential; a consent click created a full 30-day session row.
-- **Retrofit S7 (native role writes) — ⛔ BLOCKED BY #82 ALONE.** Not a scheduling
+- **Retrofit S7 (native role writes) — ⛔ BLOCKED BY #82 AND #118.** Not a scheduling
   preference. **#66 is CLOSED** — PR #80 removed the privilege-restoration fail-open where
   `hasWorkspacePermission` fell back to the compiled built-in role definitions when a
   `workspace_role` row was absent, so a role an administrator had *narrowed*, or deleted,
   silently regained its built-in privileges. S7 writes that exact table, and the
   delete-after-narrow escalation it would have made shippable is gone: a missing row is now a
   DENY for every role but `owner`, whose authority is compiled-in by design (retrofit plan
-  R5). **#82 remains, and it is sufficient on its own to keep S7 shut:** TaskDesk's canonical
+  R5). **Corrected 2026-09-15: #82 is not the only remaining blocker.** TaskDesk's canonical
   rule is one workspace membership = exactly one role, and the two authorization surfaces
   disagree on malformed multi-role values — see the decision log. PR #84 has characterized the
-  divergence and pinned the four target behaviours; the remediation itself is not written.
-  **S7's release condition is now multi-role (#82) cleared, independently reviewed.** Check
-  GitHub for #82's current state (`gh issue view 82`) — do not infer it from this file.
+  divergence and pinned the four target behaviours. **#118 records the matching defect one
+  table over**: `workspace_role` has no `UNIQUE (workspace_id, role)`, so two rows for one
+  pair can carry *different* permission payloads and both evaluators pick between them with
+  an unordered `LIMIT 1`. S7 is the stage that adds the first native write path to that
+  table, so the constraint is a release prerequisite, not follow-up hardening — verified
+  against PR #123's diff (open, not yet merged, but the dependency fact is confirmed
+  independently against live issue state) and against `retrofits/organization-plugin-retrofit.md`.
+  **S7's release condition is #82 AND #118, each independently reviewed**, plus
+  `roles-and-permissions-ui.md`'s review section closed (already satisfied — PR #128
+  merged). Check GitHub for each issue's current state (`gh issue view 82`,
+  `gh issue view 118`) — do not infer it from this file.
 - **#31 (P2 workflows) — blocked by AGENTS.md do-not 15.** `docs/03-features/workflows.md`
   is the subject of a *not-ready* review verdict — the verdict and its 4 High, 4 Medium and
   2 Low findings live in the review document, not in the spec itself, which has no review
@@ -261,10 +358,12 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   roles. Load-bearing means it needs a retrofit (S1–S10, #6 work), not that it is kept.
 - **Retrofit S0, S1, S2, S3, S4, S4b, S5, S6a and S8a are COMPLETE** and on `main` (#65, #57,
   #65, #76, #67, #85, #77, #112, #109 respectively). **S7, S9 and S10 remain.** S7 is blocked
-  on #82 alone, whose remediation is PR #110; S9's decision is made (Path B, 2026-09-10) and
-  its documentation-only work is carried by the still-open PR #104; S10 unmounts the plugin
-  once both clear, and its tripwire gate is PR #107. Landing a stage does not start the next; each step needs its own scheduling
-  decision, and a green equivalence suite is not permission to begin the next one.
+  on **#82 AND #118** (corrected 2026-09-15; remediation is PR #110 for #82, PRs #119 and
+  #122 for #118's two halves); S9's decision is made (Path B, 2026-09-10) and its
+  documentation-only work is carried by the still-open PR #104; S10 unmounts the plugin once
+  all three clear, and its tripwire gate is PR #107. Landing a stage does not start the next;
+  each step needs its own scheduling decision, and a green equivalence suite is not
+  permission to begin the next one.
   **What the client calls now — and this is stated as a command rather than a list, because an
   earlier version of this bullet enumerated it and got three of seven claims wrong:** run
   `grep -rn 'authClient\.organization\.' apps/web/src` for the live surface, excluding the
@@ -308,8 +407,9 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   (see the S7 row, which now names the read route as well as the three writes). The claim was
   checkable and false, which is the worst kind to put in this file.
 
-  The remaining reason `organization()` is still mounted is **S7** (blocked on #82, whose
-  remediation is PR #110) and **S9**; S10 unmounts it once those clear.
+  The remaining reason `organization()` is still mounted is **S7** (blocked on **#82 AND
+  #118**, corrected 2026-09-15 — remediation is PR #110 for #82, PRs #119 and #122 for
+  #118) and **S9**; S10 unmounts it once those clear.
 - **The frozen organization-create baseline is N = 9 observable effects: eight first-order
   create effects plus one eventual, one-hop durable notification consequence.** The eight
   are the `workspace` row, the owner `workspace_member` row, the three seeded
@@ -693,6 +793,45 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-15 · Governance reset merged; S7 dependency corrected; live scheduler added
+
+Two pull requests merged this session: **#111** (issue #108 characterization — a
+prototype-key role name crashes the still-mounted plugin's evaluator while the native one
+denies cleanly; real RED→GREEN against a live database, adversarially verified by mutating
+the test's own assertions) and **#129**, a governance rewrite of `AGENTS.md`/`CLAUDE.md`
+delegating merge execution to the orchestrating Claude session once required gates are
+green, simplifying model routing to Sonnet (implementation/ordinary review/a new
+alignment-check role) and Opus (explicit subagent, final security/critical review only —
+dropping an earlier multi-provider-router experiment), and making a live UAT deployment
+active priority.
+
+**#129's own review process is the most durable thing about this entry.** Seven independent
+review rounds across two Sonnet lenses and one Opus security lens found and closed three
+real defects: two dangling/dropped-content issues in the rewrite itself, and — the one worth
+remembering — the delegation silently removed the only real check the gate-waiver mechanism
+ever had on waiver *authorship* (Thomas being the one physically at the merge button). Fixed
+by excluding any waived-gate candidate from the delegation outright, not by re-asserting the
+old sentence. Filed #130 to track the harder, unsolved version of the same problem
+(reviewer identity generally is self-reported, not mechanically verified).
+
+**Corrected, verified against source rather than an older snapshot:** S7's real release
+condition is **#82 AND #118**, not #82 alone — the file said "#82 alone" for six days while
+PR #123 (still open) already carried the correction and issue #118 (with its two remediation
+PRs #119 and #122, both currently open with zero independent review) existed the whole time.
+See the retrofit ledger and Blocked, below.
+
+**Added the `## Scheduler` section** — a live, dependency-aware P0→P7 view (CRITICAL_NOW /
+NEXT_DEPENDENCY / SAFE_PARALLEL / BLOCKED / DEFERRED), so "P0 isn't finished" stops being
+read as "nothing else may start" when the actual dependency graph says otherwise. Also
+verified, directly against the current tree rather than an earlier finding: all four known
+UAT/deployability gaps (hardcoded port, missing health endpoints, no static serving, no
+`storage.filesystem` driver) are still unfixed.
+
+**Not done this session:** S7 itself has not been implemented. #82 and #118 have not
+closed. No UAT gap has been fixed. The next runnable work — reviewing PRs #110/#119/#122 at
+the tier each actually still needs, then starting the UAT gaps in parallel — continues
+immediately rather than stopping here.
 
 ### 2026-09-09 · PR #68 rebased onto #19; status.md reconciled against a moving repository
 
