@@ -184,6 +184,33 @@
           "removeMembers"
         ]
       },
+      "MalformedMembershipRole": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": [
+              "MALFORMED_MEMBERSHIP_ROLE"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "problem": {
+            "type": "string",
+            "enum": [
+              "empty",
+              "multi-valued",
+              "untrimmed"
+            ]
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "problem"
+        ]
+      },
       "ProjectListItem": {
         "allOf": [
           {
@@ -2631,6 +2658,39 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
           }
@@ -2708,8 +2768,74 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -2745,8 +2871,74 @@
           "200": {
             "description": "Success"
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -2781,6 +2973,39 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           },
           "401": {
             "description": "Missing or invalid credentials"
@@ -2855,6 +3080,39 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
           }
@@ -2910,8 +3168,74 @@
           "200": {
             "description": "Success"
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -2987,8 +3311,74 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -3031,8 +3421,74 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -3096,8 +3552,74 @@
           "200": {
             "description": "Success"
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -3141,6 +3663,39 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
           }
@@ -3158,6 +3713,39 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           },
           "401": {
             "description": "Missing or invalid credentials"
@@ -3179,6 +3767,39 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
               }
             }
           },
@@ -3261,6 +3882,39 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
           }
@@ -3279,8 +3933,74 @@
           "200": {
             "description": "Success"
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -3340,8 +4060,74 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -3377,7 +4163,7 @@
                         }
                       }
                     ],
-                    "description": "The role(s) to assign to the user. It can be `admin`, `member`, owner. Eg: \"member\""
+                    "description": "Exactly one role to assign, as a string or one-element array. Eg: \"member\""
                   },
                   "organizationId": {
                     "type": "string",
@@ -3456,8 +4242,74 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -3493,8 +4345,74 @@
           "200": {
             "description": "Success"
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -3519,6 +4437,39 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
           }
@@ -3536,6 +4487,39 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           },
           "401": {
             "description": "Missing or invalid credentials"
@@ -3555,6 +4539,39 @@
           "200": {
             "description": "Success"
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
           }
@@ -3573,8 +4590,74 @@
           "200": {
             "description": "Success"
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -3621,6 +4704,39 @@
                       "createdAt"
                     ]
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
                 }
               }
             }
@@ -3678,6 +4794,39 @@
                       "updatedAt"
                     ]
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
                 }
               }
             }
@@ -3758,6 +4907,39 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
           }
@@ -3780,6 +4962,39 @@
                 "schema": {
                   "type": "array",
                   "items": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
                 }
               }
             }
@@ -3837,6 +5052,39 @@
                       "additionalProperties": {}
                     }
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
                 }
               }
             }
@@ -3917,8 +5165,74 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -3977,8 +5291,74 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -4042,8 +5422,74 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -4088,6 +5534,39 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
           }
@@ -4127,6 +5606,39 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
               }
             }
           },
@@ -4203,8 +5715,74 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -4236,7 +5814,7 @@
                         }
                       }
                     ],
-                    "description": "The new role to be applied. This can be a string or array of strings representing the roles. Eg: [\"admin\", \"sale\"]"
+                    "description": "Exactly one role to apply, as a string or one-element array. Eg: \"admin\""
                   },
                   "memberId": {
                     "type": "string",
@@ -4294,8 +5872,74 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -4379,8 +6023,74 @@
           "200": {
             "description": "Success"
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -4473,8 +6183,74 @@
               }
             }
           },
+          "400": {
+            "description": "The request body cannot be checked or a role value is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -4596,6 +6372,16 @@
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The caller's membership row does not hold exactly one role, so no capability answer can be computed from it (issue #82)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MalformedMembershipRole"
                 }
               }
             }

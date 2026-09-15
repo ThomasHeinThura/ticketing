@@ -220,8 +220,18 @@ Prose is deliberately not accepted: the previous check looked for the gate ident
 anywhere in the document, which the sentence *"G1 is not waived"* satisfied. **What is
 still not enforceable is who authorised it** — agents commit through the same repository
 identity Thomas does, so nothing readable from a file proves authorship. The declaration
-provides a durable, specific, gate-bound, PR-scoped record; Thomas confirms the authority
-at the merge button, and CI says so rather than implying it checked.
+provides a durable, specific, gate-bound, PR-scoped record; CI says so rather than implying
+it checked authorship.
+
+**Updated 2026-09-15.** This paragraph used to end "Thomas confirms the authority at the
+merge button" — that was the actual, if informal, control: Thomas was the one merging, so
+he was the last human able to catch a fabricated waiver before it landed. Since merge
+execution is now delegated (see [`AGENTS.md`](../../AGENTS.md#how-work-reaches-main-and-who-may-merge)),
+that check no longer exists by default. **A candidate whose `## Gates` table cites any
+waived gate is excluded from the delegation** — it always needs Thomas's own action to
+merge, never the orchestrator alone. Found by independent Opus review, 2026-09-15; tracked
+for a real mechanical check (verifying waiver authorship some way stronger than "the
+orchestrator says it checked") as a follow-up issue, not solved here.
 
 The same fast-stage **PR-template check** asserts every fixed section is present, that none
 is empty unless marked `n/a` with a reason, that `## Reviewed by` names a different model or
@@ -372,15 +382,20 @@ main                    always deployable, protected
 
 - No long-lived branches. A branch older than a week is a merge problem forming.
 - Squash merge, so `main` has one commit per change and the history is readable.
-- `main` requires: all checks green, up to date with `main`, and **Thomas to press merge**.
-  The `protect-main` ruleset blocks deletion and non-fast-forward pushes and dismisses stale
-  approvals on push. **Required approving reviews is `0` and Require review from Code Owners
-  is off**, both deliberately — a required approval from a one-person team documents a
-  protection it does not provide (decision log, 2026-09-06).
-- `CODEOWNERS` (`* @ThomasHeinThura`) is **ownership metadata**: it says who to ask. It is
-  not the mechanism behind "only Thomas merges" — that is Thomas, and the ruleset enforces
-  the parts a machine can. **The security review and design review requirements below are
-  unaffected and remain independent hard gates.**
+- `main` requires: all checks green, up to date with `main`, required independent review(s)
+  and, where in scope, the required Opus security review recorded. **The orchestrating
+  Claude session may then merge itself**, through this normal protected flow, once every one
+  of those is genuinely satisfied on the exact candidate SHA (Thomas, 2026-09-15 — delegated;
+  supersedes "only Thomas presses merge" — see the decision log, 2026-09-15). Design approval
+  (H1–H6) and gate waivers remain Thomas-only, unchanged. The `protect-main` ruleset blocks
+  deletion and non-fast-forward pushes and dismisses stale approvals on push. **Required
+  approving reviews is `0` and Require review from Code Owners is off**, both deliberately —
+  a required approval from a one-person team documents a protection it does not provide
+  (decision log, 2026-09-06).
+- `CODEOWNERS` (`* @ThomasHeinThura`) is **ownership metadata**: it says who to ask, not a
+  merge gate — the ruleset and the required reviews above are what actually enforce a merge.
+  **The security review and design review requirements below are unaffected and remain
+  independent hard gates.**
 
 ## Releases
 
