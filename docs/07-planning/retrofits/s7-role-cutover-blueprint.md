@@ -53,9 +53,9 @@ as authored; these corrections govern.
   merged content once it lands on `main` — do not assume this blueprint's snapshot still
   matches.
 
-## A third prerequisite, found by CI rather than by reading
+## A third prerequisite, found by CI rather than by reading — CLEARED 2026-09-15
 
-**S7 cannot start until `roles-and-permissions-ui.md`'s open review findings are closed.**
+**S7 could not start until `roles-and-permissions-ui.md`'s open review findings were closed.**
 `pnpm check:reviews` enforces it, and it fired on the very pull request that committed this
 document:
 
@@ -66,16 +66,24 @@ docs/07-planning/reviews/2026-09-05/features-governance-design.md — 1. `roles-
     non-empty (AGENTS.md do-not 15).
 ```
 
+**Corrected here, found by formal review**: an earlier draft of this section left this
+present-tense, as if still unsatisfied. PR #128 merged 2026-09-15T14:25:58Z and closed
+exactly these findings — `docs/07-planning/reviews/2026-09-05/features-governance-design.md`'s
+`## 1. roles-and-permissions-ui.md` section is now empty (immediately followed by `## 2.
+god-mode.md`, confirmed by reading the file directly). This prerequisite is cleared, not
+outstanding.
+
 This is CLAUDE.md's spec interaction rule made mechanical: *"Open findings in
 `docs/07-planning/reviews/2026-09-05/` → close them before implementing — the Definition of
 Done enforces it, and reviewers check it, not the author."* `roles-and-permissions-ui.md` is
-the spec that owns `RL-3`, the ceiling check § 8's F2 is really about, so S7 depends on that
-document twice over: for the requirement, and for its review section being empty.
+the spec that owns `RL-3`, the ceiling check § 8's F2 is really about, so S7 depended on that
+document twice over: for the requirement, and for its review section being empty. Both are
+now satisfied.
 
-The blueprint's § 4 build order does not mention this. Treat it as step 0. It is not
-satisfied today, and it is a documentation task rather than an implementation one — 24 lines
-of findings in the owning spec, closed by editing that spec, which is its own reviewable
-change.
+The blueprint's § 4 build order does not mention this. It was step 0, alongside the fourth
+prerequisite below — both are now cleared, and S7's implementation may proceed against the
+requirements this document states, subject to Q5's documentation correction and Ambiguities
+Q1–Q4.
 
 **Why this document's own pull request is allowed to cite the spec anyway.** A spec counts as
 "named in this change" when the branch edits `docs/03-features/<spec>.md` **or** when the pull
