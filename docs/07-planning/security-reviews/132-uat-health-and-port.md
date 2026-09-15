@@ -1,15 +1,31 @@
 # Pre-merge security review — PR #132 (read TASKDESK_PORT, add /api/public/health/{live,ready})
 
 **Reviewed head:** `7998bf89fa17fa90fddb00096aa010c3141a75dc`
+**Reviewed head:** `ca814fd6dabff71b077049798d8a2d70ea0e2c14`
 **Base:** `origin/main` at review time
 
 **Verdict: CLEAR FOR MERGE.** Zero blocking findings outstanding at the reviewed head. Two
 rounds — the first found two real, independently-confirmed issues in the initial
 implementation; both fixed and re-verified by demonstration, not by reading.
 
+**Round 3 — head `ca814fd6dabff71b077049798d8a2d70ea0e2c14`: re-confirmed after a main-merge.**
+The branch was behind `main` (required for the up-to-date required-checks rule) and was
+merged in — a trivial merge with no conflict-resolution content (`git diff-tree --cc`
+empty), but `apps/api/src/index.ts` did pick up 36 unrelated lines from `main` (issue #82's
+`organizationPluginRoleGuard`, wired into the `/auth/*` handler only, not registered as
+middleware and not touching the health routes or `resolvePort`). Per this note's own
+next-line rule, that voided the `7998bf89` clearance — re-reviewed rather than assumed
+carried-over. Confirmed: `database/index.ts`, `policy-registry.ts`, the matrix fixture, and
+all three test files are byte-identical to the previously-reviewed head (verified by object
+hash); the health routes and port logic are unaffected by the incoming change; every gate
+re-run at this head (unit 283/283, permissions 76/76, health + global-auth-guard 16/16,
+plus a fresh `pg_terminate_backend` reproduction of the pool-error fix). Both Sonnet lenses
+independently confirmed the same at this head.
+
 **Status of the gate:** this review closes the mandatory independent Opus security review
 for the head named above, and for that head only. A later commit touching anything outside
-`docs/07-planning/security-reviews/` voids it.
+`docs/07-planning/security-reviews/` voids it — as happened once already in this PR's own
+history (see Round 3), which is the mechanism working as designed, not a loophole.
 
 **Reviewer independence.** A fresh Opus context, spawned explicitly via the `Agent` tool
 with an explicit model pin, that authored no part of the change under review.
