@@ -101,16 +101,25 @@ the gate asks which spec a change *implements*.
 - **Q3 (events / audit rows)** and **Q4 (pagination)** — unresolved, low stakes, and the
   blueprint states the precedent for each. Confirm against
   [`events.md`](../../01-architecture/events.md) before assuming silence is intended.
+- **Q5 (RL-3 vs the retrofit ledger's "unowned" note)** — **not actually open; a
+  documentation correction, found by formal review.** `RL-3` is an already-accepted spec
+  acceptance criterion (review closed via PR #128), so it already settles that S7 must
+  implement the "cannot grant what you do not hold" ceiling — the retrofit ledger's S7 row
+  is simply wrong to bundle it with the two guardrails (rank comparison, last-administrator
+  check) that genuinely remain deferred for missing `rank`/`is_system` vocabulary. Fix the
+  ledger, don't wait on Thomas for this one.
 
 ## A fourth prerequisite, found by formal review rather than by reading
 
 **Issue #82 self-declares as an S7 blocker, and this blueprint discusses it only as a design
 constraint, never as a build-order prerequisite the way it does for the review-findings gate
-above.** #82's own issue body states explicitly: *"This is a P0 security blocker for retrofit
-stage S7 ... S7 adds native role write routes and will reuse the same evaluator. If those
-routes inherit the single-role-string assumption without enforcing it, or ship while legacy
-comma-joined rows exist, the divergence becomes reachable through TaskDesk's own surface
-rather than only the inherited one."* PR #110 is the fix; as of this writing it is open,
+above.** **Corrected here**: an earlier draft of this entry presented a paraphrase as a direct
+quotation of #82's issue body. #82's actual opening line is *"P0 SECURITY — blocks retrofit
+stage S7."*, and its "Why this blocks S7 specifically" section explains, in substance rather
+than these exact words: S7 adds native role write routes and will reuse the same evaluator; if
+those routes inherit the single-role-string assumption without enforcing it, or ship while
+legacy comma-joined rows exist, the divergence becomes reachable through TaskDesk's own
+surface rather than only the inherited one. PR #110 is the fix; as of this writing it is open,
 unmerged, and — per the reconciliation entry above — has changed the two evaluator files S7's
 own "no code change required" analysis depends on.
 
@@ -302,7 +311,11 @@ New file `tests/api-integration/workspace-role-writes.test.ts` (real PostgreSQL,
 
 ## 5b. Implementation note on the "cannot grant what you don't hold" check
 
-`hasWorkspacePermission(c: Context, permissions)` (`require-workspace-permission.ts:91`) takes a Hono `Context`, but every S4/S5/S6a controller is a plain function over primitives (`workspaceId`, `userId`, ...) with no `Context` dependency — calling `hasWorkspacePermission` once per `(resource, action)` pair being granted would mean either threading `c` into the controller (breaking the established controller/handler separation) or N redundant DB round trips from the route handler. Recommend: extract the caller's-own-statements resolution already inside `hasWorkspacePermission` (the `isInstanceAdmin` → `workspaceMemberRoles` → `isUnambiguousMembership` → `role === "owner" ? builtInRoleStatements("owner") : customRoleStatements(...)` chain) into a new exported function, e.g. `resolveCallerWorkspaceStatements(c): Promise<Record<string, readonly string[]> | null>`, called ONCE per request in the route handler; pass the resolved `statements` object into `createWorkspaceRoleCtrl`/`updateWorkspaceRoleCtrl` as a plain argument, and have the controller run the missing-permission check as a pure in-memory loop (the same shape as the existing unexported `satisfies()` helper, exported or duplicated). This is a small, in-scope refactor of `require-workspace-permission.ts` — that file is not on CLAUDE.md's shared-contract-ownership list, and S4/S5/S6a/S8a already modified its siblings directly without a separate contract PR.
+`hasWorkspacePermission(c: Context, permissions)` (`require-workspace-permission.ts:82`) takes a Hono `Context`, but every S4/S5/S6a controller is a plain function over primitives (`workspaceId`, `userId`, ...) with no `Context` dependency — calling `hasWorkspacePermission` once per `(resource, action)` pair being granted would mean either threading `c` into the controller (breaking the established controller/handler separation) or N redundant DB round trips from the route handler.
+
+**Corrected here, found by formal review**: an earlier draft of this section named a call chain (`isInstanceAdmin → workspaceMemberRoles → isUnambiguousMembership → …`) that no longer exists — PR #110 (merged 2026-09-15) replaced it. The actual chain on `main` today, read directly from `require-workspace-permission.ts`, is: `isInstanceAdmin(c)` (short-circuit true) → `resolveMembershipRole(db, workspaceId, userId)` (issue #82's canonical resolution; returns `{ok:false}` on no/ambiguous/malformed membership) → `role === "owner" ? builtInRoleStatements("owner") : await customRoleStatements(workspaceId, role)` → `satisfies(statements, permissions)`. A related exported function, `callerMembershipResolution(c): Promise<MembershipRoleResolution | null>`, already exists and walks the membership half of this chain (used by `/api/capabilities` to stay in agreement with the evaluator) — but it stops at the role resolution and does not go on to resolve statements, so it is not itself the function S7 needs.
+
+Recommend: add a new exported function, e.g. `resolveCallerWorkspaceStatements(c): Promise<Record<string, readonly string[]> | null>`, that composes `callerMembershipResolution` (or the equivalent instance-admin/ambiguity-aware resolution) with the existing `role === "owner" ? builtInRoleStatements(...) : customRoleStatements(...)` step, called ONCE per request in the route handler; pass the resolved `statements` object into `createWorkspaceRoleCtrl`/`updateWorkspaceRoleCtrl` as a plain argument, and have the controller run the missing-permission check as a pure in-memory loop (the same shape as the existing unexported `satisfies()` helper, exported or duplicated). This is a small, in-scope refactor of `require-workspace-permission.ts` — that file is not on CLAUDE.md's shared-contract-ownership list, and S4/S5/S6a/S8a already modified its siblings directly without a separate contract PR. **Re-verify this section's function names against `main` again immediately before implementing** — this file has changed twice already since this blueprint was first drafted.
 
 ## 6. Identifier homes (do-not 11)
 
@@ -325,6 +338,31 @@ No S4, S5, S6a, or S8a controller emits an event except `create-workspace.ts`'s 
 
 **Q4 — should `GET .../roles` paginate?**
 better-auth's `listOrgRoles` has none, and the ceiling is 25 rows per workspace (below), so pagination is very likely unnecessary. Flagging only because every other `GET` list route in this codebase was not checked for a pagination convention this blueprint should match; recommend confirming there isn't a house convention (e.g. `?cursor=`) that a 25-row-max list should nonetheless follow for consistency, rather than silently deciding "no pagination" is fine.
+
+**Q5 — added by formal review: not actually an open decision, but a real disagreement between two planning documents that needs reconciling before implementation.**
+`docs/07-planning/retrofits/organization-plugin-retrofit.md`'s S7 row currently bundles all
+three of `rbac.md:159-175`'s guardrails together — "cannot grant what you do not hold, rank
+comparison, last-administrator check" — and says all three "depend on `rank` / `is_system` /
+capability vocabulary that do not exist" and instructs: "do not implement them here... and
+record the gap." That is correct for the rank-comparison and last-administrator guardrails,
+which genuinely have no built vocabulary yet. **It is wrong for the first one.** `RL-3` in
+`roles-and-permissions-ui.md` — "you cannot grant a capability you do not hold yourself... the
+API rejects them independently" — is an **already-accepted feature-spec acceptance
+criterion**, not an open design question: that spec's review findings closed via PR #128, and
+per this project's own source hierarchy (an accepted spec outranks an ad-hoc retrofit-ledger
+note), RL-3 already settles that S7 must enforce this ceiling. §5b of this blueprint
+independently confirmed it needs no new vocabulary — it is a plain check of whether the
+calling member's own resolved statements already include what they are trying to grant, using
+the exact same `hasWorkspacePermission` resolution chain S4–S8a already call. **This is
+therefore not a fresh decision for Thomas — it is a correction the retrofit ledger's S7 row
+needs**, to stop implying RL-3 is deferred/unowned alongside the two guardrails that genuinely
+are. Recommend fixing `organization-plugin-retrofit.md`'s S7 row in the same change that lands
+this blueprint (or as an immediate follow-up), separating "RL-3: implement now, already
+decided" from "rank comparison and last-administrator check: genuinely deferred, no vocabulary
+yet." Flagging as a question rather than silently patching it here because it is exactly the
+kind of cross-document inconsistency a reviewer, not the author, should be the one to confirm
+before it's corrected — see F2 in the reconciliation preamble above for the same finding from
+the implementation-detail side, and §5b for the corrected implementation approach.
 
 ## 8. Findings — risks and blockers (severity by blast radius)
 
