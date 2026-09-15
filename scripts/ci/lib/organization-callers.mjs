@@ -728,6 +728,30 @@ const DYNAMIC_IMPORT_CALL = /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g;
  */
 const REQUIRE_CALL = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
 
+/**
+ * A string-evaluation sink — `eval(`, `new Function(`, `setTimeout(`, `setInterval(` —
+ * found by a real bypass a formal review constructed and ran:
+ * `eval("authClient.organization.setActive({...})")` invokes the real call (confirmed by
+ * running it), but this scanner's call-site pass reads `codeForScan =
+ * stripCodeComments(source, { blankStrings: true })`, which blanks the CONTENTS of every
+ * string/template literal before `scanOccurrences` ever looks at it. An
+ * `authClient.organization.*` call spelled inside a string handed to one of these sinks is
+ * therefore not "a shape this scanner refuses to classify" the way a dynamic import or
+ * `require()` is — it is a shape the scanner never looks at at all, and it produces an
+ * unchanged, unreduced call count identical to a clean tree. Same remedy as the dynamic
+ * import/require refusals below: refuse the whole file rather than attempt to parse
+ * arbitrary string contents for a call shape, exactly the class of guess this module's own
+ * design already refuses to make everywhere else. `eval`/`Function` always evaluate a
+ * string, so any call is a match; `setTimeout`/`setInterval` only evaluate a string in
+ * their legacy string-argument form (`setTimeout("code", ms)`), so the match is narrowed
+ * to that shape (next non-space token is a quote or backtick) -- the ordinary
+ * `setTimeout(() => ..., ms)` function-argument form is unconditionally safe here and
+ * matching it too produced real false positives on ordinary websocket/polling code during
+ * this fix's own verification.
+ */
+const STRING_EVAL_SINK =
+  /\b(?:eval|Function)\s*\(|\b(?:setTimeout|setInterval)\s*\(\s*["'`]/;
+
 /** Every match of `pattern` (a `/g` regex with one capture group: the specifier) in
  * `code`, as `{specifier, line, snippet}`. Shared by the dynamic-import and require scans;
  * neither needs anything beyond "where is this specifier, and what resolves it". */
@@ -1134,6 +1158,31 @@ export async function scanFiles({
           `CommonJS \`require("${call.specifier}")\` of the auth-client module. This ` +
           "scanner's import grammar is ESM-only (`import ... from`); a `require()` " +
           "of the same module is not traced by it at all.",
+      });
+    }
+
+    // F7: `eval(`/`new Function(`/`setTimeout(`/`setInterval(` anywhere in a file that even
+    // MENTIONS the auth-client export name — including inside a string literal, which is
+    // exactly the shape `mentionsBinding` (computed on the raw, unstripped `source` above)
+    // already catches. Deliberately not restricted to files with a static import of the
+    // root alias: the whole point is that a call spelled inside a string never creates one.
+    // This will over-refuse an unrelated `eval`/`setTimeout` call in a file that also
+    // happens to import the auth client for something else — accepted, because a refusal
+    // is reviewed by a human and a silent zero is not, and this scanner's own design
+    // already makes that trade everywhere else (see the re-export and dynamic-import
+    // refusals above).
+    if (mentionsBinding && STRING_EVAL_SINK.test(source)) {
+      const sinkMatch = source.match(STRING_EVAL_SINK);
+      const sinkLine = source.slice(0, sinkMatch.index).split("\n").length;
+      refusals.push({
+        line: sinkLine,
+        snippet: sinkMatch[0],
+        reason:
+          "this file mentions the auth-client export name and also calls a " +
+          "string-evaluation sink (`eval`/`Function`/`setTimeout`/`setInterval`). A call " +
+          "spelled inside a string handed to one of these is invisible to this scanner's " +
+          "call-site pass, which blanks string-literal contents before scanning — refused " +
+          "rather than silently undercounted.",
       });
     }
 
