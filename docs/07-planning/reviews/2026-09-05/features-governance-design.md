@@ -38,32 +38,6 @@ repeated per document.
 ---
 
 ## 1. `roles-and-permissions-ui.md`
-
-**Verdict: ready-with-fixes.** Structurally the strongest spec in the set: 13 numbered
-rules, a permissions table, 9 routes each with a capability, a genuine edge-case table,
-"Open questions: None." The gaps are all *vocabulary* gaps — the spec describes a UI that
-renders data (capability groups, plain-English descriptions, implication rules) that no
-document actually defines.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| high | `RL-5`: "Some capabilities imply others. Ticking `work_item:update` auto-ticks `work_item:read`." The **implication graph is defined nowhere** — not in `rbac.md`, not here, not in the data model. `GET /api/capabilities` is said to return "implication rules", so the implementer must invent them for ~60 capabilities. Guessing wrong is a security bug: an under-specified implication silently grants or withholds authority. | Add an `implies` column to the capability list in `rbac.md` (single source of truth, alongside `packages/permissions/src/capabilities.ts`), e.g. `work_item:update → work_item:read`, `comment:create_internal → comment:create`, `*:manage → *:read`. State whether implication is transitive and whether it is enforced server-side at grant time or only expanded at evaluation time. |
-| high | `RL-4`: "You cannot edit a role ranked **above** your own." Strictly read, equal rank is editable — so a rank-50 lead may edit another rank-50 role. Combined with the absence of any rule on **what rank you may set**, a rank-80 admin can create a rank-100 role they can then never edit, or a peer can rewrite a peer role. | State the comparison explicitly (`role.rank >= actor.maxRank ⇒ read-only`, or `>` with a stated rationale) and add `RL-14`: "You cannot create or set a rank greater than or equal to your own highest rank." Add both to the permission-matrix fixture. |
-| medium | `RL-1` names capability groups "Work items, Projects, SLA, Approvals, Administration"; the screen mock shows "Projects · Approvals · Time & cost · Administration". Neither is a complete partition of the ~60 capabilities in `rbac.md` (where do `label:*`, `kb_article:*`, `service:manage`, `intake:triage`, `api_key:manage`, `report:*` go?). | Add a `group` column to the capability list in `rbac.md` so the grouping is data, not a UI decision, and assert in a unit test that every capability has exactly one group. |
-| medium | `RL-2` requires "a one-line, plain-English description" for every capability; none of the ~60 are written down. An implementer writes 60 strings by guesswork, and they become user-facing security language. | Add a `description` column to `rbac.md`'s capability list (or a `capabilities.ts` excerpt in this spec) covering all of them. |
-| medium | The role editor mock shows a **`History ▾`** affordance and `RL-10` mandates audit rows, but **no API route returns role history**. Same for `RL-12` "Test as this role" — no endpoint, and it cannot be computed client-side without the full route-policy map. | Add `GET /api/roles/{id}/history` (`workspace:read`) and `POST /api/roles/{id}/preview` (`workspace:read`) returning the navigation entries and work-item actions a holder would see. |
-| medium | `GET /api/capabilities` is policed with `workspace:read`, but the path carries **no workspace**, so the scope of that capability check is unresolvable. `rbac.md` requires `{ capability, scope }` per route. | Either move it to `GET /api/workspaces/{id}/capabilities`, or declare it `{ authenticated: true, reason: 'static vocabulary, no tenant data' }` once that policy kind exists (see §3). |
-| medium | Role `key` — "Names need not be unique; the stable `key` is" — but nothing says who supplies it, how it is slugified, its uniqueness scope (per workspace? per scope+workspace?), or what happens on collision. | Add `RL-15`: key is server-generated from the name as a kebab slug, unique per `(scope, workspace_id)`, immutable after creation, with a numeric suffix on collision. |
-| medium | The spec covers workspace-scope roles only, but `role.scope` is `instance \| workspace \| project` in both `rbac.md` and the data model. Project-scope roles are punted to `settings-hierarchy.md`, which mentions only "per-project role overrides" on the Members screen and specifies no editor. **No document specifies how a project-scope role row is created or edited.** | Either declare project-scope roles out of scope for P4 and remove `project` from `role.scope`, or add the rules and routes here. |
-| low | The spec references `role.description`; the data model's §2 `role` table omits it (`rbac.md`'s DDL block includes it). | Add `description` to the `role` row in `data-model.md` §2. |
-| low | Edge case "Editing your own role to remove your own access — allowed but requires typed confirmation; you may lock yourself out". This can strand a workspace even though `RL-7` protects the *last role*, because the last role could still be held by a suspended person. | Extend `RL-7` to "at least one **active** person must hold `workspace:manage_roles` after any save", and test it. |
-| low | Testing section describes tests in prose while `god-mode.md` names files. | Name them: `role-privilege-escalation.spec.ts` (`RL-3`), `role-rank-guard.spec.ts` (`RL-4`), `capability-implication.spec.ts` (`RL-5`), `last-admin-role-protected.spec.ts` (`RL-7`). |
-
-Data references: `role` ✓ (data model §2). Capabilities used — `workspace:read`,
-`workspace:manage_roles`, `workspace:manage_members` — all present in `rbac.md` ✓.
-
----
-
 ## 2. `god-mode.md`
 
 **Verdict: not-ready.** Thirteen prose sections describing fifteen screens, governed by
