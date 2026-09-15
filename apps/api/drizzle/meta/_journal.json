@@ -351,6 +351,13 @@
 			"when": 1788681037167,
 			"tag": "0049_drop_device_code",
 			"breakpoints": true
+		},
+		{
+			"idx": 50,
+			"version": "7",
+			"when": 1788940000000,
+			"tag": "0050_enforce_single_role_membership",
+			"breakpoints": true
 		}
 	]
 }

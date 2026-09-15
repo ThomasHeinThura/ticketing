@@ -55,9 +55,20 @@ export function hasOwnerRole(role: string) {
  * deletion. It does not refuse; it permits. Recorded here because the wrong
  * version was stated confidently and could be believed again.
  *
- * Issue #82 removes the comma-joined value at its source and a `CHECK`
- * constraint makes it unreachable, at which point both readings converge and
- * this function can be deleted.
+ * **ISSUE #82 DOES NOT MAKE THIS CONVERGE -- DO NOT DELETE THIS FUNCTION WHEN `0050`
+ * LANDS.** Migration `0050`'s `CHECK` constrains comma-joining, trimming and emptiness. It
+ * does not constrain CASE. A value like `"Owner"` is a single, trimmed, non-empty role name
+ * and satisfies it. This function still case-folds (`.trim().toLowerCase()`), while its
+ * sibling `distinctOwnerUserCount` (`apps/api/src/utils/workspace-member-roles.ts`) counts
+ * with an exact, case-SENSITIVE SQL `eq(role, "owner")`. So for `"Owner"` the two readings
+ * do not converge: this function still counts such a row as an owner where the SQL count
+ * would not -- the OVER-counting direction this comment already warns skips
+ * `planAccountDeletion`'s block. Not reachable through any live write path today --
+ * better-auth validates `roleToSet` against a case-sensitive `validStaticRoles` Set and
+ * `create-role` lowercases every name before it is stored, and the native S5 role-write
+ * route case-folds and refuses the same shape a second way -- so the precondition is the
+ * same one issue #82 already discloses elsewhere: a direct database write, or a row that
+ * predates validation entirely.
  */
 export function holdsOwnerExactly(role: string) {
   return role.trim().toLowerCase() === "owner";
