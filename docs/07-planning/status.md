@@ -414,9 +414,10 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   (see the S7 row, which now names the read route as well as the three writes). The claim was
   checkable and false, which is the worst kind to put in this file.
 
-  The remaining reason `organization()` is still mounted is **S7** (blocked on **#82 AND
-  #118**, corrected 2026-09-15 — remediation is PR #110 for #82, PRs #119 and #122 for
-  #118) and **S9**; S10 unmounts it once those clear.
+  The remaining reason `organization()` is still mounted is **S7** (its precondition, **#82
+  AND #118**, is fully CLOSED as of 2026-09-15 — PR #110 for #82, PRs #119 and #122 for
+  #118 — but S7 itself has not started) and **S9** (PR #104, needs rebase); S10 unmounts it
+  once those land.
 - **The frozen organization-create baseline is N = 9 observable effects: eight first-order
   create effects plus one eventual, one-hop durable notification consequence.** The eight
   are the `workspace` row, the owner `workspace_member` row, the three seeded
