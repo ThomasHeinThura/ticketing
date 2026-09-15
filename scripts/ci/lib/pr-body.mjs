@@ -651,10 +651,25 @@ export function checklistPresenceProblems(raw, declared) {
     }
   }
 
+  // Strip comments from each block's WHOLE text first, matching `contentOf`'s own
+  // pattern, then re-derive lines from the result — same fix as `checklistProblems`.
+  // Stripping line-by-line never sees a comment whose `<!--`/`-->` sit on different
+  // lines, so a checkbox truly wrapped in a multi-line comment — invisible on
+  // GitHub's own render — still counted as present and ticked here, which is
+  // exactly the gap that made this presence check satisfiable by a checkbox no
+  // human reviewer could actually see.
+  const visibleLinesByBlock = new Map();
+  for (const [key, block] of present) {
+    visibleLinesByBlock.set(
+      key,
+      stripComments(block.lines.join("\n")).split("\n"),
+    );
+  }
+
   // 2. At least one block must actually carry checkboxes. Collapsing the whole section
   //    to prose leaves checklistProblems() with nothing to judge, which is probe (2).
-  const withBoxes = [...present.values()].filter((block) =>
-    block.lines.some((line) => ANY_BOX.test(stripComments(line))),
+  const withBoxes = [...present.keys()].filter((key) =>
+    visibleLinesByBlock.get(key).some((line) => ANY_BOX.test(line)),
   );
   if (present.size > 0 && withBoxes.length === 0) {
     problems.push(
@@ -669,12 +684,11 @@ export function checklistPresenceProblems(raw, declared) {
   //    must fail with the same message the unticked box gets. More than one is
   //    ambiguous about which one closes the gate.
   const reviewItems = [];
-  for (const block of present.values()) {
-    for (const line of block.lines) {
-      const visible = stripComments(line);
-      if (!ANY_BOX.test(visible)) continue;
+  for (const [key, block] of present) {
+    for (const line of visibleLinesByBlock.get(key)) {
+      if (!ANY_BOX.test(line)) continue;
       if (REVIEW_ITEM.test(normaliseItem(line)))
-        reviewItems.push({ block: block.name, line: visible.trim() });
+        reviewItems.push({ block: block.name, line: line.trim() });
     }
   }
 
@@ -722,15 +736,23 @@ export function checklistProblems(raw) {
       continue;
     }
 
-    const boxes = block.lines.filter((line) =>
-      ANY_BOX.test(stripComments(line)),
-    );
+    // Strip comments from the WHOLE block first, matching `contentOf`'s own
+    // pattern, then re-derive lines from the result. Stripping line-by-line
+    // (the previous shape) never sees a comment whose `<!--`/`-->` sit on
+    // different lines, so a checkbox truly wrapped in a multi-line comment —
+    // invisible on GitHub's own render — still read as present and ticked to
+    // this checker. Splitting AFTER stripping is what makes an in-comment
+    // line vanish here the same way it vanishes for a human reader, instead
+    // of surviving as an untouched raw line that happens to look unstripped.
+    const visibleLines = stripComments(body).split("\n");
+
+    const boxes = visibleLines.filter((line) => ANY_BOX.test(line));
 
     // No boxes: prose stands on its own, n/a or not. Unchanged behaviour.
     if (boxes.length === 0) continue;
 
-    for (const line of block.lines) {
-      const visible = stripComments(line);
+    for (const line of visibleLines) {
+      const visible = line;
       if (!OPEN_BOX.test(visible)) continue;
 
       if (REVIEW_ITEM.test(normaliseItem(line))) {

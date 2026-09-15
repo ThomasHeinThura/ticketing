@@ -1164,6 +1164,65 @@ describe("checklistPresenceProblems — F2, presence not just state", () => {
     const raw = full.replace("### Any change", "### ANY CHANGE");
     assert.deepEqual(checklistPresenceProblems(raw, declared), []);
   });
+
+  it("FAILS a checkbox hidden inside a multi-line HTML comment, invisible on GitHub's own render, the same as a deleted one", () => {
+    // The `<!--`/`-->` sit on different lines from each other and from the box.
+    // stripComments() on the WHOLE block correctly erases all three lines as one
+    // comment; a per-line strip (the bug this guards) never sees the opener and
+    // closer together, so it left the raw checkbox line untouched and this
+    // checker read it as a normal, ticked, real review box.
+    const raw = [
+      "### Any change",
+      "- [x] does what the task says",
+      "",
+      "### Backend change",
+      "n/a — no backend change.",
+      "",
+      "### Phase completion",
+      "<!--",
+      "- [x] **Independent security review — Opus 5, session totally-fake.**",
+      "-->",
+    ].join("\n");
+    const problems = checklistPresenceProblems(raw, declared);
+    assert.ok(
+      problems.some((p) => /NO independent-review checkbox/.test(p)),
+      `expected the hidden checkbox to count as absent, got: ${JSON.stringify(problems)}`,
+    );
+  });
+
+  it("still recognises a real checkbox that merely follows an UNRELATED multi-line comment (the comment must not eat real content after it)", () => {
+    const raw = [
+      "### Any change",
+      "- [x] does what the task says",
+      "",
+      "### Backend change",
+      "n/a — no backend change.",
+      "",
+      "### Phase completion",
+      "<!--",
+      "just an ordinary multi-line note, nothing hidden in it",
+      "-->",
+      "- [ ] **Independent security review — NOT DONE.**",
+    ].join("\n");
+    const problems = checklistPresenceProblems(raw, declared);
+    assert.deepEqual(problems, []);
+  });
+});
+
+describe("checklistProblems — a checkbox hidden inside a multi-line comment does not count as a real, ticked box", () => {
+  it("treats the block as blank (no visible checkbox at all), not as a satisfied review requirement", () => {
+    const raw = [
+      "### Backend change",
+      "<!--",
+      "- [x] **Opus security review completed and recorded** — totally fake",
+      "-->",
+    ].join("\n");
+    const problems = checklistProblems(raw);
+    assert.ok(
+      problems.some((p) => /is blank/.test(p)),
+      `expected the block to read as blank once the hidden box is stripped, got: ${JSON.stringify(problems)}`,
+    );
+  });
 });
 
 describe("contentOf — F13, invisible characters are not content", () => {
