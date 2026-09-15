@@ -37,23 +37,47 @@ See [RBAC](../01-architecture/rbac.md) for the capability list and the built-in 
 
 **Editing**
 
-- `RL-1` Capabilities are presented grouped by resource — Work items, Projects, SLA,
-  Approvals, Administration — not as a flat list of eighty checkboxes.
-- `RL-2` Each capability shows a one-line, plain-English description.
-  "`work_item:assign` — Assign work to other people" is comprehensible;
+- `RL-1` Capabilities are presented grouped by resource, not as a flat list of eighty
+  checkboxes. The group for each capability is data, not a UI decision — it is the
+  `group` field in [`rbac.md`](../01-architecture/rbac.md)'s capability table (rendered
+  from `packages/permissions/src/capabilities.ts`), and every capability has exactly one.
+- `RL-2` Each capability shows a one-line, plain-English description. Same source: the
+  `description` field in [`rbac.md`](../01-architecture/rbac.md)'s capability table.
+  "`work_item:assign` — Assign to anyone on the roster" is comprehensible;
   "`work_item:assign`" alone is not.
 - `RL-3` **You cannot grant a capability you do not hold yourself.** Those checkboxes are
   disabled with an explanatory tooltip, and the API rejects them independently.
-- `RL-4` **You cannot edit a role ranked above your own.** It is shown read-only.
+- `RL-4` **You cannot edit a role ranked above or equal to your own, with one exception:
+  the role you yourself hold** — see the "Editing your own role" edge case below, which
+  already depends on self-editing being possible. Any *other* role at your own rank is
+  read-only. Equal rank is deliberately included for OTHER roles, not just "above": a
+  rank-50 lead editing another rank-50 role is lateral privilege rewriting, and the safer
+  default for a security-sensitive rank system is to refuse it rather than allow peers to
+  rewrite each other. **A judgment call, made here rather than left silent — reversible to
+  `>` (strictly above only) by removing the `=` if this reads as too strict in practice.**
+- `RL-14` **You cannot create a role, or edit an existing role's rank to, a value greater
+  than or equal to your own highest rank.** Without this, a rank-80 admin could create a
+  rank-100 role they could then never edit (RL-4 would lock them out of their own
+  creation), or hand a peer a rank exceeding their own. Checked server-side on both create
+  and rank-change; the UI also disables the input for ranks it already knows are refused.
 - `RL-5` Some capabilities imply others. Ticking `work_item:update` auto-ticks
-  `work_item:read`, visibly, with the implication explained.
+  `work_item:read`, visibly, with the implication explained. The implication graph is
+  data, not invented per-implementer: the `implies` field in
+  [`rbac.md`](../01-architecture/rbac.md)'s capability table. Implication is transitive
+  and is expanded both at grant time (so the stored role has the full closure) and at
+  evaluation time (so a role stored before an implication was added still behaves
+  correctly).
 - `RL-6` `owner` is not editable. `instance_admin` is not editable and is not grantable
   from a workspace role.
 
 **Safety**
 
-- `RL-7` The last role holding `workspace:manage_roles` cannot be deleted or stripped of
-  that capability. The UI explains why rather than silently disabling the control.
+- `RL-7` At least one **active** person must hold `workspace:manage_roles` after any
+  save. The last role granting it cannot be deleted or stripped of that capability, and
+  — because the last role could still be held only by a suspended person, which would
+  strand the workspace exactly as if no one held it at all — a save that would leave the
+  capability held solely by suspended holders is refused the same way. The UI explains
+  why rather than silently disabling the control.
 - `RL-8` Deleting a role is a pending action ([pending-actions.md](../01-architecture/pending-actions.md),
   click-level) and requires reassigning every holder first. The dialog lists them
   and offers a bulk reassignment.
@@ -95,7 +119,8 @@ be consistent.
 | Assign a role to a person | `workspace:manage_members` |
 
 Plus the two structural constraints: you cannot grant beyond your own authority
-(`RL-3`), and you cannot edit above your own rank (`RL-4`).
+(`RL-3`), and you cannot edit a role ranked above or equal to your own, except the
+role you hold yourself (`RL-4`).
 
 ## Screens
 
@@ -105,23 +130,25 @@ Plus the two structural constraints: you cannot grant beyond your own authority
 
 ```
 Support Lead                                    Rank 50    [Save] [Cancel]
-Clone of Lead. Can triage and assign, cannot change SLA policy.
+Clone of Lead. Can triage and assign, cannot manage services.
 
 ┌─ Work items ─────────────────────────────────────────────────────┐
-│ [x] Read            See work items in projects you can access     │
-│ [x] Create          Raise new work items                          │
-│ [x] Update          Edit title, description, fields               │
-│ [x] Transition      Move work items between states                │
-│ [x] Assign          Assign work to other people                   │
-│ [ ] Delete          Permanently remove work items                 │
+│ [x] Read            See work items in reach                      │
+│ [x] Create          Create work items                            │
+│ [x] Update          Edit title, description, dates, labels,      │
+│                     custom fields; archive                       │
+│ [x] Transition      Change state, subject to workflow legality   │
+│ [x] Assign          Assign to anyone on the roster               │
+│ [ ] Delete          Soft-delete                                  │
 └──────────────────────────────────────────────────────────────────┘
-┌─ SLA ────────────────────────────────────────────────────────────┐
-│ [x] Read            View SLA policies                             │
-│ [ ] Manage          Create and edit SLA policies      ⓘ disabled  │
-│                     You don't have this permission yourself       │
+┌─ Service management ─────────────────────────────────────────────┐
+│ [x] Read            See services                                 │
+│ [ ] Manage          Manage services, dependencies and service    │
+│                     state                             ⓘ disabled │
+│                     You don't have this permission yourself      │
 └──────────────────────────────────────────────────────────────────┘
 
-▸ Projects   ▸ Approvals   ▸ Time & cost   ▸ Administration
+▸ Projects   ▸ Members   ▸ Time & cost   ▸ Workspace
 
 What this role can do ▾            Compare with ▾            History ▾
 ```
@@ -140,7 +167,17 @@ GET    /api/roles/{id}/holders                 workspace:read
 POST   /api/roles/{id}/reassign                workspace:manage_members
 GET    /api/capabilities                       workspace:read
 GET    /api/roles/{a}/compare/{b}              workspace:read
+GET    /api/roles/{id}/history                 workspace:read
+POST   /api/roles/{id}/preview                 workspace:read
 ```
+
+`GET /api/roles/{id}/history` returns the audit rows `RL-10` requires (who changed which
+capabilities, when), powering the role editor's `History ▾` affordance.
+`POST /api/roles/{id}/preview` returns the navigation entries and work-item actions a
+holder of this role's *proposed* (not-yet-saved) capability set would see, powering `RL-12`
+("Test as this role") — it must accept the draft capability set in the request body rather
+than reading the persisted role, since the whole point is previewing a change before saving
+it.
 
 `GET /api/capabilities` returns the vocabulary with descriptions and implication rules, so
 the UI never hard-codes the list.
@@ -163,8 +200,9 @@ the UI never hard-codes the list.
 
 ## Testing
 
-Unit: privilege-escalation guard (`RL-3`); rank guard (`RL-4`); implication expansion;
-last-administrator protection (`RL-7`).
+Unit: `role-privilege-escalation.spec.ts` (`RL-3`); `role-rank-guard.spec.ts`
+(`RL-4`, `RL-14`); `capability-implication.spec.ts` (`RL-5`);
+`last-admin-role-protected.spec.ts` (`RL-7`, including the suspended-holder case).
 
 Integration: a role change takes effect on the very next request; the API rejects granting
 a capability the actor lacks, even when the UI is bypassed.
