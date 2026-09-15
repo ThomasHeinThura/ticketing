@@ -585,7 +585,46 @@ export async function resolveExistingFile(candidateNoExtension) {
 
 // ── 3. Import-clause grammar ──────────────────────────────────────────────────────────
 
+/**
+ * S4: this regex runs over the STRING-INTACT pass (`code` — comments stripped, string
+ * CONTENTS untouched), which is what lets an `import` keyword spelled inside a string
+ * literal — a docs string, an error message, a code-sample constant — start a match at all.
+ * Its lazy `[^;]*?` clause then bridges across real code (a live
+ * `authClient.organization.*` call among it, potentially) to a LATER `from "…"`-shaped
+ * string elsewhere in the same statement or object literal, which may itself be nothing but
+ * string content too. `parseImportClause` only inspects the first `{…}` group of whatever
+ * got captured and never checks that the rest of the span is genuine code, so this phantom
+ * match parses as a clean named import, resolves to the real auth-client definition file,
+ * and its entire span — real call included — is recorded as an `importRanges` entry that
+ * then suppresses that real call. Demonstrated against the real checker, not theorised: an
+ * ordinary file with a real `import { authClient } from "@/lib/auth-client";` up top, a live
+ * `authClient.organization.setActive(...)` call, and two unrelated docs-style string
+ * literals — one mentioning `"import { authClient }"`, a later one mentioning `"adapted
+ * from '@/lib/auth-client'"` — produced a clean `[]` result: the call neither counted nor
+ * refused. `findImportStatements` below closes this by cross-checking each match's `import`
+ * keyword against the STRING-STRIPPED pass at the same offset — see `isRealImportKeyword`.
+ */
 const IMPORT_STATEMENT = /import\s+([^;]*?)\s+from\s*["']([^"']+)["'];?/g;
+
+/**
+ * Is the `import` keyword `IMPORT_STATEMENT` matched at `matchIndex` in `code` (the
+ * STRING-INTACT pass) genuine code, rather than a phantom produced by string content that
+ * only the STRING-INTACT pass leaves untouched?
+ *
+ * `code` and `codeForScan` are two independent `stripCodeComments` passes over the exact
+ * same `source`, differing only in whether string/template CONTENTS are blanked — every
+ * character OUTSIDE a string or template body is identical between the two, at the same
+ * offset (see the fuller comment where `scanFiles` computes them). So the six characters
+ * `import` this match found are real code if and only if `codeForScan` still reads `import`
+ * at that same offset: when they were really inside a string, the blanking pass has
+ * replaced them with spaces at that very position; when they were real code, blanking some
+ * OTHER string elsewhere in the file never touches them.
+ *
+ * @returns {boolean}
+ */
+function isRealImportKeyword(codeForScan, matchIndex) {
+  return codeForScan.startsWith("import", matchIndex);
+}
 
 /**
  * `export ... from "<specifier>"` — a re-export declaration, in both its named
@@ -669,9 +708,19 @@ function parseImportClause(clauseRaw) {
  * Every `import ... from "..."` statement in `code` (comments already stripped, strings
  * intact), with enough to resolve, classify and exclude it from the later scan.
  *
+ * S4: a match whose `import` keyword is only present because the STRING-INTACT pass leaves
+ * string CONTENTS untouched — i.e. `isRealImportKeyword` finds it already blanked away in
+ * `codeForScan` at the same offset — is not a statement at all, and is dropped before it can
+ * ever reach `importRanges` or `rootAliasNames`. This is a plain skip, not a refusal: the
+ * phantom text itself proves nothing unsafe, and a file that genuinely imports the auth
+ * client always does so through a real, separate import statement elsewhere, which this
+ * same pass still finds and still traces normally.
+ *
+ * @param {string} codeForScan the STRING-STRIPPED sibling pass over the same source (see
+ *   `scanFiles`), used only to distinguish a real `import` keyword from a phantom one.
  * @returns {{ clause: ImportClause, specifier: string, startLine: number, endLine: number }[]}
  */
-function findImportStatements(code) {
+function findImportStatements(code, codeForScan) {
   const statements = [];
   IMPORT_STATEMENT.lastIndex = 0;
   for (
@@ -679,6 +728,7 @@ function findImportStatements(code) {
     match !== null;
     match = IMPORT_STATEMENT.exec(code)
   ) {
+    if (!isRealImportKeyword(codeForScan, match.index)) continue;
     statements.push({
       clause: parseImportClause(match[1]),
       specifier: match[2],
@@ -1152,7 +1202,18 @@ export async function scanFiles({
       continue;
 
     const code = stripCodeComments(source);
-    const statements = findImportStatements(code);
+    // `code` (comments stripped, string CONTENTS intact — needed to read a real specifier's
+    // text) and `codeForScan` (also string-blanked) are two independent `stripCodeComments`
+    // passes over this same `source`, identical in length and in every character outside a
+    // string/template body — delimiters, comment collapsing, and every length-changing
+    // decision are the same between the two — so a character offset computed against one
+    // names the exact same source position in the other. `findImportStatements` uses that
+    // property (S4) to tell a real `import` keyword from one that only exists as string
+    // content; `findAliasCreations`/`scanOccurrences` further below reuse it again to let
+    // `importRanges` (computed against `code`) double as `consumedRanges` against
+    // `codeForScan`.
+    const codeForScan = stripCodeComments(source, { blankStrings: true });
+    const statements = findImportStatements(code, codeForScan);
 
     const rootAliasNames = new Set();
     const importRanges = [];
@@ -1378,14 +1439,9 @@ export async function scanFiles({
 
     if (rootAliasNames.size === 0 && refusals.length === 0) continue;
 
-    // `code` (used to compute `importRanges` above) and `codeForScan` (blanked strings, used
-    // below) are two independent `stripCodeComments` passes over the same `source`, differing
-    // only in whether string/template CONTENTS are blanked — delimiters, comment collapsing,
-    // and every length-changing decision are identical between the two, so a character offset
-    // computed against one names the exact same source position in the other. That is what
-    // lets `importRanges` (computed against `code`, which needs real specifier text) be
-    // reused directly as `consumedRanges` against `codeForScan` below.
-    const codeForScan = stripCodeComments(source, { blankStrings: true });
+    // `codeForScan` was already computed above (alongside `code`, before `findImportStatements`
+    // — see the comment there for why the two passes' offsets stay interchangeable). Reused
+    // here as `consumedRanges` against the alias/consumption scan below.
     const { orgAliases, consumedRanges } = findAliasCreations(
       codeForScan,
       rootAliasNames,

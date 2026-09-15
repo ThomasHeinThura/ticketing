@@ -590,3 +590,65 @@ describe("scanFiles — S3: an out-of-root renamed re-export is never skipped un
     );
   });
 });
+
+describe("scanFiles — S4: a string-borne fake `import` statement does not swallow a real call", () => {
+  /**
+   * `IMPORT_STATEMENT` runs over the STRING-INTACT pass (`code`), so an `import` keyword
+   * spelled inside a string literal — a docs string, an error message, a code-sample
+   * constant — can start a match. Its lazy `[^;]*?` clause then bridges across real code,
+   * including a real, live `authClient.organization.*` call, to a LATER `from "…"`-shaped
+   * string elsewhere in the same object literal (itself just string content too), and
+   * `parseImportClause` parses the phantom span as a clean named import of the real
+   * auth-client module. The whole span, real call included, used to be recorded as an
+   * `importRanges` entry that suppressed the real call underneath it.
+   *
+   * Demonstrated against the real checker, not theorised: an ordinary file with a genuine
+   * `import { authClient } from "@/lib/auth-client";` up top and a real, live call produced
+   * a clean `[]` — the call neither counted nor refused — once two unrelated docs-style
+   * string literals happened to sandwich it, before `findImportStatements` cross-checked
+   * each match's `import` keyword against the STRING-STRIPPED pass at the same offset.
+   */
+  it("a real call sandwiched between a fake `import {...}` string and a fake `from '...'` string", async () => {
+    const dir = fixtureDir();
+    const result = await scanOne(
+      dir,
+      [
+        'import { authClient } from "@/lib/auth-client";',
+        "",
+        "const docs = {",
+        '  note: "import { authClient }",',
+        "  handler: () => authClient.organization.setActive({ organizationId: 'x' }),",
+        "  source: \"adapted from '@/lib/auth-client'\",",
+        "};",
+        "export default docs;",
+      ].join("\n"),
+    );
+    assert.deepEqual(result.refusals, []);
+    assert.equal(result.calls.length, 1);
+    assert.equal(result.calls[0].family, "setActive");
+  });
+
+  it("a harmless docs string mentioning an unrelated import is not affected", async () => {
+    const dir = fixtureDir();
+    // Same shape, but the second string names a module that is NOT the auth client — the
+    // phantom match (if it still formed) would resolve to nothing this scanner cares about,
+    // same as any other import of an unrelated module. Confirms the fix is scoped to the
+    // auth-client specifier, not a blanket suppression of every import-like string.
+    const result = await scanOne(
+      dir,
+      [
+        'import { authClient } from "@/lib/auth-client";',
+        "",
+        "const docs = {",
+        '  note: "import { authClient }",',
+        "  handler: () => authClient.organization.setActive({ organizationId: 'x' }),",
+        "  source: \"adapted from '@/lib/some-unrelated-module'\",",
+        "};",
+        "export default docs;",
+      ].join("\n"),
+    );
+    assert.deepEqual(result.refusals, []);
+    assert.equal(result.calls.length, 1);
+    assert.equal(result.calls[0].family, "setActive");
+  });
+});
