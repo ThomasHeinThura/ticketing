@@ -719,6 +719,26 @@ function findExportFromStatements(code) {
 const DYNAMIC_IMPORT_CALL = /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g;
 
 /**
+ * ANY `import(...)` call at all, literal or not — found by a formal review's second
+ * bypass, one level past F7: a dynamic `import(someComputedSpecifier)` whose argument is
+ * NOT a simple string literal never matches `DYNAMIC_IMPORT_CALL` above (that regex
+ * requires quotes immediately inside the parens), so it is invisible to F1 too — and if
+ * the caller ALSO builds the property name it reads off the imported module via string
+ * concatenation instead of writing `authClient` literally, `mentionsBinding` (a raw
+ * substring check) never fires either, and F7's `STRING_EVAL_SINK` check never gets the
+ * chance to run. Reproduced end-to-end against the real checker binary: a computed
+ * specifier plus a concatenated property name plus a genuine `eval(...)` call produced
+ * `exit 0`, "0 live call sites", the evil file mentioned nowhere. The fix is the same
+ * principle this module already applies to a bare reference it cannot classify: refuse
+ * unconditionally rather than attempt to resolve or prove safety for a specifier this
+ * scanner cannot read at parse time. This intentionally refuses EVERY non-literal dynamic
+ * import in a scanned file, not only ones plausibly reaching the auth client — there is no
+ * way to tell the difference without evaluating the computed expression, which is exactly
+ * what a static scanner cannot do.
+ */
+const ANY_DYNAMIC_IMPORT_CALL = /\bimport\s*\(\s*([^)]*)\)/g;
+
+/**
  * A CommonJS `require("<specifier>")` call. This module's whole import grammar
  * (`IMPORT_STATEMENT`, `EXPORT_FROM_STATEMENT`) is ESM-only; `require(...)` is a different
  * grammar it was never taught, so — same as the dynamic import above — a `require()` that
@@ -1141,6 +1161,37 @@ export async function scanFiles({
           "declaration; a dynamically imported value could reach `.organization` " +
           "through any shape at all, and none of them are checked here.",
       });
+    }
+
+    // F8: a dynamic `import(...)` whose argument is not a simple string literal — the
+    // regex above already resolved and refused the literal-specifier case; this one
+    // catches every OTHER shape `import(` can take (a variable, a template literal, a
+    // concatenation, a function call). Deliberately unconditional: this scanner cannot
+    // evaluate the argument, so it cannot prove such an import never resolves to the
+    // auth-client module. Skips import( calls DYNAMIC_IMPORT_CALL already turned into a
+    // refusal above, so a literal-specifier import that DID resolve to the client is not
+    // double-refused with two different messages.
+    {
+      const literalImportLines = new Set(
+        findSpecifierCalls(code, DYNAMIC_IMPORT_CALL).map((call) => call.line),
+      );
+      for (const call of findSpecifierCalls(code, ANY_DYNAMIC_IMPORT_CALL)) {
+        if (literalImportLines.has(call.line)) continue;
+        const arg = call.specifier.trim();
+        // A literal-specifier call ALSO matches this broader regex (its capture group is
+        // the raw parenthesised text, e.g. `"./foo"` including the quotes) — skip it here
+        // too, whether or not it happened to land on the same line as another call above.
+        if (/^["'][^"']*["']$/.test(arg)) continue;
+        refusals.push({
+          line: call.line,
+          snippet: call.snippet,
+          reason:
+            "a dynamic `import(...)` whose argument is not a simple string literal. This " +
+            "scanner cannot evaluate the argument, so it cannot prove this import never " +
+            "resolves to the auth-client module — refused rather than silently assumed " +
+            "safe.",
+        });
+      }
     }
 
     // F4: a CommonJS `require("<specifier>")` of the definition — a different grammar

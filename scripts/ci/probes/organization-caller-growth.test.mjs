@@ -651,4 +651,70 @@ describe("S10 — authClient.organization.* callers cannot grow unnoticed", () =
       `F7 must not fire on an ordinary function-argument setInterval:\n${run.output}`,
     );
   });
+
+  it("R: a computed dynamic-import specifier plus a concatenated property name defeats F1/F7 without F8 (formal review's second bypass)", () => {
+    const FILE = "apps/web/src/evil2/computed-bypass.ts";
+    // No static import, no literal import(...) specifier, no literal "authClient"
+    // substring anywhere in the file -- every one of F1's, and mentionsBinding's (and so
+    // F7's), triggers is deliberately absent. Reproduced end to end against the real
+    // checker binary and, separately, as genuinely live code in a real ESM sandbox before
+    // this fix existed.
+    const source = [
+      'const specifier = ["@/lib/auth", "-client"].join("");',
+      'const propName = ["auth", "Client"].join("");',
+      "export async function trigger(organizationId: string) {",
+      "  const m = await import(specifier);",
+      "  const code = 'm[\"' + propName + '\"].organization.setActive({ organizationId })';",
+      "  return eval(code);",
+      "}",
+      "",
+    ].join("\n");
+
+    const dir = scenario("org-computed-dynamic-import", {
+      baseFiles: {},
+      baseBaseline: {},
+      headFiles: { [FILE]: source },
+      headBaseline: {},
+    });
+
+    const run = runChecker(dir, "check-organization-callers.mjs");
+    assert.equal(
+      run.status,
+      1,
+      "a computed (non-literal) dynamic import specifier must fail closed, since this " +
+        `scanner cannot prove it never resolves to the auth-client module. Exited ${run.status}:\n${run.output}`,
+    );
+    assert.match(run.output, /not a simple string literal/);
+    assert.ok(run.output.includes(FILE), run.output);
+  });
+
+  it("S: an ordinary computed dynamic import unrelated to the auth client is a real (if blunt) refusal, not silently ignored — documents the accepted trade-off", () => {
+    const FILE = "apps/web/src/routes/lazy-widget.tsx";
+    // This scanner cannot tell a route-splitting `import(routePath)` apart from one that
+    // might resolve to the auth client -- F8 refuses BOTH, on purpose (see the doc comment
+    // on ANY_DYNAMIC_IMPORT_CALL). This test exists so that trade-off is visible and
+    // intentional, not an accidental false positive discovered later in real code.
+    const source = [
+      "export async function loadWidget(routePath: string) {",
+      "  return import(routePath);",
+      "}",
+      "",
+    ].join("\n");
+
+    const dir = scenario("org-computed-dynamic-import-unrelated", {
+      baseFiles: {},
+      baseBaseline: {},
+      headFiles: { [FILE]: source },
+      headBaseline: {},
+    });
+
+    const run = runChecker(dir, "check-organization-callers.mjs");
+    assert.equal(
+      run.status,
+      1,
+      "F8 is intentionally over-broad for computed specifiers; if this ever changes to 0, " +
+        `update this test and its doc comment together. Exited ${run.status}:\n${run.output}`,
+    );
+    assert.match(run.output, /not a simple string literal/);
+  });
 });
