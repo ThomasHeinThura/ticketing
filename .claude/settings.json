@@ -1,0 +1,8 @@
+{
+  "enabledPlugins": {
+    "ponytail@ponytail": true,
+    "headroom@headroom-marketplace": true,
+    "accessibility-compliance@claude-code-workflows": true,
+    "mem0@mem0-plugins": true
+  }
+}
