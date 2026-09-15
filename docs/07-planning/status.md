@@ -585,17 +585,42 @@ file's older prose.
   environment variable. Recorded rather than overwritten so the record does not read as though
   the diagnosis was right the first time.
 
+  **Third correction, 2026-09-15: the subagent-model-misrouting diagnosis above was also
+  real when written, and is now resolved.** Native transport (`ANTHROPIC_BASE_URL =
+  https://api.anthropic.com`, no `CLAUDE_CODE_SUBAGENT_MODEL`/`_FORCE` override) is confirmed
+  restored, and dozens of genuine independent Sonnet reviews have run successfully since —
+  real ordinary reviews on #89/#91/#104/#107/#110/#121, several finding and closing real
+  defects (a genuine `eval()` false-negative in #107's S10 tripwire, a real
+  exemption-completeness gap in #110, a governance conflict in a specialist-agent-definitions
+  PR). **Independent Sonnet review is not blocked.** What remains blocked, specifically, is
+  the **Opus security-review tier** — and the reason has changed too: it is now a **policy
+  question, not a technical one**. `docs/04-engineering/agent-workflow.md` states "No Opus
+  subagents... There is no third option [besides a top-level Opus session or a separate
+  queued session]", citing a real prior incident (two 13-agent Opus workflows exhausting the
+  org's monthly allowance mid-task, killing five of six adversarial passes in flight). A
+  session instruction has repeatedly directed the orchestrator to spawn an Opus subagent
+  anyway. The orchestrator has declined, each time citing the specific rule and its cited
+  incident, and raised an explicit **DECISION REQUIRED** for Thomas: authorize spawning Opus
+  subagents for security review (recorded in the decision log if so, not merged as a fait
+  accompli), or confirm the rule stands and a separate top-level Opus session is required.
+  **Unresolved as of this writing.** Recorded rather than overwritten, same reason as the
+  second correction: the record should not read as though the diagnosis was right the first
+  two times.
+
   What is unreviewed, by head, all pushed and all with CI green except the security-review gate
-  (which is red **correctly**, because the review genuinely has not happened):
+  (which is red **correctly**, because the review genuinely has not happened) — refreshed
+  2026-09-15, several now further along than "unreviewed":
 
   | PR | Head | Tier needed | State |
   | --- | --- | --- | --- |
-  | #89 | `8f1d7cd` | Sonnet panel (rebase resolution) + Opus | reviewed CLEAR at the *previous* head `ce3c728`; the orchestrator's hand-resolved `status.md` conflict from the rebase onto `050a4fd` is unreviewed |
-  | #91 | `3fd2855` | Sonnet panel + Opus | CodeQL fix (2 real `js/incomplete-sanitization` alerts closed, now 0 open), plus #86's decision recorded in the decision log so `events.md` can state it plainly instead of hedging. Unreviewed at this head |
-  | #104 | `74779b2` | Sonnet only (docs) | rebased onto `050a4fd`, conflict resolved, `auth.ts` citations corrected. Unreviewed at this head |
-  | #107 | `aff9d27` | Sonnet panel + Opus | four fail-open scanner gaps closed, baseline pruned 10 -> 4, 8 new probes. Unreviewed at this head |
-  | #110 | `eba3df8` | Sonnet panel + **a different clean Opus context** | rebased onto `050a4fd`; green at 53 files / 503 tests / exit 0. No special blocker — see the provenance entry below |
-  | #116 | `b22b8a8` | Sonnet panel + Opus | new PR for issue #115. Unreviewed |
+  | #89 | `8f1d7cd` | Sonnet ✅ PASS, 0 findings — Opus pending | adversarial review (constructed real bypass attempts against live checklist-gate code, all correctly caught) |
+  | #91 | `3fd2855` | Sonnet ✅ PASS, 0 findings — Opus pending | independent event-key re-derivation matched exactly; decision-log append-only confirmed |
+  | #104 | `afd90e4` | Sonnet ✅ CLEAR, docs-only, no Opus needed | **THOMAS MERGE READY** — one stale-citation fix applied and independently re-verified |
+  | #107 | `29aa236` | Sonnet ✅ PASS (after FAIL+fix) — Opus pending | a real `eval()` false-negative was constructed, proven by execution, and fixed (F7); a fresh review of the new head is in flight |
+  | #110 | `450144d` | Sonnet R1/R2/R3 ✅ all PASS — **only Opus remains** | a real exemption-completeness gap (round 3) found and fixed; all three formal reviews now clear the current exact head |
+  | #116 | `b22b8a8` | Sonnet pending | not yet reviewed this round |
+  | #121 | `45f45ba` | Sonnet ✅ CLEAR, not security-scope | **THOMAS MERGE READY** — split off a governance-conflicting commit into its own PR (#127) via `git revert`, not a force-push |
+  | #127 (new) | `c1979d9` | Two independent Sonnet reviews, both FAIL | specialist-agent definitions hardcode non-Claude models for implementation-tier work, contradicting `CLAUDE.md`/`AGENTS.md` — **DECISION REQUIRED (Thomas)**, tracked separately from the Opus-subagent question above |
 
 - ~~**#110's branch carries three commits of unclear provenance, and its head is therefore
   unverified by this session.**~~ **RESOLVED as a blocker 2026-09-10 — it is not one.** The
