@@ -397,11 +397,20 @@ export function organizationPluginRoleGuard(readSession: SessionReader) {
     // `firstMalformedMembershipRole` for the trade this makes and what stays reachable.
     const malformed = await firstMalformedMembershipRole(db, session.userId);
     if (malformed !== null) {
+      // `leave` is itself the request being refused here (it consults the caller's role,
+      // so it is not in `ROLE_INDEPENDENT_ORGANIZATION_ACTION_SET` -- see
+      // `organization-exempt-actions.ts`), so telling THIS caller that leaving remains
+      // available would describe the very request `c.json` is about to refuse. Every other
+      // non-exempt action leaves `leave` itself untouched, so the general phrasing is
+      // accurate for all of them.
+      const recoveryActionsAvailable =
+        action === "leave"
+          ? "Switching workspaces and responding to invitations remain available."
+          : "Leaving the workspace, switching workspaces and responding to invitations remain available.";
       return c.json(
         {
           error: "MALFORMED_MEMBERSHIP_ROLE",
-          message:
-            "This account holds a workspace membership that does not name exactly one role, so no authorization decision can be made from it. An administrator must reassign a single role to that member. Leaving the workspace, switching workspaces and responding to invitations remain available.",
+          message: `This account holds a workspace membership that does not name exactly one role, so no authorization decision can be made from it. An administrator must reassign a single role to that member. ${recoveryActionsAvailable}`,
           problem: malformed.problem,
         },
         409,

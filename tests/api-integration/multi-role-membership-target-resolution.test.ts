@@ -223,6 +223,54 @@ describe("#82 role-independent organization actions remain available during reco
       "MALFORMED_MEMBERSHIP_ROLE",
     );
   });
+
+  /**
+   * Round 3 (formal review R2): `get-full-organization`, `list-invitations`, `list-members`,
+   * `get-active-member`, `get-active-member-role` were confirmed against the installed
+   * better-auth source to call only `checkMembership`/`findMemberByOrgId` -- both filter on
+   * userId/organizationId, never role -- yet were absent from
+   * `ROLE_INDEPENDENT_ORGANIZATION_ACTION_SET` and so were refused `409` for a caller with a
+   * malformed row anywhere. `list-invitations` failing here is exactly the harm this file's
+   * own docstring names: "unable to list their own invitations".
+   */
+  it.each([
+    "get-full-organization",
+    "list-invitations",
+    "list-members",
+    "get-active-member",
+    "get-active-member-role",
+  ])(
+    "%s is not rejected for a malformed role elsewhere (round 3)",
+    async (action) => {
+      const { app } = createApp();
+      const { actor, workspaceB } = await scenario(app);
+      await plantLegacyMembershipRole(workspaceB, actor.user.id, "owner,admin");
+
+      const response = await app.request(`/api/auth/organization/${action}`, {
+        method: "GET",
+        headers: { cookie: actor.cookie },
+      });
+      expect(response.status).not.toBe(409);
+    },
+  );
+
+  it("leave IS rejected for a malformed role elsewhere, unlike round-3's five read routes", async () => {
+    const { app } = createApp();
+    const { actor, workspaceB } = await scenario(app);
+    await plantLegacyMembershipRole(workspaceB, actor.user.id, "owner,admin");
+
+    const response = await app.request("/api/auth/organization/leave", {
+      method: "POST",
+      headers: { cookie: actor.cookie, "content-type": "application/json" },
+      body: JSON.stringify({ organizationId: workspaceB }),
+    });
+    expect(response.status).toBe(409);
+    const payload = (await response.json()) as { message?: string };
+    // Round-3 messaging fix: refusing `leave` itself must not claim leaving remains
+    // available -- that would describe the very request just refused.
+    expect(payload.message).not.toContain("Leaving the workspace");
+    expect(payload.message).toContain("Switching workspaces");
+  });
 });
 
 describe("#82 B-1 — update-team cannot be steered through body.data.organizationId", () => {
