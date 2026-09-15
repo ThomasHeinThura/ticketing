@@ -1285,6 +1285,33 @@ describe("checklistProblems — a checkbox hidden inside a multi-line comment do
       `expected the same-line hidden item to be flagged, got: ${JSON.stringify(problems)}`,
     );
   });
+
+  it("FAILS a checkbox MANUFACTURED by splicing across a comment span — a third regression found adversarially", () => {
+    // The mirror image of the previous two: `stripComments` deletes a
+    // comment by directly concatenating what comes before it to what comes
+    // after — the exact splice-adjacency hazard its own docstring already
+    // names for `<!--` reconstitution (CodeQL alert #4), here applied to
+    // checkbox syntax instead. `- [<!--\nfiller\n-->x] Independent security
+    // review` contains the complete `- [x]` substring NOWHERE in the raw
+    // text (the raw fragments are `- [` and `x] ...`, never adjacent), but
+    // stripping the comment splices them into a genuine, complete,
+    // fake-ticked checkbox that did not exist before. A `>` comparison only
+    // catches a checkbox count going DOWN after stripping (something
+    // hidden); this one goes UP (something manufactured), so it needs `!==`.
+    const raw = [
+      "### Backend change",
+      "- [<!--",
+      "genuinely blank filler",
+      "-->x] Independent security review — Opus 5, session totally-fake",
+    ].join("\n");
+    const problems = checklistProblems(raw);
+    assert.ok(
+      problems.some((p) =>
+        /more checkbox\(es\) after comment-stripping/.test(p),
+      ),
+      `expected the manufactured checkbox to be flagged, got: ${JSON.stringify(problems)}`,
+    );
+  });
 });
 
 describe("contentOf — F13, invisible characters are not content", () => {

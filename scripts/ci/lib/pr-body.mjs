@@ -782,13 +782,30 @@ export function checklistProblems(raw) {
     // — even though `stripComments` erases it just as completely as the
     // separate-line shape. Matching the marker ANYWHERE in the block's raw
     // text, independent of where a line happens to start, catches both.
+    //
+    // Compared with `!==`, not `>` — a THIRD gap, the mirror image of the
+    // first two: `stripComments` deletes a comment span by directly
+    // concatenating what comes before it to what comes after, exactly the
+    // splice-adjacency hazard its own docstring already names for `<!--`
+    // reconstitution (CodeQL alert #4), just never extended to checkbox
+    // syntax. A checkbox marker deliberately split across a comment span —
+    // `- [<!--\nfiller\n-->x] Independent security review` — contains the
+    // complete `- [x]` substring NOWHERE in the raw text (the raw fragments
+    // are `- [` and `x] ...`, never adjacent), but stripping the comment
+    // splices them into a genuine, complete, fake-ticked checkbox that did
+    // not exist before. `rawBoxCount` never saw it, so `>` alone missed a
+    // checkbox being MANUFACTURED by the strip, not merely hidden by it.
+    // `!==` catches a count change in either direction.
     const rawBoxCount = (body.match(ANY_BOX_ANYWHERE) ?? []).length;
     const visibleBoxCount = (
       visibleLines.join("\n").match(ANY_BOX_ANYWHERE) ?? []
     ).length;
-    if (rawBoxCount > visibleBoxCount) {
+    if (rawBoxCount !== visibleBoxCount) {
+      const delta = rawBoxCount - visibleBoxCount;
       problems.push(
-        `"${block.name}" hides ${rawBoxCount - visibleBoxCount} checkbox(es) inside an HTML comment — a checkbox invisible on GitHub's own render cannot satisfy or excuse anything here, ticked or not. Move it out of the comment, or delete it and state why in visible text.`,
+        delta > 0
+          ? `"${block.name}" hides ${delta} checkbox(es) inside an HTML comment — a checkbox invisible on GitHub's own render cannot satisfy or excuse anything here, ticked or not. Move it out of the comment, or delete it and state why in visible text.`
+          : `"${block.name}" has ${-delta} more checkbox(es) after comment-stripping than before — a comment span was spliced across a checkbox marker, manufacturing one that was never in the raw text. Restructure the comment so it does not straddle a \`[ ]\`/\`[x]\`.`,
       );
     }
 
