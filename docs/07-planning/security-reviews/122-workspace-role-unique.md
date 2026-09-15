@@ -1,10 +1,23 @@
 # Pre-merge security review — PR #122 (#118 DB half: UNIQUE (workspace_id, role))
 
 **Reviewed head:** `49c704b0928ca4c442248479d5e481e79cef6761`
+**Reviewed head:** `9411d81f1cf25b5829428905ea61308bf5cfd720`
 **Base:** `origin/main` at review time
 
 **Verdict: CLEAR FOR MERGE.** Zero blocking findings. Two non-blocking findings, both filed
 as tracked follow-up issues, neither a defect in what this PR ships.
+
+**Round 2 — head `9411d81f1cf25b5829428905ea61308bf5cfd720`: re-confirmed after a main-merge.**
+The branch was behind `main` (PR #132 had merged) and was updated — a trivial merge
+(`git diff-tree --cc` empty), which per this note's own rule voided the `49c704b` clearance;
+re-verified rather than assumed. All three reviewed files (migration SQL, journal, test)
+confirmed byte-identical to the cleared head by blob hash. Specifically tested the one real
+interaction question the merge raised: #132 added a `pool.on("error", ...)` handler to the
+same connection pool this migration runs through. Attached that exact handler to a live
+pool and ran the migration against a conflicting pair — the promise rejected, the refusal
+message surfaced verbatim, the error handler fired zero times, and the constraint was not
+added. `pool.on("error")` covers idle-client errors; an in-flight query's own error rejects
+that query's promise on a separate channel, so it cannot mask a migration refusal.
 
 **Status of the gate:** this review closes the mandatory independent Opus security review
 for the head named above, and for that head only. A later commit touching anything outside
