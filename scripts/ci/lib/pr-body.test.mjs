@@ -1713,6 +1713,29 @@ describe("round 10 — findings from ordinary + adversarial review of round 9's 
     assert.deepEqual(checklistPresenceProblems(raw, declared), []);
   });
 
+  it('correctness (not a bypass): a heading with a harmless, self-contained comment BETWEEN "###" and its name is not misread as missing', () => {
+    // Found by the final Opus security review's own LOW note: `HEADING_MARKER`
+    // used to include a trailing `\s+`, folding the whitespace GAP between
+    // "###" and the name into "the marker" itself. That made the marker-span
+    // contiguity check reject a comment cushioned by real whitespace on BOTH
+    // sides of that gap (`### <!-- note --> Backend change`) — a shape the
+    // docstring already claimed was accepted (matching the checklist-item
+    // version of this same check), but wasn't. Leaving the gap out of the
+    // marker — the same as the checkbox marker already does, ending cleanly
+    // at `]` rather than consuming trailing whitespace — fixes it.
+    const raw = [
+      "### Any change",
+      "- [x] does what the task says",
+      "",
+      "### <!-- note --> Backend change",
+      "n/a — no backend change.",
+      "",
+      "### Phase completion",
+      "- [x] Independent security review — Opus 5, 2026-09-15",
+    ].join("\n");
+    assert.deepEqual(checklistPresenceProblems(raw, declared), []);
+  });
+
   it("MEDIUM: duplicate declared headings no longer let checklistPresenceProblems silently drop an earlier, genuinely unticked review item", () => {
     // `present` (a Map keyed by normalised heading name) kept only the LAST
     // of two same-named blocks, so rule 3 never saw a review item living in

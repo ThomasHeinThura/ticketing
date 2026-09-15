@@ -915,8 +915,23 @@ function isRawSpanVisible(survived, start, end) {
   return true;
 }
 
-/** The marker `headingBlocks` looks for: "###", at least one space, then a name. */
-const HEADING_MARKER = /^###\s+/;
+/**
+ * The marker `headingBlocks` looks for: just "###", with no trailing `\s+`
+ * folded into it — deliberately, the same shape as `ANY_BOX` (which ends
+ * cleanly at `]`, not at the whitespace after it). Found by the final Opus
+ * security review's own LOW note: an earlier version of this pattern
+ * included the trailing `\s+`, which meant the whitespace GAP between
+ * "###" and the name was folded into "the marker" itself — so
+ * `markerAndWordingGenuine`'s marker-span check then rejected a comment
+ * fully self-contained and cushioned by real whitespace on BOTH sides of
+ * that gap (`### <!-- note --> Backend change`), even though this is
+ * exactly the harmless shape the checklist-item version of this check
+ * already accepts. Leaving the gap OUT of the marker, the same as the
+ * checkbox marker does, lets the separate wording-start skip-loop below
+ * find and cross that gap on its own — which is what actually makes a
+ * self-contained, whitespace-cushioned comment there harmless.
+ */
+const HEADING_MARKER = /^###/;
 
 /**
  * Is raw line `[lineStart, lineEnd)` genuinely a visible `### heading` —
