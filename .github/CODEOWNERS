@@ -11,10 +11,18 @@
 #
 # Do NOT enable "Require review from Code Owners" to make this file mean more. The reason is
 # recorded in that decision: a required approving review from a one-person team documents a
-# gate rather than providing one, and the control that actually keeps agents out of `main`
-# is that only Thomas merges.
+# gate rather than providing one, and the control that actually keeps a bad change out of
+# `main` is the required independent review(s), the required Opus security review where in
+# scope, and the required status checks — not an approval count.
+#
+# UPDATED 2026-09-15 (decision log, same date, "Governance reset"): merge execution is
+# delegated to the orchestrating Claude session once every one of those gates is genuinely
+# green on the exact candidate SHA. This supersedes "only Thomas merges" above and in
+# ci-cd.md/agent-workflow.md/CLAUDE.md's older wording. Lane/subagents still never merge, and
+# no bypass of any required check or review tier is authorized by this delegation.
 #
 # Agents produce branches, tested code and pull requests. They never self-approve
-# (AGENTS.md do-not 7) and never merge (do-not 16).
+# (AGENTS.md do-not 7) and never merge except the orchestrating session, through the normal
+# flow, once every gate above is satisfied (do-not 16).
 
 * @ThomasHeinThura

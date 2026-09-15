@@ -47,8 +47,16 @@
  * through the same repository identity Thomas does, so nothing readable from a pull
  * request or a committed file proves who authored a line. What the declaration provides
  * is a durable, specific, unambiguous, reviewable record in version control, bound to the
- * gate, the pull request and a follow-up issue. Authorship is Thomas's to confirm at the
- * merge button, and the message says so instead of implying the machine checked it.
+ * gate, the pull request and a follow-up issue.
+ *
+ * UPDATED 2026-09-15: this comment used to end "authorship is Thomas's to confirm at the
+ * merge button" — that was the real control, informal as it was, because Thomas was the
+ * one merging. Merge execution is now delegated to the orchestrating Claude session once
+ * required gates are green (AGENTS.md, decision log 2026-09-15), and the orchestrator does
+ * NOT count as that check. AGENTS.md and CLAUDE.md now both say explicitly: a candidate
+ * citing any waiver is outside the delegation and always needs Thomas's own action to
+ * merge. This script does not enforce that — it can't, from here — so it stays a
+ * documentation-level control, tracked for a real mechanical check as a follow-up issue.
  */
 
 /** One line, whole-line anchored. Nothing may follow it, so no clause can negate it. */
