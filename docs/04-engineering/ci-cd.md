@@ -196,11 +196,10 @@ the captured set, pulling in drizzle-kit's 44 auto-generated `meta/*.json` snaps
 `_journal.json` — a mechanical mirror of the same migrations with no independent review
 signal of its own.
 
-`apps/api/src/openapi.ts` (the `apiRouter()` factory every route module declares itself
-with — see the paragraph above) and `apps/api/src/database/**` (`schema.ts`,
-`relations.ts`, and the two files that resolve and prepare the database connection at
-startup) close the rest of the `apps/api` gap. `packages/mcp/src/auth/**` covers the MCP
-CLI's credential store, the one place outside `apps/api` this pass added.
+`apps/api/src/database/**` (`schema.ts`, `relations.ts`, and the two files that resolve
+and prepare the database connection at startup) closes the rest of the `apps/api` gap —
+`openapi.ts` needs no glob of its own, per the paragraph above. `packages/mcp/src/auth/**`
+covers the MCP CLI's credential store, the one place outside `apps/api` this pass added.
 
 A blanket `apps/api/src/*/*.ts` feature-root catch-all was measured and rejected too: it
 would have added 57 files to reach roughly five sensitive ones, mostly `schema.ts` /
@@ -213,8 +212,11 @@ them LOW next to the six globs above, and a scope list earns more by staying pre
 by chasing every plausible file individually.
 
 Net effect, measured over the same 925-file walk: the list carried 23 globs matching 110
-files before this pass, and 29 globs matching 262 after — 152 files newly in scope, all of
-them accounted for by the six globs above.
+files before this pass, and 28 globs matching 261 after — 151 files newly in scope via a
+path glob, all of them accounted for by the five globs above. (`openapi.ts` briefly
+existed as a 29th glob in this pass's first draft, contributing one more to both counts;
+removed once measurement showed the content-half already covers it — see above. The file
+itself is not newly exposed by that removal, only the mechanism that reaches it.)
 
 **Why the second block exists** (Thomas's decision, 2026-09-08 — see the
 [decision log](../07-planning/decision-log.md)). The first block is the application's
