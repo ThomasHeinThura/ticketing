@@ -388,3 +388,205 @@ describe("scanFiles — fails closed", () => {
     assert.match(result.refusals[0].reason, /namespace import/);
   });
 });
+
+describe("scanFiles — S1: a `$`-leading/trailing alias is not invisible to \\b", () => {
+  /**
+   * `\b` is a WORD boundary, and `$` is not a word character — but that means `\b` does not
+   * stop a run of identifier characters that CONTAINS a `$` either. An alias spelled with a
+   * leading or trailing `$` therefore never matched the old `\b(?:...)\b` pattern in EITHER
+   * direction, and the call was neither counted nor refused — exit 0, unchanged. Demonstrated
+   * against the real checker, not theorised: both shapes below produced a clean pass before
+   * the `(?<![\w$])...(?![\w$])` boundary replaced `\b`.
+   */
+  it("a root alias imported under a $-prefixed name", async () => {
+    const dir = fixtureDir();
+    const result = await scanOne(
+      dir,
+      [
+        'import { authClient as $auth } from "@/lib/auth-client";',
+        "await $auth.organization.setActive({ organizationId: 'x' });",
+      ].join("\n"),
+    );
+    assert.deepEqual(result.refusals, []);
+    assert.equal(result.calls.length, 1);
+    assert.equal(result.calls[0].family, "setActive");
+  });
+
+  it("an org-sub-client alias assigned to a $-prefixed name", async () => {
+    const dir = fixtureDir();
+    const result = await scanOne(
+      dir,
+      [
+        'import { authClient } from "@/lib/auth-client";',
+        "const $org = authClient.organization;",
+        "await $org.setActive({ organizationId: 'x' });",
+      ].join("\n"),
+    );
+    assert.deepEqual(result.refusals, []);
+    assert.equal(result.calls.length, 1);
+    assert.equal(result.calls[0].family, "setActive");
+  });
+
+  it("does NOT over-match a name that merely CONTAINS the tracked alias", async () => {
+    const dir = fixtureDir();
+    // `authClientFoo` shares the whole alias name as a prefix but is a different
+    // identifier; the fix must still recognise the boundary at the far end (a `\w`
+    // character immediately follows) even though `\b` is no longer what is doing the
+    // recognising.
+    const result = await scanOne(
+      dir,
+      [
+        'import { authClient } from "@/lib/auth-client";',
+        "const authClientFoo = 1;",
+        "export const x = authClientFoo;",
+      ].join("\n"),
+    );
+    assert.deepEqual(result.calls, []);
+    assert.deepEqual(result.refusals, []);
+  });
+
+  it("does NOT over-match a $-containing name that merely CONTAINS a $-alias", async () => {
+    const dir = fixtureDir();
+    // The tracked alias here is `$auth` (imported as such); `my$auth` contains it as a
+    // suffix, preceded by an ordinary word character (`y`) rather than a boundary. The
+    // negative lookbehind `(?<![\w$])` must reject this the same way `\b` correctly
+    // rejected `authClientFoo` above.
+    const result = await scanOne(
+      dir,
+      [
+        'import { authClient as $auth } from "@/lib/auth-client";',
+        "const my$auth = 1;",
+        "export const x = my$auth;",
+      ].join("\n"),
+    );
+    assert.deepEqual(result.calls, []);
+    assert.deepEqual(result.refusals, []);
+  });
+});
+
+describe("scanFiles — S2: a real call sharing a physical line is not shadowed", () => {
+  /**
+   * Suppression used to be tracked by PHYSICAL LINE: the whole line an import or an alias
+   * -creation statement lived on was marked "already explained" and never re-examined. That
+   * is too coarse whenever a real, distinct call shares that same line — the destructure
+   * below and the live call after it are two separate statements that merely happen to sit
+   * on one line, and the old line-based suppression dropped the second one along with the
+   * first. Demonstrated against the real checker: this produced a clean exit 0 with the
+   * `setActive` call neither counted nor refused, before consumption moved to exact
+   * character ranges.
+   */
+  it("a live call after a same-line destructure of an unrelated member", async () => {
+    const dir = fixtureDir();
+    const result = await scanOne(
+      dir,
+      [
+        'import { authClient } from "@/lib/auth-client";',
+        "const { useSession } = authClient; await authClient.organization.setActive({ organizationId: 'x' });",
+      ].join("\n"),
+    );
+    assert.deepEqual(result.refusals, []);
+    assert.equal(result.calls.length, 1);
+    assert.equal(result.calls[0].family, "setActive");
+  });
+
+  it("a live call after a same-line plain alias creation", async () => {
+    const dir = fixtureDir();
+    const result = await scanOne(
+      dir,
+      [
+        'import { authClient } from "@/lib/auth-client";',
+        "const org = authClient.organization; await authClient.organization.setActive({ organizationId: 'x' });",
+      ].join("\n"),
+    );
+    assert.deepEqual(result.refusals, []);
+    // Two independent live calls on this one line: the alias-creation statement's own
+    // `authClient.organization` mention stays correctly suppressed (it is not itself a
+    // call — nothing follows it but `;`), and the explicit `authClient.organization.
+    // setActive(...)` call is counted. Only the direct call is a `calls` entry.
+    assert.equal(result.calls.length, 1);
+    assert.equal(result.calls[0].family, "setActive");
+  });
+});
+
+describe("scanFiles — S3: an out-of-root renamed re-export is never skipped unread", () => {
+  /**
+   * The fast path in `scanFiles` used to read a file fully only when it mentioned the
+   * binding's export name, looked like it could re-export (`export` + `from`), or used a
+   * dynamic import/`require`. A file that ONLY imports an out-of-root barrel's RENAMED
+   * re-export, and calls the client exclusively through that local name, spells none of
+   * those — no `authClient`, no `export`, no `import(`/`require(` — and was therefore
+   * skipped and never read at all. Demonstrated against the real checker: this produced a
+   * clean exit 0 with the call site neither counted nor refused, before the fast path also
+   * treated any static `import` statement as its own reason to read the file.
+   *
+   * This needs its own fixture (not `scanOne`, which only ever writes the tsconfig, the
+   * definition file, and the one file under scan): the bypass depends on a SECOND file, a
+   * barrel living OUTSIDE `apps/web/src`, that `scanFiles` never scans directly but that
+   * `reexportsDefinitionTransitively` reads on demand while resolving the in-root file's
+   * import.
+   */
+  it("an in-root file consuming an out-of-root renamed re-export, spelling neither `authClient` nor `export`", async () => {
+    const dir = fixtureDir();
+    write(
+      dir,
+      "apps/web/tsconfig.json",
+      JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } }),
+    );
+    const authClientAbsolute = write(
+      dir,
+      "apps/web/src/lib/auth-client.ts",
+      AUTH_CLIENT_SOURCE,
+    );
+    // The barrel: OUTSIDE apps/web/src, so scanFiles never scans it directly. It re-exports
+    // the client under a renamed local binding — the point being that nothing about the
+    // NAME `foo` gives away that it is the auth client.
+    write(
+      dir,
+      "shared/auth-client-alias.ts",
+      'export { authClient as foo } from "../apps/web/src/lib/auth-client";\n',
+    );
+    // The in-root file under scan: it imports only `foo` from the out-of-root barrel, and
+    // otherwise never spells `authClient`, `export`, `import(`, or `require(` anywhere.
+    const fileAbsolute = write(
+      dir,
+      "apps/web/src/case.ts",
+      [
+        'import { foo } from "../../../shared/auth-client-alias";',
+        "",
+        "async function activate(id: string) {",
+        "  await foo.organization.setActive({ organizationId: id });",
+        "}",
+        'activate("x");',
+      ].join("\n"),
+    );
+
+    const definition = findAuthClientDefinition([
+      {
+        absolute: authClientAbsolute,
+        source: stripCodeComments(AUTH_CLIENT_SOURCE),
+      },
+    ]);
+    const aliasRules = await loadPathAliases(
+      path.join(dir, "apps/web/tsconfig.json"),
+    );
+    const fs = await import("node:fs/promises");
+    const results = await scanFiles({
+      definitionAbsolutePath: definition.file,
+      exportName: definition.exportName,
+      aliasRules,
+      files: [fileAbsolute],
+      readFile: (p) => fs.readFile(p, "utf8"),
+    });
+
+    // The file must not be silently skipped: it must now be refused (this scanner does not
+    // trace a re-export chain rooted outside the scanned root), never a silent "0 calls, 0
+    // refusals" that lets the call through unnoticed.
+    const result = results[0] ?? { calls: [], refusals: [] };
+    assert.equal(result.calls.length, 0);
+    assert.equal(result.refusals.length, 1);
+    assert.match(
+      result.refusals[0].reason,
+      /re-exports it through a chain of one or more further files/,
+    );
+  });
+});

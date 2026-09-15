@@ -20,7 +20,7 @@
  * is the better-auth factory call itself — `createAuthClient(` — because that is the one
  * spelling the client can be constructed with; everything downstream (which file defines it,
  * what it is called, which files import it, what they call the binding locally) is read out
- * of the source tree. There is no list of "the 14 families" or "the files known to call
+ * of the source tree. There is no list of "the N families" or "the files known to call
  * this" anywhere in this module — see `findAuthClientDefinition` and `findRootAliases`.
  *
  * ## What counts as a live call
@@ -684,6 +684,8 @@ function findImportStatements(code) {
       specifier: match[2],
       startLine: lineOf(code, match.index),
       endLine: lineOf(code, match.index + match[0].length),
+      start: match.index,
+      end: match.index + match[0].length,
     });
   }
   return statements;
@@ -799,15 +801,25 @@ function findSpecifierCalls(code, pattern) {
  * `const NAME = <rootAlias>.organization;` and `const { organization[: NAME] } = <rootAlias>;`
  * — the only two ways this scanner will trace a further local alias. Anything else that
  * assigns `<rootAlias>` or `<rootAlias>.organization` to a new name is a refusal, raised
- * by the general scan below once these two patterns have claimed the lines they explain.
+ * by the general scan below once these two patterns have claimed the character ranges they
+ * explain.
  *
- * @returns {{ orgAliases: Map<string, string>, consumedLines: Set<number> }} orgAliases
- *   maps local name -> the root alias it was derived from (informational only); consumedLines
- *   are line numbers these two patterns account for and the general scan must not re-examine.
+ * Consumption is tracked by CHARACTER RANGE, not by physical line. A whole-line suppression
+ * was a demonstrated bypass: `const { useSession } = authClient; authClient.organization.
+ * setActive({...});` on one physical line silently dropped the second, real, uncloaked call
+ * — it shares a line with the destructure, so line-based suppression swallowed it along with
+ * the destructure statement it was meant to explain. Only the exact span of the matched
+ * statement is consumed now, so a second, distinct statement sharing that line is never
+ * shadowed by it.
+ *
+ * @returns {{ orgAliases: Map<string, string>, consumedRanges: {start: number, end: number}[] }}
+ *   orgAliases maps local name -> the root alias it was derived from (informational only);
+ *   consumedRanges are the exact `[start, end)` character spans these two patterns account
+ *   for, which the general scan must not re-examine.
  */
 function findAliasCreations(code, rootAliasNames) {
   const orgAliases = new Map();
-  const consumedLines = new Set();
+  const consumedRanges = [];
 
   for (const root of rootAliasNames) {
     const escaped = escapeRegExp(root);
@@ -818,10 +830,7 @@ function findAliasCreations(code, rootAliasNames) {
     );
     for (let m = plain.exec(code); m !== null; m = plain.exec(code)) {
       orgAliases.set(m[1], root);
-      const startLine = lineOf(code, m.index);
-      const endLine = lineOf(code, m.index + m[0].length);
-      for (let line = startLine; line <= endLine; line += 1)
-        consumedLines.add(line);
+      consumedRanges.push({ start: m.index, end: m.index + m[0].length });
     }
 
     const destructure = new RegExp(
@@ -846,15 +855,12 @@ function findAliasCreations(code, rootAliasNames) {
         }
       }
       if (sawOrganization || keys.length > 0) {
-        const startLine = lineOf(code, m.index);
-        const endLine = lineOf(code, m.index + m[0].length);
-        for (let line = startLine; line <= endLine; line += 1)
-          consumedLines.add(line);
+        consumedRanges.push({ start: m.index, end: m.index + m[0].length });
       }
     }
   }
 
-  return { orgAliases, consumedLines };
+  return { orgAliases, consumedRanges };
 }
 
 // ── 5. The general occurrence scan ────────────────────────────────────────────────────
@@ -862,16 +868,27 @@ function findAliasCreations(code, rootAliasNames) {
 /**
  * @param {string} code comment-stripped, string-blanked source
  * @param {Map<string, "root"|"org">} aliasKinds
- * @param {Set<number>} consumedLines lines already explained (imports, alias creations)
+ * @param {{start: number, end: number}[]} consumedRanges exact character spans (imports,
+ *   alias creations) already explained, which must not be re-examined here
  * @returns {{ calls: {family: string, line: number, snippet: string}[], refusals: {line: number, reason: string, snippet: string}[] }}
  */
-function scanOccurrences(code, aliasKinds, consumedLines) {
+function scanOccurrences(code, aliasKinds, consumedRanges) {
   const calls = [];
   const refusals = [];
   if (aliasKinds.size === 0) return { calls, refusals };
 
   const alternation = [...aliasKinds.keys()].map(escapeRegExp).join("|");
-  const pattern = new RegExp(`\\b(?:${alternation})\\b`, "g");
+  // `\b` is a WORD boundary — it does not treat `$` as a boundary character at all, because
+  // `$` is not itself a word character, but it also does not stop a run of identifier
+  // characters that CONTAINS one. An alias whose name starts or ends with `$` (`$auth`,
+  // `authClient as $auth`) therefore never matched `\b(?:...)\b`, in either direction: this
+  // was a **demonstrated bypass**, not a hypothetical — `import { authClient as $auth }
+  // from "@/lib/auth-client"; await $auth.organization.setActive({...});` and `const $org =
+  // authClient.organization; await $org.setActive({...});` both produced exit 0 with the
+  // call site neither counted nor refused. The fix excludes `$` as a valid
+  // identifier-continuation character on both sides explicitly, via a negative
+  // lookbehind/lookahead, instead of relying on `\b`'s word/non-word notion of a boundary.
+  const pattern = new RegExp(`(?<![\\w$])(?:${alternation})(?![\\w$])`, "g");
 
   for (
     let match = pattern.exec(code);
@@ -882,7 +899,10 @@ function scanOccurrences(code, aliasKinds, consumedLines) {
     const start = match.index;
     const end = start + name.length;
     const line = lineOf(code, start);
-    if (consumedLines.has(line)) continue;
+    if (
+      consumedRanges.some((range) => start >= range.start && start < range.end)
+    )
+      continue;
 
     const before = previousNonSpace(code, start);
     if (before >= 0 && code[before] === ".") continue; // a property named this, on some
@@ -1088,20 +1108,54 @@ export async function scanFiles({
     // also be read whenever it could carry a re-export at all.
     const mentionsBinding = source.includes(exportName);
     const couldReExport = source.includes("export") && source.includes("from");
-    // F1/F4: a dynamic `import(...)` or a `require(...)` of the client reaches it without
-    // ever spelling a static `import ... from` clause, and (for the direct member-access
-    // shape, e.g. `(await import("...")).authClient…`) without necessarily spelling
-    // `exportName` either if the specifier alone is what resolves — so either substring is
-    // its own reason to read the file, same as `couldReExport` already is for `export`.
-    const couldDynamicOrRequire =
-      source.includes("import(") || source.includes("require(");
-    if (!mentionsBinding && !couldReExport && !couldDynamicOrRequire) continue;
+    // F4: a `require("…")` of the client reaches it without ever spelling a static
+    // `import ... from` clause, and (for the direct member-access shape, e.g.
+    // `require("...").authClient…`) without necessarily spelling `exportName` either if the
+    // specifier alone is what resolves — so this substring is its own reason to read the
+    // file, same as `couldReExport` already is for `export`.
+    const couldRequire = source.includes("require(");
+    // S3: a STATIC `import ... from` statement — of ANYTHING, any specifier, any local
+    // binding name — can still reach the auth client, because the specifier may resolve,
+    // directly or through a further chain of `export ... from` re-exports (see
+    // `reexportsDefinitionTransitively`), to the definition under a LOCAL alias name that
+    // never spells `exportName` anywhere in this file at all. `mentionsBinding` alone cannot
+    // catch that. This was a **demonstrated bypass**, not a hypothetical: an out-of-root
+    // barrel file (outside `apps/web/src`, never itself scanned) re-exporting the client
+    // under a renamed binding —
+    //
+    //   // shared/auth-client-alias.ts (outside the scanned root)
+    //   export { authClient as foo } from "../apps/web/src/lib/auth-client";
+    //
+    // — consumed by an in-root file that only ever spells the LOCAL alias `foo` —
+    //
+    //   // apps/web/src/somewhere.ts
+    //   import { foo } from "../../../shared/auth-client-alias";
+    //   await foo.organization.setActive({ organizationId });
+    //
+    // — never mentions `authClient` (`mentionsBinding` false), never contains the literal
+    // token `export` (`couldReExport` false: the consuming file only IMPORTS, it does not
+    // itself re-export anything), and uses neither a dynamic `import(` nor `require(`
+    // (`couldRequire` false). Without a check keyed on the presence of a static import
+    // statement itself, this file was skipped by the fast path and **never read at all** —
+    // the call site was neither counted nor refused, a clean exit 0. This scanner cannot
+    // know, from a substring check alone, which local name an import binds or what it
+    // resolves to; catching that is the entire reason the full parse below exists, so any
+    // file that could contain a static `import` statement must reach it — this covers the
+    // dynamic-import form too (`import(`), making a separate check for it redundant.
+    const couldStaticallyImport = source.includes("import");
+    if (
+      !mentionsBinding &&
+      !couldReExport &&
+      !couldRequire &&
+      !couldStaticallyImport
+    )
+      continue;
 
     const code = stripCodeComments(source);
     const statements = findImportStatements(code);
 
     const rootAliasNames = new Set();
-    const importLines = new Set();
+    const importRanges = [];
     const refusals = [];
 
     // A re-export of the binding puts it behind a module path that no consumer's import
@@ -1273,13 +1327,7 @@ export async function scanFiles({
         continue;
       }
 
-      for (
-        let line = statement.startLine;
-        line <= statement.endLine;
-        line += 1
-      ) {
-        importLines.add(line);
-      }
+      importRanges.push({ start: statement.start, end: statement.end });
 
       if (statement.clause.kind === "namespace") {
         refusals.push({
@@ -1330,12 +1378,19 @@ export async function scanFiles({
 
     if (rootAliasNames.size === 0 && refusals.length === 0) continue;
 
+    // `code` (used to compute `importRanges` above) and `codeForScan` (blanked strings, used
+    // below) are two independent `stripCodeComments` passes over the same `source`, differing
+    // only in whether string/template CONTENTS are blanked — delimiters, comment collapsing,
+    // and every length-changing decision are identical between the two, so a character offset
+    // computed against one names the exact same source position in the other. That is what
+    // lets `importRanges` (computed against `code`, which needs real specifier text) be
+    // reused directly as `consumedRanges` against `codeForScan` below.
     const codeForScan = stripCodeComments(source, { blankStrings: true });
-    const { orgAliases, consumedLines } = findAliasCreations(
+    const { orgAliases, consumedRanges } = findAliasCreations(
       codeForScan,
       rootAliasNames,
     );
-    for (const line of importLines) consumedLines.add(line);
+    consumedRanges.push(...importRanges);
 
     const aliasKinds = new Map();
     for (const name of rootAliasNames) aliasKinds.set(name, "root");
@@ -1344,7 +1399,7 @@ export async function scanFiles({
     const { calls, refusals: scanRefusals } = scanOccurrences(
       codeForScan,
       aliasKinds,
-      consumedLines,
+      consumedRanges,
     );
 
     const allRefusals = [...refusals, ...scanRefusals];
