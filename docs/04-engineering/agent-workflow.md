@@ -20,7 +20,7 @@ Code. This document is how that works without producing three incompatible codeb
 | Reviews | ✅ final say | ✅ first pass |
 | Approves a design (H1–H6) | ✅ only | ❌ |
 | Waives a quality gate | ✅ only | ❌ |
-| Merges to `main` | ✅ | ❌ |
+| Merges to `main` | ✅ | ✅ — the orchestrating Claude session, once every required gate is genuinely green (Thomas, 2026-09-15). Lane/subagents: ❌, always |
 | Deploys to production | ✅ | ❌ |
 
 Two of these are absolute: **an agent may never approve its own design review, and an
@@ -69,54 +69,54 @@ B, tests for feature C. Do not parallelise across a shared file.
 
 ## Model tiers within Claude Code
 
-When Claude Code orchestrates its own subagents — a Task, an Agent call, a Workflow — the
-model tier is not a free choice. It tracks who is allowed to sign off on what, not just
-who is cheaper.
+**Updated 2026-09-15 — see the [decision log](../07-planning/decision-log.md), 2026-09-15,
+"Governance reset."** When Claude Code orchestrates its own subagents — a Task, an Agent
+call — the model tier is not a free choice. It tracks who is allowed to sign off on what,
+not just who is cheaper. This repository uses exactly two model families: **Claude Sonnet**
+and **Claude Opus**, through the `Agent` tool's own explicit model selection at spawn time.
+An earlier multi-provider-router and non-Claude-specialist-agent approach was tried and
+dropped — it did not work out in practice.
 
 | Role | Model | Why |
 | --- | --- | --- |
-| Main / orchestrating session | **Opus or Fable** | Holds the whole task in view — scope, spec conformance, cross-file consequences. This is the seat that plans, assigns work, and signs off |
-| Implementation subagents — writing code or tests to an already-agreed spec | **Sonnet 5** | This repository's whole premise is that the spec is detailed enough for mechanical implementation ([AGENTS.md](../../AGENTS.md), [SDLC](sdlc.md)). Running every subagent on Opus/Fable multiplies token cost and setup time for no proportional gain on narrowly-scoped, spec-driven work |
-| Review — solution architecture / design sign-off | **Opus or Fable, never Sonnet** | A different, *stronger* context catches what the authoring context is structurally blind to — the same reasoning behind "an agent may never approve its own design review," one tier further |
-| Review — QA / quality officer, "senior" pass | **Opus or Fable** | Same reasoning |
-| **Review — security** | **Opus. Always. Not optional, not cost-negotiable.** | The one checkpoint this repository will not discount for budget. See below |
+| Main / orchestrating session | **Whatever model this session already is** | No longer restricted to Opus/Fable — a Sonnet session orchestrating its own subagents is normal. What matters is that the orchestrating session does not clear its own work |
+| Implementation subagents — writing code or tests to an already-agreed spec | **Sonnet, spawned explicitly** | This repository's whole premise is that the spec is detailed enough for mechanical implementation ([AGENTS.md](../../AGENTS.md), [SDLC](sdlc.md)) |
+| Ordinary review — ordinary bugs/tests/quality, architecture fit, QA pass | **Sonnet, a fresh independent context** | A different context catches what the authoring context is structurally blind to. Two independent Sonnet reviews minimum for ordinary work, three for broad/high-coupling work — see [AGENTS.md § Review tiers](../../AGENTS.md#review-tiers) |
+| Project-alignment / misalignment check | **Sonnet, a fresh independent context** | Does this change match the spec, the vocabulary, the shared contracts, the five rules — a distinct, explicitly-nameable Sonnet review role |
+| **Review — final independent security / critical review** | **Opus. Always. Not optional, not cost-negotiable.** Spawned as an explicit, separate subagent, or a fresh top-level Opus context | The one checkpoint this repository will not discount for budget or convenience. See below |
 
 **Security review is a checkpoint, not a step inside another review.** Every pull request
-and every [stage gate](sdlc.md) gets an explicit, separate security-focused pass on Opus,
-distinct from the architecture and QA passes even when the same higher-tier model performs
-more than one of them. "The QA reviewer also looked at security" is not the same thing as
-a security review, and does not satisfy this rule.
+and every [stage gate](sdlc.md) that is in security scope gets an explicit, separate
+security-focused pass on Opus, distinct from ordinary review even when both happen close
+together. "The ordinary reviewer also looked at security" does not satisfy this rule.
 
-**In practice:** a Claude Code session doing implementation work runs its Task/Agent
-subagents on Sonnet 5, and its own self-check before declaring "done" (see [verification is
-not optional](#verification-is-not-optional)) is not a substitute for the required Opus
-security pass — that is a separate, explicit step.
+### Opus may now be spawned explicitly for this one tier
 
-### The tier a review needs, and the tier a spawned agent may be
+**Superseded 2026-09-15.** The earlier rule — "every spawned agent is Sonnet, no Opus
+subagents ever, because a workflow that inherits the session model will quietly pick
+Opus" — guarded against *accidental* Opus fan-out (a subagent silently inheriting Opus from
+an Opus-orchestrated session). That risk is real and the underlying caution stands: do not
+let a subagent inherit its model implicitly. But the `Agent` tool now supports pinning a
+subagent's model **explicitly** at spawn time, and a deliberate, named, single-purpose Opus
+spawn for the security/critical-review tier does not carry the accidental-fan-out risk the
+old rule existed to prevent. So:
 
-Since 2026-09-06 these are two different questions, and the table above answers only the
-first. **Every spawned agent is Sonnet** — subagent, background agent, workflow agent,
-adversarial prober — set explicitly at spawn, because a workflow that inherits the session
-model will quietly pick Opus. No Opus subagents, no Fable subagents, no Opus review swarms.
-Default scale is one Sonnet implementation agent per active code slice, plus optionally one
-adversarial verifier.
-
-So a review the table marks **Opus or Fable, never Sonnet** cannot be *delegated to a spawned
-agent* at all. It has exactly two honest homes:
-
-1. the **top-level session**, when that session is Opus or Fable and is not reviewing its own
-   work; or
-2. a **separate session** at the required tier, queued until capacity exists.
-
-There is no third option, and in particular **the reviewer requirement is not relaxed** to fit
-the budget. When a mandatory independent Opus security review is owed and no independent Opus
-capacity is available, the pull request **waits**, marked **SECURITY RE-REVIEW PENDING — OPUS
-CAPACITY**. Capacity exhaustion means wait, not downgrade.
+- **Every other subagent — implementation, ordinary review, alignment check — is Sonnet,
+  set explicitly at spawn.** Still no accidental inheritance, still no Opus review swarms,
+  still one implementation agent per active code slice as the default scale.
+- **The final security/critical review may be an explicitly-spawned Opus subagent** on the
+  exact candidate SHA, run from whatever top-level session is orchestrating — Sonnet or
+  Opus — **as long as that subagent did not materially author, direct, or remediate the
+  work under review.** A session that authored or orchestrated the change cannot spawn
+  itself as its own reviewer under a different label; that is still "approving your own
+  review" (do-not 7 / do-not 5 above), just with an extra hop.
+- If no Opus capacity is reachable at all — subagent or fresh top-level context — the pull
+  request **waits**, marked **SECURITY RE-REVIEW PENDING — OPUS CAPACITY**. Capacity
+  exhaustion means wait, not downgrade, unchanged from before.
 
 Sonnet may do everything that *feeds* such a review — read the code, reproduce a
 vulnerability, write the failing test, implement the fix, assemble the evidence. What it may
-not do is *be* the review. Neither may the orchestrator, for work the orchestrator authored:
-that is the "an agent may never approve its own design review" absolute, one seat up.
+not do is *be* the required security/critical review itself.
 
 Why this is written down rather than left to judgement: two thirteen-agent Opus workflows plus
 two Opus review agents exhausted the organisation's monthly allowance mid-task, and the seven
@@ -219,10 +219,11 @@ What NOT to do. This matters more than it sounds — agents expand scope helpful
 
 ### Do not
 
-The authoritative list is [AGENTS.md § Do not](../../AGENTS.md#do-not) — eighteen items,
-including do-not 16 (no commit, push or merge without Thomas's explicit approval in the same
-session). The items below are the ones most often broken in practice; if the two ever
-disagree, AGENTS.md wins.
+The authoritative list is [AGENTS.md § Do not](../../AGENTS.md#do-not) — twenty items,
+including do-not 16 (commit, push or merge only through the agreed flow: branch → commit →
+push → pull request → required review(s) → merge, with the orchestrating session merging
+once every gate is green). The items below are the ones most often broken in practice; if
+the two ever disagree, AGENTS.md wins.
 
 1. **Do not invent UI primitives.** `packages/ui` or nothing.
 2. **Do not add a dependency** without asking. It needs a decision log entry.
@@ -298,21 +299,25 @@ Prefer a skill over freehand work — it encodes decisions already made.
 
 Every pull request gets:
 
-1. **An agent review** — a different agent from the one that wrote it. Fresh context
-   catches a surprising amount.
+1. **Independent review** — a fresh context, not the one that wrote it. Two Sonnet reviews
+   minimum for ordinary work, three for broad/high-coupling work
+   ([AGENTS.md § Review tiers](../../AGENTS.md#review-tiers)).
 2. **Automated gates** — everything in CI.
-3. **Thomas** — final approval, and the only source of approval for design and waivers.
-`main` enforces as much of the third step as a machine can. The `protect-main` ruleset
-requires a pull request, blocks deletion and non-fast-forward pushes, dismisses stale
-approvals on push, and squashes merges. It does **not** require an approving review:
-**required approving reviews is `0`, and Require review from Code Owners is off**
-([ci-cd.md](ci-cd.md#branching), decision log 2026-09-06).
+3. **The required security/critical review**, Opus, when the change is in security scope.
+4. **Merge**, through the normal protected pull-request flow, by the orchestrating Claude
+   session once every one of the above is genuinely green on the exact candidate SHA
+   (Thomas, 2026-09-15 — delegated; supersedes "only Thomas merges"). Thomas retains sole
+   authority over design approval (H1–H6) and gate waivers — those are unchanged.
 
-So "only Thomas merges" is enforced by Thomas holding the merge button, not by a review
-requirement — and `CODEOWNERS` (`* @ThomasHeinThura`) is ownership metadata that says who to
-ask. Do not wait for an approval that is not configured, and do not read the zero as
-permission: steps 1 and 2 above are unchanged, and the security review at its fixed tier
-remains a hard gate no agent may waive or downgrade.
+`main` enforces as much of this as a machine can. The `protect-main` ruleset requires a
+pull request, blocks deletion and non-fast-forward pushes, dismisses stale approvals on
+push, and requires twelve status checks with zero bypass actors. It does **not** require an
+approving review: **required approving reviews is `0`, and Require review from Code Owners
+is off** ([ci-cd.md](ci-cd.md#branching), decision log 2026-09-06) — deliberately, because a
+required approval from a one-person team documents a gate rather than providing one.
+`CODEOWNERS` (`* @ThomasHeinThura`) is ownership metadata that says who to ask, not a merge
+gate. The control that actually stops a bad merge is steps 1–3 above plus the required
+status checks, not an approval count and not a single person holding the button.
 
 An agent reviewing its own work is worth very little; the same context that produced the
 mistake will not see it.

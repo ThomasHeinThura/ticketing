@@ -231,6 +231,27 @@ Never:
 
 ---
 
+## Review tiers
+
+### Ordinary substantive work
+
+At least **two** fresh, independent reviewer contexts, minimum. Use **three** for broad or
+high-coupling work: migrations, API + frontend crossing the same change, concurrency,
+cross-package integration, CI/security-control machinery, or stage-completion integration.
+Each review records: the exact candidate SHA, the reviewer's independence from the author,
+what was actually checked (not just read), the verdict, and blocking findings.
+
+### Security-sensitive work
+
+After ordinary review clears, a further **independent security review** is required before
+merge — see `CLAUDE.md` for Claude's specific model-tier mapping. Security scope is the path
+list in `docs/04-engineering/ci-cd.md`: authentication and permissions code, migrations, the
+CI/gate machinery itself, and the dependency graph (`package.json`, lockfiles,
+`pnpm-workspace.yaml` overrides). The reviewer must be a context that did not materially
+author, direct, or remediate the change under review.
+
+---
+
 ## Keep moving, without skipping a gate
 
 The project spent real time stuck — the same candidates cycling through repeated review
@@ -274,8 +295,10 @@ not weaker gates:
 7. Approve your own review, or call your own remediation independent.
 8. Refactor beyond the task without a concrete dependency reason.
 9. Paste code from an unlicensed source.
-10. Repeat the same failing provider/model route indefinitely — classify the failure, switch
-    routes, or stop and say what happened.
+10. Repeat the same failing approach more than three times — a fix attempt, a test rerun, a
+    model/provider route — without changing something or asking. Classify the failure, try a
+    different approach, or write down what you tried and stop to ask. This is a general
+    anti-thrashing rule, not only about model routing.
 11. Name a table, column, capability, feature flag, event key or job that is not in its
     single authoritative document — add it there first, in the same change.
 12. Delete anything without a **pending action** — every user-initiated deletion returns
@@ -311,6 +334,12 @@ not weaker gates:
 
 Never paste code from anywhere else without checking the licence and recording it in
 `THIRD-PARTY-NOTICES.md`.
+
+**Implementation reads kaneo (the snapshot taken) and TaskDesk v1 (domain logic) only.**
+Never read, mine or copy from Plane, OpenProject, or the researched ITSM systems (Chatwoot,
+FreeScout, GLPI, NocoBase, osTicket, Zammad). That research is finished and recorded in
+`THIRD-PARTY-NOTICES.md` §2 and `docs/00-overview/competitive-inspiration.md`; re-opening
+those trees during implementation is how unlicensed code travels into an AGPL-3.0 codebase.
 
 Detail:
 [`docs/00-overview/licensing-and-attribution.md`](docs/00-overview/licensing-and-attribution.md)
