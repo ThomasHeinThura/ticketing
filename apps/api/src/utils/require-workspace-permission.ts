@@ -5,8 +5,8 @@ import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import { isInstanceAdmin } from "./is-instance-admin";
 import {
-  isUnambiguousMembership,
-  workspaceMemberRoles,
+  type MembershipRoleResolution,
+  resolveMembershipRole,
 } from "./workspace-member-roles";
 
 type PermissionMap = Record<string, string[]>;
@@ -109,24 +109,33 @@ export async function hasWorkspacePermission(
   const userId = c.get("userId");
   if (!userId) return false;
 
-  // ALL rows for the pair, and refuse to answer if there is more than one.
-  // This used to be `.limit(1)` with no `ORDER BY`, so the evaluator could
-  // select either row of a duplicated membership and therefore grant or deny
-  // NONDETERMINISTICALLY -- measured at owner-row-first 200 versus
-  // viewer-row-first 403, stable over twelve runs. Three independent reviewers
-  // of this pull request and of #77 converged on it. Fail-closed: a corrupt
-  // membership state is refused, never resolved by guessing. #88 tracks the
+  // ALL rows for the pair; refuse to answer if there is more than one, and --
+  // issue #82 -- refuse to answer if the one value is not exactly one role.
+  //
+  // The row-count half used to be `.limit(1)` with no `ORDER BY`, so the
+  // evaluator could select either row of a duplicated membership and therefore
+  // grant or deny NONDETERMINISTICALLY -- measured at owner-row-first 200
+  // versus viewer-row-first 403, stable over twelve runs. Three independent
+  // reviewers of this pull request and of #77 converged on it. #88 tracks the
   // `UNIQUE (workspace_id, user_id)` constraint that makes it unreachable.
-  const roles = await workspaceMemberRoles(db, workspaceId, userId);
-  if (!isUnambiguousMembership(roles)) return false;
-  // `roles[0]` is `string | undefined` under `noUncheckedIndexedAccess`, and
-  // `length === 1` does not narrow an index access. This check is therefore
-  // load-bearing for the compiler even though it is unreachable at runtime --
-  // which is why the previous `if (!member?.role)` was not the pure dead code a
-  // reviewer's nit took it for. Written as an explicit undefined test so the
-  // reason is on the page rather than hidden in an optional chain.
-  const role = roles[0];
-  if (role === undefined) return false;
+  //
+  // The VALUE half is issue #82: `"owner,admin"` is one row, so the count check
+  // passes it through, and the exact-match lookups below then deny it by
+  // accident rather than by decision -- `"owner,admin" in builtInRoles` is
+  // false and no `workspace_role` row is named that either. Accident is not
+  // good enough for a P0 authorization surface: it is invisible to an operator,
+  // it says nothing about intent, and it would silently become a GRANT the day
+  // someone created a custom role literally named `"owner,admin"` -- which
+  // better-auth's `create-role` allows, since it normalises a new role name
+  // with nothing but `.toLowerCase()` (`crud-access-control.mjs:9`). So the
+  // malformed value is now refused explicitly, by name, before any lookup runs.
+  //
+  // Both halves are the same rule and share one resolution
+  // (`resolveMembershipRole`) with `require-workspace-role-authority.ts`, so
+  // the two evaluators cannot reduce the same rows differently.
+  const membership = await resolveMembershipRole(db, workspaceId, userId);
+  if (!membership.ok) return false;
+  const role = membership.role;
 
   // Issue #66. `owner` is deliberately the ONE role never seeded a
   // `workspace_role` row (retrofit plan R5): its authority stays
@@ -158,6 +167,50 @@ export async function hasWorkspacePermission(
       : await customRoleStatements(workspaceId, role);
 
   return Boolean(statements && satisfies(statements, permissions));
+}
+
+/**
+ * The membership resolution `hasWorkspacePermission` would use for THIS caller, or `null`
+ * when it would not consult a membership row at all — issue #82.
+ *
+ * WHY THIS IS EXPORTED, and why it returns `null` rather than a third failure reason.
+ * Issue #82 requires `/api/capabilities` to agree with the canonical evaluator "for every
+ * malformed shape", AND to make a malformed row distinguishable from a role that merely
+ * lacks a capability. Those two requirements pull against each other if the endpoint
+ * re-derives the caller's membership on its own: any drift between the two readings is a
+ * new divergence of exactly the kind #82 is about. So the endpoint does not re-derive it —
+ * it asks this function, which walks the SAME short-circuits, in the SAME order, as the
+ * evaluator above.
+ *
+ * The `null` cases are the short-circuits, and each one means "the evaluator never looked
+ * at a role value, so there is no malformed row for the endpoint to report":
+ *
+ *  - **no `workspaceId`** — the evaluator returns `false` before reading anything;
+ *  - **an instance admin** — the bypass returns `true` without consulting the membership.
+ *    That bypass is deliberately NOT re-litigated here: it is `require-workspace-role-
+ *    authority.ts`'s subject and Thomas's 2026-09-08 decision, and an instance admin
+ *    already holds the authority a corrupt row could confer, so a malformed value adds no
+ *    privilege for them. What matters for #82 is that the endpoint and the evaluator make
+ *    the same call, and routing both through this function is what guarantees it;
+ *  - **no `userId`** — unauthenticated, refused earlier by the route's own middleware.
+ */
+export async function callerMembershipResolution(
+  c: Context,
+): Promise<MembershipRoleResolution | null> {
+  const workspaceId = c.get("workspaceId");
+  if (!workspaceId) return null;
+
+  // Deliberately NOT short-circuited on an API key's scope: `hasWorkspacePermission` tests
+  // that scope against ONE permission map, and this endpoint asks sixteen different ones,
+  // so there is no single answer to short-circuit on. A scoped key calling into a corrupt
+  // membership therefore gets the same explicit refusal as a session caller, which is both
+  // the fail-closed direction and the honest one.
+  if (await isInstanceAdmin(c)) return null;
+
+  const userId = c.get("userId");
+  if (!userId) return null;
+
+  return resolveMembershipRole(db, workspaceId, userId);
 }
 
 export function requireWorkspacePermission(permissions: PermissionMap) {
