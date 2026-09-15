@@ -1,3 +1,7 @@
+import {
+  type MembershipRoleProblem,
+  membershipRoleProblem,
+} from "@taskdesk/permissions";
 import { and, countDistinct, eq } from "drizzle-orm";
 import type db from "../database";
 import { schema } from "../database";
@@ -194,6 +198,203 @@ export async function distinctOwnerUserCount(
  * "keep the superset" would discard #80's better wording for this predicate, so
  * that wording is kept above rather than lost.
  */
+/**
+ * The ONE `workspace_role.permission` payload for a `(workspaceId, role)` pair, or `null`
+ * when the answer is absent or ambiguous.
+ *
+ * THE TWIN OF `workspaceMemberRoles`, ONE TABLE OVER, AND IT WAS MISSED. Everything the
+ * module comment above says about `workspace_member` is also true of `workspace_role`:
+ * `apps/api/drizzle/0030_smart_umar.sql:11-12` creates `workspace_role_workspaceId_idx` and
+ * `workspace_role_role_idx` as plain, NON-unique indexes, and `schema.ts` confirms
+ * `index(...)` rather than `uniqueIndex(...)`. Measured against a real PostgreSQL 18: the
+ * only unique constraint on the table is `workspace_role_pkey`, on `id`. Two rows for
+ * `('w','manager')` carrying DIFFERENT `permission` payloads insert cleanly, and an
+ * unordered `LIMIT 1` then returns one of them arbitrarily.
+ *
+ * REACHABLE TODAY, AS A TOCTOU RACE RATHER THAN AN ABSENT CHECK. better-auth's
+ * `createOrgRole` (`crud-access-control.mjs`) DOES call `checkIfRoleNameIsTakenByRoleInDB`
+ * before creating -- confirmed directly, and confirmed it works for two SEQUENTIAL calls
+ * (the second returns `400 ROLE_NAME_IS_ALREADY_TAKEN`). But the check and the insert are
+ * two separate steps with no transaction, lock, or unique index between them, so two
+ * CONCURRENT `create-role` calls with the same name can both pass the check before either
+ * inserts -- measured directly: 8 concurrent calls through the still-mounted
+ * `organization()` plugin produced 2 rows with different payloads on the first attempt.
+ * Tracked as #118; the `UNIQUE (workspace_id, role)` constraint that closes the race at the
+ * only layer that actually can is the other half and lands with the migration.
+ *
+ * WIDER BLAST RADIUS THAN #88's. A duplicated `workspace_member` row affects one
+ * `(workspace, user)` pair. A duplicated `workspace_role` row affects EVERY member holding
+ * that role name, on every request -- and because the two rows can carry deliberately
+ * different permission sets, the divergence is not a tie between equal values.
+ *
+ * Returns the raw `permission` string so each caller keeps its own parsing: the capability
+ * evaluator tolerates a malformed payload differently from the role-authority evaluator, and
+ * collapsing that here would change behaviour this function is not meant to touch.
+ *
+ * `null` already means DENY at both call sites, so refusing on ambiguity is fail-closed
+ * without any new branch: a corrupt role definition is refused, never resolved by guessing.
+ */
+export async function workspaceRolePermission(
+  executor: DbOrTx,
+  workspaceId: string,
+  role: string,
+): Promise<string | null> {
+  const rows = await executor
+    .select({ permission: schema.workspaceRoleTable.permission })
+    .from(schema.workspaceRoleTable)
+    .where(
+      and(
+        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
+        eq(schema.workspaceRoleTable.role, role),
+      ),
+    );
+
+  // NOT `.limit(1)`, and NOT `rows[0]`. Exactly one row, or no answer.
+  if (rows.length !== 1) return null;
+  return rows[0]?.permission ?? null;
+}
+
 export function isUnambiguousMembership(roles: string[]): boolean {
   return roles.length === 1;
+}
+
+/**
+ * The ONE resolution every authorization surface uses to turn a pair's stored rows into
+ * either a single usable role name or a named refusal — issue #82.
+ *
+ * WHY A RESULT TYPE RATHER THAN A `string | null`. Issue #82 requires the native evaluator
+ * to fail closed on a malformed value *and to do so DISTINGUISHABLY*, "so an operator can
+ * tell 'malformed membership row' from 'role has no such capability'". A bare `null` cannot
+ * carry that difference, and the two cases genuinely need different answers: a role that
+ * simply lacks a capability is a correct 403, while a corrupt membership row is a data fault
+ * the caller can do nothing about and an operator must be told about. `GET /api/capabilities`
+ * turns `malformed-role` into an explicit 409 for exactly that reason; every other route
+ * still just denies, because a route's job is to refuse, not to diagnose.
+ *
+ * WHY THE MALFORMED CASE IS NOT MERELY THEORETICAL, and why it must be refused rather than
+ * interpreted. `workspace_member.role` is an unconstrained `text` column, and the
+ * still-mounted better-auth plugin comma-JOINS an array of roles into it while its own
+ * evaluator comma-SPLITS the column back apart and ORs across the pieces
+ * (`permission.mjs:2-11`). So the same stored `"owner,admin"` means "the union of owner and
+ * admin" to the plugin and "an unknown role name" to this code. Splitting here to match
+ * would import the union — and the union is the vulnerability, not the fix. Issue #82 says
+ * so in as many words: "Do **not** implement comma-splitting to match the plugin."
+ *
+ * As of migration `0050` a `CHECK` constraint makes this state unreachable for new writes,
+ * and `organizationPluginRoleGuard`
+ * (`apps/api/src/utils/organization-plugin-role-guard.ts`) refuses the plugin write that
+ * used to create it. This resolution is what still holds for a row that predates both — a
+ * deployment that was already carrying one when the fix shipped. It is deliberately kept
+ * even though the constraint "should" make it dead: the constraint is a backstop for this
+ * rule, not a replacement for it, and a future migration that has to drop the constraint
+ * must not silently re-open the union.
+ */
+export type MembershipRoleResolution =
+  | { ok: true; role: string }
+  | { ok: false; reason: "no-membership" }
+  | { ok: false; reason: "ambiguous-rows"; rowCount: number }
+  | { ok: false; reason: "malformed-role"; problem: MembershipRoleProblem };
+
+export function resolveMembershipRoleFrom(
+  roles: string[],
+): MembershipRoleResolution {
+  if (roles.length === 0) return { ok: false, reason: "no-membership" };
+  if (!isUnambiguousMembership(roles)) {
+    return { ok: false, reason: "ambiguous-rows", rowCount: roles.length };
+  }
+  // Load-bearing for the compiler, not dead code: `roles[0]` is `string | undefined` under
+  // `noUncheckedIndexedAccess`, and `length === 1` does not narrow an index access. The
+  // same explicit test appears at both former call sites, and is kept here now that they
+  // share this function, so the reason stays on the page.
+  const role = roles[0];
+  if (role === undefined) return { ok: false, reason: "no-membership" };
+
+  const problem = membershipRoleProblem(role);
+  if (problem !== null) {
+    return { ok: false, reason: "malformed-role", problem };
+  }
+  return { ok: true, role };
+}
+
+/**
+ * The caller's first malformed `workspace_member.role` value **in any workspace**, or `null`
+ * when every row they hold names exactly one role.
+ *
+ * ## Why this is keyed on the user alone, and not on a workspace
+ *
+ * `organization-plugin-role-guard.ts`'s read half used to resolve *which* organization a
+ * request acted on — body, then query string, then the session's active organization — and
+ * check that one. Three independent reviews found that steerable, twice with a landed write:
+ *
+ *  1. better-auth's `update-member-role` never reads the query string, so
+ *     `?organizationId=<any id>` pointed the guard at an organization the caller held no row
+ *     in while the handler acted on the session-active one. Control 409, steered **200, write
+ *     landed**.
+ *  2. After that was closed by checking all three sources, `cancel-invitation` resolved its
+ *     organization from `invitation.organizationId` — a **fourth** source, named by none of
+ *     them. With the session's active organization unset (`set-active` with `null`, which is
+ *     exempt and therefore reachable while holding the malformed row), all three candidates
+ *     were empty, the guard returned early, and the plugin read `"owner,admin"` and ORed it.
+ *     `update-team` was the same shape through `body.data.organizationId`.
+ *
+ * The defect was never the missing source. It was **resolving a target at all**: every
+ * enumeration is a guess about what a dependency does internally, it is wrong per route, and
+ * it goes stale the first time better-auth changes one. So this asks a question with no
+ * target in it — *does this caller hold a malformed role anywhere* — which no request shape
+ * can steer, and which has no empty-candidate case to fall through.
+ *
+ * ## The trade, stated rather than buried
+ *
+ * This is **stricter** than the per-workspace check: a caller holding one malformed row is
+ * refused on every non-exempt organization route, including routes acting on a different,
+ * healthy workspace. That is deliberate. The precondition is a malformed row in a running
+ * process, which after migration `0050` means its `CHECK` was dropped or the row predates
+ * validation — a deployment already requiring administrator repair. Refusing every
+ * role-derived decision until that repair is the fail-closed answer, and
+ * `ROLE_INDEPENDENT_ORGANIZATION_ACTION_SET` still preserves recovery: the caller can list
+ * their workspaces, switch active workspace, create a new one, and accept or reject
+ * invitations. `leave` is deliberately NOT in that set (formal review R2, see
+ * `organization-exempt-actions.ts`) — better-auth's own last-owner check for it has no
+ * `.trim()`, so a padded row would defeat it silently. Self-service leave is unavailable
+ * until an administrator repairs the row; every other recovery action above still is.
+ *
+ * ## Read in TypeScript, filtered by the canonical predicate
+ *
+ * Deliberately not a SQL `WHERE role LIKE '%,%'`: "malformed" means comma-joined **or**
+ * empty **or** untrimmed, and `membershipRoleProblem` is the one definition of that.
+ * Re-expressing it in SQL would create a second, drifting copy — and this project's recurring
+ * defect is exactly a control deriving its answer from a convenient proxy rather than from
+ * the artifact that decides. `workspace_member_userId_idx` covers the read, and a user holds
+ * a handful of rows.
+ */
+export async function firstMalformedMembershipRole(
+  executor: DbOrTx,
+  userId: string,
+): Promise<{ workspaceId: string; problem: MembershipRoleProblem } | null> {
+  const rows = await executor
+    .select({
+      workspaceId: schema.workspaceUserTable.workspaceId,
+      role: schema.workspaceUserTable.role,
+    })
+    .from(schema.workspaceUserTable)
+    .where(eq(schema.workspaceUserTable.userId, userId));
+
+  for (const row of rows) {
+    const problem = membershipRoleProblem(row.role);
+    if (problem !== null) {
+      return { workspaceId: row.workspaceId, problem };
+    }
+  }
+  return null;
+}
+
+/** `resolveMembershipRoleFrom` over this pair's rows, read through `workspaceMemberRoles`. */
+export async function resolveMembershipRole(
+  executor: DbOrTx,
+  workspaceId: string,
+  userId: string,
+): Promise<MembershipRoleResolution> {
+  return resolveMembershipRoleFrom(
+    await workspaceMemberRoles(executor, workspaceId, userId),
+  );
 }
