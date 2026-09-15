@@ -326,8 +326,8 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 
 - **#8** — the router retrofit still waits for #6's removal surface to settle. **#16's
   deletions have landed**, which is half of it; the retrofit itself has now started
-  moving (S0, S1, S2, S3, S4, S4b, S5, S6a and S8a have landed via
-  #57/#65/#67/#76/#85/#77/#112/#109 — S7, S9 and S10 remain), but
+  moving (S0, S1, S2, S3, S4, S4b, S5, S6a, S8a and S9 have landed via
+  #57/#65/#67/#76/#85/#77/#112/#109/#104 — **S7 and S10 remain**), but
   `organization()` is **still mounted** end to end. Classifying a route that is about to
   be replaced is wasted review and a false sense of coverage, so this stays blocked on the
   full retrofit, not on the deletions alone.
@@ -438,10 +438,10 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 - **Throttle 1's five conditions are settled in their exact form** (full table below).
   **Four of five are now met** (1, 3, 4, 5); **one is not** (2), precisely:
   - **#2 unmet** — issue #6 needs the `organization()` retrofit through **S10**, and it has
-    not run that far: S0, S1, S2, S3, S4, S4b, S5, S6a and S8a have landed; S7, S9 and S10
-    have not. `organization()` is still mounted end to end. The
+    not run that far: S0, S1, S2, S3, S4, S4b, S5, S6a, S8a and S9 have landed; **S7 and
+    S10 have not.** `organization()` is still mounted end to end. The
     [stage ledger](retrofits/organization-plugin-retrofit.md) is the authoritative count —
-    this bullet is the fifth place in this file that had to be corrected for the same fact.
+    this bullet needed correcting for the same fact more than once this project.
   - **#3 — corrected 2026-09-09, live during this very reconciliation pass.** This section
     previously said #3 was unmet because required-status-check reconciliation needed a
     ruleset change only Thomas could make. **Thomas made it, moments before this document
@@ -569,13 +569,13 @@ updated `protect-main` while this document was being corrected, and #7 closed th
 window. Throttle 1's conditions 1, 3, 4 and 5 are now all met. **The critical path is
 issue #6 alone**. **S3 and S5 have both since shipped** — this sentence previously named them
 as the critical path, which was true when written and is not now; the remaining steps are
-**S7, S9 and S10**. #6 closing is what opens Throttle 1.
+**S7 and S10** (S9 landed 2026-09-15, PR #104). #6 closing is what opens Throttle 1.
 
 **S5 has since shipped** (PR #77), as has **S4b** (PR #85) — an earlier version of this
 section listed S5 as "not next, deliberately", which is no longer true. The principle behind
 that note still holds: landing one stage does not start the next, each needs its own
-scheduling decision. Issue **#6 stays OPEN / In Progress** with S7, S9 and S10
-outstanding. **#7 is now
+scheduling decision. Issue **#6 stays OPEN / In Progress** with S7 and S10
+outstanding (S9 landed 2026-09-15). **#7 is now
 CLOSED** (2026-09-09) — the registry, evaluator, route-coverage gate and the required-
 status-check reconciliation are all done; #6 is the only issue left keeping Throttle 1
 closed.
@@ -757,16 +757,16 @@ and reading it that way would open the throttle while `organization()` is still 
 | | Condition | State |
 | --- | --- | --- |
 | 1 | **#5** complete | ✅ merged as PR #13, closed |
-| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; **S0, S1, S2, S3, S4, S4b, S5, S6a and S8a** have landed (#65, #57, #65, #76, #67, #85, #77, #112, #109). S7, S9 and S10 (unmount) remain, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
+| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; **S0, S1, S2, S3, S4, S4b, S5, S6a, S8a and S9** have landed (#65, #57, #65, #76, #67, #85, #77, #112, #109, #104). **S7 and S10 (unmount) remain**, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
 | 3 | **#7** complete | ✅ **met — issue closed 2026-09-09** (`closedAt 2026-09-09T06:29:48Z`). #21 put the registry, evaluator and route-coverage gate on `main`; #19 put `pnpm test:permissions` (74 tests) in CI via `check:route-policy` on every push and pull request. The last open clause — both tests **required status checks** — closed when Thomas updated `protect-main` (ruleset `22365005`): `route policy coverage + permission matrix` now sits among 11 entries in `required_status_checks`, `strict_required_status_checks_policy: true`, `current_user_can_bypass: never` (`updated_at 2026-09-09T06:28:04Z`, re-read directly from `gh api repos/.../rulesets/22365005`, not taken from the closing comment's word) |
 | 4 | route coverage **actually executes** in CI | ✅ **met.** `.github/workflows/ci-fast.yml`'s `route-policy` job runs `pnpm check:route-policy` on every push and pull request, and did on `main`'s first gate-enforcing run (`e11976f`, all 11 applicable jobs green) |
 | 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one |
 
 **What "met" does not mean.** Four conditions being true is not Throttle 1 being open — all
 five are required, and #6 is not a paperwork gap: it is real, unfinished implementation
-depth (S7, S9 and S10 of the retrofit). Nothing about #7 closing or the ruleset landing
-changes how much of `organization()` is still mounted. Throttle 1 opens the day #6 closes,
-and not before.
+depth (S7 and S10 of the retrofit; S9 landed 2026-09-15). Nothing about #7 closing or the
+ruleset landing changes how much of `organization()` is still mounted. Throttle 1 opens the
+day #6 closes, and not before.
 
 ---
 
