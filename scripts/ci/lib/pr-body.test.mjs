@@ -1546,6 +1546,102 @@ describe("checklistProblems — a checkbox hidden inside a multi-line comment do
   });
 });
 
+describe("round 9 — findings from the final Opus security review, no comment or splice trickery needed at all", () => {
+  it("F1: an anchored, ticked, unrelated marker cannot smuggle a SECOND, unticked, embedded review checkbox past the gate", () => {
+    // `- [x] Docs updated + [ ] Independent security review` is plain ASCII,
+    // nothing spliced. The old unanchored marker search identified the
+    // EMBEDDED `[ ]` as "the" checkbox for this line — genuine (no comment
+    // touched it) — while the anchored ticked-state check (`OPEN_BOX`) only
+    // ever looked at the line's own START, which is ticked (`- [x]`). The
+    // unticked review item was never separately examined at all.
+    const raw = [
+      "### Any change",
+      "- [x] `pnpm lint` clean",
+      "- [x] `pnpm typecheck` green",
+      "- [x] Tests added and green",
+      "- [x] Docs updated + [ ] Independent security review",
+    ].join("\n");
+    const declared = ["Any change"];
+    assert.ok(
+      checklistPresenceProblems(raw, declared).length > 0,
+      "expected the embedded, unticked review checkbox not to be silently accepted",
+    );
+    assert.ok(
+      checklistProblems(raw).length > 0,
+      "expected checklistProblems to flag this block too",
+    );
+  });
+
+  it("F1 (barer): a checkbox with no anchored marker at its own line-start is not a checklist item just because a marker-shaped substring appears somewhere in its prose", () => {
+    const raw =
+      "### Backend change\n\nIndependent security review + [ ] pending\n";
+    const declared = ["Backend change"];
+    assert.ok(
+      checklistPresenceProblems(raw, declared).length > 0,
+      "expected an un-anchored embedded marker not to count as a genuine review checkbox",
+    );
+  });
+
+  it("F2: text BEFORE an anchored-but-shifted marker is not exempt from genuineness checking just because it precedes the line's only recognised marker", () => {
+    // With the anchored-marker fix, this line has NO anchored marker at all
+    // (it starts with "Indep", a letter) — so it falls into the whole-line
+    // contiguity check, which correctly catches the "Indep"+"endent" splice.
+    const raw = [
+      "### Backend change",
+      "Indep<!--",
+      "FILLER",
+      "-->endent security review + [x] noted",
+    ].join("\n");
+    assert.ok(
+      checklistProblems(raw).length > 0,
+      "expected the pre-marker splice to be caught, not silently accepted",
+    );
+  });
+
+  it("F3: a declared heading hidden entirely inside its own multi-line HTML comment reads as MISSING, the same as if it had been deleted", () => {
+    const raw = [
+      "### Any change",
+      "- [x] Independent security review",
+      "",
+      "<!--",
+      "### Backend change",
+      "-->",
+    ].join("\n");
+    const declared = ["Any change", "Backend change"];
+    const problems = checklistPresenceProblems(raw, declared);
+    assert.ok(
+      problems.some((p) => /"Backend change" is MISSING/.test(p)),
+      `expected the comment-hidden heading to read as missing, got: ${JSON.stringify(problems)}`,
+    );
+  });
+
+  it("still recognises a genuinely visible declared heading whose OWN content happens to contain a comment", () => {
+    // Non-vacuity check on F3's fix in the other direction: `headingBlocks`
+    // must not start rejecting ordinary, visible headings.
+    const raw = [
+      "### Any change",
+      "- [x] Independent security review",
+      "",
+      "### Backend change",
+      "n/a — <!-- note --> no backend change",
+    ].join("\n");
+    const declared = ["Any change", "Backend change"];
+    assert.deepEqual(checklistPresenceProblems(raw, declared), []);
+  });
+
+  it("correctness (not a bypass): a separator with nothing before it falls back to the whole wording, so a real review item is not misread as absent", () => {
+    // Found by ordinary review: an item-subject split on `ITEM_SEPARATOR`
+    // that lands immediately after the marker used to fold to an EMPTY
+    // subject, which does not match `REVIEW_ITEM` — a false BLOCKER on an
+    // otherwise genuine, ticked entry.
+    const raw = [
+      "### Any change",
+      "- [x] — Opus security review completed and recorded",
+    ].join("\n");
+    assert.deepEqual(checklistPresenceProblems(raw, ["Any change"]), []);
+  });
+});
+
 describe("contentOf — F13, invisible characters are not content", () => {
   for (const [name, char] of [
     ["U+200B zero width space", "\u200B"],

@@ -183,8 +183,22 @@ function genuineLineFlags(body) {
 
   for (const line of lines) {
     const lineEnd = lineStart + line.length; // exclusive, before the "\n"
-    const marker = ANY_BOX_ANYWHERE.exec(line);
-    ANY_BOX_ANYWHERE.lastIndex = 0; // it carries the "g" flag; reset for the next line
+    // ANCHORED, not `ANY_BOX_ANYWHERE` — found adversarially (the final
+    // Opus security review): identifying a line's own marker with an
+    // UNANCHORED pattern, while `OPEN_BOX` (the ticked-state check) and the
+    // box-stripping in `itemSubject`/`itemMarkedNotApplicable` were always
+    // anchored, meant a checkbox that was not the first thing on its line
+    // could be picked up as GENUINE by this function while being invisible
+    // to the anchored ticked-state check — `- [x] Docs updated + [ ]
+    // Independent security review` reads as one ticked, resolved item (the
+    // anchored `- [x]` at the true start) while the embedded, UNTICKED
+    // `[ ] Independent security review` later on the same line was
+    // identified as "the" review checkbox by the old unanchored scan,
+    // credited as genuine, and never separately checked for ticked state at
+    // all. A well-formed checklist line has exactly one marker, and it is
+    // the first non-whitespace thing on the line — anchoring here is what
+    // actually enforces that, rather than assuming it.
+    const marker = ANY_BOX.exec(line);
 
     if (!marker) {
       // No checkbox on this line — not what `genuineBoxLineTexts` looks at,
@@ -233,8 +247,23 @@ function genuineLineFlags(body) {
       // checked, while the gap's own interior — wherever a comment is fully
       // cushioned by real whitespace on the side facing each span, the
       // accepted `- [ ] <!-- note --> Some item` shape — is still exempt.
+      //
+      // A SECOND marker-shaped substring anywhere in the wording is its own
+      // disqualifying fact, independent of contiguity — anchoring above
+      // stops a non-first marker from being mistaken for THE marker, but a
+      // well-formed item still has EXACTLY ONE, and an embedded second one
+      // (`- [x] Docs updated + [ ] Independent security review`, all plain
+      // ASCII, no comment at all) is not evidence of splicing but is exactly
+      // as untrustworthy: nothing downstream should treat this line as one
+      // genuine, single item either way.
+      const embeddedExtraMarker = ANY_BOX_ANYWHERE.test(
+        text.slice(wordingStart, lineEnd),
+      );
+      ANY_BOX_ANYWHERE.lastIndex = 0;
+
       flags.push(
-        contiguous(markerStart, Math.min(markerEnd + 1, lineEnd)) &&
+        !embeddedExtraMarker &&
+          contiguous(markerStart, Math.min(markerEnd + 1, lineEnd)) &&
           contiguous(wordingStart - 1, lineEnd),
       );
     }
@@ -284,7 +313,16 @@ function genuineBoxLineTexts(body) {
   const { lines, flags } = genuineLineFlags(body);
   const results = [];
   for (let i = 0; i < lines.length; i += 1) {
-    if (flags[i] && lines[i].match(ANY_BOX_ANYWHERE)) {
+    // ANCHORED (`ANY_BOX`), matching `genuineLineFlags`'s own marker search
+    // — found adversarially: an unanchored "does this line have a box
+    // anywhere" gate let a line with NO marker at its own start, but a
+    // checkbox-shaped substring buried in its prose (`Independent security
+    // review + [ ] pending`), through as "genuine" (nothing spliced — it's
+    // plain, honest text) and then into every check below as if it were a
+    // real, single checklist item. Requiring the SAME anchored pattern here
+    // as the one that actually defines "this line's marker" is what keeps
+    // that from happening.
+    if (flags[i] && lines[i].match(ANY_BOX)) {
       results.push(lines[i]);
     }
   }
@@ -539,17 +577,23 @@ const OPEN_BOX = /^\s*[-*+]\s*\[\s\]/;
 const ANY_BOX_ANYWHERE = /[-*+]\s*\[[ xX]\]/g;
 
 /**
- * Strips the decoration an author could hide behind: HTML comments, emphasis
- * markers, backticks and the box itself. Linear — one pass of single-character
- * classes, no nested quantifier, so this cannot reintroduce the polynomial
+ * Strips the decoration an author could hide behind: emphasis markers and
+ * backticks (a strict subset of what the second line already folds, so one
+ * pass suffices) and anything else that is not a letter or a digit. Linear —
+ * no nested quantifier, so this cannot reintroduce the polynomial
  * backtracking CodeQL flagged in the original one-regex sanitiser.
  */
 function foldToWords(text) {
   return text
-    .replace(/[*_`~]+/g, " ")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .toLowerCase();
+}
+
+/** The checkbox marker itself, stripped — comments first, so a marker never
+ * survives merely because it was hidden behind one. */
+function stripBoxPrefix(line) {
+  return stripComments(line).replace(ANY_BOX, "");
 }
 
 /**
@@ -568,14 +612,21 @@ function foldToWords(text) {
  * `ITEM_SEPARATOR`: the subject is what the item IS, the clause after the
  * separator is what STATE it declares, and "security review" appearing only
  * in the latter does not make the former true.
+ *
+ * A separator sitting immediately after the marker, with nothing before it
+ * at all, folds to an EMPTY subject — found by ordinary review: that read as
+ * "this item's subject does not name the review," a false BLOCKER on an
+ * otherwise genuine, ticked `- [x] — Opus security review completed and
+ * recorded`. An empty subject means there was never a label/state split to
+ * make on this line, not that the label is blank, so it falls back to the
+ * whole (unsplit) wording instead.
  */
 function itemSubject(line) {
-  const withoutBox = stripComments(line)
-    .replace(OPEN_BOX, "")
-    .replace(ANY_BOX, "");
+  const withoutBox = stripBoxPrefix(line);
   const split = ITEM_SEPARATOR.exec(withoutBox);
   const subject = split ? withoutBox.slice(0, split.index) : withoutBox;
-  return foldToWords(subject);
+  const folded = foldToWords(subject);
+  return folded === "" ? foldToWords(withoutBox) : folded;
 }
 
 /**
@@ -631,9 +682,7 @@ const ITEM_SEPARATOR = /—|–|\s-\s/;
 const ITEM_NOT_APPLICABLE_OPENER = /^n\s*[/.\\]\s*a\b/i;
 
 function itemMarkedNotApplicable(line) {
-  const withoutBox = stripComments(line)
-    .replace(OPEN_BOX, "")
-    .replace(ANY_BOX, "");
+  const withoutBox = stripBoxPrefix(line);
   const split = ITEM_SEPARATOR.exec(withoutBox);
   if (!split) {
     return false; // no separator at all: there is no declared state to read
@@ -848,19 +897,76 @@ export function effectivelyNotApplicable(text) {
   );
 }
 
+/**
+ * Every raw character index of `raw` that survives comment-stripping — i.e.
+ * is genuinely visible once `<!-- ... -->` spans are removed. Built once so
+ * a candidate span can be checked for visibility by raw offset without
+ * re-deriving `positions` per candidate.
+ */
+function survivedRawIndices(raw) {
+  const { positions } = stripCommentsWithPositions(raw);
+  return new Set(positions);
+}
+
+/** Does EVERY character of `raw.slice(start, end)` survive comment-stripping? */
+function isRawSpanVisible(survived, start, end) {
+  for (let i = start; i < end; i += 1) {
+    if (!survived.has(i)) return false;
+  }
+  return true;
+}
+
+/**
+ * Splits `raw` into `### heading` blocks — the shape both checklist checkers
+ * need — recognising a heading only when it is genuinely VISIBLE, not merely
+ * present as a raw substring.
+ *
+ * Found adversarially, by the final Opus security review: the previous scan
+ * matched `### heading` against a RAW line directly, with no regard for
+ * whether a human — or GitHub's own render — could ever see it. A heading
+ * wrapped in its own multi-line HTML comment (`<!--\n### Backend change\n
+ * -->`) is a real raw substring, so `checklistPresenceProblems`'s rule 1
+ * ("every declared heading must still be there") was satisfied by a heading
+ * nobody could actually see, the same as if it had never been deleted.
+ *
+ * A heading-SHAPED line that fails the visibility check does not start a
+ * block; it falls through to ordinary content-attachment instead, exactly
+ * as if it had never matched "###" at all — inert, not a signal to close
+ * whatever block was already open.
+ *
+ * Each returned block's own `lines` stay the ORIGINAL raw lines between one
+ * visible heading and the next, comments and all: only the HEADING LINE
+ * ITSELF is checked for visibility here, never a block's own content —
+ * `genuineBoxCount`/`genuineLineFlags` still need raw positions intact, with
+ * nothing pre-stripped out from under them, to keep doing their own splice
+ * detection within each block.
+ */
+function headingBlocks(raw) {
+  const survived = survivedRawIndices(raw);
+  const blocks = [];
+  let current = null;
+  let offset = 0;
+  for (const line of raw.split("\n")) {
+    const lineStart = offset;
+    const lineEnd = offset + line.length;
+    offset = lineEnd + 1; // account for the "\n" this split() consumed
+    const heading = /^###\s+(.*\S)\s*$/.exec(line);
+    if (heading && isRawSpanVisible(survived, lineStart, lineEnd)) {
+      current = { name: heading[1], lines: [] };
+      blocks.push(current);
+      continue;
+    }
+    if (current) current.lines.push(line);
+  }
+  return blocks;
+}
+
 export function checklistPresenceProblems(raw, declared) {
   const problems = [];
 
   const present = new Map();
-  let current = null;
-  for (const line of raw.split("\n")) {
-    const heading = /^###\s+(.*\S)\s*$/.exec(line);
-    if (heading) {
-      current = { name: heading[1], lines: [] };
-      present.set(normaliseHeading(heading[1]), current);
-      continue;
-    }
-    if (current) current.lines.push(line);
+  for (const block of headingBlocks(raw)) {
+    present.set(normaliseHeading(block.name), block);
   }
 
   // 1. Every declared block must still be there. Deleting one is not an answer.
@@ -951,18 +1057,7 @@ export function checklistPresenceProblems(raw, declared) {
 
 export function checklistProblems(raw) {
   const problems = [];
-  const blocks = [];
-  let current = null;
-
-  for (const line of raw.split("\n")) {
-    const heading = /^###\s+(.*\S)\s*$/.exec(line);
-    if (heading) {
-      current = { name: heading[1], lines: [] };
-      blocks.push(current);
-      continue;
-    }
-    if (current) current.lines.push(line);
-  }
+  const blocks = headingBlocks(raw);
 
   for (const block of blocks) {
     const body = block.lines.join("\n");
