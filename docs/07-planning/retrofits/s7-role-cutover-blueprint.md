@@ -119,15 +119,19 @@ stage S7."*, and its "Why this blocks S7 specifically" section explains, in subs
 than these exact words: S7 adds native role write routes and will reuse the same evaluator; if
 those routes inherit the single-role-string assumption without enforcing it, or ship while
 legacy comma-joined rows exist, the divergence becomes reachable through TaskDesk's own
-surface rather than only the inherited one. PR #110 is the fix; as of this writing it is open,
-unmerged, and — per the reconciliation entry above — has changed the two evaluator files S7's
-own "no code change required" analysis depends on.
+surface rather than only the inherited one. PR #110 was the fix; **it has since merged
+(2026-09-15) and issue #82 is CLOSED** — updated here rather than left to contradict §5b,
+which already states the same fact a few sections down. This step is therefore cleared, not
+outstanding: it is recorded as history (what had to land, and why it was a prerequisite), not
+as a live blocker.
 
-Treat this as **step 0, alongside the third prerequisite**: S7 does not begin implementation
-until PR #110 lands on `main`, and once it does, §1's MODIFY table for
-`require-workspace-permission.ts`/`require-workspace-role-authority.ts` must be re-verified
-against what actually merged — not assumed unchanged from this document's snapshot. This is
-not a new decision; #82 already states it. It was missing from this blueprint's own
+This was **step 0, alongside the third prerequisite**: S7 could not begin implementation
+until PR #110 landed on `main`. Now that it has, §1's MODIFY table for
+`require-workspace-permission.ts`/`require-workspace-role-authority.ts` must still be
+re-verified against what actually merged before implementation starts — not assumed unchanged
+from this document's snapshot, and not assumed unchanged from §5b's own snapshot either, per
+that section's own warning. This is not a new decision; #82 already states it. It was missing
+from this blueprint's own
 build-order section, which is the gap this entry closes.
 
 ## Provenance
