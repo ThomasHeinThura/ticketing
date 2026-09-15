@@ -1076,10 +1076,18 @@ export function checklistPresenceProblems(raw, declared) {
 
   // 2. At least one block must actually carry checkboxes. Collapsing the whole section
   //    to prose leaves checklistProblems() with nothing to judge, which is probe (2).
-  const withBoxes = [...present.entries()].filter(
-    ([, block]) => genuineBoxCount(block.lines.join("\n")) > 0,
+  //
+  // Iterated over `blocks`, not the deduplicated `present` map — found by
+  // ordinary review as the half of the duplicate-heading fix rule 3 already
+  // got that rule 2 was still missing: two blocks sharing a declared
+  // heading name collapse to ONE entry in `present`, keeping only the LAST
+  // occurrence, so a genuine checkbox living in the discarded EARLIER
+  // occurrence was invisible here even though it is a real, present
+  // checkbox a human reviewer can see.
+  const withBoxes = blocks.filter(
+    (block) => genuineBoxCount(block.lines.join("\n")) > 0,
   );
-  if (present.size > 0 && withBoxes.length === 0) {
+  if (blocks.length > 0 && withBoxes.length === 0) {
     problems.push(
       "no checklist block contains a single checkbox. A `## Checklists` section made " +
         "entirely of prose has nothing to tick and nothing to check — paste the real " +

@@ -1739,6 +1739,24 @@ describe("round 10 — findings from ordinary + adversarial review of round 9's 
     );
   });
 
+  it("MEDIUM: duplicate declared headings no longer let rule 2 ('at least one block has a checkbox') miss a genuine checkbox in a discarded earlier occurrence", () => {
+    // The other half of the same fix — found by ordinary review after the
+    // rule-3 half above landed: rule 2 ALSO iterated the deduplicated
+    // `present` map, so a genuine, ticked checkbox living in the discarded
+    // FIRST "Phase completion" occurrence was invisible to it, and the
+    // section was wrongly reported as having no checkbox at all — a false
+    // positive (fail-safe direction, not a bypass), but the exact same root
+    // cause left half-fixed.
+    const raw = [
+      "### Phase completion",
+      "- [x] Independent security review",
+      "",
+      "### Phase completion",
+      "n/a — nothing else to add",
+    ].join("\n");
+    assert.deepEqual(checklistPresenceProblems(raw, ["Phase completion"]), []);
+  });
+
   it("correctness (not a bypass): the hides/manufactured diagnostics don't blame a comment when none is involved", () => {
     // Found by ordinary review: an embedded, plain-ASCII extra marker (no
     // comment anywhere) disqualifies a line the same way a hidden or
