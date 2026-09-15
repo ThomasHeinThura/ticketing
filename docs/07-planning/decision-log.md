@@ -17,6 +17,35 @@ Newest first.
 
 ---
 
+### 2026-09-15 · The 2026-09-12 Foundation Technical Preview target lapsed, unscheduled
+
+**Decision:** No replacement date is set for the Foundation Technical Preview. The
+2026-09-12 target in [accelerated-delivery-plan.md](accelerated-delivery-plan.md) and
+[status.md](status.md) has passed. This is recorded because the date lapsed, not because
+the target itself was wrong to set.
+
+**Why:** [status.md](status.md) already states this target explicitly as *"a target, not a
+deadline held under pressure ... the date is explicitly allowed to move."* It moved. What
+has not moved is the reason: the P0 organization-plugin retrofit (#82/#110, #118, S7 through
+S10) is still in progress, and Throttle 1 has not opened. No calendar pressure authorizes
+weakening a security or review gate to hit a date, and none has been applied here — the
+date simply was not met, and no one has picked a new one.
+
+**Replacement date:** none. **Unscheduled, pending Throttle 1.** A new target should not be
+set until the retrofit's dependency chain (#110 → #118 → S7 → #107 → S10 → Throttle 1) is far
+enough along to estimate honestly, rather than restarting the same pressure this entry exists
+to avoid.
+
+**Alternatives:** backdating a fictional replacement date — rejected, that would misstate a
+decision that has not been made. Silently leaving the lapsed date in place with no record —
+rejected, a lapsed target that is never marked lapsed eventually reads as met.
+
+**Decided by:** Thomas, 2026-09-15 (restart handoff instruction). Recorded because the
+instruction explicitly asked for this to be tracked on the control plane, append-only, and
+kept separate from PR #110's own record.
+
+---
+
 ### 2026-09-10 · An unrecognised transition effect kind fails closed (`WF-22`)
 
 **Decision:** An authored transition effect whose `kind` falls outside `WF-19`'s vocabulary
