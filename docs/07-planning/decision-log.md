@@ -17,6 +17,112 @@ Newest first.
 
 ---
 
+### 2026-09-15 · Waived-gate candidates are excluded from the merge delegation
+
+**Decision:** the merge delegation recorded below ("Governance reset") does **not** cover
+any candidate whose `## Gates` table cites a waived gate. Such a candidate always needs
+Thomas's own action to merge — an approval, a comment, or the merge itself — never the
+orchestrating session alone.
+
+**Why:** independent Opus security review of the delegation itself (PR #129, exact head
+`ec994e5605c9222eaa56b266f48a80a134e7469b`) found that the gate-waiver mechanism
+(`scripts/ci/lib/gate-waiver.mjs`) mechanically verifies a waiver was *declared* in the
+required form, but has always explicitly and deliberately **not** verified who authorized
+it — agents commit through the same repository identity Thomas does. Until this delegation,
+the real (if informal) compensating control was that Thomas himself clicked merge, so he
+was the last human able to catch a fabricated or premature waiver citation. The delegation
+removes that check by default. Excluding waived-gate candidates restores an equivalent
+check for exactly the case that needs it, without weakening the delegation's value for the
+ordinary case (a fully green, non-waived candidate) it exists to speed up.
+
+A real mechanical check — verifying waiver authorship some way stronger than trusting the
+orchestrator's own report — is **not** solved here and is tracked as issue #130, alongside a
+related gap in reviewer-identity verification the same review found.
+
+**Alternatives:** leave the delegation as originally written and rely on the "only Thomas
+may waive a gate" sentence alone — rejected, that is exactly the class of control ("a rule
+that closes a process defect has a test; one that doesn't has a sentence agents route
+around") this project's own stated principle warns against, now that the one real backstop
+(the merge button) is gone by default. Build the full mechanical authorship check before
+merging PR #129 — rejected as disproportionate scope for a documentation-only candidate;
+tracked separately instead.
+
+**Decided by:** Thomas delegated the underlying authority on 2026-09-15; this specific
+exclusion was identified by independent Opus review the same day and applied by the
+orchestrator as the correct, narrower remediation of a review finding on an in-flight
+candidate — consistent with "do not waive a gate" rather than an exception to it.
+
+---
+
+### 2026-09-15 · Governance reset: merge delegated to the orchestrator, model routing simplified to Sonnet/Opus, UAT deployment prioritized
+
+**Decision:** four related changes, made together because each depended on the others being
+settled:
+
+1. **Merge execution is delegated to the orchestrating Claude session.** It may merge a
+   candidate through the normal protected pull-request flow, without asking Thomas per PR,
+   once — and only once — every required gate is genuinely green on the exact candidate SHA:
+   applicable tests (expected suite/file counts, not just exit code), required independent
+   review(s), required security review where the change is in security scope, and every
+   required GitHub status check. This supersedes `AGENTS.md`'s and `CLAUDE.md`'s earlier
+   "only Thomas merges" wording. It does **not** authorize bypassing branch protection, a
+   required check, self-review, or a lane/subagent merging — those restrictions are
+   unchanged. A prior, unratified attempt to record this same delegation (dated
+   2026-09-11) was drafted directly into `AGENTS.md` and never actually appended here —
+   that draft is discarded; this entry is the real one.
+2. **Model routing is simplified to Sonnet and Opus only, through this session's own `Agent`
+   tool, with the model set explicitly at every spawn.** Earlier exploration of a
+   multi-provider router (`router.technexus.info`) and non-Claude specialist subagents
+   (DeepSeek/GLM-routed implementation agents) did not work out in practice and is dropped.
+   Implementation, ordinary review, and a project-alignment/misalignment check are Sonnet,
+   spawned freely wherever there is genuinely independent, bounded work. The final
+   independent review for security-sensitive or otherwise critical work is **Opus**,
+   spawned as an explicit, separate subagent on the exact candidate SHA — distinct from the
+   earlier rule that no subagent could ever be Opus. The earlier rule existed to prevent a
+   subagent *accidentally* inheriting Opus from an Opus-orchestrated session; spawning Opus
+   *deliberately and explicitly* for the one tier that requires it does not carry that risk,
+   and the tool now supports pinning a subagent's model at spawn time. The orchestrator
+   decides tiering and reviewer count itself, using the ordinary/broad split already in
+   `AGENTS.md`, rather than asking Thomas to classify each PR.
+3. **A live UAT deployment is active, near-term priority**, not deferred follow-up.
+   `docker build` + container boot + health-endpoint verification is part of "done" for any
+   change touching what ships in the image, and the outstanding application-side gaps
+   (hardcoded port, missing health endpoints, no static file serving, no
+   `storage.filesystem` driver — verify current state, this list may already be out of
+   date) become active critical-path work rather than a someday item.
+4. **Operational discipline to stop the observed stall/loop pattern**, without weakening any
+   gate: do not open another review pass on a candidate whose SHA hasn't changed since the
+   last review; keep `status.md` and this log current every session that changes something
+   durable, not only "at a stage's end"; do not spawn a subagent without a concrete, bounded
+   deliverable; a blocked lane blocks only that lane. Evidence this was a real problem, not
+   a hypothetical: at the time of this entry the repository carried git worktrees for the
+   same candidate reviewed three and four times over (`board-pr128` through `v4`,
+   `board-pr107` through `v4`, `rev-110` through three parallel copies) without those SHAs
+   changing between rounds, plus a governance-file rewrite that had been drafted and
+   abandoned uncommitted rather than landed.
+
+**Why:** Thomas reported the project stuck in P0 for an extended period, looping on review
+and revision without visible forward progress, driven partly by an ineffective
+multi-provider/specialist-subagent routing experiment and partly by process friction (stale
+control-plane documents, re-review of unchanged candidates, Thomas as the single merge
+serialization point after gates were otherwise satisfied). The fix addresses the actual
+friction — routing complexity and idle serialization points — while explicitly preserving
+every substantive gate: security review is still mandatory, still a fresh independent
+context, still Opus; ordinary review is still required and still independent; no candidate
+merges with a red required check.
+
+**Alternatives:** keep merge execution with Thomas only — rejected, it was the serialization
+point Thomas identified as part of the stall. Allow Opus to be a subagent's *inherited*
+default (e.g. any subagent under an Opus top-level session) — rejected, that reintroduces
+the accidental-Opus-fan-out risk the original rule existed to prevent; only explicit,
+deliberate Opus spawns for the review tier are authorized. Keep the multi-provider router for
+auxiliary/non-gated work only — considered and rejected for now as added complexity with no
+demonstrated benefit on this project; may be revisited if a concrete need appears.
+
+**Decided by:** Thomas, 2026-09-15.
+
+---
+
 ### 2026-09-10 · An unrecognised transition effect kind fails closed (`WF-22`)
 
 **Decision:** An authored transition effect whose `kind` falls outside `WF-19`'s vocabulary
