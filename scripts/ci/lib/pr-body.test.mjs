@@ -1223,6 +1223,42 @@ describe("checklistProblems — a checkbox hidden inside a multi-line comment do
       `expected the block to read as blank once the hidden box is stripped, got: ${JSON.stringify(problems)}`,
     );
   });
+
+  it("FAILS when a genuinely UNTICKED ordinary item is hidden in a comment alongside a real review box — regression found adversarially", () => {
+    // Fixing the fake-ticked-review-box bypass (above) by making a hidden box
+    // read as ABSENT has a second-order effect: it also makes a hidden but
+    // genuinely UNTICKED ordinary item silently disappear, when the block
+    // ALSO has other real, visible content (so the block-level "is blank"
+    // early-exit above does not fire). Before the whole-block comment fix,
+    // the old per-line stripping accidentally still caught this shape — an
+    // isolated line has no comment markers on it in isolation, so it read as
+    // visible and got correctly flagged. This asserts the replacement
+    // protection: a checkbox present in the raw text that vanishes once
+    // comments are stripped is flagged directly, regardless of what ticked
+    // state it claimed.
+    const raw = [
+      "### Backend change",
+      "- [x] Independent security review — Opus 5, real",
+      "<!--",
+      "- [ ] pnpm typecheck green",
+      "-->",
+    ].join("\n");
+    const problems = checklistProblems(raw);
+    assert.ok(
+      problems.some((p) => /hides 1 checkbox/.test(p)),
+      `expected the hidden unticked item to be flagged, got: ${JSON.stringify(problems)}`,
+    );
+  });
+
+  it("does not flag a block with no hidden checkboxes at all", () => {
+    const raw = [
+      "### Backend change",
+      "- [x] Independent security review — Opus 5, real",
+      "- [x] pnpm typecheck green",
+      "<!-- an ordinary instructional comment, no checkbox in it -->",
+    ].join("\n");
+    assert.deepEqual(checklistProblems(raw), []);
+  });
 });
 
 describe("contentOf — F13, invisible characters are not content", () => {

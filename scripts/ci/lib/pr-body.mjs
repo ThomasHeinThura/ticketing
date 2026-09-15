@@ -748,6 +748,24 @@ export function checklistProblems(raw) {
 
     const boxes = visibleLines.filter((line) => ANY_BOX.test(line));
 
+    // A checkbox present in the RAW text that vanished once comments were
+    // stripped was hidden inside a comment — found adversarially: fixing the
+    // fake-ticked-review-box bypass above (by making a hidden box read as
+    // ABSENT) silently dropped the one thing that used to make a hidden but
+    // genuinely UNTICKED ordinary item still get flagged as unticked, since
+    // the old per-line stripping never saw a multi-line comment and left
+    // such a line looking untouched. A vanished box is a violation on its
+    // own regardless of what state it claimed to be in — every checklist box
+    // must be visible to a human reader, not hidden from one while still
+    // counted by automation — so this is flagged directly rather than relying
+    // on it also happening to be unticked.
+    const rawBoxCount = block.lines.filter((line) => ANY_BOX.test(line)).length;
+    if (rawBoxCount > boxes.length) {
+      problems.push(
+        `"${block.name}" hides ${rawBoxCount - boxes.length} checkbox line(s) inside an HTML comment — a checkbox invisible on GitHub's own render cannot satisfy or excuse anything here, ticked or not. Move it out of the comment, or delete it and state why in visible text.`,
+      );
+    }
+
     // No boxes: prose stands on its own, n/a or not. Unchanged behaviour.
     if (boxes.length === 0) continue;
 
