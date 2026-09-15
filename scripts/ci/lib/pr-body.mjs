@@ -165,21 +165,56 @@ function stripCommentsWithPositions(markdown) {
  * contiguous, and nothing built on "is this specific line trustworthy"
  * mistakes it for one that is.
  */
+// Is every character in [from, to) consecutive in the RAW source — no
+// comment removed from within this exact span, regardless of what sits
+// outside it? Shared by every per-line genuineness check in this file.
+function contiguous(positions, from, to) {
+  for (let k = from + 1; k < to; k += 1) {
+    if (positions[k] !== positions[k - 1] + 1) return false;
+  }
+  return true;
+}
+
+/**
+ * Is a MARKER (whatever shape the caller is looking for — a checkbox, a
+ * "###" heading prefix) at `[markerStart, markerStart + markerLength)`,
+ * together with the WORDING that follows it (from the first non-whitespace
+ * character onward, through `lineEnd`), genuinely one unbroken run of the
+ * raw source — the "marker, then wording, boundary-extended, gap exempted"
+ * model this file established for checklist items and reuses unchanged for
+ * heading lines, rather than re-deriving (and re-adversarially-testing) the
+ * same contiguity reasoning twice. See `genuineLineFlags`'s own history for
+ * why each piece of this is shaped the way it is: checking each span's own
+ * interior is not enough (a comment cushioned by real whitespace on only
+ * ONE side of the gap escapes an interior-only check), so each span is
+ * extended by the one boundary character adjoining the gap — while a
+ * comment fully cushioned by real whitespace on BOTH sides of the gap
+ * (`- [ ] <!-- note --> Some item`) still passes, because neither extended
+ * check ever needs to look INSIDE the gap itself.
+ */
+function markerAndWordingGenuine(
+  text,
+  positions,
+  markerStart,
+  markerLength,
+  lineEnd,
+) {
+  const markerEnd = markerStart + markerLength;
+  let wordingStart = markerEnd;
+  while (wordingStart < lineEnd && /\s/.test(text[wordingStart])) {
+    wordingStart += 1;
+  }
+  return (
+    contiguous(positions, markerStart, Math.min(markerEnd + 1, lineEnd)) &&
+    contiguous(positions, wordingStart - 1, lineEnd)
+  );
+}
+
 function genuineLineFlags(body) {
   const { text, positions } = stripCommentsWithPositions(body);
   const lines = text.split("\n");
   const flags = [];
   let lineStart = 0;
-
-  // Is every character in [from, to) consecutive in the RAW source — no
-  // comment removed from within this exact span, regardless of what sits
-  // outside it?
-  const contiguous = (from, to) => {
-    for (let k = from + 1; k < to; k += 1) {
-      if (positions[k] !== positions[k - 1] + 1) return false;
-    }
-    return true;
-  };
 
   for (const line of lines) {
     const lineEnd = lineStart + line.length; // exclusive, before the "\n"
@@ -203,51 +238,10 @@ function genuineLineFlags(body) {
     if (!marker) {
       // No checkbox on this line — not what `genuineBoxLineTexts` looks at,
       // but keep the array aligned with `lines` regardless.
-      flags.push(contiguous(lineStart, lineEnd));
+      flags.push(contiguous(positions, lineStart, lineEnd));
     } else {
-      // A self-contained comment sitting in the WHITESPACE between the marker
-      // and the item's own wording changes nothing either side says — found
-      // adversarially, after an earlier version of this check treated ANY
-      // comment anywhere on the line as disqualifying, which also rejected
-      // ordinary, harmless authoring (`- [ ] <!-- note --> Some item`). What
-      // must never be trusted is a comment INSIDE the marker itself, or INSIDE
-      // the wording that follows it — so two spans are checked, not one: the
-      // marker's own characters, and the line's own wording from its first
-      // non-whitespace character onward. A gap that falls only in the padding
-      // between those two spans is exactly the shape a real author's own
-      // spacing choice would leave, and is not evidence of anything spliced.
       const markerStart = lineStart + marker.index;
-      const markerEnd = markerStart + marker[0].length;
-      let wordingStart = markerEnd;
-      while (wordingStart < lineEnd && /\s/.test(text[wordingStart])) {
-        wordingStart += 1;
-      }
 
-      // Checking each span's OWN interior is not enough — found
-      // adversarially, in two mirrored shapes:
-      //
-      // `- [x] <!--\nfiller\n-->Independent security review` cushions the
-      // comment with a real space BEFORE it but nothing AFTER (the closer
-      // lands directly on "I"). `contiguous(wordingStart, lineEnd)` alone
-      // never compares `positions[wordingStart]` against what precedes it,
-      // so this passed: everything FROM "I" onward really is one unbroken
-      // run, even though "I" itself was smuggled in right across the
-      // comment with no real character between it and the one genuine
-      // space before it.
-      //
-      // `- [x]<!--\nfiller\n--> Independent security review` is the mirror:
-      // nothing cushions the comment on the marker side at all, so it starts
-      // immediately after "]". `contiguous(markerStart, markerEnd)` alone
-      // never compares `positions[markerEnd]` against what precedes IT,
-      // so this passed too, for the same reason from the other direction.
-      //
-      // Both are closed the same way: extend each span by the one boundary
-      // character adjoining the gap, so the transition INTO the gap from the
-      // marker and the transition OUT of the gap into the wording are both
-      // checked, while the gap's own interior — wherever a comment is fully
-      // cushioned by real whitespace on the side facing each span, the
-      // accepted `- [ ] <!-- note --> Some item` shape — is still exempt.
-      //
       // A SECOND marker-shaped substring anywhere in the wording is its own
       // disqualifying fact, independent of contiguity — anchoring above
       // stops a non-first marker from being mistaken for THE marker, but a
@@ -257,14 +251,19 @@ function genuineLineFlags(body) {
       // as untrustworthy: nothing downstream should treat this line as one
       // genuine, single item either way.
       const embeddedExtraMarker = ANY_BOX_ANYWHERE.test(
-        text.slice(wordingStart, lineEnd),
+        text.slice(markerStart + marker[0].length, lineEnd),
       );
       ANY_BOX_ANYWHERE.lastIndex = 0;
 
       flags.push(
         !embeddedExtraMarker &&
-          contiguous(markerStart, Math.min(markerEnd + 1, lineEnd)) &&
-          contiguous(wordingStart - 1, lineEnd),
+          markerAndWordingGenuine(
+            text,
+            positions,
+            markerStart,
+            marker[0].length,
+            lineEnd,
+          ),
       );
     }
 
@@ -916,23 +915,80 @@ function isRawSpanVisible(survived, start, end) {
   return true;
 }
 
+/** The marker `headingBlocks` looks for: "###", at least one space, then a name. */
+const HEADING_MARKER = /^###\s+/;
+
+/**
+ * Is raw line `[lineStart, lineEnd)` genuinely a visible `### heading` —
+ * and if so, its real, comment-free name?
+ *
+ * Two checks, for two different ways a heading can be hidden:
+ *
+ * 1. `isRawSpanVisible` on the "###" prefix itself, against the WHOLE
+ *    document's comment structure — catches a heading swallowed entirely by
+ *    an outer, multi-line comment that opened on an earlier line and closes
+ *    on a later one (`<!--\n### Backend change\n-->`). In isolation this
+ *    line has no comment markers on it at all, so nothing scoped to just
+ *    this line could ever see the problem.
+ * 2. `markerAndWordingGenuine`, applied to THIS LINE stripped in isolation
+ *    (safe, because unlike (1) this only needs to know about comments that
+ *    both open and close on this exact line) — catches a splice inside the
+ *    heading's own "###" or its name, the same way the identical check
+ *    catches one inside a checklist item's marker or wording. A comment
+ *    that is fully self-contained AND cushioned by real whitespace on both
+ *    sides of the gap between "###" and the name — or that sits entirely
+ *    AFTER the name, trailing decoration like `### Backend change <!--
+ *    delete if not applicable -->` — still passes, the same as it does for
+ *    a checklist item: found adversarially (ordinary review) after an
+ *    earlier version of this check required the ENTIRE raw line to survive
+ *    verbatim, which rejected that harmless, common authoring shape as
+ *    "missing" outright.
+ *
+ * Deriving the name from the per-line STRIPPED text (not the raw regex
+ * capture) matters on its own: the raw heading regex is not comment-aware,
+ * so matching it directly against a line with a trailing comment would
+ * greedily capture the comment's own text as part of the "name".
+ */
+function visibleHeadingName(raw, survived, lineStart, lineEnd) {
+  if (
+    !isRawSpanVisible(survived, lineStart, Math.min(lineStart + 3, lineEnd))
+  ) {
+    return null;
+  }
+  const { text, positions } = stripCommentsWithPositions(
+    raw.slice(lineStart, lineEnd),
+  );
+  const marker = HEADING_MARKER.exec(text);
+  if (!marker) return null;
+  const heading = /^###\s+(.*\S)\s*$/.exec(text);
+  if (!heading) return null; // "###" with nothing (real) after it is not a declared heading
+  if (
+    !markerAndWordingGenuine(text, positions, 0, marker[0].length, text.length)
+  ) {
+    return null;
+  }
+  return heading[1];
+}
+
 /**
  * Splits `raw` into `### heading` blocks — the shape both checklist checkers
  * need — recognising a heading only when it is genuinely VISIBLE, not merely
- * present as a raw substring.
+ * present as a raw substring (see `visibleHeadingName`).
  *
- * Found adversarially, by the final Opus security review: the previous scan
- * matched `### heading` against a RAW line directly, with no regard for
- * whether a human — or GitHub's own render — could ever see it. A heading
- * wrapped in its own multi-line HTML comment (`<!--\n### Backend change\n
- * -->`) is a real raw substring, so `checklistPresenceProblems`'s rule 1
- * ("every declared heading must still be there") was satisfied by a heading
- * nobody could actually see, the same as if it had never been deleted.
- *
- * A heading-SHAPED line that fails the visibility check does not start a
- * block; it falls through to ordinary content-attachment instead, exactly
- * as if it had never matched "###" at all — inert, not a signal to close
- * whatever block was already open.
+ * Also returns `orphaned`: every raw line that precedes the FIRST visible
+ * heading — found adversarially, by an ordinary + adversarial review pair,
+ * on the round this exact function was introduced: a heading-shaped line
+ * that fails visibility correctly falls through to ordinary content-
+ * attachment, but content with NO block open yet (nothing precedes the
+ * very first heading to attach to) was silently dropped, attached to
+ * nothing at all — an unticked, explicitly "NOT DONE" independent-review
+ * line placed before the first `###` was never examined by either checker,
+ * no comment or splice needed. `orphaned` lets both checkers treat
+ * meaningful content there as the violation it is, while the template's own
+ * legitimate instructional comment in that exact position (`.github/
+ * pull_request_template.md`'s `## Checklists` section opens with one)
+ * stays accepted — comments are not meaningful content, the same rule
+ * `contentOf` already applies everywhere else in this file.
  *
  * Each returned block's own `lines` stay the ORIGINAL raw lines between one
  * visible heading and the next, comments and all: only the HEADING LINE
@@ -944,28 +1000,53 @@ function isRawSpanVisible(survived, start, end) {
 function headingBlocks(raw) {
   const survived = survivedRawIndices(raw);
   const blocks = [];
+  const orphaned = [];
   let current = null;
   let offset = 0;
   for (const line of raw.split("\n")) {
     const lineStart = offset;
     const lineEnd = offset + line.length;
     offset = lineEnd + 1; // account for the "\n" this split() consumed
-    const heading = /^###\s+(.*\S)\s*$/.exec(line);
-    if (heading && isRawSpanVisible(survived, lineStart, lineEnd)) {
-      current = { name: heading[1], lines: [] };
+    const name = visibleHeadingName(raw, survived, lineStart, lineEnd);
+    if (name !== null) {
+      current = { name, lines: [] };
       blocks.push(current);
       continue;
     }
-    if (current) current.lines.push(line);
+    if (current) {
+      current.lines.push(line);
+    } else {
+      orphaned.push(line);
+    }
   }
-  return blocks;
+  return { blocks, orphaned };
 }
 
 export function checklistPresenceProblems(raw, declared) {
   const problems = [];
 
+  const { blocks, orphaned } = headingBlocks(raw);
+
+  // 0. Content with no declared heading over it is not attached to anything
+  //    either checker examines — found adversarially: an unticked, explicitly
+  //    "NOT DONE" independent-review line placed BEFORE the first `### `
+  //    heading was silently dropped, belonging to no block, checked by
+  //    neither rule below nor by `checklistProblems`. The template's own
+  //    instructional comment legitimately opens this exact position, so only
+  //    MEANINGFUL content here — the same bar `contentOf` uses everywhere
+  //    else in this file — counts as a violation.
+  if (contentOf(orphaned.join("\n")) !== "") {
+    problems.push(
+      "there is content in `## Checklists` before the first declared heading. " +
+        "Every line under this section must sit under one of the declared " +
+        "headings — content that precedes all of them is never checked by " +
+        "either the presence or the state rules below. Move it under the " +
+        "correct heading.",
+    );
+  }
+
   const present = new Map();
-  for (const block of headingBlocks(raw)) {
+  for (const block of blocks) {
     present.set(normaliseHeading(block.name), block);
   }
 
@@ -1028,8 +1109,16 @@ export function checklistPresenceProblems(raw, declared) {
   // review checkbox — no comment or splice needed, a sentence plausible
   // enough to write by accident. `itemSubject` restricts the match to what
   // the item's own text claims to BE, not what it goes on to mention.
+  //
+  // Iterated over `blocks` (every heading found, in order), not `present`
+  // (deduplicated by name) — found adversarially: two blocks sharing a
+  // declared heading name collapse to ONE entry in `present`, keeping only
+  // the LAST occurrence, so a review item living in the DISCARDED earlier
+  // occurrence became invisible to this rule while `checklistProblems`
+  // (which has no such dedup) kept enforcing it — the two checkers could
+  // disagree about whether a genuine, unresolved review item exists at all.
   const reviewItems = [];
-  for (const [, block] of present) {
+  for (const block of blocks) {
     for (const line of genuineBoxLineTexts(block.lines.join("\n"))) {
       if (REVIEW_ITEM.test(itemSubject(line)))
         reviewItems.push({ block: block.name, line: line.trim() });
@@ -1057,7 +1146,18 @@ export function checklistPresenceProblems(raw, declared) {
 
 export function checklistProblems(raw) {
   const problems = [];
-  const blocks = headingBlocks(raw);
+  const { blocks, orphaned } = headingBlocks(raw);
+
+  // Same rule as `checklistPresenceProblems`'s: content before the first
+  // declared heading belongs to no block, so nothing below ever examines
+  // it — flagged directly rather than silently ignored.
+  if (contentOf(orphaned.join("\n")) !== "") {
+    problems.push(
+      "there is content in `## Checklists` before the first declared heading, " +
+        "never attached to any block this checker examines. Move it under the " +
+        "correct heading.",
+    );
+  }
 
   for (const block of blocks) {
     const body = block.lines.join("\n");
@@ -1116,14 +1216,24 @@ export function checklistProblems(raw) {
       visibleLines.join("\n").match(ANY_BOX_ANYWHERE) ?? []
     ).length;
     const genuineCount = genuineBoxCount(body);
+    // Both messages below used to name a comment unconditionally — accurate
+    // for the case each was originally written against, but found
+    // misleading by ordinary review once a DIFFERENT reason for
+    // disqualification existed: a plain-ASCII line with a second,
+    // embedded checkbox marker (no comment anywhere) can also make
+    // `genuineCount` fall short of these totals, and telling that author to
+    // "restructure the comment" points at something that does not exist.
+    // Each message now leads with the shape it was written for (still the
+    // common case) but no longer asserts a comment is unconditionally the
+    // cause.
     if (rawBoxCount > genuineCount) {
       problems.push(
-        `"${block.name}" hides ${rawBoxCount - genuineCount} checkbox(es) inside an HTML comment — a checkbox invisible on GitHub's own render cannot satisfy or excuse anything here, ticked or not. Move it out of the comment, or delete it and state why in visible text.`,
+        `"${block.name}" hides ${rawBoxCount - genuineCount} checkbox(es) that do not verify as genuine — most often a checkbox truly wrapped in an HTML comment (invisible on GitHub's own render, ticked or not, cannot satisfy or excuse anything here), but the same count also covers one disqualified for tracing to broken or ambiguous raw text, such as a second marker embedded inside another item's own line. Move it out of hiding, or restructure the line so only one checkbox marker appears on it.`,
       );
     }
     if (visibleBoxCount > genuineCount) {
       problems.push(
-        `"${block.name}" has ${visibleBoxCount - genuineCount} checkbox(es) that only exist because a comment span was spliced across a checkbox marker, manufacturing one that was never in the raw text. Restructure the comment so it does not straddle a \`[ ]\`/\`[x]\`.`,
+        `"${block.name}" has ${visibleBoxCount - genuineCount} checkbox(es) that appear in the visible text but do not trace to one genuine, unbroken checklist item of its own — whether manufacturing one that was never in the raw text (a comment span spliced across a checkbox marker), or a second checkbox-shaped marker embedded inside another item's own wording. Restructure so each checkbox is the ONLY marker on its own line, with nothing straddling a \`[ ]\`/\`[x]\`.`,
       );
     }
 

@@ -1642,6 +1642,119 @@ describe("round 9 — findings from the final Opus security review, no comment o
   });
 });
 
+describe("round 10 — findings from ordinary + adversarial review of round 9's fix", () => {
+  const declared = ["Any change", "Backend change", "Phase completion"];
+  const fullBody = (phaseItem) =>
+    [
+      "### Any change",
+      "- [x] does what the task says",
+      "",
+      "### Backend change",
+      "n/a — no backend change.",
+      "",
+      "### Phase completion",
+      phaseItem,
+    ].join("\n");
+
+  it("CRITICAL: content before the FIRST declared heading is not silently dropped — found adversarially", () => {
+    // An unticked, explicitly "NOT DONE" independent-review line placed
+    // before the first `### ` heading used to belong to no block at all
+    // (`headingBlocks` started with `current = null` and only ever
+    // attached a line when a block was already open) — invisible to both
+    // checkers, no comment or splice needed, as long as some LATER,
+    // properly-formed block satisfied the presence/state rules on its own.
+    const raw = [
+      "- [ ] Independent security review — NOT DONE, ran out of time",
+      "",
+      fullBody("- [x] Independent security review — Opus 5, 2026-09-15"),
+    ].join("\n");
+    assert.ok(
+      checklistPresenceProblems(raw, declared).length > 0,
+      "expected orphaned content before the first heading to be flagged",
+    );
+    assert.ok(
+      checklistProblems(raw).length > 0,
+      "expected checklistProblems to flag it too",
+    );
+  });
+
+  it("still accepts the template's own legitimate instructional comment in that exact position", () => {
+    const raw = [
+      "<!--",
+      "Paste the relevant checklist(s) from docs/04-engineering/definition-of-done.md below each",
+      "heading and tick them.",
+      "-->",
+      "",
+      fullBody("- [x] Independent security review — Opus 5, 2026-09-15"),
+    ].join("\n");
+    assert.deepEqual(checklistPresenceProblems(raw, declared), []);
+    assert.deepEqual(checklistProblems(raw), []);
+  });
+
+  it("correctness (not a bypass): a heading with a harmless, self-contained TRAILING comment on its own line is not misread as missing", () => {
+    // Found by both ordinary and adversarial review of round 9's fix: an
+    // earlier version of the heading-visibility check required the ENTIRE
+    // raw heading line to survive comment-stripping verbatim, so
+    // `### Backend change <!-- delete if not applicable -->` — a harmless,
+    // common authoring shape, comment fully self-contained on the heading's
+    // own line — was rejected as "not a heading", reporting the whole
+    // section MISSING even though a human (or GitHub's own render) sees it
+    // exactly as declared.
+    const raw = [
+      "### Any change",
+      "- [x] does what the task says",
+      "",
+      "### Backend change <!-- delete if not applicable -->",
+      "n/a — no backend change.",
+      "",
+      "### Phase completion",
+      "- [x] Independent security review — Opus 5, 2026-09-15",
+    ].join("\n");
+    assert.deepEqual(checklistPresenceProblems(raw, declared), []);
+  });
+
+  it("MEDIUM: duplicate declared headings no longer let checklistPresenceProblems silently drop an earlier, genuinely unticked review item", () => {
+    // `present` (a Map keyed by normalised heading name) kept only the LAST
+    // of two same-named blocks, so rule 3 never saw a review item living in
+    // the discarded first occurrence — while `checklistProblems`, which has
+    // no such dedup, still enforced it, meaning the two checkers could
+    // disagree about whether a genuine, unresolved review item exists.
+    const raw = [
+      "### Any change",
+      "- [x] does what the task says",
+      "",
+      "### Phase completion",
+      "- [ ] Independent security review — NOT DONE",
+      "",
+      "### Phase completion",
+      "- [x] Independent security review — Opus 5, 2026-09-15",
+    ].join("\n");
+    const presence = checklistPresenceProblems(raw, [
+      "Any change",
+      "Phase completion",
+    ]);
+    assert.ok(
+      presence.some((p) => /2 independent-review checkboxes/.test(p)),
+      `expected both occurrences to be counted, got: ${JSON.stringify(presence)}`,
+    );
+  });
+
+  it("correctness (not a bypass): the hides/manufactured diagnostics don't blame a comment when none is involved", () => {
+    // Found by ordinary review: an embedded, plain-ASCII extra marker (no
+    // comment anywhere) disqualifies a line the same way a hidden or
+    // manufactured one does, but the old message text unconditionally told
+    // the author to "restructure the comment" — pointing at something that
+    // does not exist in this exact input.
+    const raw =
+      "### Any change\n\n- [x] Docs updated + [ ] Independent security review\n";
+    const problems = checklistProblems(raw);
+    assert.ok(
+      !problems.some((p) => /restructure the comment/i.test(p)),
+      `expected no message to blame a comment when none exists, got: ${JSON.stringify(problems)}`,
+    );
+  });
+});
+
 describe("contentOf — F13, invisible characters are not content", () => {
   for (const [name, char] of [
     ["U+200B zero width space", "\u200B"],
