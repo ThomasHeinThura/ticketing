@@ -3,13 +3,16 @@
 > ## ⚠ How to read this file
 >
 > **Snapshot taken:** 2026-09-15
-> **`main` at that moment:** `3baf2bf` (PR #129, governance reset)
+> **`main` at that moment:** `a76829b` (PR #119, #118 evaluator half — merged after PR #122,
+> the #118 DB half, and PR #110, the #82 fix)
 > **Stage:** P0 · Foundation — IN PROGRESS
 > **Throttle 1:** SHUT — 4 of 5 conditions met; condition 2 (issue #6 through retrofit S10)
-> is the sole blocker. **Correction, 2026-09-15: S7's own release condition inside that
-> path is #82 AND #118 (not #82 alone) — see Blocked, below.** The `## Scheduler` section
-> is the current live-state-to-action mapping; read it alongside this header, not instead
-> of it.
+> is the sole blocker. **S7's own release condition inside that path, #82 AND #118, is now
+> FULLY CLOSED** (#82 via PR #110, #118 via PRs #122 and #119 — all three merged and
+> independently reviewed, 2 Sonnet + 1 Opus each, all CLEAR). **S7 — native role list and
+> writes — is the new critical-path item; it has not been implemented yet.** The
+> `## Scheduler` section is the current live-state-to-action mapping; read it alongside this
+> header, not instead of it.
 >
 > **LIVE pull-request and issue state is NOT durably recorded in this file and must be
 > re-verified from GitHub:** `gh pr list --state open`, `gh pr view <n>`,
@@ -34,11 +37,14 @@
 
 **Last updated:** 2026-09-15
 **Current stage:** P0 · Foundation — **IN PROGRESS**
-**Updated by:** Claude Code (Sonnet), reconciliation after PR #111 (issue #108
-characterization) and **#129** (governance reset — merge delegation, Sonnet/Opus model
-tiers, UAT deployment made active priority) merged. Corrected S7's real dependency (#82
-AND #118, not #82 alone) against PR #123's diff and live issue state, and added the
-`## Scheduler` section below.
+**Updated by:** Claude Code (Sonnet), reconciliation after **PR #110** (#82 fix), **PR #122**
+(#118 DB half) and **PR #119** (#118 evaluator half) all merged to `main`, closing both of
+S7's release conditions. Each was independently reviewed (2 fresh Sonnet + 1 Opus, all
+CLEAR) with a committed security-review note; #119's review tracked a real mid-review
+hazard (#122 merging while #119 was still open broke #119's own test setup) through to a
+verified fix rather than assuming the SHA change was benign. Issues #82 and #118 are now
+both CLOSED. S7 — native role list and writes — is unblocked and is the new critical-path
+item; it has not started yet.
 
 > **This is a durable snapshot, not a work log.** Update it only on a durable transition: a
 > pull request merges or becomes genuinely review-ready, an issue blocks, unblocks or
@@ -67,18 +73,18 @@ decisions) · `BLOCKED` · `DEFERRED` (valid, not useful yet) · `SUPERSEDED`.
 
 | Item | State | Terminal outcome |
 | --- | --- | --- |
-| PR #110 (#82 fix) | 3 formal Sonnet reviews already PASS, zero blocking, at head `450144d`. **Only the Opus security review is outstanding.** | #82 closed |
-| PR #119 (#118 evaluator half) | Authored by an Opus orchestrator session; **zero independent review of any tier**. Needs 2 fresh Sonnet + 1 Opus. | #118 (evaluator side) closed |
-| PR #122 (#118 DB/migration half) | **Zero independent review of any tier.** Needs 2 fresh Sonnet + 1 Opus. Must land before or with S7's native writes to `workspace_role`. | #118 (DB side) closed |
+| S7 — native role list + writes, repointing `listRoles`/`createRole`/`updateRole`/`deleteRole` | **UNBLOCKED, 2026-09-15.** #82 (PR #110) and #118 (PRs #122 + #119) both merged and closed. `roles-and-permissions-ui.md`'s review section already closed (PR #128). **Not yet started.** | Zero executable `authClient.organization.*` callers except the four role-family ones being retired here |
+| PR #104 (S9 — teams decision, Path B) | Docs-only, `mergeable: CONFLICTING`, zero independent review. Independent of S7; needs a rebase then 2 Sonnet reviews (not security scope — no code change). | S9 resolved, teams stay enabled until S10 |
+| PR #116 (fix #115 — widen security-review scope to privileged controllers/migrations/policy root) | `mergeable: MERGEABLE`, zero independent review. **Self-referential**: touches `docs/04-engineering/ci-cd.md`, which is itself on the security-scope glob list, so this needs 2 Sonnet + 1 Opus, not docs-tier review alone. | Security-review glob list actually covers what it claims to |
 
-### NEXT_DEPENDENCY — becomes critical the moment #82 and #118 both close
+### NEXT_DEPENDENCY — becomes critical the moment S7 lands
 
 | Item | Depends on | Terminal outcome |
 | --- | --- | --- |
-| S7 — native role list + writes, repointing `listRoles`/`createRole`/`updateRole`/`deleteRole` | #82 AND #118 closed, plus `roles-and-permissions-ui.md` review closed (already satisfied, PR #128) | Zero executable `authClient.organization.*` callers except the four role-family ones being retired here |
-| PR #104 (S9 — teams decision, Path B) | Independent of S7; precondition already satisfied per the retrofit ledger. **Startable now**, not blocked. | S9 resolved, teams stay enabled until S10 |
 | PR #107 (S10 — zero-caller tripwire) | S7 AND S9 both landed | `pnpm check:organization-callers` ratchets to zero; `organization()` unmountable |
 | Issue #6 closes → Throttle 1 opens | S7 → S9 → S10 all landed | Full P1–P4 parallel lane authorization |
+| Issue #124 (still-mounted plugin's `update-member-role` can mint a second owner) | Closes naturally at S10 (plugin unmount), per the issue's own non-goals — not a standalone patch target | Resolved by removal, not by patching the plugin boundary |
+| Issue #136 (still-mounted plugin's `has-permission` unions duplicate `workspace_role` rows) | Narrowed by #122's constraint; fully closes at S10 | Same — resolved by removal |
 
 ### SAFE_PARALLEL — real work, independent of the P0 security decisions above
 
@@ -90,20 +96,22 @@ decisions) · `BLOCKED` · `DEFERRED` (valid, not useful yet) · `SUPERSEDED`.
 
 ### UAT/deployability lane — first-class, per Thomas 2026-09-15
 
-Verified live against `main` on 2026-09-15 (not assumed from an earlier snapshot):
+Re-verified live against `main` at `a76829b` on 2026-09-15 (not assumed from an earlier
+snapshot). **PR #132 merged this session and closed two of the four:**
 
 | Gap | Verified state | Classification |
 | --- | --- | --- |
-| `TASKDESK_PORT` not read; `apps/api/src/index.ts` hardcodes `1337` | Still true — `grep` for `TASKDESK_PORT` in `index.ts` returns nothing | SAFE_PARALLEL, startable now |
-| No `/api/public/health/{live,ready}` | Still true — no match for either route | SAFE_PARALLEL, startable now |
+| `TASKDESK_PORT` not read | **CLOSED — PR #132.** `resolvePort()` in `apps/api/src/index.ts` reads it, bounded 1–65535, falls back to `DEFAULT_PORT` (5173) on invalid input | Done |
+| No `/api/public/health/{live,ready}` | **CLOSED — PR #132.** Both routes exist; `/ready` runs a real `SELECT 1`. Fixed a real bug found in review: an idle pooled client's error surfaces on the *pool*, not the query — an unhandled `pool.on("error", ...)` would have crashed the process under `/ready` polling; now handled | Done |
 | No static file serving in the Node process | Still true — no `serveStatic`/`express.static` match in `apps/api/src` | SAFE_PARALLEL, startable now |
 | No `storage.filesystem` driver | Still true — `apps/api/src/storage/` holds only `s3.ts` and `cleanup-assets.ts` | SAFE_PARALLEL, startable now |
 
 **UAT-0** (per the milestone shape Thomas asked for): `docker build` succeeds, container
-boots, a health endpoint answers `200` — achievable once the port and health-endpoint gaps
-close, independent of the other two. **Full UAT stand-up** needs all four gaps closed plus
-an actual redeploy — that step is `NEXT_DEPENDENCY` on this lane, not startable until the
-gaps themselves land.
+boots, a health endpoint answers `200` — **the two gaps this needed are now closed.** Not
+yet independently confirmed against a real `docker build`/`docker run` cycle; that
+verification, not further code, is the next step for UAT-0 specifically. **Full UAT
+stand-up** still needs the remaining two gaps (static serving, filesystem storage) plus an
+actual redeploy.
 
 ### BLOCKED
 
@@ -122,6 +130,8 @@ gaps themselves land.
 
 - Any earlier statement in this file or `decision-log.md` that S7 is "blocked by #82 alone"
   — corrected 2026-09-15, see Blocked, below, and the Scheduler header above.
+- Any statement that S7 remains blocked at all — #82 and #118 both closed 2026-09-15 (PRs
+  #110, #122, #119, all merged). See Blocked, below.
 
 ---
 
@@ -319,27 +329,22 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   full retrofit, not on the deletions alone.
 - **#17** — sessions already minted by the removed MCP OAuth and device flows. Deleting an
   endpoint is not revoking a credential; a consent click created a full 30-day session row.
-- **Retrofit S7 (native role writes) — ⛔ BLOCKED BY #82 AND #118.** Not a scheduling
-  preference. **#66 is CLOSED** — PR #80 removed the privilege-restoration fail-open where
+- ~~Retrofit S7 (native role writes) — BLOCKED BY #82 AND #118~~ **UNBLOCKED, 2026-09-15.**
+  **#66 is CLOSED** — PR #80 removed the privilege-restoration fail-open where
   `hasWorkspacePermission` fell back to the compiled built-in role definitions when a
   `workspace_role` row was absent, so a role an administrator had *narrowed*, or deleted,
-  silently regained its built-in privileges. S7 writes that exact table, and the
-  delete-after-narrow escalation it would have made shippable is gone: a missing row is now a
-  DENY for every role but `owner`, whose authority is compiled-in by design (retrofit plan
-  R5). **Corrected 2026-09-15: #82 is not the only remaining blocker.** TaskDesk's canonical
-  rule is one workspace membership = exactly one role, and the two authorization surfaces
-  disagree on malformed multi-role values — see the decision log. PR #84 has characterized the
-  divergence and pinned the four target behaviours. **#118 records the matching defect one
-  table over**: `workspace_role` has no `UNIQUE (workspace_id, role)`, so two rows for one
-  pair can carry *different* permission payloads and both evaluators pick between them with
-  an unordered `LIMIT 1`. S7 is the stage that adds the first native write path to that
-  table, so the constraint is a release prerequisite, not follow-up hardening — verified
-  against PR #123's diff (open, not yet merged, but the dependency fact is confirmed
-  independently against live issue state) and against `retrofits/organization-plugin-retrofit.md`.
-  **S7's release condition is #82 AND #118, each independently reviewed**, plus
-  `roles-and-permissions-ui.md`'s review section closed (already satisfied — PR #128
-  merged). Check GitHub for each issue's current state (`gh issue view 82`,
-  `gh issue view 118`) — do not infer it from this file.
+  silently regained its built-in privileges. **#82 is CLOSED** — PR #110 reconciled the two
+  authorization surfaces' disagreement on malformed multi-role values (PR #84 characterized
+  the divergence; PR #110 remediated it, independently reviewed 2 Sonnet + 1 Opus, CLEAR).
+  **#118 is CLOSED** — PR #122 added `UNIQUE (workspace_id, role)` to the database (migration
+  `0051`) and PR #119 made both evaluators (`customRoleStatements`,
+  `ownRoleStatements`) refuse rather than guess when a pair still resolves ambiguously;
+  both independently reviewed 2 Sonnet + 1 Opus, both CLEAR, committed notes at
+  `docs/07-planning/security-reviews/122-workspace-role-unique.md` and
+  `docs/07-planning/security-reviews/119-workspace-role-evaluator.md`. `roles-and-permissions-ui.md`'s
+  review section was already closed (PR #128). **S7 has no remaining precondition. It has
+  not been implemented yet** — this is the next critical-path item. See the Scheduler,
+  above.
 - **#31 (P2 workflows) — blocked by AGENTS.md do-not 15.** `docs/03-features/workflows.md`
   is the subject of a *not-ready* review verdict — the verdict and its 4 High, 4 Medium and
   2 Low findings live in the review document, not in the spec itself, which has no review
@@ -357,13 +362,15 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   `main`, because it is load-bearing for workspace creation, invitations, members and
   roles. Load-bearing means it needs a retrofit (S1–S10, #6 work), not that it is kept.
 - **Retrofit S0, S1, S2, S3, S4, S4b, S5, S6a and S8a are COMPLETE** and on `main` (#65, #57,
-  #65, #76, #67, #85, #77, #112, #109 respectively). **S7, S9 and S10 remain.** S7 is blocked
-  on **#82 AND #118** (corrected 2026-09-15; remediation is PR #110 for #82, PRs #119 and
-  #122 for #118's two halves); S9's decision is made (Path B, 2026-09-10) and its
-  documentation-only work is carried by the still-open PR #104; S10 unmounts the plugin once
-  all three clear, and its tripwire gate is PR #107. Landing a stage does not start the next;
-  each step needs its own scheduling decision, and a green equivalence suite is not
-  permission to begin the next one.
+  #65, #76, #67, #85, #77, #112, #109 respectively). **S7, S9 and S10 remain.** S7's
+  precondition — **#82 AND #118** — is now **fully closed** (2026-09-15: PR #110 for #82,
+  PRs #119 and #122 for #118's two halves, all merged and independently reviewed); **S7 has
+  not started implementation yet**, and it is the critical-path item now. S9's decision is
+  made (Path B, 2026-09-10) and its documentation-only work is carried by the still-open PR
+  #104 (needs a rebase — `mergeable: CONFLICTING` as of this snapshot); S10 unmounts the
+  plugin once S7 and S9 both land, and its tripwire gate is PR #107. Landing a stage does not
+  start the next; each step needs its own scheduling decision, and a green equivalence suite
+  is not permission to begin the next one.
   **What the client calls now — and this is stated as a command rather than a list, because an
   earlier version of this bullet enumerated it and got three of seven claims wrong:** run
   `grep -rn 'authClient\.organization\.' apps/web/src` for the live surface, excluding the
@@ -407,9 +414,10 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   (see the S7 row, which now names the read route as well as the three writes). The claim was
   checkable and false, which is the worst kind to put in this file.
 
-  The remaining reason `organization()` is still mounted is **S7** (blocked on **#82 AND
-  #118**, corrected 2026-09-15 — remediation is PR #110 for #82, PRs #119 and #122 for
-  #118) and **S9**; S10 unmounts it once those clear.
+  The remaining reason `organization()` is still mounted is **S7** (its precondition, **#82
+  AND #118**, is fully CLOSED as of 2026-09-15 — PR #110 for #82, PRs #119 and #122 for
+  #118 — but S7 itself has not started) and **S9** (PR #104, needs rebase); S10 unmounts it
+  once those land.
 - **The frozen organization-create baseline is N = 9 observable effects: eight first-order
   create effects plus one eventual, one-hop durable notification consequence.** The eight
   are the `workspace` row, the owner `workspace_member` row, the three seeded
@@ -793,6 +801,44 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-15 (continued) · #82 and #118 both closed; S7 unblocked; UAT-0's two prerequisite gaps closed
+
+Continuation of the same session. Three pull requests merged: **#110** (#82 — one
+membership/one role reconciliation), **#122** (#118 DB half — `UNIQUE (workspace_id, role)`,
+migration `0051`), **#119** (#118 evaluator half — both authorization evaluators now refuse
+rather than guess on an ambiguous role definition), and **#132** (two of the four UAT gaps:
+`TASKDESK_PORT` now read via `resolvePort()`, `/api/public/health/{live,ready}` added — the
+latter's review found and fixed a real bug, an idle pooled client's error surfacing
+unhandled on the connection pool and crashing the process under `/ready` polling). Each
+pull request independently reviewed at 2 fresh Sonnet + 1 Opus, all CLEAR, each with a
+committed security-review note declaring the exact reviewed head.
+
+**The one real mid-flight hazard, tracked to a verified fix rather than assumed benign:**
+#122 merged to `main` while #119 was still under review. Once `main` (with #122's new
+constraint) was merged into #119's branch, #119's own test setup broke — its shared
+`plantDuplicateRoleRow` helper tried to insert a second `workspace_role` row for a pair the
+new constraint now rejects. The Opus reviewer caught this mid-verification and explicitly
+said "do not merge — the answer changed while I was verifying" rather than let a stale
+verdict stand. Fixed by deleting the now-superseded test (its coverage already exists in
+#122's own suite) and reworking the remaining one to drop the constraint, plant the
+conflicting row, assert, delete the planted row and restore the constraint inside a single
+`try`/`finally`. Verified, not just asserted: reproduced the original failure, confirmed the
+fix passes standalone and combined with #122's suite (6/6, proving genuine restoration, not
+superficial), confirmed non-vacuity by mutating the production predicate two different ways,
+forced the test's own assertion to fail and measured that the cleanup still ran correctly,
+and ran the entire integration suite (56 files / 525 tests) against a lane-private database
+before treating the final SHA as settled.
+
+**Issues #82 and #118 both CLOSED.** S7 (native role list + writes) has no remaining
+precondition and is the new critical-path item — **not yet started**. See the Scheduler,
+above, for what is runnable next: S7 itself, PR #104 (S9, needs a rebase), and PR #116
+(widening the security-review scope — itself self-referentially in scope, needs the full
+2 Sonnet + 1 Opus ladder, not a docs-tier pass).
+
+**Not done this session:** S7 has not been implemented. The remaining two UAT gaps (static
+file serving, `storage.filesystem` driver) have not been started. PR #104 has not been
+rebased. Continuing immediately rather than stopping here.
 
 ### 2026-09-15 · Governance reset merged; S7 dependency corrected; live scheduler added
 
