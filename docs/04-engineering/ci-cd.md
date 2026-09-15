@@ -220,8 +220,18 @@ Prose is deliberately not accepted: the previous check looked for the gate ident
 anywhere in the document, which the sentence *"G1 is not waived"* satisfied. **What is
 still not enforceable is who authorised it** — agents commit through the same repository
 identity Thomas does, so nothing readable from a file proves authorship. The declaration
-provides a durable, specific, gate-bound, PR-scoped record; Thomas confirms the authority
-at the merge button, and CI says so rather than implying it checked.
+provides a durable, specific, gate-bound, PR-scoped record; CI says so rather than implying
+it checked authorship.
+
+**Updated 2026-09-15.** This paragraph used to end "Thomas confirms the authority at the
+merge button" — that was the actual, if informal, control: Thomas was the one merging, so
+he was the last human able to catch a fabricated waiver before it landed. Since merge
+execution is now delegated (see [`AGENTS.md`](../../AGENTS.md#how-work-reaches-main-and-who-may-merge)),
+that check no longer exists by default. **A candidate whose `## Gates` table cites any
+waived gate is excluded from the delegation** — it always needs Thomas's own action to
+merge, never the orchestrator alone. Found by independent Opus review, 2026-09-15; tracked
+for a real mechanical check (verifying waiver authorship some way stronger than "the
+orchestrator says it checked") as a follow-up issue, not solved here.
 
 The same fast-stage **PR-template check** asserts every fixed section is present, that none
 is empty unless marked `n/a` with a reason, that `## Reviewed by` names a different model or

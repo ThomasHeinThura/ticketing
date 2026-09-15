@@ -207,7 +207,14 @@ This delegation does **not** authorize:
 - self-review, or calling one's own remediation an independent review;
 - a lane/subagent merging — only the top-level orchestrating session merges;
 - merging a candidate with any required check red, any required review missing, or a stale
-  SHA that hasn't been re-reviewed.
+  SHA that hasn't been re-reviewed;
+- **merging any candidate whose `## Gates` table cites a waived gate.** The waiver-citation
+  mechanism (`scripts/ci/lib/gate-waiver.mjs`) proves a waiver was declared in the form the
+  decision log requires; it does not and cannot prove Thomas himself authorized it — the
+  only real check on that used to be Thomas physically at the merge button, which this
+  delegation removes. So a waived-gate candidate always needs Thomas's own action to merge
+  (an approval, a comment, or the merge itself), never the orchestrator alone. Found by
+  independent Opus review of this very delegation, 2026-09-15 — see the decision log.
 
 A red required check, a missing review, an unresolved blocking finding, a merge conflict, or
 a branch-protection refusal means: do not merge that candidate. Keep working on something

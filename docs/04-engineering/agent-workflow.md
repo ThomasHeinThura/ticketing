@@ -104,12 +104,17 @@ old rule existed to prevent. So:
 - **Every other subagent — implementation, ordinary review, alignment check — is Sonnet,
   set explicitly at spawn.** Still no accidental inheritance, still no Opus review swarms,
   still one implementation agent per active code slice as the default scale.
-- **The final security/critical review may be an explicitly-spawned Opus subagent** on the
-  exact candidate SHA, run from whatever top-level session is orchestrating — Sonnet or
-  Opus — **as long as that subagent did not materially author, direct, or remediate the
-  work under review.** A session that authored or orchestrated the change cannot spawn
-  itself as its own reviewer under a different label; that is still "approving your own
-  review" (do-not 7 / do-not 5 above), just with an extra hop.
+- **The final security/critical review may be an explicitly-spawned Opus subagent.** The
+  constraint is on the *reviewing subagent's* independence, not on who is allowed to press
+  spawn: any top-level session — Sonnet or Opus — may spawn it, **as long as the spawned
+  subagent itself starts fresh and did not materially author, direct, or remediate the work
+  under review.** What is never permitted, regardless of who spawns whom: a context (top-level
+  or subagent) reviewing work it materially produced, under any label — that is still
+  "approving your own review" (do-not 7 / do-not 5 above), just with an extra hop. The
+  orchestrator spawning a genuinely independent Opus subagent to review the orchestrator's
+  own prior work is the *intended* pattern (`CLAUDE.md`, "Model tiers"), not an exception to
+  it — the subagent's freshness is what makes it independent, not distance from the
+  spawner.
 - If no Opus capacity is reachable at all — subagent or fresh top-level context — the pull
   request **waits**, marked **SECURITY RE-REVIEW PENDING — OPUS CAPACITY**. Capacity
   exhaustion means wait, not downgrade, unchanged from before.

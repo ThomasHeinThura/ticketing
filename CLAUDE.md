@@ -93,7 +93,11 @@ Before merging, verify directly:
 - the required security review is recorded where the change touches a security-review-scope
   path (`docs/04-engineering/ci-cd.md`'s list), at this SHA;
 - every required GitHub status check is green;
-- branch protection permits the merge without any bypass.
+- branch protection permits the merge without any bypass;
+- **the `## Gates` table cites no waived gate.** If it does, this delegation does not cover
+  it — the waiver-declaration mechanism proves a waiver was declared, not that Thomas
+  authorized it, and his physical presence at the merge button was the only real check on
+  that. A waived-gate candidate needs Thomas's own action to merge, always.
 
 If any of that is not true, do not merge. Say what is missing on the PR, and move to other
 runnable work — do not sit idle waiting on it, and do not route around it.
