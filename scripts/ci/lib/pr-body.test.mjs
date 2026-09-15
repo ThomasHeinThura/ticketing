@@ -900,14 +900,19 @@ describe("checklistProblems — applicability is per ITEM, not per block", () =>
 
   it("a box hidden entirely inside a comment is not a box, and not a bypass either", () => {
     // Commenting the item out removes it from the checklist rather than
-    // satisfying it, so the section becomes prose-only and the MISSING item is
-    // caught by the template's section list instead. What must not happen is the
-    // comment counting as a tick.
+    // satisfying it. What must not happen is the comment counting as a tick.
+    // Two problems are now expected, not one: the hidden box itself is flagged
+    // directly (found adversarially — a checkbox hidden by a comment is a
+    // violation regardless of what it claimed, and this checker no longer
+    // relies solely on `checklistPresenceProblems`'s separate whole-document
+    // review-item check to catch this shape), alongside the genuinely
+    // unticked, fully visible "Migration reviewed" item.
     const problems = checklistProblems(
       "### Backend change\n\n<!-- - [ ] Independent security review -->\n- [ ] Migration reviewed\n",
     );
-    assert.equal(problems.length, 1);
-    assert.match(problems[0], /Migration reviewed/);
+    assert.equal(problems.length, 2);
+    assert.ok(problems.some((p) => /hides 1 checkbox/.test(p)));
+    assert.ok(problems.some((p) => /Migration reviewed/.test(p)));
   });
 
   it("existing HTML-comment sanitisation still holds inside checklist lines", () => {
@@ -1258,6 +1263,27 @@ describe("checklistProblems — a checkbox hidden inside a multi-line comment do
       "<!-- an ordinary instructional comment, no checkbox in it -->",
     ].join("\n");
     assert.deepEqual(checklistProblems(raw), []);
+  });
+
+  it("FAILS a checkbox hidden on the SAME line as the comment delimiters — a second regression found adversarially", () => {
+    // `<!-- - [ ] pnpm typecheck green -->` all on one physical line never
+    // matches the line-ANCHORED `ANY_BOX` on that raw line at all — the line
+    // starts with `<!--`, not the marker — so a per-LINE raw-vs-stripped
+    // comparison sees 0 either way and misses it entirely, even though
+    // `stripComments` erases it just as completely as the separate-line
+    // shape the first regression test covers. Counting marker occurrences as
+    // SUBSTRINGS anywhere in the block's text, not as a count of matching
+    // lines, is what catches this shape too.
+    const raw = [
+      "### Backend change",
+      "- [x] Independent security review — Opus 5, real",
+      "<!-- - [ ] pnpm typecheck green -->",
+    ].join("\n");
+    const problems = checklistProblems(raw);
+    assert.ok(
+      problems.some((p) => /hides 1 checkbox/.test(p)),
+      `expected the same-line hidden item to be flagged, got: ${JSON.stringify(problems)}`,
+    );
   });
 });
 

@@ -337,6 +337,19 @@ const REVIEW_ITEM = /\bindependent\b[^\n]*\breview\b|\bsecurity\s+review\b/;
 const ANY_BOX = /^\s*[-*+]\s*\[[ xX]\]/;
 /** An UNticked checkbox line. Same marker class, same reason. */
 const OPEN_BOX = /^\s*[-*+]\s*\[\s\]/;
+/**
+ * Same marker class as `ANY_BOX`, but NOT anchored to the start of a line, and
+ * global so every occurrence in a block of text can be counted rather than
+ * only the first. `ANY_BOX`'s `^` anchor is exactly what a same-line comment
+ * prefix defeats: `<!-- - [ ] pnpm typecheck green -->` never matches `ANY_BOX`
+ * on that raw line at all (the line starts with `<!--`, not the box marker),
+ * so a raw-vs-stripped LINE-count comparison sees 0 either way and never
+ * notices anything vanished — even though the box is exactly as hidden as one
+ * whose `<!--`/`-->` sit on their own separate lines. Counting substring
+ * occurrences across the whole block's text, independent of line boundaries,
+ * catches both shapes the same way.
+ */
+const ANY_BOX_ANYWHERE = /[-*+]\s*\[[ xX]\]/g;
 
 /**
  * Strips the decoration an author could hide behind: HTML comments, emphasis
@@ -759,10 +772,23 @@ export function checklistProblems(raw) {
     // must be visible to a human reader, not hidden from one while still
     // counted by automation — so this is flagged directly rather than relying
     // on it also happening to be unticked.
-    const rawBoxCount = block.lines.filter((line) => ANY_BOX.test(line)).length;
-    if (rawBoxCount > boxes.length) {
+    //
+    // Counted as SUBSTRING occurrences across the whole block (`ANY_BOX_ANYWHERE`,
+    // not line-anchored `ANY_BOX`), not as a count of matching LINES — a
+    // second real gap found adversarially: `<!-- - [ ] pnpm typecheck green -->`
+    // all on one physical line never matches line-anchored `ANY_BOX` on that
+    // raw line at all (the line starts with `<!--`, not the marker), so a
+    // per-line raw-vs-stripped comparison sees 0 either way and never notices
+    // — even though `stripComments` erases it just as completely as the
+    // separate-line shape. Matching the marker ANYWHERE in the block's raw
+    // text, independent of where a line happens to start, catches both.
+    const rawBoxCount = (body.match(ANY_BOX_ANYWHERE) ?? []).length;
+    const visibleBoxCount = (
+      visibleLines.join("\n").match(ANY_BOX_ANYWHERE) ?? []
+    ).length;
+    if (rawBoxCount > visibleBoxCount) {
       problems.push(
-        `"${block.name}" hides ${rawBoxCount - boxes.length} checkbox line(s) inside an HTML comment — a checkbox invisible on GitHub's own render cannot satisfy or excuse anything here, ticked or not. Move it out of the comment, or delete it and state why in visible text.`,
+        `"${block.name}" hides ${rawBoxCount - visibleBoxCount} checkbox(es) inside an HTML comment — a checkbox invisible on GitHub's own render cannot satisfy or excuse anything here, ticked or not. Move it out of the comment, or delete it and state why in visible text.`,
       );
     }
 
