@@ -209,8 +209,33 @@ function genuineLineFlags(body) {
         wordingStart += 1;
       }
 
+      // Checking each span's OWN interior is not enough — found
+      // adversarially, in two mirrored shapes:
+      //
+      // `- [x] <!--\nfiller\n-->Independent security review` cushions the
+      // comment with a real space BEFORE it but nothing AFTER (the closer
+      // lands directly on "I"). `contiguous(wordingStart, lineEnd)` alone
+      // never compares `positions[wordingStart]` against what precedes it,
+      // so this passed: everything FROM "I" onward really is one unbroken
+      // run, even though "I" itself was smuggled in right across the
+      // comment with no real character between it and the one genuine
+      // space before it.
+      //
+      // `- [x]<!--\nfiller\n--> Independent security review` is the mirror:
+      // nothing cushions the comment on the marker side at all, so it starts
+      // immediately after "]". `contiguous(markerStart, markerEnd)` alone
+      // never compares `positions[markerEnd]` against what precedes IT,
+      // so this passed too, for the same reason from the other direction.
+      //
+      // Both are closed the same way: extend each span by the one boundary
+      // character adjoining the gap, so the transition INTO the gap from the
+      // marker and the transition OUT of the gap into the wording are both
+      // checked, while the gap's own interior — wherever a comment is fully
+      // cushioned by real whitespace on the side facing each span, the
+      // accepted `- [ ] <!-- note --> Some item` shape — is still exempt.
       flags.push(
-        contiguous(markerStart, markerEnd) && contiguous(wordingStart, lineEnd),
+        contiguous(markerStart, Math.min(markerEnd + 1, lineEnd)) &&
+          contiguous(wordingStart - 1, lineEnd),
       );
     }
 
@@ -519,14 +544,38 @@ const ANY_BOX_ANYWHERE = /[-*+]\s*\[[ xX]\]/g;
  * classes, no nested quantifier, so this cannot reintroduce the polynomial
  * backtracking CodeQL flagged in the original one-regex sanitiser.
  */
-function normaliseItem(line) {
-  return stripComments(line)
-    .replace(OPEN_BOX, "")
-    .replace(ANY_BOX, "")
+function foldToWords(text) {
+  return text
     .replace(/[*_`~]+/g, " ")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .toLowerCase();
+}
+
+/**
+ * The item's own SUBJECT — its text up to (not including) the `ITEM_SEPARATOR`
+ * that introduces its declared state — folded the same way `foldToWords`
+ * folds any other text in this file.
+ *
+ * `REVIEW_ITEM` must be checked against this, not the whole line: found
+ * adversarially, a genuine, ticked, unrelated item whose TRAILING commentary
+ * happens to mention "security review" in passing — `- [x] pnpm lint clean —
+ * see security review notes in issue #12 (unrelated)` — matched `REVIEW_ITEM`
+ * against the whole normalised line and was counted as THE independent
+ * review checkbox, with no comment or splice needed at all, and a sentence
+ * plausible enough an author could write it by accident. This mirrors
+ * `itemMarkedNotApplicable`'s own item/state split on the same
+ * `ITEM_SEPARATOR`: the subject is what the item IS, the clause after the
+ * separator is what STATE it declares, and "security review" appearing only
+ * in the latter does not make the former true.
+ */
+function itemSubject(line) {
+  const withoutBox = stripComments(line)
+    .replace(OPEN_BOX, "")
+    .replace(ANY_BOX, "");
+  const split = ITEM_SEPARATOR.exec(withoutBox);
+  const subject = split ? withoutBox.slice(0, split.index) : withoutBox;
+  return foldToWords(subject);
 }
 
 /**
@@ -556,7 +605,7 @@ function normaliseItem(line) {
  * word would be, not because the checker recognised "NOT" as a negation. `not n/a`,
  * `isn't n/a` and `never n/a` are rejected for the identical, non-linguistic reason: none
  * of them is the literal sequence `n`, optional space, `/` (or `\` or `.`, the spellings
- * `normaliseItem` already folds elsewhere in this file), optional space, `a` — the clause
+ * `foldToWords` already folds elsewhere in this file), optional space, `a` — the clause
  * opens with "not"/"isn't"/"never", not with the n/a token itself.
  *
  * Linear: one separator search, one anchored opener match, no nested quantifier over the
@@ -864,10 +913,19 @@ export function checklistPresenceProblems(raw, declared) {
   // `genuineBoxLineTexts` only returns a line whose checkbox marker traces to
   // one unbroken run of raw characters, so a manufactured review box is never
   // mistaken for the one genuine item this rule exists to require.
+  //
+  // Matched against `itemSubject`, not a whole-line fold of the entire item —
+  // found adversarially: a genuine, ticked, UNRELATED item whose own trailing
+  // commentary happens to mention "security review" in passing (`- [x] pnpm
+  // lint clean — see security review notes in issue #12`) matched
+  // `REVIEW_ITEM` against the entire line and was counted as the one genuine
+  // review checkbox — no comment or splice needed, a sentence plausible
+  // enough to write by accident. `itemSubject` restricts the match to what
+  // the item's own text claims to BE, not what it goes on to mention.
   const reviewItems = [];
   for (const [, block] of present) {
     for (const line of genuineBoxLineTexts(block.lines.join("\n"))) {
-      if (REVIEW_ITEM.test(normaliseItem(line)))
+      if (REVIEW_ITEM.test(itemSubject(line)))
         reviewItems.push({ block: block.name, line: line.trim() });
     }
   }
@@ -988,10 +1046,19 @@ export function checklistProblems(raw) {
     // problems reported. A non-genuine line is already accounted for by the
     // "manufactured" count above; re-checking its ticked state or wording
     // here would be trusting exactly the text that was just proven untrustworthy.
+    //
+    // `REVIEW_ITEM` is matched against `itemSubject`, not the whole line, for
+    // the same reason `checklistPresenceProblems`'s rule 3 does: an ordinary,
+    // unticked item whose own trailing commentary happens to mention
+    // "security review" in passing must not be misclassified as THE
+    // independent-review item (a false BLOCKER) any more than a ticked one
+    // should be miscounted as satisfying it (found adversarially, in
+    // `checklistPresenceProblems`; kept consistent here so the two functions
+    // never disagree about which line the review item actually is).
     for (const line of genuineBoxLineTexts(body)) {
       if (!OPEN_BOX.test(line)) continue;
 
-      if (REVIEW_ITEM.test(normaliseItem(line))) {
+      if (REVIEW_ITEM.test(itemSubject(line))) {
         problems.push(
           `"${block.name}": ${line.trim()}\n      An unticked independent-review item is a BLOCKER, not a note, and it cannot be ` +
             "marked n/a — only a completed review at the required tier closes it (CLAUDE.md, third absolute).",

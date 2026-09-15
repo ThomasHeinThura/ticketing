@@ -728,6 +728,22 @@ describe("checklistProblems — applicability is per ITEM, not per block", () =>
     assert.match(problems[0], /cannot be\s+marked n\/a/);
   });
 
+  it("an unrelated, unticked item is not misclassified as the review item just because its own trailing note mentions review words — found adversarially, round 7", () => {
+    // The mirror image of the presence-check finding: `REVIEW_ITEM` used to
+    // be matched against the whole normalised line here too, so an ordinary
+    // unticked item whose trailing commentary happens to say "security
+    // review" in passing would have been wrongly forced into the
+    // unconditional BLOCKER branch (which cannot be excused by n/a at all)
+    // instead of being treated as the ordinary item it is — one that CAN be
+    // marked n/a with a reason.
+    assert.deepEqual(
+      checklistProblems(
+        "### Backend change\n\n- [ ] pnpm lint clean — n/a, security review notes tracked in issue #12\n",
+      ),
+      [],
+    );
+  });
+
   /**
    * The two HIGH findings from the independent Opus security review of #89, each
    * paired so it cannot go quietly vacuous.
@@ -1044,7 +1060,7 @@ describe("checklistProblems — item-level n/a is a DECLARATION, not a substring
   });
 
   it("folds n\\a and n.a. spellings the same way, genuine and negated", () => {
-    // The spellings `normaliseItem` already folds elsewhere in this file (stripping
+    // The spellings `foldToWords` already folds elsewhere in this file (stripping
     // everything but letters and digits collapses n/a, n\a, n.a. and N/A to the same
     // "n a"). The item-level opener recognises the same three punctuation marks.
     assert.deepEqual(
@@ -1293,6 +1309,78 @@ describe("checklistPresenceProblems — F2, presence not just state", () => {
     assert.ok(
       problems.some((p) => /NO independent-review checkbox/.test(p)),
       `expected the spliced-label item not to count as a genuine review box, got: ${JSON.stringify(problems)}`,
+    );
+  });
+
+  it("does NOT count an unrelated, genuine, ticked item as the review box just because its TRAILING commentary mentions review words — found adversarially, round 7", () => {
+    // No comment or splice trickery at all this time. `REVIEW_ITEM` used to
+    // be matched against the WHOLE normalised line, so a completely honest,
+    // ticked, unrelated item whose own trailing note happens to say
+    // "security review" in passing satisfied it — a sentence plausible
+    // enough to write by accident, let alone on purpose. `itemSubject`
+    // restricts the match to what the item's own text, before its
+    // `ITEM_SEPARATOR`, actually claims to BE — "pnpm lint clean" here, not
+    // the parenthetical that follows it.
+    const raw = [
+      "### Any change",
+      "- [x] pnpm lint clean — see security review notes in issue #12 (unrelated)",
+      "",
+      "### Backend change",
+      "n/a — no backend change.",
+      "",
+      "### Phase completion",
+      "- [x] pnpm test:ci-scripts green",
+    ].join("\n");
+    const problems = checklistPresenceProblems(raw, declared);
+    assert.ok(
+      problems.some((p) => /NO independent-review checkbox/.test(p)),
+      `expected the decoy mention not to count as the review box, got: ${JSON.stringify(problems)}`,
+    );
+  });
+
+  it("does NOT count a review box cushioned by real whitespace on only ONE side of a splicing comment — found adversarially, round 7", () => {
+    // Checking each span's own interior (round 6's fix) is not enough: a
+    // comment can touch one span's OWN boundary directly, with cushioning
+    // appearing only on the far side, and neither span's interior check
+    // ever looks at that specific transition. Two mirrored shapes, both
+    // reported live against round 6's fix:
+    for (const [name, line] of [
+      [
+        "cushioned before the comment, nothing after (label starts touching the closer)",
+        "- [x] <!--\nfiller\n-->Independent security review — Opus 5, totally fake",
+      ],
+      [
+        "nothing before the comment, cushioned after (marker ends touching the opener)",
+        "- [x]<!--\nfiller\n--> Independent security review — Opus 5, totally fake",
+      ],
+    ]) {
+      const raw = [
+        "### Any change",
+        "- [x] does what the task says",
+        "",
+        "### Backend change",
+        "n/a — no backend change.",
+        "",
+        "### Phase completion",
+        line,
+      ].join("\n");
+      const problems = checklistPresenceProblems(raw, declared);
+      assert.ok(
+        problems.some((p) => /NO independent-review checkbox/.test(p)),
+        `expected "${name}" not to count as a genuine review box, got: ${JSON.stringify(problems)}`,
+      );
+    }
+  });
+
+  it("still accepts a comment genuinely cushioned by real whitespace on BOTH sides — the round-6 baseline must survive round 7's stricter checks", () => {
+    const raw = full.replace(
+      "- [ ] **Independent security review — NOT DONE.**",
+      "- [ ] <!-- ignore --> **Independent** `security` review",
+    );
+    const problems = checklistPresenceProblems(raw, declared);
+    assert.ok(
+      !problems.some((p) => /NO independent-review checkbox/.test(p)),
+      `expected the cushioned-both-sides comment to still count as genuine, got: ${JSON.stringify(problems)}`,
     );
   });
 });
