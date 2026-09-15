@@ -43,7 +43,7 @@ See [RBAC](../01-architecture/rbac.md) for the capability list and the built-in 
   from `packages/permissions/src/capabilities.ts`), and every capability has exactly one.
 - `RL-2` Each capability shows a one-line, plain-English description. Same source: the
   `description` field in [`rbac.md`](../01-architecture/rbac.md)'s capability table.
-  "`work_item:assign` — Assign work to other people" is comprehensible;
+  "`work_item:assign` — Assign to anyone on the roster" is comprehensible;
   "`work_item:assign`" alone is not.
 - `RL-3` **You cannot grant a capability you do not hold yourself.** Those checkboxes are
   disabled with an explanatory tooltip, and the API rejects them independently.
@@ -133,12 +133,13 @@ Support Lead                                    Rank 50    [Save] [Cancel]
 Clone of Lead. Can triage and assign, cannot manage services.
 
 ┌─ Work items ─────────────────────────────────────────────────────┐
-│ [x] Read            See work items in projects you can access    │
-│ [x] Create          Raise new work items                         │
-│ [x] Update          Edit title, description, fields              │
-│ [x] Transition      Move work items between states               │
-│ [x] Assign          Assign work to other people                  │
-│ [ ] Delete          Permanently remove work items                │
+│ [x] Read            See work items in reach                      │
+│ [x] Create          Create work items                            │
+│ [x] Update          Edit title, description, dates, labels,      │
+│                     custom fields; archive                       │
+│ [x] Transition      Change state, subject to workflow legality   │
+│ [x] Assign          Assign to anyone on the roster               │
+│ [ ] Delete          Soft-delete                                  │
 └──────────────────────────────────────────────────────────────────┘
 ┌─ Service management ─────────────────────────────────────────────┐
 │ [x] Read            See services                                 │
