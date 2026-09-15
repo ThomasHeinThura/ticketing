@@ -142,9 +142,12 @@ async function main() {
   // ── Refusals are unconditional, and checked BEFORE the ratchet ever runs ─────────────
   // A shape this scanner cannot classify is never absorbed into "debt"; it is a defect in
   // the scanner's own coverage, or a shape sneaky enough to deserve a human look either
-  // way. "31 live callers, 0 refusals" is this gate's own proof that it is not vacuous
-  // over apps/web/src today — see the pull request for the reconciliation against the
-  // manual count.
+  // way. A non-zero live-caller count with zero refusals is this gate's own proof that it
+  // is not vacuous over apps/web/src today — run `--report` for the current count, and see
+  // the pull request for the reconciliation against a manual count at the time it was
+  // authored. The exact number is deliberately not repeated here: it is a live figure the
+  // shrink-only ratchet is designed to drive down, and a number written into this comment
+  // goes stale the moment a lane migrates one more call site away.
   const refusalFailures = [];
   for (const refusal of symlinkRefusals) {
     refusalFailures.push(
