@@ -349,7 +349,7 @@ describe("#82 §3 -- every role-bearing write on the mounted plugin, not just up
 });
 
 describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against real rows", () => {
-  it("REPAIRS every value that has only one meaning -- duplicates, a trailing comma, a leading comma and padding all collapse to the single role they name, because that repair decides nobody's privileges", async () => {
+  it("REPAIRS a comma-bearing value only when every raw piece is ALREADY the exact same well-formed byte string -- CORRECTED after formal review R1 (see the dedicated regression below): no trimming is ever performed to reach agreement, only to confirm a piece that already agrees is not itself malformed", async () => {
     const { app } = createApp();
     const { owner, workspace } = await workspaceWithMember(app, "viewer");
 
@@ -357,16 +357,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
       { raw: "admin,admin", repaired: "admin" },
       { raw: "admin,", repaired: "admin" },
       { raw: ",admin", repaired: "admin" },
-      { raw: " admin ", repaired: "admin" },
-      { raw: "admin, admin", repaired: "admin" },
-      // Finding 3: a one-argument `btrim` strips only the space character, so it would
-      // have left these two BYTE-IDENTICAL to `raw` -- no repair at all -- and the CHECK
-      // below would then have accepted the untrimmed value as well-formed. The
-      // two-argument `btrim` this migration now uses must actually strip the tab/newline.
-      { raw: "\tadmin", repaired: "admin" },
-      { raw: "admin\n", repaired: "admin" },
-      { raw: "\u00a0admin", repaired: "admin" },
-      { raw: "admin\ufeff", repaired: "admin" },
+      { raw: "admin,,admin", repaired: "admin" },
     ];
 
     const [repair] = await migrationStatements();
@@ -398,7 +389,152 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
       expect(row?.role, `raw: ${JSON.stringify(shape.raw)}`).toBe(
         shape.repaired,
       );
+
+      await restoreRoleConstraint();
     }
+  });
+
+  it("REGRESSION (formal review R1) -- REFUSES rather than repairs a no-comma padded value, or a comma-bearing value whose raw pieces are not byte-identical, and leaves the row completely unchanged", async () => {
+    const { app } = createApp();
+    const { owner, workspace } = await workspaceWithMember(app, "viewer");
+
+    // Every one of these was, under the ORIGINAL (pre-review) grouping rule, collapsed to
+    // "admin" the same way "admin,admin" is -- because that rule grouped by DISTINCT
+    // TRIMMED segment, not by "already byte-identical raw piece". Six of these seven shapes
+    // used to live in the REPAIR test above with `repaired: "admin"`. Finding 3's
+    // tab/NBSP/BOM padding cases are included here rather than removed, because the
+    // corrected rule changes their classification (repair -> refuse), not their coverage.
+    const shapes = [
+      " admin",
+      " admin ",
+      "admin, admin",
+      " admin,admin",
+      "\tadmin",
+      "admin\n",
+      "\u00a0admin",
+      "admin\ufeff",
+    ];
+
+    const [repair, refuse] = await migrationStatements();
+    if (!repair || !refuse)
+      throw new Error("migration 0050 is missing statements");
+
+    for (const raw of shapes) {
+      await withoutRoleConstraint();
+      const member = await inviteAndAcceptAsNewMember(
+        app,
+        owner.cookie,
+        workspace.id,
+        "viewer",
+      );
+      await db.execute(
+        sql`UPDATE "workspace_member" SET "role" = ${raw} WHERE "workspace_id" = ${workspace.id} AND "user_id" = ${member.user.id}`,
+      );
+
+      await db.execute(sql.raw(repair));
+      const [afterRepair] = await db
+        .select({ role: schema.workspaceUserTable.role })
+        .from(schema.workspaceUserTable)
+        .where(
+          and(
+            eq(schema.workspaceUserTable.workspaceId, workspace.id),
+            eq(schema.workspaceUserTable.userId, member.user.id),
+          ),
+        );
+      expect(afterRepair?.role, `raw: ${JSON.stringify(raw)}`).toBe(raw); // UNCHANGED
+
+      const failure = await db.execute(sql.raw(refuse)).then(
+        () => null,
+        (error: unknown) => error as { cause?: { message?: string } },
+      );
+      expect(failure, `raw: ${JSON.stringify(raw)}`).not.toBeNull();
+      const raised = failure?.cause?.message ?? "";
+      expect(raised, `raw: ${JSON.stringify(raw)}`).toMatch(/#82/);
+      expect(raised, `raw: ${JSON.stringify(raw)}`).toContain(member.user.id);
+
+      await restoreRoleConstraint();
+    }
+  });
+
+  it("REGRESSION (formal review R1) -- a legacy ' owner' row grants NOTHING today, the repair leaves it untouched rather than manufacturing full owner authority, and the member never obtains that authority through the running application at any point in the sequence", async () => {
+    const { app } = createApp();
+    await burnInstanceAdminSlot(app);
+    const owner = await signUpUser(app);
+    const created = await createWorkspaceViaPlugin(app, owner.cookie);
+    const workspace = (await created.json()) as { id: string };
+
+    await withoutRoleConstraint();
+    await db.execute(
+      sql`UPDATE "workspace_member" SET "role" = ' owner' WHERE "workspace_id" = ${workspace.id} AND "user_id" = ${owner.user.id}`,
+    );
+
+    // PRE-FIX CONTROL: today, before any migration statement runs, this padded value grants
+    // this member NOTHING under the real evaluator -- traced against the actual installed
+    // better-auth, `" owner".split(",")` = `[" owner"]`, and neither the creator check nor
+    // any `acRoles` lookup matches the padded string, so the plugin denies too. This is not
+    // "not yet repaired" -- it is genuinely zero authority right now.
+    const before = await app.request(
+      `/api/capabilities?workspaceId=${workspace.id}`,
+      { headers: { cookie: owner.cookie } },
+    );
+    expect(before.status).toBe(409);
+    expect(((await before.json()) as { problem: string }).problem).toBe(
+      "untrimmed",
+    );
+
+    // HISTORICAL, NOT PRODUCTION CODE. The ORIGINAL version of the migration's repair rule
+    // grouped by DISTINCT TRIMMED segment, so it collapsed a lone padded piece exactly the
+    // way it collapsed a genuine comma-duplicate. Reimplemented inline, once, ONLY to prove
+    // what that defect would have computed for this exact row -- never reinstated as a real
+    // code path. This is the RED half of the RED/GREEN proof.
+    function historicalPreReviewRepairRule(value: string): string | null {
+      const segments = [
+        ...new Set(
+          value
+            .split(",")
+            .map((piece) => piece.trim())
+            .filter((piece) => piece.length > 0),
+        ),
+      ];
+      return segments.length === 1 ? (segments[0] ?? null) : null;
+    }
+    expect(historicalPreReviewRepairRule(" owner")).toBe("owner");
+
+    const [repair, refuse] = await migrationStatements();
+    if (!repair || !refuse)
+      throw new Error("migration 0050 is missing statements");
+
+    // GREEN: the actual shipped repair statement leaves the row untouched -- not "owner".
+    await db.execute(sql.raw(repair));
+    const [afterRepair] = await db
+      .select({ role: schema.workspaceUserTable.role })
+      .from(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, workspace.id),
+          eq(schema.workspaceUserTable.userId, owner.user.id),
+        ),
+      );
+    expect(afterRepair?.role).toBe(" owner");
+
+    // And the refusal pass stops the migration, naming the row well enough for an operator
+    // to find and fix it -- exactly as it would for a genuine two-role conflict.
+    const failure = await db.execute(sql.raw(refuse)).then(
+      () => null,
+      (error: unknown) => error as { cause?: { message?: string } },
+    );
+    expect(failure).not.toBeNull();
+    const raised = failure?.cause?.message ?? "";
+    expect(raised).toMatch(/#82/);
+    expect(raised).toContain(owner.user.id);
+
+    // End to end: this member never obtained owner authority through the running
+    // application at any point in this sequence.
+    const stillNoAuthority = await app.request(
+      `/api/capabilities?workspaceId=${workspace.id}`,
+      { headers: { cookie: owner.cookie } },
+    );
+    expect(stillNoAuthority.status).toBe(409);
 
     await restoreRoleConstraint();
   });

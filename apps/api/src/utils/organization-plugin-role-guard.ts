@@ -55,11 +55,21 @@ import { firstMalformedMembershipRole } from "./workspace-member-roles";
  * organization routes where the caller's existing role in the active organization is not an
  * authorization input. Guarding those
  * would take a real defect — a corrupt row in workspace A — and turn it into an unrelated
- * outage: unable to create workspace B, unable to list their own invitations, unable even to
- * leave the workspace whose row is broken. Fail-closed means refusing the decisions that
- * depend on the corrupt value, not bricking the account that holds it. Note the write half
- * still applies to every path, exempt or not: `accept-invitation` is exempt from the
- * membership READ check and still cannot write a multi-role value.
+ * outage: unable to create workspace B, unable to list their own invitations. Fail-closed
+ * means refusing the decisions that depend on the corrupt value, not bricking the account
+ * that holds it. Note the write half still applies to every path, exempt or not:
+ * `accept-invitation` is exempt from the membership READ check and still cannot write a
+ * multi-role value.
+ *
+ * **`leave` is deliberately NOT on this list** (formal review R2). Its earlier inclusion
+ * rested on "better-auth runs its own last-owner guard on `leave`" — true for a comma-joined
+ * value, but that guard has no `.trim()`, so a padded single-role legacy row (`" owner"`)
+ * defeated it: the sole owner could leave and strand the workspace with zero owners. `leave`
+ * genuinely DOES consult the caller's role (better-auth's own creator check), so it meets
+ * this file's OWN exemption criterion for "must be guarded", not "is independent of it". A
+ * caller with a malformed row loses self-service leave until an administrator repairs the
+ * row — recovery stays available through every other action still exempt below (list,
+ * switch, create, respond to invitations).
  *
  * ## Bounding the claim
  *

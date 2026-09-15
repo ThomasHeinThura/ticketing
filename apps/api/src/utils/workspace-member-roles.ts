@@ -296,8 +296,11 @@ export function resolveMembershipRoleFrom(
  * validation — a deployment already requiring administrator repair. Refusing every
  * role-derived decision until that repair is the fail-closed answer, and
  * `ROLE_INDEPENDENT_ORGANIZATION_ACTION_SET` still preserves recovery: the caller can list
- * their workspaces, switch active workspace, create a new one, accept or reject invitations,
- * and **leave the workspace whose row is broken**.
+ * their workspaces, switch active workspace, create a new one, and accept or reject
+ * invitations. `leave` is deliberately NOT in that set (formal review R2, see
+ * `organization-exempt-actions.ts`) — better-auth's own last-owner check for it has no
+ * `.trim()`, so a padded row would defeat it silently. Self-service leave is unavailable
+ * until an administrator repairs the row; every other recovery action above still is.
  *
  * ## Read in TypeScript, filtered by the canonical predicate
  *

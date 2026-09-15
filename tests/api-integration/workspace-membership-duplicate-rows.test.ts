@@ -672,17 +672,27 @@ describe('N1a-N1d: a comma-joined "owner,admin" row must still be recognised as 
       "owner,admin",
     ]);
 
-    // THE BETTER-AUTH CONTROL: the reviewer's own oracle. The plugin's OWN `/organization/leave`
-    // refuses this exact caller with 400 (crud-members.mjs's `leaveOrganization`:
-    // `member.role.split(",").includes(creatorRole)` is true for "owner,admin", and the
-    // creator-role member count is 1) -- so the native route below is held to a bar the
-    // surface it replaces already meets.
+    // THE BETTER-AUTH CONTROL, UPDATED after formal review R2. This used to reach
+    // better-auth's OWN `leaveOrganization` guard and be refused there with 400 --
+    // `member.role.split(",").includes(creatorRole)` correctly recognises "owner,admin"
+    // (no padding, both pieces present). That guard has no `.trim()`, though, so a padded
+    // single-role row like " owner" would defeat it silently (see #124's sibling finding and
+    // `organization-exempt-actions.ts`'s doc). R2 removed `leave` from the exempt list
+    // rather than trust that better-auth's own check is safe for every malformed shape, so
+    // NOW the caller is refused one layer earlier, by `organizationPluginRoleGuard`'s own
+    // malformed-role check, before better-auth's handler is ever reached -- 409, not 400.
+    // The safety property this test exists to pin (the row survives, the owner is not
+    // removed) is unchanged and, if anything, more directly proven: it no longer depends on
+    // better-auth's own last-owner guard recognising the exact shape correctly at all.
     const pluginControl = await app.request("/api/auth/organization/leave", {
       method: "POST",
       headers: { "content-type": "application/json", cookie: owner.cookie },
       body: JSON.stringify({ organizationId: workspaceId }),
     });
-    expect(pluginControl.status).toBe(400);
+    expect(pluginControl.status).toBe(409);
+    expect(((await pluginControl.json()) as { error?: string }).error).toBe(
+      "MALFORMED_MEMBERSHIP_ROLE",
+    );
     expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
       "owner,admin",
     ]);

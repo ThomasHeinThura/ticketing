@@ -90,18 +90,14 @@ export function isSingleMembershipRole(value: string): boolean {
  *
  * This is NOT a sanctioned way to interpret a membership row — the native evaluator must
  * never comma-split, which is issue #82's explicit instruction ("do not implement
- * comma-splitting to match the plugin"). It exists for exactly two callers that need to
- * reason ABOUT the malformed value rather than act on it:
+ * comma-splitting to match the plugin"). It describes what the STILL-MOUNTED PLUGIN's own
+ * reader computes from a stored value, for exactly one caller: the test that proves this
+ * description and better-auth's actual `crud-members.mjs:259` behaviour
+ * (`.flatMap(r => r.split(",")).map(r => r.trim()).filter(Boolean)`) agree. It is
+ * DELIBERATELY NOT used by `repairableMembershipRole` below — see that function's doc for
+ * why trimming-to-find-agreement is exactly the bug this file exists to not have.
  *
- *  1. the recovery path in migration `0050`, which may safely repair a value only when
- *     every piece names the SAME role (`"admin,admin"`, `"admin,"`, `" admin "`) — because
- *     that repair makes no privilege decision. When the pieces name two DIFFERENT roles the
- *     migration refuses and asks an operator, since picking one would be choosing someone's
- *     privileges for them;
- *  2. the test that proves this function and the migration's SQL agree.
- *
- * Empty pieces are dropped and each piece is trimmed, matching `crud-members.mjs:259`'s
- * `.flatMap(r => r.split(",")).map(r => r.trim()).filter(Boolean)`.
+ * Empty pieces are dropped and each piece is trimmed, matching the plugin's own reader.
  */
 export function legacyMembershipRoleSegments(value: string): string[] {
   const seen = new Set<string>();
@@ -113,16 +109,79 @@ export function legacyMembershipRoleSegments(value: string): string[] {
 }
 
 /**
+ * The raw, UNTRIMMED, non-empty comma-separated pieces of a value, in order, not
+ * deduplicated. Never trimmed — see {@link repairableMembershipRole}.
+ */
+function rawNonEmptyCommaPieces(value: string): string[] {
+  return value.split(MEMBERSHIP_ROLE_SEPARATOR).filter((piece) => piece !== "");
+}
+
+/**
  * The single role a malformed value can be repaired to WITHOUT making a privilege decision,
- * or `null` when there is no such value and a human must choose.
+ * or `null` when there is no such value and a human must choose — issue #82, corrected after
+ * an independent review found the ORIGINAL version of this function manufactured authority.
  *
- * Mirrors migration `0050`'s SQL, whose explicit `btrim` character list matches the full
- * ECMAScript `trim()` whitespace set. `membership-role-value.test.ts` pins the agreement,
- * because a repair rule that
- * drifts from the migration that ran it is worse than no repair rule at all.
+ * **THE DEFECT THIS REPLACES, AND WHY "SAME ROLE AFTER TRIMMING" WAS THE WRONG TEST.** The
+ * first version of this function collapsed a value to its one DISTINCT TRIMMED segment —
+ * so `" owner"` (a single piece, no comma at all, padded) collapsed to `"owner"` exactly the
+ * same way `"admin,admin"` collapses to `"admin"`. Those two cases are not the same, and
+ * treating them alike is a privilege escalation:
+ *
+ *   - `"admin,admin"` already contains a CLEAN, matching `"admin"` piece, byte-identical,
+ *     with no trimming needed. better-auth's own comma-split-and-OR evaluator
+ *     (`permission.mjs`, no `.trim()` anywhere in it) already reads this row as granting
+ *     `admin` TODAY, before any repair runs. Collapsing to `"admin"` changes NOTHING either
+ *     evaluator was already doing — that is what "makes no privilege decision" actually
+ *     means.
+ *   - `" owner"` has no comma and exactly one piece, and that piece is ITSELF padded. Traced
+ *     against the real, installed `better-auth@1.6.30`: `" owner".split(",")` = `[" owner"]`,
+ *     and `[" owner"].includes("owner")` is `false` (exact-string, no trim) — the plugin's
+ *     own `isCreator`/`acRoles` lookups both fail on the padded string. TaskDesk's native
+ *     evaluator also denies it (exact match, no row named `" owner"`). So TODAY this row
+ *     grants NOTHING under either evaluator. Trimming it to `"owner"` does not restate an
+ *     existing agreement — it MANUFACTURES one, and because `"owner"` is the one role whose
+ *     authority is compiled-in and unbounded (`require-workspace-permission.ts`'s
+ *     `role === "owner" ? builtInRoleStatements("owner") : ...`), the manufactured agreement
+ *     is full, ungated workspace ownership, minted by the migration itself with no operator
+ *     visibility.
+ *
+ * **THE CORRECTED RULE.** Safe to repair means: comma-bearing, AND every non-empty RAW
+ * (untrimmed) piece is the exact same byte string, AND that string is already, on its own,
+ * a well-formed single role name (no comma, no padding, non-empty). No trimming is ever
+ * performed to MAKE pieces agree — only to confirm that a piece which already agrees with
+ * every other piece is not itself malformed. A value with no comma at all is NEVER
+ * auto-repaired: there is no second piece to confirm agreement against, so trimming it
+ * would be inventing agreement rather than finding it already there.
+ *
+ * | value              | repair                                                          |
+ * | ------------------ | ---------------------------------------------------------------|
+ * | `"admin,admin"`     | `"admin"` — both raw pieces already `"admin"`                  |
+ * | `"admin,"`          | `"admin"` — the one non-empty raw piece is already `"admin"`   |
+ * | `",admin"`          | `"admin"` — same                                                |
+ * | `"admin,,admin"`    | `"admin"` — same, extra empty piece dropped                     |
+ * | `" owner"`          | `null` — no comma, nothing to confirm agreement against         |
+ * | `"owner "`          | `null` — same                                                   |
+ * | `" admin "`         | `null` — same                                                   |
+ * | `"admin, admin"`    | `null` — raw pieces `"admin"` and `" admin"` are NOT identical  |
+ * | `" admin,admin"`    | `null` — raw pieces `" admin"` and `"admin"` are NOT identical  |
+ * | `"owner,admin"`     | `null` — genuine ambiguity, unchanged from before                |
+ *
+ * Mirrors migration `0050`'s SQL exactly — both require every RAW piece to already be
+ * byte-identical and well-formed, never trimming toward agreement.
+ * `membership-role-value.test.ts` pins the agreement, because a repair rule that drifts from
+ * the migration that ran it is worse than no repair rule at all.
  */
 export function repairableMembershipRole(value: string): string | null {
   if (isSingleMembershipRole(value)) return value;
-  const segments = legacyMembershipRoleSegments(value);
-  return segments.length === 1 ? (segments[0] ?? null) : null;
+  if (!value.includes(MEMBERSHIP_ROLE_SEPARATOR)) {
+    // No comma: empty, whitespace-only, or a single padded role name. There is no second
+    // piece to confirm agreement against, so refuse rather than trim toward an authority
+    // this row does not currently grant under either evaluator. See the doc above.
+    return null;
+  }
+  const [first, ...rest] = rawNonEmptyCommaPieces(value);
+  if (first === undefined) return null; // every piece was empty, e.g. ",", ",,"
+  if (!isSingleMembershipRole(first)) return null;
+  if (rest.some((piece) => piece !== first)) return null;
+  return first;
 }

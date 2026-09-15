@@ -4479,6 +4479,39 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "The caller has a malformed workspace membership role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "problem": {
+                      "type": "string",
+                      "enum": [
+                        "multi-valued",
+                        "untrimmed",
+                        "empty"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -4875,39 +4908,6 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
-          },
-          "409": {
-            "description": "The caller has a malformed workspace membership role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "field": {
-                      "type": "string"
-                    },
-                    "problem": {
-                      "type": "string",
-                      "enum": [
-                        "multi-valued",
-                        "untrimmed",
-                        "empty"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "error",
-                    "message"
-                  ]
-                }
-              }
-            }
           }
         }
       }
@@ -4998,39 +4998,6 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
-          },
-          "409": {
-            "description": "The caller has a malformed workspace membership role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "field": {
-                      "type": "string"
-                    },
-                    "problem": {
-                      "type": "string",
-                      "enum": [
-                        "multi-valued",
-                        "untrimmed",
-                        "empty"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "error",
-                    "message"
-                  ]
-                }
-              }
-            }
           }
         }
       }
@@ -5842,39 +5809,6 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
-          },
-          "409": {
-            "description": "The caller has a malformed workspace membership role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "field": {
-                      "type": "string"
-                    },
-                    "problem": {
-                      "type": "string",
-                      "enum": [
-                        "multi-valued",
-                        "untrimmed",
-                        "empty"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "error",
-                    "message"
-                  ]
-                }
-              }
-            }
           }
         }
       }
