@@ -37,6 +37,22 @@ as authored; these corrections govern.
   `update-workspace-member-role.ts` has no authority-ceiling check of its own — harmless
   alone, but it is the second link if S7 ever ships without the ceiling check.
 
+- **§0's claim about PR #110's scope — STALE, found by formal review, corrected here rather
+  than in §0 itself so §0 stays a faithful record of what was read at the time.** §0 states
+  PR #110 (read at head `ee3953c`) "does **not** touch `require-workspace-permission.ts` or
+  `require-workspace-role-authority.ts`". **PR #110's CURRENT head substantially rewrites
+  both** — confirmed by diffing `origin/main` against PR #110's live head directly: both
+  files drop `isUnambiguousMembership`/`workspaceMemberRoles` for a shared
+  `resolveMembershipRole`, and `require-workspace-permission.ts` gains a new exported
+  `callerMembershipResolution` (`/api/capabilities`'s own membership check, routed through
+  the same function so the two cannot drift). `ee3953c` is not even an ancestor of PR #110's
+  current head — superseded by a rebase/remediation history, the same class of drift F1/F2
+  above already correct for other findings. **Consequence for S7**: §1's MODIFY table and
+  this blueprint's "no code change required" reasoning for these two files were written
+  against a state PR #110 has since replaced. Re-verify both files against PR #110's actual
+  merged content once it lands on `main` — do not assume this blueprint's snapshot still
+  matches.
+
 ## A third prerequisite, found by CI rather than by reading
 
 **S7 cannot start until `roles-and-permissions-ui.md`'s open review findings are closed.**
@@ -85,6 +101,25 @@ the gate asks which spec a change *implements*.
 - **Q3 (events / audit rows)** and **Q4 (pagination)** — unresolved, low stakes, and the
   blueprint states the precedent for each. Confirm against
   [`events.md`](../../01-architecture/events.md) before assuming silence is intended.
+
+## A fourth prerequisite, found by formal review rather than by reading
+
+**Issue #82 self-declares as an S7 blocker, and this blueprint discusses it only as a design
+constraint, never as a build-order prerequisite the way it does for the review-findings gate
+above.** #82's own issue body states explicitly: *"This is a P0 security blocker for retrofit
+stage S7 ... S7 adds native role write routes and will reuse the same evaluator. If those
+routes inherit the single-role-string assumption without enforcing it, or ship while legacy
+comma-joined rows exist, the divergence becomes reachable through TaskDesk's own surface
+rather than only the inherited one."* PR #110 is the fix; as of this writing it is open,
+unmerged, and — per the reconciliation entry above — has changed the two evaluator files S7's
+own "no code change required" analysis depends on.
+
+Treat this as **step 0, alongside the third prerequisite**: S7 does not begin implementation
+until PR #110 lands on `main`, and once it does, §1's MODIFY table for
+`require-workspace-permission.ts`/`require-workspace-role-authority.ts` must be re-verified
+against what actually merged — not assumed unchanged from this document's snapshot. This is
+not a new decision; #82 already states it. It was missing from this blueprint's own
+build-order section, which is the gap this entry closes.
 
 ## Provenance
 
