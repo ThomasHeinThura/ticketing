@@ -4,8 +4,10 @@
  *
  * THE DEFECT. `apps/api/src/database/schema.ts` declares two PLAIN indexes on this table and
  * never a `uniqueIndex`, so duplicate `(workspace_id, role)` rows with *different* `permission`
- * payloads insert cleanly — reachable without a race, because better-auth's `createOrgRole`
- * performs no duplicate-name check. Both evaluators that read the table
+ * payloads insert cleanly — reachable through ordinary, authorized use: better-auth's
+ * `createOrgRole` does call a duplicate-name check, but it is check-then-insert with no lock,
+ * so two concurrent calls creating the same role name both pass it and both insert (a TOCTOU
+ * race, not an absent check). Both evaluators that read the table
  * (`customRoleStatements`, `ownRoleStatements`) select with `.limit(1)` and no `ORDER BY`, so
  * the capability answer for a member holding that role becomes heap order, and an unrelated
  * `UPDATE` can reverse it. Same defect class as #77/#88 (`workspace_member`) and #82

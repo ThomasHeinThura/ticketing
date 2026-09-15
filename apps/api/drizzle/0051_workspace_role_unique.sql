@@ -3,8 +3,12 @@
 -- THE DEFECT. `apps/api/src/database/schema.ts:238-262` declares two PLAIN indexes on the
 -- table -- `workspace_role_workspaceId_idx` and `workspace_role_role_idx` -- and never a
 -- `uniqueIndex`. Measured against a real PostgreSQL: two rows for one `(workspace_id, role)`
--- pair with DIFFERENT `permission` payloads insert cleanly. It is reachable without a race
--- because better-auth's `createOrgRole` performs no duplicate-name check at all.
+-- pair with DIFFERENT `permission` payloads insert cleanly. Reachable through ordinary,
+-- authorized use: better-auth's `createOrgRole` does call a duplicate-name check
+-- (`checkIfRoleNameIsTakenByRoleInDB`), but it is check-then-insert with no lock, so two
+-- concurrent calls creating the same role name both pass the check and both insert -- a
+-- TOCTOU race, not an absent check. `dynamicAccessControl.enabled: true` (`auth.ts:278`)
+-- means that route is live today.
 --
 -- WHY THAT MATTERS MORE THAN IT LOOKS. Both evaluators that read this table --
 -- `customRoleStatements` (`require-workspace-permission.ts`) and `ownRoleStatements`
