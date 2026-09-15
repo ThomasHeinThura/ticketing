@@ -119,7 +119,8 @@ be consistent.
 | Assign a role to a person | `workspace:manage_members` |
 
 Plus the two structural constraints: you cannot grant beyond your own authority
-(`RL-3`), and you cannot edit above your own rank (`RL-4`).
+(`RL-3`), and you cannot edit a role ranked above or equal to your own, except the
+role you hold yourself (`RL-4`).
 
 ## Screens
 
