@@ -130,7 +130,7 @@ role you hold yourself (`RL-4`).
 
 ```
 Support Lead                                    Rank 50    [Save] [Cancel]
-Clone of Lead. Can triage and assign, cannot change SLA policy.
+Clone of Lead. Can triage and assign, cannot manage services.
 
 ┌─ Work items ─────────────────────────────────────────────────────┐
 │ [x] Read            See work items in projects you can access     │
@@ -140,13 +140,14 @@ Clone of Lead. Can triage and assign, cannot change SLA policy.
 │ [x] Assign          Assign work to other people                   │
 │ [ ] Delete          Permanently remove work items                 │
 └──────────────────────────────────────────────────────────────────┘
-┌─ SLA ────────────────────────────────────────────────────────────┐
-│ [x] Read            View SLA policies                             │
-│ [ ] Manage          Create and edit SLA policies      ⓘ disabled  │
+┌─ Service management ─────────────────────────────────────────────┐
+│ [x] Read            See services                                  │
+│ [ ] Manage          Manage services, dependencies and service     │
+│                     state                             ⓘ disabled  │
 │                     You don't have this permission yourself       │
 └──────────────────────────────────────────────────────────────────┘
 
-▸ Projects   ▸ Approvals   ▸ Time & cost   ▸ Administration
+▸ Projects   ▸ Members   ▸ Time & cost   ▸ Workspace
 
 What this role can do ▾            Compare with ▾            History ▾
 ```
