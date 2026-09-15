@@ -211,13 +211,16 @@ export async function distinctOwnerUserCount(
  * `('w','manager')` carrying DIFFERENT `permission` payloads insert cleanly, and an
  * unordered `LIMIT 1` then returns one of them arbitrarily.
  *
- * REACHABLE TODAY, AND NOT EVEN AS A RACE. better-auth's `createOrgRole`
- * (`crud-access-control.mjs`) normalises the role name, counts existing roles against
- * `maximumRolesPerOrganization`, and creates -- with NO duplicate-name check anywhere in it:
- * no `ROLE_ALREADY_EXISTS`, no pre-insert lookup on the name. Two `create-role` calls with
- * the same name through the still-mounted `organization()` plugin produce two rows
- * unconditionally. Tracked as #118; the `UNIQUE (workspace_id, role)` constraint that makes
- * the state unreachable is the other half and lands with the migration.
+ * REACHABLE TODAY, AS A TOCTOU RACE RATHER THAN AN ABSENT CHECK. better-auth's
+ * `createOrgRole` (`crud-access-control.mjs`) DOES call `checkIfRoleNameIsTakenByRoleInDB`
+ * before creating -- confirmed directly, and confirmed it works for two SEQUENTIAL calls
+ * (the second returns `400 ROLE_NAME_IS_ALREADY_TAKEN`). But the check and the insert are
+ * two separate steps with no transaction, lock, or unique index between them, so two
+ * CONCURRENT `create-role` calls with the same name can both pass the check before either
+ * inserts -- measured directly: 8 concurrent calls through the still-mounted
+ * `organization()` plugin produced 2 rows with different payloads on the first attempt.
+ * Tracked as #118; the `UNIQUE (workspace_id, role)` constraint that closes the race at the
+ * only layer that actually can is the other half and lands with the migration.
  *
  * WIDER BLAST RADIUS THAN #88's. A duplicated `workspace_member` row affects one
  * `(workspace, user)` pair. A duplicated `workspace_role` row affects EVERY member holding
