@@ -3,8 +3,10 @@
 > ## ⚠ How to read this file
 >
 > **Snapshot taken:** 2026-09-15
-> **`main` at that moment:** `09169d8` (PR #104, S9 resolved — Path B — merged after PR #137,
-> a control-plane reconciliation, and PR #119, the #118 evaluator half)
+> **`main` at that moment:** `4418e70` (PR #144, static file serving in the API process —
+> closing a third UAT-deployability gap — merged after PR #104, S9 resolved — Path B, which
+> itself merged after PR #137, a control-plane reconciliation, and PR #119, the #118
+> evaluator half)
 > **Stage:** P0 · Foundation — IN PROGRESS
 > **Throttle 1:** SHUT — 4 of 5 conditions met; condition 2 (issue #6 through retrofit S10)
 > is the sole blocker. **Of S10's own two preconditions, S9 is now LANDED** (PR #104,
@@ -50,6 +52,16 @@ PR #137's control-plane reconciliation) — both delta-reviewed CLEAR by the sam
 reviewers rather than re-reviewed from scratch each time. Issues #82 and #118 are both
 CLOSED; S9 is LANDED. **S7 — native role list and writes — is now the sole remaining
 critical-path item; it has not started yet.**
+
+**Also reconciled the same day:** **PR #144** (static file serving in the API process)
+merged to `main`, closing a third of the four UAT-deployability gaps — see the
+UAT/deployability lane table below. Reviewed 2 fresh Sonnet + 1 Opus, all CLEAR, with a
+committed security-review note at
+`docs/07-planning/security-reviews/144-static-file-serving.md`. Not independently verified
+against a real `docker build`/`docker run` cycle — the PR's own manual verification ran
+`createApp()` directly on a throwaway port, not the container image. This pass does not
+touch S7, PR #116, or anything else that merged to `main` since `09169d8`; those are being
+tracked separately.
 
 > **This is a durable snapshot, not a work log.** Update it only on a durable transition: a
 > pull request merges or becomes genuinely review-ready, an issue blocks, unblocks or
@@ -107,15 +119,19 @@ snapshot). **PR #132 merged this session and closed two of the four:**
 | --- | --- | --- |
 | `TASKDESK_PORT` not read | **CLOSED — PR #132.** `resolvePort()` in `apps/api/src/index.ts` reads it, bounded 1–65535, falls back to `DEFAULT_PORT` (5173) on invalid input | Done |
 | No `/api/public/health/{live,ready}` | **CLOSED — PR #132.** Both routes exist; `/ready` runs a real `SELECT 1`. Fixed a real bug found in review: an idle pooled client's error surfaces on the *pool*, not the query — an unhandled `pool.on("error", ...)` would have crashed the process under `/ready` polling; now handled | Done |
-| No static file serving in the Node process | Still true — no `serveStatic`/`express.static` match in `apps/api/src` | SAFE_PARALLEL, startable now |
+| No static file serving in the Node process | **CLOSED — PR #144.** `apps/api/src/index.ts` now serves the built web app (`apps/web/dist`, or `/app/public` in the Docker image) via `@hono/node-server/serve-static` — a subpath of the already-installed `@hono/node-server` dependency, so no new package was added. `/api/*` is excluded, and a genuine 404 stays a 404 rather than falling back to the SPA shell. Independently reviewed 2 Sonnet + 1 Opus, all CLEAR (three LOW/latent, non-blocking notes) | Done |
 | No `storage.filesystem` driver | Still true — `apps/api/src/storage/` holds only `s3.ts` and `cleanup-assets.ts` | SAFE_PARALLEL, startable now |
 
 **UAT-0** (per the milestone shape Thomas asked for): `docker build` succeeds, container
 boots, a health endpoint answers `200` — **the two gaps this needed are now closed.** Not
 yet independently confirmed against a real `docker build`/`docker run` cycle; that
 verification, not further code, is the next step for UAT-0 specifically. **Full UAT
-stand-up** still needs the remaining two gaps (static serving, filesystem storage) plus an
-actual redeploy.
+stand-up:** three of the four UAT-lane gaps are now closed (`TASKDESK_PORT`, health
+endpoints, static file serving); only `storage.filesystem` remains, plus an actual
+redeploy. PR #144 itself was not verified against a real `docker build`/`docker run`
+cycle either — its manual verification ran `createApp()` directly on a throwaway port, not
+the container image — so that verification is still outstanding for the static-serving
+gap specifically, not just for the one gap that remains unstarted.
 
 ### BLOCKED
 
