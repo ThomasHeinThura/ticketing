@@ -768,6 +768,26 @@ export async function runStartupTasks() {
 }
 
 const DEFAULT_PORT = 5173;
+const MAX_PORT = 65535;
+
+/**
+ * Resolves TASKDESK_PORT to a bindable port, falling back to DEFAULT_PORT for anything
+ * outside the valid TCP range (1-65535) rather than passing it straight to
+ * @hono/node-server's serve(), which throws a RangeError that becomes an unhandled
+ * rejection and crashes the process instead of a graceful fallback.
+ */
+export function resolvePort(rawPort: string | undefined): {
+  port: number;
+  invalid: boolean;
+} {
+  const parsedPort = rawPort === undefined ? Number.NaN : Number(rawPort);
+  const isValidPort =
+    Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= MAX_PORT;
+  return {
+    port: isValidPort ? parsedPort : DEFAULT_PORT,
+    invalid: rawPort !== undefined && !isValidPort,
+  };
+}
 
 export async function startServer(
   injectWebSocket: ReturnType<typeof createNodeWebSocket>["injectWebSocket"],
@@ -850,16 +870,10 @@ const isMainModule =
 
 if (isMainModule) {
   const rawPort = process.env.TASKDESK_PORT;
-  const parsedPort = rawPort === undefined ? Number.NaN : Number(rawPort);
-  const port =
-    Number.isInteger(parsedPort) && parsedPort > 0 ? parsedPort : DEFAULT_PORT;
-  if (
-    rawPort !== undefined &&
-    port === DEFAULT_PORT &&
-    parsedPort !== DEFAULT_PORT
-  ) {
+  const { port, invalid } = resolvePort(rawPort);
+  if (invalid) {
     console.warn(
-      `⚠ TASKDESK_PORT="${rawPort}" is not a positive integer — falling back to ${DEFAULT_PORT}`,
+      `⚠ TASKDESK_PORT="${rawPort}" is not a valid port (1-65535) — falling back to ${DEFAULT_PORT}`,
     );
   }
   void startServer(injectWebSocket, port);

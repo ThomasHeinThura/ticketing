@@ -139,6 +139,19 @@ export function getDatabasePool(): Pool {
       idleTimeoutMillis: 30_000,
       max: 10,
     });
+
+    // node-postgres emits "error" on the pool when an IDLE client dies
+    // server-side (a Postgres restart/blip). An EventEmitter with no "error"
+    // listener throws on that event, which is an unhandled exception that
+    // crashes the whole process — turning a brief database outage into a
+    // full restart, exactly what the liveness/readiness split
+    // (docs/05-operations/deployment.md § Health and readiness) exists to
+    // prevent. A regularly-polled /api/public/health/ready makes an idle
+    // pooled client, and therefore this failure mode, routinely reachable
+    // rather than theoretical.
+    pool.on("error", (error) => {
+      console.error("Database pool: idle client error", error);
+    });
   }
 
   return pool;
