@@ -105,6 +105,112 @@ export function stripComments(markdown) {
 }
 
 /**
+ * Like `stripComments`, but keeps each surviving character's ORIGINAL index
+ * in `markdown` alongside it, so a caller can tell whether a run of the
+ * stripped output is genuinely contiguous in the raw source or was spliced
+ * together across a removed comment span.
+ *
+ * Exists because a scalar count comparison between raw and stripped text —
+ * however the count is taken — cannot close this class of defect. Three
+ * rounds of independent review on this exact file found, in order: a
+ * checkbox hidden by a comment (raw count too high), a checkbox manufactured
+ * by a comment splicing two fragments together (stripped count too high),
+ * and then the combination of both in one block — hide one checkbox, splice-
+ * manufacture a different one — which nets the SAME totals as if nothing
+ * happened, defeating any inequality over the two counts, however it is
+ * phrased. Comparing counts is comparing quantities; the defect is about
+ * IDENTITY — whether a specific span of visible text actually came from one
+ * unbroken run of the author's own words, not whether the tally balances.
+ */
+function stripCommentsWithPositions(markdown) {
+  const out = [];
+  const positions = [];
+  let i = 0;
+
+  while (i < markdown.length) {
+    out.push(markdown[i]);
+    positions.push(i);
+    i += 1;
+
+    const end = out.length;
+    if (
+      end >= 4 &&
+      out[end - 4] === "<" &&
+      out[end - 3] === "!" &&
+      out[end - 2] === "-" &&
+      out[end - 1] === "-"
+    ) {
+      out.length = end - 4;
+      positions.length = end - 4;
+      const close = markdown.indexOf("-->", i);
+      i = close === -1 ? markdown.length : close + 3;
+    }
+  }
+
+  return { text: out.join(""), positions };
+}
+
+/**
+ * How many checkbox matches in `body`'s VISIBLE (comment-stripped) text are
+ * genuine — each one traces to a single unbroken run of the raw source, not
+ * to fragments joined across a removed comment. A match is spliced when its
+ * mapped raw positions are not consecutive integers: some raw text between
+ * two surviving characters was deleted as a comment, so the match exists
+ * only because that deletion happened to fuse two unrelated fragments into
+ * something that now reads as a checkbox.
+ *
+ * This is the ground truth `checklistProblems` and `checklistPresenceProblems`
+ * check against — not a second count to compare with a first, but a
+ * per-match verdict, so a hidden checkbox and a manufactured one in the same
+ * block are each caught on their own, regardless of whether the raw and
+ * visible totals happen to land on the same number.
+ */
+function genuineBoxCount(body) {
+  return genuineBoxRanges(body).length;
+}
+
+/**
+ * The `[start, end)` ranges, in the STRIPPED text, of checkbox matches that
+ * are genuine — shared by `genuineBoxCount` and `genuineBoxLineTexts`, so
+ * the one contiguity check has one definition.
+ */
+function genuineBoxRanges(body) {
+  const { text, positions } = stripCommentsWithPositions(body);
+  const ranges = [];
+  for (const match of text.matchAll(ANY_BOX_ANYWHERE)) {
+    const start = match.index;
+    const end = start + match[0].length;
+    let contiguous = true;
+    for (let k = start + 1; k < end; k += 1) {
+      if (positions[k] !== positions[k - 1] + 1) {
+        contiguous = false;
+        break;
+      }
+    }
+    if (contiguous) ranges.push({ start, end });
+  }
+  return ranges;
+}
+
+/**
+ * The full LINE of text (from the stripped output), for each genuine
+ * checkbox match in `body` — so a caller can check the item's whole
+ * wording (not just the marker) against something like `REVIEW_ITEM`
+ * without a manufactured, spliced-together match ever being considered.
+ */
+function genuineBoxLineTexts(body) {
+  const { text } = stripCommentsWithPositions(body);
+  const results = [];
+  for (const { start, end } of genuineBoxRanges(body)) {
+    const lineStart = text.lastIndexOf("\n", start) + 1;
+    const nextNewline = text.indexOf("\n", end);
+    const lineEnd = nextNewline === -1 ? text.length : nextNewline;
+    results.push(text.slice(lineStart, lineEnd));
+  }
+  return results;
+}
+
+/**
  * What the author actually wrote. The template's own scaffolding does not count: an
  * instruction comment, a bold field label with nothing after it, or a horizontal rule is
  * the template, not a filled-in section.
@@ -664,25 +770,22 @@ export function checklistPresenceProblems(raw, declared) {
     }
   }
 
-  // Strip comments from each block's WHOLE text first, matching `contentOf`'s own
-  // pattern, then re-derive lines from the result — same fix as `checklistProblems`.
-  // Stripping line-by-line never sees a comment whose `<!--`/`-->` sit on different
-  // lines, so a checkbox truly wrapped in a multi-line comment — invisible on
-  // GitHub's own render — still counted as present and ticked here, which is
-  // exactly the gap that made this presence check satisfiable by a checkbox no
-  // human reviewer could actually see.
-  const visibleLinesByBlock = new Map();
-  for (const [key, block] of present) {
-    visibleLinesByBlock.set(
-      key,
-      stripComments(block.lines.join("\n")).split("\n"),
-    );
-  }
+  // Both rules below check `genuineBoxCount`/`genuineBoxLineTexts`, not a
+  // naive comment-strip-then-split — three rounds of adversarial review
+  // found, in order: a checkbox truly wrapped in a multi-line comment
+  // (invisible on GitHub's own render, but read as present by a per-line
+  // strip); a checkbox manufactured by a comment splicing two fragments of
+  // real text together (present in a naive comment-stripped scan, but never
+  // a real substring of the raw text at all); and the combination of both,
+  // which defeats any comparison of just two SCALAR counts. Every genuine
+  // check here is a per-match fact — does this specific checkbox trace to
+  // one unbroken run of the author's own characters — not an arithmetic
+  // condition over totals.
 
   // 2. At least one block must actually carry checkboxes. Collapsing the whole section
   //    to prose leaves checklistProblems() with nothing to judge, which is probe (2).
-  const withBoxes = [...present.keys()].filter((key) =>
-    visibleLinesByBlock.get(key).some((line) => ANY_BOX.test(line)),
+  const withBoxes = [...present.entries()].filter(
+    ([, block]) => genuineBoxCount(block.lines.join("\n")) > 0,
   );
   if (present.size > 0 && withBoxes.length === 0) {
     problems.push(
@@ -696,10 +799,18 @@ export function checklistPresenceProblems(raw, declared) {
   //    (3) — deletion and rewording are indistinguishable from the outside, and both
   //    must fail with the same message the unticked box gets. More than one is
   //    ambiguous about which one closes the gate.
+  //
+  // Iterated over `genuineBoxLineTexts`, not the naive stripped lines — found
+  // adversarially: a checkbox marker split across a comment span
+  // (`- [<!--\nfiller\n-->x] Independent security review`) contains no
+  // complete marker anywhere in the raw text, but the comment-stripped lines
+  // this rule used to scan directly include the fused, fake-ticked result.
+  // `genuineBoxLineTexts` only returns a line whose checkbox marker traces to
+  // one unbroken run of raw characters, so a manufactured review box is never
+  // mistaken for the one genuine item this rule exists to require.
   const reviewItems = [];
-  for (const [key, block] of present) {
-    for (const line of visibleLinesByBlock.get(key)) {
-      if (!ANY_BOX.test(line)) continue;
+  for (const [, block] of present) {
+    for (const line of genuineBoxLineTexts(block.lines.join("\n"))) {
       if (REVIEW_ITEM.test(normaliseItem(line)))
         reviewItems.push({ block: block.name, line: line.trim() });
     }
@@ -773,39 +884,37 @@ export function checklistProblems(raw) {
     // counted by automation — so this is flagged directly rather than relying
     // on it also happening to be unticked.
     //
-    // Counted as SUBSTRING occurrences across the whole block (`ANY_BOX_ANYWHERE`,
-    // not line-anchored `ANY_BOX`), not as a count of matching LINES — a
-    // second real gap found adversarially: `<!-- - [ ] pnpm typecheck green -->`
-    // all on one physical line never matches line-anchored `ANY_BOX` on that
-    // raw line at all (the line starts with `<!--`, not the marker), so a
-    // per-line raw-vs-stripped comparison sees 0 either way and never notices
-    // — even though `stripComments` erases it just as completely as the
-    // separate-line shape. Matching the marker ANYWHERE in the block's raw
-    // text, independent of where a line happens to start, catches both.
-    //
-    // Compared with `!==`, not `>` — a THIRD gap, the mirror image of the
-    // first two: `stripComments` deletes a comment span by directly
-    // concatenating what comes before it to what comes after, exactly the
-    // splice-adjacency hazard its own docstring already names for `<!--`
-    // reconstitution (CodeQL alert #4), just never extended to checkbox
-    // syntax. A checkbox marker deliberately split across a comment span —
-    // `- [<!--\nfiller\n-->x] Independent security review` — contains the
-    // complete `- [x]` substring NOWHERE in the raw text (the raw fragments
-    // are `- [` and `x] ...`, never adjacent), but stripping the comment
-    // splices them into a genuine, complete, fake-ticked checkbox that did
-    // not exist before. `rawBoxCount` never saw it, so `>` alone missed a
-    // checkbox being MANUFACTURED by the strip, not merely hidden by it.
-    // `!==` catches a count change in either direction.
+    // Checked against `genuineBoxCount`, not against a second scalar count —
+    // three rounds of independent review each found a real gap in every
+    // count-comparison tried here: a checkbox hidden entirely inside a
+    // comment (raw count too high), one MANUFACTURED by a comment splicing
+    // two fragments together (visible count too high — `- [<!--\nfiller\n
+    // -->x] Independent security review` contains no complete `- [x]`
+    // substring anywhere in the raw text, but stripping the comment fuses
+    // the fragments into one), and finally — the one no count comparison
+    // between just two totals can ever close — BOTH in the same block: hide
+    // one real checkbox while splicing a different fake one into existence,
+    // so raw and visible land on the identical number and every inequality
+    // over those two totals reads "nothing happened." `genuineBoxCount`
+    // does not compare totals at all: it asks, per match, whether THIS
+    // specific visible checkbox traces to one unbroken run of raw
+    // characters. A hidden box was never in the visible text to ask about;
+    // a manufactured one fails the question directly. Both conditions below
+    // can fire together in the same block, because they are independent
+    // per-match facts, not two ends of one arithmetic comparison.
     const rawBoxCount = (body.match(ANY_BOX_ANYWHERE) ?? []).length;
     const visibleBoxCount = (
       visibleLines.join("\n").match(ANY_BOX_ANYWHERE) ?? []
     ).length;
-    if (rawBoxCount !== visibleBoxCount) {
-      const delta = rawBoxCount - visibleBoxCount;
+    const genuineCount = genuineBoxCount(body);
+    if (rawBoxCount > genuineCount) {
       problems.push(
-        delta > 0
-          ? `"${block.name}" hides ${delta} checkbox(es) inside an HTML comment — a checkbox invisible on GitHub's own render cannot satisfy or excuse anything here, ticked or not. Move it out of the comment, or delete it and state why in visible text.`
-          : `"${block.name}" has ${-delta} more checkbox(es) after comment-stripping than before — a comment span was spliced across a checkbox marker, manufacturing one that was never in the raw text. Restructure the comment so it does not straddle a \`[ ]\`/\`[x]\`.`,
+        `"${block.name}" hides ${rawBoxCount - genuineCount} checkbox(es) inside an HTML comment — a checkbox invisible on GitHub's own render cannot satisfy or excuse anything here, ticked or not. Move it out of the comment, or delete it and state why in visible text.`,
+      );
+    }
+    if (visibleBoxCount > genuineCount) {
+      problems.push(
+        `"${block.name}" has ${visibleBoxCount - genuineCount} checkbox(es) that only exist because a comment span was spliced across a checkbox marker, manufacturing one that was never in the raw text. Restructure the comment so it does not straddle a \`[ ]\`/\`[x]\`.`,
       );
     }
 

@@ -1212,6 +1212,61 @@ describe("checklistPresenceProblems — F2, presence not just state", () => {
     const problems = checklistPresenceProblems(raw, declared);
     assert.deepEqual(problems, []);
   });
+
+  it("does NOT count a review checkbox MANUFACTURED by splicing across a comment span — found adversarially", () => {
+    // Rule 3 ("exactly one independent-review checkbox") used to scan a
+    // naive comment-stripped line list, the same shape the earlier tests in
+    // this block already fixed for hiding. This is the manufacture side: a
+    // marker split across a comment span
+    // (`- [<!--\nfiller\n-->x] Independent security review`) is not a real
+    // substring of the raw text anywhere, but a naive strip-then-scan
+    // fuses the fragments into a genuine-looking ticked review item that
+    // satisfies "at least one exists". `genuineBoxLineTexts` must not
+    // count it, so the section still reads as having NO real review box.
+    const raw = [
+      "### Any change",
+      "- [x] does what the task says",
+      "",
+      "### Backend change",
+      "n/a — no backend change.",
+      "",
+      "### Phase completion",
+      "- [<!--",
+      "filler",
+      "-->x] Independent security review — Opus 5, session totally-fake",
+    ].join("\n");
+    const problems = checklistPresenceProblems(raw, declared);
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /NO independent-review checkbox/);
+  });
+
+  it("FAILS a SWAP in checklistPresenceProblems too — hide the real review box while manufacturing a fake one elsewhere", () => {
+    // The combination that defeats any scalar count comparison: hide the
+    // genuine review checkbox entirely inside a comment (so rule 3's naive
+    // scan would see zero) while splice-manufacturing a fake one that reads
+    // as ticked in a DIFFERENT block. A naive implementation counting only
+    // "how many checkbox-shaped lines match REVIEW_ITEM" could land on
+    // exactly 1 either way and never notice the swap. genuineBoxLineTexts
+    // must exclude the manufactured line specifically, leaving zero genuine
+    // review items — not one.
+    const raw = [
+      "### Any change",
+      "- [x] does what the task says",
+      "",
+      "### Backend change",
+      "<!-- - [ ] Independent security review — the real, hidden item -->",
+      "",
+      "### Phase completion",
+      "- [<!--",
+      "filler",
+      "-->x] Independent security review — Opus 5, session totally-fake",
+    ].join("\n");
+    const problems = checklistPresenceProblems(raw, declared);
+    assert.ok(
+      problems.some((p) => /NO independent-review checkbox/.test(p)),
+      `expected zero genuine review items despite the swap, got: ${JSON.stringify(problems)}`,
+    );
+  });
 });
 
 describe("checklistProblems — a checkbox hidden inside a multi-line comment does not count as a real, ticked box", () => {
@@ -1295,9 +1350,7 @@ describe("checklistProblems — a checkbox hidden inside a multi-line comment do
     // review` contains the complete `- [x]` substring NOWHERE in the raw
     // text (the raw fragments are `- [` and `x] ...`, never adjacent), but
     // stripping the comment splices them into a genuine, complete,
-    // fake-ticked checkbox that did not exist before. A `>` comparison only
-    // catches a checkbox count going DOWN after stripping (something
-    // hidden); this one goes UP (something manufactured), so it needs `!==`.
+    // fake-ticked checkbox that did not exist before.
     const raw = [
       "### Backend change",
       "- [<!--",
@@ -1307,9 +1360,43 @@ describe("checklistProblems — a checkbox hidden inside a multi-line comment do
     const problems = checklistProblems(raw);
     assert.ok(
       problems.some((p) =>
-        /more checkbox\(es\) after comment-stripping/.test(p),
+        /manufacturing one that was never in the raw text/.test(p),
       ),
       `expected the manufactured checkbox to be flagged, got: ${JSON.stringify(problems)}`,
+    );
+  });
+
+  it("FAILS a SWAP — hide one real checkbox while manufacturing a different one, netting raw and visible counts to the SAME total", () => {
+    // The structural ceiling of every prior fix in this describe block: a
+    // scalar comparison between a raw count and a visible count (`>`, `!==`,
+    // however phrased) is defeated once hide-and-manufacture are combined in
+    // one block. Hide one real, unticked, throwaway checkbox entirely inside
+    // a comment (raw count includes it, visible count does not) while
+    // splice-manufacturing a different fake-ticked one elsewhere in the same
+    // block (visible count includes it, raw count does not) — the two
+    // changes cancel: raw and visible totals land on the identical number,
+    // and any inequality over just those two totals reads "nothing
+    // happened." Closing this needed per-match genuineness
+    // (`genuineBoxCount`), not a smarter arithmetic condition — this test
+    // exists specifically because three prior "smarter conditions" in a row
+    // were each defeated by the next round of adversarial review.
+    const raw = [
+      "### Backend change",
+      "<!-- - [ ] throwaway to balance the arithmetic -->",
+      "- [<!--",
+      "filler",
+      "-->x] Independent security review — Opus 5, session totally-fake",
+    ].join("\n");
+    const problems = checklistProblems(raw);
+    assert.ok(
+      problems.some((p) => /hides 1 checkbox/.test(p)),
+      `expected the hidden throwaway to be flagged, got: ${JSON.stringify(problems)}`,
+    );
+    assert.ok(
+      problems.some((p) =>
+        /manufacturing one that was never in the raw text/.test(p),
+      ),
+      `expected the manufactured review box to be flagged, got: ${JSON.stringify(problems)}`,
     );
   });
 });
