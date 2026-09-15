@@ -52,10 +52,11 @@
 -- authorization decision, and the two rows' `permission` values are identical by construction
 -- -- so nothing a caller can observe about authority changes.
 --
--- MIGRATION NUMBER IS PROVISIONAL. The filename is `NEXT_` rather than a number on purpose:
--- the next free number is determined by the base this actually lands on, and PR #110 already
--- holds `0050`. Rename through `pnpm db:generate` against the landed base, then update this
--- filename and the reference in `tests/api-integration/workspace-role-uniqueness.test.ts`.
+-- RENAMED 2026-09-15: this file shipped as `NEXT_workspace_role_unique.sql` until PR #110
+-- (migration `0050`) actually landed on `main`. Renamed to `0051` against that landed base,
+-- with `tests/api-integration/workspace-role-uniqueness.test.ts`'s path reference and the
+-- journal entry (`apps/api/drizzle/meta/_journal.json`) updated in the same commit. Content
+-- unchanged from the reviewed `NEXT_` version.
 
 DELETE FROM "workspace_role" r
 USING (

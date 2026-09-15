@@ -48,7 +48,7 @@ async function migrationStatements(): Promise<string[]> {
   const here = dirname(fileURLToPath(import.meta.url));
   const path = resolve(
     here,
-    "../../apps/api/drizzle/NEXT_workspace_role_unique.sql",
+    "../../apps/api/drizzle/0051_workspace_role_unique.sql",
   );
   const source = await readFile(path, "utf8");
   return source
