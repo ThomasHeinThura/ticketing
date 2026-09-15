@@ -106,7 +106,7 @@ apps/api/src/utils/**                apps/api/src/index.ts
 apps/api/src/**/index.ts             apps/api/src/capabilities/**
 apps/api/src/**/controllers/**       apps/api/drizzle/*.sql
 apps/api/src/policy-registry.ts      apps/api/src/database/**
-packages/mcp/src/auth/**
+packages/mcp/src/auth/**             scripts/deploy.sh
 
 .github/**                           package.json
 scripts/ci/**                        **/package.json
@@ -211,12 +211,24 @@ files are real (secret handling for notification delivery), but the investigatio
 them LOW next to the six globs above, and a scope list earns more by staying precise than
 by chasing every plausible file individually.
 
-Net effect, measured over the same 925-file walk: the list carried 23 globs matching 110
-files before this pass, and 28 globs matching 261 after — 151 files newly in scope via a
-path glob, all of them accounted for by the five globs above. (`openapi.ts` briefly
-existed as a 29th glob in this pass's first draft, contributing one more to both counts;
-removed once measurement showed the content-half already covers it — see above. The file
-itself is not newly exposed by that removal, only the mechanism that reaches it.)
+**A sixth glob, found by the third of this fix's three required ordinary reviews rather
+than by the original investigation's own walk**: `scripts/deploy.sh`. The original walk
+covered `apps/api/src`, `apps/api/drizzle`, `packages/*/src` and `apps/web/src` — it never
+looked at `scripts/` outside `scripts/ci/**`, which is already in the second block. That
+script hardcodes the cosign signature-verification identity, generates
+`TASKDESK_ENCRYPTION_KEY`/`TASKDESK_AUTH_SECRET` and the S3 credentials, and asserts the
+production port stays unpublished — a change to any of that is exactly the class of thing
+this list exists to catch, and it was reaching neither the path-based half of the gate nor
+the content-based backstop (`looksLikeHonoRouter()` only scans `.ts`/`.tsx`). Not a glob:
+a single named file is precise and there is exactly one `.sh` script at that level today.
+
+Net effect, measured over the same 925-file walk plus this one named file: the list carried
+23 globs matching 110 files before this pass, and 29 globs matching 262 after — 152 files
+newly in scope, 151 of them via the five path globs above and one (`scripts/deploy.sh`)
+named directly. (`openapi.ts` briefly existed as a glob in this pass's first draft,
+contributing one more to an earlier count; removed once measurement showed the content-half
+already covers it — see above. The file itself is not newly exposed by that removal, only
+the mechanism that reaches it.)
 
 **Why the second block exists** (Thomas's decision, 2026-09-08 — see the
 [decision log](../07-planning/decision-log.md)). The first block is the application's

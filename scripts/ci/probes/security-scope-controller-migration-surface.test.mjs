@@ -20,10 +20,14 @@
  *
  * The fix adds six globs to `docs/04-engineering/ci-cd.md`'s first block:
  * `apps/api/src/**\/controllers/**`, `apps/api/drizzle/*.sql`,
- * `apps/api/src/policy-registry.ts`, `apps/api/src/database/**`, `packages/mcp/src/auth/**`.
- * That widens the list to 28 globs. `openapi.ts` is NOT among them -- see section 4.
- * all of them accounted for by these six globs (92 controllers + 50 migrations + 5 database
- * files + 3 mcp/auth files + 1 named file: `policy-registry.ts`).
+ * `apps/api/src/policy-registry.ts`, `apps/api/src/database/**`, `packages/mcp/src/auth/**`,
+ * and — found by this fix's third required ordinary review, not the original walk, which
+ * never looked outside `apps/api`/`apps/web`/`packages` — the named file `scripts/deploy.sh`
+ * (cosign signature verification, secret generation, the production-port-unpublished
+ * assertion). That widens the list to 29 globs. `openapi.ts` is NOT among them -- see
+ * section 4. All newly-in-scope files are accounted for by these six additions (92
+ * controllers + 50 migrations + 5 database files + 3 mcp/auth files + 1 named file:
+ * `policy-registry.ts` + 1 named file: `scripts/deploy.sh`).
  *
  * Every "in scope now" assertion below reads the WORKING-TREE `docs/04-engineering/ci-cd.md`
  * via `readSecurityReviewPaths()` (`lib/security-paths.mjs`'s `ciCdPath`), so this probe is
@@ -121,6 +125,8 @@ describe("the security-review list covers privileged controllers and migrations"
     // the MCP CLI's credential store
     "packages/mcp/src/auth/token-store.ts",
     "packages/mcp/src/auth/auth-service.ts",
+    // the deploy script: cosign verification, secret generation, port-published assertion
+    "scripts/deploy.sh",
   ];
 
   it("every file is in scope NOW (reads the working-tree ci-cd.md)", async () => {
@@ -231,7 +237,7 @@ describe("the deliberately rejected broader globs are NOT in scope", () => {
 // 3. The count moved the way the investigation measured, not further and not less.
 // ---------------------------------------------------------------------------
 
-describe("the list grew by exactly the five issue-#115 globs", () => {
+describe("the list grew by exactly the six issue-#115 additions", () => {
   // NOT an exact `globs.length` assertion, deliberately. An earlier draft asserted
   // `globs.length === 29`, which breaks on every LEGITIMATE later addition and is the same
   // stale-number defect this repository has been removing from `status.md` (PRs #99 and
@@ -252,6 +258,7 @@ describe("the list grew by exactly the five issue-#115 globs", () => {
       "apps/api/src/policy-registry.ts",
       "apps/api/src/database/**",
       "packages/mcp/src/auth/**",
+      "scripts/deploy.sh",
     ]) {
       assert.ok(
         globs.includes(glob),
