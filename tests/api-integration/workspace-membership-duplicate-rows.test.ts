@@ -67,6 +67,7 @@ import { requireWorkspaceCapability } from "../../apps/api/src/utils/require-wor
 import { resetTestDatabase } from "./helpers/database";
 import {
   inviteAndAcceptAsNewMember,
+  plantLegacyMembershipRole,
   signUpUser,
   updateMemberRoleViaPlugin,
 } from "./helpers/organization-http";
@@ -639,9 +640,14 @@ describe("R1-R4: a duplicated OWNER must never let a workspace reach zero owners
  * THE FIX: `roleGrantsOwner` (`apps/api/src/utils/workspace-member-roles.ts`) comma-splits
  * before matching, and `anyRoleIsOwner` is now `roles.some(roleGrantsOwner)`.
  * `distinctOwnerUserCount` deliberately stays an EXACT `role = 'owner'` match -- see that
- * file's doc comments for why the asymmetry is the mechanism, not a bug. N1a-N1c below produce
- * the state THE WAY THE REVIEWER DID (the plugin route, not a direct `db.update`) precisely so
- * they prove the defect is API-reachable, not merely schema-permitted. N1d is the separate
+ * file's doc comments for why the asymmetry is the mechanism, not a bug. N1a-N1c below USED to
+ * produce the state the way the reviewer did -- through the plugin route, to prove the defect
+ * was API-reachable and not merely schema-permitted. **Issue #82 closed that path**: the
+ * organization write boundary refuses the request (400) and migration `0050`'s CHECK
+ * constraint refuses the row, so the state is no longer API-reachable at all. The three tests
+ * now PLANT the row as legacy data, which is the only way it can still arise -- a deployment
+ * that carried one before the fix. The guards below must survive exactly that, so their
+ * assertions are unchanged. N1d is the separate
  * INCOMING-value guard: `add-workspace-member.ts` and `update-workspace-member-role.ts` now
  * refuse a `role` argument that itself grants owner comma-joined, before either route ever
  * opens a transaction.
@@ -655,33 +661,38 @@ describe('N1a-N1d: a comma-joined "owner,admin" row must still be recognised as 
     // guard is, matching R1's rationale above.
     await inviteAndAcceptAsNewMember(app, owner.cookie, workspaceId, "member");
 
-    // PRODUCE THE STATE THE WAY THE REVIEWER DID: the owner grants THEMSELVES role:
-    // ["owner","admin"] through the still-mounted plugin route -- authorized and ordinary, an
-    // API-reachable path, not a bypass.
-    const ownerMemberId = await memberRowId(workspaceId, owner.user.id);
-    const selfGrant = await updateMemberRoleViaPlugin(
-      app,
-      owner.cookie,
-      workspaceId,
-      ownerMemberId,
-      ["owner", "admin"],
-    );
-    expect(selfGrant.status).toBe(200);
+    // PLANTED as legacy data. This setup used to grant the owner `["owner","admin"]` through
+    // the still-mounted plugin route, and called that "an API-reachable path, not a bypass" --
+    // which was true when it was written. Issue #82 closed it: that write is now refused 400,
+    // and migration `0050`'s CHECK constraint refuses the row outright. A row in this shape can
+    // now only predate the fix, and surviving exactly such a row is what these last-owner
+    // guards are for, so everything below is unchanged.
+    await plantLegacyMembershipRole(workspaceId, owner.user.id, "owner,admin");
     expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
       "owner,admin",
     ]);
 
-    // THE BETTER-AUTH CONTROL: the reviewer's own oracle. The plugin's OWN `/organization/leave`
-    // refuses this exact caller with 400 (crud-members.mjs's `leaveOrganization`:
-    // `member.role.split(",").includes(creatorRole)` is true for "owner,admin", and the
-    // creator-role member count is 1) -- so the native route below is held to a bar the
-    // surface it replaces already meets.
+    // THE BETTER-AUTH CONTROL, UPDATED after formal review R2. This used to reach
+    // better-auth's OWN `leaveOrganization` guard and be refused there with 400 --
+    // `member.role.split(",").includes(creatorRole)` correctly recognises "owner,admin"
+    // (no padding, both pieces present). That guard has no `.trim()`, though, so a padded
+    // single-role row like " owner" would defeat it silently (see #124's sibling finding and
+    // `organization-exempt-actions.ts`'s doc). R2 removed `leave` from the exempt list
+    // rather than trust that better-auth's own check is safe for every malformed shape, so
+    // NOW the caller is refused one layer earlier, by `organizationPluginRoleGuard`'s own
+    // malformed-role check, before better-auth's handler is ever reached -- 409, not 400.
+    // The safety property this test exists to pin (the row survives, the owner is not
+    // removed) is unchanged and, if anything, more directly proven: it no longer depends on
+    // better-auth's own last-owner guard recognising the exact shape correctly at all.
     const pluginControl = await app.request("/api/auth/organization/leave", {
       method: "POST",
       headers: { "content-type": "application/json", cookie: owner.cookie },
       body: JSON.stringify({ organizationId: workspaceId }),
     });
-    expect(pluginControl.status).toBe(400);
+    expect(pluginControl.status).toBe(409);
+    expect(((await pluginControl.json()) as { error?: string }).error).toBe(
+      "MALFORMED_MEMBERSHIP_ROLE",
+    );
     expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
       "owner,admin",
     ]);
@@ -710,15 +721,13 @@ describe('N1a-N1d: a comma-joined "owner,admin" row must still be recognised as 
       "admin",
     );
 
-    const ownerMemberId = await memberRowId(workspaceId, owner.user.id);
-    const selfGrant = await updateMemberRoleViaPlugin(
-      app,
-      owner.cookie,
-      workspaceId,
-      ownerMemberId,
-      ["owner", "admin"],
-    );
-    expect(selfGrant.status).toBe(200);
+    // PLANTED as legacy data. This setup used to grant the owner `["owner","admin"]` through
+    // the still-mounted plugin route, and called that "an API-reachable path, not a bypass" --
+    // which was true when it was written. Issue #82 closed it: that write is now refused 400,
+    // and migration `0050`'s CHECK constraint refuses the row outright. A row in this shape can
+    // now only predate the fix, and surviving exactly such a row is what these last-owner
+    // guards are for, so everything below is unchanged.
+    await plantLegacyMembershipRole(workspaceId, owner.user.id, "owner,admin");
     expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
       "owner,admin",
     ]);
@@ -754,14 +763,13 @@ describe('N1a-N1d: a comma-joined "owner,admin" row must still be recognised as 
     );
 
     const ownerMemberId = await memberRowId(workspaceId, owner.user.id);
-    const selfGrant = await updateMemberRoleViaPlugin(
-      app,
-      owner.cookie,
-      workspaceId,
-      ownerMemberId,
-      ["owner", "admin"],
-    );
-    expect(selfGrant.status).toBe(200);
+    // PLANTED as legacy data. This setup used to grant the owner `["owner","admin"]` through
+    // the still-mounted plugin route, and called that "an API-reachable path, not a bypass" --
+    // which was true when it was written. Issue #82 closed it: that write is now refused 400,
+    // and migration `0050`'s CHECK constraint refuses the row outright. A row in this shape can
+    // now only predate the fix, and surviving exactly such a row is what these last-owner
+    // guards are for, so everything below is unchanged.
+    await plantLegacyMembershipRole(workspaceId, owner.user.id, "owner,admin");
     expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
       "owner,admin",
     ]);

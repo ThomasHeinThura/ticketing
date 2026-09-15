@@ -83,9 +83,12 @@ decision-log entry **by `#anchor`** whose body carries the declaration
 
 — see [UX quality gates § Waiving a gate](../docs/02-design/ux-quality-gates.md#waiving-a-gate).
 CI verifies the declaration binds to this gate, this pull request and a follow-up issue;
-it cannot verify who approved it, so that part is still Thomas's at the merge button.
-A row is not "n/a" because it is inconvenient; it is n/a because the gate does not apply
-to this change.
+it cannot verify who approved it. **A candidate with any row marked `waived` is outside the
+orchestrator's merge delegation and always needs Thomas's own action to merge** — see
+[`AGENTS.md`](../AGENTS.md#how-work-reaches-main-and-who-may-merge), decision log
+2026-09-15. A row is not "n/a" because it is inconvenient; it is n/a because the gate does
+not apply to this change — marking a gate `n/a` when it actually applies is the same
+misrepresentation as fabricating a waiver, and is reviewed the same way.
 
 ## Checklists
 
