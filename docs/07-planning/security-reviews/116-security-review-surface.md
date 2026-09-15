@@ -1,15 +1,56 @@
 # Pre-merge security review — PR #116 (widen the security-review scope)
 
 **Reviewed head:** `36ed6946d0292d2b954297e2bf222de9e27a8f94`
+**Reviewed head:** `e86129b5ff269f5c8b780f915248b767b7ce2fcb`
 
-**VERDICT: CLEAR at `36ed6946d0292d2b954297e2bf222de9e27a8f94`** — no blocking finding in the
-change. Three new findings are recorded below; **none of them is caused by this pull request,
-and none is fixable inside it without pulling a fresh file into the diff.** Two are HIGH and
-need their own issue before they are forgotten.
+**CURRENT VERDICT: CLEAR at `e86129b5ff269f5c8b780f915248b767b7ce2fcb`** — no blocking finding
+in the change. The `36ed694` line still stands for its own head and is kept, not withdrawn;
+`e86129b` is the current clearance and the code that would merge. Three findings are recorded
+below; **none is caused by this pull request, and none is fixable inside it without pulling a
+fresh file into the diff.** Two are HIGH and need their own issue before they are forgotten.
 
-**Merge is still conditional on two pull-request-body corrections** (§7). Neither changes a
-tracked file, so neither voids this clearance. **Any change to a tracked file does void it**
-and needs a fresh delta review at the new head.
+**Round 2 — head `e86129b5ff269f5c8b780f915248b767b7ce2fcb`: re-confirmed after a main-merge.**
+The branch was `BEHIND` after PR #121 merged and was updated with a merge from `origin/main`
+at `3380200`. That merge touches `docs/04-engineering/ci-cd.md` — a file this review cleared —
+so per this note's own rule it voided the `36ed694` clearance, and the repository's own checker
+agreed: run at `e86129b` with only the `36ed694` attestation it refused with *"STALE … 62
+commit(s) that LANDED after it touched paths outside `docs/07-planning/security-reviews/`"*.
+Re-verified rather than assumed, in a fresh isolated worktree:
+
+- **The reviewed region is byte-identical.** The whole span covering the fenced glob list and
+  this pull request's 89 lines of new prose (lines 95–235) hashes to
+  `a810e4c486f99840…` at **both** `36ed694` and `e86129b`. `git diff` between those two heads
+  over `ci-cd.md` produces exactly two hunks, at lines **309** and **461** — the
+  waiver-declaration paragraph and the branch-protection bullets, both from `main`'s
+  merge-delegation change, both far below the reviewed region and neither inside a fenced
+  block. The probe file is byte-identical (`git diff` empty).
+- **Not an evil merge.** `git diff 3380200 e86129b` is **three files, 636 insertions, zero
+  deletions** — `ci-cd.md` (+89/−0), the probe (+306), this note (+241). The merge commit
+  contributed nothing of its own, so the pull request's net effect on `main` is unchanged.
+- **The one real interaction question the merge raises** is whether `main`'s new prose can
+  disturb the parser, because `parseSecurityReviewPaths` finds its block by searching fenced
+  blocks for the literal `packages/permissions/**` and takes the **first** match. Tested, not
+  assumed: the merge adds and removes **zero** fence delimiters in `ci-cd.md`, the string
+  occurs exactly once in the whole document (line 100), and exactly one fenced block matches.
+  Live at `e86129b`: **29 globs, all six additions present, probe 8 tests / 8 pass / 0 fail**,
+  `apps/api/src/openapi.ts` still `matches()` false and `looksLikeHonoRouter()` true.
+- **The widened globs classify `main`'s newly-arrived files correctly**, which is the point of
+  the change: `apps/api/drizzle/0051_workspace_role_unique.sql` → in scope,
+  `apps/api/src/utils/organization-plugin-role-guard.ts` → in, `packages/permissions/…` → in,
+  `scripts/ci/lib/gate-waiver.mjs` → in, `apps/api/drizzle/meta/_journal.json` → correctly out.
+- **Second-order check on `main`'s own content, because it lands in this gate's document.**
+  The merge-delegation paragraph excludes from delegated merge any candidate whose `## Gates`
+  table cites a waived gate. This pull request's table cites none — every row is `pass` or
+  `n/a`, and the only occurrence of the word is the table header — so the delegation applies
+  here and no waiver is being relied on.
+
+This round re-confirms **this pull request's own contribution** at the new head. It does not
+review `main`'s 62 intervening commits, which arrived through their own gates and carry their
+own review notes (`110`, `119`, `122`, `129`, `132`).
+
+**Any further change to a tracked file voids this clearance** and needs a fresh delta review at
+the new head. The two pull-request-body corrections named in §7 have been applied and are not
+tracked-file changes.
 
 **Reviewer independence.** A fresh, review-only Opus context that authored, directed and
 remediated no part of this change, and that is not the context that folded `scripts/deploy.sh`
@@ -206,9 +247,11 @@ follow-up.
 
 ---
 
-## 7. What must still happen before merge
+## 7. What had to happen before merge — done at Round 2
 
-Neither item changes a tracked file, so neither voids this clearance.
+Both items were applied by the coordinator between `a5416cb` and `e86129b`; the gate then
+reported green on everything but the staleness this Round 2 line closes. Neither changed a
+tracked file, so neither voided the clearance.
 
 1. **Record this review in the body**: `## Security review` → `**Model:** Opus 5`, and link
    `docs/07-planning/security-reviews/116-security-review-surface.md`; tick the Definition of
@@ -237,5 +280,9 @@ in the same edit.
   with the delta review's reasoning for deferring both.
 - It is not a merge, and it waives nothing. No waiver was authorized for this pull request, and
   the `## Gates` table cites none.
-- It clears **`36ed6946d0292d2b954297e2bf222de9e27a8f94` and that head only.** Any later commit
-  touching anything outside `docs/07-planning/security-reviews/` voids it.
+- It clears **`e86129b5ff269f5c8b780f915248b767b7ce2fcb`, the current head, and the earlier
+  `36ed6946d0292d2b954297e2bf222de9e27a8f94` for its own head — those two and no others.** Any
+  later commit touching anything outside `docs/07-planning/security-reviews/` voids it.
+- **Round 2 does not extend to `main`'s 62 intervening commits.** It confirms that this pull
+  request's contribution, and the reviewed region of `ci-cd.md`, are unchanged by the merge —
+  not that the code the merge brought in was reviewed here.
