@@ -3,16 +3,17 @@
 > ## ⚠ How to read this file
 >
 > **Snapshot taken:** 2026-09-15
-> **`main` at that moment:** `a76829b` (PR #119, #118 evaluator half — merged after PR #122,
-> the #118 DB half, and PR #110, the #82 fix)
+> **`main` at that moment:** `09169d8` (PR #104, S9 resolved — Path B — merged after PR #137,
+> a control-plane reconciliation, and PR #119, the #118 evaluator half)
 > **Stage:** P0 · Foundation — IN PROGRESS
 > **Throttle 1:** SHUT — 4 of 5 conditions met; condition 2 (issue #6 through retrofit S10)
-> is the sole blocker. **S7's own release condition inside that path, #82 AND #118, is now
-> FULLY CLOSED** (#82 via PR #110, #118 via PRs #122 and #119 — all three merged and
-> independently reviewed, 2 Sonnet + 1 Opus each, all CLEAR). **S7 — native role list and
-> writes — is the new critical-path item; it has not been implemented yet.** The
-> `## Scheduler` section is the current live-state-to-action mapping; read it alongside this
-> header, not instead of it.
+> is the sole blocker. **Of S10's own two preconditions, S9 is now LANDED** (PR #104,
+> 2026-09-15, Path B — teams stay enabled until S10) **and S7's release condition, #82 AND
+> #118, is FULLY CLOSED** (#82 via PR #110, #118 via PRs #122 and #119 — all merged and
+> independently reviewed, 2 Sonnet + 1 Opus each, all CLEAR). **S7 itself — native role list
+> and writes — is the sole remaining critical-path item; it has not been implemented yet.**
+> The `## Scheduler` section is the current live-state-to-action mapping; read it alongside
+> this header, not instead of it.
 >
 > **LIVE pull-request and issue state is NOT durably recorded in this file and must be
 > re-verified from GitHub:** `gh pr list --state open`, `gh pr view <n>`,
@@ -38,13 +39,17 @@
 **Last updated:** 2026-09-15
 **Current stage:** P0 · Foundation — **IN PROGRESS**
 **Updated by:** Claude Code (Sonnet), reconciliation after **PR #110** (#82 fix), **PR #122**
-(#118 DB half) and **PR #119** (#118 evaluator half) all merged to `main`, closing both of
-S7's release conditions. Each was independently reviewed (2 fresh Sonnet + 1 Opus, all
-CLEAR) with a committed security-review note; #119's review tracked a real mid-review
-hazard (#122 merging while #119 was still open broke #119's own test setup) through to a
-verified fix rather than assuming the SHA change was benign. Issues #82 and #118 are now
-both CLOSED. S7 — native role list and writes — is unblocked and is the new critical-path
-item; it has not started yet.
+(#118 DB half), **PR #119** (#118 evaluator half) and **PR #104** (S9 resolved, Path B) all
+merged to `main`. PR #110/#122/#119 closed both of S7's release conditions; each was
+independently reviewed (2 fresh Sonnet + 1 Opus, all CLEAR) with a committed
+security-review note; #119's review tracked a real mid-review hazard (#122 merging while
+#119 was still open broke #119's own test setup) through to a verified fix rather than
+assuming the SHA change was benign. PR #104 needed two full rebases before it was
+mergeable — `main` moved twice under it (once for the #110/#122/#119 chain, once more for
+PR #137's control-plane reconciliation) — both delta-reviewed CLEAR by the same two Sonnet
+reviewers rather than re-reviewed from scratch each time. Issues #82 and #118 are both
+CLOSED; S9 is LANDED. **S7 — native role list and writes — is now the sole remaining
+critical-path item; it has not started yet.**
 
 > **This is a durable snapshot, not a work log.** Update it only on a durable transition: a
 > pull request merges or becomes genuinely review-ready, an issue blocks, unblocks or
@@ -73,17 +78,16 @@ decisions) · `BLOCKED` · `DEFERRED` (valid, not useful yet) · `SUPERSEDED`.
 
 | Item | State | Terminal outcome |
 | --- | --- | --- |
-| S7 — native role list + writes, repointing `listRoles`/`createRole`/`updateRole`/`deleteRole` | **UNBLOCKED, 2026-09-15.** #82 (PR #110) and #118 (PRs #122 + #119) both merged and closed. `roles-and-permissions-ui.md`'s review section already closed (PR #128). **Not yet started.** | Zero executable `authClient.organization.*` callers except the four role-family ones being retired here |
-| PR #104 (S9 — teams decision, Path B) | Docs-only, `mergeable: CONFLICTING`, zero independent review. Independent of S7; needs a rebase then 2 Sonnet reviews (not security scope — no code change). | S9 resolved, teams stay enabled until S10 |
-| PR #116 (fix #115 — widen security-review scope to privileged controllers/migrations/policy root) | `mergeable: MERGEABLE`, zero independent review. **Self-referential**: touches `docs/04-engineering/ci-cd.md`, which is itself on the security-scope glob list, so this needs 2 Sonnet + 1 Opus, not docs-tier review alone. | Security-review glob list actually covers what it claims to |
+| S7 — native role list + writes, repointing `listRoles`/`createRole`/`updateRole`/`deleteRole` | **UNBLOCKED, 2026-09-15.** #82 (PR #110) and #118 (PRs #122 + #119) both merged and closed. `roles-and-permissions-ui.md`'s review section already closed (PR #128). **Not yet started — the critical-path item.** | Zero executable `authClient.organization.*` callers except the four role-family ones being retired here |
+| PR #116 (fix #115 — widen security-review scope to privileged controllers/migrations/policy root) | `mergeable: MERGEABLE`. **Self-referential** (touches `docs/04-engineering/ci-cd.md`, itself on the security-scope glob list) **and CI/security-control machinery**, so AGENTS.md's review-tier table requires **3** ordinary Sonnet reviews, not 2, before the Opus pass. Two posted and CLEAR (one found a real MEDIUM, fixed in `b22b8a8`); a third is in progress. | Security-review glob list actually covers what it claims to |
 
 ### NEXT_DEPENDENCY — becomes critical the moment S7 lands
 
 | Item | Depends on | Terminal outcome |
 | --- | --- | --- |
-| PR #107 (S10 — zero-caller tripwire) | S7 AND S9 both landed | `pnpm check:organization-callers` ratchets to zero; `organization()` unmountable |
-| Issue #6 closes → Throttle 1 opens | S7 → S9 → S10 all landed | Full P1–P4 parallel lane authorization |
-| Issue #124 (still-mounted plugin's `update-member-role` can mint a second owner) | Closes naturally at S10 (plugin unmount), per the issue's own non-goals — not a standalone patch target | Resolved by removal, not by patching the plugin boundary |
+| PR #107 (S10 — zero-caller tripwire) | **S9 already landed** (PR #104 merged 2026-09-15, Path B — teams stay enabled until S10). Still needs **S7**. `mergeable: MERGEABLE`, review status not yet checked this session. | `pnpm check:organization-callers` ratchets to zero; `organization()` unmountable |
+| Issue #6 closes → Throttle 1 opens | S7 → S10 (S9 already landed) | Full P1–P4 parallel lane authorization |
+| Issue #124 (still-mounted plugin's `update-member-role` can mint a second owner) | Closes naturally at S10 (plugin unmount) — the issue's own "Dependency/blocking relationships" section states this, not a standalone patch target | Resolved by removal, not by patching the plugin boundary |
 | Issue #136 (still-mounted plugin's `has-permission` unions duplicate `workspace_role` rows) | Narrowed by #122's constraint; fully closes at S10 | Same — resolved by removal |
 
 ### SAFE_PARALLEL — real work, independent of the P0 security decisions above
@@ -322,8 +326,8 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 
 - **#8** — the router retrofit still waits for #6's removal surface to settle. **#16's
   deletions have landed**, which is half of it; the retrofit itself has now started
-  moving (S0, S1, S2, S3, S4, S4b, S5, S6a and S8a have landed via
-  #57/#65/#67/#76/#85/#77/#112/#109 — S7, S9 and S10 remain), but
+  moving (S0, S1, S2, S3, S4, S4b, S5, S6a, S8a and S9 have landed via
+  #57/#65/#67/#76/#85/#77/#112/#109/#104 — **S7 and S10 remain**), but
   `organization()` is **still mounted** end to end. Classifying a route that is about to
   be replaced is wasted review and a false sense of coverage, so this stays blocked on the
   full retrofit, not on the deletions alone.
@@ -361,16 +365,15 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 - **better-auth `organization()` is removed in P0 — final.** It is **still mounted** on
   `main`, because it is load-bearing for workspace creation, invitations, members and
   roles. Load-bearing means it needs a retrofit (S1–S10, #6 work), not that it is kept.
-- **Retrofit S0, S1, S2, S3, S4, S4b, S5, S6a and S8a are COMPLETE** and on `main` (#65, #57,
-  #65, #76, #67, #85, #77, #112, #109 respectively). **S7, S9 and S10 remain.** S7's
+- **Retrofit S0, S1, S2, S3, S4, S4b, S5, S6a, S8a and S9 are COMPLETE** and on `main` (#65,
+  #57, #65, #76, #67, #85, #77, #112, #109, #104 respectively). **S7 and S10 remain.** S7's
   precondition — **#82 AND #118** — is now **fully closed** (2026-09-15: PR #110 for #82,
   PRs #119 and #122 for #118's two halves, all merged and independently reviewed); **S7 has
-  not started implementation yet**, and it is the critical-path item now. S9's decision is
-  made (Path B, 2026-09-10) and its documentation-only work is carried by the still-open PR
-  #104 (needs a rebase — `mergeable: CONFLICTING` as of this snapshot); S10 unmounts the
-  plugin once S7 and S9 both land, and its tripwire gate is PR #107. Landing a stage does not
-  start the next; each step needs its own scheduling decision, and a green equivalence suite
-  is not permission to begin the next one.
+  not started implementation yet**, and it is the sole remaining critical-path item. S9
+  landed 2026-09-15 (PR #104, Path B, 2026-09-10 decision) — teams stay enabled until S10,
+  which carries S9's `auth.ts` edit; S10 unmounts the plugin once S7 lands too, and its
+  tripwire gate is PR #107. Landing a stage does not start the next; each step needs its own
+  scheduling decision, and a green equivalence suite is not permission to begin the next one.
   **What the client calls now — and this is stated as a command rather than a list, because an
   earlier version of this bullet enumerated it and got three of seven claims wrong:** run
   `grep -rn 'authClient\.organization\.' apps/web/src` for the live surface, excluding the
@@ -416,8 +419,8 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 
   The remaining reason `organization()` is still mounted is **S7** (its precondition, **#82
   AND #118**, is fully CLOSED as of 2026-09-15 — PR #110 for #82, PRs #119 and #122 for
-  #118 — but S7 itself has not started) and **S9** (PR #104, needs rebase); S10 unmounts it
-  once those land.
+  #118 — but S7 itself has not started); **S9 landed 2026-09-15** (PR #104). S10 unmounts it
+  once S7 lands too.
 - **The frozen organization-create baseline is N = 9 observable effects: eight first-order
   create effects plus one eventual, one-hop durable notification consequence.** The eight
   are the `workspace` row, the owner `workspace_member` row, the three seeded
@@ -435,10 +438,10 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 - **Throttle 1's five conditions are settled in their exact form** (full table below).
   **Four of five are now met** (1, 3, 4, 5); **one is not** (2), precisely:
   - **#2 unmet** — issue #6 needs the `organization()` retrofit through **S10**, and it has
-    not run that far: S0, S1, S2, S3, S4, S4b, S5, S6a and S8a have landed; S7, S9 and S10
-    have not. `organization()` is still mounted end to end. The
+    not run that far: S0, S1, S2, S3, S4, S4b, S5, S6a, S8a and S9 have landed; **S7 and
+    S10 have not.** `organization()` is still mounted end to end. The
     [stage ledger](retrofits/organization-plugin-retrofit.md) is the authoritative count —
-    this bullet is the fifth place in this file that had to be corrected for the same fact.
+    this bullet needed correcting for the same fact more than once this project.
   - **#3 — corrected 2026-09-09, live during this very reconciliation pass.** This section
     previously said #3 was unmet because required-status-check reconciliation needed a
     ruleset change only Thomas could make. **Thomas made it, moments before this document
@@ -566,13 +569,13 @@ updated `protect-main` while this document was being corrected, and #7 closed th
 window. Throttle 1's conditions 1, 3, 4 and 5 are now all met. **The critical path is
 issue #6 alone**. **S3 and S5 have both since shipped** — this sentence previously named them
 as the critical path, which was true when written and is not now; the remaining steps are
-**S7, S9 and S10**. #6 closing is what opens Throttle 1.
+**S7 and S10** (S9 landed 2026-09-15, PR #104). #6 closing is what opens Throttle 1.
 
 **S5 has since shipped** (PR #77), as has **S4b** (PR #85) — an earlier version of this
 section listed S5 as "not next, deliberately", which is no longer true. The principle behind
 that note still holds: landing one stage does not start the next, each needs its own
-scheduling decision. Issue **#6 stays OPEN / In Progress** with S7, S9 and S10
-outstanding. **#7 is now
+scheduling decision. Issue **#6 stays OPEN / In Progress** with S7 and S10
+outstanding (S9 landed 2026-09-15). **#7 is now
 CLOSED** (2026-09-09) — the registry, evaluator, route-coverage gate and the required-
 status-check reconciliation are all done; #6 is the only issue left keeping Throttle 1
 closed.
@@ -754,16 +757,16 @@ and reading it that way would open the throttle while `organization()` is still 
 | | Condition | State |
 | --- | --- | --- |
 | 1 | **#5** complete | ✅ merged as PR #13, closed |
-| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; **S0, S1, S2, S3, S4, S4b, S5, S6a and S8a** have landed (#65, #57, #65, #76, #67, #85, #77, #112, #109). S7, S9 and S10 (unmount) remain, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
+| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; **S0, S1, S2, S3, S4, S4b, S5, S6a, S8a and S9** have landed (#65, #57, #65, #76, #67, #85, #77, #112, #109, #104). **S7 and S10 (unmount) remain**, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
 | 3 | **#7** complete | ✅ **met — issue closed 2026-09-09** (`closedAt 2026-09-09T06:29:48Z`). #21 put the registry, evaluator and route-coverage gate on `main`; #19 put `pnpm test:permissions` (74 tests) in CI via `check:route-policy` on every push and pull request. The last open clause — both tests **required status checks** — closed when Thomas updated `protect-main` (ruleset `22365005`): `route policy coverage + permission matrix` now sits among 11 entries in `required_status_checks`, `strict_required_status_checks_policy: true`, `current_user_can_bypass: never` (`updated_at 2026-09-09T06:28:04Z`, re-read directly from `gh api repos/.../rulesets/22365005`, not taken from the closing comment's word) |
 | 4 | route coverage **actually executes** in CI | ✅ **met.** `.github/workflows/ci-fast.yml`'s `route-policy` job runs `pnpm check:route-policy` on every push and pull request, and did on `main`'s first gate-enforcing run (`e11976f`, all 11 applicable jobs green) |
 | 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one |
 
 **What "met" does not mean.** Four conditions being true is not Throttle 1 being open — all
 five are required, and #6 is not a paperwork gap: it is real, unfinished implementation
-depth (S7, S9 and S10 of the retrofit). Nothing about #7 closing or the ruleset landing
-changes how much of `organization()` is still mounted. Throttle 1 opens the day #6 closes,
-and not before.
+depth (S7 and S10 of the retrofit; S9 landed 2026-09-15). Nothing about #7 closing or the
+ruleset landing changes how much of `organization()` is still mounted. Throttle 1 opens the
+day #6 closes, and not before.
 
 ---
 
@@ -801,6 +804,49 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-15 (continued further) · Control-plane docs reconciled (PR #137); S9 landed (PR #104), needing two rebases; PR #116 mid-review
+
+Continuation of the same session, picking up right after the previous entry. Two more pull
+requests merged: **#137** (docs-only — reconciled `status.md` and the retrofit ledger
+against #110/#122/#119's closure of #82/#118, corrected the "S7 unblocked" language,
+refreshed the UAT-gap table; two independent Sonnet reviews found two stale
+"blocked on #82 AND #118" leftovers the first pass missed — both fixed and re-confirmed
+CLEAR at the corrected head) and **#104** (S9 resolved as documentation-only, Path B —
+already fully reviewed weeks earlier, but stale against a fast-moving `main`).
+
+**PR #104 needed two full rebases, not one, because `main` kept moving under it while it
+was being prepared.** The first rebase (merging `main` at the #110/#122/#119 point)
+resolved real conflicts in `decision-log.md` and the retrofit ledger's stage table, and was
+delta-reviewed CLEAR by two Sonnet reviewers. Before that clearance could be acted on, PR
+#137 merged and touched the exact same retrofit-ledger rows — a fresh, real conflict a
+reviewer's own `git merge-tree` dry run predicted before it was acted on. A second rebase
+resolved it. **Both delta reviews were done by resuming the same two reviewer contexts**
+(not spawning fresh ones) with the exact new head each time — the established pattern this
+session uses to avoid re-deriving a full review after a small, well-understood delta.
+
+**A real process incident, worth recording so it does not recur:** mid-way through the
+first rebase's conflict resolution, the shared lane worktree (`lane-e-a1`) was reset out
+from under the orchestrator — most likely by a review subagent's own end-of-task cleanup
+mistaking the shared worktree for one it owned, rather than creating its own isolated copy
+as instructed. No work was permanently lost (the reset landed on a valid, if incomplete,
+intermediate commit), but the second rebase attempt was deliberately done in an isolated
+**detached** worktree instead, pushed by SHA rather than by branch checkout, specifically to
+avoid a repeat. Review-agent prompts for the following PR (#116) were updated to state this
+explicitly. Also found and removed roughly 35 stale, fully-detached leftover review
+worktrees under `.taskdesk-reviews/` and `/tmp/`, spanning already-merged and still-open
+PRs alike — the same worktree-accumulation anti-pattern the governance reset's decision-log
+entry already named as a contributor to the earlier stall.
+
+**PR #116** (widening the security-review-scope glob list, closing #115) is mid-review:
+it is CI/security-control machinery, which `AGENTS.md`'s review-tier table requires **3**
+ordinary reviews for, not 2 — a requirement its own prior review round had missed. Two
+Sonnet reviews are posted and CLEAR (one found and fixed a real MEDIUM); a third is
+in progress. Not yet ready for the Opus pass.
+
+**Not done this session (this entry):** PR #116 has not merged — still needs its third
+ordinary review, then Opus. S7 has not been implemented. The two remaining UAT gaps
+(static file serving, `storage.filesystem` driver) have not been started.
 
 ### 2026-09-15 (continued) · #82 and #118 both closed; S7 unblocked; UAT-0's two prerequisite gaps closed
 
