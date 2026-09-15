@@ -555,9 +555,11 @@ file's older prose.
 
 ### Open
 
-- **INDEPENDENT REVIEW UNAVAILABLE — SUBAGENT MODEL MISROUTED. Needs one owner action.**
-  Every spawned subagent, at every tier, fails with
-  `model_not_found` / HTTP 404 / `model sent to the API: cc/claude-sonnet-5`.
+- **INDEPENDENT SONNET REVIEW IS RESTORED. THE OPUS SECURITY-REVIEW TIER REMAINS BLOCKED
+  ON AN UNRESOLVED THOMAS DECISION.** (This headline itself was wrong twice before — see
+  the correction history below; read it, not the two paragraphs after it, as the current
+  state.) Earlier in this same investigation, every spawned subagent, at every tier, failed
+  with `model_not_found` / HTTP 404 / `model sent to the API: cc/claude-sonnet-5`.
   **Diagnosed, and it is not a quota problem.** The session environment carries
   `CLAUDE_CODE_SUBAGENT_MODEL=cc/claude-sonnet-5` together with
   `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1`. The `cc/` prefix is leftover 9Router routing config
@@ -594,33 +596,24 @@ file's older prose.
   exemption-completeness gap in #110, a governance conflict in a specialist-agent-definitions
   PR). **Independent Sonnet review is not blocked.** What remains blocked, specifically, is
   the **Opus security-review tier** — and the reason has changed too: it is now a **policy
-  question, not a technical one**. `docs/04-engineering/agent-workflow.md` states "No Opus
-  subagents... There is no third option [besides a top-level Opus session or a separate
-  queued session]", citing a real prior incident (two 13-agent Opus workflows exhausting the
-  org's monthly allowance mid-task, killing five of six adversarial passes in flight). A
-  session instruction has repeatedly directed the orchestrator to spawn an Opus subagent
-  anyway. The orchestrator has declined, each time citing the specific rule and its cited
-  incident, and raised an explicit **DECISION REQUIRED** for Thomas: authorize spawning Opus
-  subagents for security review (recorded in the decision log if so, not merged as a fait
-  accompli), or confirm the rule stands and a separate top-level Opus session is required.
-  **Unresolved as of this writing.** Recorded rather than overwritten, same reason as the
-  second correction: the record should not read as though the diagnosis was right the first
-  two times.
+  question, not a technical one**, not an environment problem. The "no Opus subagents" rule,
+  its cited incident, and the fresh-context requirement are already recorded in the decision
+  log — see `decision-log.md`'s 2026-09-06 entry "Model allocation — the orchestrator may be
+  Opus, every spawned agent is Sonnet" (not linked by anchor here — GitHub's generated
+  heading anchors are not stable enough to hand-derive reliably), not repeated here. A session instruction has repeatedly directed the orchestrator to spawn
+  an Opus subagent anyway; the orchestrator has declined each time, citing that entry, and
+  raised an explicit **DECISION REQUIRED** for Thomas: authorize spawning Opus subagents for
+  security review (recorded in the decision log if so, not merged as a fait accompli), or
+  confirm the rule stands and a separate top-level Opus session is required. **Unresolved as
+  of this writing.** Recorded rather than overwritten, same reason as the second correction:
+  the record should not read as though the diagnosis was right the first two times.
 
-  What is unreviewed, by head, all pushed and all with CI green except the security-review gate
-  (which is red **correctly**, because the review genuinely has not happened) — refreshed
-  2026-09-15, several now further along than "unreviewed":
-
-  | PR | Head | Tier needed | State |
-  | --- | --- | --- | --- |
-  | #89 | `8f1d7cd` | Sonnet ✅ PASS, 0 findings — Opus pending | adversarial review (constructed real bypass attempts against live checklist-gate code, all correctly caught) |
-  | #91 | `3fd2855` | Sonnet ✅ PASS, 0 findings — Opus pending | independent event-key re-derivation matched exactly; decision-log append-only confirmed |
-  | #104 | `afd90e4` | Sonnet ✅ CLEAR, docs-only, no Opus needed | **THOMAS MERGE READY** — one stale-citation fix applied and independently re-verified |
-  | #107 | `29aa236` | Sonnet ✅ PASS (after FAIL+fix) — Opus pending | a real `eval()` false-negative was constructed, proven by execution, and fixed (F7); a fresh review of the new head is in flight |
-  | #110 | `450144d` | Sonnet R1/R2/R3 ✅ all PASS — **only Opus remains** | a real exemption-completeness gap (round 3) found and fixed; all three formal reviews now clear the current exact head |
-  | #116 | `b22b8a8` | Sonnet pending | not yet reviewed this round |
-  | #121 | `45f45ba` | Sonnet ✅ CLEAR, not security-scope | **THOMAS MERGE READY** — split off a governance-conflicting commit into its own PR (#127) via `git revert`, not a force-push |
-  | #127 (new) | `c1979d9` | Two independent Sonnet reviews, both FAIL | specialist-agent definitions hardcode non-Claude models for implementation-tier work, contradicting `CLAUDE.md`/`AGENTS.md` — **DECISION REQUIRED (Thomas)**, tracked separately from the Opus-subagent question above |
+  As of 2026-09-15, several open PRs are Sonnet-clear and waiting only on this Opus
+  decision (#104, #110, #121); others are still mid-review or blocked by their own
+  separate findings (#89, #91, #107, #116, #127). Per-PR state is intentionally **not**
+  tabulated here — this file's own header already documents that a live PR table was
+  tried on 2026-09-09 and abandoned for going stale within the hour. Current per-PR
+  state lives on each PR's own comment thread and in `gh pr list --state open`.
 
 - ~~**#110's branch carries three commits of unclear provenance, and its head is therefore
   unverified by this session.**~~ **RESOLVED as a blocker 2026-09-10 — it is not one.** The
@@ -643,8 +636,11 @@ file's older prose.
 - **Superseded detail, retained:** the three commits are `4994ff2`, `fc3f333` and `d0c3062`,
   authored `tmp <tmp@example.invalid>`, landing after this session's verified run of `07622f6`.
   They were **not** reverted or reauthored — rewriting pushed history unilaterally on a P0
-  security branch would be worse than recording it. #110 has since been rebased onto `050a4fd`
-  and its head is now `eba3df8`. `4994ff2` (12:46:01Z), `fc3f333` (13:42:08Z) and `d0c3062`
+  security branch would be worse than recording it. As of this entry's own writing (2026-09-10), #110 had been rebased onto `050a4fd`
+  with head `eba3df8`; #110 has moved several times since (three more commits landed,
+  current live head `450144d`, per `gh pr view 110` — re-read live rather than trusted
+  from this historical line, which is retained for the unattributed-commit record
+  below, not as a live pointer. `4994ff2` (12:46:01Z), `fc3f333` (13:42:08Z) and `d0c3062`
   (13:58:01Z) are authored `tmp <tmp@example.invalid>`, carry no `#82` scope and no
   `Co-Authored-By` trailer, and landed **after** this session's verified run of `07622f6`
   finished at 11:08:06Z. They were pushed to the remote. They edit the `0050` migration, the
