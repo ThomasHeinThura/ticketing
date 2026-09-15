@@ -11,14 +11,22 @@
 > is the current live-state-to-action mapping; read it alongside this header, not instead
 > of it.
 >
-> **LIVE pull-request and issue state is NOT in this file and must be read from GitHub:**
-> `gh pr list --state open`, `gh pr view <n>`, `gh issue list --state open`.
+> **LIVE pull-request and issue state is NOT durably recorded in this file and must be
+> re-verified from GitHub:** `gh pr list --state open`, `gh pr view <n>`,
+> `gh issue list --state open`.
 >
 > This file records the state of the repository **at the SHA above**. It is not synchronised
-> when a subagent opens a branch, and it should not be. Enumerating open pull requests here
-> was tried on 2026-09-09 and abandoned: the list went stale within the hour and cost three
-> independent review rounds. **If this file and GitHub disagree about what is open, GitHub is
-> right and this file is simply older.**
+> when a subagent opens a branch, and it should not be. Enumerating open pull requests as a
+> **durably-maintained list** was tried on 2026-09-09 and abandoned: the list went stale
+> within the hour and cost three independent review rounds. **If this file and GitHub
+> disagree about what is open, GitHub is right and this file is simply older.**
+>
+> **The `## Scheduler` section is the one deliberate exception, and the distinction matters:**
+> it names specific PR/issue numbers, same as the abandoned 2026-09-09 attempt did — but as a
+> **same-session dispatch table dated to this snapshot**, not a claim of durable accuracy. It
+> carries its own re-verify instruction and is expected to go stale and be regenerated next
+> session, the same way the rest of this file is. Trust it exactly as far as the snapshot date
+> above, no further.
 >
 > What this file IS good for: the stage and throttle state, which issues are blocked and
 > why, material decisions taken, and the durable repository and deployment facts — the things
@@ -350,10 +358,12 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   roles. Load-bearing means it needs a retrofit (S1–S10, #6 work), not that it is kept.
 - **Retrofit S0, S1, S2, S3, S4, S4b, S5, S6a and S8a are COMPLETE** and on `main` (#65, #57,
   #65, #76, #67, #85, #77, #112, #109 respectively). **S7, S9 and S10 remain.** S7 is blocked
-  on #82 alone, whose remediation is PR #110; S9's decision is made (Path B, 2026-09-10) and
-  its documentation-only work is carried by the still-open PR #104; S10 unmounts the plugin
-  once both clear, and its tripwire gate is PR #107. Landing a stage does not start the next; each step needs its own scheduling
-  decision, and a green equivalence suite is not permission to begin the next one.
+  on **#82 AND #118** (corrected 2026-09-15; remediation is PR #110 for #82, PRs #119 and
+  #122 for #118's two halves); S9's decision is made (Path B, 2026-09-10) and its
+  documentation-only work is carried by the still-open PR #104; S10 unmounts the plugin once
+  all three clear, and its tripwire gate is PR #107. Landing a stage does not start the next;
+  each step needs its own scheduling decision, and a green equivalence suite is not
+  permission to begin the next one.
   **What the client calls now — and this is stated as a command rather than a list, because an
   earlier version of this bullet enumerated it and got three of seven claims wrong:** run
   `grep -rn 'authClient\.organization\.' apps/web/src` for the live surface, excluding the
@@ -397,8 +407,9 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   (see the S7 row, which now names the read route as well as the three writes). The claim was
   checkable and false, which is the worst kind to put in this file.
 
-  The remaining reason `organization()` is still mounted is **S7** (blocked on #82, whose
-  remediation is PR #110) and **S9**; S10 unmounts it once those clear.
+  The remaining reason `organization()` is still mounted is **S7** (blocked on **#82 AND
+  #118**, corrected 2026-09-15 — remediation is PR #110 for #82, PRs #119 and #122 for
+  #118) and **S9**; S10 unmounts it once those clear.
 - **The frozen organization-create baseline is N = 9 observable effects: eight first-order
   create effects plus one eventual, one-hop durable notification consequence.** The eight
   are the `workspace` row, the owner `workspace_member` row, the three seeded
