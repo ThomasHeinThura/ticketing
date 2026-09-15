@@ -1267,6 +1267,34 @@ describe("checklistPresenceProblems — F2, presence not just state", () => {
       `expected zero genuine review items despite the swap, got: ${JSON.stringify(problems)}`,
     );
   });
+
+  it("does NOT count a review checkbox whose marker is genuine but whose LABEL is spliced across a comment — found adversarially, round 6", () => {
+    // Every prior finding in this block left the marker itself untouched and
+    // spliced the CHECKBOX SYNTAX (`[x]`). This one leaves `- [x]` completely
+    // intact and splices the WORDING that follows it instead:
+    // `- [x] Independent<!--\nzzz\n--> security review`. A marker-only
+    // genuineness check (contiguity of just `- [x]`) waves this through as a
+    // real, ticked review item, because the marker really is one unbroken
+    // run of raw characters — only what comes after it was spliced. Checking
+    // the line's wording span too is what catches it.
+    const raw = [
+      "### Any change",
+      "- [x] does what the task says",
+      "",
+      "### Backend change",
+      "n/a — no backend change.",
+      "",
+      "### Phase completion",
+      "- [x] Independent<!--",
+      "zzz",
+      "--> security review — Opus 5, real",
+    ].join("\n");
+    const problems = checklistPresenceProblems(raw, declared);
+    assert.ok(
+      problems.some((p) => /NO independent-review checkbox/.test(p)),
+      `expected the spliced-label item not to count as a genuine review box, got: ${JSON.stringify(problems)}`,
+    );
+  });
 });
 
 describe("checklistProblems — a checkbox hidden inside a multi-line comment does not count as a real, ticked box", () => {
@@ -1397,6 +1425,35 @@ describe("checklistProblems — a checkbox hidden inside a multi-line comment do
         /manufacturing one that was never in the raw text/.test(p),
       ),
       `expected the manufactured review box to be flagged, got: ${JSON.stringify(problems)}`,
+    );
+  });
+
+  it("FAILS a genuine, unticked ordinary item whose n/a EXCUSE is spliced across a comment — found adversarially, round 6", () => {
+    // The marker `- [ ]` is completely untouched here — only the excuse text
+    // after it is spliced: `n/a<!--\nfiller\n-->: a fabricated excuse`. A
+    // marker-only genuineness check waves the line through as genuine (the
+    // marker really is contiguous), and `itemMarkedNotApplicable` then reads
+    // the spliced excuse as a real one — silently closing a genuinely
+    // unticked, unresolved item with zero problems reported. Checking the
+    // wording span too means this line is not genuine, so it is reported the
+    // same way a hidden-and-manufactured box is: present in the raw text,
+    // absent from the genuine count.
+    const raw = [
+      "### Backend change",
+      "- [ ] pnpm typecheck green — n/a<!--",
+      "filler",
+      "-->: a fabricated excuse",
+    ].join("\n");
+    const problems = checklistProblems(raw);
+    assert.ok(
+      problems.some((p) => /hides 1 checkbox/.test(p)),
+      `expected the spliced-excuse item to be flagged as non-genuine, got: ${JSON.stringify(problems)}`,
+    );
+    assert.ok(
+      problems.some((p) =>
+        /manufacturing one that was never in the raw text/.test(p),
+      ),
+      `expected the spliced-excuse item to be flagged as manufactured too, got: ${JSON.stringify(problems)}`,
     );
   });
 });

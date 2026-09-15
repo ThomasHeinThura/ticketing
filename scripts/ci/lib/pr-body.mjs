@@ -151,61 +151,117 @@ function stripCommentsWithPositions(markdown) {
 }
 
 /**
- * How many checkbox matches in `body`'s VISIBLE (comment-stripped) text are
- * genuine — each one traces to a single unbroken run of the raw source, not
- * to fragments joined across a removed comment. A match is spliced when its
- * mapped raw positions are not consecutive integers: some raw text between
- * two surviving characters was deleted as a comment, so the match exists
- * only because that deletion happened to fuse two unrelated fragments into
- * something that now reads as a checkbox.
- *
- * This is the ground truth `checklistProblems` and `checklistPresenceProblems`
- * check against — not a second count to compare with a first, but a
- * per-match verdict, so a hidden checkbox and a manufactured one in the same
- * block are each caught on their own, regardless of whether the raw and
- * visible totals happen to land on the same number.
+ * Every LINE of `body`'s VISIBLE (comment-stripped) text, paired with
+ * whether the WHOLE line is genuine — every character on it traces to one
+ * unbroken run of the raw source, with no comment spliced out of any part
+ * of it. Line-level, not marker-level: found adversarially, after an
+ * earlier version of this check verified only the checkbox MARKER's own
+ * five characters. A genuine, untouched marker with its LABEL TEXT spliced
+ * in from elsewhere (`- [x] Independent<!--\nfiller\n--> security review`)
+ * has a marker that is perfectly contiguous — the splice sits entirely
+ * after it — so a marker-only check waved it through as a real, ticked
+ * review item. Checking the ENTIRE line closes that: the splice still sits
+ * somewhere within the line's own span, so the line as a whole is not
+ * contiguous, and nothing built on "is this specific line trustworthy"
+ * mistakes it for one that is.
+ */
+function genuineLineFlags(body) {
+  const { text, positions } = stripCommentsWithPositions(body);
+  const lines = text.split("\n");
+  const flags = [];
+  let lineStart = 0;
+
+  // Is every character in [from, to) consecutive in the RAW source — no
+  // comment removed from within this exact span, regardless of what sits
+  // outside it?
+  const contiguous = (from, to) => {
+    for (let k = from + 1; k < to; k += 1) {
+      if (positions[k] !== positions[k - 1] + 1) return false;
+    }
+    return true;
+  };
+
+  for (const line of lines) {
+    const lineEnd = lineStart + line.length; // exclusive, before the "\n"
+    const marker = ANY_BOX_ANYWHERE.exec(line);
+    ANY_BOX_ANYWHERE.lastIndex = 0; // it carries the "g" flag; reset for the next line
+
+    if (!marker) {
+      // No checkbox on this line — not what `genuineBoxLineTexts` looks at,
+      // but keep the array aligned with `lines` regardless.
+      flags.push(contiguous(lineStart, lineEnd));
+    } else {
+      // A self-contained comment sitting in the WHITESPACE between the marker
+      // and the item's own wording changes nothing either side says — found
+      // adversarially, after an earlier version of this check treated ANY
+      // comment anywhere on the line as disqualifying, which also rejected
+      // ordinary, harmless authoring (`- [ ] <!-- note --> Some item`). What
+      // must never be trusted is a comment INSIDE the marker itself, or INSIDE
+      // the wording that follows it — so two spans are checked, not one: the
+      // marker's own characters, and the line's own wording from its first
+      // non-whitespace character onward. A gap that falls only in the padding
+      // between those two spans is exactly the shape a real author's own
+      // spacing choice would leave, and is not evidence of anything spliced.
+      const markerStart = lineStart + marker.index;
+      const markerEnd = markerStart + marker[0].length;
+      let wordingStart = markerEnd;
+      while (wordingStart < lineEnd && /\s/.test(text[wordingStart])) {
+        wordingStart += 1;
+      }
+
+      flags.push(
+        contiguous(markerStart, markerEnd) && contiguous(wordingStart, lineEnd),
+      );
+    }
+
+    // Every path above must fall through to here — an early `continue`
+    // previously skipped this on the no-marker branch, leaving `lineStart`
+    // stuck at 0 for every line after the first and corrupting every
+    // position check downstream of it.
+    lineStart = lineEnd + 1;
+  }
+  return { lines, flags };
+}
+
+/**
+ * How many checkbox markers appear on a GENUINE line of `body`'s visible
+ * text — the ground truth `checklistProblems` and `checklistPresenceProblems`
+ * check against, in place of a raw-vs-visible count comparison. Comparing
+ * two totals cannot close this class of defect: three straight rounds of
+ * independent review found, in order, a checkbox hidden by a comment (raw
+ * count too high), one manufactured by a comment splicing two fragments
+ * together (visible count too high), the combination of both in the same
+ * block (the two changes cancel, so any inequality between the two totals
+ * reads "nothing happened"), and finally a genuine marker whose
+ * surrounding LABEL TEXT was itself spliced (no count anywhere is wrong,
+ * because the marker was never touched — only what the line goes on to say
+ * was). A per-LINE genuineness verdict is not a smarter comparison of the
+ * same two numbers; it is a different question — does this specific line
+ * trace to one unbroken run of the author's own words — and it is asked of
+ * every line independently, so no combination of hiding and manufacturing
+ * elsewhere in the block can make an answer here wrong.
  */
 function genuineBoxCount(body) {
-  return genuineBoxRanges(body).length;
+  return genuineBoxLineTexts(body).reduce(
+    (sum, line) => sum + (line.match(ANY_BOX_ANYWHERE) ?? []).length,
+    0,
+  );
 }
 
 /**
- * The `[start, end)` ranges, in the STRIPPED text, of checkbox matches that
- * are genuine — shared by `genuineBoxCount` and `genuineBoxLineTexts`, so
- * the one contiguity check has one definition.
- */
-function genuineBoxRanges(body) {
-  const { text, positions } = stripCommentsWithPositions(body);
-  const ranges = [];
-  for (const match of text.matchAll(ANY_BOX_ANYWHERE)) {
-    const start = match.index;
-    const end = start + match[0].length;
-    let contiguous = true;
-    for (let k = start + 1; k < end; k += 1) {
-      if (positions[k] !== positions[k - 1] + 1) {
-        contiguous = false;
-        break;
-      }
-    }
-    if (contiguous) ranges.push({ start, end });
-  }
-  return ranges;
-}
-
-/**
- * The full LINE of text (from the stripped output), for each genuine
- * checkbox match in `body` — so a caller can check the item's whole
- * wording (not just the marker) against something like `REVIEW_ITEM`
- * without a manufactured, spliced-together match ever being considered.
+ * The full text of every GENUINE line in `body`'s visible text that
+ * contains at least one checkbox marker — so a caller can check the
+ * item's whole wording (ticked state, `REVIEW_ITEM`, an `n/a` excuse)
+ * against text that is guaranteed to be the author's own unbroken words,
+ * never a fragment fused across a removed comment.
  */
 function genuineBoxLineTexts(body) {
-  const { text } = stripCommentsWithPositions(body);
+  const { lines, flags } = genuineLineFlags(body);
   const results = [];
-  for (const { start, end } of genuineBoxRanges(body)) {
-    const lineStart = text.lastIndexOf("\n", start) + 1;
-    const nextNewline = text.indexOf("\n", end);
-    const lineEnd = nextNewline === -1 ? text.length : nextNewline;
-    results.push(text.slice(lineStart, lineEnd));
+  for (let i = 0; i < lines.length; i += 1) {
+    if (flags[i] && lines[i].match(ANY_BOX_ANYWHERE)) {
+      results.push(lines[i]);
+    }
   }
   return results;
 }
@@ -921,22 +977,32 @@ export function checklistProblems(raw) {
     // No boxes: prose stands on its own, n/a or not. Unchanged behaviour.
     if (boxes.length === 0) continue;
 
-    for (const line of visibleLines) {
-      const visible = line;
-      if (!OPEN_BOX.test(visible)) continue;
+    // Only GENUINE lines go through the ticked/`REVIEW_ITEM`/n/a-excuse
+    // checks below — found adversarially: a genuine, untouched checkbox
+    // marker with everything AFTER it spliced in from across a comment
+    // (`- [ ] pnpm typecheck green — n/a<!--\nfiller\n-->: a fabricated
+    // excuse`) has a marker that is perfectly contiguous, so a marker-only
+    // genuineness check (the previous shape) waved the whole line through —
+    // and `itemMarkedNotApplicable` then read the SPLICED excuse as a real
+    // one, silently closing a genuinely unticked, unresolved item with zero
+    // problems reported. A non-genuine line is already accounted for by the
+    // "manufactured" count above; re-checking its ticked state or wording
+    // here would be trusting exactly the text that was just proven untrustworthy.
+    for (const line of genuineBoxLineTexts(body)) {
+      if (!OPEN_BOX.test(line)) continue;
 
       if (REVIEW_ITEM.test(normaliseItem(line))) {
         problems.push(
-          `"${block.name}": ${visible.trim()}\n      An unticked independent-review item is a BLOCKER, not a note, and it cannot be ` +
+          `"${block.name}": ${line.trim()}\n      An unticked independent-review item is a BLOCKER, not a note, and it cannot be ` +
             "marked n/a — only a completed review at the required tier closes it (CLAUDE.md, third absolute).",
         );
         continue;
       }
 
       // Item-level n/a, with its own reason on its own line.
-      if (!itemMarkedNotApplicable(visible)) {
+      if (!itemMarkedNotApplicable(line)) {
         problems.push(
-          `"${block.name}": ${visible.trim()}\n      Tick it, or mark THIS line n/a with a reason. An n/a elsewhere in the section ` +
+          `"${block.name}": ${line.trim()}\n      Tick it, or mark THIS line n/a with a reason. An n/a elsewhere in the section ` +
             "does not carry over.",
         );
       }
