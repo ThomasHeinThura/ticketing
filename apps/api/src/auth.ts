@@ -1,9 +1,5 @@
 import { apiKey } from "@better-auth/api-key";
-import {
-  sendMagicLinkEmail,
-  sendOtpEmail,
-  sendWorkspaceInvitationEmail,
-} from "@taskdesk/email";
+import { sendMagicLinkEmail, sendOtpEmail } from "@taskdesk/email";
 import {
   ac,
   DEFAULT_ROLE_NAMES,
@@ -37,14 +33,13 @@ import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
 import { checkWorkspaceName } from "./utils/check-workspace-name";
 import { mapCustomOAuthProfileToUser } from "./utils/custom-oauth-profile";
 import { getDefaultCookieAttributes } from "./utils/get-default-cookie-attributes";
-import { getInvitationEmailSubject } from "./utils/get-invitation-email-subject";
-import { getWorkspaceInvitationEmailCopy } from "./utils/get-workspace-invitation-email-copy";
 import { getGithubSsoOAuthCredentials } from "./utils/github-sso-env";
 import { isCloud } from "./utils/is-cloud";
 import { isDisposableEmail } from "./utils/is-disposable-email";
 import { isLocalSignInPath } from "./utils/is-local-sign-in-path";
 import { resolveAuthSecret } from "./utils/require-auth-secret";
 import { TRUSTED_CLIENT_IP_HEADER } from "./utils/resolve-client-ip";
+import { sendNativeWorkspaceInvitationEmail } from "./utils/send-workspace-invitation-email";
 
 config();
 
@@ -455,37 +450,18 @@ export const auth = betterAuth({
           });
         },
       },
+      // S6a: delegates to the shared helper so this still-mounted plugin
+      // route and the native `POST /api/workspace/{id}/invitations` route
+      // (apps/api/src/workspace/controllers/invite-workspace-member.ts)
+      // send byte-identical email content -- see that helper's doc comment.
       async sendInvitationEmail(data) {
-        const inviteLink = `${process.env.TASKDESK_AGENT_URL}/invitation/accept/${data.id}`;
-        const locale = await getUserLocale(data.email);
-        const copy = getWorkspaceInvitationEmailCopy(locale);
-
-        const result = await sendWorkspaceInvitationEmail(
-          data.email,
-          getInvitationEmailSubject(
-            locale,
-            data.inviter.user.name,
-            data.organization.name,
-          ),
-          {
-            inviterEmail: data.inviter.user.email,
-            inviterName: data.inviter.user.name,
-            workspaceName: data.organization.name,
-            invitationLink: inviteLink,
-            to: data.email,
-            copy,
-          },
-        );
-
-        if (
-          result?.success === false &&
-          result.reason === "SMTP_NOT_CONFIGURED"
-        ) {
-          console.warn(
-            "Invitation created but email not sent due to SMTP not being configured",
-          );
-          return;
-        }
+        await sendNativeWorkspaceInvitationEmail({
+          invitationId: data.id,
+          email: data.email,
+          workspaceName: data.organization.name,
+          inviterName: data.inviter.user.name,
+          inviterEmail: data.inviter.user.email,
+        });
       },
     }),
     genericOAuth({
@@ -562,6 +538,18 @@ export const auth = betterAuth({
     max: 100,
     customRules: {
       "/sign-up/email": { window: 60, max: 3 },
+      // S6a (retrofit plan §3, R1): this rule is keyed on the PLUGIN's path
+      // and protects only `/api/auth/organization/invite-member`. The native
+      // `POST /api/workspace/{id}/invitations` route
+      // (apps/api/src/workspace/index.ts) is a different path this limiter
+      // never sees, so it carries its own equivalent --
+      // `requireInviteRateLimit()` (apps/api/src/utils/require-invite-rate-limit.ts),
+      // same window and max. Deliberately NOT removed here: the plugin route
+      // stays mounted and reachable until retrofit S10 unmounts it, and this
+      // rule is still that route's only rate limit. See
+      // organization-invite-rate-limit.test.ts (this rule) and
+      // workspace-invite-rate-limit.test.ts (the native one) --
+      // two protections for two still-live routes, not one rule duplicated.
       "/organization/invite-member": { window: 60, max: 5 },
     },
   },
@@ -672,6 +660,17 @@ export const auth = betterAuth({
       // disposable-email addresses. The 2026-05-28 incident saw ~14k phishing
       // invites sent from throwaway disposable-email signups; gating here
       // shuts that path off without affecting self-hosted instances.
+      //
+      // S6a (retrofit plan §3, R1): like the rate-limit rule above, this
+      // matches the PLUGIN's literal path and does nothing for the native
+      // `POST /api/workspace/{id}/invitations` route
+      // (apps/api/src/workspace/index.ts), which carries its own equivalent
+      // -- `requireInviteAbuseGate()`
+      // (apps/api/src/utils/require-invite-abuse-gate.ts). Kept here,
+      // unremoved, because the plugin route stays mounted and reachable
+      // until retrofit S10 unmounts it, so this is still its only cloud
+      // abuse gate. See organization-invite-abuse-guards.test.ts (this gate)
+      // and workspace-invite-abuse-guards.test.ts (the native one).
       if (ctx.path === "/organization/invite-member" && isCloud()) {
         // `before` hooks don't auto-populate ctx.context.session; load it
         // explicitly. `disableRefresh` keeps this gate cheap: we only need

@@ -24,6 +24,7 @@ import {
 } from "@taskdesk/permissions";
 import { capabilitiesPolicies } from "./capabilities/policy";
 import { instancePolicies } from "./instance/policy";
+import { invitationPolicies } from "./invitation/policy";
 import { projectPolicies } from "./project/policy";
 import { workspacePolicies } from "./workspace/policy";
 
@@ -93,6 +94,7 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/instance/policy.ts", policies: instancePolicies },
   { name: "apps/api/src/project/policy.ts", policies: projectPolicies },
   { name: "apps/api/src/workspace/policy.ts", policies: workspacePolicies },
+  { name: "apps/api/src/invitation/policy.ts", policies: invitationPolicies },
   {
     name: "apps/api/src/capabilities/policy.ts",
     policies: capabilitiesPolicies,

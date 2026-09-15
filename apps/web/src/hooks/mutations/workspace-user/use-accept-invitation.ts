@@ -1,22 +1,21 @@
 import { useMutation } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth-client";
+import acceptInvitation from "@/fetchers/invitation/accept-invitation";
 
 type AcceptInvitationRequest = {
   invitationId: string;
 };
 
+// S6a (issue #6, retrofit plan §3): native replacement for
+// authClient.organization.acceptInvitation() -- see
+// apps/web/src/fetchers/invitation/accept-invitation.ts. The response
+// shape's `invitation.workspaceId` replaces the plugin response's
+// `invitation.organizationId` -- callers that used to read the latter to
+// feed `authClient.organization.setActive({ organizationId })` now read
+// `data.invitation.workspaceId` instead.
 function useAcceptInvitation() {
   return useMutation({
     mutationFn: async ({ invitationId }: AcceptInvitationRequest) => {
-      const { data, error } = await authClient.organization.acceptInvitation({
-        invitationId,
-      });
-
-      if (error) {
-        throw new Error(error.message || "Failed to accept invitation");
-      }
-
-      return data;
+      return acceptInvitation(invitationId);
     },
   });
 }

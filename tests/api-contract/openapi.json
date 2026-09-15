@@ -2014,6 +2014,98 @@
           "valid"
         ]
       },
+      "AcceptedInvitation": {
+        "type": "object",
+        "properties": {
+          "invitation": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "workspaceId": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "role": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "workspaceId",
+              "email",
+              "role",
+              "status"
+            ],
+            "description": "Always `status: \"accepted\"` in a 200 response."
+          },
+          "member": {
+            "type": "object",
+            "properties": {
+              "workspaceId": {
+                "type": "string"
+              },
+              "userId": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "workspaceId",
+              "userId",
+              "role"
+            ],
+            "description": "The membership row this accept created."
+          }
+        },
+        "required": [
+          "invitation",
+          "member"
+        ]
+      },
+      "RejectedInvitation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "Always `\"canceled\"` -- this app's status vocabulary has no separate `rejected` value (apps/api/src/invitation/controllers/reject-invitation.ts)."
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ]
+      },
+      "CanceledInvitation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "Always `\"canceled\"`."
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ]
+      },
       "WorkspaceSummary": {
         "type": "object",
         "properties": {
@@ -2236,6 +2328,17 @@
         },
         "required": [
           "id"
+        ]
+      },
+      "ActivatedWorkspace": {
+        "type": "object",
+        "properties": {
+          "workspaceId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspaceId"
         ]
       },
       "RemovedWorkspaceMember": {
@@ -9500,6 +9603,230 @@
             "description": "Missing or invalid credentials"
           }
         }
+      },
+      "delete": {
+        "operationId": "cancelInvitation",
+        "tags": [
+          "Invitations"
+        ],
+        "summary": "Cancel an invitation",
+        "description": "Cancel a pending invitation. Native replacement for authClient.organization.cancelInvitation().",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The canceled invitation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CanceledInvitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The invitation is no longer pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An API key or impersonation session (session_required), no workspace access, or missing invitation:cancel permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No invitation with this id",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invitation/{id}/accept": {
+      "post": {
+        "operationId": "acceptInvitation",
+        "tags": [
+          "Invitations"
+        ],
+        "summary": "Accept an invitation",
+        "description": "Accept an invitation, creating the caller's workspace membership. Native replacement for authClient.organization.acceptInvitation(). Atomic, and refuses a caller who is already a member of the workspace (issue #88).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The accepted invitation and the new membership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedInvitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The invitation is expired or no longer pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An API key or impersonation session (session_required), or the caller is not this invitation's recipient",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No invitation with this id",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The caller is already a member of this workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invitation/{id}/reject": {
+      "post": {
+        "operationId": "rejectInvitation",
+        "tags": [
+          "Invitations"
+        ],
+        "summary": "Reject an invitation",
+        "description": "Decline an invitation. Native replacement for authClient.organization.rejectInvitation(). Stored as status \"canceled\" -- this app's status vocabulary has no separate \"rejected\" value.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The rejected invitation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RejectedInvitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The invitation is no longer pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An API key or impersonation session (session_required), or the caller is not this invitation's recipient",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No invitation with this id",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/workspace": {
@@ -10082,6 +10409,165 @@
           },
           "403": {
             "description": "No access to the workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "inviteWorkspaceMember",
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Invite a user to a workspace",
+        "description": "Invite a user, by email, into a workspace. Native replacement for authClient.organization.inviteMember(). Sends the invitation email on success.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "role": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "resend": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "email",
+                  "role"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created (or resent) invitation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceInvitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, an unknown role, or the role was 'owner'",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An API key or impersonation session (session_required), no workspace access, missing invitation:create permission, a guest account inviting on cloud, or a disposable-email invitee on cloud",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The target email is already a member, or already has a pending invitation and resend was not set",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many invitations from this client recently",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/activate": {
+      "post": {
+        "operationId": "activateWorkspace",
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Set the caller's active workspace",
+        "description": "Set the calling session's active workspace. Native replacement for authClient.organization.setActive().",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The activated workspace's id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivatedWorkspace"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An API key or impersonation session (session_required), or no workspace access",
             "content": {
               "text/plain": {
                 "schema": {

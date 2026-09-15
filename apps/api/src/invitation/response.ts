@@ -43,3 +43,46 @@ export const invitationDetailsSchema = z
     }),
   })
   .openapi("InvitationDetails");
+
+// S6a -- native invitation-action write routes (issue #6, retrofit plan §3,
+// S6a row): accept, reject, cancel.
+
+export const acceptedInvitationSchema = z
+  .object({
+    invitation: z
+      .object({
+        id: z.string(),
+        workspaceId: z.string(),
+        email: z.string(),
+        role: z.string().nullable(),
+        status: z.string(),
+      })
+      .openapi({
+        description: 'Always `status: "accepted"` in a 200 response.',
+      }),
+    member: z
+      .object({
+        workspaceId: z.string(),
+        userId: z.string(),
+        role: z.string(),
+      })
+      .openapi({ description: "The membership row this accept created." }),
+  })
+  .openapi("AcceptedInvitation");
+
+export const rejectedInvitationSchema = z
+  .object({
+    id: z.string(),
+    status: z.string().openapi({
+      description:
+        'Always `"canceled"` -- this app\'s status vocabulary has no separate `rejected` value (apps/api/src/invitation/controllers/reject-invitation.ts).',
+    }),
+  })
+  .openapi("RejectedInvitation");
+
+export const canceledInvitationSchema = z
+  .object({
+    id: z.string(),
+    status: z.string().openapi({ description: 'Always `"canceled"`.' }),
+  })
+  .openapi("CanceledInvitation");

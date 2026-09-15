@@ -70,3 +70,14 @@ export const updateWorkspaceMemberRoleBody = z.object({
 export const transferWorkspaceOwnershipBody = z.object({
   newOwnerUserId: z.string().min(1),
 });
+
+// S6a -- native invitation write route (issue #6, retrofit plan §3, S6a row).
+
+// `role` is a plain string for the same reason as `addWorkspaceMemberBody`:
+// validated against this workspace's OWN `workspace_role` rows in the
+// controller, not a fixed enum.
+export const inviteWorkspaceMemberBody = z.object({
+  email: z.string().email(),
+  role: z.string().min(1),
+  resend: z.boolean().optional(),
+});

@@ -19,8 +19,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import useCreateWorkspace from "@/hooks/queries/workspace/use-create-workspace";
-import { authClient } from "@/lib/auth-client";
 import { toast } from "@/lib/toast";
 
 type OnboardingStep = "workspace" | "success";
@@ -77,9 +77,8 @@ export function OnboardingFlow() {
       });
 
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
-      await authClient.organization.setActive({
-        organizationId: workspace.id,
-      });
+      // S8a: native replacement for authClient.organization.setActive().
+      await activateWorkspace(workspace.id);
       setCreatedWorkspaceName(data.name);
       toast.success(t("auth:onboarding.toast.workspaceCreated"));
 

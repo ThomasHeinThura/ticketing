@@ -6,7 +6,7 @@ import useCreateWorkspace from "./use-create-workspace";
 
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),
-  list: vi.fn(),
+  getWorkspaces: vi.fn(),
 }));
 
 vi.mock("@taskdesk/libs", () => ({
@@ -17,12 +17,8 @@ vi.mock("@taskdesk/libs", () => ({
   },
 }));
 
-vi.mock("@/lib/auth-client", () => ({
-  authClient: {
-    organization: {
-      list: mocks.list,
-    },
-  },
+vi.mock("@/fetchers/workspace/get-workspaces", () => ({
+  default: mocks.getWorkspaces,
 }));
 
 function createWrapper() {
@@ -40,8 +36,8 @@ function createWrapper() {
 describe("useCreateWorkspace", () => {
   beforeEach(() => {
     mocks.post.mockReset();
-    mocks.list.mockReset();
-    mocks.list.mockResolvedValue({ data: [] });
+    mocks.getWorkspaces.mockReset();
+    mocks.getWorkspaces.mockResolvedValue([]);
   });
 
   it("creates via the native workspace route, ignoring plugin-only options", async () => {

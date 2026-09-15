@@ -17,8 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import useCreateWorkspace from "@/hooks/queries/workspace/use-create-workspace";
-import { authClient } from "@/lib/auth-client";
 import { toast } from "@/lib/toast";
 
 type CreateWorkspaceModalProps = {
@@ -58,9 +58,8 @@ function CreateWorkspaceModal({ open, onClose }: CreateWorkspaceModalProps) {
       toast.success(t("common:modals.createWorkspace.successToast"));
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
 
-      await authClient.organization.setActive({
-        organizationId: createdWorkspace.id,
-      });
+      // S8a: native replacement for authClient.organization.setActive().
+      await activateWorkspace(createdWorkspace.id);
 
       navigate({
         to: "/dashboard/workspace/$workspaceId",

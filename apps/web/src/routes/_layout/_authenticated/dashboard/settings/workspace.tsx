@@ -17,9 +17,9 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import getWorkspaces from "@/fetchers/workspace/get-workspaces";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { getInitials } from "@/lib/get-initials";
 import type Workspace from "@/types/workspace";
@@ -56,9 +56,8 @@ export const Route = createFileRoute(
       throw redirect({ to: "/onboarding" });
     }
 
-    await authClient.organization.setActive({
-      organizationId: workspaces[0].id,
-    });
+    // S8a: native replacement for authClient.organization.setActive().
+    await activateWorkspace(workspaces[0].id);
   },
   component: RouteComponent,
 });

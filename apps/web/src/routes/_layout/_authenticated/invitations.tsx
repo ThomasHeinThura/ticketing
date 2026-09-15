@@ -14,8 +14,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import activateWorkspace from "@/fetchers/workspace/activate-workspace";
+import useAcceptInvitation from "@/hooks/mutations/workspace-user/use-accept-invitation";
+import useRejectInvitation from "@/hooks/mutations/workspace-user/use-reject-invitation";
 import { usePendingInvitations } from "@/hooks/queries/invitation/use-pending-invitations";
-import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { formatDateMedium } from "@/lib/format";
 import { toast } from "@/lib/toast";
@@ -32,6 +34,8 @@ function InvitationsPage() {
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const { user } = useAuth();
+  const acceptInvitationMutation = useAcceptInvitation();
+  const rejectInvitationMutation = useRejectInvitation();
 
   const handleSkip = () => {
     if (!user?.name) {
@@ -47,18 +51,14 @@ function InvitationsPage() {
   ) => {
     setAcceptingId(invitationId);
     try {
-      const { data, error } = await authClient.organization.acceptInvitation({
+      const data = await acceptInvitationMutation.mutateAsync({
         invitationId,
       });
 
-      if (error) {
-        toast.error(error.message || t("invitations:toast.acceptError"));
-        return;
-      }
-
-      await authClient.organization.setActive({
-        organizationId: data?.invitation.organizationId || organizationId,
-      });
+      // S8a: native replacement for authClient.organization.setActive().
+      // The invitation shape is S6a's native one (PR #112): `workspaceId`, and
+      // `mutateAsync` throws rather than returning an `error` field.
+      await activateWorkspace(data.invitation.workspaceId || organizationId);
 
       toast.success(t("invitations:toast.acceptSuccess"));
 
@@ -69,7 +69,7 @@ function InvitationsPage() {
       navigate({
         to: "/dashboard/workspace/$workspaceId",
         params: {
-          workspaceId: data?.invitation.organizationId || organizationId,
+          workspaceId: data.invitation.workspaceId || organizationId,
         },
       });
     } catch (error) {
@@ -86,14 +86,7 @@ function InvitationsPage() {
   const handleRejectInvitation = async (invitationId: string) => {
     setRejectingId(invitationId);
     try {
-      const { error } = await authClient.organization.rejectInvitation({
-        invitationId,
-      });
-
-      if (error) {
-        toast.error(error.message || t("invitations:toast.rejectError"));
-        return;
-      }
+      await rejectInvitationMutation.mutateAsync({ invitationId });
 
       toast.success(t("invitations:toast.rejectSuccess"));
 

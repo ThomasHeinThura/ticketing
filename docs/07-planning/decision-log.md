@@ -17,6 +17,45 @@ Newest first.
 
 ---
 
+### 2026-09-10 · An unrecognised transition effect kind fails closed (`WF-22`)
+
+**Decision:** An authored transition effect whose `kind` falls outside `WF-19`'s vocabulary
+makes the workflow version **invalid**. `resolve_sla` and `reopen_sla` are the automatic
+`WF-17`/`WF-18` effects and are never authorable — a `workflow_transition.effects` array
+containing either is invalid **by name**. Unknown kinds are refused, never ignored and never
+passed through.
+
+**Why:** the specs settled the equivalent question for *guards* — `WF-16` fails closed on an
+unrecognised guard `type`, with `guard.unrecognized` as the reason — and said nothing at all
+about *effects*. `WF-19` calls the effect vocabulary closed and stops there. A sweep of
+`docs/03-features/` and `docs/01-architecture/` for any rule about an unrecognised effect kind
+returned nothing, so the guards half of the pair was specified and the effects half was not.
+
+It stopped being hypothetical during PR #75's second independent review. `AutomaticEffect` is
+deliberately not a member of `Effect`, so a hand-authored transition cannot declare
+`resolve_sla` — and TypeScript genuinely enforces that, proved with a scratch `tsc` run. **But
+the barrier is compile-time only and the data is not.** `workflow_transition.effects` is a
+**jsonb** column, so the realistic path is `JSON.parse` → `any`, which satisfies the union with
+zero type errors. Demonstrated end to end: `JSON.parse('[{"kind":"resolve_sla"}]')` through
+`validateWorkflowVersion` returned `{"valid": true, "errors": []}`. A type guarantee protects
+the code, not the data.
+
+**Alternatives:** *Ignore unknown kinds* — forward-compatible, letting a newer writer add an
+effect an older reader skips, but an effect that silently does nothing is a failure mode this
+repository has been bitten by repeatedly, and it would let `resolve_sla` be smuggled in and
+quietly dropped rather than refused. *Fail closed only for the two automatic kinds, ignore other
+unknowns* — closes the smuggling path while keeping forward compatibility, and was a genuine
+contender. Rejected in favour of the stricter rule for consistency with `WF-16`.
+
+**A numbering note, because the instruction said `WF-20`:** that id was already taken by the
+transition-event rule, and `WF-1`–`WF-21` are all in use. Using `WF-20` would have silently
+redefined an existing rule, so the decision is recorded as **`WF-22`**. The content is exactly
+as directed; only the identifier differs.
+
+**Decided by:** Thomas, 2026-09-10 (P0 velocity addendum). Raised as issue #101.
+
+---
+
 ### 2026-09-09 · Multi-role membership is invalid — one membership, exactly one role, fail closed
 
 **Decision:** **One workspace membership = exactly one role.** Values like `admin,viewer` or
