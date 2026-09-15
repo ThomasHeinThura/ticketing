@@ -580,4 +580,75 @@ describe("S10 — authClient.organization.* callers cannot grow unnoticed", () =
     assert.match(run.output, /re-export of the auth-client module/);
     assert.ok(run.output.includes(BARREL), run.output);
   });
+
+  it("P: a live call spelled inside an eval() string is refused, not silently scored zero (F7)", () => {
+    const FILE = "apps/web/src/evil/eval-bypass.ts";
+    const source = [
+      'import { authClient } from "@/lib/auth-client";',
+      "export function triggerViaEval(organizationId: string) {",
+      '  return eval("authClient.organization.setActive({ organizationId })");',
+      "}",
+      "",
+    ].join("\n");
+
+    const dir = scenario("org-eval-sink", {
+      baseFiles: {},
+      baseBaseline: {},
+      headFiles: { [FILE]: source },
+      headBaseline: {},
+    });
+
+    const run = runChecker(dir, "check-organization-callers.mjs");
+    assert.equal(
+      run.status,
+      1,
+      "a call spelled inside an eval() string must fail closed rather than silently " +
+        "score zero — this is the exact shape a formal review constructed and ran, " +
+        `confirming eval() actually invokes the auth client. Exited ${run.status}:\n${run.output}`,
+    );
+    assert.match(run.output, /string-evaluation sink/);
+    assert.ok(run.output.includes(FILE), run.output);
+  });
+
+  it("Q: an ordinary function-argument setTimeout/setInterval in a file that also imports the client is NOT a false positive", () => {
+    const FILE = "apps/web/src/hooks/use-innocuous-polling.ts";
+    // The setInterval callback deliberately does NOT touch `authClient` at all -- this
+    // fixture is real: apps/web/src/hooks/use-project-websocket.ts imports the client for
+    // one unrelated purpose and separately runs a keepalive `setInterval(() => {...}, ms)`
+    // a few lines below, and the two never interact. This is what F7's fix must NOT refuse.
+    const source = [
+      'import { authClient } from "@/lib/auth-client";',
+      "export async function useInnocuousPolling() {",
+      "  const { data } = await authClient.organization.list();",
+      "  const handle = setInterval(() => {",
+      '    console.log("still alive", data);',
+      "  }, 5000);",
+      "  return () => clearInterval(handle);",
+      "}",
+      "",
+    ].join("\n");
+
+    const dir = scenario("org-eval-sink-false-positive", {
+      baseFiles: {},
+      baseBaseline: {},
+      headFiles: { [FILE]: source },
+      headBaseline: {},
+    });
+
+    const run = runChecker(dir, "check-organization-callers.mjs");
+    // A real, legitimately-classified `authClient.organization.list()` call in this file
+    // is expected and fine -- what this scenario actually tests is that the UNRELATED
+    // function-argument setInterval below it does not ALSO trigger F7's refusal.
+    assert.equal(
+      run.status,
+      1,
+      "expected exactly the growth-ratchet failure for the new unbaselined call, and " +
+        `nothing from F7's eval-sink check. Exited ${run.status}:\n${run.output}`,
+    );
+    assert.doesNotMatch(
+      run.output,
+      /string-evaluation sink/,
+      `F7 must not fire on an ordinary function-argument setInterval:\n${run.output}`,
+    );
+  });
 });
