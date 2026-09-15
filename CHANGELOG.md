@@ -35,6 +35,21 @@ starting point):
   model columns added, Radix → Base UI, PR template written, do-not 16 and the third
   absolute added, go-live rehearsal gate defined. P0 step 1 starts when Thomas confirms
   the SHA.
+- 2026-09-15 — governance reset: merge execution delegated to the orchestrating Claude
+  session once every required gate is green on the exact candidate (previously
+  Thomas-only); subagent model routing simplified to Sonnet (implementation, ordinary
+  review, project-alignment checking) and Opus (final independent security/critical review
+  only, spawned explicitly), dropping an earlier multi-provider-router and non-Claude
+  specialist-subagent experiment that had not worked out in practice; a live UAT deployment
+  made an active near-term priority rather than a later item. See the
+  [decision log](docs/07-planning/decision-log.md), 2026-09-15.
+
+**P0 implementation is well underway** — dozens of pull requests have merged covering the
+CI gate matrix, the permissions/policy registry, the deployment skeleton, and a substantial
+part of the `organization()` plugin retrofit. This file does not enumerate them individually
+— that is exactly the kind of live count that goes stale here; `status.md` and
+`gh pr list --state merged` are the live record. Real, per-feature release entries begin
+once the first version actually ships.
 
 This file starts recording real entries from the first change merged in
 [P0](docs/07-planning/phases.md). Until then, treat
