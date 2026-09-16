@@ -21,7 +21,6 @@ import path from "node:path";
 import { changedPaths } from "./lib/diff.mjs";
 import {
   contentOf,
-  effectivelyNotApplicable,
   field,
   loadBody,
   normaliseHeading,
@@ -46,61 +45,47 @@ function argValue(flag) {
 }
 
 /**
- * The characters allowed to immediately follow "n/a"/"blocked" with NO
- * whitespace — i.e., the separators this repository's own convention
- * actually uses glued directly onto the opener, no space needed first.
- * Drawn from `pr-body.test.mjs`'s own recognised examples: `"n/a: nothing
- * visual here"`, `"N/A, backend only"`. A typographic dash counts too,
- * matching `ITEM_SEPARATOR`'s own family elsewhere in `pr-body.mjs`.
- * Deliberately excludes every OTHER character (a hyphen, a period, a
- * letter, a digit) — those are what a genuine filename glues onto its own
- * name, never what this repository's own authors glue onto a state word.
+ * Does a compact, single-value FIELD like `**Spec:**`'s open with a genuine,
+ * STANDALONE "n/a" / "not applicable" / "blocked" state word — as opposed to
+ * a genuine filename reference whose own text merely starts with letters
+ * that spell one of those words (`n/a-workflows.md`, `blocked.md`)?
+ *
+ * Two prior fixes here tried to enumerate which punctuation characters are
+ * "safe" to glue directly onto the opener with no space: first a deny-list
+ * (reject a hyphen), then an allow-list (accept only whitespace/colon/comma/
+ * dash). Both were found adversarially to be wrong in one direction or the
+ * other — a deny-list misses the next dangerous character (a period, in
+ * `blocked.md`); an allow-list rejects ordinary sentence punctuation a human
+ * obviously writes (a period, semicolon, exclamation mark, closing paren, or
+ * bold-markdown `**` before more prose), wrongly treating an honest "n/a."
+ * or "n/a;" explanation as a genuine reference — reopening the exact
+ * original bug via different punctuation. Enumerating characters is the
+ * wrong shape of fix no matter which list it is.
+ *
+ * The actual invariant doesn't need a list at all: scan forward from the end
+ * of the matched opener. If a WHITESPACE character (or the end of the
+ * string) is reached before any ALPHANUMERIC character, the opener is a
+ * standalone word — whatever punctuation sits in between. If an
+ * alphanumeric character is reached first, the opener is fused into a
+ * longer identifier (a filename), no matter what punctuation preceded it.
+ *
+ * @returns {"not-applicable"|"blocked"|null} `null` when the field does not
+ *   open with a standalone n/a/blocked word at all.
  */
-const COMPACT_FIELD_SEPARATOR = /[\s:,—–]/;
-
-/**
- * Is a compact, single-value FIELD like `**Spec:**`'s — not a whole prose
- * section — declaring n/a or BLOCKED, as opposed to a genuine reference
- * whose own text merely starts with letters that spell one of those words?
- *
- * `effectivelyNotApplicable`/`declaredState` (in `lib/pr-body.mjs`) were
- * built for whole-section PROSE, where a state word is realistically always
- * followed by real punctuation or whitespace before further explanation.
- * Their opener regexes end in a bare `\b` — a word/non-word boundary — and
- * ANY non-word character satisfies it, including one glued directly onto a
- * genuine filename's own name: `n/a-workflows.md` (a hyphen) and
- * `blocked.md` (a period) both satisfy that boundary immediately after the
- * first word, even though neither string is declaring a state at all.
- *
- * The first fix here only rejected a hyphen specifically — found
- * adversarially, again, by the fix's own follow-up review round: a period
- * is exactly as dangerous a glue character as a hyphen, and enumerating
- * "reject a hyphen, then also reject a period, then whatever character is
- * found next" is the same convenient-proxy mistake this file's own F9
- * history already condemns, just moved one level down and repeated
- * per-punctuation-mark. Inverted to an ALLOW-list instead: the opener must
- * be followed by whitespace, end-of-string, or one of the few characters
- * this repository's own convention is actually observed gluing directly
- * onto "n/a"/"blocked" with no space (`COMPACT_FIELD_SEPARATOR`) —
- * anything else is treated as glued to a longer identifier, not a
- * standalone declaration, closing the whole class of "which punctuation
- * mark is dangerous" at once rather than one mark at a time.
- *
- * A real "n/a"/"BLOCKED" declaration followed by a spaced hyphen or dash
- * separator (`"n/a - reason"`, `"BLOCKED — reason"`) still reaches
- * `effectivelyNotApplicable` unchanged, because the character right after
- * the opener there is whitespace, which the allow-list also accepts.
- */
-function specFieldIsNotApplicable(declared) {
+function fieldOpener(declared) {
   const opener = declared.trim().replace(/^[^\p{L}\p{N}]+/u, "");
   const match = /^(?:n\s*\/\s*a|not\s+applicable|blocked)/i.exec(opener);
-  if (match) {
-    const next = opener[match[0].length];
-    if (next !== undefined && !COMPACT_FIELD_SEPARATOR.test(next)) {
-      return false;
-    }
+  if (!match) {
+    return null;
   }
-  return effectivelyNotApplicable(declared);
+  let i = match[0].length;
+  while (i < opener.length && !/\s/.test(opener[i])) {
+    if (/[\p{L}\p{N}]/u.test(opener[i])) {
+      return null; // fused into a longer identifier, e.g. "n/a-workflows.md"
+    }
+    i += 1;
+  }
+  return /^blocked/i.test(match[0]) ? "blocked" : "not-applicable";
 }
 
 /**
@@ -169,7 +154,6 @@ async function main() {
   if (body.trim() !== "") {
     const task = sections(body).get(normaliseHeading("Task"));
     const declared = task ? field(contentOf(task.raw), "Spec") : "";
-    const named = /([a-z0-9-]+\.md)/.exec(declared);
     // Not a bare `/^n\/a$/i` exact match — found adversarially, while
     // shepherding PR #144: that exact-match guard only recognised a Spec
     // field that was LITERALLY the two characters "n/a", not the "n/a —
@@ -179,13 +163,31 @@ async function main() {
     // honestly-written "n/a — this is UAT-deployability infrastructure
     // (tracked in `status.md` and issue #11)..." is not a spec declaration
     // at all, but its own explanation happening to mention a `.md` filename
-    // in passing satisfied the old guard and got read as one anyway. This
-    // is the same defect class F9 already closed once in `pr-body.mjs`'s
-    // own history (a control reading a convenient token instead of the
-    // actual declared state) — see `specFieldIsNotApplicable` below for why
-    // that fix's own `effectivelyNotApplicable` isn't reused unmodified.
-    if (named && !specFieldIsNotApplicable(declared)) {
-      specs.add(named[1]);
+    // in passing satisfied the old guard and got read as one anyway.
+    //
+    // "n/a" unconditionally exempts every `.md` mention in the field: it
+    // asserts "there is no spec for this PR", which is true regardless of
+    // what else the explanation happens to mention. "blocked" does NOT
+    // carry that assertion — it only says an answer can't be given right
+    // now — so once a real filename is actually named, it is always
+    // checked, independent of how much surrounding explanation there is.
+    // (Found adversarially: a length-based "is there enough explanation"
+    // heuristic, reused from `pr-body.mjs`'s whole-SECTION-prose logic, let
+    // a terse "blocked: workflows.md" dodge detection while a more verbose
+    // phrasing of the identical claim was checked — naming the spec more
+    // precisely and tersely was what triggered the bypass. A well-explained
+    // "BLOCKED — reason, see workflows.md" is deliberately still checked
+    // under this design: a false negative here is a real security-process
+    // gap (do-not 15), a false positive only costs a reword, as PR #144
+    // already did once.)
+    //
+    // Every `.md`-shaped token in the field is checked, not just the first
+    // — found adversarially: a Spec field naming a decoy file before the
+    // real one let the real one's open findings go unchecked entirely.
+    if (fieldOpener(declared) !== "not-applicable") {
+      for (const match of declared.matchAll(/[a-z0-9-]+\.md/g)) {
+        specs.add(match[0]);
+      }
     }
   }
 

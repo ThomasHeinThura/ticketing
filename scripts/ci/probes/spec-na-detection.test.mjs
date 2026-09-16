@@ -165,14 +165,16 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
     // did NOT have this specific hole (neither string is literally "n/a"),
     // so this would have been a genuine regression, not a pre-existing gap.
     //
-    // `blocked.md` (a PERIOD, not a hyphen) was found by a THIRD review
-    // round after the hyphen-specific fix landed — the same defect class
-    // recurring one punctuation mark at a time. Fixed by inverting to an
-    // allow-list of the few separators this repository's own convention
-    // actually glues directly onto "n/a"/"blocked" with no space
-    // (`COMPACT_FIELD_SEPARATOR`), rather than enumerating which
-    // characters are dangerous — closing the whole class, not the
-    // instance. Included here as the regression test for that.
+    // `blocked.md` (a PERIOD, not a hyphen) was found by a third review
+    // round after the hyphen-specific fix landed, and then an allow-list
+    // fix for THAT was itself found (by two more reviewers) to reject
+    // ordinary sentence punctuation and reopen the false-positive bug —
+    // see the test below this one. Enumerating "which characters are safe
+    // to glue onto the opener" kept recurring one punctuation mark at a
+    // time no matter which direction the list ran. Round 4 replaced the
+    // whole approach: `fieldOpener()` scans forward from the opener and
+    // asks only whether it hits whitespace/end-of-string before hitting a
+    // letter or digit — no enumerated character list at all.
     for (const [spec, label] of [
       // The `.md` extraction regex's character class excludes "/", so
       // "n/a-workflows.md" itself extracts as "a-workflows.md" — the
@@ -199,6 +201,103 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
         `expected "${spec}" (a genuine filename, not a declaration) with open findings to still fail, exited ${result.status}:\n${result.output}`,
       );
     }
+  });
+
+  it("still PASSES an honest n/a explanation glued to ORDINARY SENTENCE PUNCTUATION — found adversarially by review of the round-3 allow-list fix", () => {
+    // Two of three independent reviewers of round 3's allow-list fix found the SAME
+    // regression, from the opposite direction of round 2's: the allow-list
+    // (`COMPACT_FIELD_SEPARATOR = /[\s:,—–]/`) only accepted whitespace/colon/comma/dash
+    // immediately after the opener — so a period, semicolon, exclamation mark, closing
+    // paren, or bold-markdown `**` (all ordinary ways a human writes a sentence) made the
+    // guard treat an HONEST n/a explanation as a genuine spec declaration, reopening the
+    // exact original PR #144 bug via different punctuation. This is why round 4 replaced
+    // the whole allow-list/deny-list approach with a "does it hit whitespace before a
+    // letter/digit" scan instead of enumerating characters at all.
+    for (const glue of [
+      "n/a. This is UAT-deployability infrastructure (tracked in `status.md` and issue #11), not a `docs/03-features/` product feature.",
+      "n/a; this is CI infrastructure work, tracked in `status.md` and issue #11, not a feature.",
+      "n/a! this only touches CI scripts (see status.md for tracking), no product feature here.",
+      "n/a) this note refers to status.md in passing, not a real spec.",
+      "**n/a** — this is UAT-deployability infrastructure, tracked in `status.md`, not a feature.",
+    ]) {
+      const dir = scenario();
+      const result = runChecker(dir, "check-reviews.mjs", [
+        "--body",
+        bodyWithSpec(glue),
+      ]);
+      assert.equal(
+        result.status,
+        0,
+        `expected the honest n/a explanation ${JSON.stringify(glue.slice(0, 40))}... to pass, exited ${result.status}:\n${result.output}`,
+      );
+    }
+  });
+
+  it("still FAILS a terse 'blocked: <filename>' declaration, regardless of how much explanation follows — found adversarially by a third review round", () => {
+    // A third reviewer found that `effectivelyNotApplicable`'s BLOCKED_EXPLANATION_MINIMUM
+    // (built for whole-SECTION prose, where a bare one-word "BLOCKED" with no real
+    // explanation is treated as an unsubstantiated exemption) was being reused unmodified
+    // at the FIELD level — where the whole point is often to be terse. "blocked:
+    // workflows.md" is short enough to read as "blocked-bare" and silently exempted a real,
+    // named spec, while a more VERBOSE phrasing of the identical claim was correctly
+    // checked: naming the spec more precisely and tersely was what triggered the bypass.
+    //
+    // Fixed by no longer delegating to that length heuristic for "blocked" at the field
+    // level at all: once a real `.md` filename is named, it is always checked, regardless
+    // of how much surrounding explanation there is. ("n/a" keeps its own unconditional
+    // exemption — it asserts "there is no spec", true no matter what else is mentioned;
+    // "blocked" never carried that assertion.)
+    for (const spec of [
+      "blocked: workflows.md",
+      "blocked: waiting on design approval before continuing with workflows.md",
+      "BLOCKED. Waiting on infra described in workflows.md before this can proceed at all here.",
+    ]) {
+      const dir = scenario();
+      write(
+        dir,
+        "docs/07-planning/reviews/2026-09-05/consistency.md",
+        reviewDocWithOpenSection("workflows.md"),
+      );
+      commit(dir, "docs: retarget the open section at workflows.md");
+      const result = runChecker(dir, "check-reviews.mjs", [
+        "--body",
+        bodyWithSpec(spec),
+      ]);
+      assert.notEqual(
+        result.status,
+        0,
+        `expected ${JSON.stringify(spec)} to still fail (a real spec is named, "blocked" ` +
+          `never exempts it), exited ${result.status}:\n${result.output}`,
+      );
+    }
+  });
+
+  it("checks EVERY `.md` mention in the Spec field, not just the first — found adversarially by a third review round", () => {
+    // The extraction regex was non-global and `main()` only ever added its first match, so
+    // a Spec field naming a decoy/context document before the real spec let the real one's
+    // open findings go completely unchecked.
+    const dir = scenario();
+    write(
+      dir,
+      "docs/07-planning/reviews/2026-09-05/consistency.md",
+      reviewDocWithOpenSection("workflows.md"),
+    );
+    commit(dir, "docs: retarget the open section at workflows.md");
+    const result = runChecker(dir, "check-reviews.mjs", [
+      "--body",
+      bodyWithSpec(
+        "`docs/07-planning/decision-log.md` (see also `docs/03-features/workflows.md`)",
+      ),
+    ]);
+    assert.notEqual(
+      result.status,
+      0,
+      `expected the second-mentioned "workflows.md" to still be checked, exited ${result.status}:\n${result.output}`,
+    );
+    assert.match(
+      result.output,
+      /workflows\.md.*still has open review findings/s,
+    );
   });
 
   it("non-vacuity: the OLD exact-match guard really did misread the honest n/a explanation as a declaration", () => {
