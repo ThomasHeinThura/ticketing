@@ -189,6 +189,8 @@ export {
   roleScopeTier,
 } from "./roles.js";
 export {
+  AUTH_GUARD_KEY,
+  authGuardRegistrationIndex,
   type CollectedRoute,
   type CoverageBaseline,
   type CoverageResult,
