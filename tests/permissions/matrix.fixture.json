@@ -462,6 +462,40 @@
 				"outOfReach": "404 not_found"
 			}
 		},
+		"DELETE /api/workspace/{workspaceId}/roles/{roleId}": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
 		"GET /api/auth/*": {
 			"instance_admin": {
 				"inReach": "allow",
@@ -802,6 +836,40 @@
 				"outOfReach": "404 not_found"
 			}
 		},
+		"GET /api/workspace/{workspaceId}/roles": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
 		"GET /api/ws/{projectId}": {
 			"instance_admin": {
 				"inReach": "allow",
@@ -953,6 +1021,40 @@
 			},
 			"manager": {
 				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"PATCH /api/workspace/{workspaceId}/roles/{roleId}": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
 			},
 			"lead": {
@@ -1225,6 +1327,40 @@
 			},
 			"manager": {
 				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"POST /api/workspace/{workspaceId}/roles": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
 			},
 			"lead": {
