@@ -27,21 +27,14 @@
  * spy-able export or call order. A refactor that keeps the guarantee keeps
  * these green; one that quietly reopens the hole cannot.
  *
- * A2-P8 runs the SAME injection against the still-mounted inherited plugin
- * route. better-auth's own `/organization/create` endpoint calls
- * `adapter.createOrganization` / `createMember` / `createTeam` as separate,
- * unwrapped statements before `afterCreateOrganization` ever runs (verified
- * against `better-auth`'s `crud-org.mjs` — there is no transaction spanning
- * them), so this hook cannot roll THOSE back the way the native route's own
- * transaction does. What it does instead, now, is compensate: on a seed
- * failure it deletes the workspace it was just handed, and every row already
- * written (`workspace_member`, `team`, `team_member`) references
- * `workspace.id` `ON DELETE CASCADE`, so that one delete removes all of it.
- * The caller gets a real failure response instead of the silent 200 this
- * probe used to pin — kept here, not deleted, because it is what proves the
- * injection reaches the real seeding path (so A2-P6's green is not vacuous)
- * for the route that is still mounted and still the only one `apps/web`
- * actually calls until S3/S8a repoint it.
+ * A2-P8 and A2-P24, which ran the same two injections (a BEFORE INSERT
+ * failure, and a seed-READ failure) against the still-mounted plugin's own
+ * `/organization/create` route, are gone along with the plugin (S10, issue
+ * #6). A2-P24's read-path scenario has no native equivalent to preserve:
+ * `create-workspace.ts` (read in full before this file was touched) has no
+ * conditional read step inside its transaction at all -- every insert is
+ * unconditional, so every native failure mode is an INSERT failing, already
+ * covered by A2-P6/A2-P7/A2-P9/A2-P10 below.
  */
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -49,10 +42,7 @@ import db, { schema } from "../../apps/api/src/database";
 import { subscribeToEvent } from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import {
-  createWorkspaceViaPlugin,
-  signUpUser,
-} from "./helpers/organization-http";
+import { signUpUser } from "./helpers/organization-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 const FAIL_FUNCTION = "td_probe_fail_insert";
@@ -133,7 +123,7 @@ afterEach(async () => {
   armedTables.clear();
 });
 
-describe("S4 native create is atomic with its default-role seed (A2-P6..A2-P10, A2-P24)", () => {
+describe("S4 native create is atomic with its default-role seed (A2-P6, A2-P7, A2-P9, A2-P10)", () => {
   it("A2-P6 rolls the ENTIRE creation back when default-role seeding fails — no workspace, member, team, team_member or session state survives", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
@@ -200,38 +190,6 @@ describe("S4 native create is atomic with its default-role seed (A2-P6..A2-P10, 
     });
     expect(created.status).toBeGreaterThanOrEqual(500);
 
-    expect(await snapshotAllTableCounts()).toEqual(before);
-    expect(recordedEvents).toHaveLength(0);
-  });
-
-  it("A2-P8 the inherited plugin route now aborts on the same injection instead of reporting a silent 200", async () => {
-    // Kept permanently rather than deleted once the native route went
-    // green. Two jobs, unchanged from before #66 closed:
-    //   1. it proves the injection actually reaches the seeding path, so
-    //      A2-P6's green is not vacuous;
-    //   2. it exercises the route that is still mounted and still serving
-    //      every real client until S3/S8a repoint them.
-    //
-    // Before #66 closed, this asserted the OPPOSITE outcome: `created.status`
-    // was 200 and the workspace survived with zero role rows -- the exact
-    // window issue #66 is about. `afterCreateOrganization` no longer
-    // swallows the seed failure; it deletes the workspace it was just
-    // handed and rethrows, so the caller is told, and — because
-    // `workspace_member`/`team`/`team_member` all reference `workspace.id`
-    // `ON DELETE CASCADE` — nothing is left behind for this route either,
-    // even though it has no transaction of its own to roll back (see the
-    // file header).
-    const { app } = createApp();
-    const owner = await signUpUser(app);
-    const before = await snapshotAllTableCounts();
-
-    await arm("workspace_role");
-
-    const created = await createWorkspaceViaPlugin(app, owner.cookie, {
-      name: "Inherited Partial",
-    });
-
-    expect(created.status).toBeGreaterThanOrEqual(400);
     expect(await snapshotAllTableCounts()).toEqual(before);
     expect(recordedEvents).toHaveLength(0);
   });
@@ -311,60 +269,5 @@ describe("S4 native create is atomic with its default-role seed (A2-P6..A2-P10, 
 
     const workspaces = await db.select().from(schema.workspaceTable);
     expect(workspaces).toHaveLength(5);
-  });
-
-  it("A2-P24 rolls back when the seed's READ fails, not only its INSERT — the case a BEFORE INSERT trigger cannot reach", async () => {
-    // A2-P24, a NEW probe id rather than a reuse of A2-P9. `A2-P*` labels a
-    // requirement, not a test -- several tests may legitimately share one
-    // (A2-P17 labels four, and the decision log cites it by that name). But
-    // A2-P9 is "a retry after the failure clears produces exactly ONE complete
-    // workspace", which is a different requirement from this one, so carrying
-    // its id here would claim coverage this test does not provide. A2-P23 was
-    // the highest id in use across `tests/`; this takes the next free one.
-    // Found by an independent review of the first version of the #66 fix.
-    // That version put the compensating delete around the seed INSERT only,
-    // leaving the pre-check SELECT outside it. So a connection drop, timeout
-    // or deadlock on the READ left the workspace orphaned with no role rows
-    // and NO cleanup -- the exact state this hook exists to prevent, reached
-    // by a different door.
-    //
-    // Every other probe in this file injects with a BEFORE INSERT trigger,
-    // and a trigger cannot fire on a SELECT, so none of them could see it.
-    // This one renames the table out from under the hook instead: the seed's
-    // SELECT then raises `relation "workspace_role" does not exist` inside
-    // PostgreSQL, which is a read-path failure and nothing else.
-    const { app } = createApp();
-    const owner = await signUpUser(app);
-    const before = await snapshotAllTableCounts();
-
-    await db.execute(
-      sql.raw('ALTER TABLE "workspace_role" RENAME TO "workspace_role_hidden"'),
-    );
-    let created: Response;
-    try {
-      created = await createWorkspaceViaPlugin(app, owner.cookie);
-    } finally {
-      await db.execute(
-        sql.raw(
-          'ALTER TABLE "workspace_role_hidden" RENAME TO "workspace_role"',
-        ),
-      );
-    }
-
-    // A real failure, not a silent 200 over a half-built workspace.
-    expect(created.status).toBeGreaterThanOrEqual(500);
-
-    // And the compensating delete ran: the workspace better-auth had already
-    // committed is gone, and everything cascading off it with it.
-    expect(await db.select().from(schema.workspaceTable)).toHaveLength(0);
-    expect(await db.select().from(schema.workspaceUserTable)).toHaveLength(0);
-    expect(await db.select().from(schema.teamTable)).toHaveLength(0);
-    expect(await db.select().from(schema.teamMemberTable)).toHaveLength(0);
-    expect(await db.select().from(schema.workspaceRoleTable)).toHaveLength(0);
-
-    // Whole-database equality, the same oracle A2-P6 uses: nothing anywhere
-    // survived, including session state and notifications.
-    expect(await snapshotAllTableCounts()).toEqual(before);
-    expect(recordedEvents).toHaveLength(0);
   });
 });
