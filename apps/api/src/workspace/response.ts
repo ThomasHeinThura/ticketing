@@ -57,7 +57,8 @@ export const workspaceDetailSchema = z
     }),
     members: workspaceMemberListSchema,
     pendingInvitations: workspaceInvitationListSchema.openapi({
-      description: "This workspace's pending, unexpired invitations.",
+      description:
+        "This workspace's invitations that are still pending -- expired or not (issue #160).",
     }),
   })
   .openapi("WorkspaceDetail");

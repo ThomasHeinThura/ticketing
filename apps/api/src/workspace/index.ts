@@ -169,7 +169,7 @@ const getWorkspaceInvitationsRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Get a workspace's pending invitations",
   description:
-    "List a workspace's pending, unexpired invitations. Native replacement for authClient.organization.listInvitations().",
+    "List a workspace's invitations that are still pending -- expired or not (issue #160). Native replacement for authClient.organization.listInvitations().",
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
