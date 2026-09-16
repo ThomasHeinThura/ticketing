@@ -18,6 +18,7 @@
  */
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { CAPABILITY_CHECKS } from "../../apps/api/src/capabilities/capability-checks";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
@@ -739,5 +740,58 @@ describe("session-only and reach (mirrors every other workspace mutation)", () =
       workspaceId,
     );
     expect(response.status).toBe(403);
+  });
+});
+
+// Issue #108's native-only regression, added ahead of deleting
+// prototype-key-role-characterization.test.ts (S10, issue #6). That file
+// characterized a divergence between the plugin's own `/organization/
+// has-permission` route (which threw a 500 for a role name colliding with
+// an `Object.prototype` key, e.g. "toString", because `acRoles["toString"]`
+// resolves to the inherited function rather than `undefined`) and native's
+// `GET /api/capabilities` (which already failed closed correctly, since
+// `workspaceRolePermission`'s exact-match `workspace_role` lookup finds no
+// row for "toString" and denies everything). The plugin route is gone with
+// S10, so only native's side needs live coverage going forward -- this
+// keeps proving it, rather than losing the scenario along with the file
+// that used to pin both halves.
+describe("#108 a role name colliding with an Object.prototype key gets a clean deny, never a 500", () => {
+  it('role = "toString" planted directly on a real membership (no backing workspace_role row named "toString") denies every capability with a plain 200, and a real write route refuses with 403 -- never a 500 or an unhandled exception', async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "Prototype");
+    const target = await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      "viewer",
+    );
+
+    await setMemberRoleRaw(workspaceId, target.user.id, "toString");
+
+    const capabilities = await app.request(
+      `/api/capabilities?workspaceId=${workspaceId}`,
+      { headers: { cookie: target.cookie } },
+    );
+    expect(capabilities.status).toBe(200);
+    const body = (await capabilities.json()) as Record<string, boolean>;
+    for (const name of Object.keys(CAPABILITY_CHECKS)) {
+      expect(body[name], `capability "${name}" should be denied`).toBe(false);
+    }
+
+    const write = await app.request("/api/project", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: target.cookie,
+      },
+      body: JSON.stringify({
+        workspaceId,
+        name: "Should Not Be Created",
+        slug: "should-not-be-created",
+        icon: "Layout",
+      }),
+    });
+    expect(write.status).toBe(403);
   });
 });
