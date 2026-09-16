@@ -97,19 +97,36 @@
  *             never will.
  *   IDENTIFIER `resolveLocalConst`/`assertNoOtherBinding` (round 5-6, HIGH/MEDIUM) match a
  *             tracked identifier by its literal TEXT (`\bNAME\b`), not by resolving it the
- *             way a JS/TS parser would. A Unicode escape inside an identifier —
- *             `let eventType = "…"` is, at runtime, the exact same binding as
- *             `let eventType = "…"` — is invisible to a text match, because the escaped
- *             form contains no substring spelling the tracked name. A single-file bypass
- *             this specific (independent Opus review, round 6, LOW): a shadowing `let`
- *             written with one escaped character defeats both the round-5 shadow check
- *             AND the round-6 fix above, resolving to whatever the outer const says while
- *             actually reading the escaped `let`. This is the irreducible floor of a
- *             regex-over-text approach, not a one-line gap — closing it for real needs an
- *             AST parse, which this file deliberately does not carry (see the module's own
- *             "no framework dependency" convention elsewhere in this codebase). No such
- *             escape exists anywhere in `apps/api/src` today (`grep -rln '\\\\u00' apps/api/src`
- *             finds none); this comment is a disclosure of a gap, not a promise it never will.
+ *             way a JS/TS parser would, and this is not limited to `let`/`const` bindings —
+ *             a same-named METHOD declaration (object-shorthand or class) is exactly as
+ *             blind to this scanner as the function-declaration case round 6 fixed, and for
+ *             the identical reason: neither shape was added to the whitelist's exclusion,
+ *             only the `function` keyword shape was. No such method exists in
+ *             `apps/api/src` today; disclosed rather than chased, same as everything else in
+ *             this section — round 6 fixed the live near-miss (a `function`-declared
+ *             wrapper actually existed in this tree), this narrower sibling does not have
+ *             one (independent Opus review, round 7, LOW).
+ *
+ *             Separately, and more fundamentally: a Unicode escape sequence inside an
+ *             identifier is, at runtime, the SAME BINDING as the plain-spelled identifier —
+ *             writing the letter `e` in `eventType` as its escape sequence instead changes
+ *             nothing about which variable is referenced — but it is invisible to a text
+ *             match, because the escaped source text contains no substring spelling the
+ *             tracked name. A single-file bypass this specific (independent Opus review,
+ *             round 6, LOW): a shadowing `let` whose declaration spells one letter of its
+ *             name as a Unicode escape defeats both the round-5 shadow check AND the round-6
+ *             fix above, resolving to whatever the outer const says while actually reading
+ *             the escaped `let`. This is the irreducible floor of a regex-over-text
+ *             approach, not a one-line gap — closing it for real needs an AST parse, which
+ *             this file deliberately does not carry (see the module's own "no framework
+ *             dependency" convention elsewhere in this codebase). No such escape exists
+ *             anywhere in `apps/api/src` today — re-runnable evidence, corrected after the
+ *             independent review of this very disclosure found the first version's cited
+ *             command was over-escaped and always matched nothing regardless of the tree's
+ *             actual content (round 7, LOW, documentation accuracy):
+ *             `grep -rlnE '\\u[0-9a-fA-F]{4}' apps/api/src` finds only a regex character
+ *             class in `index.ts`, never an identifier; this comment is a disclosure of a
+ *             gap, not a promise it never will.
  *
  * Usage:
  *   node scripts/ci/check-events.mjs
