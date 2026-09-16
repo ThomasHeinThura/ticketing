@@ -598,6 +598,54 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
     );
   });
 
+  it("PASSES a plain, non-fused 'not applicable' declaration — coverage gap found by a structural review pass", () => {
+    // A structural review pass (round 8's third reviewer) built a table of every reachable
+    // {opener, fusion, multi-word} combination and cross-referenced it against the existing
+    // tests: every "not applicable" test exercised a FUSED case (continuation or overlap) --
+    // the plain, standalone two-word declaration, arguably the primary real-world use of
+    // this spelling, was never directly tested. Traced and confirmed correct before this
+    // test was added; included to close the coverage gap, not because it revealed a bug.
+    const dir = scenario();
+    const result = runChecker(dir, "check-reviews.mjs", [
+      "--body",
+      bodyWithSpec(
+        "not applicable — this is UAT-deployability infrastructure, tracked in " +
+          "status.md, not a feature.",
+      ),
+    ]);
+    assert.equal(
+      result.status,
+      0,
+      `expected a plain "not applicable" explanation to pass, exited ${result.status}:\n${result.output}`,
+    );
+  });
+
+  it("still FAILS a 'blocked' opener fused into a longer WORD via continuation — coverage gap found by a structural review pass", () => {
+    // The same structural review found "blocked" fused-via-continuation (no punctuation at
+    // all between the opener and a longer word, e.g. "blockedwhatever") was tested for "n/a"
+    // and "not applicable" but never for "blocked" itself. Traced and confirmed correct
+    // before this test was added — "blocked"/null take the identical code path in main(),
+    // so this was never actually at risk, but it closes the coverage gap directly.
+    const dir = scenario();
+    write(
+      dir,
+      "docs/07-planning/reviews/2026-09-05/consistency.md",
+      reviewDocWithOpenSection("workflows.md"),
+    );
+    commit(dir, "docs: retarget the open section at workflows.md");
+    const result = runChecker(dir, "check-reviews.mjs", [
+      "--body",
+      bodyWithSpec(
+        "blockedwhatever, but flagging `docs/03-features/workflows.md` too",
+      ),
+    ]);
+    assert.notEqual(
+      result.status,
+      0,
+      `expected the fused "blocked" opener to still surface workflows.md's open findings, exited ${result.status}:\n${result.output}`,
+    );
+  });
+
   it("non-vacuity: the OLD exact-match guard really did misread the honest n/a explanation as a declaration", () => {
     const dir = scenario();
     const declared =
