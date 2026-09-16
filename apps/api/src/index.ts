@@ -30,12 +30,13 @@ import { migrateColumns } from "./migrations/column-migration";
 import notification from "./notification";
 import notificationPreferences from "./notification-preferences";
 import oauth from "./oauth";
-import { createRoute, jsonResponse, z } from "./openapi";
+import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
 import { initializePlugins } from "./plugins";
 import project from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
-import { getPrivateObject } from "./storage/s3";
+import { getPrivateObject, getStorageDriver } from "./storage";
+import { writeUploadedObject } from "./storage/filesystem";
 import task from "./task";
 import taskRelation from "./task-relation";
 import timeEntry from "./time-entry";
@@ -463,6 +464,72 @@ export function createApp(options: { staticRoot?: string } = {}) {
         console.error("Failed to stream asset:", error);
         throw new HTTPException(404, { message: "Asset object not found" });
       }
+    },
+  );
+
+  api.openapi(
+    createRoute({
+      method: "put",
+      operationId: "uploadFilesystemStorageObject",
+      path: "/storage/filesystem-upload",
+      tags: ["Assets"],
+      summary: "Upload bytes to the filesystem storage driver",
+      description:
+        "The local equivalent of a presigned S3 PUT: accepts raw bytes for a short-lived, " +
+        "key-scoped upload token minted by createTaskImageUploadUrl when " +
+        "TASKDESK_STORAGE_DRIVER is filesystem (the default). Not authenticated by a browser " +
+        "session — the signed token in the query string is the credential, the same way " +
+        "possession of a presigned S3 URL is. 404s when the s3 driver is active, since that " +
+        "driver never issues a URL pointing here.",
+      security: [],
+      request: {
+        query: z.object({
+          key: z.string().min(1),
+          expires: z
+            .string()
+            .regex(/^\d+$/, "expires must be a unix timestamp"),
+          token: z.string().min(1),
+        }),
+        body: {
+          required: true,
+          content: {
+            "application/octet-stream": {
+              schema: { type: "string", format: "binary" },
+            },
+          },
+        },
+      },
+      responses: {
+        204: { description: "Stored" },
+        400: errorResponse(
+          "Invalid key, expired or invalid token, or the upload exceeds the configured limit",
+        ),
+        404: errorResponse("The filesystem storage driver is not active"),
+      },
+    }),
+    async (c) => {
+      if (getStorageDriver() !== "filesystem") {
+        throw new HTTPException(404, {
+          message: "The filesystem storage driver is not active.",
+        });
+      }
+
+      const { key, expires, token } = c.req.valid("query");
+
+      try {
+        await writeUploadedObject({
+          key,
+          expires,
+          token,
+          body: c.req.raw.body,
+        });
+      } catch (error) {
+        throw new HTTPException(400, {
+          message: error instanceof Error ? error.message : "Upload failed.",
+        });
+      }
+
+      return c.body(null, 204);
     },
   );
 

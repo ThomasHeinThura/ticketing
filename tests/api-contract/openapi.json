@@ -2602,6 +2602,82 @@
         }
       }
     },
+    "/storage/filesystem-upload": {
+      "put": {
+        "operationId": "uploadFilesystemStorageObject",
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Upload bytes to the filesystem storage driver",
+        "description": "The local equivalent of a presigned S3 PUT: accepts raw bytes for a short-lived, key-scoped upload token minted by createTaskImageUploadUrl when TASKDESK_STORAGE_DRIVER is filesystem (the default). Not authenticated by a browser session — the signed token in the query string is the credential, the same way possession of a presigned S3 URL is. 404s when the s3 driver is active, since that driver never issues a URL pointing here.",
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "key",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "required": true,
+            "name": "expires",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "token",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Stored"
+          },
+          "400": {
+            "description": "Invalid key, expired or invalid token, or the upload exceeds the configured limit",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The filesystem storage driver is not active",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/user/avatar/{id}": {
       "get": {
         "operationId": "getUserAvatar",
