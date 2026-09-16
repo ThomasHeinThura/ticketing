@@ -49,6 +49,29 @@ function argValue(flag) {
 const MD_TOKEN = /[a-z0-9-]+\.md/gi;
 
 /**
+ * Where a recognised "n/a" / "not applicable" / "blocked" opener sits in a compact
+ * field's text, or `null` if the field does not open with one at all. Shared between
+ * `fieldOpener` (the exemption decision) and `specsNamedIn` (extraction) so the two
+ * can never disagree about where the opener's own text ends.
+ */
+function openerMatch(declared) {
+  const trimmed = declared.trim();
+  const leadingStrip = /^[^\p{L}\p{N}]+/u.exec(trimmed);
+  const offset = leadingStrip ? leadingStrip[0].length : 0;
+  const opener = trimmed.slice(offset);
+  const match = /^(?:n\s*\/\s*a|not\s+applicable|blocked)/i.exec(opener);
+  if (!match) {
+    return null;
+  }
+  return {
+    trimmed,
+    openerStart: offset,
+    openerEnd: offset + match[0].length,
+    matchText: match[0],
+  };
+}
+
+/**
  * Does a compact, single-value FIELD like `**Spec:**`'s open with a genuine,
  * STANDALONE "n/a" / "not applicable" / "blocked" state word — as opposed to
  * a genuine filename reference whose own text merely starts with letters
@@ -72,8 +95,20 @@ const MD_TOKEN = /[a-z0-9-]+\.md/gi;
  * Two checks together close both holes, because they test different things:
  *
  * 1. If the character immediately after the opener continues the SAME
- *    alphanumeric run with NO separator at all, the opener is a prefix of a
- *    longer WORD (filename or not) — `"n/architecture"`, `"blockedworkflows.md"`.
+ *    WORD with NO separator at all, the opener is a prefix of a longer
+ *    identifier (filename or not) — `"n/architecture"`, `"blockedworkflows.md"`,
+ *    `"n/a_workflows.md"`. "Continues the word" means a Unicode letter,
+ *    number, OR underscore — the conventional notion of a word/identifier
+ *    character (matching what `\w` already means in every mainstream regex
+ *    dialect), not just `\p{L}\p{N}`: an underscore is virtually never used
+ *    as standalone prose punctuation the way a period or dash is, so its
+ *    presence immediately after the opener is as strong a fusion signal as
+ *    a letter is, found adversarially after a first version of this check
+ *    only tested `\p{L}\p{N}` and missed exactly this. Read via
+ *    `codePointAt`/`fromCodePoint`, not direct indexing — indexing returns
+ *    one UTF-16 code UNIT, which is a lone (non-letter) surrogate half when
+ *    an astral-plane letter sits at the boundary, found adversarially to
+ *    silently defeat this very check for non-ASCII input.
  * 2. Otherwise, the opener may still be fused into a filename through
  *    punctuation with no surrounding space (`"n/a-workflows.md"`,
  *    `"n/a—this..."`) — tested by OVERLAP against the same `.md` extraction
@@ -84,20 +119,20 @@ const MD_TOKEN = /[a-z0-9-]+\.md/gi;
  *   fused into a filename or into an unrelated longer word).
  */
 function fieldOpener(declared) {
-  const trimmed = declared.trim();
-  const leadingStrip = /^[^\p{L}\p{N}]+/u.exec(trimmed);
-  const offset = leadingStrip ? leadingStrip[0].length : 0;
-  const opener = trimmed.slice(offset);
-  const match = /^(?:n\s*\/\s*a|not\s+applicable|blocked)/i.exec(opener);
-  if (!match) {
+  const info = openerMatch(declared);
+  if (!info) {
     return null;
   }
+  const { trimmed, openerStart, openerEnd, matchText } = info;
 
-  const openerStart = offset;
-  const openerEnd = offset + match[0].length;
-
-  if (openerEnd < trimmed.length && /[\p{L}\p{N}]/u.test(trimmed[openerEnd])) {
-    return null; // fused into a longer word with no separator at all
+  if (openerEnd < trimmed.length) {
+    const nextCodePoint = trimmed.codePointAt(openerEnd);
+    if (
+      nextCodePoint !== undefined &&
+      /[\p{L}\p{N}_]/u.test(String.fromCodePoint(nextCodePoint))
+    ) {
+      return null; // fused into a longer word with no separator at all
+    }
   }
 
   for (const token of trimmed.matchAll(MD_TOKEN)) {
@@ -107,7 +142,69 @@ function fieldOpener(declared) {
       return null; // overlaps a real filename match -- fused, not standalone
     }
   }
-  return /^blocked/i.test(match[0]) ? "blocked" : "not-applicable";
+  return /^blocked/i.test(matchText) ? "blocked" : "not-applicable";
+}
+
+/**
+ * `declared`, with a MULTI-WORD opener's own trailing word (and any punctuation glued
+ * immediately after it) masked out — so a downstream filename extraction can never
+ * swallow part of the opener's own prose as if it were part of a filename.
+ *
+ * Found adversarially: for the two-word opener "not applicable" glued via a hyphen to
+ * a real filename ("not applicable-workflows.md"), the exemption decision above
+ * correctly detects fusion (via the overlap check) and correctly decides "not exempt"
+ * — but extracting `.md` tokens from the RAW field text lets the word "applicable" (the
+ * opener's own second word) bleed into what gets reported as "the filename":
+ * `"applicable-workflows.md"` instead of `"workflows.md"`. That name matches no real
+ * file, so the real spec's open findings were silently never checked — the exemption
+ * decision was right, but the extraction was corrupted by it.
+ *
+ * Single-word openers ("n/a", "blocked") are deliberately left untouched: their own
+ * letters are legitimately meant to be read as part of an adjacent fused filename's
+ * real name (`"blocked.md"`, `"n/a-workflows.md"` extracting as `"a-workflows.md"` —
+ * an established, accepted quirk since the very first fix here). There is no separate
+ * WORD in a single-word opener to accidentally swallow; the corruption only exists
+ * where the opener itself contains more than one word.
+ */
+function withOpenerWordMasked(declared) {
+  const info = openerMatch(declared);
+  if (!info) {
+    return declared;
+  }
+  const { trimmed, openerStart, openerEnd } = info;
+
+  const withinOpener = trimmed.slice(openerStart, openerEnd);
+  const trailingWhitespace = [...withinOpener.matchAll(/\s+/g)].pop();
+  if (!trailingWhitespace) {
+    return trimmed; // single-word opener -- nothing to mask
+  }
+  const lastWordStart =
+    openerStart + trailingWhitespace.index + trailingWhitespace[0].length;
+
+  let maskEnd = openerEnd;
+  while (maskEnd < trimmed.length && !/[\p{L}\p{N}]/u.test(trimmed[maskEnd])) {
+    maskEnd += 1;
+  }
+
+  return (
+    trimmed.slice(0, lastWordStart) +
+    " ".repeat(maskEnd - lastWordStart) +
+    trimmed.slice(maskEnd)
+  );
+}
+
+/**
+ * The spec filenames actually named in a compact field, honouring the exemption
+ * decision above: empty when the field is a genuine "n/a"/"not applicable"
+ * declaration, every `.md` mention (lower-cased, masked against opener-word
+ * corruption) otherwise.
+ */
+function specsNamedIn(declared) {
+  if (fieldOpener(declared) === "not-applicable") {
+    return [];
+  }
+  const source = withOpenerWordMasked(declared);
+  return [...source.matchAll(MD_TOKEN)].map((match) => match[0].toLowerCase());
 }
 
 /**
@@ -235,10 +332,12 @@ async function main() {
     // instead of reporting one — dropping the `i` flag instead would only
     // trade that silent miss for a different one (never extracting the
     // mention at all). Lower-casing here is what actually closes it.
-    if (fieldOpener(declared) !== "not-applicable") {
-      for (const match of declared.matchAll(MD_TOKEN)) {
-        specs.add(match[0].toLowerCase());
-      }
+    //
+    // Extracted via `specsNamedIn`, not a raw `declared.matchAll(MD_TOKEN)`
+    // — see `withOpenerWordMasked` for why a multi-word opener's own
+    // trailing word needs masking before extraction.
+    for (const spec of specsNamedIn(declared)) {
+      specs.add(spec);
     }
   }
 

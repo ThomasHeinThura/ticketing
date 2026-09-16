@@ -454,6 +454,110 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
     );
   });
 
+  it("still FAILS an underscore-glued filename right after the opener — found adversarially by a sixth review round", () => {
+    // "n/a_workflows.md" evaded both round-6 checks the same way "n/a.workflows.md" and
+    // "n/a—workflows.md" do (an underscore is neither a letter/digit for the
+    // continuation check, nor part of `MD_TOKEN`'s `[a-z0-9-]` filename character class,
+    // so nothing overlapped). Those two ARE an accepted trade-off — a period or dash is
+    // genuinely used as standalone prose punctuation. An underscore is not: it is
+    // specifically an identifier/token-joining character, so its presence immediately
+    // after the opener with no space is a much stronger fusion signal than any prose
+    // punctuation mark. Fixed by treating underscore as a word-continuation character
+    // alongside letters and digits (the conventional notion of a "word character", same
+    // as `\w` in every mainstream regex dialect already includes it).
+    const dir = scenario();
+    write(
+      dir,
+      "docs/07-planning/reviews/2026-09-05/consistency.md",
+      reviewDocWithOpenSection("workflows.md"),
+    );
+    commit(dir, "docs: retarget the open section at workflows.md");
+    const result = runChecker(dir, "check-reviews.mjs", [
+      "--body",
+      bodyWithSpec("n/a_workflows.md — nothing else to see here"),
+    ]);
+    assert.notEqual(
+      result.status,
+      0,
+      `expected the underscore-fused filename to still fail, exited ${result.status}:\n${result.output}`,
+    );
+  });
+
+  it("still FAILS a word-prefix fusion across an ASTRAL Unicode character at the boundary — found adversarially by a sixth review round", () => {
+    // The word-continuation check originally read `trimmed[openerEnd]`, a single UTF-16
+    // code UNIT. When an astral-plane letter (a surrogate pair) sits exactly at that
+    // boundary, the code unit read is a lone surrogate half — category "Cs" (Surrogate),
+    // not a letter — so the check wrongly said "no continuation", reopening the
+    // word-prefix bug (round 5) for non-ASCII input specifically. Fixed with
+    // `codePointAt`/`fromCodePoint`, which correctly reassembles the full code point
+    // before testing it.
+    const dir = scenario();
+    write(
+      dir,
+      "docs/07-planning/reviews/2026-09-05/consistency.md",
+      reviewDocWithOpenSection("workflows.md"),
+    );
+    commit(dir, "docs: retarget the open section at workflows.md");
+    const result = runChecker(dir, "check-reviews.mjs", [
+      "--body",
+      bodyWithSpec(
+        "n/a\u{10400}rchitecture change, but flagging `docs/03-features/workflows.md` too",
+      ),
+    ]);
+    assert.notEqual(
+      result.status,
+      0,
+      `expected the astral-Unicode word-prefix fusion to still fail, exited ${result.status}:\n${result.output}`,
+    );
+  });
+
+  it("checks the REAL filename, not a corrupted one, when a MULTI-WORD opener is glued to it — found adversarially by a sixth review round", () => {
+    // For the single-word openers ("n/a", "blocked"), the exemption decision and the
+    // filename extraction agree on the same string, even when that string is an
+    // established, accepted quirk ("n/a-workflows.md" extracting as "a-workflows.md").
+    // For the TWO-WORD opener "not applicable" glued via a hyphen to a real filename
+    // ("not applicable-workflows.md"), the exemption decision above still correctly
+    // detects fusion (via the overlap check) and correctly decides "not exempt" — but
+    // extracting `.md` tokens from the RAW field text let the word "applicable" (the
+    // opener's own SECOND word) bleed into what got reported as "the filename":
+    // "applicable-workflows.md" instead of "workflows.md". That name matches no real
+    // file, so the real spec's open findings were silently never checked — the
+    // exemption decision was right, but the extraction was corrupted by it.
+    //
+    // Fixed by masking the opener's own trailing word (and any punctuation glued
+    // immediately after it) before extracting — but ONLY for genuinely multi-word
+    // openers; a single-word opener's own letters legitimately are the start of the
+    // adjacent fused filename's real name and must stay untouched.
+    for (const spec of [
+      "not applicable-workflows.md",
+      "not  applicable-workflows.md", // multiple spaces between the two words
+      "not applicable_workflows.md", // underscore variant of the same class
+    ]) {
+      const dir = scenario();
+      write(
+        dir,
+        "docs/07-planning/reviews/2026-09-05/consistency.md",
+        reviewDocWithOpenSection("workflows.md"),
+      );
+      commit(dir, "docs: retarget the open section at workflows.md");
+      const result = runChecker(dir, "check-reviews.mjs", [
+        "--body",
+        bodyWithSpec(spec),
+      ]);
+      assert.notEqual(
+        result.status,
+        0,
+        `expected "${spec}" to correctly identify and check workflows.md (not a ` +
+          `corrupted name), exited ${result.status}:\n${result.output}`,
+      );
+      assert.match(
+        result.output,
+        /workflows\.md.*still has open review findings/s,
+        `expected the failure to name workflows.md specifically for "${spec}", got:\n${result.output}`,
+      );
+    }
+  });
+
   it("non-vacuity: the OLD exact-match guard really did misread the honest n/a explanation as a declaration", () => {
     const dir = scenario();
     const declared =
