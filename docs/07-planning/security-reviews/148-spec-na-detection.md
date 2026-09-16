@@ -130,3 +130,66 @@ None of the three blocks merge.
 ---
 
 *Reviewed by a fresh Claude Opus context, 2026-09-16.*
+
+---
+
+# Merge-delta confirmation — `origin/main` merged in
+
+**Reviewed head:** `acaa424b0570fc8518c180ddc9b1ee638706bb35`
+**Supersedes the head binding of:** `fd8a4290a3d6f557c077686f2a8bf610a7bf8e05` (the full
+review above, which remains valid for its own head)
+**Merge commit:** `acaa424` — parents `57306ca` (the note above) and `47d37f3` (`origin/main`)
+
+**Verdict: CLEAR.** Confirmed no-op with respect to the code this PR is about.
+
+## Tier — and why this is the right one
+
+This is a **lightweight confirmation, not a full re-audit**, under the risk-graduated
+review tiers adopted 2026-09-16 (`AGENTS.md`, "Review tiers"). It claims only what it
+verified: that the merge introduced nothing new into the reviewed surface. It does **not**
+re-derive the adversarial analysis, the mutation testing, or the merge-base differential
+above — those stand on the full review at `fd8a429`.
+
+That is the correct tier here because this candidate sits in the lightest row: a
+security-scope-path change whose **only** delta since its last full review is absorbing
+unrelated upstream commits, with the code actually under review provably untouched. The
+staleness mechanism in `security-review-note.mjs` fired on the merge, as designed — but it
+fires on *any* commit, and what it flagged here is the branch catching up to `main` to
+satisfy branch protection ("branches must be up to date"), not a change to
+`check-reviews.mjs`.
+
+## What was verified directly
+
+| Claim | Evidence |
+| --- | --- |
+| **`check-reviews.mjs` is untouched** | `git diff fd8a429 acaa424 -- scripts/ci/check-reviews.mjs` is empty, and the blob hash is identical at both heads (`114788a7fd6a6bd91a617ee3577b5104c134c3d1`). The file this PR exists to change did not move |
+| **The four imported functions are byte-identical** | Re-verified here rather than taken on report. `contentOf`, `field`, `sections` and `normaliseHeading` extracted from `scripts/ci/lib/pr-body.mjs` at both heads and diffed: all four empty. This matters because `pr-body.mjs` *did* change substantially in the merge (+802) — but not in the four functions this checker calls |
+| **The merge brought only already-reviewed work plus docs** | The 29 commits are PR #89's checklist-genuineness hardening (merged to `main` under its own gates, with its own Opus clearance recorded at `89-checklist-genuineness-hardening.md`, itself included in the delta), PR #149's `status.md` reconciliation, and this PR's own review note. No dependency change: no `package.json`, no lockfile, no `pnpm-workspace.yaml` in the delta |
+| **The only non-`scripts/ci`, non-docs files are cosmetic test edits** | `tests/api-integration/authorization-boundaries.test.ts` and `time-entry-duration.test.ts` change exactly one expression shape, `columns.todo?.id ?? null` → `columns.todo.id`, in test fixtures. Test-only, no production path, from PR #89's commit `8c141b1` |
+| **Suites green, independently run at this head** | Fresh clone at `acaa424`: `spec-na-detection.test.mjs` **18/18**; full `scripts/ci` suite **399 tests, 396 pass, 3 fail**. The rise from the 348 recorded above is PR #89's new tests arriving with the merge (`head-binding.test.mjs`, `stale-review-note.test.mjs`, and an expanded `pr-body.test.mjs`) — not a change in this PR's own coverage |
+| **The 3 failures are the known `tsc` gap, not something new** | All three are in `typecheck-coverage.test.mjs`, all `spawnSync … /node_modules/.bin/tsc ENOENT`. Confirmed by checking that `apps/api/node_modules` does not exist at all in a clone with no `pnpm install` — the same characterisation as the full review, verified again rather than assumed |
+
+## What this confirmation did not do
+
+- Did not re-run the adversarial input matrix, the mutation testing, or the merge-base
+  behavioural differential. Those are the full review's work, bound to `fd8a429`, and the
+  byte-identity of the reviewed surface is what carries them forward to this head.
+- Did not review PR #89's changes to `pr-body.mjs` on their merits. They arrived on `main`
+  through their own gates and their own Opus clearance; this pass checked only that they
+  do not reach the four functions `check-reviews.mjs` depends on.
+- Did not re-check the three informational findings above. Nothing in the merge touches
+  the code they describe.
+
+## One operational note, not a finding
+
+`origin/main` moved again after this merge — it is now `6486d50` (PR #151, the
+risk-graduated-review-tiers governance change itself). This candidate is therefore once
+more behind `main`, and branch protection will require another catch-up merge before it
+can land. That is a merge-readiness fact, not a security one, and it does not affect the
+verdict for the head named above.
+
+---
+
+*Lightweight delta confirmation by a fresh Claude Opus context, 2026-09-16. A separate
+context from the one that produced the full review above, and from anything that authored
+or remediated the change.*
