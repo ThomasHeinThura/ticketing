@@ -114,6 +114,15 @@ jobs:
         run: pnpm check:i18n
 
   registers:
+    # DO NOT RENAME THIS JOB. The `protect-main` ruleset binds its required status checks
+    # to a job's DISPLAY NAME, as an exact string: "registers - env, vocabulary, reviews,
+    # skips, overrides". Renaming the job does not add a check under the new name — it
+    # silently removes the required one, because the name the ruleset waits for stops
+    # being reported. A pull request then cannot merge, and worse, a ruleset edited to
+    # chase the new name would have dropped a required gate from `main` in between.
+    # `check:events` is added as a STEP below instead: the gate runs, the required check
+    # keeps reporting, and no ruleset change is needed. Changing this string is Thomas's
+    # call and needs the ruleset updated in the same breath.
     name: registers - env, vocabulary, reviews, skips, overrides
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -127,6 +136,15 @@ jobs:
         run: pnpm check:env
       - name: pnpm check:vocabulary
         run: pnpm check:vocabulary
+      - name: pnpm check:events
+        # #86's mechanical published-vs-declared reconciliation for event keys — see
+        # scripts/ci/check-events.mjs. Declared as its OWN row in ci-cd.md and its own
+        # enabled entry in test-all.mjs's manifest — not an alias of `pnpm check:vocabulary`.
+        # An earlier version aliased it, and the alias made this step deletable (or
+        # `continue-on-error`/`if: false`-able) with `pnpm test:all` staying green, and let
+        # `check:vocabulary`'s own step be removed the same way. Both gates are protected on
+        # their own terms now; see scripts/ci/probes/workflow-alias-table.test.mjs.
+        run: pnpm check:events
       - name: pnpm check:reviews
         run: pnpm check:reviews
       - name: pnpm check:skips

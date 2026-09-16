@@ -49,6 +49,7 @@ stages below.
 │ pnpm check:reviews   review section empty        │
 │ pnpm check:env       no stray process.env        │
 │ pnpm check:vocabulary identifiers registered     │
+│ pnpm check:events    published keys registered   │
 │ pnpm check:skips     no .skip / .only            │
 │ pnpm test:ci-scripts  gate checkers + red probes │
 │ pr-template check    sections filled, tiers named│
