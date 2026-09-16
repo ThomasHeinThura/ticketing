@@ -3,7 +3,14 @@
 - **Stage:** P2
 - **Status:** ⬜
 - **Feature flag:** always on
-- **Depends on:** nothing
+- **Depends on:** RBAC (`instance:read_audit`, `workspace:manage_settings`, and the
+  per-entity read capabilities the entity-history route resolves through). The mechanism
+  itself has no other prerequisite — every mutation across every phase is audited
+  generically from day one (the Behaviour section below). Two rows in the audit action catalogue name
+  later-phase actions (`impersonation.*`, P4 God Mode; `work_item.exported`/
+  `report.exported`/`config.exported`/`instance.exported`, P5 reporting) — those entries
+  are inert, producing zero rows, until the features that trigger them exist; they are not
+  a build-order dependency of this one
 
 ## Purpose
 
@@ -46,20 +53,40 @@ Every mutation, plus these regardless of outcome:
 - Encryption key rotation
 - Retention purges — the purge audits itself
 
+## Data
+
+`audit_log`, `audit_chain_anchor` — see [data model](../01-architecture/data-model.md) §11
+for both tables' exact columns and § "The audit hash chain" for `row_hash`/`prev_hash`'s
+recipe. `activity` (`data-model.md` §4) is the input to point-in-time reconstruction
+(`AU-8`) but is a separate table, owned by
+[comments-and-activity.md](comments-and-activity.md) — this spec reads it, never writes
+it.
+
 ## Behaviour
 
 - `AU-1` Rows record: actor id, actor IP, user agent, action, entity type, entity id,
   before, after, trace id, timestamp.
 - `AU-2` **Secret values are never recorded.** A plugin configuration change records which
   keys changed, never what they changed to.
-- `AU-3` Append-only. No API can update or delete a row. Enforced by database grants as
-  well as by the absence of an endpoint.
+- `AU-3` Append-only. No API can update or delete a row. Enforced two ways: no endpoint
+  exists to do either, and — the deeper control, surviving even a compromised or buggy API
+  process — **the application's own database role holds no `UPDATE`/`DELETE` grant on
+  `audit_log`** ([data-model.md](../01-architecture/data-model.md) §11's own words: "the
+  application role has no `UPDATE`/`DELETE`"). Only a separate maintenance role, used
+  solely by `audit-purge`, may delete rows, and only the oldest-past-retention range.
 - `AU-4` An impersonated action records **both** identities.
 - `AU-5` System actions are attributed to the job or automation, never to a person.
 - `AU-6` Retention purge deletes rows past the configured age and writes its own audit row
   saying how many.
 - `AU-7` Deleting an organisation tombstones its audit rows rather than removing them.
-  Deleting an audit trail on request defeats its purpose.
+  Deleting an audit trail on request defeats its purpose. The mechanism is
+  `audit_log.organisation_id`'s `ON DELETE SET NULL`
+  ([data-model.md](../01-architecture/data-model.md) §11): the row, its actor, action,
+  before/after and hash-chain position all survive untouched — only the organisation link
+  is nulled, so a tombstoned row still renders everywhere it did before, minus the
+  organisation it can no longer be filtered by. No separate `tombstoned_at` column exists;
+  the tombstone *is* the null, and it is permanent — a hard-deleted organisation's id is
+  gone, so there is nothing to restore it to.
 
 ## Point-in-time reconstruction
 
@@ -84,16 +111,26 @@ Borrowed from OpenProject's journal design.
 - `AU-11` Instance administrators see everything.
 - `AU-12` Customers never see the audit log. They see the public portion of `activity` on
   their own requests.
-- `AU-13` Reading the audit log is itself audited, as is exporting it.
+- `AU-13` Reading the audit log is itself audited, as is exporting it. `audit.read` rows
+  are **not** exempt from the retention purge — they are ordinary audited events, subject
+  to the same configurable window (12 months by default) as every other row, one row per
+  read (no batching, no sampling). This is a volume decision made deliberately, not in
+  passing: an administrator working the audit screen for an hour writes a proportionate
+  number of `audit.read` rows, which is an acceptable cost for "reading the log is itself
+  a reviewable action."
 - `AU-14` **If the audit write fails, the mutation still succeeds** — losing a mutation
   because auditing failed is worse than a gap — but the failure is never silent: an
   error-level log line, an `audit_write_failures_total` metric that alerts, and a
   notification to every instance administrator, because the trade is acceptable only if
   someone finds out ([security-model.md](../01-architecture/security-model.md#audit)).
 - `AU-15` Rows are **hash-chained**: `row_hash` is SHA-256 over the **canonical form defined
-  once in data-model.md §11** — the ordered column list, RFC 8785 canonical JSON for the
-  `jsonb` columns, microsecond UTC ISO-8601 timestamps, lowercase hex; `organisation_id` and
-  every other post-hoc-mutable column excluded — including `prev_hash`. Every insert takes
+  once in data-model.md §11** — the ordered column list (`prev_hash` **included**, as its
+  first field, per §11's own "Hash input" list — corrected 2026-09-16: an earlier version
+  of this sentence read ambiguously and could be misread as excluding it, which would defeat
+  the chain, since an intermediate row's chain pointer could then be altered without
+  changing that row's own `row_hash`), RFC 8785 canonical JSON for the `jsonb` columns,
+  microsecond UTC ISO-8601 timestamps, lowercase hex; `organisation_id` and every other
+  post-hoc-mutable column excluded from that list. Every insert takes
   `pg_advisory_xact_lock` on the audit constant, so the chain is strictly serial per instance
   even with many replicas; the first row chains from the zero hash, and `audit-purge` writes
   an `audit_chain_anchor` row that `audit-verify` starts from. `audit-verify` (on demand,
@@ -132,6 +169,17 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | `instance.restored` | A restore completed ([backup-and-restore.md](../05-operations/backup-and-restore.md)) |
 | `pending_action.viewed` | The one pending-action transition that is not an event (`PA-11`) |
 
+## Permissions
+
+| Action | Capability |
+| --- | --- |
+| Read the instance-wide log | `instance:read_audit` (`AU-11`) |
+| Read a workspace's log | `workspace:manage_settings` (`AU-10`) |
+| Read one entity's history | that entity's own read capability, resolved by `{type}` from the policy registry (kind 1) |
+| Export the audit log | `instance:read_audit` **and** step-up re-authentication (`AU-13`, elevated) |
+| Reconstruct a work item at an instant | `work_item:read` |
+| Customers | never — they see the public portion of `activity` on their own requests only (`AU-12`) |
+
 ## Screens
 
 **God Mode → Audit** — filterable by actor, action, entity type, entity, date range, and
@@ -164,6 +212,23 @@ GET  /api/work-items/{key}/reconstruct?at=…    work_item:read
 | Actor deleted | Rows retain the id and a tombstoned display name |
 | Retention shortened | Applies from the next purge. The change is audited |
 
+## Out of scope
+
+- **A real-time audit stream or SIEM export.** `audit.exported` covers on-demand export;
+  a push/webhook feed to an external SIEM is a plugin, if and when one is built
+  ([plugin-architecture.md](../01-architecture/plugin-architecture.md)) — this spec
+  defines the record, not a delivery mechanism beyond it.
+- **A UI for editing or annotating an audit row.** Append-only means no such surface
+  exists anywhere, by design (`AU-3`).
+- **Cross-organisation audit search.** `AU-10`/`AU-11` already draw the reach boundary;
+  searching across organisations is out of scope at every reach level, including
+  `instance:read_audit`, which is instance-wide but still within one deployment.
+- **Retention policy configuration UI** and **the `audit-purge`/`audit-verify` jobs'
+  scheduling** → [background-jobs.md](../01-architecture/background-jobs.md).
+- **Impersonation's own start/end mechanics** → the impersonation feature (P4 God Mode);
+  this spec only defines that `impersonation.started`/`impersonation.ended` are audited
+  and record both identities (`AU-4`).
+
 ## Testing
 
 Integration: every mutating route writes an audit row — asserted generically by exercising
@@ -172,6 +237,10 @@ no endpoint can modify or delete a row.
 
 Unit: reconstruction from activity produces the correct state at arbitrary instants,
 including across a type change and a project move.
+
+## Open questions
+
+None.
 
 ## Related
 
