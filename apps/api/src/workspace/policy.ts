@@ -356,4 +356,56 @@ export const workspacePolicies = {
     reach: "required",
     sessionOnly: true,
   },
+
+  // S7 — list a workspace's roles (issue #6, retrofit plan §3, S7 row). Runtime check is
+  // `requireWorkspacePermission({ac:["read"]})` against the INHERITED `ac` resource -- same
+  // transitional gap as `workspace:update` above: re-keying to the canonical vocabulary is
+  // #7's, not this stage's. `scopeSource: "request"`: `list-workspace-roles.ts` never loads
+  // the `workspace` row itself, only queries `workspace_role` by the path's own `workspaceId`
+  // -- same shape as the S5/S6a routes above. `workspace:read` is NOT in `AUTHORITY_GRANTING`,
+  // so no `elevated` field is declared.
+  "GET /api/workspace/{workspaceId}/roles": {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+    sessionOnly: true,
+  },
+
+  // S7 — create/update/delete a workspace role (issue #6, retrofit plan §3, S7 row; the last
+  // item on the organization()-retrofit critical path). Runtime checks are
+  // `requireWorkspacePermission({ac:[...]})` against the INHERITED `ac` resource, plus --
+  // ONLY for create/update -- `RL-3`'s "cannot grant a capability you do not hold" ceiling
+  // (`resolveCallerWorkspaceStatements`, `require-workspace-permission.ts`). Same transitional
+  // capability-key gap as every mutation above.
+  //
+  // `elevated: true` is REQUIRED, not optional, on all three: `workspace:manage_roles` is
+  // already in `AUTHORITY_GRANTING` (`elevated.ts`) -- "a role editor can mint authority up to
+  // the editor's own rank" -- and `elevationViolations()` checks `entry.policy.elevated ===
+  // true` by strict equality, so omitting the field does NOT satisfy it and fails
+  // `tests/permissions/elevated-actions.test.ts`.
+  "POST /api/workspace/{workspaceId}/roles": {
+    capability: "workspace:manage_roles",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+    sessionOnly: true,
+    elevated: true,
+  },
+  "PATCH /api/workspace/{workspaceId}/roles/{roleId}": {
+    capability: "workspace:manage_roles",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+    sessionOnly: true,
+    elevated: true,
+  },
+  "DELETE /api/workspace/{workspaceId}/roles/{roleId}": {
+    capability: "workspace:manage_roles",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+    sessionOnly: true,
+    elevated: true,
+  },
 } as const satisfies PolicyMap;

@@ -173,6 +173,14 @@ Guardrails:
   a membership at `scope = project` may carry a role whose `scope = project`. They are
   created from the same editor with the project as context; P4.
 
+**P0's actual CRUD surface (organization-plugin retrofit S7) operates on the LEGACY
+`workspace_role` shape** — `role` (a name) and `permission` (a JSON `{resource: action[]}`
+map), not yet this section's target `role` table with `rank`/`is_system`/`capabilities
+jsonb`. `POST/PATCH/DELETE /api/workspace/{workspaceId}/roles` already enforce the first
+guardrail above (cannot grant a capability you do not hold); the rank-comparison and
+last-administrator guardrails remain deferred, for lack of the `rank`/`is_system`
+vocabulary this legacy shape has no columns for.
+
 Detail and screens: [Roles and permissions UI](../03-features/roles-and-permissions-ui.md).
 
 ### One membership = exactly one role
@@ -613,6 +621,7 @@ the first day.
 | Rotating a webhook secret | `POST /api/webhooks/{id}/rotate-secret` |
 | Creating a webhook, or changing an existing webhook's `url` — a standing outbound data channel carrying every event in the owner's reach to an arbitrary endpoint, indefinitely | `POST /api/webhooks`, and `PATCH /api/webhooks/{id}` when the body changes `url` ([webhooks-and-api-keys.md](../03-features/webhooks-and-api-keys.md) `WH-14`) |
 | Overriding a change freeze | `POST /api/work-items/{key}/change/override-freeze` |
+| Creating, editing or deleting a workspace role — a role editor can mint authority up to their own rank | `POST /api/workspace/{workspaceId}/roles`, `PATCH /api/workspace/{workspaceId}/roles/{roleId}`, `DELETE /api/workspace/{workspaceId}/roles/{roleId}` |
 
 ### Session-only routes
 

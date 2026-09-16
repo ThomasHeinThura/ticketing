@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth-client";
+import listWorkspaceRoles from "@/fetchers/workspace/list-workspace-roles";
 
 export type WorkspaceRole = {
   id: string;
@@ -10,22 +10,16 @@ export type WorkspaceRole = {
   updatedAt?: Date | string | null;
 };
 
+// S7 (issue #6, retrofit plan §3): native replacement for
+// authClient.organization.listRoles(). The native route always returns
+// `permission` as a parsed object (never a JSON string), but the
+// object-passthrough branch is kept defensively -- harmless, and it means a
+// stray malformed response fails soft (an empty map) rather than throwing.
 function parsePermission(raw: unknown): Record<string, string[]> {
   if (raw && typeof raw === "object") {
     return raw as Record<string, string[]>;
   }
-  if (typeof raw !== "string") {
-    return {};
-  }
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") {
-      return parsed as Record<string, string[]>;
-    }
-    return {};
-  } catch {
-    return {};
-  }
+  return {};
 }
 
 function useWorkspaceRoles(workspaceId: string | undefined) {
@@ -34,15 +28,11 @@ function useWorkspaceRoles(workspaceId: string | undefined) {
     enabled: !!workspaceId,
     queryFn: async () => {
       if (!workspaceId) return [];
-      const result = await authClient.organization.listRoles({
-        query: { organizationId: workspaceId },
-      });
-      if (result.error) throw new Error(result.error.message);
-      const roles = result.data ?? [];
+      const roles = await listWorkspaceRoles({ workspaceId });
 
       return roles.map((r) => ({
         id: r.id,
-        workspaceId: r.organizationId,
+        workspaceId: r.workspaceId,
         role: r.role,
         permission: parsePermission(r.permission),
         createdAt: r.createdAt,

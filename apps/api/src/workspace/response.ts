@@ -110,3 +110,25 @@ export const transferredWorkspaceOwnershipSchema = z
     newOwnerUserId: z.string(),
   })
   .openapi("TransferredWorkspaceOwnership");
+
+// S7 -- native role list/write routes (issue #6, retrofit plan §3, S7 row).
+
+export const workspaceRoleSchema = z
+  .object({
+    id: z.string(),
+    workspaceId: z.string(),
+    role: z.string().openapi({
+      description:
+        "The role's name. Never 'owner' -- owner authority stays a compiled, non-editable role.",
+    }),
+    permission: z.record(z.string(), z.array(z.string())),
+    createdAt: responseTimestamp,
+    updatedAt: responseTimestamp,
+  })
+  .openapi("WorkspaceRole");
+
+export const workspaceRoleListSchema = z.array(workspaceRoleSchema);
+
+export const deletedWorkspaceRoleSchema = z
+  .object({ id: z.string(), role: z.string() })
+  .openapi("DeletedWorkspaceRole");

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth-client";
+import createWorkspaceRole from "@/fetchers/workspace/create-workspace-role";
 
 type CreateWorkspaceRoleRequest = {
   workspaceId: string;
@@ -7,6 +7,9 @@ type CreateWorkspaceRoleRequest = {
   permission: Record<string, string[]>;
 };
 
+// S7 (issue #6, retrofit plan §3): native replacement for
+// authClient.organization.createRole(). Same request shape, same cache
+// invalidation.
 function useCreateWorkspaceRole() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -15,15 +18,7 @@ function useCreateWorkspaceRole() {
       role,
       permission,
     }: CreateWorkspaceRoleRequest) => {
-      const { data, error } = await authClient.organization.createRole({
-        organizationId: workspaceId,
-        role,
-        permission,
-      });
-      if (error) {
-        throw new Error(error.message || "Failed to create role");
-      }
-      return data;
+      return createWorkspaceRole({ workspaceId, role, permission });
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
