@@ -2,9 +2,10 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-16 (later the same day, after the post-Throttle-1 merge wave)
-> **`main` at that moment:** `90f8d78` (PR #164, `storage.filesystem` driver — the fourth of
-> four PRs merged this wave, after PR #75, #91, #163)
+> **Snapshot taken:** 2026-09-16 (later the same day again — a fourth pass, after #168's
+> Docker-build fix and an independently-verified UAT-0 pass)
+> **`main` at that moment:** `39a2dc6` (PR #172, decision-log entries — after PR #171 fixed
+> `docker build .` itself, which PR #169's own reconciliation pass did not catch)
 > **Stage:** P0 · Foundation — **exit criteria met; Throttle 1 is OPEN.** Autonomous
 > continuation past Throttle 1 is authorized (Thomas, 2026-09-16) — see the session log's
 > newest entry for what that wave landed and what it found.
@@ -40,11 +41,20 @@
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-16 (later the same day, after S10 landed)
-**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN**
-**Updated by:** Claude Code (Sonnet), reconciliation after **PR #161 (S10 — unmount the
-better-auth `organization()` plugin) merged**, closing the organization-plugin retrofit and
-issue #6. Implemented by a fresh Sonnet subagent against an 8-phase brief; reviewed by the
+**Last updated:** 2026-09-16 (later the same day, a fourth time)
+**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** UAT-0
+(`docker build` + container boot + health) independently verified end-to-end; the actual UAT
+redeploy is the only remaining step, and it needs Thomas.
+**Updated by:** Claude Code (Sonnet), reconciliation after **PR #171 (fix #168 — `docker
+build .` itself was broken on `main`) merged**, plus an independent, from-scratch boot/health
+verification of the resulting image, plus **PR #172** (two P1-sequencing decisions recorded).
+Full account in this session's newest log entry, below.
+
+---
+
+**Earlier the same day:** Claude Code (Sonnet), reconciliation after **PR #161 (S10 — unmount
+the better-auth `organization()` plugin) merged**, closing the organization-plugin retrofit
+and issue #6. Implemented by a fresh Sonnet subagent against an 8-phase brief; reviewed by the
 full panel this change's risk warranted (it removes an entire authorization surface and
 redesigns a security control's core semantics) — 3 fresh Sonnet contexts plus Opus, **CLEAR
 WITH FINDINGS**. Security-review note:
@@ -223,24 +233,42 @@ snapshot). **PR #132 merged this session and closed two of the four:**
 | `TASKDESK_PORT` not read | **CLOSED — PR #132.** `resolvePort()` in `apps/api/src/index.ts` reads it, bounded 1–65535, falls back to `DEFAULT_PORT` (5173) on invalid input | Done |
 | No `/api/public/health/{live,ready}` | **CLOSED — PR #132.** Both routes exist; `/ready` runs a real `SELECT 1`. Fixed a real bug found in review: an idle pooled client's error surfaces on the *pool*, not the query — an unhandled `pool.on("error", ...)` would have crashed the process under `/ready` polling; now handled | Done |
 | No static file serving in the Node process | **CLOSED — PR #144.** `apps/api/src/index.ts` now serves the built web app (`apps/web/dist`, or `/app/public` in the Docker image) via `@hono/node-server/serve-static` — a subpath of the already-installed `@hono/node-server` dependency, so no new package was added. `/api/*` is excluded, and a genuine 404 stays a 404 rather than falling back to the SPA shell. Independently reviewed 2 Sonnet + 1 Opus, all CLEAR (three LOW/latent, non-blocking notes) | Done |
-| No `storage.filesystem` driver | Still true — `apps/api/src/storage/` holds only `s3.ts` and `cleanup-assets.ts` | SAFE_PARALLEL, startable now |
+| No `storage.filesystem` driver | **CLOSED — PR #164 (2026-09-16).** `apps/api/src/storage/filesystem.ts` — HMAC-signed direct-PUT upload tokens, `PUT /api/storage/filesystem-upload`, three-layer path-traversal/symlink defenses. Reviewed full tier (2 Sonnet + Opus + Opus delta), all CLEAR | Done |
 
-**UAT-0** (per the milestone shape Thomas asked for): `docker build` succeeds, container
-boots, a health endpoint answers `200` — **the two gaps this needed are now closed.** Not
-yet independently confirmed against a real `docker build`/`docker run` cycle; that
-verification, not further code, is the next step for UAT-0 specifically. **Full UAT
-stand-up:** three of the four UAT-lane gaps are now closed (`TASKDESK_PORT`, health
-endpoints, static file serving); only `storage.filesystem` remains, plus an actual
-redeploy. PR #144 itself was not verified against a real `docker build`/`docker run`
-cycle either — its manual verification ran `createApp()` directly on a throwaway port, not
-the container image — so that verification is still outstanding for the static-serving
-gap specifically, not just for the one gap that remains unstarted.
+**All four UAT-lane gaps are now closed.** `docker build .` itself then turned out to be
+broken on `main` independently of any of the four — a pre-existing, previously-undiscovered
+defect (issue #168: the `Dockerfile`'s `deps` stage never copied `packages/domain` or
+`packages/ui`'s manifests, so `pnpm install` never created `packages/ui/node_modules`, and
+the React Compiler's injected `react/compiler-runtime` import in `packages/ui/src/components/
+*.tsx` had nothing to resolve against — reproduced on a fresh clone with `--no-cache`, root-
+caused by building just the `deps` stage and inspecting it directly). **Fixed and merged as
+PR #171 (2026-09-16)** — two added `COPY` lines, ordinary-tier review, independently
+reproduced both the failure (on bare `main`) and the fix (on the PR head) from a clean
+checkout before approving.
+
+**UAT-0 is now independently verified end-to-end, not just "the code exists."** The
+orchestrating session built the post-#171 image, wired it to freshly-created, throwaway
+Postgres and Valkey containers on an isolated Docker network (no shared state, no host port
+published beyond `127.0.0.1`, everything torn down immediately after), and confirmed from a
+genuinely empty database: migrations ran clean, `/api/public/health/live` → `200`,
+`/api/public/health/ready` → `200` with a real `{"status":"ok"}` (a live `SELECT 1`, not a
+stub), `GET /` served the built web bundle, an unknown path correctly stayed a `404` rather
+than falling back to the SPA shell, and WebSocket/Redis broadcast came up. The pre-existing
+`taskdesk-uat-*` (v1) stack on the host was confirmed running unaffected, before and after —
+nothing about this verification touched it.
+
+**What remains for a real UAT stand-up is the actual redeploy to real infrastructure** — DNS,
+the live `ticket-v2-uat.bimats.com`/`portal-v2-uat.bimats.com` hosts, real secrets. That is an
+infrastructure action, not a code gap, and stays a separate step requiring Thomas's own
+authorization per the standing delegation — everything code-side that blocked it is closed.
 
 ### BLOCKED
 
-- Standing up a **live** UAT deployment — waits on `storage.filesystem` landing, plus an
-  actual redeploy; the other three UAT gaps are already closed (see the UAT lane below).
-  **Throttle 1 opening does not affect this** — it is a separate, deployment-side lane.
+- Standing up a **live** UAT deployment — all four code-side UAT-lane gaps are closed and
+  UAT-0 (build + boot + health) is independently verified locally (see the UAT lane below);
+  what remains is the actual redeploy to real infrastructure, which needs Thomas's own
+  authorization, not more code. **Throttle 1 opening does not affect this** — it is a
+  separate, deployment-side lane.
 - `sections()` in `scripts/ci/lib/pr-body.mjs` lets a comment-hidden duplicate `##` heading
   silently replace the real one, defeating the whole PR-template gate (issue #146,
   CRITICAL, confirmed live on `main`) — needs Thomas's decision on fix direction (targeted
@@ -831,6 +859,12 @@ file's older prose.
   OpenAPI drift` job passes on every push (122 operations, verified with `check:openapi`).
   *Blast radius: one lane.*
 - **v2 UAT is not deployable yet, and the remaining reasons are application-side.**
+  **All four numbered gaps below are now CLOSED** (`TASKDESK_PORT` and the health routes by
+  PR #132, static serving by PR #144, `storage.filesystem` by PR #164 — all 2026-09-16 or
+  earlier) **and independently verified end-to-end** — see the "UAT/deployability lane" table
+  in `## Scheduler`, above, and this session's newest log entry for the from-scratch
+  boot/health verification. Kept below as the historical record of what #11 actually needed,
+  not as current state.
   The deployment skeleton is **ON MAIN** — PR #20 merged 2026-09-06 as `38ff9ac`. A
   `Dockerfile` that builds, base + local + production + UAT compose files, Traefik
   middlewares, a hardened `charts/taskdesk` that fails closed on every bootstrap secret,
@@ -954,6 +988,81 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-16 (later the same day, a fourth time) · #168 (docker build failure) root-caused and fixed; UAT-0 independently verified end-to-end; P1 sequencing decisions recorded
+
+Same session, continuing autonomously per the delegation recorded below and in the decision
+log (both the 2026-09-16 "Autonomous continuation" entry and, for this pass specifically, the
+2026-09-16 entries on P1's foundational identity schema and #23's migration strategy).
+
+**#168 fixed.** The docker-build failure the prior pass in this same session flagged (a
+significant new blocker, found while merging PR #164) was root-caused precisely: the
+`Dockerfile`'s `deps` stage copies each workspace package's `package.json` individually
+before `pnpm install --frozen-lockfile`, and that hand-enumerated list was missing
+`packages/domain` and `packages/ui` — confirmed directly by building just the `deps` stage
+and inspecting it (`packages/ui` didn't even exist as a directory in that stage, so
+`pnpm install` never created its `node_modules`, so the React Compiler's injected
+`react/compiler-runtime` import in `packages/ui/src/components/*.tsx` had nothing to resolve
+against once the `build` stage copied real source on top). Fixed as **PR #171**, merged
+`d2884f1` — two added `COPY` lines, nothing else. Independently reproduced both the failure
+(bare `main`, fresh clone, `--no-cache`) and the fix (PR head) by a fresh reviewer before
+merge, ordinary tier (confirmed: `Dockerfile` is not in `ci-cd.md`'s security-review-scope
+list, per issue #140's own prior finding). Filed **#170** for the underlying fragility (the
+`COPY` list has no CI check keeping it in sync with the workspace — it had already silently
+drifted for two packages before this fix) — not blocking, not fixed here.
+
+**UAT-0 independently verified, not just "the code should work now."** With all four
+UAT-lane deployability gaps now closed (`storage.filesystem` landed as PR #164 earlier this
+session; the other three had already closed in the prior wave) and #168 fixed, the
+orchestrating session built the resulting image and booted it against freshly-created,
+disposable Postgres/Valkey containers on an isolated Docker network — no shared state, no
+host ports beyond `127.0.0.1`, torn down immediately after. From a genuinely empty database:
+migrations ran clean, both `/api/public/health/live` and `/api/public/health/ready` answered
+`200` (the latter with a real `{"status":"ok"}` from a live `SELECT 1`), the built web bundle
+served at `/`, an unknown path correctly still 404'd, and WebSocket/Redis broadcast came up.
+The host's pre-existing `taskdesk-uat-*` (v1) stack was confirmed running, unaffected, both
+before and after. **What remains for a real UAT stand-up is only the actual redeploy to real
+infrastructure** (DNS, the live hosts, real secrets) — an infrastructure action reserved for
+Thomas's own authorization, not a code gap.
+
+**Issue #8's H2 sub-item closed with evidence** (was already fixed by PR #163 in the prior
+wave, but the issue's own checklist was never ticked) — now ticked, with a comment citing the
+PR and explaining exactly which of the two documented resolution routes was taken. The rest
+of #8 (the ~85-route classification pass, runtime authorization integration) remains open and
+untouched — H2 was one bounded finding within it, not the whole issue.
+
+**P1 core work started on its foundational identity schema**, not #23 directly. Scoping #23
+(work items) against `data-model.md`/`packages/permissions/src/identity.ts` found that neither
+#23 nor #25 can be built the way the architecture intends without `organisation`, `person`,
+`membership` and `role` existing first — none of P1's eight chartered issues (#23–#30) owns
+building them, a real gap the lane-prep plan's own shared-contract table didn't name. Recorded
+as its own decision-log entry (2026-09-16) rather than started silently, alongside a second
+entry settling #23's `task`→`work_item` migration strategy (one-shot, not the two-phase
+live-cutover dance — conditional on no live deployment existing yet when that migration is
+actually generated, a condition an independent PR review sharpened after the first draft only
+said "no production data," which misses that even zero data doesn't rule out a live rolling
+deployment breaking mid-rollout). Filed **#173** to track reconciling the existing
+`team`/`invitation`/`workspace_role` tables with the new shape once something needs it
+changed. The actual foundational-schema PR itself has not started yet — this pass only
+cleared the sequencing question and recorded it durably.
+
+**Two genuine SLA (#32) product-behaviour questions surfaced, not decided here — need
+Thomas:** (1) when a work item moves to a project with a different SLA policy, does the new
+policy apply immediately against the item's original start time, or does the move reset
+which policy version applies at all — `sla.md`'s own text states both, contradictorily; (2)
+does a service calendar with zero open hours but a policy still attached show "no policy" or
+"on track forever" — `service-calendars.md` and `sla.md` each imply a different one. Both
+have a recommended default already written up (pin the policy from creation, and "on track
+forever," respectively) if Thomas has no strong preference. Neither blocks other P2 work —
+**#37 (audit trail)** started in parallel instead, since its own one open question (a
+same-instant tie-break rule for `reconstructAt`) was a routine implementation convention, not
+a product-behaviour call, and was decided as part of that work.
+
+**Not done:** the foundational-identity-schema migration itself (sequencing only, decided,
+not yet implemented); #23 and the rest of P1 core; SLA (#32), pending Thomas's two questions
+above; the actual UAT redeploy to real infrastructure (verified locally, not deployed live).
+
+---
 
 ### 2026-09-16 (later the same day, a third time) · Autonomous post-Throttle-1 wave — four PRs merged, backlog reconciled, one significant new finding
 
