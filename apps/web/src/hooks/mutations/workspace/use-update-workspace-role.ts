@@ -1,9 +1,16 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth-client";
+import updateWorkspaceRole from "@/fetchers/workspace/update-workspace-role";
 
 type UpdateWorkspaceRoleRequest = {
   workspaceId: string;
-  roleName: string;
+  /**
+   * S7 (issue #6, retrofit plan §3): the role's opaque id, NOT its name --
+   * changed from `roleName` when this hook was repointed off
+   * authClient.organization.updateRole() onto the native route, which keys
+   * on `roleId` (S7 blueprint Ambiguity Q1). Every call site must pass the
+   * row's `id` (already in hand from useWorkspaceRoles), not `role`.
+   */
+  roleId: string;
   permission: Record<string, string[]>;
 };
 
@@ -12,16 +19,10 @@ function useUpdateWorkspaceRole() {
   return useMutation({
     mutationFn: async ({
       workspaceId,
-      roleName,
+      roleId,
       permission,
     }: UpdateWorkspaceRoleRequest) => {
-      const { data, error } = await authClient.organization.updateRole({
-        organizationId: workspaceId,
-        roleName,
-        data: { permission },
-      });
-      if (error) throw new Error(error.message || "Failed to update role");
-      return data;
+      return updateWorkspaceRole({ workspaceId, roleId, permission });
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
