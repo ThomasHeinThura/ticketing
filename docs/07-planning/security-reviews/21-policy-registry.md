@@ -61,7 +61,7 @@ Three statements this note will not blur:
 | Severity | Count | Disposition |
 | --- | --- | --- |
 | **CRITICAL** | **1** | **Fixed in `c8785cd`; VERIFIED-CLOSED at `5956fb3`** |
-| HIGH | 6 | 4 fixed and VERIFIED-CLOSED; 1 tracked to **#8**; **1 with no disposition — see H2** |
+| HIGH | 6 | 4 fixed and VERIFIED-CLOSED; 1 tracked to **#8**; **1 (H2) fix pushed, pending review — see H2** |
 | MEDIUM | 7 | 1 elevated to must-fix and closed; 4 fixed; 1 verified not applicable; 1 follow-up |
 | LOW | 7 | 6 fixed; 1 already addressed by a HIGH fix |
 | *Raised after remediation* | 1 MEDIUM, 5 LOW | MEDIUM VERIFIED-CLOSED; 5 LOW open, none blocking |
@@ -134,7 +134,7 @@ base. Verified at `5956fb3` as a correct set difference — growth caught, shrin
 `readJsonAtMergeBase` **throws** rather than treating an unresolvable merge base as "did not
 grow". See LOW-B2 for the one caveat.
 
-### H2 — the gate models no source ordering · **OPEN, and not in the must-fix six**
+### H2 — the gate models no source ordering · **FIX PUSHED, PENDING INDEPENDENT REVIEW**
 
 `CollectedRoute` carries no registration index. `collectRoutes` iterates `app.routes` in order
 and discards that order, so a route registered **above** the auth guard is indistinguishable
@@ -149,21 +149,59 @@ green with **zero runtime change** and the route stays anonymous.
 **This is the v1 failure mode reproduced inside the control built to close it, and the
 ordering data is present as the array index and thrown away.**
 
-**Disposition: none was recorded.** This finding does not appear in the PR body's six-must-fix
-table, does not appear in its fourteen-MEDIUM/LOW table, no commit on this branch implements a
-control for it, and neither review 3 nor review 4 re-checked it — because neither was asked
-to. It was found during the documentation pass that produced this note, by counting the
-original findings against the body's tables.
+**Disposition when this note was written: none recorded.** This finding did not appear in the
+PR body's six-must-fix table, did not appear in its fourteen-MEDIUM/LOW table, no commit on
+that branch implemented a control for it, and neither review 3 nor review 4 re-checked it —
+because neither was asked to. It was found during the documentation pass that produced this
+note, by counting the original findings against the body's tables.
 
 The PR body does record the underlying *fact* for one route — *"`GET /api/instance/status` is
 anonymous today purely because of where it sits in `index.ts`"* — but a stated fact about one
 route is not a control over twenty-seven.
 
-**Where it belongs: issue #8.** #8 is the retrofit that will classify the above-guard routes,
-so #8 is where the omission would actually fire. The control itself is a change to
-`packages/permissions` (carry the registration index through `CollectedRoute`; refuse a
-`capability` policy on a route registered above the declared auth-guard key). **It is not
-fixed by merging #21, and #21 should not be read as closing it.**
+**Fix (`ccc0225`, branch `fix/8-h2-route-registration-ordering`, bounded to H2 only — not the
+rest of #8's scope):** `CollectedRoute` now carries `registrationIndex`, the literal index of
+a route's first entry in `app.routes` — Hono's real registration order, derived no other way.
+A new `AUTH_GUARD_KEY` constant (`"ALL /api/*"`, the same key `DECLARED_ROUTER_MIDDLEWARE`
+already recorded the guard under) and `authGuardRegistrationIndex()` locate the guard's own
+position. `computeRouteCoverage` takes an optional 4th `authGuardIndex` parameter — omitting
+it keeps every existing caller's behaviour byte-identical; passing it adds a new
+`authGuardOrderingViolations` bucket (reported and gated like the existing `unclassified`
+wildcard bucket) that fails the build when a route's policy is `capability`, `self` or
+`portal` — the three kinds that read an identity the guard resolves, not only `capability`,
+this finding's own illustrative example — and that route's `registrationIndex` sits above the
+guard's.
+
+**Verified empirically, the way this finding itself was found:**
+`packages/permissions/src/route-coverage.test.ts`'s new "H2 — a route registered above the
+auth guard fails the gate" suite proves both directions with the *same* production function:
+calling `computeRouteCoverage` without the new 4th argument (exactly how every caller invoked
+it before this fix) still passes a capability policy above a guard-shaped fixture clean —
+proving the old hole is real, not asserted — and passing `authGuardRegistrationIndex`'s result
+turns the identical scenario red. Separate cases confirm `self` and `portal` policies trip the
+same check, `public`/`delegated` policies above the guard do not, and the identical route
+*below* the guard is unaffected. `tests/permissions/route-coverage.test.ts` wires the real
+app's own guard index into the primary gate, asserts zero violations against the current
+router, and separately confirms — non-vacuously — that `GET /api/asset/{id}` and
+`GET /api/user/avatar/{id}` (this finding's own two examples) are genuinely registered above
+the guard today, still baseline-uncovered, so the check has a real above-guard route to find
+and correctly finds none of them holding a `capability`/`self`/`portal` policy yet. `pnpm
+lint`, `pnpm typecheck` and `pnpm test:permissions` (79/79) all pass at `ccc0225`, run in an
+isolated worktree.
+
+**Same-mistake check, per the bug-fix checklist:** every other `.use(` wildcard registration
+in `apps/api/src` was inventoried. One other exists — `registerStaticServing`'s
+`app.use("*", ...)` SPA-fallback — registered last (after `app.route("/api", api)`) and
+explicitly excluded from every `/api/*` path via `isApiRequestPath`, so it carries none of
+this ordering hazard.
+
+**Where it belongs: issue #8.** #8 is still the retrofit that classifies the remaining
+above-guard and baseline-uncovered routes; this fix is the *control* only — it does not
+classify any of the 27 above-guard routes, and does not wire `policyRegistry` into runtime
+request handling. **Not yet merged.** Pending a fresh independent Sonnet review and the
+mandatory Opus security review (`packages/permissions/**` is security-review scope per
+`docs/04-engineering/ci-cd.md`) — update this entry again once both clear, following the
+VERIFIED-CLOSED convention the HIGH findings above use, and name the PR number once opened.
 
 ### H3 — the registry has no runtime existence · tracked to #8; false claims corrected here
 
@@ -499,9 +537,11 @@ only after #19.
 - **1 CRITICAL — fixed** (`c8785cd`), independently verified at `5956fb3` against the real API
   router in all three directions.
 - **4 of 6 HIGH — fixed and independently verified.** One (**H3**) is correctly tracked to #8
-  with its false documentation claims corrected here. One (**H2** — source ordering) **has no
-  disposition and is open**; it belongs to #8 and is the single most important thing in this
-  note.
+  with its false documentation claims corrected here. One (**H2** — source ordering) **has a
+  fix pushed** (`ccc0225`, branch `fix/8-h2-route-registration-ordering`) **but is not yet
+  independently reviewed or merged** — see H2's own entry above for what it does and does not
+  cover; #8's much larger remaining scope (classifying the above-guard and baseline-uncovered
+  routes, wiring `policyRegistry` into runtime request handling) is untouched by it.
 - **All 14 MEDIUM/LOW dispositioned**, none by argument.
 - **MEDIUM-1 and the diagnostic-source omission — VERIFIED-CLOSED** at `b950e26`.
 - **Five LOW open**, none blocking. **LOW-B1** is the one the reviewer said it would actually
