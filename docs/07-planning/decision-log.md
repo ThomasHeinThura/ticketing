@@ -38,8 +38,8 @@ shared-contract table did not name, not a restatement of anything already decide
 deliberately narrow (new tables only, no route or middleware wiring, no change to the
 existing `team`/`invitation`/`workspace_role` tables) to keep this reviewable as one bounded
 PR rather than folding it into #23's own, separately-scoped migration; reconciling those
-existing tables with the new `role`/`membership` shape is real but separate work, left for
-whichever issue actually needs it changed, per `CLAUDE.md`'s shared-contract rule.
+existing tables with the new `role`/`membership` shape is real but separate work, tracked as
+its own issue (**#173**) so it has an owner to land on rather than staying an implicit gap.
 
 **Alternatives considered:** building it inline as part of #23's own migration (rejected —
 #25 needs `person` too, and a schema this foundational deserves its own focused review
@@ -61,25 +61,39 @@ single forward migration (rename plus additive columns in one pass), not the
 add/dual-write/backfill/cutover/drop two-phase sequence `docs/04-engineering/migrations.md`
 prescribes for a column "a running replica may still read."
 
-**Why:** that two-phase convention exists to protect a **live system with real traffic**
-reading the old shape during the cutover window. TaskDesk v2 is pre-launch — no production
-data exists yet, and nothing reads `taskTable` outside this same codebase's own deploy. The
-convention's entire rationale does not apply to a table with zero live readers to protect.
-Flagged as a genuine open question by the P1 lane-prep plan (`docs/07-planning/lane-prep/
-p1-core.md` §0, §9) because `migrations.md` does not itself carve out a pre-launch exception
-— recorded here so #23's implementer has a real answer rather than discovering this as a
-blocker mid-migration, or guessing.
+**Why:** that two-phase convention exists to protect **any running replica that might still
+read the old shape during a rolling deployment** — not only "real production data." An
+independent review of this entry (PR #172) correctly pointed out that the condition is
+narrower than "no production data exists": `charts/taskdesk`'s API `Deployment` sets no
+explicit `strategy`, so it inherits Kubernetes' default `RollingUpdate` even at
+`replicaCount: 1` — meaning any live deployment, UAT included, briefly runs an old and a new
+pod concurrently during a rollout, regardless of whether either pod holds real customer data.
+A one-shot rename generated while such a deployment exists would break the still-live old
+pod before Kubernetes finishes tearing it down. **The one-shot approach is therefore
+conditional, not unconditional: it applies only if, at the moment #23's first migration is
+actually generated, no live deployment of any kind (UAT included) yet exists running the
+pre-#23 schema — re-verify this live against `status.md`'s current deployment state at that
+time, do not assume today's snapshot (v2 UAT not yet deployable) still holds.** If a live
+deployment exists by then, the two-phase convention applies after all and this entry's
+exception does not. Flagged as a genuine open question by the P1 lane-prep plan
+(`docs/07-planning/lane-prep/p1-core.md` §0, §9) because `migrations.md` does not itself
+carve out a pre-launch exception — recorded here so #23's implementer has a real answer
+rather than discovering this as a blocker mid-migration, or guessing, **and so the condition
+above is re-checked rather than silently assumed**.
 
 **Alternatives considered:** the full two-phase dance regardless (rejected — pure overhead
-with no live reader to protect, and it would roughly double the size of #23's first PR for
-no safety benefit); asking Thomas (rejected — this is exactly the kind of implementation-
-sequencing call, consistent with `migrations.md`'s own stated rationale, that the delegation
-below covers; it does not change product behaviour, security posture, or any architecture
-settled in a spec).
+with no live reader to protect *while no deployment exists*, and it would roughly double the
+size of #23's first PR for no safety benefit in that case); an unconditional one-shot
+exception with no re-verification step (rejected on review — this is exactly what would have
+silently broken a live UAT rollout if #23 landed after UAT deployment rather than before it);
+asking Thomas (rejected — this is exactly the kind of implementation-sequencing call,
+consistent with `migrations.md`'s own stated rationale, that the delegation below covers; it
+does not change product behaviour, security posture, or any architecture settled in a spec).
 
 **Decided by:** the orchestrating session, 2026-09-16, as a routine implementation-design
 call within the authority the entry below delegates. Applies specifically to #23's `task` →
-`work_item` rename; does not establish a blanket pre-launch exception to `migrations.md` for
+`work_item` rename, and only while the condition above holds; does not establish a blanket
+pre-launch exception to `migrations.md` for
 every future migration — a genuinely destructive or reader-breaking change should still be
 evaluated on its own facts.
 
