@@ -52,34 +52,36 @@ const MD_TOKEN = /[a-z0-9-]+\.md/gi;
  * Does a compact, single-value FIELD like `**Spec:**`'s open with a genuine,
  * STANDALONE "n/a" / "not applicable" / "blocked" state word — as opposed to
  * a genuine filename reference whose own text merely starts with letters
- * that spell one of those words (`n/a-workflows.md`, `blocked.md`)?
+ * that spell one of those words (`n/a-workflows.md`, `blocked.md`), or an
+ * unrelated WORD that merely happens to start with the same letters
+ * (`n/architecture`, `not applicablewhatever`)?
  *
- * Three prior fixes here each tried to characterise "fused vs standalone" by
+ * Four prior fixes here each tried to characterise "fused vs standalone" by
  * looking at PUNCTUATION: a deny-list (reject a hyphen), an allow-list
- * (accept only whitespace/colon/comma/dash), then a scan asking whether
- * whitespace or a letter/digit came first after the opener. All three were
- * found adversarially to be wrong: a deny-list misses the next dangerous
- * character; an allow-list rejects ordinary sentence punctuation a human
- * obviously writes (period, semicolon, "**"); and the whitespace-vs-letter
- * scan cannot tell a real separator used with NO surrounding space at all
- * (`"n/a—this is..."`, a common em-dash style) from a hyphen that is
- * actually part of a filename (`"n/a-workflows.md"`) — both look identical
- * to that scan (non-alphanumeric, then immediately a letter).
+ * (accept only whitespace/colon/comma/dash), a scan asking whether
+ * whitespace or a letter/digit came first after the opener, then an overlap
+ * test against a real `.md` match. Each closed one hole and opened another:
+ * the whitespace-vs-letter scan couldn't tell a real separator used with no
+ * surrounding space (`"n/a—this is..."`) from a fused filename hyphen
+ * (`"n/a-workflows.md"`); the overlap-only test (checking fusion ONLY
+ * against `.md`-shaped tokens) stopped noticing fusion into anything ELSE —
+ * `"n/architecture change..."` matches the `n\s*\/\s*a` opener as a prefix,
+ * and since "rchitecture" never resolves into a `.md` token, nothing
+ * overlapped, so the whole field read as a genuine "n/a" declaration.
  *
- * The invariant that actually holds doesn't look at punctuation at all: an
- * opener is fused into a filename exactly when it OVERLAPS a real `.md`
- * match found by the same extraction regex `main()` uses. `n/a-workflows.md`
- * extracts as `a-workflows.md` (the `/` breaks the filename character
- * class), starting inside the "n/a" opener's own matched span — genuine
- * overlap, genuine fusion. `n/a—this is ... tracked in status.md ...`
- * extracts `status.md` far away from the opener's span, no overlap at all,
- * regardless of what punctuation or spacing sits in between them. This
- * ties "is it fused" directly to the same notion of "filename" the rest of
- * this file already uses, instead of guessing from adjacent characters.
+ * Two checks together close both holes, because they test different things:
+ *
+ * 1. If the character immediately after the opener continues the SAME
+ *    alphanumeric run with NO separator at all, the opener is a prefix of a
+ *    longer WORD (filename or not) — `"n/architecture"`, `"blockedworkflows.md"`.
+ * 2. Otherwise, the opener may still be fused into a filename through
+ *    punctuation with no surrounding space (`"n/a-workflows.md"`,
+ *    `"n/a—this..."`) — tested by OVERLAP against the same `.md` extraction
+ *    regex `main()` uses, not by guessing from the punctuation itself.
  *
  * @returns {"not-applicable"|"blocked"|null} `null` when the field does not
  *   open with a standalone n/a/blocked word at all (including when it's
- *   fused into a filename).
+ *   fused into a filename or into an unrelated longer word).
  */
 function fieldOpener(declared) {
   const trimmed = declared.trim();
@@ -93,6 +95,11 @@ function fieldOpener(declared) {
 
   const openerStart = offset;
   const openerEnd = offset + match[0].length;
+
+  if (openerEnd < trimmed.length && /[\p{L}\p{N}]/u.test(trimmed[openerEnd])) {
+    return null; // fused into a longer word with no separator at all
+  }
+
   for (const token of trimmed.matchAll(MD_TOKEN)) {
     const tokenStart = token.index;
     const tokenEnd = token.index + token[0].length;
@@ -217,9 +224,20 @@ async function main() {
     // second applicable spec should name it directly, not bury it after an
     // "n/a" opener — a process expectation a mechanical check cannot
     // enforce, so it is written here as a sentence, not another regex.
+    //
+    // Lower-cased before adding — found adversarially: `MD_TOKEN` carries
+    // the `i` flag (needed so an author who types `WORKFLOWS.MD` is still
+    // recognised as fused/checkable at all), but `specSections()` below
+    // extracts review-doc heading filenames with NO `i` flag, matching this
+    // repo's own always-lowercase-hyphenated naming convention exactly. A
+    // case-preserved `"WORKFLOWS.MD"` in `specs` would never equal a
+    // lower-cased heading key, silently skipping a real open finding
+    // instead of reporting one — dropping the `i` flag instead would only
+    // trade that silent miss for a different one (never extracting the
+    // mention at all). Lower-casing here is what actually closes it.
     if (fieldOpener(declared) !== "not-applicable") {
       for (const match of declared.matchAll(MD_TOKEN)) {
-        specs.add(match[0]);
+        specs.add(match[0].toLowerCase());
       }
     }
   }

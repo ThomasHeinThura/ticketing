@@ -374,6 +374,86 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
     );
   });
 
+  it("still FAILS when a genuine spec is named right after 'n/a'/'blocked' used as a mere WORD PREFIX, not a real declaration — found adversarially by a fifth review round", () => {
+    // Round 5's overlap test only checked whether the opener overlapped a real `.md`
+    // TOKEN — so it stopped noticing fusion into anything else. `"n/architecture"`,
+    // `"n/announce"`, and `"not applicablewhatever"` all match the opener regex as a
+    // PREFIX, and since the rest of the word never happens to resolve into a `.md`
+    // token, nothing overlapped — the whole field read as a genuine "n/a"/"not
+    // applicable" declaration even though it never actually said either word at all.
+    //
+    // Fixed by checking, first, whether the character immediately after the opener
+    // continues the SAME alphanumeric run with no separator at all — if so, the opener
+    // is a prefix of a longer WORD (filename or not), independent of the overlap test.
+    for (const [spec, label] of [
+      [
+        "n/architecture change, but flagging `docs/03-features/workflows.md` too",
+        "workflows.md",
+      ],
+      [
+        "n/announce, but flagging `docs/03-features/workflows.md` too",
+        "workflows.md",
+      ],
+      [
+        "n/action items tracked, see `docs/03-features/workflows.md`",
+        "workflows.md",
+      ],
+      [
+        "not applicablewhatever, but flagging `docs/03-features/workflows.md` separately",
+        "workflows.md",
+      ],
+    ]) {
+      const dir = scenario();
+      write(
+        dir,
+        "docs/07-planning/reviews/2026-09-05/consistency.md",
+        reviewDocWithOpenSection(label),
+      );
+      commit(dir, `docs: retarget the open section at ${label}`);
+      const result = runChecker(dir, "check-reviews.mjs", [
+        "--body",
+        bodyWithSpec(spec),
+      ]);
+      assert.notEqual(
+        result.status,
+        0,
+        `expected "${spec}" (opener is a mere word prefix, not a real declaration) with ` +
+          `open findings to still fail, exited ${result.status}:\n${result.output}`,
+      );
+    }
+  });
+
+  it("checks a Spec field mention regardless of its CASE — found adversarially by a fifth review round", () => {
+    // `MD_TOKEN` carries the `i` flag so an author who types a filename in the wrong
+    // case is still recognised as naming something checkable at all — but the naive
+    // fix (add the match verbatim to `specs`) let a differently-cased mention
+    // (`WORKFLOWS.MD`) silently never match `specSections()`'s lower-cased heading key
+    // (`workflows.md`, matching this repo's own always-lowercase-hyphenated file
+    // naming convention), reporting a false "every spec named in this change has an
+    // empty review section" instead of surfacing the real open finding.
+    const dir = scenario();
+    write(
+      dir,
+      "docs/07-planning/reviews/2026-09-05/consistency.md",
+      reviewDocWithOpenSection("workflows.md"),
+    );
+    commit(dir, "docs: retarget the open section at workflows.md");
+    const result = runChecker(dir, "check-reviews.mjs", [
+      "--body",
+      bodyWithSpec("blocked: WORKFLOWS.MD"),
+    ]);
+    assert.notEqual(
+      result.status,
+      0,
+      "expected a differently-cased mention of a real spec with open findings to still " +
+        `fail, exited ${result.status}:\n${result.output}`,
+    );
+    assert.match(
+      result.output,
+      /workflows\.md.*still has open review findings/s,
+    );
+  });
+
   it("non-vacuity: the OLD exact-match guard really did misread the honest n/a explanation as a declaration", () => {
     const dir = scenario();
     const declared =
