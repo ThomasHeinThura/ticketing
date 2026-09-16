@@ -4,6 +4,21 @@ Attachment **bytes** live in object storage. Attachment **metadata** lives in Po
 The backend is a plugin, so a deployment chooses SeaweedFS, S3, Azure Blob or the local
 filesystem without a code change.
 
+**Everything below is the target architecture for the P1 Attachments feature**
+(`docs/03-features/attachments.md`), which is not built yet — it is blocked by its own open
+spec review (`docs/07-planning/reviews/2026-09-05/features-core-servicedesk.md` §6):
+the `packages/plugins-contracts` `StorageBackend` interface, the presign→upload→complete
+flow, quotas, visibility and God Mode configuration all describe that future feature, not
+code that exists today. What exists today is narrower: task image uploads (an image pasted
+or attached into a task description or comment) work through direct calls to
+`apps/api/src/storage/{s3,filesystem}.ts`, selected by the bootstrap `TASKDESK_STORAGE_DRIVER`
+environment variable (`docs/05-operations/configuration-reference.md`) rather than by a God
+Mode setting — there is no plugin registry surface for storage yet. `storage.filesystem`
+still works with no configuration on a fresh install, and `apps/api/src/storage/filesystem.ts`
+documents its own path-traversal and symlink defenses and the "no true presigned URL on a
+filesystem" design in detail. When the Attachments feature actually lands, it supersedes this
+interim surface rather than extending it.
+
 ## Backends
 
 | Plugin id | Use |
