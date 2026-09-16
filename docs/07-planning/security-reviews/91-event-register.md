@@ -1,6 +1,15 @@
 # Pre-merge security review — PR #91 (event-key register, `docs/01-architecture/events.md`, and the derived `check:events` CI gate)
 
-**Reviewed head:** `bb078c10caf5643431ce4b5bfe1a16afb1f97904`
+**Reviewed head:** `6aefc7a7ddfa2ee6ddf356ff6c2213d0fd14cd00`
+
+**Rebase note (2026-09-16, orchestrator):** the code and doc-only commits Opus round 7
+actually reviewed (through `bb078c1`) were rebased onto a newer `main` after PRs #163/#164
+landed, to satisfy branch-protection's up-to-date requirement — mechanical only, no content
+change. Verified directly, not assumed: `git diff bb078c1..<new tip> -- scripts/ci/check-events.mjs scripts/ci/probes/check-events.test.mjs scripts/ci/lib/workflow-aliases.mjs docs/01-architecture/events.md`
+is empty. `check:events` (24/242, all registered) and the full `scripts/ci/**` probe suite
+(446/446) were re-run at the new head and are unchanged. The `**Reviewed head:**` field
+above is updated to the rebase's new tip SHA so the mechanical gate can bind to a commit
+that is actually reachable — the pre-rebase SHAs are no longer ancestors of this branch.
 
 **Verdict: CLEAR WITH FINDINGS.** Seven independent Opus review rounds, on `scripts/ci/check-events.mjs`, `scripts/ci/lib/workflow-aliases.mjs`, and their test suites. No exploitable
 security defect at this head. One HIGH and one MEDIUM were found across the rounds and are
