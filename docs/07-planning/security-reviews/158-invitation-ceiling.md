@@ -211,3 +211,57 @@ fresh `ci-full` run — confirmed green before merge, see the PR's own checks.
 *Reviewed by a fresh Claude Opus context, 2026-09-16. Test database `opus_pr158_test` was
 created for this review on the lane PostgreSQL 18 container and dropped afterwards; no
 other lane's database was touched.*
+
+---
+
+## Delta confirmation — reviewed head moved to `80a05c0`
+
+The full review above was performed at `edd97e31eaed1482943095634db47e4c6feede5b`. Two things
+landed after it, so `scripts/ci/check-pr-template.mjs` requires a fresh reviewed-head
+declaration — it judges over landed commits, not the net diff. The new reviewed head is:
+
+**`80a05c0fbf53ae61a624c94df4fa94596677b17d`**
+
+### What landed since `edd97e3`
+
+| Commit | Contents |
+| --- | --- |
+| `1826cf9` | This review note itself — `docs/07-planning/security-reviews/158-invitation-ceiling.md` only. |
+| `80a05c0` | Merge of `origin/main`, bringing in PR #159 (`e055f39`, `1d24c25`, `f6e4a9f`, `cefb590`, `973093b`): eleven `tests/api-integration/**` files and `docs/07-planning/security-reviews/159-native-test-setup-prep.md`. PR #159 was independently reviewed and merged on its own. |
+
+Every path across both is under `tests/api-integration/**` or
+`docs/07-planning/security-reviews/**`. Nothing under `apps/api/src/**`, `apps/web/src/**`,
+`packages/**` or `scripts/**` landed.
+
+### Confirmed unchanged
+
+`git diff edd97e3 80a05c0` over the four reviewed surfaces is **empty**:
+
+- `apps/api/src/workspace/controllers/invite-workspace-member.ts`
+- `apps/api/src/workspace/controllers/workspace-invitation-errors.ts`
+- `apps/api/src/utils/workspace-invitation-limits.ts`
+- `apps/api/src/workspace/index.ts`
+
+All four were confirmed present at `80a05c0` first, so the empty diff reflects identical
+content rather than mistyped paths.
+
+### The one shared file
+
+`tests/api-integration/workspace-invitation-writes.test.ts` is the only file both PRs touch,
+and the only file the merge had to resolve (`git show --cc 80a05c0` produces exactly one
+hunk, the import block). The two changes are disjoint and combined cleanly:
+
+- from #159: `inviteAndAcceptAsNewMember` dropped from the `organization-http` import,
+  `inviteAndAcceptAsNewMemberNative` added to the native-helper import, and five setup call
+  sites swapped;
+- from #158: the `MAX_PENDING_INVITATIONS_PER_WORKSPACE` import and the four ceiling tests,
+  untouched by the merge.
+
+No duplicate or orphaned import, no surviving non-native call site, no logic collision. This
+is native-route test scaffolding, not a security surface — a sanity check, not a re-review.
+
+**Verdict: CLEAR.** The delta is mechanical on every security-relevant surface. The
+substantive findings and the clearance recorded above stand unchanged at `80a05c0`.
+
+*Delta confirmed by a fresh Claude Opus context, 2026-09-16. No code was read for
+re-derivation; this addendum covers only what moved.*
