@@ -44,46 +44,61 @@ function argValue(flag) {
   return index === -1 ? undefined : process.argv[index + 1];
 }
 
+/** The exact character class and shape `main()` uses to extract a spec filename. Shared so
+ * `fieldOpener` tests fusion against the SAME matches `main()` will actually act on. */
+const MD_TOKEN = /[a-z0-9-]+\.md/gi;
+
 /**
  * Does a compact, single-value FIELD like `**Spec:**`'s open with a genuine,
  * STANDALONE "n/a" / "not applicable" / "blocked" state word — as opposed to
  * a genuine filename reference whose own text merely starts with letters
  * that spell one of those words (`n/a-workflows.md`, `blocked.md`)?
  *
- * Two prior fixes here tried to enumerate which punctuation characters are
- * "safe" to glue directly onto the opener with no space: first a deny-list
- * (reject a hyphen), then an allow-list (accept only whitespace/colon/comma/
- * dash). Both were found adversarially to be wrong in one direction or the
- * other — a deny-list misses the next dangerous character (a period, in
- * `blocked.md`); an allow-list rejects ordinary sentence punctuation a human
- * obviously writes (a period, semicolon, exclamation mark, closing paren, or
- * bold-markdown `**` before more prose), wrongly treating an honest "n/a."
- * or "n/a;" explanation as a genuine reference — reopening the exact
- * original bug via different punctuation. Enumerating characters is the
- * wrong shape of fix no matter which list it is.
+ * Three prior fixes here each tried to characterise "fused vs standalone" by
+ * looking at PUNCTUATION: a deny-list (reject a hyphen), an allow-list
+ * (accept only whitespace/colon/comma/dash), then a scan asking whether
+ * whitespace or a letter/digit came first after the opener. All three were
+ * found adversarially to be wrong: a deny-list misses the next dangerous
+ * character; an allow-list rejects ordinary sentence punctuation a human
+ * obviously writes (period, semicolon, "**"); and the whitespace-vs-letter
+ * scan cannot tell a real separator used with NO surrounding space at all
+ * (`"n/a—this is..."`, a common em-dash style) from a hyphen that is
+ * actually part of a filename (`"n/a-workflows.md"`) — both look identical
+ * to that scan (non-alphanumeric, then immediately a letter).
  *
- * The actual invariant doesn't need a list at all: scan forward from the end
- * of the matched opener. If a WHITESPACE character (or the end of the
- * string) is reached before any ALPHANUMERIC character, the opener is a
- * standalone word — whatever punctuation sits in between. If an
- * alphanumeric character is reached first, the opener is fused into a
- * longer identifier (a filename), no matter what punctuation preceded it.
+ * The invariant that actually holds doesn't look at punctuation at all: an
+ * opener is fused into a filename exactly when it OVERLAPS a real `.md`
+ * match found by the same extraction regex `main()` uses. `n/a-workflows.md`
+ * extracts as `a-workflows.md` (the `/` breaks the filename character
+ * class), starting inside the "n/a" opener's own matched span — genuine
+ * overlap, genuine fusion. `n/a—this is ... tracked in status.md ...`
+ * extracts `status.md` far away from the opener's span, no overlap at all,
+ * regardless of what punctuation or spacing sits in between them. This
+ * ties "is it fused" directly to the same notion of "filename" the rest of
+ * this file already uses, instead of guessing from adjacent characters.
  *
  * @returns {"not-applicable"|"blocked"|null} `null` when the field does not
- *   open with a standalone n/a/blocked word at all.
+ *   open with a standalone n/a/blocked word at all (including when it's
+ *   fused into a filename).
  */
 function fieldOpener(declared) {
-  const opener = declared.trim().replace(/^[^\p{L}\p{N}]+/u, "");
+  const trimmed = declared.trim();
+  const leadingStrip = /^[^\p{L}\p{N}]+/u.exec(trimmed);
+  const offset = leadingStrip ? leadingStrip[0].length : 0;
+  const opener = trimmed.slice(offset);
   const match = /^(?:n\s*\/\s*a|not\s+applicable|blocked)/i.exec(opener);
   if (!match) {
     return null;
   }
-  let i = match[0].length;
-  while (i < opener.length && !/\s/.test(opener[i])) {
-    if (/[\p{L}\p{N}]/u.test(opener[i])) {
-      return null; // fused into a longer identifier, e.g. "n/a-workflows.md"
+
+  const openerStart = offset;
+  const openerEnd = offset + match[0].length;
+  for (const token of trimmed.matchAll(MD_TOKEN)) {
+    const tokenStart = token.index;
+    const tokenEnd = token.index + token[0].length;
+    if (tokenStart < openerEnd && tokenEnd > openerStart) {
+      return null; // overlaps a real filename match -- fused, not standalone
     }
-    i += 1;
   }
   return /^blocked/i.test(match[0]) ? "blocked" : "not-applicable";
 }
@@ -184,8 +199,26 @@ async function main() {
     // Every `.md`-shaped token in the field is checked, not just the first
     // — found adversarially: a Spec field naming a decoy file before the
     // real one let the real one's open findings go unchecked entirely.
+    //
+    // Known, deliberate limitation, not fixed here: "n/a" grants a
+    // WHOLE-FIELD exemption, so a compound sentence that opens with "n/a"
+    // for one part of a PR but goes on to explicitly name a second, real,
+    // separately-applicable spec in the same field ("n/a for the backend,
+    // but see `docs/03-features/workflows.md` for the frontend piece")
+    // still exempts that second mention — found adversarially. Making "n/a"
+    // behave like "blocked" (never exempting once a `.md` is named) would
+    // close this, but it would also reopen the original PR #144 bug: an
+    // honest "n/a — reason (tracked in `status.md`...)" explanation is
+    // structurally the same shape as the compound case, and there is no
+    // mechanical way to tell "an incidental supporting reference" from "a
+    // second, real, applicable spec" without actually understanding the
+    // sentence. The `**Spec:**` field is documented as a single value
+    // (`.github/pull_request_template.md`); a PR that genuinely has a
+    // second applicable spec should name it directly, not bury it after an
+    // "n/a" opener — a process expectation a mechanical check cannot
+    // enforce, so it is written here as a sentence, not another regex.
     if (fieldOpener(declared) !== "not-applicable") {
-      for (const match of declared.matchAll(/[a-z0-9-]+\.md/g)) {
+      for (const match of declared.matchAll(MD_TOKEN)) {
         specs.add(match[0]);
       }
     }

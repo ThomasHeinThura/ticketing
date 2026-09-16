@@ -168,13 +168,15 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
     // `blocked.md` (a PERIOD, not a hyphen) was found by a third review
     // round after the hyphen-specific fix landed, and then an allow-list
     // fix for THAT was itself found (by two more reviewers) to reject
-    // ordinary sentence punctuation and reopen the false-positive bug —
-    // see the test below this one. Enumerating "which characters are safe
-    // to glue onto the opener" kept recurring one punctuation mark at a
-    // time no matter which direction the list ran. Round 4 replaced the
-    // whole approach: `fieldOpener()` scans forward from the opener and
-    // asks only whether it hits whitespace/end-of-string before hitting a
-    // letter or digit — no enumerated character list at all.
+    // ordinary sentence punctuation and reopen the false-positive bug, and
+    // THEN a scan-forward fix for THAT was found (by yet another reviewer)
+    // to misread a real separator used with no surrounding space at all as
+    // fusion too — see the two tests below this one. Enumerating "which
+    // characters are safe to glue onto the opener", in any direction or
+    // shape, kept recurring. `fieldOpener()` now asks a different question
+    // entirely: does the opener's own matched span OVERLAP a real `.md`
+    // token found by the same extraction regex `main()` uses? No character
+    // adjacency of any kind is examined.
     for (const [spec, label] of [
       // The `.md` extraction regex's character class excludes "/", so
       // "n/a-workflows.md" itself extracts as "a-workflows.md" — the
@@ -297,6 +299,78 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
     assert.match(
       result.output,
       /workflows\.md.*still has open review findings/s,
+    );
+  });
+
+  it("still PASSES an honest n/a explanation glued with NO SPACE AT ALL around the punctuation — found adversarially by a fourth review round", () => {
+    // Round 4's scan-forward test ("does whitespace or a letter/digit come first after
+    // the opener?") could not tell a real separator used with no surrounding space at all
+    // (an em dash typeset directly against both words, a common style: "word—word") from a
+    // hyphen that is genuinely part of a filename ("n/a-workflows.md") — both look
+    // identical to that scan: non-alphanumeric, then immediately a letter. A reviewer of
+    // round 4 found this reopens the original false-positive bug via unspaced punctuation
+    // instead of the punctuation characters earlier rounds already covered.
+    //
+    // Fixed by abandoning the character-adjacency scan entirely: `fieldOpener` now checks
+    // whether the opener's own matched span OVERLAPS a real `.md` token found by the same
+    // extraction regex `main()` uses. "n/a—this is..." extracts no `.md` token anywhere
+    // near the opener at all (the eventual `status.md` mention is far away in the string),
+    // so there is nothing to overlap — genuinely standalone, regardless of spacing.
+    for (const glue of [
+      "n/a—this is UAT-deployability infrastructure, tracked in status.md, not a feature.",
+      "n/a-this is UAT-deployability infrastructure, tracked in status.md, not a feature.",
+      "**n/a**—this is UAT-deployability infrastructure, tracked in status.md, not a feature.",
+      "n/a.this is UAT-deployability infrastructure, tracked in status.md, not a feature.",
+      "n/a;this is CI infrastructure work, tracked in status.md, not a feature.",
+    ]) {
+      const dir = scenario();
+      const result = runChecker(dir, "check-reviews.mjs", [
+        "--body",
+        bodyWithSpec(glue),
+      ]);
+      assert.equal(
+        result.status,
+        0,
+        `expected the honest, unspaced n/a explanation ${JSON.stringify(glue.slice(0, 40))}... to pass, exited ${result.status}:\n${result.output}`,
+      );
+    }
+  });
+
+  it("DOCUMENTED LIMITATION: an 'n/a' opener still exempts a second, real spec named later in the same field", () => {
+    // Found adversarially by a fourth review round: a compound sentence that opens with
+    // "n/a" for one part of a PR but goes on to explicitly name a second, real,
+    // separately-applicable spec in the same field is still fully exempted — the second
+    // mention is never checked.
+    //
+    // This is a DELIBERATE, DOCUMENTED trade-off, not something this fix closes: making
+    // "n/a" behave like "blocked" (never exempting once a `.md` is named) would close it,
+    // but would also reopen the original PR #144 bug, since an honest "n/a — reason
+    // (tracked in `status.md`...)" explanation is structurally the same shape as this
+    // compound case, and there is no mechanical way to tell "an incidental supporting
+    // reference" from "a second, real, applicable spec" without actually understanding the
+    // sentence. The PR template documents `**Spec:**` as a single value; a PR with a
+    // genuine second applicable spec should name it directly rather than bury it after an
+    // "n/a" opener. This test pins down the ACTUAL (accepted) behavior so a future change
+    // that alters it does so knowingly, not by accident.
+    const dir = scenario();
+    write(
+      dir,
+      "docs/07-planning/reviews/2026-09-05/consistency.md",
+      reviewDocWithOpenSection("workflows.md"),
+    );
+    commit(dir, "docs: retarget the open section at workflows.md");
+    const result = runChecker(dir, "check-reviews.mjs", [
+      "--body",
+      bodyWithSpec(
+        "n/a for the backend, but see `docs/03-features/workflows.md` for the frontend " +
+          "piece, which is NOT covered by this n/a and has real open review findings.",
+      ),
+    ]);
+    assert.equal(
+      result.status,
+      0,
+      `expected the compound "n/a ... but see workflows.md" field to be exempted as a ` +
+        `whole (the accepted trade-off), exited ${result.status}:\n${result.output}`,
     );
   });
 
