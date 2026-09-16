@@ -44,11 +44,13 @@ FROM base AS deps
 COPY .npmrc pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
+COPY packages/domain/package.json packages/domain/
 COPY packages/email/package.json packages/email/
 COPY packages/libs/package.json packages/libs/
 COPY packages/mcp/package.json packages/mcp/
 COPY packages/permissions/package.json packages/permissions/
 COPY packages/typescript-config/package.json packages/typescript-config/
+COPY packages/ui/package.json packages/ui/
 RUN pnpm install --frozen-lockfile
 
 # ---------------------------------------------------------------------------
