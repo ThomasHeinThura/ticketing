@@ -43,18 +43,21 @@
  *
  * 2. *The trees.* `covered` was the literal `["tests/api", "tests/permissions"]` while
  *    FOUR trees sit under `tests/`. Deriving the list from disk found what the literal
- *    was hiding: **`tests/api-integration` has 34 TypeScript files and not one of them is
- *    in any TypeScript program.** That is the identical gap this file was written for —
- *    the one that let #16 ship a dangling import — sitting in the tree the whole time,
- *    invisible because the guard's own scope was hand-written.
+ *    was hiding: `tests/api-integration` was invisible to every TypeScript program, for
+ *    the identical reason #16 shipped a dangling import unnoticed — the guard's own
+ *    scope was hand-written, and nobody had thought to add the tree to it.
  *
- *    Adding it to `tsconfig.tests.json` produces 359 pre-existing `TS18048`-class errors,
- *    and two other lanes are adding files to that tree right now, so closing it here
- *    would be a different pull request wearing this one's clothes. It is declared as an
- *    EXEMPTION instead: named, reasoned, printed on every run with its current file
- *    count, and — this is the part the literal could not do — a new uncovered tree is a
- *    hard failure, and an exemption that has become unnecessary is a hard failure too.
- *    The gap is now loud rather than absent.
+ *    **That gap is now CLOSED, not exempted.** `tsconfig.tests.json` includes
+ *    `tests/api-integration`, the diagnostics that surfaced when it first compiled a
+ *    real program are fixed (see `requireRow` in
+ *    `tests/api-integration/helpers/fixtures.ts`), and `EXEMPT` below is an empty `Map` —
+ *    every tree this guard derives from disk is either covered or fails it. The
+ *    exemption MECHANISM stays, for the next tree that cannot close immediately: name it
+ *    in `EXEMPT` with a real reason. What the literal could not do, and what stays true
+ *    with `EXEMPT` empty or not, is that a new uncovered tree is a hard failure and a
+ *    declared exemption that has quietly become unnecessary is a hard failure too — see
+ *    "an exemption that is no longer needed FAILS" below. Neither kind of gap can linger
+ *    past when it stops being noticed.
  */
 
 import assert from "node:assert/strict";
@@ -383,15 +386,15 @@ describe("turbo must actually re-run typecheck when a test tree changes", () => 
   // not a proxy for it. Deleting the `inputs` line brings the false pass back, and this
   // test is what refuses it.
   it("the typecheck task declares the out-of-package test trees as inputs", async () => {
-    const raw = await fs.readFile(path.join(repoRoot, "turbo.json"), "utf8");
-    // turbo.json is JSONC — it carries `//` comments, which JSON.parse rejects. Drop
-    // whole comment lines only; never touch a line that also holds data, so a `//` inside
-    // a string value cannot be mangled.
-    const config = JSON.parse(
-      raw
-        .split("\n")
-        .filter((line) => !line.trim().startsWith("//"))
-        .join("\n"),
+    // turbo.json is JSONC — it carries `//` comments, which JSON.parse rejects. Parsed
+    // with this file's OWN string-aware scanner (above), the same one the first describe
+    // block already uses for turbo.json — not a second, weaker line-stripper that only
+    // dropped whole comment lines and never handled `/* */` or a trailing comma. Two
+    // parsers of the same format in one file is how the weaker one quietly keeps running:
+    // there is only one now.
+    const config = parseJsonc(
+      await fs.readFile(path.join(repoRoot, "turbo.json"), "utf8"),
+      "turbo.json",
     );
     const tasks = config.tasks ?? config.pipeline ?? {};
     const typecheck = tasks.typecheck;
