@@ -2,17 +2,26 @@
  * Issue #82 — the remediation surfaces that the oracle and the four flipped probes do not
  * reach on their own.
  *
- * `multi-role-membership-characterization.test.ts` proves the two evaluators AGREE, and
- * `multi-role-membership-target.test.ts` holds the four behaviours PR #84 pinned. This file
- * covers the rest of issue #82's scope list:
+ * `multi-role-membership-characterization.test.ts` used to prove the two evaluators AGREE, and
+ * `multi-role-membership-target.test.ts` held the four behaviours PR #84 pinned -- both deleted
+ * in S10 (issue #6) along with the organization() plugin they characterized. This file covers
+ * the rest of issue #82's scope list:
  *
  *   §1  the native evaluator on an ORDINARY route — not just `/api/capabilities`, so the
  *       refusal is shown where the product actually enforces authorization;
  *   §2  `requireWorkspaceRoleAuthority` — the instance-admin twin of the same rule;
- *   §3  every remaining role-bearing write on the mounted plugin, not only
- *       `update-member-role`;
  *   §4  the RECOVERY strategy — migration `0050`'s own SQL, executed against real rows: it
  *       repairs what has one meaning and refuses to guess at what does not.
+ *
+ * §3 (every remaining role-bearing write on the mounted plugin, not only `update-member-role`)
+ * is gone with the plugin (S10): it proved the now-deleted role guard blocked a comma-bearing
+ * value on `invite-member`, `update-role` and `update-member-role`. No native replacement is
+ * needed -- native's role-name Zod validation doesn't explicitly reject a comma either, but
+ * native's evaluator (`workspaceRolePermission`, `apps/api/src/utils/workspace-member-roles.ts`)
+ * is always an exact-string match against `workspace_role.role`, never a comma-split-then-union
+ * the way the plugin's evaluator was, so a role literally named with a comma would just be
+ * evaluated as one oddly-named role, not exploited as a union of two. The vulnerability class
+ * §3 guarded against has no native analog, comma or not.
  */
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -25,11 +34,11 @@ import { createApp } from "../../apps/api/src/index";
 import { resolveMembershipRole } from "../../apps/api/src/utils/workspace-member-roles";
 import { resetTestDatabase } from "./helpers/database";
 import {
-  createWorkspaceViaPlugin,
-  inviteAndAcceptAsNewMember,
   plantLegacyMembershipRole,
   signUpUser,
 } from "./helpers/organization-http";
+import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
+import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 type App = ReturnType<typeof createApp>["app"];
 
@@ -48,9 +57,9 @@ async function burnInstanceAdminSlot(app: App): Promise<void> {
 
 async function workspaceWithMember(app: App, role: string) {
   const owner = await signUpUser(app);
-  const created = await createWorkspaceViaPlugin(app, owner.cookie);
+  const created = await createWorkspaceNative(app, owner.cookie);
   const workspace = (await created.json()) as { id: string };
-  const member = await inviteAndAcceptAsNewMember(
+  const member = await inviteAndAcceptAsNewMemberNative(
     app,
     owner.cookie,
     workspace.id,
@@ -249,105 +258,6 @@ describe("#82 §2 -- requireWorkspaceRoleAuthority applies the same rule to an i
   });
 });
 
-describe("#82 §3 -- every role-bearing write on the mounted plugin, not just update-member-role", () => {
-  it("invite-member cannot invite someone INTO a multi-role value -- the invitation stores the role, so an unguarded invite would simply defer the defect to acceptance time", async () => {
-    const { app } = createApp();
-    const owner = await signUpUser(app);
-    const created = await createWorkspaceViaPlugin(app, owner.cookie);
-    const workspace = (await created.json()) as { id: string };
-
-    const response = await app.request("/api/auth/organization/invite-member", {
-      method: "POST",
-      headers: { "content-type": "application/json", cookie: owner.cookie },
-      body: JSON.stringify({
-        organizationId: workspace.id,
-        email: `invitee-${randomUUID()}@example.com`,
-        role: ["admin", "viewer"],
-      }),
-    });
-    expect(response.status).toBe(400);
-    expect(((await response.json()) as { error: string }).error).toBe(
-      "INVALID_ROLE_VALUE",
-    );
-
-    const invitations = await db
-      .select({ role: schema.invitationTable.role })
-      .from(schema.invitationTable)
-      .where(eq(schema.invitationTable.workspaceId, workspace.id));
-    expect(invitations.map((row) => row.role)).not.toContain("admin,viewer");
-  });
-
-  it("update-role cannot RENAME an existing role into a comma-bearing name, including through its nested `data` object -- a rename is a write the top-level field check would miss", async () => {
-    const { app } = createApp();
-    const owner = await signUpUser(app);
-    const created = await createWorkspaceViaPlugin(app, owner.cookie);
-    const workspace = (await created.json()) as { id: string };
-
-    const response = await app.request("/api/auth/organization/update-role", {
-      method: "POST",
-      headers: { "content-type": "application/json", cookie: owner.cookie },
-      body: JSON.stringify({
-        organizationId: workspace.id,
-        roleName: "viewer",
-        data: { roleName: "viewer,admin" },
-      }),
-    });
-    expect(response.status).toBe(400);
-    const body = (await response.json()) as { error: string; field: string };
-    expect(body.error).toBe("INVALID_ROLE_VALUE");
-    expect(body.field).toBe("data.roleName");
-
-    const roles = await db
-      .select({ role: schema.workspaceRoleTable.role })
-      .from(schema.workspaceRoleTable)
-      .where(eq(schema.workspaceRoleTable.workspaceId, workspace.id));
-    expect(roles.map((row) => row.role)).not.toContain("viewer,admin");
-    expect(roles.map((row) => row.role)).toContain("viewer");
-  });
-
-  it("a one-element array is NOT refused -- it names exactly one role and is not a union, and refusing it would break a client that legitimately sends the array shape better-auth documents", async () => {
-    const { app } = createApp();
-    const { owner, workspace, member } = await workspaceWithMember(
-      app,
-      "viewer",
-    );
-    const [memberRow] = await db
-      .select({ id: schema.workspaceUserTable.id })
-      .from(schema.workspaceUserTable)
-      .where(
-        and(
-          eq(schema.workspaceUserTable.workspaceId, workspace.id),
-          eq(schema.workspaceUserTable.userId, member.user.id),
-        ),
-      );
-
-    const response = await app.request(
-      "/api/auth/organization/update-member-role",
-      {
-        method: "POST",
-        headers: { "content-type": "application/json", cookie: owner.cookie },
-        body: JSON.stringify({
-          organizationId: workspace.id,
-          memberId: memberRow?.id,
-          role: ["admin"],
-        }),
-      },
-    );
-    expect(response.status).toBe(200);
-
-    const [after] = await db
-      .select({ role: schema.workspaceUserTable.role })
-      .from(schema.workspaceUserTable)
-      .where(
-        and(
-          eq(schema.workspaceUserTable.workspaceId, workspace.id),
-          eq(schema.workspaceUserTable.userId, member.user.id),
-        ),
-      );
-    expect(after?.role).toBe("admin");
-  });
-});
-
 describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against real rows", () => {
   it("REPAIRS a comma-bearing value only when every raw piece is ALREADY the exact same well-formed byte string -- CORRECTED after formal review R1 (see the dedicated regression below): no trimming is ever performed to reach agreement, only to confirm a piece that already agrees is not itself malformed", async () => {
     const { app } = createApp();
@@ -365,7 +275,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
 
     for (const shape of shapes) {
       await withoutRoleConstraint();
-      const member = await inviteAndAcceptAsNewMember(
+      const member = await inviteAndAcceptAsNewMemberNative(
         app,
         owner.cookie,
         workspace.id,
@@ -421,7 +331,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
 
     for (const raw of shapes) {
       await withoutRoleConstraint();
-      const member = await inviteAndAcceptAsNewMember(
+      const member = await inviteAndAcceptAsNewMemberNative(
         app,
         owner.cookie,
         workspace.id,
@@ -460,7 +370,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
     const { app } = createApp();
     await burnInstanceAdminSlot(app);
     const owner = await signUpUser(app);
-    const created = await createWorkspaceViaPlugin(app, owner.cookie);
+    const created = await createWorkspaceNative(app, owner.cookie);
     const workspace = (await created.json()) as { id: string };
 
     await withoutRoleConstraint();
