@@ -66,19 +66,23 @@ tracked separately.
 **Also reconciled, 2026-09-16:** **PR #89** (checklist/heading genuineness hardening in
 `scripts/ci/lib/pr-body.mjs` and its test file) merged to `main` as `5d9c0fb`. It closed the
 LOW findings recorded against #81 and #79 plus a long chain of further adversarial findings
-the same checklist-genuineness mechanism turned up across twelve rounds of independent
-review — eleven ordinary/adversarial Sonnet rounds and four separate Opus security passes,
-the last a delta review made necessary by a required merge from `main`, all CLEAR.
-`scripts/ci/**` test coverage grew from 322 to 381+ passing tests over those rounds.
-Committed security-review note at
-`docs/07-planning/security-reviews/89-checklist-genuineness-hardening.md` (the four-round
-Opus pass plus an appended delta-review section). Scoped to `scripts/ci/**`, two docs files
-and two `tests/api-integration/**` test files — no `apps/api/**` source touched, so this
-does not affect S7, S10, or Throttle 1. **One CRITICAL finding this PR's own review
-surfaced was deliberately left unfixed**: `sections()` in `scripts/ci/lib/pr-body.mjs`,
-already filed as issue #146 and flagged DECISION REQUIRED for Thomas via PR #147 — that
-flag is unchanged by this merge; #146 remains open, still awaiting Thomas's choice of fix
-direction, not restated further here.
+the same checklist-genuineness mechanism turned up across thirteen rounds of independent
+review — eight ordinary/adversarial Sonnet rounds (1–8) and five separate Opus security
+passes (rounds 9, 10, 11, a fourth at `95875c4`, and a fifth delta review made necessary by
+a required merge from `main`), all CLEAR. `scripts/ci/**` test coverage grew from 322 to
+381 passing tests over those rounds. Committed security-review note at
+`docs/07-planning/security-reviews/89-checklist-genuineness-hardening.md` (the fourth-pass
+record plus an appended fifth-pass delta-review section). Touches `scripts/ci/**`,
+`docs/04-engineering/ci-cd.md` (the security-review-scope glob list), its own
+security-review note, and two `tests/api-integration/**` test files — `status.md` itself
+also appears in PR #89's file list, but only as an artefact of the required merge-from-main
+carrying PR #144's and #147's own already-recorded changes, not new content from this PR.
+No `apps/api/**` source appears anywhere in its file list, so this does not affect S7, S10,
+or Throttle 1. **One CRITICAL finding this PR's own review surfaced was deliberately left
+unfixed**: `sections()` in `scripts/ci/lib/pr-body.mjs`, already filed as issue #146 and
+flagged DECISION REQUIRED for Thomas via PR #147 — that flag is unchanged by this merge;
+#146 remains open, still awaiting Thomas's choice of fix direction, not restated further
+here.
 
 > **This is a durable snapshot, not a work log.** Update it only on a durable transition: a
 > pull request merges or becomes genuinely review-ready, an issue blocks, unblocks or
