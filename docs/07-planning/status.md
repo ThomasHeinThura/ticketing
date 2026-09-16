@@ -2,21 +2,20 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-16 (later the same day)
-> **`main` at that moment:** `6de483f` (PR #161, S10 — unmount the better-auth
-> `organization()` plugin, merged after PR #155/#157/#158/#159)
-> **Stage:** P0 · Foundation — **exit criteria met; Throttle 1 is OPEN**
-> **Throttle 1: OPEN.** All five conditions verified live, not rounded up: #5 closed, **#6
-> closed 2026-09-16** (every substantive item in its real checklist checked against live
+> **Snapshot taken:** 2026-09-16 (later the same day, after the post-Throttle-1 merge wave)
+> **`main` at that moment:** `90f8d78` (PR #164, `storage.filesystem` driver — the fourth of
+> four PRs merged this wave, after PR #75, #91, #163)
+> **Stage:** P0 · Foundation — **exit criteria met; Throttle 1 is OPEN.** Autonomous
+> continuation past Throttle 1 is authorized (Thomas, 2026-09-16) — see the session log's
+> newest entry for what that wave landed and what it found.
+> **Throttle 1: OPEN.** All five conditions verified live, not rounded up: #5 closed, #6
+> closed 2026-09-16 (every substantive item in its real checklist checked against live
 > source, not against this file or the issue's own stale checkboxes), #7 closed,
 > route-policy coverage runs as a required status check, and the unclassified-route-fails-CI
-> probe still passes. **S10 is the retrofit's final stage and it landed** (PR #161,
-> 2026-09-16 — full 3-Sonnet + Opus panel, CLEAR WITH FINDINGS: one MEDIUM
-> session-state-integrity regression found and fixed pre-merge, one LOW doc fix). PR #107
-> (the caller-count-scanner CI safety net) is a **separate, still-open, still-held PR** —
-> Thomas's decision to hold it stands; S10 did not depend on it and used its own independent
-> source-level caller verification instead. See Scheduler and Throttle 1, below, and the
-> retrofit ledger for S10's own record.
+> probe still passes. S10 (the retrofit's final stage) landed as PR #161. PR #107 (the
+> caller-count-scanner CI safety net) is a **separate, still-open, still-held PR** — Thomas's
+> decision to hold it stands. See Scheduler and Throttle 1, below, and the retrofit ledger
+> for S10's own record.
 > The `## Scheduler` section is the current live-state-to-action mapping; read it alongside
 > this header, not instead of it.
 >
@@ -955,6 +954,98 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-16 (later the same day, a third time) · Autonomous post-Throttle-1 wave — four PRs merged, backlog reconciled, one significant new finding
+
+Same session, continued after Throttle 1 opened (entry directly below). Thomas explicitly
+authorized autonomous continuation — prioritizing within the roadmap, merging cleared PRs,
+closing evidence-backed issues — without stopping to ask him to pick each ticket, reserving
+only new/conflicting policy, undecided architecture, gate waivers, and reviewer-eligibility
+changes for his own call.
+
+**Backlog reconciled first.** Of the six open PRs at the start of this wave: **#127**
+closed (its whole premise — a non-Claude model-routing policy question — was already
+settled by the 2026-09-15 decision log entry); **#117** closed (a stale record of a
+six-day-old transient review-capacity block, fully overtaken); **#123** closed (conflicting,
+its status.md/ledger payload obsolete, one still-novel paragraph on router-alias semantics
+judged not worth carrying forward — it describes multi-provider routing infrastructure the
+2026-09-15 simplification already superseded); **#75** and **#91** reconciled and merged
+(below); **#107** left untouched, held, per Thomas's own standing decision.
+
+**PR #75** (P2 workflow-transitions domain module, `packages/domain/src/workflow/`) —
+rebased cleanly, one independent Sonnet review found one non-functional doc-comment/test-
+citation staleness (WF-22 already decided but the code still called it unconfirmed), fixed.
+Merged as `ae15c6d`.
+
+**PR #163** (issue #8's H2 finding — the route-coverage gate discarded Hono's registration
+order, so a route above the auth guard was indistinguishable from one below it) — a bounded
+security fix, not #8's much larger remaining scope. Full review chain: ordinary Sonnet PASS,
+Opus CLEAR WITH FINDINGS (F1 MEDIUM — the fix also needed to model path *scope*, not just
+order, since the guard is `/api/*` not `/*`; F2-F4 LOW), fixed; a second independent Opus
+delta pass found N1 (LOW, a `/api`-without-trailing-slash false positive) and mechanical
+PR-template defects, fixed; a final delta confirmed CLEAR. Merged as `ba0ae53`. Filed
+**#165** (pre-existing, not-live-in-CI-today `test:permissions` flakiness when
+`apps/web/dist` is present, found along the way — relevant to Docker-image-shaped
+pipelines).
+
+**PR #91** (issue #86 — register the event vocabulary, add `check:events`) — already deep
+into its own review history from earlier work; this wave's job was rebase, reconciliation,
+and closing it out. A rebase-introduced conflict in `decision-log.md` resolved by commit
+timestamp (matching the file's existing intra-day ordering convention). **Found and fixed a
+real control-plane discipline gap along the way**: the branch had, across two of its own
+prior commits, first asserted a Thomas decision on #86 with no supporting source at all,
+then "fixed" that by citing a second, equally unverifiable "orchestrator directive" — both
+false. Re-attributed honestly to the orchestrating session's own delegated authority. Two
+more Opus rounds (6 and a lightweight round-7 confirmation) found and closed one MEDIUM
+(round 6 — a function declaration whose own name collided with a tracked call name
+whitelisted its own parameter as a legitimate call argument, restoring an already-fixed
+class of gap) and disclosed rather than chased two narrower LOWs of the same class
+(round 7). **Also found the PR had never had its required ordinary review at all** — seven
+Opus rounds are not a substitute for it — commissioned one, which caught two more trivial
+doc self-contradictions, fixed. **Also found no committed security-review note had ever
+existed for this PR** despite seven real Opus rounds — the mechanical PR-template gate had
+nothing to bind to. Wrote the consolidated note. Merged as `07921c0`.
+
+**PR #164** (issue #11 — `storage.filesystem` driver, so a fresh install has a working
+task-image-upload backend with no S3 configuration) — new work this wave, not a backlog
+item. Implemented a driver-agnostic extraction from the existing `s3.ts`, path-traversal and
+symlink defenses, and — since a local filesystem has no native presigned-URL concept — a
+new same-origin route gated by a short-lived HMAC-SHA256 upload token in place of a session.
+Two ordinary Sonnet reviews (one deep on the token mechanism, one on path-safety/wiring) both
+PASSED with only trivial/low findings. Mandatory Opus review returned CHANGES REQUIRED — one
+blocking Medium: the new route, the only unauthenticated mutating filesystem-writing
+endpoint in the product, had zero test coverage at the HTTP layer (every existing test
+called the driver's functions directly). Fixed with a real HTTP-integration suite; a delta
+Opus pass confirmed it by mutation-testing the new tests themselves, and found one further
+Low (a genericized error was being discarded rather than logged server-side), fixed. Two
+findings correctly deferred to tracked issues rather than fixed in this PR: **#166**
+(orphaned bytes when finalize never runs, no GC) and **#167** (a `TASKDESK_STORAGE_DRIVER`
+flip silently orphans bytes on delete). Merged as `90f8d78`.
+
+**Significant new finding, not specific to any one PR: `docker build .` fails on `main`
+itself**, reproduced on a fresh clone with `--no-cache`, no PR #164 changes present —
+`apps/web`'s build step cannot resolve `react/compiler-runtime` from
+`packages/ui/src/components/button.tsx` inside the Docker build environment specifically (a
+plain host-side `pnpm --filter @taskdesk/web build` succeeds cleanly). Filed as **#168**.
+This blocks producing any working Docker image today, which bears directly on issue #11's
+own "Done when" criteria and the near-term UAT deployment work — flagged prominently to
+Thomas rather than left for someone to discover mid-deployment.
+
+**Every merge in this wave went through the full checklist**: exact-head verification after
+every rebase (each confirmed by an empty diff on every file the applicable review covered,
+not assumed), all required status checks green at that exact head, no waived gate, the
+mechanical PR-template/security-review gate passing at the merged SHA. Two mechanical gate
+failures were found and fixed along the way (not pre-existing — both introduced by this
+wave's own edits): a missing `**Reviewed head:**` field format on PR #91's note, and a Gates-
+table/checklist formatting defect on PR #163's body.
+
+**Not done this wave:** #8's much larger remaining scope (classifying ~80 still-uncovered
+routes, wiring `policyRegistry` into runtime request handling) — H2 was one bounded finding
+within it, not the whole issue. P1 core's one genuinely startable slice (work-items) was
+scoped but not started — its first real migration touches `person`/`organisation`, which the
+scoping pass found is a P1-owned prerequisite, not something to build piecemeal alongside
+`work_item`; flagged for Thomas rather than started. `storage.filesystem` UAT lane and PR
+#107 remain untouched, per standing instruction.
 
 ### 2026-09-16 (later the same day again) · S10 landed (PR #161), issue #6 closed, Throttle 1 OPEN
 
