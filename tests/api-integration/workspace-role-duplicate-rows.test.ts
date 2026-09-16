@@ -37,10 +37,8 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { requireWorkspacePermission } from "../../apps/api/src/utils/require-workspace-permission";
 import { resetTestDatabase } from "./helpers/database";
-import {
-  inviteAndAcceptAsNewMember,
-  signUpUser,
-} from "./helpers/organization-http";
+import { signUpUser } from "./helpers/organization-http";
+import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 async function createWorkspace(
@@ -140,7 +138,7 @@ describe("#118 P2 fail-closed: a duplicated role definition is refused, not gues
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "P2 dup role");
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,

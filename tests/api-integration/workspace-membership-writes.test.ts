@@ -17,10 +17,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import {
-  inviteAndAcceptAsNewMember,
-  signUpUser,
-} from "./helpers/organization-http";
+import { signUpUser } from "./helpers/organization-http";
+import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import {
   addWorkspaceMemberNative,
   leaveWorkspaceNative,
@@ -67,7 +65,7 @@ describe("S5 add member (POST /api/workspace/{id}/members)", () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Roster");
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -158,7 +156,7 @@ describe("S5 add member (POST /api/workspace/{id}/members)", () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Dup");
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -187,7 +185,7 @@ describe("S5 add member (POST /api/workspace/{id}/members)", () => {
       owner.cookie,
       "Viewer Blocked",
     );
-    const viewer = await inviteAndAcceptAsNewMember(
+    const viewer = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -214,13 +212,13 @@ describe("S5 remove member (DELETE /api/workspace/{id}/members/{userId})", () =>
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Removable");
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
       "admin",
     );
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -264,13 +262,13 @@ describe("S5 remove member (DELETE /api/workspace/{id}/members/{userId})", () =>
       owner.cookie,
       "Viewer Cannot Remove",
     );
-    const viewer = await inviteAndAcceptAsNewMember(
+    const viewer = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
       "viewer",
     );
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -295,7 +293,7 @@ describe("S5 remove member (DELETE /api/workspace/{id}/members/{userId})", () =>
       owner.cookie,
       "Session Clear",
     );
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -330,13 +328,13 @@ describe("S5 update member role (PATCH /api/workspace/{id}/members/{userId}/role
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Promote");
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
       "admin",
     );
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -362,7 +360,7 @@ describe("S5 update member role (PATCH /api/workspace/{id}/members/{userId}/role
       owner.cookie,
       "No Owner Grant",
     );
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -388,7 +386,7 @@ describe("S5 update member role (PATCH /api/workspace/{id}/members/{userId}/role
       owner.cookie,
       "Unknown Role Update",
     );
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -429,13 +427,13 @@ describe("S5 update member role (PATCH /api/workspace/{id}/members/{userId}/role
       owner.cookie,
       "Viewer Cannot Update",
     );
-    const viewer = await inviteAndAcceptAsNewMember(
+    const viewer = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
       "viewer",
     );
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -459,7 +457,7 @@ describe("S5 leave (POST /api/workspace/{id}/leave)", () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Leaveable");
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -479,7 +477,7 @@ describe("S5 leave (POST /api/workspace/{id}/leave)", () => {
       owner.cookie,
       "Admin Leaves",
     );
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -507,7 +505,7 @@ describe("S5 transfer ownership (POST /api/workspace/{id}/transfer-ownership)", 
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Transfer");
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -549,13 +547,13 @@ describe("S5 transfer ownership (POST /api/workspace/{id}/transfer-ownership)", 
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Not Owner");
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
       "admin",
     );
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -601,7 +599,7 @@ describe("S5 transfer ownership (POST /api/workspace/{id}/transfer-ownership)", 
       role: "manager",
       joinedAt: new Date(),
     });
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -630,7 +628,7 @@ describe("S5 transfer ownership (POST /api/workspace/{id}/transfer-ownership)", 
       role: "lead",
       joinedAt: new Date(),
     });
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -652,13 +650,13 @@ describe("S5 transfer ownership (POST /api/workspace/{id}/transfer-ownership)", 
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Not Member");
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
       "member",
     );
-    const other = await inviteAndAcceptAsNewMember(
+    const other = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -680,13 +678,13 @@ describe("S5 transfer ownership (POST /api/workspace/{id}/transfer-ownership)", 
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Not Viewer");
-    const viewer = await inviteAndAcceptAsNewMember(
+    const viewer = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
       "viewer",
     );
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -719,7 +717,7 @@ describe("S5 transfer ownership (POST /api/workspace/{id}/transfer-ownership)", 
       role: "customer",
       joinedAt: new Date(),
     });
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -768,7 +766,7 @@ describe("S5 transfer ownership (POST /api/workspace/{id}/transfer-ownership)", 
       role: "member",
       joinedAt: new Date(),
     });
-    const target = await inviteAndAcceptAsNewMember(
+    const target = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
