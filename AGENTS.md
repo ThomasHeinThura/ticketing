@@ -240,13 +240,21 @@ Never:
 
 ## Review tiers
 
+**Tier by what the change actually risks, not by which directory it sits in.** A path list
+(migrations, CI/gate machinery, auth/permissions code) tells you a change is a *candidate*
+for the heavy tier — it does not by itself mean the change gets it. Two changes to the same
+file can need completely different amounts of review. The classification below is one an
+orchestrating session makes itself per change; it is not a per-file rule.
+
 ### Ordinary substantive work
 
 At least **two** fresh, independent reviewer contexts, minimum. Use **three** for broad or
 high-coupling work: migrations, API + frontend crossing the same change, concurrency,
-cross-package integration, CI/security-control machinery, or stage-completion integration.
-Each review records: the exact candidate SHA, the reviewer's independence from the author,
-what was actually checked (not just read), the verdict, and blocking findings.
+cross-package integration, or stage-completion integration — and for CI/security-control
+machinery specifically, only when the change actually alters an authority or gate-semantics
+invariant (see below). Each review records: the exact candidate SHA, the reviewer's
+independence from the author, what was actually checked (not just read), the verdict, and
+blocking findings.
 
 ### Security-sensitive work
 
@@ -256,6 +264,48 @@ list in `docs/04-engineering/ci-cd.md`: authentication and permissions code, mig
 CI/gate machinery itself, and the dependency graph (`package.json`, lockfiles,
 `pnpm-workspace.yaml` overrides). The reviewer must be a context that did not materially
 author, direct, or remediate the change under review.
+
+**Within that scope, size the ordinary-review count to what the change does, not just where
+it lives** (Thomas, 2026-09-16 — see the decision log):
+
+| The change... | Ordinary review | Security review |
+| --- | --- | --- |
+| ...touches a security-scope path but changes no authority or gate-pass/fail semantics (a comment, a log line, a variable rename, a test-only file) | **one** | n/a — nothing security-relevant changed |
+| ...is a bounded fix to CI/gate logic or a security-scope file that changes pass/fail semantics for a narrow, well-understood case (a parsing bug, a false-positive/false-negative correction) | **one strong** | required, but a **single** Opus pass — do not stack a second or third Sonnet round ahead of it "just in case"; Opus's own adversarial pass exceeds what another Sonnet pass adds here |
+| ...touches auth, permissions, migrations, or redesigns a security control's core semantics (not a bounded fix to one) | **two to three**, per the broad/high-coupling test above | required, full independent Opus pass |
+| ...is a large or high-risk authority redesign (a new capability, a new trust boundary, a schema change to an access-control table) | **full panel** (three), plus any domain-specific review the spec calls for | required, full independent Opus pass, and check whether an ADR is needed first |
+
+A change can start in one row and prove it belongs in another — that is a normal outcome,
+not a process failure, and does not retroactively invalidate review already done at the
+row it actually turned out to be.
+
+### When repeated review keeps finding something: stop patching and change altitude
+
+A file can legitimately need several review rounds when each one finds a *different class*
+of real defect. It should **not** need many rounds finding *narrower and narrower instances
+of the same already-identified class* — enumerating one more punctuation mark, one more
+Unicode edge case, one more spacing variant that a real PR author is exceedingly unlikely to
+type. That pattern (do-not 10's "repeat the same failing approach more than three times")
+is a signal to change what kind of fix is being attempted, not to run another review round
+on the same kind of patch:
+
+- **After the third round on the same mechanism finds the same CLASS of gap** (not a new
+  class — the same one, recurring at a narrower scope each time), stop and ask: does the
+  underlying design need a structurally different approach (the kind of redesign, not
+  another special case), or is the residual risk small enough to accept and document
+  explicitly, the way an accepted trade-off is recorded elsewhere in this file?
+- **A finding that requires constructing an input no real author would plausibly type**
+  (an astral-plane Unicode character exactly at a parser boundary, a dozen combining marks)
+  is real if true, but it does not by itself justify another full review round at the same
+  tier — record it, decide once whether it is worth a fix, and move on rather than treating
+  every such finding as equally urgent as the ones a real PR body actually triggered.
+- **Once a mechanism has had its structural redesign and further rounds are only finding
+  size-of-input variations on the same theme, one Opus pass closes it** — do not requeue
+  another Sonnet round first "to be safe." If Opus itself finds something new, that is real
+  signal; chase it. If it doesn't, merge.
+- This does not relax exact-head discipline, the requirement for a real regression test per
+  finding, or the ban on waiving a gate — it relaxes how many *rounds*, not how rigorously
+  each one is done.
 
 ---
 
