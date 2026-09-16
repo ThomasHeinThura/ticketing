@@ -1573,7 +1573,7 @@ describe("validateWorkflowVersion — malformed input, fails closed", () => {
     expect(validateWorkflowVersion(states, transitions).valid).toBe(true);
   });
 
-  it("rejects a transition whose effects contain a kind outside WF-19's six — a workflow_transition.effects jsonb row this build does not understand", () => {
+  it("WF-22 — rejects a transition whose effects contain a kind outside WF-19's six — a workflow_transition.effects jsonb row this build does not understand", () => {
     const s = tid("s");
     const e = tid("e");
     const states: WorkflowState[] = [
@@ -1596,7 +1596,7 @@ describe("validateWorkflowVersion — malformed input, fails closed", () => {
     ).toBe(true);
   });
 
-  it("rejects a transition whose effects contain resolve_sla — WF-17/WF-18's automatic mechanism, which no authored transition may ever declare", () => {
+  it("WF-22 — rejects a transition whose effects contain resolve_sla — WF-17/WF-18's automatic mechanism, which no authored transition may ever declare", () => {
     const s = tid("s");
     const e = tid("e");
     const states: WorkflowState[] = [
@@ -1622,7 +1622,7 @@ describe("validateWorkflowVersion — malformed input, fails closed", () => {
     ).toBe(true);
   });
 
-  it("rejects a transition whose effects contain reopen_sla — the other automatic kind, equally never authorable", () => {
+  it("WF-22 — rejects a transition whose effects contain reopen_sla — the other automatic kind, equally never authorable", () => {
     const s = tid("s");
     const e = tid("e");
     const states: WorkflowState[] = [

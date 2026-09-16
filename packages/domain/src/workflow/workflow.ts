@@ -575,17 +575,14 @@ const AUTOMATIC_EFFECT_KINDS: ReadonlySet<string> = new Set(
  * kinds. A version with no state templates at all is rejected outright: a workflow that
  * can hold no work item is malformed, not merely empty.
  *
- * **The effect-kind check is this module's own extrapolation, not text the merged spec
- * states.** `workflow_transition.effects` is a `jsonb` column, exactly like `guards` — a
- * later migration, a hand-edited row, or a rolled-back deployment can put a `kind` there
- * this build has never heard of, or (worse) one of `WF-17`/`WF-18`'s automatic kinds,
- * which no authored transition may ever declare (see `AutomaticEffect`'s doc comment).
- * `WF-16` states the fail-closed treatment for exactly this situation for **guards**
- * (`guard.unrecognized`, never silently skipped); no equivalent rule is written down
- * anywhere for **effects** — this function applies the identical instinct by analogy,
- * flagged in the pull request for Thomas to confirm or correct, rather than silently
- * assumed. If he decides differently, this is the one check to remove or change; nothing
- * else in this function depends on it.
+ * **The effect-kind check is `WF-22`** (Thomas's decision, 2026-09-10; spec text at
+ * `docs/03-features/workflows.md`). `workflow_transition.effects` is a `jsonb` column,
+ * exactly like `guards` — a later migration, a hand-edited row, or a rolled-back
+ * deployment can put a `kind` there this build has never heard of, or (worse) one of
+ * `WF-17`/`WF-18`'s automatic kinds, which no authored transition may ever declare (see
+ * `AutomaticEffect`'s doc comment). `WF-16` states the identical fail-closed treatment for
+ * **guards** (`guard.unrecognized`, never silently skipped); `WF-22` states it for
+ * **effects** by name, mirroring `WF-16` deliberately.
  */
 export function validateWorkflowVersion(
   states: readonly WorkflowState[],
