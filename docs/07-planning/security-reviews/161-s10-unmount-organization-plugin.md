@@ -1,20 +1,17 @@
 # Pre-merge security review — PR #161 (S10: unmount the `organization()` plugin)
 
-**Reviewed head:** `be6d68d78a9685e7a793529a6c66ed0506c343bd`
+**Reviewed head:** `7ff2fa121845efaaf8b4cab981b6b4486835bc60`
 **Base:** `origin/main` = `c864c64d171950c9ac76e9600a0c450145d51c02` (merge-base, verified
 directly — the branch is exactly up to date with `main`, no catch-up merge pending)
-**Previously reviewed heads:** `b398070c9add959a8a9fe796a98931c22a3b873d` — CHANGES REQUIRED
-(finding F1, session-state-integrity regression). `e4be73f13cef476f0065a8a1503e439600e8884d`
-— CLEAR WITH FINDINGS (F1 fixed and re-verified closed; F2, documentation-only, raised
-non-blocking). Both are ancestors of the head named above: pure additions, no rebase or
-history rewrite, so both passes carry forward rather than being invalidated.
+**Review chain:** `b398070` (CHANGES REQUIRED — finding F1) → `e4be73f` (F1 fixed, CLEAR WITH
+FINDINGS — finding F2) → `be6d68d` (F2 fixed) → `a76cf94` (this note) → `7ff2fa1` (OpenAPI
+contract regenerated). Each head is a descendant of the last — a pure linear chain, no
+rebase or history rewrite — so each pass carries forward rather than being invalidated.
 
-**Verdict: CLEAR WITH FINDINGS.** F1 (MEDIUM, session-state integrity) was raised blocking,
-fixed, and re-verified closed by direct measurement. F2 (LOW, documentation-only) was raised
-non-blocking and is fixed in the head named above — self-verified against source rather than
-re-dispatched for a third review round, consistent with this project's practice for a small,
-precisely-scoped, non-functional wording correction that a reviewer already specified in
-full. Nothing in this change leaves an authorization surface unenforced.
+**Verdict: CLEAR.** Two findings were raised and both are fixed and re-verified closed by
+direct measurement: F1 (MEDIUM, raised blocking at `b398070`, fixed at `e4be73f`) and F2
+(LOW, documentation, raised at `e4be73f`, fixed at `be6d68d`). Nothing in this change leaves
+an authorization surface unenforced.
 
 **Status of the gate:** this review closes the mandatory independent Opus security review for
 the head named above, **and for that head only.** A later commit touching anything outside
@@ -64,7 +61,7 @@ heads named. Where a claim is about a *change* in behaviour, it was measured on 
 | **No second instance of the implicit-schema-contribution bug** | The plugin's `schema:` block (`organization.mjs:824-840`) declares `organization` / `member` / `invitation` (+ `team` / `organizationRole` conditionally) as **separate models**, and contributes to a core model only via `session.fields`: `activeOrganizationId` and `activeTeamId`. It touches `user` and `account` not at all. `activeTeamId` is now absent from `GET /get-session`; confirmed **zero readers** across `apps/api/src`, `apps/web/src` and `packages/`, so it is inert |
 | **Scope discipline holds — `schema.ts` correctly untouched** | `git diff … -- apps/api/src/database/schema.ts` is empty. The aliases the stage ledger suggested deleting are **load-bearing**: `relations(workspace, …)`, `relations(team, …)`, `relations(teamMember, …)`, `relations(invitation, …)` (`schema.ts:904-980`) all consume the bare alias names. Removing them would have broken the build |
 | **S10 exit-criteria greps hold** | Zero `authClient.organization` / `organizationClient` in `apps/web/src` (comment lines stripped — raw grep overcounts on this repo). Zero `useActiveOrganization`, `.setActive(`, `hasPermission(` leftovers. Test files reconcile 57 → 47, matching the 10 deletions exactly |
-| **Suites green, independently run at every head** | Own worktree, `git status` verified clean before and after, own isolated database each time: `typecheck` (api) clean, `typecheck` (web) clean, `biome ci .` **0 errors** (57 pre-existing warnings, unchanged), integration **47 files / 389 tests**, permissions **10 files / 76 tests** |
+| **Suites green, independently run at every head** | Own worktree at `7ff2fa1`, `git status` verified clean before and after, own isolated database: `check:openapi` passes at **101 operations**, `typecheck` (api) clean, `typecheck` (web) clean, `biome ci .` **0 errors** (57 pre-existing warnings, unchanged), integration **47 files / 389 tests**, permissions **10 files / 76 tests** |
 
 ---
 
@@ -123,21 +120,49 @@ original disappearance of the field when the plugin was removed. This is now the
 defect from that one habit; the new test is the first assertion on this field's actual API
 behaviour.
 
-### F2 — LOW, documentation only. Raised non-blocking at `e4be73f`; **fixed at `be6d68d`, self-verified**
+### F2 — LOW, documentation only. Raised at `e4be73f`; **FIXED at `be6d68d`**
 
-`docs/01-architecture/rbac.md`'s enforcement table was reduced from three layers to two, but
-the paragraph immediately below it still described the deleted guard's cross-workspace scope
-("any one malformed row anywhere refuses every action"). Two things made it false: there are
-no `/organization/*` actions left, and the only surviving 409 (`GET /api/capabilities`) is
-the **opposite** scope — per-workspace, not global. Corrected to state the actual current
-behaviour: `resolveMembershipRole(workspaceId, userId)` resolves against the workspace named
-in the *request*, so a malformed row in workspace A no longer blocks a request naming a
-different, healthy workspace B. Verified directly against
-`apps/api/src/utils/require-workspace-permission.ts`'s actual call sites before committing —
-`workspaceId` there is read from `c.get("workspaceId")` (the route's own path param), not
-enumerated across the caller's memberships. Docs-only, no code or test changed by this
-commit; self-verified rather than re-dispatched for a third review round given the fix
-matches exactly what this finding specified.
+`rbac.md`'s enforcement table was correctly reduced from three layers to two, but the
+paragraph below it still described the deleted guard: it claimed the 409 was "scoped to the
+caller, not to the workspace named in the request" and refused "every non-exempt
+`/organization/*` action". Both halves were false after S10 — those routes no longer exist,
+and the only surviving 409 (`GET /api/capabilities`) is the *opposite* scope.
+
+Fixed at `be6d68d`, and the correction was verified against source rather than prose:
+`resolveMembershipRole(db, workspaceId, userId)`
+(`utils/workspace-member-roles.ts:320-324`) takes a `workspaceId`, and all four call sites
+pass one (`require-workspace-permission.ts:127,204,239`;
+`require-workspace-role-authority.ts:82`).
+
+**The scope reduction this records is deliberate and is not a weakening.** Pre-S10, a caller
+holding one malformed row in *any* workspace was refused on every non-exempt
+`/organization/*` action, including requests naming a different, healthy workspace. That
+cross-workspace bluntness existed only because the plugin's target was **steerable** — the
+guard could not reliably tell which organization a request acted on, so it asked a
+target-free question instead. Native routes resolve the workspace unambiguously from the
+path parameter, so the decision for workspace B is derived from B's own valid row, which is
+correct rather than permissive. Fail-closed still holds where the bad row actually is, and
+migration `0050`'s `CHECK` — enforcement verified live — makes the state unreachable for new
+writes regardless.
+
+## The committed OpenAPI contract (`7ff2fa1`)
+
+CI caught what no reviewer had checked: `tests/api-contract/openapi.json` still declared all
+35 `/auth/organization/*` operations from the deleted `auth-openapi.ts`, so
+`pnpm check:openapi` failed. Confirmed directly — the check exits **1** at `a76cf94` and
+**0** at `7ff2fa1` (101 operations).
+
+Verified mechanically rather than by reading the diff:
+
+| Claim | Evidence |
+| --- | --- |
+| **It is a generated artifact, not hand-written** | Ran `pnpm openapi:write` at `7ff2fa1`; `git diff` came back **empty** — byte-identical to what is committed, reproduced from the same code already cleared |
+| **Exactly the expected removals, nothing else** | **35** operationIds removed, **0** added; every one maps to an `/auth/organization/*` path, none outside the organization family. 101 + 35 = 136 |
+| **The only insertions are already-reviewed content** | The 2 inserted lines are the two `#160` description strings from `get-workspace-invitations.ts` / `workspace/index.ts`, both already in this review |
+| **Scope** | One file changed. No source, no test logic, no dependency, no migration |
+
+This file documents the API surface; it enforces nothing at runtime. Bringing it back in
+step with the code changes no behaviour and introduces no security surface.
 
 ### Wording note on the F1 commit's subject, not a finding
 
@@ -153,13 +178,13 @@ this note, and the PR's own body — states the precise impact.
 
 ## What this review did not do
 
-- Did not re-run the #160 invitation probe at every subsequent head — `get-workspace-invitations.ts` and `cancel-invitation.ts` are byte-identical from `e4be73f` through `be6d68d`, so that end-to-end verification carries over unchanged from when it was first measured.
+- Did not re-run the #160 invitation probe at every subsequent head — `get-workspace-invitations.ts` and `cancel-invitation.ts` are byte-identical from `e4be73f` through `7ff2fa1`, so that end-to-end verification carries over unchanged from when it was first measured.
 - Did not build or boot the Docker image.
 - Did not re-derive the ordinary Sonnet reviewers' test-file-reconciliation work in full — spot-checked the security-relevant pieces (the four issue closures, the deleted guard's reachability) directly rather than trusting their conclusions, and formed independent judgment on each.
 
 ---
 
-*Reviewed by a fresh Claude Opus context across three passes (2026-09-16): full review at
-`b398070`, delta confirmation at `e4be73f`, and this note's final head declaration at
-`be6d68d` following a self-verified, non-functional documentation fix the second pass had
-already fully specified.*
+*Reviewed by a fresh Claude Opus context across four passes (2026-09-16): full review at
+`b398070` (found F1), delta confirmation at `e4be73f` (F1 closed, found F2), delta
+confirmation at `be6d68d`/`a76cf94` (F2 closed), and a final delta confirmation at `7ff2fa1`
+(the OpenAPI contract regeneration CI itself caught, verified mechanically rather than read).*
