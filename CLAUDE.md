@@ -127,10 +127,24 @@ agents for coding did not work out and are not part of this project's process.
 **Basic implementation, review, checking, fixing, and the alignment check are Sonnet.**
 Spin up as many fresh Sonnet subagents as there is genuinely independent, boundable work for
 — implementation lanes, ordinary reviewers, and an alignment checker are all normal Sonnet
-subagent roles. Decide the tier and the reviewer count yourself, using the ordinary/broad
-split in `AGENTS.md`'s review-tier guidance (two Sonnet reviews for ordinary work, three for
-migrations, API+frontend, concurrency, or CI/security-control machinery); do not ask Thomas
-to make that call per PR.
+subagent roles. Decide the tier and the reviewer count yourself, using `AGENTS.md`'s
+review-tier table — **by what the change actually risks, not by which directory it touches**
+(Thomas, 2026-09-16, after PR #148 spent eight-plus review rounds on a small CI-parsing fix:
+touching `scripts/ci/**` or another security-scope path is not on its own a reason for three
+Sonnet rounds — a bounded fix that changes no authority or gate-semantics invariant is one
+strong Sonnet review, then straight to the single required Opus pass; the full three-round
+tier is for migrations, API+frontend crossing the same change, concurrency, cross-package
+integration, or a change that actually redesigns an authority/gate-semantics invariant, not
+for every touch to a sensitive path). Do not ask Thomas to make that call per PR — but do
+apply the actual table, not a shortcut memory of "CI files always get three."
+
+**When a mechanism has already had several review rounds finding the same recurring class of
+gap, do not keep queuing more Sonnet rounds** — see AGENTS.md's "stop patching and change
+altitude." Once the design has had its structural fix and further findings are narrower
+instances of the same class (not a new class), one Opus pass is the closing gate, not
+another Sonnet round first. This is a rule about round *count*, not about rigor within a
+round — exact-head discipline, a real regression test per finding, and the ban on waiving a
+gate are unchanged.
 
 **Only the final independent review for genuinely security-sensitive or otherwise critical
 work is Opus, and it is always a fresh, separate context from whatever authored or
