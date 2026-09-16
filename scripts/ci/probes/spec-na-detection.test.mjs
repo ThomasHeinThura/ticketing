@@ -558,6 +558,46 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
     }
   });
 
+  it("extracts the SAME filename from 'n/a-workflows.md' whether or not 'n/a' is spelled with cosmetic spacing — self-caught while building the multi-word mask", () => {
+    // The multi-word mask above was first built by detecting "does the opener's matched
+    // text contain any internal whitespace at all" -- which also fires for "n/a" spelled
+    // as "n / a" (the opener regex's `n\s*\/\s*a` legitimately allows spaces around the
+    // slash). That spacing is cosmetic, not a second word, but the naive check treated
+    // it as one and masked the trailing "a", making "n / a-workflows.md" extract as the
+    // clean "workflows.md" while the already-established "n/a-workflows.md" (no spaces)
+    // extracts as "a-workflows.md" -- two different strings for what should be the same
+    // semantic situation. Fixed by keying "is this opener multi-word" off WHICH
+    // alternative matched (only "not\s+applicable" genuinely has a second word), not
+    // off whether the matched text happens to contain whitespace. Both spellings of
+    // "n/a" must extract identically.
+    const dir = scenario();
+    write(
+      dir,
+      "docs/07-planning/reviews/2026-09-05/consistency.md",
+      reviewDocWithOpenSection("a-workflows.md"),
+    );
+    commit(dir, "docs: retarget the open section at a-workflows.md");
+    const withSpaces = runChecker(dir, "check-reviews.mjs", [
+      "--body",
+      bodyWithSpec("n / a-workflows.md"),
+    ]);
+    const withoutSpaces = runChecker(dir, "check-reviews.mjs", [
+      "--body",
+      bodyWithSpec("n/a-workflows.md"),
+    ]);
+    assert.notEqual(
+      withoutSpaces.status,
+      0,
+      `expected the established no-space case to still fail, exited ${withoutSpaces.status}:\n${withoutSpaces.output}`,
+    );
+    assert.notEqual(
+      withSpaces.status,
+      0,
+      `expected the spaced "n / a" case to extract the SAME "a-workflows.md" and fail ` +
+        `identically, exited ${withSpaces.status}:\n${withSpaces.output}`,
+    );
+  });
+
   it("non-vacuity: the OLD exact-match guard really did misread the honest n/a explanation as a declaration", () => {
     const dir = scenario();
     const declared =

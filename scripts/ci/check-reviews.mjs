@@ -53,6 +53,17 @@ const MD_TOKEN = /[a-z0-9-]+\.md/gi;
  * field's text, or `null` if the field does not open with one at all. Shared between
  * `fieldOpener` (the exemption decision) and `specsNamedIn` (extraction) so the two
  * can never disagree about where the opener's own text ends.
+ *
+ * `isMultiWord` is true only for the `not\s+applicable` alternative — the only one of
+ * the three that is genuinely two separate words. Found adversarially: an earlier
+ * version of this function inferred "multi-word" from whether the MATCHED TEXT simply
+ * contained any internal whitespace at all, which also fires for "n/a" spelled with
+ * cosmetic spacing around the slash (`n\s*\/\s*a` legitimately allows `"n / a"`) — that
+ * spacing is not a second word, and treating it as one made `"n / a-workflows.md"` mask
+ * differently, and extract a different (though not wrong) filename, than the
+ * equivalent, already-established `"n/a-workflows.md"`. Keying off which alternative
+ * matched instead of the presence of whitespace ties "multi-word" to the one place it's
+ * actually true.
  */
 function openerMatch(declared) {
   const trimmed = declared.trim();
@@ -68,6 +79,7 @@ function openerMatch(declared) {
     openerStart: offset,
     openerEnd: offset + match[0].length,
     matchText: match[0],
+    isMultiWord: /^not\s+applicable/i.test(match[0]),
   };
 }
 
@@ -171,15 +183,14 @@ function withOpenerWordMasked(declared) {
   if (!info) {
     return declared;
   }
-  const { trimmed, openerStart, openerEnd } = info;
-
-  const withinOpener = trimmed.slice(openerStart, openerEnd);
-  const trailingWhitespace = [...withinOpener.matchAll(/\s+/g)].pop();
-  if (!trailingWhitespace) {
+  const { trimmed, openerStart, openerEnd, isMultiWord } = info;
+  if (!isMultiWord) {
     return trimmed; // single-word opener -- nothing to mask
   }
-  const lastWordStart =
-    openerStart + trailingWhitespace.index + trailingWhitespace[0].length;
+
+  const withinOpener = trimmed.slice(openerStart, openerEnd);
+  const gap = /\s+/.exec(withinOpener); // "not\s+applicable" has exactly one internal gap
+  const lastWordStart = openerStart + gap.index + gap[0].length;
 
   let maskEnd = openerEnd;
   while (maskEnd < trimmed.length && !/[\p{L}\p{N}]/u.test(trimmed[maskEnd])) {
