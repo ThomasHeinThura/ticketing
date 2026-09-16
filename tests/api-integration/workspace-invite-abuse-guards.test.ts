@@ -18,12 +18,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
+import { signUpUser } from "./helpers/organization-http";
 import {
-  createWorkspaceViaPlugin,
-  inviteAndAcceptAsNewMember,
-  signUpUser,
-} from "./helpers/organization-http";
-import { inviteWorkspaceMemberNative } from "./helpers/workspace-invitation-write-http";
+  inviteAndAcceptAsNewMemberNative,
+  inviteWorkspaceMemberNative,
+} from "./helpers/workspace-invitation-write-http";
+import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 describe("S6a: native cloud abuse gates on POST /api/workspace/{id}/invitations", () => {
   const CLOUD_ENV: Record<string, string> = { KANEO_CLOUD: "true" };
@@ -53,7 +53,7 @@ describe("S6a: native cloud abuse gates on POST /api/workspace/{id}/invitations"
   it("blocks an invite to a disposable-email address on cloud, and writes no invitation row", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
-    const created = await createWorkspaceViaPlugin(app, owner.cookie);
+    const created = await createWorkspaceNative(app, owner.cookie);
     const workspace = (await created.json()) as { id: string };
 
     const response = await inviteWorkspaceMemberNative(
@@ -75,7 +75,7 @@ describe("S6a: native cloud abuse gates on POST /api/workspace/{id}/invitations"
   it("allows an ordinary invite on cloud when the email is not disposable and the caller is not anonymous", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
-    const created = await createWorkspaceViaPlugin(app, owner.cookie);
+    const created = await createWorkspaceNative(app, owner.cookie);
     const workspace = (await created.json()) as { id: string };
 
     const response = await inviteWorkspaceMemberNative(
@@ -93,7 +93,7 @@ describe("S6a: native cloud abuse gates on POST /api/workspace/{id}/invitations"
     try {
       const { app } = createApp();
       const owner = await signUpUser(app);
-      const created = await createWorkspaceViaPlugin(app, owner.cookie);
+      const created = await createWorkspaceNative(app, owner.cookie);
       const workspace = (await created.json()) as { id: string };
 
       const response = await inviteWorkspaceMemberNative(
@@ -126,12 +126,12 @@ describe("S6a: native cloud abuse gates on POST /api/workspace/{id}/invitations"
     // reach it with no anonymous-sign-up flow to drive it through.
     const { app } = createApp();
     const owner = await signUpUser(app);
-    const created = await createWorkspaceViaPlugin(app, owner.cookie);
+    const created = await createWorkspaceNative(app, owner.cookie);
     const workspace = (await created.json()) as { id: string };
     // A real, ordinary admin membership -- `requireWorkspacePermission`
     // must already be satisfied for this test to reach the abuse gate at
     // all, otherwise a 403 here would prove nothing about THIS guard.
-    const guest = await inviteAndAcceptAsNewMember(
+    const guest = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspace.id,
@@ -152,10 +152,11 @@ describe("S6a: native cloud abuse gates on POST /api/workspace/{id}/invitations"
     expect(invited.status).toBe(403);
     await expect(invited.text()).resolves.toMatch(/[Gg]uest/);
 
-    // Filtered by email, deliberately: `inviteAndAcceptAsNewMember`'s own
-    // setup call above already wrote (and accepted) an unrelated invitation
-    // row for `guest`'s own email into this workspace, so an unfiltered
-    // count would pass even if this gate let the blocked invite through.
+    // Filtered by email, deliberately: `inviteAndAcceptAsNewMemberNative`'s
+    // own setup call above already wrote (and accepted) an unrelated
+    // invitation row for `guest`'s own email into this workspace, so an
+    // unfiltered count would pass even if this gate let the blocked invite
+    // through.
     const invitationRows = await db
       .select()
       .from(schema.invitationTable)

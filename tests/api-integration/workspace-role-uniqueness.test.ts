@@ -38,10 +38,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import {
-  createWorkspaceViaPlugin,
-  signUpUser,
-} from "./helpers/organization-http";
+import { signUpUser } from "./helpers/organization-http";
+import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 const CONSTRAINT = "workspace_role_workspace_id_role_unique";
 
@@ -92,7 +90,7 @@ async function aWorkspace(): Promise<string> {
   const { app } = createApp();
   await signUpUser(app); // instance-admin slot, for the same reason the 0050 suite burns it
   const owner = await signUpUser(app);
-  const created = await createWorkspaceViaPlugin(app, owner.cookie);
+  const created = await createWorkspaceNative(app, owner.cookie);
   return ((await created.json()) as { id: string }).id;
 }
 
