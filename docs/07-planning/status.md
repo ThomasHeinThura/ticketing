@@ -2,18 +2,19 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-16
-> **`main` at that moment:** `5d9c0fb` (PR #89, checklist/heading genuineness hardening in
-> the CI gate machinery — merged after PR #147, which flagged issue #146 as DECISION
-> REQUIRED for Thomas, which itself merged after PR #144, static file serving in the API
-> process)
+> **Snapshot taken:** 2026-09-16 (later the same day)
+> **`main` at that moment:** `a879033` (PR #155, S7 — native role list/create/update/delete
+> cutover, merged after PR #89/#148/#151)
 > **Stage:** P0 · Foundation — IN PROGRESS
 > **Throttle 1:** SHUT — 4 of 5 conditions met; condition 2 (issue #6 through retrofit S10)
-> is the sole blocker. **Of S10's own two preconditions, S9 is now LANDED** (PR #104,
-> 2026-09-15, Path B — teams stay enabled until S10) **and S7's release condition, #82 AND
-> #118, is FULLY CLOSED** (#82 via PR #110, #118 via PRs #122 and #119 — all merged and
-> independently reviewed, 2 Sonnet + 1 Opus each, all CLEAR). **S7 itself — native role list
-> and writes — is the sole remaining critical-path item; it has not been implemented yet.**
+> is the sole blocker. **S7 is now LANDED** (PR #155, 2026-09-16 — all four native role
+> routes independently reviewed 3 Sonnet + 1 Opus CLEAR, and separately browser-verified
+> live end-to-end by the orchestrating session before merge). **S10 itself (PR #107) is
+> BLOCKED — not on S7 anymore, but on its own unresolved finding**: the caller-count
+> scanner it depends on (`scripts/ci/lib/organization-callers.mjs`) has had seven distinct
+> false-zero bypasses found across three Opus review rounds, and PR #107's own body
+> declares **DECISION REQUIRED FOR THOMAS** before a further remediation round is
+> attempted. See Scheduler and Throttle 1, below.
 > The `## Scheduler` section is the current live-state-to-action mapping; read it alongside
 > this header, not instead of it.
 >
@@ -38,9 +39,28 @@
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-16
+**Last updated:** 2026-09-16 (later the same day)
 **Current stage:** P0 · Foundation — **IN PROGRESS**
-**Updated by:** Claude Code (Sonnet), reconciliation after **PR #110** (#82 fix), **PR #122**
+**Updated by:** Claude Code (Sonnet), reconciliation after **PR #155 (S7 — native role
+cutover) merged.** Implemented by a fresh Sonnet subagent, reviewed 3 fresh Sonnet contexts
++ 1 Opus (all CLEAR; one MEDIUM data-integrity finding — a whitespace-only role name — fixed
+before the security pass), committed security-review note at
+`docs/07-planning/security-reviews/155-s7-native-role-cutover.md`. **Before merging, the
+orchestrating session itself stood up an isolated dev environment (fresh worktree, fresh
+Postgres database, both dev servers) and exercised all four native routes — list, create,
+update, delete — in a real browser (self-installed Playwright + Chromium; `claude-in-chrome`
+cannot reach this sandbox's `localhost`), because the implementing and reviewing agents had
+no browser available and the PR's own "Screens opened" section honestly said so (BLOCKED).**
+Each route produced the expected network status, toast and persisted UI state; the PR body
+was rewritten with the concrete route/viewport/click/screenshot account and the checklist
+box ticked only after that verification, not before. Head SHA at merge:
+`fa8f98a34b62b171563b49c29d17686f42e6d5be` — unchanged by the body edit, re-confirmed
+immediately before `gh pr merge`. **Issue #6's S7 sub-step is done; S10 is the sole
+remaining step, and PR #107 (S10) was found to carry its own pre-existing blocker — see the
+Scheduler and Throttle 1 sections.** Not yet done this pass: nothing else in the retrofit
+was touched; #146 (the duplicate-heading bypass) remains open and unrelated to this work.
+
+**Earlier the same day:** Claude Code (Sonnet), reconciliation after **PR #110** (#82 fix), **PR #122**
 (#118 DB half), **PR #119** (#118 evaluator half) and **PR #104** (S9 resolved, Path B) all
 merged to `main`. PR #110/#122/#119 closed both of S7's release conditions; each was
 independently reviewed (2 fresh Sonnet + 1 Opus, all CLEAR) with a committed
@@ -111,15 +131,20 @@ decisions) · `BLOCKED` · `DEFERRED` (valid, not useful yet) · `SUPERSEDED`.
 
 | Item | State | Terminal outcome |
 | --- | --- | --- |
-| S7 — native role list + writes, repointing `listRoles`/`createRole`/`updateRole`/`deleteRole` | **UNBLOCKED, 2026-09-15.** #82 (PR #110) and #118 (PRs #122 + #119) both merged and closed. `roles-and-permissions-ui.md`'s review section already closed (PR #128). **Not yet started — the critical-path item.** | Zero executable `authClient.organization.*` callers except the four role-family ones being retired here |
-| PR #116 (fix #115 — widen security-review scope to privileged controllers/migrations/policy root) | `mergeable: MERGEABLE`. **Self-referential** (touches `docs/04-engineering/ci-cd.md`, itself on the security-scope glob list) **and CI/security-control machinery**, so AGENTS.md's review-tier table requires **3** ordinary Sonnet reviews, not 2, before the Opus pass. Two posted and CLEAR (one found a real MEDIUM, fixed in `b22b8a8`); a third is in progress. | Security-review glob list actually covers what it claims to |
+| S7 — native role list + writes, repointing `listRoles`/`createRole`/`updateRole`/`deleteRole` | **LANDED, 2026-09-16 — PR #155.** 3 Sonnet + 1 Opus reviews, all CLEAR; browser-verified live by the orchestrating session before merge (see reconciliation paragraph above). | Done — no longer a scheduler entry; see the retrofit ledger's S7 row for the full record |
+| PR #107 (S10 — zero-caller tripwire) | **BLOCKED — DECISION REQUIRED FOR THOMAS**, found this session. `mergeable: MERGEABLE` (`mergeStateStatus: BEHIND` — no conflicts, just needs a rebase onto current `main`, which is not the blocker here). Its own PR body: the scanner it implements (`scripts/ci/lib/organization-callers.mjs`) has had **seven distinct false-zero bypasses** found across three Opus review rounds (rounds 5–6 fixed S1–S4; round 7 found S5–S7 and *deliberately did not* attempt an eighth remediation round, judging "a new gap every time" to be the more important finding than any one bug). The independent-security-review checklist box is intentionally left unticked. **Not superseded by S7 landing** — S7 removed S10's dependency on it, but did not touch this pre-existing, separate finding. | `pnpm check:organization-callers` ratchets to zero; `organization()` unmountable — blocked until Thomas decides how to proceed with the scanner (accept current residual-risk profile with the gaps documented, redesign its approach, or authorize another remediation round despite the pattern) |
 
-### NEXT_DEPENDENCY — becomes critical the moment S7 lands
+~~PR #116 (fix #115 — widen security-review scope)~~ **MERGED 2026-09-15** (`bc57228`) —
+this row was itself stale (it had already merged before this file's own "last updated"
+snapshot was taken). Its third ordinary review found and folded in one more real gap
+(`scripts/deploy.sh` missing from the glob list), independently re-verified, then Opus
+CLEAR. No longer a scheduler entry.
+
+### NEXT_DEPENDENCY — becomes critical the moment PR #107 is unblocked
 
 | Item | Depends on | Terminal outcome |
 | --- | --- | --- |
-| PR #107 (S10 — zero-caller tripwire) | **S9 already landed** (PR #104 merged 2026-09-15, Path B — teams stay enabled until S10). Still needs **S7**. `mergeable: MERGEABLE`, review status not yet checked this session. | `pnpm check:organization-callers` ratchets to zero; `organization()` unmountable |
-| Issue #6 closes → Throttle 1 opens | S7 → S10 (S9 already landed) | Full P1–P4 parallel lane authorization |
+| Issue #6 closes → Throttle 1 opens | S10 (S7, S9 both already landed) — waiting on Thomas's decision on PR #107, not on any further implementation | Full P1–P4 parallel lane authorization |
 | Issue #124 (still-mounted plugin's `update-member-role` can mint a second owner) | Closes naturally at S10 (plugin unmount) — the issue's own "Dependency/blocking relationships" section states this, not a standalone patch target | Resolved by removal, not by patching the plugin boundary |
 | Issue #136 (still-mounted plugin's `has-permission` unions duplicate `workspace_role` rows) | Narrowed by #122's constraint; fully closes at S10 | Same — resolved by removal |
 
@@ -164,6 +189,10 @@ gap specifically, not just for the one gap that remains unstarted.
   CRITICAL, confirmed live on `main`) — needs Thomas's decision on fix direction (targeted
   patch to `sections()` vs. the broader parser-rewrite question this whole file's 11-round
   review history has raised) before further work on `scripts/ci/lib/pr-body.mjs` continues.
+- **PR #107 (S10)** — needs Thomas's decision on how to proceed with
+  `scripts/ci/lib/organization-callers.mjs` after seven false-zero bypasses found across
+  three Opus rounds; see CRITICAL_NOW above. This is the sole remaining blocker on Throttle 1
+  now that S7 has landed.
 
 ### DEFERRED (valid, not useful yet)
 
@@ -399,9 +428,10 @@ remediation status, are tracked as GitHub issues and pull requests — read them
   both independently reviewed 2 Sonnet + 1 Opus, both CLEAR, committed notes at
   `docs/07-planning/security-reviews/122-workspace-role-unique.md` and
   `docs/07-planning/security-reviews/119-workspace-role-evaluator.md`. `roles-and-permissions-ui.md`'s
-  review section was already closed (PR #128). **S7 has no remaining precondition. It has
-  not been implemented yet** — this is the next critical-path item. See the Scheduler,
-  above.
+  review section was already closed (PR #128). ~~S7 has no remaining precondition. It has
+  not been implemented yet — this is the next critical-path item.~~ **S7 LANDED,
+  2026-09-16 — PR #155.** S10 (PR #107) is now the sole remaining step, and it carries its
+  own separate, pre-existing blocker — see the Scheduler, above.
 - **#31 (P2 workflows) — blocked by AGENTS.md do-not 15.** `docs/03-features/workflows.md`
   is the subject of a *not-ready* review verdict — the verdict and its 4 High, 4 Medium and
   2 Low findings live in the review document, not in the spec itself, which has no review
@@ -418,15 +448,16 @@ remediation status, are tracked as GitHub issues and pull requests — read them
 - **better-auth `organization()` is removed in P0 — final.** It is **still mounted** on
   `main`, because it is load-bearing for workspace creation, invitations, members and
   roles. Load-bearing means it needs a retrofit (S1–S10, #6 work), not that it is kept.
-- **Retrofit S0, S1, S2, S3, S4, S4b, S5, S6a, S8a and S9 are COMPLETE** and on `main` (#65,
-  #57, #65, #76, #67, #85, #77, #112, #109, #104 respectively). **S7 and S10 remain.** S7's
-  precondition — **#82 AND #118** — is now **fully closed** (2026-09-15: PR #110 for #82,
-  PRs #119 and #122 for #118's two halves, all merged and independently reviewed); **S7 has
-  not started implementation yet**, and it is the sole remaining critical-path item. S9
-  landed 2026-09-15 (PR #104, Path B, 2026-09-10 decision) — teams stay enabled until S10,
-  which carries S9's `auth.ts` edit; S10 unmounts the plugin once S7 lands too, and its
-  tripwire gate is PR #107. Landing a stage does not start the next; each step needs its own
-  scheduling decision, and a green equivalence suite is not permission to begin the next one.
+- **Retrofit S0, S1, S2, S3, S4, S4b, S5, S6a, S7, S8a and S9 are COMPLETE** and on `main`
+  (#65, #57, #65, #76, #67, #85, #77, PR #155, #112, #109, #104 respectively). **Only S10
+  remains.** S7 landed 2026-09-16 (PR #155) — 3 Sonnet + 1 Opus reviews CLEAR, and
+  separately browser-verified live by the orchestrating session before merge. S9 landed
+  2026-09-15 (PR #104, Path B, 2026-09-10 decision) — teams stay enabled until S10, which
+  carries S9's `auth.ts` edit; S10 unmounts the plugin, and its tripwire gate is PR #107 —
+  which is itself **blocked on a decision only Thomas can make** (see Scheduler and
+  Throttle 1, above), not on any further implementation work. Landing a stage does not
+  start the next; each step needs its own scheduling decision, and a green equivalence
+  suite is not permission to begin the next one.
   **What the client calls now — and this is stated as a command rather than a list, because an
   earlier version of this bullet enumerated it and got three of seven claims wrong:** run
   `grep -rn 'authClient\.organization\.' apps/web/src` for the live surface, excluding the
@@ -810,16 +841,18 @@ and reading it that way would open the throttle while `organization()` is still 
 | | Condition | State |
 | --- | --- | --- |
 | 1 | **#5** complete | ✅ merged as PR #13, closed |
-| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; **S0, S1, S2, S3, S4, S4b, S5, S6a, S8a and S9** have landed (#65, #57, #65, #76, #67, #85, #77, #112, #109, #104). **S7 and S10 (unmount) remain**, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
+| 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone). **S0, S1, S2, S3, S4, S4b, S5, S6a, S7, S8a and S9** have all now landed (#65, #57, #65, #76, #67, #85, #77, PR #155, #112, #109, #104) — **S7 landed 2026-09-16, PR #155**. **Only S10 (unmount) remains**, and `organization()` is **still mounted** end to end. S10's own PR (#107) is itself blocked on a separate, pre-existing finding — see Scheduler, CRITICAL_NOW — not on any further implementation work. #6 is **not** complete — this is the only remaining unmet condition |
 | 3 | **#7** complete | ✅ **met — issue closed 2026-09-09** (`closedAt 2026-09-09T06:29:48Z`). #21 put the registry, evaluator and route-coverage gate on `main`; #19 put `pnpm test:permissions` (74 tests) in CI via `check:route-policy` on every push and pull request. The last open clause — both tests **required status checks** — closed when Thomas updated `protect-main` (ruleset `22365005`): `route policy coverage + permission matrix` now sits among 11 entries in `required_status_checks`, `strict_required_status_checks_policy: true`, `current_user_can_bypass: never` (`updated_at 2026-09-09T06:28:04Z`, re-read directly from `gh api repos/.../rulesets/22365005`, not taken from the closing comment's word) |
 | 4 | route coverage **actually executes** in CI | ✅ **met.** `.github/workflows/ci-fast.yml`'s `route-policy` job runs `pnpm check:route-policy` on every push and pull request, and did on `main`'s first gate-enforcing run (`e11976f`, all 11 applicable jobs green) |
 | 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one. **The count is deliberately not stated here**: it moves with every gate change, and a stale number in this file is the exact defect the governing rule in `CLAUDE.md` exists to prevent. Run `pnpm test:ci-scripts` for it |
 
 **What "met" does not mean.** Four conditions being true is not Throttle 1 being open — all
-five are required, and #6 is not a paperwork gap: it is real, unfinished implementation
-depth (S7 and S10 of the retrofit; S9 landed 2026-09-15). Nothing about #7 closing or the
-ruleset landing changes how much of `organization()` is still mounted. Throttle 1 opens the
-day #6 closes, and not before.
+five are required, and #6 is not a paperwork gap. As of 2026-09-16, the remaining depth is
+narrower than it was: **S7 landed** (PR #155), so the only implementation step left is
+**S10**, and S10's own PR (#107) is not stalled on missing work — it is stalled on a
+**decision only Thomas can make**, about how much to trust the scanner it depends on after
+seven false-zero bypasses across three Opus rounds. Throttle 1 opens the day #6 closes, and
+#6 does not close until that decision is made and S10 lands on the far side of it.
 
 ---
 
@@ -827,6 +860,7 @@ day #6 closes, and not before.
 
 | Decision | Deadline | Owner |
 | --- | --- | --- |
+| **PR #107 (S10, the sole remaining blocker on Throttle 1): how to proceed with `scripts/ci/lib/organization-callers.mjs` after seven false-zero bypasses found across three Opus rounds** — accept the current residual-risk profile with the gaps documented, redesign the scanner's approach, or authorize another remediation round despite the recurring pattern | Now — this is what keeps Throttle 1 shut | Thomas |
 | CLA, for a possible dual licence | Before the first external contribution | Thomas |
 | Final product name | Before P7 | Thomas |
 | ~~Whether to sell externally~~ | Decided: yes — but the **AWS Marketplace listing itself is deferred beyond the current 3–4-month scope** (2026-09-05); BYOL/contract preferred when it comes — see [decision log](decision-log.md) | — |
@@ -857,6 +891,70 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-16 (later the same day) · S7 landed (PR #155), browser-verified before merge; PR #107 found blocked on its own pre-existing finding
+
+Same session, continued after PR #148 (spec-`n/a` detection fix) and PR #151 (risk-graduated
+review-tier governance) both merged earlier the same day.
+
+**S7 — native role list + create/update/delete — implemented, reviewed, and merged as
+PR #155.** Dispatched as one implementation (backend + frontend are tightly coupled per the
+blueprint's own build-order reasoning) to a fresh Sonnet subagent. Reviewed by 3 fresh
+Sonnet contexts (auth/permissions/migration-redesign is the heaviest ordinary-review row in
+PR #151's new table) — one found a real MEDIUM (a whitespace-only role name passed Zod
+validation, then silently normalized to empty before insert; fixed by moving `.trim()` into
+the schema itself) — then a full Opus pass, CLEAR, with a committed note at
+`docs/07-planning/security-reviews/155-s7-native-role-cutover.md`. That review's own
+adversarial probing found **F2 holds** (cannot grant a capability you don't already hold)
+and one non-blocking MEDIUM: the role lock (`4_003`) and membership lock (`4_002`) don't
+serialize against each other, filed as issue #156.
+
+**Before merging, the orchestrating session itself verified the UI, rather than accept the
+implementing/reviewing agents' honest "no browser available" gap.** Stood up an isolated
+dev environment (fresh git worktree at the PR's head, fresh Postgres database, both API and
+web dev servers running locally) and installed Playwright + a local Chromium binary
+directly in the sandbox — `claude-in-chrome` was tried first and confirmed unusable for
+this (it drives a browser on a different machine and cannot reach this sandbox's
+`localhost`: `http://localhost:5173` failed to load while `https://example.com` succeeded
+in the same tool). Bootstrapped a fresh instance admin, created a workspace, opened
+`/dashboard/settings/workspace/roles`, and exercised all four native routes end to end:
+list (page loads with the three default roles), create (`POST → 200`, toast, row appears
+with the toggled permissions), update (`PATCH → 200`, toast, new permission count
+persists), delete (`DELETE → 200`, toast, row disappears). Screenshots taken at each step
+and sent to Thomas directly. The PR body's "Screens opened" section and the frontend
+checklist's screens-opened box were then rewritten from the honest prior `BLOCKED` state to
+the concrete route/viewport/click/screenshot account this template requires, re-checked
+locally with zero problems (`node scripts/ci/check-pr-template.mjs`), and pushed via
+`gh pr edit` — which does not change the head SHA, re-confirmed directly
+(`fa8f98a34b62b171563b49c29d17686f42e6d5be`, matching the Opus-reviewed head exactly) before
+merging with `gh pr merge 155 --merge --delete-branch=false`.
+
+**Immediately after merging, found PR #107 (S10) is not actually unblocked by S7 landing.**
+Its own PR body already documents a separate, pre-existing problem: the caller-count
+scanner it implements (`scripts/ci/lib/organization-callers.mjs`) has had seven distinct
+false-zero bypasses found across three Opus review rounds — rounds 5–6 fixed four of them,
+round 7 found three more and *deliberately declined* to attempt an eighth remediation
+round, judging the recurring pattern itself (a new gap every time an independent reviewer
+looks) to be the more important finding. The independent-security-review checklist box is
+intentionally left unticked, and the PR body itself says **DECISION REQUIRED FOR THOMAS**
+before another round is attempted. Not something this session should route around or
+resolve unilaterally — recorded here and in the Scheduler/Throttle 1 sections above rather
+than acted on. `status.md` was reconciled to reflect S7 as landed and this as the new,
+narrower shape of what's left before Throttle 1 opens.
+
+Cleaned up after: killed the background API/web dev servers, dropped the throwaway
+`s7_dev_verify` database, removed the verification git worktree and the now-fully-merged
+`feat/6-s7-native-role-cutover` local branch. Local `main` fast-forwarded to `a879033`.
+
+**Also found and corrected while reconciling this file:** PR #116 was already MERGED
+(`bc57228`, 2026-09-15T18:41:14Z) — the Scheduler's own "third review in progress" row for
+it was itself stale, describing a state that had already resolved before this file's prior
+"last updated" snapshot was even taken. Removed from the scheduler.
+
+**Not done this session (this entry):** PR #107 was not touched or remediated — that
+decision belongs to Thomas. The
+`storage.filesystem` UAT gap and a live `docker build`/`docker run` redeploy were not
+started.
 
 ### 2026-09-15 (continued further) · Control-plane docs reconciled (PR #137); S9 landed (PR #104), needing two rebases; PR #116 mid-review
 
