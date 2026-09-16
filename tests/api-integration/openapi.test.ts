@@ -68,7 +68,7 @@ describe("TaskDesk API OpenAPI spec", () => {
       "PATCH /task/bulk",
       "GET /search",
       "GET /notification",
-      "POST /auth/organization/create",
+      "POST /workspace",
     ]) {
       expect(keys.has(op), `missing operation ${op}`).toBe(true);
     }
