@@ -232,24 +232,6 @@ The "v1 defects being prevented" table with a named test per defect — `custome
 
 ## 16. `audit-trail.md` — P2
 
-**Verdict: not-ready** (three fields that the spec treats as load-bearing controls do not exist in `audit_log`, and workspace-scoped access has nothing to scope on)
-
-The conceptual split — "`activity` is a feature, `audit_log` is a control", both append-only — is clearly drawn and is the right model. `AU-2` (record which secret keys changed, never the values) and the deliberate, documented trade in "Audit write fails → the mutation still succeeds" are both good. The generic integration test ("every mutating route writes an audit row — asserted by exercising the route table") is a strong idea.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| High | `AU-10` "Workspace administrators see audit rows **for their workspace**" and `GET /api/workspaces/{id}/audit` — but `audit_log` has **no `workspace_id`**. Its columns are `actor_id, actor_ip, action, entity_type, entity_id, before, after, created_at`. Scoping would have to be derived per row by resolving every entity type back to a workspace, which is neither indexable nor reliably correct — and the failure mode is a workspace admin reading another tenant's audit rows. | Add `workspace_id` (nullable, for instance-scoped rows) to `audit_log`, populate it at write time, and index `(workspace_id, created_at desc)`. |
-| High | `AU-4` "An impersonated action records **both** identities" is a core control (impersonation is one of rbac.md's re-authentication-gated actions), and there is **no column for the second identity**. An implementer will stuff it into `before`/`after` or lose it. | Add `impersonator_id` to `audit_log` and assert it in a test alongside the impersonation feature. |
-| High | `AU-1` says rows record "actor id, actor IP, **user agent**, action, entity type, entity id, before, after, **trace id**, timestamp" — `user_agent` and `trace_id` are absent from the table. `trace_id` is what connects an audit row to `observability.md`'s logs and to the `traceId` in `api-design.md`'s error payloads, so losing it breaks the investigation path the whole document exists to support. | Add `user_agent` and `trace_id` to `audit_log`. |
-| Medium | **No `## Permissions` table** (the template requires one; access is prose in `AU-10`–`AU-13`), **no `## Open questions` section**, no `## Data`, no `## Out of scope`. | Add all four. The permissions table should map: instance log → `instance:read_audit`; workspace log → `workspace:manage_settings`; entity history → that entity's read capability; export → `instance:read_audit` + re-auth. |
-| Medium | `AU-7` "Deleting an organisation **tombstones** its audit rows rather than removing them" — no tombstone column or mechanism exists, and it is unclear what a tombstoned row still shows. | Define it (e.g. `actor_display_snapshot` retained, `organisation_id` nulled with a `tombstoned_at`), or state that organisations are never hard-deleted. |
-| Medium | `GET /api/audit/entity/{type}/{id} → "(capability for that entity)"` is not a declarable policy — the route-coverage test needs a concrete capability, and a dynamic per-entity-type policy is exactly the kind of thing ADR 0010's route policy registry is meant to make static. | Either enumerate one route per entity type with its capability, or define a documented policy-resolver form the registry supports. |
-| Medium | `AU-3` "Append-only … Enforced by **database grants** as well as by the absence of an endpoint" implies a second database role with no INSERT-only privileges, which is not mentioned in the data model's migration section or anywhere in the deployment docs. | Specify the role and where the grant is applied, or drop the claim to "enforced by the absence of any update/delete path, and tested". |
-| Low | "Depends on: nothing", yet the spec audits routes introduced across every phase and mentions impersonation (P4 God Mode) and exports (P5 reporting). | List the real dependencies so the phase ordering is honest. |
-| Low | `AU-13` "Reading the audit log is itself audited" combined with `audit_log` retention of 12 months and one row per read is a volume decision made in passing. | Confirm intended, and state whether audit reads are exempt from the purge. |
-
----
-
 ## 17. `customer-portal.md` — P3
 
 **Verdict: not-ready** (the only spec in the group with a non-empty "Open questions", and it is a blocking one; separately, the most security-sensitive router in the product ships 22 routes with zero declared policies)
