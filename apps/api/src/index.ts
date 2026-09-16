@@ -1,6 +1,8 @@
-import { dirname } from "node:path";
+import { statSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { Session, User } from "better-auth/types";
@@ -124,7 +126,131 @@ function buildContentDisposition(filename: string, inline: boolean) {
   return `${disposition}; filename="${asciiFallback}"; filename*=UTF-8''${encodedFilename}`;
 }
 
-export function createApp() {
+/**
+ * Where the built web app can be found, relative to this module's own file
+ * rather than `process.cwd()` — the process is started from a different
+ * working directory in every environment that matters:
+ *
+ *  - Production (the shipped Dockerfile): `node apps/api/dist/index.js` runs
+ *    from `WORKDIR /app`, and the web bundle is copied to `/app/public`
+ *    (see docs/05-operations/container-image.md and the Dockerfile's
+ *    `runtime` stage) — three directories up from the bundled file, then
+ *    into `public`.
+ *  - Local dev/build (`tsx watch` on `src/index.ts`, or a plain `node
+ *    apps/api/dist/index.js` run outside the image): the web app is still at
+ *    its ordinary monorepo location, `apps/web/dist` — two directories up
+ *    from either `apps/api/src` or `apps/api/dist`, then into `web/dist`.
+ *
+ * Both candidates are checked in order; the first that looks like a real
+ * build (a directory containing `index.html`) wins.
+ */
+function defaultStaticRootCandidates(): string[] {
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+  return [
+    join(currentDir, "../../../public"),
+    join(currentDir, "../../web/dist"),
+  ];
+}
+
+/**
+ * Resolves the directory the built web app should be served from, or
+ * `undefined` when none of the candidates look like a real build (missing
+ * entirely, or present without an `index.html`). Exported so a test can pass
+ * its own fixture directory instead of depending on `apps/web/dist` actually
+ * having been built.
+ */
+export function resolveStaticRoot(
+  candidates: string[] = defaultStaticRootCandidates(),
+): string | undefined {
+  return candidates.find((candidate) => {
+    try {
+      return (
+        statSync(candidate).isDirectory() &&
+        statSync(join(candidate, "index.html")).isFile()
+      );
+    } catch {
+      return false;
+    }
+  });
+}
+
+function isApiRequestPath(path: string): boolean {
+  return path === "/api" || path.startsWith("/api/");
+}
+
+/**
+ * Serves the built web app, if one is found, so the API process alone can
+ * answer a real UAT deployment: real files served from disk with their real
+ * content-type, and any unmatched non-API GET falls back to `index.html` so
+ * client-side routing survives a hard refresh or a direct URL.
+ *
+ * Deliberately a no-op when no build is found (dev environments that only
+ * run the API) rather than throwing — see `resolveStaticRoot`'s log line,
+ * which fires exactly once, at startup, in that case.
+ *
+ * A request path under `/api` is never touched here, matched or not — that
+ * surface keeps its own routing and its own 404s, unconditionally.
+ */
+function registerStaticServing(
+  app: Hono<AppVariables>,
+  staticRootOverride?: string,
+) {
+  // An override still goes through the same "is this actually a build"
+  // check as the real candidates, rather than being trusted blindly — a
+  // test (or a future caller) that passes a directory with no `index.html`
+  // gets the same graceful skip as the no-override, nothing-found case.
+  const staticRoot = staticRootOverride
+    ? resolveStaticRoot([staticRootOverride])
+    : resolveStaticRoot();
+
+  if (!staticRoot) {
+    console.warn(
+      "[static] No built web app found (checked the production /app/public location and apps/web/dist) — the API will not serve the web UI. Expected whenever only the API is running, e.g. before `pnpm --filter @taskdesk/web build` in local development.",
+    );
+    return;
+  }
+
+  console.log(`[static] Serving the built web app from ${staticRoot}`);
+
+  const serveAsset = serveStatic({ root: staticRoot });
+  const serveIndex = serveStatic({ root: staticRoot, path: "/index.html" });
+
+  app.use("*", async (c, next) => {
+    if (
+      (c.req.method !== "GET" && c.req.method !== "HEAD") ||
+      isApiRequestPath(c.req.path)
+    ) {
+      return next();
+    }
+
+    // `serveStatic`'s own "not found" signal is calling its `next` argument
+    // (typed to return `void`, not a `Response`), so the decision below
+    // can't be made from inside that callback's return value — it just
+    // flags that no file matched, and the real branching happens after.
+    let assetMissing = false;
+    const result = await serveAsset(c, async () => {
+      assetMissing = true;
+    });
+
+    if (!assetMissing) {
+      return result;
+    }
+
+    // No matching file. A request whose last path segment has an extension
+    // (".js", ".png", a stray ".env", ...) is a genuinely missing asset and
+    // must stay a 404 — silently returning the SPA shell for it would turn
+    // a broken or typo'd asset URL into a "successful" HTML response
+    // instead of a loud failure. Anything else is a client-side route and
+    // gets the SPA shell.
+    const lastSegment = c.req.path.split("/").pop() ?? "";
+    if (lastSegment.includes(".")) {
+      return next();
+    }
+    return serveIndex(c, next);
+  });
+}
+
+export function createApp(options: { staticRoot?: string } = {}) {
   const app = new Hono<AppVariables>();
 
   app.onError((err, c) => {
@@ -739,6 +865,7 @@ export function createApp() {
   );
 
   app.route("/api", api);
+  registerStaticServing(app, options.staticRoot);
 
   return {
     app,
