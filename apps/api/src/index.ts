@@ -36,7 +36,7 @@ import project from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
 import { getPrivateObject, getStorageDriver } from "./storage";
-import { writeUploadedObject } from "./storage/filesystem";
+import { StoragePathError, writeUploadedObject } from "./storage/filesystem";
 import task from "./task";
 import taskRelation from "./task-relation";
 import timeEntry from "./time-entry";
@@ -524,8 +524,16 @@ export function createApp(options: { staticRoot?: string } = {}) {
           body: c.req.raw.body,
         });
       } catch (error) {
+        // StoragePathError's message is deliberately safe to return as-is (traversal
+        // refused, token invalid/expired, upload too large, ...) — it never contains a
+        // filesystem path. Anything else here is an unexpected raw fs error (e.g. EEXIST,
+        // ENOTDIR, ENOSPC) that embeds the server's own absolute storage-root path, which a
+        // caller holding nothing but a valid upload token has no business seeing.
         throw new HTTPException(400, {
-          message: error instanceof Error ? error.message : "Upload failed.",
+          message:
+            error instanceof StoragePathError
+              ? error.message
+              : "Upload failed.",
         });
       }
 

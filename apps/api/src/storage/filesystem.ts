@@ -311,10 +311,12 @@ function signUploadToken(key: string, expires: number): string {
   return hmac.digest("base64url");
 }
 
-/** Exported for tests only — mints a token for an arbitrary key, including a malicious one,
- * so the path-safety layer in `writeUploadedObject` can be tested independently of the token
- * layer (a cryptographically valid token for a traversal key must still be refused). No
- * application code calls this directly; `createTaskImageUploadUrl` is the real entry point. */
+/**
+ * @internal TEST-ONLY. Mints a token for an arbitrary key, including a malicious one, so the
+ * path-safety layer in `writeUploadedObject` can be tested independently of the token layer
+ * (a cryptographically valid token for a traversal key must still be refused). No production
+ * route reaches this function; `createTaskImageUploadUrl` is the real entry point.
+ */
 export function signUploadTokenForTests(key: string, expires: number): string {
   return signUploadToken(key, expires);
 }
