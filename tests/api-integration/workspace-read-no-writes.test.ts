@@ -3,11 +3,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import {
-  createWorkspaceViaPlugin,
-  inviteAndAcceptAsNewMember,
-  signUpUser,
-} from "./helpers/organization-http";
+import { signUpUser } from "./helpers/organization-http";
+import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
+import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 // A1-P10: S2 is READ ONLY. None of the four new routes may write anything,
 // anywhere -- not a new row in any of the 29 public tables, and not a
@@ -52,9 +50,14 @@ describe("the S2 native read routes write nothing (A1-P10)", () => {
   it("leaves every one of the 29 public tables' row counts unchanged, and the session's active workspace/team untouched", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
-    const created = await createWorkspaceViaPlugin(app, owner.cookie);
+    const created = await createWorkspaceNative(app, owner.cookie);
     const workspace = (await created.json()) as { id: string };
-    await inviteAndAcceptAsNewMember(app, owner.cookie, workspace.id, "admin");
+    await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspace.id,
+      "admin",
+    );
     await app.request("/api/auth/organization/invite-member", {
       method: "POST",
       headers: {

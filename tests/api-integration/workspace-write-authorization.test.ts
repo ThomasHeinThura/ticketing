@@ -43,10 +43,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import {
-  inviteAndAcceptAsNewMember,
-  signUpUser,
-} from "./helpers/organization-http";
+import { signUpUser } from "./helpers/organization-http";
+import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import {
   createWorkspaceNative,
   deleteWorkspaceNative,
@@ -207,19 +205,19 @@ describe("S4 native writes: cross-workspace and role boundaries (A2-P11..A2-P15)
     await expectOrdinaryUser(owner.user.id);
     const workspaceId = await createWorkspace(app, owner.cookie, "Roles");
 
-    const viewer = await inviteAndAcceptAsNewMember(
+    const viewer = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
       "viewer",
     );
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
       "member",
     );
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -282,7 +280,7 @@ describe("S4 native writes: cross-workspace and role boundaries (A2-P11..A2-P15)
     const owner = await signUpUser(app);
     await expectOrdinaryUser(owner.user.id);
     const workspaceId = await createWorkspace(app, owner.cookie, "Narrowed");
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -338,7 +336,7 @@ describe("S4 native writes: cross-workspace and role boundaries (A2-P11..A2-P15)
     const owner = await signUpUser(app);
     await expectOrdinaryUser(owner.user.id);
     const workspaceId = await createWorkspace(app, owner.cookie, "Fallback");
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -613,7 +611,7 @@ describe("A2-P25/A2-P26 the evaluator refuses an ambiguous membership rather tha
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "A2-P25");
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -651,7 +649,7 @@ describe("A2-P25/A2-P26 the evaluator refuses an ambiguous membership rather tha
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "A2-P26");
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,

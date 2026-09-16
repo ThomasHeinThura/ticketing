@@ -17,13 +17,11 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { MAX_PENDING_INVITATIONS_PER_WORKSPACE } from "../../apps/api/src/utils/workspace-invitation-limits";
 import { resetTestDatabase } from "./helpers/database";
-import {
-  inviteAndAcceptAsNewMember,
-  signUpUser,
-} from "./helpers/organization-http";
+import { signUpUser } from "./helpers/organization-http";
 import {
   acceptInvitationNative,
   cancelInvitationNative,
+  inviteAndAcceptAsNewMemberNative,
   inviteWorkspaceMemberNative,
   rejectInvitationNative,
 } from "./helpers/workspace-invitation-write-http";
@@ -192,7 +190,7 @@ describe("S6a invite (POST /api/workspace/{id}/invitations)", () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Already");
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -271,7 +269,7 @@ describe("S6a invite (POST /api/workspace/{id}/invitations)", () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Boundary");
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -291,7 +289,7 @@ describe("S6a invite (POST /api/workspace/{id}/invitations)", () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Admin OK");
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -546,7 +544,7 @@ describe("S6a accept (POST /api/invitation/{id}/accept)", () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Already Mem");
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -739,7 +737,7 @@ describe("S6a cancel (DELETE /api/invitation/{id})", () => {
       owner.cookie,
       "Cancel Boundary",
     );
-    const otherMember = await inviteAndAcceptAsNewMember(
+    const otherMember = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,

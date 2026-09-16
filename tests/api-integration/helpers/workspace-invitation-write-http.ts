@@ -1,5 +1,6 @@
-import type { App } from "./organization-http";
-import { nextClientIp } from "./organization-http";
+import { randomUUID } from "node:crypto";
+import type { App, SignedUpUser } from "./organization-http";
+import { nextClientIp, signUpUser } from "./organization-http";
 
 // HTTP helpers for the S6a NATIVE invitation write routes (issue #6,
 // retrofit plan §3, S6a row): invite (create), accept, reject, cancel.
@@ -72,4 +73,52 @@ export async function cancelInvitationNative(
     method: "DELETE",
     headers: { cookie },
   });
+}
+
+/**
+ * The NATIVE-route replacement for `organization-http.ts`'s
+ * `inviteAndAcceptAsNewMember`: invites `email` into `workspaceId` with
+ * `role` as `ownerCookie`, signs that email up as a brand-new user, and
+ * accepts the invitation as them, entirely through S6a's own routes. This is
+ * S10 prep (issue #6) -- tests whose SUBJECT is unrelated to the
+ * organization() plugin should not depend on the plugin's HTTP routes just
+ * to get a second member into a workspace, since S10 unmounts them.
+ */
+export async function inviteAndAcceptAsNewMemberNative(
+  app: App,
+  ownerCookie: string,
+  workspaceId: string,
+  role: string,
+): Promise<SignedUpUser> {
+  const email = `member-${randomUUID()}@example.com`;
+  const invited = await inviteWorkspaceMemberNative(
+    app,
+    ownerCookie,
+    workspaceId,
+    {
+      email,
+      role,
+    },
+  );
+  if (invited.status !== 200) {
+    throw new Error(
+      `inviteAndAcceptAsNewMemberNative: invite failed with ${invited.status}: ${await invited.text()}`,
+    );
+  }
+  const invitation = (await invited.json()) as { id: string };
+
+  const member = await signUpUser(app, { email });
+
+  const accepted = await acceptInvitationNative(
+    app,
+    member.cookie,
+    invitation.id,
+  );
+  if (accepted.status !== 200) {
+    throw new Error(
+      `inviteAndAcceptAsNewMemberNative: accept failed with ${accepted.status}: ${await accepted.text()}`,
+    );
+  }
+
+  return member;
 }

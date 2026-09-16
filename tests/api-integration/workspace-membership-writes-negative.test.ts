@@ -20,10 +20,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import {
-  inviteAndAcceptAsNewMember,
-  signUpUser,
-} from "./helpers/organization-http";
+import { signUpUser } from "./helpers/organization-http";
+import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import {
   leaveWorkspaceNative,
   removeWorkspaceMemberNative,
@@ -119,7 +117,7 @@ describe("S5 REQUIRED: last owner cannot leave", () => {
       owner.cookie,
       "Transfer Then Leave",
     );
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -167,7 +165,7 @@ describe("S5 REQUIRED: cannot self-demote", () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Two Owners");
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -206,13 +204,13 @@ describe("S5 REQUIRED: cannot remove a member of another workspace", () => {
     const ownerB = await signUpUser(app);
     const workspaceA = await createWorkspace(app, ownerA.cookie, "Alpha");
     const workspaceB = await createWorkspace(app, ownerB.cookie, "Bravo");
-    const adminA = await inviteAndAcceptAsNewMember(
+    const adminA = await inviteAndAcceptAsNewMemberNative(
       app,
       ownerA.cookie,
       workspaceA,
       "admin",
     );
-    const memberB = await inviteAndAcceptAsNewMember(
+    const memberB = await inviteAndAcceptAsNewMemberNative(
       app,
       ownerB.cookie,
       workspaceB,
@@ -236,13 +234,13 @@ describe("S5 REQUIRED: cannot remove a member of another workspace", () => {
     const ownerB = await signUpUser(app);
     const workspaceA = await createWorkspace(app, ownerA.cookie, "Alpha2");
     const workspaceB = await createWorkspace(app, ownerB.cookie, "Bravo2");
-    const adminA = await inviteAndAcceptAsNewMember(
+    const adminA = await inviteAndAcceptAsNewMemberNative(
       app,
       ownerA.cookie,
       workspaceA,
       "admin",
     );
-    const memberB = await inviteAndAcceptAsNewMember(
+    const memberB = await inviteAndAcceptAsNewMemberNative(
       app,
       ownerB.cookie,
       workspaceB,
@@ -270,13 +268,13 @@ describe("S5 REQUIRED: the atomic transfer endpoint under concurrent use cannot 
       owner.cookie,
       "Concurrent Transfer",
     );
-    const admin1 = await inviteAndAcceptAsNewMember(
+    const admin1 = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
       "admin",
     );
-    const admin2 = await inviteAndAcceptAsNewMember(
+    const admin2 = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -335,7 +333,7 @@ describe("S5 REQUIRED: the atomic transfer endpoint under concurrent use cannot 
       owner.cookie,
       "Two Owners Leave",
     );
-    const second = await inviteAndAcceptAsNewMember(
+    const second = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,

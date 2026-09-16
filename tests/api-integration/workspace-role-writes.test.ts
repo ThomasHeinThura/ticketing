@@ -21,10 +21,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import {
-  inviteAndAcceptAsNewMember,
-  signUpUser,
-} from "./helpers/organization-http";
+import { signUpUser } from "./helpers/organization-http";
+import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import { updateWorkspaceMemberRoleNative } from "./helpers/workspace-membership-write-http";
 import {
   createWorkspaceRoleNative,
@@ -128,7 +126,7 @@ describe("S7 list roles (GET /api/workspace/{id}/roles)", () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Viewable");
-    const viewer = await inviteAndAcceptAsNewMember(
+    const viewer = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -147,7 +145,7 @@ describe("S7 list roles (GET /api/workspace/{id}/roles)", () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Narrowed");
-    const viewer = await inviteAndAcceptAsNewMember(
+    const viewer = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -277,7 +275,7 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "NoCreate");
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -348,7 +346,7 @@ describe("F2 -- cannot grant a capability you do not hold yourself (RL-3, S7 blu
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Ceiling");
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -437,7 +435,7 @@ describe("S7 update role (PATCH /api/workspace/{id}/roles/{roleId})", () => {
     // Prove the OLD grant was actually dropped, not merely that the new
     // field was accepted: a member holding this role can no longer add
     // members (member:create was removed).
-    const holder = await inviteAndAcceptAsNewMember(
+    const holder = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -488,7 +486,7 @@ describe("S7 update role (PATCH /api/workspace/{id}/roles/{roleId})", () => {
       owner.cookie,
       "UpdateCeiling",
     );
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -564,7 +562,12 @@ describe("S7 delete role (DELETE /api/workspace/{id}/roles/{roleId})", () => {
       { role: "custom", permission: { task: ["read"] } },
     );
     const { id: roleId } = (await created.json()) as { id: string };
-    await inviteAndAcceptAsNewMember(app, owner.cookie, workspaceId, "custom");
+    await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      "custom",
+    );
 
     const response = await deleteWorkspaceRoleNative(
       app,
@@ -585,7 +588,7 @@ describe("S7 delete role (DELETE /api/workspace/{id}/roles/{roleId})", () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Unreachable");
-    const holder = await inviteAndAcceptAsNewMember(
+    const holder = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -616,7 +619,7 @@ describe("S7 delete role (DELETE /api/workspace/{id}/roles/{roleId})", () => {
       { role: "custom", permission: { task: ["read"] } },
     );
     const { id: roleId } = (await created.json()) as { id: string };
-    const holder = await inviteAndAcceptAsNewMember(
+    const holder = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
