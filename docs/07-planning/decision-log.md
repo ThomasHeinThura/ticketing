@@ -17,6 +17,168 @@ Newest first.
 
 ---
 
+### 2026-09-16 · CodeQL alert #9 (`js/insufficient-password-hash`, `packages/domain/src/audit/audit.ts`) dismissed as a false positive
+
+**Decision:** the CodeQL alert flagging `canonicalRowHash`'s `createHash("sha256")` call as
+"insufficient password hash" is dismissed, reason `false positive`, via the code-scanning
+API (alert #9).
+
+**Why:** the alert's name-based heuristic matched because one of the fifteen concatenated
+fields is `apiKeyId` — but that field is a foreign-key reference id, not a credential, and
+the function hashes an entire audit-log row for `AU-15`'s tamper-evidence chain, not a
+password for storage. A salted or slow KDF (the fix CodeQL's rule normally wants) would be
+actively wrong here: `audit-verify` must be able to independently re-derive the same hash
+from the same row content to walk and verify the chain, which requires a pure, deterministic
+function of its input — the opposite of what a per-use-salted KDF provides. No secret of any
+kind reaches this function. Confirmed independently by two reviewers before this decision
+was made: an ordinary Sonnet review and the mandatory Opus security review of PR #175 (which
+also verified the hash recipe's actual cryptographic soundness in the same pass — see that
+PR's `## Security review` section) both concluded the same thing without prompting each
+other. Neither reviewer dismissed the alert themselves, correctly treating that action as
+gate-adjacent and reserved for Thomas.
+
+**Alternatives considered:** renaming `apiKeyId` or restructuring the field list specifically
+to evade CodeQL's name heuristic (rejected, by both reviewers and this decision — that hides
+the alert without addressing anything real, and the next genuinely-named sensitive field
+would trip the same rule for the same non-reason); leaving the alert open indefinitely
+(rejected — the required `CodeQL` status check would then block this PR, and every future
+PR touching this file, forever, over a confirmed non-issue).
+
+**Decided by:** Thomas, 2026-09-16 (asked directly, as this is a security-scan-alert
+dismissal — the kind of call this project's rules treat as equivalent to waiving a gate,
+reserved for him specifically rather than any reviewer's or the orchestrating session's own
+judgment, even where that judgment was independently unanimous).
+
+---
+
+### 2026-09-16 · `reconstructAt`'s same-instant tie-break needs a real ordering signal this schema does not yet have — supersedes the auto-increment premise
+
+**Supersedes:** the entry titled "`reconstructAt`'s same-instant tie-break is insertion
+order, ascending surrogate key" (2026-09-16, appearing later in this log). That entry is
+not rewritten — this new entry corrects it, per this file's own append-only rule.
+
+**Decision:** the superseded entry's premise was false and is withdrawn. It described
+`ActivityRow.sequence` as standing in for "Postgres's real auto-increment `activity.id`" —
+no such column exists, or can exist, under this schema's own rules. `data-model.md`'s
+Conventions state unconditionally: "Primary keys are CUID2 text. Primary keys and
+surrogate ids are **never** sequential"; `activity`'s column list (§4) names no
+auto-increment/`bigserial`/`identity` column either. The premise was written down without
+being checked against the schema it claimed to describe.
+
+Investigated whether `activity.id` — a CUID2, not sequential, but still possibly
+correlated with insertion order in practice — could substitute anyway. It cannot, checked
+by reading the actual implementation rather than assumed from the name: this codebase's
+`createId()` (`@paralleldrive/cuid2` v3.3.0, imported in `apps/api/src/database/schema.ts`)
+builds each id as a SHA3-512 hash of `(timestamp, salt, counter, host fingerprint)`,
+rendered in base36. The library's own documented design goal is the opposite of what a
+tie-break needs — its README states plainly, "k-sortable = insecure," and explains that
+CUID2 deliberately hashes away any correlation between an id's value and when it was
+generated. Two `activity` rows created microseconds apart get ids in effectively random
+relative order. **CUID2 ids in this codebase carry no genuine ordering guarantee.**
+
+`reconstructAt` itself (`packages/domain/src/audit/audit.ts`) needs no code change: its
+fold is correct for *any* real total order supplied as `sequence`, for rows sharing one
+`createdAt` instant. What was wrong is the claim about where a real caller is supposed to
+get that order from — today, **no column this schema actually has can back it.**
+
+**What this means for the impure edge, left open, not decided here:** the `activity`
+insert path (part of issue #37's remaining scope — it does not exist yet, per this
+module's own doc comment) needs a genuine monotonic signal for same-instant ties. Two
+realistic options, neither picked here: **(a)** add a column to `activity` dedicated to
+this tie-break only — e.g. `bigserial`/`identity` — as a narrow, explicitly-scoped
+exception to `data-model.md`'s "surrogate ids are never sequential" rule (that rule's own
+stated rationale is about ids used as references — security, not sortability — which does
+not obviously extend to an internal ordering key nobody outside the database ever
+observes, but that argument needs to be made explicitly if this option is taken, not
+assumed); or **(b)** have the impure edge derive order from something Postgres already
+tracks internally (e.g. transaction/commit ordering), which needs its own scrutiny before
+being relied on. Whichever the impure-edge implementer picks is a real schema/mechanism
+choice and needs its own decision-log entry when it lands — this entry closes the false
+premise, not that open question.
+
+**Why:** found by the Opus security review of PR #175 (finding S-4): `types.ts` and the
+superseded entry both asserted a mechanism that cannot exist under `data-model.md`'s own
+stated schema rules. `check:vocabulary` could not catch this because the false claim lived
+only in a doc comment and a decision-log entry, never in a table registration that gate
+checks.
+
+**Alternatives considered:** silently editing the superseded entry's text instead of
+adding a new one (rejected — the decision log is append-only; per this file's own rule and
+`AGENTS.md` do-not 11, an old entry is never rewritten); asserting CUID2 ids are "close
+enough" to time-ordered without checking the library's actual behavior (rejected — checked
+`createId`'s real implementation specifically to avoid repeating the original mistake);
+deciding between option (a) and (b) above here, in this remediation task (rejected — that
+is a genuine schema/mechanism design choice for whoever builds the impure edge, with real
+tradeoffs on each side, not a routine gap-filling call this task was scoped to make).
+
+**Decided by:** the orchestrating session (via a delegated security-remediation task),
+2026-09-16, correcting a factual error in a previous entry rather than deciding new
+product or architecture. The open schema question in "What this means for the impure
+edge" above is unresolved and needs its own decision when that work is actually built.
+
+---
+
+### 2026-09-16 · The audit hash chain's zero hash is 64 hex `0` characters
+
+**Decision:** the first row in an `audit_log` hash chain (which has no real predecessor to
+chain from) uses `prevHash = "0".repeat(64)` — 64 lowercase hex `0` characters, the same
+byte-length as a real SHA-256 hex digest — exported as `ZERO_HASH` from
+`packages/domain/src/audit/audit.ts`. Every future chain-verification implementation must
+use this exact literal, not a re-derived or differently-shaped placeholder.
+
+**Why:** `AU-15` and `data-model.md` §11 both state "the first row chains from the zero
+hash" but neither defines its literal value or byte length — found while implementing
+`canonicalRowHash` for #37 (PR #175), flagged by that PR's own independent review as
+load-bearing and worth a decision-log entry, not just a code comment: any future
+independent audit-verify implementation (a restore drill, a second-language reimplementation,
+a manual chain check) that guesses a different placeholder would compute a different first
+row hash and falsely report the chain as tampered. 64 hex characters matches a genuine
+SHA-256 digest's length exactly (rather than, say, an empty string or a shorter sentinel),
+which lets every row — including the first — pass through identical validation code with no
+special-cased length check for "is this the first row."
+
+**Alternatives considered:** an empty string (rejected — a different length than every real
+hash, forcing every consumer to special-case the first row); 32 raw zero bytes instead of
+hex-encoded (rejected — `canonicalRowHash`'s own output is lowercase hex, so the input it
+takes as `prevHash` should be the same encoding for uniformity, not a second internal
+representation nothing else in the chain uses).
+
+**Decided by:** the orchestrating session, as a routine implementation convention filling an
+unspecified-but-necessary detail in an already-approved mechanism (`AU-15`) — not a new
+security policy or a change to the hash-chain design itself, which stays exactly as
+`data-model.md` §11 specifies.
+
+---
+
+### 2026-09-16 · `reconstructAt`'s same-instant tie-break is insertion order, ascending surrogate key
+
+**Decision:** when two `activity` rows for the same work item share the exact same
+`created_at` instant, `packages/domain/src/audit`'s `reconstructAt` resolves the tie by
+ascending insertion order — the row with the higher surrogate key (`ActivityRow.sequence`,
+standing in for Postgres's real auto-increment `activity.id`) is treated as having
+happened later, and its `new_value` wins for that field. No other rule (alphabetical by
+`field`, actor id, or leaving the order unspecified) is used.
+
+**Why:** unspecified anywhere in the specs — checked `audit-trail.md`, `data-model.md`'s
+`activity` table definition, and `comments-and-activity.md` directly, none names a
+same-instant tie-break — per `docs/07-planning/lane-prep/p2-domain.md` §9 item 5's finding
+of a genuine gap. Insertion order (`activity.id` ascending) is the one secondary ordering
+signal a database provides for free without inventing new data, and reconstruction must be
+deterministic to be trustworthy — a non-deterministic tie-break would mean two callers
+asking "what did this work item look like at instant X" could get different answers for
+the same input, which defeats `AU-8`'s whole purpose.
+
+**Alternatives considered:** leaving the order unspecified/non-deterministic (rejected —
+reconstruction must be deterministic); ordering by `field` name alphabetically (rejected —
+arbitrary, no basis in any spec).
+
+**Decided by:** the orchestrating session, as a routine implementation convention, not a
+product-behaviour choice — this fixes a database-tie-break rule that no user ever observes
+directly, unlike the SLA policy-move and calendar `none`-state questions `p2-domain.md` §9
+also flags, which remain open and need Thomas.
+
+---
+
 ### 2026-09-16 · P1's foundational identity schema (`organisation`, `person`, `membership`, `role`) starts as its own bounded PR, ahead of #23
 
 **Decision:** build `organisation`, `organisation_quota`, `person`, `membership` and `role`
