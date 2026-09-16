@@ -312,10 +312,34 @@ export const auth = betterAuth({
     // for it on any page with no workspace id in its own URL. Declaring it
     // here restores exactly the visibility the plugin used to provide for
     // free, now that nothing else does.
+    //
+    // `input: false` IS LOAD-BEARING, not copied boilerplate. The
+    // organization() plugin declared this exact field with `input: false`
+    // too (organization.mjs:827-832) -- the first version of this fix
+    // omitted it, and an independent review caught, then proved, the
+    // consequence: better-auth's generic `POST /api/auth/update-session`
+    // reads `getFields(..., "input")`, which only refuses a field when
+    // `input === false`; without it, ANY authenticated caller could
+    // overwrite their OWN session's `activeOrganizationId` to a workspace
+    // they are not a member of, with no membership check at all --
+    // bypassing the one sanctioned path (`POST /api/workspace/{id}/activate`,
+    // gated by `requireWorkspaceMembership`) entirely. `input: false` here
+    // makes `update-session` refuse the field with 400 `FIELD_NOT_ALLOWED`,
+    // exactly matching the plugin's own prior behaviour, while leaving the
+    // OUTPUT side (what this field exists for) completely unaffected --
+    // `getFields`'s "output" mode does not consult `input` at all.
+    //
+    // `activeTeamId` deliberately gets NO equivalent declaration here. The
+    // plugin exposed it too, but nothing ever reads it -- confirmed by
+    // grepping the whole of apps/api/src and apps/web/src -- so it is now
+    // silently absent from `GET /get-session`'s response, same column,
+    // same write path, just no longer visible to a client that never asked
+    // for it. If a future consumer needs it, add it here the same way.
     additionalFields: {
       activeOrganizationId: {
         type: "string",
         required: false,
+        input: false,
       },
     },
   },

@@ -185,4 +185,54 @@ describe("S8a native set-active route", () => {
     };
     expect(body.session?.activeOrganizationId).toBe(workspaceId);
   });
+
+  it("REGRESSION (S10): POST /api/auth/update-session cannot set activeOrganizationId to a workspace the caller does not belong to", async () => {
+    // The first version of the fix above declared `activeOrganizationId`
+    // under `session.additionalFields` WITHOUT `input: false` -- the
+    // organization() plugin's own prior declaration always had it
+    // (organization.mjs:827-832). Without it, better-auth's generic
+    // `POST /api/auth/update-session` (a route this app never calls itself,
+    // but which the unfiltered `/auth/*` catch-all still forwards to)
+    // accepts `activeOrganizationId` as ordinary writable input and persists
+    // it with NO membership check at all -- entirely bypassing
+    // `requireWorkspaceMembership`, the only sanctioned gate on this column
+    // (`POST /api/workspace/{id}/activate`). Found by independent review,
+    // proved live, fixed by restoring `input: false`. This pins the fix:
+    // the same caller who is correctly refused by the native activate route
+    // must ALSO be refused by the generic update-session route, not merely
+    // silently ignored -- and the session row must be left untouched.
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const created = await createWorkspaceNative(app, owner.cookie, {
+      name: "Update-Session Attack Target",
+    });
+    const { id: workspaceId } = (await created.json()) as { id: string };
+
+    const outsider = await signUpUser(app);
+
+    // Control: the sanctioned native path correctly refuses a non-member.
+    const nativeAttempt = await activateWorkspaceNative(
+      app,
+      outsider.cookie,
+      workspaceId,
+    );
+    expect(nativeAttempt.status).toBe(403);
+
+    // The attack: the generic better-auth endpoint, unmediated by any
+    // workspace-membership check, must refuse the same field.
+    const attack = await app.request("/api/auth/update-session", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: outsider.cookie },
+      body: JSON.stringify({ activeOrganizationId: workspaceId }),
+    });
+    expect(attack.status).toBe(400);
+
+    const [outsiderSession] = await db
+      .select({
+        activeOrganizationId: schema.sessionTable.activeOrganizationId,
+      })
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, outsider.user.id));
+    expect(outsiderSession?.activeOrganizationId).not.toBe(workspaceId);
+  });
 });
