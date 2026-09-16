@@ -204,6 +204,46 @@ export async function callerMembershipResolution(
   return resolveMembershipRole(db, workspaceId, userId);
 }
 
+/**
+ * The caller's OWN resolved capability statements in this workspace — what S7's "cannot grant
+ * a capability you do not hold" check (`roles-and-permissions-ui.md`'s `RL-3`, S7 blueprint
+ * Finding F2) tests every requested `(resource, action)` pair against.
+ *
+ * NO INSTANCE-ADMIN BRANCH, DELIBERATELY. By the time a route calls this, both
+ * `requireWorkspacePermission` and `requireWorkspaceRoleAuthority` have already run as that
+ * route's own middleware and already forced the caller's OWN resolved workspace role — never
+ * the instance-admin bypass — to satisfy whatever `ac:[...]` permission gated the route:
+ * `requireWorkspaceRoleAuthority` never takes the `isInstanceAdmin` shortcut, it *resolves*
+ * the instance admin's actual membership and refuses if that membership does not itself
+ * satisfy the same permissions (see that file). A non-instance-admin never had a bypass to
+ * begin with — `hasWorkspacePermission` resolves their real membership unconditionally. So by
+ * the time either middleware has let a request through, `resolveMembershipRole` for THIS
+ * caller already resolves, and its role's statements already satisfy the route's own gate,
+ * for every caller who can legitimately reach this function. Branching on `isInstanceAdmin`
+ * here as well would not widen anything (both branches resolve identically once membership is
+ * real) but would be a second, divergent copy of the same resolution to keep in sync — the
+ * exact defect class (#82, #118) this codebase keeps finding and fixing one table over.
+ *
+ * Returns `null` when no usable statements can be resolved at all (no workspaceId/userId in
+ * context, no membership, an ambiguous or malformed membership row, or a missing/ambiguous
+ * custom-role permission row). Callers MUST treat `null` as "holds nothing" — every requested
+ * grant fails the ceiling check — never as "skip the check".
+ */
+export async function resolveCallerWorkspaceStatements(
+  c: Context,
+): Promise<Record<string, readonly string[]> | null> {
+  const workspaceId = c.get("workspaceId");
+  const userId = c.get("userId");
+  if (!workspaceId || !userId) return null;
+
+  const membership = await resolveMembershipRole(db, workspaceId, userId);
+  if (!membership.ok) return null;
+
+  return membership.role === "owner"
+    ? builtInRoleStatements("owner")
+    : await customRoleStatements(workspaceId, membership.role);
+}
+
 export function requireWorkspacePermission(permissions: PermissionMap) {
   return async (c: Context, next: Next) => {
     if (!c.get("workspaceId")) {
