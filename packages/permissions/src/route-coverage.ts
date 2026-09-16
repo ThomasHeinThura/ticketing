@@ -260,7 +260,24 @@ const AUTH_GUARD_PATH_PREFIX = (() => {
         "isWithinAuthGuardScope's prefix derivation assumes one",
     );
   }
-  return path.slice(0, wildcard);
+  const prefix = path.slice(0, wildcard);
+  // N1's exact-match arm (isWithinAuthGuardScope, below) does
+  // `AUTH_GUARD_PATH_PREFIX.slice(0, -1)` to compare against the prefix WITHOUT its
+  // trailing slash -- found by the independent Opus delta review of the N1 fix (D3): that
+  // slice silently assumed the trailing slash exists, so a future AUTH_GUARD_KEY like
+  // "ALL /api*" (prefix "/api", no trailing slash) would make the exact-match arm compare
+  // against "/ap" instead -- fail-OPEN for a route genuinely at "/ap". Asserted here,
+  // fail-loud, rather than left as a silent assumption two functions away from where it
+  // matters.
+  if (!prefix.endsWith("/")) {
+    throw new Error(
+      `AUTH_GUARD_KEY (${AUTH_GUARD_KEY})'s path prefix ("${prefix}") does not end in ` +
+        "a slash before the wildcard — isWithinAuthGuardScope's exact-match arm assumes " +
+        "one, and a mount shaped like this would make that arm compare against the wrong " +
+        "string instead of refusing to run.",
+    );
+  }
+  return prefix;
 })();
 
 /**
