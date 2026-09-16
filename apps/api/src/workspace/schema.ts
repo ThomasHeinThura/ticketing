@@ -98,7 +98,13 @@ export const workspaceRoleParam = z.object({
 // Every value in `permission` is validated against the known resource keys in
 // the controller too (`checkForInvalidResources` parity).
 export const createWorkspaceRoleBody = z.object({
-  role: z.string().min(1).max(100),
+  // `.trim()` runs before `.min(1)` re-checks length, so a whitespace-only
+  // name ("   ") is rejected at the boundary with a clear 400 instead of
+  // reaching the controller, normalizing to an empty string, and silently
+  // inserting a nameless role -- found adversarially: the controller's own
+  // `.trim().toLowerCase()` normalization ran AFTER this schema validated,
+  // so nothing here caught the whitespace-only case before insert.
+  role: z.string().trim().min(1).max(100),
   permission: z.record(z.string(), z.array(z.string())),
 });
 

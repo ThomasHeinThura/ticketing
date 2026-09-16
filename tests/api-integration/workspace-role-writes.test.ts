@@ -219,6 +219,26 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
     expect(await roleRows(workspaceId, "Owner")).toHaveLength(0);
   });
 
+  it("rejects a whitespace-only name, inserting no row — found adversarially by review", async () => {
+    // The controller's own `.trim().toLowerCase()` normalization ran AFTER Zod validation,
+    // so a name like "   " passed `z.string().min(1).max(100)` (non-empty before trimming)
+    // and then silently normalized to "" before insert -- a nameless row, not a validation
+    // error. Fixed by trimming inside the Zod schema itself (`z.string().trim().min(1)`),
+    // so length is checked on the SAME string that will actually be stored.
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "Whitespace");
+
+    const response = await createWorkspaceRoleNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { role: "   ", permission: { task: ["read"] } },
+    );
+    expect(response.status).toBe(400);
+    expect(await roleRows(workspaceId, "")).toHaveLength(0);
+  });
+
   it("rejects a duplicate name, leaving exactly one row", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
