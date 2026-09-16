@@ -21,6 +21,7 @@ import path from "node:path";
 import { changedPaths } from "./lib/diff.mjs";
 import {
   contentOf,
+  effectivelyNotApplicable,
   field,
   loadBody,
   normaliseHeading,
@@ -111,7 +112,21 @@ async function main() {
     const task = sections(body).get(normaliseHeading("Task"));
     const declared = task ? field(contentOf(task.raw), "Spec") : "";
     const named = /([a-z0-9-]+\.md)/.exec(declared);
-    if (named && !/^n\/a$/i.test(declared.trim())) {
+    // `effectivelyNotApplicable`, not a bare `/^n\/a$/i` exact match — found
+    // adversarially, while shepherding PR #144: that exact-match guard only
+    // recognised a Spec field that was LITERALLY the two characters "n/a",
+    // not the "n/a — reason" shape this repository's own convention requires
+    // everywhere else (`docs/04-engineering/definition-of-done.md`: "a
+    // checklist that does not apply is marked n/a with a reason, never
+    // deleted"). An honestly-written "n/a — this is UAT-deployability
+    // infrastructure (tracked in `status.md` and issue #11)..." is not a
+    // spec declaration at all, but its own explanation happening to mention
+    // a `.md` filename in passing satisfied the old guard and got read as
+    // one anyway. `effectivelyNotApplicable` reads the DECLARED STATE from
+    // the field's first meaningful line — the same fix F9 already applied
+    // to this exact class of defect elsewhere in this file's own history —
+    // rather than searching the whole field for a token.
+    if (named && !effectivelyNotApplicable(declared)) {
       specs.add(named[1]);
     }
   }
