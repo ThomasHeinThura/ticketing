@@ -632,4 +632,58 @@ describe("H2 — a route registered above the auth guard fails the gate", () => 
       DECLARED_ROUTER_MIDDLEWARE.some((d) => d.key === AUTH_GUARD_KEY),
     ).toBe(true);
   });
+
+  it("F1 — a capability route OUTSIDE the guard's own /api/* mount trips the check even when it is numerically BELOW the guard's index", () => {
+    // Found by the independent Opus review of this pull request. The original fix modelled
+    // only ordering (registrationIndex vs. the guard's own index) and missed that
+    // AUTH_GUARD_KEY is "ALL /api/*", not "ALL /*" — the guard's mount path never reaches a
+    // route outside /api/* at all, no matter where that route sits in registration order.
+    // Demonstrated against a live app before this fix: GET /metrics registered numerically
+    // after the guard still never ran it, and the old check reported ok: true regardless.
+    const realApp = appBelow(entry("GET", "/metrics"));
+    const routes = collectRoutes(realApp);
+    const registry = registryOf({
+      "GET /metrics": {
+        capability: "project:read",
+        scope: "project",
+        reach: "required",
+        scopeSource: "row",
+      },
+    });
+
+    const result = computeRouteCoverage(
+      routes,
+      registry,
+      undefined,
+      authGuardRegistrationIndex(realApp),
+    );
+    expect(result.ok).toBe(false);
+    expect(
+      result.authGuardOrderingViolations.map((route) => route.routeKey),
+    ).toEqual(["GET /metrics"]);
+    expect(result.covered.map((route) => route.routeKey)).not.toContain(
+      "GET /metrics",
+    );
+  });
+
+  it("F1 control — a public route outside /api/* is unaffected, and an /api/* route below the guard is still unaffected", () => {
+    const realApp = appBelow(
+      entry("GET", "/metrics"),
+      entry("GET", "/api/health"),
+    );
+    const routes = collectRoutes(realApp);
+    const registry = registryOf({
+      "GET /metrics": { public: true, reason: "test: no identity assumed" },
+      "GET /api/health": { public: true, reason: "liveness probe" },
+    });
+
+    const result = computeRouteCoverage(
+      routes,
+      registry,
+      undefined,
+      authGuardRegistrationIndex(realApp),
+    );
+    expect(result.ok).toBe(true);
+    expect(result.authGuardOrderingViolations).toEqual([]);
+  });
 });

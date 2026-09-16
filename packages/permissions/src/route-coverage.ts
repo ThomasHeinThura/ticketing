@@ -129,20 +129,32 @@ export const AUTH_GUARD_KEY: RouteKey = "ALL /api/*";
  * always was before this field existed. The real app's own coverage test asserts this is
  * defined explicitly, so a guard that goes missing there fails loudly rather than silently
  * disarming the check.
+ *
+ * **Returns the LAST matching index, not the first — the fail-closed direction (F2, found by
+ * the independent Opus review of this pull request).** Today `DECLARED_ROUTER_MIDDLEWARE`
+ * declares exactly one registration at `AUTH_GUARD_KEY`, so first and last are the same
+ * index. But if that declared count is ever raised — a second `api.use("*", …)` added
+ * deliberately, e.g. a rate-limiter registered alongside the guard — first-match would
+ * return the LOWEST of the matching indices, and a route sitting between the two middlewares
+ * would read as "below the guard" while actually being above at least one real guard
+ * registration. Last-match is the conservative answer in both the one-match case (identical)
+ * and the multi-match case (never understates how late the guard's protection actually
+ * starts).
  */
 export function authGuardRegistrationIndex(
   app: HonoLikeApp,
 ): number | undefined {
   const ambiguousCounts = countAmbiguousEntries(app);
+  let lastMatch: number | undefined;
   for (const [index, entry] of app.routes.entries()) {
     if (
       rawEntryKey(entry) === AUTH_GUARD_KEY &&
       isMiddlewareEntry(entry, ambiguousCounts)
     ) {
-      return index;
+      lastMatch = index;
     }
   }
-  return undefined;
+  return lastMatch;
 }
 
 /** A route whose path can match more than one endpoint. */
@@ -232,6 +244,40 @@ export function isMiddlewareEntry(
  */
 function requiresAuthGuard(policy: Policy): boolean {
   return !isPublicPolicy(policy) && !isDelegatedPolicy(policy);
+}
+
+/**
+ * The path prefix `AUTH_GUARD_KEY` actually matches — derived from the key itself (`"ALL
+ * /api/*"` → `/api/`), never hardcoded separately, so this stays correct if the guard's own
+ * mount path is ever changed without anyone touching this function.
+ */
+const AUTH_GUARD_PATH_PREFIX = (() => {
+  const path = AUTH_GUARD_KEY.slice(AUTH_GUARD_KEY.indexOf(" ") + 1);
+  const wildcard = path.indexOf("*");
+  if (wildcard === -1) {
+    throw new Error(
+      `AUTH_GUARD_KEY (${AUTH_GUARD_KEY}) is not a wildcard mount — ` +
+        "isWithinAuthGuardScope's prefix derivation assumes one",
+    );
+  }
+  return path.slice(0, wildcard);
+})();
+
+/**
+ * Does the guard's own mount path even reach this route, independent of registration order?
+ *
+ * H2's original fix modelled only ONE way the guard can fail to run for a route: being
+ * registered above it in `app.routes`. But `AUTH_GUARD_KEY` is `"ALL /api/*"` — a wildcard
+ * mount, not a blanket `"ALL /*"` — so the guard structurally never runs for a route outside
+ * `/api/*` at all, **no matter where it sits in registration order**. A `capability` policy
+ * on `GET /metrics` registered numerically "below" the guard would satisfy the old ordering
+ * check and still be uncovered in exactly H2's sense: the policy is real, nothing ever
+ * resolves the identity it reads. Found by the independent Opus review of this pull request
+ * (finding F1), reproduced against a live app before this fix: the guard did not run for
+ * such a route, and `computeRouteCoverage` reported it `ok: true` regardless.
+ */
+function isWithinAuthGuardScope(path: string): boolean {
+  return path.startsWith(AUTH_GUARD_PATH_PREFIX);
 }
 
 export function classifySurface(path: string): RouteSurface {
@@ -411,14 +457,17 @@ export function computeRouteCoverage(
     const entry = registry.get(route.routeKey);
     if (entry !== undefined) {
       // H2: a policy that assumes a resolved identity (capability, self, portal — everything
-      // that is neither `public` nor `delegated`) is not real coverage when this route's own
-      // registration sits above the guard that resolves identity in the first place. The gate
-      // must refuse this the same way it refuses an unclassified wildcard: the literal exists,
-      // and nothing behind it runs.
+      // that is neither `public` nor `delegated`) is not real coverage when the guard that
+      // resolves identity never runs for this route — either because this route's own
+      // registration sits above the guard (Hono's real order), OR because the guard's own
+      // mount path never reaches this route at all, independent of order (F1: `AUTH_GUARD_KEY`
+      // is `"ALL /api/*"`, not `"ALL /*"`). The gate must refuse this the same way it refuses
+      // an unclassified wildcard: the literal exists, and nothing behind it runs.
       if (
         authGuardIndex !== undefined &&
-        route.registrationIndex < authGuardIndex &&
-        requiresAuthGuard(entry.policy)
+        requiresAuthGuard(entry.policy) &&
+        (route.registrationIndex < authGuardIndex ||
+          !isWithinAuthGuardScope(route.path))
       ) {
         authGuardOrderingViolations.push(route);
         continue;
