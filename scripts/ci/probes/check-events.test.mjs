@@ -407,6 +407,92 @@ describe("check:events — resolveLocalConst fails closed on shadowed/decoy decl
   });
 });
 
+describe("check:events — assertNoOtherBinding's call-argument whitelist restores round 5's failure for one naming coincidence (round 6, MEDIUM)", () => {
+  // legitimateCallArgument matches the SAME textual shape for a real call
+  // (`publishEvent(eventType, …)`) and for a function DECLARATION whose own name happens
+  // to collide with a tracked call name (`function publishEvent(eventType: string, …)`)
+  // -- publishedKeysIn's own declaration-site skip already excludes the latter shape
+  // (via the same `\bfunction\s*\*?\s*$` lookbehind) when deciding what is a CALL, but
+  // assertNoOtherBinding did not apply the identical exclusion when deciding what
+  // legitimately explains an occurrence of the resolved name -- so the declaration's own
+  // parameter binding was whitelisted as if it were a real call's argument, silently
+  // restoring the exact "answers with confidence instead of refusing" failure round 5
+  // fixed, for this one naming coincidence.
+
+  it("a wrapper function literally named publishEvent, whose own parameter shadows an outer const of the same name, is refused", () => {
+    const dir = bareRepo("fn-name-collision-red");
+    write(
+      dir,
+      "apps/api/src/probe/fn-name-collision.ts",
+      [
+        'import { publishEvent as emit } from "../../events";',
+        "",
+        'const eventType = "task.created";',
+        "",
+        "export async function publishEvent(eventType, payload) {",
+        "  await emit(eventType, payload);",
+        "}",
+        "",
+        "export async function trigger() {",
+        '  await publishEvent("probe.review91_round6_fn_name_collision_undeclared", { id: "x" });',
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const result = runChecker(dir, "check-events.mjs");
+    assert.notEqual(result.status, 0, result.output);
+    assert.match(result.output, /is bound some other way as well/);
+    // NON-VACUITY: before this fix, the declaration's own parameter was whitelisted as a
+    // legitimate call argument, and this call resolved confidently to the outer const's
+    // "task.created" -- printing success while publishing an undeclared key.
+    assert.doesNotMatch(result.output, /published event key.*registered/);
+  });
+
+  it("CONTROL: renaming only the wrapper function (not its parameter) still correctly refuses -- the parameter itself is still shadowing, proving the fix closes the gap uniformly rather than for one specific function name", () => {
+    const dir = bareRepo("fn-name-collision-renamed-still-red");
+    write(
+      dir,
+      "apps/api/src/probe/fn-name-collision.ts",
+      [
+        'import { publishEvent as emit } from "../../events";',
+        "",
+        'const eventType = "task.created";',
+        "",
+        "export async function republish(eventType, payload) {",
+        "  await emit(eventType, payload);",
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const result = runChecker(dir, "check-events.mjs");
+    assert.notEqual(result.status, 0, result.output);
+    assert.match(result.output, /is bound some other way as well/);
+  });
+
+  it("PAIRED GREEN: the outer const resolves cleanly when the file has no other function sharing its name with a tracked call", () => {
+    const dir = bareRepo("fn-name-collision-green");
+    write(
+      dir,
+      "apps/api/src/probe/fn-name-collision.ts",
+      [
+        'import { publishEvent as emit } from "../../events";',
+        "",
+        'const eventType = "workspace.created";',
+        "",
+        "export async function trigger() {",
+        '  await emit(eventType, { id: "x" });',
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const result = runChecker(dir, "check-events.mjs");
+    assert.equal(result.status, 0, result.output);
+  });
+});
+
 describe("check:events — call-detector shapes the review measured as silently GREEN (HIGH 4)", () => {
   const shapes = [
     {

@@ -412,6 +412,21 @@ function assertNoOtherBinding(
   );
   const legitimateSpans = [[declarationStart, declarationEnd]];
   for (const match of structural.matchAll(legitimateCallArgument)) {
+    // Round 6 MEDIUM: this shape also matches a FUNCTION DECLARATION whose own name
+    // collides with a tracked call name (`function publishEvent(eventType: string, …)`
+    // in events/index.ts reads identically to a call `publishEvent(eventType`). Skip it
+    // the same way publishedKeysIn's own declaration-site check does -- a declaration's
+    // parameter binding is not a call argument, and whitelisting it here restores the
+    // exact round-5 "answers with confidence instead of refusing" failure for that one
+    // naming coincidence.
+    const callAt = match.index;
+    if (
+      /\bfunction\s*\*?\s*$/.test(
+        structural.slice(Math.max(0, callAt - 40), callAt),
+      )
+    ) {
+      continue;
+    }
     legitimateSpans.push(match.indices[1]);
   }
 
