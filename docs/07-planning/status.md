@@ -2,11 +2,11 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-15
-> **`main` at that moment:** `4418e70` (PR #144, static file serving in the API process —
-> closing a third UAT-deployability gap — merged after PR #104, S9 resolved — Path B, which
-> itself merged after PR #137, a control-plane reconciliation, and PR #119, the #118
-> evaluator half)
+> **Snapshot taken:** 2026-09-16
+> **`main` at that moment:** `5d9c0fb` (PR #89, checklist/heading genuineness hardening in
+> the CI gate machinery — merged after PR #147, which flagged issue #146 as DECISION
+> REQUIRED for Thomas, which itself merged after PR #144, static file serving in the API
+> process)
 > **Stage:** P0 · Foundation — IN PROGRESS
 > **Throttle 1:** SHUT — 4 of 5 conditions met; condition 2 (issue #6 through retrofit S10)
 > is the sole blocker. **Of S10's own two preconditions, S9 is now LANDED** (PR #104,
@@ -38,7 +38,7 @@
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-15
+**Last updated:** 2026-09-16
 **Current stage:** P0 · Foundation — **IN PROGRESS**
 **Updated by:** Claude Code (Sonnet), reconciliation after **PR #110** (#82 fix), **PR #122**
 (#118 DB half), **PR #119** (#118 evaluator half) and **PR #104** (S9 resolved, Path B) all
@@ -62,6 +62,27 @@ against a real `docker build`/`docker run` cycle — the PR's own manual verific
 `createApp()` directly on a throwaway port, not the container image. This pass does not
 touch S7, PR #116, or anything else that merged to `main` since `09169d8`; those are being
 tracked separately.
+
+**Also reconciled, 2026-09-16:** **PR #89** (checklist/heading genuineness hardening in
+`scripts/ci/lib/pr-body.mjs` and its test file) merged to `main` as `5d9c0fb`. It closed the
+LOW findings recorded against #81 and #79 plus a long chain of further adversarial findings
+the same checklist-genuineness mechanism turned up across thirteen rounds of independent
+review — eight ordinary/adversarial Sonnet rounds (1–8) and five separate Opus security
+passes (rounds 9, 10, 11, a fourth at `95875c4`, and a fifth delta review made necessary by
+a required merge from `main`), all CLEAR. `scripts/ci/**` test coverage grew from 322 to
+381 passing tests over those rounds. Committed security-review note at
+`docs/07-planning/security-reviews/89-checklist-genuineness-hardening.md` (the fourth-pass
+record plus an appended fifth-pass delta-review section). Touches `scripts/ci/**`,
+`docs/04-engineering/ci-cd.md` (the security-review-scope glob list), its own
+security-review note, and two `tests/api-integration/**` test files — `status.md` itself
+also appears in PR #89's file list, but only as an artefact of the required merge-from-main
+carrying PR #144's and #147's own already-recorded changes, not new content from this PR.
+No `apps/api/**` source appears anywhere in its file list, so this does not affect S7, S10,
+or Throttle 1. **One CRITICAL finding this PR's own review surfaced was deliberately left
+unfixed**: `sections()` in `scripts/ci/lib/pr-body.mjs`, already filed as issue #146 and
+flagged DECISION REQUIRED for Thomas via PR #147 — that flag is unchanged by this merge;
+#146 remains open, still awaiting Thomas's choice of fix direction, not restated further
+here.
 
 > **This is a durable snapshot, not a work log.** Update it only on a durable transition: a
 > pull request merges or becomes genuinely review-ready, an issue blocks, unblocks or
@@ -478,8 +499,8 @@ remediation status, are tracked as GitHub issues and pull requests — read them
     previously said #3 was unmet because required-status-check reconciliation needed a
     ruleset change only Thomas could make. **Thomas made it, moments before this document
     was corrected**: `protect-main` (ruleset `22365005`, `updated_at
-    2026-09-09T06:28:04Z`) now lists `route policy coverage + permission matrix` among
-    eleven `required_status_checks`, `current_user_can_bypass: never` — verified by
+    2026-09-09T06:28:04Z`) now lists `route policy coverage + permission matrix` among the
+    `required_status_checks`, `current_user_can_bypass: never` — verified by
     re-reading the live ruleset via the API, not by trusting the closing comment on #7.
     Issue #7 closed the same window (`closedAt 2026-09-09T06:29:48Z`). #3 is **met.**
   **Throttle 1 is still not open** — all five conditions are required, and #6 alone keeps
@@ -792,7 +813,7 @@ and reading it that way would open the throttle while `organization()` is still 
 | 2 | **#6 — the ISSUE** complete | ⬜ **OPEN / In Progress.** #16 merged (inherited attack surface gone), and the `organization()` retrofit needs the full run through **S10**; **S0, S1, S2, S3, S4, S4b, S5, S6a, S8a and S9** have landed (#65, #57, #65, #76, #67, #85, #77, #112, #109, #104). **S7 and S10 (unmount) remain**, and `organization()` is **still mounted** end to end. #6 is **not** complete — this is the only remaining unmet condition |
 | 3 | **#7** complete | ✅ **met — issue closed 2026-09-09** (`closedAt 2026-09-09T06:29:48Z`). #21 put the registry, evaluator and route-coverage gate on `main`; #19 put `pnpm test:permissions` (74 tests) in CI via `check:route-policy` on every push and pull request. The last open clause — both tests **required status checks** — closed when Thomas updated `protect-main` (ruleset `22365005`): `route policy coverage + permission matrix` now sits among 11 entries in `required_status_checks`, `strict_required_status_checks_policy: true`, `current_user_can_bypass: never` (`updated_at 2026-09-09T06:28:04Z`, re-read directly from `gh api repos/.../rulesets/22365005`, not taken from the closing comment's word) |
 | 4 | route coverage **actually executes** in CI | ✅ **met.** `.github/workflows/ci-fast.yml`'s `route-policy` job runs `pnpm check:route-policy` on every push and pull request, and did on `main`'s first gate-enforcing run (`e11976f`, all 11 applicable jobs green) |
-| 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one |
+| 5 | adding a route without a policy **fails the build** | ✅ **met, demonstrated rather than asserted.** `scripts/ci/probes/*.test.mjs` (run by `pnpm test:ci-scripts`) inject an unclassified route into the actual running router and CI machinery and assert the gate turns **red** — not merely that a script exists that claims to check for one. **The count is deliberately not stated here**: it moves with every gate change, and a stale number in this file is the exact defect the governing rule in `CLAUDE.md` exists to prevent. Run `pnpm test:ci-scripts` for it |
 
 **What "met" does not mean.** Four conditions being true is not Throttle 1 being open — all
 five are required, and #6 is not a paperwork gap: it is real, unfinished implementation
