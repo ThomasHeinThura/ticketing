@@ -17,6 +17,64 @@ Newest first.
 
 ---
 
+### 2026-09-16 · Review tiering is by risk, not by path — and rounds stop when findings stop changing class
+
+**Decision:** the review-tier table in `AGENTS.md` no longer sizes the ordinary-review count
+purely from which directory a change touches. Touching a security-scope path (`scripts/ci/**`,
+auth/permissions code, migrations) is still what triggers the mandatory Opus security
+review — that stays absolute. But the number of ordinary (Sonnet) reviews *before* that Opus
+pass now depends on what the change actually does: a bounded fix to CI/gate logic that
+changes no authority or gate-semantics invariant gets **one** strong ordinary review, then
+straight to a single Opus pass — not the full three-Sonnet-then-Opus tier that was applied
+uniformly to anything under a sensitive path. The full three-round tier is reserved for
+migrations, API+frontend crossing the same change, concurrency, cross-package integration,
+or a change that actually redesigns an authority/gate-semantics invariant.
+
+Also added: an explicit stopping rule for when a mechanism has had several rounds each
+finding the *same class* of gap at a narrower scope (one more punctuation mark, one more
+Unicode edge case) rather than a genuinely new class of defect — once the design has had its
+structural fix, a single further Opus pass closes it; further Sonnet rounds are not queued
+"to be safe" first.
+
+**Why:** PR #148 (a CI checker fix for how `**Spec:**` field values are read) went through
+eight-plus independent review rounds and a large token spend, each round finding something
+real but progressively narrower — from a genuine false-positive bug down to astral-plane
+Unicode surrogate-pair edge cases and cosmetic whitespace variants no real PR author would
+plausibly type. The path-based tier rule (touches `scripts/ci/**` → always three Sonnet
+reviews + Opus, regardless of the change's actual size or semantic risk) was doing its job
+of catching real bugs, but its own reviewer-count mechanics amplified an ordinary bounded fix
+into a multi-day loop, at real cost, while the project's actual critical-path item (S7, the
+last four `organization()` plugin callers) had not been started. Flagged by Thomas after an
+external review of the process (independently corroborated by a second review of the
+project's live status) — the gates were doing real work, but the cost model applied to a
+bounded fix inside a sensitive path was disproportionate to what that fix actually risked.
+
+**Alternatives considered:** dropping the security-scope requirement itself for CI/gate
+files (rejected — the Opus pass on PR #148 and prior rounds did in fact find real, non-obvious
+defects, so removing the mandatory independent security review for this path class would
+remove a control that has demonstrably caught things); a fixed lower reviewer count for
+every CI/gate change regardless of what it does (rejected — a genuine redesign of gate
+semantics, or a change to an authority invariant, still needs the full tier; risk-grading by
+what the change does, not a flat number, is what actually matches cost to risk).
+
+**Correction, same day, caught by this change's own ordinary review:** the first draft of
+the table's lightest row set the security-review outcome to a literal `n/a` for a
+"test-only file" touching a security-scope path — which silently contradicted the "stays
+absolute" claim made three times elsewhere in this same entry and the operative documents.
+A reviewer found the exploitable case directly: a test/probe file under `scripts/ci/**` can
+itself be part of a gate's enforcement surface (a ratchet threshold, an anti-narrowing
+assertion), so weakening one of its assertions is a real gate-semantics change even though
+the file is "just a test" — Row 1's own wording would have let an agent wave that through
+as automatically safe. Fixed before merge: every row now gets at least a lightweight Opus
+pass, never `n/a`; only the depth of that pass and the ordinary-review count above it scale
+with risk. Left in the log rather than silently corrected, because it is itself the best
+illustration of why the "stop queuing rounds" rule above still requires the review to
+actually happen once, not zero times.
+
+**Decided by:** Thomas, 2026-09-16.
+
+---
+
 ### 2026-09-15 · Waived-gate candidates are excluded from the merge delegation
 
 **Decision:** the merge delegation recorded below ("Governance reset") does **not** cover
