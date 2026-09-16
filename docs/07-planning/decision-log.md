@@ -17,6 +17,38 @@ Newest first.
 
 ---
 
+### 2026-09-16 · The audit hash chain's zero hash is 64 hex `0` characters
+
+**Decision:** the first row in an `audit_log` hash chain (which has no real predecessor to
+chain from) uses `prevHash = "0".repeat(64)` — 64 lowercase hex `0` characters, the same
+byte-length as a real SHA-256 hex digest — exported as `ZERO_HASH` from
+`packages/domain/src/audit/audit.ts`. Every future chain-verification implementation must
+use this exact literal, not a re-derived or differently-shaped placeholder.
+
+**Why:** `AU-15` and `data-model.md` §11 both state "the first row chains from the zero
+hash" but neither defines its literal value or byte length — found while implementing
+`canonicalRowHash` for #37 (PR #175), flagged by that PR's own independent review as
+load-bearing and worth a decision-log entry, not just a code comment: any future
+independent audit-verify implementation (a restore drill, a second-language reimplementation,
+a manual chain check) that guesses a different placeholder would compute a different first
+row hash and falsely report the chain as tampered. 64 hex characters matches a genuine
+SHA-256 digest's length exactly (rather than, say, an empty string or a shorter sentinel),
+which lets every row — including the first — pass through identical validation code with no
+special-cased length check for "is this the first row."
+
+**Alternatives considered:** an empty string (rejected — a different length than every real
+hash, forcing every consumer to special-case the first row); 32 raw zero bytes instead of
+hex-encoded (rejected — `canonicalRowHash`'s own output is lowercase hex, so the input it
+takes as `prevHash` should be the same encoding for uniformity, not a second internal
+representation nothing else in the chain uses).
+
+**Decided by:** the orchestrating session, as a routine implementation convention filling an
+unspecified-but-necessary detail in an already-approved mechanism (`AU-15`) — not a new
+security policy or a change to the hash-chain design itself, which stays exactly as
+`data-model.md` §11 specifies.
+
+---
+
 ### 2026-09-16 · `reconstructAt`'s same-instant tie-break is insertion order, ascending surrogate key
 
 **Decision:** when two `activity` rows for the same work item share the exact same

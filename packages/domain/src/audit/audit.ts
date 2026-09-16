@@ -37,9 +37,9 @@ const FIELD_SEPARATOR = "\x1e";
  * `prev_hash`/`row_hash` in this chain (a SHA-256 digest is 32 bytes, rendered as 64 hex
  * characters), but a value a real SHA-256 output can never actually produce, so it can
  * never collide with a genuine computed hash. This is the same convention Git uses for
- * its null OID and hash-chained logs generally use for a "genesis" sentinel. Flagged in
- * the pull request description as a judgment call, since neither spec states the literal
- * bytes.
+ * its null OID and hash-chained logs generally use for a "genesis" sentinel. Recorded in
+ * the decision log (2026-09-16, "The audit hash chain's zero hash is 64 hex 0 characters")
+ * — any future independent chain-verification implementation must use this exact literal.
  */
 export const ZERO_HASH = "0".repeat(64);
 
