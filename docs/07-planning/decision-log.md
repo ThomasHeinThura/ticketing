@@ -17,6 +17,170 @@ Newest first.
 
 ---
 
+### 2026-09-16 · Review tiering is by risk, not by path — and rounds stop when findings stop changing class
+
+**Decision:** the review-tier table in `AGENTS.md` no longer sizes the ordinary-review count
+purely from which directory a change touches. Touching a security-scope path (`scripts/ci/**`,
+auth/permissions code, migrations) is still what triggers the mandatory Opus security
+review — that stays absolute. But the number of ordinary (Sonnet) reviews *before* that Opus
+pass now depends on what the change actually does: a bounded fix to CI/gate logic that
+changes no authority or gate-semantics invariant gets **one** strong ordinary review, then
+straight to a single Opus pass — not the full three-Sonnet-then-Opus tier that was applied
+uniformly to anything under a sensitive path. The full three-round tier is reserved for
+migrations, API+frontend crossing the same change, concurrency, cross-package integration,
+or a change that actually redesigns an authority/gate-semantics invariant.
+
+Also added: an explicit stopping rule for when a mechanism has had several rounds each
+finding the *same class* of gap at a narrower scope (one more punctuation mark, one more
+Unicode edge case) rather than a genuinely new class of defect — once the design has had its
+structural fix, a single further Opus pass closes it; further Sonnet rounds are not queued
+"to be safe" first.
+
+**Why:** PR #148 (a CI checker fix for how `**Spec:**` field values are read) went through
+eight-plus independent review rounds and a large token spend, each round finding something
+real but progressively narrower — from a genuine false-positive bug down to astral-plane
+Unicode surrogate-pair edge cases and cosmetic whitespace variants no real PR author would
+plausibly type. The path-based tier rule (touches `scripts/ci/**` → always three Sonnet
+reviews + Opus, regardless of the change's actual size or semantic risk) was doing its job
+of catching real bugs, but its own reviewer-count mechanics amplified an ordinary bounded fix
+into a multi-day loop, at real cost, while the project's actual critical-path item (S7, the
+last four `organization()` plugin callers) had not been started. Flagged by Thomas after an
+external review of the process (independently corroborated by a second review of the
+project's live status) — the gates were doing real work, but the cost model applied to a
+bounded fix inside a sensitive path was disproportionate to what that fix actually risked.
+
+**Alternatives considered:** dropping the security-scope requirement itself for CI/gate
+files (rejected — the Opus pass on PR #148 and prior rounds did in fact find real, non-obvious
+defects, so removing the mandatory independent security review for this path class would
+remove a control that has demonstrably caught things); a fixed lower reviewer count for
+every CI/gate change regardless of what it does (rejected — a genuine redesign of gate
+semantics, or a change to an authority invariant, still needs the full tier; risk-grading by
+what the change does, not a flat number, is what actually matches cost to risk).
+
+**Correction, same day, caught by this change's own ordinary review:** the first draft of
+the table's lightest row set the security-review outcome to a literal `n/a` for a
+"test-only file" touching a security-scope path — which silently contradicted the "stays
+absolute" claim made three times elsewhere in this same entry and the operative documents.
+A reviewer found the exploitable case directly: a test/probe file under `scripts/ci/**` can
+itself be part of a gate's enforcement surface (a ratchet threshold, an anti-narrowing
+assertion), so weakening one of its assertions is a real gate-semantics change even though
+the file is "just a test" — Row 1's own wording would have let an agent wave that through
+as automatically safe. Fixed before merge: every row now gets at least a lightweight Opus
+pass, never `n/a`; only the depth of that pass and the ordinary-review count above it scale
+with risk. Left in the log rather than silently corrected, because it is itself the best
+illustration of why the "stop queuing rounds" rule above still requires the review to
+actually happen once, not zero times.
+
+**Decided by:** Thomas, 2026-09-16.
+
+---
+
+### 2026-09-15 · Waived-gate candidates are excluded from the merge delegation
+
+**Decision:** the merge delegation recorded below ("Governance reset") does **not** cover
+any candidate whose `## Gates` table cites a waived gate. Such a candidate always needs
+Thomas's own action to merge — an approval, a comment, or the merge itself — never the
+orchestrating session alone.
+
+**Why:** independent Opus security review of the delegation itself (PR #129, exact head
+`ec994e5605c9222eaa56b266f48a80a134e7469b`) found that the gate-waiver mechanism
+(`scripts/ci/lib/gate-waiver.mjs`) mechanically verifies a waiver was *declared* in the
+required form, but has always explicitly and deliberately **not** verified who authorized
+it — agents commit through the same repository identity Thomas does. Until this delegation,
+the real (if informal) compensating control was that Thomas himself clicked merge, so he
+was the last human able to catch a fabricated or premature waiver citation. The delegation
+removes that check by default. Excluding waived-gate candidates restores an equivalent
+check for exactly the case that needs it, without weakening the delegation's value for the
+ordinary case (a fully green, non-waived candidate) it exists to speed up.
+
+A real mechanical check — verifying waiver authorship some way stronger than trusting the
+orchestrator's own report — is **not** solved here and is tracked as issue #130, alongside a
+related gap in reviewer-identity verification the same review found.
+
+**Alternatives:** leave the delegation as originally written and rely on the "only Thomas
+may waive a gate" sentence alone — rejected, that is exactly the class of control ("a rule
+that closes a process defect has a test; one that doesn't has a sentence agents route
+around") this project's own stated principle warns against, now that the one real backstop
+(the merge button) is gone by default. Build the full mechanical authorship check before
+merging PR #129 — rejected as disproportionate scope for a documentation-only candidate;
+tracked separately instead.
+
+**Decided by:** Thomas delegated the underlying authority on 2026-09-15; this specific
+exclusion was identified by independent Opus review the same day and applied by the
+orchestrator as the correct, narrower remediation of a review finding on an in-flight
+candidate — consistent with "do not waive a gate" rather than an exception to it.
+
+---
+
+### 2026-09-15 · Governance reset: merge delegated to the orchestrator, model routing simplified to Sonnet/Opus, UAT deployment prioritized
+
+**Decision:** four related changes, made together because each depended on the others being
+settled:
+
+1. **Merge execution is delegated to the orchestrating Claude session.** It may merge a
+   candidate through the normal protected pull-request flow, without asking Thomas per PR,
+   once — and only once — every required gate is genuinely green on the exact candidate SHA:
+   applicable tests (expected suite/file counts, not just exit code), required independent
+   review(s), required security review where the change is in security scope, and every
+   required GitHub status check. This supersedes `AGENTS.md`'s and `CLAUDE.md`'s earlier
+   "only Thomas merges" wording. It does **not** authorize bypassing branch protection, a
+   required check, self-review, or a lane/subagent merging — those restrictions are
+   unchanged. A prior, unratified attempt to record this same delegation (dated
+   2026-09-11) was drafted directly into `AGENTS.md` and never actually appended here —
+   that draft is discarded; this entry is the real one.
+2. **Model routing is simplified to Sonnet and Opus only, through this session's own `Agent`
+   tool, with the model set explicitly at every spawn.** Earlier exploration of a
+   multi-provider router (`router.technexus.info`) and non-Claude specialist subagents
+   (DeepSeek/GLM-routed implementation agents) did not work out in practice and is dropped.
+   Implementation, ordinary review, and a project-alignment/misalignment check are Sonnet,
+   spawned freely wherever there is genuinely independent, bounded work. The final
+   independent review for security-sensitive or otherwise critical work is **Opus**,
+   spawned as an explicit, separate subagent on the exact candidate SHA — distinct from the
+   earlier rule that no subagent could ever be Opus. The earlier rule existed to prevent a
+   subagent *accidentally* inheriting Opus from an Opus-orchestrated session; spawning Opus
+   *deliberately and explicitly* for the one tier that requires it does not carry that risk,
+   and the tool now supports pinning a subagent's model at spawn time. The orchestrator
+   decides tiering and reviewer count itself, using the ordinary/broad split already in
+   `AGENTS.md`, rather than asking Thomas to classify each PR.
+3. **A live UAT deployment is active, near-term priority**, not deferred follow-up.
+   `docker build` + container boot + health-endpoint verification is part of "done" for any
+   change touching what ships in the image, and the outstanding application-side gaps
+   (hardcoded port, missing health endpoints, no static file serving, no
+   `storage.filesystem` driver — verify current state, this list may already be out of
+   date) become active critical-path work rather than a someday item.
+4. **Operational discipline to stop the observed stall/loop pattern**, without weakening any
+   gate: do not open another review pass on a candidate whose SHA hasn't changed since the
+   last review; keep `status.md` and this log current every session that changes something
+   durable, not only "at a stage's end"; do not spawn a subagent without a concrete, bounded
+   deliverable; a blocked lane blocks only that lane. Evidence this was a real problem, not
+   a hypothetical: at the time of this entry the repository carried git worktrees for the
+   same candidate reviewed three and four times over (`board-pr128` through `v4`,
+   `board-pr107` through `v4`, `rev-110` through three parallel copies) without those SHAs
+   changing between rounds, plus a governance-file rewrite that had been drafted and
+   abandoned uncommitted rather than landed.
+
+**Why:** Thomas reported the project stuck in P0 for an extended period, looping on review
+and revision without visible forward progress, driven partly by an ineffective
+multi-provider/specialist-subagent routing experiment and partly by process friction (stale
+control-plane documents, re-review of unchanged candidates, Thomas as the single merge
+serialization point after gates were otherwise satisfied). The fix addresses the actual
+friction — routing complexity and idle serialization points — while explicitly preserving
+every substantive gate: security review is still mandatory, still a fresh independent
+context, still Opus; ordinary review is still required and still independent; no candidate
+merges with a red required check.
+
+**Alternatives:** keep merge execution with Thomas only — rejected, it was the serialization
+point Thomas identified as part of the stall. Allow Opus to be a subagent's *inherited*
+default (e.g. any subagent under an Opus top-level session) — rejected, that reintroduces
+the accidental-Opus-fan-out risk the original rule existed to prevent; only explicit,
+deliberate Opus spawns for the review tier are authorized. Keep the multi-provider router for
+auxiliary/non-gated work only — considered and rejected for now as added complexity with no
+demonstrated benefit on this project; may be revisited if a concrete need appears.
+
+**Decided by:** Thomas, 2026-09-15.
+
+---
+
 ### 2026-09-15 · The 2026-09-12 Foundation Technical Preview target lapsed, unscheduled
 
 **Decision:** No replacement date is set for the Foundation Technical Preview. The
@@ -43,6 +207,47 @@ rejected, a lapsed target that is never marked lapsed eventually reads as met.
 **Decided by:** Thomas, 2026-09-15 (restart handoff instruction). Recorded because the
 instruction explicitly asked for this to be tracked on the control plane, append-only, and
 kept separate from PR #110's own record.
+
+---
+### 2026-09-10 · S9 closes as documentation-only — `teams.enabled` stays until S10 (Path B)
+
+**Decision:** better-auth's `teams: { enabled: true, … }` config and the nine
+`/organization/*team*` routes it registers **stay exactly as they are for as long as the
+`organization()` plugin is mounted.** Retrofit stage **S9** therefore closes as a
+**documentation-only** stage: its deliverable is the confirmation that nothing in the
+repository reaches teams. **S10 removes the flag, the nine routes and the S1 characterization
+file that exercises them, in one commit.** The `team` and `team_member` tables are kept — the
+target model still wants them (`data-model.md:113-114`) and dropping them is a migration.
+
+**Why:** `teams.enabled` is the single gate for two things at once — it registers the nine team
+endpoints (`organization.mjs:403` and `:550`) **and** gates `crud-org.mjs:106`'s default-team
+side effect on organization create — with no finer-grained knob to separate them. The S1
+characterization oracle drives the plugin's create route over real HTTP, independent of what the
+client does, so flipping the flag breaks it regardless of client repointing: reproduced twice
+independently as **19 passed / 1 failed** on `expect(teamRows).toHaveLength(1)`
+(`tests/api-integration/organization-plugin-characterization.test.ts:316`).
+
+The only way to make the suite green between S9 and S10 would be to edit the characterization.
+That is forbidden — S1 must not be broken in order to make the plugin removable — so removing
+the flag early would buy a **throwaway intermediate configuration that exists only in the
+S9-to-S10 window**, at the cost of editing a characterization whose subject is about to be
+deleted anyway. Nothing observable is deferred: native workspace create already writes all nine
+contract effects unconditionally (`create-workspace.ts:148-183`, one transaction, no config
+check), proven by a green `workspace-write-create-contract.test.ts`.
+
+**Alternatives:** *narrow the S1 oracle's team assertions now* and drop the flag in S9
+(rejected — it edits a characterization to accommodate a configuration that lives only between
+two stages, and the whole product of that work is discarded at S10); *drop the nine routes but
+keep the create side effect* (not available — one flag gates both).
+
+**Decided by:** Thomas, 2026-09-10.
+
+**Recorded here because it was a session instruction.** An independent review of PR #104 found
+its ledger text citing "the P0 velocity addendum, §12" — a real instruction, quoted accurately,
+but one that exists **nowhere in this repository**, so no reader could check it. A governance
+rule cited as though it were a checkable artifact, when it is not, is worse than an honest
+"decided in session": it invites the reader to trust a reference they cannot follow. This entry
+is that citation's referent, and the ledger now points here.
 
 ---
 

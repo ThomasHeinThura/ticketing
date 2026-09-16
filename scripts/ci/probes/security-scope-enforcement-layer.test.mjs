@@ -41,6 +41,7 @@ import {
   cleanUpScratchRepos,
   commit,
   completeBody,
+  evaluateInRepo,
   initRepo,
   installCheckers,
   installFromRepo,
@@ -278,10 +279,25 @@ describe("the checker notices a router that is modified, not only one that is ad
     // Reproduced without the checker: the pre-fix loop read the ADDED list, and this
     // scenario adds nothing. So even the pre-fix regex, had it matched apiRouter(), would
     // never have been given this file to test.
-    const addedFiles = [];
-    assert.equal(
-      addedFiles.length,
-      0,
+    //
+    // PR #81 LOW A: this used to assert `[].length === 0` — a hand-written empty array
+    // compared against itself, which proves nothing about what `buildModifiedRouterRepo()`
+    // actually built. Derived instead from the scratch repository's REAL git state, via
+    // the checker's OWN `addedPaths()` (lib/diff.mjs) — the exact function
+    // `securitySurfaceTouched()` would have consulted for the "added only" loop before
+    // this fix. Run inside the scratch repo, the same way every other non-vacuity control
+    // in this file is measured, so a change that made the scenario add a file (breaking
+    // the premise of this whole `describe` block) would be caught here instead of silently
+    // asserting a literal.
+    const dir = buildModifiedRouterRepo();
+    const measured = evaluateInRepo(
+      dir,
+      `import { addedPaths } from "./scripts/ci/lib/diff.mjs";
+       console.log(JSON.stringify({ added: addedPaths() }));`,
+    );
+    assert.deepEqual(
+      measured.added,
+      [],
       "the scenario must add no file, or it does not exercise the added-only defect",
     );
     // And the pre-fix predicate missed the factory anyway, so both halves had to be fixed.

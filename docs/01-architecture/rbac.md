@@ -173,7 +173,68 @@ Guardrails:
   a membership at `scope = project` may carry a role whose `scope = project`. They are
   created from the same editor with the project as context; P4.
 
+**P0's actual CRUD surface (organization-plugin retrofit S7) operates on the LEGACY
+`workspace_role` shape** — `role` (a name) and `permission` (a JSON `{resource: action[]}`
+map), not yet this section's target `role` table with `rank`/`is_system`/`capabilities
+jsonb`. `POST/PATCH/DELETE /api/workspace/{workspaceId}/roles` already enforce the first
+guardrail above (cannot grant a capability you do not hold); the rank-comparison and
+last-administrator guardrails remain deferred, for lack of the `rank`/`is_system`
+vocabulary this legacy shape has no columns for.
+
 Detail and screens: [Roles and permissions UI](../03-features/roles-and-permissions-ui.md).
+
+### One membership = exactly one role
+
+**Canonical rule (Thomas, 2026-09-09; issue #82).** A workspace membership holds **exactly
+one** role. `workspace_member.role` stores one role name and nothing else.
+
+A value such as `"owner,admin"`, `"admin,viewer"`, `"admin, viewer"`, `"admin,"` or
+`" admin"` is **invalid**. TaskDesk does **not** implement union semantics for membership
+role strings, and no evaluator may comma-split one. Malformed values **fail closed**: the
+membership grants nothing at all, rather than granting the union of the names it mentions or
+the weakest of them.
+
+Why this needs stating rather than being obvious: the still-mounted better-auth
+`organization()` plugin accepts an array of roles and **comma-joins** it into that single
+column, and its own evaluator **comma-splits and ORs** the value back apart. So the same
+stored string meant "the union of two roles" to the inherited surface and "an unknown role
+name" to TaskDesk's. That divergence was a privilege escalation, not a lockout — a member
+holding a value merely *containing* `owner` could demote the real workspace owner.
+
+Enforced in three places, none of which is a substitute for another:
+
+| Where | What it does |
+| --- | --- |
+| `apps/api/src/utils/organization-plugin-role-guard.ts` | refuses the write (**400**), and refuses any organization route whose authorization would be read from an already-malformed row (**409**) |
+| `require-workspace-permission.ts`, `require-workspace-role-authority.ts` | refuse the read, by name, through one shared resolution; `GET /api/capabilities` reports it as a distinguishable **409** |
+| migration `0050` | repairs rows that have only one meaning, refuses to guess at genuine unions, and adds a `CHECK` constraint |
+
+**The 409 above is scoped to the caller, not to the workspace named in the request.** It is
+keyed on `user_id`: if any one of the caller's memberships, in any workspace, holds a
+malformed `role`, every non-exempt `/organization/*` action by that caller is refused —
+including one that names only a different, healthy workspace — until an administrator
+repairs the malformed row.
+
+**Recovery for a deployment that already holds an invalid row.** Migration `0050` repairs
+automatically only where the repair decides nothing — a value whose comma-separated pieces
+all name the *same* role (`"admin,admin"`, `"admin,"`, `" admin "`) collapses to that role.
+A value naming two *different* roles has no correct automatic answer, so the migration
+**raises and stops**, naming every offending row. An operator assigns each of those members a
+single role and re-runs it. The application already fails closed on such rows at read time, so
+stopping is safe rather than urgent:
+
+```sql
+SELECT id, workspace_id, user_id, role FROM workspace_member
+ WHERE position(',' in role) > 0
+    OR role <> btrim(role, E' \t\n\r\f' || chr(11) || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279))
+    OR btrim(role, E' \t\n\r\f' || chr(11) || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279)) = '';
+UPDATE workspace_member SET role = 'admin' WHERE id = '<id>';
+```
+
+The rule is about **cardinality and padding**, not about a name grammar: a role name with
+internal whitespace (`"team lead"`) is a legitimate single role. Whether the name *exists* is
+a separate question, answered against `workspace_role` by the evaluator — which is what lets
+the API distinguish "your membership row is corrupt" from "your role has no such capability".
 
 ## Built-in roles and their capabilities
 
@@ -513,6 +574,7 @@ answer. See [Security model](security-model.md).
 | Out of reach | **404** — the resource does not exist, as far as you are concerned |
 | In reach, insufficient capability | **403** — with the missing capability named |
 | Capability held, but the workflow has no legal transition for this actor | **409** — illegal transition, with the reason |
+| The caller's own membership row is malformed, so no authority can be read from it | **409** — `MALFORMED_MEMBERSHIP_ROLE`, with the `problem` (issue #82) |
 | Not authenticated | **401** |
 
 Returning `403` for out-of-reach would confirm that a record exists, which is a tenant
@@ -559,6 +621,7 @@ the first day.
 | Rotating a webhook secret | `POST /api/webhooks/{id}/rotate-secret` |
 | Creating a webhook, or changing an existing webhook's `url` — a standing outbound data channel carrying every event in the owner's reach to an arbitrary endpoint, indefinitely | `POST /api/webhooks`, and `PATCH /api/webhooks/{id}` when the body changes `url` ([webhooks-and-api-keys.md](../03-features/webhooks-and-api-keys.md) `WH-14`) |
 | Overriding a change freeze | `POST /api/work-items/{key}/change/override-freeze` |
+| Creating, editing or deleting a workspace role — a role editor can mint authority up to their own rank | `POST /api/workspace/{workspaceId}/roles`, `PATCH /api/workspace/{workspaceId}/roles/{roleId}`, `DELETE /api/workspace/{workspaceId}/roles/{roleId}` |
 
 ### Session-only routes
 

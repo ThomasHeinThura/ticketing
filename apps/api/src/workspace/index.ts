@@ -13,7 +13,10 @@ import { requireWorkspaceCreationAllowed } from "../utils/require-session";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
-import { requireWorkspacePermission } from "../utils/require-workspace-permission";
+import {
+  requireWorkspacePermission,
+  resolveCallerWorkspaceStatements,
+} from "../utils/require-workspace-permission";
 import { requireWorkspaceRoleAuthority } from "../utils/require-workspace-role-authority";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import activateWorkspaceCtrl from "./controllers/activate-workspace";
@@ -21,17 +24,21 @@ import addWorkspaceMemberCtrl from "./controllers/add-workspace-member";
 import createWorkspaceCtrl, {
   WorkspaceSlugTakenError,
 } from "./controllers/create-workspace";
+import createWorkspaceRoleCtrl from "./controllers/create-workspace-role";
 import deleteWorkspaceCtrl from "./controllers/delete-workspace";
+import deleteWorkspaceRoleCtrl from "./controllers/delete-workspace-role";
 import getUserWorkspacesCtrl from "./controllers/get-user-workspaces";
 import getWorkspaceDetailCtrl from "./controllers/get-workspace-detail";
 import getWorkspaceInvitationsCtrl from "./controllers/get-workspace-invitations";
 import getWorkspaceMembersCtrl from "./controllers/get-workspace-members";
 import inviteWorkspaceMemberCtrl from "./controllers/invite-workspace-member";
 import leaveWorkspaceCtrl from "./controllers/leave-workspace";
+import listWorkspaceRolesCtrl from "./controllers/list-workspace-roles";
 import removeWorkspaceMemberCtrl from "./controllers/remove-workspace-member";
 import transferWorkspaceOwnershipCtrl from "./controllers/transfer-workspace-ownership";
 import updateWorkspaceCtrl from "./controllers/update-workspace";
 import updateWorkspaceMemberRoleCtrl from "./controllers/update-workspace-member-role";
+import updateWorkspaceRoleCtrl from "./controllers/update-workspace-role";
 import { InvitationAlreadyPendingError } from "./controllers/workspace-invitation-errors";
 import {
   AlreadyOwnerError,
@@ -48,7 +55,16 @@ import {
   WorkspaceRoleNotFoundError,
 } from "./controllers/workspace-membership-errors";
 import {
+  InsufficientPermissionToGrantError,
+  InvalidPermissionResourceError,
+  RoleAssignedToMembersError,
+  RoleLimitReachedError,
+  RoleNameReservedError,
+  RoleNameTakenError,
+} from "./controllers/workspace-role-errors";
+import {
   activatedWorkspaceSchema,
+  deletedWorkspaceRoleSchema,
   deletedWorkspaceSchema,
   leftWorkspaceSchema,
   removedWorkspaceMemberSchema,
@@ -59,18 +75,23 @@ import {
   workspaceMemberListSchema,
   workspaceMemberRoleSchema,
   workspaceMemberSchema,
+  workspaceRoleListSchema,
+  workspaceRoleSchema,
   workspaceSchema,
   workspaceSummaryListSchema,
 } from "./response";
 import {
   addWorkspaceMemberBody,
   createWorkspaceBody,
+  createWorkspaceRoleBody,
   inviteWorkspaceMemberBody,
   transferWorkspaceOwnershipBody,
   updateWorkspaceBody,
   updateWorkspaceMemberRoleBody,
+  updateWorkspaceRoleBody,
   workspaceIdParam,
   workspaceMemberIdParam,
+  workspaceRoleParam,
 } from "./schema";
 
 const listWorkspacesRoute = createRoute({
@@ -562,6 +583,167 @@ const inviteWorkspaceMemberRoute = createRoute({
   },
 });
 
+// ── S7: the native role list + write routes ──────────────────────────────
+// Issue #6, retrofit plan §3 (S7 row) — the last item on the organization()
+// retrofit's critical path before S10 can unmount the plugin. Repoints
+// authClient.organization.{listRoles,createRole,updateRole,deleteRole} in the
+// SAME change (see the web hook repointing this stage also carries) — shipping
+// these routes without repointing the client is explicitly NOT sufficient;
+// S7's acceptance criterion is zero executable authClient.organization.*
+// callers, not "routes exist".
+//
+// Same authorization shape as every other mutation on this router:
+// requireWorkspaceMembership, then requireWorkspacePermission against the
+// INHERITED `ac` resource — the exact resource better-auth's own
+// hasPermission({permissions:{ac:[...]}}) checks, already present in every
+// seeded role's permission JSON via defaultRolePayloads (see
+// legacy-better-auth-access-control.ts / workspace-member-roles.ts) — then
+// requireWorkspaceRoleAuthority to close the instance-admin bypass, same as
+// every S4/S5/S6a mutation. The GET route adds requireWorkspaceRoleAuthority
+// too, for symmetry with every other route on this file even though nothing
+// reachable today distinguishes it from requireWorkspacePermission alone (S7
+// blueprint §2's own reasoning for the list route).
+//
+// The declared CAPABILITY strings below are again the TARGET vocabulary and do
+// not match the runtime `ac:[...]` check — the identical transitional gap S4's
+// `organization:update`/`workspace:update` comment already documents. Re-keying
+// the seeded rows (and this evaluator) to `workspace:*` is #7's capability
+// migration, not this stage's.
+//
+// `POST/PATCH/DELETE` additionally enforce `RL-3` — the caller can never grant
+// a `(resource, action)` pair they do not themselves already hold
+// (`resolveCallerWorkspaceStatements`, `require-workspace-permission.ts`) — and
+// are `elevated: true` in `policy.ts` (`workspace:manage_roles` is in
+// `AUTHORITY_GRANTING`).
+
+const listWorkspaceRolesRoute = createRoute({
+  method: "get",
+  operationId: "listWorkspaceRoles",
+  path: "/{workspaceId}/roles",
+  tags: ["Workspaces"],
+  summary: "List a workspace's roles",
+  description:
+    "List every workspace_role row for a workspace, including the three seeded defaults. Never includes 'owner', which stays a compiled, non-editable role. Native replacement for authClient.organization.listRoles(). No guaranteed ordering.",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspacePermission({ ac: ["read"] }),
+    requireWorkspaceRoleAuthority({ ac: ["read"] }),
+  ] as const,
+  request: { params: workspaceIdParam },
+  responses: {
+    200: jsonResponse("The workspace's roles", workspaceRoleListSchema),
+    400: errorResponse("Workspace ID could not be determined"),
+    401: errorResponse("No credential at all"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), no workspace access, or missing ac:read permission",
+    ),
+  },
+});
+
+const createWorkspaceRoleRoute = createRoute({
+  method: "post",
+  operationId: "createWorkspaceRole",
+  path: "/{workspaceId}/roles",
+  tags: ["Workspaces"],
+  summary: "Create a workspace role",
+  description:
+    "Create a custom role for this workspace. The caller cannot grant a permission they do not themselves hold (RL-3). Native replacement for authClient.organization.createRole().",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspacePermission({ ac: ["create"] }),
+    requireWorkspaceRoleAuthority({ ac: ["create"] }),
+  ] as const,
+  request: {
+    params: workspaceIdParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: createWorkspaceRoleBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The created role", workspaceRoleSchema),
+    400: errorResponse(
+      "Invalid body, the name 'owner', an unknown permission resource, or the 25-role ceiling was reached",
+    ),
+    401: errorResponse("No credential at all"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), no workspace access, missing ac:create permission, or granting a permission the caller does not themselves hold",
+    ),
+    409: errorResponse(
+      "A role with that name already exists in this workspace",
+    ),
+  },
+});
+
+const updateWorkspaceRoleRoute = createRoute({
+  method: "patch",
+  operationId: "updateWorkspaceRole",
+  path: "/{workspaceId}/roles/{roleId}",
+  tags: ["Workspaces"],
+  summary: "Update a workspace role's permissions",
+  description:
+    "Replace -- never merge -- a role's entire permission set. The caller cannot grant a permission they do not themselves hold (RL-3). Identified by the role's opaque id, not its name. Native replacement for authClient.organization.updateRole().",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspacePermission({ ac: ["update"] }),
+    requireWorkspaceRoleAuthority({ ac: ["update"] }),
+  ] as const,
+  request: {
+    params: workspaceRoleParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateWorkspaceRoleBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The updated role", workspaceRoleSchema),
+    400: errorResponse("Invalid body, or an unknown permission resource"),
+    401: errorResponse("No credential at all"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), no workspace access, missing ac:update permission, or granting a permission the caller does not themselves hold",
+    ),
+    404: errorResponse("The role does not exist"),
+  },
+});
+
+const deleteWorkspaceRoleRoute = createRoute({
+  method: "delete",
+  operationId: "deleteWorkspaceRole",
+  path: "/{workspaceId}/roles/{roleId}",
+  tags: ["Workspaces"],
+  summary: "Delete a workspace role",
+  description:
+    "Delete a custom role. Refused for 'owner' and for a role still assigned to any member. Identified by the role's opaque id, not its name. Native replacement for authClient.organization.deleteRole().",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspacePermission({ ac: ["delete"] }),
+    requireWorkspaceRoleAuthority({ ac: ["delete"] }),
+  ] as const,
+  request: { params: workspaceRoleParam },
+  responses: {
+    200: jsonResponse(
+      "The deleted role's id and name",
+      deletedWorkspaceRoleSchema,
+    ),
+    400: errorResponse(
+      "The role is 'owner', or is still assigned to one or more members",
+    ),
+    401: errorResponse("No credential at all"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), no workspace access, or missing ac:delete permission",
+    ),
+    404: errorResponse("The role does not exist"),
+  },
+});
+
 /**
  * `checkWorkspaceName` is the security control on the name, moved off
  * `beforeCreateOrganization` unchanged. It runs before anything is written.
@@ -804,6 +986,84 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       }
       if (error instanceof InvitationAlreadyPendingError) {
         throw new HTTPException(409, { message: error.message });
+      }
+      throw error;
+    }
+  })
+  .openapi(listWorkspaceRolesRoute, async (c) =>
+    c.json(await listWorkspaceRolesCtrl(c.get("workspaceId")), 200),
+  )
+  .openapi(createWorkspaceRoleRoute, async (c) => {
+    const body = c.req.valid("json");
+    try {
+      const created = await createWorkspaceRoleCtrl({
+        workspaceId: c.get("workspaceId"),
+        role: body.role,
+        permission: body.permission,
+        callerStatements: await resolveCallerWorkspaceStatements(c),
+      });
+      return c.json(created, 200);
+    } catch (error) {
+      if (error instanceof RoleNameReservedError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof InvalidPermissionResourceError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof RoleLimitReachedError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof InsufficientPermissionToGrantError) {
+        throw new HTTPException(403, { message: error.message });
+      }
+      if (error instanceof RoleNameTakenError) {
+        throw new HTTPException(409, { message: error.message });
+      }
+      throw error;
+    }
+  })
+  .openapi(updateWorkspaceRoleRoute, async (c) => {
+    const body = c.req.valid("json");
+    try {
+      const updated = await updateWorkspaceRoleCtrl({
+        workspaceId: c.get("workspaceId"),
+        roleId: c.req.valid("param").roleId,
+        permission: body.permission,
+        callerStatements: await resolveCallerWorkspaceStatements(c),
+      });
+      return c.json(updated, 200);
+    } catch (error) {
+      if (error instanceof InvalidPermissionResourceError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof RoleNameReservedError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof InsufficientPermissionToGrantError) {
+        throw new HTTPException(403, { message: error.message });
+      }
+      if (error instanceof WorkspaceRoleNotFoundError) {
+        throw new HTTPException(404, { message: error.message });
+      }
+      throw error;
+    }
+  })
+  .openapi(deleteWorkspaceRoleRoute, async (c) => {
+    try {
+      const deleted = await deleteWorkspaceRoleCtrl(
+        c.get("workspaceId"),
+        c.req.valid("param").roleId,
+      );
+      return c.json(deleted, 200);
+    } catch (error) {
+      if (error instanceof RoleNameReservedError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof RoleAssignedToMembersError) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof WorkspaceRoleNotFoundError) {
+        throw new HTTPException(404, { message: error.message });
       }
       throw error;
     }

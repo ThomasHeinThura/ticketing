@@ -98,12 +98,18 @@ cite it and do not restate it:
 
 ```
 apps/api/src/**/policy.ts            packages/permissions/**
-apps/api/src/middleware/**           packages/plugins-contracts/**
-apps/api/src/plugins/**              apps/api/src/scim/**
-apps/api/src/auth*                   apps/api/src/storage/**
-apps/api/src/webhooks/**             any new route file (a new *.ts exporting a Hono router)
-apps/api/src/utils/**                apps/api/src/index.ts
-apps/api/src/**/index.ts             apps/api/src/capabilities/**
+apps/api/src/plugins/**              apps/api/src/storage/**
+apps/api/src/auth*                   apps/api/src/index.ts
+apps/api/src/utils/**                apps/api/src/capabilities/**
+apps/api/src/**/index.ts             any new route file (a new *.ts exporting a Hono router)
+apps/api/src/**/controllers/**       apps/api/drizzle/*.sql
+apps/api/src/policy-registry.ts      apps/api/src/database/**
+packages/mcp/src/auth/**             scripts/deploy.sh
+
+apps/api/src/middleware/**           (path does not exist yet)
+apps/api/src/webhooks/**             (path does not exist yet, P4)
+apps/api/src/scim/**                 (path does not exist yet, P3)
+packages/plugins-contracts/**        (path does not exist yet)
 
 .github/**                           package.json
 scripts/ci/**                        **/package.json
@@ -135,11 +141,102 @@ next to the route. Covering it **by path** makes the "any new route file" clause
 backstop rather than the primary control, which matters because that clause was matching
 almost nothing (see the note on `looksLikeHonoRouter` in `lib/security-paths.mjs`).
 
-Four globs in the first block — `apps/api/src/middleware/**`, `apps/api/src/scim/**`,
-`apps/api/src/webhooks/**`, `packages/plugins-contracts/**` — point at paths that **do not
-exist yet**. They are deliberately kept: SCIM is P3 and webhooks are P4, and a glob that is
-in place before the directory appears is scope that cannot be forgotten at the moment it
-starts to matter. They are not evidence the list was reviewed.
+Four globs point at paths that **do not exist yet**, and they are marked as such **in the
+block above** — `(path does not exist yet)` — rather than only here. That placement is the
+point: an independent review of #81 found this note correct and the block silent, so a reader
+who consulted only the authoritative list could not tell which entries were aspirational. The
+annotations are parser-safe by construction (the tokeniser splits on two-or-more spaces and
+discards any token containing a space), and the parsed set is unchanged at 23 globs.
+
+They are deliberately kept: SCIM is P3 and webhooks are P4, and a glob that is in place
+before the directory appears is scope that cannot be forgotten at the moment it starts to
+matter. They are not evidence the list was reviewed.
+
+**Why five more globs were added to the first block** (2026-09-10, issue #115, measured the
+same way as the 2026-09-09 audit above: running `parseSecurityReviewPaths` and
+`globToRegExp` over every file under `apps/api/src`, `apps/api/drizzle`, `packages/*/src`
+and `apps/web/src`). The sharpest instance: **PR #110's own
+`apps/api/drizzle/0050_enforce_single_role_membership.sql` — the CHECK constraint that
+enforces the single-role membership invariant — matched no glob in this list.** Nor did
+`apps/api/src/policy-registry.ts` (the assembly root of the entire route-policy system,
+which is Throttle 1 conditions 4 and 5) or `apps/api/src/database/schema.ts` (the
+RBAC/membership tables). All three reported OUT of scope.
+
+**Stated precisely, because an earlier draft of this passage overstated it.** This closes a
+path-coverage gap in ONE of TWO overlapping controls; it does not close a hole through which
+unreviewed code was merging. PR #110 trips the gate today anyway, via
+`apps/api/src/index.ts`, `apps/api/src/utils/**` and `apps/api/src/capabilities/**`. And
+independently of any path match, `checklistProblems()` in `scripts/ci/lib/pr-body.mjs` runs
+unconditionally on every pull request's `## Checklists`: the Definition of Done's
+"Opus security review completed and recorded" line matches `REVIEW_ITEM`, **cannot be marked
+`n/a`**, and a global rule fails the check if no independent-review checkbox exists anywhere.
+So a migration-only backend change was already required to record an Opus review. The
+migrations cited below as precedent (`0045`-`0049`, `0026`) landed *before* this CI check
+existed (added in `e11976f`, #19, 2026-09-09) — they were not let through a blind spot.
+What these globs add is that such a change now trips the **path** half too, on its own
+evidence rather than on whichever `.ts` file it happens to touch alongside.
+
+`apps/api/src/openapi.ts` is deliberately **NOT** added: it is already covered by the
+content-based half of the gate. `looksLikeHonoRouter()` in `lib/security-paths.mjs` is
+applied by `check-pr-template.mjs`'s `securitySurfaceTouched()` to every changed `.ts`/`.tsx`
+file — not only new ones — and that function's own comment names `openapi.ts` as one of only
+two files in the repository matching `new (OpenAPI)?Hono(`. Measured: `matches()` returns
+false for it while `looksLikeHonoRouter()` returns true, and that result drives
+`requiresReview`. A path glob for it would be redundant.
+
+So did every controller. `apps/api/src/**/controllers/**` adds 92 files — 68 of them
+mutating endpoints — including `workspace/controllers/update-workspace-member-role.ts`
+(the two hard-coded rules that keep an owner-role change safe),
+`transfer-workspace-ownership.ts`, `add-workspace-member.ts`,
+`remove-workspace-member.ts`, `delete-workspace.ts`,
+`invitation/controllers/accept-invitation.ts` (the entire #88 duplicate-member race fix),
+`task/controllers/require-task-permission.ts` — authorization middleware filed under
+`controllers`, not `utils`, so no existing glob reached it —
+`user/controllers/delete-account-data.ts` (destructive account deletion), and
+`oauth/controllers/get-id-token.ts` (returns a stored OAuth id_token).
+
+`apps/api/drizzle/*.sql` adds the 50 migration files, including `0045` through `0049` —
+the SQL half of #6's removal surface; `0048` and `0049` each carry a comment warning that
+"dropping this table is NOT revocation" — and
+`0026_encrypt_notification_preference_secrets.sql`. **Deliberately `*.sql`, not
+`apps/api/drizzle/**` bare**: the bare glob was measured and rejected because it doubles
+the captured set, pulling in drizzle-kit's 44 auto-generated `meta/*.json` snapshots plus
+`_journal.json` — a mechanical mirror of the same migrations with no independent review
+signal of its own.
+
+`apps/api/src/database/**` (`schema.ts`, `relations.ts`, and the two files that resolve
+and prepare the database connection at startup) closes the rest of the `apps/api` gap —
+`openapi.ts` needs no glob of its own, per the paragraph above. `packages/mcp/src/auth/**`
+covers the MCP CLI's credential store, the one place outside `apps/api` this pass added.
+
+A blanket `apps/api/src/*/*.ts` feature-root catch-all was measured and rejected too: it
+would have added 57 files to reach roughly five sensitive ones, mostly `schema.ts` /
+`response.ts` field-shape pairs that carry no independent review signal — a glob that
+broad turns into something people route around rather than read, which is a real cost and
+not a free win. `apps/api/src/notification-preferences/{secrets,service,delivery}.ts` was
+also measured and, on balance, left out as a named-file candidate rather than added: the
+files are real (secret handling for notification delivery), but the investigation rated
+them LOW next to the six globs above, and a scope list earns more by staying precise than
+by chasing every plausible file individually.
+
+**A sixth glob, found by the third of this fix's three required ordinary reviews rather
+than by the original investigation's own walk**: `scripts/deploy.sh`. The original walk
+covered `apps/api/src`, `apps/api/drizzle`, `packages/*/src` and `apps/web/src` — it never
+looked at `scripts/` outside `scripts/ci/**`, which is already in the second block. That
+script hardcodes the cosign signature-verification identity, generates
+`TASKDESK_ENCRYPTION_KEY`/`TASKDESK_AUTH_SECRET` and the S3 credentials, and asserts the
+production port stays unpublished — a change to any of that is exactly the class of thing
+this list exists to catch, and it was reaching neither the path-based half of the gate nor
+the content-based backstop (`looksLikeHonoRouter()` only scans `.ts`/`.tsx`). Not a glob:
+a single named file is precise and there is exactly one `.sh` script at that level today.
+
+Net effect, measured over the same 925-file walk plus this one named file: the list carried
+23 globs matching 110 files before this pass, and 29 globs matching 262 after — 152 files
+newly in scope, 151 of them via the five path globs above and one (`scripts/deploy.sh`)
+named directly. (`openapi.ts` briefly existed as a glob in this pass's first draft,
+contributing one more to an earlier count; removed once measurement showed the content-half
+already covers it — see above. The file itself is not newly exposed by that removal, only
+the mechanism that reaches it.)
 
 **Why the second block exists** (Thomas's decision, 2026-09-08 — see the
 [decision log](../07-planning/decision-log.md)). The first block is the application's
@@ -220,8 +317,18 @@ Prose is deliberately not accepted: the previous check looked for the gate ident
 anywhere in the document, which the sentence *"G1 is not waived"* satisfied. **What is
 still not enforceable is who authorised it** — agents commit through the same repository
 identity Thomas does, so nothing readable from a file proves authorship. The declaration
-provides a durable, specific, gate-bound, PR-scoped record; Thomas confirms the authority
-at the merge button, and CI says so rather than implying it checked.
+provides a durable, specific, gate-bound, PR-scoped record; CI says so rather than implying
+it checked authorship.
+
+**Updated 2026-09-15.** This paragraph used to end "Thomas confirms the authority at the
+merge button" — that was the actual, if informal, control: Thomas was the one merging, so
+he was the last human able to catch a fabricated waiver before it landed. Since merge
+execution is now delegated (see [`AGENTS.md`](../../AGENTS.md#how-work-reaches-main-and-who-may-merge)),
+that check no longer exists by default. **A candidate whose `## Gates` table cites any
+waived gate is excluded from the delegation** — it always needs Thomas's own action to
+merge, never the orchestrator alone. Found by independent Opus review, 2026-09-15; tracked
+for a real mechanical check (verifying waiver authorship some way stronger than "the
+orchestrator says it checked") as a follow-up issue, not solved here.
 
 The same fast-stage **PR-template check** asserts every fixed section is present, that none
 is empty unless marked `n/a` with a reason, that `## Reviewed by` names a different model or
@@ -372,15 +479,20 @@ main                    always deployable, protected
 
 - No long-lived branches. A branch older than a week is a merge problem forming.
 - Squash merge, so `main` has one commit per change and the history is readable.
-- `main` requires: all checks green, up to date with `main`, and **Thomas to press merge**.
-  The `protect-main` ruleset blocks deletion and non-fast-forward pushes and dismisses stale
-  approvals on push. **Required approving reviews is `0` and Require review from Code Owners
-  is off**, both deliberately — a required approval from a one-person team documents a
-  protection it does not provide (decision log, 2026-09-06).
-- `CODEOWNERS` (`* @ThomasHeinThura`) is **ownership metadata**: it says who to ask. It is
-  not the mechanism behind "only Thomas merges" — that is Thomas, and the ruleset enforces
-  the parts a machine can. **The security review and design review requirements below are
-  unaffected and remain independent hard gates.**
+- `main` requires: all checks green, up to date with `main`, required independent review(s)
+  and, where in scope, the required Opus security review recorded. **The orchestrating
+  Claude session may then merge itself**, through this normal protected flow, once every one
+  of those is genuinely satisfied on the exact candidate SHA (Thomas, 2026-09-15 — delegated;
+  supersedes "only Thomas presses merge" — see the decision log, 2026-09-15). Design approval
+  (H1–H6) and gate waivers remain Thomas-only, unchanged. The `protect-main` ruleset blocks
+  deletion and non-fast-forward pushes and dismisses stale approvals on push. **Required
+  approving reviews is `0` and Require review from Code Owners is off**, both deliberately —
+  a required approval from a one-person team documents a protection it does not provide
+  (decision log, 2026-09-06).
+- `CODEOWNERS` (`* @ThomasHeinThura`) is **ownership metadata**: it says who to ask, not a
+  merge gate — the ruleset and the required reviews above are what actually enforce a merge.
+  **The security review and design review requirements below are unaffected and remain
+  independent hard gates.**
 
 ## Releases
 

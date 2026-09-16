@@ -81,3 +81,35 @@ export const inviteWorkspaceMemberBody = z.object({
   role: z.string().min(1),
   resend: z.boolean().optional(),
 });
+
+// S7 -- native role list/write routes (issue #6, retrofit plan §3, S7 row).
+
+// Update/delete key on the role's opaque `id`, not its name -- a role name may
+// legitimately contain a `/` (better-auth's own `normalizeRoleName` only
+// lower-cases it), which would be unaddressable as a path segment. See the S7
+// blueprint's Ambiguity Q1.
+export const workspaceRoleParam = z.object({
+  workspaceId: z.string(),
+  roleId: z.string(),
+});
+
+// `role`'s reserved-name and uniqueness checks run in the controller, against
+// this workspace's own rows -- not expressible in the request shape alone.
+// Every value in `permission` is validated against the known resource keys in
+// the controller too (`checkForInvalidResources` parity).
+export const createWorkspaceRoleBody = z.object({
+  // `.trim()` runs before `.min(1)` re-checks length, so a whitespace-only
+  // name ("   ") is rejected at the boundary with a clear 400 instead of
+  // reaching the controller, normalizing to an empty string, and silently
+  // inserting a nameless role -- found adversarially: the controller's own
+  // `.trim().toLowerCase()` normalization ran AFTER this schema validated,
+  // so nothing here caught the whitespace-only case before insert.
+  role: z.string().trim().min(1).max(100),
+  permission: z.record(z.string(), z.array(z.string())),
+});
+
+// PATCH replaces the role's ENTIRE permission set -- it does not merge. See
+// `update-workspace-role.ts` and the S7 blueprint's Finding F5.
+export const updateWorkspaceRoleBody = z.object({
+  permission: z.record(z.string(), z.array(z.string())),
+});

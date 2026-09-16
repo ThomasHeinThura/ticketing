@@ -40,6 +40,7 @@ import { isLocalSignInPath } from "./utils/is-local-sign-in-path";
 import { resolveAuthSecret } from "./utils/require-auth-secret";
 import { TRUSTED_CLIENT_IP_HEADER } from "./utils/resolve-client-ip";
 import { sendNativeWorkspaceInvitationEmail } from "./utils/send-workspace-invitation-email";
+import { MAX_WORKSPACE_ROLES_PER_WORKSPACE } from "./utils/workspace-role-limits";
 
 config();
 
@@ -277,7 +278,10 @@ export const auth = betterAuth({
       roles: { owner },
       dynamicAccessControl: {
         enabled: true,
-        maximumRolesPerOrganization: 25,
+        // Named, shared with the native S7 create-role route
+        // (`workspace-role-limits.ts`) so there is exactly one ceiling in the
+        // codebase rather than two literals that can silently drift apart.
+        maximumRolesPerOrganization: MAX_WORKSPACE_ROLES_PER_WORKSPACE,
       },
       teams: {
         enabled: true,

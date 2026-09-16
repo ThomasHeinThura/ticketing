@@ -93,6 +93,12 @@ dist
 yarn-debug.log*
 *.db
 .worktrees/
+
+# Claude Code creates real git worktrees under here for background workflows. The
+# directory is machine-local state -- absolute paths, per-session ids -- and committing
+# it would hand every teammate a set of broken worktree registrations. `settings.json`
+# beside it IS tracked: it is the shared plugin config.
+.claude/worktrees/
 compose.override.yml
 .idea
 apps/web/.tanstack/

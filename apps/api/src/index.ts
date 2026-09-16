@@ -1,6 +1,8 @@
-import { dirname } from "node:path";
+import { statSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { Session, User } from "better-auth/types";
@@ -49,6 +51,7 @@ import { migrateNotificationPreferencesSchema } from "./utils/migrate-notificati
 import { migrateSessionColumn } from "./utils/migrate-session-column";
 import { migrateWorkspaceUserEmail } from "./utils/migrate-workspace-user-email";
 import { normalizeApiServerUrl } from "./utils/openapi-spec";
+import { organizationPluginRoleGuard } from "./utils/organization-plugin-role-guard";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { validateWorkspaceAccess } from "./utils/validate-workspace-access";
 import workflowRule from "./workflow-rule";
@@ -123,7 +126,131 @@ function buildContentDisposition(filename: string, inline: boolean) {
   return `${disposition}; filename="${asciiFallback}"; filename*=UTF-8''${encodedFilename}`;
 }
 
-export function createApp() {
+/**
+ * Where the built web app can be found, relative to this module's own file
+ * rather than `process.cwd()` — the process is started from a different
+ * working directory in every environment that matters:
+ *
+ *  - Production (the shipped Dockerfile): `node apps/api/dist/index.js` runs
+ *    from `WORKDIR /app`, and the web bundle is copied to `/app/public`
+ *    (see docs/05-operations/container-image.md and the Dockerfile's
+ *    `runtime` stage) — three directories up from the bundled file, then
+ *    into `public`.
+ *  - Local dev/build (`tsx watch` on `src/index.ts`, or a plain `node
+ *    apps/api/dist/index.js` run outside the image): the web app is still at
+ *    its ordinary monorepo location, `apps/web/dist` — two directories up
+ *    from either `apps/api/src` or `apps/api/dist`, then into `web/dist`.
+ *
+ * Both candidates are checked in order; the first that looks like a real
+ * build (a directory containing `index.html`) wins.
+ */
+function defaultStaticRootCandidates(): string[] {
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+  return [
+    join(currentDir, "../../../public"),
+    join(currentDir, "../../web/dist"),
+  ];
+}
+
+/**
+ * Resolves the directory the built web app should be served from, or
+ * `undefined` when none of the candidates look like a real build (missing
+ * entirely, or present without an `index.html`). Exported so a test can pass
+ * its own fixture directory instead of depending on `apps/web/dist` actually
+ * having been built.
+ */
+export function resolveStaticRoot(
+  candidates: string[] = defaultStaticRootCandidates(),
+): string | undefined {
+  return candidates.find((candidate) => {
+    try {
+      return (
+        statSync(candidate).isDirectory() &&
+        statSync(join(candidate, "index.html")).isFile()
+      );
+    } catch {
+      return false;
+    }
+  });
+}
+
+function isApiRequestPath(path: string): boolean {
+  return path === "/api" || path.startsWith("/api/");
+}
+
+/**
+ * Serves the built web app, if one is found, so the API process alone can
+ * answer a real UAT deployment: real files served from disk with their real
+ * content-type, and any unmatched non-API GET falls back to `index.html` so
+ * client-side routing survives a hard refresh or a direct URL.
+ *
+ * Deliberately a no-op when no build is found (dev environments that only
+ * run the API) rather than throwing — see `resolveStaticRoot`'s log line,
+ * which fires exactly once, at startup, in that case.
+ *
+ * A request path under `/api` is never touched here, matched or not — that
+ * surface keeps its own routing and its own 404s, unconditionally.
+ */
+function registerStaticServing(
+  app: Hono<AppVariables>,
+  staticRootOverride?: string,
+) {
+  // An override still goes through the same "is this actually a build"
+  // check as the real candidates, rather than being trusted blindly — a
+  // test (or a future caller) that passes a directory with no `index.html`
+  // gets the same graceful skip as the no-override, nothing-found case.
+  const staticRoot = staticRootOverride
+    ? resolveStaticRoot([staticRootOverride])
+    : resolveStaticRoot();
+
+  if (!staticRoot) {
+    console.warn(
+      "[static] No built web app found (checked the production /app/public location and apps/web/dist) — the API will not serve the web UI. Expected whenever only the API is running, e.g. before `pnpm --filter @taskdesk/web build` in local development.",
+    );
+    return;
+  }
+
+  console.log(`[static] Serving the built web app from ${staticRoot}`);
+
+  const serveAsset = serveStatic({ root: staticRoot });
+  const serveIndex = serveStatic({ root: staticRoot, path: "/index.html" });
+
+  app.use("*", async (c, next) => {
+    if (
+      (c.req.method !== "GET" && c.req.method !== "HEAD") ||
+      isApiRequestPath(c.req.path)
+    ) {
+      return next();
+    }
+
+    // `serveStatic`'s own "not found" signal is calling its `next` argument
+    // (typed to return `void`, not a `Response`), so the decision below
+    // can't be made from inside that callback's return value — it just
+    // flags that no file matched, and the real branching happens after.
+    let assetMissing = false;
+    const result = await serveAsset(c, async () => {
+      assetMissing = true;
+    });
+
+    if (!assetMissing) {
+      return result;
+    }
+
+    // No matching file. A request whose last path segment has an extension
+    // (".js", ".png", a stray ".env", ...) is a genuinely missing asset and
+    // must stay a 404 — silently returning the SPA shell for it would turn
+    // a broken or typo'd asset URL into a "successful" HTML response
+    // instead of a loud failure. Anything else is a client-side route and
+    // gets the SPA shell.
+    const lastSegment = c.req.path.split("/").pop() ?? "";
+    if (lastSegment.includes(".")) {
+      return next();
+    }
+    return serveIndex(c, next);
+  });
+}
+
+export function createApp(options: { staticRoot?: string } = {}) {
   const app = new Hono<AppVariables>();
 
   app.onError((err, c) => {
@@ -189,6 +316,28 @@ export function createApp() {
 
   api.get("/health", (c) => {
     return c.json({ status: "ok" });
+  });
+
+  // Liveness: the process is up, touches no dependency. A Postgres blip must never
+  // restart a healthy container — see docs/05-operations/deployment.md § Health and
+  // readiness, and charts/taskdesk/values.yaml's comment on the same separation.
+  api.get("/public/health/live", (c) => {
+    return c.json({ status: "ok" });
+  });
+
+  // Readiness: database reachable. Migrations are a separate, earlier concern —
+  // runStartupTasks() runs them and blocks serve() from ever accepting a connection
+  // until they succeed, so by the time this handler can run at all, migrations have
+  // already applied; a second check here would only re-assert what booting already
+  // guaranteed.
+  api.get("/public/health/ready", async (c) => {
+    try {
+      await getDatabase().execute(sql`SELECT 1`);
+      return c.json({ status: "ok" });
+    } catch (error) {
+      console.error("Readiness check failed: database unreachable", error);
+      return c.json({ status: "error" }, 503);
+    }
   });
 
   api.openapi(
@@ -485,7 +634,42 @@ export function createApp() {
     },
   );
 
+  // Issue #82 — the compatibility boundary over the still-mounted `organization()` plugin.
+  // Deliberately a plain function called from inside the `/auth/*` handler below rather than
+  // an `api.use(...)` middleware: registering middleware here would add an `ALL /api/auth/*`
+  // router entry, which `packages/permissions`'s route-coverage gate counts as an undeclared
+  // route on the `auth` surface. See `organization-plugin-role-guard.ts` for the full note.
+  const organizationRoleGuard = organizationPluginRoleGuard(async (headers) => {
+    // A COPY, never the live request's own `Headers`. better-auth's session pipeline treats
+    // the headers it is handed as scratch space (the cookie-cache path writes to them), and
+    // mutating the object the request itself carries would corrupt the request this guard is
+    // about to let through — observed as intermittent 401s and INVITATION_NOT_FOUND on
+    // routes that were merely being inspected.
+    const session = await auth.api.getSession({
+      headers: new Headers(headers),
+    });
+    if (!session?.user) return null;
+    // `activeOrganizationId` is a column the `organization()` plugin adds to `session`
+    // (`schema.sessionTable` declares it, and `create-workspace.ts` writes it), but the
+    // inferred `getSession` return type does not carry the plugin's session extensions, so
+    // it is read through an explicit narrow cast rather than widened globally.
+    const activeOrganizationId = (
+      session.session as { activeOrganizationId?: string | null } | undefined
+    )?.activeOrganizationId;
+    return {
+      userId: session.user.id,
+      activeOrganizationId: activeOrganizationId ?? null,
+    };
+  });
+
   api.on(["POST", "GET", "PUT", "PATCH", "DELETE"], "/auth/*", async (c) => {
+    // Issue #82. First thing in the handler, before any branch that could forward the
+    // request to better-auth: the guard refuses a body that would persist a comma-joined
+    // role, and refuses any organization route whose authorization would be decided from a
+    // membership row that already holds one.
+    const refusal = await organizationRoleGuard(c);
+    if (refusal) return refusal;
+
     const authHeader = c.req.header("Authorization");
     const apiKeyHeader = c.req.header("x-api-key");
     const bearerToken = authHeader?.match(/^Bearer\s+(\S+)$/i)?.[1];
@@ -681,6 +865,7 @@ export function createApp() {
   );
 
   app.route("/api", api);
+  registerStaticServing(app, options.staticRoot);
 
   return {
     app,
@@ -745,9 +930,31 @@ export async function runStartupTasks() {
   await initializeWebSocketAdapter();
 }
 
+const DEFAULT_PORT = 5173;
+const MAX_PORT = 65535;
+
+/**
+ * Resolves TASKDESK_PORT to a bindable port, falling back to DEFAULT_PORT for anything
+ * outside the valid TCP range (1-65535) rather than passing it straight to
+ * @hono/node-server's serve(), which throws a RangeError that becomes an unhandled
+ * rejection and crashes the process instead of a graceful fallback.
+ */
+export function resolvePort(rawPort: string | undefined): {
+  port: number;
+  invalid: boolean;
+} {
+  const parsedPort = rawPort === undefined ? Number.NaN : Number(rawPort);
+  const isValidPort =
+    Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= MAX_PORT;
+  return {
+    port: isValidPort ? parsedPort : DEFAULT_PORT,
+    invalid: rawPort !== undefined && !isValidPort,
+  };
+}
+
 export async function startServer(
   injectWebSocket: ReturnType<typeof createNodeWebSocket>["injectWebSocket"],
-  port = 1337,
+  port = DEFAULT_PORT,
 ) {
   try {
     await runStartupTasks();
@@ -765,7 +972,7 @@ export async function startServer(
     },
     () => {
       console.log(
-        `⚡ API is running at ${process.env.KANEO_API_URL || "http://localhost:1337"}`,
+        `⚡ API is running at ${process.env.KANEO_API_URL || `http://localhost:${port}`}`,
       );
     },
   );
@@ -825,7 +1032,14 @@ const isMainModule =
   import.meta.url === pathToFileURL(entrypoint).href;
 
 if (isMainModule) {
-  void startServer(injectWebSocket);
+  const rawPort = process.env.TASKDESK_PORT;
+  const { port, invalid } = resolvePort(rawPort);
+  if (invalid) {
+    console.warn(
+      `⚠ TASKDESK_PORT="${rawPort}" is not a valid port (1-65535) — falling back to ${DEFAULT_PORT}`,
+    );
+  }
+  void startServer(injectWebSocket, port);
 }
 
 export type AppType =

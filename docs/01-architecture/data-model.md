@@ -121,6 +121,14 @@ by the portal-boundary middleware ([auth-and-identity.md](auth-and-identity.md))
 `sees_all` on a membership is the explicit reach grant. `inherited_from` records that a
 membership came from an ancestor project, per OpenProject's model.
 
+**`workspace_role`** (`id`, `workspace_id`, `role` a name, `permission` a JSON
+`{resource: action[]}` map, `created_at`, `updated_at`, `UNIQUE (workspace_id, role)`) is the
+LEGACY, pre-`role`-table shape kaneo's inherited better-auth `organization()` plugin uses —
+inherited, transitional, and on its way out once the `organization()` retrofit (issue #6)
+reaches S10 and the plugin unmounts. The organization-plugin retrofit's S7 stage gives it its
+first native (non-plugin) route surface; the table above is the FUTURE shape this one is
+replaced by, not a variant of it.
+
 ### External identity — OIDC connections and SCIM provisioning
 
 Decided 2026-09-05: Microsoft Entra OIDC and SCIM are **core P3 delivery**
