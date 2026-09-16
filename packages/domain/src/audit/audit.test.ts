@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { canonicalRowHash, reconstructAt, ZERO_HASH } from "./audit.js";
-import type { ActivityRow, AuditLogRow } from "./types.js";
+import type { ActivityRow, AuditLogRow, JsonValue } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Fixtures.
@@ -201,6 +201,213 @@ describe("canonicalRowHash", () => {
         const row: AuditLogRow = { ...GOLDEN_ROW, ...variant };
         expect(canonicalRowHash(row, ZERO_HASH)).not.toBe(base);
       }
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Opus security review of PR #175 — remediation regression tests (S-1..S-4).
+  // -------------------------------------------------------------------------
+
+  describe("S-1: non-finite jsonb numbers must not silently canonicalize to null", () => {
+    it("throws for a number beyond IEEE-754 double range (1e400)", () => {
+      // The literal overflows to Infinity at parse time, exactly as it would decoding a
+      // real out-of-range jsonb numeric via JSON.parse (Opus review, S-1) — that overflow
+      // is the point of this test, not a mistake.
+      // biome-ignore lint/correctness/noPrecisionLoss: deliberately out of range for this test
+      const row: AuditLogRow = { ...GOLDEN_ROW, after: { amount: 1e400 } };
+      expect(() => canonicalRowHash(row, ZERO_HASH)).toThrow(/non-finite/i);
+    });
+
+    it("throws for a different out-of-range number (9e400) — no longer collides with 1e400", () => {
+      // Same as above — deliberately out-of-range, both this and 1e400 overflow to
+      // Infinity and must both throw.
+      // biome-ignore lint/correctness/noPrecisionLoss: deliberately out of range for this test
+      const row: AuditLogRow = { ...GOLDEN_ROW, after: { amount: 9e400 } };
+      expect(() => canonicalRowHash(row, ZERO_HASH)).toThrow(/non-finite/i);
+    });
+
+    it("throws for a literal Infinity", () => {
+      const row: AuditLogRow = {
+        ...GOLDEN_ROW,
+        after: { amount: Number.POSITIVE_INFINITY },
+      };
+      expect(() => canonicalRowHash(row, ZERO_HASH)).toThrow(/non-finite/i);
+    });
+
+    it("throws for a literal -Infinity", () => {
+      const row: AuditLogRow = {
+        ...GOLDEN_ROW,
+        after: { amount: Number.NEGATIVE_INFINITY },
+      };
+      expect(() => canonicalRowHash(row, ZERO_HASH)).toThrow(/non-finite/i);
+    });
+
+    it("a plain null after still hashes fine — distinguishing it from the previously-colliding non-finite values", () => {
+      const row: AuditLogRow = { ...GOLDEN_ROW, after: null };
+      expect(() => canonicalRowHash(row, ZERO_HASH)).not.toThrow();
+      expect(canonicalRowHash(row, ZERO_HASH)).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it("does not reject legitimate finite doubles outside Number.MAX_SAFE_INTEGER (not a Number.isSafeInteger check)", () => {
+      const row: AuditLogRow = { ...GOLDEN_ROW, after: { amount: 1e21 } };
+      expect(() => canonicalRowHash(row, ZERO_HASH)).not.toThrow();
+    });
+  });
+
+  describe("S-2: the \\x1e join must be injective across field boundaries", () => {
+    it("rejects the reviewer's demonstrated collision input — row A (separator inside userAgent)", () => {
+      const rowA: AuditLogRow = {
+        ...GOLDEN_ROW,
+        userAgent: "Mozilla/5.0\x1etrace-FORGED",
+        traceId: "trace-real-001",
+      };
+      expect(() => canonicalRowHash(rowA, ZERO_HASH)).toThrow(
+        /record-separator/i,
+      );
+    });
+
+    it("rejects the reviewer's demonstrated collision input — row B (separator inside traceId)", () => {
+      const rowB: AuditLogRow = {
+        ...GOLDEN_ROW,
+        userAgent: "Mozilla/5.0",
+        traceId: "trace-FORGED\x1etrace-real-001",
+      };
+      expect(() => canonicalRowHash(rowB, ZERO_HASH)).toThrow(
+        /record-separator/i,
+      );
+    });
+
+    it("both previously-colliding rows now fail closed instead of silently producing the same row_hash", () => {
+      const rowA: AuditLogRow = {
+        ...GOLDEN_ROW,
+        userAgent: "Mozilla/5.0\x1etrace-FORGED",
+        traceId: "trace-real-001",
+      };
+      const rowB: AuditLogRow = {
+        ...GOLDEN_ROW,
+        userAgent: "Mozilla/5.0",
+        traceId: "trace-FORGED\x1etrace-real-001",
+      };
+      expect(() => canonicalRowHash(rowA, ZERO_HASH)).toThrow();
+      expect(() => canonicalRowHash(rowB, ZERO_HASH)).toThrow();
+    });
+
+    it("rejects a record-separator in any of the other plain-text columns", () => {
+      const variants: Array<Partial<AuditLogRow>> = [
+        { createdAt: "x\x1ey" },
+        { actorId: "x\x1ey" },
+        { actorType: "x\x1ey" },
+        { apiKeyId: "x\x1ey" },
+        { impersonatorId: "x\x1ey" },
+        { actorIp: "x\x1ey" },
+        { userAgent: "x\x1ey" },
+        { traceId: "x\x1ey" },
+        { workspaceId: "x\x1ey" },
+        { action: "x\x1ey" },
+        { entityType: "x\x1ey" },
+        { entityId: "x\x1ey" },
+      ];
+      for (const variant of variants) {
+        const row: AuditLogRow = { ...GOLDEN_ROW, ...variant };
+        expect(() => canonicalRowHash(row, ZERO_HASH)).toThrow(
+          /record-separator/i,
+        );
+      }
+    });
+
+    it("rejects a prevHash that is not exactly 64 lowercase hex characters", () => {
+      expect(() => canonicalRowHash(GOLDEN_ROW, "not-a-hash")).toThrow(
+        /prevHash/i,
+      );
+      expect(() => canonicalRowHash(GOLDEN_ROW, "A".repeat(64))).toThrow(
+        /prevHash/i,
+      );
+      expect(() => canonicalRowHash(GOLDEN_ROW, "a".repeat(63))).toThrow(
+        /prevHash/i,
+      );
+    });
+
+    it("rejects a prevHash smuggling a record-separator", () => {
+      const smuggled = `${"a".repeat(63)}\x1e`;
+      expect(() => canonicalRowHash(GOLDEN_ROW, smuggled)).toThrow(/prevHash/i);
+    });
+  });
+
+  describe("S-3: canonicalJson must not silently collapse a non-plain object to {}", () => {
+    it("throws for a Date value instead of silently hashing it as {}", () => {
+      const row: AuditLogRow = {
+        ...GOLDEN_ROW,
+        after: {
+          due_date: new Date("2026-03-14T00:00:00Z"),
+        } as unknown as JsonValue,
+      };
+      expect(() => canonicalRowHash(row, ZERO_HASH)).toThrow(
+        /non-plain object/i,
+      );
+    });
+
+    it("two different Date values no longer collide — both throw instead of both hashing as {}", () => {
+      const rowA: AuditLogRow = {
+        ...GOLDEN_ROW,
+        after: {
+          due_date: new Date("2026-03-14T00:00:00Z"),
+        } as unknown as JsonValue,
+      };
+      const rowB: AuditLogRow = {
+        ...GOLDEN_ROW,
+        after: {
+          due_date: new Date("2026-03-19T00:00:00Z"),
+        } as unknown as JsonValue,
+      };
+      expect(() => canonicalRowHash(rowA, ZERO_HASH)).toThrow();
+      expect(() => canonicalRowHash(rowB, ZERO_HASH)).toThrow();
+    });
+
+    it("throws for a Map or Set reaching canonicalJson", () => {
+      const withMap: AuditLogRow = {
+        ...GOLDEN_ROW,
+        after: { s: new Map([["a", 1]]) } as unknown as JsonValue,
+      };
+      const withSet: AuditLogRow = {
+        ...GOLDEN_ROW,
+        after: { s: new Set([1, 2]) } as unknown as JsonValue,
+      };
+      expect(() => canonicalRowHash(withMap, ZERO_HASH)).toThrow(
+        /non-plain object/i,
+      );
+      expect(() => canonicalRowHash(withSet, ZERO_HASH)).toThrow(
+        /non-plain object/i,
+      );
+    });
+
+    it("a genuinely plain object with the same field name still hashes normally", () => {
+      const row: AuditLogRow = {
+        ...GOLDEN_ROW,
+        after: { due_date: "2026-03-14" },
+      };
+      expect(() => canonicalRowHash(row, ZERO_HASH)).not.toThrow();
+    });
+
+    it("an object created with Object.create(null) (no prototype at all) is accepted", () => {
+      const nullProtoObject = Object.create(null);
+      nullProtoObject.priority = "high";
+      const row: AuditLogRow = {
+        ...GOLDEN_ROW,
+        after: nullProtoObject as unknown as JsonValue,
+      };
+      expect(() => canonicalRowHash(row, ZERO_HASH)).not.toThrow();
+    });
+  });
+
+  describe("S-1/S-2/S-3 regression: the guards leave both pinned golden hashes byte-identical", () => {
+    it("GOLDEN_HASH is unchanged", () => {
+      expect(canonicalRowHash(GOLDEN_ROW, ZERO_HASH)).toBe(GOLDEN_HASH);
+    });
+
+    it("SECOND_GOLDEN_HASH is unchanged", () => {
+      expect(canonicalRowHash(SECOND_GOLDEN_ROW, SECOND_GOLDEN_PREV_HASH)).toBe(
+        SECOND_GOLDEN_HASH,
+      );
     });
   });
 });

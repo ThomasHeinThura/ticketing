@@ -20,9 +20,21 @@
  */
 
 /**
- * A JSON value, exactly what a `jsonb` column decodes to. No `undefined`, no
- * `NaN`/`Infinity` — a `jsonb` column cannot hold either, which is what lets
- * `canonicalJson` (`audit.ts`) delegate safely to `JSON.stringify` for every leaf value.
+ * A JSON value, exactly what a `jsonb` column decodes to. No `undefined`, no *literal*
+ * `NaN`/`Infinity` token — a `jsonb` column cannot hold either token as such.
+ *
+ * **Correction (Opus security review of PR #175, S-1):** this comment previously read "no
+ * `NaN`/`Infinity` — a `jsonb` column cannot hold either", stated as a blanket premise
+ * that let `canonicalJson` delegate every number straight to `JSON.stringify`. That premise
+ * is only true of the literal tokens. Postgres `jsonb` numbers are arbitrary-precision
+ * `numeric`, not IEEE-754 doubles, and `pg` decodes `jsonb` with `JSON.parse` — so a
+ * `jsonb` value like `1e400` (which Postgres stores and returns exactly, verified against
+ * a live `postgres:18`) arrives here as the JS value `Infinity`. `type NumberValue = number`
+ * therefore cannot promise every runtime value is finite; `canonicalJson` now throws on
+ * `!Number.isFinite(value)` rather than silently rendering a non-finite number as the
+ * string `"null"` (identical to an actual JSON `null`). See `canonicalJson`'s own doc
+ * comment in `audit.ts` for the full reasoning, including why this is deliberately *not*
+ * a `Number.isSafeInteger` check.
  */
 export type JsonValue =
   | null
@@ -83,19 +95,38 @@ export interface AuditLogRow {
  * convention of typing a row down to exactly what a function needs, they are not part of
  * this type.
  *
- * `sequence` stands in for Postgres's real auto-increment `activity.id` — a monotonic,
- * caller-supplied surrogate key used only to break a tie when two rows share the exact
- * same `createdAt`. Decided in this pull request's decision-log entry: ascending
- * `sequence` (insertion order), the one secondary ordering signal a database provides for
- * free — see `reconstructAt`'s own doc comment in `audit.ts`. It is never interpreted as
- * meaningful data itself, only compared for ordering.
+ * `sequence` is an opaque, caller-supplied monotonic key used only to break a tie when two
+ * rows share the exact same `createdAt`; never interpreted as meaningful data itself, only
+ * compared for ordering (`compareActivityRows` in `audit.ts`).
+ *
+ * **Corrected (Opus security review of PR #175, S-4) — `sequence` is NOT "Postgres's real
+ * auto-increment `activity.id`".** This comment, and the decision-log entry it was written
+ * against, previously described `sequence` that way. Both claims are false against this
+ * schema: `data-model.md`'s Conventions state, unconditionally, "Primary keys are CUID2
+ * text. Primary keys and surrogate ids are **never** sequential", and `activity`'s column
+ * list (§4) names no auto-increment/`bigserial`/`identity` column for `sequence` to stand
+ * in for — there is nothing in this schema today playing that role. Nor does `activity`'s
+ * CUID2 `id` substitute: this codebase's `createId()` (`@paralleldrive/cuid2`) derives each
+ * id from a SHA3-512 hash of `(timestamp, salt, counter, fingerprint)`, deliberately
+ * designed to be *not* correlated with insertion order (the library's own stated design
+ * goal is "k-sortable = insecure") — confirmed by reading `createId`'s implementation, not
+ * assumed. So today, **no column this schema actually has can back `sequence`.** The
+ * decision log's superseding entry (2026-09-16, "`reconstructAt`'s same-instant tie-break
+ * needs a real ordering signal this schema does not yet have") records this and what the
+ * impure edge (the `audit_log`/`activity` insert path, not yet built) will need: either a
+ * dedicated monotonic column added to `activity` for this purpose (e.g. a `bigserial`, a
+ * deliberate, narrow exception to the no-sequential-surrogate-keys convention, scoped to
+ * this one tie-break rather than to `activity.id` itself), or an equivalently real ordering
+ * signal — not a guess dressed up as a decided mechanism. `sequence`'s type stays `number`:
+ * this module's contract is unchanged (any real total order the caller supplies orders
+ * correctly), only the claim about *what already supplies one* was wrong.
  *
  * `createdAt` is a `Date` here, unlike `AuditLogRow.createdAt`'s pre-formatted string:
  * `reconstructAt` never hashes anything, it only orders rows, and a millisecond-resolution
  * `Date` orders correctly even when it collapses two genuinely-microsecond-apart rows to
- * the same millisecond value — `sequence` (real insertion order) is the tie-break for
- * exactly that case too, not only for a true microsecond-exact tie, so no precision is
- * actually lost for the purpose this type is used for.
+ * the same millisecond value — `sequence` is the tie-break for exactly that case too, not
+ * only for a true microsecond-exact tie, so no precision is actually lost for the purpose
+ * this type is used for.
  */
 export interface ActivityRow {
   sequence: number;

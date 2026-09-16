@@ -43,36 +43,121 @@ const FIELD_SEPARATOR = "\x1e";
  */
 export const ZERO_HASH = "0".repeat(64);
 
+/**
+ * Shape a valid `prevHash` must have: exactly 64 lowercase hex characters — a genuine
+ * SHA-256 digest, or `ZERO_HASH`. Enforced by `canonicalRowHash` (Opus security review of
+ * PR #175, finding S-2): `prevHash` is field 1 of the joined canonical form, and before
+ * this guard existed it accepted any string at all, including one containing
+ * `FIELD_SEPARATOR` itself.
+ */
+const PREV_HASH_PATTERN = /^[0-9a-f]{64}$/;
+
 function textOrEmpty(value: string | null): string {
   return value ?? "";
+}
+
+/**
+ * S-2 remediation (Opus security review of PR #175, "The `\x1e` join is not injective —
+ * demonstrated row-hash collision"). `canonicalRowHash` joins its fifteen fields with a
+ * single `FIELD_SEPARATOR` (`\x1e`); that join is only unambiguous if no individual field
+ * can itself contain the separator byte. Nothing about a `text` column, a CUID2 shape, or
+ * this module's own types rules that out — `\x1e` is a plain ASCII control character
+ * (0x1E) — so two rows that differ only in *where* a `\x1e` falls (e.g. inside
+ * `userAgent` vs sitting at the `userAgent`/`traceId` boundary) previously joined to the
+ * exact same byte string and hashed identically. The reviewer demonstrated this concretely
+ * with a real `userAgent`/`traceId` collision.
+ *
+ * Rejecting `\x1e` outright is strictly *stronger* than `data-model.md` §11's recipe, not
+ * a deviation from it — §11 never says what a separator-bearing field should mean, and no
+ * legitimate value in any of these columns (ids, ips, user agents, trace ids, an audit
+ * action key) is ever expected to contain a raw ASCII record-separator control character.
+ * `before`/`after` need no equivalent guard: RFC 8785 (via `JSON.stringify`) always
+ * escapes `\x1e` as the six-character sequence `\u001e` inside a JSON string, so those two
+ * fields can never place a raw `\x1e` byte into the joined form in the first place —
+ * confirmed in the reviewer's own "what I confirmed clean" pass over string escaping.
+ */
+function assertNoRecordSeparator(fieldName: string, value: string): void {
+  if (value.includes(FIELD_SEPARATOR)) {
+    throw new Error(
+      `canonicalRowHash: ${fieldName} contains the record-separator byte (\\x1e, ASCII 30), ` +
+        "which would make the \\x1e-joined canonical form ambiguous across a field " +
+        "boundary — two different rows could join to the same byte string and collide on " +
+        "row_hash. Refusing to hash rather than silently producing an ambiguous digest.",
+    );
+  }
 }
 
 /**
  * RFC 8785 (JCS) canonicalization of one JSON value, built entirely from
  * `JSON.stringify` and native string/array sorting — no new dependency. Object keys are
  * sorted with JS's default string comparator, which compares UTF-16 code units exactly
- * the way JCS's key-ordering rule (RFC 8785 §3.2.3) requires; number and string
- * serialization is delegated to `JSON.stringify`, which already implements ECMA-262's
- * `Number::toString` (the same algorithm JCS §3.2.2.3 specifies for numbers, including
- * `-0` rendering as `"0"`) and RFC 8259 string escaping (which JCS §3.2.2.2 defers to
- * verbatim). There is nothing left for a hand-rolled implementation to get wrong that
- * `JSON.stringify` does not already get right, for the value shapes a `jsonb` column can
- * actually hold — no `NaN`, `Infinity`, `undefined` or `BigInt`, none of which `jsonb` can
- * represent, and all of which are the only cases where JCS and `JSON.stringify` could
- * plausibly diverge. See the pull request description for this reasoning, offered instead
- * of adding a JCS library per this task's instruction to flag rather than decide silently.
+ * the way JCS's key-ordering rule (RFC 8785 §3.2.3) requires; string serialization is
+ * delegated to `JSON.stringify`, which already implements RFC 8259 string escaping (which
+ * JCS §3.2.2.2 defers to verbatim).
+ *
+ * **Numbers and non-plain objects are guarded explicitly, not delegated blindly** (Opus
+ * security review of PR #175, findings S-1 and S-3 — this doc comment previously claimed
+ * a `jsonb` column "cannot hold `NaN`/`Infinity`", which is true only of the *literal*
+ * tokens. Postgres `jsonb` numbers are arbitrary-precision `numeric`, and `pg` decodes
+ * them with `JSON.parse`; a `jsonb` value like `1e400` — which Postgres stores and returns
+ * exactly — arrives here as the JS value `Infinity`, and `JSON.stringify(Infinity)` is the
+ * *string* `"null"`, byte-identical to an actual JSON `null`. An unbounded set of distinct
+ * `jsonb` numbers would otherwise collapse to one canonical form. **S-1: throw on any
+ * non-finite number** (`!Number.isFinite`) rather than silently rendering it as `null` —
+ * this function operates on already-persisted, already-validated audit rows (see the
+ * module doc comment), so a non-finite number reaching here means something upstream
+ * failed to validate before writing the row; that is a bug to surface loudly, not paper
+ * over. Deliberately **not** a `Number.isSafeInteger` check: values like `1e+21`, `1e+30`
+ * and `5e-324` are outside `Number.MAX_SAFE_INTEGER` but are exact, legitimate IEEE-754
+ * doubles that `jsonb` can hold and round-trip losslessly through `JSON.parse` — rejecting
+ * them would be a false positive, not a fix. (A `jsonb` integer that lost precision
+ * *within* double range before ever reaching this function — e.g. `9007199254740993`
+ * silently becoming `9007199254740992` inside the driver's own `JSON.parse` — is not
+ * detectable here at all: by the time the value is a JS number, both are the same double.
+ * That is an accepted residual of representing `jsonb` numbers as JS `number`, tracked as
+ * a known limitation rather than something `canonicalJson` can fix after the fact.)
+ *
+ * **S-3: throw on any non-plain object**, rather than falling through to `Object.keys()`
+ * and silently emitting `{}`. `JsonValue` forbids anything but a plain object/array/
+ * primitive at the type level, but TypeScript is erased at runtime — a real caller may
+ * pass an ORM row value where a `jsonb`-adjacent field is actually a `Date`, `Map` or
+ * `Set` instance rather than a plain value, and two different `Date`s previously both
+ * canonicalized to `{}` and hashed identically. Fail closed instead: a non-plain object is
+ * a caller bug, not a value this function should silently degrade.
  */
 function canonicalJson(value: JsonValue): string {
   if (
     value === null ||
     typeof value === "boolean" ||
-    typeof value === "number" ||
     typeof value === "string"
   ) {
     return JSON.stringify(value);
   }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new Error(
+        `canonicalJson: refusing to canonicalize a non-finite number (${String(value)}) — ` +
+          "a jsonb column can hold a numeric value outside the IEEE-754 double range " +
+          "(e.g. 1e400), which the driver decodes via JSON.parse into Infinity/-Infinity; " +
+          'JSON.stringify(Infinity) is the string "null", indistinguishable from an actual ' +
+          "jsonb null. Silently coercing would let an unbounded set of distinct values " +
+          "collapse to one canonical form.",
+      );
+    }
+    return JSON.stringify(value);
+  }
   if (Array.isArray(value)) {
     return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
+  }
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null) {
+    throw new Error(
+      "canonicalJson: refusing to canonicalize a non-plain object (prototype is " +
+        `${proto?.constructor?.name ?? String(proto)}, not Object.prototype or null) — ` +
+        "e.g. a Date, Map or Set reached this function instead of a plain jsonb-shaped " +
+        "value. Object.keys() on such a value silently returns [], which would render as " +
+        '"{}" and make every such value hash identically.',
+    );
   }
   const keys = Object.keys(value).sort();
   const members = keys.map((key) => {
@@ -120,19 +205,59 @@ function jsonFieldOrEmpty(value: JsonValue | null): string {
  *
  * `prevHash` is a separate parameter rather than a field on `row` — see `AuditLogRow`'s
  * doc comment for why. Use `ZERO_HASH` for the first row in a chain.
+ *
+ * **Injectivity guards (Opus security review of PR #175, S-2).** The thirteen non-JSON
+ * fields above (`prevHash` plus the twelve plain-text `AuditLogRow` columns) must each be
+ * free of the `\x1e` separator byte for the `\x1e`-joined form to be unambiguous — see
+ * `assertNoRecordSeparator`'s doc comment. `prevHash` additionally must match
+ * `PREV_HASH_PATTERN` (64 lowercase hex characters): it is field 1, and an unvalidated
+ * `prevHash` could otherwise smuggle a separator, or any other content, into the joined
+ * string ahead of every other field. Both guards throw rather than silently hashing an
+ * ambiguous input; per `data-model.md` §11, they are a corrigendum to the canonical form
+ * itself, not an implementation-local choice (see the same note added there).
  */
 export function canonicalRowHash(row: AuditLogRow, prevHash: string): string {
+  if (!PREV_HASH_PATTERN.test(prevHash)) {
+    throw new Error(
+      "canonicalRowHash: prevHash must be exactly 64 lowercase hex characters (a SHA-256 " +
+        "digest, or ZERO_HASH for the first row in a chain) — refusing to hash an " +
+        "unvalidated prevHash, since it is field 1 of the joined canonical form.",
+    );
+  }
+
+  const actorId = textOrEmpty(row.actorId);
+  const actorType = textOrEmpty(row.actorType);
+  const apiKeyId = textOrEmpty(row.apiKeyId);
+  const impersonatorId = textOrEmpty(row.impersonatorId);
+  const actorIp = textOrEmpty(row.actorIp);
+  const userAgent = textOrEmpty(row.userAgent);
+  const traceId = textOrEmpty(row.traceId);
+  const workspaceId = textOrEmpty(row.workspaceId);
+
+  assertNoRecordSeparator("createdAt", row.createdAt);
+  assertNoRecordSeparator("actorId", actorId);
+  assertNoRecordSeparator("actorType", actorType);
+  assertNoRecordSeparator("apiKeyId", apiKeyId);
+  assertNoRecordSeparator("impersonatorId", impersonatorId);
+  assertNoRecordSeparator("actorIp", actorIp);
+  assertNoRecordSeparator("userAgent", userAgent);
+  assertNoRecordSeparator("traceId", traceId);
+  assertNoRecordSeparator("workspaceId", workspaceId);
+  assertNoRecordSeparator("action", row.action);
+  assertNoRecordSeparator("entityType", row.entityType);
+  assertNoRecordSeparator("entityId", row.entityId);
+
   const fields = [
     prevHash,
     row.createdAt,
-    textOrEmpty(row.actorId),
-    textOrEmpty(row.actorType),
-    textOrEmpty(row.apiKeyId),
-    textOrEmpty(row.impersonatorId),
-    textOrEmpty(row.actorIp),
-    textOrEmpty(row.userAgent),
-    textOrEmpty(row.traceId),
-    textOrEmpty(row.workspaceId),
+    actorId,
+    actorType,
+    apiKeyId,
+    impersonatorId,
+    actorIp,
+    userAgent,
+    traceId,
+    workspaceId,
     row.action,
     row.entityType,
     row.entityId,
@@ -150,10 +275,23 @@ export function canonicalRowHash(row: AuditLogRow, prevHash: string): string {
 
 /**
  * Chronological order for `reconstructAt`'s fold: ascending `createdAt`, ties broken by
- * ascending `sequence` — the tie-break this pull request's decision-log entry records
- * (insertion order, since it is the one secondary signal a database provides for free,
- * and neither `audit-trail.md` nor `data-model.md`'s `activity` table names any other
- * rule).
+ * ascending `sequence` — an opaque, caller-supplied monotonic key, compared only for
+ * ordering and never interpreted as meaningful data. This function does not care where
+ * `sequence` comes from, only that it is a real total order over rows sharing one
+ * `createdAt` instant.
+ *
+ * **What `sequence` may actually be backed by, corrected (Opus security review of PR
+ * #175, S-4).** The decision-log entry this replaced described `sequence` as standing in
+ * for "Postgres's real auto-increment `activity.id`" — but `data-model.md`'s own
+ * Conventions rule is explicit: "Primary keys are CUID2 text. Primary keys and surrogate
+ * ids are never sequential", and `activity`'s column list (§4) names no auto-increment
+ * column. There is no such thing in this schema for `sequence` to stand in for. Nor can a
+ * CUID2 `id` substitute: this codebase's `createId()` (`@paralleldrive/cuid2`) derives
+ * each id from `sha3-512(timestamp + salt + counter + fingerprint)` — a cryptographic
+ * hash, deliberately chosen (per the library's own documented design goal, "k-sortable =
+ * insecure") so the output carries no correlation to insertion order at all. See the
+ * decision log's superseding entry for what a real ordering signal for this tie-break
+ * would have to be, since neither of those two candidates works.
  */
 function compareActivityRows(a: ActivityRow, b: ActivityRow): number {
   const byTime = a.createdAt.getTime() - b.createdAt.getTime();

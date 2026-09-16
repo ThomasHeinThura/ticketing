@@ -17,6 +17,73 @@ Newest first.
 
 ---
 
+### 2026-09-16 · `reconstructAt`'s same-instant tie-break needs a real ordering signal this schema does not yet have — supersedes the auto-increment premise
+
+**Supersedes:** the entry titled "`reconstructAt`'s same-instant tie-break is insertion
+order, ascending surrogate key" (2026-09-16, appearing later in this log). That entry is
+not rewritten — this new entry corrects it, per this file's own append-only rule.
+
+**Decision:** the superseded entry's premise was false and is withdrawn. It described
+`ActivityRow.sequence` as standing in for "Postgres's real auto-increment `activity.id`" —
+no such column exists, or can exist, under this schema's own rules. `data-model.md`'s
+Conventions state unconditionally: "Primary keys are CUID2 text. Primary keys and
+surrogate ids are **never** sequential"; `activity`'s column list (§4) names no
+auto-increment/`bigserial`/`identity` column either. The premise was written down without
+being checked against the schema it claimed to describe.
+
+Investigated whether `activity.id` — a CUID2, not sequential, but still possibly
+correlated with insertion order in practice — could substitute anyway. It cannot, checked
+by reading the actual implementation rather than assumed from the name: this codebase's
+`createId()` (`@paralleldrive/cuid2` v3.3.0, imported in `apps/api/src/database/schema.ts`)
+builds each id as a SHA3-512 hash of `(timestamp, salt, counter, host fingerprint)`,
+rendered in base36. The library's own documented design goal is the opposite of what a
+tie-break needs — its README states plainly, "k-sortable = insecure," and explains that
+CUID2 deliberately hashes away any correlation between an id's value and when it was
+generated. Two `activity` rows created microseconds apart get ids in effectively random
+relative order. **CUID2 ids in this codebase carry no genuine ordering guarantee.**
+
+`reconstructAt` itself (`packages/domain/src/audit/audit.ts`) needs no code change: its
+fold is correct for *any* real total order supplied as `sequence`, for rows sharing one
+`createdAt` instant. What was wrong is the claim about where a real caller is supposed to
+get that order from — today, **no column this schema actually has can back it.**
+
+**What this means for the impure edge, left open, not decided here:** the `activity`
+insert path (part of issue #37's remaining scope — it does not exist yet, per this
+module's own doc comment) needs a genuine monotonic signal for same-instant ties. Two
+realistic options, neither picked here: **(a)** add a column to `activity` dedicated to
+this tie-break only — e.g. `bigserial`/`identity` — as a narrow, explicitly-scoped
+exception to `data-model.md`'s "surrogate ids are never sequential" rule (that rule's own
+stated rationale is about ids used as references — security, not sortability — which does
+not obviously extend to an internal ordering key nobody outside the database ever
+observes, but that argument needs to be made explicitly if this option is taken, not
+assumed); or **(b)** have the impure edge derive order from something Postgres already
+tracks internally (e.g. transaction/commit ordering), which needs its own scrutiny before
+being relied on. Whichever the impure-edge implementer picks is a real schema/mechanism
+choice and needs its own decision-log entry when it lands — this entry closes the false
+premise, not that open question.
+
+**Why:** found by the Opus security review of PR #175 (finding S-4): `types.ts` and the
+superseded entry both asserted a mechanism that cannot exist under `data-model.md`'s own
+stated schema rules. `check:vocabulary` could not catch this because the false claim lived
+only in a doc comment and a decision-log entry, never in a table registration that gate
+checks.
+
+**Alternatives considered:** silently editing the superseded entry's text instead of
+adding a new one (rejected — the decision log is append-only; per this file's own rule and
+`AGENTS.md` do-not 11, an old entry is never rewritten); asserting CUID2 ids are "close
+enough" to time-ordered without checking the library's actual behavior (rejected — checked
+`createId`'s real implementation specifically to avoid repeating the original mistake);
+deciding between option (a) and (b) above here, in this remediation task (rejected — that
+is a genuine schema/mechanism design choice for whoever builds the impure edge, with real
+tradeoffs on each side, not a routine gap-filling call this task was scoped to make).
+
+**Decided by:** the orchestrating session (via a delegated security-remediation task),
+2026-09-16, correcting a factual error in a previous entry rather than deciding new
+product or architecture. The open schema question in "What this means for the impure
+edge" above is unresolved and needs its own decision when that work is actually built.
+
+---
+
 ### 2026-09-16 · The audit hash chain's zero hash is 64 hex `0` characters
 
 **Decision:** the first row in an `audit_log` hash chain (which has no real predecessor to
