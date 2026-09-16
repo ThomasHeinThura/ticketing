@@ -15,6 +15,7 @@ import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { MAX_PENDING_INVITATIONS_PER_WORKSPACE } from "../../apps/api/src/utils/workspace-invitation-limits";
 import { resetTestDatabase } from "./helpers/database";
 import {
   inviteAndAcceptAsNewMember,
@@ -78,6 +79,53 @@ async function membershipRowCount(
       ),
     );
   return rows.length;
+}
+
+async function pendingInvitationRowCount(workspaceId: string): Promise<number> {
+  const rows = await db
+    .select({ id: schema.invitationTable.id })
+    .from(schema.invitationTable)
+    .where(
+      and(
+        eq(schema.invitationTable.workspaceId, workspaceId),
+        eq(schema.invitationTable.status, "pending"),
+      ),
+    );
+  return rows.length;
+}
+
+/**
+ * Direct-insert seed for the invitation-ceiling tests below -- the same
+ * "seed the boring bulk of a capacity scenario by hand, exercise the real
+ * route only at the boundary" pattern `workspace-role-writes.test.ts` uses
+ * for its 25-role ceiling test, adapted here to avoid `n` real HTTP
+ * round-trips for `n` up to 100. Each row gets a distinct email so the test
+ * asserting on `pendingInvitationRowCount` can tell seeded rows apart from
+ * whatever the test's own real HTTP call adds.
+ */
+async function seedPendingInvitations(
+  workspaceId: string,
+  inviterId: string,
+  n: number,
+  overrides?: { emailPrefix?: string; expired?: boolean },
+): Promise<void> {
+  if (n <= 0) return;
+  const now = new Date();
+  const expiresAt = overrides?.expired
+    ? new Date(now.getTime() - 60_000)
+    : new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  const prefix = overrides?.emailPrefix ?? "seed-pending";
+  await db.insert(schema.invitationTable).values(
+    Array.from({ length: n }, (_, i) => ({
+      workspaceId,
+      email: `${prefix}-${i}@example.com`,
+      role: "member",
+      status: "pending" as const,
+      expiresAt,
+      createdAt: now,
+      inviterId,
+    })),
+  );
 }
 
 beforeEach(async () => {
@@ -258,6 +306,207 @@ describe("S6a invite (POST /api/workspace/{id}/invitations)", () => {
     );
     expect(invited.status).toBe(200);
   });
+
+  it(`enforces the ${MAX_PENDING_INVITATIONS_PER_WORKSPACE}-pending-invitation ceiling (issue #6 NB-1)`, async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "InviteCeiling",
+    );
+
+    // Seed all but one of the ceiling directly -- 100 real HTTP round-trips
+    // would work but is needlessly slow for what is otherwise a boundary
+    // check.
+    await seedPendingInvitations(
+      workspaceId,
+      owner.user.id,
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE - 1,
+    );
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE - 1,
+    );
+
+    // The real route takes the LAST available slot.
+    const atCeiling = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "the-hundredth@example.com", role: "member" },
+    );
+    expect(atCeiling.status).toBe(200);
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+    );
+
+    // The real route refuses the next one, and writes no row.
+    const overCeiling = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "one-too-many@example.com", role: "member" },
+    );
+    expect(overCeiling.status).toBe(400);
+    // `HTTPException#getResponse()` renders `message` as a plain-text body,
+    // not JSON -- same convention every other error-path assertion in this
+    // suite relies on (e.g. `workspace-invite-abuse-guards.test.ts`).
+    await expect(overCeiling.text()).resolves.toContain(
+      `maximum of ${MAX_PENDING_INVITATIONS_PER_WORKSPACE} pending invitations`,
+    );
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+    );
+  }, 30_000);
+
+  it("the ceiling is workspace-scoped -- a workspace at capacity does not block invitations in a different workspace", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const fullWorkspaceId = await createWorkspace(app, owner.cookie, "Full");
+    const otherWorkspaceId = await createWorkspace(app, owner.cookie, "Other");
+
+    await seedPendingInvitations(
+      fullWorkspaceId,
+      owner.user.id,
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+    );
+
+    const blockedInFull = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      fullWorkspaceId,
+      { email: "blocked@example.com", role: "member" },
+    );
+    expect(blockedInFull.status).toBe(400);
+
+    const okInOther = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      otherWorkspaceId,
+      { email: "fine-elsewhere@example.com", role: "member" },
+    );
+    expect(okInOther.status).toBe(200);
+  });
+
+  it("resend: true succeeds even when the workspace is AT the ceiling, since it updates the existing row rather than inserting a new one", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "ResendAtCeiling",
+    );
+
+    // 99 filler rows plus one real, unexpired pending invitation for the
+    // email we are about to resend to -- 100 pending rows total, exactly at
+    // the ceiling.
+    await seedPendingInvitations(
+      workspaceId,
+      owner.user.id,
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE - 1,
+    );
+    const first = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "resend-target@example.com", role: "member" },
+    );
+    expect(first.status).toBe(200);
+    const firstBody = (await first.json()) as { id: string };
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+    );
+
+    // A brand-new invitation is refused here, confirming the workspace is
+    // genuinely at the ceiling before the resend assertion below.
+    const newInviteBlocked = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "genuinely-new@example.com", role: "member" },
+    );
+    expect(newInviteBlocked.status).toBe(400);
+
+    // But resending the existing invitation succeeds, because it updates
+    // the same row instead of inserting a new one.
+    const resent = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "resend-target@example.com", role: "member", resend: true },
+    );
+    expect(resent.status).toBe(200);
+    const resentBody = (await resent.json()) as { id: string };
+    expect(resentBody.id).toBe(firstBody.id);
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+    );
+  }, 30_000);
+
+  it("an expired-but-still-pending row still occupies a ceiling slot until it is canceled (deliberate design choice, see invite-workspace-member.ts)", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "ExpiredCounts",
+    );
+
+    // 99 live rows plus ONE expired-but-status-"pending" row -- 100 rows
+    // that all still read `status = 'pending'`, even though one of them can
+    // no longer be resent or accepted.
+    await seedPendingInvitations(
+      workspaceId,
+      owner.user.id,
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE - 1,
+    );
+    const now = new Date();
+    const [expiredRow] = await db
+      .insert(schema.invitationTable)
+      .values({
+        workspaceId,
+        email: "stale-expired@example.com",
+        role: "member",
+        status: "pending",
+        expiresAt: new Date(now.getTime() - 60_000),
+        createdAt: now,
+        inviterId: owner.user.id,
+      })
+      .returning();
+    if (!expiredRow) throw new Error("seed insert returned no row");
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+    );
+
+    // The expired row counts against the ceiling -- a new invite is refused
+    // even though the expired row itself could never be resent or accepted.
+    const blocked = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "blocked-by-stale@example.com", role: "member" },
+    );
+    expect(blocked.status).toBe(400);
+
+    // Canceling the expired row frees the slot it was occupying.
+    const canceled = await cancelInvitationNative(
+      app,
+      owner.cookie,
+      expiredRow.id,
+    );
+    expect(canceled.status).toBe(200);
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE - 1,
+    );
+
+    const nowAllowed = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "allowed-after-cancel@example.com", role: "member" },
+    );
+    expect(nowAllowed.status).toBe(200);
+  }, 30_000);
 });
 
 describe("S6a accept (POST /api/invitation/{id}/accept)", () => {
