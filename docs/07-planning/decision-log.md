@@ -17,6 +17,74 @@ Newest first.
 
 ---
 
+### 2026-09-16 · P1's foundational identity schema (`organisation`, `person`, `membership`, `role`) starts as its own bounded PR, ahead of #23
+
+**Decision:** build `organisation`, `organisation_quota`, `person`, `membership` and `role`
+— exactly the tables `data-model.md` §2 already specifies, no more — as one small, purely
+additive migration PR (new tables only; no existing table renamed, dropped or altered),
+seeded with one internal `organisation` and `person` rows backfilled 1:1 from existing
+`user` rows. This lands *before* issue #23 (work items) rather than as part of it.
+
+**Why:** the P1 core lane-prep plan (`docs/07-planning/lane-prep/p1-core.md`) charters eight
+issues (#23–#30) but none of them is chartered to build this schema, even though #23 needs
+`person` for `work_item.assignee_id`/`requester_id` and #25 needs it for
+`project.manager_id` — confirmed live: `apps/api/src/database/schema.ts` has no
+`organisation`, `person`, `membership` or `role` table today, only the native
+`workspace`/`team`/`invitation`/`workspace_role` tables S7/S10 already added and kaneo's
+original nouns. `packages/permissions/src/identity.ts`'s `ResolvedIdentity` already declares
+`personId`/`organisationId` as non-optional, and no `resolveIdentity` implementation exists
+anywhere in `apps/api/src` yet — so this is a real, unowned gap the lane-prep plan's own
+shared-contract table did not name, not a restatement of anything already decided. Scoped
+deliberately narrow (new tables only, no route or middleware wiring, no change to the
+existing `team`/`invitation`/`workspace_role` tables) to keep this reviewable as one bounded
+PR rather than folding it into #23's own, separately-scoped migration; reconciling those
+existing tables with the new `role`/`membership` shape is real but separate work, left for
+whichever issue actually needs it changed, per `CLAUDE.md`'s shared-contract rule.
+
+**Alternatives considered:** building it inline as part of #23's own migration (rejected —
+#25 needs `person` too, and a schema this foundational deserves its own focused review
+rather than being buried in a feature PR); waiting for Thomas to assign it explicitly
+(rejected — this is routine implementation sequencing within the already-approved P1
+dependency graph and already-settled `data-model.md` schema, squarely within the delegated
+merge/prioritization authority below, not a new architecture decision).
+
+**Decided by:** the orchestrating session, 2026-09-16, as a routine sequencing call within
+the authority the entry below delegates.
+
+---
+
+### 2026-09-16 · #23's `task` → `work_item` migration is one-shot, not the two-phase live-cutover dance
+
+**Decision:** when issue #23 (work items) generates its first schema migration — renaming
+kaneo's `task` table toward `work_item` and restructuring it per `data-model.md` §4 — it is a
+single forward migration (rename plus additive columns in one pass), not the
+add/dual-write/backfill/cutover/drop two-phase sequence `docs/04-engineering/migrations.md`
+prescribes for a column "a running replica may still read."
+
+**Why:** that two-phase convention exists to protect a **live system with real traffic**
+reading the old shape during the cutover window. TaskDesk v2 is pre-launch — no production
+data exists yet, and nothing reads `taskTable` outside this same codebase's own deploy. The
+convention's entire rationale does not apply to a table with zero live readers to protect.
+Flagged as a genuine open question by the P1 lane-prep plan (`docs/07-planning/lane-prep/
+p1-core.md` §0, §9) because `migrations.md` does not itself carve out a pre-launch exception
+— recorded here so #23's implementer has a real answer rather than discovering this as a
+blocker mid-migration, or guessing.
+
+**Alternatives considered:** the full two-phase dance regardless (rejected — pure overhead
+with no live reader to protect, and it would roughly double the size of #23's first PR for
+no safety benefit); asking Thomas (rejected — this is exactly the kind of implementation-
+sequencing call, consistent with `migrations.md`'s own stated rationale, that the delegation
+below covers; it does not change product behaviour, security posture, or any architecture
+settled in a spec).
+
+**Decided by:** the orchestrating session, 2026-09-16, as a routine implementation-design
+call within the authority the entry below delegates. Applies specifically to #23's `task` →
+`work_item` rename; does not establish a blanket pre-launch exception to `migrations.md` for
+every future migration — a genuinely destructive or reader-breaking change should still be
+evaluated on its own facts.
+
+---
+
 ### 2026-09-16 · Autonomous continuation authorized past Throttle 1 — prioritize, merge, close, without per-ticket sign-off
 
 **Decision:** once Throttle 1's conditions are genuinely met (verified live, not rounded
