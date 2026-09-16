@@ -193,3 +193,55 @@ verdict for the head named above.
 *Lightweight delta confirmation by a fresh Claude Opus context, 2026-09-16. A separate
 context from the one that produced the full review above, and from anything that authored
 or remediated the change.*
+
+---
+
+# Second merge-delta confirmation — `origin/main` (PR #151) merged in
+
+**Reviewed head:** `1403e000d37ee7dbb1623e405de67ce742a7dd39`
+**Supersedes the head binding of:** `acaa424b0570fc8518c180ddc9b1ee638706bb35` (the first
+confirmation above, which remains valid for its own head)
+**Merge commit:** `1403e00` — parents `6a71bba` (the first confirmation's note commit) and
+`6486d50` (`origin/main`, PR #151)
+
+**Verdict: CLEAR.** The merge is governance documentation only. Zero code.
+
+## Tier
+
+Same lightest row as the first confirmation, and for the same reason: the only delta since
+the last clearance is the branch absorbing upstream commits to satisfy branch protection's
+"branches must be up to date". The staleness mechanism fired because a commit landed, not
+because the reviewed surface moved. This pass claims only that — it does not re-derive the
+adversarial analysis, the mutation testing, or the merge-base differential, which stand on
+the full review at `fd8a429`.
+
+## What was verified directly
+
+| Claim | Evidence |
+| --- | --- |
+| **The merge carries only PR #151's own governance docs** | `git diff 6a71bba 1403e00 --stat` is exactly three files: `AGENTS.md` (+72/-9 region), `CLAUDE.md`, `docs/07-planning/decision-log.md`. PR #151 is the risk-graduated-review-tiers change, documentation only |
+| **Nothing under any code or dependency path changed** | `git diff acaa424 1403e00 --name-only -- apps/ packages/ scripts/ '*.json' '*.yaml' '*.lock'` is empty. No `package.json`, no lockfile, no `pnpm-workspace.yaml` |
+| **`scripts/ci/` is untouched in its entirety** | `git diff acaa424 1403e00 -- scripts/ci/` is completely empty — not one byte in the whole tree this PR exists to change |
+| **`check-reviews.mjs` is byte-identical at all three cleared heads** | Blob hash `114788a7fd6a6bd91a617ee3577b5104c134c3d1` at `fd8a429`, `acaa424` and `1403e00` alike |
+| **The four imported functions are untouched** | `scripts/ci/lib/pr-body.mjs` is blob-identical between `acaa424` and this head (`f9c6ffd566a07ebff1bed09a43cff2ef454dea37`), so `contentOf`, `field`, `sections` and `normaliseHeading` cannot have moved. The function-level extraction done in the first confirmation carries forward unchanged |
+| **The full diff since the last clearance decomposes with no remainder** | `git diff acaa424 1403e00 --stat` shows four files. Three are PR #151's, above. The fourth is this very review note, added by the first confirmation's own commit `6a71bba` — a review artefact, not a change to the candidate |
+| **Probe suite green, independently run at this head** | Fresh clone checked out at `1403e00`: `node --test scripts/ci/probes/spec-na-detection.test.mjs` → **18 tests, 18 pass, 0 fail**. Unchanged from both prior heads |
+
+## What this confirmation did not do
+
+- Did not re-run the adversarial input matrix, the mutation testing, or the merge-base
+  behavioural differential. Byte-identity of the reviewed surface is what carries the full
+  review at `fd8a429` forward to this head.
+- Did not re-run the full `scripts/ci` suite. The three known `tsc ENOENT` failures
+  characterised in the first confirmation are a clone-without-`pnpm install` artefact and
+  nothing in this merge touches them.
+- Did not review PR #151's governance changes on their merits. They reached `main` through
+  their own gates; this pass checked only that they are documentation and reach no code.
+- Did not re-check the full review's three informational findings. Nothing in the merge
+  touches the code they describe.
+
+---
+
+*Second lightweight delta confirmation by a fresh Claude Opus context, 2026-09-16. A
+separate context from the one that produced the full review, from the one that produced the
+first confirmation, and from anything that authored or remediated the change.*
