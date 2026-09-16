@@ -31,7 +31,9 @@ Throttle 1's conditions** unless Thomas changes that contract.
 
 **STAGE LEDGER — the authoritative answer to "how far has the retrofit run?"** Throttle 1's
 condition 2 is measured here, so this ledger is the thing to read, not the prose below it.
-As of 2026-09-10, `main` at `050a4fd`:
+**As of 2026-09-16, `main` at `6de483f` — all 12 required stages landed; the retrofit is
+DONE; `organization()` is unmounted; Throttle 1 is open.** (Previously updated 2026-09-10,
+`main` at `050a4fd`.)
 
 | Stage | State | Landed via | Evidence |
 |---|---|---|---|
@@ -48,34 +50,33 @@ As of 2026-09-10, `main` at `050a4fd`:
 | **S8a** — active workspace | ✅ **COMPLETE** | PR #109, squash `86c23b2` (reviewed head `889794619d456d6e06c17072b5eff41a3c360362`) | `POST /api/workspace/{workspaceId}/activate`, writing the **calling session's own** `active_organization_id` — demonstrated, not asserted: an injection attempt naming a victim's `sessionId`, `userId` and `workspaceId` in both the query string and the body moved only the caller's row. Membership is enforced by route middleware (`workspaceAccess.fromParam` + `requireWorkspaceMembership`), not by the declarative policy, whose row is `allow`/`allow` for every role exactly as the pre-existing `leave` row is. Independent Opus review CLEAR WITH FINDINGS, zero blocking, note at `docs/07-planning/security-reviews/109-native-set-active.md`. **The closing invariant held: zero live `authClient.organization.setActive` callers remain** |
 | **S8b** — rename the column back | ⏸️ **DEFERRED out of P0** | — | Needs a migration |
 | **S9** — teams decision | ✅ **COMPLETE as a documentation-only stage** (resolved Path B, 2026-09-10) | PR #104 | **The confirmation is done**: zero team callers anywhere in `apps/`, `packages/` or `tests/`, in all ten plugin spellings, and native create already writes all nine effects unconditionally. **The `auth.ts` flag drop moves into S10** rather than breaking the S1 oracle — recorded in [`decision-log.md`](../decision-log.md), entry 2026-09-10. Preserved as the evidence for Path B: flipping `teams: { enabled: true }` to `false` independently breaks the still-live **S1** oracle (19 passed / 1 failed, same assertion as before), and that is mechanically unavoidable — `teams.enabled` is the one flag that both registers the nine team routes and gates `crud-org.mjs`'s default-team side effect, with no finer-grained knob to split them. Editing S1 to absorb that is out of this stage's scope. See **§ S9 — why Path B, with the experiment that settles it** |
-| **S10** — unmount (the tripwire commit) | ❌ **NOT STARTED — BLOCKED, DECISION REQUIRED FOR THOMAS** | PR #107 (open) | S3, S4b, S5, S6a, S8a and now **S7** (PR #155, 2026-09-16) are all merged, and **S9 is resolved** (Path B). **S10's implementation dependency is fully satisfied** — but PR #107 itself, the tripwire commit, is blocked on a separate, pre-existing problem: the caller-count scanner it relies on (`scripts/ci/lib/organization-callers.mjs`) has had **seven distinct false-zero bypasses** found across three Opus review rounds, and round 7 deliberately declined an eighth remediation attempt, judging the recurring-gap pattern itself more significant than any one bug. The independent-security-review box is intentionally unticked; the PR body itself asks for Thomas's decision on how to proceed before continuing. **S9's resolution moved its `auth.ts` edit — dropping `teams.enabled` and the nine team routes — into this stage's tripwire commit**; see the S9 row and § S9 — why Path B. `tests/api-contract/openapi.json` still declares the `/auth/organization/*` operations that S10 removes. Two obligations inherited from the stages that landed: **NB-1 from S6a** — add a per-workspace pending-invitation ceiling, or unmounting `organization()` leaves the invite surface with no cap at all, the same abuse class as the 2026-05-28 phishing incident; and **closing #88**, which S6a fixed at source but cannot close while the plugin route is mounted |
+| **S10** — unmount (the tripwire commit) | ✅ **COMPLETE, 2026-09-16 — THE RETROFIT'S FINAL STAGE** | PR #161 (merge `6de483f`) — a fresh, purpose-built PR, **not** PR #107 | PR #107's own scanner was never trusted or relied on — the S10 instructions explicitly required independent source-level verification of every executable `authClient.organization.*` caller instead, which found zero. Two prep PRs landed first: **#159** (10 test files' setup swapped from plugin routes to native) and **#158** (native 100-pending-invitations-per-workspace ceiling added before removing the plugin's own protection — closing **NB-1**; its review found issue #160, a genuine S10 prerequisite, filed and fixed before this stage merged). S10 itself removed `organization()` and its `teams` config (closing **S9's deferred `auth.ts` edit** in the same commit, as planned), the six plugin-only Drizzle schema entries, `auth-openapi.ts` (1221 lines), `organization-plugin-role-guard.ts`, and nine characterization/equivalence test files whose only subject was the plugin. Reviewed by the full 3-Sonnet-plus-Opus panel — **CLEAR WITH FINDINGS**: F1 (MEDIUM, a session-state-integrity regression in better-auth's own session-field serialization for `activeOrganizationId`, found independently by two reviewers via different methods, fixed with a regression test) and F2 (LOW, doc-only). `pnpm openapi:write` regeneration was required and initially missed, caught by CI, fixed before merge. **Closes #88** (native `accept-invitation` has its own explicit lock-and-check fix, verified, not just the plugin route disappearing) |
 | **S11** — remove legacy Better Auth access-control shim and dependency from `packages/permissions` | ❌ **NOT STARTED — OWNED, separate work item** | — | `packages/permissions/src/index.ts` still imports `createAccessControl`, `defaultStatements`, `memberAc`, `adminAc`, `ownerAc` from `better-auth/plugins/organization/access`. Was **#7's**; #7 is **CLOSED**. Thomas has assigned it a dedicated work item: remove the transitional shim, remove the final `better-auth` dependency from `packages/permissions`, regenerate the lockfile, prove no consumers remain. **Dependency: S10 → S11** — S10 must unmount the plugin first. **Not this retrofit's**, and **stays outside Throttle 1's conditions** unless Thomas changes that contract |
 
 ### Progress, stated the way it is actually useful
 
-**"Seven of fifteen" is a misleading denominator** and should not be quoted on its own: it
-counts two stages that are deferred out of P0 and one (S11) that has its own separate work
-item, so it understates how close S10 is. State it in four buckets instead:
+**All 12 required stages are landed — the retrofit through S10 is DONE, 2026-09-16.** State
+it in the same four buckets as before, now that the last one has moved:
 
 | Bucket | Stages | Count |
 | --- | --- | --- |
-| **Landed** | S0, S1, S2, S3, S4, S4b, S5, S6a, S7, S8a, S9 | **11** |
-| **Required to reach S10, outstanding** | S10 — blocked on Thomas's decision re: PR #107, not on implementation | **1** |
+| **Landed** | S0, S1, S2, S3, S4, S4b, S5, S6a, S7, S8a, S9, **S10** | **12** |
+| **Required to reach S10, outstanding** | none | **0** |
 | **Deferred outside P0** | S6b, S8b | 2 — do **not** count these against Throttle 1 |
-| **Separately owned — now has a dedicated work item** | S11 | 1 — **not** this retrofit's; #7, its former owner, is closed, and Thomas has assigned it a new work item (dependency S10 → S11). See the S11 row. Never fold it into #6 to make the ledger tidy. **Stays outside Throttle 1** |
+| **Separately owned — now has a dedicated work item** | S11 | 1 — **not** this retrofit's; #7, its former owner, is closed, and Thomas has assigned it a new work item (dependency S10 → S11, now unblocked — see the S11 row). Never fold it into #6 to make the ledger tidy. **Stays outside Throttle 1** |
 
-So the live figure is **11 landed of 12 required**, with **S10 alone outstanding** — and
-S10's own PR (#107) is not waiting on more implementation, it is waiting on Thomas's
-decision about the caller-scanner finding described in its row above. (**S4b was new to
-this count** when it was added on 2026-09-09 — it was always required work, just not
-previously written down as its own row; it has since landed. See the S4b row.)
+**12 of 12 required stages landed.** S10 merged as PR #161 — a fresh, purpose-built PR, not
+PR #107, which remains a separate, held CI safety-net scanner per Thomas's own decision and
+was never a dependency of S10's actual completion.
 
-**Issue #6 is therefore not complete and Throttle 1 cannot open** — condition 2 requires the
-retrofit through S10. The other four conditions are met: #5 complete, #7 complete and
-closed, route-policy coverage executing in CI, and an unclassified route demonstrated to
-fail CI.
+**Issue #6 is closed and Throttle 1 is open** (2026-09-16) — condition 2 required the
+retrofit through S10, and S10 landed. The other four conditions were already met: #5
+complete, #7 complete and closed, route-policy coverage executing in CI, and an
+unclassified route demonstrated to fail CI. See `status.md`'s `## Throttle 1` section for
+the full verification record, including the four plugin-specific defect issues (#88, #108,
+#124, #136) verified and closed alongside #6.
 
-**What is startable right now, and what is not:**
+**What was startable, historically — kept for the stage-by-stage record:**
 
 - **S3** — ✅ **COMPLETE**, merged via PR #76.
 - **S4b** — ✅ **COMPLETE**, merged via PR #85.
@@ -91,9 +92,8 @@ fail CI.
   `packages/` and `tests/`, all ten plugin spellings); the `auth.ts` flag drop and the nine
   team routes move into S10's tripwire commit. See **§ S9 — why Path B, with the experiment
   that settles it**.
-- **S10** — its implementation dependency (S7, S9) is now fully satisfied, but its own PR
-  (#107) is **blocked — DECISION REQUIRED FOR THOMAS** on the caller-scanner finding. See
-  the S10 row above. Not startable again until that decision is made.
+- **S10** — ✅ **COMPLETE, 2026-09-16** — merged as PR #161. The retrofit's final stage;
+  `organization()` is unmounted. See the S10 row above.
 
 ### S9's real precondition — corrected 2026-09-09, and demonstrated
 
