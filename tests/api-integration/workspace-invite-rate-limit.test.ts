@@ -18,10 +18,8 @@ import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import {
-  createWorkspaceViaPlugin,
-  signUpUser,
-} from "./helpers/organization-http";
+import { signUpUser } from "./helpers/organization-http";
+import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 describe("S6a: native rate limit on POST /api/workspace/{id}/invitations", () => {
   // Same fixed TEST-NET-2 address, same reasoning as
@@ -37,7 +35,7 @@ describe("S6a: native rate limit on POST /api/workspace/{id}/invitations", () =>
   it("allows 5 invite-create requests within the 60s window and rejects the 6th with 429", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
-    const created = await createWorkspaceViaPlugin(app, owner.cookie);
+    const created = await createWorkspaceNative(app, owner.cookie);
     const workspace = (await created.json()) as { id: string };
 
     const statuses: number[] = [];
