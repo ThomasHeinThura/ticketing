@@ -4,6 +4,7 @@ import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import getWorkspaces from "@/fetchers/workspace/get-workspaces";
 import { authClient } from "@/lib/auth-client";
 import { handleUnauthorized, isUnauthorizedError } from "@/lib/http-error";
+import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
 import type Workspace from "@/types/workspace";
 
 export const Route = createFileRoute("/_layout/_authenticated/dashboard/")({
@@ -26,7 +27,7 @@ export const Route = createFileRoute("/_layout/_authenticated/dashboard/")({
     }
 
     const session = await authClient.getSession();
-    const activeWorkspaceId = session?.data?.session?.activeOrganizationId;
+    const activeWorkspaceId = getActiveOrganizationId(session?.data);
 
     if (workspaces && workspaces.length > 0) {
       if (

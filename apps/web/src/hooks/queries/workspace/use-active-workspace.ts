@@ -1,6 +1,7 @@
 import { useParams } from "@tanstack/react-router";
 import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 import { authClient } from "@/lib/auth-client";
+import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
 
 // S3 (issue #6, retrofit plan §3): replaces authClient.useActiveOrganization()
 // (a plugin read) with the native workspace list plus the session's own
@@ -34,7 +35,7 @@ function useActiveWorkspace() {
     }),
   });
 
-  const activeOrganizationId = session?.session?.activeOrganizationId;
+  const activeOrganizationId = getActiveOrganizationId(session);
   const targetId = workspaceId ?? activeOrganizationId ?? undefined;
   const workspace = targetId
     ? workspaces?.find((ws) => ws.id === targetId)
