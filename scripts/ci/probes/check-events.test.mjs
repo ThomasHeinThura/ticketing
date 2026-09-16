@@ -25,6 +25,12 @@
  *   MEDIUM  three mutations left `pnpm test:ci-scripts` green: widening `KEY_SHAPE`, and
  *           removing either of the two "refusing to run" fail-closed guards. See
  *           "probe gaps the review found".
+ *   HIGH    (round 5) `resolveLocalConst` matched its declaration regex against `code`
+ *           (string CONTENTS intact) and never checked what KIND of binding the resolved
+ *           name actually was at the call site — a same-named `let`/`var`, a function
+ *           parameter, or a decoy `const NAME = "…";` written as the VALUE of an unrelated
+ *           string literal could all silently win. See "resolveLocalConst fails closed on
+ *           shadowed/decoy declarations".
  */
 
 import assert from "node:assert/strict";
@@ -255,6 +261,149 @@ describe("check:events — resolveLocalConst refuses ambiguity rather than guess
 
     const result = runChecker(dir, "check-events.mjs");
     assert.equal(result.status, 0, result.output);
+  });
+});
+
+describe("check:events — resolveLocalConst fails closed on shadowed/decoy declarations (round 5, HIGH)", () => {
+  // The flat regex search found exactly one `const NAME = "…";` and resolved to it with
+  // confidence, but never checked what KIND of binding `NAME` actually was at the call
+  // site — nor, separately, whether the "declaration" it found was really code at all.
+  // Both gaps let a call site that reads an unrelated, genuinely undeclared string report
+  // as though it read the const's value instead. Reproduced against the pre-fix checker:
+  // all three RED cases below returned exit 0 with "1 published event key(s) ... every one
+  // registered" — the const's value, standing in for whatever the shadowed binding really
+  // held.
+
+  it("a function PARAMETER shadowing a module-level const of the same name is refused, not resolved to the const's value", () => {
+    const dir = bareRepo("param-shadow-red");
+    write(
+      dir,
+      "apps/api/src/probe/param-shadow.ts",
+      [
+        'import { publishEvent } from "../../events";',
+        "",
+        'const eventType = "task.created";',
+        "",
+        "export function reemit(eventType) {",
+        "  publishEvent(eventType, { id: 'x' });",
+        "}",
+        "",
+        "export async function trigger() {",
+        '  reemit("probe.review91_round5_param_shadow_undeclared");',
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const result = runChecker(dir, "check-events.mjs");
+    assert.notEqual(result.status, 0, result.output);
+    assert.match(result.output, /is bound some other way as well/);
+    // NON-VACUITY: the pre-fix checker resolved this call confidently to the outer const's
+    // "task.created" and printed success. Assert this run is not that.
+    assert.doesNotMatch(result.output, /published event key.*registered/);
+  });
+
+  it("PAIRED: renaming the parameter removes the collision and the outer const resolves correctly", () => {
+    const dir = bareRepo("param-shadow-green");
+    write(
+      dir,
+      "apps/api/src/probe/param-shadow.ts",
+      [
+        'import { publishEvent } from "../../events";',
+        "",
+        'const eventType = "workspace.created";',
+        "",
+        "export function reemit(otherEventType) {",
+        "  publishEvent(eventType, { id: 'x' });",
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const result = runChecker(dir, "check-events.mjs");
+    assert.equal(result.status, 0, result.output);
+  });
+
+  it("a `let` shadowing a module-level const of the same name, immediately above its own publishEvent(...) call, is refused", () => {
+    const dir = bareRepo("let-shadow-red");
+    write(
+      dir,
+      "apps/api/src/probe/let-shadow.ts",
+      [
+        'import { publishEvent } from "../../events";',
+        "",
+        'const eventType = "task.created";',
+        "",
+        "export async function handler(cond) {",
+        "  let eventType = cond",
+        '    ? "probe.review91_round5_let_shadow_a"',
+        '    : "probe.review91_round5_let_shadow_b";',
+        "  await publishEvent(eventType, { id: 'x' });",
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const result = runChecker(dir, "check-events.mjs");
+    assert.notEqual(result.status, 0, result.output);
+    assert.match(result.output, /is bound some other way as well/);
+    assert.doesNotMatch(result.output, /published event key.*registered/);
+  });
+
+  it("PAIRED: renaming the `let` removes the collision and the outer const resolves correctly", () => {
+    const dir = bareRepo("let-shadow-green");
+    write(
+      dir,
+      "apps/api/src/probe/let-shadow.ts",
+      [
+        'import { publishEvent } from "../../events";',
+        "",
+        'const eventType = "workspace.created";',
+        "",
+        "export async function handler(cond) {",
+        '  let otherKind = cond ? "a" : "b";',
+        "  await publishEvent(eventType, { id: 'x' });",
+        "  return otherKind;",
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const result = runChecker(dir, "check-events.mjs");
+    assert.equal(result.status, 0, result.output);
+  });
+
+  it('a decoy `const NAME = "…";` hidden inside an unrelated string literal\'s VALUE is not mistaken for a real declaration', () => {
+    const dir = bareRepo("string-decoy-red");
+    write(
+      dir,
+      "apps/api/src/probe/string-decoy.ts",
+      [
+        'import { publishEvent } from "../../events";',
+        "",
+        // The decoy: its TEXT contains `const eventType = 'task.created';`, but it is data
+        // inside a string literal, not code — it must not be found as a declaration.
+        "export const SNIPPET = \"const eventType = 'task.created';\";",
+        "",
+        "export async function handler() {",
+        '  let eventType = "probe.review91_round5_decoy_undeclared";',
+        "  await publishEvent(eventType, { id: 'x' });",
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const result = runChecker(dir, "check-events.mjs");
+    assert.notEqual(result.status, 0, result.output);
+    // No real `const eventType = …;` exists anywhere in this file, so once the decoy is
+    // invisible to the declaration search there is nothing to resolve to at all — the
+    // pre-existing "cannot determine which key" fail-closed path fires, not the
+    // shadowing-specific message above.
+    assert.match(result.output, /cannot determine which key/);
+    // NON-VACUITY: the pre-fix checker found the decoy via a flat regex over `code`
+    // (string contents intact), resolved confidently to "task.created", and printed
+    // success. Assert this run is not that.
+    assert.doesNotMatch(result.output, /published event key.*registered/);
   });
 });
 

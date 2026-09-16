@@ -211,20 +211,48 @@ function literalBody(text) {
  * `const eventType = assigneeId ? "task.assignee_changed" : "task.unassigned"`). Returns
  * `null` when unresolvable, so the caller can fail closed rather than guess.
  *
- * This has NO scope analysis — it is a flat regex over the whole file's text, so it
- * cannot tell a function-local `const kind` from an unrelated, same-named `const kind` in
- * a different function elsewhere in the file. Picking the first match regardless used to
- * resolve a call to the WRONG declaration's value: a second `const kind = "…"` later in
- * the file made its own `publishEvent(kind, …)` invisible while the run printed a
- * confident "every one registered" — answering wrongly rather than throwing or skipping,
- * which contradicts this file's own fail-closed promise. So every `const NAME = …;` in the
- * file is collected, and more than one is refused outright rather than guessed at: rename
- * one of the declarations, or give this call site a literal.
+ * The declaration search runs over `structural` (comments AND string CONTENTS blanked),
+ * never `code` (string contents intact) — a decoy `const NAME = "…";` written as the VALUE
+ * of an unrelated string constant (`export const SNIPPET = "const eventType = " +
+ * "'task.created';"`, say) is real text in `code` but disappears entirely from
+ * `structural`, so it can never be mistaken for a declaration (security review, PR #91
+ * round 5, HIGH). The matched RHS is then read back out of `code` at the SAME byte
+ * offsets: `structural` and `code` are guaranteed to be the same length, with every
+ * character outside a string/template literal at the same offset in both, because both
+ * are produced by the one `stripCodeComments` pass and differ only in that pass's
+ * `blankStrings` option, which substitutes each string-content character for exactly one
+ * space rather than deleting or inserting anything. `structural`'s capture-group indices
+ * (the `d` flag) therefore point at the real value in `code` directly — no re-scan, and no
+ * risk of the two texts drifting apart.
+ *
+ * This still has NO scope analysis of its own — it is a flat regex over the whole file's
+ * text, so it cannot tell a function-local `const kind` from an unrelated, same-named
+ * `const kind` in a different function elsewhere in the file. Picking the first match
+ * regardless used to resolve a call to the WRONG declaration's value: a second
+ * `const kind = "…"` later in the file made its own `publishEvent(kind, …)` invisible
+ * while the run printed a confident "every one registered" — answering wrongly rather than
+ * throwing or skipping, which contradicts this file's own fail-closed promise. So every
+ * `const NAME = …;` in the file is collected, and more than one is refused outright rather
+ * than guessed at: rename one of the declarations, or give this call site a literal.
+ *
+ * Nor does finding exactly one `const NAME = …;` prove the call site actually reads THAT
+ * binding: `name` matching this call's argument text says nothing about which binding is
+ * in scope there, and a `let`/`var NAME` or a function PARAMETER named `NAME` can shadow
+ * the const at the call site while this regex-only search stays oblivious to either
+ * (security review, PR #91 round 5, HIGH — same root cause as the decoy-string case above:
+ * no scope analysis). So once the one legitimate declaration is found,
+ * `assertNoOtherBinding` below demands that EVERY occurrence of `name` anywhere in the
+ * file is either inside that declaration's own span or is the argument of a recognised
+ * `publishEvent`-shaped call — a `let`/`var NAME`, a parameter, or any other occurrence
+ * fails that positive check and throws, because none of those can be attributed to the one
+ * const this function found.
  */
-function resolveLocalConst(source, name, location) {
-  const declarations = [
-    ...source.matchAll(new RegExp(`const\\s+${name}\\s*=\\s*([^;]+);`, "g")),
-  ];
+function resolveLocalConst(code, structural, callNames, name, location) {
+  const declarationPattern = new RegExp(
+    `const\\s+${name}\\s*=\\s*([^;]+);`,
+    "gd",
+  );
+  const declarations = [...structural.matchAll(declarationPattern)];
   if (declarations.length === 0) return null;
   if (declarations.length > 1) {
     throw new Error(
@@ -237,7 +265,20 @@ function resolveLocalConst(source, name, location) {
         "this call's argument with a literal.",
     );
   }
-  const rhs = declarations[0][1].trim();
+  const [declaration] = declarations;
+  const [declarationStart, declarationEnd] = declaration.indices[0];
+  const [rhsStart, rhsEnd] = declaration.indices[1];
+
+  assertNoOtherBinding(
+    structural,
+    callNames,
+    name,
+    declarationStart,
+    declarationEnd,
+    location,
+  );
+
+  const rhs = code.slice(rhsStart, rhsEnd).trim();
 
   const bare = literalBody(rhs);
   if (bare !== null) return [bare];
@@ -334,6 +375,67 @@ function buildCallRegex(names) {
 }
 
 /**
+ * Refuse when `name` is bound to anything other than the one legitimate declaration at
+ * [`declarationStart`, `declarationEnd`) — a same-named `let`/`var`, a function parameter,
+ * or any other occurrence this flat-regex extractor cannot attribute to that const
+ * (security review, PR #91 round 5, HIGH). Rejecting only a sibling `let NAME`/`var NAME`
+ * would still miss a function PARAMETER of the same name — a parameter binding has no
+ * `const`/`let`/`var` keyword at all, so it can never match that shape. This instead
+ * verifies the positive, stricter condition: every occurrence of `name` anywhere in the
+ * file must be either inside the declaration span or the argument of a call this file
+ * already recognises as `publishEvent`-shaped (`buildCallRegex(callNames)` — the same
+ * pattern `publishedKeysIn` uses to find call sites). A `let`/`var` binding and a
+ * parameter binding both fail this the same way, because neither is the declaration and
+ * neither is a recognised call's argument.
+ *
+ * This can over-refuse a same-named identifier used elsewhere in the file for an entirely
+ * unrelated, harmless purpose (a different, block-scoped `eventType` that never reaches
+ * `publishEvent` at all, say) — deliberately: this extractor has no scope analysis to tell
+ * that case apart from real shadowing either, and the whole point of this file is to
+ * refuse guessing through an ambiguity like that rather than resolve it silently. Rename
+ * the unrelated identifier, or give the call site a literal.
+ */
+function assertNoOtherBinding(
+  structural,
+  callNames,
+  name,
+  declarationStart,
+  declarationEnd,
+  location,
+) {
+  const legitimateCallArgument = new RegExp(
+    `\\b(?:${[...callNames]
+      .sort((a, b) => b.length - a.length)
+      .map(escapeRegExp)
+      .join("|")})\\b\\s*${GENERIC_ARGS}\\s*\\(\\s*(${escapeRegExp(name)})\\b`,
+    "gd",
+  );
+  const legitimateSpans = [[declarationStart, declarationEnd]];
+  for (const match of structural.matchAll(legitimateCallArgument)) {
+    legitimateSpans.push(match.indices[1]);
+  }
+
+  for (const match of structural.matchAll(
+    new RegExp(`\\b${escapeRegExp(name)}\\b`, "g"),
+  )) {
+    const at = match.index;
+    if (legitimateSpans.some(([start, end]) => at >= start && at < end)) {
+      continue;
+    }
+    throw new Error(
+      `${location}: publishEvent(${name}, …) cannot be resolved with confidence — "${name}" ` +
+        "is bound some other way as well (a `let`/`var` of the same name, a function " +
+        "parameter, or another occurrence this extractor cannot attribute to the one " +
+        `\`const ${name} = …;\` declaration it found), near ` +
+        `${JSON.stringify(structural.slice(Math.max(0, at - 20), Math.min(structural.length, at + 20)))}. ` +
+        "Resolving anyway risks reading a shadowed binding's value instead of the const's, " +
+        "which is exactly the ambiguity this checker refuses to guess through. Rename the " +
+        "shadowing identifier, or give this call's argument a literal.",
+    );
+  }
+}
+
+/**
  * Every event key one file's `publishEvent(...)` calls (and its aliases) can publish.
  * Throws — fails closed — the moment a call's argument cannot be resolved to one or more
  * string literals, OR a tracked name is used in a shape this extractor does not
@@ -382,7 +484,7 @@ function publishedKeysIn(rawSource, location) {
       literal !== null
         ? [literal]
         : /^[A-Za-z_$][\w$]*$/.test(rawArgument)
-          ? resolveLocalConst(code, rawArgument, location)
+          ? resolveLocalConst(code, structural, names, rawArgument, location)
           : null;
 
     if (resolved === null) {
