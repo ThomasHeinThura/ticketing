@@ -389,6 +389,16 @@ each rendered as below and joined with a single `\x1e` (record separator) betwee
   string are therefore indistinguishable in the hash, which is deliberate — no audit column
   distinguishes them semantically.
 - The digest is rendered **lowercase hex**, and `prev_hash` is fed in as that same hex text.
+- **No hashed text column may contain the `\x1e` record-separator byte itself.** The join is
+  unambiguous only if no individual field can carry the separator it is joined with — a
+  value that did would let two different rows produce the same joined byte string, and
+  therefore the same `row_hash`, across a field boundary. None of `actor_id`, `actor_type`,
+  `api_key_id`, `impersonator_id`, `actor_ip`, `user_agent`, `trace_id`, `workspace_id`,
+  `action`, `entity_type` or `entity_id` is ever expected to hold a raw ASCII control
+  character in normal operation; a writer that encounters one must refuse to write the row
+  rather than hash an ambiguous form (`packages/domain/src/audit/audit.ts`'s
+  `canonicalRowHash` refuses at the pure-function layer for exactly this reason — found by
+  an independent Opus security review of PR #175, 2026-09-16).
 
 **`organisation_id` is excluded from the hash**, and so is every other column that can be
 mutated after the fact. `organisation_id` is `ON DELETE SET NULL` — the tombstone that
