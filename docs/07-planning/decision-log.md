@@ -17,6 +17,35 @@ Newest first.
 
 ---
 
+### 2026-09-16 · `reconstructAt`'s same-instant tie-break is insertion order, ascending surrogate key
+
+**Decision:** when two `activity` rows for the same work item share the exact same
+`created_at` instant, `packages/domain/src/audit`'s `reconstructAt` resolves the tie by
+ascending insertion order — the row with the higher surrogate key (`ActivityRow.sequence`,
+standing in for Postgres's real auto-increment `activity.id`) is treated as having
+happened later, and its `new_value` wins for that field. No other rule (alphabetical by
+`field`, actor id, or leaving the order unspecified) is used.
+
+**Why:** unspecified anywhere in the specs — checked `audit-trail.md`, `data-model.md`'s
+`activity` table definition, and `comments-and-activity.md` directly, none names a
+same-instant tie-break — per `docs/07-planning/lane-prep/p2-domain.md` §9 item 5's finding
+of a genuine gap. Insertion order (`activity.id` ascending) is the one secondary ordering
+signal a database provides for free without inventing new data, and reconstruction must be
+deterministic to be trustworthy — a non-deterministic tie-break would mean two callers
+asking "what did this work item look like at instant X" could get different answers for
+the same input, which defeats `AU-8`'s whole purpose.
+
+**Alternatives considered:** leaving the order unspecified/non-deterministic (rejected —
+reconstruction must be deterministic); ordering by `field` name alphabetically (rejected —
+arbitrary, no basis in any spec).
+
+**Decided by:** the orchestrating session, as a routine implementation convention, not a
+product-behaviour choice — this fixes a database-tie-break rule that no user ever observes
+directly, unlike the SLA policy-move and calendar `none`-state questions `p2-domain.md` §9
+also flags, which remain open and need Thomas.
+
+---
+
 ### 2026-09-16 · P1's foundational identity schema (`organisation`, `person`, `membership`, `role`) starts as its own bounded PR, ahead of #23
 
 **Decision:** build `organisation`, `organisation_quota`, `person`, `membership` and `role`
