@@ -26,3 +26,19 @@ export class InvitationAlreadyPendingError extends Error {
     this.name = "InvitationAlreadyPendingError";
   }
 }
+
+/**
+ * The workspace already holds `MAX_PENDING_INVITATIONS_PER_WORKSPACE`
+ * (`../../utils/workspace-invitation-limits.ts`) pending invitations, and the
+ * call that hit this is one that would create a brand NEW row -- a `resend`
+ * of an existing pending invitation never reaches this check, since it
+ * updates the same row instead of inserting another.
+ */
+export class InvitationLimitReachedError extends Error {
+  constructor(public readonly limit: number) {
+    super(
+      `This workspace already has the maximum of ${limit} pending invitations`,
+    );
+    this.name = "InvitationLimitReachedError";
+  }
+}

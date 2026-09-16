@@ -1,8 +1,12 @@
-import { and, eq, gt, sql } from "drizzle-orm";
+import { and, count, eq, gt, sql } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { sendNativeWorkspaceInvitationEmail } from "../../utils/send-workspace-invitation-email";
+import { MAX_PENDING_INVITATIONS_PER_WORKSPACE } from "../../utils/workspace-invitation-limits";
 import { roleGrantsOwner } from "../../utils/workspace-member-roles";
-import { InvitationAlreadyPendingError } from "./workspace-invitation-errors";
+import {
+  InvitationAlreadyPendingError,
+  InvitationLimitReachedError,
+} from "./workspace-invitation-errors";
 import {
   OwnerRoleNotAssignableHereError,
   UserAlreadyMemberError,
@@ -38,11 +42,10 @@ export type InvitedWorkspaceMember = {
  * `authClient.organization.inviteMember()` (retrofit plan §3, S6a row).
  *
  * Mirrors better-auth's own `createInvitation` (`crud-invites.mjs`) for the
- * shape this app's client actually exercises -- team assignment and the
- * per-organization invitation-count limit are NOT reproduced: no client call
- * site ever passed a `teamId`, and `apps/web`'s only caller
- * (`use-invite-workspace-user.ts`) has no equivalent for the count limit
- * either. Reproduced faithfully:
+ * shape this app's client actually exercises -- team assignment is NOT
+ * reproduced (no client call site ever passes a `teamId`, and `apps/web`'s
+ * only caller, `use-invite-workspace-user.ts`, has no equivalent). Reproduced
+ * faithfully:
  *
  *  - `role` must already be a `workspace_role` row for this workspace, same
  *    ROLE_NOT_FOUND semantics as `addWorkspaceMember`. `"owner"` is refused
@@ -55,6 +58,15 @@ export type InvitedWorkspaceMember = {
  *    email)` pair is refused UNLESS `resend` is set, in which case its
  *    expiry is refreshed and the email is re-sent rather than a second row
  *    being created.
+ *  - a brand-new invitation row is refused once the workspace already holds
+ *    `MAX_PENDING_INVITATIONS_PER_WORKSPACE` pending invitations
+ *    (`InvitationLimitReachedError`, issue #6 NB-1). This is the ONE thing
+ *    the docblock above used to admit was missing -- the per-organization
+ *    invitation-count limit the still-mounted plugin has always enforced.
+ *    It is now reproduced natively too, ahead of the plugin's eventual
+ *    unmount. See `workspace-invitation-limits.ts` for why the number is
+ *    100 and why this is not a "shared constant" situation the way the
+ *    workspace-role ceiling is.
  *
  * Takes the SAME advisory lock as every S5 membership write
  * (`WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE`), even though this controller never
@@ -143,6 +155,44 @@ async function inviteWorkspaceMember(
         throw new Error("invitation update returned no row");
       }
       return updated;
+    }
+
+    // This point is only reached when `existingInvitation` above was
+    // nullish -- either no invitation row exists at all, or the only match
+    // for this email is stale (expired, or resolved to accepted/rejected/
+    // canceled) -- so every path from here on inserts a brand NEW row and
+    // must clear the ceiling first.
+    //
+    // Counted here: every row still marked `status = 'pending'`, regardless
+    // of `expiresAt`. `existingInvitation`'s own lookup above filters with
+    // `gt(expiresAt, now)` because it needs to know whether THIS SPECIFIC
+    // email already has a live, resend-able invitation -- a narrower
+    // question. The ceiling is a different question: how many pending rows
+    // is this workspace currently carrying. An expired-but-still-`pending`
+    // row has not been accepted, rejected, or canceled -- nothing has
+    // resolved it -- so it is still occupying a slot in every sense that
+    // matters for an abuse cap. Excluding expired rows from the count would
+    // let an inviter dodge the ceiling forever simply by never cancelling
+    // stale invitations: the backlog would grow without bound while never
+    // counting against anything, defeating the point of having a ceiling at
+    // all. Counting them conservatively means an admin sitting on a stale
+    // backlog must cancel some of it before inviting further -- a minor
+    // inconvenience next to the alternative of an unenforceable cap.
+    const [pendingCountRow] = await tx
+      .select({ value: count() })
+      .from(schema.invitationTable)
+      .where(
+        and(
+          eq(schema.invitationTable.workspaceId, input.workspaceId),
+          eq(schema.invitationTable.status, "pending"),
+        ),
+      );
+    if (
+      (pendingCountRow?.value ?? 0) >= MAX_PENDING_INVITATIONS_PER_WORKSPACE
+    ) {
+      throw new InvitationLimitReachedError(
+        MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+      );
     }
 
     const [created] = await tx

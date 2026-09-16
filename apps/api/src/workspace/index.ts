@@ -39,7 +39,10 @@ import transferWorkspaceOwnershipCtrl from "./controllers/transfer-workspace-own
 import updateWorkspaceCtrl from "./controllers/update-workspace";
 import updateWorkspaceMemberRoleCtrl from "./controllers/update-workspace-member-role";
 import updateWorkspaceRoleCtrl from "./controllers/update-workspace-role";
-import { InvitationAlreadyPendingError } from "./controllers/workspace-invitation-errors";
+import {
+  InvitationAlreadyPendingError,
+  InvitationLimitReachedError,
+} from "./controllers/workspace-invitation-errors";
 import {
   AlreadyOwnerError,
   AmbiguousMembershipError,
@@ -986,6 +989,9 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       }
       if (error instanceof InvitationAlreadyPendingError) {
         throw new HTTPException(409, { message: error.message });
+      }
+      if (error instanceof InvitationLimitReachedError) {
+        throw new HTTPException(400, { message: error.message });
       }
       throw error;
     }
