@@ -57,6 +57,20 @@ every CI/gate change regardless of what it does (rejected — a genuine redesign
 semantics, or a change to an authority invariant, still needs the full tier; risk-grading by
 what the change does, not a flat number, is what actually matches cost to risk).
 
+**Correction, same day, caught by this change's own ordinary review:** the first draft of
+the table's lightest row set the security-review outcome to a literal `n/a` for a
+"test-only file" touching a security-scope path — which silently contradicted the "stays
+absolute" claim made three times elsewhere in this same entry and the operative documents.
+A reviewer found the exploitable case directly: a test/probe file under `scripts/ci/**` can
+itself be part of a gate's enforcement surface (a ratchet threshold, an anti-narrowing
+assertion), so weakening one of its assertions is a real gate-semantics change even though
+the file is "just a test" — Row 1's own wording would have let an agent wave that through
+as automatically safe. Fixed before merge: every row now gets at least a lightweight Opus
+pass, never `n/a`; only the depth of that pass and the ordinary-review count above it scale
+with risk. Left in the log rather than silently corrected, because it is itself the best
+illustration of why the "stop queuing rounds" rule above still requires the review to
+actually happen once, not zero times.
+
 **Decided by:** Thomas, 2026-09-16.
 
 ---

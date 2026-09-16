@@ -270,10 +270,21 @@ it lives** (Thomas, 2026-09-16 — see the decision log):
 
 | The change... | Ordinary review | Security review |
 | --- | --- | --- |
-| ...touches a security-scope path but changes no authority or gate-pass/fail semantics (a comment, a log line, a variable rename, a test-only file) | **one** | n/a — nothing security-relevant changed |
-| ...is a bounded fix to CI/gate logic or a security-scope file that changes pass/fail semantics for a narrow, well-understood case (a parsing bug, a false-positive/false-negative correction) | **one strong** | required, but a **single** Opus pass — do not stack a second or third Sonnet round ahead of it "just in case"; Opus's own adversarial pass exceeds what another Sonnet pass adds here |
+| ...touches a security-scope path with a change small enough that one reviewer can confirm BY INSPECTION it alters no authority or gate-pass/fail semantics (a comment, a log line, a rename with no behavior change) | **one** | required, but a **single, lightweight** Opus confirmation — verifying the change is exactly what it claims and nothing more, not a full adversarial audit |
+| ...is a bounded fix to CI/gate logic or a security-scope file that changes pass/fail semantics for a narrow, well-understood case (a parsing bug, a false-positive/false-negative correction) | **one strong** | required, a **single, full** Opus pass — do not stack a second or third Sonnet round ahead of it "just in case"; Opus's own adversarial pass exceeds what another Sonnet pass adds here |
 | ...touches auth, permissions, migrations, or redesigns a security control's core semantics (not a bounded fix to one) | **two to three**, per the broad/high-coupling test above | required, full independent Opus pass |
 | ...is a large or high-risk authority redesign (a new capability, a new trust boundary, a schema change to an access-control table) | **full panel** (three), plus any domain-specific review the spec calls for | required, full independent Opus pass, and check whether an ADR is needed first |
+
+**No row exempts a security-scope path from Opus entirely — there is no "n/a" security-review
+outcome in this table, on purpose.** The lightest row still gets a lightweight Opus pass; only
+its depth changes, never whether it happens. A **test or probe file inside `scripts/ci/**`
+does not automatically qualify for the lightest row** — found adversarially, reviewing this
+very table: those files are frequently part of the gate's own enforcement surface (a ratchet
+threshold, an anti-narrowing assertion, a synthetic fixture a checker's own tests depend on),
+so weakening one of their assertions can itself be a real gate-semantics change even though
+the file is "just a test." Classify a test/probe-file change by what its assertions actually
+enforce, the same way you would the checker code itself — not by the fact that it lives in
+a `*.test.mjs` file.
 
 A change can start in one row and prove it belongs in another — that is a normal outcome,
 not a process failure, and does not retroactively invalidate review already done at the
