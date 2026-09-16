@@ -296,6 +296,28 @@ export const auth = betterAuth({
     cookieCache: {
       enabled: false,
     },
+    // S10: `activeOrganizationId` is a genuine, permanent column
+    // (schema.ts's sessionTable) that this app's own hooks write directly via
+    // Drizzle -- it was never owned by the `organization()` plugin. But
+    // better-auth's `GET /get-session` response is filtered through
+    // `parseSessionOutput`, which only returns a session column if it is
+    // either one of better-auth's own core fields or explicitly declared
+    // here or by a still-registered plugin's own `schema.session.fields`
+    // (`db/schema.mjs`'s `getFields`). The `organization()` plugin used to
+    // declare this field as a side effect of its own schema, so removing it
+    // silently dropped `activeOrganizationId` from every session response
+    // the client ever sees -- the column and the value are both still
+    // written and read correctly server-side, but the client's
+    // `useActiveWorkspace()` (via `getActiveOrganizationId`) saw `undefined`
+    // for it on any page with no workspace id in its own URL. Declaring it
+    // here restores exactly the visibility the plugin used to provide for
+    // free, now that nothing else does.
+    additionalFields: {
+      activeOrganizationId: {
+        type: "string",
+        required: false,
+      },
+    },
   },
   rateLimit: {
     // Enabled for EVERY deployment. kaneo used `enabled: isCloud()`, so

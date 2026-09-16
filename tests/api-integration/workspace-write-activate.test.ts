@@ -151,4 +151,38 @@ describe("S8a native set-active route", () => {
     const body = await response.text();
     expect(body.toLowerCase()).toContain("session_required");
   });
+
+  it("REGRESSION (S10): GET /api/auth/get-session returns activeOrganizationId in its JSON body, not only in the database row", async () => {
+    // Every other assertion in this file reads `sessionAfter...` directly
+    // from `schema.sessionTable` via Drizzle -- which only proves the WRITE
+    // path is correct. better-auth's own `/get-session` response is
+    // filtered through `parseSessionOutput` (`db/schema.mjs`), which drops
+    // any session column that isn't one of better-auth's core fields, one
+    // of THIS APP'S OWN `session.additionalFields` (auth.ts), or declared by
+    // a still-registered plugin's `schema.session.fields`. The
+    // organization() plugin used to declare `activeOrganizationId` as a
+    // side effect of its own schema; unmounting it (S10) silently dropped
+    // the field from every session response the client ever sees, even
+    // though the column and the write path were both still correct --
+    // `useActiveWorkspace()` (and every page with no workspace id of its
+    // own in the URL: dashboard root, invitations, every settings tab)
+    // read `undefined` for it. Caught by live browser verification, not by
+    // any existing test, because nothing asserted on the actual serialized
+    // response shape until this one.
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const created = await createWorkspaceNative(app, owner.cookie, {
+      name: "Get-Session Regression",
+    });
+    const { id: workspaceId } = (await created.json()) as { id: string };
+
+    const response = await app.request("/api/auth/get-session", {
+      headers: { cookie: owner.cookie },
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      session?: { activeOrganizationId?: string | null };
+    };
+    expect(body.session?.activeOrganizationId).toBe(workspaceId);
+  });
 });
