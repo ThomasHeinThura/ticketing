@@ -46,6 +46,19 @@ function argValue(flag) {
 }
 
 /**
+ * The characters allowed to immediately follow "n/a"/"blocked" with NO
+ * whitespace — i.e., the separators this repository's own convention
+ * actually uses glued directly onto the opener, no space needed first.
+ * Drawn from `pr-body.test.mjs`'s own recognised examples: `"n/a: nothing
+ * visual here"`, `"N/A, backend only"`. A typographic dash counts too,
+ * matching `ITEM_SEPARATOR`'s own family elsewhere in `pr-body.mjs`.
+ * Deliberately excludes every OTHER character (a hyphen, a period, a
+ * letter, a digit) — those are what a genuine filename glues onto its own
+ * name, never what this repository's own authors glue onto a state word.
+ */
+const COMPACT_FIELD_SEPARATOR = /[\s:,—–]/;
+
+/**
  * Is a compact, single-value FIELD like `**Spec:**`'s — not a whole prose
  * section — declaring n/a or BLOCKED, as opposed to a genuine reference
  * whose own text merely starts with letters that spell one of those words?
@@ -54,30 +67,38 @@ function argValue(flag) {
  * built for whole-section PROSE, where a state word is realistically always
  * followed by real punctuation or whitespace before further explanation.
  * Their opener regexes end in a bare `\b` — a word/non-word boundary — and
- * a hyphen is a non-word character, so `n/a-workflows.md` and
- * `` `blocked-transitions.md` `` (real filenames that merely START with
- * letters spelling "n/a"/"blocked") satisfy that boundary immediately
- * after the first word, even though neither string is declaring a state at
- * all. A terse field value carries no guarantee against that shape the way
- * a hand-written sentence does. Found adversarially, by two of the three
- * independent reviews of this exact fix (PR #148): reusing
- * `effectivelyNotApplicable` unmodified here would have silently exempted
- * a genuinely-named spec like that from ever being checked for open review
- * findings — the opposite direction of the bug this fix closes, and a
- * regression the OLD exact-match guard did not have.
+ * ANY non-word character satisfies it, including one glued directly onto a
+ * genuine filename's own name: `n/a-workflows.md` (a hyphen) and
+ * `blocked.md` (a period) both satisfy that boundary immediately after the
+ * first word, even though neither string is declaring a state at all.
  *
- * The one shape this rejects that `effectivelyNotApplicable` alone would
- * accept: the opener word glued directly to a hyphen with no whitespace
- * between them, immediately followed by more non-space text (a kebab-case
- * identifier). A real "n/a"/"BLOCKED" declaration followed by a spaced
- * hyphen or dash separator (`"n/a - reason"`, `"BLOCKED — reason"`) still
- * reaches `effectivelyNotApplicable` unchanged, because the character
- * right after the opener there is whitespace, not a hyphen.
+ * The first fix here only rejected a hyphen specifically — found
+ * adversarially, again, by the fix's own follow-up review round: a period
+ * is exactly as dangerous a glue character as a hyphen, and enumerating
+ * "reject a hyphen, then also reject a period, then whatever character is
+ * found next" is the same convenient-proxy mistake this file's own F9
+ * history already condemns, just moved one level down and repeated
+ * per-punctuation-mark. Inverted to an ALLOW-list instead: the opener must
+ * be followed by whitespace, end-of-string, or one of the few characters
+ * this repository's own convention is actually observed gluing directly
+ * onto "n/a"/"blocked" with no space (`COMPACT_FIELD_SEPARATOR`) —
+ * anything else is treated as glued to a longer identifier, not a
+ * standalone declaration, closing the whole class of "which punctuation
+ * mark is dangerous" at once rather than one mark at a time.
+ *
+ * A real "n/a"/"BLOCKED" declaration followed by a spaced hyphen or dash
+ * separator (`"n/a - reason"`, `"BLOCKED — reason"`) still reaches
+ * `effectivelyNotApplicable` unchanged, because the character right after
+ * the opener there is whitespace, which the allow-list also accepts.
  */
 function specFieldIsNotApplicable(declared) {
   const opener = declared.trim().replace(/^[^\p{L}\p{N}]+/u, "");
-  if (/^(?:n\s*\/\s*a|not\s+applicable|blocked)-\S/i.test(opener)) {
-    return false;
+  const match = /^(?:n\s*\/\s*a|not\s+applicable|blocked)/i.exec(opener);
+  if (match) {
+    const next = opener[match[0].length];
+    if (next !== undefined && !COMPACT_FIELD_SEPARATOR.test(next)) {
+      return false;
+    }
   }
   return effectivelyNotApplicable(declared);
 }

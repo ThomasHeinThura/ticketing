@@ -157,13 +157,22 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
   it("still FAILS a genuine spec whose OWN filename happens to start with 'n/a' or 'blocked' — found adversarially by review of this fix", () => {
     // Two of the three independent Sonnet reviews of this fix found the same
     // regression: `effectivelyNotApplicable`'s opener regexes end in a bare
-    // `\b`, and a hyphen is a non-word character, so a genuine filename like
-    // `n/a-workflows.md` or `blocked-transitions.md` satisfies that boundary
-    // immediately after the first word, even though neither string is
-    // declaring a state at all — silently exempting a real spec with real
-    // open findings from ever being checked. The OLD exact-match guard did
-    // NOT have this specific hole (neither string is literally "n/a"), so
-    // this would have been a genuine regression, not a pre-existing gap.
+    // `\b`, and any non-word character satisfies it, so a genuine filename
+    // like `n/a-workflows.md` or `blocked-transitions.md` satisfies that
+    // boundary immediately after the first word, even though neither string
+    // is declaring a state at all — silently exempting a real spec with
+    // real open findings from ever being checked. The OLD exact-match guard
+    // did NOT have this specific hole (neither string is literally "n/a"),
+    // so this would have been a genuine regression, not a pre-existing gap.
+    //
+    // `blocked.md` (a PERIOD, not a hyphen) was found by a THIRD review
+    // round after the hyphen-specific fix landed — the same defect class
+    // recurring one punctuation mark at a time. Fixed by inverting to an
+    // allow-list of the few separators this repository's own convention
+    // actually glues directly onto "n/a"/"blocked" with no space
+    // (`COMPACT_FIELD_SEPARATOR`), rather than enumerating which
+    // characters are dangerous — closing the whole class, not the
+    // instance. Included here as the regression test for that.
     for (const [spec, label] of [
       // The `.md` extraction regex's character class excludes "/", so
       // "n/a-workflows.md" itself extracts as "a-workflows.md" — the
@@ -171,6 +180,7 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
       // not the raw Spec field text, or this probe tests the wrong thing.
       ["n/a-workflows.md", "a-workflows.md"],
       ["`blocked-transitions.md`", "blocked-transitions.md"],
+      ["blocked.md", "blocked.md"],
     ]) {
       const dir = scenario();
       write(
