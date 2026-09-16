@@ -130,7 +130,13 @@ this point, and each verified to have zero live instances in the current tree:
 ## Status of the gate
 
 This review closes the mandatory independent Opus security review for PR #91
-(`scripts/ci/**` is security-review scope per `docs/04-engineering/ci-cd.md`). Ordinary
-independent review is also complete (see the pull request's own `## Reviewed by` section).
-No gate is waived. The orchestrating session verifies this note, the exact head, and every
-other required check before merging through the protected flow.
+(`scripts/ci/**` is security-review scope per `docs/04-engineering/ci-cd.md`). **Correction
+(2026-09-16):** this line previously claimed ordinary independent review was "also complete,"
+which was false at the time it was written — no ordinary review had run on any head of this
+pull request yet, a genuine self-contradiction the ordinary review itself then caught. A
+fresh, independent Sonnet-tier ordinary review has since run and returned CHANGES REQUIRED
+on two trivial documentation inaccuracies (this false claim being one of them, and a stale
+test count elsewhere in the pull request body being the other) — both fixed in this same
+update; see the pull request's own `## Reviewed by` section for the full account. No gate is
+waived. The orchestrating session verifies this note, the exact head, and every other
+required check before merging through the protected flow.
