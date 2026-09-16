@@ -133,7 +133,12 @@ decisions) · `BLOCKED` · `DEFERRED` (valid, not useful yet) · `SUPERSEDED`.
 | --- | --- | --- |
 | S7 — native role list + writes, repointing `listRoles`/`createRole`/`updateRole`/`deleteRole` | **LANDED, 2026-09-16 — PR #155.** 3 Sonnet + 1 Opus reviews, all CLEAR; browser-verified live by the orchestrating session before merge (see reconciliation paragraph above). | Done — moved to `## Done` below |
 | PR #107 (S10 — zero-caller tripwire) | **BLOCKED — DECISION REQUIRED FOR THOMAS**, found this session. `mergeable: UNKNOWN`. Its own PR body: the scanner it implements (`scripts/ci/lib/organization-callers.mjs`) has had **seven distinct false-zero bypasses** found across three Opus review rounds (rounds 5–6 fixed S1–S4; round 7 found S5–S7 and *deliberately did not* attempt an eighth remediation round, judging "a new gap every time" to be the more important finding than any one bug). The independent-security-review checklist box is intentionally left unticked. **Not superseded by S7 landing** — S7 removed S10's dependency on it, but did not touch this pre-existing, separate finding. | `pnpm check:organization-callers` ratchets to zero; `organization()` unmountable — blocked until Thomas decides how to proceed with the scanner (accept current residual-risk profile with the gaps documented, redesign its approach, or authorize another remediation round despite the pattern) |
-| PR #116 (fix #115 — widen security-review scope to privileged controllers/migrations/policy root) | `mergeable: MERGEABLE`. **Self-referential** (touches `docs/04-engineering/ci-cd.md`, itself on the security-scope glob list) **and CI/security-control machinery**, so AGENTS.md's review-tier table requires **3** ordinary Sonnet reviews, not 2, before the Opus pass. Two posted and CLEAR (one found a real MEDIUM, fixed in `b22b8a8`); a third is in progress. | Security-review glob list actually covers what it claims to |
+
+~~PR #116 (fix #115 — widen security-review scope)~~ **MERGED 2026-09-15** (`bc57228`) —
+this row was itself stale (it had already merged before this file's own "last updated"
+snapshot was taken). Its third ordinary review found and folded in one more real gap
+(`scripts/deploy.sh` missing from the glob list), independently re-verified, then Opus
+CLEAR. No longer a scheduler entry.
 
 ### NEXT_DEPENDENCY — becomes critical the moment PR #107 is unblocked
 
@@ -941,8 +946,13 @@ Cleaned up after: killed the background API/web dev servers, dropped the throwaw
 `s7_dev_verify` database, removed the verification git worktree and the now-fully-merged
 `feat/6-s7-native-role-cutover` local branch. Local `main` fast-forwarded to `a879033`.
 
+**Also found and corrected while reconciling this file:** PR #116 was already MERGED
+(`bc57228`, 2026-09-15T18:41:14Z) — the Scheduler's own "third review in progress" row for
+it was itself stale, describing a state that had already resolved before this file's prior
+"last updated" snapshot was even taken. Removed from the scheduler.
+
 **Not done this session (this entry):** PR #107 was not touched or remediated — that
-decision belongs to Thomas. PR #116's third ordinary review was not advanced. The
+decision belongs to Thomas. The
 `storage.filesystem` UAT gap and a live `docker build`/`docker run` redeploy were not
 started.
 
