@@ -393,3 +393,28 @@ describe("API integration: avatar routes", () => {
     expect(response.status).toBe(401);
   });
 });
+
+// Moved here from multi-role-membership-characterization.test.ts's own "#82 D"
+// describe block (S10, issue #6): that file's #82 A/B/C blocks were entirely
+// plugin-route-driven and are deleted along with the plugin, but this block is
+// a pure unit test with ZERO HTTP calls, importing `hasOwnerRole` directly --
+// it has nothing to do with the organization() plugin and continues to guard
+// real, still-live code, so it moves rather than disappearing with the rest
+// of that file.
+describe('#82 D -- the related, PRE-EXISTING comma-split in apps/api itself: account-deletion.ts\'s "hasOwnerRole"', () => {
+  // `apps/api/src/user/account-deletion.ts` implements comma-split-OR semantics deliberately,
+  // and it STAYS. It is the inclusive half of the asymmetry documented at length in
+  // `workspace-member-roles.ts`: "is this member an owner?" wants the inclusive reading,
+  // because a false `isOwner` SKIPS the last-owner block and orphans the workspace, while
+  // "how many owners are there?" wants the exact one, because over-counting also skips it.
+  // One predicate cannot serve both questions. #82's "no comma-splitting" rule governs the
+  // AUTHORIZATION evaluators — what a role permits — not this safety net, which asks only
+  // whether a value mentions owner at all, and which is strictly safer for mentioning it.
+  it('hasOwnerRole("member,owner") is still true, and that is correct rather than a leftover -- with the invariant now enforced this predicate only ever meets legacy rows, which is exactly the case it exists to catch', async () => {
+    const { hasOwnerRole } = await import(
+      "../../apps/api/src/user/account-deletion"
+    );
+    expect(hasOwnerRole("member,owner")).toBe(true);
+    expect(hasOwnerRole("admin,viewer")).toBe(false);
+  });
+});

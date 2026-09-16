@@ -347,85 +347,110 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
             );
           })}
 
-          {pendingInvitations.map((invitation) => (
-            <TableRow key={`invite-${invitation.id}`}>
-              <TableCell className="ps-6 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                    <MailIcon className="size-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        {invitation.email}
-                      </span>
-                      <Badge
-                        variant="outline"
-                        size="sm"
-                        className="font-mono text-[9px] uppercase tracking-wider"
-                      >
-                        {t("team:invitations.pendingBadge", {
-                          defaultValue: "pending",
-                        })}
-                      </Badge>
+          {pendingInvitations.map((invitation) => {
+            // The native GET /{workspaceId}/invitations route now surfaces every
+            // status="pending" row regardless of expiry (issue #160): an
+            // expired-but-uncanceled invitation used to be visible only through
+            // the organization() plugin's own unfiltered list route, and S10
+            // removes that recovery path entirely. Badge it distinctly here so
+            // an admin can tell "will expire" from "already expired" at a
+            // glance -- the row itself was already reachable, this is purely
+            // a display refinement now that it can actually appear.
+            const isExpired = invitation.expiresAt
+              ? new Date(invitation.expiresAt).getTime() < Date.now()
+              : false;
+
+            return (
+              <TableRow key={`invite-${invitation.id}`}>
+                <TableCell className="ps-6 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                      <MailIcon className="size-4" />
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {invitation.expiresAt
-                        ? t("team:invitations.expires", {
-                            defaultValue: "Expires {{date}}",
-                            date: formatDateMedium(invitation.expiresAt),
-                          })
-                        : "–"}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">
+                          {invitation.email}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          size="sm"
+                          className="font-mono text-[9px] uppercase tracking-wider"
+                        >
+                          {isExpired
+                            ? t("team:invitations.expiredBadge", {
+                                defaultValue: "expired",
+                              })
+                            : t("team:invitations.pendingBadge", {
+                                defaultValue: "pending",
+                              })}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {invitation.expiresAt
+                          ? t(
+                              isExpired
+                                ? "team:invitations.expiredOn"
+                                : "team:invitations.expires",
+                              {
+                                defaultValue: isExpired
+                                  ? "Expired {{date}}"
+                                  : "Expires {{date}}",
+                                date: formatDateMedium(invitation.expiresAt),
+                              },
+                            )
+                          : "–"}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </TableCell>
-              <TableCell className="py-3">
-                <Badge variant="outline" className="capitalize">
-                  {t(`team:roles.${invitation.role ?? ""}`, {
-                    defaultValue: capitalize(invitation.role ?? ""),
-                  })}
-                </Badge>
-              </TableCell>
-              <TableCell className="py-3 text-sm text-muted-foreground">
-                –
-              </TableCell>
-              <TableCell className="pe-6 py-3 text-right">
-                {canInvite ? (
-                  <Menu>
-                    <MenuTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground"
-                          aria-label={t(
-                            "team:membersTable.ariaInvitationActions",
-                          )}
-                        />
-                      }
-                    >
-                      <EllipsisIcon className="size-4" />
-                    </MenuTrigger>
-                    <MenuPopup align="end">
-                      <MenuItem
-                        onClick={() => copyInvitationLink(invitation.id)}
+                </TableCell>
+                <TableCell className="py-3">
+                  <Badge variant="outline" className="capitalize">
+                    {t(`team:roles.${invitation.role ?? ""}`, {
+                      defaultValue: capitalize(invitation.role ?? ""),
+                    })}
+                  </Badge>
+                </TableCell>
+                <TableCell className="py-3 text-sm text-muted-foreground">
+                  –
+                </TableCell>
+                <TableCell className="pe-6 py-3 text-right">
+                  {canInvite ? (
+                    <Menu>
+                      <MenuTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground"
+                            aria-label={t(
+                              "team:membersTable.ariaInvitationActions",
+                            )}
+                          />
+                        }
                       >
-                        <CopyIcon className="size-4" />
-                        {t("team:invitations.copyLink")}
-                      </MenuItem>
-                      <MenuItem
-                        onClick={() => setInvitationToCancel(invitation)}
-                      >
-                        <TrashIcon className="size-4" />
-                        {t("team:membersTable.cancelInvitation")}
-                      </MenuItem>
-                    </MenuPopup>
-                  </Menu>
-                ) : null}
-              </TableCell>
-            </TableRow>
-          ))}
+                        <EllipsisIcon className="size-4" />
+                      </MenuTrigger>
+                      <MenuPopup align="end">
+                        <MenuItem
+                          onClick={() => copyInvitationLink(invitation.id)}
+                        >
+                          <CopyIcon className="size-4" />
+                          {t("team:invitations.copyLink")}
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => setInvitationToCancel(invitation)}
+                        >
+                          <TrashIcon className="size-4" />
+                          {t("team:membersTable.cancelInvitation")}
+                        </MenuItem>
+                      </MenuPopup>
+                    </Menu>
+                  ) : null}
+                </TableCell>
+              </TableRow>
+            );
+          })}
 
           {users.length === 0 && pendingInvitations.length === 0 ? (
             <TableRow>

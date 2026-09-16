@@ -1,36 +1,22 @@
 import { apiKey } from "@better-auth/api-key";
 import { sendMagicLinkEmail, sendOtpEmail } from "@taskdesk/email";
-import {
-  ac,
-  DEFAULT_ROLE_NAMES,
-  defaultRolePayloads,
-  owner,
-} from "@taskdesk/permissions";
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import {
-  APIError,
-  createAuthMiddleware,
-  getSessionFromCtx,
-} from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import {
   admin as adminPlugin,
   emailOTP,
   genericOAuth,
   lastLoginMethod,
   magicLink,
-  organization,
 } from "better-auth/plugins";
-import type { AccessControl } from "better-auth/plugins/access";
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
 import { count, eq, sql } from "drizzle-orm";
 import db, { schema } from "./database";
-import { publishEvent } from "./events";
 import deleteAccountData from "./user/controllers/delete-account-data";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
-import { checkWorkspaceName } from "./utils/check-workspace-name";
 import { mapCustomOAuthProfileToUser } from "./utils/custom-oauth-profile";
 import { getDefaultCookieAttributes } from "./utils/get-default-cookie-attributes";
 import { getGithubSsoOAuthCredentials } from "./utils/github-sso-env";
@@ -39,8 +25,6 @@ import { isDisposableEmail } from "./utils/is-disposable-email";
 import { isLocalSignInPath } from "./utils/is-local-sign-in-path";
 import { resolveAuthSecret } from "./utils/require-auth-secret";
 import { TRUSTED_CLIENT_IP_HEADER } from "./utils/resolve-client-ip";
-import { sendNativeWorkspaceInvitationEmail } from "./utils/send-workspace-invitation-email";
-import { MAX_WORKSPACE_ROLES_PER_WORKSPACE } from "./utils/workspace-role-limits";
 
 config();
 
@@ -52,8 +36,6 @@ const isPasswordRegistrationDisabled =
 const isLoginFormDisabled = process.env.DISABLE_LOGIN_FORM === "true";
 const isEmailOtpSignInDisabled =
   process.env.DISABLE_EMAIL_OTP_SIGN_IN === "true";
-const isWorkspaceCreationDisabled =
-  process.env.DISABLE_WORKSPACE_CREATION === "true";
 
 function normalizeInvitationId(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
@@ -158,12 +140,6 @@ export const auth = betterAuth({
       account: schema.accountTable,
       session: schema.sessionTable,
       verification: schema.verificationTable,
-      workspace: schema.workspaceTable,
-      workspace_member: schema.workspaceUserTable,
-      invitation: schema.invitationTable,
-      workspace_role: schema.workspaceRoleTable,
-      team: schema.teamTable,
-      teamMember: schema.teamMemberTable,
       apikey: schema.apikeyTable,
     },
   }),
@@ -262,212 +238,6 @@ export const auth = betterAuth({
             },
           }),
         ]),
-    organization({
-      // `ac` is created with a narrow `statement` shape (project/task/label/
-      // workspace + the default org statements), which makes its inferred
-      // `newRole` generic incompatible with better-auth's looser
-      // `AccessControl` type. Widen via an explicit cast so the plugin
-      // accepts our custom statement.
-      ac: ac as unknown as AccessControl,
-      // Only `owner` stays static so its permissions can never be edited away
-      // from the workspace creator. `viewer`, `member`, and `admin` are
-      // seeded into `workspace_role` per workspace and resolved via
-      // dynamic access control, so admins can fully override (replace) their
-      // permissions per workspace. See `seedDefaultWorkspaceRoles` + the
-      // afterCreateOrganization hook.
-      roles: { owner },
-      dynamicAccessControl: {
-        enabled: true,
-        // Named, shared with the native S7 create-role route
-        // (`workspace-role-limits.ts`) so there is exactly one ceiling in the
-        // codebase rather than two literals that can silently drift apart.
-        maximumRolesPerOrganization: MAX_WORKSPACE_ROLES_PER_WORKSPACE,
-      },
-      teams: {
-        enabled: true,
-        maximumTeams: 10,
-        allowRemovingAllTeams: false,
-      },
-      schema: {
-        organization: {
-          modelName: "workspace",
-          additionalFields: {
-            // in metadata
-            description: {
-              type: "string",
-              input: true,
-              required: false,
-            },
-          },
-        },
-        member: {
-          modelName: "workspace_member",
-          fields: {
-            organizationId: "workspaceId",
-            createdAt: "joinedAt",
-          },
-        },
-        invitation: {
-          modelName: "invitation",
-          fields: {
-            organizationId: "workspaceId",
-          },
-        },
-        organizationRole: {
-          modelName: "workspace_role",
-          fields: {
-            organizationId: "workspaceId",
-          },
-        },
-        team: {
-          modelName: "team",
-          fields: {
-            organizationId: "workspaceId",
-          },
-        },
-      },
-      // When `DISABLE_WORKSPACE_CREATION` is set, only instance admins
-      // (`user.role === "admin"`) may create workspaces — mirrors the
-      // implicit-exemption shape of `DISABLE_REGISTRATION` above. This
-      // check runs before any workspace membership exists, so only the
-      // instance-wide role is meaningful here; per-workspace roles
-      // (owner/admin/member/viewer) don't apply until after a workspace
-      // is joined.
-      //
-      // `user` here comes from the session, which may be served out of
-      // the cookie cache (see `session.cookieCache` below). The
-      // first-user bootstrap promotes the user to admin in
-      // `databaseHooks.user.create.after`, but that happens after
-      // `signUpEmail` has already returned/cached the pre-promotion
-      // role, so a cached session can still say `role: "user"` for up
-      // to `cookieCache.maxAge`. Re-read the role from the database
-      // instead of trusting the (possibly stale) cached role.
-      allowUserToCreateOrganization: isWorkspaceCreationDisabled
-        ? async (user) => {
-            const [freshUser] = await db
-              .select({ role: schema.userTable.role })
-              .from(schema.userTable)
-              .where(eq(schema.userTable.id, user.id));
-            return freshUser?.role === "admin";
-          }
-        : true,
-      // Better Auth defaults this to `true`, which blocks any user whose email
-      // is not verified from accepting/rejecting an invitation. TaskDesk does not
-      // verify emails on signup (and guest/anonymous users are unverified by
-      // design), so leaving the default on breaks invitation acceptance for
-      // everyone. The invitation link id is the actual secret here, so gate on
-      // that rather than on email verification.
-      requireEmailVerificationOnInvitation: false,
-      organizationHooks: {
-        beforeCreateOrganization: async ({ organization }) => {
-          const check = checkWorkspaceName(organization.name ?? "");
-          if (!check.ok) {
-            throw new APIError("BAD_REQUEST", { message: check.reason });
-          }
-        },
-        afterCreateOrganization: async ({ organization, user }) => {
-          // Seed the editable default roles for this workspace. Each
-          // role's permissions are derived from the compiled-in defaults
-          // in `@taskdesk/permissions`; admins can later replace them in the
-          // Roles UI. We skip names that somehow already exist (this hook
-          // is idempotent; the boot-time backfill is the belt-and-braces
-          // path for workspaces that predate it).
-          //
-          // Issue #66. This used to run inside a `try/catch` that logged a
-          // seed failure and quietly returned -- leaving a fully
-          // "successful" workspace (the plugin had already committed the
-          // organization/member/team rows above this hook, unwrapped in
-          // any transaction of its own) with no viewer/member/admin rows
-          // behind it, for however long it takes the boot-time backfill to
-          // run. That silent gap is exactly the state that let a
-          // missing-row lookup fall back to full compiled-in privileges
-          // (require-workspace-permission.ts). This plugin route has no
-          // transaction spanning the organization/member/team inserts
-          // better-auth already performed before calling this hook, so a
-          // seed failure here cannot be rolled back the way the native
-          // `POST /api/workspace` transaction rolls back
-          // (`workspace/controllers/create-workspace.ts`). What it CAN do,
-          // and now does, is compensate: every row this create wrote --
-          // `workspace_member`, `team`, `team_member`, and any partial
-          // `workspace_role` insert -- references `workspace.id` with
-          // `ON DELETE CASCADE`, so deleting the just-created workspace on
-          // a seed failure removes all of it, and the caller gets a real
-          // failure response instead of a silent 200 for a workspace only
-          // its owner (whose authority is always compiled-in, never a row)
-          // could actually use.
-          // The READ is inside the try as well, deliberately. An independent
-          // review of the first version of this fix found the pre-check
-          // SELECT sitting OUTSIDE it, so a connection drop, timeout or
-          // deadlock on the read -- rather than on the insert -- left the
-          // workspace orphaned with no role rows and NO cleanup, which is the
-          // exact state this hook exists to prevent. The failure-injection
-          // test could not reach it either: a BEFORE INSERT trigger cannot
-          // fire on a SELECT. Everything that can throw between "better-auth
-          // has committed the workspace" and "the seed is durable" now shares
-          // one rollback path.
-          try {
-            const existing = await db
-              .select({ role: schema.workspaceRoleTable.role })
-              .from(schema.workspaceRoleTable)
-              .where(
-                eq(schema.workspaceRoleTable.workspaceId, organization.id),
-              );
-            const taken = new Set(existing.map((r) => r.role));
-            const now = new Date();
-            const rows = DEFAULT_ROLE_NAMES.filter(
-              (name) => !taken.has(name),
-            ).map((name) => ({
-              workspaceId: organization.id,
-              role: name,
-              permission: JSON.stringify(defaultRolePayloads[name]),
-              createdAt: now,
-              updatedAt: now,
-            }));
-            if (rows.length > 0) {
-              await db.insert(schema.workspaceRoleTable).values(rows);
-            }
-          } catch (error) {
-            console.error(
-              "Failed to seed default workspace roles for workspace -- rolling the workspace back",
-              organization.id,
-              error,
-            );
-            try {
-              await db
-                .delete(schema.workspaceTable)
-                .where(eq(schema.workspaceTable.id, organization.id));
-            } catch (cleanupError) {
-              console.error(
-                "Failed to roll back workspace after a default-role seed failure -- manual cleanup needed for workspace",
-                organization.id,
-                cleanupError,
-              );
-            }
-            throw error;
-          }
-
-          publishEvent("workspace.created", {
-            workspaceId: organization.id,
-            workspaceName: organization.name,
-            ownerEmail: user.name,
-            ownerId: user.id,
-          });
-        },
-      },
-      // S6a: delegates to the shared helper so this still-mounted plugin
-      // route and the native `POST /api/workspace/{id}/invitations` route
-      // (apps/api/src/workspace/controllers/invite-workspace-member.ts)
-      // send byte-identical email content -- see that helper's doc comment.
-      async sendInvitationEmail(data) {
-        await sendNativeWorkspaceInvitationEmail({
-          invitationId: data.id,
-          email: data.email,
-          workspaceName: data.organization.name,
-          inviterName: data.inviter.user.name,
-          inviterEmail: data.inviter.user.email,
-        });
-      },
-    }),
     genericOAuth({
       config: [
         {
@@ -526,6 +296,52 @@ export const auth = betterAuth({
     cookieCache: {
       enabled: false,
     },
+    // S10: `activeOrganizationId` is a genuine, permanent column
+    // (schema.ts's sessionTable) that this app's own hooks write directly via
+    // Drizzle -- it was never owned by the `organization()` plugin. But
+    // better-auth's `GET /get-session` response is filtered through
+    // `parseSessionOutput`, which only returns a session column if it is
+    // either one of better-auth's own core fields or explicitly declared
+    // here or by a still-registered plugin's own `schema.session.fields`
+    // (`db/schema.mjs`'s `getFields`). The `organization()` plugin used to
+    // declare this field as a side effect of its own schema, so removing it
+    // silently dropped `activeOrganizationId` from every session response
+    // the client ever sees -- the column and the value are both still
+    // written and read correctly server-side, but the client's
+    // `useActiveWorkspace()` (via `getActiveOrganizationId`) saw `undefined`
+    // for it on any page with no workspace id in its own URL. Declaring it
+    // here restores exactly the visibility the plugin used to provide for
+    // free, now that nothing else does.
+    //
+    // `input: false` IS LOAD-BEARING, not copied boilerplate. The
+    // organization() plugin declared this exact field with `input: false`
+    // too (organization.mjs:827-832) -- the first version of this fix
+    // omitted it, and an independent review caught, then proved, the
+    // consequence: better-auth's generic `POST /api/auth/update-session`
+    // reads `getFields(..., "input")`, which only refuses a field when
+    // `input === false`; without it, ANY authenticated caller could
+    // overwrite their OWN session's `activeOrganizationId` to a workspace
+    // they are not a member of, with no membership check at all --
+    // bypassing the one sanctioned path (`POST /api/workspace/{id}/activate`,
+    // gated by `requireWorkspaceMembership`) entirely. `input: false` here
+    // makes `update-session` refuse the field with 400 `FIELD_NOT_ALLOWED`,
+    // exactly matching the plugin's own prior behaviour, while leaving the
+    // OUTPUT side (what this field exists for) completely unaffected --
+    // `getFields`'s "output" mode does not consult `input` at all.
+    //
+    // `activeTeamId` deliberately gets NO equivalent declaration here. The
+    // plugin exposed it too, but nothing ever reads it -- confirmed by
+    // grepping the whole of apps/api/src and apps/web/src -- so it is now
+    // silently absent from `GET /get-session`'s response, same column,
+    // same write path, just no longer visible to a client that never asked
+    // for it. If a future consumer needs it, add it here the same way.
+    additionalFields: {
+      activeOrganizationId: {
+        type: "string",
+        required: false,
+        input: false,
+      },
+    },
   },
   rateLimit: {
     // Enabled for EVERY deployment. kaneo used `enabled: isCloud()`, so
@@ -542,19 +358,6 @@ export const auth = betterAuth({
     max: 100,
     customRules: {
       "/sign-up/email": { window: 60, max: 3 },
-      // S6a (retrofit plan §3, R1): this rule is keyed on the PLUGIN's path
-      // and protects only `/api/auth/organization/invite-member`. The native
-      // `POST /api/workspace/{id}/invitations` route
-      // (apps/api/src/workspace/index.ts) is a different path this limiter
-      // never sees, so it carries its own equivalent --
-      // `requireInviteRateLimit()` (apps/api/src/utils/require-invite-rate-limit.ts),
-      // same window and max. Deliberately NOT removed here: the plugin route
-      // stays mounted and reachable until retrofit S10 unmounts it, and this
-      // rule is still that route's only rate limit. See
-      // organization-invite-rate-limit.test.ts (this rule) and
-      // workspace-invite-rate-limit.test.ts (the native one) --
-      // two protections for two still-live routes, not one rule duplicated.
-      "/organization/invite-member": { window: 60, max: 5 },
     },
   },
   databaseHooks: {
@@ -658,45 +461,6 @@ export const auth = betterAuth({
           message:
             "Local sign-in is disabled. Please use a configured social or OIDC sign-in method.",
         });
-      }
-
-      // Block invite-member calls on cloud from anonymous users or to
-      // disposable-email addresses. The 2026-05-28 incident saw ~14k phishing
-      // invites sent from throwaway disposable-email signups; gating here
-      // shuts that path off without affecting self-hosted instances.
-      //
-      // S6a (retrofit plan §3, R1): like the rate-limit rule above, this
-      // matches the PLUGIN's literal path and does nothing for the native
-      // `POST /api/workspace/{id}/invitations` route
-      // (apps/api/src/workspace/index.ts), which carries its own equivalent
-      // -- `requireInviteAbuseGate()`
-      // (apps/api/src/utils/require-invite-abuse-gate.ts). Kept here,
-      // unremoved, because the plugin route stays mounted and reachable
-      // until retrofit S10 unmounts it, so this is still its only cloud
-      // abuse gate. See organization-invite-abuse-guards.test.ts (this gate)
-      // and workspace-invite-abuse-guards.test.ts (the native one).
-      if (ctx.path === "/organization/invite-member" && isCloud()) {
-        // `before` hooks don't auto-populate ctx.context.session; load it
-        // explicitly. `disableRefresh` keeps this gate cheap: we only need
-        // the user record, not a session refresh side-effect.
-        const session = await getSessionFromCtx(ctx, {
-          disableRefresh: true,
-        }).catch(() => null);
-        const sessionUser = session?.user as
-          | { isAnonymous?: boolean | null }
-          | undefined;
-        if (sessionUser?.isAnonymous) {
-          throw new APIError("FORBIDDEN", {
-            message: "Guest accounts may not send workspace invitations.",
-          });
-        }
-        const inviteeEmail = (ctx.body?.email as string | undefined) ?? "";
-        if (inviteeEmail && isDisposableEmail(inviteeEmail)) {
-          throw new APIError("BAD_REQUEST", {
-            message:
-              "Invitations to disposable-email addresses are not allowed.",
-          });
-        }
       }
 
       const isSignUpPath =

@@ -151,4 +151,88 @@ describe("S8a native set-active route", () => {
     const body = await response.text();
     expect(body.toLowerCase()).toContain("session_required");
   });
+
+  it("REGRESSION (S10): GET /api/auth/get-session returns activeOrganizationId in its JSON body, not only in the database row", async () => {
+    // Every other assertion in this file reads `sessionAfter...` directly
+    // from `schema.sessionTable` via Drizzle -- which only proves the WRITE
+    // path is correct. better-auth's own `/get-session` response is
+    // filtered through `parseSessionOutput` (`db/schema.mjs`), which drops
+    // any session column that isn't one of better-auth's core fields, one
+    // of THIS APP'S OWN `session.additionalFields` (auth.ts), or declared by
+    // a still-registered plugin's `schema.session.fields`. The
+    // organization() plugin used to declare `activeOrganizationId` as a
+    // side effect of its own schema; unmounting it (S10) silently dropped
+    // the field from every session response the client ever sees, even
+    // though the column and the write path were both still correct --
+    // `useActiveWorkspace()` (and every page with no workspace id of its
+    // own in the URL: dashboard root, invitations, every settings tab)
+    // read `undefined` for it. Caught by live browser verification, not by
+    // any existing test, because nothing asserted on the actual serialized
+    // response shape until this one.
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const created = await createWorkspaceNative(app, owner.cookie, {
+      name: "Get-Session Regression",
+    });
+    const { id: workspaceId } = (await created.json()) as { id: string };
+
+    const response = await app.request("/api/auth/get-session", {
+      headers: { cookie: owner.cookie },
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      session?: { activeOrganizationId?: string | null };
+    };
+    expect(body.session?.activeOrganizationId).toBe(workspaceId);
+  });
+
+  it("REGRESSION (S10): POST /api/auth/update-session cannot set activeOrganizationId to a workspace the caller does not belong to", async () => {
+    // The first version of the fix above declared `activeOrganizationId`
+    // under `session.additionalFields` WITHOUT `input: false` -- the
+    // organization() plugin's own prior declaration always had it
+    // (organization.mjs:827-832). Without it, better-auth's generic
+    // `POST /api/auth/update-session` (a route this app never calls itself,
+    // but which the unfiltered `/auth/*` catch-all still forwards to)
+    // accepts `activeOrganizationId` as ordinary writable input and persists
+    // it with NO membership check at all -- entirely bypassing
+    // `requireWorkspaceMembership`, the only sanctioned gate on this column
+    // (`POST /api/workspace/{id}/activate`). Found by independent review,
+    // proved live, fixed by restoring `input: false`. This pins the fix:
+    // the same caller who is correctly refused by the native activate route
+    // must ALSO be refused by the generic update-session route, not merely
+    // silently ignored -- and the session row must be left untouched.
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const created = await createWorkspaceNative(app, owner.cookie, {
+      name: "Update-Session Attack Target",
+    });
+    const { id: workspaceId } = (await created.json()) as { id: string };
+
+    const outsider = await signUpUser(app);
+
+    // Control: the sanctioned native path correctly refuses a non-member.
+    const nativeAttempt = await activateWorkspaceNative(
+      app,
+      outsider.cookie,
+      workspaceId,
+    );
+    expect(nativeAttempt.status).toBe(403);
+
+    // The attack: the generic better-auth endpoint, unmediated by any
+    // workspace-membership check, must refuse the same field.
+    const attack = await app.request("/api/auth/update-session", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: outsider.cookie },
+      body: JSON.stringify({ activeOrganizationId: workspaceId }),
+    });
+    expect(attack.status).toBe(400);
+
+    const [outsiderSession] = await db
+      .select({
+        activeOrganizationId: schema.sessionTable.activeOrganizationId,
+      })
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, outsider.user.id));
+    expect(outsiderSession?.activeOrganizationId).not.toBe(workspaceId);
+  });
 });

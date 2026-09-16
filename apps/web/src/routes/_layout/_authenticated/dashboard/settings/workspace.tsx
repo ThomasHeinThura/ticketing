@@ -22,6 +22,7 @@ import getWorkspaces from "@/fetchers/workspace/get-workspaces";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { getInitials } from "@/lib/get-initials";
+import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
 import type Workspace from "@/types/workspace";
 
 export const Route = createFileRoute(
@@ -43,7 +44,7 @@ export const Route = createFileRoute(
     if (context.sessionError) return;
     const session = context.session;
     if (!session) return; // parent should have redirected unauthenticated users
-    if (session.session?.activeOrganizationId) return;
+    if (getActiveOrganizationId(session)) return;
 
     let workspaces: Workspace[] = [];
     try {

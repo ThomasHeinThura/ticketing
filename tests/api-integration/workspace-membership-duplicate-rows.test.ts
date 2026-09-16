@@ -66,11 +66,10 @@ import { createApp } from "../../apps/api/src/index";
 import { requireWorkspaceCapability } from "../../apps/api/src/utils/require-workspace-capability";
 import { resetTestDatabase } from "./helpers/database";
 import {
-  inviteAndAcceptAsNewMember,
   plantLegacyMembershipRole,
   signUpUser,
-  updateMemberRoleViaPlugin,
 } from "./helpers/organization-http";
+import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import {
   addWorkspaceMemberNative,
   leaveWorkspaceNative,
@@ -175,31 +174,6 @@ async function ownerCountInclusive(workspaceId: string): Promise<number> {
   return new Set(owners.map((row) => row.userId)).size;
 }
 
-/**
- * The `workspace_member.id` PRIMARY KEY for one `(workspaceId, userId)` pair -- required by
- * `updateMemberRoleViaPlugin`, which (matching better-auth's own `updateMemberRole` body
- * schema, `crud-members.mjs:219-222`) addresses a member by row id, never by `userId`. Assumes
- * the pair is unambiguous -- every N1 probe below seeds exactly one row per pair before calling
- * this, never a duplicate.
- */
-async function memberRowId(
-  workspaceId: string,
-  userId: string,
-): Promise<string> {
-  const [row] = await db
-    .select({ id: schema.workspaceUserTable.id })
-    .from(schema.workspaceUserTable)
-    .where(
-      and(
-        eq(schema.workspaceUserTable.workspaceId, workspaceId),
-        eq(schema.workspaceUserTable.userId, userId),
-      ),
-    )
-    .limit(1);
-  if (!row) throw new Error("memberRowId: no row for that workspace/user pair");
-  return row.id;
-}
-
 async function insertDuplicateRow(
   workspaceId: string,
   userId: string,
@@ -283,7 +257,7 @@ describe("P2 owner-removal bypass, end to end through HTTP", () => {
     );
     // "another member with authority" -- an admin can call DELETE on other members
     // (`workspace-membership-writes-negative.test.ts` already establishes this).
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -324,7 +298,7 @@ describe("P3 owner demotion", () => {
       owner.cookie,
       "P3 Owner Demotion",
     );
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -393,7 +367,7 @@ describe("P4 capability-gate divergence", () => {
       owner.cookie,
       "P4 Divergence Admin First",
     );
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -422,7 +396,7 @@ describe("P4 capability-gate divergence", () => {
       owner.cookie,
       "P4 Divergence Viewer First",
     );
-    const member = await inviteAndAcceptAsNewMember(
+    const member = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -478,7 +452,12 @@ describe("R1-R4: a duplicated OWNER must never let a workspace reach zero owners
     const workspaceId = await createWorkspace(app, owner.cookie, "R1 Leave");
     // A second member exists, so `memberCount <= 1` is not what refuses the leave -- the
     // last-OWNER guard is, which is the thing under test.
-    await inviteAndAcceptAsNewMember(app, owner.cookie, workspaceId, "member");
+    await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
 
     await insertDuplicateRow(workspaceId, owner.user.id, "owner");
     expect(await ownerRowCount(workspaceId)).toBe(2);
@@ -495,7 +474,7 @@ describe("R1-R4: a duplicated OWNER must never let a workspace reach zero owners
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "R2 Remove");
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -521,7 +500,7 @@ describe("R1-R4: a duplicated OWNER must never let a workspace reach zero owners
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "R3 Transfer");
-    const target = await inviteAndAcceptAsNewMember(
+    const target = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -554,7 +533,7 @@ describe("R1-R4: a duplicated OWNER must never let a workspace reach zero owners
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "R4 Agree");
-    const target = await inviteAndAcceptAsNewMember(
+    const target = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -659,7 +638,12 @@ describe('N1a-N1d: a comma-joined "owner,admin" row must still be recognised as 
     const workspaceId = await createWorkspace(app, owner.cookie, "N1a Leave");
     // A second member, so `memberCount <= 1` is not what refuses the leave -- the last-OWNER
     // guard is, matching R1's rationale above.
-    await inviteAndAcceptAsNewMember(app, owner.cookie, workspaceId, "member");
+    await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
 
     // PLANTED as legacy data. This setup used to grant the owner `["owner","admin"]` through
     // the still-mounted plugin route, and called that "an API-reachable path, not a bypass" --
@@ -668,31 +652,6 @@ describe('N1a-N1d: a comma-joined "owner,admin" row must still be recognised as 
     // now only predate the fix, and surviving exactly such a row is what these last-owner
     // guards are for, so everything below is unchanged.
     await plantLegacyMembershipRole(workspaceId, owner.user.id, "owner,admin");
-    expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
-      "owner,admin",
-    ]);
-
-    // THE BETTER-AUTH CONTROL, UPDATED after formal review R2. This used to reach
-    // better-auth's OWN `leaveOrganization` guard and be refused there with 400 --
-    // `member.role.split(",").includes(creatorRole)` correctly recognises "owner,admin"
-    // (no padding, both pieces present). That guard has no `.trim()`, though, so a padded
-    // single-role row like " owner" would defeat it silently (see #124's sibling finding and
-    // `organization-exempt-actions.ts`'s doc). R2 removed `leave` from the exempt list
-    // rather than trust that better-auth's own check is safe for every malformed shape, so
-    // NOW the caller is refused one layer earlier, by `organizationPluginRoleGuard`'s own
-    // malformed-role check, before better-auth's handler is ever reached -- 409, not 400.
-    // The safety property this test exists to pin (the row survives, the owner is not
-    // removed) is unchanged and, if anything, more directly proven: it no longer depends on
-    // better-auth's own last-owner guard recognising the exact shape correctly at all.
-    const pluginControl = await app.request("/api/auth/organization/leave", {
-      method: "POST",
-      headers: { "content-type": "application/json", cookie: owner.cookie },
-      body: JSON.stringify({ organizationId: workspaceId }),
-    });
-    expect(pluginControl.status).toBe(409);
-    expect(((await pluginControl.json()) as { error?: string }).error).toBe(
-      "MALFORMED_MEMBERSHIP_ROLE",
-    );
     expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
       "owner,admin",
     ]);
@@ -714,7 +673,7 @@ describe('N1a-N1d: a comma-joined "owner,admin" row must still be recognised as 
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "N1b Remove");
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
@@ -755,14 +714,13 @@ describe('N1a-N1d: a comma-joined "owner,admin" row must still be recognised as 
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "N1c Demote");
-    const admin = await inviteAndAcceptAsNewMember(
+    const admin = await inviteAndAcceptAsNewMemberNative(
       app,
       owner.cookie,
       workspaceId,
       "admin",
     );
 
-    const ownerMemberId = await memberRowId(workspaceId, owner.user.id);
     // PLANTED as legacy data. This setup used to grant the owner `["owner","admin"]` through
     // the still-mounted plugin route, and called that "an API-reachable path, not a bypass" --
     // which was true when it was written. Issue #82 closed it: that write is now refused 400,
@@ -770,23 +728,6 @@ describe('N1a-N1d: a comma-joined "owner,admin" row must still be recognised as 
     // now only predate the fix, and surviving exactly such a row is what these last-owner
     // guards are for, so everything below is unchanged.
     await plantLegacyMembershipRole(workspaceId, owner.user.id, "owner,admin");
-    expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
-      "owner,admin",
-    ]);
-
-    // THE BETTER-AUTH CONTROL: the plugin's OWN `/organization/update-member-role` refuses this
-    // actor -- a plain "admin" is not the creator (`updaterIsCreator` false), the target IS the
-    // creator (`isUpdatingCreator` true, from splitting "owner,admin"), and
-    // `isUpdatingCreator && !updaterIsCreator` throws FORBIDDEN (403) before any specific
-    // permission is even checked (crud-members.mjs:290-292).
-    const pluginControl = await updateMemberRoleViaPlugin(
-      app,
-      admin.cookie,
-      workspaceId,
-      ownerMemberId,
-      "viewer",
-    );
-    expect(pluginControl.status).toBe(403);
     expect(await rolesForPair(workspaceId, owner.user.id)).toEqual([
       "owner,admin",
     ]);
@@ -814,13 +755,13 @@ describe('N1a-N1d: a comma-joined "owner,admin" row must still be recognised as 
       const { app } = createApp();
       const owner = await signUpUser(app);
       const workspaceId = await createWorkspace(app, owner.cookie, "N1d Patch");
-      const admin = await inviteAndAcceptAsNewMember(
+      const admin = await inviteAndAcceptAsNewMemberNative(
         app,
         owner.cookie,
         workspaceId,
         "admin",
       );
-      const target = await inviteAndAcceptAsNewMember(
+      const target = await inviteAndAcceptAsNewMemberNative(
         app,
         owner.cookie,
         workspaceId,
@@ -851,7 +792,7 @@ describe('N1a-N1d: a comma-joined "owner,admin" row must still be recognised as 
       const { app } = createApp();
       const owner = await signUpUser(app);
       const workspaceId = await createWorkspace(app, owner.cookie, "N1d Add");
-      const admin = await inviteAndAcceptAsNewMember(
+      const admin = await inviteAndAcceptAsNewMemberNative(
         app,
         owner.cookie,
         workspaceId,

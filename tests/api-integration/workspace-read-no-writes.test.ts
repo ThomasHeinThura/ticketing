@@ -4,25 +4,22 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
-import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
+import {
+  inviteAndAcceptAsNewMemberNative,
+  inviteWorkspaceMemberNative,
+} from "./helpers/workspace-invitation-write-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 // A1-P10: S2 is READ ONLY. None of the four new routes may write anything,
 // anywhere -- not a new row in any of the 29 public tables, and not a
 // mutation of the calling session's active_organization_id/active_team_id
-// columns. This is the negative half of the S2 contract: the frozen S1
-// oracle (tests/api-integration/organization-*.test.ts) proves the
-// characterized plugin behavior is untouched; this file proves the NEW
-// routes added alongside it introduce no side effect of their own.
-
-// Local, read-only re-derivation of the S1 oracle's "whole-database
-// enumeration" method (organization-plugin-characterization.test.ts's own
-// comment block, §2.5 of the retrofit plan) -- queried fresh here rather
-// than imported, since neither
-// tests/api-integration/helpers/database.ts nor
-// tests/api-integration/helpers/organization-http.ts may be modified by
-// this lane, and this file only ever reads the catalog, never touches
-// either of those.
+// columns. This proves the native S2 read routes introduce no side effect
+// of their own; setup goes entirely through native routes too (S10, issue
+// #6, unmounted the organization() plugin this file's setup used to drive).
+//
+// Local, read-only "whole-database enumeration" method -- queried fresh
+// here rather than imported from a shared helper, since this file only
+// ever reads the catalog and never needs to write to it.
 async function snapshotAllTableCounts(): Promise<Record<string, number>> {
   const tables = await db.execute<{ table_name: string }>(sql`
     SELECT table_name
@@ -58,18 +55,9 @@ describe("the S2 native read routes write nothing (A1-P10)", () => {
       workspace.id,
       "admin",
     );
-    await app.request("/api/auth/organization/invite-member", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        cookie: owner.cookie,
-        "x-forwarded-for": "198.51.100.250",
-      },
-      body: JSON.stringify({
-        organizationId: workspace.id,
-        email: "still-pending@example.com",
-        role: "viewer",
-      }),
+    await inviteWorkspaceMemberNative(app, owner.cookie, workspace.id, {
+      email: "still-pending@example.com",
+      role: "viewer",
     });
     // Seeded BEFORE the snapshot: signing up is itself a write (user,
     // account, session), and this user exists only to drive the 403 path

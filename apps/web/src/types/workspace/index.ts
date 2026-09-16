@@ -1,6 +1,5 @@
 import type { client } from "@taskdesk/libs";
 import type { InferResponseType } from "hono/client";
-import type { authClient } from "@/lib/auth-client";
 
 // S3 (issue #6, retrofit plan §3, matrix row 28): native replacement for the
 // `Awaited<ReturnType<typeof authClient.organization.getFullOrganization>>`
@@ -26,16 +25,6 @@ export type Workspace = InferResponseType<
 export type WorkspaceDetail = InferResponseType<
   (typeof client)["workspace"][":workspaceId"]["$get"],
   200
->;
-
-// Not redefined by S3 (retrofit plan §3, S3 row names only line 5 of this
-// file): zero importers of this type anywhere in apps/web/src today, and
-// `authClient.useActiveOrganization` is still a valid property on the client
-// SDK until S10 unmounts organizationClient() -- so this keeps compiling
-// even though apps/web/src/hooks/queries/workspace/use-active-workspace.ts
-// no longer calls the hook it names.
-export type ActiveWorkspace = NonNullable<
-  ReturnType<typeof authClient.useActiveOrganization>["data"]
 >;
 
 export default Workspace;

@@ -1,19 +1,30 @@
 import { randomUUID } from "node:crypto";
 import type { createApp } from "../../../apps/api/src/index";
 
-// Shared HTTP-level helpers for driving the better-auth organization() plugin
-// routes as a real client would (real sign-up, real cookies, real plugin
-// endpoints under /api/auth/organization/*) rather than mocking sessions.
+// Plugin-independent HTTP-level test helpers: real sign-up, real cookies,
+// and legacy-row planting -- used by dozens of files across
+// tests/api-integration that have nothing to do with the organization()
+// plugin (signUpUser alone is used by ~27 files).
 //
-// These exist to support the S1 characterization suite
-// (organization-plugin-characterization.test.ts,
-// organization-invite-rate-limit.test.ts,
-// organization-invite-abuse-guards.test.ts,
-// organization-active-session.test.ts) required by the organization()
-// retrofit plan (issue #6, S1 row). They intentionally return raw HTTP
-// responses / DB-shaped values, never the plugin's parsed response bodies,
-// so callers assert on database state rather than on a response shape that
-// S4-S7 will change.
+// UPDATED FOR S10 (issue #6). This file used to also export five
+// plugin-route-driving helpers (createWorkspaceViaPlugin,
+// inviteAndAcceptAsNewMember, updateMemberRoleViaPlugin,
+// updateMemberRoleViaPluginRaw, organizationActionViaPlugin), kept
+// byte-identical to `main` while the S1 characterization oracle
+// (organization-plugin-characterization.test.ts and its siblings) was still
+// in service, so that oracle was never quietly weakened while it was the
+// thing proving the plugin's behavior hadn't drifted. S10 deletes that
+// oracle along with the organization() plugin itself, so the freeze this
+// comment used to describe has lifted: there is nothing left it was
+// protecting. The five plugin-route helpers are removed below; every real
+// caller they had was ported to the native equivalents in
+// workspace-invitation-write-http.ts / workspace-membership-write-http.ts /
+// workspace-role-write-http.ts.
+//
+// What remains is genuinely plugin-independent: `signUpUser` drives the
+// core `/sign-up/email` route (unrelated to organization()), and
+// `plantLegacyMembershipRole` writes directly to the database rather than
+// through any route at all -- both keep their real, current callers.
 
 export type App = ReturnType<typeof createApp>["app"];
 
@@ -103,210 +114,6 @@ export async function signUpUser(
     user: { id: string; email: string };
   };
   return { cookie, user: body.user };
-}
-
-/**
- * Creates a workspace through the plugin's real `/organization/create` route
- * (apps/api/src/auth.ts:292-329 schema mapping, :363-368
- * beforeCreateOrganization, :369-411 afterCreateOrganization). Returns the
- * raw Response so callers can assert on status as well as the created id.
- */
-export async function createWorkspaceViaPlugin(
-  app: App,
-  cookie: string,
-  overrides?: Partial<{ name: string; slug: string }>,
-): Promise<Response> {
-  return app.request("/api/auth/organization/create", {
-    method: "POST",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify({
-      name: overrides?.name ?? "Characterization Workspace",
-      slug: overrides?.slug ?? `workspace-${randomUUID()}`,
-    }),
-  });
-}
-
-/**
- * Invites `email` into `workspaceId` with `role` as `ownerCookie`, then signs
- * that email up as a brand-new user and accepts the invitation as them.
- * Mirrors the real invite -> sign-up -> accept flow
- * (apps/api/src/auth.ts:413-444 sendInvitationEmail /
- * better-auth's acceptInvitation, which matches invitation.email against
- * session.user.email).
- */
-export async function inviteAndAcceptAsNewMember(
-  app: App,
-  ownerCookie: string,
-  workspaceId: string,
-  role: string,
-): Promise<SignedUpUser> {
-  const email = `member-${randomUUID()}@example.com`;
-  // Own client address, for the same reason as signUpUser: auth.ts rate-limits
-  // `/organization/invite-member` to 5 per 60 seconds per client IP
-  // (auth.ts:520), and #16 turned that limiter on for every deployment. Each
-  // invitation here stands for a different admin acting from their own browser,
-  // so one address per call is the accurate model -- and it keeps unrelated
-  // tests from spending the R1 characterization's budget of 5. R1 pins ONE
-  // explicit address instead, which is the only intentional same-client
-  // sequence in the suite.
-  const invited = await app.request("/api/auth/organization/invite-member", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      cookie: ownerCookie,
-      "x-forwarded-for": nextClientIp(),
-    },
-    body: JSON.stringify({ organizationId: workspaceId, email, role }),
-  });
-  if (invited.status !== 200) {
-    throw new Error(
-      `inviteAndAcceptAsNewMember: invite failed with ${invited.status}: ${await invited.text()}`,
-    );
-  }
-  const invitation = (await invited.json()) as { id: string };
-
-  const member = await signUpUser(app, { email });
-
-  const accepted = await app.request(
-    "/api/auth/organization/accept-invitation",
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        cookie: member.cookie,
-      },
-      body: JSON.stringify({ invitationId: invitation.id }),
-    },
-  );
-  if (accepted.status !== 200) {
-    throw new Error(
-      `inviteAndAcceptAsNewMember: accept failed with ${accepted.status}: ${await accepted.text()}`,
-    );
-  }
-
-  return member;
-}
-
-/**
- * The same plugin route as `updateMemberRoleViaPlugin`, but with the request's **media type
- * and raw body under the caller's control** — including omitting `Content-Type` entirely.
- *
- * This exists because `organization-plugin-role-guard.ts` decides whether to inspect a body,
- * and an earlier version made that decision from a case-SENSITIVE
- * `contentType.includes("application/json")`. `Content-Type: Application/JSON` therefore
- * skipped the guard while better-auth — which parses with `request.json()` and never consults
- * the header — went on to write the multi-role value. Testing that needs a client that can
- * spell the header differently and can send a body that is not valid JSON at all, neither of
- * which `JSON.stringify` plus a fixed header can do.
- *
- * Pass `contentType: null` to send **no** `Content-Type` header.
- */
-export async function updateMemberRoleViaPluginRaw(
-  app: App,
-  actingCookie: string,
-  rawBody: string,
-  contentType: string | null,
-  /**
-   * An optional query string, leading `?` included. better-auth's `update-member-role` never
-   * reads the query — which is precisely why it is worth being able to send one: a guard that
-   * resolved its target from the query could be pointed somewhere the handler will not act,
-   * and issue #82's NB-1 was exactly that.
-   */
-  queryString = "",
-): Promise<Response> {
-  const headers: Record<string, string> = { cookie: actingCookie };
-  if (contentType !== null) headers["content-type"] = contentType;
-  return app.request(
-    `/api/auth/organization/update-member-role${queryString}`,
-    {
-      method: "POST",
-      headers,
-      body: rawBody,
-    },
-  );
-}
-
-/**
- * Drives the still-mounted plugin route `POST
- * /api/auth/organization/update-member-role` (better-auth's
- * `crud-members.mjs`, `updateMemberRoleBodySchema` at line 215) exactly as
- * an admin/owner client would. `role` is typed as `string | string[]`
- * deliberately -- the body schema accepts
- * `z.union([z.string(), z.array(z.string())])`, and it is the array shape
- * that lets a caller ask for more than one role at once (issue #82). This
- * returns the raw `Response` so callers can assert on status as well as on
- * the `workspace_member` row the route writes.
- */
-export async function updateMemberRoleViaPlugin(
-  app: App,
-  actingCookie: string,
-  organizationId: string,
-  memberId: string,
-  role: string | string[],
-): Promise<Response> {
-  return app.request("/api/auth/organization/update-member-role", {
-    method: "POST",
-    headers: { "content-type": "application/json", cookie: actingCookie },
-    body: JSON.stringify({ organizationId, memberId, role }),
-  });
-}
-
-/**
- * Writes a role value into `workspace_member` that migration `0050`'s CHECK constraint
- * forbids — the ONLY way to reproduce a legacy malformed row once #82's remediation is in
- * place, and therefore load-bearing rather than a convenience.
- *
- * WHY THIS IS NOT CHEATING. After #82 there are three controls in the way of a multi-role
- * value: `organizationPluginRoleGuard` refuses the write, the evaluator refuses the read,
- * and `workspace_member_role_single_value` refuses the row. Together they make the state
- * unreachable through any route — which is the point, and which also means a test can no
- * longer create it the way the characterization suite used to, by asking the plugin nicely.
- * But "unreachable through a route" is not "impossible": a deployment that upgrades INTO
- * this fix may already hold such a row, written months ago by the plugin when nothing
- * stopped it. That row is exactly what the read-side remediation exists for, so it must
- * still be testable. This helper reproduces it the only way it can now arise — as data that
- * predates the constraint.
- *
- * The constraint is re-added `NOT VALID`, which is what makes this safe to use mid-suite:
- * PostgreSQL then enforces it on every subsequent INSERT and UPDATE while not re-checking
- * the row just planted. So the guard stays live for the rest of the test — a test that
- * plants a legacy row does not thereby switch the constraint off for everything after it.
- */
-/**
- * Any `POST /api/auth/organization/<action>` with an arbitrary JSON body.
- *
- * The guard's read half is reached by every non-exempt organization action, and the two
- * escalations found against it went through actions no purpose-built helper covered —
- * `cancel-invitation`, whose organization better-auth derives from the invitation row, and
- * `update-team`, which reads `body.data.organizationId`. A helper per action would have
- * produced a helper per action the reviewer thought to try; this one takes the action as a
- * parameter so a probe can reach anything the plugin mounts.
- */
-export async function organizationActionViaPlugin(
-  app: App,
-  actingCookie: string,
-  action: string,
-  body: Record<string, unknown>,
-  /**
-   * A UNIQUE client address per call by default, for the reason `signUpUser` has one:
-   * `auth.ts:520` rate-limits `/organization/invite-member` to **5 per 60 seconds per client
-   * IP**, and that is a real control (#16 turned it on for every deployment, where kaneo had
-   * it cloud-only). A probe file issuing several invitations is several *different* callers,
-   * and modelling them as one is what is wrong — not the limit. Without this, a suite's
-   * fourth invitation returns `429` and the probe fails for a reason unrelated to what it
-   * tests. Pass a fixed address to pin the bucket deliberately.
-   */
-  clientIp: string = nextClientIp(),
-): Promise<Response> {
-  return app.request(`/api/auth/organization/${action}`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      cookie: actingCookie,
-      "x-forwarded-for": clientIp,
-    },
-    body: JSON.stringify(body),
-  });
 }
 
 /**
