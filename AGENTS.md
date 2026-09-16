@@ -331,8 +331,9 @@ not weaker gates:
 - **Before opening another review pass on a candidate, check whether its SHA actually
   changed since the last review.** If it did not, the prior verdict still stands — do not
   re-review an unchanged head. If it did, only the delta since the last reviewed SHA needs
-  fresh eyes for an ordinary revision; a security-sensitive candidate still gets the full
-  tier applied to the new head.
+  fresh eyes for an ordinary revision; a security-sensitive candidate still gets *the tier
+  its own classification calls for* (see "Review tiers" above) applied to the new head —
+  not automatically the heaviest row, and never a skipped security review.
 - **Do not stop at one merged PR, one merge-ready PR, or one status report.** After every
   meaningful action — edit, test, commit, push, review, merge, CI result, blocker — refresh
   live state, remediate what needs it, and move to the next runnable piece of work. A
