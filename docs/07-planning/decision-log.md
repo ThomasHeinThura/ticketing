@@ -17,6 +17,47 @@ Newest first.
 
 ---
 
+### 2026-09-16 · Autonomous continuation authorized past Throttle 1 — prioritize, merge, close, without per-ticket sign-off
+
+**Decision:** once Throttle 1's conditions are genuinely met (verified live, not rounded
+up), the orchestrating session may continue autonomously: prioritize work within the
+existing roadmap, make implementation decisions consistent with approved specs, create
+PRs, commission fresh independent reviews at the tier the change actually warrants,
+remediate findings, merge fully cleared PRs through the protected flow, and close issues
+once their actual acceptance criteria are verified against live source — all without
+stopping to ask Thomas to select each ticket or approve each routine merge. Reserved for
+Thomas's own call, unchanged from the existing control-plane rules: new or conflicting
+product/security policy, significant architecture changes not settled in the specs, gate
+waivers, changes to reviewer/model eligibility, and production rollout or infrastructure
+actions requiring his authorization. The implementing agent must not approve its own work;
+fresh independent reviewers at the required tier and the mandatory Opus security review for
+security-scope changes are unchanged. After each meaningful milestone, report to Thomas:
+merged PRs and SHAs, verified acceptance criteria, open blockers, decisions requiring his
+authority, and the next autonomous action — a status report is a checkpoint, not a reason
+to stop.
+
+**Why:** this extends, and makes durable, the narrower 2026-09-15 merge delegation below
+(which covered merging a cleared candidate, not prioritization or issue closure) — Thomas's
+own explicit instruction, given directly in this session once Throttle 1 opened, rather than
+inferred. Recorded here because status.md's own session-log entry for this wave asserted
+this authorization had already been recorded, when it had not been — exactly the failure
+this decision log exists to prevent, per this file's own governing rule: "if it isn't in the
+decision log, it isn't in force yet, no matter how confidently a later document assumes it."
+Found by the independent review of the status.md reconciliation PR for this wave, corrected
+in the same change rather than left standing.
+
+**Alternatives considered:** treating the 2026-09-15 merge delegation as already broad
+enough to cover this — rejected; that entry is explicitly scoped to merging a candidate
+that is already fully green, not to prioritizing which work to do next or closing an issue,
+and reading it more broadly than its own text would be exactly the kind of silent
+scope-creep this file's hierarchy rule warns against.
+
+**Decided by:** Thomas, 2026-09-16 (given directly in this session's own instructions).
+Recorded by the orchestrator, after the fact — see "Why," above, for why this entry exists
+retroactively rather than having been written at the moment the instruction was given.
+
+---
+
 ### 2026-09-16 · Review tiering is by risk, not by path — and rounds stop when findings stop changing class
 
 **Decision:** the review-tier table in `AGENTS.md` no longer sizes the ordinary-review count
