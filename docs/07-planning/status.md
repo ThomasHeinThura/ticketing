@@ -2,10 +2,10 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-16 (later the same day again — a fourth pass, after #168's
-> Docker-build fix and an independently-verified UAT-0 pass)
-> **`main` at that moment:** `39a2dc6` (PR #172, decision-log entries — after PR #171 fixed
-> `docker build .` itself, which PR #169's own reconciliation pass did not catch)
+> **Snapshot taken:** 2026-09-16 (later the same day again — a fifth pass, after P2's first
+> audit-trail domain slice landed with a real Opus-caught security finding)
+> **`main` at that moment:** `7db940e` (PR #175 — the `packages/domain/src/audit` hash-chain
+> and reconstruction pure core, issue #37's first slice)
 > **Stage:** P0 · Foundation — **exit criteria met; Throttle 1 is OPEN.** Autonomous
 > continuation past Throttle 1 is authorized (Thomas, 2026-09-16) — see the session log's
 > newest entry for what that wave landed and what it found.
@@ -41,14 +41,18 @@
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-16 (later the same day, a fourth time)
-**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** UAT-0
-(`docker build` + container boot + health) independently verified end-to-end; the actual UAT
-redeploy is the only remaining step, and it needs Thomas.
-**Updated by:** Claude Code (Sonnet), reconciliation after **PR #171 (fix #168 — `docker
-build .` itself was broken on `main`) merged**, plus an independent, from-scratch boot/health
-verification of the resulting image, plus **PR #172** (two P1-sequencing decisions recorded).
-Full account in this session's newest log entry, below.
+**Last updated:** 2026-09-16 (later the same day, a fifth time)
+**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** P2 domain lane
+has landed its first two slices (`workflow`, then `audit`) in `packages/domain`; P1 core's
+foundational identity schema is decided but not yet built.
+**Updated by:** Claude Code (Sonnet), reconciliation after **PR #175 (issue #37's pure-domain
+slice — `canonicalRowHash`/`reconstructAt`) merged**, plus **PR #176** (a prerequisite
+review-findings closure it depended on). Reviewed ordinary Sonnet PASS, then a mandatory
+Opus pass that found **four real hash-collision bugs** on its first look (CHANGES REQUIRED)
+— all fixed and independently re-verified (CLEAR WITH FINDINGS, non-blocking) before merge.
+One CodeQL alert on the same hash call was independently judged a false positive by both
+reviewers; dismissal was escalated to and authorized by Thomas rather than taken
+unilaterally (decision log). Full account in this session's newest log entry, below.
 
 ---
 
@@ -988,6 +992,65 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-16 (later the same day, a fifth time) · P2's audit-trail domain slice lands; mandatory Opus review catches four real hash-collision bugs; a CodeQL alert escalated to and resolved by Thomas
+
+Same session, continuing autonomously. With #168 fixed and P1's foundational-schema
+sequencing decided (prior entry, below), the next SAFE_PARALLEL item taken up was P2's
+`packages/domain` lane: SLA (#32) has two genuine open product-behaviour questions (below,
+still parked for Thomas) so **audit trail (#37)** was started instead — isolated, no
+dependency edges, and its one open question (a same-instant tie-break rule) was a routine
+implementation convention rather than a product-behaviour call.
+
+**What landed:** `canonicalRowHash` (`AU-15`'s hash-chain recipe) and `reconstructAt`
+(`AU-8`'s point-in-time reconstruction), pure functions in `packages/domain/src/audit/`, no
+I/O — **PR #175**, merged `7db940e`. A prerequisite surfaced mid-task and was fixed first:
+`audit-trail.md`'s 2026-09-05 review section was still open (do-not 15 blocks building a
+feature while that's true) — closed as **PR #176**, merged `68b4e95`, following the #83/#75
+precedent exactly.
+
+**The mandatory Opus review did exactly what it exists to do.** This module was judged
+security-relevant by content (it's a tamper-evidence mechanism), not by `ci-cd.md`'s literal
+path list, and got the full tier: ordinary Sonnet PASS, then Opus. Opus's first pass came
+back **CHANGES REQUIRED** with four concrete, demonstrated collision classes — none of them
+caught by the module's own 263 passing tests: out-of-range `jsonb` numbers (`1e400`, an
+actual value Postgres stores and returns) all canonicalizing to the same string as a real
+`null`; the `\x1e`-joined field scheme not being injective, so two different rows with
+different `userAgent`/`traceId` values could hash identically; non-plain objects (a `Date`,
+a `Map`) silently collapsing to `{}`; and a same-instant tie-break rule whose own doc comment
+claimed Postgres auto-increment ids as its ordering signal, when this schema's ids are CUID2
+and — verified against the library's own source — carry **no ordering guarantee at all**.
+All four were fixed (guards that throw rather than silently produce an ambiguous hash; the
+tie-break's false premise replaced with a new, honest decision-log entry naming it a genuinely
+open schema question rather than inventing a substitute), re-verified independently by the
+same Opus reviewer re-running their own adversarial probes against the fix, and confirmed
+non-regressive (both pinned golden-hash test values unchanged). Final verdict: **CLEAR WITH
+FINDINGS (non-blocking)**.
+
+**One CodeQL alert genuinely needed Thomas, and got it.** The hash call also tripped a CodeQL
+rule (`js/insufficient-password-hash`) on a name-based heuristic — `apiKeyId`, a foreign-key
+id, not a secret, is one of fifteen concatenated fields. Both the ordinary and the Opus
+reviewer independently concluded, without prompting each other, that this is a genuine false
+positive (a salted KDF would actively break `audit-verify`'s need for deterministic
+re-hashing) — and neither dismissed it themselves, correctly treating that action as
+gate-adjacent (`AGENTS.md` do-not 6). Escalated to Thomas, who authorized the dismissal;
+recorded in the decision log and the alert dismissed via the code-scanning API before merge.
+**Filed #177** to separately triage a second, older, pre-existing CodeQL alert of the same
+rule on `apps/api/src/utils/verify-api-key.ts` — a materially different situation (there the
+hashed value genuinely is a credential) that this session did not resolve, only flagged.
+
+**Issue #37 stays open.** This PR is one bounded slice — the impure edge (the actual
+`audit_log` insert, the advisory lock, `audit-verify`'s live chain walk, any route or
+permission wiring, any screen) is explicitly not started. Commented on the issue with exactly
+what landed and what remains, rather than closing it.
+
+**Not done:** the audit-trail impure edge and everything downstream of it; SLA (#32),
+still waiting on Thomas's two questions (unchanged from the prior entry); the foundational
+identity-schema migration itself (decided, not yet implemented); issue #8's remaining
+~85-route classification and runtime-integration scope; the actual UAT redeploy to real
+infrastructure.
+
+---
 
 ### 2026-09-16 (later the same day, a fourth time) · #168 (docker build failure) root-caused and fixed; UAT-0 independently verified end-to-end; P1 sequencing decisions recorded
 
