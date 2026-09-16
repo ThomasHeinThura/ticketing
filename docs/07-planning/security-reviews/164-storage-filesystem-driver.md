@@ -1,6 +1,15 @@
 # Pre-merge security review — PR #164 (`storage.filesystem` driver, `apps/api/src/storage/**`)
 
-**Reviewed head:** `36d186e09f8a40567767e40cb13e0754c8885823`
+**Reviewed head:** `819cdaadf4b164510fed4363059241290d85a0b0`
+
+**Rebase note (2026-09-16, orchestrator):** the reviewed code (through `36d186e`) was
+rebased onto a newer `main` after PRs #91/#163 landed, to satisfy branch-protection's
+up-to-date requirement — mechanical only, verified empty diff on every file this review
+covers. `apps/api/src/storage/**`/`apps/api/src/index.ts`'s storage route,
+`tests/api-integration/storage-filesystem-upload.test.ts`, and `tests/api/storage/**` are
+all byte-identical before and after. Storage unit tests (45/45), `pnpm test:permissions`
+(79/79, up from 76/76 — the increase is PR #163's own H2 tests reaching this branch via the
+rebase, not a change here), lint, and typecheck were all re-run at the new head.
 
 **Verdict: CLEAR WITH FINDINGS.** No exploitable security defect. Two Opus rounds, plus two
 ordinary Sonnet reviews covering the HMAC upload-token mechanism and path-traversal/driver-
