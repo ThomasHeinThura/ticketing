@@ -46,6 +46,43 @@ function argValue(flag) {
 }
 
 /**
+ * Is a compact, single-value FIELD like `**Spec:**`'s — not a whole prose
+ * section — declaring n/a or BLOCKED, as opposed to a genuine reference
+ * whose own text merely starts with letters that spell one of those words?
+ *
+ * `effectivelyNotApplicable`/`declaredState` (in `lib/pr-body.mjs`) were
+ * built for whole-section PROSE, where a state word is realistically always
+ * followed by real punctuation or whitespace before further explanation.
+ * Their opener regexes end in a bare `\b` — a word/non-word boundary — and
+ * a hyphen is a non-word character, so `n/a-workflows.md` and
+ * `` `blocked-transitions.md` `` (real filenames that merely START with
+ * letters spelling "n/a"/"blocked") satisfy that boundary immediately
+ * after the first word, even though neither string is declaring a state at
+ * all. A terse field value carries no guarantee against that shape the way
+ * a hand-written sentence does. Found adversarially, by two of the three
+ * independent reviews of this exact fix (PR #148): reusing
+ * `effectivelyNotApplicable` unmodified here would have silently exempted
+ * a genuinely-named spec like that from ever being checked for open review
+ * findings — the opposite direction of the bug this fix closes, and a
+ * regression the OLD exact-match guard did not have.
+ *
+ * The one shape this rejects that `effectivelyNotApplicable` alone would
+ * accept: the opener word glued directly to a hyphen with no whitespace
+ * between them, immediately followed by more non-space text (a kebab-case
+ * identifier). A real "n/a"/"BLOCKED" declaration followed by a spaced
+ * hyphen or dash separator (`"n/a - reason"`, `"BLOCKED — reason"`) still
+ * reaches `effectivelyNotApplicable` unchanged, because the character
+ * right after the opener there is whitespace, not a hyphen.
+ */
+function specFieldIsNotApplicable(declared) {
+  const opener = declared.trim().replace(/^[^\p{L}\p{N}]+/u, "");
+  if (/^(?:n\s*\/\s*a|not\s+applicable|blocked)-\S/i.test(opener)) {
+    return false;
+  }
+  return effectivelyNotApplicable(declared);
+}
+
+/**
  * Sections of a review document, keyed by every spec filename their heading names.
  *
  * @returns {{ spec: string, heading: string, body: string }[]}
@@ -112,21 +149,21 @@ async function main() {
     const task = sections(body).get(normaliseHeading("Task"));
     const declared = task ? field(contentOf(task.raw), "Spec") : "";
     const named = /([a-z0-9-]+\.md)/.exec(declared);
-    // `effectivelyNotApplicable`, not a bare `/^n\/a$/i` exact match — found
-    // adversarially, while shepherding PR #144: that exact-match guard only
-    // recognised a Spec field that was LITERALLY the two characters "n/a",
-    // not the "n/a — reason" shape this repository's own convention requires
-    // everywhere else (`docs/04-engineering/definition-of-done.md`: "a
-    // checklist that does not apply is marked n/a with a reason, never
-    // deleted"). An honestly-written "n/a — this is UAT-deployability
-    // infrastructure (tracked in `status.md` and issue #11)..." is not a
-    // spec declaration at all, but its own explanation happening to mention
-    // a `.md` filename in passing satisfied the old guard and got read as
-    // one anyway. `effectivelyNotApplicable` reads the DECLARED STATE from
-    // the field's first meaningful line — the same fix F9 already applied
-    // to this exact class of defect elsewhere in this file's own history —
-    // rather than searching the whole field for a token.
-    if (named && !effectivelyNotApplicable(declared)) {
+    // Not a bare `/^n\/a$/i` exact match — found adversarially, while
+    // shepherding PR #144: that exact-match guard only recognised a Spec
+    // field that was LITERALLY the two characters "n/a", not the "n/a —
+    // reason" shape this repository's own convention requires everywhere
+    // else (`docs/04-engineering/definition-of-done.md`: "a checklist that
+    // does not apply is marked n/a with a reason, never deleted"). An
+    // honestly-written "n/a — this is UAT-deployability infrastructure
+    // (tracked in `status.md` and issue #11)..." is not a spec declaration
+    // at all, but its own explanation happening to mention a `.md` filename
+    // in passing satisfied the old guard and got read as one anyway. This
+    // is the same defect class F9 already closed once in `pr-body.mjs`'s
+    // own history (a control reading a convenient token instead of the
+    // actual declared state) — see `specFieldIsNotApplicable` below for why
+    // that fix's own `effectivelyNotApplicable` isn't reused unmodified.
+    if (named && !specFieldIsNotApplicable(declared)) {
       specs.add(named[1]);
     }
   }

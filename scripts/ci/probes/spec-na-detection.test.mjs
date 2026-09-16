@@ -67,12 +67,22 @@ function scenario() {
 }
 
 function bodyWithSpec(spec) {
-  return bodyFile(
-    completeBody({}).replace(
-      "**Spec:** n/a — CI infrastructure probe",
-      `**Spec:** ${spec}`,
-    ),
+  const base = completeBody({});
+  const marker = "**Spec:** n/a — CI infrastructure probe";
+  // `String.prototype.replace` does not throw when the search string is not
+  // found — it silently returns the input unchanged. A future edit to
+  // `completeBody`'s default text would then make every test below run
+  // against the UNREPLACED default n/a body instead of the intended
+  // scenario, and at least one of them (the "PASSES when n/a" case) would
+  // still happen to pass — vacuously, not because the fix works. Asserting
+  // the replacement actually happened turns that silent drift into a loud,
+  // immediate failure here instead.
+  assert.ok(
+    base.includes(marker),
+    `completeBody()'s default text no longer contains ${JSON.stringify(marker)} — ` +
+      "update this probe's replacement target to match",
   );
+  return bodyFile(base.replace(marker, `**Spec:** ${spec}`));
 }
 
 describe("check:reviews — an honest n/a explanation must not be read as a spec declaration", () => {
@@ -142,6 +152,43 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
       0,
       `expected a genuine retrofit-doc reference with open findings to still fail, exited ${result.status}:\n${result.output}`,
     );
+  });
+
+  it("still FAILS a genuine spec whose OWN filename happens to start with 'n/a' or 'blocked' — found adversarially by review of this fix", () => {
+    // Two of the three independent Sonnet reviews of this fix found the same
+    // regression: `effectivelyNotApplicable`'s opener regexes end in a bare
+    // `\b`, and a hyphen is a non-word character, so a genuine filename like
+    // `n/a-workflows.md` or `blocked-transitions.md` satisfies that boundary
+    // immediately after the first word, even though neither string is
+    // declaring a state at all — silently exempting a real spec with real
+    // open findings from ever being checked. The OLD exact-match guard did
+    // NOT have this specific hole (neither string is literally "n/a"), so
+    // this would have been a genuine regression, not a pre-existing gap.
+    for (const [spec, label] of [
+      // The `.md` extraction regex's character class excludes "/", so
+      // "n/a-workflows.md" itself extracts as "a-workflows.md" — the
+      // review doc's heading must key on what the regex ACTUALLY extracts,
+      // not the raw Spec field text, or this probe tests the wrong thing.
+      ["n/a-workflows.md", "a-workflows.md"],
+      ["`blocked-transitions.md`", "blocked-transitions.md"],
+    ]) {
+      const dir = scenario();
+      write(
+        dir,
+        "docs/07-planning/reviews/2026-09-05/consistency.md",
+        reviewDocWithOpenSection(label),
+      );
+      commit(dir, `docs: retarget the open section at ${label}`);
+      const result = runChecker(dir, "check-reviews.mjs", [
+        "--body",
+        bodyWithSpec(spec),
+      ]);
+      assert.notEqual(
+        result.status,
+        0,
+        `expected "${spec}" (a genuine filename, not a declaration) with open findings to still fail, exited ${result.status}:\n${result.output}`,
+      );
+    }
   });
 
   it("non-vacuity: the OLD exact-match guard really did misread the honest n/a explanation as a declaration", () => {
