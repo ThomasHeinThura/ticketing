@@ -237,14 +237,41 @@ control itself:
   snapshot rather than a maintained count — the same lesson this file's own H2 numbers
   originally needed.
 
+**Second delta, 2026-09-16 — N1, N4, and D1-D3, found by the independent Opus delta review
+of the F1/F2 fix at `a40fda2`, and by the following confirmation review.** Verdict at each
+step: CLEAR (the ordering control itself was never in question across either round).
+
+- **N1 (LOW, fixed at `3f73c7e`):** `isWithinAuthGuardScope`'s original `startsWith` check
+  would have flagged a route registered at exactly `/api` (no trailing slash) as an H2
+  violation, even though Hono's `ALL /api/*` genuinely reaches the bare `/api` path too —
+  confirmed against a live Hono app. A false positive, not a missed hole. Fixed: an exact
+  match on the prefix minus its trailing slash also counts as in-scope.
+- **N4 (LOW, doc-only):** the pull request's own "Conventional commit messages" checklist
+  line had fallen one round behind the branch's actual commit chain, twice. Corrected, and
+  reworded to regenerate fresh each update rather than being incrementally patched.
+- **D1 (mechanical, fixed):** the pull request's `error-fix-loop.md` checklist line was
+  unticked with a reason attached but no literal `n/a` token, which the mechanical
+  PR-template checker rejects regardless of the reason's content. Reshaped to match the
+  passing convention.
+- **D2 (this edit):** this H2 entry did not describe the N1 fix at all, which is the inverse
+  of what the `**Reviewed head:**` field exists to prevent — declaring a head without
+  describing what that head does.
+- **D3 (LOW, latent, fixed at `31c58dd`):** N1's exact-match arm computed
+  `AUTH_GUARD_PATH_PREFIX.slice(0, -1)`, silently assuming the prefix always ends in a
+  slash. A future `AUTH_GUARD_KEY` shaped like `"ALL /api*"` (prefix `/api`, no trailing
+  slash) would make that arm compare against `/ap` instead — fail-open for a route
+  genuinely at `/ap`. Asserted at the prefix's own derivation instead, fail-loud. No
+  behaviour change for the real `AUTH_GUARD_KEY`, which does end in a slash.
+
+**Reviewed head:** `31c58dd45b10181515aa79f04f4553984c504c4f`
+
 **Where it belongs: issue #8.** #8 is still the retrofit that classifies the remaining
 above-guard and baseline-uncovered routes; this fix is the *control* only — it does not
 classify any of the above-guard routes, and does not wire `policyRegistry` into runtime
-request handling. **Not yet merged.** Pending a fresh independent review of the F1/F2
-remediation and the mandatory Opus security review re-clearance (`packages/permissions/**`
-is security-review scope per `docs/04-engineering/ci-cd.md`) — update this entry again once
-both clear, following the VERIFIED-CLOSED convention the HIGH findings above use, and name
-the PR number once opened.
+request handling. **Independent review complete at `31c58dd`** — an ordinary Sonnet pass and
+four Opus passes (initial, delta, confirmation, and this second delta) across the fix's
+lifetime, none blocking. Ready to merge through the authorized protected flow once every
+other required check is green at this exact head.
 
 ### H3 — the registry has no runtime existence · tracked to #8; false claims corrected here
 
