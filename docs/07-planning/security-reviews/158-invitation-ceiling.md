@@ -218,9 +218,9 @@ other lane's database was touched.*
 
 The full review above was performed at `edd97e31eaed1482943095634db47e4c6feede5b`. Two things
 landed after it, so `scripts/ci/check-pr-template.mjs` requires a fresh reviewed-head
-declaration — it judges over landed commits, not the net diff. The new reviewed head is:
+declaration — it judges over landed commits, not the net diff. The new reviewed head:
 
-**`80a05c0fbf53ae61a624c94df4fa94596677b17d`**
+**Reviewed head:** `80a05c0fbf53ae61a624c94df4fa94596677b17d`
 
 ### What landed since `edd97e3`
 
