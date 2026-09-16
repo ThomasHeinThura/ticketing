@@ -97,6 +97,19 @@ export const platformPolicies = {
     public: true,
     reason: "readiness probe — checks database reachability",
   },
+
+  // storage/filesystem.ts's local stand-in for a presigned S3 PUT: there is no browser
+  // session to check because there is no browser involved in a S3-style direct-upload PUT.
+  // The route's own short-lived, key-scoped HMAC token (derived from TASKDESK_AUTH_SECRET,
+  // verified with a constant-time comparison — see writeUploadedObject) is the credential,
+  // exactly the way holding a presigned S3 URL is the credential for the equivalent S3 PUT.
+  // Registered above the auth guard in index.ts for the same reason GET /api/asset/{id} is.
+  "PUT /api/storage/filesystem-upload": {
+    public: true,
+    reason:
+      "no session applies to a direct-PUT upload; authorized instead by a short-lived, " +
+      "key-scoped signed token in the query string, verified in writeUploadedObject",
+  },
 } as const satisfies PolicyMap;
 
 export const POLICY_SOURCES = [

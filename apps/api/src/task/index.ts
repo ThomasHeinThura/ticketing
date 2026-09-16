@@ -19,7 +19,7 @@ import {
   createTaskImageUploadUrl,
   isImageContentType,
   validateTaskAssetUploadInput,
-} from "../storage/s3";
+} from "../storage";
 import { normalizeApiServerUrl } from "../utils/openapi-spec";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import {
@@ -775,6 +775,12 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
         surface,
         filename,
         contentType,
+        // Only meaningful to the filesystem driver, whose "presigned URL" is a route on this
+        // API process itself rather than a separate storage endpoint — see
+        // storage/filesystem.ts, which normalizes this itself (via the same
+        // normalizeApiServerUrl used below for the finalize response), so the raw origin is
+        // passed here rather than pre-normalizing it. s3.ts ignores this field entirely.
+        apiBaseUrl: process.env.KANEO_API_URL || new URL(c.req.url).origin,
       });
 
       return c.json(upload, 200);
