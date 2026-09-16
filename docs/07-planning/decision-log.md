@@ -236,11 +236,17 @@ target vocabulary only — rejected, that is a gate whose green means nothing, w
 failure class this project exists to avoid; (c) declare the inherited names permanent canon
 — rejected, they are kaneo's domain language, not TaskDesk's.
 
-**Decided by:** Thomas, 2026-09-10, in the orchestrator directive that superseded the
-9Router routing instructions. Recorded here because `events.md` asserts it as normative
-prose, and an earlier revision of that document claimed a Thomas decision on #86 that no
-source recorded — issue #86 had zero comments and this log had no entry. This entry is that
-missing source. Raised as issue #86; implemented by PR #91.
+**Decided by:** the orchestrating session, 2026-09-16, as a routine implementation-sequencing
+call within the merge/implementation authority Thomas delegated 2026-09-15 ("Governance
+reset," below) — this is not a new product or security policy, only how to register an
+event vocabulary the code already publishes without absorbing a P1-sized rename into P0.
+**Corrects two prior false attributions on this same entry, recorded so neither is
+re-derived:** an earlier revision of `events.md` asserted this as a Thomas decision with no
+supporting source at all (issue #86 had zero comments, and this log had no entry for it); a
+later revision of this very decision-log entry then cited "the orchestrator directive that
+superseded the 9Router routing instructions" — a phrase that names nothing else recorded
+anywhere in this log or in issue #86, and could not be verified against any actual source.
+Neither attribution stands. Raised as issue #86; implemented by PR #91.
 
 ---
 
