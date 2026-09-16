@@ -686,4 +686,31 @@ describe("H2 — a route registered above the auth guard fails the gate", () => 
     expect(result.ok).toBe(true);
     expect(result.authGuardOrderingViolations).toEqual([]);
   });
+
+  it("N1 — a capability route at exactly /api (no trailing slash) is NOT flagged: the guard's own wildcard genuinely reaches it", () => {
+    // Found by the independent Opus delta review of the F1 fix. AUTH_GUARD_PATH_PREFIX is
+    // "/api/", but Hono's ALL /api/* wildcard matches the bare "/api" path too -- confirmed
+    // against a live Hono app. A naive startsWith("/api/") would have flagged this route as
+    // an H2 violation even though the guard genuinely runs for it -- a false positive, not
+    // a missed hole.
+    const realApp = appBelow(entry("GET", "/api"));
+    const routes = collectRoutes(realApp);
+    const registry = registryOf({
+      "GET /api": {
+        capability: "project:read",
+        scope: "project",
+        reach: "required",
+        scopeSource: "row",
+      },
+    });
+
+    const result = computeRouteCoverage(
+      routes,
+      registry,
+      undefined,
+      authGuardRegistrationIndex(realApp),
+    );
+    expect(result.ok).toBe(true);
+    expect(result.authGuardOrderingViolations).toEqual([]);
+  });
 });

@@ -275,9 +275,20 @@ const AUTH_GUARD_PATH_PREFIX = (() => {
  * resolves the identity it reads. Found by the independent Opus review of this pull request
  * (finding F1), reproduced against a live app before this fix: the guard did not run for
  * such a route, and `computeRouteCoverage` reported it `ok: true` regardless.
+ *
+ * **Exact match on the prefix minus its trailing slash also counts (N1, found by the
+ * independent Opus delta review of the F1 fix).** `AUTH_GUARD_PATH_PREFIX` is `/api/`, but
+ * Hono's own wildcard matching treats `ALL /api/*` as covering the bare path `/api` too —
+ * confirmed against a live Hono app, not assumed. A route registered at exactly `/api` (no
+ * trailing slash) genuinely IS reached by the guard, so a naive `startsWith("/api/")` would
+ * have produced a false positive: flagging a route the guard actually protects. No such
+ * route exists today, but it is an ordinary shape a future route could take.
  */
 function isWithinAuthGuardScope(path: string): boolean {
-  return path.startsWith(AUTH_GUARD_PATH_PREFIX);
+  return (
+    path === AUTH_GUARD_PATH_PREFIX.slice(0, -1) ||
+    path.startsWith(AUTH_GUARD_PATH_PREFIX)
+  );
 }
 
 export function classifySurface(path: string): RouteSurface {
