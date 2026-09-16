@@ -95,6 +95,21 @@
  *             indirection exists in the tree today (`grep -rn "= publishEvent\s*;\|publishEvent as "
  *             apps/` finds none); this comment is a disclosure of a gap, not a promise it
  *             never will.
+ *   IDENTIFIER `resolveLocalConst`/`assertNoOtherBinding` (round 5-6, HIGH/MEDIUM) match a
+ *             tracked identifier by its literal TEXT (`\bNAME\b`), not by resolving it the
+ *             way a JS/TS parser would. A Unicode escape inside an identifier —
+ *             `let eventType = "…"` is, at runtime, the exact same binding as
+ *             `let eventType = "…"` — is invisible to a text match, because the escaped
+ *             form contains no substring spelling the tracked name. A single-file bypass
+ *             this specific (independent Opus review, round 6, LOW): a shadowing `let`
+ *             written with one escaped character defeats both the round-5 shadow check
+ *             AND the round-6 fix above, resolving to whatever the outer const says while
+ *             actually reading the escaped `let`. This is the irreducible floor of a
+ *             regex-over-text approach, not a one-line gap — closing it for real needs an
+ *             AST parse, which this file deliberately does not carry (see the module's own
+ *             "no framework dependency" convention elsewhere in this codebase). No such
+ *             escape exists anywhere in `apps/api/src` today (`grep -rln '\\\\u00' apps/api/src`
+ *             finds none); this comment is a disclosure of a gap, not a promise it never will.
  *
  * Usage:
  *   node scripts/ci/check-events.mjs
