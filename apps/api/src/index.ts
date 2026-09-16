@@ -529,6 +529,18 @@ export function createApp(options: { staticRoot?: string } = {}) {
         // filesystem path. Anything else here is an unexpected raw fs error (e.g. EEXIST,
         // ENOTDIR, ENOSPC) that embeds the server's own absolute storage-root path, which a
         // caller holding nothing but a valid upload token has no business seeing.
+        //
+        // The generic case is logged here, server-side only, before the safe message
+        // reaches the client — found by the independent Opus delta review (finding A): the
+        // prior version of this fix discarded the raw error entirely once it stopped
+        // forwarding it to the client, so an ENOSPC/EACCES/EDQUOT on the storage volume
+        // would have surfaced to nobody. Detailed to the log, generic to the client.
+        if (!(error instanceof StoragePathError)) {
+          console.error(
+            "storage/filesystem-upload: unexpected write failure",
+            error,
+          );
+        }
         throw new HTTPException(400, {
           message:
             error instanceof StoragePathError
