@@ -152,11 +152,10 @@ describe("S6a: native cloud abuse gates on POST /api/workspace/{id}/invitations"
     expect(invited.status).toBe(403);
     await expect(invited.text()).resolves.toMatch(/[Gg]uest/);
 
-    // Filtered by email, deliberately: `inviteAndAcceptAsNewMemberNative`'s
-    // own setup call above already wrote (and accepted) an unrelated
-    // invitation row for `guest`'s own email into this workspace, so an
-    // unfiltered count would pass even if this gate let the blocked invite
-    // through.
+    // Filtered by email, deliberately: `inviteAndAcceptAsNewMemberNative`'s own
+    // setup call above already wrote (and accepted) an unrelated invitation
+    // row for `guest`'s own email into this workspace, so an unfiltered
+    // count would pass even if this gate let the blocked invite through.
     const invitationRows = await db
       .select()
       .from(schema.invitationTable)
