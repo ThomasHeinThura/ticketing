@@ -13,6 +13,7 @@ import { Hono } from "hono";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   loadApiApp,
+  loadAuthGuardRegistrationIndex,
   loadPolicyRegistry,
   loadRouterMiddleware,
   loadRouterRoutes,
@@ -45,19 +46,56 @@ const baseline = JSON.parse(
 describe("route coverage", () => {
   let result: ReturnType<typeof computeRouteCoverage>;
   let routeCount = 0;
+  let authGuardIndex: number | undefined;
 
   beforeAll(async () => {
-    const [routes, registry] = await Promise.all([
+    const [routes, registry, guardIndex] = await Promise.all([
       loadRouterRoutes(),
       loadPolicyRegistry(),
+      loadAuthGuardRegistrationIndex(),
     ]);
     routeCount = routes.length;
-    result = computeRouteCoverage(routes, registry, baseline);
+    authGuardIndex = guardIndex;
+    result = computeRouteCoverage(routes, registry, baseline, authGuardIndex);
   }, 120_000);
 
   it("finds a router to enumerate at all", () => {
     // A silent zero here would make every other assertion in this file vacuous.
     expect(routeCount).toBeGreaterThan(0);
+  });
+
+  it("finds the auth guard's own registration index in the real router", () => {
+    // If this were ever undefined — the guard renamed, removed, or its declared registration
+    // count in DECLARED_ROUTER_MIDDLEWARE drifting from reality — the ordering check below
+    // would silently no-op rather than fail. Asserted explicitly so that failure mode is loud,
+    // not a vacuously-passing "no violations found".
+    expect(authGuardIndex).toEqual(expect.any(Number));
+  });
+
+  it("has no capability/self/portal policy registered above the auth guard (H2)", () => {
+    // docs/07-planning/security-reviews/21-policy-registry.md, H2: the guard sits at index 38
+    // of 457 with 27 route keys above it. Every one of them is public or delegated today —
+    // this is the control that keeps it that way once #8 starts classifying the rest.
+    expect(
+      result.authGuardOrderingViolations.map((route) => route.routeKey),
+    ).toEqual([]);
+  });
+
+  it("proves the ordering data is real: known above-guard routes are actually above the guard", async () => {
+    // Not a vacuous check — GET /api/asset/{id} is H2's own illustrative example, and
+    // GET /api/user/avatar/{id} is the finding's second one. Both are registered in
+    // apps/api/src/index.ts before `api.use("*", <the auth guard>)`, and neither has a policy
+    // yet (both are still in tests/permissions/inherited-uncovered.json), so this asserts
+    // registrationIndex against the real router rather than a fixture standing in for it.
+    const routes = await loadRouterRoutes();
+    expect(authGuardIndex).toEqual(expect.any(Number));
+    const aboveGuard = new Set(
+      routes
+        .filter((route) => route.registrationIndex < (authGuardIndex as number))
+        .map((route) => route.routeKey),
+    );
+    expect(aboveGuard.has("GET /api/asset/{id}")).toBe(true);
+    expect(aboveGuard.has("GET /api/user/avatar/{id}")).toBe(true);
   });
 
   it("has a policy for every route, except the inherited ones #8 has yet to classify", () => {

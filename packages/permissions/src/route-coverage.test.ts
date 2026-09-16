@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { PolicyMap } from "./policy";
 import { createPolicyRegistry } from "./registry";
 import {
+  AUTH_GUARD_KEY,
+  authGuardRegistrationIndex,
   classifySurface,
   collectMiddleware,
   collectRoutes,
@@ -462,5 +464,172 @@ describe("an undeclared wildcard surface is unclassified, not coverable", () => 
 
     expect(result.unclassified).toEqual([]);
     expect(result.ok).toBe(true);
+  });
+});
+
+/**
+ * H2 (docs/07-planning/security-reviews/21-policy-registry.md, lines 137-166): "`CollectedRoute`
+ * carries no registration index... a route registered above the auth guard is indistinguishable
+ * from one below it... when #8 classifies `GET /api/asset/{id}` as `{ capability, scope }` — the
+ * obvious verdict — the gate turns green with zero runtime change and the route stays anonymous."
+ *
+ * `guard` below stands in for `api.use("*", <Sentry isolation scope + authenticateApiRequest
+ * guard>)` — same shape Hono actually records for it (method ALL, wildcard path, a
+ * two-argument handler), same declared key (`AUTH_GUARD_KEY`, "ALL /api/*"), and exactly one
+ * registration, matching `DECLARED_ROUTER_MIDDLEWARE`'s declared count — so it is genuinely
+ * classified as the guard by `authGuardRegistrationIndex`, not merely shaped like one.
+ */
+describe("H2 — a route registered above the auth guard fails the gate", () => {
+  const guard = entry("ALL", "/api/*", 2);
+
+  function appAbove(...aboveGuard: HonoRouterEntry[]): HonoLikeApp {
+    return app([...aboveGuard, guard]);
+  }
+
+  function appBelow(...belowGuard: HonoRouterEntry[]): HonoLikeApp {
+    return app([guard, ...belowGuard]);
+  }
+
+  it("without an auth-guard index, the hole H2 found is still exactly as open as it always was", () => {
+    // This is computeRouteCoverage exactly as every caller invoked it before this fix — no
+    // 4th argument. A route above the guard with an ordinary capability policy passes clean,
+    // which is H2's claim proven rather than asserted: "the gate turns green with zero runtime
+    // change and the route stays anonymous."
+    const routes = collectRoutes(appAbove(entry("GET", "/api/asset/:id")));
+    const registry = registryOf({
+      "GET /api/asset/{id}": {
+        capability: "project:read",
+        scope: "project",
+        reach: "required",
+        scopeSource: "row",
+      },
+    });
+    const result = computeRouteCoverage(routes, registry);
+    expect(result.ok).toBe(true);
+    expect(result.authGuardOrderingViolations).toEqual([]);
+  });
+
+  it("passing the guard's own registration index turns the same scenario red", () => {
+    const realApp = appAbove(entry("GET", "/api/asset/:id"));
+    const routes = collectRoutes(realApp);
+    const registry = registryOf({
+      "GET /api/asset/{id}": {
+        capability: "project:read",
+        scope: "project",
+        reach: "required",
+        scopeSource: "row",
+      },
+    });
+
+    const authGuardIndex = authGuardRegistrationIndex(realApp);
+    expect(authGuardIndex).toEqual(expect.any(Number));
+
+    const result = computeRouteCoverage(
+      routes,
+      registry,
+      undefined,
+      authGuardIndex,
+    );
+    expect(result.ok).toBe(false);
+    expect(
+      result.authGuardOrderingViolations.map((route) => route.routeKey),
+    ).toEqual(["GET /api/asset/{id}"]);
+    // Not double-counted as coverage it does not actually have.
+    expect(result.covered.map((route) => route.routeKey)).not.toContain(
+      "GET /api/asset/{id}",
+    );
+  });
+
+  it("the identical route BELOW the guard is unaffected", () => {
+    const realApp = appBelow(entry("GET", "/api/asset/:id"));
+    const routes = collectRoutes(realApp);
+    const registry = registryOf({
+      "GET /api/asset/{id}": {
+        capability: "project:read",
+        scope: "project",
+        reach: "required",
+        scopeSource: "row",
+      },
+    });
+
+    const result = computeRouteCoverage(
+      routes,
+      registry,
+      undefined,
+      authGuardRegistrationIndex(realApp),
+    );
+    expect(result.ok).toBe(true);
+    expect(result.authGuardOrderingViolations).toEqual([]);
+  });
+
+  it("self and portal policies above the guard trip the check too, not only capability", () => {
+    // The finding's own illustrative example was a capability route, but `self` and `portal`
+    // read an identity the guard resolves exactly the same way — nothing about the failure is
+    // specific to `capability`.
+    const realApp = appAbove(
+      entry("GET", "/api/me/avatar"),
+      entry("GET", "/api/portal/requests"),
+    );
+    const routes = collectRoutes(realApp);
+    const registry = registryOf({
+      "GET /api/me/avatar": {
+        authenticated: true,
+        self: true,
+        personParam: { exempt: "no_person_parameter", reason: "test" },
+      },
+      "GET /api/portal/requests": {
+        portal: "customer",
+        predicate: "own_request",
+      },
+    });
+
+    const result = computeRouteCoverage(
+      routes,
+      registry,
+      undefined,
+      authGuardRegistrationIndex(realApp),
+    );
+    expect(result.ok).toBe(false);
+    expect(
+      result.authGuardOrderingViolations.map((route) => route.routeKey).sort(),
+    ).toEqual(["GET /api/me/avatar", "GET /api/portal/requests"]);
+  });
+
+  it("public and delegated policies above the guard are legitimate and never trip the check", () => {
+    // Matches the real registry's own shape: GET /api/health (public) and the well-known
+    // pattern for a declared mount (delegated) both sit above the real guard today, and H2
+    // says exactly that is fine — "every classified one is public or delegated today".
+    const realApp = appAbove(
+      entry("GET", "/api/health"),
+      entry("GET", "/api/legacy-widget"),
+    );
+    const routes = collectRoutes(realApp);
+    const registry = registryOf({
+      "GET /api/health": { public: true, reason: "liveness probe" },
+      "GET /api/legacy-widget": {
+        delegated: "metrics",
+        reason: "test: a non-wildcard delegated route above the guard",
+      },
+    });
+
+    const result = computeRouteCoverage(
+      routes,
+      registry,
+      undefined,
+      authGuardRegistrationIndex(realApp),
+    );
+    expect(result.ok).toBe(true);
+    expect(result.authGuardOrderingViolations).toEqual([]);
+  });
+
+  it("authGuardRegistrationIndex returns undefined when the app has no declared guard", () => {
+    const noGuard = app([entry("GET", "/api/health")]);
+    expect(authGuardRegistrationIndex(noGuard)).toBeUndefined();
+  });
+
+  it("AUTH_GUARD_KEY names the exact key DECLARED_ROUTER_MIDDLEWARE records the guard under", () => {
+    expect(
+      DECLARED_ROUTER_MIDDLEWARE.some((d) => d.key === AUTH_GUARD_KEY),
+    ).toBe(true);
   });
 });

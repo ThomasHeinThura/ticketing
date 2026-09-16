@@ -10,6 +10,7 @@
  */
 
 import {
+  authGuardRegistrationIndex,
   type CollectedRoute,
   collectMiddleware,
   collectRoutes,
@@ -40,6 +41,18 @@ export async function loadRouterRoutes(): Promise<CollectedRoute[]> {
 
 export async function loadRouterMiddleware(): Promise<RouteKey[]> {
   return collectMiddleware(await loadApiApp());
+}
+
+/**
+ * The real auth guard's own position in the real router — H2
+ * (`docs/07-planning/security-reviews/21-policy-registry.md`). `undefined` would mean the
+ * guard itself has gone missing or been renamed; `route-coverage.test.ts` asserts this is
+ * defined rather than letting that read as "no ordering violations found".
+ */
+export async function loadAuthGuardRegistrationIndex(): Promise<
+  number | undefined
+> {
+  return authGuardRegistrationIndex(await loadApiApp());
 }
 
 /** The better-auth plugin ids actually constructed, read off the instance. */
