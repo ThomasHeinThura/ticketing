@@ -73,9 +73,10 @@ describe("route coverage", () => {
   });
 
   it("has no capability/self/portal policy registered above the auth guard (H2)", () => {
-    // docs/07-planning/security-reviews/21-policy-registry.md, H2: the guard sits at index 38
-    // of 457 with 27 route keys above it. Every one of them is public or delegated today —
-    // this is the control that keeps it that way once #8 starts classifying the rest.
+    // docs/07-planning/security-reviews/21-policy-registry.md, H2. The guard's index and the
+    // above-guard route count move as the router grows — re-measure rather than trust a
+    // number written here; this assertion is what actually keeps the property true, not any
+    // comment. See that file's H2 entry for the most recent point-in-time measurement.
     expect(
       result.authGuardOrderingViolations.map((route) => route.routeKey),
     ).toEqual([]);
