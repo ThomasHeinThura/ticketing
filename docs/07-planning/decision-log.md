@@ -17,6 +17,40 @@ Newest first.
 
 ---
 
+### 2026-09-16 · CodeQL alert #9 (`js/insufficient-password-hash`, `packages/domain/src/audit/audit.ts`) dismissed as a false positive
+
+**Decision:** the CodeQL alert flagging `canonicalRowHash`'s `createHash("sha256")` call as
+"insufficient password hash" is dismissed, reason `false positive`, via the code-scanning
+API (alert #9).
+
+**Why:** the alert's name-based heuristic matched because one of the fifteen concatenated
+fields is `apiKeyId` — but that field is a foreign-key reference id, not a credential, and
+the function hashes an entire audit-log row for `AU-15`'s tamper-evidence chain, not a
+password for storage. A salted or slow KDF (the fix CodeQL's rule normally wants) would be
+actively wrong here: `audit-verify` must be able to independently re-derive the same hash
+from the same row content to walk and verify the chain, which requires a pure, deterministic
+function of its input — the opposite of what a per-use-salted KDF provides. No secret of any
+kind reaches this function. Confirmed independently by two reviewers before this decision
+was made: an ordinary Sonnet review and the mandatory Opus security review of PR #175 (which
+also verified the hash recipe's actual cryptographic soundness in the same pass — see that
+PR's `## Security review` section) both concluded the same thing without prompting each
+other. Neither reviewer dismissed the alert themselves, correctly treating that action as
+gate-adjacent and reserved for Thomas.
+
+**Alternatives considered:** renaming `apiKeyId` or restructuring the field list specifically
+to evade CodeQL's name heuristic (rejected, by both reviewers and this decision — that hides
+the alert without addressing anything real, and the next genuinely-named sensitive field
+would trip the same rule for the same non-reason); leaving the alert open indefinitely
+(rejected — the required `CodeQL` status check would then block this PR, and every future
+PR touching this file, forever, over a confirmed non-issue).
+
+**Decided by:** Thomas, 2026-09-16 (asked directly, as this is a security-scan-alert
+dismissal — the kind of call this project's rules treat as equivalent to waiving a gate,
+reserved for him specifically rather than any reviewer's or the orchestrating session's own
+judgment, even where that judgment was independently unanimous).
+
+---
+
 ### 2026-09-16 · `reconstructAt`'s same-instant tie-break needs a real ordering signal this schema does not yet have — supersedes the auto-increment premise
 
 **Supersedes:** the entry titled "`reconstructAt`'s same-instant tie-break is insertion
