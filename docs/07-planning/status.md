@@ -2,11 +2,11 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-15
-> **`main` at that moment:** `4418e70` (PR #144, static file serving in the API process —
-> closing a third UAT-deployability gap — merged after PR #104, S9 resolved — Path B, which
-> itself merged after PR #137, a control-plane reconciliation, and PR #119, the #118
-> evaluator half)
+> **Snapshot taken:** 2026-09-16
+> **`main` at that moment:** `5d9c0fb` (PR #89, checklist/heading genuineness hardening in
+> the CI gate machinery — merged after PR #147, which flagged issue #146 as DECISION
+> REQUIRED for Thomas, which itself merged after PR #144, static file serving in the API
+> process)
 > **Stage:** P0 · Foundation — IN PROGRESS
 > **Throttle 1:** SHUT — 4 of 5 conditions met; condition 2 (issue #6 through retrofit S10)
 > is the sole blocker. **Of S10's own two preconditions, S9 is now LANDED** (PR #104,
@@ -38,7 +38,7 @@
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-15
+**Last updated:** 2026-09-16
 **Current stage:** P0 · Foundation — **IN PROGRESS**
 **Updated by:** Claude Code (Sonnet), reconciliation after **PR #110** (#82 fix), **PR #122**
 (#118 DB half), **PR #119** (#118 evaluator half) and **PR #104** (S9 resolved, Path B) all
@@ -62,6 +62,23 @@ against a real `docker build`/`docker run` cycle — the PR's own manual verific
 `createApp()` directly on a throwaway port, not the container image. This pass does not
 touch S7, PR #116, or anything else that merged to `main` since `09169d8`; those are being
 tracked separately.
+
+**Also reconciled, 2026-09-16:** **PR #89** (checklist/heading genuineness hardening in
+`scripts/ci/lib/pr-body.mjs` and its test file) merged to `main` as `5d9c0fb`. It closed the
+LOW findings recorded against #81 and #79 plus a long chain of further adversarial findings
+the same checklist-genuineness mechanism turned up across twelve rounds of independent
+review — eleven ordinary/adversarial Sonnet rounds and four separate Opus security passes,
+the last a delta review made necessary by a required merge from `main`, all CLEAR.
+`scripts/ci/**` test coverage grew from 322 to 381+ passing tests over those rounds.
+Committed security-review note at
+`docs/07-planning/security-reviews/89-checklist-genuineness-hardening.md` (the four-round
+Opus pass plus an appended delta-review section). Scoped to `scripts/ci/**`, two docs files
+and two `tests/api-integration/**` test files — no `apps/api/**` source touched, so this
+does not affect S7, S10, or Throttle 1. **One CRITICAL finding this PR's own review
+surfaced was deliberately left unfixed**: `sections()` in `scripts/ci/lib/pr-body.mjs`,
+already filed as issue #146 and flagged DECISION REQUIRED for Thomas via PR #147 — that
+flag is unchanged by this merge; #146 remains open, still awaiting Thomas's choice of fix
+direction, not restated further here.
 
 > **This is a durable snapshot, not a work log.** Update it only on a durable transition: a
 > pull request merges or becomes genuinely review-ready, an issue blocks, unblocks or
