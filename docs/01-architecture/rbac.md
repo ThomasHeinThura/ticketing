@@ -215,11 +215,18 @@ The `CHECK` constraint is the durable backstop: it makes a NEW comma-joined writ
 unreachable regardless of which route attempts it, native or otherwise, so this invariant
 does not depend on enumerating every write path the way the deleted guard had to.
 
-**The 409 above is scoped to the caller, not to the workspace named in the request.** It is
-keyed on `user_id`: if any one of the caller's memberships, in any workspace, holds a
-malformed `role`, every non-exempt `/organization/*` action by that caller is refused —
-including one that names only a different, healthy workspace — until an administrator
-repairs the malformed row.
+**The 409 above is scoped to the workspace named in the request, not to the caller globally
+— corrected here at S10.** Before the plugin unmounted, `organizationPluginRoleGuard`'s read
+half additionally refused every non-exempt `/organization/*` action from a caller holding a
+malformed row in *any* workspace, even one naming a different, healthy workspace — a
+cross-workspace scope that guard alone provided, keyed on `user_id` rather than on the
+request's own `workspaceId`. That guard is deleted along with the plugin routes it policed.
+What remains — `require-workspace-permission.ts` / `require-workspace-role-authority.ts`,
+and `GET /api/capabilities`'s **409** — resolves the caller's role **for the workspace named
+in the request** (`resolveMembershipRole(workspaceId, userId)`) and refuses only when that
+one resolution is malformed. A caller with a malformed row in workspace A is refused there,
+but a request naming a different, healthy workspace B is decided on B's own row, not
+blocked by A's.
 
 **Recovery for a deployment that already holds an invalid row.** Migration `0050` repairs
 automatically only where the repair decides nothing — a value whose comma-separated pieces
