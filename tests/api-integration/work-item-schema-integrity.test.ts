@@ -741,6 +741,14 @@ describe("#191 O2 -- work_item_key_claim closes the race, not just the sequentia
         key: raceKey,
         stateId: fixture.state.id,
       });
+      // T2 is expected to reject once T1 commits below, and that can happen before this
+      // function's flow reaches the `expect(t2Promise).rejects` assertion further down --
+      // an attached-late rejection handler is still "unhandled" from Node's point of view
+      // for whatever microtask turns elapse in between. Attach a no-op catch immediately so
+      // the real assertion below (a second, independent handler on the same promise) is what
+      // actually verifies the rejection, without a flaky "Unhandled Rejection" failure in
+      // between depending on exact timing.
+      t2Promise.catch(() => {});
 
       // T2's insert blocks at the database level behind T1's uncommitted claim on the
       // identical key -- this pause is just giving that dispatch time to actually reach
