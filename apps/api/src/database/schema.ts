@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { relations, sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   customType,
@@ -8,6 +9,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgTable,
   text,
   timestamp,
@@ -1123,6 +1125,338 @@ export const membershipTable = pgTable(
       table.scopeId,
     ),
     index("membership_scope_scopeId_idx").on(table.scope, table.scopeId),
+  ],
+);
+
+// ── #23's first slice: work_item, work_item_type, state_template, state, ──────────
+// work_item_key_alias, watcher (data-model.md §3-§4, decision log 2026-09-17 "#23's
+// first slice is narrower than 'all of #23'"). Purely additive: references nothing in
+// kaneo's original taskTable/columnTable, and nothing references these tables yet --
+// no route, no controller, no policy, no MCP tool. `taskTable`/`columnTable` and their
+// routes are completely untouched by this change.
+
+export const workItemTypeTable = pgTable(
+  "work_item_type",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    icon: text("icon"),
+    category: text("category").notNull(),
+    // `workflow` and `sla_policy` (data-model.md §6/§7) are P2/P5 scope and do not exist
+    // in this schema yet -- plain nullable columns, NO foreign key constraint, until
+    // those tables land. Add the real `.references()` in the PR that creates them.
+    workflowId: text("workflow_id"),
+    slaPolicyId: text("sla_policy_id"),
+    isEpic: boolean("is_epic").default(false).notNull(),
+    isChange: boolean("is_change").default(false).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("work_item_type_workspaceId_idx").on(table.workspaceId),
+    // Not explicitly stated as unique in data-model.md's abbreviated column list --
+    // inferred from this codebase's existing key-uniqueness convention
+    // (`workspace.slug`, PR #179's `role.key` per (scope, workspace_id)). Flagged as a
+    // judgment call in the PR body.
+    uniqueIndex("work_item_type_workspace_key_unique").on(
+      table.workspaceId,
+      table.key,
+    ),
+  ],
+);
+
+export const stateTemplateTable = pgTable(
+  "state_template",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    // data-model.md §3: "`group` is a SQL reserved word and is written `"group"` in the
+    // DDL." Drizzle already double-quotes every identifier it generates, so the column
+    // name alone (matching the spec's literal name) is enough -- no extra escaping.
+    group: text("group").notNull(),
+    colour: text("colour"),
+    archivedAt: timestamp("archived_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("state_template_workspaceId_idx").on(table.workspaceId),
+    uniqueIndex("state_template_workspace_key_unique").on(
+      table.workspaceId,
+      table.key,
+    ),
+  ],
+);
+
+export const stateTable = pgTable(
+  "state",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    // References the EXISTING, native `projectTable` above (kaneo's original table,
+    // already reused by the P1 identity/workspace work -- not a new table this PR adds).
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    // data-model.md §3: "`ON DELETE RESTRICT`" explicitly -- a template with any `state`
+    // row pointing at it is never deleted.
+    stateTemplateId: text("state_template_id")
+      .notNull()
+      .references(() => stateTemplateTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    position: integer("position").notNull().default(0),
+    isDefault: boolean("is_default").default(false).notNull(),
+    archivedAt: timestamp("archived_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("state_projectId_idx").on(table.projectId),
+    index("state_stateTemplateId_idx").on(table.stateTemplateId),
+  ],
+);
+
+export const workItemTable = pgTable(
+  "work_item",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    // Judgment call: RESTRICT, not stated explicitly in data-model.md §4. Matches this
+    // schema's existing "a referenced entity in active use cannot vanish out from under
+    // its dependents" pattern (`state.state_template_id`, `membership.role_id`) -- a
+    // work item type cannot be deleted while items of that type still exist. Flagged in
+    // the PR body.
+    typeId: text("type_id")
+      .notNull()
+      .references(() => workItemTypeTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    number: integer("number").notNull(),
+    // Stored once at insert from `{project.key}-{number}`, never regenerated for the
+    // same project (data-model.md §4). A cross-project move re-keys the item -- the old
+    // value moves to `work_item_key_alias` -- so `key` DOES change over the item's
+    // lifetime under that one condition, which is exactly why a global unique index is
+    // needed here (not stated as its own line in data-model.md's "## Indexing" list,
+    // which only names `(project_id, number)` -- but `project.key` is already unique per
+    // instance and `number` is unique per project, so `key` composes to a globally
+    // unique value; the alias mechanism depends on that holding at every instant).
+    // Judgment call, flagged in the PR body.
+    key: text("key").notNull(),
+    title: text("title").notNull(),
+    description: jsonb("description"),
+    // data-model.md §4: "`ON DELETE RESTRICT` -- states are archived, never deleted out
+    // from under an item."
+    stateId: text("state_id")
+      .notNull()
+      .references(() => stateTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    priority: text("priority"),
+    // data-model.md §4: "`ON DELETE RESTRICT` -- people are deactivated, never deleted."
+    assigneeId: text("assignee_id").references(() => personTable.id, {
+      onDelete: "restrict",
+      onUpdate: "cascade",
+    }),
+    // Judgment call: also RESTRICT, not spelled out in data-model.md §4. The same
+    // "people are deactivated, never deleted" rule applies regardless of which role a
+    // person occupies on a work item; RESTRICT keeps who filed an item from silently
+    // disappearing (SET NULL was considered and rejected -- that would erase audit-
+    // relevant history without an explicit decision, unlike the always-available
+    // reassignment path RESTRICT forces instead). Flagged in the PR body.
+    requesterId: text("requester_id").references(() => personTable.id, {
+      onDelete: "restrict",
+      onUpdate: "cascade",
+    }),
+    // Self-referencing FK (Drizzle's documented pattern for this: a lazy callback
+    // annotated with the `AnyPgColumn` return type, since the column's own table type
+    // isn't fully resolved yet at the point this callback is defined).
+    // Judgment call: RESTRICT, not spelled out in data-model.md §4 either. Consistent
+    // with the same "a referenced row cannot vanish out from under its dependents"
+    // pattern used throughout this schema -- CASCADE would silently delete a
+    // potentially large, unbounded subtree of children; SET NULL would silently break
+    // the parent/child relationship with no signal. Work items are soft-deleted via
+    // `deleted_at` in normal operation, so a real SQL DELETE here should be rare and
+    // deliberate -- RESTRICT forces that to be an explicit choice (re-parent or delete
+    // children first). Flagged in the PR body.
+    parentId: text("parent_id").references(
+      (): AnyPgColumn => workItemTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    // `service` (data-model.md §7) is P5/later scope and does not exist yet -- plain
+    // nullable column, NO foreign key constraint, until it lands.
+    serviceId: text("service_id"),
+    startDate: timestamp("start_date", { mode: "date" }),
+    dueDate: timestamp("due_date", { mode: "date" }),
+    // data-model.md §4: `numeric(20,10)`, for fractional manual reordering.
+    position: numeric("position", { precision: 20, scale: 10 })
+      .notNull()
+      .default("0"),
+    // `estimate_point`, `cycle`, `module` (data-model.md §8/§9) are P5/later scope and do
+    // not exist yet -- plain nullable columns, NO foreign key constraint, until they
+    // land.
+    estimatePointId: text("estimate_point_id"),
+    cycleId: text("cycle_id"),
+    moduleId: text("module_id"),
+    slaStartedAt: timestamp("sla_started_at", { mode: "date" }),
+    firstResponseAt: timestamp("first_response_at", { mode: "date" }),
+    resolvedAt: timestamp("resolved_at", { mode: "date" }),
+    customerVisibility: text("customer_visibility"),
+    archivedAt: timestamp("archived_at", { mode: "date" }),
+    deletedAt: timestamp("deleted_at", { mode: "date" }),
+    // data-model.md's convention: "Optimistic concurrency via `version integer not null
+    // default 1` on every table two people plausibly edit at once" -- `work_item` is
+    // marked **v** in data-model.md §4.
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    // "## Indexing": create index on work_item (project_id, state_id, position);
+    index("work_item_projectId_stateId_position_idx").on(
+      table.projectId,
+      table.stateId,
+      table.position,
+    ),
+    // "## Indexing": create unique index on work_item (project_id, number);
+    uniqueIndex("work_item_project_number_unique").on(
+      table.projectId,
+      table.number,
+    ),
+    // "## Indexing": create index on work_item (assignee_id) where archived_at is null
+    // and deleted_at is null;
+    index("work_item_assigneeId_idx")
+      .on(table.assigneeId)
+      .where(sql`${table.archivedAt} is null and ${table.deletedAt} is null`),
+    // "## Indexing": create index on work_item (due_date) where resolved_at is null;
+    index("work_item_dueDate_idx")
+      .on(table.dueDate)
+      .where(sql`${table.resolvedAt} is null`),
+    // Global key uniqueness -- see the `key` column comment above.
+    uniqueIndex("work_item_key_unique").on(table.key),
+    index("work_item_typeId_idx").on(table.typeId),
+    index("work_item_stateId_idx").on(table.stateId),
+    index("work_item_requesterId_idx").on(table.requesterId),
+    index("work_item_parentId_idx").on(table.parentId),
+    // Deliberately NOT added here: the "## Indexing" GIN trigram title index and the
+    // generated `search_vector` column (`create extension pg_trgm`, `... using gin
+    // (title gin_trgm_ops)`, the `tsvector generated always as (...) stored` column) --
+    // full-text search is a separate P1 core work item (search), not part of #23's
+    // first-slice schema. Add these when that work lands.
+  ],
+);
+
+export const workItemKeyAliasTable = pgTable(
+  "work_item_key_alias",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    // Must be unique globally, same reasoning as `work_item.key` above: the redirect
+    // this table implements only works if an old key unambiguously resolves to one
+    // work item. Not spelled out as "unique" in data-model.md §4's abbreviated column
+    // list -- judgment call, flagged in the PR body.
+    oldKey: text("old_key").notNull(),
+    workItemId: text("work_item_id")
+      .notNull()
+      .references(() => workItemTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("work_item_key_alias_oldKey_unique").on(table.oldKey),
+    index("work_item_key_alias_workItemId_idx").on(table.workItemId),
+  ],
+);
+
+export const watcherTable = pgTable(
+  "watcher",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workItemId: text("work_item_id")
+      .notNull()
+      .references(() => workItemTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    // A person watching a work item is a subscription, not authored history -- cascade
+    // on person delete (matching `membership.person_id`'s convention), unlike
+    // `work_item.assignee_id`/`requester_id`'s RESTRICT above.
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    source: text("source").notNull(),
+    muted: boolean("muted").default(false).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    // A person watches a work item at most once -- not spelled out in data-model.md §4,
+    // but obviously required to prevent duplicate watch rows. Judgment call, flagged in
+    // the PR body.
+    uniqueIndex("watcher_workItemId_personId_unique").on(
+      table.workItemId,
+      table.personId,
+    ),
+    index("watcher_personId_idx").on(table.personId),
   ],
 );
 

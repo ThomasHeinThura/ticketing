@@ -17,6 +17,8 @@ import {
   projectTable,
   roleTable,
   sessionTable,
+  stateTable,
+  stateTemplateTable,
   taskRelationTable,
   taskReminderSentTable,
   taskTable,
@@ -28,7 +30,11 @@ import {
   userNotificationWorkspaceRuleTable,
   userTable,
   verificationTable,
+  watcherTable,
   workflowRuleTable,
+  workItemKeyAliasTable,
+  workItemTable,
+  workItemTypeTable,
   workspaceRoleTable,
   workspaceTable,
   workspaceUserTable,
@@ -425,3 +431,92 @@ export const membershipTableRelations = relations(
     }),
   }),
 );
+
+export const workItemTypeTableRelations = relations(
+  workItemTypeTable,
+  ({ one, many }) => ({
+    workspace: one(workspaceTable, {
+      fields: [workItemTypeTable.workspaceId],
+      references: [workspaceTable.id],
+    }),
+    workItems: many(workItemTable),
+  }),
+);
+
+export const stateTemplateTableRelations = relations(
+  stateTemplateTable,
+  ({ one, many }) => ({
+    workspace: one(workspaceTable, {
+      fields: [stateTemplateTable.workspaceId],
+      references: [workspaceTable.id],
+    }),
+    states: many(stateTable),
+  }),
+);
+
+export const stateTableRelations = relations(stateTable, ({ one, many }) => ({
+  project: one(projectTable, {
+    fields: [stateTable.projectId],
+    references: [projectTable.id],
+  }),
+  stateTemplate: one(stateTemplateTable, {
+    fields: [stateTable.stateTemplateId],
+    references: [stateTemplateTable.id],
+  }),
+  workItems: many(workItemTable),
+}));
+
+export const workItemTableRelations = relations(
+  workItemTable,
+  ({ one, many }) => ({
+    project: one(projectTable, {
+      fields: [workItemTable.projectId],
+      references: [projectTable.id],
+    }),
+    type: one(workItemTypeTable, {
+      fields: [workItemTable.typeId],
+      references: [workItemTypeTable.id],
+    }),
+    state: one(stateTable, {
+      fields: [workItemTable.stateId],
+      references: [stateTable.id],
+    }),
+    assignee: one(personTable, {
+      fields: [workItemTable.assigneeId],
+      references: [personTable.id],
+    }),
+    requester: one(personTable, {
+      fields: [workItemTable.requesterId],
+      references: [personTable.id],
+    }),
+    parent: one(workItemTable, {
+      fields: [workItemTable.parentId],
+      references: [workItemTable.id],
+      relationName: "workItemParent",
+    }),
+    children: many(workItemTable, { relationName: "workItemParent" }),
+    keyAliases: many(workItemKeyAliasTable),
+    watchers: many(watcherTable),
+  }),
+);
+
+export const workItemKeyAliasTableRelations = relations(
+  workItemKeyAliasTable,
+  ({ one }) => ({
+    workItem: one(workItemTable, {
+      fields: [workItemKeyAliasTable.workItemId],
+      references: [workItemTable.id],
+    }),
+  }),
+);
+
+export const watcherTableRelations = relations(watcherTable, ({ one }) => ({
+  workItem: one(workItemTable, {
+    fields: [watcherTable.workItemId],
+    references: [workItemTable.id],
+  }),
+  person: one(personTable, {
+    fields: [watcherTable.personId],
+    references: [personTable.id],
+  }),
+}));
