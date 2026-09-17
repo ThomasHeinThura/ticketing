@@ -539,6 +539,22 @@
             "format": "date-time",
             "description": "Non-null once archived; archived projects are hidden by default."
           },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Non-null once soft-deleted; deleted projects are excluded everywhere in ordinary use, independent of archivedAt."
+          },
+          "purgeAfter": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Non-null once soft-deleted: the point after which the project becomes eligible for purge. No purge job exists yet (#198)."
+          },
           "position": {
             "type": "number",
             "description": "Sidebar order, ascending."
@@ -557,6 +573,8 @@
           "description",
           "createdAt",
           "archivedAt",
+          "deletedAt",
+          "purgeAfter",
           "position",
           "lastTaskNumber"
         ]
@@ -3159,7 +3177,7 @@
           "Projects"
         ],
         "summary": "Delete project",
-        "description": "Soft-delete a project: it disappears from ordinary use immediately and is purged, along with its work items, comments, attachments and time entries, 30 days later. Archive it instead if you just want it out of the way without starting that clock.",
+        "description": "Soft-delete a project: it disappears from ordinary use immediately and, along with its work items, comments, attachments and time entries, is eligible for purge 30 days later, once the purge job (#198) exists. Archive it instead if you just want it out of the way without starting that clock.",
         "parameters": [
           {
             "schema": {

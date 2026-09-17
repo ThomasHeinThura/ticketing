@@ -421,4 +421,39 @@ describe("API integration: task creation", () => {
       expect(persistedTask?.userId).toBeNull();
     },
   );
+
+  it("returns 404 for task creation against a soft-deleted project (#187)", async () => {
+    const member = await createWorkspaceMember();
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: new Date(), purgeAfter: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/task/${project.id}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        title: "Should not be created",
+        description: "The target project is soft-deleted",
+        priority: "low",
+        status: "to-do",
+      }),
+    });
+
+    expect(response.status).toBe(404);
+
+    const persistedTask = await db.query.taskTable.findFirst({
+      where: eq(schema.taskTable.projectId, project.id),
+    });
+    expect(persistedTask).toBeUndefined();
+  });
 });

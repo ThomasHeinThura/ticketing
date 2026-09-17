@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -10,7 +10,9 @@ import {
 
 async function exportTasks(projectId: string) {
   const project = await db.query.projectTable.findFirst({
-    where: eq(projectTable.id, projectId),
+    // #187: a soft-deleted project is treated as gone everywhere in ordinary use,
+    // matching `get-project.ts`'s convention.
+    where: and(eq(projectTable.id, projectId), isNull(projectTable.deletedAt)),
   });
 
   if (!project) {

@@ -1,5 +1,6 @@
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
-import type { schema } from "../../apps/api/src/database";
+import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -268,6 +269,50 @@ describe("API integration: project reorder", () => {
       first.id,
     ]);
     expect(allProjects.map((project) => project.position)).toEqual([0, 1, 2]);
+  });
+
+  it("excludes a soft-deleted project from the ordering and the response (#187)", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project: first } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+      name: "First",
+    });
+    // Deliberately in the middle, mirroring the archived-project test above --
+    // unlike an archived project, a soft-deleted one must NOT hold a slot.
+    const { project: deleted } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+      name: "Deleted",
+    });
+    const { project: second } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+      name: "Second",
+    });
+
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: new Date(), purgeAfter: new Date() })
+      .where(eq(schema.projectTable.id, deleted.id));
+
+    mockAuthenticatedSession(member.user);
+
+    const response = await reorderRequest(member.workspace.id, [
+      { id: second.id, position: 0 },
+      { id: first.id, position: 1 },
+    ]);
+
+    expect(response.status).toBe(200);
+
+    const payload = (await response.json()) as ProjectListEntry[];
+    expect(payload.map((project) => project.id)).toEqual([second.id, first.id]);
+    // No gap left for the deleted project -- positions collapse to 0..n-1
+    // across only the projects that still count.
+    expect(payload.map((project) => project.position)).toEqual([0, 1]);
+
+    const allProjects = await listProjects(member.workspace.id, true);
+    expect(allProjects.map((project) => project.id)).toEqual([
+      second.id,
+      first.id,
+    ]);
   });
 
   it("rejects an empty payload", async () => {

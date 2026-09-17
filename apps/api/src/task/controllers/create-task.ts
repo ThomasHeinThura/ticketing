@@ -36,15 +36,18 @@ async function createTask({
 
   const normalizedUserId = userId?.trim() || undefined;
 
+  // #187: rejects a soft-deleted (or nonexistent) project before anything is created
+  // under it. `getProjectWorkspaceId` excludes soft-deleted projects the same way
+  // `get-project.ts` does, so this doubles as the project-existence check this route
+  // was otherwise missing on the no-assignee path.
+  const workspaceId = await getProjectWorkspaceId(projectId);
+
   await assertValidTaskStatus(resolvedStatus, projectId);
 
   let assignee: { name: string } | undefined;
 
   if (normalizedUserId) {
-    await assertAssignableUser(
-      normalizedUserId,
-      await getProjectWorkspaceId(projectId),
-    );
+    await assertAssignableUser(normalizedUserId, workspaceId);
 
     [assignee] = await db
       .select({ name: userTable.name })

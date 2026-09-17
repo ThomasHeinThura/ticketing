@@ -14,6 +14,16 @@ const PURGE_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
  * and this route existing to let an ordinary user destroy every work item under a project
  * with no recovery window is exactly the defect #187 closes. Purging after the 30-day
  * window is a separate job (#198), not built yet.
+ *
+ * Isolation note: this codebase does not use `REPEATABLE READ` (or `SERIALIZABLE`)
+ * anywhere today -- every connection here runs at Postgres's default `READ COMMITTED`,
+ * under which a losing concurrent UPDATE simply reads the post-commit row and finds
+ * `deleted_at` already set, so the `isNull(projectTable.deletedAt)` guard below makes
+ * it affect zero rows and this function throws the plain 404 above. If this codebase
+ * ever raises its default isolation level, that concurrent-loser case would instead
+ * surface as a Postgres serialization failure (error code `40001`), and this path
+ * would need a retry-on-`40001` wrapper to keep returning a clean 404 instead of
+ * propagating that error.
  */
 async function deleteProject(id: string, workspaceId: string) {
   const [deletedProject] = await db

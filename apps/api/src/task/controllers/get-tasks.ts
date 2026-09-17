@@ -5,6 +5,7 @@ import {
   eq,
   gte,
   inArray,
+  isNull,
   lte,
   type SQL,
   sql,
@@ -70,7 +71,9 @@ function buildOrderBy(
 
 async function getTasks(projectId: string, options: GetTasksOptions = {}) {
   const project = await db.query.projectTable.findFirst({
-    where: eq(projectTable.id, projectId),
+    // #187: a soft-deleted project is treated as gone everywhere in ordinary use,
+    // matching `get-project.ts`'s convention.
+    where: and(eq(projectTable.id, projectId), isNull(projectTable.deletedAt)),
   });
 
   if (!project) {

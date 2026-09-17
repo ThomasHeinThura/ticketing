@@ -16,6 +16,16 @@ export const projectSchema = z
       description:
         "Non-null once archived; archived projects are hidden by default.",
     }),
+    deletedAt: nullableResponseTimestamp.openapi({
+      description:
+        "Non-null once soft-deleted; deleted projects are excluded everywhere in " +
+        "ordinary use, independent of archivedAt.",
+    }),
+    purgeAfter: nullableResponseTimestamp.openapi({
+      description:
+        "Non-null once soft-deleted: the point after which the project becomes " +
+        "eligible for purge. No purge job exists yet (#198).",
+    }),
     position: z.number().openapi({ description: "Sidebar order, ascending." }),
     lastTaskNumber: z.number().openapi({
       description:

@@ -820,7 +820,7 @@
 			"deleteProject": "Delete project",
 			"deleteProjectDescription": "Schedule project to be permanently deleted",
 			"deleteModalTitle": "Delete Project?",
-			"deleteModalDescription": "This will permanently delete the project \"{{name}}\" and all its data. This action cannot be undone.",
+			"deleteModalDescription": "This will hide the project \"{{name}}\" and all its data immediately. It becomes eligible for permanent deletion after 30 days.",
 			"deleteModalConfirm": "Delete Project",
 			"toastUpdated": "Project updated successfully",
 			"toastUpdateError": "Failed to update project",
