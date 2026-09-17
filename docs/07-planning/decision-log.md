@@ -32,7 +32,7 @@ label definition and its task-assignment, `unique(taskId, name)` — restructuri
 deduplicated `label` + a `work_item_label` join has no stated tie-break rule for two
 same-named, different-coloured labels on two different tasks). That question does not block
 `work_item` itself existing, and folding it into the same PR would make an already large,
-route/test/MCP-tool-breaking migration (52 route files, 16 integration test files, and
+route/test/MCP-tool-breaking migration (54 route files, 16 integration test files, and
 `packages/mcp/src/tools/register.ts`'s hardcoded `/api/task/*` paths, none deferrable) larger
 than it needs to be for its own sake. `work_item_relation` (#26) and `comment`/`activity`
 (#27) are explicitly NOT #23's tables per the same dependency graph, despite an earlier,
@@ -51,32 +51,50 @@ within P1's already-approved dependency graph — not a product or architecture 
 
 ---
 
-### 2026-09-17 · #23's work-item state transitions are capability-gated only until P2's workflow engine lands, matching the #30 precedent
+### 2026-09-17 · PROPOSED, pending Thomas — #23's work-item state transitions capability-gated only until P2's workflow engine lands
 
-**Decision:** `#23`'s state-transition endpoint (moving a work item from one `state` to
-another) checks only that the actor has capability to write the work item — no legality
-check against a `workflow`/`workflow_transition` (does target state X follow legally from
-source state Y for this work item's type) — until P2's workflow engine actually exists and
-is wired in.
+**This entry records a proposal, not a decision.** An independent review of this entry (PR
+#184) argued convincingly that it does not actually match the #30 precedent it leans on, and
+should not be treated as settled by the orchestrating session alone. Recorded here anyway,
+under the "PROPOSED" heading, so the reasoning and the reviewer's objection are both on the
+record while this waits for Thomas's actual answer — not silently dropped, and not quietly
+promoted to "decided" either.
 
-**Why:** `work-items.md`'s own `WI-9` ("state changes go through the workflow... never a
-plain field update") explicitly delegates transition legality to `workflows.md`, which is
-staged **P2**, not one of the eight P1 core issues — so a literal reading of `WI-9` would
-make #23 undeliverable in P1 at all. This is the same shape as assignment (#30), already
-settled: "the UI/route lands in P1, the rule *engine* ports with `packages/domain` in P2"
-(`docs/03-features/README.md`'s own table entry for Assignment). Applying the identical
-pattern here is consistency with an already-decided precedent, not a new one.
+**Proposal:** `#23`'s state-transition endpoint (moving a work item from one `state` to
+another) would check only that the actor has capability to write the work item — no
+legality check against a `workflow`/`workflow_transition` (does target state X follow
+legally from source state Y for this work item's type) — until P2's workflow engine actually
+exists and is wired in.
 
-**Alternatives considered:** blocking #23 entirely until P2's workflow engine exists
-(rejected — this would make the entire P1 core dependency graph, which the whole point of
-Throttle 1 opening was to unblock, wait on P2 instead, exactly backwards); building a
-throwaway legality stub that gets deleted when P2 lands (rejected — a capability-only gate
-is not throwaway, it is the correct P1-scope behaviour on its own terms, and P2 adds a
-*narrowing* check on top of it rather than replacing it).
+**Why it looked reasonable at first:** `work-items.md`'s own `WI-9` ("state changes go
+through the workflow... never a plain field update") explicitly delegates transition
+legality to `workflows.md`, which is staged **P2** — so a literal reading of `WI-9` would
+make #23 undeliverable in P1 at all, and assignment (#30) has the same shape ("UI/route
+lands in P1, the rule engine ports in P2").
 
-**Decided by:** the orchestrating session, 2026-09-17, as routine implementation sequencing
-matching an existing, Thomas-reviewed precedent (#30) — flagged to Thomas regardless, since
-it is the kind of call worth a second look even when precedent is clear.
+**Why the review's objection holds:** the reviewer checked #30's own issue body directly and
+found it carries an **explicit, issue-level P1/P2 carve-out already written into it** — #23's
+own body has no equivalent; this proposal would be extending the pattern to a case that was
+never actually granted its own exception, not reusing a settled one. The risk shape also
+differs: `WI-9` is phrased as an absolute ("cannot be bypassed by a PATCH"), and unlike a
+wrong assignment (a minor, easily-corrected annoyance), an unchecked transition touches
+`sla_started_at`/`resolved_at` timestamps, roll-up completeness for parent items, and
+whatever single-designated-reopen-transition model the eventual workflow engine assumes —
+each of which could produce data that is awkward or impossible to reconcile once P2's real
+engine arrives, unlike a reassignment which is trivially correctable at any time.
+
+**What is NOT waiting on this:** #23's schema (`work_item`, `state`, `state_template`, etc.)
+does not depend on this answer — the state-transition *endpoint*'s legality-checking
+behaviour is the only piece blocked. Schema/migration work proceeds in parallel.
+
+**Alternatives:** blocking #23's transition endpoint entirely until P2's workflow engine
+exists (real cost: the endpoint simply doesn't ship until P2, which may be an acceptable
+trade Thomas prefers given the risk above); the capability-only gate as originally proposed;
+some third design neither this session nor the reviewer has proposed.
+
+**Decided by:** nobody yet. Proposed by the orchestrating session, 2026-09-17; objection
+raised by an independent review the same day; Thomas's actual answer supersedes this entire
+entry when it arrives, per the decision log's own append-only, newest-entry-wins convention.
 
 ---
 
