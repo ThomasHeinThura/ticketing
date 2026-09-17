@@ -3,6 +3,7 @@ import { relations, sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  check,
   customType,
   foreignKey,
   index,
@@ -1475,6 +1476,59 @@ export const workItemTable = pgTable(
     // `foreignKey()` below (`(project_id, parent_id) -> work_item(project_id, id)`)
     // pins the parent to the SAME project as the child and subsumes plain existence,
     // so a redundant single-column FK is not added on top of it.
+    //
+    // #188 -- neither the FK above nor anything else here stops a work item from being
+    // made its own ancestor. Two distinct guards close this, at two different
+    // granularities a single mechanism cannot cover:
+    //
+    //   1. Direct self-parent (`parent_id = id` on THIS row) -- `work_item_parent_not_self`
+    //      CHECK below. A real, atomic, race-free Postgres CHECK constraint: both columns
+    //      it compares live on the one row being written, which is exactly the case a
+    //      Postgres CHECK CAN express (CHECK constraints cannot reference other rows).
+    //
+    //   2. A multi-row cycle (A's parent is B, B's parent is A; or any longer loop) is
+    //      NOT expressible as a CHECK or a plain FK -- it requires walking potentially
+    //      many rows. Closed by `work_item_reject_parent_cycle`, a hand-written
+    //      `BEFORE INSERT OR UPDATE OF parent_id` trigger (migration SQL; see that
+    //      trigger's own comment there for the full design) that walks from the proposed
+    //      new parent upward and rejects if the walk ever reaches `NEW.id`.
+    //
+    //   RACE ANALYSIS (matching #191 O2's rigor, since a naive check-then-act trigger is
+    //   exactly the shape that broke there): a NAIVE, unlocked chain walk here (plain
+    //   `SELECT`, no lock, considered and rejected) would have a REAL race a single-row
+    //   check does not -- two concurrent transactions each changing a DIFFERENT row's
+    //   `parent_id` (T1: A's parent := B; T2, concurrently: B's parent := A) could each
+    //   read the OTHER row's pre-transaction `parent_id` under plain MVCC (neither
+    //   transaction's own row lock protects a row it only READS), each conclude "no cycle
+    //   from what I can see," and both commit -- producing the cycle A<->B neither one
+    //   individually created. This is CLOSED, not merely reduced in probability, by the
+    //   trigger actually shipped here taking a `SELECT ... FOR UPDATE` row lock on every
+    //   ancestor it visits during the walk (not just a plain SELECT): a concurrent
+    //   transaction that is itself changing one of those ancestors' own `parent_id`
+    //   already holds that row's lock for its own UPDATE's duration, so the walk blocks
+    //   on it instead of reading a stale, about-to-change value -- it sees either that
+    //   transaction's fully-committed result or, if that transaction rolls back, the true
+    //   unchanged value, never a value mid-flight. Proven by a live concurrent
+    //   reproduction of exactly this two-row swap in
+    //   `work-item-parent-cycle-guard.test.ts`, run under plain READ COMMITTED (no
+    //   reliance on the application choosing a stronger isolation level), confirming the
+    //   swap is rejected rather than silently forming a cycle. An n-way concurrent
+    //   attempt to close a longer cycle this way is closed the same way at each pairwise
+    //   step -- and, on the interleavings where every leg ends up mutually waiting on the
+    //   next before any of them can commit, becomes a genuine wait-for cycle among the
+    //   transactions themselves, which Postgres's own deadlock detector resolves by
+    //   aborting exactly one of them -- breaking the attempted cycle by construction, not
+    //   by chance. Both outcomes (an explicit cycle rejection once a leg observes a real
+    //   committed edge, and a deadlock-detector abort when a full mutual wait forms) are
+    //   exercised live by the 3-way ring reproduction in the same test file. This closes
+    //   the race under Postgres's DEFAULT isolation (READ COMMITTED); it does not depend
+    //   on the application choosing SERIALIZABLE (the two-transaction swap above IS the
+    //   classic write-skew pattern SERIALIZABLE's SSI would also catch, but #191 O2
+    //   already established that this codebase does not lean on isolation-level choice
+    //   for an integrity guarantee, and a longer, 3+-row
+    //   cycle attempt is not obviously reducible to the two-transaction pivot SSI is
+    //   proven to detect -- explicit locking during the walk is the mechanism actually
+    //   relied on here, verified directly rather than assumed from isolation level).
     parentId: text("parent_id"),
     // `service` (data-model.md §7) is P5/later scope and does not exist yet -- plain
     // nullable column, NO foreign key constraint, until it lands.
@@ -1603,6 +1657,21 @@ export const workItemTable = pgTable(
     })
       .onDelete("restrict")
       .onUpdate("no action"),
+    // #188 -- direct self-parenting (`parent_id = id`), case 1 of the two guards
+    // described on the `parentId` column above. `IS DISTINCT FROM` (not `<>`) so a NULL
+    // `parent_id` (a root item, the common case) is never compared against `id` at all --
+    // `NULL IS DISTINCT FROM 'x'` is TRUE, i.e. "not the same value," which is exactly
+    // "no self-parent problem here." A plain `<>` would evaluate to NULL (neither true
+    // nor false) whenever `parent_id IS NULL`, and Postgres treats a NULL CHECK result as
+    // PASSING -- so `<>` would happen to work here too, but `IS DISTINCT FROM` says so
+    // directly instead of relying on that NULL-handling subtlety. Case 2 (a multi-row
+    // cycle) is NOT expressible here -- a CHECK constraint can only compare columns on
+    // the row being written, never walk to another row -- and is closed instead by the
+    // `work_item_reject_parent_cycle` trigger (hand-written SQL in the migration).
+    check(
+      "work_item_parent_not_self",
+      sql`${table.parentId} is distinct from ${table.id}`,
+    ),
     // #191 O2 -- the claim-table FK described on `work_item_key_claim` above and the
     // `key` column comment. `onUpdate("no action")`: claim rows are never updated in
     // place (see that table's comment), so this never actually fires, but the O1
