@@ -17,6 +17,61 @@ Newest first.
 
 ---
 
+### 2026-09-17 · `work_item_key_claim`: a real UNIQUE-constraint registry replaces a racy trigger for key/alias collision prevention
+
+**Decision:** `work_item.key`/`work_item_key_alias.old_key` collision prevention (issue
+#186's S5 finding) is enforced by a new table, `work_item_key_claim` (`key text PRIMARY KEY`,
+`work_item_id text NOT NULL`, `UNIQUE(key, work_item_id)`) — a key string is claimed here
+exactly once, ever, for the life of the system, claims are never released even after a hard
+delete. `work_item.key` and `work_item_key_alias.old_key` both get composite FKs into this
+table, so an alias can only ever reference a claim recording *its own* work item as the
+original claimant — the cross-item collision S5 exists to prevent has no matching row to
+reference, rejected by a real FK with no race window. One trigger remains
+(`work_item_claim_key`, on `work_item`), but its body is *only* an unconditional `INSERT` —
+no preceding check — so the claim table's real `PRIMARY KEY`, not application logic, is the
+sole arbiter of any conflict, atomically.
+
+**Why:** the first attempt at S5 (PR #191's original commit) used a `BEFORE INSERT OR
+UPDATE` trigger that checked `work_item_key_alias.old_key` against `work_item.key` directly.
+Two independent reviewers proved this had an unlocked TOCTOU race under ordinary READ
+COMMITTED concurrency (two ordinary concurrent transactions, no exotic tricks), and the
+mandatory Opus review additionally proved `SERIALIZABLE` isolation does not save it either
+(only one rw-antidependency edge, so Postgres's serializable snapshot isolation has no
+dangerous structure to detect this specific race). A trigger performing a check-then-act
+comparison against a different table's live state can never be race-free without additional
+locking; a real database `UNIQUE`/`PRIMARY KEY` constraint is race-free by construction and
+was judged the correct "change altitude" fix rather than patching the trigger with an
+advisory lock. This design also closes, as a side effect, the previously-known but
+unaddressed reverse-direction gap (a new `work_item` created with a `key` that already
+exists as some alias's `old_key`) — verified live with a regression test.
+
+**Also fixed in the same round** (Opus findings O1, O3, not a separate decision but recorded
+here since they're part of the same PR): the composite FKs this same schema introduced for
+project-scoping (`work_item`→`state`, `work_item`→`work_item` self-referencing `parent_id`)
+had `ON UPDATE CASCADE`, which — because the referenced column set includes the *mutable*
+`project_id` — created a cross-tenant write path (updating a `state`'s `project_id` silently
+cascaded a work item across a workspace boundary). Changed to `ON UPDATE NO ACTION`. The
+claim table's own trigger function also needed a pinned `search_path` (`SET search_path =
+pg_catalog, public`) after a live reproduction showed an ordinary session-level `CREATE TEMP
+TABLE work_item_key_claim` could otherwise make the check resolve against an empty temp
+table and silently bypass it entirely.
+
+**Alternatives considered:** an advisory lock (`pg_advisory_xact_lock`) added to the
+existing trigger, the simpler fix one reviewer suggested (rejected — the Opus review's
+"change altitude" framing was more persuasive: a lock-based patch on a check-then-act trigger
+is still fundamentally a workaround, where a real unique constraint removes the race
+condition's precondition entirely, and costs little more to build); leaving the trigger and
+accepting the race as a known, documented risk until #23's write-path PR (rejected — the race
+is reachable today, by anything that can write these two tables directly, not gated behind
+any not-yet-built application layer).
+
+**Decided by:** the orchestrating session, 2026-09-17, remediating three mandatory-Opus
+findings (O1, O2, O3) on PR #191 — a security-scope schema fix, not a new product or
+architecture policy. The implementing session that built this design explicitly deferred
+recording it here, correctly treating the decision log as orchestrator-owned.
+
+---
+
 ### 2026-09-17 · #23's first slice is narrower than "all of #23" — `work_item`/`work_item_type`/`state_template`/`state`/`work_item_key_alias`/`watcher` only
 
 **Decision:** issue #23's first PR builds only `work_item`, `work_item_type`,
