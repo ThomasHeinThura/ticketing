@@ -1,6 +1,18 @@
 # Security review — PR #200 (issue #187: project soft-delete)
 
-**Reviewed head:** `ff4d11faf1db05ed21b14672800846ce6bec8a83`
+**Reviewed head:** `c953d5f7c4bcfc287a4ac2b299b2c95105523a7f`
+
+Extended from `ff4d11f` (the head the two review rounds below actually examined) by root
+tree comparison, independently, not by trusting the diff stat: every top-level tree entry
+except `docs` is byte-identical between the two commits, and `main` (merge base `02c7059`)
+changed nothing outside `docs/07-planning` in the interim (`decision-log.md`, `status.md`
+only — both reconciliation entries, neither touching a security-review-scope path). The
+merge commit's own diff against its first parent shows every `apps/api` file as "changed"
+only because merge-commit diffs are computed against one parent; the actual code tree is
+untouched. This clearance binds to the reviewed code tree — `apps/api` at
+`494a473b412c937ccdcc89b6e2b28209e951f75a` — and survives any later commit whose root tree
+leaves every non-`docs` entry unchanged; it does **not** survive one that doesn't, and that
+case goes back to the reviewer rather than being reasoned about by whoever is merging.
 
 ## What this PR does
 
@@ -98,3 +110,15 @@ between a soft-deleted and a live row (benign until a restore endpoint exists); 
 misleading "does not belong to this workspace" error for a soft-deleted project in
 `reorder-projects.ts`. None of these carries a cross-tenant or authorization risk — same
 permission/workspace gates as before on every path, no cascade fires from any of them.
+
+## Round 3 (main-sync merge)
+
+After round 2 cleared `ff4d11f`, the branch was synced with three unrelated docs-only PRs
+that had merged to `main` in the meantime (decision-log and status.md reconciliations,
+neither touching a security-review-scope path), producing merge commit `c953d5f7c`. The
+mechanical PR-template checker correctly flagged this as needing its own confirmation
+rather than assuming a merge is automatically safe — a merge commit's diff against its
+first parent shows every file the other side touched as "changed," even when nothing in
+the actual code tree moved, so a real reviewer had to say so, not whoever was merging.
+Reviewed and extended independently by the same Opus reviewer (see the head-line note
+above for the exact method): CLEAR, no code-tree change, clearance extended to `c953d5f7c`.
