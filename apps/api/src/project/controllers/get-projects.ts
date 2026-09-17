@@ -38,11 +38,18 @@ async function getProjectStatistics(
     .from(taskTable)
     .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
     .where(
+      // #187: a soft-deleted project's statistics never surface, `includeArchived` or
+      // not -- `archivedAt` and `deletedAt` are independent (PR-16), and there is no
+      // "show deleted" toggle to extend `includeArchived` into.
       includeArchived
-        ? eq(projectTable.workspaceId, workspaceId)
+        ? and(
+            eq(projectTable.workspaceId, workspaceId),
+            isNull(projectTable.deletedAt),
+          )
         : and(
             eq(projectTable.workspaceId, workspaceId),
             isNull(projectTable.archivedAt),
+            isNull(projectTable.deletedAt),
           ),
     )
     .groupBy(taskTable.projectId);
@@ -64,11 +71,17 @@ async function getProjectStatistics(
 
 async function getProjects(workspaceId: string, includeArchived = false) {
   const projects = await db.query.projectTable.findMany({
+    // #187: same reasoning as `getProjectStatistics` above -- `deletedAt` is always
+    // excluded, `includeArchived` only ever controls `archivedAt`.
     where: includeArchived
-      ? eq(projectTable.workspaceId, workspaceId)
+      ? and(
+          eq(projectTable.workspaceId, workspaceId),
+          isNull(projectTable.deletedAt),
+        )
       : and(
           eq(projectTable.workspaceId, workspaceId),
           isNull(projectTable.archivedAt),
+          isNull(projectTable.deletedAt),
         ),
     // `id` is the deterministic tie-breaker: without it, rows sharing both a
     // position and a createdAt come back in an unspecified order.

@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { columnTable } from "../../database/schema";
 import { VIRTUAL_STATUSES } from "../../task/validate-task-fields";
+import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
 
 export function toSlug(name: string): string {
   const slug = name
@@ -28,6 +29,11 @@ async function createColumn({
   color?: string;
   isFinal?: boolean;
 }) {
+  // #187: rejects a soft-deleted (or nonexistent) project before adding a column to
+  // it. `getProjectWorkspaceId` excludes soft-deleted projects the same way
+  // `get-project.ts` does; the workspace id itself isn't needed here.
+  await getProjectWorkspaceId(projectId);
+
   const slug = toSlug(name);
 
   if (!slug) {

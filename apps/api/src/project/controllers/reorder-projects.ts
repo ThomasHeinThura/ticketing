@@ -1,4 +1,4 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable } from "../../database/schema";
@@ -28,10 +28,17 @@ async function reorderProjects(
     // non-archived projects, so archived ones have to hold their place in the
     // ordering without being sent. Ordering here defines each project's current
     // rank, which is what the renumbering below pins them to.
+    // #187: a soft-deleted project never holds a place -- unlike `archivedAt`, it is
+    // excluded here the same way `get-projects.ts` excludes it from the list.
     const existing = await tx
       .select({ id: projectTable.id, position: projectTable.position })
       .from(projectTable)
-      .where(eq(projectTable.workspaceId, workspaceId))
+      .where(
+        and(
+          eq(projectTable.workspaceId, workspaceId),
+          isNull(projectTable.deletedAt),
+        ),
+      )
       .orderBy(
         asc(projectTable.position),
         asc(projectTable.createdAt),
@@ -85,7 +92,12 @@ async function reorderProjects(
     }
 
     return tx.query.projectTable.findMany({
-      where: eq(projectTable.workspaceId, workspaceId),
+      // #187: same exclusion as the read above -- a soft-deleted project must not
+      // reappear in the response either.
+      where: and(
+        eq(projectTable.workspaceId, workspaceId),
+        isNull(projectTable.deletedAt),
+      ),
       orderBy: [
         asc(projectTable.position),
         asc(projectTable.createdAt),

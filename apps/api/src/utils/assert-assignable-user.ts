@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 
@@ -63,7 +63,15 @@ export async function getProjectWorkspaceId(
   const [project] = await db
     .select({ workspaceId: schema.projectTable.workspaceId })
     .from(schema.projectTable)
-    .where(eq(schema.projectTable.id, projectId))
+    // #187: a soft-deleted project is treated as gone everywhere in ordinary use,
+    // matching `get-project.ts`'s convention -- every caller of this helper (task
+    // creation and updates included) gets that for free instead of re-deriving it.
+    .where(
+      and(
+        eq(schema.projectTable.id, projectId),
+        isNull(schema.projectTable.deletedAt),
+      ),
+    )
     .limit(1);
 
   if (!project) {

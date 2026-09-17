@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import db from "../../database";
 import {
   activityTable,
@@ -144,9 +144,19 @@ async function globalSearch(params: SearchParams): Promise<{
   const results: SearchResult[] = [];
   const searchPattern = `%${query.toLowerCase()}%`;
 
+  // #187: every result below (short-id tasks, the general task/comment/activity
+  // search, and project search itself) joins through `projectTable` and reuses this
+  // filter, so excluding a soft-deleted project's rows here closes all four at once --
+  // matching `get-project.ts`'s "gone everywhere in ordinary use" convention.
   const workspaceFilter = workspaceId
-    ? eq(projectTable.workspaceId, workspaceId)
-    : inArray(projectTable.workspaceId, accessibleWorkspaceIds);
+    ? and(
+        eq(projectTable.workspaceId, workspaceId),
+        isNull(projectTable.deletedAt),
+      )
+    : and(
+        inArray(projectTable.workspaceId, accessibleWorkspaceIds),
+        isNull(projectTable.deletedAt),
+      );
 
   // Check if query matches short-id pattern (e.g. "DEP-23"). `generateProjectSlug`
   // normalizes to NFKC before it stores a key, so the query is normalized too,
