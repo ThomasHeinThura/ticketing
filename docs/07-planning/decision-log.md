@@ -17,6 +17,77 @@ Newest first.
 
 ---
 
+### 2026-09-17 · #187's fix is project-only soft-delete; the general purge-job/legal-hold infrastructure is out of scope, tracked separately as #198
+
+**Decision:** issue #187 (the live `project` table has no soft-delete window, so
+`work_item.project_id`'s `ON DELETE CASCADE` from PR #185 makes the existing hard-delete
+route destructive once #23's write path exists) is closed by a narrower fix than its own
+original wording asked for. `project` gets its own nullable `deleted_at`/`purge_after`
+columns and its delete route becomes a soft delete (an `UPDATE`, never a `DELETE`) — nothing
+else. The general hard-purge job that would actually act on `purge_after` (a scheduled job,
+a `legal_hold` table, and — if done consistently — retrofitting `organisation`'s already-
+existing but unused columns and adding the same pair to `workspace`) is filed separately as
+issue #198, not built as part of this fix.
+
+**Why:** #187's own text asked for the fix to match "organisation's/workspace's existing
+pattern." Research before implementing found that pattern doesn't actually exist in code:
+`organisationTable` has had `deleted_at`/`purge_after` since PR #179, but no route or job
+anywhere sets or reads them; `workspaceTable` doesn't have the columns at all, and its own
+delete route's comment explicitly defers soft delete to a later phase. Building the job
+scheduler, the `legal_hold` table, and retrofitting three tables consistently is real,
+separate, cross-cutting infrastructure — bundling it into #187 would turn a bounded defect
+fix (stop an ordinary user action from destroying work items with no recovery window) into a
+new-feature PR. The narrower fix fully closes the actual defect on its own: no `DELETE` is
+ever issued on this path, so `work_item`'s CASCADE never fires, with or without a purge job
+existing yet — the same state `organisation`'s columns have already been in, harmlessly,
+since PR #179.
+
+**Alternatives:** build the full purge-job/legal-hold infrastructure as part of #187 (rejected
+— disproportionate scope for a CASCADE-safety fix, and would also require deciding
+`workspace`'s and `organisation`'s own soft-delete rollout, a separate call); leave #187 as
+just a documentation note without a code fix (rejected — the CASCADE risk is real and
+closable now, independently of when #198 lands).
+
+**Decided by:** the orchestrating session, as a routine implementation-scoping call within
+its delegated authority (same category as the #23 first-slice scoping decision) — not a
+new product or architecture decision, since the target design itself (30-day soft
+delete, a separate purge job) is already settled in `docs/03-features/projects-and-
+engagements.md` (`PR-16`) and `docs/01-architecture/data-model.md`'s Retention table; only
+the build sequencing was undecided.
+
+---
+
+### 2026-09-17 · CodeQL alert #2 (`js/insufficient-password-hash`, `verify-api-key.ts`) dismissed as a false positive
+
+**Decision:** alert #2 is dismissed. The hashed value is a machine-generated API key (64
+characters, `crypto.getRandomValues`-backed, ~365 bits of entropy), not a human password;
+`verify-api-key.ts` hashes it with bare SHA-256 and looks it up by indexed DB equality. A
+slow KDF (bcrypt/scrypt/argon2) would not add real protection given the key's entropy, and
+is actively incompatible with an indexed equality lookup (a per-row random salt means you
+cannot look a candidate up without first re-deriving against every stored row). The
+`@better-auth/api-key` plugin this app builds on does the identical bare-SHA-256 verification
+internally for its own default key storage, while the same library correctly uses `scrypt`
+with a per-user salt for actual user passwords elsewhere — confirming the two are treated,
+correctly, as different problems by the library's own authors.
+
+**Why:** same reasoning class as alert #9 (2026-09-16, entry below) — CodeQL's generic
+`js/insufficient-password-hash` rule pattern-matches on identifiers like "key"/"hash", not on
+entropy or access pattern, and cannot distinguish "hash of a low-entropy human password" from
+"hash of a high-entropy machine token used for an indexed lookup." Full technical writeup is
+on issue #177.
+
+**Alternatives:** leave the alert open indefinitely (rejected — #177 exists precisely so this
+doesn't sit untriaged forever); apply a KDF anyway for defense-in-depth (rejected — it would
+force a linear per-row re-derivation at every authenticated request, a real performance/DoS
+regression, for a token whose entropy already makes brute force infeasible).
+
+**Decided by:** Thomas, via `AskUserQuestion`, 2026-09-17 — "Dismiss as false positive
+(recommended)." Same dismissal governance as alert #9: treated as gate-adjacent, so the
+technical case (however well-supported) was presented and the dismissal action itself waited
+for his explicit answer rather than being self-issued.
+
+---
+
 ### 2026-09-17 · `work_item_key_claim`: a real UNIQUE-constraint registry replaces a racy trigger for key/alias collision prevention
 
 **Decision:** `work_item.key`/`work_item_key_alias.old_key` collision prevention (issue
