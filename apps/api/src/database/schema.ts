@@ -1,7 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { relations, sql } from "drizzle-orm";
 import {
-  type AnyPgColumn,
   bigint,
   boolean,
   customType,
@@ -1246,6 +1245,13 @@ export const stateTable = pgTable(
   (table) => [
     index("state_projectId_idx").on(table.projectId),
     index("state_stateTemplateId_idx").on(table.stateTemplateId),
+    // #186 S2: the composite-FK target `work_item` uses below to pin its own
+    // `state_id` to a `state` row that shares its `project_id` -- the same
+    // `(scope_id, id)` composite-unique technique `project` already exposes for
+    // `user_notification_workspace_project`'s FK. `id` alone is already a PK/unique,
+    // but Postgres requires an explicit unique constraint on the exact column pair a
+    // composite FK targets, so this is added even though it looks redundant.
+    unique("state_project_id_id_unique").on(table.projectId, table.id),
   ],
 );
 
@@ -1266,6 +1272,22 @@ export const workItemTable = pgTable(
     // its dependents" pattern (`state.state_template_id`, `membership.role_id`) -- a
     // work item type cannot be deleted while items of that type still exist. Flagged in
     // the PR body.
+    //
+    // #186 S2, deliberately NOT closed at the DB level here (see the PR body's "Not
+    // done" for the full reasoning): nothing pins this `type_id` to a `work_item_type`
+    // row in the SAME workspace as this item's own `project_id`. Unlike `state_id`/
+    // `parent_id` below, `work_item` carries no `workspace_id` of its own -- only
+    // `project_id`, one hop away from `project.workspace_id` -- and data-model.md §4
+    // does not list a `workspace_id` column on `work_item`. A composite FK can only
+    // compare columns that live on the two tables it joins directly; there is no
+    // direct column pair here for Postgres to check. The only DB-level fix would be to
+    // denormalise a redundant `work_item.workspace_id` column (kept in sync via the
+    // same double-composite-FK technique `state`/`parent_id` use below) purely to
+    // support this one constraint -- a real schema-shape decision beyond what a
+    // three-finding integrity fix should make unilaterally, and not something
+    // data-model.md asks for. Left as an accepted gap requiring an application-level
+    // check (validate `work_item_type.workspace_id = project.workspace_id` at write
+    // time) when the write path is built.
     typeId: text("type_id")
       .notNull()
       .references(() => workItemTypeTable.id, {
@@ -1287,12 +1309,18 @@ export const workItemTable = pgTable(
     description: jsonb("description"),
     // data-model.md §4: "`ON DELETE RESTRICT` -- states are archived, never deleted out
     // from under an item."
-    stateId: text("state_id")
-      .notNull()
-      .references(() => stateTable.id, {
-        onDelete: "restrict",
-        onUpdate: "cascade",
-      }),
+    //
+    // #186 S2: no plain `.references()` here -- deliberately. A single-column FK to
+    // `state.id` alone would let this item's `state_id` point at a `state` row that
+    // belongs to a DIFFERENT project than this item's own `project_id` (proven live by
+    // the Opus review of PR #185). The composite `foreignKey()` in this table's extra
+    // config below (`(project_id, state_id) -> state(project_id, id)`, the same
+    // `user_notification_workspace_project` technique this codebase already uses for
+    // pinning one row's FK target to the caller's own scope) both enforces existence
+    // AND pins the state to this item's own project, so a second, narrower
+    // single-column FK on top of it would be redundant, matching the precedent (which
+    // gives its own scoped columns no separate single-column FK either).
+    stateId: text("state_id").notNull(),
     priority: text("priority"),
     // data-model.md §4: "`ON DELETE RESTRICT` -- people are deactivated, never deleted."
     assigneeId: text("assignee_id").references(() => personTable.id, {
@@ -1309,9 +1337,6 @@ export const workItemTable = pgTable(
       onDelete: "restrict",
       onUpdate: "cascade",
     }),
-    // Self-referencing FK (Drizzle's documented pattern for this: a lazy callback
-    // annotated with the `AnyPgColumn` return type, since the column's own table type
-    // isn't fully resolved yet at the point this callback is defined).
     // Judgment call: RESTRICT, not spelled out in data-model.md §4 either. Consistent
     // with the same "a referenced row cannot vanish out from under its dependents"
     // pattern used throughout this schema -- CASCADE would silently delete a
@@ -1320,10 +1345,15 @@ export const workItemTable = pgTable(
     // `deleted_at` in normal operation, so a real SQL DELETE here should be rare and
     // deliberate -- RESTRICT forces that to be an explicit choice (re-parent or delete
     // children first). Flagged in the PR body.
-    parentId: text("parent_id").references(
-      (): AnyPgColumn => workItemTable.id,
-      { onDelete: "restrict", onUpdate: "cascade" },
-    ),
+    //
+    // #186 S2: no plain self-referencing `.references()` here either -- deliberately,
+    // same reasoning as `state_id` above. A single-column self-FK to `work_item.id`
+    // alone would let a work item's `parent_id` point at a work item in a DIFFERENT
+    // project (proven live by the Opus review). The composite self-referencing
+    // `foreignKey()` below (`(project_id, parent_id) -> work_item(project_id, id)`)
+    // pins the parent to the SAME project as the child and subsumes plain existence,
+    // so a redundant single-column FK is not added on top of it.
+    parentId: text("parent_id"),
     // `service` (data-model.md §7) is P5/later scope and does not exist yet -- plain
     // nullable column, NO foreign key constraint, until it lands.
     serviceId: text("service_id"),
@@ -1342,7 +1372,15 @@ export const workItemTable = pgTable(
     slaStartedAt: timestamp("sla_started_at", { mode: "date" }),
     firstResponseAt: timestamp("first_response_at", { mode: "date" }),
     resolvedAt: timestamp("resolved_at", { mode: "date" }),
-    customerVisibility: text("customer_visibility"),
+    // #186 S1: NOT NULL DEFAULT 'private' -- the safe default, matching
+    // `organisation.default_customer_visibility`'s own `NOT NULL DEFAULT 'organisation'`
+    // pattern (PR #179). Nullable/no-default here meant a naive "hide private items"
+    // filter (`customer_visibility IS DISTINCT FROM 'private'`) failed OPEN on NULL or
+    // any garbage string -- an item became visible to a customer by accident, not by
+    // choice. No existing rows to backfill: this table has never shipped with data.
+    customerVisibility: text("customer_visibility")
+      .default("private")
+      .notNull(),
     archivedAt: timestamp("archived_at", { mode: "date" }),
     deletedAt: timestamp("deleted_at", { mode: "date" }),
     // data-model.md's convention: "Optimistic concurrency via `version integer not null
@@ -1387,6 +1425,38 @@ export const workItemTable = pgTable(
     // (title gin_trgm_ops)`, the `tsvector generated always as (...) stored` column) --
     // full-text search is a separate P1 core work item (search), not part of #23's
     // first-slice schema. Add these when that work lands.
+
+    // #186 S2 -- composite-FK target for the self-referencing `parent_id` composite FK
+    // below, same `(scope_id, id)` technique as `state_project_id_id_unique` above and
+    // `project_workspace_id_id_unique` (PR #179's `user_notification_workspace_project`
+    // precedent).
+    unique("work_item_project_id_id_unique").on(table.projectId, table.id),
+    // #186 S2 -- pins `state_id` to a `state` row that shares THIS item's own
+    // `project_id`, closing the cross-project state leakage the Opus review proved
+    // live (a plain single-column FK on `state_id` cannot see `work_item.project_id`
+    // at all, so it could never have caught this). RESTRICT/CASCADE mirrors the
+    // single-column FK this replaces (data-model.md §4: "states are archived, never
+    // deleted out from under an item").
+    foreignKey({
+      columns: [table.projectId, table.stateId],
+      foreignColumns: [stateTable.projectId, stateTable.id],
+    })
+      .onDelete("restrict")
+      .onUpdate("cascade"),
+    // #186 S2 -- pins `parent_id` to a work item that shares THIS item's own
+    // `project_id`, closing the cross-project parent leakage the Opus review proved
+    // live. Self-referencing composite FK: `table` here is the fully-resolved column
+    // proxy (this extra-config callback runs after every column above it is defined),
+    // so no `AnyPgColumn` lazy-callback workaround is needed the way the old inline
+    // single-column self-FK required. RESTRICT/CASCADE mirrors the single-column FK
+    // this replaces (see the `parent_id` column comment above for the RESTRICT
+    // reasoning).
+    foreignKey({
+      columns: [table.projectId, table.parentId],
+      foreignColumns: [table.projectId, table.id],
+    })
+      .onDelete("restrict")
+      .onUpdate("cascade"),
   ],
 );
 
@@ -1400,6 +1470,18 @@ export const workItemKeyAliasTable = pgTable(
     // this table implements only works if an old key unambiguously resolves to one
     // work item. Not spelled out as "unique" in data-model.md §4's abbreviated column
     // list -- judgment call, flagged in the PR body.
+    //
+    // #186 S5: uniqueness within THIS table is not the whole story -- `old_key` and
+    // `work_item.key` are otherwise independent namespaces, so an alias could still be
+    // created whose value collides with a currently-live `work_item.key` (proven live
+    // by the Opus review: reachable when a work item moves between projects and a
+    // different project's key gets reused after deletion). A plain CHECK/UNIQUE cannot
+    // compare one table's column against another table's column in Postgres, so that
+    // cross-table guarantee is enforced by a hand-written trigger
+    // (`work_item_key_alias_reject_live_collision`, appended to this migration per
+    // docs/04-engineering/migrations.md's "hand-written SQL is appended into a
+    // generated migration file" convention) rather than modeled here in Drizzle's
+    // schema DSL, which has no trigger primitive.
     oldKey: text("old_key").notNull(),
     workItemId: text("work_item_id")
       .notNull()
