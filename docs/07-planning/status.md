@@ -1065,8 +1065,10 @@ caught the real outcome correctly every time. Fixed and verified with eight repe
 plus the full suite, clean every time.
 
 **Merged as PR #191** (`90b38a3`). Issue #186 is now closed. Six smaller, non-blocking
-findings from the original schema review remain open and tracked: **#187** (a workspace
-can't currently be deleted once any role has a member — not reachable yet), **#188** (a
+findings from the original schema review remain open and tracked: **#187** (the live
+`project` table has no soft-delete window, so `work_item.project_id`'s CASCADE now makes an
+ordinary project-delete route destructive — not #23's own gap, but #23's new FK is what
+makes it consequential), **#188** (a
 work item could in principle be made its own ancestor — no guard exists yet), **#189** (a
 small backlog of minor hardening items), **#192** (the deferred `type_id`/workspace
 question above), and one item folded into the already-open **#181**.
