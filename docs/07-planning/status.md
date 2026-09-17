@@ -2,13 +2,13 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-17 — an eighth pass, after #186's three write-path-blocking
-> integrity gaps in #23's work-item schema closed, following the session's most rigorous
-> review cycle to date (3 full Opus passes, a real concurrency bug caught and fixed)
-> **`main` at that moment:** `90b38a3` (PR #191 — `customer_visibility` fail-open, cross-
-> project FK scoping, and the key/alias collision mechanism redesigned around a real DB
-> constraint after the original trigger-based fix was proven to have a genuine race)
-> wiring yet, kaneo's `task`/`column` tables and routes fully untouched and still live)
+> **Snapshot taken:** 2026-09-17 — a ninth pass, after `work_item.parent_id`'s cycle/self-
+> reference guard (#188) landed, closing #23's work-item schema's fourth and last known
+> integrity gap from this review family
+> **`main` at that moment:** `02c7059` (PR #195 — a CHECK constraint plus a row-locking
+> trigger; the trigger's locking strategy went through two rounds of live-reproduced
+> concurrency scrutiny before Opus cleared it, given this table's history in PR #191).
+> Kaneo's `task`/`column` tables and routes remain fully untouched and still live.
 > **Stage:** P0 · Foundation — **exit criteria met; Throttle 1 is OPEN.** Autonomous
 > continuation past Throttle 1 is authorized (Thomas, 2026-09-16) — see the session log's
 > newest entry for what that wave landed and what it found.
@@ -44,24 +44,37 @@
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-17 (later the same day again)
+**Last updated:** 2026-09-17 (later the same day, a third time)
 **Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** #23 (work
-items)'s first schema slice is now hardened: the three write-path-blocking findings PR
-#185's Opus review flagged (#186 — `customer_visibility` fail-open, cross-project FK
-leakage, key/alias collision) are closed. Schema only, still no route/policy/Zod/repository
-wiring; kaneo's `task`/`column` tables and routes remain fully live and untouched.
-**Updated by:** Claude Code (Sonnet), reconciliation after **PR #191 merged**. The most
-rigorous review cycle of this session so far: 3 full mandatory-Opus passes plus 2 ordinary
-rounds, each with its own delta. The mandatory reviewer's first pass on this PR found three
-NEW blocking issues in the fix itself — not repeats of anything from #185's review — the
-most serious being a genuine, live-reproduced concurrency race in a hand-written trigger
-(confirmed independently by both an ordinary reviewer and Opus, and shown to survive even
-Postgres's strictest isolation level). The trigger was replaced entirely with a real
-database uniqueness constraint rather than patched, closing the race by construction. A
-second Opus pass then found four more latent issues in that redesign (an orphaned-claim
-edge case and a spurious-failure landmine for #23's future write path, both fixed; two
-documentation-accuracy corrections). **A genuine process error was also found and
-corrected here, worth stating plainly rather than glossing over**: partway through, the
+items)'s first schema slice has now had all four write-path-blocking integrity findings
+from its own review closed: #186 (three findings, PR #191) and #188
+(`work_item.parent_id`'s cycle/self-reference guard, PR #195). Schema only, still no
+route/policy/Zod/repository wiring; kaneo's `task`/`column` tables and routes remain fully
+live and untouched.
+**Updated by:** Claude Code (Sonnet), reconciliation after **PR #195 merged**. Same full
+review tier as #186 (2 Sonnet + Opus), and — given this table's history — the mandatory
+reviewer applied the same no-benefit-of-the-doubt scrutiny to the new fix's own trigger.
+First pass found two further, cheap-to-fix issues in the new trigger (a stronger-than-needed
+lock, and the same "fires on column mention, not value change" bug class PR #191 already hit
+once) — both fixed and re-verified live by all three reviewers on the delta, one of whom
+independently constructed and closed a brand-new adversarial scenario the implementer hadn't
+tested. Five smaller, non-blocking findings tracked as issue **#196**. Full account in this
+session's newest log entry, below.
+
+---
+
+**Earlier the same day:** Claude Code (Sonnet), reconciliation after **PR #191 merged**. The
+most rigorous review cycle of this session at the time: 3 full mandatory-Opus passes plus 2
+ordinary rounds, each with its own delta. The mandatory reviewer's first pass on that PR
+found three NEW blocking issues in the fix itself — not repeats of anything from #185's
+review — the most serious being a genuine, live-reproduced concurrency race in a
+hand-written trigger (confirmed independently by both an ordinary reviewer and Opus, and
+shown to survive even Postgres's strictest isolation level). The trigger was replaced
+entirely with a real database uniqueness constraint rather than patched, closing the race
+by construction. A second Opus pass then found four more latent issues in that redesign (an
+orphaned-claim edge case and a spurious-failure landmine for #23's future write path, both
+fixed; two documentation-accuracy corrections). **A genuine process error was also found
+and corrected here, worth stating plainly rather than glossing over**: partway through, the
 orchestrating session advanced the committed security-review note's `Reviewed head` past a
 routine `main`-sync merge on its own judgment, based on a diff check showing no code had
 actually changed — technically accurate, but not the orchestrating session's call to make
@@ -70,9 +83,8 @@ later commit, re-verified the gap itself independently, and extended the clearan
 its own authority; the note now records both what happened and the correction, not a
 quietly-fixed history. A real flaky test (a JS Promise-timing issue in the concurrency
 test itself, not the underlying mechanism) was also found via CI and fixed. Six smaller,
-non-blocking findings from PR #185's original review remain tracked as **#187**, **#188**,
-**#189**, **#192**, and one folded into **#181**. Full account in this session's newest log
-entry, below.
+non-blocking findings from PR #185's original review were tracked as **#187**, **#188**,
+**#189**, **#192**, and one folded into **#181** — #188 is now closed (see above).
 
 ---
 
@@ -1012,6 +1024,51 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-17 (later the same day, a third time) · #188 closed — the last of #23's schema's known integrity gaps, with the same review rigor PR #191 established
+
+Same session, continuing autonomously. With #186 closed (prior entry, below), took up #188
+— `work_item.parent_id` (a self-referencing column) had no guard against a work item
+becoming its own ancestor, directly or through a longer chain — the last of the four
+findings this schema's own review flagged as worth closing promptly, not the smaller
+backlog items (#187, #189, #192).
+
+**Two guards added**: a database constraint rejecting direct self-parenting outright, and a
+trigger walking the ancestor chain to catch a longer cycle (something a plain constraint
+cannot express). Given the previous PR's lesson on this exact table — a hand-written
+trigger that looked reasonable and had a real, live-provable race — the trigger here was
+built with that specific hazard in mind: it locks each ancestor row it visits as it walks,
+so two concurrent attempts to form a cycle become a genuine, correctly-resolved database
+deadlock instead of a silent race. **Verified, not just reasoned about**: real two-way and
+three-way concurrent reproductions, run independently by two different reviewers using
+their own separate test code, both confirming a cycle can never survive.
+
+**The mandatory review, applying the same no-benefit-of-the-doubt standard this table has
+now earned, found two more things worth fixing before merge**: the lock taken was stronger
+than necessary (fixed, a one-word change), and — the more interesting one — the trigger
+fired any time a row's parent field was *mentioned* in an update, even when the value
+wasn't actually changing, which would have made an ordinary, unrelated edit to a work item
+unnecessarily lock its entire ancestor chain. This is the same class of mistake already
+caught once in the previous PR, on a different trigger — now closed here too. Both fixes
+re-verified live by all three reviewers, one of whom went further and independently
+constructed a brand-new concurrent scenario the implementer hadn't thought to test, closing
+it out clean.
+
+**Five smaller, non-blocking findings** — a narrow deadlock interaction between this
+trigger and the previous PR's, a caveat about one uncommon administrative mode where the
+database-level guarantee doesn't apply (application code doing its own chain calculations
+still needs its own safety check), and three minor documentation/consistency notes — are
+tracked as issue **#196**, not fixed here.
+
+**Merged as PR #195** (`02c7059`). Issue #188 is now closed.
+
+**Not done:** the rest of #23 (routes, screens, the actual cutover from the old task/column
+system); #25; the two SLA questions, the state-transition question, and the
+`workflowRuleTable` question, all still waiting on Thomas; issue #8's remaining scope; the
+live UAT redeploy. Issues #187, #189, #192, #196 remain open, low-priority, not blocking
+anything.
+
+---
 
 ### 2026-09-17 (later the same day again) · #186 closed after a real concurrency bug, a self-corrected process error, and the session's deepest review cycle yet
 
