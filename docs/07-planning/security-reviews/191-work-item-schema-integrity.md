@@ -1,6 +1,15 @@
 # Pre-merge security review — PR #191 (fix #186: work-item schema integrity — customer_visibility default, cross-project composite FKs, key/alias collision registry)
 
-**Reviewed head:** `2049107485ba491de251799c9df08e523038b6b8`
+**Reviewed head:** `c20efe56cce2ae0e285c9f7ead236075a186b901`
+
+All three review rounds above read `2049107485ba491de251799c9df08e523038b6b8`. The commit
+above it is a merge bringing this branch up to date with `origin/main` (which had moved on
+— PRs #190/#193 merged elsewhere while this PR's review was in progress) — `git diff
+2049107 c20efe56cce2 --stat` touches only `docs/07-planning/decision-log.md` (an unrelated
+PR's entry, already merged to `main` independently) and this note file; every
+`apps/api/**`/`apps/api/drizzle/**` path the merge commit's own file list names is
+byte-identical to `2049107`, confirmed directly. No further code review was needed to move
+the reviewed head forward to it.
 
 **Status: CLEARED.** Both required ordinary reviews (PASS, delta-confirmed at `db65e55`)
 and the mandatory Opus review (three passes, final verdict **CLEAR** at this head) are
