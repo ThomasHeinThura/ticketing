@@ -1502,8 +1502,8 @@ export const workItemTable = pgTable(
     //   transaction's own row lock protects a row it only READS), each conclude "no cycle
     //   from what I can see," and both commit -- producing the cycle A<->B neither one
     //   individually created. This is CLOSED, not merely reduced in probability, by the
-    //   trigger actually shipped here taking a `SELECT ... FOR UPDATE` row lock on every
-    //   ancestor it visits during the walk (not just a plain SELECT): a concurrent
+    //   trigger actually shipped here taking a `SELECT ... FOR NO KEY UPDATE` row lock on
+    //   every ancestor it visits during the walk (not just a plain SELECT): a concurrent
     //   transaction that is itself changing one of those ancestors' own `parent_id`
     //   already holds that row's lock for its own UPDATE's duration, so the walk blocks
     //   on it instead of reading a stale, about-to-change value -- it sees either that
@@ -1529,6 +1529,21 @@ export const workItemTable = pgTable(
     //   cycle attempt is not obviously reducible to the two-transaction pivot SSI is
     //   proven to detect -- explicit locking during the walk is the mechanism actually
     //   relied on here, verified directly rather than assumed from isolation level).
+    //
+    //   #195 OS1/OS2 (mandatory Opus review) -- two non-blocking refinements to the walk,
+    //   both proven live and both covered by regression tests in
+    //   `work-item-parent-cycle-guard.test.ts`: (1) the lock is `FOR NO KEY UPDATE`, not
+    //   `FOR UPDATE` -- strictly sufficient for the race analysis above (nothing here
+    //   relies on excluding `FOR KEY SHARE`), and unlike `FOR UPDATE`, it does not
+    //   conflict with the `FOR KEY SHARE` an unrelated foreign key check takes
+    //   against one of these ancestors (e.g. a new `watcher` row), so that unrelated work
+    //   no longer blocks for the reparent's duration. (2) the trigger now returns
+    //   immediately, before the walk, when `TG_OP = 'UPDATE'` and `NEW.parent_id IS NOT
+    //   DISTINCT FROM OLD.parent_id` -- the same fix #191 N2 made on the sibling
+    //   `work_item_claim_key` trigger, needed because Postgres fires `UPDATE OF
+    //   parent_id` on column MENTION, not value change, so an ordinary whole-row ORM
+    //   update would otherwise re-run the full locking walk for a write that never
+    //   touches `parent_id`.
     parentId: text("parent_id"),
     // `service` (data-model.md §7) is P5/later scope and does not exist yet -- plain
     // nullable column, NO foreign key constraint, until it lands.

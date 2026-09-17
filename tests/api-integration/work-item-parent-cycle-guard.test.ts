@@ -22,12 +22,28 @@
  * this walk (plain, unlocked `SELECT`s) would let two concurrent transactions, each
  * changing a DIFFERENT row's `parent_id`, each see the OTHER's PRE-transaction value and
  * each conclude "no cycle" -- together forming a cycle neither created alone. The trigger
- * actually shipped here closes this by taking a `SELECT ... FOR UPDATE` row lock on every
- * ancestor visited during the walk, so a concurrent transaction that is itself changing
- * that ancestor blocks (or is resolved by Postgres's own deadlock detector, for a longer
- * ring) instead of being read mid-flight. Both concurrency tests below reproduce this
- * live, under plain READ COMMITTED -- no reliance on the application choosing
+ * actually shipped here closes this by taking a `SELECT ... FOR NO KEY UPDATE` row lock on
+ * every ancestor visited during the walk, so a concurrent transaction that is itself
+ * changing that ancestor blocks (or is resolved by Postgres's own deadlock detector, for a
+ * longer ring) instead of being read mid-flight. Both concurrency tests below reproduce
+ * this live, under plain READ COMMITTED -- no reliance on the application choosing
  * SERIALIZABLE.
+ *
+ * PR #195 remediation (mandatory Opus review, findings OS1/OS2 -- see the migration SQL
+ * and `parentId`'s comment in `schema.ts` for the full analysis) added two more regression
+ * tests below:
+ *
+ *   - OS1: the walk's lock was `FOR UPDATE`, strictly stronger than the race analysis
+ *     needs -- it also conflicts with `FOR KEY SHARE`, the lock an unrelated foreign key
+ *     check against one of the locked ancestors takes (e.g. a new `watcher` row), so
+ *     unrelated work blocked on a reparent for no reason. Changed to `FOR NO KEY UPDATE`,
+ *     which is sufficient for every interleaving above and does not conflict with
+ *     `FOR KEY SHARE`.
+ *   - OS2: `BEFORE UPDATE OF parent_id` fires on column MENTION, not value CHANGE (the
+ *     same class of bug #191 N2 found on the sibling `work_item_claim_key` trigger), so an
+ *     ordinary whole-row ORM update that re-sends `parent_id`'s own unchanged value would
+ *     otherwise re-run the entire locking walk. Fixed by returning immediately, before the
+ *     walk, when `TG_OP = 'UPDATE'` and `NEW.parent_id IS NOT DISTINCT FROM OLD.parent_id`.
  */
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
@@ -64,6 +80,31 @@ async function setParentId(
     parentId,
     workItemId,
   ]);
+}
+
+/**
+ * Races `promise` against a plain timer, used below (PR #195 OS1/OS2 remediation) to
+ * prove a concurrent statement did NOT block behind another, still-open transaction's
+ * locks: if it were genuinely blocked, it cannot possibly settle before the timeout while
+ * the blocking transaction is deliberately kept open across the whole race. Resolves
+ * `"resolved"` if `promise` settles first, `"timeout"` if the timer wins.
+ */
+async function raceAgainstTimeout(
+  promise: Promise<unknown>,
+  timeoutMs: number,
+): Promise<"resolved" | "timeout"> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<"timeout">((resolve) => {
+    timeoutHandle = setTimeout(() => resolve("timeout"), timeoutMs);
+  });
+  const result = await Promise.race([
+    promise.then((): "resolved" => "resolved"),
+    timeout,
+  ]);
+  if (timeoutHandle) {
+    clearTimeout(timeoutHandle);
+  }
+  return result;
 }
 
 // ── Minimal fixture builders -- same pattern as work-item-schema-integrity.test.ts ──
@@ -474,4 +515,144 @@ describe("#188 -- the trigger's row-locking walk is race-free under concurrency 
       }
     }
   }, 20_000);
+});
+
+describe("PR #195 remediation OS1 -- the ancestor walk locks with FOR NO KEY UPDATE, not FOR UPDATE", () => {
+  it("does not block an unrelated concurrent insert whose foreign key references a locked ancestor", async () => {
+    // Chain: root <- mid <- leaf (mid.parent_id = root, leaf.parent_id = mid), plus a
+    // fourth, unrelated item ("other") that T1 reparents under `leaf` below -- forcing
+    // the trigger to walk (and lock) leaf, then mid, then root, in that order, and to
+    // hold all three locks until T1 commits.
+    const fixture = await makeProjectFixture();
+    const root = await makeWorkItem(fixture, 1);
+    const mid = await makeWorkItem(fixture, 2, root.id);
+    const leaf = await makeWorkItem(fixture, 3, mid.id);
+    const other = await makeWorkItem(fixture, 4);
+
+    const t1 = await openRawClient();
+    const t2 = await openRawClient();
+    try {
+      await t1.query("BEGIN");
+      // Walks leaf -> mid -> root, taking FOR NO KEY UPDATE on all three -- and does NOT
+      // commit for the rest of this test, so anything that would conflict with that lock
+      // has the whole test to prove it (it does not merely "usually" not block).
+      await setParentId(t1, other.id, leaf.id);
+
+      // A `work_item_key_alias` row whose single-column FK to `work_item.id` needs only a
+      // `FOR KEY SHARE` lock on `root` to insert -- the same lock shape an unrelated new
+      // `watcher` row referencing an ancestor would need, and entirely unrelated to the
+      // reparent above. `old_key` is set to `root`'s own current key so the composite FK
+      // to `work_item_key_claim` (which requires the exact (key, work_item_id) pair to
+      // already be claimed) is satisfied by the claim `work_item_claim_key` made when
+      // `root` itself was created -- this is a pure lock-contention fixture, not a
+      // realistic alias.
+      const t2Promise = t2.query(
+        `INSERT INTO work_item_key_alias (id, old_key, work_item_id, created_at, updated_at)
+         VALUES ($1, $2, $3, now(), now())`,
+        [randomUUID(), root.key, root.id],
+      );
+      t2Promise.catch(() => {});
+
+      // Must resolve well before T1 ever commits. `FOR UPDATE` (pre-fix) conflicts with
+      // `FOR KEY SHARE`, so this would still be pending after the timeout, with T1 still
+      // open, under the bug this regression test targets. `FOR NO KEY UPDATE` does not
+      // conflict with `FOR KEY SHARE`, so it must resolve immediately.
+      const outcome = await raceAgainstTimeout(t2Promise, 2000);
+      expect(outcome).toBe("resolved");
+      await expect(t2Promise).resolves.toBeDefined();
+
+      await t1.query("COMMIT");
+    } finally {
+      await t1.end();
+      await t2.end();
+    }
+
+    const [reloadedOther] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, other.id));
+    expect(reloadedOther?.parentId).toBe(leaf.id);
+  });
+});
+
+describe("PR #195 remediation OS2 -- the trigger is a no-op when parent_id hasn't actually changed", () => {
+  it("takes no ancestor lock at all for a whole-row-style update that re-sends parent_id unchanged", async () => {
+    // Chain: root <- mid <- leaf. `leaf` is updated below the same way a generic ORM
+    // whole-row update would: every column re-sent, including `parent_id` at its own
+    // current, unchanged value -- which still MENTIONS the column, so
+    // `BEFORE UPDATE OF parent_id` still fires, but nothing about parent_id actually
+    // changed.
+    const fixture = await makeProjectFixture();
+    const root = await makeWorkItem(fixture, 1);
+    const mid = await makeWorkItem(fixture, 2, root.id);
+    const leaf = await makeWorkItem(fixture, 3, mid.id);
+
+    const t1 = await openRawClient();
+    const t2 = await openRawClient();
+    try {
+      await t1.query("BEGIN");
+      await t1.query(
+        "UPDATE work_item SET title = $1, parent_id = $2 WHERE id = $3",
+        ["Retitled via whole-row update", mid.id, leaf.id],
+      );
+
+      // An ordinary write to `mid`, an ANCESTOR of `leaf`. Before this fix, the trigger
+      // would have re-walked leaf -> mid -> root above and would still be holding a
+      // `FOR NO KEY UPDATE` lock on `mid` -- which conflicts with this UPDATE's own row
+      // lock -- for as long as T1 stays open.
+      const t2Promise = t2.query(
+        "UPDATE work_item SET title = $1 WHERE id = $2",
+        ["Touched concurrently", mid.id],
+      );
+      t2Promise.catch(() => {});
+
+      const outcome = await raceAgainstTimeout(t2Promise, 2000);
+      expect(outcome).toBe("resolved");
+      await expect(t2Promise).resolves.toBeDefined();
+
+      await t1.query("COMMIT");
+    } finally {
+      await t1.end();
+      await t2.end();
+    }
+
+    const [reloadedLeaf] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, leaf.id));
+    expect(reloadedLeaf?.title).toBe("Retitled via whole-row update");
+    expect(reloadedLeaf?.parentId).toBe(mid.id);
+
+    const [reloadedMid] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, mid.id));
+    expect(reloadedMid?.title).toBe("Touched concurrently");
+  });
+
+  it("control: a whole-row-style update that DOES change parent_id still walks and still rejects a cycle", async () => {
+    // Same chain as above: root <- mid <- leaf. Setting root's parent to leaf would close
+    // leaf -> mid -> root -> leaf -- the walk must still run and still reject this, proving
+    // the OS2 no-op guard only skips the walk when parent_id is UNCHANGED, never when it
+    // genuinely changes.
+    const fixture = await makeProjectFixture();
+    const root = await makeWorkItem(fixture, 1);
+    const mid = await makeWorkItem(fixture, 2, root.id);
+    const leaf = await makeWorkItem(fixture, 3, mid.id);
+
+    await expect(
+      db
+        .update(schema.workItemTable)
+        .set({ title: "Retitled AND reparented", parentId: leaf.id })
+        .where(eq(schema.workItemTable.id, root.id)),
+    ).rejects.toThrow();
+
+    const [reloadedRoot] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, root.id));
+    // Rejected transaction -- neither the title nor parent_id change applied.
+    expect(reloadedRoot?.parentId).toBeNull();
+    expect(reloadedRoot?.title).not.toBe("Retitled AND reparented");
+  });
 });
