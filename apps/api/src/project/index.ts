@@ -153,7 +153,9 @@ const deleteProjectRoute = createRoute({
   tags: ["Projects"],
   summary: "Delete project",
   description:
-    "Permanently delete a project and everything in it. Archive it instead to keep the data.",
+    "Soft-delete a project: it disappears from ordinary use immediately and is purged, " +
+    "along with its work items, comments, attachments and time entries, 30 days later. " +
+    "Archive it instead if you just want it out of the way without starting that clock.",
   middleware: [
     workspaceAccess.fromProject(),
     requireWorkspacePermission({ project: ["delete"] }),

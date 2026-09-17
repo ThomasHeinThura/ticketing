@@ -282,6 +282,15 @@ export const projectTable = pgTable(
     description: text("description"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     archivedAt: timestamp("archived_at", { mode: "date" }),
+    // #187: soft delete. `deletedAt`/`purgeAfter` mirror `organisationTable`'s own pair
+    // (PR #179) -- nullable, no default, set together by the delete route
+    // (`purgeAfter` = delete time + 30 days, `docs/03-features/projects-and-engagements.md`
+    // PR-16). Independent of `archivedAt`: archiving does not start this timer, and a
+    // project need not be archived before it can be deleted. Nothing purges on
+    // `purgeAfter` yet -- that job is #198, tracked separately, same as the still-unbuilt
+    // purge for `organisationTable`'s columns.
+    deletedAt: timestamp("deleted_at", { mode: "date" }),
+    purgeAfter: timestamp("purge_after", { mode: "date" }),
     lastTaskNumber: integer("last_task_number").notNull().default(0),
     position: integer("position").notNull().default(0),
   },
