@@ -17,6 +17,37 @@ Newest first.
 
 ---
 
+### 2026-09-17 · CodeQL alert #2 (`js/insufficient-password-hash`, `verify-api-key.ts`) dismissed as a false positive
+
+**Decision:** alert #2 is dismissed. The hashed value is a machine-generated API key (64
+characters, `crypto.getRandomValues`-backed, ~365 bits of entropy), not a human password;
+`verify-api-key.ts` hashes it with bare SHA-256 and looks it up by indexed DB equality. A
+slow KDF (bcrypt/scrypt/argon2) would not add real protection given the key's entropy, and
+is actively incompatible with an indexed equality lookup (a per-row random salt means you
+cannot look a candidate up without first re-deriving against every stored row). The
+`@better-auth/api-key` plugin this app builds on does the identical bare-SHA-256 verification
+internally for its own default key storage, while the same library correctly uses `scrypt`
+with a per-user salt for actual user passwords elsewhere — confirming the two are treated,
+correctly, as different problems by the library's own authors.
+
+**Why:** same reasoning class as alert #9 (2026-09-16, entry below) — CodeQL's generic
+`js/insufficient-password-hash` rule pattern-matches on identifiers like "key"/"hash", not on
+entropy or access pattern, and cannot distinguish "hash of a low-entropy human password" from
+"hash of a high-entropy machine token used for an indexed lookup." Full technical writeup is
+on issue #177.
+
+**Alternatives:** leave the alert open indefinitely (rejected — #177 exists precisely so this
+doesn't sit untriaged forever); apply a KDF anyway for defense-in-depth (rejected — it would
+force a linear per-row re-derivation at every authenticated request, a real performance/DoS
+regression, for a token whose entropy already makes brute force infeasible).
+
+**Decided by:** Thomas, via `AskUserQuestion`, 2026-09-17 — "Dismiss as false positive
+(recommended)." Same dismissal governance as alert #9: treated as gate-adjacent, so the
+technical case (however well-supported) was presented and the dismissal action itself waited
+for his explicit answer rather than being self-issued.
+
+---
+
 ### 2026-09-17 · `work_item_key_claim`: a real UNIQUE-constraint registry replaces a racy trigger for key/alias collision prevention
 
 **Decision:** `work_item.key`/`work_item_key_alias.old_key` collision prevention (issue
