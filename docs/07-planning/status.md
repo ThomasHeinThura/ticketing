@@ -2,10 +2,12 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-17 — a seventh pass, after #23's first work-item schema slice
-> landed on top of the P1 identity schema
-> **`main` at that moment:** `f8f410e` (PR #185 — `work_item`/`work_item_type`/
-> `state_template`/`state`/`work_item_key_alias`/`watcher`, schema only, no route/policy
+> **Snapshot taken:** 2026-09-17 — an eighth pass, after #186's three write-path-blocking
+> integrity gaps in #23's work-item schema closed, following the session's most rigorous
+> review cycle to date (3 full Opus passes, a real concurrency bug caught and fixed)
+> **`main` at that moment:** `90b38a3` (PR #191 — `customer_visibility` fail-open, cross-
+> project FK scoping, and the key/alias collision mechanism redesigned around a real DB
+> constraint after the original trigger-based fix was proven to have a genuine race)
 > wiring yet, kaneo's `task`/`column` tables and routes fully untouched and still live)
 > **Stage:** P0 · Foundation — **exit criteria met; Throttle 1 is OPEN.** Autonomous
 > continuation past Throttle 1 is authorized (Thomas, 2026-09-16) — see the session log's
@@ -42,25 +44,35 @@
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-17 (later the same day)
+**Last updated:** 2026-09-17 (later the same day again)
 **Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** #23 (work
-items)'s first schema slice — `work_item`, `work_item_type`, `state_template`, `state`,
-`work_item_key_alias`, `watcher` — is now on `main`, built on top of P1's identity schema.
-Schema only, no route/policy/Zod/repository wiring yet; kaneo's `task`/`column` tables and
-routes stay fully live and untouched — this PR deliberately does not cut over.
-**Updated by:** Claude Code (Sonnet), reconciliation after **PR #185 merged**. Same full
-review tier as the identity schema (2 Sonnet + Opus). The mandatory Opus pass explicitly
-checked for and ruled out a repeat of the identity schema's own two findings — neither
-reproduces here — but found nine new, non-blocking data-integrity gaps of its own, four
-flagged as needing to close **before any PR gives work items a real write path** (not before
-this schema PR, which adds no route): a fail-open default on the one column gating customer
-visibility, no FK tying a work item's state/type/parent to its own project or workspace, a
-key/alias namespace collision, and — the most structurally interesting one — the live
-`project` table has no soft-delete window unlike its target design, so `work_item.project_id`
-CASCADE now makes an ordinary project-delete route destructive in a way the identical-looking
-FK on the identity schema was NOT (that one only fired on a hard purge, well past every
-recovery window). Tracked as issues **#186**, **#187**, **#188**, **#189** (one finding folded
-into the existing #181). Full account in this session's newest log entry, below.
+items)'s first schema slice is now hardened: the three write-path-blocking findings PR
+#185's Opus review flagged (#186 — `customer_visibility` fail-open, cross-project FK
+leakage, key/alias collision) are closed. Schema only, still no route/policy/Zod/repository
+wiring; kaneo's `task`/`column` tables and routes remain fully live and untouched.
+**Updated by:** Claude Code (Sonnet), reconciliation after **PR #191 merged**. The most
+rigorous review cycle of this session so far: 3 full mandatory-Opus passes plus 2 ordinary
+rounds, each with its own delta. The mandatory reviewer's first pass on this PR found three
+NEW blocking issues in the fix itself — not repeats of anything from #185's review — the
+most serious being a genuine, live-reproduced concurrency race in a hand-written trigger
+(confirmed independently by both an ordinary reviewer and Opus, and shown to survive even
+Postgres's strictest isolation level). The trigger was replaced entirely with a real
+database uniqueness constraint rather than patched, closing the race by construction. A
+second Opus pass then found four more latent issues in that redesign (an orphaned-claim
+edge case and a spurious-failure landmine for #23's future write path, both fixed; two
+documentation-accuracy corrections). **A genuine process error was also found and
+corrected here, worth stating plainly rather than glossing over**: partway through, the
+orchestrating session advanced the committed security-review note's `Reviewed head` past a
+routine `main`-sync merge on its own judgment, based on a diff check showing no code had
+actually changed — technically accurate, but not the orchestrating session's call to make
+on someone else's review clearance. The Opus reviewer caught this when asked to confirm a
+later commit, re-verified the gap itself independently, and extended the clearance under
+its own authority; the note now records both what happened and the correction, not a
+quietly-fixed history. A real flaky test (a JS Promise-timing issue in the concurrency
+test itself, not the underlying mechanism) was also found via CI and fixed. Six smaller,
+non-blocking findings from PR #185's original review remain tracked as **#187**, **#188**,
+**#189**, **#192**, and one folded into **#181**. Full account in this session's newest log
+entry, below.
 
 ---
 
@@ -1000,6 +1012,72 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-17 (later the same day again) · #186 closed after a real concurrency bug, a self-corrected process error, and the session's deepest review cycle yet
+
+Same session, continuing autonomously. With #23's schema slice landed (prior entry, below),
+took up its own review's four write-path-blocking findings (#186) as the natural next
+bounded step, rather than starting a new feature while a known integrity gap sat on `main`.
+
+**S1 and half of S2 fixed cleanly**: `customer_visibility` now `NOT NULL DEFAULT 'private'`;
+composite foreign keys now pin a work item's `state`/`parent` to its own project (the
+`type_id`/workspace half stays open — genuinely more involved, tracked separately as
+**#192**, since it needs either a denormalised column or another mechanism and deserves its
+own decision, not an inline guess).
+
+**S5 (a key/alias collision guard) is where this round earned its keep.** The first attempt
+used a trigger checking one table against another — an ordinary review and, independently,
+the mandatory Opus review each **found and proved, with live two-transaction reproductions,
+that this had a genuine unlocked race**: two concurrent writers could each pass the check
+and both commit, producing exactly the collision the trigger existed to prevent. Opus went
+further and showed the race survives even Postgres's strictest isolation setting. **Rather
+than patch the trigger, it was replaced with a real database uniqueness constraint** — a
+small registry table where a key string can only ever be claimed once, checked by Postgres's
+own index rather than application logic, which closes the race by construction and was
+verified live under concurrent load. Opus's own review found this the correct engineering
+answer, not merely an acceptable one, and separately recommended it be recorded as a real
+design decision, not folded silently into a bug-fix commit — done, in the decision log.
+
+**A second Opus pass on that redesign found four more issues**, none reachable yet (no
+route writes these tables), two worth fixing now rather than waiting: a write that gets
+silently skipped (a common, ordinary database pattern) could permanently squat a key string
+forever; and an unrelated field update on an existing work item would have spuriously failed
+just because it happened to re-state the item's own unchanged key. Both fixed with one small
+correction to the same registry logic, verified live again. The other two findings were
+documentation-accuracy corrections in code comments, also fixed.
+
+**A real, if minor, process error happened here, and it is recorded honestly rather than
+quietly fixed.** Partway through, this session advanced the committed review record's
+declared "reviewed" commit past a routine sync with `main`, based on its own check that no
+code had actually changed since the last real review — a reasonable-sounding but incorrect
+shortcut: whether a security clearance survives a later commit is the *reviewer's* call to
+make on their own finding, not the orchestrating session's to extend by editing a document,
+even when the underlying technical claim turns out to be correct (it was). The mandatory
+reviewer caught this on the very next confirmation request, verified the actual gap
+independently, and extended the clearance itself. The review record states plainly what
+happened and why it was wrong, rather than presenting a cleaned-up version of events.
+
+**CI also caught one genuine flaky test** — a JavaScript timing quirk in the new
+concurrency test itself (not the underlying database mechanism, which was already proven
+correct): a promise wasn't given a rejection handler soon enough, so an automated tool could
+occasionally flag it as an unhandled error even though the test's own check would have
+caught the real outcome correctly every time. Fixed and verified with eight repeated runs
+plus the full suite, clean every time.
+
+**Merged as PR #191** (`90b38a3`). Issue #186 is now closed. Six smaller, non-blocking
+findings from the original schema review remain open and tracked: **#187** (the live
+`project` table has no soft-delete window, so `work_item.project_id`'s CASCADE now makes an
+ordinary project-delete route destructive — not #23's own gap, but #23's new FK is what
+makes it consequential), **#188** (a
+work item could in principle be made its own ancestor — no guard exists yet), **#189** (a
+small backlog of minor hardening items), **#192** (the deferred `type_id`/workspace
+question above), and one item folded into the already-open **#181**.
+
+**Not done:** the rest of #23 (routes, screens, the actual cutover from the old task/column
+system); #25; the two SLA questions and the state-transition question, both still waiting
+on Thomas; issue #8's remaining scope; the live UAT redeploy.
+
+---
 
 ### 2026-09-17 (later the same day) · #23's first work-item schema slice lands; mandatory Opus review rules out a repeat of the identity schema's bugs, finds nine new ones
 
