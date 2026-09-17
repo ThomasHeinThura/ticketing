@@ -1065,8 +1065,16 @@ tracked as issue **#196**, not fixed here.
 **Not done:** the rest of #23 (routes, screens, the actual cutover from the old task/column
 system); #25; the two SLA questions, the state-transition question, and the
 `workflowRuleTable` question, all still waiting on Thomas; issue #8's remaining scope; the
-live UAT redeploy. Issues #187, #189, #192, #196 remain open, low-priority, not blocking
-anything.
+live UAT redeploy. Issues #189, #192, #196 remain open, low-priority, not blocking anything.
+
+**Correction, found by this reconciliation's own reviewer:** issue #187 had been accidentally
+auto-closed by an unrelated commit message (`d60b672`, a docs-only status.md wording fix
+whose message happened to contain the substring "fix #187's description") — GitHub's
+closing-keyword parser matched on that text alone; nothing in that commit touched the actual
+defect. Reopened. The real problem — the live `project` table has no soft-delete window, so
+`work_item.project_id`'s `ON DELETE CASCADE` (PR #185) is still live and destructive — was
+never fixed, and is being worked now, same session, continuing autonomously; its own entry
+will land here once it merges.
 
 ---
 
