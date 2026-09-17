@@ -1255,6 +1255,91 @@ export const stateTable = pgTable(
   ],
 );
 
+// #191 O2 (Opus review of #186's own S5 fix) -- replaces the hand-written
+// `work_item_key_alias_reject_live_collision` TRIGGER entirely. That trigger did a plain
+// `SELECT ... WHERE key = NEW.old_key` EXISTS check with no lock: two ordinary concurrent
+// transactions (T1 inserts `work_item.key = 'X'`, uncommitted; T2 inserts
+// `work_item_key_alias.old_key = 'X'` before T1 commits) both passed the check and both
+// committed -- proven live under plain READ COMMITTED, and Opus additionally proved
+// SERIALIZABLE does not save it either (only one rw-antidependency edge exists, so
+// Postgres's SSI has no dangerous structure to detect). A check-then-act trigger against
+// another table's data can never be race-free no matter what SELECT it runs; only a real
+// index can be.
+//
+// DESIGN: `work_item.key` and `work_item_key_alias.old_key` draw from two independent
+// namespaces today, which is the root cause -- a plain UNIQUE index on either column only
+// sees its own table. This table is the ONE shared home both namespaces route through, so
+// Postgres's own real UNIQUE/PRIMARY KEY index -- atomic and race-free by construction, no
+// application-level lock required -- is what actually enforces cross-table uniqueness:
+//
+//   - `key` is the PRIMARY KEY: a string is claimed here EXACTLY ONCE, ever, for the life
+//     of the system. Claims are never released and never reassigned, even after the work
+//     item that claimed one is deleted -- a key that has ever been live, or ever become an
+//     alias, can never be reused by anyone else. This is deliberately stricter than "unique
+//     at every instant": it is what closes the ALREADY-KNOWN, separately-flagged reverse
+//     direction gap too (#186's own "Not done", Opus's O4) as a side effect of the same
+//     mechanism, not a second fix -- a work item that reuses a retired key would need a
+//     second claim row for the same `key` value, which the PRIMARY KEY simply refuses.
+//   - `work_item_id` records WHICH work item originally claimed a key. Combined with the
+//     `unique(key, work_item_id)` target below, this is what lets `work_item_key_alias`
+//     reference a claim WITHOUT being able to reference someone else's: the composite FK
+//     `work_item_key_alias(old_key, work_item_id) -> work_item_key_claim(key, work_item_id)`
+//     (below) only ever matches a row where THIS SAME work_item_id is the one on record as
+//     having claimed that exact key. An alias trying to claim `old_key = 'X'` while 'X' is
+//     still a DIFFERENT work item's live key -- the exact scenario #186 S5 and this table
+//     exist to prevent -- has no matching `(key, work_item_id)` row to reference (the only
+//     row for `key = 'X'` names the OTHER work item), so the FK rejects it outright, with
+//     no race window at all: existence is checked against a row that must already be
+//     committed, not raced against one that might not be yet.
+//
+// POPULATING a claim row is the one piece that still needs code beyond a plain FK
+// reference (Postgres has no way to declare "insert into this OTHER table too, but only
+// once, as part of validating this row") -- `work_item`'s own hand-written trigger below
+// does exactly that, and ONLY that: it performs the actual claiming INSERT directly, with
+// no preceding SELECT/EXISTS check of its own, so the claim table's real PRIMARY KEY is
+// still the sole arbiter of any conflict (a colliding claim insert fails with a genuine
+// Postgres `unique_violation`, atomically, however many transactions race for it
+// simultaneously). This is NOT the check-then-act shape the old trigger had: there is no
+// check step to race against. `work_item_key_alias` gets no trigger at all -- an alias
+// never mints a NEW claim, it only ever references one that must already exist from when
+// its `old_key` value was originally live as SOME work item's `work_item.key` (see the
+// `oldKey` column comment below).
+export const workItemKeyClaimTable = pgTable(
+  "work_item_key_claim",
+  {
+    key: text("key").primaryKey(),
+    // Deliberately NO `.references()` here. A real FK back to `work_item.id` would make
+    // this table and `work_item` reference each other in both directions (`work_item.key`
+    // -> this table, this table.`work_item_id` -> `work_item.id`), and -- because every
+    // `work_item` unconditionally gets a claim row via the trigger below the moment it is
+    // created -- an `ON DELETE RESTRICT` here would make EVERY work item permanently
+    // un-hard-deletable (you could never delete the claim first, since `work_item.key`
+    // still points at it; you could never delete the work item first if this FK also
+    // pointed back with RESTRICT). `ON DELETE CASCADE` would silently free a key for reuse
+    // the instant its work item is hard-deleted -- exactly the "forever claimed" guarantee
+    // above says this table must NOT do. So: no FK. `work_item_id` here is populated only
+    // by the trigger below (always a real, just-validated work_item.id at insert time),
+    // and its accuracy is not load-bearing after that -- the actual uniqueness guarantee
+    // is `key`'s PRIMARY KEY, not this column. A hard-deleted work item simply leaves its
+    // claim rows in place, permanently retiring those key strings -- consistent with this
+    // table's whole reason for existing.
+    workItemId: text("work_item_id").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    // FK target for both `work_item(key, id)` and `work_item_key_alias(old_key,
+    // work_item_id)` below. Logically implied by `key`'s own PRIMARY KEY, but Postgres
+    // requires an explicit unique constraint on the EXACT column tuple a composite FK
+    // targets (the same reason `state_project_id_id_unique`/`work_item_project_id_id_unique`
+    // above exist alongside their tables' own single-column PKs).
+    unique("work_item_key_claim_key_work_item_id_unique").on(
+      table.key,
+      table.workItemId,
+    ),
+    index("work_item_key_claim_workItemId_idx").on(table.workItemId),
+  ],
+);
+
 export const workItemTable = pgTable(
   "work_item",
   {
@@ -1278,16 +1363,29 @@ export const workItemTable = pgTable(
     // row in the SAME workspace as this item's own `project_id`. Unlike `state_id`/
     // `parent_id` below, `work_item` carries no `workspace_id` of its own -- only
     // `project_id`, one hop away from `project.workspace_id` -- and data-model.md §4
-    // does not list a `workspace_id` column on `work_item`. A composite FK can only
-    // compare columns that live on the two tables it joins directly; there is no
-    // direct column pair here for Postgres to check. The only DB-level fix would be to
-    // denormalise a redundant `work_item.workspace_id` column (kept in sync via the
-    // same double-composite-FK technique `state`/`parent_id` use below) purely to
-    // support this one constraint -- a real schema-shape decision beyond what a
-    // three-finding integrity fix should make unilaterally, and not something
-    // data-model.md asks for. Left as an accepted gap requiring an application-level
-    // check (validate `work_item_type.workspace_id = project.workspace_id` at write
-    // time) when the write path is built.
+    // does not list a `workspace_id` column on `work_item`. A composite FK (a
+    // declarative constraint) can only compare columns that live directly on the two
+    // tables it joins; there is no direct column pair here for one to check.
+    //
+    // Denormalising a redundant `work_item.workspace_id` column (kept in sync via the
+    // same double-composite-FK technique `state`/`parent_id` use below) is ONE DB-level
+    // option, but -- corrected per #191's independent review, which found the original
+    // wording here overstated -- it is not the only one: a `BEFORE INSERT OR UPDATE OF
+    // type_id, project_id` trigger on `work_item` (the same class of hand-written,
+    // cross-table check this file already uses elsewhere for #186 S5, before #191's own
+    // review replaced THAT one with a real constraint for race-freedom reasons that do
+    // not obviously apply here the same way) could also close this at the DB level with
+    // no schema change. Both were considered; neither is adopted here. This is a real
+    // schema-shape decision -- which mechanism, if either, is worth its cost against a
+    // gap that #191's Opus review confirms is the MORE security-relevant half of #186 S2
+    // (it crosses a tenant/workspace boundary, where `state_id`/`parent_id` only cross a
+    // project boundary within one workspace) -- bigger than what a three-finding
+    // integrity fix should decide unilaterally, and belongs in the decision log before
+    // #23's write path lands, not silently in this comment. Left, for now, as an
+    // accepted gap requiring an application-level check (validate
+    // `work_item_type.workspace_id = project.workspace_id` at write time), which is
+    // real but weaker than a DB-level guarantee: it is not enforced against direct SQL,
+    // a bulk import, or any future write path that forgets to call it.
     typeId: text("type_id")
       .notNull()
       .references(() => workItemTypeTable.id, {
@@ -1304,6 +1402,12 @@ export const workItemTable = pgTable(
     // instance and `number` is unique per project, so `key` composes to a globally
     // unique value; the alias mechanism depends on that holding at every instant).
     // Judgment call, flagged in the PR body.
+    //
+    // #191 O2: also composite-FK'd to `work_item_key_claim(key, work_item_id)` below (see
+    // that table's own comment for the full design) -- every value this column ever holds
+    // must be claimed, exactly once and forever, in that shared registry, which is what
+    // makes this column's uniqueness hold against `work_item_key_alias.old_key` too, not
+    // just against itself.
     key: text("key").notNull(),
     title: text("title").notNull(),
     description: jsonb("description"),
@@ -1434,29 +1538,71 @@ export const workItemTable = pgTable(
     // #186 S2 -- pins `state_id` to a `state` row that shares THIS item's own
     // `project_id`, closing the cross-project state leakage the Opus review proved
     // live (a plain single-column FK on `state_id` cannot see `work_item.project_id`
-    // at all, so it could never have caught this). RESTRICT/CASCADE mirrors the
-    // single-column FK this replaces (data-model.md §4: "states are archived, never
-    // deleted out from under an item").
+    // at all, so it could never have caught this).
+    //
+    // #191 O1 (Opus review of #186's own S2 fix): `onUpdate` is `"no action"`, NOT
+    // `"cascade"` -- deliberately different from the single-column FK this replaced.
+    // That FK's `ON UPDATE CASCADE` cascaded on `state.id`, which never changes, so the
+    // keyword was inert. THIS FK's referenced column set includes `state.project_id`,
+    // which is mutable, so the same keyword now means something else entirely: `UPDATE
+    // state SET project_id = <a different workspace's project>` would cascade-rewrite
+    // `work_item.project_id` too, silently moving a work item across a workspace
+    // boundary with no check of its own -- proven live by the Opus review (two work
+    // items moved to a different workspace's project as a side effect of a single
+    // `UPDATE state` statement, still carrying their original workspace's
+    // `work_item_type`). `"no action"` means that `UPDATE` is rejected outright instead
+    // (verified live: `update or delete on table "state" violates foreign key
+    // constraint ... still referenced from table "work_item"`) -- a state's project is
+    // not something this data model has an operation for changing out from under its
+    // work items, so refusing it is correct, not merely safe.
     foreignKey({
       columns: [table.projectId, table.stateId],
       foreignColumns: [stateTable.projectId, stateTable.id],
     })
       .onDelete("restrict")
-      .onUpdate("cascade"),
+      .onUpdate("no action"),
     // #186 S2 -- pins `parent_id` to a work item that shares THIS item's own
     // `project_id`, closing the cross-project parent leakage the Opus review proved
     // live. Self-referencing composite FK: `table` here is the fully-resolved column
     // proxy (this extra-config callback runs after every column above it is defined),
     // so no `AnyPgColumn` lazy-callback workaround is needed the way the old inline
-    // single-column self-FK required. RESTRICT/CASCADE mirrors the single-column FK
-    // this replaces (see the `parent_id` column comment above for the RESTRICT
-    // reasoning).
+    // single-column self-FK required.
+    //
+    // #191 O1: `onUpdate` is `"no action"` for the identical reason as `state_id`
+    // above -- this FK's referenced column set also includes a mutable scoping column
+    // (`work_item.project_id`, this table's own), so `"cascade"` here would let
+    // re-projecting a PARENT work item silently drag every child across a project (and
+    // potentially a workspace) boundary too. Opus's own probe found this direction
+    // self-limiting in practice (a parent's `project_id` UPDATE trips over the
+    // children's OWN `state_id` FK first, since a moved child would then reference a
+    // state outside its new project) but flagged the resulting error as confusing
+    // rather than correct-by-design; `"no action"` here makes the rejection direct and
+    // attributable to the actual constraint being violated, not a side effect of a
+    // different one.
     foreignKey({
       columns: [table.projectId, table.parentId],
       foreignColumns: [table.projectId, table.id],
     })
       .onDelete("restrict")
-      .onUpdate("cascade"),
+      .onUpdate("no action"),
+    // #191 O2 -- the claim-table FK described on `work_item_key_claim` above and the
+    // `key` column comment. `onUpdate("no action")`: claim rows are never updated in
+    // place (see that table's comment), so this never actually fires, but the O1
+    // lesson applies on principle -- never default a composite FK involving an
+    // identity-like column to `"cascade"` without a specific reason. `onDelete
+    // "restrict"`: a claim row cannot be deleted while a work item's live `key` still
+    // points at it (in practice this never fires either, since nothing deletes a claim
+    // row directly -- see that table's own comment on why it carries no FK back to
+    // `work_item.id`).
+    foreignKey({
+      columns: [table.key, table.id],
+      foreignColumns: [
+        workItemKeyClaimTable.key,
+        workItemKeyClaimTable.workItemId,
+      ],
+    })
+      .onDelete("restrict")
+      .onUpdate("no action"),
   ],
 );
 
@@ -1471,17 +1617,17 @@ export const workItemKeyAliasTable = pgTable(
     // work item. Not spelled out as "unique" in data-model.md §4's abbreviated column
     // list -- judgment call, flagged in the PR body.
     //
-    // #186 S5: uniqueness within THIS table is not the whole story -- `old_key` and
-    // `work_item.key` are otherwise independent namespaces, so an alias could still be
-    // created whose value collides with a currently-live `work_item.key` (proven live
-    // by the Opus review: reachable when a work item moves between projects and a
-    // different project's key gets reused after deletion). A plain CHECK/UNIQUE cannot
-    // compare one table's column against another table's column in Postgres, so that
-    // cross-table guarantee is enforced by a hand-written trigger
-    // (`work_item_key_alias_reject_live_collision`, appended to this migration per
-    // docs/04-engineering/migrations.md's "hand-written SQL is appended into a
-    // generated migration file" convention) rather than modeled here in Drizzle's
-    // schema DSL, which has no trigger primitive.
+    // #186 S5 / #191 O2: uniqueness within THIS table is not the whole story -- without
+    // more, `old_key` and `work_item.key` are independent namespaces, so an alias could
+    // be created whose value collides with a currently-live `work_item.key` (proven
+    // live by the original #185 Opus review). #186's first attempt at closing this used
+    // a hand-written trigger doing a plain `EXISTS` check against `work_item`; a
+    // follow-up review (#191) proved that check-then-act shape has an unlocked
+    // TOCTOU race that holds even under SERIALIZABLE isolation, and replaced it with
+    // the composite FK below, into the shared `work_item_key_claim` registry (see that
+    // table's own comment for the full design) -- a real UNIQUE/PRIMARY KEY index,
+    // race-free by construction, rather than a trigger racing against another table's
+    // uncommitted writes.
     oldKey: text("old_key").notNull(),
     workItemId: text("work_item_id")
       .notNull()
@@ -1498,6 +1644,22 @@ export const workItemKeyAliasTable = pgTable(
   (table) => [
     uniqueIndex("work_item_key_alias_oldKey_unique").on(table.oldKey),
     index("work_item_key_alias_workItemId_idx").on(table.workItemId),
+    // #191 O2 -- `old_key` may only reference a claim ALREADY on record as having been
+    // claimed by THIS SAME `work_item_id`. An alias attempting to retire a key that is
+    // still a DIFFERENT work item's live key (the exact #186 S5 scenario) has no
+    // matching `(key, work_item_id)` row to reference -- the only claim row for that
+    // key names the other work item -- so this FK rejects it outright, with no
+    // trigger, no lock, and no race window: the composite FK is checked against a
+    // committed row that must already exist, never against one raced into existing.
+    foreignKey({
+      columns: [table.oldKey, table.workItemId],
+      foreignColumns: [
+        workItemKeyClaimTable.key,
+        workItemKeyClaimTable.workItemId,
+      ],
+    })
+      .onDelete("restrict")
+      .onUpdate("no action"),
   ],
 );
 

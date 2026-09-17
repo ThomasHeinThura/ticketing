@@ -33,6 +33,7 @@ import {
   watcherTable,
   workflowRuleTable,
   workItemKeyAliasTable,
+  workItemKeyClaimTable,
   workItemTable,
   workItemTypeTable,
   workspaceRoleTable,
@@ -505,6 +506,19 @@ export const workItemKeyAliasTableRelations = relations(
   ({ one }) => ({
     workItem: one(workItemTable, {
       fields: [workItemKeyAliasTable.workItemId],
+      references: [workItemTable.id],
+    }),
+  }),
+);
+
+// #191 O2 -- query-API sugar only, not backed by a real FK (see
+// `workItemKeyClaimTable`'s own schema.ts comment for why that table carries no
+// `.references()` back to `work_item.id`).
+export const workItemKeyClaimTableRelations = relations(
+  workItemKeyClaimTable,
+  ({ one }) => ({
+    workItem: one(workItemTable, {
+      fields: [workItemKeyClaimTable.workItemId],
       references: [workItemTable.id],
     }),
   }),

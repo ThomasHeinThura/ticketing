@@ -334,16 +334,29 @@ describe("#2 -- uniqueness constraints", () => {
   });
 
   it("rejects two work_item_key_alias rows sharing the same old_key", async () => {
+    // #191 O2: `old_key` is now composite-FK'd to `work_item_key_claim(key,
+    // work_item_id)` (see that table's schema.ts comment), so an alias's `old_key` must
+    // already be a key THAT SAME work item once genuinely held -- a fabricated literal
+    // like the original "OLD-1" here is no longer insertable for ANY work item. Rekey
+    // fixture.workItem away from its real key first, which is what legitimately claims
+    // it as retirable, then alias it -- twice, for the SAME work item, so the only thing
+    // this test isolates is `work_item_key_alias_oldKey_unique` itself, not the new
+    // ownership FK (which the second insert already satisfies).
     const fixture = await makeWorkItemFixture();
-    const otherFixture = await makeWorkItemFixture();
+    const retiredKey = fixture.workItem.key;
+    await db
+      .update(schema.workItemTable)
+      .set({ key: `${retiredKey}-moved` })
+      .where(eq(schema.workItemTable.id, fixture.workItem.id));
+
     await db.insert(schema.workItemKeyAliasTable).values({
-      oldKey: "OLD-1",
+      oldKey: retiredKey,
       workItemId: fixture.workItem.id,
     });
     await expect(
       db.insert(schema.workItemKeyAliasTable).values({
-        oldKey: "OLD-1",
-        workItemId: otherFixture.workItem.id,
+        oldKey: retiredKey,
+        workItemId: fixture.workItem.id,
       }),
     ).rejects.toThrow();
   });
@@ -516,14 +529,23 @@ describe("#3 -- FK / onDelete behaviour, proven with real inserts and deletes", 
   });
 
   it("watcher.work_item_id and work_item_key_alias.work_item_id are ON DELETE CASCADE", async () => {
+    // #191 O2: the alias's old_key must be a key fixture.workItem genuinely once held
+    // (see the comment on the sibling uniqueness test above) -- rekey away from its
+    // real key first, rather than fabricating an arbitrary literal.
     const fixture = await makeWorkItemFixture();
+    const retiredKey = fixture.workItem.key;
+    await db
+      .update(schema.workItemTable)
+      .set({ key: `${retiredKey}-moved` })
+      .where(eq(schema.workItemTable.id, fixture.workItem.id));
+
     await db.insert(schema.watcherTable).values({
       workItemId: fixture.workItem.id,
       personId: fixture.assignee.id,
       source: "explicit",
     });
     await db.insert(schema.workItemKeyAliasTable).values({
-      oldKey: "OLD-CASCADE-1",
+      oldKey: retiredKey,
       workItemId: fixture.workItem.id,
     });
 
