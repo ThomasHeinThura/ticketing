@@ -2,12 +2,13 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-17 — a ninth pass, after `work_item.parent_id`'s cycle/self-
-> reference guard (#188) landed, closing #23's work-item schema's fourth and last known
-> integrity gap from this review family
-> **`main` at that moment:** `02c7059` (PR #195 — a CHECK constraint plus a row-locking
-> trigger; the trigger's locking strategy went through two rounds of live-reproduced
-> concurrency scrutiny before Opus cleared it, given this table's history in PR #191).
+> **Snapshot taken:** 2026-09-17 — a tenth pass, after issue #187 (the live `project` table
+> had no soft-delete window, so `work_item.project_id`'s CASCADE from PR #185 made an
+> ordinary delete destructive) closed via PR #200's project-only soft-delete fix
+> **`main` at that moment:** `ca90bbe` (PR #200 — an atomic `UPDATE` replacing the hard
+> `DELETE`, plus filtering every read/write path that reaches a project or its children;
+> two full review rounds, including a live-reproduced set of read-path leaks the mandatory
+> Opus pass found and a subsequent remediation round that closed them).
 > Kaneo's `task`/`column` tables and routes remain fully untouched and still live.
 > **Stage:** P0 · Foundation — **exit criteria met; Throttle 1 is OPEN.** Autonomous
 > continuation past Throttle 1 is authorized (Thomas, 2026-09-16) — see the session log's
@@ -44,22 +45,54 @@
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-17 (later the same day, a third time)
-**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** #23 (work
-items)'s first schema slice has now had all four write-path-blocking integrity findings
-from its own review closed: #186 (three findings, PR #191) and #188
-(`work_item.parent_id`'s cycle/self-reference guard, PR #195). Schema only, still no
-route/policy/Zod/repository wiring; kaneo's `task`/`column` tables and routes remain fully
-live and untouched.
-**Updated by:** Claude Code (Sonnet), reconciliation after **PR #195 merged**. Same full
-review tier as #186 (2 Sonnet + Opus), and — given this table's history — the mandatory
-reviewer applied the same no-benefit-of-the-doubt scrutiny to the new fix's own trigger.
-First pass found two further, cheap-to-fix issues in the new trigger (a stronger-than-needed
-lock, and the same "fires on column mention, not value change" bug class PR #191 already hit
-once) — both fixed and re-verified live by all three reviewers on the delta, one of whom
-independently constructed and closed a brand-new adversarial scenario the implementer hadn't
-tested. Five smaller, non-blocking findings tracked as issue **#196**. Full account in this
-session's newest log entry, below.
+**Last updated:** 2026-09-17 (later the same day, a fourth time)
+**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** Issue #187
+(the live `project` table's hard-delete route was made destructive by #185's
+`work_item.project_id` CASCADE) is closed: `project` now has its own `deleted_at`/
+`purge_after` columns, delete is an atomic soft-delete, and every read/write path reaching
+a project or its children treats a soft-deleted one as gone. This is unrelated to #23's own
+schema work above — a pre-existing gap in the live `project` table that #185's new FK
+simply made consequential, not one of #23's own integrity findings.
+**Updated by:** Claude Code (Sonnet), reconciliation after **PR #200 merged**. Full
+mandatory tier (2 Sonnet + Opus, since the change touches a migration). Round 1 found real,
+overlapping gaps across all three reviewers: task/column creation and several read paths
+(task listing/export, global search, project reorder) didn't check `deletedAt`, live-
+reproduced by Opus as actual content leaks from a "deleted" project — the core CASCADE-
+safety mechanism itself (an atomic `UPDATE`, race-safe under concurrent double-delete) was
+sound throughout. Remediated in one focused pass; round 2 delta-confirmed all fixes against
+live source, not against the fix's own description. **A genuine, if minor, process wrinkle
+worth recording plainly**: syncing the branch with `main` after review (three unrelated
+docs-only PRs had landed) produced a merge commit the mechanical checker correctly flagged
+as needing its own confirmation — a merge's diff against its first parent shows every file
+the other side touched, even when the actual code tree hasn't moved. The same Opus reviewer
+independently re-verified the tree was untouched and extended their own clearance, rather
+than the record being updated on anyone else's say-so. **Also worth recording**: this issue
+was accidentally auto-closed by GitHub's closing-keyword parser **twice** before its real
+fix landed — once by an unrelated commit's message, once by a squash-merge commit body
+quoting that same trigger phrase while explaining the first accident. Both were caught and
+reopened with the defect still unfixed at the time; the issue was closed a third time,
+deliberately, only once PR #200 actually merged. Two follow-up issues opened: **#198**
+(the general purge-job/legal-hold infrastructure — doesn't exist anywhere yet, not for
+`organisation` or `workspace` either) and **#202** (a residual set of routes — column
+listing, per-task-id mutation routes, two smaller UI-copy/reorder nits — that reach a
+soft-deleted project or its children without the same guard, none a data-loss or
+cross-tenant risk). Full account in this session's newest log entry, below.
+
+---
+
+**Earlier the same day:** Claude Code (Sonnet), reconciliation after **PR #195 merged**.
+#23 (work items)'s first schema slice had, at that point, all four write-path-blocking
+integrity findings from its own review closed: #186 (three findings, PR #191) and #188
+(`work_item.parent_id`'s cycle/self-reference guard, PR #195). Schema only, no
+route/policy/Zod/repository wiring yet; kaneo's `task`/`column` tables and routes remained
+fully live and untouched. Same full review tier as #186 (2 Sonnet + Opus), and — given this
+table's history — the mandatory reviewer applied the same no-benefit-of-the-doubt scrutiny
+to the new fix's own trigger. First pass found two further, cheap-to-fix issues in the new
+trigger (a stronger-than-needed lock, and the same "fires on column mention, not value
+change" bug class PR #191 already hit once) — both fixed and re-verified live by all three
+reviewers on the delta, one of whom independently constructed and closed a brand-new
+adversarial scenario the implementer hadn't tested. Five smaller, non-blocking findings
+tracked as issue #196.
 
 ---
 
@@ -1024,6 +1057,77 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-17 (later the same day, a fourth time) · #187 closed — a pre-existing gap in the live `project` table, made consequential by #23's new FK, not one of #23's own findings
+
+Same session, continuing autonomously. With #23's schema-integrity findings all closed
+(prior entries, below), took up #187 next: research first, since the issue's own wording
+("matching organisation's/workspace's existing pattern") turned out not to hold — that
+pattern is spec-only. `organisationTable` has had `deleted_at`/`purge_after` columns since
+PR #179, but nothing anywhere sets or reads them; `workspaceTable` doesn't even have the
+columns; no purge job or `legal_hold` table exists in the codebase at all. Scoped #187 down
+accordingly: fix the actual defect (`project` delete is destructive) now, defer the general
+purge/legal-hold infrastructure to a new issue, **#198**, rather than build it as a rider on
+a bounded fix. Decision recorded in the decision log (PR #201).
+
+**The fix**: `project` gets its own nullable `deleted_at`/`purge_after` columns, and
+`delete-project.ts` becomes a single atomic `UPDATE ... WHERE id = ? AND workspaceId = ?
+AND deletedAt IS NULL RETURNING *` — no `DELETE` is ever issued, so `work_item.project_id`'s
+`ON DELETE CASCADE` (#185) never fires.
+
+**Full mandatory review tier (2 Sonnet + Opus), two rounds.** Round 1: all three reviewers
+independently found real, overlapping gaps in filtering elsewhere in the codebase — task/
+column creation, task listing/export, global search, and project reorder all still let a
+soft-deleted project's content through, live-reproduced by the mandatory Opus reviewer as
+actual content leaks (a "deleted" project's tasks still readable, exportable, and
+searchable). The core CASCADE-safety mechanism itself — the atomic `UPDATE`, proven
+race-safe under concurrent double-delete via an 8-concurrent-request live probe (one row
+stamped once, the rest 404, zero 5xx) — was sound throughout; every finding was in
+read/write-path filtering, not the mechanism. Fixed once, centrally, in the shared helper
+both task and column creation already called, plus each affected read path directly. Round
+2: all three reviewers re-confirmed their own findings closed against the actual source at
+the new head, not against the fix's description of itself.
+
+**A genuine process wrinkle, worth recording plainly rather than smoothing over**: syncing
+the branch with `main` after review completed (three unrelated docs-only PRs had landed in
+the meantime) produced a merge commit that the mechanical PR-template checker correctly
+flagged as needing its own confirmation — a merge commit's diff against its first parent
+shows every file the other side touched, even when the actual code tree hasn't moved, so
+the checker cannot simply infer a sync merge is safe. The same Opus reviewer independently
+re-verified the code tree was untouched (root-tree hash comparison, both directions — that
+nothing from `main` was silently dropped, and nothing on the branch silently changed) and
+extended their own clearance to the merge commit, rather than the record being updated on
+the orchestrating session's own say-so. This is the same discipline PR #191 established
+after a real process error there; applied correctly here from the start.
+
+**Also worth recording plainly**: issue #187 was accidentally auto-closed by GitHub's
+closing-keyword parser **twice** before its real fix landed — once by an unrelated
+commit's message (during the status.md reconciliation two entries below) containing a
+phrase that matched the pattern, and a second time when a later commit's message,
+explaining that first accident, quoted the trigger phrase verbatim and got swept into a
+squash-merge commit body that matched the same pattern again. Both were caught (once by an
+independent reviewer auditing an unrelated PR, once by noticing the timestamp coincidence)
+and reopened with the actual defect still unfixed at the time. The issue was closed a
+third time, deliberately and with evidence, only once PR #200 actually merged.
+
+**Two follow-up issues opened, both non-blocking**: **#198** tracks the general purge-job/
+`legal_hold` infrastructure this fix deliberately did not build (it doesn't exist anywhere
+in the codebase yet, not for `organisation` or `workspace` either). **#202** (widened during
+the review round) tracks a residual set of routes in the same "doesn't check `deletedAt`"
+class that Opus found live-reachable but judged non-blocking — `update-project`/
+`archive-project`/`unarchive-project`, column listing, and a few per-task-id mutation
+routes — plus two smaller cosmetic nits (a stale UI-copy string, a misleading reorder error
+message). None of these carries a cross-tenant or data-loss risk; all sit behind the same
+permission/workspace gates as before.
+
+**Merged as PR #200** (`ca90bbe`). Issue #187 is now closed.
+
+**Not done:** the rest of #23 (routes, screens, the actual cutover from the old task/column
+system); #25; the two SLA questions, the state-transition question, and the
+`workflowRuleTable` question, all still waiting on Thomas; issue #8's remaining scope; the
+live UAT redeploy; issues #189, #192, #196, #198, #202 remain open, none blocking anything.
+
+---
 
 ### 2026-09-17 (later the same day, a third time) · #188 closed — the last of #23's schema's known integrity gaps, with the same review rigor PR #191 established
 
