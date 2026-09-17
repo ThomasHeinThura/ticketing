@@ -1,7 +1,11 @@
 # Pre-merge security review — PR #179 (P1 foundational identity schema: `organisation`, `organisation_quota`, `person`, `membership`, `role`)
 
-**Original reviewed head (all three reviews' first pass):** `f9777eb98f0386ad4b28128b311be91e5ed889b1`
-**Reviewed head (current, all three reviews' delta-confirmation):** `ef08180ffa5790d8e92a2fcc8731fcd62643cbd3`
+**Reviewed head:** `ef08180ffa5790d8e92a2fcc8731fcd62643cbd3`
+
+All three reviews' first pass read head `f9777eb98f0386ad4b28128b311be91e5ed889b1`; all
+three delta-confirmed the S1/S8 fix at the reviewed head above. Any commit after it is this
+note's own consolidation of those three verdicts (a review artefact, not code) — nothing
+else has landed since.
 
 **Status: CLEARED.** All three reviews confirmed at the current head: both ordinary
 reviews delta-confirmed clean (each independently re-ran the fix's own reproduction steps
