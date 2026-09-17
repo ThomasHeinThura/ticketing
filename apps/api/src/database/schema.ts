@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { relations, sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   customType,
   foreignKey,
@@ -884,6 +885,244 @@ export const apikeyTable = pgTable(
     index("apikey_key_idx").on(table.key),
     index("apikey_referenceId_idx").on(table.referenceId),
     index("apikey_userId_idx").on(table.userId),
+  ],
+);
+
+// P1 foundational identity schema (`data-model.md` §2: organisation, organisation_quota,
+// person, membership, role) — decision log 2026-09-16 "P1's foundational identity schema".
+// Purely additive: new tables only, ahead of #23/#25, which both need `person` to exist.
+// Deliberately NOT wired to any route/policy/resolveIdentity yet (out of scope here), and
+// deliberately NOT reconciling `workspace`/`team`/`invitation`/`workspace_role` with this
+// shape (#173, tracked separately).
+
+export const organisationTable = pgTable(
+  "organisation",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    key: text("key").notNull().unique(),
+    name: text("name").notNull(),
+    isInternal: boolean("is_internal").default(false).notNull(),
+    domain: text("domain").array(),
+    active: boolean("active").default(true).notNull(),
+    portalAccess: boolean("portal_access").default(true).notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "date" }),
+    purgeAfter: timestamp("purge_after", { mode: "date" }),
+    defaultCustomerVisibility: text("default_customer_visibility")
+      .default("organisation")
+      .notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    // multi-tenancy.md: "Exactly one organisation is marked `is_internal`" — a partial
+    // unique index enforces at most one; the seed is what makes it exactly one.
+    uniqueIndex("organisation_is_internal_unique")
+      .on(table.isInternal)
+      .where(sql`${table.isInternal} = true`),
+  ],
+);
+
+export const personTable = pgTable(
+  "person",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    // Nullable: a placeholder person (import-created, no login) has none yet, and a
+    // person whose user account is later hard-deleted through the elevated
+    // erasure/anonymisation process (auth-and-identity.md) keeps their authored history
+    // with this column nulled rather than the row disappearing.
+    userId: text("user_id").references(() => userTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    // "person.organisation_id is fixed at creation and never changes" (data-model.md §2) --
+    // an application-level invariant (no route/mutation exists to change it, out of scope
+    // here); cascade on delete because a person only ever exists in the context of its
+    // organisation, the same as every other organisation-scoped row security-model.md's
+    // "Organisation hard delete purges" list names.
+    organisationId: text("organisation_id")
+      .notNull()
+      .references(() => organisationTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    side: text("side").notNull(),
+    jobTitle: text("job_title"),
+    active: boolean("active").default(true).notNull(),
+    isPlaceholder: boolean("is_placeholder").default(false).notNull(),
+    locale: text("locale"),
+    quietHoursStart: text("quiet_hours_start"),
+    quietHoursEnd: text("quiet_hours_end"),
+    quietHoursTimezone: text("quiet_hours_timezone"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("person_userId_idx").on(table.userId),
+    index("person_organisationId_idx").on(table.organisationId),
+    // Global, not scoped per organisation: one `user_id` may back at most one `person`
+    // row anywhere. multi-tenancy.md names two `person` rows reachable from the same
+    // login as the exact ambiguity this schema exists to prevent -- resolveIdentity
+    // (auth-and-identity.md) is keyed and cached by `user_id` and returns a single
+    // `personId`/`organisationId`/`side`, so a second row behind the same `user_id` would
+    // resolve arbitrarily. A person who genuinely needs both a staff and a customer
+    // identity gets two separate `user` rows (multi-tenancy.md's "two person rows, never
+    // linked"), not two `person` rows sharing one `user_id`. This does not conflict with
+    // data-model.md's "two person rows in different organisations may carry the same
+    // address" -- that sentence is about the `user.email` attribute being shared across
+    // two DIFFERENT `user` rows, not about one `user_id` appearing in two `person` rows.
+    uniqueIndex("person_user_unique")
+      .on(table.userId)
+      .where(sql`${table.userId} is not null`),
+  ],
+);
+
+export const organisationQuotaTable = pgTable(
+  "organisation_quota",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    organisationId: text("organisation_id")
+      .notNull()
+      .unique("organisation_quota_organisation_id_unique")
+      .references(() => organisationTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    maxProjects: integer("max_projects").default(200).notNull(),
+    maxWorkItems: integer("max_work_items").default(500_000).notNull(),
+    // 20 GiB in bytes exceeds Postgres `integer`'s ~2.1B range, hence bigint.
+    maxStorageBytes: bigint("max_storage_bytes", { mode: "number" })
+      .default(21_474_836_480)
+      .notNull(),
+    maxPortalUsers: integer("max_portal_users").default(500).notNull(),
+    maxApiRequestsPerMinute: integer("max_api_requests_per_minute")
+      .default(600)
+      .notNull(),
+    maxWebhooks: integer("max_webhooks").default(10).notNull(),
+    // Nullable, set-null on delete: who last changed the limits is bookkeeping, never a
+    // reason to block deleting that person.
+    updatedBy: text("updated_by").references(() => personTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("organisation_quota_organisationId_idx").on(table.organisationId),
+  ],
+);
+
+export const roleTable = pgTable(
+  "role",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    scope: text("scope").notNull(),
+    // Null when scope is `instance` or `organisation`; set when scope is `workspace` or
+    // `project` (a project lives inside a workspace, so a project-scoped role definition
+    // is still anchored to one workspace).
+    workspaceId: text("workspace_id").references(() => workspaceTable.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    rank: integer("rank").notNull(),
+    capabilities: jsonb("capabilities").notNull().default(sql`'[]'::jsonb`),
+    isSystem: boolean("is_system").default(false).notNull(),
+    isEditable: boolean("is_editable").default(true).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("role_workspaceId_idx").on(table.workspaceId),
+    // data-model.md §2: "key ... unique per (scope, workspace_id)". A plain
+    // `unique(scope, workspace_id, key)` would NOT actually enforce this for
+    // `instance`/`organisation`-scoped roles: standard SQL unique constraints treat two
+    // NULL `workspace_id`s as distinct, so two `instance`-scoped roles could otherwise
+    // collide on the same `key` undetected. `coalesce` to a sentinel no real CUID2 id can
+    // ever equal closes that gap -- confirmed by a regression test that a plain composite
+    // unique constraint does not (found while writing this PR's own tests).
+    uniqueIndex("role_scope_workspace_key_unique").on(
+      table.scope,
+      sql`coalesce(${table.workspaceId}, '')`,
+      table.key,
+    ),
+  ],
+);
+
+export const membershipTable = pgTable(
+  "membership",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    scope: text("scope").notNull(),
+    // Polymorphic: an organisation.id, workspace.id or project.id depending on `scope`.
+    // No DB-level FK is possible across three target tables, so this is a plain column,
+    // the same shape as `legal_hold.scope_id` elsewhere in data-model.md §2.
+    scopeId: text("scope_id").notNull(),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => roleTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    seesAll: boolean("sees_all").default(false).notNull(),
+    // Records the ancestor project a membership was inherited from (OpenProject's model).
+    // Not a DB FK: data-model.md does not state which table this points at closely enough
+    // to constrain it, and getting that wrong would be worse than leaving it unconstrained.
+    inheritedFrom: text("inherited_from"),
+    // `scim_group_member.id` when SCIM group sync created this membership. Not a DB FK:
+    // `scim_group_member` is P3 SCIM-provisioning scope and does not exist yet.
+    derivedFrom: text("derived_from"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("membership_roleId_idx").on(table.roleId),
+    // data-model.md's Indexing section names exactly this composite --
+    // `create index on membership (person_id, scope, scope_id);` -- as the shape
+    // `resolveIdentity` actually queries by (fetch this person's memberships, then narrow
+    // by scope). It leading-prefix-covers the old person-id-only lookup, so that index is
+    // dropped as redundant; `membership_scope_scopeId_idx` is kept alongside it because it
+    // serves the reverse lookup (all memberships for a scope/scope_id, independent of
+    // person) that this composite's column order can't serve.
+    index("membership_personId_scope_scopeId_idx").on(
+      table.personId,
+      table.scope,
+      table.scopeId,
+    ),
+    index("membership_scope_scopeId_idx").on(table.scope, table.scopeId),
   ],
 );
 

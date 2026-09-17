@@ -9,8 +9,13 @@ import {
   externalLinkTable,
   invitationTable,
   labelTable,
+  membershipTable,
   notificationTable,
+  organisationQuotaTable,
+  organisationTable,
+  personTable,
   projectTable,
+  roleTable,
   sessionTable,
   taskRelationTable,
   taskReminderSentTable,
@@ -362,3 +367,61 @@ export const commentTableRelations = relations(commentTable, ({ one }) => ({
     references: [userTable.id],
   }),
 }));
+
+// P1 foundational identity schema (data-model.md §2) -- see schema.ts for the full note.
+
+export const organisationTableRelations = relations(
+  organisationTable,
+  ({ one, many }) => ({
+    quota: one(organisationQuotaTable),
+    persons: many(personTable),
+  }),
+);
+
+export const personTableRelations = relations(personTable, ({ one, many }) => ({
+  user: one(userTable, {
+    fields: [personTable.userId],
+    references: [userTable.id],
+  }),
+  organisation: one(organisationTable, {
+    fields: [personTable.organisationId],
+    references: [organisationTable.id],
+  }),
+  memberships: many(membershipTable),
+}));
+
+export const organisationQuotaTableRelations = relations(
+  organisationQuotaTable,
+  ({ one }) => ({
+    organisation: one(organisationTable, {
+      fields: [organisationQuotaTable.organisationId],
+      references: [organisationTable.id],
+    }),
+    updatedByPerson: one(personTable, {
+      fields: [organisationQuotaTable.updatedBy],
+      references: [personTable.id],
+    }),
+  }),
+);
+
+export const roleTableRelations = relations(roleTable, ({ one, many }) => ({
+  workspace: one(workspaceTable, {
+    fields: [roleTable.workspaceId],
+    references: [workspaceTable.id],
+  }),
+  memberships: many(membershipTable),
+}));
+
+export const membershipTableRelations = relations(
+  membershipTable,
+  ({ one }) => ({
+    person: one(personTable, {
+      fields: [membershipTable.personId],
+      references: [personTable.id],
+    }),
+    role: one(roleTable, {
+      fields: [membershipTable.roleId],
+      references: [roleTable.id],
+    }),
+  }),
+);
