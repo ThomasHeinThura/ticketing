@@ -17,6 +17,109 @@ Newest first.
 
 ---
 
+### 2026-09-17 · #23's first slice is narrower than "all of #23" — `work_item`/`work_item_type`/`state_template`/`state`/`work_item_key_alias`/`watcher` only
+
+**Decision:** issue #23's first PR builds only `work_item`, `work_item_type`,
+`state_template`, `state`, `work_item_key_alias` and `watcher` — the tables every sibling P1
+issue (#24, #26, #27, #28, #29, #30) actually reads or writes. `work_item_template`,
+`checklist_template`/`checklist_item`, and the `label`/`work_item_label` split follow in a
+closely-sequenced second PR, not this one.
+
+**Why:** scoping #23 against `data-model.md` §3-§4 and `docs/07-planning/lane-prep/
+p1-core.md`'s own dependency graph found the label restructuring carries a genuine,
+unresolved data-migration question (today's `labelTable` is a hybrid — one row is both a
+label definition and its task-assignment, `unique(taskId, name)` — restructuring it into a
+deduplicated `label` + a `work_item_label` join has no stated tie-break rule for two
+same-named, different-coloured labels on two different tasks). That question does not block
+`work_item` itself existing, and folding it into the same PR would make an already large,
+route/test/MCP-tool-breaking migration (54 route files, 16 integration test files, and
+`packages/mcp/src/tools/register.ts`'s hardcoded `/api/task/*` paths, none deferrable) larger
+than it needs to be for its own sake. `work_item_relation` (#26) and `comment`/`activity`
+(#27) are explicitly NOT #23's tables per the same dependency graph, despite an earlier,
+looser reading of `p1-core.md` §0's prose suggesting otherwise — confirmed against the actual
+diagram and each sibling issue's own file-surface text.
+
+**Alternatives considered:** building all of #23 in one PR (rejected — defers a hard question
+that doesn't need to be solved to unblock #24/#26/#27/#28/#29/#30, and makes the PR
+unreviewably large); folding `work_item_relation`/`comment` in too since they're related
+concepts (rejected — they belong to #26/#27 by the project's own dependency graph; #23
+building them would be exactly the "one issue quietly does another issue's job" pattern this
+project's planning discipline exists to prevent).
+
+**Decided by:** the orchestrating session, 2026-09-17, as routine implementation sequencing
+within P1's already-approved dependency graph — not a product or architecture decision.
+
+---
+
+### 2026-09-17 · PROPOSED, pending Thomas — #23's work-item state transitions capability-gated only until P2's workflow engine lands
+
+**This entry records a proposal, not a decision.** An independent review of this entry (PR
+#184) argued convincingly that it does not actually match the #30 precedent it leans on, and
+should not be treated as settled by the orchestrating session alone. Recorded here anyway,
+under the "PROPOSED" heading, so the reasoning and the reviewer's objection are both on the
+record while this waits for Thomas's actual answer — not silently dropped, and not quietly
+promoted to "decided" either.
+
+**Proposal:** `#23`'s state-transition endpoint (moving a work item from one `state` to
+another) would check only that the actor has capability to write the work item — no
+legality check against a `workflow`/`workflow_transition` (does target state X follow
+legally from source state Y for this work item's type) — until P2's workflow engine actually
+exists and is wired in.
+
+**Why it looked reasonable at first:** `work-items.md`'s own `WI-9` ("state changes go
+through the workflow... never a plain field update") explicitly delegates transition
+legality to `workflows.md`, which is staged **P2** — so a literal reading of `WI-9` would
+make #23 undeliverable in P1 at all, and assignment (#30) has the same shape ("UI/route
+lands in P1, the rule engine ports in P2").
+
+**Why the review's objection holds:** the reviewer checked #30's own issue body directly and
+found it carries an **explicit, issue-level P1/P2 carve-out already written into it** — #23's
+own body has no equivalent; this proposal would be extending the pattern to a case that was
+never actually granted its own exception, not reusing a settled one. The risk shape also
+differs: `WI-9` is phrased as an absolute ("cannot be bypassed by a PATCH"), and unlike a
+wrong assignment (a minor, easily-corrected annoyance), an unchecked transition touches
+`sla_started_at`/`resolved_at` timestamps, roll-up completeness for parent items, and
+whatever single-designated-reopen-transition model the eventual workflow engine assumes —
+each of which could produce data that is awkward or impossible to reconcile once P2's real
+engine arrives, unlike a reassignment which is trivially correctable at any time.
+
+**What is NOT waiting on this:** #23's schema (`work_item`, `state`, `state_template`, etc.)
+does not depend on this answer — the state-transition *endpoint*'s legality-checking
+behaviour is the only piece blocked. Schema/migration work proceeds in parallel.
+
+**Alternatives:** blocking #23's transition endpoint entirely until P2's workflow engine
+exists (real cost: the endpoint simply doesn't ship until P2, which may be an acceptable
+trade Thomas prefers given the risk above); the capability-only gate as originally proposed;
+some third design neither this session nor the reviewer has proposed.
+
+**Decided by:** nobody yet. Proposed by the orchestrating session, 2026-09-17; objection
+raised by an independent review the same day; Thomas's actual answer supersedes this entire
+entry when it arrives, per the decision log's own append-only, newest-entry-wins convention.
+
+---
+
+### 2026-09-17 · Two low-stakes #23 migration-data edge cases decided pre-launch, since no live data exists to conflict
+
+**Decision:** (1) the current `task.priority`'s fifth literal value, `"no-priority"` (which
+has no slot in `data-model.md`'s ordered four-value `low < medium < high < urgent` enum),
+maps to `low` wherever the migration encounters it. (2) the `label`/`work_item_label` split
+(deferred to #23's second PR per the entry above) will use "first-created row for a given
+name wins as the canonical `label` definition; later same-name rows on other work items
+become `work_item_label` joins to it" as its de-duplication tie-break, once that PR is
+scoped.
+
+**Why:** both are migration-time edge cases with no real data to migrate — TaskDesk v2 is
+pre-launch, and no live deployment exists yet (re-confirmed today, same condition the
+one-shot migration decision below already established). A tie-break rule is still worth
+recording so the migration's own generated SQL has a stated rationale rather than an
+implementer picking silently, but neither is a product-behaviour choice a real user would
+ever observe, unlike the workflow-engine question above.
+
+**Decided by:** the orchestrating session, 2026-09-17, as routine implementation convention,
+not product policy.
+
+---
+
 ### 2026-09-16 · CodeQL alert #9 (`js/insufficient-password-hash`, `packages/domain/src/audit/audit.ts`) dismissed as a false positive
 
 **Decision:** the CodeQL alert flagging `canonicalRowHash`'s `createHash("sha256")` call as
