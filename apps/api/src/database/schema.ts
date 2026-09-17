@@ -969,12 +969,19 @@ export const personTable = pgTable(
   (table) => [
     index("person_userId_idx").on(table.userId),
     index("person_organisationId_idx").on(table.organisationId),
-    // Defense in depth for the seed's own idempotency requirement (one person per
-    // existing user, never duplicated on a second boot) -- does not conflict with
+    // Global, not scoped per organisation: one `user_id` may back at most one `person`
+    // row anywhere. multi-tenancy.md names two `person` rows reachable from the same
+    // login as the exact ambiguity this schema exists to prevent -- resolveIdentity
+    // (auth-and-identity.md) is keyed and cached by `user_id` and returns a single
+    // `personId`/`organisationId`/`side`, so a second row behind the same `user_id` would
+    // resolve arbitrarily. A person who genuinely needs both a staff and a customer
+    // identity gets two separate `user` rows (multi-tenancy.md's "two person rows, never
+    // linked"), not two `person` rows sharing one `user_id`. This does not conflict with
     // data-model.md's "two person rows in different organisations may carry the same
-    // address": this only forbids the SAME user_id twice within the SAME organisation.
-    uniqueIndex("person_organisation_user_unique")
-      .on(table.organisationId, table.userId)
+    // address" -- that sentence is about the `user.email` attribute being shared across
+    // two DIFFERENT `user` rows, not about one `user_id` appearing in two `person` rows.
+    uniqueIndex("person_user_unique")
+      .on(table.userId)
       .where(sql`${table.userId} is not null`),
   ],
 );
@@ -1102,8 +1109,19 @@ export const membershipTable = pgTable(
       .notNull(),
   },
   (table) => [
-    index("membership_personId_idx").on(table.personId),
     index("membership_roleId_idx").on(table.roleId),
+    // data-model.md's Indexing section names exactly this composite --
+    // `create index on membership (person_id, scope, scope_id);` -- as the shape
+    // `resolveIdentity` actually queries by (fetch this person's memberships, then narrow
+    // by scope). It leading-prefix-covers the old person-id-only lookup, so that index is
+    // dropped as redundant; `membership_scope_scopeId_idx` is kept alongside it because it
+    // serves the reverse lookup (all memberships for a scope/scope_id, independent of
+    // person) that this composite's column order can't serve.
+    index("membership_personId_scope_scopeId_idx").on(
+      table.personId,
+      table.scope,
+      table.scopeId,
+    ),
     index("membership_scope_scopeId_idx").on(table.scope, table.scopeId),
   ],
 );

@@ -97,6 +97,124 @@ describe("#1 -- migration 0052 applies cleanly and produces the schema data-mode
       db.insert(schema.roleTable).values({ ...common, scope: "organisation" }),
     ).resolves.toBeDefined();
   });
+
+  it("rejects a second person row for the same user_id in a different organisation (the exact ambiguity multi-tenancy.md forbids)", async () => {
+    const { app } = createApp();
+    const alice = await signUpUser(app);
+    const now = new Date();
+
+    const [orgInternal] = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: "org-internal-s1",
+        name: "Internal S1",
+        isInternal: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!orgInternal) throw new Error("expected organisation row");
+
+    const [orgCustomer] = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: "org-customer-s1",
+        name: "Customer S1",
+        isInternal: false,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!orgCustomer) throw new Error("expected organisation row");
+
+    await db.insert(schema.personTable).values({
+      userId: alice.user.id,
+      organisationId: orgInternal.id,
+      side: "staff",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // The reviewer's exact reproduction: same user_id, a second person row in a DIFFERENT
+    // organisation, on the opposite side. Must be rejected -- the unique index is global
+    // on user_id, not scoped per organisation, so one login can never resolve to two
+    // person rows (resolveIdentity is keyed and cached by user_id, per
+    // auth-and-identity.md).
+    await expect(
+      db.insert(schema.personTable).values({
+        userId: alice.user.id,
+        organisationId: orgCustomer.id,
+        side: "customer",
+        createdAt: now,
+        updatedAt: now,
+      }),
+    ).rejects.toThrow();
+
+    const persons = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, alice.user.id));
+    expect(persons).toHaveLength(1);
+    expect(persons[0]?.organisationId).toBe(orgInternal.id);
+  });
+
+  it("still permits two different users, each with their own person row in a different organisation", async () => {
+    const { app } = createApp();
+    const alice = await signUpUser(app);
+    const bob = await signUpUser(app);
+    const now = new Date();
+
+    const [orgA] = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: "org-a-s1",
+        name: "Org A S1",
+        isInternal: false,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!orgA) throw new Error("expected organisation row");
+
+    const [orgB] = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: "org-b-s1",
+        name: "Org B S1",
+        isInternal: false,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!orgB) throw new Error("expected organisation row");
+
+    // data-model.md's actual documented scenario: two DIFFERENT `user` rows (which may
+    // even share an email attribute once better-auth's unique index on it is dropped --
+    // unrelated to this index, which is keyed on user_id, not email), each holding its own
+    // person row in its own organisation. Must NOT collide.
+    await expect(
+      db.insert(schema.personTable).values({
+        userId: alice.user.id,
+        organisationId: orgA.id,
+        side: "customer",
+        createdAt: now,
+        updatedAt: now,
+      }),
+    ).resolves.toBeDefined();
+
+    await expect(
+      db.insert(schema.personTable).values({
+        userId: bob.user.id,
+        organisationId: orgB.id,
+        side: "customer",
+        createdAt: now,
+        updatedAt: now,
+      }),
+    ).resolves.toBeDefined();
+
+    const persons = await db.select().from(schema.personTable);
+    expect(persons).toHaveLength(2);
+  });
 });
 
 describe("#2/#3 -- the boot-time seed creates one internal organisation and backfills one staff person per user, idempotently", () => {
@@ -371,7 +489,7 @@ describe("#4 -- the chosen FK behaviours actually hold", () => {
     expect(remainingQuotas).toHaveLength(0);
   });
 
-  it("permits a placeholder person (no user_id) and a claimed person to coexist without tripping the organisation/user partial unique index", async () => {
+  it("permits a placeholder person (no user_id) and a claimed person to coexist without tripping the global user_id partial unique index", async () => {
     const now = new Date();
     const [organisation] = await db
       .insert(schema.organisationTable)

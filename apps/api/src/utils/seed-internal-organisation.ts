@@ -77,11 +77,13 @@ async function ensureInternalOrganisation(): Promise<{ id: string }> {
  * user that existed before this migration is staff (the customer/portal side of `person`
  * has no data source yet — that is P3's identity-provisioning scope, not this one).
  *
- * Idempotent: only inserts for a user that doesn't already have a person row in this
- * organisation, following this codebase's existing check-then-insert seed convention
- * (`seed-default-workspace-roles.ts`). Not proof against every concurrent-boot race — the
- * same accepted limitation as that precedent — but running this sequentially any number
- * of times, including on every boot, creates no duplicates.
+ * Idempotent: only inserts for a user that doesn't already have a person row anywhere --
+ * one `user_id` may back at most one `person` row, globally, not just within the internal
+ * organisation (`person_user_unique`) -- following this codebase's existing
+ * check-then-insert seed convention (`seed-default-workspace-roles.ts`). Not proof against
+ * every concurrent-boot race — the same accepted limitation as that precedent — but
+ * running this sequentially any number of times, including on every boot, creates no
+ * duplicates.
  */
 export async function seedInternalOrganisationAndStaffPersons() {
   try {
@@ -134,15 +136,15 @@ export async function seedInternalOrganisationAndStaffPersons() {
       await db
         .insert(schema.personTable)
         .values(rows.slice(i, i + BATCH_SIZE))
-        // Matches the partial unique index `person_organisation_user_unique`'s own
-        // predicate -- Postgres only accepts this as a conflict arbiter when the
-        // `where` clause here is identical to the index's, and every row inserted
-        // here always has a non-null userId anyway (see the filter above).
+        // Matches the global partial unique index `person_user_unique`'s own predicate --
+        // Postgres only accepts this as a conflict arbiter when the `where` clause here
+        // is identical to the index's, and every row inserted here always has a
+        // non-null userId anyway (see the filter above). The arbiter is on `user_id`
+        // alone (not `organisation_id, user_id`) because the invariant is global: at
+        // most one `person` row per `user_id`, across every organisation, not just this
+        // one -- see the index's own comment in schema.ts.
         .onConflictDoNothing({
-          target: [
-            schema.personTable.organisationId,
-            schema.personTable.userId,
-          ],
+          target: [schema.personTable.userId],
           where: sql`${schema.personTable.userId} is not null`,
         });
     }
