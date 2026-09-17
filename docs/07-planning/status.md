@@ -2,10 +2,11 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-17 — a sixth pass, after P1's foundational identity schema
-> (`organisation`, `person`, `membership`, `role`) landed, unblocking #23 and #25
-> **`main` at that moment:** `e7280ff` (PR #179 — the P1 identity schema, migration + seed
-> only, no route/policy wiring yet)
+> **Snapshot taken:** 2026-09-17 — a seventh pass, after #23's first work-item schema slice
+> landed on top of the P1 identity schema
+> **`main` at that moment:** `f8f410e` (PR #185 — `work_item`/`work_item_type`/
+> `state_template`/`state`/`work_item_key_alias`/`watcher`, schema only, no route/policy
+> wiring yet, kaneo's `task`/`column` tables and routes fully untouched and still live)
 > **Stage:** P0 · Foundation — **exit criteria met; Throttle 1 is OPEN.** Autonomous
 > continuation past Throttle 1 is authorized (Thomas, 2026-09-16) — see the session log's
 > newest entry for what that wave landed and what it found.
@@ -41,28 +42,25 @@
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-17
-**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** P1 core's
-foundational identity schema (`organisation`, `organisation_quota`, `person`, `membership`,
-`role`) is now on `main` — schema, migration and an idempotent seed only, no route/policy
-wiring yet. #23 (work items) and #25 (projects) can now build their own schema on top of it.
-**Updated by:** Claude Code (Sonnet), reconciliation after **PR #179 merged**. Reviewed at
-full tier given its foundational-identity/authorization role: two independent ordinary
-Sonnet reviews (schema/migration fidelity against `data-model.md` §2; seed idempotency —
-this reviewer wrote and ran their own concurrent-boot race reproduction rather than trusting
-the PR's own claim) plus a mandatory Opus pass. Opus's first look found a genuine blocking
-gap: the `person`/`user_id` uniqueness constraint was scoped per-organisation, which would
-have let one user account hold both a staff and a customer identity at once — exactly the
-ambiguity `multi-tenancy.md` names as the bug this design exists to prevent. Fixed while the
-tables were still empty (the cheapest possible time), re-verified by all three reviewers at
-the new head (Opus: CLEAR WITH FINDINGS, non-blocking). Six smaller, non-blocking findings
-from the same Opus pass are tracked as issues **#180** (workspace hard-delete becomes
-impossible once any role has a membership — latent until P1/P4 creates one), **#181**
-(three related DB-level integrity gaps: membership/role scope consistency, placeholder
-persons holding memberships, cross-organisation `scope_id`; explicitly flagged as needing to
-close before any membership-granting route is written) and **#182** (the seed's fail-open
-staff default needs gating once P3 customer identities exist). Full account in this
-session's newest log entry, below.
+**Last updated:** 2026-09-17 (later the same day)
+**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** #23 (work
+items)'s first schema slice — `work_item`, `work_item_type`, `state_template`, `state`,
+`work_item_key_alias`, `watcher` — is now on `main`, built on top of P1's identity schema.
+Schema only, no route/policy/Zod/repository wiring yet; kaneo's `task`/`column` tables and
+routes stay fully live and untouched — this PR deliberately does not cut over.
+**Updated by:** Claude Code (Sonnet), reconciliation after **PR #185 merged**. Same full
+review tier as the identity schema (2 Sonnet + Opus). The mandatory Opus pass explicitly
+checked for and ruled out a repeat of the identity schema's own two findings — neither
+reproduces here — but found nine new, non-blocking data-integrity gaps of its own, four
+flagged as needing to close **before any PR gives work items a real write path** (not before
+this schema PR, which adds no route): a fail-open default on the one column gating customer
+visibility, no FK tying a work item's state/type/parent to its own project or workspace, a
+key/alias namespace collision, and — the most structurally interesting one — the live
+`project` table has no soft-delete window unlike its target design, so `work_item.project_id`
+CASCADE now makes an ordinary project-delete route destructive in a way the identical-looking
+FK on the identity schema was NOT (that one only fired on a hard purge, well past every
+recovery window). Tracked as issues **#186**, **#187**, **#188**, **#189** (one finding folded
+into the existing #181). Full account in this session's newest log entry, below.
 
 ---
 
@@ -1002,6 +1000,66 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-17 (later the same day) · #23's first work-item schema slice lands; mandatory Opus review rules out a repeat of the identity schema's bugs, finds nine new ones
+
+Same session, continuing autonomously. With P1's identity schema landed (prior entry,
+below), scoped issue #23 (work items) before starting it — the live code is still entirely
+kaneo's `task`/`column` schema and routes, and #23 is a genuine migration, not a green-field
+feature. Scoping surfaced a large blast radius (54 files reference the current task/column
+surface, including `packages/mcp/src/tools/register.ts`'s hardcoded `/api/task/*` paths) and
+several genuinely open questions, recorded rather than guessed at:
+
+- **Decided:** #23's first PR covers only the six tables every sibling P1 issue actually
+  reads or writes (`work_item`, `work_item_type`, `state_template`, `state`,
+  `work_item_key_alias`, `watcher`) — not `work_item_template`/checklist/label (a real,
+  unresolved label-deduplication question deferred to a closely-following PR) and explicitly
+  not `work_item_relation`/`comment`/`activity`, which belong to #26/#27 per the project's
+  own dependency graph, not #23.
+- **Decided, implementation-level:** rather than an atomic rename touching kaneo's live
+  `task`/`column` tables and all 54 dependent files at once, the new tables are built as
+  genuinely additive — kaneo's task/column surface stays completely untouched and
+  functional, and a later PR handles the actual cutover once enough of the new backend
+  exists to replace it meaningfully. This reads the existing one-shot-vs-two-phase
+  migration decision narrowly (about preserving existing *data*, moot pre-launch) rather
+  than as a mandate to do everything in one giant PR.
+- **PROPOSED, not decided** — an independent review of this session's own scoping decisions
+  (before implementation even started) pushed back on an initial plan to reuse the
+  assignment (#30) precedent for state-transition legality-checking, correctly pointing out
+  #30 carries an explicit issue-level P1/P2 carve-out that #23 never had, and that an
+  unchecked transition risks more (SLA timestamps, roll-up completeness, reopen logic) than
+  a wrong assignment does. Reworded as an open proposal in the decision log rather than
+  quietly promoted to settled — Thomas's actual answer is still needed. **This does not
+  block the schema work below**, only the eventual transition endpoint's behaviour.
+- **Flagged for Thomas, unresolved:** kaneo's inherited per-column automation
+  (`workflowRuleTable`) has no stated target anywhere in the new architecture's design docs
+  — dropped as superseded functionality, or is there a plan for it this session hasn't
+  found? Left untouched either way, not blocking anything.
+
+**What landed:** `work_item`, `work_item_type`, `state_template`, `state`,
+`work_item_key_alias`, `watcher` — **PR #185, merged `f8f410e`.** Same full review tier as
+the identity schema (2 ordinary Sonnet + mandatory Opus). The Opus reviewer explicitly
+checked for and ruled out a repeat of the identity schema's own two findings (an identity-
+uniqueness bug, a cascade/restrict deadlock) — neither reproduces here — but found **nine
+new, non-blocking findings** of its own, since this is a different schema with different
+edges. Four are flagged as needing to close before any write-path PR, not before this one:
+a fail-open default on `customer_visibility` (the one column gating what a customer can
+see); no FK tying a work item's `state`/`type`/`parent` to its own project or workspace; an
+alias/live-key namespace collision; and — structurally the most interesting one — the live
+`project` table has no soft-delete window (`deleted_at`/`purge_after`) unlike its target
+design, so the new `work_item.project_id` CASCADE now makes an ordinary project-delete route
+destructive in a way that an identical-looking FK on the identity schema was NOT (that one
+only fires on a hard purge, well past every recovery window — the same-shaped FK, different
+consequences, because the two tables it points at are in different states of migration).
+Tracked as issues **#186**, **#187**, **#188**, **#189**, plus one finding folded into the
+existing **#181**. Issue #23 stays open — commented with exactly what landed and what
+remains, rather than closed.
+
+**Not done:** the rest of #23 (routes, policy, Zod, repository, the actual `task`/`column`
+cutover); #25; the two SLA (#32) questions, still unanswered; issue #8's remaining ~85-route
+scope; the live UAT redeploy.
+
+---
 
 ### 2026-09-17 · P1's foundational identity schema lands; mandatory Opus review catches a real cross-organisation identity gap
 
