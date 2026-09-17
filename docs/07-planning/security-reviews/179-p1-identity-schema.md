@@ -1,12 +1,14 @@
 # Pre-merge security review — PR #179 (P1 foundational identity schema: `organisation`, `organisation_quota`, `person`, `membership`, `role`)
 
-**Original reviewed head (all three reviews below):** `f9777eb98f0386ad4b28128b311be91e5ed889b1`
-**Head after the S1/S8 fix (this session):** `f152409d94a84dd8fcda7fb6953ed97dc022e408`
+**Original reviewed head (all three reviews' first pass):** `f9777eb98f0386ad4b28128b311be91e5ed889b1`
+**Reviewed head (current, all three reviews' delta-confirmation):** `ef08180ffa5790d8e92a2fcc8731fcd62643cbd3`
 
-**Status: CHANGES REQUIRED at the original head, fixed in this session — pending a fresh
-Opus delta-confirmation at the new head before merge.** Nothing in this note declares the
-Opus verdict CLEAR; per this project's rule, only a fresh Opus pass, independent of whoever
-authored the fix, can clear its own delta. No gate is waived.
+**Status: CLEARED.** All three reviews confirmed at the current head: both ordinary
+reviews delta-confirmed clean (each independently re-ran the fix's own reproduction steps
+and the full test suite against `ef08180`, not just re-read the diff), and the mandatory
+Opus review delta-confirmed **CLEAR WITH FINDINGS (non-blocking)** — S1 verified fixed by
+re-running the reviewer's own original exploit query against the patched schema and
+confirming rejection. No gate is waived.
 
 ## What this PR adds
 
@@ -140,23 +142,52 @@ migrated with `drizzle-kit migrate` through `0053`:
 | `drizzle-kit check` | "Everything's fine" — no schema/migration drift |
 | `biome check` (pre-commit) | 0 errors, 64 pre-existing warnings (unchanged from the original head, none in files this fix touches) |
 
+## Round 4 — delta-confirmation, all three reviewers, at head `ef08180`
+
+**Schema/migration fidelity (Sonnet, same reviewer as Round 1) — confirmed clean.** Ran
+`drizzle-kit check` fresh against `ef08180` in a new isolated worktree/database: no drift.
+Re-ran the full suite: typecheck clean, unit 320/320, integration 410/410 (exact match).
+Cross-checked the fix's reasoning against `multi-tenancy.md`'s stated intent directly (a
+per-organisation-scoped `person.user_id` uniqueness would have been exactly the
+cross-organisation link the doc calls forbidden) and confirmed `data-model.md`'s literal
+`## Indexing` line matches the S8 composite exactly.
+
+**Seed correctness/idempotency (Sonnet, same reviewer as Round 2) — confirmed clean, went
+further than asked.** Re-verified the seed's `ON CONFLICT` target textually matches the new
+index. Re-ran the original 25-way concurrent-boot race against the patched schema (clean,
+5x), then wrote and ran a **new** race reproducing the exact S1 scenario concurrently — the
+same `user_id` inserted into two different organisations via 20 concurrent raw inserts using
+the production arbiter shape, run 5x: exactly one `person` row survives globally, every
+time. Confirmed the "users added between runs" behaviour is unchanged (the skip-set query
+was already global before the fix).
+
+**Mandatory Opus security review — CLEAR WITH FINDINGS (non-blocking).** Re-ran the
+original S1 exploit query against `0052`+`0053` applied in sequence to a real PostgreSQL 18
+database: the second insert now fails with `duplicate key value violates unique constraint
+"person_user_unique"`. Confirmed the fix is strictly stronger, not merely different (the
+legitimate two-different-`user_id`s-same-email case still succeeds; placeholder persons with
+`user_id IS NULL` are unaffected). Confirmed the seed's arbiter change fails safe rather than
+erroring. Confirmed S8 closed with no lookup regression (`EXPLAIN` shows the dropped index's
+access pattern is served by the new composite's leading prefix). Two cosmetic, non-blocking
+notes: `person_userId_idx` is now largely redundant beside `person_user_unique`; the new
+rejection test asserts via a broad `.rejects.toThrow()` rather than the specific constraint
+name (its follow-up assertions pin the real outcome regardless, so not tautological).
+**Explicit forward flag from this reviewer**: issue #181 (S3, nothing ties `membership.scope`
+to `role.scope`) is the finding most likely to become a live escalation path — it should
+close before any route that grants a membership is written, not left indefinitely.
+
 ## What this note does not do
 
-- It does not declare the Opus verdict CLEAR. That determination belongs to a fresh Opus
-  session with no involvement in authoring this fix, reviewing the delta at `f152409`.
-- It does not resolve S2–S7. Each has its own tracked issue; fixing any of them here would
-  make this delta bigger than the small, re-reviewable fix the Opus reviewer asked for.
-- It does not merge this pull request, edit `## Gates`, or waive anything.
+- It does not resolve S2–S7. Each has its own tracked issue (#180, #181, #182); fixing any
+  of them here would have made this delta bigger than the small, re-reviewable fix all three
+  reviewers confirmed was the right shape.
+- It does not merge this pull request, edit `## Gates`, or waive anything — merge proceeds
+  through the orchestrating session's own final gate verification (CI, mergeability,
+  no-waiver check) after this note.
 
 ## Status of the gate
 
-The mandatory Opus security review for PR #179 returned CHANGES REQUIRED at
-`f9777eb`. The one blocking finding (S1) is fixed at `f152409`, along with the cheap,
-no-judgment-call S8 spec-fidelity fix from the same review. Both ordinary independent
-reviews are already complete (both PASS, at the original head) and did not need to be
-re-run for this delta — S8's index change is squarely inside the schema/migration-fidelity
-lens already passed, and S1's fix tightens rather than changes the exact mechanism
-(a partial unique index feeding the seed's `ON CONFLICT` arbiter) the seed reviewer already
-verified is race-safe. **This gate is not yet closed**: a fresh, independent Opus
-delta-confirmation at head `f152409` is required before this pull request merges. Neither
-ordinary review nor this note may be read as satisfying it.
+**Closed.** Both required ordinary reviews and the mandatory Opus review are recorded PASS
+/ CLEAR WITH FINDINGS at the current head `ef08180`. No finding blocks merge; S2–S7 are
+tracked separately and explicitly flagged (#181 most urgently) for before membership-grant
+routes exist.
