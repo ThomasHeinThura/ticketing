@@ -818,7 +818,7 @@
 			"dangerZone": "Danger zone",
 			"dangerZoneSubtitle": "Irreversible and destructive actions.",
 			"deleteProject": "Delete project",
-			"deleteProjectDescription": "Schedule project to be permanently deleted",
+			"deleteProjectDescription": "Hide project now; becomes eligible for permanent deletion after 30 days",
 			"deleteModalTitle": "Delete Project?",
 			"deleteModalDescription": "This will hide the project \"{{name}}\" and all its data immediately. It becomes eligible for permanent deletion after 30 days.",
 			"deleteModalConfirm": "Delete Project",
