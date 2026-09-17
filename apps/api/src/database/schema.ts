@@ -1304,6 +1304,24 @@ export const stateTable = pgTable(
 // never mints a NEW claim, it only ever references one that must already exist from when
 // its `old_key` value was originally live as SOME work item's `work_item.key` (see the
 // `oldKey` column comment below).
+//
+// #191 N1/N2 (latent findings from the delta-confirmation pass on this same PR, closed
+// here): the claiming INSERT is `ON CONFLICT ("key", work_item_id) DO NOTHING`, so
+// re-inserting the EXACT SAME (key, work_item_id) pair a previous trigger run already
+// committed is a no-op, not a `unique_violation` -- a conflict on `key` ALONE against a
+// DIFFERENT work_item_id is a different unique index and still fails, unchanged.
+//   - N2: `BEFORE ... UPDATE OF "key"` fires whenever `key` is MENTIONED in `SET`, not
+//     when its value changes -- an ordinary whole-row ORM update that re-sends `key`'s
+//     own current value used to re-trip this trigger's unconditional insert and fail
+//     outright. Now it no-ops.
+//   - N1: if the caller's own `INSERT ... ON CONFLICT DO NOTHING` on `work_item` (already
+//     used elsewhere in this codebase) skips a row AFTER this BEFORE trigger already ran,
+//     the claim it inserted is not rolled back by that skip -- see the migration SQL for
+//     the exact mechanism. That claim permanently squats its key string either way (by
+//     design: this table never un-claims anything), but before this clause even the
+//     work_item_id it names could never legitimately claim that same key later, because
+//     doing so would re-trip the identical unconditional insert. With this clause, that
+//     one work_item_id can still take it later; a different one still can't.
 export const workItemKeyClaimTable = pgTable(
   "work_item_key_claim",
   {

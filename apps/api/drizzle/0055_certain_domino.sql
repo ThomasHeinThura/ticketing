@@ -40,16 +40,53 @@ ALTER TABLE "work_item" ADD CONSTRAINT "work_item_key_id_work_item_key_claim_key
 -- function's logic) is what actually rejects a collision, atomically, under any
 -- concurrent interleaving. See `work_item_key_claim`'s own comment in schema.ts for the
 -- full design and `docs/04-engineering/migrations.md`'s "The `work_item.key`
--- assignment" section for how the future rekey/assignment trigger must sequence against
--- this one.
+-- assignment" section, which documents Postgres's BEFORE-trigger firing order, for how
+-- the future rekey/assignment trigger must sequence against this one.
 --
--- `SET search_path = pg_catalog, public` and the fully-qualified `public.work_item_key_claim`
--- reference are deliberate (#191 O3, found on #186 S5's original trigger and fixed here
--- from the start rather than repeated): an unqualified `work_item_key_claim` would
--- resolve against a session-local `CREATE TEMP TABLE work_item_key_claim (...)` ahead of
--- the real one on `search_path`'s default order, silently defeating this claim on any
--- session that has one — an integrity bypass, not a privilege-escalation angle
--- (`SECURITY INVOKER`, the default here, is correct either way).
+-- The fully-qualified `public.work_item_key_claim` reference below is the actual defense
+-- against a session-local `CREATE TEMP TABLE work_item_key_claim (...)` shadow (#191 O3,
+-- found on #186 S5's original trigger and fixed here from the start rather than
+-- repeated): an explicitly schema-qualified name is resolved directly, never through
+-- `search_path`, so it can never be shadowed by a same-named relation in `pg_temp`. Do
+-- NOT remove this qualification as apparently-redundant cleanup.
+--
+-- `SET search_path = pg_catalog, public` below is NOT what closes that bypass (#191 N3 --
+-- this comment previously said it was, which is wrong, verified live against Postgres):
+-- the temporary schema is searched FIRST, ahead of every schema `search_path` names,
+-- unless `pg_temp` is listed explicitly in it -- which this pin does not do. An
+-- unqualified reference here would still resolve to a session's own temp table ahead of
+-- the real one even with this exact pin in place. The pin is kept anyway as
+-- defense-in-depth against any OTHER unqualified identifier a future edit to this
+-- function might add, but the qualification above, not this pin, is why the bypass is
+-- closed today. (`SECURITY INVOKER`, the default here, is correct either way -- this was
+-- always an integrity bypass, never a privilege-escalation angle.)
+--
+-- #191 N1/N2 -- the claiming INSERT below is `ON CONFLICT ("key", work_item_id) DO
+-- NOTHING`, not a bare INSERT: re-inserting the EXACT SAME (key, work_item_id) pair this
+-- trigger (or an earlier run of it) already committed is a no-op instead of a spurious
+-- `23505`. A conflict on a DIFFERENT unique index -- the PRIMARY KEY on `key` alone, e.g.
+-- a different work_item_id claiming the same key -- is NOT suppressed by this clause and
+-- still fails exactly as before; only an exact match on the named (key, work_item_id)
+-- target is inferred. Two reasons, both proven live:
+--   - N2: this trigger is `BEFORE INSERT OR UPDATE OF "key"`, and Postgres fires an
+--     `UPDATE OF <col>` trigger whenever that column is MENTIONED in `SET`, not when its
+--     value actually changes. A whole-row-style `UPDATE ... SET key = $1, title = $2`
+--     that re-sends `key`'s own current, unchanged value -- an entirely ordinary thing
+--     for an ORM's generic update helper to do -- used to re-attempt the identical claim
+--     row and fail outright. Now it no-ops and the update proceeds.
+--   - N1: a `work_item` INSERT that the CALLER's own `ON CONFLICT ... DO NOTHING` (the
+--     idiom already used at several call sites in this codebase) silently skips still
+--     runs this BEFORE trigger first -- its claim insert is not, and cannot be, rolled
+--     back by a skip decided after it already ran. Without this clause, that claim row
+--     permanently squats its key string: nothing ever un-claims it (by this table's own
+--     "forever claimed" design in schema.ts), and even the work item it names could never
+--     claim it later, because re-claiming it would hit the exact same unconditional
+--     insert and fail. With this clause, that specific work_item_id CAN still legitimately
+--     take that exact key later (e.g. a corrective rekey) without error -- the squat is no
+--     longer a dead end, only a claim that already happened once. A DIFFERENT
+--     work_item_id still can never take it, unchanged from before.
+-- See #191's regression tests in `work-item-schema-integrity.test.ts` for both scenarios,
+-- proven against the trigger both before and after this clause.
 CREATE OR REPLACE FUNCTION work_item_claim_key()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -57,7 +94,8 @@ SET search_path = pg_catalog, public
 AS $$
 BEGIN
   INSERT INTO public.work_item_key_claim ("key", work_item_id)
-  VALUES (NEW."key", NEW.id);
+  VALUES (NEW."key", NEW.id)
+  ON CONFLICT ("key", work_item_id) DO NOTHING;
   RETURN NEW;
 END;
 $$;

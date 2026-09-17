@@ -39,6 +39,25 @@
  *       session-local `CREATE TEMP TABLE work_item_key_claim (...)` cannot shadow it the
  *       way #186 S5's original trigger was shadowable.
  *
+ * The Opus delta-confirmation pass on THIS SAME PR (re-verifying O1–O3 at the redesigned
+ * head) found four more, all non-blocking (no write path exists against this schema yet),
+ * two of which are real latent defects fixed here too:
+ *
+ *   N1  A `work_item` INSERT the CALLER skips via its own `ON CONFLICT DO NOTHING` (an
+ *       idiom already used elsewhere in this codebase) still runs the claim trigger
+ *       first — its claim insert is not rolled back by a skip decided after the fact,
+ *       permanently squatting that key string. Degrades from an unrecoverable dead key to
+ *       a recoverable one (see the test below for exactly what "recoverable" means here).
+ *   N2  `BEFORE UPDATE OF "key"` fires on column MENTION, not value change — an ordinary
+ *       whole-row ORM update that re-sends `key`'s own unchanged value used to fail
+ *       outright with a spurious `23505`.
+ *   Both close with one fix, verified live by the Opus reviewer and re-verified here: the
+ *   claim trigger's INSERT is now `ON CONFLICT ("key", work_item_id) DO NOTHING` (see the
+ *   migration SQL and `workItemKeyClaimTable`'s comment in `schema.ts`). N3 (a doc comment
+ *   crediting the wrong mechanism for O3's fix) and N4 (a dead cross-reference to
+ *   `docs/04-engineering/migrations.md`) are documentation-only corrections with nothing
+ *   to regression-test here.
+ *
  * `work_item.type_id` vs `work_item_type.workspace_id` (the other half of S2) is
  * deliberately NOT covered here — it is an explicitly accepted, documented gap (see the
  * `typeId` column comment in `schema.ts`, the PR body's "Not done", and #191 O5), not a
@@ -778,5 +797,119 @@ describe("#191 O3 -- the claim trigger's pinned search_path cannot be shadowed b
         });
       }),
     ).rejects.toThrow();
+  });
+});
+
+describe("#191 N2 -- re-setting work_item.key to its own unchanged value must not spuriously fail", () => {
+  it("permits a whole-row-style UPDATE that mentions key without changing its value", async () => {
+    // `work_item_claim_key` is `BEFORE INSERT OR UPDATE OF "key"` -- Postgres fires an
+    // `UPDATE OF <col>` trigger whenever that column is MENTIONED in the SET clause, not
+    // when its value actually changes. `db.update(workItem).set({ ...item, title })` is a
+    // completely ordinary whole-row ORM update that re-sends `key`'s own current value
+    // alongside a real change elsewhere. Before #191 N2's fix, this re-tripped the
+    // trigger's unconditional claim insert and failed with a spurious
+    // `work_item_key_claim_pkey` violation even though nothing about the key changed.
+    const fixture = await makeProjectFixture();
+    const workItem = await makeWorkItem({
+      projectId: fixture.project.id,
+      typeId: fixture.type.id,
+      stateId: fixture.state.id,
+      number: 1,
+      key: `${fixture.project.slug}-1`,
+    });
+
+    await expect(
+      db
+        .update(schema.workItemTable)
+        .set({ key: workItem.key, title: "Retitled via whole-row update" })
+        .where(eq(schema.workItemTable.id, workItem.id)),
+    ).resolves.not.toThrow();
+
+    const [reloaded] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItem.id));
+    expect(reloaded?.title).toBe("Retitled via whole-row update");
+    expect(reloaded?.key).toBe(workItem.key);
+  });
+});
+
+describe("#191 N1 -- an ON CONFLICT DO NOTHING-skipped work_item insert must not permanently squat its key", () => {
+  it("leaves the claim recoverable by the SAME work item, but still rejects a DIFFERENT one", async () => {
+    // Simulates the idiom already used at several call sites in this codebase (labels,
+    // scheduler, seed, bulk-update): an INSERT with `ON CONFLICT DO NOTHING` targeting a
+    // DIFFERENT conflict than `key` (here, the row's own `id`, already occupied by an
+    // existing work item), so the whole candidate row -- including a brand-new `key` --
+    // is silently skipped. The `BEFORE INSERT` claim trigger has already run and
+    // committed its claim-table insert by the time that skip is decided; it is not, and
+    // cannot be, rolled back by it.
+    const fixture = await makeProjectFixture();
+    const workItem = await makeWorkItem({
+      projectId: fixture.project.id,
+      typeId: fixture.type.id,
+      stateId: fixture.state.id,
+      number: 1,
+      key: `${fixture.project.slug}-1`,
+    });
+    const squattedKey = `${fixture.project.slug}-squat-${randomUUID()}`;
+
+    const skipped = await db.execute(sql`
+      INSERT INTO work_item (
+        id, project_id, type_id, number, key, title, state_id, customer_visibility,
+        created_at, updated_at
+      ) VALUES (
+        ${workItem.id}, ${fixture.project.id}, ${fixture.type.id}, 999, ${squattedKey},
+        'squatted row', ${fixture.state.id}, 'private', now(), now()
+      )
+      ON CONFLICT (id) DO NOTHING
+    `);
+    expect(skipped.rowCount).toBe(0);
+
+    // The outer insert really was skipped -- the work item keeps its original key.
+    const [unchanged] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItem.id));
+    expect(unchanged?.key).toBe(workItem.key);
+
+    // But the claim trigger's own insert was NOT skipped: the key is now claimed by
+    // this work item's id in the registry, even though no work_item actually holds it --
+    // an orphan, by this table's own "forever claimed" design.
+    const [claim] = await db
+      .select()
+      .from(schema.workItemKeyClaimTable)
+      .where(eq(schema.workItemKeyClaimTable.key, squattedKey));
+    expect(claim?.workItemId).toBe(workItem.id);
+
+    // O2 must NOT be reopened by this fix: a DIFFERENT work item can never take an
+    // already-claimed key, orphaned or not -- the claim's PRIMARY KEY on `key` alone
+    // still refuses it unconditionally (a conflict on a different unique index than the
+    // one #191's fix names is never suppressed).
+    await expect(
+      makeWorkItem({
+        projectId: fixture.project.id,
+        typeId: fixture.type.id,
+        stateId: fixture.state.id,
+        number: 2,
+        key: squattedKey,
+      }),
+    ).rejects.toThrow();
+
+    // Recoverable, not permanently dead: the SAME work item the orphan claim already
+    // names can still legitimately take that key later (e.g. a corrective rekey) --
+    // #191's fix makes re-inserting the EXACT SAME (key, work_item_id) pair a no-op
+    // instead of a spurious `23505` against the trigger's own earlier row.
+    await expect(
+      db
+        .update(schema.workItemTable)
+        .set({ key: squattedKey })
+        .where(eq(schema.workItemTable.id, workItem.id)),
+    ).resolves.not.toThrow();
+
+    const [recovered] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItem.id));
+    expect(recovered?.key).toBe(squattedKey);
   });
 });

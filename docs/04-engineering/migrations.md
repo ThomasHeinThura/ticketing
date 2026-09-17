@@ -100,6 +100,16 @@ mechanism. The trigger writes `number` and `key` only: it touches neither `versi
 the activity feed. A cross-project move re-keys (new number in the new project) and writes a
 `work_item_key_alias` row so the old key redirects.
 
+**Firing order against `work_item_claim_key` (#191).** `work_item` also carries
+`work_item_claim_key`, the `BEFORE INSERT OR UPDATE OF "key"` trigger that populates the
+`work_item_key_claim` registry (see that table's comment in `schema.ts`). When more than one
+`BEFORE ROW` trigger is defined for the same table and event, PostgreSQL fires them in
+**alphabetical order by trigger name** — not declaration order, and not migration order. This
+key-assignment trigger must be named so it sorts BEFORE `work_item_claim_key`; otherwise the
+claim trigger runs first and reads `NEW."key"` before this trigger has set it. Verify the
+actual order with `SELECT tgname FROM pg_trigger WHERE tgrelid = 'work_item'::regclass ORDER
+BY tgname;` against the migrated schema before shipping either trigger.
+
 ## Append-only tables
 
 `audit_log` and `activity` are append-only by **grant** as well as by the absence of an
