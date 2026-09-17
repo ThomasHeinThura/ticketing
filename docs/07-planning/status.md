@@ -2,10 +2,10 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-16 (later the same day again — a fifth pass, after P2's first
-> audit-trail domain slice landed with a real Opus-caught security finding)
-> **`main` at that moment:** `7db940e` (PR #175 — the `packages/domain/src/audit` hash-chain
-> and reconstruction pure core, issue #37's first slice)
+> **Snapshot taken:** 2026-09-17 — a sixth pass, after P1's foundational identity schema
+> (`organisation`, `person`, `membership`, `role`) landed, unblocking #23 and #25
+> **`main` at that moment:** `e7280ff` (PR #179 — the P1 identity schema, migration + seed
+> only, no route/policy wiring yet)
 > **Stage:** P0 · Foundation — **exit criteria met; Throttle 1 is OPEN.** Autonomous
 > continuation past Throttle 1 is authorized (Thomas, 2026-09-16) — see the session log's
 > newest entry for what that wave landed and what it found.
@@ -41,18 +41,28 @@
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-16 (later the same day, a fifth time)
-**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** P2 domain lane
-has landed its first two slices (`workflow`, then `audit`) in `packages/domain`; P1 core's
-foundational identity schema is decided but not yet built.
-**Updated by:** Claude Code (Sonnet), reconciliation after **PR #175 (issue #37's pure-domain
-slice — `canonicalRowHash`/`reconstructAt`) merged**, plus **PR #176** (a prerequisite
-review-findings closure it depended on). Reviewed ordinary Sonnet PASS, then a mandatory
-Opus pass that found **four real hash-collision bugs** on its first look (CHANGES REQUIRED)
-— all fixed and independently re-verified (CLEAR WITH FINDINGS, non-blocking) before merge.
-One CodeQL alert on the same hash call was independently judged a false positive by both
-reviewers; dismissal was escalated to and authorized by Thomas rather than taken
-unilaterally (decision log). Full account in this session's newest log entry, below.
+**Last updated:** 2026-09-17
+**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** P1 core's
+foundational identity schema (`organisation`, `organisation_quota`, `person`, `membership`,
+`role`) is now on `main` — schema, migration and an idempotent seed only, no route/policy
+wiring yet. #23 (work items) and #25 (projects) can now build their own schema on top of it.
+**Updated by:** Claude Code (Sonnet), reconciliation after **PR #179 merged**. Reviewed at
+full tier given its foundational-identity/authorization role: two independent ordinary
+Sonnet reviews (schema/migration fidelity against `data-model.md` §2; seed idempotency —
+this reviewer wrote and ran their own concurrent-boot race reproduction rather than trusting
+the PR's own claim) plus a mandatory Opus pass. Opus's first look found a genuine blocking
+gap: the `person`/`user_id` uniqueness constraint was scoped per-organisation, which would
+have let one user account hold both a staff and a customer identity at once — exactly the
+ambiguity `multi-tenancy.md` names as the bug this design exists to prevent. Fixed while the
+tables were still empty (the cheapest possible time), re-verified by all three reviewers at
+the new head (Opus: CLEAR WITH FINDINGS, non-blocking). Six smaller, non-blocking findings
+from the same Opus pass are tracked as issues **#180** (workspace hard-delete becomes
+impossible once any role has a membership — latent until P1/P4 creates one), **#181**
+(three related DB-level integrity gaps: membership/role scope consistency, placeholder
+persons holding memberships, cross-organisation `scope_id`; explicitly flagged as needing to
+close before any membership-granting route is written) and **#182** (the seed's fail-open
+staff default needs gating once P3 customer identities exist). Full account in this
+session's newest log entry, below.
 
 ---
 
@@ -992,6 +1002,65 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-17 · P1's foundational identity schema lands; mandatory Opus review catches a real cross-organisation identity gap
+
+Same session, continuing autonomously per the standing delegation. With the audit-trail
+domain slice done (prior entry, below) and SLA (#32) still waiting on Thomas's two open
+questions, the next priority was the P1 foundational identity schema itself — decided
+2026-09-16, not yet implemented.
+
+**What landed:** `organisation`, `organisation_quota`, `person`, `membership`, `role` —
+exactly `data-model.md` §2's tables — as one purely additive migration
+(`apps/api/drizzle/0052_hesitant_black_bolt.sql`, later `0053_fix_person_user_unique_scope.sql`),
+plus an idempotent boot-time seed (one internal `organisation`, one `person` per existing
+`user` row). No route, no controller, no policy wiring, no `resolveIdentity` implementation
+— all explicitly separate, later work. **PR #179, merged `e7280ff`.** Zero existing tables
+touched (confirmed: 0 deletions in the diff).
+
+**Full review tier, as this schema's foundational role warrants:** two independent ordinary
+Sonnet reviews (schema/migration fidelity against the spec; seed idempotency/scope
+discipline) plus a mandatory Opus pass. Both ordinary reviews went beyond reading the diff —
+the schema reviewer ran `drizzle-kit check` and the full suite directly; the seed reviewer
+wrote and ran their own concurrent-boot race reproduction (25-way concurrent calls against a
+real Postgres) rather than trusting the PR's own sequential verification.
+
+**The mandatory Opus review found a real, blocking gap.** `person`'s uniqueness on `user_id`
+was scoped `(organisation_id, user_id)` — permitting the same `user_id` to hold a `person`
+row in two different organisations, on two different sides. Proven with a live insert: one
+`user` simultaneously `side: "staff"` in the internal organisation and `side: "customer"`
+elsewhere. `multi-tenancy.md` names this exact state as the specific ambiguity this schema's
+design exists to prevent, and `resolveIdentity`'s single `personId`/`side` (keyed and cached
+by `user_id`) would have resolved one of the two arbitrarily — a customer could have
+resolved as internal staff. The PR's own seed already assumed the correct, global invariant,
+so code and the DB constraint disagreed about what the rule even was. **Fixed while the
+tables were still empty** — the cheapest possible moment — by making the uniqueness global
+(`UNIQUE(user_id) WHERE user_id IS NOT NULL`), with two new regression tests reproducing
+both the rejected and the legitimate case. All three reviewers delta-confirmed the fix at
+the new head; Opus's final verdict: **CLEAR WITH FINDINGS (non-blocking)**.
+
+**Six smaller findings from the same Opus pass, all non-blocking, all tracked rather than
+silently left implicit:**
+- **#180** — `role.workspace_id` CASCADE + `membership.role_id` RESTRICT makes a workspace
+  hard-delete impossible once any role has a membership. Latent today (nothing writes
+  `role`/`membership` yet); two live routes would 500 the moment that changes.
+- **#181** — three related DB-level integrity gaps folded into one issue: nothing ties
+  `membership.scope` to `role.scope` (a plausible escalation path once `resolveIdentity`
+  exists — flagged by the Opus reviewer as the one to close **before** any membership-grant
+  route is written); a placeholder person can hold a membership, contradicting the spec; no
+  backstop ties `membership.scope_id` to the person's own organisation.
+- **#182** — the seed's fail-open default (an unrecognised user becomes internal staff, every
+  boot) is correct today but needs gating before P3 customer identities exist.
+- **#177** (filed slightly earlier, same review family) — a separate, older, pre-existing
+  CodeQL alert on `verify-api-key.ts` needs its own triage, materially different from the
+  audit-trail one Thomas already resolved (there the hashed value genuinely is a credential).
+
+**Not done:** #23/#25 themselves — this PR only clears their shared prerequisite; issue
+#173's reconciliation of the legacy `workspace_member`/`workspace_role` tables with this new
+shape; `resolveIdentity`'s actual implementation; SLA (#32), still waiting on Thomas; issue
+#8's remaining ~85-route classification scope; the live UAT redeploy.
+
+---
 
 ### 2026-09-16 (later the same day, a fifth time) · P2's audit-trail domain slice lands; mandatory Opus review catches four real hash-collision bugs; a CodeQL alert escalated to and resolved by Thomas
 
