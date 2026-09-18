@@ -1,2 +1,31 @@
 set -e
-pnpm exec biome ci .
+
+# Check what is being committed, not the whole working tree.
+#
+# This used to be `biome ci .`, which lints every file it can see — including files that are
+# not staged and never will be: a scratch note, a half-written file, another lane's staging
+# directory. Any of those failing a format check blocked the commit of unrelated, correct
+# work, and the only way out was `--no-verify`, which skips the check on the staged files
+# too. A hook that is wrong about when it fires trains people to bypass the gate it is.
+#
+# `biome ci` has no `--staged` flag (verified against biome 2.5.7: "Error: no such flag:
+# `--staged`, did you mean `--changed`?"), and `--changed` is the wrong shape here — it
+# diffs against a merge base, so it ignores staged changes entirely and would check nothing
+# at commit time. `biome check --staged` is the one that means "the files in this commit".
+#
+# CI still runs the whole-repo `pnpm lint:ci` (`biome ci .`) over a fresh checkout; that is
+# the gate. This hook is its fast local echo, and the two now agree about their scope.
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+# `biome check --staged` exits non-zero when the staged set holds no file it handles
+# (documents only, say). That is not a lint failure and must not block the commit.
+if ! printf '%s\n' "$STAGED" | grep -qE '\.(js|jsx|ts|tsx|mjs|cjs|json|jsonc|css)$'; then
+  exit 0
+fi
+
+pnpm exec biome check --staged
+
