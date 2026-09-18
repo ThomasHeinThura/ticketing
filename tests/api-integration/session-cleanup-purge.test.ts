@@ -12,7 +12,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { withJobLease } from "../../apps/api/src/scheduler/leader-lock";
 import {
@@ -212,13 +212,49 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
     });
 
     it("does not hold a session whose person belongs to a DIFFERENT organisation's hold", async () => {
-      // The hold must only reach its own tenant. Without this, a `scope_id` comparison that
-      // accidentally dropped the `scope = 'organisation'` half would pass every test above.
+      // Pins the tenant reach: a predicate comparing `scope_id` against the wrong side of the
+      // join, or one that ignored the person link entirely, would wrongly protect this
+      // session. NOTE: this does not, on its own, pin the `scope` discriminator — an
+      // organisation id and a person id never collide, so a predicate that dropped
+      // `scope = 'organisation'` would pass this too. The next test is the one that catches
+      // that, which is why it exists.
       const member = await createWorkspaceMember();
       const ownOrg = await makeOrganisation("own");
       const otherOrg = await makeOrganisation("other");
       await makePerson(member.user.id, ownOrg.id);
       await placeHold("organisation", otherOrg.id, member.user.id);
+
+      const session = await makeSession(member.user.id, true);
+
+      expect(await deleteExpiredSessions()).toBe(1);
+      expect(await sessionExists(session.id)).toBe(false);
+    });
+
+    it("does not treat an organisation-scoped hold as if it named a person", async () => {
+      // The discriminating shape for the `scope` column. A hold recorded with
+      // `scope = 'organisation'` whose `scope_id` is a *person's* id is a mis-placed hold: the
+      // correct predicate compares it against that person's `organisation_id` only, matches
+      // nothing, and the session is deleted. A predicate that dropped the `scope`
+      // discriminator and compared `scope_id` against both candidate ids would wrongly
+      // protect this session — which is the entire reason `scope` is on the row.
+      const member = await createWorkspaceMember();
+      const org = await makeOrganisation("misplaced-scope");
+      const person = await makePerson(member.user.id, org.id);
+      await placeHold("organisation", person.id, member.user.id);
+
+      const session = await makeSession(member.user.id, true);
+
+      expect(await deleteExpiredSessions()).toBe(1);
+      expect(await sessionExists(session.id)).toBe(false);
+    });
+
+    it("does not treat a person-scoped hold as if it named an organisation", async () => {
+      // The mirror image: `scope = 'person'` carrying an organisation's id must not protect
+      // that organisation's members.
+      const member = await createWorkspaceMember();
+      const org = await makeOrganisation("mirrored-scope");
+      await makePerson(member.user.id, org.id);
+      await placeHold("person", org.id, member.user.id);
 
       const session = await makeSession(member.user.id, true);
 
@@ -235,7 +271,26 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
       const outcome = await runSessionCleanup();
 
       expect(outcome.sessionsDeleted).toBe(1);
-      expect(outcome.degraded).toBeUndefined();
+    });
+
+    it("emits the structured log line background-jobs.md asks of every run", async () => {
+      const member = await createWorkspaceMember();
+      await makeSession(member.user.id, true);
+      const logged = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      await runSessionCleanup();
+
+      const line = logged.mock.calls
+        .map((call) => String(call[0]))
+        .find((text) => text.includes('"job":"session-cleanup"'));
+      expect(line).toBeDefined();
+      expect(JSON.parse(line as string)).toMatchObject({
+        job: "session-cleanup",
+        itemsProcessed: 1,
+        outcome: "ok",
+      });
+      expect(typeof JSON.parse(line as string).durationMs).toBe("number");
+      logged.mockRestore();
     });
 
     it("does nothing when another replica holds the lease", async () => {

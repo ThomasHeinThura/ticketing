@@ -41,8 +41,6 @@ const LEASE_MS = 5 * 60 * 1000;
 
 export type SessionCleanupOutcome = {
   sessionsDeleted: number;
-  /** Set when the run completed but part of it failed; the scheduler logs it, not swallows it. */
-  degraded?: boolean;
 };
 
 /**
@@ -106,13 +104,33 @@ export async function deleteExpiredSessions(): Promise<number> {
  * The registered job body. Leader-locked: every replica runs the cron, one does the work
  * (`background-jobs.md` § Leasing). Idempotent by construction — a second run finds nothing
  * left to delete, which is what a lease's at-least-once guarantee requires.
+ *
+ * Emits the structured log line `background-jobs.md` § Observability requires of every run:
+ * job name, duration, items processed and outcome. A run that deletes rows is destructive, so
+ * it is never silent — including the run that deletes nothing, which is the one that tells an
+ * operator the schedule is firing at all. The Prometheus counters and the OTel span that
+ * section also names are the seam `observability.md` owns; they are not invented here, and
+ * this log is what they will replace rather than sit beside.
  */
 export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
-  return withJobLease(
+  const startedAt = Date.now();
+
+  const outcome = await withJobLease(
     LEASE_NAME,
     async () => ({ sessionsDeleted: await deleteExpiredSessions() }),
     // Held elsewhere: not an error, and not this replica's work to do.
     () => ({ sessionsDeleted: 0 }),
     LEASE_MS,
   );
+
+  console.log(
+    JSON.stringify({
+      job: LEASE_NAME,
+      durationMs: Date.now() - startedAt,
+      itemsProcessed: outcome.sessionsDeleted,
+      outcome: "ok",
+    }),
+  );
+
+  return outcome;
 }

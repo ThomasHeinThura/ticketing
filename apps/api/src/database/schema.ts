@@ -943,13 +943,18 @@ export const organisationTable = pgTable(
 // scope." `data-protection.md` § Legal hold is the operator-facing account of the same
 // thing (the God Mode *Place on hold* action).
 //
-// Read today, by `delete-purged-rows.ts`; not yet written, because placing a hold is
-// specified as audited (`legal_hold.placed` / `legal_hold.lifted`) and this repository has
-// no audit-log write path yet -- there is no `audit_log` table and no appender anywhere in
-// `apps/api`. The table lands first so the purge is correct by construction rather than
-// being patched to honour holds later; placing and lifting follow the audit-log writer
-// (issue #37's remaining scope), tracked on #198. A hold inserted directly by SQL is
-// already honoured, which is what its integration test does.
+// Read today, by `apps/api/src/scheduler/session-cleanup.ts`; not yet written, because
+// placing a hold is specified as audited (`legal_hold.placed` / `legal_hold.lifted`) and
+// this repository has no audit-log write path yet -- there is no `audit_log` table and no
+// appender anywhere in `apps/api`. The table lands first so the purge is correct by
+// construction rather than being patched to honour holds later; placing and lifting follow
+// the audit-log writer (issue #37's remaining scope), tracked on #198. A hold inserted
+// directly by SQL is already honoured, which is what its integration test does.
+//
+// Columns are exactly `data-model.md` §2's list -- no `created_at`/`updated_at`, which the
+// repo-wide convention asks for but this table's own authoritative row shape does not name,
+// and do-not 11 makes the per-table document the authority. `placed_at`/`lifted_at` are the
+// timestamps that carry meaning here (`lifted_at IS NULL` is what "open" means).
 export const legalHoldTable = pgTable(
   "legal_hold",
   {
