@@ -1830,8 +1830,8 @@ export const workItemTable = pgTable(
       sql`${table.customerVisibility} in ('private', 'organisation')`,
     ),
     // #189 S9 -- `position numeric(20,10)` accepted `NaN`, which Postgres sorts greater
-    // than every non-NaN value, so one bad row would pin itself to the end of every
-    // `ORDER BY position` for ever.
+    // than every non-NaN value, so one bad row would head every `ORDER BY position desc`
+    // and tail every `ORDER BY position asc` for ever.
     //
     // NOT the `CHECK (position = position)` the issue suggested: that is an IEEE-754
     // trick and does not work here. Postgres deviates from IEEE for `numeric` precisely
@@ -1847,8 +1847,11 @@ export const workItemTable = pgTable(
     // and no trigger assigns it yet (`work_item.key`'s assignment trigger is #23's later
     // work; nothing in the schema computes `number` today), so a direct insert could
     // write `0` or a negative. `data-model.md` §4 / `work-items.md` `WI-2`: "`number`
-    // comes from `project.last_work_item_number` incremented", and `last_work_item_number`
-    // is `notNull().default(0)`, so the first assignment is 1. The rendered key is
+    // comes from `project.last_work_item_number` incremented". No column of that name
+    // exists yet -- the live column is `project.last_task_number`
+    // (`lastTaskNumber: integer("last_task_number").notNull().default(0)`), inherited
+    // from kaneo and still named for the v1 concept; #23 owns introducing the v2 name
+    // and the assignment. Either way the first assignment is 1. The rendered key is
     // `{project.key}-{number}`, which must never be `...-0` or `...--1`.
     check("work_item_number_positive", sql`${table.number} > 0`),
   ],
