@@ -280,16 +280,67 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
 
       await runSessionCleanup();
 
+      const lines = logged.mock.calls
+        .map((call) => String(call[0]))
+        .filter((text) => text.includes('"job":"session-cleanup"'));
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0] as string)).toMatchObject({
+        job: "session-cleanup",
+        itemsProcessed: 1,
+        outcome: "ok",
+      });
+      expect(typeof JSON.parse(lines[0] as string).durationMs).toBe("number");
+      logged.mockRestore();
+    });
+
+    it("logs the run that deletes nothing too — that is the line proving the schedule fires", async () => {
+      await createWorkspaceMember();
+      const logged = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      await runSessionCleanup();
+
       const line = logged.mock.calls
         .map((call) => String(call[0]))
         .find((text) => text.includes('"job":"session-cleanup"'));
       expect(line).toBeDefined();
       expect(JSON.parse(line as string)).toMatchObject({
         job: "session-cleanup",
-        itemsProcessed: 1,
+        itemsProcessed: 0,
         outcome: "ok",
       });
-      expect(typeof JSON.parse(line as string).durationMs).toBe("number");
+      logged.mockRestore();
+    });
+
+    it("logs a failing run with outcome 'failed', so the field is not permanently 'ok'", async () => {
+      const member = await createWorkspaceMember();
+      await makeSession(member.user.id, true);
+      const logged = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      // Force the DELETE itself to fail, through the real code path rather than a mock --
+      // `db.execute` is not spy-able on this driver's default export. Renaming the table makes
+      // the statement genuinely raise, which is what a real failure looks like; the rename is
+      // undone in `finally` so it cannot leak into another test in this shared database.
+      await db.execute(
+        sql`ALTER TABLE "session" RENAME TO "session_hidden_for_test";`,
+      );
+      try {
+        await expect(runSessionCleanup()).rejects.toThrow();
+      } finally {
+        await db.execute(
+          sql`ALTER TABLE "session_hidden_for_test" RENAME TO "session";`,
+        );
+      }
+
+      const line = logged.mock.calls
+        .map((call) => String(call[0]))
+        .find((text) => text.includes('"job":"session-cleanup"'));
+      expect(line).toBeDefined();
+      expect(JSON.parse(line as string)).toMatchObject({
+        job: "session-cleanup",
+        itemsProcessed: null,
+        outcome: "failed",
+      });
+
       logged.mockRestore();
     });
 

@@ -951,10 +951,13 @@ export const organisationTable = pgTable(
 // the audit-log writer (issue #37's remaining scope), tracked on #198. A hold inserted
 // directly by SQL is already honoured, which is what its integration test does.
 //
-// Columns are exactly `data-model.md` §2's list -- no `created_at`/`updated_at`, which the
-// repo-wide convention asks for but this table's own authoritative row shape does not name,
-// and do-not 11 makes the per-table document the authority. `placed_at`/`lifted_at` are the
-// timestamps that carry meaning here (`lifted_at IS NULL` is what "open" means).
+// Columns are exactly `data-model.md` §2's list for this table. That list does not name
+// `created_at`/`updated_at`, which the same document's Conventions section asks of tables
+// generally, so the two readings disagree and this follows the per-table one: it is the more
+// specific statement, and do-not 11 makes `data-model.md` the authority for a table's columns.
+// `placed_at`/`lifted_at` are the timestamps that carry meaning here (`lifted_at IS NULL` is
+// what "open" means). Recorded as a choice rather than left as an unexplained omission — an
+// independent review of #208 asked, and the document does not settle it.
 export const legalHoldTable = pgTable(
   "legal_hold",
   {

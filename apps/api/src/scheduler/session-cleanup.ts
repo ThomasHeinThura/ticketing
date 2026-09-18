@@ -108,29 +108,50 @@ export async function deleteExpiredSessions(): Promise<number> {
  * Emits the structured log line `background-jobs.md` § Observability requires of every run:
  * job name, duration, items processed and outcome. A run that deletes rows is destructive, so
  * it is never silent — including the run that deletes nothing, which is the one that tells an
- * operator the schedule is firing at all. The Prometheus counters and the OTel span that
- * section also names are the seam `observability.md` owns; they are not invented here, and
- * this log is what they will replace rather than sit beside.
+ * operator the schedule is firing at all, and including the run that fails, whose line is why
+ * `outcome` is a field that can ever hold anything but `"ok"`.
+ *
+ * Deliberately absent from the line: `traceId`. The same section names it, but there is no
+ * tracing configured anywhere in this process to take one from, and inventing a field that is
+ * always empty is worse than leaving it out with a reason. `traceId`, the Prometheus counters
+ * and the OTel span are all the same seam — `observability.md`'s — and land together, at
+ * which point this line becomes theirs rather than sitting beside them.
  */
-export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
-  const startedAt = Date.now();
-
-  const outcome = await withJobLease(
-    LEASE_NAME,
-    async () => ({ sessionsDeleted: await deleteExpiredSessions() }),
-    // Held elsewhere: not an error, and not this replica's work to do.
-    () => ({ sessionsDeleted: 0 }),
-    LEASE_MS,
-  );
-
+export function logRun(
+  startedAt: number,
+  itemsProcessed: number | null,
+  outcome: "ok" | "failed",
+): void {
   console.log(
     JSON.stringify({
       job: LEASE_NAME,
       durationMs: Date.now() - startedAt,
-      itemsProcessed: outcome.sessionsDeleted,
-      outcome: "ok",
+      itemsProcessed,
+      outcome,
     }),
   );
+}
 
-  return outcome;
+export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
+  const startedAt = Date.now();
+
+  try {
+    const outcome = await withJobLease(
+      LEASE_NAME,
+      async () => ({ sessionsDeleted: await deleteExpiredSessions() }),
+      // Held elsewhere: not an error, and not this replica's work to do.
+      () => ({ sessionsDeleted: 0 }),
+      LEASE_MS,
+    );
+
+    logRun(startedAt, outcome.sessionsDeleted, "ok");
+    return outcome;
+  } catch (error) {
+    // The scheduler's own wrapper logs the failure too; this line is not a duplicate of it but
+    // the structured record `background-jobs.md` asks of *every* run. `itemsProcessed` is
+    // genuinely unknown here — the statement either completed or it did not — so it reports
+    // null rather than a fabricated 0.
+    logRun(startedAt, null, "failed");
+    throw error;
+  }
 }
