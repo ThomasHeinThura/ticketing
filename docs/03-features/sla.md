@@ -102,7 +102,12 @@ an event once, and for list filtering. It is never the answer to "what is the st
 - `SLA-14` `sla-scan` runs every 5 minutes and compares computed state against
   `work_item_sla_cache`.
 - `SLA-15` On a transition into `at_risk`, emit `sla.at_risk`. Into `breached`, emit
-  `sla.breached`. Once each, per work item, per metric.
+  `sla.breached`. Once each, per work item, per metric. *(Clarified 2026-09-18 during the
+  P2 domain build: "once each" means per **transition into** the state — the scan fires
+  nothing while a state merely persists, but a genuine state change re-fires the edge. A
+  breached item can retreat to `at_risk` — pauses lower the consumed proportion — and
+  breach again; that second breach is a real `sla.breached`. The cache stores only the
+  current state, so this edge reading is the one its shape supports.)*
 - `SLA-16` Events fan out to notifications, webhooks and the escalation path.
 - `SLA-17` Escalation follows the project's stakeholder escalation order, waiting the
   configured interval between levels.
