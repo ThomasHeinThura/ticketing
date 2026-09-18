@@ -18,8 +18,10 @@ async function upsertWorkflowRule({
   // #202: this route's subject IS a project (`workspaceAccess.fromProject`), so a
   // soft-deleted project's automation must be frozen for its 30-day recovery window
   // (#187, PR-16) -- without this, a new rule could still be created against a
-  // project that every read path already treats as gone. Checked before the column
-  // lookup, so a deleted project cannot be told apart from a foreign column.
+  // project that every read path already treats as gone. Deliberately checked before
+  // the column lookup below, so a caller cannot use this route to probe whether a
+  // given column id belongs to a soft-deleted project: that request gets 404, not the
+  // 400 the column check would otherwise produce.
   await getProjectWorkspaceId(projectId);
 
   const targetColumn = await db.query.columnTable.findFirst({

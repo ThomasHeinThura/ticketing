@@ -35,8 +35,10 @@ const getColumnsRoute = createRoute({
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("No access to the project's workspace"),
-    // #202: newly reachable. Before it, a nonexistent -- or soft-deleted -- project
-    // returned 200 with an empty board. It now answers 404 like `get-project.ts`.
+    // #202: newly reachable. This route answered 200 with an empty board for a
+    // soft-deleted project until #202; it now answers 404. A *nonexistent* project
+    // has always answered 400 -- `workspaceAccess.fromProject` fails before the
+    // handler runs -- so 404 on this route means "soft-deleted", not "unknown".
     404: errorResponse("Project not found"),
   },
 });
