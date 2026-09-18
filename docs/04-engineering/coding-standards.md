@@ -178,6 +178,24 @@ No circular imports. The dependency-cruiser check fails the build on one.
 - Every foreign key declares its `ON DELETE`.
 - Index anything you filter, sort or join on. Verify with `EXPLAIN`.
 - `timestamptz`, always UTC.
+- Some columns predate that rule and are `timestamp` (without time zone) —
+  `session.expires_at`, `job_lease.expires_at`, `task.due_date`. Those hold **UTC wall
+  clock**, because Drizzle writes them through `PgTimestamp.mapToDriverValue`
+  (`Date.prototype.toISOString()`) and reads them back with `mapFromDriverValue`, which
+  re-attaches `+0000`.
+- **Compare such a column with `now() AT TIME ZONE 'UTC'`, never with a bare `now()`** —
+  `dbNowUtc()` in `apps/api/src/utils/db-time.ts`. `now()` is `timestamptz`, so a bare
+  comparison coerces the column through the session's `TimeZone`: on a database server ahead
+  of UTC a row that expires in an hour compares as already expired, which for the
+  `session-cleanup` purge means deleting live sessions, and behind UTC the purge never fires.
+  Nothing in `Dockerfile`, `deploy/` or `charts/` pins the server's `TZ`.
+- **Never bind a raw JS `Date` into a `timestamp` column from a raw `sql` template.**
+  Drizzle's `noopEncoder` passes the `Date` straight to `pg`, which serializes it in the
+  *process's* time zone and appends the offset; PostgreSQL then drops the offset for a
+  `timestamp` column, so the value stored depends on the application container's `TZ`. Bind
+  `date.toISOString()`, use the query builder (which applies the column's encoder), or have
+  the database compute the instant. Found in `withJobLease`'s lease INSERT, which wrote
+  `18:30:00` for a `12:00:00Z` expiry under `TZ=Asia/Yangon`.
 - Money `numeric(14,4)`. Durations integer minutes. Never floats for either.
 
 ## Security
