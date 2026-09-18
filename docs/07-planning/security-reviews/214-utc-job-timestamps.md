@@ -1,6 +1,6 @@
 # Pre-merge security review — PR #214 (UTC timestamps for the time-gated jobs)
 
-**Reviewed head:** `5586056` (see below — **no security review has been performed yet**)
+**Reviewed head:** none — **no security review has been performed**, so this field cannot be filled honestly. `check:pr-template` requires a forty-character SHA here and rejects a note without one, which means the required `pull request template + security review` check on PR #214 is **correctly red** and must stay red until an Opus review runs and writes its verdict below. Do not "fix" that red by inventing a head, and do not weaken the gate to let a pending note pass.
 
 ## Status: SECURITY REVIEW PENDING — OPUS CAPACITY
 
