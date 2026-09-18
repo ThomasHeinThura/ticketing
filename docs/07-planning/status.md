@@ -46,7 +46,7 @@ resolved.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-17 (later the same day, a fourth time)
+**Last updated:** 2026-09-18 (the eleventh pass)
 **Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** Issue #187
 (the live `project` table's hard-delete route was made destructive by #185's
 `work_item.project_id` CASCADE) is closed: `project` now has its own `deleted_at`/
@@ -54,7 +54,15 @@ resolved.
 a project or its children treats a soft-deleted one as gone. This is unrelated to #23's own
 schema work above — a pre-existing gap in the live `project` table that #185's new FK
 simply made consequential, not one of #23's own integrity findings.
-**Updated by:** Claude Code (Sonnet), reconciliation after **PR #200 merged**. Full
+**Updated by:** GitHub Copilot (DeepSeek V4.1 Flash), the orchestrating session for the P1
+mandate. **Not Claude** — Claude was unavailable this session, and the real model is named
+here because that is the standing instruction. Three independent ordinary reviews were run
+through available non-Claude contexts (all named on their pull requests); **no Opus security
+review was possible**, so two candidates are marked
+`SECURITY REVIEW PENDING — OPUS CAPACITY` and neither may be merged. The previous pass's
+record of PR #200 below is preserved unchanged, since nothing in this session revisited it.
+
+**Previous pass — Updated by:** Claude Code (Sonnet), reconciliation after **PR #200 merged**. Full
 mandatory tier (2 Sonnet + Opus, since the change touches a migration). Round 1 found real,
 overlapping gaps across all three reviewers: task/column creation and several read paths
 (task listing/export, global search, project reorder) didn't check `deletedAt`, live-
@@ -1089,10 +1097,7 @@ Newest first. One entry per working session.
 
 Continuing autonomously under the P1 mandate. Three things moved.
 
-**Two independent ordinary reviews, run and recorded — and Claude was not available for
-either.** Both ran in GitHub Copilot contexts (**DeepSeek V4.1 Flash**), named on the pull
-requests because recording the real model is required. Neither is a Claude review and
-neither is a security review.
+**Three independent ordinary reviews across the two candidates, run and recorded — and Claude was not available for any of them.** All three ran in GitHub Copilot contexts (**DeepSeek V4.1 Flash**), named on the pull requests because the standing session instruction requires the real model and context to be recorded. None is a Claude review and none is a security review.
 
 - **PR #215** (work-item integrity constraints) received **two** reviews, at the tier its
   classification calls for (it touches a migration and `apps/api/src/database/**`): a
@@ -1106,8 +1111,10 @@ neither is a security review.
   reviewer constructed, but because the repository's own integration suite goes red whenever
   the database session timezone is not UTC: the lease *fixtures* still wrote session-local
   `now()`. Reproduced in both directions (`Asia/Kolkata` and `America/Denver` failing
-  opposite tests), remediated, and re-verified green in both — full suite **60 files / 533
-  tests** under `Asia/Kolkata`.
+  opposite tests), remediated, and re-verified — the **full suite under `Asia/Kolkata`
+  (60 files / 533 tests, green)** and the **targeted lease/session set under
+  `America/Denver` with `TZ=America/New_York` (12 tests, green)**. Both were failing on the
+  reviewed head; neither is now.
 
 **#192 written up as a decision for Thomas**, not decided by an agent — see **Blocked**. The
 new evidence in that write-up is that the missing link is not one unscoped foreign key: the
