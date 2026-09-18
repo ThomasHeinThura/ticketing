@@ -30,13 +30,31 @@ set -e
 # base, so by its own help text "staged and unstaged changes are not included" and it would
 # check nothing at commit time.
 #
-# `core.quotePath` must be off, or a whole class of file is silently not checked. Git quotes
-# any path containing non-ASCII bytes, a quote, a backslash or a control character, and biome
-# asks git for the staged list and takes that quoted form back, so those paths resolve to
-# nothing: a staged, unformatted `ünïcødé.ts` exits 0 with quoting on and 1 with it off
-# (measured through a real `git commit`, which commits the unformatted bytes either way).
-# `GIT_CONFIG_*` is how the setting reaches biome's own git child process without writing to
-# anybody's repository config, and it is honoured by every git child this script starts.
+# `core.quotePath` must be off, or every file with a non-ASCII name is silently not checked.
+# Git escapes bytes >= 0x80 in the paths it prints, biome asks git for the staged list and
+# takes that escaped form back, so those paths resolve to nothing and biome reports "Checked
+# 0 files" — exit 0. Measured through a real `git commit`: an unformatted `ünïcødé.ts` is
+# refused with this set and committed without it. `GIT_CONFIG_*` is how the setting reaches
+# biome's own git child process without writing to anybody's repository config.
+#
+# Two residuals, stated because the alternative is a comment that claims more than it does:
+#
+#   1. `core.quotePath` governs ONLY bytes >= 0x80. Git quotes a `"`, a `\` or a control
+#      character whatever it is set to, and biome — invoked without `-z` — drops those paths
+#      the same way. A filename with a trailing space is dropped by biome even unquoted. So
+#      a staged, unformatted file named e.g. `has"quote.ts` is still committed with this hook
+#      silent. No `GIT_CONFIG_*` value closes that; closing it needs the staged list read with
+#      `-z`, which means not using biome's `--staged` at all.
+#   2. Verified impact of both: `biome ci .` — what CI runs — exits 1 on each of them, because
+#      it walks the filesystem and never asks git. CI is the gate; this hook is the fast echo,
+#      and a hole it has that CI does not share is friction, not a way for unformatted code to
+#      reach `main`.
+#
+# `GIT_CONFIG_COUNT=1` overwrites rather than appends, so a caller who injected their own
+# `GIT_CONFIG_*` entries loses them for biome's git child. Accepted rather than worked around:
+# this script makes no git call before the exports, nothing it drops is read by `git diff
+# --name-only`, and a pre-commit hook is a child of `git commit`, so it cannot alter what that
+# commit records.
 #
 # Scope, stated precisely because it is a real limit: `--staged` takes the file *list* from
 # the index but reads file *contents* from the working tree. A file staged with one content
