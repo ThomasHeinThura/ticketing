@@ -8,24 +8,33 @@ set -e
 # work, and the only way out was `--no-verify`, which skips the check on the staged files
 # too. A hook that is wrong about when it fires trains people to bypass the gate it is.
 #
-# `biome ci` has no `--staged` flag (verified against biome 2.5.7: "Error: no such flag:
-# `--staged`, did you mean `--changed`?"), and `--changed` is the wrong shape here — it
-# diffs against a merge base, so it ignores staged changes entirely and would check nothing
-# at commit time. `biome check --staged` is the one that means "the files in this commit".
+# `--no-errors-on-unmatched` is load-bearing, not tidiness. `biome check --staged` exits
+# non-zero with "No files were processed in the specified paths" when the staged set holds
+# nothing biome handles, which is enough to refuse a legitimate commit.
 #
-# CI still runs the whole-repo `pnpm lint:ci` (`biome ci .`) over a fresh checkout; that is
-# the gate. This hook is its fast local echo, and the two now agree about their scope.
-STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
-
-if [ -z "$STAGED" ]; then
-  exit 0
-fi
-
-# `biome check --staged` exits non-zero when the staged set holds no file it handles
-# (documents only, say). That is not a lint failure and must not block the commit.
-if ! printf '%s\n' "$STAGED" | grep -qE '\.(js|jsx|ts|tsx|mjs|cjs|json|jsonc|css)$'; then
-  exit 0
-fi
-
-pnpm exec biome check --staged
+# Filtering the file list ourselves was tried first and was wrong in three directions at
+# once, each reproduced:
+#   - a hand-written extension list omits files biome handles (`.mts`), so an unformatted
+#     staged `.mts` was committed with the hook silently passing it;
+#   - it disagrees with `biome.json`'s own exclusions (`package.json`, `tsconfig*.json`,
+#     `routeTree.gen.ts`, `openapi.json`, `**/*.css`), so it *refused* a dependency bump —
+#     staged `package.json` and `pnpm-lock.yaml` alone, one of the commonest commit shapes
+#     in this repository (2 of the last 292 commits);
+#   - `git diff --cached --name-only` quotes unusual paths, so a non-ASCII filename failed
+#     the guard and disabled the check entirely.
+# Letting biome decide what it handles removes the list, the disagreement and the false
+# positive together.
+#
+# `biome ci` has no `--staged` flag (biome 2.5.7: "Error: no such flag: `--staged`, did you
+# mean `--changed`?"), and `--changed` is the wrong shape here — it diffs against a merge
+# base, so by its own help text "staged and unstaged changes are not included" and it would
+# check nothing at commit time.
+#
+# Scope, stated precisely because it is a real limit: `--staged` takes the file *list* from
+# the index but reads file *contents* from the working tree. A file staged with one content
+# and then edited on disk is checked as it is on disk, not as it will be committed. That is
+# inherited from `biome ci .`, not introduced here, and it is why CI still runs the
+# whole-checkout `pnpm lint:ci` (`biome ci .`) as the actual gate: a fresh checkout has
+# neither untracked files nor a divergent working tree, so it checks the committed bytes.
+pnpm exec biome check --staged --no-errors-on-unmatched
 
