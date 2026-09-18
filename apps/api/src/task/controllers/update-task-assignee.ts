@@ -27,16 +27,22 @@ async function updateTaskAssignee({
     });
   }
 
+  // #202: unconditional, and hoisted above the early return below. It used to run
+  // only when an assignee was actually being set (`getProjectWorkspaceId` was called
+  // inside `if (nextAssigneeId)`), so *unassigning* a task in a soft-deleted project
+  // slipped through the freeze entirely (#187, PR-16). The returned workspace id is
+  // reused by `assertAssignableUser` rather than looked up a second time.
+  const projectWorkspaceId = await getProjectWorkspaceId(
+    existingTask.projectId,
+  );
+
   const nextAssigneeId = userId?.trim() || null;
   if (existingTask.userId === nextAssigneeId) {
     return existingTask;
   }
 
   if (nextAssigneeId) {
-    await assertAssignableUser(
-      nextAssigneeId,
-      await getProjectWorkspaceId(existingTask.projectId),
-    );
+    await assertAssignableUser(nextAssigneeId, projectWorkspaceId);
   }
 
   const [updatedTask] = await db

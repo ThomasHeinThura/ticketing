@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import {
@@ -760,7 +760,17 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
         workspaceTable,
         eq(projectTable.workspaceId, workspaceTable.id),
       )
-      .where(eq(taskTable.id, id))
+      .where(
+        and(
+          eq(taskTable.id, id),
+          // #202: a task inside a soft-deleted project is frozen for its project's
+          // 30-day recovery window (#187, PR-16), so no upload URL may be minted for
+          // it either. `getProjectWorkspaceId`, which the other task routes use, is
+          // not reachable here -- this handler needs the project and workspace ids
+          // in the same row -- so the exclusion is applied directly.
+          isNull(projectTable.deletedAt),
+        ),
+      )
       .limit(1);
 
     if (!taskContext) {
@@ -821,7 +831,15 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
         workspaceTable,
         eq(projectTable.workspaceId, workspaceTable.id),
       )
-      .where(eq(taskTable.id, id))
+      .where(
+        and(
+          eq(taskTable.id, id),
+          // #202: same exclusion as the create-upload handler above, and for the same
+          // reason -- without it, an already-uploaded key could still be finalized
+          // into a stored asset belonging to a soft-deleted project's task.
+          isNull(projectTable.deletedAt),
+        ),
+      )
       .limit(1);
 
     if (!taskContext) {

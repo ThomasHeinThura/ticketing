@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { columnTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
 import { assertValidTaskStatus } from "../validate-task-fields";
 
 async function updateTaskStatus({
@@ -23,6 +24,11 @@ async function updateTaskStatus({
       message: "Task not found",
     });
   }
+
+  // #202: a task inside a soft-deleted project is frozen for its project's 30-day
+  // recovery window (#187, PR-16). `getProjectWorkspaceId` applies that exclusion
+  // and throws 404; the workspace id itself isn't needed here.
+  await getProjectWorkspaceId(existingTask.projectId);
 
   await assertValidTaskStatus(status, existingTask.projectId);
 

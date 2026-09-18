@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable } from "../../database/schema";
@@ -8,7 +8,15 @@ async function archiveProject(id: string, workspaceId: string) {
     .select()
     .from(projectTable)
     .where(
-      and(eq(projectTable.id, id), eq(projectTable.workspaceId, workspaceId)),
+      and(
+        eq(projectTable.id, id),
+        eq(projectTable.workspaceId, workspaceId),
+        // #202: a soft-deleted project is gone for ordinary use during its 30-day
+        // recovery window (#187, PR-16) -- archiving one would set `archived_at`
+        // on a row no read path will ever show again. Same exclusion
+        // `get-project.ts` applies.
+        isNull(projectTable.deletedAt),
+      ),
     );
 
   if (!existingProject) {

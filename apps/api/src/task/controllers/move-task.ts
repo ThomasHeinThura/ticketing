@@ -1,4 +1,4 @@
-import { and, asc, eq, max } from "drizzle-orm";
+import { and, asc, eq, isNull, max } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -106,12 +106,23 @@ async function moveTask({
     });
   }
 
+  // #202: both ends are checked. #187's `deleted_at` window (PR-16) means a
+  // soft-deleted project is gone for ordinary use, so it can neither be a move's
+  // source nor its destination -- otherwise this route would be a way to pull a
+  // task *out* of a deleted project (and back in) during the recovery window.
+  // Either lookup coming back empty falls through to the same 404 below.
   const [sourceProject, destinationProject] = await Promise.all([
     db.query.projectTable.findFirst({
-      where: eq(projectTable.id, existingTask.projectId),
+      where: and(
+        eq(projectTable.id, existingTask.projectId),
+        isNull(projectTable.deletedAt),
+      ),
     }),
     db.query.projectTable.findFirst({
-      where: eq(projectTable.id, destinationProjectId),
+      where: and(
+        eq(projectTable.id, destinationProjectId),
+        isNull(projectTable.deletedAt),
+      ),
     }),
   ]);
 

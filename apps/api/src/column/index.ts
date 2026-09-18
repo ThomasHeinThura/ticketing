@@ -35,6 +35,11 @@ const getColumnsRoute = createRoute({
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("No access to the project's workspace"),
+    // #202: newly reachable. This route answered 200 with an empty board for a
+    // soft-deleted project until #202; it now answers 404. A *nonexistent* project
+    // has always answered 400 -- `workspaceAccess.fromProject` fails before the
+    // handler runs -- so 404 on this route means "soft-deleted", not "unknown".
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -92,6 +97,8 @@ const reorderColumnsRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    // #202: newly reachable -- a soft-deleted project's board is frozen.
+    404: errorResponse("Project not found"),
   },
 });
 
