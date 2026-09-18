@@ -1242,8 +1242,8 @@ export const workItemTypeTable = pgTable(
       table.key,
     ),
     // #189 S7 -- `data-model.md` §4 states `category` (`service`|`delivery`) verbatim,
-    // and §2's own convention is "Enumerations are Postgres enums or `CHECK`
-    // constraints, never free text". A `CHECK`, not a Postgres enum type, so every
+    // and the document's Conventions section requires "Enumerations are Postgres enums or
+    // `CHECK` constraints, never free text". A `CHECK`, not a Postgres enum type, so every
     // vocabulary this migration constrains uses one mechanism.
     check(
       "work_item_type_category_allowed",
@@ -1809,7 +1809,7 @@ export const workItemTable = pgTable(
     })
       .onDelete("restrict")
       .onUpdate("no action"),
-    // #189 S7 -- `data-model.md` §2: "Enumerations are Postgres enums or `CHECK`
+    // #189 S7 -- `data-model.md` Conventions: "Enumerations are Postgres enums or `CHECK`
     // constraints, never free text. **Priority** is the ordered enum
     // `low < medium < high < urgent` -- ordering is load-bearing for the customer
     // escalate-only rule and for every importer's mapping."
