@@ -1,5 +1,6 @@
 import { Cron } from "croner";
 import { checkDueDateReminders } from "./due-date-reminders";
+import { runSessionCleanup } from "./session-cleanup";
 
 const jobs: Cron[] = [];
 
@@ -36,7 +37,15 @@ export function initializeScheduler(): void {
       withCheckIn("due-date-reminders", checkDueDateReminders),
     ),
   );
-  console.log("⏰ Scheduler started (due-date reminders every 5 minutes)");
+  // `background-jobs.md`'s cadence table: `session-cleanup`, daily 03:15, lease 5 min.
+  // The lease is taken inside the handler (`withJobLease`), not here, so every replica
+  // registers the cron and one of them does the work.
+  jobs.push(
+    new Cron("15 3 * * *", withCheckIn("session-cleanup", runSessionCleanup)),
+  );
+  console.log(
+    "⏰ Scheduler started (due-date reminders every 5 minutes, session cleanup daily 03:15)",
+  );
 }
 
 /**

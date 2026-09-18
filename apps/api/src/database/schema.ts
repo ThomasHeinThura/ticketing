@@ -938,6 +938,56 @@ export const organisationTable = pgTable(
   ],
 );
 
+// data-model.md §2: "An **open** row (`lifted_at is null`) suspends `audit-purge`, the
+// soft-delete purge in `session-cleanup`, `attachment-gc` and every hard delete for that
+// scope." `data-protection.md` § Legal hold is the operator-facing account of the same
+// thing (the God Mode *Place on hold* action).
+//
+// Read today, by `delete-purged-rows.ts`; not yet written, because placing a hold is
+// specified as audited (`legal_hold.placed` / `legal_hold.lifted`) and this repository has
+// no audit-log write path yet -- there is no `audit_log` table and no appender anywhere in
+// `apps/api`. The table lands first so the purge is correct by construction rather than
+// being patched to honour holds later; placing and lifting follow the audit-log writer
+// (issue #37's remaining scope), tracked on #198. A hold inserted directly by SQL is
+// already honoured, which is what its integration test does.
+export const legalHoldTable = pgTable(
+  "legal_hold",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    // `organisation` | `person` -- a CHECK rather than free text, per data-model.md's
+    // "never free text" convention for closed vocabularies. Restricted here and nowhere
+    // else, because both the purge and (later) the placement route branch on it.
+    scope: text("scope").notNull(),
+    // The `organisation.id` or `person.id` the hold applies to. Deliberately NOT a foreign
+    // key: one column cannot reference two tables, and data-model.md specifies a single
+    // polymorphic `scope_id`. The purge resolves it per scope, and a scope_id naming a row
+    // that no longer exists simply matches nothing.
+    scopeId: text("scope_id").notNull(),
+    // The acting user's id. Not yet an FK to `person`: `resolveIdentity` -- the thing that
+    // turns a session into a person -- does not exist in `apps/api` yet, so there is no
+    // reliable person id to store at the point this is written.
+    placedBy: text("placed_by").notNull(),
+    placedAt: timestamp("placed_at", { mode: "date" }).defaultNow().notNull(),
+    reason: text("reason").notNull(),
+    liftedBy: text("lifted_by"),
+    liftedAt: timestamp("lifted_at", { mode: "date" }),
+  },
+  (table) => [
+    // data-model.md § Indexing: "create unique index on legal_hold (scope, scope_id) where
+    // lifted_at is null" -- at most one OPEN hold per scope. Lifting and re-placing is
+    // therefore always possible; two simultaneous open holds on one scope never are.
+    uniqueIndex("legal_hold_scope_scope_id_open_unique")
+      .on(table.scope, table.scopeId)
+      .where(sql`${table.liftedAt} is null`),
+    check(
+      "legal_hold_scope_check",
+      sql`${table.scope} in ('organisation', 'person')`,
+    ),
+  ],
+);
+
 export const personTable = pgTable(
   "person",
   {
