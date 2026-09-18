@@ -1,0 +1,547 @@
+/**
+ * #202 (follow-up to #187 / PR-16): a soft-deleted project must be frozen *everywhere*
+ * in ordinary use, not only on the read/write paths PR #200 fixed.
+ *
+ * `docs/03-features/projects-and-engagements.md` PR-16 makes deletion soft for 30 days,
+ * and PR #200's own convention (`get-project.ts`, `get-tasks.ts`, `export-tasks.ts`,
+ * `global-search.ts`, `reorder-projects.ts`, `getProjectWorkspaceId`) is that a
+ * soft-deleted project is treated as gone. Both of PR #200's reviewers found routes that
+ * still did not apply that convention, and this file pins each one:
+ *
+ *   update / archive / unarchive project, get / update / delete / reorder columns,
+ *   and every task route that resolves by task id (get, update, delete, status,
+ *   priority, title, description, due date, assignee, move) plus import and bulk.
+ *
+ * Every assertion is a two-part claim: the route now answers 404 (or, for bulk, skips the
+ * row), AND the row it would have changed is byte-for-byte unchanged. A 404 alone would
+ * also be produced by a route that rejected the request for an unrelated reason.
+ */
+import { eq } from "drizzle-orm";
+import { beforeEach, describe, expect, it } from "vitest";
+import db, { schema } from "../../apps/api/src/database";
+import { createApp } from "../../apps/api/src/index";
+import { mockAuthenticatedSession } from "./helpers/auth";
+import { resetTestDatabase } from "./helpers/database";
+import {
+  createProjectFixture,
+  createWorkspaceMember,
+} from "./helpers/fixtures";
+
+function jsonRequest(
+  path: string,
+  method: "post" | "put" | "patch" | "delete",
+  body?: unknown,
+) {
+  const { app } = createApp();
+  return app.request(`/api${path}`, {
+    method: method.toUpperCase(),
+    ...(body === undefined
+      ? {}
+      : {
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        }),
+  });
+}
+
+function getRequest(path: string) {
+  const { app } = createApp();
+  return app.request(`/api${path}`);
+}
+
+async function softDeleteProject(projectId: string) {
+  await db
+    .update(schema.projectTable)
+    .set({ deletedAt: new Date(), purgeAfter: new Date() })
+    .where(eq(schema.projectTable.id, projectId));
+}
+
+async function reloadProject(projectId: string) {
+  const row = await db.query.projectTable.findFirst({
+    where: eq(schema.projectTable.id, projectId),
+  });
+  if (!row) {
+    throw new Error(`project ${projectId} disappeared`);
+  }
+  return row;
+}
+
+async function reloadTask(taskId: string) {
+  const row = await db.query.taskTable.findFirst({
+    where: eq(schema.taskTable.id, taskId),
+  });
+  if (!row) {
+    throw new Error(`task ${taskId} disappeared`);
+  }
+  return row;
+}
+
+async function reloadColumn(columnId: string) {
+  const row = await db.query.columnTable.findFirst({
+    where: eq(schema.columnTable.id, columnId),
+  });
+  if (!row) {
+    throw new Error(`column ${columnId} disappeared`);
+  }
+  return row;
+}
+
+type Fixture = Awaited<ReturnType<typeof createWorkspaceMember>> & {
+  project: typeof schema.projectTable.$inferSelect;
+  columns: Record<
+    "todo" | "inProgress" | "inReview" | "done",
+    typeof schema.columnTable.$inferSelect
+  >;
+  task: typeof schema.taskTable.$inferSelect;
+};
+
+/** One soft-deleted project, with one column and one task still under it. */
+async function buildDeletedProjectFixture(): Promise<Fixture> {
+  const member = await createWorkspaceMember({ role: "admin" });
+  const { project, columns } = await createProjectFixture({
+    workspaceId: member.workspace.id,
+  });
+
+  const [task] = await db
+    .insert(schema.taskTable)
+    .values({
+      projectId: project.id,
+      title: "Frozen task",
+      description: "Original description",
+      status: "to-do",
+      columnId: columns.todo.id,
+      priority: "medium",
+      number: 1,
+      position: 1,
+      // Set so the "unassign" case below is a real transition rather than an
+      // early-return no-op -- that early return is exactly where the old code
+      // skipped its guard.
+      userId: member.user.id,
+    })
+    .returning();
+
+  if (!task) {
+    throw new Error("failed to seed task");
+  }
+
+  await softDeleteProject(project.id);
+  mockAuthenticatedSession(member.user);
+
+  return { ...member, project, columns, task };
+}
+
+describe("API integration: a soft-deleted project is frozen (#202)", () => {
+  beforeEach(async () => {
+    await resetTestDatabase();
+  });
+
+  describe("project routes", () => {
+    it("refuses to rename a soft-deleted project, and leaves it unchanged", async () => {
+      const { project } = await buildDeletedProjectFixture();
+
+      const response = await jsonRequest(`/project/${project.id}`, "put", {
+        name: "Renamed while deleted",
+        icon: "Folder",
+        slug: project.slug,
+        description: "should not be stored",
+      });
+
+      expect(response.status).toBe(404);
+      const row = await reloadProject(project.id);
+      expect(row.name).toBe(project.name);
+      expect(row.description).toBe(project.description);
+    });
+
+    it("refuses to archive a soft-deleted project, and leaves archived_at null", async () => {
+      const { project } = await buildDeletedProjectFixture();
+
+      const response = await jsonRequest(
+        `/project/${project.id}/archive`,
+        "put",
+      );
+
+      expect(response.status).toBe(404);
+      const row = await reloadProject(project.id);
+      expect(row.archivedAt).toBeNull();
+    });
+
+    it("refuses to unarchive a soft-deleted project", async () => {
+      const { project } = await buildDeletedProjectFixture();
+
+      const response = await jsonRequest(
+        `/project/${project.id}/unarchive`,
+        "put",
+      );
+
+      expect(response.status).toBe(404);
+      const row = await reloadProject(project.id);
+      // Still soft-deleted, and untouched by the unarchive attempt.
+      expect(row.deletedAt).not.toBeNull();
+      expect(row.archivedAt).toBeNull();
+    });
+
+    it("reports a soft-deleted project as deleted, not as foreign, when reordering", async () => {
+      const { project, workspace } = await buildDeletedProjectFixture();
+
+      const response = await jsonRequest(
+        `/project/reorder?workspaceId=${workspace.id}`,
+        "put",
+        { projects: [{ id: project.id, position: 0 }] },
+      );
+
+      expect(response.status).toBe(400);
+      // Hono renders an HTTPException's message as plain text, not JSON.
+      const message = await response.text();
+      // The id does belong to this workspace -- it is gone, and saying otherwise
+      // sends whoever reads the error looking for the wrong problem (#202).
+      expect(message).toBe(
+        `Project ${project.id} is deleted and cannot be reordered`,
+      );
+      expect(message).not.toContain("does not belong to this workspace");
+
+      const row = await reloadProject(project.id);
+      expect(row.position).toBe(project.position);
+      expect(row.workspaceId).toBe(workspace.id);
+    });
+  });
+
+  describe("column routes", () => {
+    it("returns 404 listing a soft-deleted project's columns", async () => {
+      const { project, columns } = await buildDeletedProjectFixture();
+
+      const response = await getRequest(`/column/${project.id}`);
+
+      expect(response.status).toBe(404);
+      // The columns are still there -- they are hidden, not deleted.
+      expect((await reloadColumn(columns.todo.id)).name).toBe(
+        columns.todo.name,
+      );
+    });
+
+    it("refuses to rename a column of a soft-deleted project", async () => {
+      const { columns } = await buildDeletedProjectFixture();
+
+      const response = await jsonRequest(`/column/${columns.todo.id}`, "put", {
+        name: "Renamed while deleted",
+      });
+
+      expect(response.status).toBe(404);
+      expect((await reloadColumn(columns.todo.id)).name).toBe(
+        columns.todo.name,
+      );
+    });
+
+    it("refuses to delete a column of a soft-deleted project", async () => {
+      const { columns } = await buildDeletedProjectFixture();
+
+      const response = await jsonRequest(
+        `/column/${columns.done.id}`,
+        "delete",
+      );
+
+      expect(response.status).toBe(404);
+      expect((await reloadColumn(columns.done.id)).id).toBe(columns.done.id);
+    });
+
+    it("refuses to reorder the columns of a soft-deleted project", async () => {
+      const { project, columns } = await buildDeletedProjectFixture();
+      const before = await reloadColumn(columns.todo.id);
+
+      const response = await jsonRequest(
+        `/column/reorder/${project.id}`,
+        "put",
+        { columns: [{ id: columns.todo.id, position: 99 }] },
+      );
+
+      expect(response.status).toBe(404);
+      const after = await reloadColumn(columns.todo.id);
+      expect(after.position).toBe(before.position);
+    });
+  });
+
+  describe("task routes", () => {
+    it("returns 404 fetching a soft-deleted project's task by id", async () => {
+      const { task } = await buildDeletedProjectFixture();
+
+      const response = await getRequest(`/task/${task.id}`);
+
+      expect(response.status).toBe(404);
+    });
+
+    it("refuses to delete a soft-deleted project's task", async () => {
+      const { task } = await buildDeletedProjectFixture();
+
+      const response = await jsonRequest(`/task/${task.id}`, "delete");
+
+      expect(response.status).toBe(404);
+      // The row must survive: `getTask` (which delete-task.ts calls) is the guard.
+      expect((await reloadTask(task.id)).id).toBe(task.id);
+    });
+
+    it("refuses a full task update on a soft-deleted project's task", async () => {
+      const { task, project } = await buildDeletedProjectFixture();
+
+      const response = await jsonRequest(`/task/${task.id}`, "put", {
+        title: "Renamed while deleted",
+        description: "should not be stored",
+        projectId: project.id,
+        status: "to-do",
+        priority: "high",
+        position: 1,
+      });
+
+      expect(response.status).toBe(404);
+      const row = await reloadTask(task.id);
+      expect(row.title).toBe(task.title);
+      expect(row.priority).toBe(task.priority);
+    });
+
+    // Every single-field task route, so a new one cannot be added without a
+    // deliberate decision about whether it belongs in this list.
+    const singleFieldRoutes: ReadonlyArray<{
+      name: string;
+      path: (taskId: string) => string;
+      method: "put";
+      body: Record<string, unknown>;
+      changed: (row: typeof schema.taskTable.$inferSelect) => unknown;
+    }> = [
+      {
+        name: "title",
+        path: (id) => `/task/title/${id}`,
+        method: "put",
+        body: { title: "Renamed while deleted" },
+        changed: (row) => row.title,
+      },
+      {
+        name: "description",
+        path: (id) => `/task/description/${id}`,
+        method: "put",
+        body: { description: "Rewritten while deleted" },
+        changed: (row) => row.description,
+      },
+      {
+        name: "priority",
+        path: (id) => `/task/priority/${id}`,
+        method: "put",
+        body: { priority: "urgent" },
+        changed: (row) => row.priority,
+      },
+      {
+        name: "status",
+        path: (id) => `/task/status/${id}`,
+        method: "put",
+        body: { status: "done" },
+        changed: (row) => row.status,
+      },
+      {
+        name: "due-date",
+        path: (id) => `/task/due-date/${id}`,
+        method: "put",
+        body: { dueDate: "2030-01-01" },
+        changed: (row) => row.dueDate,
+      },
+      {
+        name: "assignee (unassign)",
+        path: (id) => `/task/assignee/${id}`,
+        method: "put",
+        body: { userId: null },
+        changed: (row) => row.userId,
+      },
+    ];
+
+    for (const route of singleFieldRoutes) {
+      it(`refuses to change a soft-deleted project's task ${route.name}`, async () => {
+        const { task } = await buildDeletedProjectFixture();
+        const before = route.changed(await reloadTask(task.id));
+
+        const response = await jsonRequest(
+          route.path(task.id),
+          route.method,
+          route.body,
+        );
+
+        expect(response.status).toBe(404);
+        const row = await reloadTask(task.id);
+        expect(route.changed(row)).toEqual(before);
+      });
+    }
+
+    it("refuses to move a soft-deleted project's task out of it", async () => {
+      const member = await createWorkspaceMember({ role: "admin" });
+      const { project: deleted, columns: deletedColumns } =
+        await createProjectFixture({
+          workspaceId: member.workspace.id,
+          name: "Deleted",
+          slug: "deleted",
+        });
+      const { project: destination } = await createProjectFixture({
+        workspaceId: member.workspace.id,
+        name: "Destination",
+        slug: "destination",
+      });
+
+      const [task] = await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: deleted.id,
+          title: "Frozen task",
+          status: "to-do",
+          columnId: deletedColumns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning();
+
+      if (!task) {
+        throw new Error("failed to seed task");
+      }
+
+      await softDeleteProject(deleted.id);
+      mockAuthenticatedSession(member.user);
+
+      const response = await jsonRequest(`/task/move/${task.id}`, "put", {
+        destinationProjectId: destination.id,
+      });
+
+      expect(response.status).toBe(404);
+      // Still under the deleted project, not smuggled into the live one.
+      expect((await reloadTask(task.id)).projectId).toBe(deleted.id);
+    });
+
+    it("refuses to move a task INTO a soft-deleted project", async () => {
+      const member = await createWorkspaceMember({ role: "admin" });
+      const { project: live, columns: liveColumns } =
+        await createProjectFixture({
+          workspaceId: member.workspace.id,
+          name: "Live",
+          slug: "live",
+        });
+      const { project: deleted } = await createProjectFixture({
+        workspaceId: member.workspace.id,
+        name: "Deleted",
+        slug: "deleted",
+      });
+
+      const [task] = await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: live.id,
+          title: "Live task",
+          status: "to-do",
+          columnId: liveColumns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning();
+
+      if (!task) {
+        throw new Error("failed to seed task");
+      }
+
+      await softDeleteProject(deleted.id);
+      mockAuthenticatedSession(member.user);
+
+      const response = await jsonRequest(`/task/move/${task.id}`, "put", {
+        destinationProjectId: deleted.id,
+      });
+
+      expect(response.status).toBe(404);
+      expect((await reloadTask(task.id)).projectId).toBe(live.id);
+    });
+
+    it("refuses to import into a soft-deleted project", async () => {
+      const { project } = await buildDeletedProjectFixture();
+
+      const response = await jsonRequest(`/task/import/${project.id}`, "post", {
+        tasks: [
+          { title: "Imported while deleted", status: "to-do", priority: "low" },
+        ],
+      });
+
+      expect(response.status).toBe(404);
+
+      const rows = await db
+        .select({ title: schema.taskTable.title })
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.projectId, project.id));
+      expect(rows.map((row) => row.title)).not.toContain(
+        "Imported while deleted",
+      );
+    });
+
+    it("skips a soft-deleted project's tasks in a bulk operation", async () => {
+      const member = await createWorkspaceMember({ role: "admin" });
+      const { project: deleted, columns: deletedColumns } =
+        await createProjectFixture({
+          workspaceId: member.workspace.id,
+          name: "Deleted",
+          slug: "deleted",
+        });
+      const { project: live, columns: liveColumns } =
+        await createProjectFixture({
+          workspaceId: member.workspace.id,
+          name: "Live",
+          slug: "live",
+        });
+
+      const [frozen] = await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: deleted.id,
+          title: "Frozen task",
+          status: "to-do",
+          columnId: deletedColumns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning();
+      const [liveTask] = await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: live.id,
+          title: "Live task",
+          status: "to-do",
+          columnId: liveColumns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning();
+
+      if (!frozen || !liveTask) {
+        throw new Error("failed to seed tasks");
+      }
+
+      await softDeleteProject(deleted.id);
+      mockAuthenticatedSession(member.user);
+
+      const response = await jsonRequest("/task/bulk", "patch", {
+        taskIds: [frozen.id, liveTask.id],
+        operation: "updatePriority",
+        value: "high",
+      });
+
+      // The live task is still updated -- one deleted project must not fail the
+      // whole batch for the caller.
+      expect(response.status).toBe(200);
+      expect((await reloadTask(frozen.id)).priority).toBe("medium");
+      expect((await reloadTask(liveTask.id)).priority).toBe("high");
+    });
+
+    it("reports 404 when every requested id belongs to a soft-deleted project", async () => {
+      const { task } = await buildDeletedProjectFixture();
+
+      const response = await jsonRequest("/task/bulk", "patch", {
+        taskIds: [task.id],
+        operation: "updatePriority",
+        value: "high",
+      });
+
+      expect(response.status).toBe(404);
+      expect((await reloadTask(task.id)).priority).toBe("medium");
+    });
+  });
+});

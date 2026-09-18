@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -47,7 +47,12 @@ async function bulkUpdateTasks({
     })
     .from(taskTable)
     .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(inArray(taskTable.id, taskIds));
+    // #202: tasks belonging to a soft-deleted project are gone for ordinary use
+    // during that project's 30-day recovery window (#187, PR-16), so a bulk
+    // operation skips them exactly as if their ids had not been sent -- and if
+    // every requested id is under a deleted project, `tasks.length === 0` below
+    // reports the same 404 a genuinely unknown id already gets.
+    .where(and(inArray(taskTable.id, taskIds), isNull(projectTable.deletedAt)));
 
   if (tasks.length === 0) {
     throw new HTTPException(404, {

@@ -5,6 +5,7 @@ import { taskTable, userTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import createNotification from "../../notification/controllers/create-notification";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
+import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
 import { parseMentionIds } from "../../utils/parse-mentions";
 
 async function updateTaskDescription({
@@ -25,6 +26,11 @@ async function updateTaskDescription({
       message: "Task not found",
     });
   }
+
+  // #202: a task inside a soft-deleted project is frozen for its project's 30-day
+  // recovery window (#187, PR-16). `getProjectWorkspaceId` applies that exclusion
+  // and throws 404; the workspace id itself isn't needed here.
+  await getProjectWorkspaceId(existingTask.projectId);
 
   const [updatedTask] = await db
     .update(taskTable)

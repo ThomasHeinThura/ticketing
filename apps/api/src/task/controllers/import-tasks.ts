@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { columnTable, projectTable, taskTable } from "../../database/schema";
@@ -27,7 +27,10 @@ async function importTasks(
   currentUserId?: string,
 ) {
   const project = await db.query.projectTable.findFirst({
-    where: eq(projectTable.id, projectId),
+    // #202: a soft-deleted project is gone for ordinary use during its 30-day
+    // recovery window (#187, PR-16), so it cannot receive an import either. Same
+    // exclusion `get-project.ts` applies.
+    where: and(eq(projectTable.id, projectId), isNull(projectTable.deletedAt)),
   });
 
   if (!project) {

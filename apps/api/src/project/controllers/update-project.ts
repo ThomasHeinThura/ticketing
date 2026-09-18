@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable } from "../../database/schema";
@@ -15,7 +15,14 @@ async function updateProject(
     .select()
     .from(projectTable)
     .where(
-      and(eq(projectTable.id, id), eq(projectTable.workspaceId, workspaceId)),
+      and(
+        eq(projectTable.id, id),
+        eq(projectTable.workspaceId, workspaceId),
+        // #202: a soft-deleted project is gone for ordinary use during its 30-day
+        // recovery window (#187, PR-16), so it cannot be renamed, re-iconed or
+        // re-described while "deleted". Same exclusion `get-project.ts` applies.
+        isNull(projectTable.deletedAt),
+      ),
     );
 
   const isProjectExisting = Boolean(existingProject);

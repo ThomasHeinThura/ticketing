@@ -1309,7 +1309,7 @@
 			"linkCopied": "Project link copied to clipboard",
 			"addProject": "Add project",
 			"deleteConfirmTitle": "Delete Project?",
-			"deleteConfirmDescription": "This will permanently remove the project and all its data. You can't undo this action.",
+			"deleteConfirmDescription": "This will hide the project and all its data immediately. It becomes eligible for permanent deletion after 30 days.",
 			"deletedToast": "Project deleted",
 			"deleteProject": "Delete Project"
 		},

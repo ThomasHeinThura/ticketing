@@ -46,15 +46,20 @@ async function updateTask(
     });
   }
 
+  // #202: unconditional, and hoisted above the assignment branch below. It used to
+  // run only when an assignee was being set (`getProjectWorkspaceId` was called
+  // inside `if (normalizedUserId)`), so a title/status/date edit with no assignee
+  // skipped the check entirely and could still write to a task in a soft-deleted
+  // project (#187, PR-16). The returned workspace id is reused by
+  // `assertAssignableUser` rather than looked up a second time.
+  const projectWorkspaceId = await getProjectWorkspaceId(projectId);
+
   await assertValidTaskStatus(status, projectId);
 
   const normalizedUserId = userId?.trim() || undefined;
 
   if (normalizedUserId) {
-    await assertAssignableUser(
-      normalizedUserId,
-      await getProjectWorkspaceId(projectId),
-    );
+    await assertAssignableUser(normalizedUserId, projectWorkspaceId);
   }
 
   const column = await db.query.columnTable.findFirst({

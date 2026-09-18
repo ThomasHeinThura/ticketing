@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable } from "../../database/schema";
@@ -51,8 +51,27 @@ async function reorderProjects(
     const foreignId = ids.find((id) => !ownedIds.has(id));
 
     if (foreignId) {
+      // #202: a soft-deleted project fails the ownership check above for the same
+      // reason a foreign one does -- `existing` excludes it by design (see the read
+      // above). Reporting it as "does not belong to this workspace" is wrong: it does
+      // belong here, it is gone (#187, PR-16). Both stay a 400 so the route's declared
+      // responses are unchanged; only the message distinguishes them.
+      const [softDeletedHere] = await tx
+        .select({ id: projectTable.id })
+        .from(projectTable)
+        .where(
+          and(
+            eq(projectTable.id, foreignId),
+            eq(projectTable.workspaceId, workspaceId),
+            isNotNull(projectTable.deletedAt),
+          ),
+        )
+        .limit(1);
+
       throw new HTTPException(400, {
-        message: `Project ${foreignId} does not belong to this workspace`,
+        message: softDeletedHere
+          ? `Project ${foreignId} is deleted and cannot be reordered`
+          : `Project ${foreignId} does not belong to this workspace`,
       });
     }
 
