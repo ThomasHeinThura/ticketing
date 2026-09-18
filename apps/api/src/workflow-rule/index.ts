@@ -32,6 +32,9 @@ const getWorkflowRulesRoute = createRoute({
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("No access to the project's workspace"),
+    // #202: newly reachable. Before it, a nonexistent -- or soft-deleted -- project
+    // returned 200 with an empty list.
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -60,6 +63,8 @@ const upsertWorkflowRuleRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    // #202: newly reachable -- a soft-deleted project's automation is frozen.
+    404: errorResponse("Project not found"),
   },
 });
 

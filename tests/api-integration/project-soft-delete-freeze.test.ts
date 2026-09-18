@@ -632,28 +632,27 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
       return payload.key;
     }
 
-    it("issues an upload URL for a live project's task", async () => {
-      const { task } = await createLiveTask();
+    it("mints an upload URL while the project is live, then refuses once it is deleted", async () => {
+      const { project, task } = await createLiveTask();
 
-      const response = await jsonRequest(
+      const liveResponse = await jsonRequest(
+        `/task/image-upload/${task.id}`,
+        "put",
+        uploadBody,
+      );
+      expect(liveResponse.status).toBe(200);
+
+      await softDeleteProject(project.id);
+
+      const frozenResponse = await jsonRequest(
         `/task/image-upload/${task.id}`,
         "put",
         uploadBody,
       );
 
-      expect(response.status).toBe(200);
-    });
-
-    it("refuses to mint an upload URL for a soft-deleted project's task", async () => {
-      const { task } = await buildDeletedProjectFixture();
-
-      const response = await jsonRequest(
-        `/task/image-upload/${task.id}`,
-        "put",
-        uploadBody,
-      );
-
-      expect(response.status).toBe(404);
+      // Only `deleted_at` differs between the two calls, so the 404 can only be the
+      // freeze -- not a malformed body and not an unconfigured storage driver.
+      expect(frozenResponse.status).toBe(404);
     });
 
     it("finalizes a key while the project is live, then refuses once it is deleted", async () => {
@@ -680,6 +679,121 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
 
       // Only `deleted_at` differs between the two calls.
       expect(frozen.status).toBe(404);
+    });
+  });
+
+  /**
+   * The workflow-rule routes were the second hole an independent reviewer found, after the
+   * image-upload pair above -- `workspaceAccess.fromProject("projectId")` makes the subject
+   * a project, but neither controller ever touched `projectTable`, so nothing in the chain
+   * applied PR #200's exclusion. Unlike the other routes here, `GET` is the sharper half:
+   * a deleted project's automation was still readable *and* a brand-new rule could still be
+   * created against it.
+   */
+  describe("workflow-rule routes", () => {
+    function upsertBody(columnId: string) {
+      return {
+        integrationType: "webhook",
+        eventType: "task.created",
+        columnId,
+      };
+    }
+
+    async function countRules(projectId: string) {
+      const rows = await db
+        .select({ id: schema.workflowRuleTable.id })
+        .from(schema.workflowRuleTable)
+        .where(eq(schema.workflowRuleTable.projectId, projectId));
+      return rows.length;
+    }
+
+    it("lists a live project's rules, then 404s once the project is deleted", async () => {
+      const { project, columns } = await (async () => {
+        const member = await createWorkspaceMember({ role: "admin" });
+        const fixture = await createProjectFixture({
+          workspaceId: member.workspace.id,
+        });
+        mockAuthenticatedSession(member.user);
+        return fixture;
+      })();
+
+      const created = await jsonRequest(
+        `/workflow-rule/${project.id}`,
+        "put",
+        upsertBody(columns.done.id),
+      );
+      expect(created.status).toBe(200);
+
+      const listed = await getRequest(`/workflow-rule/${project.id}`);
+      expect(listed.status).toBe(200);
+      expect(await countRules(project.id)).toBe(1);
+
+      await softDeleteProject(project.id);
+
+      const afterDelete = await getRequest(`/workflow-rule/${project.id}`);
+      expect(afterDelete.status).toBe(404);
+      // Hidden, not erased -- the row survives, exactly like the project it belongs to.
+      expect(await countRules(project.id)).toBe(1);
+    });
+
+    it("refuses to create or update a rule on a soft-deleted project", async () => {
+      const { project, columns } = await (async () => {
+        const member = await createWorkspaceMember({ role: "admin" });
+        const fixture = await createProjectFixture({
+          workspaceId: member.workspace.id,
+        });
+        mockAuthenticatedSession(member.user);
+        return fixture;
+      })();
+
+      const live = await jsonRequest(
+        `/workflow-rule/${project.id}`,
+        "put",
+        upsertBody(columns.done.id),
+      );
+      expect(live.status).toBe(200);
+      expect(await countRules(project.id)).toBe(1);
+
+      await softDeleteProject(project.id);
+
+      const frozen = await jsonRequest(
+        `/workflow-rule/${project.id}`,
+        "put",
+        // A different column, so a successful call would be a visible update rather
+        // than an idempotent no-op.
+        upsertBody(columns.inReview.id),
+      );
+
+      expect(frozen.status).toBe(404);
+      const rules = await db
+        .select({ columnId: schema.workflowRuleTable.columnId })
+        .from(schema.workflowRuleTable)
+        .where(eq(schema.workflowRuleTable.projectId, project.id));
+      expect(rules).toHaveLength(1);
+      expect(rules[0]?.columnId).toBe(columns.done.id);
+    });
+
+    it("refuses to delete a rule belonging to a soft-deleted project", async () => {
+      const member = await createWorkspaceMember({ role: "admin" });
+      const { project, columns } = await createProjectFixture({
+        workspaceId: member.workspace.id,
+      });
+      mockAuthenticatedSession(member.user);
+
+      const created = await jsonRequest(
+        `/workflow-rule/${project.id}`,
+        "put",
+        upsertBody(columns.done.id),
+      );
+      expect(created.status).toBe(200);
+      const rule = (await created.json()) as { id: string };
+
+      await softDeleteProject(project.id);
+
+      const deleted = await jsonRequest(`/workflow-rule/${rule.id}`, "delete");
+
+      expect(deleted.status).toBe(404);
+      expect(await countRules(project.id)).toBe(1);
     });
   });
 });

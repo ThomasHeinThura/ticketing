@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { columnTable, workflowRuleTable } from "../../database/schema";
+import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
 
 async function upsertWorkflowRule({
   projectId,
@@ -14,6 +15,13 @@ async function upsertWorkflowRule({
   eventType: string;
   columnId: string;
 }) {
+  // #202: this route's subject IS a project (`workspaceAccess.fromProject`), so a
+  // soft-deleted project's automation must be frozen for its 30-day recovery window
+  // (#187, PR-16) -- without this, a new rule could still be created against a
+  // project that every read path already treats as gone. Checked before the column
+  // lookup, so a deleted project cannot be told apart from a foreign column.
+  await getProjectWorkspaceId(projectId);
+
   const targetColumn = await db.query.columnTable.findFirst({
     where: and(
       eq(columnTable.id, columnId),

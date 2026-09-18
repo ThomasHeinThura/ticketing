@@ -35,6 +35,9 @@ const getColumnsRoute = createRoute({
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("No access to the project's workspace"),
+    // #202: newly reachable. Before it, a nonexistent -- or soft-deleted -- project
+    // returned 200 with an empty board. It now answers 404 like `get-project.ts`.
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -92,6 +95,8 @@ const reorderColumnsRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    // #202: newly reachable -- a soft-deleted project's board is frozen.
+    404: errorResponse("Project not found"),
   },
 });
 
