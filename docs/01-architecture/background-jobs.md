@@ -24,33 +24,47 @@ so the escape hatch in [scaling.md](../05-operations/scaling.md) is real.
 ## Leasing
 
 ```sql
-job_lease ( name text primary key, owner text not null, expires_at timestamptz not null )
+job_lease ( name text primary key, owner text not null, expires_at timestamp not null )
 ```
 
 Inherited from kaneo, unchanged — and deliberately without `created_at`/`updated_at`: it is
 a lock, not data ([data-model.md](data-model.md)). `owner` is
 `${hostname}:${pid}:${bootId}` — unique per process lifetime.
 
+`expires_at` is `timestamp without time zone` holding a **UTC wall clock**, not `timestamptz`
+and not the database server's local clock. Every comparison against it therefore goes through
+`dbNowUtc()` (`apps/api/src/utils/db-time.ts`) and never a bare `now()`, on both the write and
+the read — a lease acquired on one clock and expired against another expires hours early or
+hours late depending on the session `TimeZone`. Issue #212 is that class; the column type is
+the reason the helper exists, and converting these columns to `timestamptz` is tracked
+separately rather than assumed done.
+
 ```sql
--- acquire (INHERITED — identical to kaneo's leader-lock.ts): succeeds only if no lease
--- exists or the existing one has expired
+-- acquire (INHERITED from kaneo's leader-lock.ts; the clock is ours, #212): succeeds only
+-- if no lease exists or the existing one has expired
 insert into job_lease (name, owner, expires_at)
-values ($1, $2, now() + $3::interval)
+values ($1, $2, dbNowUtc() + $3::interval)
 on conflict (name) do update
   set owner = excluded.owner, expires_at = excluded.expires_at
-  where job_lease.expires_at < now()
+  where job_lease.expires_at < dbNowUtc()
 returning owner;                       -- a row is returned ⇔ we hold the lease
-
--- heartbeat (OURS — upstream has no renewal), every TTL/3 while the handler runs;
--- the owner predicate is what makes it safe
-update job_lease set expires_at = now() + $3::interval
-  where name = $1 and owner = $2;      -- 0 rows ⇒ we lost the lease: stop, do not release
 
 -- release (INHERITED), only our own
 delete from job_lease where name = $1 and owner = $2;
 ```
 
+**No renewal is implemented.** What ships is a single-lease helper,
+`withJobLease(name, run, whenHeldElsewhere, leaseMs)` in
+`apps/api/src/scheduler/leader-lock.ts`: it acquires, runs the handler if it won, and the
+lease simply expires after `leaseMs` (default 15 minutes) whether or not the handler finished.
+There is no heartbeat, no `renew()`, no lease-backed abort signal, and no `acquireLease` —
+`grep -rn "acquireLease\|lease.renew" apps packages` is empty. The renewal design below is
+recorded **as design intent, not as behaviour**; a handler that can outlive its lease needs it
+implemented first, and any implementation must renew through `dbNowUtc()` like the acquire
+does, or it re-introduces #212 in the one statement whose whole job is to hold a lock:
+
 ```ts
+// DESIGN INTENT — NOT IMPLEMENTED. Do not describe this as current behaviour.
 const lease = await acquireLease('sla-scan', { ttl: '5 minutes' });
 if (!lease) return;                                  // another replica holds it
 const heartbeat = setInterval(() => lease.renew(), lease.ttlMs / 3);
@@ -60,9 +74,9 @@ finally { clearInterval(heartbeat); await lease.release(); }
 
 - Acquire is a single atomic statement; holding the lease is decided by whether a row was
   **returned**, never by a separate read.
-- Renewal runs **during** the work, on a timer, not after it. A handler that outlives its
-  lease (a 4-hour import under a 1-hour TTL) is renewed continuously; a crashed one is
-  released within one TTL.
+- Renewal is **design intent, not behaviour** (see above). Today a handler that outlives its
+  lease is simply no longer protected after `leaseMs`: the next replica may acquire while the
+  first is still running, which is precisely why every handler must be idempotent.
 - **A lease is an optimisation, not mutual exclusion.** An expired holder may still be
   running its last statement. Every handler is therefore **idempotent**, because
   at-least-once is the only guarantee a lease gives.

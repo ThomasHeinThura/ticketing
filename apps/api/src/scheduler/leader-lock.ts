@@ -24,7 +24,9 @@ const DEFAULT_LEASE_MS = 15 * 60 * 1000;
  *   `2026-09-18T12:00:00Z` stores as `12:00:00` under `TZ=UTC`, but as `18:30:00` under
  *   `TZ=Asia/Yangon` and `08:00:00` under `TZ=America/New_York`. The expiry is now taken from
  *   the database's own clock instead, so the application's clock and time zone cannot enter
- *   into it — which is also what `background-jobs.md` § Leasing documents (`now() + $3::interval`).
+ *   into it — which is also what `background-jobs.md` § Leasing now documents
+ *   (`dbNowUtc() + $3::interval`; the file previously showed a bare `now()` and a
+ *   `timestamptz` column, both of which this change corrected).
  * - **The read.** `job_lease."expires_at" < now()` coerced the column through the session's
  *   `TimeZone`. On a server ahead of UTC a lease that is still live compares as expired, so a
  *   second replica takes it over while the first is running.

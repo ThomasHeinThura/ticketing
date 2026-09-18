@@ -43,10 +43,20 @@ import { type SQL, sql } from "drizzle-orm";
  * WHERE "table"."expires_at" <= ${dbNowUtc()}
  * ```
  *
- * A `timestamptz` column does **not** need this: `timestamptz` comparisons are instants and
- * are already timezone-independent, and wrapping one would be harmless but pointless. This is
- * for the `timestamp without time zone` columns that exist today and that the schema's own
- * lint has not yet migrated — `session.expires_at`, `job_lease.expires_at`, `task.due_date`.
+ * A `timestamptz` column does **not** need this — and wrapping one is not a harmless no-op.
+ * `now() AT TIME ZONE 'UTC'` is a `timestamp without time zone`, so against a `timestamptz`
+ * column Postgres coerces it *back* through the session's `TimeZone` and the boundary shifts
+ * by the session offset. Measured live under `Asia/Kolkata`, a value one hour in the past:
+ *
+ * ```sql
+ * (now() - interval '1 hour') <= now()                -- true   (correct)
+ * (now() - interval '1 hour') <= (now() AT TIME ZONE 'UTC')  -- false  (shifted)
+ * ```
+ *
+ * That is a lease expiring early, or a session outliving its own expiry. Use the bare
+ * comparison for `timestamptz`; this helper is for the `timestamp without time zone` columns
+ * that exist today and that no migration in this repository has yet converted —
+ * `session.expires_at`, `job_lease.expires_at`, `task.due_date`.
  *
  * It lives in `utils/` rather than beside its two current callers in `scheduler/` because the
  * convention is a database-layer one: the next caller may be a job, a repository or a
