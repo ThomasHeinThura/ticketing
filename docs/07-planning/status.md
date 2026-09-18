@@ -2,13 +2,17 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-17 — a tenth pass, after issue #187 (the live `project` table
-> had no soft-delete window, so `work_item.project_id`'s CASCADE from PR #185 made an
-> ordinary delete destructive) closed via PR #200's project-only soft-delete fix
-> **`main` at that moment:** `ca90bbe` (PR #200 — an atomic `UPDATE` replacing the hard
-> `DELETE`, plus filtering every read/write path that reaches a project or its children;
-> two full review rounds, including a live-reproduced set of read-path leaks the mandatory
-> Opus pass found and a subsequent remediation round that closed them).
+> **Snapshot taken:** 2026-09-18 — an eleventh pass, after PR #204 (issue #202) merged:
+> every remaining route that reached a soft-deleted project's children — the column routes,
+> per-task mutation routes, and (found during that PR's own review, one hop further) the
+> workflow-rule routes — now goes through the same freeze PR #200 gave delete itself.
+> **`main` at that moment:** `d29325a` (PR #204's squash; two Sonnet review rounds plus the
+> mandatory Opus pass recorded on the PR — the same tier PR #200 got, since the change
+> touches `apps/api/src/**/controllers/**`, a security-review-scope path). Also since the
+> last snapshot: stale issues **#160** and **#100** — the two doc-vs-live misalignments the
+> morning's cold-read status check (`status-check-2026-09-18.md`) surfaced — were verified
+> against live source, not against their own checkboxes, and closed with evidence
+> comments; and the SLA computation slice (PR #209) opened in review.
 > Kaneo's `task`/`column` tables and routes remain fully untouched and still live.
 > **Stage:** P0 · Foundation — **exit criteria met; Throttle 1 is OPEN.** Autonomous
 > continuation past Throttle 1 is authorized (Thomas, 2026-09-16) — see the session log's
@@ -45,8 +49,22 @@
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-17 (later the same day, a fourth time)
-**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** Issue #187
+**Last updated:** 2026-09-18
+**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN** (unchanged).
+**Updated by:** Claude Code (Sonnet), reconciliation after **PR #204 merged** (`d29325a`,
+closing #202 — the residual soft-deleted-project guards #200's own review scoped: column
+routes, per-task mutation routes, and workflow-rule routes; two Sonnet rounds, round 1
+BLOCKING with a live-reproduced finding, plus the mandatory Opus pass). Also this session:
+issues **#160** (the native invitation list's expired-but-pending rows — option 1 of the
+issue had already landed in `8b92de4`, with its own regression test) and **#100** (the
+retrofit's unclaimed `organization()` client methods — re-ran the issue's own
+comment-vs-code verification; zero live callers remain post-unmount) were verified against
+live source and closed with evidence comments; and **PR #209** (the SLA computation slice,
+pure `packages/domain`) opened in review. PR #107 stays held per Thomas's standing
+decision — still the right mechanical follow-up, nothing depends on it now that the
+plugin is unmounted. Full account in this session's newest log entry, below.
+
+**Earlier — 2026-09-17 (a fourth time):** reconciliation after **PR #200 merged**.
 (the live `project` table's hard-delete route was made destructive by #185's
 `work_item.project_id` CASCADE) is closed: `project` now has its own `deleted_at`/
 `purge_after` columns, delete is an atomic soft-delete, and every read/write path reaching
@@ -404,7 +422,12 @@ P7 Polish              ░░░░░░░░░░   0%
 **3 closed of 10 total** (#4, #5, #7 — #7 closed 2026-09-09, corrected from the previous
 count of 2); merged slices do not map onto a defined completion figure, and an invented
 one reads as progress nobody measured. The merged pull requests are listed individually
-under ON MAIN below, which is the honest unit of progress here.
+under ON MAIN below, which is the honest unit of progress here. The same reasoning keeps
+P1–P7's bars at zero: real slices have merged (#179's identity schema; #185/#191/#195's
+work-item schema and its integrity fixes; #175's audit-trail domain module; #204's
+soft-delete-guard completion), and the SLA computation slice (PR #209) is in review — but
+no stage has a defined completion figure to fill a bar with, so the merged-PR lists and
+the session log stay the honest unit of progress, not the bars.
 
 **A CRITICAL finding, filed as issue #146, is DECISION REQUIRED for Thomas.** `sections()`
 in `scripts/ci/lib/pr-body.mjs` splits a PR body on raw `##` headings with no HTML-comment
@@ -1057,6 +1080,73 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-18 · #202 closed (PR #204) — the soft-delete guard is finished; #160 and #100 verified against live source and closed; the SLA computation slice opens in review
+
+Several lanes ran in parallel this session; this entry records what this one did and did
+not do.
+
+**PR #204 merged (`d29325a`), closing #202.** The residual routes #200's own review had
+scoped — the column routes and per-task mutation routes, plus the workflow-rule routes
+found one hop further during the PR's own review — now go through the same soft-delete
+freeze as everything else, via a single shared guard rather than per-route copies. Two
+Sonnet review rounds (round 1 BLOCKING, live-reproduced) plus the mandatory Opus pass,
+recorded on the PR. With that, the #200 follow-up chain is fully closed; the soft-delete
+guarantee is no longer route-by-route but structural.
+
+**Two stale issues verified against live source and closed, each with an evidence
+comment.** Both were surfaced by the morning's cold-read status check
+(`status-check-2026-09-18.md`), which compared `status.md`'s claims to GitHub and to the
+source, and found these two claims stale:
+
+- **#160** (the native invitation list filtered `expiresAt > now`, so expired-but-pending
+  rows counted toward the 100-pending ceiling while being invisible to the only route
+  that could find their id): option 1 of the issue itself had already landed in
+  `8b92de4` — `GET /api/workspace/{id}/invitations` now lists every `status = 'pending'`
+  row, expired or not, with a doc comment carrying this issue's own reasoning, and an
+  integration test asserting the expired-but-pending row is listed. Closed on that
+  evidence. PR #208 (#198's first slice: the `legal_hold` table plus the `session-cleanup`
+  purge) is the eventual option 2 and stays in its own lane's review.
+- **#100** (six live `organization()` client methods owned by no retrofit stage; S8a's
+  declared four vs actual nine `setActive` calls): re-ran the issue's own verification
+  procedure, grep hit by grep hit, comment-vs-code distinguished — the exact trap the
+  issue was raised from. On post-unmount `main`, every `authClient.organization.*`
+  mention in `apps/web/src` is inside a comment naming the native replacement; zero live
+  callers remain in any family. Closed; PR #107 (the mechanical tripwire) stays held per
+  Thomas's standing decision and remains the right follow-up to make the zero count
+  derived rather than prose, but nothing depends on it now that the plugin is unmounted.
+
+**PR #209 opened (draft): the SLA computation slice** — the first new `packages/domain`
+module beyond the existing three (service calendars #33, workflow transitions #31, audit
+trail #37): goal matching by (type × priority) specificity, covered-minus-paused
+arithmetic (SLA-12), due-at projection through calendar windows at millisecond precision
+(SLA-4/5/6, pausing-aware), and the six-state model with stop-fact semantics
+(SLA-2/7/8/9/13) — all pure, no I/O, no ambient clock, 26 tests. Deliberately excludes
+policy CRUD, the four-level resolution chain (SLA-1), version pinning (SLA-3), pause
+write semantics (SLA-11), the `sla-scan` job, routes and UI — those are follow-on slices.
+Written and verified in a sandbox with **no `node` binary** (vitest and `tsc` under bun;
+repo-wide `biome ci .` clean via bunx; the husky wrapper's inability to run there recorded
+on the PR, its content verified standalone — the sandbox limitation is a recorded fact,
+not a skipped gate), rebased onto `main` after #204 merged. In review — not merged, and
+not counted anywhere until it is.
+
+**Progress-bar honesty note:** the P1–P7 bars in "Where we are" still read 0%, and that
+is deliberate — merged slices are listed individually rather than turned into an invented
+percentage. The bars understate; the session log and the merged-PR records do not.
+
+**PR #208 merged (`26ec385`) in a parallel lane while this session ran** — the first slice
+of #198: the `legal_hold` table plus the session-purging half of the `session-cleanup`
+job, mandatory Opus review CLEAR WITH FINDINGS (six non-blocking), with **#212** filed for
+the one finding with broader reach (a UTC-database-server assumption shared with the
+existing lease code). #198 stays open — explicitly a first slice; the remaining scope
+(organisation/project purging, the hold placement/lift route, invitation cleanup) is
+blocked on real prerequisites, not a scoping choice. All three of this session's own PRs
+(#209, #210, #213) were rebased onto that merge and re-verified before pushing.
+
+**Not done:** the live UAT redeploy (needs Thomas's infrastructure authorization); #146
+(needs Thomas's fix-direction call); the two SLA (#32) questions, the state-transition
+question and the `workflowRuleTable` question (all still waiting on Thomas); the rest of
+#23 (routes, screens, cutover); issue #8's remaining route scope.
 
 ### 2026-09-17 (later the same day, a fourth time) · #187 closed — a pre-existing gap in the live `project` table, made consequential by #23's new FK, not one of #23's own findings
 
