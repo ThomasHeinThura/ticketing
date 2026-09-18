@@ -147,25 +147,6 @@ The search half is strong: `SV-3` (scoped to reach, out-of-reach records simply 
 
 ## 11. `sla.md` — P2
 
-**Verdict: not-ready** (the computation model is the best-argued thing in the corpus; the configuration it computes *from* is largely missing from the data model)
-
-`SLA-4`–`SLA-9` are precise to the minute, and the test list (DST both directions, holiday inside a pause, creation outside cover, reopen) is the strongest in the whole document set. `SLA-21` matches rbac.md's customer rule exactly. `sla-scan` at 5 minutes is confirmed present in `background-jobs.md`.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| High | `SLA-1`'s resolution order — "work item type override → request type → project → workspace default" — has **no storage for two of its four levels**. `work_item_type.sla_policy_id` and `request_type.sla_policy_id` exist; `project` has **no `sla_policy_id`** (only `service_calendar_id` and `support_level`), and there is **no workspace-default SLA policy** column anywhere. Policy resolution is the first thing the engine does, and two of its four steps are unimplementable. | Add `project.sla_policy_id` and a workspace default (a column on `workspace`, or an `is_default` flag on `sla_policy`) to the data model. |
-| High | The Data section names **`work_item_sla_cache`**, which does not exist in `data-model.md` — even though `SLA-14`, `background-jobs.md` and ADR 0009 all depend on it, and `views.md` `VW-31`'s SLA filtering has nowhere else to go. Three documents reference a table the schema does not define. | Add `work_item_sla_cache (work_item_id, metric, state, due_at, computed_at)` to the data model, with the ADR's caveat that it is for edge detection and list filtering only, never the source of truth. |
-| High | `SLA-10` "A **policy** declares which states pause the clock" — `sla_policy`, `sla_policy_version` and `sla_goal` have no such column, and states are project-scoped while policies are workspace-scoped, so a policy cannot enumerate them by id anyway. See §10: this also collides with `workflows.md`'s transition-effects model. | Resolve with the single owner chosen in §10 (recommended: transition effects). If it stays on the policy, it must reference something workspace-level, which returns to the state-scoping problem. |
-| Medium | `at_risk` is defined as "75%–100% consumed. **The threshold is configurable per policy**", but `sla_policy` has no threshold column. | Add `sla_policy.at_risk_threshold_pct` (default 75) to the data model. |
-| Medium | Edge case "Work item moved to a project with a different policy → **New policy applies from the move**, computed against original creation time" contradicts `SLA-3` ("the version effective at the work item's **creation** is used. Changing a policy never rewrites whether past work was met") and is internally ambiguous — "from the move" and "against original creation time" describe two different computations. | Rewrite as a single unambiguous rule; recommended: the policy resolved at creation is pinned for the item's life, and a move records an activity row without changing the goal. |
-| Medium | `SLA-11` opens pauses automatically on entering a pausing state, while the Permissions table and the API expose **manual** `POST /sla/pause` and `/sla/resume`. Nothing says how the two interact — whether a manual pause can nest inside an automatic one, or who wins. Testing lists "overlapping (rejected)" but not which of the two is rejected. | Add a rule: at most one open `sla_pause` per work item per metric; a manual pause while an automatic one is open returns 409; automatic close does not close a manual pause. |
-| Medium | `SLA-7` "`first_response` stops at the first public comment **by a staff member**" — agrees with `comments-and-activity.md`'s table, but neither spec says what happens on an internally-raised item where the requester *is* staff, nor whether a transition-note comment (`WF-12`) counts as the first response. | Answer both explicitly; the second is a genuinely common case. |
-| Medium | `SLA-15` "Once each, per work item, **per metric**" requires the cache to be keyed by metric; the Data section does not say so, and the missing table (above) means the key is unspecified. | Include `metric` in the cache's primary key when adding the table. |
-| Low | Edge case "Pause never closed → Alerted after 30 days; the item appears in a 'stale paused' report" names no job and no report. `background-jobs.md` has `reminder-scan`, which is the plausible home. | Assign it to `reminder-scan` explicitly. |
-| Low | `SLA-17` escalation "waiting the configured interval between levels" maps to `stakeholder.escalation_order` / `escalation_wait_minutes`, which do exist — but the spec never says what happens when a project has no stakeholders. | State the fallback (no escalation, or the project's default assignee). |
-
----
-
 ## 12. `service-calendars.md` — P2
 
 ## 13. `request-types-and-catalogue.md` — P2

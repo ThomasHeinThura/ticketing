@@ -110,3 +110,45 @@ export interface SlaMetricState {
   /** Target minus consumed, floored at 0; null when no goal applies. */
   remainingMinutes: number | null;
 }
+
+/**
+ * One `sla_policy_version` row (`data-model.md` §7: `policy_id`, `number`,
+ * `effective_from`) flattened with what the computation needs — the version's
+ * goals, the policy's calendar and threshold. `number` is unique per policy and
+ * `effective_from` is when it became the live one; there is no `effective_to` —
+ * a version is effective from its `effective_from` until the next version's.
+ */
+export interface SlaPolicyVersion {
+  /** `sla_policy_version.number` — unique per policy, higher is later. */
+  number: number;
+  /** `sla_policy_version.effective_from` — the instant this version went live. */
+  effectiveFrom: Date;
+  /** The policy's `calendar_id`, resolved to its `service_calendar` by the caller. */
+  calendar: ServiceCalendar;
+  /** `sla_policy.at_risk_threshold_pct` (shared by all versions of one policy). */
+  atRiskThresholdPct: number;
+  /** This version's `sla_goal` rows. */
+  goals: SlaGoal[];
+}
+
+/**
+ * The four resolution sources of `SLA-1`, in order: work item type override →
+ * request type → project → workspace default. Each is the already-resolved,
+ * already-pinned policy for that source (loading rows and pinning versions is
+ * the caller's concern) — `null` means that source has no policy.
+ */
+export interface SlaPolicyCandidates {
+  workItemType: SlaPolicy | null;
+  requestType: SlaPolicy | null;
+  project: SlaPolicy | null;
+  workspaceDefault: SlaPolicy | null;
+}
+
+/**
+ * Why a pause-open was refused (`SLA-11`). `manual_over_automatic` is the case
+ * the spec singles out for a 409; `pause_already_open` is the plain
+ * `(work_item, metric)` uniqueness violation the data model's partial unique
+ * index enforces. Both are the write path's problem to map onto status codes —
+ * this module only decides.
+ */
+export type PauseConflict = "manual_over_automatic" | "pause_already_open";
