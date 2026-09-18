@@ -91,6 +91,7 @@ const deleteWorkflowRuleRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    404: errorResponse("Workflow rule not found"),
   },
 });
 

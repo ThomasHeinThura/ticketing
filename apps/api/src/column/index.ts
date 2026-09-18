@@ -127,6 +127,7 @@ const updateColumnRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    404: errorResponse("Column not found"),
   },
 });
 
@@ -151,6 +152,7 @@ const deleteColumnRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    404: errorResponse("Column not found"),
     409: errorResponse("The column still contains tasks"),
   },
 });

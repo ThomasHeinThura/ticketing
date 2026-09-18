@@ -93,6 +93,7 @@ const listTasksRoute = createRoute({
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("No access to the project's workspace"),
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -152,6 +153,7 @@ const createTaskRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:create permission",
     ),
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -170,6 +172,7 @@ const getTaskRoute = createRoute({
       "Unknown task, or its workspace could not be determined",
     ),
     403: errorResponse("No access to the task's workspace"),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -231,6 +234,7 @@ const updateTaskRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:update or task:assign permission",
     ),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -250,6 +254,7 @@ const exportTasksRoute = createRoute({
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("No access to the project's workspace"),
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -278,6 +283,7 @@ const importTasksRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:create permission",
     ),
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -302,6 +308,7 @@ const deleteTaskRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:delete permission",
     ),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -329,6 +336,7 @@ const updateTaskStatusRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:update permission",
     ),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -356,6 +364,7 @@ const updateTaskPriorityRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:update permission",
     ),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -382,9 +391,9 @@ const updateTaskAssigneeRoute = createRoute({
     200: jsonResponse("The updated task", taskSchema),
     400: errorResponse("Invalid body, or unknown task"),
     403: errorResponse(
-      "No workspace access, or missing task:assign permission",
+      "No workspace access, missing task:assign permission, or the assignee is not a member of this workspace",
     ),
-    404: errorResponse("Assignee is not a member of the workspace"),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -412,6 +421,7 @@ const updateTaskDueDateRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:update permission",
     ),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -439,6 +449,7 @@ const updateTaskTitleRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:update permission",
     ),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -527,6 +538,7 @@ const updateTaskDescriptionRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:update permission",
     ),
+    404: errorResponse("Task not found"),
   },
 });
 
