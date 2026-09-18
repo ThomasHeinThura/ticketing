@@ -16,8 +16,11 @@
  * row), AND the row it would have changed is byte-for-byte unchanged. A 404 alone would
  * also be produced by a route that rejected the request for an unrelated reason.
  */
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
@@ -542,6 +545,141 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
 
       expect(response.status).toBe(404);
       expect((await reloadTask(task.id)).priority).toBe("medium");
+    });
+  });
+
+  /**
+   * These two routes live inline in `task/index.ts` rather than in a controller, so the
+   * first pass over #202 missed them -- found by an independent reviewer's live probe
+   * (`softDeleted: 200` where it expected 404). Each case is two-sided on purpose: the
+   * same request succeeds against a *live* project's task and fails against a
+   * soft-deleted one, so the 404 can only be the freeze, not a malformed request.
+   */
+  describe("task image-upload routes", () => {
+    const uploadBody = {
+      filename: "probe.png",
+      contentType: "image/png",
+      size: 128,
+      surface: "description" as const,
+    };
+
+    // A live upload route needs a configured driver or it answers 503 before the
+    // project is ever consulted, which would make a "refuses for a deleted project"
+    // assertion pass for the wrong reason. The filesystem driver is the default once
+    // its root is set -- same arrangement `storage-filesystem-upload.test.ts` uses.
+    let root: string;
+    const originalRoot = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+    const originalDriver = process.env.TASKDESK_STORAGE_DRIVER;
+
+    beforeEach(async () => {
+      root = await mkdtemp(path.join(tmpdir(), "taskdesk-202-image-upload-"));
+      process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = root;
+      delete process.env.TASKDESK_STORAGE_DRIVER;
+    });
+
+    afterEach(async () => {
+      if (originalRoot === undefined) {
+        delete process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+      } else {
+        process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = originalRoot;
+      }
+      if (originalDriver === undefined) {
+        delete process.env.TASKDESK_STORAGE_DRIVER;
+      } else {
+        process.env.TASKDESK_STORAGE_DRIVER = originalDriver;
+      }
+      await rm(root, { recursive: true, force: true });
+    });
+
+    async function createLiveTask() {
+      const member = await createWorkspaceMember({ role: "admin" });
+      const { project, columns } = await createProjectFixture({
+        workspaceId: member.workspace.id,
+      });
+
+      const [task] = await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Uploadable task",
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning();
+
+      if (!task) {
+        throw new Error("failed to seed task");
+      }
+
+      mockAuthenticatedSession(member.user);
+      return { member, project, task };
+    }
+
+    async function mintUploadKey(taskId: string) {
+      const response = await jsonRequest(
+        `/task/image-upload/${taskId}`,
+        "put",
+        uploadBody,
+      );
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as { key?: string };
+      if (!payload.key) {
+        throw new Error("upload route returned no key");
+      }
+      return payload.key;
+    }
+
+    it("issues an upload URL for a live project's task", async () => {
+      const { task } = await createLiveTask();
+
+      const response = await jsonRequest(
+        `/task/image-upload/${task.id}`,
+        "put",
+        uploadBody,
+      );
+
+      expect(response.status).toBe(200);
+    });
+
+    it("refuses to mint an upload URL for a soft-deleted project's task", async () => {
+      const { task } = await buildDeletedProjectFixture();
+
+      const response = await jsonRequest(
+        `/task/image-upload/${task.id}`,
+        "put",
+        uploadBody,
+      );
+
+      expect(response.status).toBe(404);
+    });
+
+    it("finalizes a key while the project is live, then refuses once it is deleted", async () => {
+      const { project, task } = await createLiveTask();
+
+      // Two keys, minted while the project is live and therefore both genuinely valid.
+      const keyBeforeDelete = await mintUploadKey(task.id);
+      const keyAfterDelete = await mintUploadKey(task.id);
+
+      const control = await jsonRequest(
+        `/task/image-upload/${task.id}/finalize`,
+        "post",
+        { ...uploadBody, key: keyBeforeDelete },
+      );
+      expect(control.status).toBe(200);
+
+      await softDeleteProject(project.id);
+
+      const frozen = await jsonRequest(
+        `/task/image-upload/${task.id}/finalize`,
+        "post",
+        { ...uploadBody, key: keyAfterDelete },
+      );
+
+      // Only `deleted_at` differs between the two calls.
+      expect(frozen.status).toBe(404);
     });
   });
 });
