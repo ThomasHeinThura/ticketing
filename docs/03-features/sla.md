@@ -77,6 +77,12 @@ an event once, and for list filtering. It is never the answer to "what is the st
 - `SLA-6` A 24×7 calendar makes covered time equal to wall-clock time.
 - `SLA-7` `first_response` stops at the first public comment by a staff member, which sets
   `work_item.first_response_at` — the stored fact the metric is computed from.
+  *(Edge cases answered 2026-09-18, resolving the §11 Medium finding: **(a)** on an
+  internally-raised item whose requester is themselves staff, the requester's own
+  comments never stop the clock — the first responder must be a staff member other than
+  the requester, because the metric measures the serving side's response to the asking
+  side; **(b)** internal comments — including a workflow transition's note (`WF-12`) —
+  never count, in any case: only **public** comments stop the clock.)*
 - `SLA-8` `resolution` stops when the work item enters a state in the `completed` group.
 - `SLA-9` Reopening a completed item resumes the resolution clock from where it stopped —
   it does not restart.
@@ -110,7 +116,9 @@ an event once, and for list filtering. It is never the answer to "what is the st
   current state, so this edge reading is the one its shape supports.)*
 - `SLA-16` Events fan out to notifications, webhooks and the escalation path.
 - `SLA-17` Escalation follows the project's stakeholder escalation order, waiting the
-  configured interval between levels.
+  configured interval between levels. A project with no stakeholders escalates to no one —
+  escalation is a no-op (SLA-16's notifications to watchers still fire); it is not an error
+  and needs no fallback assignee. *(Answered 2026-09-18, resolving the §11 Low finding.)*
 - `SLA-15a` `sla.met` and `sla.missed` are emitted by the **transition into a
   `completed`-group state** (`WF-17`), not by `sla-scan` — an item whose `resolved_at` is
   set is outside the scan's candidate set. `sla-scan` emits only `sla.at_risk` and
@@ -165,8 +173,8 @@ POST  /api/work-items/{key}/sla/resume         work_item:update
 | Priority raised mid-flight | The new goal applies from creation, so remaining time shrinks. This is intended and is why escalation is powerful |
 | DST transition inside the window | Handled by evaluating in the calendar's timezone with a real timezone library, never by adding 3600 seconds |
 | Holiday added retroactively | Recomputed. Deadlines move later. Warned about at save time |
-| Work item moved to a project with a different policy | New policy applies from the move, computed against original creation time. Written to activity |
-| Pause never closed | Alerted after 30 days; the item appears in a "stale paused" report |
+| Work item moved to a project with a different policy | *(Corrected 2026-09-18, resolving the §11 review contradiction — the row previously said both "applies from the move" and "against original creation time".)* The policy resolved at the item's creation stays pinned for the item's life (SLA-3); a move records an activity row and changes nothing about the running clock. The new project's policy governs only items created after the move |
+| Pause never closed | `reminder-scan` alerts after 30 days of continuous open pause; the item appears in the "stale paused" report the job publishes *(assigned to `reminder-scan` 2026-09-18, resolving the §11 Low finding that named no job)* |
 | Policy deleted while in use | Refused. Must be replaced first |
 
 ## Out of scope
