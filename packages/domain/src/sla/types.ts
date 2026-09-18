@@ -151,7 +151,4 @@ export interface SlaPolicyCandidates {
  * index enforces. Both are the write path's problem to map onto status codes —
  * this module only decides.
  */
-export type PauseConflict =
-  | "manual_over_automatic"
-  | "pause_already_open";
-
+export type PauseConflict = "manual_over_automatic" | "pause_already_open";

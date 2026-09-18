@@ -151,4 +151,3 @@ export function scanEventForTransition(
   }
   return null;
 }
-

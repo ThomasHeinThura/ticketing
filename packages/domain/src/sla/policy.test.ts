@@ -112,20 +112,20 @@ describe("pinPolicyVersion — SLA-3's pin-at-creation", () => {
   it("pins the version effective at creation", () => {
     const v1 = version(1, "2026-01-01T00:00:00Z");
     const v2 = version(2, "2026-06-01T00:00:00Z");
-    expect(
-      pinPolicyVersion([v1, v2], new Date("2026-03-15T00:00:00Z")),
-    ).toBe(v1);
-    expect(
-      pinPolicyVersion([v1, v2], new Date("2026-07-01T00:00:00Z")),
-    ).toBe(v2);
+    expect(pinPolicyVersion([v1, v2], new Date("2026-03-15T00:00:00Z"))).toBe(
+      v1,
+    );
+    expect(pinPolicyVersion([v1, v2], new Date("2026-07-01T00:00:00Z"))).toBe(
+      v2,
+    );
   });
 
   it("pins at the exact effective_from instant (inclusive)", () => {
     const v1 = version(1, "2026-01-01T00:00:00Z");
     const v2 = version(2, "2026-06-01T00:00:00Z");
-    expect(
-      pinPolicyVersion([v1, v2], new Date("2026-06-01T00:00:00Z")),
-    ).toBe(v2);
+    expect(pinPolicyVersion([v1, v2], new Date("2026-06-01T00:00:00Z"))).toBe(
+      v2,
+    );
   });
 
   it("returns null when the policy's first version went live after creation", () => {
@@ -172,9 +172,9 @@ describe("validateOpenPause — SLA-11's one-open-row and 409 rules", () => {
   });
 
   it("refuses a manual pause over an automatic one as the named 409 case", () => {
-    expect(
-      validateOpenPause([openAutomatic], "resolution", "manual"),
-    ).toBe("manual_over_automatic");
+    expect(validateOpenPause([openAutomatic], "resolution", "manual")).toBe(
+      "manual_over_automatic",
+    );
   });
 
   it("refuses any other second open (uniqueness) as pause_already_open", () => {
@@ -241,4 +241,3 @@ describe("scanEventForTransition — SLA-15's once-each edge rule", () => {
     expect(scanEventForTransition("at_risk", "breached")).toBe("sla.breached");
   });
 });
-
