@@ -1,6 +1,6 @@
 # Security review — PR #215 (issue #189: constrain enum-like and numeric work-item columns)
 
-**Reviewed head:** `7fa20045ebc70577546452fda5ee339d74171834`
+**Reviewed head:** `e47efcc0b26cca788e8f67a97b4f0ece8312a094`
 
 Substantively reviewed at `4d5dafd64ce3c62ccb136211d6fbe52af1fe810d`; clearance extended to
 this head (a merge of `origin/main` into the branch) by the same reviewer, who
@@ -12,6 +12,15 @@ files alone — including `drizzle/meta/_journal.json`, `drizzle/meta/0059_snaps
 having slipped in a colliding migration. Also re-observed at the new head in a fresh
 worktree, not only inferred from hashes: `drizzle-kit check` clean, 21/21 integration tests
 green, all 8 constrained objects present in the migrated catalogue.
+
+One further main-sync landed after that confirmation, at `7fa2004`, bringing in PR #217's
+migration-comment edit to a *different* migration file (`0056`, already independently
+proven comment-only by its own reviewer, twice over) — no file shared with this PR.
+Re-checked directly by the orchestrating session rather than a further reviewer round:
+`git diff 7fa20045ebc70577546452fda5ee339d74171834
+e47efcc0b26cca788e8f67a97b4f0ece8312a094 -- apps/api/drizzle/0059_work_item_integrity_checks.sql
+apps/api/src/database/schema.ts tests/api-integration/work-item-integrity-constraints.test.ts`
+is empty, and `drizzle-kit check` was re-run at this exact head and still reports no drift.
 
 ## What this PR does
 
