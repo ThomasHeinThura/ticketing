@@ -873,3 +873,408 @@ Every one is reproduced in full above, step by step, so they can be rebuilt exac
 - I did not assess whether an existing production instance has orphaned
   `work_item_key_claim` rows already, because no deployment has ever run this write path —
   `work_item` has had no live writer before this slice.
+
+---
+
+# Opus close-out review of the D1 fix (`project_slug_claim`) — 2026-09-22
+
+**Reviewed head:** `eed9218f1ddaee24f7b5218a281bf342669dc47c` (confirmed with
+`git ls-remote origin refs/heads/feat/23-work-item-create-read-list`, not from
+`gh pr view`'s cached head field).
+**Branch:** `feat/23-work-item-create-read-list` · **Pull request:** #261
+**Fix commit under review:** `eed9218` (migration `0065`, `project_slug_claim`).
+**Reviewer tier:** Opus, fresh independent context — did not author, direct, orchestrate,
+remediate or previously review this change or any of its fixes. This is the third Opus
+round on this chain (original F1/F2, then the D1 delta-confirmation) and the fourth review
+of the D1 fix specifically, after an ordinary Sonnet round returned APPROVE WITH NOTES.
+Nothing below is inherited from any of them: every conclusion was re-derived from source
+and, where it mattered, proven by running it against a real database.
+**Mandate:** the adversarial close-out this project's mandatory-review gate requires —
+find a *third* slug-release path the previous two rounds missed, check the orphaned-claim
+griefing angle, re-verify `0065`'s backfill independently, re-run the exploits live from
+scratch, and test the decision-log addendum's own "only construction" claim.
+
+---
+
+## Verdict
+
+**CLEAR WITH FINDINGS (non-blocking).**
+
+**D1 is closed.** I attacked it from both ends — empirically, with a probe written from
+scratch against a live database through the real HTTP routes, and structurally, by
+enumerating the complete writer set for `project.slug` and for `project_slug_claim` rather
+than testing paths one at a time. I could not free a slug. I could not orphan a claim. I
+could not construct a third release path, and the enumeration below says why there cannot
+be one while the current writer set holds.
+
+Six findings, none blocking. Four are documentation or robustness notes; one is an accepted
+cost worth an operator follow-up; one is a precision correction to an unmerged decision-log
+entry. None of them is a reason to hold #261.
+
+| # | Finding | Severity | Blocking |
+| --- | --- | --- | --- |
+| E1 | Third release path — **none exists**. Every path enumerated and the four live ones probed; all closed | — | No (positive) |
+| E2 | Orphaned-claim griefing via a failed create — **not possible**. The claim rolls back with its transaction, proven live | — | No (positive) |
+| E3 | Permanent slug squatting *is* cheaply reachable, leaves only claim rows, and has no product- or operator-level release path | Low | No (accepted cost; recommend an operator runbook) |
+| E4 | The decision-log addendum's "the only construction that actually closes the gap" is overstated — a fourth option exists | Low | No (amend #265 before it merges) |
+| E5 | `work_item.key`'s `schema.ts` comment still grounds its global-uniqueness premise on `0064` alone, which D1 proved insufficient | Low | No (doc) |
+| E6 | `project_slug_claim` is absent from `data-model.md`, though the table it mirrors (`work_item_key_claim`) is documented there | Low | No (doc/governance) |
+| E7 | `isUniqueViolation(error, "key")` matches any constraint whose *name* contains `key`, which includes every `*_pkey` | Low | No (robustness note; correct today) |
+
+---
+
+## E1 — The third-path hunt: there is no third release path
+
+**Not a finding. Recorded because the mandate asked for it to be attacked, and it held.**
+
+The previous two rounds tested two release paths (rename-away, workspace hard-delete). I
+did not want a third *sample*; I wanted the complete set. So I enumerated every writer, and
+then probed every live path in the enumeration.
+
+### The complete writer set
+
+**Ways `project.slug` can stop being held by a live row:**
+
+| Path | Writer | Outcome |
+| --- | --- | --- |
+| `UPDATE project SET slug` | `update-project.ts` — the **only** writer of this column in the codebase | Claims the new slug; the old claim is retained, by design |
+| `INSERT INTO project` | `create-project.ts` — the **only** insert into this table | Claims in the same transaction |
+| `DELETE FROM project` | **no application code issues one at all** | — |
+| Cascade from `DELETE /api/workspace/{id}` | `delete-workspace.ts`, via `ON DELETE CASCADE` off `workspace.id` | Project row vanishes; the claim has no FK, so it survives |
+| The unbuilt #198 purge | not yet written; will be a raw `DELETE FROM project` | Same as above — already closed before the job exists |
+| Soft delete / archive / unarchive / reorder | `delete-project.ts`, `archive-project.ts`, `unarchive-project.ts`, `reorder-projects.ts` | None of them touch `slug`; the row stays, so the slug is never freed |
+| `claim-work-item-number.ts`, `claim-task-numbers.ts` | update `last_task_number` only | Do not touch `slug` |
+
+**Ways a `project_slug_claim` row can be removed:** none. No application code deletes from
+that table (verified by grep across `apps/api/src`), the table carries **no foreign key at
+all** (`CREATE TABLE project_slug_claim (slug text PRIMARY KEY, project_id text NOT NULL,
+created_at ...)` — nothing to cascade through), and no trigger references it. The only
+`DELETE` that reaches it in this repository is the test harness's `resetTestDatabase`
+truncation.
+
+**Ways a live project could hold a slug with no claim:** none in application code. Both
+writers claim unconditionally; migration `0065` backfills every pre-existing row (see E-verify
+below). The one bypass is the *test* helper `createProjectFixture`, which inserts into
+`project` directly — a test-only path with no production analogue, and harmless anyway,
+because a later HTTP create of the same slug is still stopped by `project_slug_unique`.
+
+Those three lists close the question structurally: **every slug ever held by a project row
+is permanently claimed, and no claim is ever removed.**
+
+### The paths probed live
+
+Written from scratch (not reusing the committed regression file or either previous round's
+probes), run through real HTTP routes with real auth against a private `*_test` database
+(`opusd1close23_test` on `td-lane-pg`) at the reviewed head. All twelve probes passed.
+
+| Probe | Result |
+| --- | --- |
+| Rename-then-reclaim: attacker slugs `ACME`, burns `ACME-1`, renames to `ACME-RETIRED`; victim in an unrelated workspace creates `ACME` | Attacker's rename **200**; `project` holds only `ACME-RETIRED`; claims hold **both** `ACME` and `ACME-RETIRED`; victim's create **409 `That project slug is already taken`** |
+| Workspace hard-delete then reclaim (as `owner`, so the delete genuinely executes) | Delete **200**; `project` rows afterwards **0**; claim on `ENG` survives with a now-dangling `project_id`; victim's create **409** |
+| **Project soft-delete** then reclaim by another tenant | Soft delete **200**; reclaim **409** — the row stays, so both the constraint *and* the claim hold it |
+| **Archive** then reclaim | Archive **200**; reclaim **409** |
+| **The unbuilt #198 purge**, simulated exactly as it will be written (`DELETE FROM project WHERE id = …`) | `project` rows **0**, claim survives, reclaim **409** — the purge job is closed before it is written |
+| **Sibling grab**: project A renames away from `SIB`; project B *in the same workspace* tries to take the freed slug | **409** — the per-holder exemption in `update-project.ts` is correctly scoped to the claiming project's own id |
+| Original holder renaming **back** to its own retired slug | **200** — the exemption does what it intends, and only that |
+| Near-miss slugs that must **not** be over-blocked (`case` vs `CASE`, `CASE-1`, `CASE `) | **200, 200, 200** — no over-blocking; `text` comparison is case- and whitespace-exact on both the constraint and the claim PK, consistently |
+| Concurrent same-slug creates from five different workspaces (no shared advisory lock — the lock is keyed per workspace) | Exactly **one** success, **four** clean `ProjectSlugTakenError`, **zero** raw 500s; exactly one claim row afterwards |
+| Key-prefix injectivity: three projects slugged `X`, `X-1`, `X-` each create three work items | All nine keys distinct |
+
+That last one matters more than it looks. The whole fix rests on `slug → key` being
+injective: if two *distinct* slugs could generate the same key string, permanent slug claims
+would not be enough. It holds, and for a structural reason, not a lucky one —
+`key = slug + "-" + number` where `number` is digits-only and positive
+(`work_item_number_positive`), so recovering `slug` from `key` by splitting at the last
+hyphen-then-digits is unambiguous. A near-miss like slug `X-1` produces `X-1-2`, never
+`X-12`, because the alternative would require `number` to contain a hyphen.
+
+---
+
+## E2 — Orphaned claims: a failed create cannot grief a slug
+
+**Not a finding. This was the sharpest of the mandate's questions and it is cleanly answered.**
+
+The worry: claims are permanent, so if a claim could commit while its project creation
+failed, an attacker could burn slugs at will and leave nothing behind — permanent denial
+with no owner and no recovery.
+
+It cannot. In `create-project.ts` the claim insert sits *inside* `db.transaction`, after the
+`project` insert and before the default-column loop; in `update-project.ts` the whole
+function is now wrapped in a transaction for exactly this reason (the commit's own stated
+motivation). There is no `db.` call outside the transaction handle in either path, no
+swallowed error between the claim and the commit, and neither claim insert is in a nested
+or separate transaction.
+
+I did not take that on inspection. I forced a failure strictly *after* the claim insert, by
+adding a temporary `CHECK` constraint on `"column"` rejecting the `in-review` default column
+— which `create-project.ts` inserts in the loop that runs after the claim — and then drove a
+real `POST /api/project`:
+
+| Step | Result |
+| --- | --- |
+| Create with slug `ORPHAN`, column insert forced to fail | **500** (the transaction aborts) |
+| `project_slug_claim` afterwards | **`[]`** — the claim rolled back with it |
+| `project` rows afterwards | **0** |
+| Constraint dropped, a different tenant creates `ORPHAN` | **200** — the slug was never griefed |
+
+So there is no way to leave an orphaned permanent claim behind a failed creation. Every
+claim in the table corresponds to a project row that genuinely committed at some point.
+
+---
+
+## E3 — Permanent squatting is cheap and has no release path
+
+**Non-blocking. Real, but it is the cost the decision log accepted, and it is strictly less
+harmful than the state this fix replaces.**
+
+What an attacker can still do, proven live: as `owner` of their **own** workspace, create
+five projects over a dictionary of plausible slugs (`SUP`, `OPS`, `IT`, `HR`, `ENG`), create
+**no work items at all**, then `DELETE /api/workspace/{their own}`. Afterwards:
+
+- `project` rows: **0**
+- `work_item_key_claim` rows: **0**
+- `project_slug_claim` rows: **all five, permanently**
+- every subsequent tenant asking for any of those five slugs: **409, forever**
+
+Cost to the attacker: one workspace plus one HTTP call per slug. Recovery available to the
+victim, to the victim's admin, or to an instance admin: **none in the product**. No route,
+no God Mode surface and no documented operator procedure removes a `project_slug_claim` row,
+and the table's own design comment says claims are never released.
+
+Three things keep this off the blocking list:
+
+1. **It is the explicitly accepted cost.** The F1 decision records `project.slug` becoming
+   "a single first-come-first-served namespace across the whole instance rather than
+   per-tenant", and the addendum records "accepting a bounded, permanent first-come-first-served
+   cost on `project.slug` specifically, which is what was actually built."
+2. **It is strictly better than what it replaces.** Before this fix the same attacker could
+   poison a slug just as permanently (one extra call, to burn a key), and the victim's
+   symptom was a silent, unlogged, permanent 500 on work-item create *after* they had
+   already built a project on it. Now the victim gets an immediate, clear 409 at project
+   creation and picks another slug. The permanence is not new; the diagnosability is.
+3. **The delta is one HTTP call.** The genuinely new capability is squatting a slug without
+   ever creating a work item under it. That widens the blast radius modestly, not in kind.
+
+Two things worth doing anyway, neither of them a merge blocker:
+
+- **An operator release path.** At minimum a runbook entry in `docs/05-operations/` naming
+  the exact `DELETE FROM project_slug_claim WHERE slug = …` and the one precondition that
+  makes it safe (`SELECT 1 FROM work_item_key_claim WHERE key LIKE slug || '-%'` returns
+  nothing — i.e. the slug never generated a key, so releasing it poisons no one). That
+  predicate is exactly checkable, which makes the manual procedure safe rather than
+  folkloric. `work_item_key_claim` has no such safe predicate, which is why it genuinely
+  cannot be released; `project_slug_claim` does.
+- **Say it in the user-facing docs.** A tenant that renames its own project can never reuse
+  the old slug for a *different* project of its own — probed and confirmed (the sibling-grab
+  case above returns 409). That is a legitimate-use friction people will hit, and it is
+  better documented than discovered.
+
+---
+
+## E4 — The addendum's "only construction" claim is overstated
+
+**Non-blocking, and it does not change the choice that was made — but the mandate asked me
+to test this claim specifically, and it does not hold as literally written.**
+
+The decision-log addendum (`docs/decision-f1-permanence`, PR #265, read from that branch —
+it is not on this branch and not yet on `main`) says permanence on the slug side "is not a
+discretionary product choice among comparably-valid options — it is the only construction
+that actually closes the gap", given `work_item_key_claim`'s permanence is fixed. Its
+`Alternatives` paragraph names two rejected options: making `work_item_key_claim` releasable,
+and the permanent-FCFS cost that was built.
+
+There is a fourth option it does not name, and it does close D1 without any permanent slug
+registry: **stop deriving `work_item.key` from the human-chosen, mutable `project.slug` at
+all.** Generate the key prefix from something immutable and unique by construction — the
+project's own cuid2, or a dedicated sequence — and the slug becomes freely renameable and
+freely reusable, because it no longer generates anything. `work_item_key_claim` keeps its
+permanence and needs no change. D1 disappears rather than being contained.
+
+Its cost is real and is why the built option is still the right one: work-item keys stop
+being human-readable (`k7x9f2r-1` rather than `ACME-1`), which is the entire point of the
+identifier — `project/index.ts` states "the slug becomes the prefix of its task
+identifiers", tasks already display as `{slug}-{number}` across the web app, and Thomas's F1
+decision explicitly chose to "fix the slug side, not the key side". So it is out of the
+decided scope. But it is a genuine construction, not a variant of the two named, and the
+addendum asserting that none exists is the kind of overstated premise this whole review
+chain exists because of — F1's root cause was a `schema.ts` comment asserting something
+stronger than what was true.
+
+Worth noting the two options that *do* collapse into the built one, since they look like
+alternatives and are not:
+
+- **An immutable `project.key_prefix` column, seeded from the slug at creation.** Keys stay
+  readable and the display slug becomes renameable — but the prefix still has to stay unique
+  after its project is hard-deleted, because the keys it generated are claimed forever. That
+  needs a permanent prefix registry: `project_slug_claim` under a different name.
+- **The delta-confirmation review's own option 3** (forbid renaming once a project has work
+  items, make workspace deletion soft). This does not avoid permanence — it achieves it by
+  pinning a live row that can then never be deleted, which is worse on every axis including
+  data-deletion obligations.
+
+**Recommendation:** #265 is unmerged, so this is a one-sentence amendment, not a
+supersession — soften "the only construction" to "the only construction that preserves
+human-readable, slug-derived work-item keys, which Thomas's F1 decision fixed", and name the
+decoupled-prefix option in `Alternatives`. It changes no code and no decision.
+
+---
+
+## E5 — `work_item.key`'s schema comment still cites `0064` as its premise
+
+**Non-blocking documentation precision, but the same failure class as F1's root cause.**
+
+`schema.ts`'s comment on `work_item.key` was updated by the *first* fix attempt and not by
+this one. It now reads:
+
+> `project.slug` IS genuinely unique per instance, via `project_slug_unique`
+> (`projectTable`'s own extra config, migration 0064) … so `key` composes to a globally
+> unique value; the alias mechanism depends on that holding **at every instant**
+
+D1 proved that premise insufficient: `project_slug_unique` alone holds at every instant
+*for live rows*, which is precisely not enough, and the comment's own "at every instant"
+qualifier is the part that `0064` cannot deliver. The guarantee the column actually relies
+on now comes from `project_slug_claim` (`0065`). The comment does not mention it.
+
+That matters because F1's original root cause was a reader trusting a `schema.ts` comment's
+stated premise — and the *first* fix attempt failed in exactly the way a reader of this
+comment would fail, by concluding live uniqueness suffices. A future reader tracing "why is
+`work_item.key` globally unique?" lands on `0064` and stops one migration short.
+
+Three lines. Should be amended; not a reason to hold the merge.
+
+---
+
+## E6 — `project_slug_claim` is missing from `data-model.md`
+
+**Non-blocking, but it is this project's own rule.** `CLAUDE.md`'s identifier-home table and
+`AGENTS.md` do-not 11 put tables and columns in `docs/01-architecture/data-model.md`, and
+the precedent is in that same file: `work_item_key_claim` — the table `0065` explicitly
+mirrors — has its own row in §4 with its design explained. `project_slug_claim` has none,
+and neither does `project_slug_unique` from `0064`. Both gaps were introduced by this PR's
+own fix chain, so this is not the pre-existing `data-model.md` drift already filed as #264
+(which is about the `key`/`slug` and `last_work_item_number`/`last_task_number` naming).
+
+Note that `data-model.md` §3 already documents `project.key` as "**unique per instance**"
+and the Indexing section already carries `create unique index on project (key)` — so the
+*constraint* is documented under the target-vocabulary name, and only the claim table is
+genuinely absent. Fold into #264 or file alongside it.
+
+---
+
+## E7 — `isUniqueViolation(error, "key")` is broader than it reads
+
+**Non-blocking robustness note. Correct today; fragile tomorrow.**
+
+`isUniqueViolation(error, column)` matches when the Postgres error's `constraint` **name**
+`includes(column)` — not the offending column list. Every Postgres primary-key constraint is
+named `*_pkey`, which contains `key`. So `create-work-item.ts`'s
+`isUniqueViolation(error, "key")` matches any PK violation raised inside that transaction,
+not only the intended ones.
+
+Today that is harmless, and I checked rather than assumed. The 23505s reachable in that
+transaction are:
+
+| Constraint | Matches `"key"`? | Correct? |
+| --- | --- | --- |
+| `work_item_key_claim_pkey` (the trigger's insert, `BEFORE INSERT`, so it fires first) | yes | **yes** — this is the intended one |
+| `work_item_key_unique` | yes | yes |
+| `work_item_project_number_unique` | **no** | correct — a number collision is not a poisoned key and should not claim to be |
+| `work_item_pkey` (a cuid2 collision) | yes | mislabels, but is not reachable in practice |
+
+Same shape on the project side: `isUniqueViolation(error, "slug")` matches both
+`project_slug_unique` and `project_slug_claim_pkey`, which is exactly what
+`create-project.ts` wants — the caller gets one 409 either way, as its comment says.
+
+The note is that the predicate is matching a *name substring*, so a future unique constraint
+whose name happens to contain `key` or `slug` would be silently folded into one of these
+error paths. A comment naming the constraints each call is meant to catch would be enough.
+
+---
+
+## What I checked that the previous rounds left open
+
+**Migration `0065`'s backfill — re-verified independently, not trusted.** `0064` runs before
+`0065` (journal idx 64 then 65), so the backfill reads post-repair, post-`project_slug_unique`
+slug values and its `ON CONFLICT ("slug") DO NOTHING` can never fire. The query carries no
+`WHERE`, no join and no filter on `deleted_at`, `archived_at` or anything else. I confirmed
+that empirically rather than by reading: six project rows inserted directly in every state
+that exists (live, soft-deleted, archived, both, a slug containing a single quote, and the
+empty-string slug), claims wiped, then `0065`'s `INSERT … SELECT` replayed verbatim — **6
+projects, 6 claims, 0 rows missed** by a `LEFT JOIN … WHERE c.slug IS NULL` check on
+`(slug, project_id)`.
+
+**The migration's documented blind spot has no live consequence on this codebase.** `0065`'s
+comment honestly warns that a slug freed *before* it ran is not retroactively protected. That
+residual risk is empty here, and I can say so from the source rather than hopefully:
+`work_item_key_claim` is written by exactly one thing, the `work_item_claim_key()` trigger on
+`work_item` (migration `0055`); `work_item` has exactly one application writer,
+`create-work-item.ts`; and that file is **introduced by this PR** — `origin/main` has no
+`apps/api/src/work-item/` directory and no insert into `work_item` anywhere in `apps/api/src`.
+So on every deployment that predates this branch, `work_item_key_claim` is necessarily empty,
+no slug can be poisoned, and there is nothing for the backfill to have missed. The blind spot
+is real in principle and unreachable in fact.
+
+**The `update-project` transaction wrap does not introduce a lock hazard.** `create-project`
+takes `pg_advisory_xact_lock(1524, hashtext(workspaceId))`; `update-project` takes no
+advisory lock, so there is no cycle between them. The one deadlock shape the `0064`
+constraint made possible — two projects swapping slugs concurrently, each blocking on the
+other's uncommitted `project_slug_unique` index entry — is now *unreachable*, because each
+side's target slug is claimed by the other project and the pre-check 409s before either
+`UPDATE` runs. The fix removes a hazard here rather than adding one.
+
+**`update-project`'s `onConflictDoNothing` cannot silently mask a cross-project conflict.**
+The pre-check throws unless the claim is absent or already held by this same project id, and
+the only window for another transaction to insert a competing claim between check and write
+is one where that transaction must *also* set `project.slug` to the same value — which
+`project_slug_unique` rejects first, in either interleaving. A claim can never exist without
+its holder having held the slug, because both writers insert them together. So the
+`DO NOTHING` only ever absorbs the same-project re-claim it is documented to absorb.
+
+---
+
+## Verification, re-run independently
+
+All at `eed9218`, in a dedicated worktree, against private `*_test` databases on
+`td-lane-pg` (`opusd1close23_test` for the probes, `opusd1suite23_test` for the suite) — not
+trusting any prior round's reported numbers.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck` | **pass**, 8/8 projects (re-run with `TURBO_FORCE=true` — the first run was a full cache hit from sibling worktrees, which proves nothing) |
+| `pnpm biome check .` | **pass** — 70 warnings, **0 errors**, unchanged baseline |
+| `pnpm test:permissions` | **pass**, 10 files, **80/80** |
+| `pnpm check:openapi` | **pass** — `openapi.json` matches the API, 105 operations |
+| `pnpm test:integration` | **pass**, **69 files, 621/621** |
+
+The integration suite was fully green — the known intermittent `health.test.ts`
+readiness-probe failure did not reproduce, and nothing else failed. 621/621 against the
+delta-confirmation round's 616/616 is this commit's five new
+`project-slug-claim-permanence.test.ts` cases.
+
+My probe file is deliberately **not** committed: it exists to attack a fix, and the paths
+that matter are already covered by the committed regression suite. Every probe is described
+above precisely enough to rebuild it.
+
+---
+
+## What I did not do
+
+- I did not re-review what the ordinary Sonnet round covered on this fix (faithfulness of
+  the implementation to the decision, naming, the mirroring of `WorkspaceSlugTakenError`,
+  mutation-testing of the new suite). This pass attacked what a faithfulness review does not
+  ask: whether a *third* path exists, whether the claim can be orphaned, and whether the
+  justification for the construction is sound.
+- I did not fix E4, E5, E6 or E7. A reviewer that remediates cannot clear the remediation,
+  and all four are documentation or comment amendments that belong with their owners — E4 on
+  #265 before it merges, E5/E6 alongside #264, E7 wherever `is-unique-violation.ts` is next
+  touched.
+- I did not re-review F2, D3, D4 or D5 — `eed9218` touches none of them, and the
+  delta-confirmation round's conclusions on each stand unchanged at this head.
+- I did not re-review the parts of #23 this slice defers (update, delete, bulk, ranking,
+  hierarchy, watchers, pagination), the shared `workspace-access-middleware.ts` beyond the
+  paths this slice reaches (#256's business), or the UI/Docker/deployment surface — this
+  branch touches none of it.
+- I did not assess what happens to `project_slug_claim` under a future multi-instance or
+  sharded deployment, where "instance-wide" stops being a single database. Out of scope for
+  P0–P4 and not implied by anything in this branch, but the namespace is now permanent, so
+  it is the kind of assumption worth naming once rather than rediscovering.
