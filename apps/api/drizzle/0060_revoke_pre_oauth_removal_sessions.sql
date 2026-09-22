@@ -1,0 +1,62 @@
+-- Issue #17 — revoke sessions that may have originated from the MCP OAuth consent
+-- flow or the OAuth device-authorization flow.
+--
+-- Both flows were removed in PR #16 (commits fc34d20 "remove kaneo's in-process MCP
+-- server and its OAuth consent flow" and c6ab6d5 "remove the inherited auth
+-- defaults", which took deviceAuthorization() out with it), merged to `main` as
+-- b75cf02 at 2026-09-07T15:45:26+06:30 = 2026-09-07T09:15:26Z. Migrations 0048 and
+-- 0049 dropped `mcp_oauth_state` and `device_code` -- the flows' own state tables --
+-- and both say plainly, in their own comments, that dropping a table is not
+-- revocation: a completed consent click or device-code exchange minted an ordinary
+-- 30-day better-auth `session` row, accepted on every route exactly like a
+-- password login.
+--
+-- Those rows cannot be told apart from an ordinary session after the fact.
+-- `sessionTable` (schema.ts) has never carried a provider/authMethod/origin column
+-- -- not in kaneo, not in any TaskDesk migration since -- and neither removed
+-- flow wrote anything to `session` beyond the same columns any login writes.
+-- `apps/api/src/mcp/oauth.ts` as it existed before fc34d20 (`git show
+-- fc34d20^:apps/api/src/mcp/oauth.ts`) shows its `exchangeCode` doing a plain
+-- `db.insert(sessionTable).values({ id, token, userId, expiresAt, createdAt,
+-- updatedAt })` -- the same shape as any other sign-in. The device flow was
+-- better-auth's own `deviceAuthorization()` plugin (removed by c6ab6d5), which
+-- mints its session through the same internal path every other better-auth
+-- sign-in method uses; it was never TaskDesk route code that could have been
+-- made to tag its own rows. Either way there is no enumerable property to
+-- filter on, so a targeted delete is not available, and guessing which rows
+-- "look like" MCP or device sessions risks the unsafe direction this issue
+-- exists to close: a guess that misses one leaves a real bad session valid.
+--
+-- The only sound fix still available is the blanket one both dropped migrations'
+-- comments call for: any `session` row created while either route still existed
+-- on `main` could theoretically have come from one of them, so all such rows are
+-- invalidated, not just the ones that plausibly did. A row created at or after
+-- the cutoff below was necessarily created by code that no longer has either
+-- route -- it is unaffected.
+--
+-- This EXPIRES rather than deletes the affected rows, by setting `expires_at` to
+-- the row's own `created_at` (always in the past by the time this migration can
+-- possibly run, since it is forward-only and this file did not exist before that
+-- date). better-auth's session lookup compares `expires_at` against `now()` on
+-- every request, so an expired row is refused immediately, with no code change
+-- needed here. Expiring rather than deleting keeps `created_at`/`ip_address`/
+-- `user_agent` on the row for `session-cleanup` to later purge and, in the
+-- meantime, for anyone investigating this issue to still read; it also means this
+-- statement never needs to reason about `legal_hold` the way a hard delete would
+-- -- no row is destroyed, only invalidated as a live credential.
+--
+-- Idempotent by construction: a second run assigns the same value to the same
+-- rows and changes nothing further.
+--
+-- `created_at` is `timestamp without time zone`, holding UTC wall clock (see
+-- `apps/api/src/utils/db-time.ts` and `coding-standards.md` § Database). Comparing it
+-- against a `TIMESTAMPTZ` literal would make Postgres reinterpret that UTC wall-clock
+-- value as *local* time in the database server's own `TimeZone` setting, sliding the
+-- boundary by the server's offset -- on a server behind UTC that silently leaves live
+-- exactly the pre-cutoff sessions this migration exists to expire (found by the
+-- mandatory security review of PR #225, proved live under America/New_York). Using a
+-- naive `TIMESTAMP` literal in the column's own UTC wall-clock convention keeps the
+-- comparison `timestamp` against `timestamp`, so no session setting can enter into it.
+UPDATE "session"
+SET "expires_at" = "created_at"
+WHERE "created_at" < TIMESTAMP '2026-09-07 09:15:26';
