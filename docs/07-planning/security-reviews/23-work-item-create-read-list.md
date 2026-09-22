@@ -474,3 +474,36 @@ in full in F1 and F2 above so they can be rebuilt exactly.
   alias namespace's assumptions survive whichever option is chosen.
 - I did not evaluate the UI, deployment or Docker image: this branch touches no `apps/web/**`
   file and nothing that ships in the image beyond the API source.
+
+---
+
+## Post-review: F1/F2 fixes implemented, then main-sync — orchestrating session, 2026-09-22
+
+**F1 and F2 fixes** (commits `d985970`, `1f32b8c`) implement exactly option 2 for F1 (make
+`project.slug` globally unique — Thomas's own decision, recorded in the decision log) and
+the 403→404 remap this review's own F2 section called for, contained to
+`require-work-item-reach.ts`. Both independently re-reviewed (fresh ordinary Sonnet:
+APPROVE WITH NOTES; fresh alignment check: ALIGNED WITH NOTES — one pre-existing,
+non-blocking `data-model.md` doc-drift note filed as #264) before this addendum. Neither
+review round found a defect in the fix itself.
+
+**Main sync, self-verified**: `main` had advanced twice since this branch's last commit —
+PR #262 (`compose.yml`'s `PGDATA` fix, issue #11) and PR #263 (the decision-log entry these
+two fix commits already cited by name before it existed anywhere in this branch's own
+history). Merged via `git merge` (not rebase); `git diff --stat` confirms zero overlap with
+anything this review examined (`compose.yml` is deployment-only, `decision-log.md` is
+docs-only). Separately, the merge surfaced a real `contract - OpenAPI drift` failure — not
+from the sync itself, but from F1's own new `409` response on project create/update never
+having been propagated to the committed fixture. Regenerated via `pnpm openapi:write`;
+diffed and confirmed exactly two new `409` entries (create/update project), no route added
+or removed, nothing else touched. Re-ran the full suite on the final synced head: `pnpm
+typecheck` (8/8), `pnpm test:permissions` (80/80), `pnpm biome check .` (70 pre-existing
+warnings, 0 errors, unchanged baseline), `pnpm test:integration` (615-616/616 depending on
+run — the sole intermittent failure is `health.test.ts`'s readiness probe, independently
+confirmed earlier this session to reproduce identically on plain `main` with no branch
+changes involved, a pre-existing environment artifact, not a regression).
+
+**Reviewed head:** `9889916` (on branch `feat/23-work-item-create-read-list`)
+
+**F1/F2 now genuinely ready for the mandatory Opus delta-confirmation this review's own
+verdict requires before merge.**
