@@ -15,6 +15,7 @@ import {
   loadApiApp,
   loadAuthGuardRegistrationIndex,
   loadPolicyRegistry,
+  loadResolvedStaticRoot,
   loadRouterMiddleware,
   loadRouterRoutes,
 } from "./api-app";
@@ -62,6 +63,16 @@ describe("route coverage", () => {
   it("finds a router to enumerate at all", () => {
     // A silent zero here would make every other assertion in this file vacuous.
     expect(routeCount).toBeGreaterThan(0);
+  });
+
+  it("runs against a router with no built web app to serve (#165, #236)", async () => {
+    // registerStaticServing only adds its catch-all app.use("*", ...) when a build is on
+    // disk, which silently voids DECLARED_ROUTER_MIDDLEWARE's exact-count declaration for
+    // the unrelated CORS/compress registrations at the same key -- see
+    // tests/permissions/README.md. Asserted first and explicitly so that misconfiguration
+    // fails here, at its actual cause, rather than as three oblique downstream failures
+    // with nothing in their messages naming static serving or this constraint.
+    await expect(loadResolvedStaticRoot()).resolves.toBeUndefined();
   });
 
   it("finds the auth guard's own registration index in the real router", () => {

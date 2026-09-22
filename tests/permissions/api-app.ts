@@ -55,6 +55,22 @@ export async function loadAuthGuardRegistrationIndex(): Promise<
   return authGuardRegistrationIndex(await loadApiApp());
 }
 
+/**
+ * The directory the running router would serve a built web app from, or `undefined` when
+ * none is present — `apps/api/src/index.ts`'s own `resolveStaticRoot()`, called with its
+ * real default candidates (never a test fixture). #165 / issue #236: `test:permissions`
+ * must run against a router that cannot see a built `apps/web/dist`, because
+ * `registerStaticServing` only adds its catch-all `app.use("*", ...)` when one exists,
+ * which silently voids `DECLARED_ROUTER_MIDDLEWARE`'s exact-count declaration for the
+ * unrelated CORS/compress registrations at the same key. `route-coverage.test.ts` asserts
+ * this is `undefined` so that misconfiguration fails at its actual cause, not as three
+ * oblique downstream assertion failures.
+ */
+export async function loadResolvedStaticRoot(): Promise<string | undefined> {
+  const module = await import("../../apps/api/src/index");
+  return module.resolveStaticRoot();
+}
+
 /** The better-auth plugin ids actually constructed, read off the instance. */
 export async function loadBetterAuthPluginIds(): Promise<string[]> {
   const module = await import("../../apps/api/src/auth");
