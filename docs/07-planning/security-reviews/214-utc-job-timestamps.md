@@ -1,6 +1,6 @@
 # Security review — PR #214 (issue #212: compare time-gated timestamps in UTC)
 
-**Reviewed head:** `274c03ced5a147dc87189dffb4e0351c7dcf89b8`
+**Reviewed head:** `80748eb9282f8ff128d42b385fc1a60700c689bd`
 
 Substantively reviewed at `be79b656c7ca7543839e0b669f63714a613ff91a`; clearance extended to
 this head (a merge of `origin/main` into the branch, via an intervening note-only commit
@@ -22,6 +22,12 @@ apps/api/src/scheduler/leader-lock.ts apps/api/src/scheduler/session-cleanup.ts
 tests/api-integration/leader-lock.test.ts
 tests/api-integration/session-cleanup-server-ahead-of-utc.test.ts
 tests/api-integration/session-cleanup-server-behind-utc.test.ts` is empty.
+
+A second further sync landed at `80748eb`, bringing in PR #213's test-hygiene fixes
+(unrelated files, no overlap). Re-checked directly: `git diff
+274c03ced5a147dc87189dffb4e0351c7dcf89b8 80748eb9282f8ff128d42b385fc1a60700c689bd --
+apps/api/src/utils/db-time.ts apps/api/src/scheduler/leader-lock.ts
+apps/api/src/scheduler/session-cleanup.ts` is empty.
 
 ## What this PR does
 
