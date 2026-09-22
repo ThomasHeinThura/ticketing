@@ -418,3 +418,122 @@ unproven" — §1.1 and §1.2 prove it independently.
 `main`-merge or further commit invalidates this clearance and requires the reviewer's own
 re-confirmation — not a diff-stat performed by the implementing or orchestrating session
 (PR #191's note records why that distinction is enforced).
+
+---
+
+# Delta re-confirmation — 2026-09-22 (after the `main` sync)
+
+**Reviewed head:** `503c32c510f43b8dadf11f58b7a78681c26c2b37`
+
+**Reviewer:** independent Opus pass, fresh context — did not author, orchestrate or
+previously review this change, and did not perform the review above. Dispatched because §9's
+clearance is scoped to `0088189810d6c88e667c55dd08e7a015b8c39bcf` and explicitly refuses a
+diff-stat performed by the implementing or orchestrating session.
+
+**Scope.** This is a narrow delta confirmation of one claim — *the `main` sync is
+content-inert to everything the review above examined* — not a re-derivation of the eleven
+attack shapes. Those are not re-run; they do not need to be if, and only if, the reviewed
+material is genuinely byte-identical. That is what was checked, and checked in a way that
+cannot miss a file.
+
+## What changed since `0088189`, established independently
+
+Isolated detached worktree at `503c32c5…`, created fresh from a re-fetched `origin` — not
+`main`, not the implementation worktree.
+
+- **Ancestry.** `git merge-base --is-ancestor` confirms both
+  `0088189810d6c88e667c55dd08e7a015b8c39bcf` (the reviewed implementation commit) and
+  `353e5c94d536ea4b0379b21b9c6b5cccf0f235db` (the note-only commit that added this file) are
+  real ancestors of the current head. Nothing was rebased away or replayed.
+- **Shape of the head.** `503c32c5…` is a true merge commit with parents `353e5c9`
+  (the branch) and `f84df0e` (PR #238). `f84df0e` is byte-for-byte `origin/main` at the time
+  of the sync — verified by resolving both refs, not by reading the PR.
+- **No hand edits in the merge.** `git show --cc` on the merge commit produces an **empty**
+  body. A combined diff shows only hunks that differ from *every* parent, so an empty one is
+  proof that no conflict was resolved and no line was authored during the merge — every file
+  came through untouched from one side or the other.
+- **Whole-tree object comparison, not a file list.** Every top-level tree object was compared
+  by hash between `0088189` and the current head. All twenty-nine entries are identical
+  except `docs` — including `apps`, `packages`, `scripts`, `tests`, `package.json`,
+  `pnpm-lock.yaml` and `pnpm-workspace.yaml`. Because a Git tree hash covers its entire
+  subtree transitively, this establishes that *no file anywhere outside `docs/` changed*,
+  which is strictly stronger than enumerating the files the review happened to name.
+  `git diff 0088189..HEAD -- . ':(exclude)docs'` is correspondingly empty (zero lines).
+- **The specific artefacts, by blob hash.** Confirmed identical individually as well:
+  `apps/api/src/database/schema.ts` (`c0d2ddb1…`), `apps/api/drizzle/0062_fast_blob.sql`
+  (`eab4e07e…`), `apps/api/drizzle/meta/0062_snapshot.json`,
+  `apps/api/drizzle/meta/_journal.json`, `apps/api/src/utils/seed-internal-organisation.ts`
+  and `apps/api/src/workspace/controllers/create-workspace.ts`. (Note for the record: the two
+  latter files live at those paths, not under `apps/api/src/database/` as the dispatch
+  described; the tree-hash comparison above covers them either way.) Every test file the PR
+  touches — `tests/api-integration/tenant-attribution-schema.test.ts`,
+  `work-item-integrity-constraints.test.ts`, `work-item-parent-cycle-guard.test.ts`,
+  `work-item-schema.test.ts`, `work-item-schema-integrity.test.ts`,
+  `organization-active-session.test.ts`, `project-delete.test.ts`, `helpers/fixtures.ts`,
+  `helpers/database.test.ts` — is inside the identical `tests` tree object.
+- **The three files that do differ.**
+  `docs/07-planning/security-reviews/192-work-item-tenant-attribution.md` is this file,
+  added by the note-only commit `353e5c9` and **unchanged by the merge** (empty diff against
+  `353e5c9`). `docs/07-planning/decision-log.md` (+33 / −0, purely additive) and
+  `docs/07-planning/status.md` (+70 / −17 — a snapshot-header rewrite that moves the
+  superseded #18 narrative into an "Earlier the same day" section, not a content deletion)
+  both arrived from PR #238 and are **identical to their state on `main`** (empty diff
+  against `f84df0e`). Both are planning prose. Neither touches schema, migration, code,
+  tests, CI machinery, the dependency graph, permissions, or gate semantics.
+
+## Regression run at the current head
+
+Fresh private database `opusrev192b_test` on `td-lane-pg` (`127.0.0.1:55440`), created for
+this pass and used by nothing else. All 62 migrations applied by the real
+`drizzle-kit migrate`. Dependencies installed in the isolated worktree from the frozen
+lockfile.
+
+| Suite | Result |
+| --- | --- |
+| `drizzle-kit check` | clean — no drift ("Everything's fine") |
+| Unit (`pnpm test`) | **`@taskdesk/api` 323/323** (48 files); 11/11 workspace tasks green — domain 337, permissions pkg 260, web 236, mcp 30, email 16, libs 3, ui 1 |
+| Permissions (`pnpm test:permissions`) | **80/80** (10 files), 4/4 tasks |
+| Integration (`pnpm test:integration`) | **595/595** (65 files), 4/4 tasks |
+
+All three headline counts match the expected 323 / 80 / 595 exactly. Nothing regressed from
+the merge.
+
+## One observation, non-blocking and not about this change
+
+`status.md` as merged by #238 still says #192 is "still not pushed/PR'd" and that the Opus
+pass is "not yet dispatched as of this snapshot." That was true when written and is stale
+now. It is a planning-document lag on `main`, not a defect in this PR, and it does not
+assert that #192 is cleared — so it misleads nobody into treating an ungated change as
+gated. Worth a line in the next `status.md` refresh; it blocks nothing here.
+
+## What this pass did not do
+
+- It did not re-run the eleven live-SQL attack shapes, re-read the schema, or re-derive any
+  finding from §§1–7. That is deliberate and is licensed only by the byte-identity
+  established above; if any part of that identity were false, this section would not stand.
+- It did not re-examine findings F1, F2 and F4. They are unchanged and still non-blocking.
+- It did not merge this pull request, edit the PR body, touch `## Gates`, or waive anything.
+- It did not verify branch-protection state, required status checks, or the recorded reviews
+  on the PR. Those are the merging session's own checks, and this note does not substitute
+  for them.
+
+## Verdict
+
+**CLEAR — the clearance above extends to `503c32c510f43b8dadf11f58b7a78681c26c2b37`.**
+
+The sync is genuinely content-inert to the reviewed material. Every file outside `docs/` is
+byte-identical to `0088189810d6c88e667c55dd08e7a015b8c39bcf` by whole-tree hash, the merge
+introduced no authored line at all, and the only content difference is planning prose that
+arrived unmodified from `main`. The migration, its snapshot and journal, the schema, both
+touched application files and every test file are the exact objects that were reviewed. The
+automated suites re-run at this head at their expected counts, and `drizzle-kit check`
+reports no drift.
+
+**Cleared at `503c32c510f43b8dadf11f58b7a78681c26c2b37`.** The original condition carries
+forward unchanged: any further rebase, conflict resolution, `main`-merge or commit
+invalidates this and requires a reviewer's own re-confirmation, not a diff-stat by the
+implementing or orchestrating session.
+
+The one exemption, on the same footing as `353e5c9` before it: the note-only commit that
+adds *this section* to *this file* changes no code and does not invalidate the clearance it
+records. Any commit that touches anything else does.
