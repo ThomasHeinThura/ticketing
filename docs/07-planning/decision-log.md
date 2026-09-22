@@ -17,6 +17,47 @@ Newest first.
 
 ---
 
+### 2026-09-22 · F1 addendum: `project.slug`'s claim must be permanent, not live-scoped
+
+**Decision:** extends the "F1: `project.slug` becomes globally unique" entry immediately
+below. The uniqueness constraint that entry decided on is enforced through a permanent
+`project_slug_claim` registry (once a slug is claimed, by any project, it is claimed
+forever — surviving that project's own rename or deletion), not merely a `UNIQUE` index on
+`project.slug` scoped to currently-live rows.
+
+**Why:** the first implementation of the entry below (migration `0064`, a bare `UNIQUE`
+constraint on live `project.slug`) was found incomplete by a second mandatory Opus
+delta-confirmation pass (finding D1, full record in
+`docs/07-planning/security-reviews/23-work-item-create-read-list.md`): `work_item.key`
+claims (`work_item_key_claim`) are, by this codebase's own established and already-accepted
+design, held forever and never released — so any scheme that lets `project.slug` become
+reclaimable again (via a project rename or a workspace hard-delete) reopens exactly the
+cross-tenant collision the original decision existed to close, just on a delay. Given
+`work_item_key_claim`'s permanence is fixed and was not itself in question, permanence on
+the `project.slug` side is not a discretionary product choice among comparably-valid
+options — it is the only construction that actually closes the gap the original decision
+targeted, and it mirrors a pattern this codebase already committed to for the exact same
+purpose. Reproduced and closed live: both the rename-then-reclaim and the
+workspace-delete-then-reclaim paths, previously exploitable, are now rejected with a clean
+`409` at project-creation time.
+
+**Alternatives:** the delta-confirmation review named this as one of three candidate
+closures without picking one, deliberately leaving the choice open. The other two
+(sketched, not built, so not fully evaluated here) would have meant either making
+`work_item_key_claim` itself releasable — reopening an already-reviewed, already-relied-on
+mechanism with a broader blast radius than this fix — or accepting a bounded, permanent
+first-come-first-served cost on `project.slug` specifically, which is what was actually
+built. Treated as implementation completion of the entry below rather than routed back to
+Thomas as a fresh architecture question, since the technical requirement (permanence,
+given `work_item_key_claim`'s own permanence) left no real discretion once traced through.
+
+**Decided by:** the orchestrating session, 2026-09-22, as a direct technical consequence of
+the entry below plus `work_item_key_claim`'s pre-existing, already-accepted permanence — not
+re-litigated with Thomas, since no genuine alternative survived tracing the actual
+constraint the delta-confirmation review found.
+
+---
+
 ### 2026-09-22 · #261's mandatory Opus review F1: `project.slug` becomes globally unique
 
 **Decision:** `project.slug` gets a real, instance-wide unique constraint. `work_item.key`
