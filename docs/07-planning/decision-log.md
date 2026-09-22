@@ -25,9 +25,11 @@ the fix is on the `slug` side, not the `key` side.
 
 **Why:** PR #261's mandatory Opus security review found that `work_item.key`'s global
 uniqueness was built on an assumption a comment in `apps/api/src/database/schema.ts` stated
-as fact but that was never actually true or enforced: "`project.slug` is already unique per
-instance." It is not — `project/schema.ts` validates it as a bare `z.string()` with no
-uniqueness check anywhere, DB or application-level. Reproduced live: two different
+as fact but that was never actually true or enforced: "`project.key` is already unique per
+instance" — this codebase's own loose shorthand (also seen in the `lastTaskNumber` naming
+drift two lines above that same comment) for the value that is actually `project.slug`. It
+is not unique — `project/schema.ts` validates it as a bare `z.string()` with no uniqueness
+check anywhere, DB or application-level. Reproduced live: two different
 workspaces each creating a project slugged `ACME` collide on their first work-item key,
 and the second workspace's project is permanently unable to create a work item afterward
 (the counter advances on every retry but the insert always collides on the same key). It is
