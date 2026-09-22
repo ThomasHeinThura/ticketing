@@ -76,7 +76,8 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-22 (#237 and #192/PR #239 both merged; issues #170 and #192 closed)
+**Last updated:** 2026-09-22 (#237 and #192/PR #239 both merged, issues #170/#192 closed;
+three more bounded fixes landed same session — #242, #135, #113, all closed)
 **Current stage:** P0 · Foundation, continuing into P1–P7 parallel — **Throttle 1 OPEN
 (unchanged); P0 concrete-defect backlog still fully clear (#8/#9 remain, large umbrella
 items, untouched this pass).**
@@ -113,6 +114,19 @@ Full record: `docs/07-planning/security-reviews/192-work-item-tenant-attribution
 releases three things that were blocked on it: #23's future write path, the
 `multi-tenancy.md` RLS prototype (now writable, not yet delivered), and #198's
 legal-hold-aware purge.
+
+**Three more bounded fixes landed the same session, all merged and closed**: **#242** (a
+stale test-helper comment, one line, self-reviewed, out of security scope). **#135**
+(dropped the now-redundant `workspace_role_workspaceId_idx` after PR #122's unique
+constraint superseded it; mandatory Opus pass CLEAR, checked the one genuine risk an index
+drop can carry — an unindexed FK's referential-integrity probe — with `EXPLAIN ANALYZE`
+against a real database rather than reasoning on paper). **#113** (integration tests derive
+a per-worktree default database instead of every lane silently sharing one, closing the
+contention that had been producing false-looking failures under concurrent P1–P7 lanes;
+the issue's own guess about where the bug lived was wrong and got corrected before fixing
+it — the actual fixed-shared-default fallback was in `tests/api-integration/setup.ts`, not
+where the issue pointed). One further non-blocking follow-up filed from #135's review:
+**#248** (a stale planning-doc line, low priority).
 
 **Two real process mistakes found and fixed this session, both now standing rules in
 memory**: (1) a security-review agent's note briefly existed only as an uncommitted file in
