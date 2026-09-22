@@ -57,7 +57,7 @@ function SignUp() {
   useEffect(() => {
     if (search.setupToken) {
       navigate({
-        search: (prev) => ({ ...prev, setupToken: undefined }),
+        search: (prev: typeof search) => ({ ...prev, setupToken: undefined }),
         replace: true,
       });
     }
