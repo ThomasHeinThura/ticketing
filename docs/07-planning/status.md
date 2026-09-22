@@ -76,23 +76,59 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-22 (all four eleventh-pass P0 defects now merged — #18 was the
-last, after three Opus security-review rounds)
-**Current stage:** P0 · Foundation — **Throttle 1 OPEN (verified, unchanged); P0 as a whole
-is not finished (#8/#9 remain), but the eleventh-pass concrete-defect backlog is fully
-clear.** #18 (PR #227) merged: three Opus security-review rounds, each finding something
-real (B1 blocking on round 1 — a scanning-oracle regression; D1/D2 on round 2's
-delta-confirmation — the B1 fix itself was incomplete in two ways; round 3 confirmed both
-genuinely fixed). Final verdict CLEAR WITH FINDINGS, all non-blocking; four follow-up
-issues filed (#229, #230, #231, #232). #146/#17/#97 were already merged as of the prior
-pass. #8 and #9 remain untouched, large, umbrella items — P0 is not "done," but its known
-concrete-defect backlog from the eleventh-pass audit is.
-**Updated by:** Claude Sonnet 5 (orchestrating session). This session also renumbered two
-migrations (`0059`→`0060` for #17, `0060`→`0061` for #18) after sequential same-day merges
-each claimed the next slot first — regenerated via `drizzle-kit generate`, not hand-edited —
-and fixed two rounds of CI-only typecheck failures on #18 (a stricter `apps/web` tsconfig
-than checked locally, then a stricter `apps/api` tests tsconfig), both self-verified as
-zero-behavior-change mechanical fixes rather than sent through further review rounds.
+**Last updated:** 2026-09-22 (continuing past the #18 milestone into P1–P7 parallel work per
+standing instruction; #237 in a fix→re-review cycle, #192 cleared its two Sonnet rounds and
+a real governance question, now headed to Opus)
+**Current stage:** P0 · Foundation, continuing into P1–P7 parallel — **Throttle 1 OPEN
+(unchanged); P0 concrete-defect backlog still fully clear (#8/#9 remain, large umbrella
+items, untouched this pass).**
+
+**PR #235** (#165) merged — doc-only fix, mandatory Opus review CLEAR WITH FINDINGS, F1
+self-fixed in the same PR and disclosed as self-verified; F2 tracked as #236.
+
+**PR #237** (#170, Dockerfile `deps`-stage/workspace drift check): ordinary Sonnet review
+APPROVE, but the **mandatory Opus security review returned CHANGES NEEDED (blocking)** — two
+real false negatives in exactly the defect class the gate exists to close (F1 — COPY
+destination never validated against the source; F2 — the stage-boundary regex required a
+named `AS <stage>`, so an unnamed `FROM` after `deps` let a later stage's COPY lines count
+toward it), plus a false header claim (F3) and zero test coverage (F4). Full findings:
+`docs/07-planning/security-reviews/170-dockerfile-deps-drift-check.md`. The design/CI-wiring
+claims the PR rests on were independently re-verified and do hold. **A fix for F1–F5 has
+landed** (local commit on the branch, not yet pushed): destination backreferenced to the
+source directory, stage boundary now stage-name-optional, a real heredoc/unreadable-line
+hard-failure path, accepted path prefixes now derived from `readWorkspaceRoots()` instead of
+hardcoded, and a new 19-test file — reported 470/470 full suite. **Not yet independently
+re-verified by the orchestrating session or re-reviewed by Opus** — do not treat #237 as
+clear; that verification is the immediate next step.
+
+**Issue #192** (work-item tenant attribution, Thomas's "Option A+D" decision): schema slice
+implemented on `feat/192-work-item-tenant-attribution` (still not pushed/PR'd). Independently
+re-verified end-to-end by the orchestrating session on a fresh database — every number
+matches the implementing agent's own report (323/323 unit, 80/80 permissions, 595/595
+integration, typecheck/biome/vocabulary/`drizzle-kit check` clean). **Both required Sonnet
+rounds are in: ordinary review APPROVE; the alignment check came back ALIGNED WITH NOTES**,
+flagging one real governance question — the implementer added a third composite FK
+(`work_item.(workspace_id, project_id) → project(workspace_id, id)`, `ON UPDATE NO ACTION`)
+beyond what the original decision-log entry literally authorized, on its own reading of an
+ambiguous precedent the alignment reviewer found didn't actually license it. **Taken to
+Thomas directly** (not merged on the implementer's own authority): he chose to keep the FK
+and record it now. Recorded as a new decision-log addendum, same day, naming what it extends.
+Redesigns a cross-tenant authority boundary and includes a concurrency-sensitive fix (a
+nested-transaction SAVEPOINT in the workspace-create path), so the mandatory Opus security
+pass is next — **not yet dispatched as of this snapshot.** Do not treat #192 as merged or
+even PR-opened until a later entry says so.
+**Updated by:** Claude Sonnet 5 (orchestrating session).
+
+---
+
+**Earlier the same day:** Claude Sonnet 5 (orchestrating session), all four eleventh-pass P0
+defects merged — #18 was the last, after three Opus security-review rounds. #146/#17/#97
+were already merged as of the prior pass. This session also renumbered two migrations
+(`0059`→`0060` for #17, `0060`→`0061` for #18) after sequential same-day merges each claimed
+the next slot first — regenerated via `drizzle-kit generate`, not hand-edited — and fixed two
+rounds of CI-only typecheck failures on #18 (a stricter `apps/web` tsconfig than checked
+locally, then a stricter `apps/api` tests tsconfig), both self-verified as zero-behavior-
+change mechanical fixes rather than sent through further review rounds.
 
 ---
 

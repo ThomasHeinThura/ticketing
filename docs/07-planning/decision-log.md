@@ -17,6 +17,39 @@ Newest first.
 
 ---
 
+### 2026-09-22 · #192 addendum: a third composite FK anchoring `work_item.workspace_id` to `project`
+
+**Decision:** extends the "#192's tenant-attribution decision: Option A+D" entry
+immediately below. In addition to the composite FK already decided there
+(`work_item.type_id` → `work_item_type`), `work_item` also gets a second composite foreign
+key, `FOREIGN KEY (workspace_id, project_id) → project (workspace_id, id)`, with the same
+`ON UPDATE NO ACTION` (never `CASCADE`) as the `type_id` FK, for the same reason.
+
+**Why:** the original entry made `work_item.workspace_id` NOT NULL but named no database-
+level constraint anchoring it to anything — as originally decided, any `workspace_id` value
+could be written to a `work_item` row with nothing to stop it, which would have left the
+column's own stated purpose (writable RLS, #198's purge) resting on nothing but the future
+write path's own discipline — exactly the class of gap this migration exists to close by
+construction rather than by convention. The implementing agent added this FK on its own
+reading of an existing schema comment ("the same double-composite-FK technique
+`state`/`parent_id` use") and flagged the addition explicitly rather than merging it
+silently. An independent alignment review found that comment's literal precedent does not
+actually license a second FK the way it was read — `state`/`parent_id` each carry exactly
+one composite FK apiece, not two anchoring a single column — so the addition, while sound
+engineering, was not something the original decision text authorized. Reviewed with Thomas
+directly rather than merged on the implementer's own authority, per this project's decision
+hierarchy.
+
+**Alternatives:** ship the original entry's literal text only, leaving `workspace_id`
+DB-unenforced, and file a follow-up issue for the integrity gap as separately-decided later
+work — rejected because the gap is real today, on the same migration already doing this
+class of hardening, and there is no reason to defer closing it to a second migration.
+
+**Decided by:** Thomas, 2026-09-22 (asked directly, after an independent alignment review
+flagged the addition as outside the original decision's literal scope).
+
+---
+
 ### 2026-09-22 · #192's tenant-attribution decision: Option A+D
 
 **Decision:** `work_item` gets a denormalised, NOT NULL `workspace_id` column (set from
