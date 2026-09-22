@@ -5224,6 +5224,16 @@
               }
             }
           },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "409": {
             "description": "The slug is reserved, or already used in this project",
             "content": {
