@@ -507,3 +507,369 @@ changes involved, a pre-existing environment artifact, not a regression).
 
 **F1/F2 now genuinely ready for the mandatory Opus delta-confirmation this review's own
 verdict requires before merge.**
+
+---
+
+# Opus delta-confirmation review of the F1/F2 fixes — 2026-09-22
+
+**Reviewed head:** `d5841ba4854f5d812c98e8abaaceed0ea3f38428` (confirmed via
+`git ls-remote origin refs/heads/feat/23-work-item-create-read-list`, not from `gh pr view`'s
+cached head field).
+**Branch:** `feat/23-work-item-create-read-list` · **Pull request:** #261
+**Fix commits under review:** `d985970` (F1), `1f32b8c` (F2), plus `9889916` (fixture regen)
+and the `be7459b` main-sync.
+**Reviewer tier:** Opus, fresh independent context — did not author, direct, remediate or
+previously review this change or its fixes. Two Sonnet rounds preceded this one on the fixes
+(ordinary: APPROVE WITH NOTES; alignment: ALIGNED WITH NOTES); nothing below is inherited
+from them. Every conclusion was re-derived from source and, where it mattered, proven by
+running it against a real database.
+**Mandate:** close out the blocking F1/F2 findings at the tier this project's review gate
+requires — adversarially, not by confirming the fixes do what their commit messages say.
+
+---
+
+## Verdict
+
+**CHANGES NEEDED (blocking).**
+
+F2 is genuinely closed on the route it targets, and the F1 migration's collision-repair logic
+is correct — I tried hard to break it with a hostile dataset on a live database and could not.
+
+But **F1 itself is not closed.** The fix makes `project.slug` unique among *live* projects.
+`work_item_key_claim` is, by explicit design, a namespace that is **never released for the
+life of the system**. Those two lifetimes do not match, and the gap between them is the whole
+of F1. An attacker burns keys under a slug, then *gives the slug up* — by renaming their own
+project, or by deleting their own workspace — and the slug becomes available again while the
+claims stay burned forever. The next tenant to take that slug gets exactly the original F1:
+a permanent, unrecoverable 500 on work-item create, with no product-level recovery path.
+
+I reproduced this end-to-end through the real HTTP routes at the reviewed head, twice, by two
+independent release paths. The second one leaves **no trace in any table an operator would
+think to look at**.
+
+| # | Finding | Severity | Blocking |
+| --- | --- | --- | --- |
+| D1 | F1 not closed: the slug namespace is transient, the key-claim namespace is permanent. Releasing a slug re-opens the original cross-tenant permanent DoS | High | **Yes** |
+| D2 | Migration 0064's repair loop — adversarially stressed on a real database, **correct** | — | No (positive) |
+| D3 | F2's `{key}` route — genuinely closed, three responses byte-identical. The other two work-item routes still answer 403 where this PR's own fixture declares 404 | Low | No |
+| D4 | A credential revoked mid-request now reports `404 Work item not found` on this route only | — | No (note) |
+| D5 | `work_item_key_alias` — survives the option chosen, but rests on the same seam D1 exposes | — | No (note) |
+
+---
+
+## D1 — F1 is not closed: a slug can still be released, a key claim never is
+
+**Blocking. Reproduced live at `d5841ba`, twice, through the real routes.**
+
+### The mechanism
+
+The fix adds `project_slug_unique UNIQUE(slug)` on the `project` table. That constrains the
+set of slugs held by rows **currently in `project`**. It says nothing about slugs that *used
+to* be held.
+
+`work_item_key_claim`, by contrast, is explicitly permanent — `schema.ts`'s own comment:
+
+> `key` is the PRIMARY KEY: a string is claimed here EXACTLY ONCE, ever, for the life of the
+> system. Claims are never released and never reassigned, even after the work item that
+> claimed one is deleted.
+
+So the generator of the key namespace (`project.slug`) is **revocable**, while the namespace
+it generates into (`work_item_key_claim.key`) is **irrevocable**. A uniqueness constraint on
+a revocable namespace cannot protect an irrevocable one. Every path that frees a slug hands
+the next holder a pre-poisoned key range.
+
+There are two such paths live today, and neither needs anything but ordinary use of one's own
+tenant:
+
+1. **`PUT /api/project/{id}`** — `update-project.ts` writes `slug` with no restriction. The
+   new slug is checked for collisions; the *old* one is simply abandoned.
+2. **`DELETE /api/workspace/{workspaceId}`** — `delete-workspace.ts` is a **hard** delete
+   ("HARD delete, over the existing `ON DELETE CASCADE` chains off `workspace.id` — members,
+   roles, teams, team members, projects, tasks and the rest"). Projects vanish, their slugs
+   with them. `work_item_key_claim` has **no foreign key at all** to `work_item` — deliberately,
+   so that claims survive exactly this — so every claim stays.
+
+Note that soft-delete (`DELETE /api/project/{id}`) does *not* release a slug: the row stays,
+`deleted_at` stamped, and the unconditional unique constraint still covers it. That path is
+safe. It is the two above that are not.
+
+### Reproduction 1 — release by rename
+
+Real routes, real auth, real database, reviewed head:
+
+| Step | Result |
+| --- | --- |
+| Attacker (admin of their **own** workspace) creates project slugged `ACME` | 200 |
+| Attacker creates one work item | 200, key `ACME-1`; `work_item_key_claim` = `["ACME-1"]` |
+| Attacker renames their own project's slug to `ACME-RETIRED` | **200** |
+| Victim, unrelated workspace, creates a project slugged `ACME` | **200** — the 409 does not fire; the slug is free |
+| Victim's **first** work item | **500** `{"message":"Internal Server Error"}` |
+| Victim's `project.last_task_number` afterwards | **0** — rolled back with the transaction |
+| Victim retries | **500** again. `work_item` rows for the victim's project: **0** |
+
+Identical to the original F1, with one extra attacker step.
+
+### Reproduction 2 — release by workspace deletion (no trace left)
+
+This is the more serious of the two, because the attacker's artifacts are gone afterwards:
+
+| Step | Result |
+| --- | --- |
+| Attacker creates project slugged `ENG`, creates 3 work items | 200; claims = `["ENG-1","ENG-2","ENG-3"]` |
+| Attacker `DELETE /api/workspace/{their own}` | **200** |
+| State afterwards | `project` rows: **0** · `work_item` rows: **0** · `work_item_key_claim`: **still `["ENG-1","ENG-2","ENG-3"]`** |
+| Victim, later, creates a project slugged `ENG` | **200** |
+| Victim's work items 1–4 | **500, 500, 500, 500** — broken from the very first one, counter stuck at 0 |
+
+After the deletion there is no project row, no work item row and no workspace row anywhere
+that explains the victim's 500. The only evidence is orphaned rows in a table no product
+surface exposes. An operator debugging this has nothing to go on.
+
+### Reproduction 3 — delayed detonation at an attacker-chosen number
+
+The counter that feeds the key is `project.last_task_number`, shared with ordinary task
+creation, so an attacker can burn one *specific* high key rather than a prefix run — then
+release the slug. The victim's project then works normally for a while and dies later:
+
+| Step | Result |
+| --- | --- |
+| Attacker creates project slugged `OPS`, then creates **4 ordinary tasks** via `POST /api/task/{projectId}` | 200; `last_task_number` = **4** |
+| Attacker creates exactly **one** work item | 200, key **`OPS-5`** — only that one key burned |
+| Attacker renames their project to `OPS-OLD` | 200 |
+| Victim takes the freed slug `OPS` | 200 |
+| Victim creates work items 1…7 | `OPS-1`, `OPS-2`, `OPS-3`, `OPS-4`, then **500, 500, 500** — permanently, from the attacker's chosen number onward |
+
+The victim's project looks completely healthy through its first four items. It then breaks
+forever at item five, at a point the attacker selected in advance, with no recovery path short
+of renaming the project or hand-deleting rows from a table whose own comment says that must
+never happen.
+
+### Why the fix misses it
+
+The fix is a faithful, well-built implementation of exactly what the decision log says
+(migration + a clean 409 on both create and update, mirroring `WorkspaceSlugTakenError`). The
+gap is not in its execution — it is that instance-wide uniqueness over *live* rows was taken
+as equivalent to ownership of a *permanent* namespace, and it is not. Thomas's decision
+("`project.slug` gets a real, instance-wide unique constraint", 2026-09-22) was made to close
+this DoS; the decision stands, but as implemented it does not close it. This is a fresh
+finding about the implementation's sufficiency, **not** a re-opening of the decided approach.
+
+For the same reason, I am **not** raising the slug-squatting/409-oracle property as a finding:
+that project-create answers 409 for a slug some other tenant holds, and 200 otherwise, is a
+cross-tenant existence oracle — but it is the *explicitly accepted cost* recorded in the
+decision itself ("`project.slug` becoming a single first-come-first-served namespace across
+the whole instance rather than per-tenant"). Settled; noted here only so the next reader knows
+it was considered and is not an oversight.
+
+### What would close it
+
+Not implemented here — a reviewer that remediates cannot also clear the remediation, and the
+shape of this is a design call. The options I can see:
+
+1. **Make slug retirement permanent, matching the namespace it feeds.** A `project_slug_claim`
+   table keyed the way `work_item_key_claim` is, written on project create and on rename, and
+   never released. A slug, once used anywhere, is never available to another tenant again.
+   This is the direct completion of Thomas's own decision: it makes the slug namespace exactly
+   as durable as the key namespace that depends on it, rather than one notch weaker. It also
+   closes both release paths with one mechanism, including the hard-delete cascade, because
+   the claim row has no FK to `project`.
+2. **Handle the collision in `create-work-item.ts` instead of 500ing.** Catch the
+   `unique_violation`, re-claim a *fresh* number and retry, so burned keys are skipped rather
+   than fatal. The original review correctly ruled retry out for the *live-duplicate-slug*
+   case (deterministic, so it re-collides forever); that objection does not apply once slugs
+   are unique among live projects, because here the collision is against a finite set of
+   retired keys and the counter walks past them. On its own this leaves an attacker able to
+   burn a large range and make creates slow, so it is defence in depth, not the primary fix.
+3. **Restrict slug mutation** once a project has ever created a work item, and make workspace
+   deletion soft. Narrower, but it fights two legitimate product behaviours rather than fixing
+   the namespace mismatch, and the hard-delete path is a documented P0 deliberate choice.
+
+Whichever is chosen, `create-work-item.ts` returning a bare 500 with nothing logged (per
+`app.onError`, a non-`HTTPException` logs nothing) should be fixed regardless — it is what
+made all three reproductions above opaque from the outside.
+
+---
+
+## D2 — Migration 0064's collision repair, stressed adversarially: correct
+
+**Not a finding. Recorded because the mandate asked for it to be attacked, and it held.**
+
+The ordinary reviewer traced the repair loop by hand. I ran it, verbatim, against a
+manufactured hostile dataset on a real Postgres (`migadv23_test` on `td-lane-pg`): the
+constraint was dropped, 18 project rows inserted, and the migration's `DO $$ … $$` block plus
+its `ALTER TABLE … ADD CONSTRAINT` replayed exactly as written.
+
+The dataset was built to break the suffix search specifically:
+
+- **five** duplicate groups, not one (`ACME`×3, `ACME-2`×2, `OPS`×2, `ENG`×4, `TIE`×2);
+- **squatters already holding the "next" suffix** of another group (`ACME-2` and `ACME-3`
+  pre-exist while the `ACME` group needs suffixes; `OPS-2` and `OPS-3` pre-exist while `OPS`
+  needs one; `ENG-2` pre-exists while `ENG` needs three);
+- a **squatter group that is itself a duplicate** (`ACME-2`×2) whose own repair must then skip
+  a further pre-existing squatter (`ACME-2-2`);
+- a **`created_at` tie** (`TIE`×2, identical timestamps) to exercise the `id ASC` tiebreak.
+
+Result — zero duplicates remaining, `ALTER TABLE` succeeded, all 18 rows preserved:
+
+| id | before | after | why |
+| --- | --- | --- | --- |
+| `a1` | `ACME` | `ACME` | oldest in group, keeps it |
+| `a2` | `ACME` | `ACME-4` | skipped `ACME-2` and `ACME-3` squatters |
+| `a3` | `ACME` | `ACME-5` | also skipped `a2`'s brand-new `ACME-4` |
+| `s1` | `ACME-2` | `ACME-2` | oldest in its own group |
+| `s2` | `ACME-2` | `ACME-2-3` | skipped the `ACME-2-2` squatter |
+| `b2` | `OPS` | `OPS-4` | skipped `OPS-2`, `OPS-3` |
+| `c2`/`c3`/`c4` | `ENG` | `ENG-3`/`ENG-4`/`ENG-5` | skipped `ENG-2`, then each other |
+| `t1`/`t2` | `TIE` | `TIE`/`TIE-2` | tie broken deterministically on `id` |
+
+The `EXIT WHEN NOT EXISTS` re-check genuinely prevents a fresh collision rather than merely
+making one unlikely, and the reason is structural: the outer `FOR` loop reads from a fixed
+snapshot (so each row's *base* slug stays its original one, and no row is processed twice),
+while the inner `EXIT WHEN NOT EXISTS` is a fresh statement that **does** see every rename
+committed earlier in the same transaction. Every candidate is therefore tested against live
+state immediately before it is taken. `a3 → ACME-5` and `c3`/`c4` above are that property
+firing in practice, not in theory.
+
+Concurrency is fail-loud rather than silent: a project inserted by another session between the
+`DO` block and the `ALTER` would make the `ADD CONSTRAINT` fail and roll the migration back.
+That is the right failure mode.
+
+---
+
+## D3 — F2 on `GET /api/work-items/{key}`: closed. The other two routes still disagree with the fixture
+
+**The `{key}` route is genuinely fixed.** Verified live at the reviewed head, as an outsider
+with no relationship to the target workspace — all three responses are byte-identical, so
+there is nothing left to distinguish:
+
+| Request | Response |
+| --- | --- |
+| `SECRETPROJ-1` — exists, workspace the caller cannot see | `404 Work item not found` |
+| `SECRETPROJ-99` — same (real) slug, no such item | `404 Work item not found` |
+| `NOSUCHSLUG-1` — slug that exists nowhere | `404 Work item not found` |
+
+The enumeration primitive F2 described — walk `SLUG-n`, learn which slugs exist and roughly
+how many items each holds — is gone from this route. The remap is correctly scoped: it catches
+only `HTTPException` with status 403 from `validateWorkspaceAccess` and rethrows everything
+else unchanged, and it touches no shared middleware.
+
+**Non-blocking finding:** `tests/permissions/matrix.fixture.json` declares
+`"outOfReach": "404 not_found"` for **all three** work-item routes, but the two project-scoped
+ones still answer 403 live:
+
+| Route | Fixture declares | Runtime answers |
+| --- | --- | --- |
+| `GET /api/work-items/{key}` | 404 | **404** ✓ |
+| `GET /api/projects/{projectId}/work-items` | 404 | **403** ✗ |
+| `POST /api/projects/{projectId}/work-items` | 404 | **403** ✗ |
+
+F2's stated blocking ground was that "the declared answer and the runtime answer disagree, in
+a file this PR fully owns." That disagreement is now closed for one of three routes and still
+open for two. I am **not** treating this as blocking, for the reason the original review gave
+itself: those two go through the shared `workspaceAccess.fromProject`, they address an
+unguessable cuid2 (no enumeration primitive), and the original review explicitly scoped them
+out ("I would track that separately rather than widen this slice"). The fix did what that
+review asked. But the fixture still overstates the system's behaviour, and `pnpm
+test:permissions` cannot catch it because the fixture is generated from the policy declaration
+and compared against itself — nothing compares either to a running route. Worth its own issue
+alongside #256's, not a reason to hold #261.
+
+---
+
+## D4 — A credential revoked mid-request now reports "not found" on this route
+
+**Note, not a finding. No security impact; a small, bounded diagnosability cost.**
+
+`validateWorkspaceAccess` throws 403 in two distinct cases: an API key that is disabled or not
+owned by the caller ("Invalid API key for this workspace"), and plain non-membership. The
+remap catches both, so both become `404 Work item not found`.
+
+**Security: this is the safer choice, and it hides nothing.** The API-key branch's query does
+not reference `workspaceId` at all — it only asks whether this key is valid and belongs to
+this user — so its 403 never carried workspace-dependent information in the first place.
+Remapping it leaks nothing, and *not* remapping it would have been worse: a response that
+varies by credential state while the membership answer is flattened to 404 gives an attacker a
+second signal to difference against.
+
+**Usability: bounded and narrow.** `authenticateApiRequest` already verifies the key and 401s
+an invalid one before this middleware runs, and it derives `userId` from the key itself, so
+the ownership clause always matches. The only way to reach the API-key 403 here is a key
+disabled in the window between `verifyApiKey` and this check — a genuine race, not a stale-key
+steady state. A caller in that race sees "not found" for a work item that exists and that they
+can reach, and the same key on any other route still says "Invalid API key for this
+workspace", so the diagnosis differs by route. Too narrow to act on; recorded so nobody
+re-derives it during a support call.
+
+---
+
+## D5 — `work_item_key_alias`: survives the option chosen, but sits on the seam D1 exposes
+
+The original review flagged this as unexamined and asked whoever closed F1 to check it.
+
+**It survives.** The alias namespace never depended on `project.slug` being unique. It depends
+on `work_item_key_claim`: `work_item_key_alias` carries `uniqueIndex(old_key)` plus a composite
+FK `(old_key, work_item_id) → work_item_key_claim(key, work_item_id)` with `ON DELETE RESTRICT`
+/ `ON UPDATE NO ACTION`. Its guarantee — an alias can only ever reference a claim its *own*
+work item is on record as having made — comes from that FK and the claim table's PRIMARY KEY,
+not from anything about slugs. Option 2 (the one taken) leaves `work_item.key` globally unique,
+so the single-global-namespace premise the alias design was built around is intact. Option 1
+would have broken it, as the original review predicted; option 2 does not. The unscoped
+`WHERE key = ?` lookups in `require-work-item-reach.ts` and `get-work-item.ts` likewise remain
+sound for the same reason.
+
+**But it rests on the same seam.** The alias design assumes a key string, once claimed, is
+permanently and unambiguously owned. That is true inside `work_item_key_claim`. It is *not*
+true of the slug that generates those strings — which is precisely D1. There is no live write
+path for aliases today, so nothing is broken now. When one lands (the natural trigger being a
+project rename: re-key the items, record aliases for the old keys), it will inherit D1 directly
+— the old slug's aliases stay claimed forever while the slug itself becomes available to
+another tenant, so a second tenant's work items would generate key strings that are already
+aliases of a first tenant's items. Closing D1 by making slug retirement permanent (option 1
+under D1) closes this too, before the alias write path exists. Closing D1 any other way leaves
+it to be re-derived later.
+
+So the answer to the original review's question is: the alias namespace's assumptions survive
+the option chosen, but the false premise `project.slug`'s comment carried has not been
+eliminated — it has moved, from "slugs are unique" to "a slug, once used, stays used."
+
+---
+
+## Verification, re-run independently
+
+All at `d5841ba`, in a dedicated worktree, against private `*_test` databases on `td-lane-pg`
+(`opusdelta23_test` for the suite and the exploit probes, `migadv23_test` for the migration
+work) — not trusting the addendum's reported numbers.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck` | **pass**, 8/8 projects |
+| `pnpm test:permissions` | **pass**, 10 files, **80/80** |
+| `pnpm check:openapi` | **pass** — `openapi.json` matches the API, 105 operations |
+| `pnpm test:integration` | **pass**, 68 files, **616/616** |
+
+The integration suite was fully green on this run — the known intermittent `health.test.ts`
+readiness-probe failure (independently confirmed earlier as a pre-existing environment
+artifact reproducible on plain `main`) did not reproduce at all here. Nothing else failed.
+
+The exploit and migration probes are deliberately **not** committed — they demonstrate a
+defect, and the right home for them is a regression test alongside whichever fix closes D1.
+Every one is reproduced in full above, step by step, so they can be rebuilt exactly.
+
+---
+
+## What I did not do
+
+- **I did not fix D1.** A reviewer that remediates cannot clear the remediation, and the choice
+  between the three options above is a design call with a migration attached — Thomas's, the
+  same way F1's original resolution was.
+- I did not re-audit what the two Sonnet rounds already covered on the fixes themselves (fix
+  logic, naming, mirroring of `WorkspaceSlugTakenError`, the doc-drift note filed as #264).
+  This pass assumed those correct and attacked what they did not ask: whether the fix is
+  *sufficient*, not whether it is *faithful*.
+- I did not re-review the parts of #23 this slice defers (update, delete, bulk, ranking,
+  hierarchy, watchers, pagination), nor the shared `workspace-access-middleware.ts` beyond the
+  paths this slice reaches (#256's business), nor the UI/Docker/deployment surface — this
+  branch touches none of it.
+- I did not assess whether an existing production instance has orphaned
+  `work_item_key_claim` rows already, because no deployment has ever run this write path —
+  `work_item` has had no live writer before this slice.
