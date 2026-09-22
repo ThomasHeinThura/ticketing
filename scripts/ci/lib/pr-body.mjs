@@ -380,23 +380,117 @@ export function normaliseHeading(heading) {
 }
 
 /**
+ * Thrown by `sections()` when the SAME normalised `## ` heading names two genuinely
+ * VISIBLE sections — see `sections()`'s own doc comment for why this is a hard error
+ * rather than a silent "last one wins".
+ */
+export class DuplicateSectionError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "DuplicateSectionError";
+  }
+}
+
+/**
+ * The marker `visibleH2HeadingName` looks for: exactly "##", never "###" or deeper — the
+ * negative lookahead is what keeps a genuine `### Backend change` checklist block heading
+ * (one level down, inside `## Checklists`) from ever being mistaken for a `##` section
+ * boundary. Mirrors `HEADING_MARKER`'s own reasoning at the level `sections()` needs it.
+ */
+const H2_HEADING_MARKER = /^##(?!#)/;
+/** Same shape as `H2_HEADING_MARKER`, with the name captured. */
+const H2_HEADING_LINE = /^##(?!#)\s+(.*\S)\s*$/;
+
+/**
+ * Is raw line `[lineStart, lineEnd)` genuinely a visible `## heading` — and if so, its
+ * real, comment-free name?
+ *
+ * The exact same two-part visibility test `visibleHeadingName` already applies one level
+ * down for `### ` checklist blocks (see that function's doc comment for the full
+ * reasoning), reused here at the level `sections()` itself splits on — closing issue
+ * #146: `sections()` used to match `^##\s+(.*\S)\s*$` against the RAW, unstripped line,
+ * with no comment-awareness at all. A `## Security review` heading placed inside an HTML
+ * comment (`<!-- ## Security review -->`) was still recognised as a real heading and,
+ * being a duplicate of an earlier GENUINE one, silently OVERWROTE it in the Map
+ * `sections()` returns — a fake, comment-hidden "cleared" section defeating the whole
+ * template gate, while a human reviewing the rendered markdown would never see the
+ * duplicate heading at all (GitHub never renders it).
+ *
+ * 1. `isRawSpanVisible` on the "##" prefix itself, against the WHOLE document's comment
+ *    structure (`survived`) — catches a heading swallowed by an outer, multi-line comment
+ *    that opened on an earlier line and closes on a later one. In isolation this line has
+ *    no comment markers on it at all, so nothing scoped to just this line could ever see
+ *    the problem.
+ * 2. `markerAndWordingGenuine`, applied to THIS LINE stripped in isolation — catches a
+ *    splice inside the heading's own "##" or its name. A comment fully self-contained and
+ *    cushioned by real whitespace on both sides of the gap between "##" and the name, or
+ *    one that sits entirely AFTER the name (trailing decoration), still passes — the same
+ *    harmless shapes `visibleHeadingName` already accepts one level down.
+ */
+function visibleH2HeadingName(raw, survived, lineStart, lineEnd) {
+  if (
+    !isRawSpanVisible(survived, lineStart, Math.min(lineStart + 2, lineEnd))
+  ) {
+    return null;
+  }
+  const { text, positions } = stripCommentsWithPositions(
+    raw.slice(lineStart, lineEnd),
+  );
+  const marker = H2_HEADING_MARKER.exec(text);
+  if (!marker) return null;
+  const heading = H2_HEADING_LINE.exec(text);
+  if (!heading) return null; // "##" with nothing (real) after it is not a declared heading
+  if (
+    !markerAndWordingGenuine(text, positions, 0, marker[0].length, text.length)
+  ) {
+    return null;
+  }
+  return heading[1];
+}
+
+/**
  * Split a pull-request body into its `##` sections.
+ *
+ * Recognises a heading only when it is genuinely VISIBLE (`visibleH2HeadingName`), not
+ * merely present as a raw substring — a `##` heading hidden inside an HTML comment is
+ * never a heading here, comment-hidden or not, and so can never collide with anything
+ * (issue #146).
+ *
+ * A SECOND, genuinely visible occurrence of the same normalised heading is a different
+ * half of the same bug class: a document that visibly repeats a fixed section at least
+ * once, with no comment involved at all. No caller of `sections()` has a legitimate
+ * reason for two — the pull-request template declares each fixed section exactly once —
+ * and the Map this function returns can only ever hand a caller ONE of the two, silently
+ * keeping whichever was written last. That silent "last one wins" is exactly the shape
+ * CLAUDE.md's own stated culture warns against ("if you find yourself explaining why a
+ * gate does not apply, that is the failure happening again"), so it is refused outright —
+ * `DuplicateSectionError` — rather than resolved by document order.
  *
  * @param {string} markdown
  * @returns {Map<string, { heading: string, raw: string, text: string }>} keyed by normalised heading
  */
 export function sections(markdown) {
   const found = new Map();
+  const survived = survivedRawIndices(markdown);
   const lines = markdown.split("\n");
   let heading = null;
   let buffer = [];
+  let offset = 0;
 
   const flush = () => {
     if (heading === null) {
       return;
     }
     const raw = buffer.join("\n");
-    found.set(normaliseHeading(heading), {
+    const key = normaliseHeading(heading);
+    if (found.has(key)) {
+      throw new DuplicateSectionError(
+        `"## ${heading}" appears more than once as a genuinely visible heading. Exactly ` +
+          "one is allowed — merge the content under a single heading, or remove the " +
+          "extra one.",
+      );
+    }
+    found.set(key, {
       heading,
       raw,
       text: stripComments(raw).trim(),
@@ -405,10 +499,14 @@ export function sections(markdown) {
   };
 
   for (const line of lines) {
-    const match = /^##\s+(.*\S)\s*$/.exec(line);
-    if (match) {
+    const lineStart = offset;
+    const lineEnd = offset + line.length;
+    offset = lineEnd + 1; // account for the "\n" this split() consumed
+
+    const name = visibleH2HeadingName(markdown, survived, lineStart, lineEnd);
+    if (name !== null) {
       flush();
-      heading = match[1];
+      heading = name;
       buffer = [];
       continue;
     }

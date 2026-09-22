@@ -62,7 +62,11 @@ import {
   readTextAtCommit,
   resolveMergeBase,
 } from "./git-baseline.mjs";
-import { normaliseHeading, sections } from "./pr-body.mjs";
+import {
+  DuplicateSectionError,
+  normaliseHeading,
+  sections,
+} from "./pr-body.mjs";
 import { readText, repoRoot } from "./repo.mjs";
 
 export const TEMPLATE_RELATIVE_PATH = ".github/pull_request_template.md";
@@ -82,9 +86,17 @@ export class TemplateScopeUnavailableError extends Error {
  * indistinguishable from "every requirement was deleted", so it is never an empty list.
  */
 export function parseTemplateSections(source, origin = TEMPLATE_RELATIVE_PATH) {
-  const headings = [...sections(source).values()].map(
-    (section) => section.heading,
-  );
+  let headings;
+  try {
+    headings = [...sections(source).values()].map((section) => section.heading);
+  } catch (error) {
+    if (!(error instanceof DuplicateSectionError)) throw error;
+    // Fail closed with the same typed error the rest of this scope-resolution already
+    // uses, rather than letting an uncaught DuplicateSectionError read as a checkout
+    // problem: a template that genuinely repeats a `## ` heading is exactly as
+    // unusable as one this function already refuses for declaring none at all.
+    throw new TemplateScopeUnavailableError(`${origin} ${error.message}`);
+  }
   if (headings.length === 0) {
     throw new TemplateScopeUnavailableError(
       `${origin} declares no \`## \` sections. An empty template is not a template with ` +
