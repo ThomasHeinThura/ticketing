@@ -33,6 +33,32 @@ describe("check:ui — radixImportsIn", () => {
     assert.deepEqual(radixImportsIn(source), ["radix-ui"]);
   });
 
+  it("finds a `radix-ui/<subpath>` import of the umbrella package (B1 regression)", () => {
+    // `radix-ui@1.6.7` ships a `"./*"` wildcard export map, so `radix-ui/slot` is a real,
+    // resolvable import of the umbrella package — the same capability as the bare `radix-ui`
+    // or `@radix-ui/react-slot` import, and must be caught the same way.
+    const source = 'import { Slot } from "radix-ui/slot";\n';
+    assert.deepEqual(radixImportsIn(source), ["radix-ui/slot"]);
+  });
+
+  it("finds other `radix-ui/<subpath>` imports, not just `/slot` (B1 regression)", () => {
+    const source = [
+      'import { Dialog } from "radix-ui/dialog";',
+      'import { Popover } from "radix-ui/popover";',
+    ].join("\n");
+    assert.deepEqual(radixImportsIn(source), [
+      "radix-ui/dialog",
+      "radix-ui/popover",
+    ]);
+  });
+
+  it("does not false-positive on a package whose name merely starts with `radix-ui` (B1 regression)", () => {
+    const source = 'import { x } from "radix-ui-extras/something";\n';
+    // Not the umbrella package or one of its subpaths — a different, unrelated package name
+    // that happens to share a prefix. `radix-ui-extras` is not `radix-ui` followed by `/`.
+    assert.deepEqual(radixImportsIn(source), []);
+  });
+
   it("finds a dynamic import() and a require()", () => {
     const source = [
       'const x = await import("@radix-ui/react-dialog");',

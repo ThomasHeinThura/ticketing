@@ -59,9 +59,18 @@ const EXPECTED_HEADER_CELLS = ["File", "Package", "Reason"];
 const IMPORT_SPECIFIER =
   /\b(?:from\s+|import\s*\(\s*|import\s+|require\s*\(\s*)["']([^"']+)["']/g;
 
-/** True for `@radix-ui/<anything>` or the bare `radix-ui` umbrella package. */
+/**
+ * True for `@radix-ui/<anything>`, the bare `radix-ui` umbrella package, or any
+ * `radix-ui/<subpath>` of it (`radix-ui@1.6.7` ships a `"./*"` wildcard export map, so
+ * `radix-ui/slot` etc. are real, resolvable imports of the umbrella package and must be
+ * caught the same way as the scoped `@radix-ui/*` case already is).
+ */
 function isRadixSpecifier(specifier) {
-  return specifier === "radix-ui" || specifier.startsWith("@radix-ui/");
+  return (
+    specifier === "radix-ui" ||
+    specifier.startsWith("radix-ui/") ||
+    specifier.startsWith("@radix-ui/")
+  );
 }
 
 /** Every Radix/radix-ui module specifier imported anywhere in the given source text. */

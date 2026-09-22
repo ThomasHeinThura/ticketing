@@ -87,8 +87,11 @@ export type SlotProps = React.HTMLAttributes<HTMLElement> & {
 
 /**
  * Merges its props onto its single child element instead of rendering a wrapper node.
- * Throws when given anything other than exactly one valid React element child — same
- * contract as `@radix-ui/react-slot`'s `Slot`.
+ * Throws when given anything other than exactly one valid React element child — including a
+ * falsy child (`null`, `undefined`, `false`). This is stricter than
+ * `@radix-ui/react-slot`'s `Slot`, which returns a falsy child as-is (rendering nothing)
+ * instead of throwing; every call site in this repo always passes exactly one element, so
+ * the difference is not reachable today.
  */
 export const Slot = React.forwardRef<HTMLElement, SlotProps>(
   ({ children, ...slotProps }, forwardedRef) => {
