@@ -1,0 +1,29 @@
+{
+	"note": "S10 zero-live-caller tripwire. Shrink-only ratchet over authClient.organization.* call sites in apps/web/src, mechanically derived by scripts/ci/lib/organization-callers.mjs -- never hand-add an entry here for a NEW call site; see scripts/ci/check-organization-callers.mjs.",
+	"callers": {
+		"apps/web/src/hooks/mutations/workspace/use-create-workspace-role.ts": {
+			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
+			"occurrences": [
+				"createRole #1: const { data, error } = await authClient.organization.createRole({"
+			]
+		},
+		"apps/web/src/hooks/mutations/workspace/use-delete-workspace-role.ts": {
+			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
+			"occurrences": [
+				"deleteRole #1: const { data, error } = await authClient.organization.deleteRole({"
+			]
+		},
+		"apps/web/src/hooks/mutations/workspace/use-update-workspace-role.ts": {
+			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
+			"occurrences": [
+				"updateRole #1: const { data, error } = await authClient.organization.updateRole({"
+			]
+		},
+		"apps/web/src/hooks/queries/workspace/use-workspace-roles.ts": {
+			"reason": "inherited: S10 (organization() unmount) has not landed for this call site yet.",
+			"occurrences": [
+				"listRoles #1: const result = await authClient.organization.listRoles({"
+			]
+		}
+	}
+}
