@@ -300,3 +300,190 @@ defect; the migration does not follow them and the new test does not cover it.
 
 Re-review required at the new head after the predicate is changed and the behind-UTC
 regression case is added. Both are small; I expect a single follow-up pass to clear it.
+
+---
+
+# Delta confirmation — 2026-09-22 — reviewed head moved to `1641f1e`
+
+**Reviewed head:** `1641f1e3fe7f1a23389c79366d05aad3f1624aba`
+
+Reviewer: Opus 5, a fresh independent context — **not** the context that produced the
+CHANGES NEEDED review above, and not the context that authored, directed or remediated the
+fix. Everything above this line is the historical record of what was found at
+`b6565835fb2101db09be8399e587fa1fadd59dbf` and is left exactly as written.
+
+Scope: a **delta confirmation**, not a re-review from scratch. Two questions only — did the
+one blocking finding actually close, and did the fix introduce anything new. The seven
+verified findings above were not re-derived.
+
+Reviewed in an isolated worktree checked out at the exact head SHA above, against a
+dedicated `opusdelta225_test` Postgres database created for this pass alone. `main` at this
+time: `16ff76c8198dec4746a466a5eb273bdbd2af6fcc`. Merge-base with `main`:
+`665ceb49a656f3bb649ff24f0346da47865df1dc`.
+
+## What landed since `b656583`
+
+| Commit | Contents |
+| --- | --- |
+| `1348595` | Merge of `origin/main`, bringing in PR #224 (`665ceb4`): `apps/web/src/routes/__root.tsx`, `apps/web/src/routes/_layout/_authenticated.tsx`, `apps/web/src/routes/_layout/_authenticated.test.tsx`. Already reviewed and merged on its own. `git show --stat 1348595` shows **no conflict-resolution edits** — the merge contributes nothing beyond the second parent. |
+| `1641f1e` | The fix. Exactly three paths: `apps/api/drizzle/0060_revoke_pre_oauth_removal_sessions.sql`, `tests/api-integration/session-oauth-removal-revocation-behind-utc.test.ts` (new), and this review note. |
+
+Confirmed: **nothing else changed.** No `apps/api/src/**`, no `packages/**`, no
+`scripts/**`, and — verified explicitly — **no `drizzle/meta/**`**. The fix commit touches
+neither `0060_snapshot.json` nor `_journal.json`, which is correct: rewriting a data-only
+`UPDATE`'s predicate changes no schema, so the snapshot chain must not move.
+`drizzle-kit check` on the isolated database reports `Everything's fine` — no drift.
+
+Because migration `0060` is introduced *by this PR* and exists nowhere on `main`, no
+database anywhere has ever executed the old predicate. Editing the file body carries none
+of the usual "already-applied migration" hazard.
+
+## 1. The blocking finding — CLOSED, proved live
+
+The predicate now reads:
+
+```sql
+WHERE "created_at" < TIMESTAMP '2026-09-07 09:15:26';
+```
+
+I reproduced the original reviewer's live proof independently, on my own database, with
+migrations applied via `drizzle-kit migrate`. Four sessions, `created_at` in UTC wall clock:
+`06:00:00` (3h15m inside the window), `09:15:25` (one second before), `09:15:26` (exactly at
+the cutoff), `09:15:27` (one second after). Counting matches of the **old** predicate and the
+**new** one side by side, in the same session, across server time zones:
+
+| Server `TimeZone` | Old `TIMESTAMPTZ` predicate | New `TIMESTAMP` predicate |
+| --- | --- | --- |
+| `UTC` | 2 | 2 |
+| `America/New_York` (UTC−4) | **0** | 2 |
+| `Asia/Yangon` (UTC+6:30) | **4** | 2 |
+| `Pacific/Kiritimati` (UTC+14) | **4** | 2 |
+| `Etc/GMT+12` (UTC−12) | **0** | 2 |
+
+The old form is wrong in **both** directions — under-invalidating behind UTC (the security
+failure the original review named) and over-invalidating ahead of UTC (revoking genuinely
+post-cutoff sessions, which the original review did not need to reach). The new form returns
+the correct 2 in every zone.
+
+Running the migration's actual statement under `America/New_York`: the `06:00:00` session —
+**the exact case that previously survived** — now has `expires_at = created_at`, i.e. is
+expired. The at-cutoff and post-cutoff rows are untouched, so the `<` boundary is preserved.
+A second run changes nothing further: idempotency holds.
+
+I also confirmed the naive literal is not merely time-zone-independent but
+**`DateStyle`-independent** — a concern the unambiguous `YYYY-MM-DD` ordering should rule
+out, checked rather than assumed. Across `ISO, MDY` / `ISO, DMY` / `SQL, DMY` /
+`German, DMY` / `Postgres, DMY` crossed with three time zones (15 combinations), the new
+predicate returns 2 every time while the old one keeps swinging 0/2/4 with the zone.
+
+This matches the convention `apps/api/src/utils/db-time.ts` documents for exactly these
+`timestamp without time zone` columns: compare `timestamp` against `timestamp` so no session
+setting can enter into the comparison.
+
+## 2. The new regression test — RUN, PASSES, AND SURVIVES MUTATION
+
+`tests/api-integration/session-oauth-removal-revocation-behind-utc.test.ts` (3 cases) passes
+against this head. It mirrors the existing `session-cleanup-server-behind-utc.test.ts`
+pattern faithfully: `PGOPTIONS="-c timezone=America/New_York"` set before the pool opens, a
+first case asserting `current_setting('TimeZone')` is genuinely `America/New_York` so the
+file cannot silently degrade into a UTC run, and one file per direction for the documented
+reason (a session's `TimeZone` is fixed for the life of the pool a file uses).
+
+**Not vacuous.** I reverted only the SQL predicate back to
+`TIMESTAMPTZ '2026-09-07T09:15:26Z'` in my worktree and re-ran: the test fails with exactly
+the predicted assertion —
+
+```
+AssertionError: expected 2027-01-01T00:00:00.000Z to deeply equal 2026-09-07T06:00:00.000Z
+```
+
+— i.e. the pre-cutoff session stayed live. Restored the predicate, re-ran, passes. The test
+genuinely pins the fix.
+
+## 3. Nothing regressed
+
+Run on the isolated database at this head:
+
+| File | Result |
+| --- | --- |
+| `session-oauth-removal-revocation.test.ts` (the original 7 cases) | 7 passed — including the one-second-before boundary, the **at-cutoff** row left untouched, the one-second-after row, the mixed-set case and **idempotency** |
+| `session-oauth-removal-revocation-behind-utc.test.ts` (new) | 3 passed |
+| `session-cleanup-server-behind-utc.test.ts` | 2 passed |
+| `session-cleanup-server-ahead-of-utc.test.ts` | 4 passed |
+| **Total** | **4 files / 16 tests, all passing** |
+
+The predicate rewrite broke neither the boundary semantics nor idempotency, and did not
+disturb the two pre-existing `db-time` regression files on the same table.
+
+## 4. The new comment block — ACCURATE
+
+The ten added comment lines correctly state that `created_at` is
+`timestamp without time zone` holding UTC wall clock, that a `TIMESTAMPTZ` literal makes
+Postgres reinterpret that value as local time in the server's own `TimeZone` and slide the
+boundary by the server's offset, and that a naive `TIMESTAMP` literal keeps the comparison
+`timestamp` against `timestamp`. That is the same mechanism `db-time.ts`'s doc comment
+documents, cited correctly, and it matches what I measured. It also correctly attributes the
+finding to the security review of PR #225 rather than presenting it as original reasoning.
+
+## New non-blocking observations
+
+- **The new comment describes only the behind-UTC direction.** As measured above, the old
+  form was wrong ahead of UTC too (4 matches instead of 2 — revoking post-cutoff sessions
+  that should stay live). The comment says "on a server behind UTC that silently leaves
+  live…", which is the security-relevant half and is true, but a reader could take the
+  bug as one-directional. `db-time.ts` already documents both directions; one clause here
+  would close the gap. Cosmetic.
+- **There is no ahead-of-UTC regression test for `0060`**, where the `session-cleanup` pair
+  it is modelled on has both directions. Materially this costs nothing — any reintroduction
+  of a `TIMESTAMPTZ` literal is caught by the behind-UTC file — so it is an asymmetry with
+  the sibling convention, not a hole in the protection.
+- **The new test file omits the `afterAll(() => { delete process.env.PGOPTIONS; })`** that
+  both `session-cleanup-server-{ahead,behind}-utc.test.ts` carry. I checked whether this
+  leaks a non-UTC server time zone into the 32 integration files that sort after it: it does
+  **not**. With vitest's default per-file isolation a probe file run immediately after it
+  sees `process.env.PGOPTIONS === undefined` and `current_setting('TimeZone') = 'Etc/UTC'`.
+  So this is a deviation from the siblings' convention, not a defect; adding the hook would
+  make the three files consistent and remove the question.
+- The original review's third non-blocking observation — that the PR body records the
+  *orchestrating* session as the independent ordinary reviewer — is unchanged by this fix
+  and remains for the merging session's own gate check. Still not mine to adjudicate.
+
+## What I did not do
+
+- I did **not** re-derive the seven findings verified in the review above (cutoff instant,
+  no distinguishing column, narrower scoping, boundary choice, migration numbering, the
+  original 7-case test's mutation resistance, diff scope). This pass took them as settled and
+  confirmed only that the fix did not disturb them.
+- I did **not** run the full integration suite. The fix commit's message claims 63 files /
+  564 tests; I ran 4 files / 16 tests — the migration's own two files plus the two
+  pre-existing `db-time` siblings — and did not independently confirm the suite-wide counts.
+  The change touches no application source, so suite-wide regression risk is low, but the
+  claim is not verified here. CI's `integration - Postgres 18` check is SUCCESS at this head.
+- I did **not** review PR #224's web changes that arrived via the `main` merge; I confirmed
+  only that they came in unmodified from an already-merged, separately-reviewed commit.
+- I did **not** run `lint` or `typecheck`. I did observe that every GitHub check at this head
+  is SUCCESS except `pull request template + security review`, which is FAILURE precisely
+  because the note had no reviewed-head declaration covering `1641f1e` — the declaration at
+  the top of this section is what that gate is waiting for. The merging session should
+  confirm it turns green rather than assuming it.
+
+---
+
+## Verdict at `1641f1e` — CLEAR WITH FINDINGS
+
+The blocking finding is **genuinely closed**, not papered over. The predicate now compares
+`timestamp` against `timestamp` in the column's own UTC wall-clock convention; I proved live
+on my own database that the exact session which previously survived under
+`America/New_York` is now expired, that the fix is invariant across five time zones and five
+`DateStyle` settings, and that the new regression test fails against the old predicate and
+passes against the new one. The at-cutoff boundary, idempotency and the two pre-existing
+`db-time` regression files are all intact, the snapshot/journal chain is untouched,
+`drizzle-kit check` is clean, and the diff contains nothing beyond the fix, its test and this
+note.
+
+The four findings listed above are cosmetic or conventional — a one-directional comment, a
+missing mirror test that costs no protection, a missing `afterAll` I empirically confirmed
+leaks nothing, and one pre-existing process point already raised. **None of them blocks the
+merge**, and none requires another review round.
+
+No waiver is involved in this verdict.
