@@ -109,9 +109,13 @@ describe("withJobLease", () => {
   it("takes over a lease left behind by a crashed replica", async () => {
     await clearLease();
 
+    // `expires_at` is `timestamp without time zone` holding a UTC wall clock, so the
+    // fixture must write UTC wall clock too. A bare `now()` is coerced through the
+    // session TimeZone and lands hours off under a non-UTC database -- which silently
+    // inverted this test (issue #212's class, in the test that guards it).
     await db.execute(sql`
       INSERT INTO job_lease ("name", "owner", "expires_at")
-      VALUES (${LEASE}, 'dead-replica', now() - interval '1 minute');
+      VALUES (${LEASE}, 'dead-replica', (now() AT TIME ZONE 'UTC') - interval '1 minute');
     `);
 
     const result = await withJobLease(
@@ -126,9 +130,11 @@ describe("withJobLease", () => {
   it("does not take over a lease that is still live", async () => {
     await clearLease();
 
+    // Same reasoning as the crashed-replica fixture above: UTC wall clock, never
+    // session-local `now()`.
     await db.execute(sql`
       INSERT INTO job_lease ("name", "owner", "expires_at")
-      VALUES (${LEASE}, 'other-replica', now() + interval '10 minutes');
+      VALUES (${LEASE}, 'other-replica', (now() AT TIME ZONE 'UTC') + interval '10 minutes');
     `);
 
     const result = await withJobLease(
