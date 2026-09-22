@@ -14,7 +14,14 @@ import db, { schema } from "../database";
  * better-auth's dynamic-access-control resolution would treat them as
  * having an empty permission set on existing workspaces.
  *
- * Idempotent: only inserts rows that aren't already present.
+ * Idempotent: only inserts rows that aren't already present. The insert itself also
+ * carries `onConflictDoNothing` against `workspace_role_workspace_id_role_unique`
+ * (migration 0051, issue #118) -- the read above narrows which rows this call attempts to
+ * insert, but two replicas starting concurrently can both pass that read for the same
+ * workspace/role before either has inserted (issue #134: a plain check-then-insert here
+ * would let one replica's insert 23505 and `process.exit(1)` in `runStartupTasks`'s
+ * catch, crashing a whole replica over an ordinary concurrent-boot race). The conflict
+ * target makes the race resolve to a silent no-op for whichever replica loses it, instead.
  */
 export async function seedDefaultWorkspaceRoles() {
   try {
@@ -92,7 +99,13 @@ export async function seedDefaultWorkspaceRoles() {
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       await db
         .insert(schema.workspaceRoleTable)
-        .values(rows.slice(i, i + BATCH_SIZE));
+        .values(rows.slice(i, i + BATCH_SIZE))
+        .onConflictDoNothing({
+          target: [
+            schema.workspaceRoleTable.workspaceId,
+            schema.workspaceRoleTable.role,
+          ],
+        });
     }
     console.log(
       `✅ Seeded ${rows.length} default workspace role row(s) across ${workspaceIds.length} workspace(s).`,
