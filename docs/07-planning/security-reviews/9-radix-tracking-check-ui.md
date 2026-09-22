@@ -518,3 +518,31 @@ but the merging session should confirm the final head differs from
   Both are follow-up work, not conditions of this merge.
 
 **Verdict: CLEAR WITH FINDINGS (non-blocking) — F7 and F8, neither blocking. B1 is closed.**
+
+---
+
+## Post-round-2 main sync — orchestrating session, self-verified, 2026-09-22
+
+Branch protection required a sync with `main` after round 2 cleared (PR #250 and PR #252
+had merged in the meantime — #252 in particular, the Testcontainers CI change, landed
+directly on `main` before this branch synced). This review's own note carries no
+instruction barring orchestrator self-verification, so handled directly rather than
+dispatching a further round.
+
+`git diff 3b158ead2e16aae5bdbac523f9f550236776b8af..a6a4a73fdfe7f9088250cbc4b3f375143c89ea91
+--stat -- . ':(exclude)docs/07-planning/security-reviews/**'`: exactly PR #252's own six
+files (`.github/workflows/ci-full.yml`, `apps/api/package.json`,
+`apps/api/tsconfig.tests.json`, `apps/api/vitest.integration.config.ts`, `pnpm-lock.yaml`,
+`tests/api-integration/global-setup.ts`) — already independently reviewed and merged to
+`main` as PR #252, zero overlap with anything this review examined
+(`.github/workflows/ci-fast.yml`, `scripts/ci/check-ui.mjs`, `apps/web/**`, `KNOWN-RADIX.md`).
+
+`pnpm-lock.yaml` was the one file touched by both sides (main's new Testcontainers
+dependencies, this branch's Radix-dependency removal) — not a trivial no-overlap case, so
+verified explicitly rather than assumed inert: `git merge` (not rebase) auto-merged it with
+no conflict markers, then `pnpm install --frozen-lockfile` confirmed the result is a
+genuinely valid, internally consistent lockfile ("lockfile is up to date, resolution step
+is skipped" — no drift, no silent re-resolution). `node scripts/ci/check-ui.mjs` and its
+22-test suite both re-run directly against the merged tree: clean.
+
+**Reviewed head:** `a6a4a73fdfe7f9088250cbc4b3f375143c89ea91`
