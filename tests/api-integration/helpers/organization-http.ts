@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
+import db, { schema } from "../../../apps/api/src/database";
 import type { createApp } from "../../../apps/api/src/index";
+import {
+  ensureSetupToken,
+  isSetupCompleted,
+  SETUP_TOKEN_SINGLETON_ID,
+} from "../../../apps/api/src/instance/setup-token";
 
 // Plugin-independent HTTP-level test helpers: real sign-up, real cookies,
 // and legacy-row planting -- used by dozens of files across
@@ -82,6 +88,41 @@ export function nextClientIp(): string {
   return `198.51.100.${clientIpCounter % 254}`;
 }
 
+/**
+ * #18 closed the "whoever signs up first becomes instance admin, no proof
+ * required" hole: a zero-user instance now refuses `/sign-up/email` unless a
+ * valid setup token (or TASKDESK_BOOTSTRAP_ADMIN_EMAIL) is presented.
+ *
+ * `signUpUser` below is the ordinary-user helper -- ~27 files across this
+ * suite call it wanting nothing more than "a real, logged-in user", and never
+ * meant to depend on instance-admin bootstrap timing. Rather than hand a
+ * setup token to every one of them, this marks the instance as already set
+ * up (`instance_setting.setup_completed_at`) whenever it isn't already, so
+ * the bootstrap gate is inert and `signUpUser`'s HTTP call takes the
+ * ordinary registration path no matter how many real rows exist in
+ * `user`. Deliberately NOT a placeholder row inserted into `user` itself:
+ * an earlier version of this did that, and it silently inflated every
+ * count-the-whole-user-table assertion in the suite (p1-identity-schema-seed
+ * backfills one `person` per `user` row, for example) by one. Tests that
+ * deliberately want the real instance-admin bootstrap fixture use
+ * `signUpInstanceAdmin` below instead, which drives the actual token flow.
+ */
+export async function ensureNotFirstSignup(): Promise<void> {
+  if (await isSetupCompleted()) {
+    return;
+  }
+  await db
+    .insert(schema.instanceSettingTable)
+    .values({
+      id: SETUP_TOKEN_SINGLETON_ID,
+      setupCompletedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: schema.instanceSettingTable.id,
+      set: { setupCompletedAt: new Date() },
+    });
+}
+
 export async function signUpUser(
   app: App,
   overrides?: Partial<{
@@ -91,6 +132,8 @@ export async function signUpUser(
     clientIp: string;
   }>,
 ): Promise<SignedUpUser> {
+  await ensureNotFirstSignup();
+
   const email = overrides?.email ?? `user-${randomUUID()}@example.com`;
   const response = await app.request("/api/auth/sign-up/email", {
     method: "POST",
@@ -107,6 +150,57 @@ export async function signUpUser(
   if (response.status !== 200) {
     throw new Error(
       `signUpUser: sign-up failed with ${response.status}: ${await response.text()}`,
+    );
+  }
+  const cookie = extractSessionCookie(response);
+  const body = (await response.json()) as {
+    user: { id: string; email: string };
+  };
+  return { cookie, user: body.user };
+}
+
+/**
+ * Signs up the real, only-legitimate instance-admin bootstrap: obtains a
+ * genuine setup token the same way a fresh boot would (`ensureSetupToken`,
+ * the production function, not a reimplementation) and presents it on
+ * `/sign-up/email` exactly as the setup page does. Only meaningful when the
+ * instance is not yet claimed -- callers that need a real "this actor is the
+ * instance admin" fixture use this instead of `signUpUser`.
+ */
+export async function signUpInstanceAdmin(
+  app: App,
+  overrides?: Partial<{
+    email: string;
+    password: string;
+    name: string;
+    clientIp: string;
+  }>,
+): Promise<SignedUpUser> {
+  const setupToken = await ensureSetupToken();
+  if (!setupToken) {
+    throw new Error(
+      "signUpInstanceAdmin: instance is already set up (or no token was issued) -- this helper only works on a fresh instance",
+    );
+  }
+
+  const email =
+    overrides?.email ?? `instance-admin-${randomUUID()}@example.com`;
+  const response = await app.request("/api/auth/sign-up/email", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-forwarded-for": overrides?.clientIp ?? nextClientIp(),
+      "x-taskdesk-setup-token": setupToken,
+    },
+    body: JSON.stringify({
+      email,
+      password: overrides?.password ?? "correct horse battery staple",
+      name: overrides?.name ?? "Instance Admin (test fixture)",
+    }),
+  });
+  if (response.status !== 200) {
+    throw new Error(
+      `signUpInstanceAdmin: sign-up failed with ${response.status}: ${await response.text()}`,
     );
   }
   const cookie = extractSessionCookie(response);

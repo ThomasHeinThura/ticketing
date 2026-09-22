@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
+import { ensureNotFirstSignup } from "./helpers/organization-http";
 
 // R2 (retrofit plan §4): session.active_organization_id
 // (apps/api/src/database/schema.ts:61).
@@ -56,6 +57,11 @@ describe("R2: session.active_organization_id is NOT retroactively backfilled int
     const { app } = createApp();
     const email = `late-joiner-${randomUUID()}@example.com`;
     const password = "correct horse battery staple";
+
+    // #18: a zero-user instance now refuses sign-up without a setup token.
+    // This test isn't about instance-admin bootstrap, so plant a throwaway
+    // user directly first.
+    await ensureNotFirstSignup();
 
     // First sign-up: no workspace exists yet, so the after-hook
     // (auth.ts:~716-728) finds no workspace_member row for this user and

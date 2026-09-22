@@ -26,9 +26,15 @@ export type SignUpFormValues = {
 type SignUpFormProps = {
   invitationId?: string;
   defaultEmail?: string;
+  /** #18: the one-time setup token, when this signup is bootstrapping the instance admin. */
+  setupToken?: string;
 };
 
-export function SignUpForm({ invitationId, defaultEmail }: SignUpFormProps) {
+export function SignUpForm({
+  invitationId,
+  defaultEmail,
+  setupToken,
+}: SignUpFormProps) {
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -61,6 +67,9 @@ export function SignUpForm({ invitationId, defaultEmail }: SignUpFormProps) {
       const headers: Record<string, string> = {};
       if (invitationId) {
         headers["x-invitation-id"] = invitationId;
+      }
+      if (setupToken) {
+        headers["x-taskdesk-setup-token"] = setupToken;
       }
 
       const result = await authClient.signUp.email(

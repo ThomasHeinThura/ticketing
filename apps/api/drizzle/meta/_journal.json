@@ -428,6 +428,13 @@
 			"when": 1790044007365,
 			"tag": "0060_revoke_pre_oauth_removal_sessions",
 			"breakpoints": true
+		},
+		{
+			"idx": 61,
+			"version": "7",
+			"when": 1790046280558,
+			"tag": "0061_instance_setting",
+			"breakpoints": true
 		}
 	]
 }

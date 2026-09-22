@@ -43,7 +43,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import { signUpUser } from "./helpers/organization-http";
+import { signUpInstanceAdmin, signUpUser } from "./helpers/organization-http";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import {
   createWorkspaceNative,
@@ -113,11 +113,19 @@ async function narrowSeededRole(
  * Every test below burns the promotion on a throwaway user first, and
  * `expectOrdinaryUser` re-checks each actor against the database rather than
  * trusting that ordering.
+ *
+ * #18: the promotion can no longer happen without a valid setup token, so
+ * this uses `signUpInstanceAdmin` (the real token flow) rather than plain
+ * `signUpUser` to actually burn it -- `signUpUser` itself is now immune to
+ * the bootstrap gate regardless (it never signs up as the first user), so
+ * this call is belt-and-suspenders, not load-bearing, but it keeps the
+ * "throwaway user consumes the one bootstrap opportunity" intent literally
+ * true rather than merely implied.
  */
 async function bootstrapInstanceAdmin(
   app: ReturnType<typeof createApp>["app"],
 ) {
-  await signUpUser(app);
+  await signUpInstanceAdmin(app);
 }
 
 async function expectOrdinaryUser(userId: string) {
@@ -389,7 +397,7 @@ describe("S4 native writes: the instance-admin boundary (A2-P16..A2-P17)", () =>
     // as a side effect of moving a route. `requireWorkspaceMembership` is what
     // stops that, and this is the probe that proves it.
     const { app } = createApp();
-    const instanceAdmin = await signUpUser(app);
+    const instanceAdmin = await signUpInstanceAdmin(app);
     const owner = await signUpUser(app);
     await expectOrdinaryUser(owner.user.id);
 
@@ -439,7 +447,7 @@ describe("S4 native writes: the instance-admin boundary (A2-P16..A2-P17)", () =>
   // unaffected by this file.
   it("A2-P17 an instance admin who is a VIEWER member is refused — the bypass does not reach this route", async () => {
     const { app } = createApp();
-    const instanceAdmin = await signUpUser(app);
+    const instanceAdmin = await signUpInstanceAdmin(app);
     const owner = await signUpUser(app);
     const [adminRow] = await db
       .select({ role: schema.userTable.role })
@@ -480,7 +488,7 @@ describe("S4 native writes: the instance-admin boundary (A2-P16..A2-P17)", () =>
 
   it("A2-P17b an instance admin who is a genuine ADMIN member can still update — the guard checks real authority, not merely instance-admin-ness", async () => {
     const { app } = createApp();
-    const instanceAdmin = await signUpUser(app);
+    const instanceAdmin = await signUpInstanceAdmin(app);
     const owner = await signUpUser(app);
     const [adminRow] = await db
       .select({ role: schema.userTable.role })
@@ -526,7 +534,7 @@ describe("S4 native writes: the instance-admin boundary (A2-P16..A2-P17)", () =>
     // probe is what stops the A2-P17 fix from silently locking that person
     // out of their own workspace.
     const { app } = createApp();
-    const instanceAdminOwner = await signUpUser(app);
+    const instanceAdminOwner = await signUpInstanceAdmin(app);
     const [adminRow] = await db
       .select({ role: schema.userTable.role })
       .from(schema.userTable)
@@ -698,7 +706,7 @@ describe("A2-P25/A2-P26 the evaluator refuses an ambiguous membership rather tha
     const { app } = createApp();
 
     // The first user to sign up on a fresh instance becomes the instance admin.
-    const instanceAdmin = await signUpUser(app);
+    const instanceAdmin = await signUpInstanceAdmin(app);
     const [adminRow] = await db
       .select({ role: schema.userTable.role })
       .from(schema.userTable)

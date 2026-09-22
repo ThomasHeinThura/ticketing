@@ -1,8 +1,10 @@
 import { resolveApiBaseUrl } from "@taskdesk/libs";
 
+// #18: this endpoint returns a constant shape -- it no longer reveals whether
+// the instance has been claimed. Do not add fields back here that let a
+// caller distinguish "no users yet" from "set up" without a session.
 export type InstanceStatus = {
-  hasUsers: boolean;
-  hasAdmin: boolean;
+  status: "ok";
 };
 
 export async function getInstanceStatus(): Promise<InstanceStatus> {

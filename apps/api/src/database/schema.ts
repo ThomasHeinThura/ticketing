@@ -411,6 +411,32 @@ export const jobLeaseTable = pgTable("job_lease", {
   expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
 });
 
+// Singleton row (`id` is always the literal "singleton" -- there is exactly one).
+// Only the columns issue #18 (the setup-token flow) needs are defined here.
+// data-model.md documents a much larger `instance_setting` row (branding, session
+// policy, retention, health thresholds, ...) that belongs to the P4 God Mode work;
+// that lane ALTERs this same table to add its columns rather than defining a
+// second one -- do not redefine `instance_setting` elsewhere.
+export const instanceSettingTable = pgTable("instance_setting", {
+  id: text("id").primaryKey().default("singleton"),
+  // Durable first-run marker (auth-and-identity.md § Break-glass). Non-null means
+  // the instance has been claimed: the zero-user bootstrap bypass in auth.ts and
+  // the TASKDESK_BOOTSTRAP_ADMIN_EMAIL headless path are both permanently inert
+  // from this point on, even if every admin is later deleted and the user count
+  // returns to zero -- there is no way to re-open this by deleting rows.
+  setupCompletedAt: timestamp("setup_completed_at", { mode: "date" }),
+  // SHA-256 hex digest of the current setup token; never the raw token (same
+  // hash-only-at-rest convention as invitation tokens and API keys). Null once
+  // consumed, expired-and-regenerated, or once setup_completed_at is set.
+  setupTokenHash: text("setup_token_hash"),
+  setupTokenExpiresAt: timestamp("setup_token_expires_at", { mode: "date" }),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
 export const taskReminderSentTable = pgTable(
   "task_reminder_sent",
   {

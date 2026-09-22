@@ -33,7 +33,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import { signUpUser } from "./helpers/organization-http";
+import { signUpInstanceAdmin, signUpUser } from "./helpers/organization-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 beforeEach(async () => {
@@ -126,7 +126,7 @@ describe("S4 create honours DISABLE_WORKSPACE_CREATION (A2-P23)", () => {
     const { app } = createApp();
     // The first user is promoted to instance admin by the sign-up hook, so
     // the second is an ordinary user.
-    const instanceAdmin = await signUpUser(app);
+    const instanceAdmin = await signUpInstanceAdmin(app);
     const ordinary = await signUpUser(app);
 
     const [adminRow] = await db

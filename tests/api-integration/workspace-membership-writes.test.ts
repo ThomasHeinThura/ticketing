@@ -17,7 +17,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import { signUpUser } from "./helpers/organization-http";
+import { signUpInstanceAdmin, signUpUser } from "./helpers/organization-http";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import {
   addWorkspaceMemberNative,
@@ -746,7 +746,7 @@ describe("S5 transfer ownership (POST /api/workspace/{id}/transfer-ownership)", 
   // `bootstrapInstanceAdmin` ordering.
   it("rejects an instance admin who is not this workspace's owner", async () => {
     const { app } = createApp();
-    const instanceAdmin = await signUpUser(app);
+    const instanceAdmin = await signUpInstanceAdmin(app);
     const [adminRow] = await db
       .select({ role: schema.userTable.role })
       .from(schema.userTable)
