@@ -76,11 +76,97 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-22 (#237 and #192/PR #239 both merged, issues #170/#192 closed;
-three more bounded fixes landed same session — #242, #135, #113, all closed)
+**Last updated:** 2026-09-22 (a major P0 push: #8's route-classification pass **merged** as
+PR #259, the single largest remaining P0 security task; #9's Radix-tracking half of G1
+merged; #10's Testcontainers CI slice merged; #134's concurrency fix merged; #23's first
+work-item write-path slice built and reviewed, now unblocked to sync against the new `main`)
 **Current stage:** P0 · Foundation, continuing into P1–P7 parallel — **Throttle 1 OPEN
-(unchanged); P0 concrete-defect backlog still fully clear (#8/#9 remain, large umbrella
-items, untouched this pass).**
+(unchanged); P0 concrete-defect backlog fully clear. #8's classification pass is done (PR
+#259, merged); its separate runtime-integration obligation remains open, so #8 itself stays
+open. #9's Radix-tracking half of gate G1 is done, the primitive-migration half remains.**
+
+**PR #259 (#8, route-authorization classification) — merged, `main` at `71a06dc`.**
+Classifies every previously-unclassified inherited route (baseline shrank from 80 entries to
+exactly 1, `GET /api/invitation/{id}`, deliberately left for a design decision — issue #254)
+via five parallel Sonnet lanes partitioned by router with zero file overlap. Two real fixes
+landed alongside the declarations, not just classifications: `GET /api/invitation/pending`
+was missing `requireSessionOnly()` (an API key could reach it; fixed); `GET /api/asset/{id}`
+was registered above the auth guard even though it genuinely requires a credential —
+**literally the canonical example issue #8's own H2 section names as the failure case its
+guard-scope mechanism exists to prevent** — fixed by moving the route below the guard
+(handler body confirmed byte-identical, only registration position changed) and giving it a
+real policy. Full three-round tier: ordinary Sonnet APPROVE, alignment check ALIGNED WITH
+NOTES (one action item, filing #254, done before the PR opened), mandatory Opus **CLEAR WITH
+FINDINGS (non-blocking)** — read all 18 `public`/`delegated` reasons across the batch and
+verified every one true against its real handler (per issue #8's own explicit mandate),
+re-derived both fixes independently, independently sampled 32 further routes, found no
+misclassification. Three non-blocking findings filed as follow-ups: #256 (a pre-existing,
+not-currently-exploitable scope-provenance fallback pattern in eight shared middleware
+helpers — a real latent hazard for the runtime-integration wiring, flagged before that work
+begins), #257, #258 (both minor).
+
+**Before merge, CI surfaced one real, now-fixed gap**: the required `contract - OpenAPI
+drift` check failed because the asset-route fix's `description`/`security`/`responses`
+change had never been propagated to the committed `tests/api-contract/openapi.json` via
+`pnpm openapi:write`. Regenerated (commit `9fdd708`), confirmed the entire diff was exactly
+that one route's already-reviewed change (no route added or removed), self-verified against
+the review note (permissions/typecheck/biome all clean), documented as an addendum in
+`docs/07-planning/security-reviews/8-route-authorization-classification.md`. A separate,
+non-required `GitGuardian Security Checks` finding on the same run was investigated and
+matches this session's established false-positive pattern (no credential-shaped string in
+this branch's own commits — only prose mentions of "password"/"secret" in comments; the
+check is not in `protect-main`'s required list).
+
+**This PR does NOT close issue #8 itself** — only its classification-pass checkboxes,
+updated directly on the issue after merge. The runtime-integration obligation (a route
+factory that refuses at boot to construct a route with no policy entry; wiring the registry
+into the live request path) remains fully open, confirmed still untouched (`index.ts` still
+does not import `policy-registry.ts`).
+
+**PR #253 (#9, Radix-tracking half of gate G1) merged.** Removed the last two real
+`@radix-ui/*`/`radix-ui` imports in the repository, replaced with a project-owned `Slot`
+reimplementation faithfully matching the removed dependency's own merge algorithm. New
+`check:ui` CI gate. Two Opus rounds: round 1 found a real blocking evasion (the bare
+`radix-ui` umbrella package's own subpath exports, e.g. `radix-ui/slot`, weren't matched);
+fixed; round 2 CLEAR WITH FINDINGS, one narrower non-blocking finding filed as #255. The
+primitive-migration and design-token-convergence halves of #9 remain open.
+
+**PR #252 (#10, Testcontainers integration CI) merged.** Swapped `ci-full.yml`'s
+`integration` job from a plain service container to a real Testcontainers-managed Postgres
+18 — genuinely verified on GitHub's own infrastructure via a manual `workflow_dispatch` run
+(the job doesn't trigger on a plain PR open), not just simulated locally. Opus review CLEAR
+WITH FINDINGS, all non-blocking. The other fast/full-stage gates #10 still needs remain
+blocked on #9's remaining primitive-migration work.
+
+**PR #250 (#134, concurrent-startup seed race) merged.** Two real check-then-insert races
+in startup seed paths closed (`onConflictDoNothing` against a real constraint; a
+per-project advisory lock where no constraint exists). Opus review CLEAR WITH FINDINGS —
+confirmed the regression tests are load-bearing by reverting the fix alone and reproducing
+both original failures, including a real 44-columns-instead-of-4 silent duplication, not
+just a crash. One follow-up filed, #251.
+
+**Issue #23's first slice (work-item create/read/list)** is built and has had a first
+independent read by the orchestrating session (the core write path, concurrency-critical
+number-claiming, policy declarations, and custom auth middleware all reviewed) — genuinely
+solid work, several honest judgment calls flagged in its own code comments (reusing the
+legacy `task` table's number-claiming column rather than the not-yet-renamed
+`last_work_item_number`; the WI-4 "leaveable" workflow check deferred, since no workflow
+engine exists yet). **Formal review dispatch was deliberately held** while PR #259 was open,
+since this branch also touches `apps/api/src/index.ts` and `apps/api/src/policy-registry.ts`,
+the same files PR #259 restructured heavily — reviewing and syncing it earlier would have
+meant redoing that work after #259 merged. **#259 has now merged; next step is syncing this
+branch against the new `main` and dispatching its full three-round review tier** (ordinary +
+alignment + mandatory Opus, matching #8's own tier — this touches genuinely new authority
+surface with real concurrency handling).
+
+**Two merge-sync process patterns reused repeatedly and correctly this stretch**: (1) `git
+merge`, never `git rebase`, for syncing a reviewed branch with a newer `main` — rebasing
+would orphan a review note's own `Reviewed head` citation (a standing rule since earlier
+this session). (2) When a merge brings in a shared file already independently reviewed on
+another PR (`pnpm-lock.yaml`, touched by both #252's and #253's own merges into #8's and
+#9's branches), the merge is verified explicitly — `pnpm install --frozen-lockfile`
+confirming a genuinely valid, non-drifted lockfile — not just assumed clean from an
+absence of conflict markers.
 
 **PR #235** (#165) merged — doc-only fix, mandatory Opus review CLEAR WITH FINDINGS, F1
 self-fixed in the same PR and disclosed as self-verified; F2 tracked as #236.
