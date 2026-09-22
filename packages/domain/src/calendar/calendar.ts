@@ -404,3 +404,52 @@ export function nextWindowOpening(
 
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Coverage preview (`service-calendars.md` — the calendar editor's live
+// "40 hours of cover per week, 1,992 hours in 2026 after holidays" figures;
+// `GET /api/service-calendars/{id}/preview?year=` wraps these).
+// ---------------------------------------------------------------------------
+
+/**
+ * The calendar's NOMINAL weekly cover, in minutes: the sum of every window's
+ * wall-clock span across the seven weekdays. This is the editor's "hours per
+ * week" figure — a wall-clock quantity by definition (the week grid the admin
+ * drew), deliberately NOT DST-adjusted: a Mon–Fri 09:00–17:00 calendar is
+ * "40 hours per week" even in the two weeks a year when real elapsed time
+ * differs. Real elapsed time is `coveredMinutesBetween`'s concern.
+ */
+export function weeklyCoverMinutes(calendar: ServiceCalendar): number {
+  let total = 0;
+  for (const weekday of WEEKDAYS) {
+    for (const window of calendar.windows[weekday] ?? []) {
+      total += window.to - window.from;
+    }
+  }
+  return total;
+}
+
+/**
+ * The calendar's REAL covered minutes across `year`, in the calendar's own
+ * timezone — the editor's "hours in 2026 after holidays" figure. Computed with
+ * the same `coveredMinutesBetween` core every SLA computation uses (holidays
+ * and DST handled identically; no parallel engine), bounded by the year's own
+ * local midnight-to-midnight: a window hour shifted across a DST boundary is
+ * counted at its real elapsed length, capped at nominal per window instance.
+ */
+export function annualCoverMinutes(
+  calendar: ServiceCalendar,
+  year: number,
+): number {
+  const from = zonedDateTimeToInstant(
+    calendar.timezone,
+    { year, month: 1, day: 1 },
+    0,
+  );
+  const to = zonedDateTimeToInstant(
+    calendar.timezone,
+    { year: year + 1, month: 1, day: 1 },
+    0,
+  );
+  return coveredMinutesBetween(calendar, from, to);
+}
