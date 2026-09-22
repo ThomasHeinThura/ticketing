@@ -125,6 +125,38 @@ ALTER TABLE "work_item" ADD CONSTRAINT "work_item_parent_not_self" CHECK ("work_
 -- tgrelid = 'work_item'::regclass ORDER BY tgname;` against the migrated schema, per
 -- `docs/04-engineering/migrations.md`'s own instruction to verify trigger order live
 -- rather than assume it.
+--
+-- OPERATIONAL LIMITS, recorded per issue #196 (OS3/OS4/OS6/OS7) so each has an owner
+-- rather than staying an implicit gap:
+--
+-- * DEADLOCK RETRY (#196 OS3): this trigger and `work_item_claim_key` can deadlock
+--   against EACH OTHER (`40P01`) in the narrow case where one transaction hits a real
+--   key collision while another concurrently runs a cycle check that locks the same
+--   rows in the opposite order -- reproduced live during #195's review. Reproducing it
+--   needs a genuine key collision, but the requirement it produces is general:
+--   **whichever code builds #23's actual write path must retry on `40P01` regardless of
+--   which trigger raised it.** Bulk multi-row inserts are also order-sensitive across
+--   the two triggers for the same reason.
+--
+-- * REPLICA ROLE (#196 OS4): none of this holds under
+--   `session_replication_role = replica` -- triggers do not fire there, so a cycle CAN
+--   be written under logical replication, some restore paths, or a future bulk-import
+--   tool that deliberately uses replica role to skip per-row trigger overhead. Any code
+--   that walks the parent chain for roll-up computation (`work-items.md` `WI-19`,
+--   `relations-and-hierarchy.md` `RH-9`/`RH-14`) must keep its own defensive depth
+--   bound and must NOT assume "the database already prevents this" is a complete
+--   guarantee across every code path.
+--
+-- * PROSPECTIVE ONLY (#196 OS6): the guard validates writes from this migration onward.
+--   Rows that already existed when it landed were never scanned for cycles -- moot at
+--   the time (no route wrote this table, so no data existed), but whoever imports or
+--   migrates real data into `work_item` later must not assume pre-existing rows are
+--   cycle-free on the strength of this trigger.
+--
+-- * INVISIBLE TO DRIZZLE-KIT (#196 OS7): `drizzle-kit`'s snapshot does not capture
+--   hand-written trigger/function DDL, so `drizzle-kit check` alone cannot detect this
+--   trigger's or function's accidental removal -- the integration test suite's
+--   cycle-guard tests are the guard for that. Same recurring pattern as PR #191's O7.
 CREATE OR REPLACE FUNCTION work_item_reject_parent_cycle()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -151,6 +183,10 @@ BEGIN
   -- Direct self-parent is rejected by the `work_item_parent_not_self` CHECK constraint;
   -- skip the walk entirely rather than taking a lock only to have the CHECK reject the
   -- row anyway.
+  -- #196 OS5: this early-return makes the CHECK constraint and this trigger a MATCHED
+  -- PAIR, not two independent layers -- if the CHECK is dropped without touching this
+  -- trigger, direct self-parenting silently reopens (the trigger returns NEW here
+  -- without walking). Never remove one without the other.
   IF NEW.parent_id = NEW.id THEN
     RETURN NEW;
   END IF;
