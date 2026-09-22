@@ -21,12 +21,24 @@ import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
  * this middleware 404s instead of reusing the generic-lookup 400.
  *
  * `validateWorkspaceAccess` still governs "exists, but caller isn't a member of its
- * workspace" -- that stays a 403, matching this codebase's established, live behaviour
- * for every other `workspaceAccess.*`-gated route (`validate-workspace-access.ts` throws
- * 403, unconditionally, for a non-member; there is no 404-for-out-of-reach path live
- * anywhere in this codebase today, despite `rbac.md`'s stated target design -- the same
- * declared-target-vs-runtime-reality gap `workspace/policy.ts`'s file comment already
- * documents elsewhere). Changing that broader gap is out of this slice's scope.
+ * workspace" -- but UNLIKE every other `workspaceAccess.*`-gated route in this codebase,
+ * that is answered here with 404, not 403 (#23's mandatory Opus security review of PR
+ * #261, finding F2). `work_item.key` is `{project.slug}-{number}` -- low-entropy and
+ * guessable, the first such identifier in this codebase (contrast the cuid2 every other
+ * `workspaceAccess.*`-gated route addresses, where #8's own Opus review found "no
+ * enumeration primitive"). A 403-vs-404 split on a guessable key lets a caller enumerate,
+ * across the whole instance and without ever touching a tenant they belong to, which
+ * project slugs exist anywhere and roughly how many work items each holds. It also
+ * disagreed with `tests/permissions/matrix.fixture.json`, which this same PR regenerated
+ * and which already declares `"outOfReach": "404 not_found"` for every role on this
+ * route -- the declared answer and the live answer must not disagree (the whole reason
+ * `require-workspace-capability.ts`'s policy-registry machinery exists). So a 403 from
+ * `validateWorkspaceAccess` here is caught and re-thrown as 404, making "not yours" and
+ * "not there" indistinguishable from the outside -- this route deliberately does NOT
+ * match the broader "no 404-for-out-of-reach path live anywhere in this codebase today"
+ * gap `workspace/policy.ts`'s file comment documents elsewhere: this route is new, owns
+ * its own middleware, and its identifier is newly guessable, so closing the gap here does
+ * not require touching the shared `workspace-access-middleware.ts` other routes still use.
  */
 export function requireWorkItemReach(idKey = "key") {
   return async (c: Context, next: Next) => {
@@ -51,7 +63,14 @@ export function requireWorkItemReach(idKey = "key") {
     }
 
     const apiKey = c.get("apiKey");
-    await validateWorkspaceAccess(userId, workItem.workspaceId, apiKey?.id);
+    try {
+      await validateWorkspaceAccess(userId, workItem.workspaceId, apiKey?.id);
+    } catch (error) {
+      if (error instanceof HTTPException && error.status === 403) {
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
+      throw error;
+    }
 
     c.set("workspaceId", workItem.workspaceId);
 

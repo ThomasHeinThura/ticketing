@@ -355,12 +355,15 @@ describe("API integration: work item create/read/list (#23)", () => {
     expect(missing.status).toBe(404);
   });
 
-  it("GET /api/work-items/{key}: 403s for a key that exists but belongs to a workspace the caller isn't a member of", async () => {
-    // Not 404: the row genuinely exists (unlike the nonexistent-key case above), and
-    // `validateWorkspaceAccess` -- the same reach check every `workspaceAccess.*`-gated
-    // route in this codebase already uses -- refuses a non-member with 403, unconditionally.
-    // See `require-work-item-reach.ts`'s own comment for why this differs from the
-    // nonexistent-key case, which IS a real 404.
+  it("GET /api/work-items/{key}: 404s (not 403) for a key that exists but belongs to a workspace the caller isn't a member of", async () => {
+    // #23's mandatory Opus security review of PR #261, finding F2: `work_item.key` is
+    // guessable ({project.slug}-{number}), so a 403-vs-404 split between "not yours" and
+    // "not there" would let a caller enumerate which project slugs exist anywhere and
+    // roughly how many work items each holds, without ever being a member of that
+    // workspace. `require-work-item-reach.ts` now catches the 403
+    // `validateWorkspaceAccess` throws for a non-member and re-throws 404, matching
+    // `tests/permissions/matrix.fixture.json`'s declared `"outOfReach": "404 not_found"`
+    // for this route.
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);
     const { app } = createApp();
@@ -376,7 +379,9 @@ describe("API integration: work item create/read/list (#23)", () => {
     mockAuthenticatedSession(stranger.user);
 
     const response = await app.request(`/api/work-items/${createdBody.key}`);
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(404);
+    const body = await response.text();
+    expect(body).toBe("Work item not found");
   });
 
   it("GET /api/projects/{projectId}/work-items: lists the project's items, oldest first", async () => {
