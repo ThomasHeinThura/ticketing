@@ -75,8 +75,9 @@ dispatching the four fixes above. Merge into main not yet done for any of them.
 
 ---
 
-**Earlier the same day:** GitHub Copilot (DeepSeek V4.1 Flash), the orchestrating session
-for the P1 mandate. **Not Claude** — Claude was unavailable this session, and the real
+**Previous pass — Updated by:** GitHub Copilot (DeepSeek V4.1 Flash), the orchestrating
+session for the P1 mandate, 2026-09-18. **Not Claude** — Claude was unavailable this
+session, and the real
 model is named here because that is the standing instruction. Three independent ordinary
 reviews were run through available non-Claude contexts (all named on their pull requests);
 **no Opus security review was possible**, so two candidates were marked
@@ -89,7 +90,8 @@ schema work above — a pre-existing gap in the live `project` table that #185's
 simply made consequential, not one of #23's own integrity findings. The previous pass's
 record of PR #200 below is preserved unchanged, since nothing in that session revisited it.
 
-**Previous pass — Updated by:** Claude Code (Sonnet), reconciliation after **PR #200 merged**. Full
+**Two passes back — Updated by:** Claude Code (Sonnet), 2026-09-16, reconciliation after
+**PR #200 merged**. Full
 mandatory tier (2 Sonnet + Opus, since the change touches a migration). Round 1 found real,
 overlapping gaps across all three reviewers: task/column creation and several read paths
 (task listing/export, global search, project reorder) didn't check `deletedAt`, live-
@@ -1162,8 +1164,16 @@ were never closed).
 the capacity outage (PRs #213–#219) reviewed and merged (or in the merge queue) — real
 defects found in several (a missing 404 declaration, a mismatched doc-comment/test-name
 pair, a test that only ever exercised UTC despite claiming to verify non-UTC behavior, and
-— still open as of this entry — PR #209's `consumedPct >= 100` boundary contradicting
-`sla.md`'s stated inclusive/exclusive split for `at_risk`/`breached`).
+PR #209's `consumedPct >= 100` boundary contradicting `sla.md`'s stated inclusive/exclusive
+split for `at_risk`/`breached`, fixed and regression-tested the same session).
+
+**Correction to this entry's own header edit**: an independent reviewer of this PR caught
+that the header-block relabeling above mislabeled the 2026-09-18 GitHub Copilot pass as
+`**Earlier the same day:**` — four calendar days is not "the same day" as this entry. Fixed
+to `**Previous pass — Updated by:**`, and the block below it (PR #200, 2026-09-16) is now
+`**Two passes back — Updated by:**` so the two distinct-day labels don't collide. Recorded
+here per this file's own rule that a correction to a prior entry is a new entry, not a silent
+rewrite.
 
 ### 2026-09-18 · Two P1 candidates to review-complete, and #192 put to Thomas as a real question
 
