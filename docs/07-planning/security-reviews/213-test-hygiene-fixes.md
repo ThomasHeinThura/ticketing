@@ -1,6 +1,6 @@
 # Security review — PR #213 (issue #95: two LOW test-hygiene fixes deferred from #77)
 
-**Reviewed head:** `cd7f2953b34f507304c5abe13b84e4971814b25d`
+**Reviewed head:** `fb7d98a7fb51183dd33b594d70f993f027946287`
 
 Substantively reviewed at `a4afd5680e17043406f582f83489ad94bd2e5bce`; clearance extended to
 this head (a merge of `origin/main` into the branch, via an intervening note-only commit
@@ -13,6 +13,13 @@ at the new head in a fresh worktree: unit 11/11, integration 12/12, both mutatio
 reproduced identically. Scope note: this clearance covers the two test files only —
 `.husky/pre-commit` came from PR #211, already independently reviewed and merged on its own
 account, not assessed by this reviewer.
+
+One further main-sync landed after that confirmation, at `cd7f295`, bringing in PR #217's
+migration-comment edit (already independently proven comment-only by its own reviewer,
+twice over) — no file shared with this PR. Re-checked directly by the orchestrating session
+rather than a further reviewer round: `git diff cd7f2953b34f507304c5abe13b84e4971814b25d
+fb7d98a7fb51183dd33b594d70f993f027946287 -- tests/api-integration/account-deletion.test.ts
+tests/api/utils/require-workspace-capability.test.ts` is empty.
 
 ## What this PR does
 
