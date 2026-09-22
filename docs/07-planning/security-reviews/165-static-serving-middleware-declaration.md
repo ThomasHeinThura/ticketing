@@ -208,5 +208,6 @@ F2 (a pre-existing gap in what the real-app suite asserts) and the general "shou
 a code fix vs. documentation" question remain as issue #236 background, not fully closed —
 this is a net-positive addition on top of the doc-only fix, not a claim that #236 is done.
 
-**Reviewed head:** `<to be set once this commit lands>` — self-verified only; this addition
-has not had its own independent review pass. Flagging plainly rather than implying it has.
+**Reviewed head:** `e3c602cc7d137360020ff88281da11f8dcf9cfb0` — self-verified only; this
+addition has not had its own independent review pass. Flagging plainly rather than
+implying it has.
