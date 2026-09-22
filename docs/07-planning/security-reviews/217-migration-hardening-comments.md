@@ -1,6 +1,14 @@
 # Security review — PR #217 (issue #196: document the five hardening notes beside the cycle guard)
 
-**Reviewed head:** `4ee00af3919239182e05a04702a552d889e61739`
+**Reviewed head:** `dcf4cb7311b418515baeed4e2ca2c9ed22618975`
+
+Originally reviewed at `4ee00af3919239182e05a04702a552d889e61739`; extended to this head
+(a merge of `origin/main` at `08689ced` into the branch) by the same reviewer, independently
+confirmed via git blob OID rather than diff rendering: the reviewed migration file's blob is
+identical at both commits (`e74e68bb647ecf94a91d6df03664f9036a05c3d5`). Also re-checked at
+the new head: `scripts/ci/` is unchanged from the original review base, so the "no
+migration-content checksum gate" finding still holds, and the new `.husky/pre-commit` (from
+an unrelated merged PR) introduces nothing that reads or hashes migration content.
 
 ## What this PR does
 
