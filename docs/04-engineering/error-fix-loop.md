@@ -84,6 +84,7 @@ Precedents already in this project:
 | A hard-coded colour | Token check (G2) |
 | Cross-tenant leak | Tenant isolation test |
 | Internal comment leaking to the portal | Separate portal router plus a named test |
+| A bare `now()` beside a `timestamp` column, or a raw `Date` bound into one | `dbNowUtc()`, and the rule in [coding standards](coding-standards.md#database) |
 
 A guard is worth far more than a fix. A fix closes one hole; a guard closes the shape of
 the hole.
