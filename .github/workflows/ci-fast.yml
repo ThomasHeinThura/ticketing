@@ -151,6 +151,12 @@ jobs:
         run: pnpm check:skips
       - name: pnpm check:overrides
         run: pnpm check:overrides
+      - name: pnpm check:dockerfile-deps
+        # #170: the Dockerfile's `deps` stage COPYs each workspace package's package.json
+        # by hand, so it can be layer-cached independently of full source changes. That
+        # list drifted twice (packages/domain and packages/ui both went missing, #168).
+        # This asserts it matches pnpm-workspace.yaml's actual discovered members.
+        run: pnpm check:dockerfile-deps
 
   pull-request:
     name: pull request template + security review
