@@ -11,7 +11,6 @@ import { z } from "zod/v4";
 import { GithubIcon } from "@/components/icons/github-icon";
 import PageTitle from "@/components/page-title";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
-import useInstanceStatus from "@/hooks/queries/instance/use-instance-status";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { toast } from "@/lib/toast";
@@ -44,31 +43,6 @@ function SignIn() {
   const [autoLoginFailed, setAutoLoginFailed] = useState(false);
   const lastLoginMethod = authClient.getLastUsedLoginMethod();
   const { data: config, isLoading: isConfigLoading } = useGetConfig();
-  const {
-    data: instanceStatus,
-    isLoading: isInstanceStatusLoading,
-    isError: isInstanceStatusError,
-    error: instanceStatusError,
-  } = useInstanceStatus();
-
-  useEffect(() => {
-    if (instanceStatus && instanceStatus.hasUsers === false) {
-      navigate({ to: "/auth/sign-up", replace: true });
-    }
-  }, [instanceStatus, navigate]);
-
-  useEffect(() => {
-    if (isInstanceStatusError) {
-      toast.error(
-        instanceStatusError instanceof Error
-          ? instanceStatusError.message
-          : t("auth:signIn.instanceStatusError", {
-              defaultValue:
-                "Couldn't reach the server. Please retry in a moment.",
-            }),
-      );
-    }
-  }, [isInstanceStatusError, instanceStatusError, t]);
   const autoLoginTriggered = useRef(false);
 
   const invitationId = search.invitationId;
@@ -204,13 +178,8 @@ function SignIn() {
     }
   }, [config, handleCustomOAuth, search.error]);
 
-  // Treat "no users yet" as still loading so the skeleton stays visible
-  // while the useEffect above redirects to /auth/sign-up. Otherwise the
-  // form briefly paints before the redirect fires.
   if (
     isConfigLoading ||
-    isInstanceStatusLoading ||
-    instanceStatus?.hasUsers === false ||
     (config?.customOAuthAutoLogin && config?.hasCustomOAuth && !autoLoginFailed)
   ) {
     return (

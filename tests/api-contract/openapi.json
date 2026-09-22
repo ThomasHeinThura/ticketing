@@ -28,16 +28,15 @@
       "InstanceStatus": {
         "type": "object",
         "properties": {
-          "hasUsers": {
-            "type": "boolean"
-          },
-          "hasAdmin": {
-            "type": "boolean"
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
           }
         },
         "required": [
-          "hasUsers",
-          "hasAdmin"
+          "status"
         ]
       },
       "Config": {
@@ -2545,7 +2544,7 @@
           "Instance"
         ],
         "summary": "Get instance status",
-        "description": "Public instance setup status. When hasUsers is false the next signup becomes the instance admin.",
+        "description": "Public liveness probe for the auth surface. Deliberately a constant shape (#18): it never reveals whether the instance has been claimed, so an unauthenticated caller cannot scan for an unclaimed instance to race for admin. First-run setup is reached through the one-time setup URL and token printed to the container log, not discovered from here.",
         "security": [],
         "responses": {
           "200": {
@@ -3085,6 +3084,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },
@@ -3168,6 +3177,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Project doesn't exist or doesn't belong to the specified workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },
@@ -3214,6 +3233,16 @@
           },
           "403": {
             "description": "No workspace access, or missing project:delete permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3369,6 +3398,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Project doesn't exist or doesn't belong to the specified workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -3417,6 +3456,16 @@
           },
           "403": {
             "description": "No workspace access, or missing project:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project doesn't exist or doesn't belong to the specified workspace",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3558,6 +3607,16 @@
           },
           "403": {
             "description": "No access to the project's workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3765,6 +3824,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -3813,6 +3882,16 @@
           },
           "403": {
             "description": "No access to the task's workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3927,6 +4006,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },
@@ -3973,6 +4062,16 @@
           },
           "403": {
             "description": "No workspace access, or missing task:delete permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4122,6 +4221,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -4234,6 +4343,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -4300,6 +4419,16 @@
           },
           "403": {
             "description": "No workspace access, or missing task:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4387,6 +4516,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -4456,7 +4595,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:assign permission",
+            "description": "No workspace access, missing task:assign permission, or the assignee is not a member of this workspace",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4466,7 +4605,7 @@
             }
           },
           "404": {
-            "description": "Assignee is not a member of the workspace",
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4544,6 +4683,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -4610,6 +4759,16 @@
           },
           "403": {
             "description": "No workspace access, or missing task:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4905,6 +5064,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -5046,6 +5215,16 @@
           },
           "403": {
             "description": "No workspace access, or missing project:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5250,6 +5429,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Column not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },
@@ -5296,6 +5485,16 @@
           },
           "403": {
             "description": "No workspace access, or missing project:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Column not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6153,6 +6352,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Time entry not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -6486,6 +6695,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Label not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },
@@ -6561,6 +6780,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Label not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },
@@ -6616,7 +6845,7 @@
             }
           },
           "404": {
-            "description": "The label's task no longer exists",
+            "description": "Label not found, or its task no longer exists",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6699,7 +6928,7 @@
             }
           },
           "404": {
-            "description": "Task not found",
+            "description": "Label or task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6762,7 +6991,7 @@
             }
           },
           "404": {
-            "description": "Task not found",
+            "description": "Label or task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7861,6 +8090,16 @@
           },
           "403": {
             "description": "No workspace access, or missing project:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workflow rule not found",
             "content": {
               "text/plain": {
                 "schema": {

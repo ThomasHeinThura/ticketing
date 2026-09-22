@@ -106,6 +106,7 @@ const updateTimeEntryRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:update permission",
     ),
+    404: errorResponse("Time entry not found"),
   },
 });
 

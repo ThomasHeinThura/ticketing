@@ -2,17 +2,48 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-17 — a tenth pass, after issue #187 (the live `project` table
-> had no soft-delete window, so `work_item.project_id`'s CASCADE from PR #185 made an
-> ordinary delete destructive) closed via PR #200's project-only soft-delete fix
-> **`main` at that moment:** `ca90bbe` (PR #200 — an atomic `UPDATE` replacing the hard
-> `DELETE`, plus filtering every read/write path that reaches a project or its children;
-> two full review rounds, including a live-reproduced set of read-path leaks the mandatory
-> Opus pass found and a subsequent remediation round that closed them).
+> **Snapshot taken:** 2026-09-22 — a thirteenth pass, same day as the eleventh and twelfth.
+**All four concrete P0 defects the eleventh pass found (#18, #146, #17, #97) are now fixed,
+reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
+> **`main` at that moment:** `9c2a16c` (PR #227 — issue #18's setup-token flow, the last of
+> the four same-day P0 fixes to land, after three Opus security-review rounds).
 > Kaneo's `task`/`column` tables and routes remain fully untouched and still live.
-> **Stage:** P0 · Foundation — **exit criteria met; Throttle 1 is OPEN.** Autonomous
-> continuation past Throttle 1 is authorized (Thomas, 2026-09-16) — see the session log's
-> newest entry for what that wave landed and what it found.
+> **Stage:** P0 · Foundation — **Throttle 1 is OPEN; P0 itself is NOT finished (see #8/#9
+> below), but the eleventh-pass concrete-defect backlog is fully clear.** Throttle 1 remains
+> the narrower gate — the organization-plugin retrofit's five specific conditions (below) —
+> and those five remain verified closed. The eleventh pass's live audit found four concrete,
+> reproducible P0 defects, all now merged:
+> **#18** (first-admin registration bypass — PR #227: a durable
+> `instance_setting.setup_completed_at` marker plus a one-hour-or-one-use setup token
+> replaces the old unconditional zero-user bypass. This one took the full three-round tier
+> (ordinary Sonnet + alignment check + mandatory Opus), and the Opus pass alone took three
+> rounds: round 1 found a BLOCKING issue (B1 — the new refusal message let an unauthenticated
+> caller distinguish an unclaimed instance from a claimed one, recreating the exact scanning
+> oracle the fix exists to remove); round 2's delta-confirmation found the fix for B1 was
+> itself incomplete in two ways (D1 — adding an `invitationId` field reopened the identical
+> oracle; D2 — a separate Unicode-normalization fix for the bootstrap-email comparison didn't
+> actually work); round 3 confirmed both D1 and D2 genuinely fixed, adversarially, against a
+> real database. Final verdict: CLEAR WITH FINDINGS, all non-blocking. Four follow-up issues
+> filed: #229 (no MFA enrollment — spec gap, no MFA plugin exists in this repo), #230 (no
+> `grant-instance-admin` recovery CLI — same status), #231 (a liveness gap, not an authority
+> one: two armed bootstrap mechanisms racing can leave zero admins, never two), #232 (a
+> narrower residual oracle via `DISABLE_PASSWORD_REGISTRATION`, plus a test-coverage note)),
+> **#146** (CRITICAL — closed by PR #223: `sections()` now recognizes a `##` heading only
+> when genuinely visible, and a genuine duplicate is a hard `DuplicateSectionError` rather
+> than silent last-one-wins; Opus review CLEAR WITH FINDINGS, three non-blocking follow-ups
+> (F1, F2, F4) tracked as #226), **#17** (closed by PR #225: sessions minted by the removed
+> MCP OAuth/device flows are expired by migration `0060`; the mandatory Opus review's first
+> pass found and required a fix for a real timezone-comparison bug, fixed and
+> delta-confirmed CLEAR), **#97** (closed by PR #224: the logged-out redirect guard no
+> longer throws on `location.search`'s null-prototype object; a root `errorComponent` added
+> as a last-resort catch-all). Two large, mostly-open umbrella items remain, unchanged from
+> the eleventh pass: **#8** (route-policy retrofit — ~80 inherited routes still
+> unclassified, and the policy registry has zero runtime wiring into
+> `apps/api/src/index.ts` yet, so no request is actually evaluated against it today) and
+> **#9** (`packages/ui` extraction — only 18 of ~63 primitives moved out of `apps/web`).
+> **Autonomous continuation past Throttle 1 into P1–P7 is authorized** (Thomas, 2026-09-16,
+> reaffirmed 2026-09-22) — running P1–P7 in parallel does not wait on P0's remaining issues,
+> but #8/#9 are not done and this file should not imply otherwise.
 > **Throttle 1: OPEN.** All five conditions verified live, not rounded up: #5 closed, #6
 > closed 2026-09-16 (every substantive item in its real checklist checked against live
 > source, not against this file or the issue's own stale checkboxes), #7 closed,
@@ -45,15 +76,68 @@
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-17 (later the same day, a fourth time)
-**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** Issue #187
-(the live `project` table's hard-delete route was made destructive by #185's
+**Last updated:** 2026-09-22 (all four eleventh-pass P0 defects now merged — #18 was the
+last, after three Opus security-review rounds)
+**Current stage:** P0 · Foundation — **Throttle 1 OPEN (verified, unchanged); P0 as a whole
+is not finished (#8/#9 remain), but the eleventh-pass concrete-defect backlog is fully
+clear.** #18 (PR #227) merged: three Opus security-review rounds, each finding something
+real (B1 blocking on round 1 — a scanning-oracle regression; D1/D2 on round 2's
+delta-confirmation — the B1 fix itself was incomplete in two ways; round 3 confirmed both
+genuinely fixed). Final verdict CLEAR WITH FINDINGS, all non-blocking; four follow-up
+issues filed (#229, #230, #231, #232). #146/#17/#97 were already merged as of the prior
+pass. #8 and #9 remain untouched, large, umbrella items — P0 is not "done," but its known
+concrete-defect backlog from the eleventh-pass audit is.
+**Updated by:** Claude Sonnet 5 (orchestrating session). This session also renumbered two
+migrations (`0059`→`0060` for #17, `0060`→`0061` for #18) after sequential same-day merges
+each claimed the next slot first — regenerated via `drizzle-kit generate`, not hand-edited —
+and fixed two rounds of CI-only typecheck failures on #18 (a stricter `apps/web` tsconfig
+than checked locally, then a stricter `apps/api` tests tsconfig), both self-verified as
+zero-behavior-change mechanical fixes rather than sent through further review rounds.
+
+---
+
+**Earlier the same day:** Claude Sonnet 5 (orchestrating session), three of the four
+eleventh-pass P0 defects merged (#146 via PR #223, #17 via PR #225, #97 via PR #224), each
+with ordinary review and — where in security-review scope — a mandatory Opus pass recorded.
+#18 (PR #227) was implemented and independently tested at that point (64 files/577 tests,
+48/323 unit, 10/79 permissions unchanged, 57/236 web, all clean; `drizzle-kit check` clean)
+but not yet merged — going through the full three-round tier (ordinary Sonnet review, a
+project-alignment check, and the mandatory Opus security review) rather than the reduced
+one-round tier, because it redesigns an authority invariant (who can become the first
+instance admin) and crosses a migration, API and frontend in one change. See the entry
+above for how that review concluded.
+
+---
+
+**Earlier the same day:** Claude Sonnet 5 (orchestrating session), P0 status correction and
+dispatching fixes for four of the still-open P0 defects. This pass corrected a wording
+problem in every prior snapshot back to 2026-09-16: "exit criteria met" was true only of
+Throttle 1's own five conditions (the organization-plugin retrofit), never of P0 as a whole,
+and nothing in this file said so plainly until then. A live audit against current source
+(not against issue text, not against this file) found #18, #146, #17, #97 all still real,
+reproducible, and unpatched, and #8/#9 still substantially open. Fixes for all four concrete
+defects were dispatched to Sonnet implementation lanes, none merged yet as of that entry —
+see the session log's entry immediately below for what happened next the same day.
+
+---
+
+**Previous pass — Updated by:** GitHub Copilot (DeepSeek V4.1 Flash), the orchestrating
+session for the P1 mandate, 2026-09-18. **Not Claude** — Claude was unavailable this
+session, and the real
+model is named here because that is the standing instruction. Three independent ordinary
+reviews were run through available non-Claude contexts (all named on their pull requests);
+**no Opus security review was possible**, so two candidates were marked
+`SECURITY REVIEW PENDING — OPUS CAPACITY` and neither could be merged at the time. Issue
+#187 (the live `project` table's hard-delete route was made destructive by #185's
 `work_item.project_id` CASCADE) is closed: `project` now has its own `deleted_at`/
 `purge_after` columns, delete is an atomic soft-delete, and every read/write path reaching
 a project or its children treats a soft-deleted one as gone. This is unrelated to #23's own
 schema work above — a pre-existing gap in the live `project` table that #185's new FK
-simply made consequential, not one of #23's own integrity findings.
-**Updated by:** Claude Code (Sonnet), reconciliation after **PR #200 merged**. Full
+simply made consequential, not one of #23's own integrity findings. The previous pass's
+record of PR #200 below is preserved unchanged, since nothing in that session revisited it.
+
+**Two passes back — Updated by:** Claude Code (Sonnet), 2026-09-16, reconciliation after
+**PR #200 merged**. Full
 mandatory tier (2 Sonnet + Opus, since the change touches a migration). Round 1 found real,
 overlapping gaps across all three reviewers: task/column creation and several read paths
 (task listing/export, global search, project reorder) didn't check `deletedAt`, live-
@@ -864,6 +948,32 @@ kaneo's inherited routes present and each carrying a policy**, P0 security revie
 
 ## Blocked
 
+### Open decision — #192, work-item tenant attribution (blocks the P1 write path)
+
+**Awaiting Thomas.** Presented as issue #192's decision request on 2026-09-18: four options
+(denormalise `work_item.workspace_id` with a composite `(workspace_id, type_id)` foreign key
+and `ON UPDATE NO ACTION`; application-level enforcement only; a trigger; and adding
+`workspace.organisation_id` as a separate prerequisite), with the tenancy implications,
+migration effects, concurrency risks and a proposed direction. **No agent may pick this — it
+creates a trust boundary.** The recommendation on the issue is the denormalised column plus
+the `workspace.organisation_id` link, as one bounded pre-write-path schema change, because it
+releases three blocked things at once: #192's cross-tenant gap, the RLS prototype, and #198's
+project purge. It also needs a **new** `UNIQUE (workspace_id, id)` on `work_item_type`, which
+does not exist today.
+
+### Opus security reviews — capacity, not permission
+
+**#214 and #215 are in security-review scope and their Opus passes have not happened.**
+Claude was unavailable throughout this session, and `CLAUDE.md` is explicit that capacity
+exhaustion means the candidate **waits** — it is not downgraded to an available model and it
+is not cleared by a non-independent context. Both are marked
+`SECURITY REVIEW PENDING — OPUS CAPACITY`, neither security-review box is ticked, and neither
+may be merged by anyone, including the orchestrating session: the delegation to merge a
+green candidate explicitly does not cover a candidate whose security review has not been
+performed. Ordinary review capacity itself was also intermittent — the subagent provider
+returned budget-exhausted (403) and connection-reset errors across several attempts, so
+reviews of the other open candidates are queued rather than done.
+
 ### Process deviation — recorded, corrected, not waived
 
 **PR #13 merged on 2026-09-06 before its mandatory security review had been performed.**
@@ -1058,6 +1168,226 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
+### 2026-09-22 · #18 merged after three Opus security-review rounds; all four eleventh-pass P0 defects now closed
+
+Continuing the same day as the entry below. PR #227 (#18's setup-token flow) was
+implemented and independently tested (see the entry below), then went through the full
+three-round review tier the entry below already explains why it needed. What actually
+happened in that tier is worth recording in full, because it is the clearest demonstration
+this session produced of why the tier exists.
+
+**Round 1 (mandatory Opus, first pass): CHANGES NEEDED — one blocking finding.** The fix
+replaced an unconditional "first signup becomes admin" bypass with a token-gated one, and
+its own stated goal was that `GET /api/instance/status` no longer lets anyone scan for an
+unclaimed instance. The reviewer found that goal was not actually met: the new zero-user
+refusal's error message differed from an ordinary registration refusal, so one
+unauthenticated request could still tell an unclaimed instance from a claimed one — and the
+message *named* `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` as the next thing to try. Fixed by reusing
+the ordinary refusal message unconditionally.
+
+**Round 2 (delta-confirmation, second Opus pass, fresh context): CHANGES NEEDED again —
+found the round-1 fix was itself incomplete, in two different ways.** First: the fix
+hard-coded one message, but the ordinary refusal path (`checkRegistrationAllowed`) actually
+has *two* different messages depending on whether an invitation was attempted — and a
+claimed instance can return either, while the zero-user path used to always return the one
+fixed message. Adding an `invitationId` field to the same request reopened the identical
+oracle round 1 had just closed. Second, and unrelated: a separate, non-blocking finding
+from round 1 (a Unicode case-folding trick using U+212A KELVIN SIGN, which reads as a plain
+"k" to a human but is a different character) had also been "fixed" with `.normalize("NFKC")`
+before lowercasing — except NFKC normalizes that exact character to "K" *first*, so the same
+false match still happened one step later. The regression test for that finding was ALSO
+wrong, comparing two different-length strings, so it would have passed regardless of
+whether the bug was present. Both re-fixed: the refusal message now always comes from the
+same `checkRegistrationAllowed` call regardless of claimed/unclaimed state, and Unicode
+normalization was replaced with a plain ASCII-only case fold that cannot touch U+212A at all.
+
+**Round 3 (second delta-confirmation, third fresh Opus context): CLEAR WITH FINDINGS.**
+Verified both fixes adversarially — real HTTP requests against a real database across five
+different request shapes for the first, and against five different Unicode confusables
+(not just the one originally found) for the second — and found nothing further blocking.
+Two new non-blocking observations, neither introduced by the fix: a narrower residual
+oracle via a different registration-control env var, and a note that the regression tests
+for this whole class of finding exercise a different code path than a real deployment's
+request-handling middleware (the invariant holds either way; verified directly).
+
+**Why this is being written up in this much detail**: this project exists because TaskDesk
+v1 shipped eleven authorization holes past a green test suite. This session's own directive
+was speed — one review round where possible, Sonnet for implementation, Opus only for the
+mandatory pass. That directive was followed everywhere it was safe to follow, but "one
+round" meant one round that actually closes the finding, not one round regardless of what
+it finds: **#17**'s single mandatory Opus round found its own real, blocking bug (the
+revocation migration's timezone-comparison defect, described in its own entry above), fixed
+and delta-confirmed clear in a second pass — a genuine finding, not bookkeeping. **#146**'s
+single Opus round was clean on the substance (CLEAR WITH FINDINGS, all non-blocking); the
+extra confirmations recorded on that PR were plain main-sync bookkeeping (verifying an
+unrelated merge didn't touch the reviewed files), not additional findings. **#18** needed
+three real rounds, and the reason was never "process for its own sake" — every one of them
+found something a fourth would not have caught by assumption alone. Two smaller follow-ups
+from round 3 are tracked as issue #232; the round-1/round-2 findings are fully closed, not
+deferred.
+
+Four follow-up issues filed against this PR, all pre-existing or narrower-than-before gaps
+rather than regressions: **#229** (no MFA enrollment on the setup page — no MFA plugin
+exists anywhere in this repo), **#230** (no `grant-instance-admin` recovery CLI — no CLI
+entrypoint exists anywhere in this repo), **#231** (a liveness gap: two armed bootstrap
+mechanisms racing concurrently can leave an instance with zero admins, never two — a
+smaller, better-scoped fix than a fifth review round on this PR), **#232** (the narrower
+residual oracle plus the test-coverage note from round 3).
+
+---
+
+### 2026-09-22 · Three of the four dispatched P0 fixes merged, the fourth in a full review tier
+
+Continuing the same day as the entry below. Thomas's direction for this stretch: parallelize
+P1–P7, one ordinary review round rather than several, Sonnet for implementation, Opus for
+the mandatory security pass, and retake the P1/P2 lanes previously held by other coding
+agents (Copilot/DeepSeek, Cline/GLM) — reviewing their work rather than trusting it
+unverified, since Thomas does not have independent confidence in its quality.
+
+**Backlog review, PRs #213–#219**: reviewed and merged (a missing OpenAPI 404 declaration
+found and fixed in #216; a mismatched doc-comment/test-name pair in #218; a test that only
+ever exercised UTC despite claiming to verify non-UTC behavior in #219; a real
+`consumedPct >= 100` boundary bug in #209 contradicting `sla.md`'s stated inclusive/exclusive
+split for `at_risk`/`breached`, found, fixed, and regression-tested). PR #210 (a stale P2
+lane-coordination ledger whose body no longer matched its own diff) closed as superseded
+rather than resurrected — nothing referenced it and its coordination model no longer applies
+now that this session drives P1/P2 directly.
+
+**The four eleventh-pass P0 defects**: three merged this session.
+- **#146** (PR #223) — Thomas made the fix-direction call the issue itself required
+  (continue hardening `pr-body.mjs`'s existing pattern vs. a `remark`/`micromark` rewrite;
+  recorded in the decision log above the P187 entry) — chose to ship the hardening fix.
+  Mandatory Opus review: CLEAR WITH FINDINGS (non-blocking); three minor follow-ups (F1, F2, F4) tracked
+  as issue #226.
+- **#17** (PR #225) — the mandatory Opus review's first pass found a real, blocking bug: the
+  revocation migration compared a `timestamp without time zone` column against a
+  `TIMESTAMPTZ` literal, which is server-`TimeZone`-dependent and would under-invalidate on
+  a non-UTC server (proved live under `America/New_York`). Fixed to a naive `TIMESTAMP`
+  literal; delta-confirmed CLEAR across 5 timezones and 5 `DateStyle` settings by a second
+  independent Opus pass, plus an independent ordinary Sonnet review (the orchestrating
+  session could not self-certify this one, having performed the fix).
+- **#97** (PR #224) — the logged-out redirect guard threw on `location.search`'s
+  null-prototype object (from `@tanstack/router-core`'s `qss` decode); fixed to use
+  `location.href`, plus a new root `errorComponent` as a last-resort catch-all.
+
+**#18** (PR #227) — implemented and independently tested by the orchestrating session (64
+files/577 tests integration, 48/323 unit, 10/79 permissions unchanged, 57/236 web; all
+clean), but **not yet merged**. This one is going through the full three-round tier
+(ordinary Sonnet review + a project-alignment check + the mandatory Opus security pass, all
+in parallel) rather than the reduced one-round tier Thomas asked for elsewhere this session
+— it redesigns an authority invariant (who can become the first instance admin), crosses a
+migration, the API and the frontend in one change, and involves real concurrency reasoning
+(a race between the pre-insert token check and the post-insert admin-promotion lock). This
+is `AGENTS.md`'s own review-tier table applied by risk, not a shortcut.
+
+**Two migration-numbering collisions, both from parallel same-day work**: #17's fix
+generated migration `0059` in an isolated worktree, which collided with PR #215's `0059`
+merging to `main` first; renumbered to `0060` via a fresh `drizzle-kit generate` (not a
+hand-rename) so the journal/snapshot chain stayed derived rather than authored. The same
+then happened to #18 once #17's fix claimed `0060` — renumbered again, to `0061`, the same
+way. Neither renumbering changed the actual migration content; both were verified
+byte-identical before and after.
+
+**A governance point surfaced and corrected**: an Opus reviewer flagged that the
+orchestrating session had recorded itself as the sole independent ordinary reviewer on PR
+#225 after having performed that PR's own remediation (the migration renumbering) —
+`CLAUDE.md`'s rule is that a context which materially authored or remediated a change cannot
+also clear it. Fixed by dispatching a genuinely independent Sonnet reviewer and replacing
+the self-recorded review in the PR body with that one.
+
+---
+
+### 2026-09-22 · P0 status correction, and fixes dispatched for four real P0 defects
+
+Claude Sonnet 5 resumed the orchestrating session (Claude capacity restored). Thomas
+flagged directly that P0 looked unfinished despite this file's prior "exit criteria met"
+wording; rather than take either claim on faith, ran a live audit against current source
+for every open P0-titled issue plus the ones a prior external review had specifically named.
+
+**The audit confirmed Thomas's concern.** "Exit criteria met" conflated Throttle 1's own
+five conditions (genuinely closed, unchanged by this correction) with P0 as a whole (not
+close to done). Found four concrete, reproducible, currently-live defects with no code
+change needed to confirm them — they were simply still there:
+- **#18** — `apps/api/src/auth.ts`'s zero-user registration bypass has no setup-token check
+  anywhere in the codebase; the first anonymous visitor to reach an unclaimed instance
+  becomes its admin. Blocks any public exposure of a fresh instance.
+- **#146** (CRITICAL) — `scripts/ci/lib/pr-body.mjs`'s `sections()` matches `##` headings
+  against raw markdown lines before any comment-stripping, so a `##` heading hidden inside
+  an HTML comment is still recognized and silently overwrites an earlier same-named section
+  — a fake "cleared" security-review section could defeat the mechanical gate.
+- **#17** — sessions minted via the MCP OAuth and device-authorization flows (removed under
+  #6) were never revoked; the migrations that dropped those flows' own state tables say so
+  in their own comments.
+- **#97** — `apps/web`'s `_authenticated.tsx` still string-concatenates `location.search`
+  directly in its logged-out redirect guard; a logged-out user hitting a protected route
+  gets a blank page instead of a sign-in redirect.
+
+Also confirmed two large umbrella P0 issues are still substantially open, not stale
+paperwork: **#8** (the route-policy retrofit — ~80 inherited routes still unclassified, and
+the policy registry has zero runtime wiring into `apps/api/src/index.ts`, so no request is
+actually evaluated against a policy today) and **#9** (`packages/ui` extraction — only 18 of
+roughly 63 primitives moved out of `apps/web`).
+
+**Fixes for the four concrete defects dispatched to Sonnet implementation lanes, in
+parallel, per Thomas's explicit "P0–P7 in parallel, one review round, finish this week"
+instruction.** Each is a bounded, well-scoped fix in its own isolated worktree; none merged
+yet as of this entry. #8 and #9 are large enough that they need their own dedicated slices
+rather than a same-day fix — tracked as ongoing P0 work, not reopened as new issues (they
+were never closed).
+
+**Also in flight the same session**: a backlog of P1/P2 review gates left pending during
+the capacity outage (PRs #213–#219) reviewed and merged (or in the merge queue) — real
+defects found in several (a missing 404 declaration, a mismatched doc-comment/test-name
+pair, a test that only ever exercised UTC despite claiming to verify non-UTC behavior, and
+PR #209's `consumedPct >= 100` boundary contradicting `sla.md`'s stated inclusive/exclusive
+split for `at_risk`/`breached`, fixed and regression-tested the same session).
+
+**Correction to this entry's own header edit**: an independent reviewer of this PR caught
+that the header-block relabeling above mislabeled the 2026-09-18 GitHub Copilot pass as
+`**Earlier the same day:**` — four calendar days is not "the same day" as this entry. Fixed
+to `**Previous pass — Updated by:**`, and the block below it (PR #200, 2026-09-16) is now
+`**Two passes back — Updated by:**` so the two distinct-day labels don't collide. Recorded
+here per this file's own rule that a correction to a prior entry is a new entry, not a silent
+rewrite.
+
+### 2026-09-18 · Two P1 candidates to review-complete, and #192 put to Thomas as a real question
+
+Continuing autonomously under the P1 mandate. Three things moved.
+
+**Three independent ordinary reviews across the two candidates, run and recorded — and Claude was not available for any of them.** All three ran in GitHub Copilot contexts (**DeepSeek V4.1 Flash**), named on the pull requests because the standing session instruction requires the real model and context to be recorded. None is a Claude review and none is a security review.
+
+- **PR #215** (work-item integrity constraints) received **two** reviews, at the tier its
+  classification calls for (it touches a migration and `apps/api/src/database/**`): a
+  correctness pass at `caa1c7e` — **CLEAR WITH FINDINGS**, having proved the 21 tests
+  non-vacuous by dropping all eight constrained objects and watching 10 of 21 go red — and a
+  deliberately different **project-alignment** lens at `40a51eb` — **ALIGNED WITH
+  CONCERNS**. All findings remediated. The alignment pass caught the sharpest one: my own
+  commit message asserted a design disclosure had been added to the PR body when it had not.
+- **PR #214** (UTC timestamps for the time-gated jobs) was reviewed at `a44b9b9` and came
+  back **BLOCKING** — not for the production fix, which survived every falsification the
+  reviewer constructed, but because the repository's own integration suite goes red whenever
+  the database session timezone is not UTC: the lease *fixtures* still wrote session-local
+  `now()`. Reproduced in both directions (`Asia/Kolkata` and `America/Denver` failing
+  opposite tests), remediated, and re-verified — the **full suite under `Asia/Kolkata`
+  (60 files / 533 tests, green)** and the **targeted lease/session set under
+  `America/Denver` with `TZ=America/New_York` (12 tests, green)**. Both were failing on the
+  reviewed head; neither is now.
+
+**#192 written up as a decision for Thomas**, not decided by an agent — see **Blocked**. The
+new evidence in that write-up is that the missing link is not one unscoped foreign key: the
+same absent `workspace_id`/`organisation_id` also makes the RLS backstop `multi-tenancy.md`
+already commits to *unwritable*, and blocks #198's project-purging half.
+
+**Both candidates are `SECURITY REVIEW PENDING — OPUS CAPACITY`** and must not be merged.
+The required `pull request template + security review` check is **correctly red** on both; the
+security-review notes say so explicitly so that neither a later session nor an automated pass
+reads that red as a defect to repair.
+
+Method note worth keeping: every claim that a post-review delta was comment-only was proved
+rather than asserted — `git diff <sha>..<sha> -- <file> | grep -E "^[+-]" | grep -vE
+"^(\+\+\+|---)" | grep -vE "^[+-][[:space:]]*//"` returning no lines. A commit message
+that claimed a fix it had not made is exactly the failure this guards against, and one
+happened in this session.
 ### 2026-09-17 (later the same day, a fourth time) · #187 closed — a pre-existing gap in the live `project` table, made consequential by #23's new FK, not one of #23's own findings
 
 Same session, continuing autonomously. With #23's schema-integrity findings all closed

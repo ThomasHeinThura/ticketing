@@ -47,6 +47,7 @@ import { headAgreesWithPayload } from "./lib/head-binding.mjs";
 import {
   checklistPresenceProblems,
   checklistProblems,
+  DuplicateSectionError,
   declaredState,
   field,
   loadBody,
@@ -175,7 +176,18 @@ async function main() {
     return;
   }
   const required = templateScope.sections.headings;
-  const present = sections(body);
+  let present;
+  try {
+    // Issue #146: a `##` heading duplicated in the body — whether or not the extra one
+    // is hidden inside an HTML comment — cannot be resolved by silently keeping whichever
+    // occurrence sections() saw last. See lib/pr-body.mjs § sections/DuplicateSectionError.
+    present = sections(body);
+  } catch (error) {
+    if (!(error instanceof DuplicateSectionError)) throw error;
+    failures.push(violation("pull request body", error.message));
+    finish({ name: NAME, failures, warnings, ok: "unreachable" });
+    return;
+  }
 
   // Narrowing the template is a governance act, so it is reported on the diff that does
   // it. The sections themselves stay required by the union above; this says WHY, so the

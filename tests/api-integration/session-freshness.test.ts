@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
+import { ensureNotFirstSignup } from "./helpers/organization-http";
 
 type SessionResponse = { user: { image: string | null; name: string } } | null;
 
@@ -31,6 +32,12 @@ function collectCookies(response: Response) {
 }
 
 async function signUp(app: ReturnType<typeof createApp>["app"]) {
+  // #18: a zero-user instance now refuses sign-up without a setup token.
+  // This test isn't about instance-admin bootstrap, so it plants a
+  // throwaway user directly first, matching organization-http.ts's
+  // signUpUser -- the real signup below is then never user #1.
+  await ensureNotFirstSignup();
+
   const response = await app.request("/api/auth/sign-up/email", {
     method: "POST",
     headers: { "content-type": "application/json" },

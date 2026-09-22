@@ -411,6 +411,45 @@ export const jobLeaseTable = pgTable("job_lease", {
   expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
 });
 
+// Singleton row (`id` is always the literal "singleton" -- there is exactly one).
+// Only the columns issue #18 (the setup-token flow) needs are defined here.
+// data-model.md documents a much larger `instance_setting` row (branding, session
+// policy, retention, health thresholds, ...) that belongs to the P4 God Mode work;
+// that lane ALTERs this same table to add its columns rather than defining a
+// second one -- do not redefine `instance_setting` elsewhere.
+export const instanceSettingTable = pgTable(
+  "instance_setting",
+  {
+    id: text("id").primaryKey().default("singleton"),
+    // Durable first-run marker (auth-and-identity.md § Break-glass). Non-null means
+    // the instance has been claimed: the zero-user bootstrap bypass in auth.ts and
+    // the TASKDESK_BOOTSTRAP_ADMIN_EMAIL headless path are both permanently inert
+    // from this point on, even if every admin is later deleted and the user count
+    // returns to zero -- there is no way to re-open this by deleting rows.
+    setupCompletedAt: timestamp("setup_completed_at", { mode: "date" }),
+    // SHA-256 hex digest of the current setup token; never the raw token (same
+    // hash-only-at-rest convention as invitation tokens and API keys). Null once
+    // consumed, expired-and-regenerated, or once setup_completed_at is set.
+    setupTokenHash: text("setup_token_hash"),
+    setupTokenExpiresAt: timestamp("setup_token_expires_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    // #18 security review (F3): `id`'s DEFAULT makes "singleton" the row every
+    // writer here intends, but a bare PRIMARY KEY never actually forbids a second
+    // row with a different id -- and every read in setup-token.ts is a `LIMIT 1`
+    // with no WHERE, so a second row (e.g. a future P4 God Mode write that
+    // forgets the id) can silently become the one this code reads, with no test
+    // going red. This CHECK makes the single-row invariant the comment above
+    // already claims into something Postgres actually enforces.
+    check("instance_setting_id_singleton", sql`${table.id} = 'singleton'`),
+  ],
+);
+
 export const taskReminderSentTable = pgTable(
   "task_reminder_sent",
   {
@@ -1241,6 +1280,14 @@ export const workItemTypeTable = pgTable(
       table.workspaceId,
       table.key,
     ),
+    // #189 S7 -- `data-model.md` §4 states `category` (`service`|`delivery`) verbatim,
+    // and the document's Conventions section requires "Enumerations are Postgres enums or
+    // `CHECK` constraints, never free text". A `CHECK`, not a Postgres enum type, so every
+    // vocabulary this migration constrains uses one mechanism.
+    check(
+      "work_item_type_category_allowed",
+      sql`${table.category} in ('service', 'delivery')`,
+    ),
   ],
 );
 
@@ -1275,6 +1322,14 @@ export const stateTemplateTable = pgTable(
     uniqueIndex("state_template_workspace_key_unique").on(
       table.workspaceId,
       table.key,
+    ),
+    // #189 S7 -- `data-model.md` §3 states the five `group` values verbatim and calls
+    // them "the only fixed lifecycle vocabulary" (ADR 0011). Kept in ADR 0011's own
+    // order. `group` is a SQL reserved word; Drizzle already double-quotes every
+    // identifier it emits, so the literal column name is enough.
+    check(
+      "state_template_group_allowed",
+      sql`${table.group} in ('backlog', 'unstarted', 'started', 'completed', 'cancelled')`,
     ),
   ],
 );
@@ -1320,6 +1375,27 @@ export const stateTable = pgTable(
     // but Postgres requires an explicit unique constraint on the exact column pair a
     // composite FK targets, so this is added even though it looks redundant.
     unique("state_project_id_id_unique").on(table.projectId, table.id),
+    // #189 S9 -- at most one default `state` per project. Partial unique index, not a
+    // plain unique constraint, because it must apply only to the `is_default` rows
+    // (`legal_hold`'s `(scope, scope_id) where lifted_at is null` is this codebase's
+    // existing precedent for the shape).
+    //
+    // Authorised by the singular definite: `projects-and-engagements.md` `PR-17` — a
+    // project's states have "their own order and default" — and `work-items.md` `WI-4`,
+    // "Initial state is the project's own default state (`state.is_default`)". A
+    // project's default for new work items is one row, not a set.
+    //
+    // Judgment call, and the strongest one in this migration: `data-model.md` §3 lists
+    // `is_default` as a column without stating the at-most-one invariant itself, and
+    // this index is deliberately NOT scoped to `archived_at is null`. Archiving a state
+    // is "removing" it (ADR 0011), and a removed state cannot be the initial state a
+    // new work item gets (`WI-4`), so the index requires the write path to clear or
+    // re-nominate `is_default` when it archives the state that holds it, rather than
+    // leaving a dangling default behind. Flagged in the PR body so a reviewer can weigh
+    // it against the narrower `and archived_at is null` form.
+    uniqueIndex("state_project_default_unique")
+      .on(table.projectId)
+      .where(sql`${table.isDefault}`),
   ],
 );
 
@@ -1772,6 +1848,51 @@ export const workItemTable = pgTable(
     })
       .onDelete("restrict")
       .onUpdate("no action"),
+    // #189 S7 -- `data-model.md` Conventions: "Enumerations are Postgres enums or `CHECK`
+    // constraints, never free text. **Priority** is the ordered enum
+    // `low < medium < high < urgent` -- ordering is load-bearing for the customer
+    // escalate-only rule and for every importer's mapping."
+    //
+    // The column is nullable (`text("priority")`, no default), and this CHECK keeps it
+    // so: `NULL in (...)` evaluates to NULL, and Postgres treats a NULL CHECK result as
+    // passing. Any non-NULL value, however, must be one of the four.
+    check(
+      "work_item_priority_allowed",
+      sql`${table.priority} in ('low', 'medium', 'high', 'urgent')`,
+    ),
+    // #189 S7 -- `data-model.md` §4 states `customer_visibility`
+    // (`private`|`organisation`) verbatim. The column is NOT NULL DEFAULT 'private'
+    // (#186 S1); this closes the other half of that finding -- a garbage string used to
+    // pass the NOT NULL check and read as neither `private` nor `organisation`.
+    check(
+      "work_item_customer_visibility_allowed",
+      sql`${table.customerVisibility} in ('private', 'organisation')`,
+    ),
+    // #189 S9 -- `position numeric(20,10)` accepted `NaN`, which Postgres sorts greater
+    // than every non-NaN value, so one bad row would head every `ORDER BY position desc`
+    // and tail every `ORDER BY position asc` for ever.
+    //
+    // NOT the `CHECK (position = position)` the issue suggested: that is an IEEE-754
+    // trick and does not work here. Postgres deviates from IEEE for `numeric` precisely
+    // to keep `NaN` usable in tree indexes -- `SELECT 'NaN'::numeric = 'NaN'::numeric`
+    // returns TRUE (verified live against the project's PostgreSQL 18), so a
+    // self-comparison CHECK accepts `NaN` and constrains nothing. The comparison that
+    // does reject it is `<> 'NaN'::numeric`.
+    check(
+      "work_item_position_not_nan",
+      sql`${table.position} <> 'NaN'::numeric`,
+    ),
+    // #189 S9 -- `number` was a bare `integer NOT NULL` with no positivity constraint,
+    // and no trigger assigns it yet (`work_item.key`'s assignment trigger is #23's later
+    // work; nothing in the schema computes `number` today), so a direct insert could
+    // write `0` or a negative. `data-model.md` §4 / `work-items.md` `WI-2`: "`number`
+    // comes from `project.last_work_item_number` incremented". No column of that name
+    // exists yet -- the live column is `project.last_task_number`
+    // (`lastTaskNumber: integer("last_task_number").notNull().default(0)`), inherited
+    // from kaneo and still named for the v1 concept; #23 owns introducing the v2 name
+    // and the assignment. Either way the first assignment is 1. The rendered key is
+    // `{project.key}-{number}`, which must never be `...-0` or `...--1`.
+    check("work_item_number_positive", sql`${table.number} > 0`),
   ],
 );
 
@@ -1870,6 +1991,11 @@ export const watcherTable = pgTable(
       table.personId,
     ),
     index("watcher_personId_idx").on(table.personId),
+    // #189 S7 -- `data-model.md` §4 states `source` (`explicit`|`implicit`) verbatim.
+    check(
+      "watcher_source_allowed",
+      sql`${table.source} in ('explicit', 'implicit')`,
+    ),
   ],
 );
 

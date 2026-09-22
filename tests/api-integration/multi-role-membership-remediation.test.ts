@@ -35,6 +35,7 @@ import { resolveMembershipRole } from "../../apps/api/src/utils/workspace-member
 import { resetTestDatabase } from "./helpers/database";
 import {
   plantLegacyMembershipRole,
+  signUpInstanceAdmin,
   signUpUser,
 } from "./helpers/organization-http";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
@@ -45,18 +46,24 @@ type App = ReturnType<typeof createApp>["app"];
 /**
  * Consumes the instance-admin slot.
  *
- * `auth.ts:708-712` promotes the FIRST user in an empty database to instance admin, and
- * `resetTestDatabase()` empties it before every test — so without this, every workspace owner
- * in this file would also be an instance admin and would take `hasWorkspacePermission`'s
- * bypass before any membership row was read. That would make several assertions below pass or
- * fail for a reason other than the one they name.
+ * #18: `signUpUser` can no longer become instance admin by accident (a zero-user
+ * instance now refuses to promote anyone without a valid setup token), so this is
+ * belt-and-suspenders rather than load-bearing -- kept so the intent stays literal
+ * rather than merely implied, and so a future reader does not have to rediscover why
+ * it is here.
  */
 async function burnInstanceAdminSlot(app: App): Promise<void> {
   await signUpUser(app);
 }
 
-async function workspaceWithMember(app: App, role: string) {
-  const owner = await signUpUser(app);
+async function workspaceWithMember(
+  app: App,
+  role: string,
+  options?: { ownerIsInstanceAdmin?: boolean },
+) {
+  const owner = options?.ownerIsInstanceAdmin
+    ? await signUpInstanceAdmin(app)
+    : await signUpUser(app);
   const created = await createWorkspaceNative(app, owner.cookie);
   const workspace = (await created.json()) as { id: string };
   const member = await inviteAndAcceptAsNewMemberNative(
@@ -200,10 +207,14 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
 
   it("PINS THE ONE DELIBERATE EXCEPTION: an INSTANCE ADMIN with the same corrupt row still gets a 200 capability map, because `hasWorkspacePermission` short-circuits on `isInstanceAdmin` before it reads any membership row. That bypass is Thomas's 2026-09-08 decision and #82 does not re-open it -- an instance admin already holds the authority a corrupt row could confer, so the malformed value adds them no privilege. What #82 DOES require is that `/api/capabilities` and the evaluator make the same call, which they do because both route through `callerMembershipResolution`. The narrower guard that refuses this caller anyway is `requireWorkspaceRoleAuthority` -- see §2", async () => {
     const { app } = createApp();
-    // No burnInstanceAdminSlot: this owner IS the first user, therefore the instance admin,
-    // which is also the single most common real-world shape (the operator who set the
-    // instance up and created the first workspace).
-    const { owner, workspace } = await workspaceWithMember(app, "viewer");
+    // #18: instance-admin bootstrap now requires a valid setup token, so this owner
+    // is deliberately signed up through the real bootstrap flow (`ownerIsInstanceAdmin`)
+    // rather than relying on "first user in an empty database" the way this test used
+    // to -- that is also the single most common real-world shape (the operator who set
+    // the instance up and created the first workspace).
+    const { owner, workspace } = await workspaceWithMember(app, "viewer", {
+      ownerIsInstanceAdmin: true,
+    });
 
     await plantLegacyMembershipRole(workspace.id, owner.user.id, "owner,admin");
 

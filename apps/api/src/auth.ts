@@ -15,6 +15,13 @@ import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
 import { count, eq, sql } from "drizzle-orm";
 import db, { schema } from "./database";
+import {
+  isBootstrapAdminEmail,
+  isSetupCompleted,
+  SETUP_TOKEN_HEADER,
+  SETUP_TOKEN_SINGLETON_ID,
+  verifyAndConsumeSetupToken,
+} from "./instance/setup-token";
 import deleteAccountData from "./user/controllers/delete-account-data";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
 import { mapCustomOAuthProfileToUser } from "./utils/custom-oauth-profile";
@@ -374,24 +381,86 @@ export const auth = betterAuth({
             return;
           }
 
-          // Allow the very first signup through even when registration
-          // is disabled: that's the instance-admin bootstrap flow.
-          // Otherwise a fresh instance with DISABLE_REGISTRATION=true
-          // could never be set up because `checkRegistrationAllowed`
-          // would reject the first user (qodo bot #3).
+          // Zero users can mean two different things, and only one of them
+          // is the legitimate first-run bootstrap (#18):
+          //   - a genuinely fresh instance, never set up -- OR
+          //   - every admin was deleted from an instance that WAS already
+          //     set up, which must never re-open this window.
+          // `instance_setting.setup_completed_at` is the durable marker that
+          // tells them apart; it is never cleared by deleting user rows.
           const [userCountRow] = await db
             .select({ value: count() })
             .from(schema.userTable);
           const existingUserCount = userCountRow?.value ?? 0;
-          if (existingUserCount === 0) {
-            return;
-          }
 
+          // Computed once, up front, so the SAME call with the SAME
+          // arguments is what decides every refusal message below --
+          // zero-user or not. See the #18 security review (D1) comment on
+          // the throw sites for why this matters.
           const invitationId = normalizeInvitationId(
             ctx?.body?.invitationId ||
               ctx?.query?.invitationId ||
               ctx?.headers?.get("x-invitation-id"),
           );
+
+          if (existingUserCount === 0 && !(await isSetupCompleted())) {
+            // This is the one-time bootstrap. It is allowed through even
+            // when DISABLE_REGISTRATION / DISABLE_PASSWORD_REGISTRATION are
+            // set -- but ONLY on proof of authorization: the operator's
+            // headless-install email, or the setup token printed to the
+            // container log (auth-and-identity.md § Break-glass). There is
+            // no other bypass; an unauthorized zero-user signup is refused
+            // below exactly like any other signup would be.
+            if (isBootstrapAdminEmail(user.email)) {
+              return;
+            }
+
+            const presentedToken = ctx?.headers?.get(SETUP_TOKEN_HEADER);
+            if (await verifyAndConsumeSetupToken(presentedToken)) {
+              return;
+            }
+
+            // #18 security review (B1, then D1): this refusal must be
+            // impossible to distinguish from an ordinary registration
+            // refusal, for EVERY shape of request, not just the plain one.
+            // B1's first fix hard-coded one fixed message here -- which
+            // closed the plain case but reopened the same oracle the moment
+            // a caller added an `invitationId`: checkRegistrationAllowed
+            // below has two different messages (no invitation attempted vs.
+            // an invitation that didn't resolve), and a claimed instance
+            // reaches it while an unclaimed one used to short-circuit here
+            // first with only ever the first message -- so which of the two
+            // messages came back told an attacker claimed from unclaimed
+            // just as reliably as the original, more obviously-named one
+            // did. On a genuinely empty instance no invitation can ever
+            // exist (nothing has created a workspace or sent one yet), so
+            // calling the SAME function with the SAME arguments here always
+            // reproduces whichever of its two refusal messages a claimed
+            // instance would give for that identical request shape, because
+            // it is literally the same call. When registration is open
+            // (DISABLE_REGISTRATION=false), that call would itself say
+            // "allowed" -- but there is no message to mirror in that branch
+            // either, since a claimed+open instance would answer with 200,
+            // not an error body, so this falls back to the same fixed
+            // refusal text as before; the remaining 200-vs-403 signal in
+            // that specific configuration is inherent to never letting an
+            // unauthenticated signup through on an unclaimed instance, not
+            // something a message change can close. The setup URL and token
+            // are still printed to the boot log (ensureSetupToken) and
+            // documented in the runbook -- an operator never needs this
+            // response to learn them.
+            const bootstrapRefusal = await checkRegistrationAllowed(
+              user.email,
+              invitationId,
+              { allowInvitationByEmail: isOAuthCallbackPath(ctx?.path) },
+            );
+            throw new APIError("FORBIDDEN", {
+              message: bootstrapRefusal.allowed
+                ? "Registration is currently disabled. Please use a valid invitation link to create an account."
+                : bootstrapRefusal.reason,
+            });
+          }
+
           const result = await checkRegistrationAllowed(
             user.email,
             invitationId,
@@ -431,6 +500,11 @@ export const auth = betterAuth({
           // an existing instance (where every existing user has
           // role=NULL from the new column) doesn't promote the next
           // signup to admin (qodo bot #4).
+          //
+          // #18: also re-check `setup_completed_at` INSIDE the lock. Without
+          // this, deleting every admin from an already-set-up instance would
+          // let the next signup silently re-trigger admin auto-promotion --
+          // exactly the durable-marker guarantee this column exists for.
           await db.transaction(async (tx) => {
             await tx.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
 
@@ -439,15 +513,42 @@ export const auth = betterAuth({
               .from(schema.userTable);
             const totalUserCount = totalRows[0]?.value ?? 0;
 
+            const [setting] = await tx
+              .select({
+                setupCompletedAt: schema.instanceSettingTable.setupCompletedAt,
+              })
+              .from(schema.instanceSettingTable)
+              .limit(1);
+            const setupAlreadyCompleted = setting?.setupCompletedAt != null;
+
             // This hook runs after the user row is inserted, so the
             // just-created user is included in the count. If they are
-            // the only row in the table, this is a fresh-instance
-            // bootstrap and they get promoted to admin.
-            if (totalUserCount === 1) {
+            // the only row in the table, and the instance has never
+            // completed setup, this is the fresh-instance bootstrap and
+            // they get promoted to admin.
+            if (totalUserCount === 1 && !setupAlreadyCompleted) {
               await tx
                 .update(schema.userTable)
                 .set({ role: "admin" })
                 .where(eq(schema.userTable.id, user.id));
+
+              await tx
+                .insert(schema.instanceSettingTable)
+                .values({
+                  id: SETUP_TOKEN_SINGLETON_ID,
+                  setupCompletedAt: new Date(),
+                  setupTokenHash: null,
+                  setupTokenExpiresAt: null,
+                })
+                .onConflictDoUpdate({
+                  target: schema.instanceSettingTable.id,
+                  set: {
+                    setupCompletedAt: new Date(),
+                    setupTokenHash: null,
+                    setupTokenExpiresAt: null,
+                    updatedAt: new Date(),
+                  },
+                });
             }
           });
         },
