@@ -1,0 +1,74 @@
+import type { PolicyMap } from "@taskdesk/permissions";
+
+/**
+ * Work item route policies (issue #23's first slice: minimal create + read + list).
+ *
+ * These are three genuinely NEW routes -- not a reclassification of an inherited kaneo
+ * surface -- so, per issue #8's rule, every one declares a policy at definition time.
+ *
+ * **The capability strings and scopes below are the TARGET vocabulary, and do NOT
+ * describe what actually gates the request today** -- the same transitional shape
+ * `workspace/policy.ts`'s own file comment documents for its routes. `work_item:create`/
+ * `work_item:read` (`docs/01-architecture/rbac.md` § Work items) are real
+ * `@taskdesk/permissions` capabilities, and the RUNTIME check on all three routes below
+ * genuinely evaluates them -- via `requireWorkspaceCapability`
+ * (`apps/api/src/utils/require-workspace-capability.ts`), which reads the caller's own
+ * `workspace_member.role` against the compiled `BUILT_IN_ROLES` capability data, the same
+ * mechanism `POST /api/workspace/{workspaceId}/transfer-ownership` already uses for a
+ * canonical (non-legacy-better-auth) capability. What is NOT wired up is the declarative
+ * `packages/permissions` evaluator itself (`resolveIdentity`/`can()`/`evaluatePolicy`) --
+ * nothing in this codebase assembles a live `ResolvedIdentity` for a request yet, and
+ * wiring that in is issue #8's runtime-integration section, explicitly out of this
+ * slice's scope. This file is registered in `policy-registry.ts` for the
+ * route-coverage/permission-matrix machinery only, exactly like every other domain's
+ * `policy.ts`.
+ *
+ * **"Plus reach on the project" (`work-items.md` § Permissions) is, today, workspace
+ * membership** -- see `./index.ts`'s own file comment for why: the full per-project
+ * reach model (`ProjectReachFacts`, team ownership, hierarchy) exists only in
+ * `packages/permissions`, unused by any live route, and every OTHER project-scoped route
+ * in this codebase (`project/index.ts`) defines project reach the identical way, via
+ * `workspaceAccess.fromProject()` + `validateWorkspaceAccess`'s membership check. This
+ * slice follows that existing precedent rather than inventing a different reach model
+ * for work items alone.
+ *
+ * `elevated` is omitted throughout -- neither `work_item:create` nor `work_item:read` is
+ * in `AUTHORITY_GRANTING` (`packages/permissions/src/elevated.ts`); creating or reading a
+ * work item mints no fresh authority.
+ */
+export const workItemPolicies = {
+  // Create a work item in a project. There is no `work_item` row yet -- the scope id is
+  // the project the item is being created IN, read from the request path
+  // (`scopeSource: "request"`), the same shape `POST /api/workspace/{workspaceId}/members`
+  // uses in `workspace/policy.ts`. `reach: "required"`: the caller must have reach on
+  // THAT project before being allowed to create inside it, same as that precedent.
+  "POST /api/projects/{projectId}/work-items": {
+    capability: "work_item:create",
+    scope: "project",
+    scopeSource: "request",
+    reach: "required",
+  },
+
+  // List a project's work items. The addressed resource is the PROJECT (a container),
+  // not any one `work_item` row -- `workspaceAccess.fromProject()` loads it (a real DB
+  // lookup, not trusted from the path alone), so `scopeSource: "row"`, the same reasoning
+  // `workspace/policy.ts` uses for `GET /api/workspace/{workspaceId}/invitations`
+  // (a compound/collection read scoped by its container's own loaded row).
+  "GET /api/projects/{projectId}/work-items": {
+    capability: "work_item:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // Read one work item by its permanent key. `requireWorkItemReach()`
+  // (`./require-work-item-reach.ts`) resolves the row by a genuine DB lookup on
+  // `work_item.key` before the handler runs, and the controller (`get-work-item.ts`)
+  // re-loads it itself -- `scopeSource: "row"`.
+  "GET /api/work-items/{key}": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+} as const satisfies PolicyMap;

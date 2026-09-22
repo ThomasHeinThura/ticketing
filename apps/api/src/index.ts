@@ -55,6 +55,7 @@ import { normalizeApiServerUrl } from "./utils/openapi-spec";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { validateWorkspaceAccess } from "./utils/validate-workspace-access";
+import workItem from "./work-item";
 import workflowRule from "./workflow-rule";
 import workspace from "./workspace";
 import {
@@ -797,6 +798,11 @@ export function createApp(options: { staticRoot?: string } = {}) {
   const workflowRuleApi = api.route("/workflow-rule", workflowRule);
   const invitationApi = api.route("/invitation", invitation);
   const workspaceApi = api.route("/workspace", workspace);
+  // #23 -- mounted at the api root, not a feature prefix: the spec's own API table names
+  // two different path shapes for this one resource (`/projects/{projectId}/work-items`,
+  // `/work-items/{key}`), which `workItem`'s own routes already declare in full. See
+  // `work-item/index.ts`'s file comment.
+  const workItemApi = api.route("/", workItem);
   const userApi = api.route("/user", user);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
@@ -947,6 +953,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
     timeEntryApi,
     userApi,
     workflowRuleApi,
+    workItemApi,
     workspaceApi,
   };
 }
@@ -1085,6 +1092,7 @@ const {
   timeEntryApi,
   userApi,
   workflowRuleApi,
+  workItemApi,
   workspaceApi,
 } = createdApp;
 
@@ -1120,6 +1128,7 @@ export type AppType =
   | typeof taskRelationApi
   | typeof externalLinkApi
   | typeof workflowRuleApi
+  | typeof workItemApi
   | typeof invitationApi
   | typeof workspaceApi
   | typeof userApi
