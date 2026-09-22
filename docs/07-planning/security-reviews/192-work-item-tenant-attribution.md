@@ -537,3 +537,147 @@ implementing or orchestrating session.
 The one exemption, on the same footing as `353e5c9` before it: the note-only commit that
 adds *this section* to *this file* changes no code and does not invalidate the clearance it
 records. Any commit that touches anything else does.
+
+---
+
+# Second delta re-confirmation — 2026-09-22 (after the second `main` sync)
+
+**Reviewed head:** `4d1365a2e4d4dc2f9720297c596922e52418e790`
+
+**Previous reviewed head:** `503c32c510f43b8dadf11f58b7a78681c26c2b37`
+
+**Reviewer:** independent Opus pass, fresh context — did not author, orchestrate or
+implement this change. Dispatched to extend the clearance across a second `main` sync.
+
+**The `main` sync was performed by this reviewer**, in an isolated detached worktree created
+from a re-fetched `origin`, using `git merge` (not rebase, which would orphan the
+`**Reviewed head:**` citations above). The merge is `4d1365a2…`, parents `b0077301…` (the
+branch) and `113f6d6163…` (`origin/main`, resolved by ref, not read from a PR page).
+
+## Correction to the dispatch's premise — this sync is NOT docs-only
+
+The dispatch stated that `main` had advanced by exactly one merge, PR #243, touching only
+`docs/07-planning/status.md`, with "zero overlap with anything you verified." **That is not
+what the repository contains, and this section does not rest on it.**
+
+`main` advanced by **two** merges since `f84df0e` (the point the previous sync reached):
+
+- `cfd850a` — PR #237, `ci: add check:dockerfile-deps to catch Dockerfile/workspace drift (#170)`
+- `113f6d6` — PR #243, the `status.md` snapshot reconciliation the dispatch described
+
+PR #237 was not in the branch before this merge. It changes **five non-`docs/` files**, all
+of them inside `ci-cd.md`'s security-review path list:
+
+| Path | Change |
+| --- | --- |
+| `scripts/ci/check-dockerfile-deps.mjs` | new, 388 lines — a CI gate |
+| `scripts/ci/check-dockerfile-deps.test.mjs` | new, 395 lines |
+| `scripts/ci/test-all.mjs` | +9 — registers the gate in the manifest |
+| `package.json` | +1 — the `check:dockerfile-deps` script |
+| `.github/workflows/ci-fast.yml` | +6 — runs the gate in the `registers` job |
+
+So the previous section's licensing condition — *every file outside `docs/` is byte-identical* —
+**is false at this head**, and the clearance above therefore does **not** extend forward on
+that reasoning. It is re-derived below on the delta that actually exists.
+
+## What was established independently
+
+Whole-tree object comparison by hash, as before, plus a targeted read of the five files.
+
+- **Ancestry.** `0088189810…`, `353e5c94…`, `503c32c5…` and `b0077301…` are all still real
+  ancestors of `4d1365a2…`. Nothing was rebased away or replayed; every earlier
+  `**Reviewed head:**` citation in this file still resolves.
+- **No authored line in the merge.** `git show --cc` on `4d1365a2…` produces an **empty**
+  body — no conflict was resolved and no line was written during the merge. Every file came
+  through untouched from one side or the other.
+- **#192's entire reviewed surface is byte-identical.** `git diff 0088189 HEAD` restricted to
+  `apps`, `packages`, `tests`, `Dockerfile`, `pnpm-lock.yaml` and `pnpm-workspace.yaml` is
+  **empty (zero lines)**. By whole-tree hash, `apps` (`90d28dea…`), `packages` (`48f22a1b…`),
+  `tests` (`76307f01…`), `pnpm-lock.yaml` (`c5366af4…`), `pnpm-workspace.yaml` (`92ccfc48…`)
+  and `Dockerfile` (`19819660…`) are the **same objects** reviewed at `0088189`. That covers
+  the migration `0062_fast_blob.sql`, its snapshot and journal, `schema.ts`,
+  `seed-internal-organisation.ts`, `create-workspace.ts` and every touched test file. None of
+  §§1–7's material moved.
+- **The CI delta is `main`'s, unmodified.** `git diff HEAD origin/main` restricted to
+  `.github`, `scripts` and `package.json` is **empty** — the branch carries PR #237's
+  machinery exactly as it exists on `main`, with nothing added or adapted in the merge.
+- **#237 was independently gated.** Its own security-review note,
+  `docs/07-planning/security-reviews/170-dockerfile-deps-drift-check.md` (802 lines, four
+  reviewed heads, one `CHANGES NEEDED` round before clearance), arrived with the merge. This
+  pass does **not** re-review #237 and does not need to; it is already on `main` through its
+  own gates.
+
+## Why the CI delta does not disturb this clearance
+
+Re-derived, not assumed:
+
+- It is **additive**. One new gate, its tests, its script entry, its workflow step and its
+  manifest row. No existing gate was modified, reordered, weakened or removed.
+- It **changes no gate semantics for #192**. The gate reads `Dockerfile` and
+  `pnpm-workspace.yaml` and asserts the `deps` stage's COPY list matches the discovered
+  workspace members. #192 touches **neither file** — confirmed: the branch's `Dockerfile` and
+  `pnpm-workspace.yaml` blobs are identical to `main`'s and to `0088189`'s. The gate's inputs
+  and #192's change set are disjoint.
+- It **touches no authority surface** — no permission, policy, route, migration, schema or
+  identity code. It is build-image drift detection.
+- **The new gate passes on this exact head.** Run here: `check:dockerfile-deps: 9 workspace
+  package manifest(s) match the deps stage COPY list.` (exit 0), and its own suite
+  `node --test scripts/ci/check-dockerfile-deps.test.mjs` is **22/22, 9 suites, 0 failures**.
+  So the merge does not introduce a red gate into this PR.
+
+## Regression run at the current head
+
+Fresh private database `opusrev192c_test` on `td-lane-pg` (`127.0.0.1:55440`), created for
+this pass and used by nothing else. Isolated worktree, dependencies installed from the frozen
+lockfile.
+
+| Suite | Result |
+| --- | --- |
+| `drizzle-kit check` | clean — "Everything's fine" |
+| Unit (`vitest run --config vitest.config.ts`) | **323/323** (48 files) |
+| Permissions (`vitest run --config vitest.permissions.config.ts`) | **80/80** (10 files) |
+| Integration (`vitest run --config vitest.integration.config.ts`) | **595/595** (65 files) |
+| `check:dockerfile-deps` (new this sync) | pass, 9 manifests matched |
+| `check-dockerfile-deps.test.mjs` (new this sync) | 22/22 |
+
+All three headline counts match the expected 323 / 80 / 595 exactly.
+
+**Operational note for whoever runs these next.** The first attempt reported 287/323 unit and
+two failed permissions files. That was **not** a regression: a fresh worktree has no built
+`packages/*/dist`, so `@taskdesk/email` and `@taskdesk/permissions` fail to resolve.
+`pnpm --filter @taskdesk/email --filter @taskdesk/permissions --filter @taskdesk/domain build`
+before the suites, and the counts are exact. Recorded so a future pass does not mistake it
+for a defect in this PR.
+
+## What this pass did not do
+
+- It did not re-run the eleven live-SQL attack shapes or re-derive §§1–7. That is licensed by
+  the byte-identity of `apps`, `packages` and `tests` established above — which *is* true at
+  this head, even though the broader "nothing outside `docs/`" claim is not.
+- It did not re-review PR #237. That change is on `main` under its own review note and its
+  own gates; this pass only established that it is inert with respect to #192.
+- It did not re-examine findings F1, F2, F3 and F4. They are unchanged and still non-blocking.
+- It did not merge this pull request, edit the PR body, touch `## Gates`, or waive anything.
+- It did not verify branch-protection state, required status checks, or the recorded reviews
+  on the PR. Those are the merging session's own checks.
+
+## Verdict
+
+**CLEAR — the clearance extends to `4d1365a2e4d4dc2f9720297c596922e52418e790`.**
+
+The sync is not content-inert as the dispatch claimed, but it is **inert with respect to
+#192**. Every artefact this review examined is byte-identical to `0088189810…` by whole-tree
+hash; the merge authored no line; the one real code delta is PR #237's additive CI gate,
+carried unmodified from `main`, already gated under its own review, disjoint from #192's
+inputs, and green on this head. The suites re-run at their expected counts and
+`drizzle-kit check` reports no drift.
+
+**Cleared at `4d1365a2e4d4dc2f9720297c596922e52418e790`.** The original condition carries
+forward unchanged: any further rebase, conflict resolution, `main`-merge or commit
+invalidates this and requires a reviewer's own re-confirmation, **not** a diff-stat by the
+implementing or orchestrating session — and, as this pass shows, not a description of the
+delta supplied with the dispatch either. The delta must be established from the repository.
+
+The one exemption, on the same footing as `353e5c9` and `b007730` before it: the note-only
+commit that adds *this section* to *this file* changes no code and does not invalidate the
+clearance it records. Any commit that touches anything else does.
