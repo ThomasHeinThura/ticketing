@@ -396,87 +396,6 @@ export function createApp(options: { staticRoot?: string } = {}) {
 
   api.openapi(
     createRoute({
-      method: "get",
-      operationId: "getAsset",
-      path: "/asset/{id}",
-      tags: ["Assets"],
-      summary: "Download asset",
-      description:
-        "Download an uploaded asset. Readable without signing in only when it belongs to a public project; image types are served inline, everything else as an attachment.",
-      security: [],
-      request: { params: z.object({ id: z.string() }) },
-      responses: {
-        200: {
-          description: "The requested asset binary stream",
-          content: { "*/*": { schema: { type: "string", format: "binary" } } },
-        },
-        304: { description: "Not modified" },
-        403: { description: "No access to this asset" },
-        404: { description: "Asset not found" },
-      },
-    }),
-    async (c) => {
-      const { id } = c.req.param();
-      const [asset] = await db
-        .select({
-          id: schema.assetTable.id,
-          objectKey: schema.assetTable.objectKey,
-          mimeType: schema.assetTable.mimeType,
-          filename: schema.assetTable.filename,
-          workspaceId: schema.assetTable.workspaceId,
-        })
-        .from(schema.assetTable)
-        // The join selects nothing now that `is_public` is gone, but it is kept
-        // deliberately: it still requires the asset to belong to a real project,
-        // so an orphaned asset row 404s rather than being served.
-        .innerJoin(
-          schema.projectTable,
-          eq(schema.assetTable.projectId, schema.projectTable.id),
-        )
-        .where(eq(schema.assetTable.id, id))
-        .limit(1);
-
-      if (!asset) {
-        throw new HTTPException(404, { message: "Asset not found" });
-      }
-
-      await authorizeAssetAccess(c, asset);
-
-      try {
-        const object = await getPrivateObject(asset.objectKey);
-        const storedContentType =
-          (object.contentType || asset.mimeType)
-            .toLowerCase()
-            .split(";")[0]
-            ?.trim() ?? "";
-        const inline = SAFE_INLINE_ASSET_TYPES.has(storedContentType);
-
-        return new Response(object.body as BodyInit, {
-          headers: {
-            // Every asset is private: TaskDesk has no public-project read path.
-            "Cache-Control": "private, max-age=120",
-            "Content-Disposition": buildContentDisposition(
-              asset.filename,
-              inline,
-            ),
-            "Content-Length": object.contentLength?.toString() || "",
-            "Content-Type": inline
-              ? storedContentType
-              : "application/octet-stream",
-            "X-Content-Type-Options": "nosniff",
-            ETag: object.etag || "",
-            "Last-Modified": object.lastModified?.toUTCString() || "",
-          },
-        });
-      } catch (error) {
-        console.error("Failed to stream asset:", error);
-        throw new HTTPException(404, { message: "Asset object not found" });
-      }
-    },
-  );
-
-  api.openapi(
-    createRoute({
       method: "put",
       operationId: "uploadFilesystemStorageObject",
       path: "/storage/filesystem-upload",
@@ -776,6 +695,95 @@ export function createApp(options: { staticRoot?: string } = {}) {
       throw error;
     }
   });
+
+  // Registered below the app-wide auth guard (issue #8, H2 fix, `docs/07-planning/
+  // security-reviews/21-policy-registry.md`): `authorizeAssetAccess` requires a real
+  // bearer/API-key/session credential (`resolveAssetBearerOrCookie` throws 401 on none)
+  // and then checks workspace membership, so this route was never actually public --
+  // it just sat above the guard, where H2's `isWithinAuthGuardScope()` correctly refuses
+  // a `capability` policy rather than let registration position launder an unauthenticated
+  // route into a green coverage check. Moved here so the policy in
+  // `apps/api/src/asset/policy.ts` describes what the runtime actually enforces.
+  api.openapi(
+    createRoute({
+      method: "get",
+      operationId: "getAsset",
+      path: "/asset/{id}",
+      tags: ["Assets"],
+      summary: "Download asset",
+      description:
+        "Download an uploaded asset. Requires a real credential (session, personal API key, or MCP key) and membership of the asset's workspace; image types are served inline, everything else as an attachment.",
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "The requested asset binary stream",
+          content: { "*/*": { schema: { type: "string", format: "binary" } } },
+        },
+        304: { description: "Not modified" },
+        401: errorResponse("No credential at all"),
+        403: errorResponse("No access to this asset"),
+        404: errorResponse("Asset not found"),
+      },
+    }),
+    async (c) => {
+      const { id } = c.req.param();
+      const [asset] = await db
+        .select({
+          id: schema.assetTable.id,
+          objectKey: schema.assetTable.objectKey,
+          mimeType: schema.assetTable.mimeType,
+          filename: schema.assetTable.filename,
+          workspaceId: schema.assetTable.workspaceId,
+        })
+        .from(schema.assetTable)
+        // The join selects nothing now that `is_public` is gone, but it is kept
+        // deliberately: it still requires the asset to belong to a real project,
+        // so an orphaned asset row 404s rather than being served.
+        .innerJoin(
+          schema.projectTable,
+          eq(schema.assetTable.projectId, schema.projectTable.id),
+        )
+        .where(eq(schema.assetTable.id, id))
+        .limit(1);
+
+      if (!asset) {
+        throw new HTTPException(404, { message: "Asset not found" });
+      }
+
+      await authorizeAssetAccess(c, asset);
+
+      try {
+        const object = await getPrivateObject(asset.objectKey);
+        const storedContentType =
+          (object.contentType || asset.mimeType)
+            .toLowerCase()
+            .split(";")[0]
+            ?.trim() ?? "";
+        const inline = SAFE_INLINE_ASSET_TYPES.has(storedContentType);
+
+        return new Response(object.body as BodyInit, {
+          headers: {
+            // Every asset is private: TaskDesk has no public-project read path.
+            "Cache-Control": "private, max-age=120",
+            "Content-Disposition": buildContentDisposition(
+              asset.filename,
+              inline,
+            ),
+            "Content-Length": object.contentLength?.toString() || "",
+            "Content-Type": inline
+              ? storedContentType
+              : "application/octet-stream",
+            "X-Content-Type-Options": "nosniff",
+            ETag: object.etag || "",
+            "Last-Modified": object.lastModified?.toUTCString() || "",
+          },
+        });
+      } catch (error) {
+        console.error("Failed to stream asset:", error);
+        throw new HTTPException(404, { message: "Asset object not found" });
+      }
+    },
+  );
 
   const oauthApi = api.route("/oauth", oauth);
   const capabilitiesApi = api.route("/capabilities", capabilities);

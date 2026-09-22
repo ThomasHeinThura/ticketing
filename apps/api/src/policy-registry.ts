@@ -16,18 +16,13 @@
  * as #8 lands. What is declared below is the machinery's proof of life: one of each surface
  * the coverage test has to account for.
  *
- * **`GET /api/asset/{id}` is deliberately NOT declared below**, despite being named in #8's own
- * scope as an inline route. It is registered above the auth guard, so H2
- * (`isWithinAuthGuardScope()`, `packages/permissions/src/route-coverage.ts`) refuses it a
- * `capability`/`self`/`portal` policy — but its handler (`index.ts` ~line 397) calls
- * `authorizeAssetAccess`, which requires a real bearer/API-key/session credential
- * (`resolveAssetBearerOrCookie` throws 401 on none) and then checks workspace membership. It is
- * therefore genuinely NOT public, and `delegated` is not available either (`DELEGATED_SURFACES`
- * is closed and this route fits none of its four members). Stamping `public` here would be
- * exactly the false-green this issue exists to refuse — the H2 section's own text names this
- * exact route as the example. Left uncovered, flagged in the #8 classification pass report,
- * pending a decision on moving its registration below the guard so it can be declared
- * `capability` honestly.
+ * **`GET /api/asset/{id}` was moved below the auth guard** in `index.ts` as part of this
+ * classification pass (issue #8), which is what H2's own text names as the fix for the
+ * exact example it uses (`isWithinAuthGuardScope()`,
+ * `packages/permissions/src/route-coverage.ts`) — its handler calls `authorizeAssetAccess`,
+ * which requires a real bearer/API-key/session credential and then checks workspace
+ * membership, so it was never actually public; it just sat above the guard. Its policy now
+ * lives in `apps/api/src/asset/policy.ts`, wired below like every other feature folder.
  */
 
 import {
@@ -36,6 +31,7 @@ import {
   type PolicyRegistry,
 } from "@taskdesk/permissions";
 import { activityPolicies } from "./activity/policy";
+import { assetPolicies } from "./asset/policy";
 import { capabilitiesPolicies } from "./capabilities/policy";
 import { columnPolicies } from "./column/policy";
 import { commentPolicies } from "./comment/policy";
@@ -131,7 +127,9 @@ export const platformPolicies = {
   // The route's own short-lived, key-scoped HMAC token (derived from TASKDESK_AUTH_SECRET,
   // verified with a constant-time comparison — see writeUploadedObject) is the credential,
   // exactly the way holding a presigned S3 URL is the credential for the equivalent S3 PUT.
-  // Registered above the auth guard in index.ts for the same reason GET /api/asset/{id} is.
+  // Registered above the auth guard in index.ts; unlike GET /api/asset/{id} (moved below the
+  // guard in this same batch, see apps/api/src/asset/policy.ts), this route's authorization
+  // genuinely does not depend on a session at all, so it stays public and above the guard.
   "PUT /api/storage/filesystem-upload": {
     public: true,
     reason:
@@ -139,9 +137,9 @@ export const platformPolicies = {
       "key-scoped signed token in the query string, verified in writeUploadedObject",
   },
 
-  // --- Issue #8 classification pass: inline routes in index.ts (below), minus
-  // GET /api/asset/{id} — see the PR description / issue #8 report for why that one is NOT
-  // declared here.
+  // --- Issue #8 classification pass: inline routes in index.ts (below). GET /api/asset/{id}
+  // is classified separately, in apps/api/src/asset/policy.ts, since it was moved below the
+  // auth guard in this same batch and so is no longer one of this map's above-guard entries.
 
   // `GET /api/invitation/public/{id}` (index.ts ~line 372). Read-only preview of a pending
   // invitation for the recipient, who by definition has not signed in yet — that is the whole
@@ -255,6 +253,7 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/oauth/policy.ts", policies: oauthPolicies },
   { name: "apps/api/src/config/policy.ts", policies: configPolicies },
   { name: "apps/api/src/label/policy.ts", policies: labelPolicies },
+  { name: "apps/api/src/asset/policy.ts", policies: assetPolicies },
 ];
 
 /**
