@@ -76,39 +76,52 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-22 (a major P0 push: #8's route-classification pass is in review
-as PR #259, the single largest remaining P0 security task; #9's Radix-tracking half of G1
+**Last updated:** 2026-09-22 (a major P0 push: #8's route-classification pass **merged** as
+PR #259, the single largest remaining P0 security task; #9's Radix-tracking half of G1
 merged; #10's Testcontainers CI slice merged; #134's concurrency fix merged; #23's first
-work-item write-path slice built and reviewed, awaiting #259's merge to sync against)
+work-item write-path slice built and reviewed, now unblocked to sync against the new `main`)
 **Current stage:** P0 · Foundation, continuing into P1–P7 parallel — **Throttle 1 OPEN
-(unchanged); P0 concrete-defect backlog fully clear. #8 is no longer untouched — its
-classification pass is in final review (PR #259); #9's Radix-tracking half of gate G1 is
-done, the primitive-migration half remains.**
+(unchanged); P0 concrete-defect backlog fully clear. #8's classification pass is done (PR
+#259, merged); its separate runtime-integration obligation remains open, so #8 itself stays
+open. #9's Radix-tracking half of gate G1 is done, the primitive-migration half remains.**
 
-**PR #259 (#8, route-authorization classification) — open, all three required review
-rounds clear, awaiting CI/merge.** Classifies every previously-unclassified inherited route
-(baseline shrank from 80 entries to exactly 1, `GET /api/invitation/{id}`, deliberately left
-for a design decision — issue #254) via five parallel Sonnet lanes partitioned by router
-with zero file overlap. Two real fixes landed alongside the declarations, not just
-classifications: `GET /api/invitation/pending` was missing `requireSessionOnly()` (an API
-key could reach it; fixed); `GET /api/asset/{id}` was registered above the auth guard even
-though it genuinely requires a credential — **literally the canonical example issue #8's own
-H2 section names as the failure case its guard-scope mechanism exists to prevent** — fixed by
-moving the route below the guard (handler body confirmed byte-identical, only registration
-position changed) and giving it a real policy. Full three-round tier: ordinary Sonnet
-APPROVE, alignment check ALIGNED WITH NOTES (one action item, filing #254, done before the
-PR opened), mandatory Opus **CLEAR WITH FINDINGS (non-blocking)** — read all 18
-`public`/`delegated` reasons across the batch and verified every one true against its real
-handler (per issue #8's own explicit mandate), re-derived both fixes independently,
-independently sampled 32 further routes, found no misclassification. Three non-blocking
-findings filed as follow-ups: #256 (a pre-existing, not-currently-exploitable
-scope-provenance fallback pattern in eight shared middleware helpers — a real latent hazard
-for the *next* piece of #8's work, the runtime-integration wiring, flagged before that work
-begins), #257, #258 (both minor). **This PR does NOT close issue #8 itself** — only its
-classification-pass checkboxes. The runtime-integration obligation (a route factory that
-refuses at boot to construct a route with no policy entry; wiring the registry into the live
-request path) remains fully open, confirmed still untouched (`index.ts` still does not
-import `policy-registry.ts`).
+**PR #259 (#8, route-authorization classification) — merged, `main` at `71a06dc`.**
+Classifies every previously-unclassified inherited route (baseline shrank from 80 entries to
+exactly 1, `GET /api/invitation/{id}`, deliberately left for a design decision — issue #254)
+via five parallel Sonnet lanes partitioned by router with zero file overlap. Two real fixes
+landed alongside the declarations, not just classifications: `GET /api/invitation/pending`
+was missing `requireSessionOnly()` (an API key could reach it; fixed); `GET /api/asset/{id}`
+was registered above the auth guard even though it genuinely requires a credential —
+**literally the canonical example issue #8's own H2 section names as the failure case its
+guard-scope mechanism exists to prevent** — fixed by moving the route below the guard
+(handler body confirmed byte-identical, only registration position changed) and giving it a
+real policy. Full three-round tier: ordinary Sonnet APPROVE, alignment check ALIGNED WITH
+NOTES (one action item, filing #254, done before the PR opened), mandatory Opus **CLEAR WITH
+FINDINGS (non-blocking)** — read all 18 `public`/`delegated` reasons across the batch and
+verified every one true against its real handler (per issue #8's own explicit mandate),
+re-derived both fixes independently, independently sampled 32 further routes, found no
+misclassification. Three non-blocking findings filed as follow-ups: #256 (a pre-existing,
+not-currently-exploitable scope-provenance fallback pattern in eight shared middleware
+helpers — a real latent hazard for the runtime-integration wiring, flagged before that work
+begins), #257, #258 (both minor).
+
+**Before merge, CI surfaced one real, now-fixed gap**: the required `contract - OpenAPI
+drift` check failed because the asset-route fix's `description`/`security`/`responses`
+change had never been propagated to the committed `tests/api-contract/openapi.json` via
+`pnpm openapi:write`. Regenerated (commit `9fdd708`), confirmed the entire diff was exactly
+that one route's already-reviewed change (no route added or removed), self-verified against
+the review note (permissions/typecheck/biome all clean), documented as an addendum in
+`docs/07-planning/security-reviews/8-route-authorization-classification.md`. A separate,
+non-required `GitGuardian Security Checks` finding on the same run was investigated and
+matches this session's established false-positive pattern (no credential-shaped string in
+this branch's own commits — only prose mentions of "password"/"secret" in comments; the
+check is not in `protect-main`'s required list).
+
+**This PR does NOT close issue #8 itself** — only its classification-pass checkboxes,
+updated directly on the issue after merge. The runtime-integration obligation (a route
+factory that refuses at boot to construct a route with no policy entry; wiring the registry
+into the live request path) remains fully open, confirmed still untouched (`index.ts` still
+does not import `policy-registry.ts`).
 
 **PR #253 (#9, Radix-tracking half of gate G1) merged.** Removed the last two real
 `@radix-ui/*`/`radix-ui` imports in the repository, replaced with a project-owned `Slot`
@@ -138,10 +151,13 @@ number-claiming, policy declarations, and custom auth middleware all reviewed) �
 solid work, several honest judgment calls flagged in its own code comments (reusing the
 legacy `task` table's number-claiming column rather than the not-yet-renamed
 `last_work_item_number`; the WI-4 "leaveable" workflow check deferred, since no workflow
-engine exists yet). **Formal review dispatch deliberately held**: this branch also touches
-`apps/api/src/index.ts` and `apps/api/src/policy-registry.ts`, the same files PR #259
-restructures heavily — reviewing and syncing it now would mean redoing that work after
-#259 merges. Will resume once #259 lands.
+engine exists yet). **Formal review dispatch was deliberately held** while PR #259 was open,
+since this branch also touches `apps/api/src/index.ts` and `apps/api/src/policy-registry.ts`,
+the same files PR #259 restructured heavily — reviewing and syncing it earlier would have
+meant redoing that work after #259 merged. **#259 has now merged; next step is syncing this
+branch against the new `main` and dispatching its full three-round review tier** (ordinary +
+alignment + mandatory Opus, matching #8's own tier — this touches genuinely new authority
+surface with real concurrency handling).
 
 **Two merge-sync process patterns reused repeatedly and correctly this stretch**: (1) `git
 merge`, never `git rebase`, for syncing a reviewed branch with a newer `main` — rebasing
