@@ -384,3 +384,17 @@ Nothing in the security-review surface this clearance covers changed. The only i
 is a purely textual correction that this review's own F5 asked for, and it is accurate. The
 five intervening commits are two unrelated `main` merges, a review artefact, and that wording
 fix. F1, F2 and F4 remain open as follow-ups and still block nothing.
+
+---
+
+## Further sync — 2026-09-22, head advanced to `3664141`
+
+One further main-sync landed after the delta review above (PR #219's calendar-preview
+merge — `packages/domain/src/calendar/calendar.ts`, `packages/domain/src/calendar/
+preview.test.ts`, no file this review covers). Re-checked directly by the orchestrating
+session rather than a third reviewer round, given the merge shares no file with this PR:
+`git diff 71ed0648865493955225154b4293ce3d80b7dd49 36641411bc56a2c331f0a3b89de698b1dc50eded
+-- scripts/ci/ docs/07-planning/decision-log.md` is empty, and `node --test
+scripts/ci/lib/pr-body.test.mjs` re-run clean at the new head: 117/117.
+
+**Reviewed head:** `36641411bc56a2c331f0a3b89de698b1dc50eded`
