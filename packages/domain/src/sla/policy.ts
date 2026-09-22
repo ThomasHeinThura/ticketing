@@ -111,9 +111,14 @@ export function validateOpenPause(
  * `SLA-11`: may the close this reason performs land on the given open row? An
  * **automatic** close (a transition effect) never closes a *manual* pause — a
  * manual pause outlives the transition that would have closed its automatic
- * sibling and must be closed explicitly. An automatic close closes its own
- * automatic row; a manual close (the resume route's own act) closes whatever
- * open row exists.
+ * sibling and must be closed explicitly. Automatic-vs-manual is the only axis
+ * this checks: any automatic closing reason may close the open automatic row,
+ * whatever its own reason was, because `validateOpenPause`'s uniqueness
+ * invariant (at most one open row per `(work_item, metric)`) means there is
+ * never more than one automatic row open to choose between — a
+ * `waiting_customer` close and a `resolved` close are not required to match
+ * the reason that opened the row. A manual close (the resume route's own act)
+ * closes whatever open row exists, automatic or manual.
  */
 export function canClosePause(
   openReason: string,

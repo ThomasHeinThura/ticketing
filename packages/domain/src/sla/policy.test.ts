@@ -211,6 +211,11 @@ describe("canClosePause — an automatic close never closes a manual pause", () 
     expect(canClosePause("manual", "manual")).toBe(true);
     expect(canClosePause("waiting_customer", "manual")).toBe(true);
   });
+
+  it("an automatic close does not need to match the open row's own reason — automatic-vs-manual is the only axis, since at most one automatic row can ever be open for a metric", () => {
+    expect(canClosePause("waiting_customer", "resolved")).toBe(true);
+    expect(canClosePause("resolved", "waiting_customer")).toBe(true);
+  });
 });
 
 describe("scanEventForTransition — SLA-15's once-each edge rule", () => {
