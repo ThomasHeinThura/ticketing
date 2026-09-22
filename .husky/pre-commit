@@ -1,2 +1,70 @@
 set -e
-pnpm exec biome ci .
+
+# Check what is being committed, not the whole working tree.
+#
+# This used to be `biome ci .`, which lints every file it can see — including files that are
+# not staged and never will be: a scratch note, a half-written file, another lane's staging
+# directory. Any of those failing a format check blocked the commit of unrelated, correct
+# work, and the only way out was `--no-verify`, which skips the check on the staged files
+# too. A hook that is wrong about when it fires trains people to bypass the gate it is.
+#
+# `--no-errors-on-unmatched` is load-bearing, not tidiness. `biome check --staged` exits
+# non-zero with "No files were processed in the specified paths" when the staged set holds
+# nothing biome handles, which is enough to refuse a legitimate commit.
+#
+# Filtering the file list ourselves was tried first and was wrong in three directions at
+# once, each reproduced:
+#   - a hand-written extension list omits files biome handles (`.mts`), so an unformatted
+#     staged `.mts` was committed with the hook silently passing it;
+#   - it disagrees with `biome.json`'s own exclusions (`package.json`, `tsconfig*.json`,
+#     `routeTree.gen.ts`, `openapi.json`, `**/*.css`), so it *refused* commits made only of
+#     files biome excludes. That shape is real in this repository's history, not
+#     hypothetical: 3 of the last 292 commits touch both a `package.json` and
+#     `pnpm-lock.yaml`, and one (`7ff2fa121`) changes nothing in the working tree but
+#     `tests/api-contract/openapi.json`.
+# Letting biome decide what it handles removes the list, the disagreement and the false
+# positive together.
+#
+# `biome ci` has no `--staged` flag (biome 2.5.7: "Error: no such flag: `--staged`, did you
+# mean `--changed`?"), and `--changed` is the wrong shape here — it diffs against a merge
+# base, so by its own help text "staged and unstaged changes are not included" and it would
+# check nothing at commit time.
+#
+# `core.quotePath` must be off, or every file with a non-ASCII name is silently not checked.
+# Git escapes bytes >= 0x80 in the paths it prints, biome asks git for the staged list and
+# takes that escaped form back, so those paths resolve to nothing and biome reports "Checked
+# 0 files" — exit 0. Measured through a real `git commit`: an unformatted `ünïcødé.ts` is
+# refused with this set and committed without it. `GIT_CONFIG_*` is how the setting reaches
+# biome's own git child process without writing to anybody's repository config.
+#
+# Two residuals, stated because the alternative is a comment that claims more than it does:
+#
+#   1. `core.quotePath` governs ONLY bytes >= 0x80. Git quotes a `"`, a `\` or a control
+#      character whatever it is set to, and biome — invoked without `-z` — drops those paths
+#      the same way. A filename with a trailing space is dropped by biome even unquoted. So
+#      a staged, unformatted file named e.g. `has"quote.ts` is still committed with this hook
+#      silent. No `GIT_CONFIG_*` value closes that; closing it needs the staged list read with
+#      `-z`, which means not using biome's `--staged` at all.
+#   2. Verified impact of both: `biome ci .` — what CI runs — exits 1 on each of them, because
+#      it walks the filesystem and never asks git. CI is the gate; this hook is the fast echo,
+#      and a hole it has that CI does not share is friction, not a way for unformatted code to
+#      reach `main`.
+#
+# `GIT_CONFIG_COUNT=1` overwrites rather than appends, so a caller who injected their own
+# `GIT_CONFIG_*` entries loses them for biome's git child. Accepted rather than worked around:
+# this script makes no git call before the exports, nothing it drops is read by `git diff
+# --name-only`, and a pre-commit hook is a child of `git commit`, so it cannot alter what that
+# commit records.
+#
+# Scope, stated precisely because it is a real limit: `--staged` takes the file *list* from
+# the index but reads file *contents* from the working tree. A file staged with one content
+# and then edited on disk is checked as it is on disk, not as it will be committed. That is
+# inherited from `biome ci .`, not introduced here, and it is why CI still runs the
+# whole-checkout `pnpm lint:ci` (`biome ci .`) as the actual gate: a fresh checkout has
+# neither untracked files nor a divergent working tree, so it checks the committed bytes.
+export GIT_CONFIG_COUNT=1
+export GIT_CONFIG_KEY_0=core.quotePath
+export GIT_CONFIG_VALUE_0=false
+
+pnpm exec biome check --staged --no-errors-on-unmatched
+
