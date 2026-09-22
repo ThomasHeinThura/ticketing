@@ -414,6 +414,13 @@
 			"when": 1789719384263,
 			"tag": "0058_legal_hold",
 			"breakpoints": true
+		},
+		{
+			"idx": 59,
+			"version": "7",
+			"when": 1789732740326,
+			"tag": "0059_work_item_integrity_checks",
+			"breakpoints": true
 		}
 	]
 }
