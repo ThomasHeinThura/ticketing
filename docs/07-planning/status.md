@@ -76,9 +76,7 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-22 (#237 merged after three mandatory Opus rounds; #192 cleared all
-three required review rounds and its own governance question, sync in progress, not yet
-merged)
+**Last updated:** 2026-09-22 (#237 and #192/PR #239 both merged; issues #170 and #192 closed)
 **Current stage:** P0 · Foundation, continuing into P1–P7 parallel — **Throttle 1 OPEN
 (unchanged); P0 concrete-defect backlog still fully clear (#8/#9 remain, large umbrella
 items, untouched this pass).**
@@ -96,38 +94,42 @@ also defeated the boundary regex); round 3 confirmed a genuine structural fix �
 any `FROM`-prefixed line as a boundary, not another narrow pattern — closes the whole class,
 after 19 adversarial probes found nothing further. One non-blocking finding left on record
 (R3-1, a latent heredoc-interaction gap, unreachable today). Full record:
-`docs/07-planning/security-reviews/170-dockerfile-deps-drift-check.md`. **Also surfaced a
-real process gap**: this session briefly lost an uncommitted review note (round 1's) during
-an unrelated branch reset before it was ever committed — recovered from a manual backup,
-and a standing rule is now in memory to commit a reviewer's note into its actual PR branch
-immediately, never leave it in the orchestrator's own checkout.
+`docs/07-planning/security-reviews/170-dockerfile-deps-drift-check.md`.
 
-**Issue #192** (work-item tenant attribution, Thomas's "Option A+D" decision): schema slice
-on PR #239. Independently re-verified end-to-end by the orchestrating session on a fresh
-database — every number matches the implementing agent's own report (323/323 unit, 80/80
-permissions, 595/595 integration, clean typecheck/biome/vocabulary/`drizzle-kit check`).
-**All three required review rounds are in and clear**: ordinary Sonnet APPROVE; alignment
-check ALIGNED WITH NOTES, flagging a real governance question — the implementer added a
-third composite FK beyond what the original decision-log entry literally authorized, on an
-ambiguous precedent the alignment reviewer found didn't actually license it; taken to Thomas
-directly rather than merged on the implementer's own authority, he chose to keep the FK and
-record it (decision-log addendum, same day); mandatory Opus pass **CLEAR WITH FINDINGS
-(non-blocking)** — proved the authority boundary live against real SQL (the exact PR #191 O1
-attack shape and ten others), confirmed the addendum FK is genuinely load-bearing by direct
-mutation, and confirmed the SAVEPOINT concurrency fix by mutation-testing it out. Three
-non-blocking findings filed as follow-ups (#240, #241, #242) rather than fixed in-PR, per
-that review's own explicit instruction that further commits on this specific migration need
-the reviewer's own re-confirmation, not orchestrator self-verification. **A branch-protection
-sync with `main` (after #238 merged) is in progress via a targeted independent delta-review**
-(the note's own instruction ruled out self-verifying this one) — **not yet merged**, do not
-treat #192 as done until a later entry says so.
+**PR #239 (#192, work-item tenant attribution) merged, issue #192 closed.** Implements
+Thomas's "Option A+D" decision: `work_item.workspace_id` denormalised NOT NULL,
+`work_item_type` gets `UNIQUE (workspace_id, id)`, `work_item.type_id` a composite FK to it
+with `ON UPDATE NO ACTION` (never `CASCADE`), plus `workspace.organisation_id` NOT NULL FK to
+`organisation`. Full three-round tier: ordinary Sonnet APPROVE; alignment check ALIGNED WITH
+NOTES (flagged a real governance question — the implementer's own third composite FK,
+anchoring `work_item.workspace_id` to `project`, wasn't literally authorized by the original
+decision text; taken to Thomas directly, he chose to keep it, recorded as a same-day
+decision-log addendum); mandatory Opus pass **CLEAR WITH FINDINGS (non-blocking)** — proved
+the authority boundary live against real SQL, including the exact PR #191 O1 cross-tenant-
+move attack shape and ten others, and confirmed the addendum FK is genuinely load-bearing by
+direct mutation (dropping it and flipping the remaining FK to `CASCADE` reproduces the O1
+hole in one statement). Three non-blocking findings filed as follow-ups (#240, #241, #242).
+Full record: `docs/07-planning/security-reviews/192-work-item-tenant-attribution.md`. This
+releases three things that were blocked on it: #23's future write path, the
+`multi-tenancy.md` RLS prototype (now writable, not yet delivered), and #198's
+legal-hold-aware purge.
 
-**A real process mistake found and fixed mid-session**: syncing a reviewed branch with a
-newer `main` via `git rebase` rewrites the reviewed commit into a new SHA, orphaning the
-review note's own `**Reviewed head:**` citation and failing the mechanical PR-template check
-for a reason that looks like a content problem but isn't. Fixed by resetting to the actual
-reviewed commit and using `git merge` instead, which preserves it as a real ancestor — now
-in memory as a standing rule (`feedback-merge-train-candidate-freeze.md`).
+**Two real process mistakes found and fixed this session, both now standing rules in
+memory**: (1) a security-review agent's note briefly existed only as an uncommitted file in
+the orchestrator's own checkout and was nearly lost during an unrelated branch reset —
+recovered from a manual backup; the rule now is to commit a reviewer's note into its actual
+PR branch immediately, never leave it uncommitted in the orchestrator's own checkout. (2)
+syncing a reviewed branch with a newer `main` via `git rebase` rewrites the reviewed commit
+into a new SHA, orphaning the review note's own `**Reviewed head:**` citation and failing the
+mechanical PR-template check for a reason that looks like a content problem but isn't — fixed
+by resetting to the actual reviewed commit and using `git merge` instead, which preserves it
+as a real ancestor. Both PRs needed two rounds of merge-sync during their own final merge
+(`main` kept advancing from other same-session work), each handled correctly the second time:
+#237 self-verified (its review note carried no instruction against that); #192 via two
+further targeted independent Opus delta-reviews (its note explicitly required that — the
+second of the two caught that the orchestrating session's own dispatch had miscounted how
+many merges had actually landed, and re-derived clearance against the real delta rather than
+trusting the prompt).
 **Updated by:** Claude Sonnet 5 (orchestrating session).
 
 ---
