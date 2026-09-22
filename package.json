@@ -26,6 +26,7 @@
     "check:reviews": "node ./scripts/ci/check-reviews.mjs",
     "check:route-policy": "node ./scripts/ci/route-policy-gate.mjs",
     "check:skips": "node ./scripts/ci/check-skips.mjs",
+    "check:ui": "node ./scripts/ci/check-ui.mjs",
     "check:vocabulary": "node ./scripts/ci/check-vocabulary.mjs",
     "lint:ci": "biome ci .",
     "openapi:write": "node ./scripts/ci/check-openapi.mjs --write",
