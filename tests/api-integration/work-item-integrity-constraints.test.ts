@@ -16,7 +16,7 @@
  * `<> 'NaN'::numeric` instead; see the column comment in `schema.ts`.
  */
 import { randomUUID } from "node:crypto";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { resetTestDatabase } from "./helpers/database";
@@ -30,6 +30,7 @@ beforeEach(async () => {
 // every row is a direct insert, matching work-item-schema.test.ts.
 
 async function makeWorkspace() {
+  const organisation = await makeOrganisation();
   return requireRow(
     await db
       .insert(schema.workspaceTable)
@@ -37,6 +38,7 @@ async function makeWorkspace() {
         name: "WI Integrity Constraints Workspace",
         slug: `wi-constraints-ws-${randomUUID()}`,
         createdAt: new Date(),
+        organisationId: organisation.id,
       })
       .returning(),
     "makeWorkspace",
@@ -147,6 +149,9 @@ async function makeState(
   );
 }
 
+// #192: `work_item.workspace_id` is now NOT NULL -- derived here from `projectId`'s own
+// `workspace_id` (the value the real #23 write path is specified to set), same pattern as
+// `work-item-schema.test.ts` / `work-item-schema-integrity.test.ts`.
 async function makeWorkItem(overrides: {
   projectId: string;
   typeId: string;
@@ -158,6 +163,13 @@ async function makeWorkItem(overrides: {
   customerVisibility?: string;
 }) {
   const now = new Date();
+  const [project] = await db
+    .select({ workspaceId: schema.projectTable.workspaceId })
+    .from(schema.projectTable)
+    .where(eq(schema.projectTable.id, overrides.projectId));
+  if (!project) {
+    throw new Error("makeWorkItem: project workspaceId lookup found no row");
+  }
   return requireRow(
     await db
       .insert(schema.workItemTable)
@@ -167,6 +179,7 @@ async function makeWorkItem(overrides: {
         createdAt: now,
         updatedAt: now,
         ...overrides,
+        workspaceId: project.workspaceId,
       })
       .returning(),
     "makeWorkItem",
@@ -192,6 +205,7 @@ async function makeProjectFixture() {
  */
 async function rawInsertWorkItem(params: {
   projectId: string;
+  workspaceId: string;
   typeId: string;
   stateId: string;
   key: string;
@@ -202,11 +216,11 @@ async function rawInsertWorkItem(params: {
 }) {
   await db.execute(sql`
     INSERT INTO work_item (
-      id, project_id, type_id, number, key, title, state_id,
+      id, project_id, workspace_id, type_id, number, key, title, state_id,
       priority, position, customer_visibility
     ) VALUES (
-      ${randomUUID()}, ${params.projectId}, ${params.typeId}, ${params.number},
-      ${params.key}, 'A work item', ${params.stateId}, ${params.priority},
+      ${randomUUID()}, ${params.projectId}, ${params.workspaceId}, ${params.typeId},
+      ${params.number}, ${params.key}, 'A work item', ${params.stateId}, ${params.priority},
       ${params.position}, ${params.customerVisibility}
     )
   `);
@@ -370,6 +384,7 @@ describe("#189 S9 -- work_item.position rejects NaN", () => {
     await expect(
       rawInsertWorkItem({
         projectId: fixture.project.id,
+        workspaceId: fixture.workspace.id,
         typeId: fixture.type.id,
         stateId: fixture.state.id,
         key: `${fixture.project.slug}-1`,
@@ -386,6 +401,7 @@ describe("#189 S9 -- work_item.position rejects NaN", () => {
     await expect(
       rawInsertWorkItem({
         projectId: fixture.project.id,
+        workspaceId: fixture.workspace.id,
         typeId: fixture.type.id,
         stateId: fixture.state.id,
         key: `${fixture.project.slug}-1`,
@@ -398,6 +414,7 @@ describe("#189 S9 -- work_item.position rejects NaN", () => {
     await expect(
       rawInsertWorkItem({
         projectId: fixture.project.id,
+        workspaceId: fixture.workspace.id,
         typeId: fixture.type.id,
         stateId: fixture.state.id,
         key: `${fixture.project.slug}-2`,

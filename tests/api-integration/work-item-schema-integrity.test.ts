@@ -58,16 +58,20 @@
  *   `docs/04-engineering/migrations.md`) are documentation-only corrections with nothing
  *   to regression-test here.
  *
- * `work_item.type_id` vs `work_item_type.workspace_id` (the other half of S2) is
- * deliberately NOT covered here — it is an explicitly accepted, documented gap (see the
- * `typeId` column comment in `schema.ts`, the PR body's "Not done", and #191 O5), not a
- * fix, so there is nothing to regression-test yet.
+ * `work_item.type_id` vs `work_item_type.workspace_id` (the other half of S2, #191 O5) was
+ * deliberately NOT covered here — it was an explicitly accepted, documented gap. Issue
+ * #192 (decision log 2026-09-22 "#192's tenant-attribution decision: Option A+D") closes
+ * it: see `tests/api-integration/tenant-attribution-schema.test.ts` for those regression
+ * tests (`work_item.workspace_id`, the new composite `type_id` FK, and
+ * `workspace.organisation_id`) — kept in their own file rather than added here, since they
+ * span two tables (`workspace`, `work_item`) this file's own name does not describe.
  */
 import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { resetTestDatabase } from "./helpers/database";
 import { requireRow } from "./helpers/fixtures";
 
@@ -95,6 +99,7 @@ async function rawInsertWorkItem(
   values: {
     id: string;
     projectId: string;
+    workspaceId: string;
     typeId: string;
     number: number;
     key: string;
@@ -102,11 +107,12 @@ async function rawInsertWorkItem(
   },
 ): Promise<void> {
   await client.query(
-    `INSERT INTO work_item (id, project_id, type_id, number, key, title, state_id, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, 'A work item', $6, now(), now())`,
+    `INSERT INTO work_item (id, project_id, workspace_id, type_id, number, key, title, state_id, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, 'A work item', $7, now(), now())`,
     [
       values.id,
       values.projectId,
+      values.workspaceId,
       values.typeId,
       values.number,
       values.key,
@@ -119,6 +125,7 @@ async function rawInsertWorkItem(
 // schema still has no route/repository layer, so every row here is a direct insert).
 
 async function makeWorkspace() {
+  const organisation = await ensureInternalOrganisation();
   return requireRow(
     await db
       .insert(schema.workspaceTable)
@@ -126,6 +133,7 @@ async function makeWorkspace() {
         name: "WI Integrity Test Workspace",
         slug: `wi-integrity-ws-${randomUUID()}`,
         createdAt: new Date(),
+        organisationId: organisation.id,
       })
       .returning(),
     "makeWorkspace",
@@ -198,6 +206,15 @@ async function makeState(projectId: string, stateTemplateId: string) {
   );
 }
 
+/**
+ * #192: `work_item.workspace_id` is now NOT NULL and composite-FK'd (see `schema.ts`'s
+ * `workspaceId` column comment). Rather than thread it through every one of this file's
+ * many `makeWorkItem` call sites, it is derived here from `overrides.projectId`'s own
+ * `workspace_id` when not given explicitly — the exact value the real #23 write path is
+ * specified to set ("set from `project.workspace_id` at row-creation time"), so this is
+ * the correct default, not merely a convenient one. Callers that need to prove the
+ * cross-tenant FK actually rejects a MISMATCHED value pass `workspaceId` explicitly.
+ */
 async function makeWorkItem(overrides: {
   projectId: string;
   typeId: string;
@@ -206,8 +223,18 @@ async function makeWorkItem(overrides: {
   key: string;
   parentId?: string;
   customerVisibility?: string;
+  workspaceId?: string;
 }) {
   const now = new Date();
+  const workspaceId =
+    overrides.workspaceId ??
+    requireRow(
+      await db
+        .select({ workspaceId: schema.projectTable.workspaceId })
+        .from(schema.projectTable)
+        .where(eq(schema.projectTable.id, overrides.projectId)),
+      "makeWorkItem: project workspaceId lookup",
+    ).workspaceId;
   return requireRow(
     await db
       .insert(schema.workItemTable)
@@ -216,6 +243,7 @@ async function makeWorkItem(overrides: {
         createdAt: now,
         updatedAt: now,
         ...overrides,
+        workspaceId,
       })
       .returning(),
     "makeWorkItem",
@@ -274,13 +302,17 @@ describe("#186 S1 -- work_item.customer_visibility is NOT NULL DEFAULT 'private'
     // the pre-fix schema) that adding a real `id` isolates the assertion to
     // `customer_visibility` alone, which now correctly throws post-fix and did not
     // pre-fix.
+    // #192: `workspace_id` is a real, valid value here (not omitted) -- omitting it
+    // would ALSO throw (it is NOT NULL with no default too), which would make this
+    // assertion pass for the wrong reason, exactly the test-genuineness gap this test's
+    // own history (above) already fixed once for `id`.
     const fixture = await makeProjectFixture();
     await expect(
       db.execute(sql`
         INSERT INTO work_item (
-          id, project_id, type_id, number, key, title, state_id, customer_visibility
+          id, project_id, workspace_id, type_id, number, key, title, state_id, customer_visibility
         ) VALUES (
-          ${randomUUID()}, ${fixture.project.id}, ${fixture.type.id}, 1,
+          ${randomUUID()}, ${fixture.project.id}, ${fixture.workspace.id}, ${fixture.type.id}, 1,
           ${`${fixture.project.slug}-1`}, 'A work item', ${fixture.state.id}, NULL
         )
       `),
@@ -683,6 +715,7 @@ describe("#191 O2 -- work_item_key_claim closes the race, not just the sequentia
       await rawInsertWorkItem(t1, {
         id: randomUUID(),
         projectId: fixture.project.id,
+        workspaceId: fixture.workspace.id,
         typeId: fixture.type.id,
         number: 900,
         key: raceKey,
@@ -726,6 +759,7 @@ describe("#191 O2 -- work_item_key_claim closes the race, not just the sequentia
       await rawInsertWorkItem(t1, {
         id: t1Id,
         projectId: fixture.project.id,
+        workspaceId: fixture.workspace.id,
         typeId: fixture.type.id,
         number: 901,
         key: raceKey,
@@ -736,6 +770,7 @@ describe("#191 O2 -- work_item_key_claim closes the race, not just the sequentia
       const t2Promise = rawInsertWorkItem(t2, {
         id: t2Id,
         projectId: fixture.project.id,
+        workspaceId: fixture.workspace.id,
         typeId: fixture.type.id,
         number: 902,
         key: raceKey,
@@ -797,6 +832,7 @@ describe("#191 O3 -- the claim trigger's pinned search_path cannot be shadowed b
         );
         await tx.insert(schema.workItemTable).values({
           projectId: fixture.project.id,
+          workspaceId: fixture.workspace.id,
           typeId: fixture.type.id,
           stateId: fixture.state.id,
           number: 2,
@@ -863,11 +899,11 @@ describe("#191 N1 -- an ON CONFLICT DO NOTHING-skipped work_item insert must not
 
     const skipped = await db.execute(sql`
       INSERT INTO work_item (
-        id, project_id, type_id, number, key, title, state_id, customer_visibility,
-        created_at, updated_at
+        id, project_id, workspace_id, type_id, number, key, title, state_id,
+        customer_visibility, created_at, updated_at
       ) VALUES (
-        ${workItem.id}, ${fixture.project.id}, ${fixture.type.id}, 999, ${squattedKey},
-        'squatted row', ${fixture.state.id}, 'private', now(), now()
+        ${workItem.id}, ${fixture.project.id}, ${fixture.workspace.id}, ${fixture.type.id},
+        999, ${squattedKey}, 'squatted row', ${fixture.state.id}, 'private', now(), now()
       )
       ON CONFLICT (id) DO NOTHING
     `);

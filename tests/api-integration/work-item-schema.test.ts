@@ -29,7 +29,13 @@ beforeEach(async () => {
 // every row here is a direct insert, the same pattern p1-identity-schema-seed.test.ts
 // uses for `organisation`/`person`.
 
+// #192: `workspace.organisation_id` is now NOT NULL. `makeWorkspace` mints its OWN
+// organisation via `makeOrganisation` below rather than reaching for the shared internal
+// one -- this file already treats "make a fresh organisation per fixture" as the norm
+// (`makeWorkItemFixture` does the same for `person`), so this keeps that self-contained
+// style rather than introducing a second convention.
 async function makeWorkspace() {
+  const organisation = await makeOrganisation();
   return requireRow(
     await db
       .insert(schema.workspaceTable)
@@ -37,6 +43,7 @@ async function makeWorkspace() {
         name: "Work Item Schema Test Workspace",
         slug: `wi-schema-ws-${randomUUID()}`,
         createdAt: new Date(),
+        organisationId: organisation.id,
       })
       .returning(),
     "makeWorkspace",
@@ -153,6 +160,12 @@ async function makeState(projectId: string, stateTemplateId: string) {
   );
 }
 
+// #192: `work_item.workspace_id` is now NOT NULL, composite-FK'd against both `project`
+// and `work_item_type` (see `schema.ts`'s `workspaceId` column comment). Derived here from
+// `overrides.projectId`'s own `workspace_id` when not given explicitly -- the exact value
+// the real #23 write path is specified to set -- rather than threaded through every one of
+// this file's call sites. A test proving the cross-tenant FK rejects a MISMATCHED value
+// passes `workspaceId` explicitly instead.
 async function makeWorkItem(overrides: {
   projectId: string;
   typeId: string;
@@ -162,8 +175,18 @@ async function makeWorkItem(overrides: {
   assigneeId?: string;
   requesterId?: string;
   parentId?: string;
+  workspaceId?: string;
 }) {
   const now = new Date();
+  const workspaceId =
+    overrides.workspaceId ??
+    requireRow(
+      await db
+        .select({ workspaceId: schema.projectTable.workspaceId })
+        .from(schema.projectTable)
+        .where(eq(schema.projectTable.id, overrides.projectId)),
+      "makeWorkItem: project workspaceId lookup",
+    ).workspaceId;
   return requireRow(
     await db
       .insert(schema.workItemTable)
@@ -172,6 +195,7 @@ async function makeWorkItem(overrides: {
         createdAt: now,
         updatedAt: now,
         ...overrides,
+        workspaceId,
       })
       .returning(),
     "makeWorkItem",
@@ -230,13 +254,14 @@ describe("#1 -- migration applies cleanly and produces the six tables data-model
     ]);
   });
 
-  it("gives work_item exactly the 28 columns schema.ts declares", async () => {
+  it("gives work_item exactly the 29 columns schema.ts declares", async () => {
+    // #192 added one column, `workspace_id` -- was 28 before this migration.
     const result = await db.execute<{ count: string }>(sql`
       SELECT count(*)::text AS count
       FROM information_schema.columns
       WHERE table_schema = 'public' AND table_name = 'work_item'
     `);
-    expect(result.rows[0]?.count).toBe("28");
+    expect(result.rows[0]?.count).toBe("29");
   });
 
   it("leaves taskTable and columnTable completely untouched", async () => {

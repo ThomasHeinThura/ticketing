@@ -4,6 +4,7 @@ import { eq, like, or } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { publishEvent } from "../../events";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
+import { ensureInternalOrganisation } from "../../utils/seed-internal-organisation";
 import {
   nextAvailableSlug,
   randomSlugSuffix,
@@ -98,6 +99,22 @@ async function createWorkspace(input: CreateWorkspaceInput) {
       const created = await db.transaction(async (tx) => {
         const now = new Date();
 
+        // #192: `workspace.organisation_id` is NOT NULL (decision log 2026-09-22 "#192's
+        // tenant-attribution decision: Option A+D"). Every workspace this route creates is
+        // internal -- there is no route yet that creates one for a customer organisation --
+        // so this is the same internal organisation `seedInternalOrganisationAndStaffPersons`
+        // (`../../utils/seed-internal-organisation.ts`) guarantees exists before the app
+        // ever starts serving requests. Called WITH `tx`, inside this same transaction --
+        // not before it -- because this whole create is specified to commit or roll back
+        // as one unit (this function's own doc comment, and
+        // `workspace-write-create-atomicity.test.ts`'s A2-P6/A2-P7): on a database that has
+        // never had an internal organisation seeded yet, calling this on the plain `db`
+        // connection before the transaction would insert a real, permanent `organisation`
+        // row that a later failure in THIS create (e.g. the default-role seed) could never
+        // roll back, silently breaking that atomicity guarantee. Idempotent get-or-create
+        // either way, so this is just as safe to call again here as at boot.
+        const internalOrganisation = await ensureInternalOrganisation(tx);
+
         // (1) the workspace row
         const [workspace] = await tx
           .insert(schema.workspaceTable)
@@ -106,6 +123,7 @@ async function createWorkspace(input: CreateWorkspaceInput) {
             slug,
             logo: input.logo ?? null,
             description: input.description ?? null,
+            organisationId: internalOrganisation.id,
             createdAt: now,
           })
           .returning();

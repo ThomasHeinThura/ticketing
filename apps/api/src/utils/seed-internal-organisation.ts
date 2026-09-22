@@ -17,9 +17,44 @@ const INTERNAL_ORGANISATION_NAME = "Internal";
  * the first time against the same empty database) wins the insert first, this falls back
  * to re-reading the row that boot created rather than treating the unique-constraint
  * violation as a real failure.
+ *
+ * Exported (#192): `workspace.organisation_id` is now NOT NULL, and every workspace this
+ * codebase creates today is internal -- both `create-workspace.ts`'s real controller and
+ * the integration-test fixtures/helpers that insert `workspace` rows directly need this
+ * same get-or-create lookup, rather than each re-deriving its own query against
+ * `organisation.is_internal`.
+ *
+ * Takes an optional `dbOrTx` (defaulting to the module's own `db`) so a caller running
+ * inside its own transaction -- `create-workspace.ts`'s native create contract, whose own
+ * atomicity test (`workspace-write-create-atomicity.test.ts`, A2-P6/A2-P7) asserts that
+ * EVERY row a failed create might have written, including this one, rolls back together --
+ * can pass its `tx` and get this insert covered by that same transaction. Called with no
+ * argument (boot seed, and test fixtures that are not themselves inside a transaction), it
+ * runs on the plain pooled connection exactly as before.
+ *
+ * The insert attempt below runs inside its OWN nested `dbOrTx.transaction(...)` (a real
+ * transaction when `dbOrTx` is the plain `db`, a SAVEPOINT when `dbOrTx` is already a `tx`
+ * -- drizzle-orm's node-postgres driver implements nested `.transaction()` calls as
+ * SAVEPOINT/RELEASE SAVEPOINT/ROLLBACK TO SAVEPOINT). This is load-bearing, not
+ * belt-and-braces: found by `workspace-write-create-contract.test.ts`'s own concurrent-
+ * create test (12 simultaneous requests against a database with no internal organisation
+ * yet) after `dbOrTx` first became callable with a `tx` -- a plain `INSERT` run directly
+ * against `tx` that hits the unique-violation race aborts the WHOLE enclosing Postgres
+ * transaction (an error inside a transaction poisons every later statement on it, "current
+ * transaction is aborted, commands ignored until end of transaction block", not just the
+ * one statement), so the re-read fallback below would itself fail for every concurrent
+ * loser, turning a handled race into an unhandled 500. A SAVEPOINT confines that failure
+ * to the insert attempt alone -- rolled back to the savepoint, not the outer transaction --
+ * so the re-read that follows runs on a healthy transaction either way.
  */
-async function ensureInternalOrganisation(): Promise<{ id: string }> {
-  const [existing] = await db
+export async function ensureInternalOrganisation(
+  // `Pick<..., "select" | "insert" | "transaction">`, not `typeof db`: a `db.transaction()`
+  // callback's `tx` argument is a `PgTransaction`, structurally missing `$client` and a few
+  // other members `typeof db` has -- but it has every method this function actually calls,
+  // so this is the narrowest type that accepts both the plain pooled `db` and a `tx`.
+  dbOrTx: Pick<typeof db, "select" | "insert" | "transaction"> = db,
+): Promise<{ id: string }> {
+  const [existing] = await dbOrTx
     .select({ id: schema.organisationTable.id })
     .from(schema.organisationTable)
     .where(eq(schema.organisationTable.isInternal, true))
@@ -32,16 +67,19 @@ async function ensureInternalOrganisation(): Promise<{ id: string }> {
   const now = new Date();
 
   try {
-    const [inserted] = await db
-      .insert(schema.organisationTable)
-      .values({
-        key: INTERNAL_ORGANISATION_KEY,
-        name: INTERNAL_ORGANISATION_NAME,
-        isInternal: true,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning({ id: schema.organisationTable.id });
+    const inserted = await dbOrTx.transaction(async (nested) => {
+      const [row] = await nested
+        .insert(schema.organisationTable)
+        .values({
+          key: INTERNAL_ORGANISATION_KEY,
+          name: INTERNAL_ORGANISATION_NAME,
+          isInternal: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning({ id: schema.organisationTable.id });
+      return row;
+    });
 
     if (inserted) {
       console.log(`✅ Seeded internal organisation "${inserted.id}"`);
@@ -51,11 +89,13 @@ async function ensureInternalOrganisation(): Promise<{ id: string }> {
     if (!isUniqueViolation(error)) {
       throw error;
     }
-    // A concurrent first boot won either `organisation_key_unique` or
-    // `organisation_is_internal_unique` first — fall through to re-read below.
+    // A concurrent first boot (or a concurrent workspace-create, #192) won either
+    // `organisation_key_unique` or `organisation_is_internal_unique` first -- the
+    // savepoint above already rolled back just the failed insert, so the enclosing
+    // transaction (if any) is still healthy here -- fall through to re-read below.
   }
 
-  const [nowExisting] = await db
+  const [nowExisting] = await dbOrTx
     .select({ id: schema.organisationTable.id })
     .from(schema.organisationTable)
     .where(eq(schema.organisationTable.isInternal, true))
