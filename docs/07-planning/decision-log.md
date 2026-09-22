@@ -17,6 +17,48 @@ Newest first.
 
 ---
 
+### 2026-09-22 · #192's tenant-attribution decision: Option A+D
+
+**Decision:** `work_item` gets a denormalised, NOT NULL `workspace_id` column (set from
+`project.workspace_id` at insert), `work_item_type` gets a new `UNIQUE (workspace_id, id)`
+index, and `work_item.type_id` is rescoped to a composite `FOREIGN KEY (workspace_id,
+type_id) → work_item_type (workspace_id, id)` with `ON UPDATE NO ACTION` (never `CASCADE`
+— see the "Why" below). Separately, `workspace` gets a NOT NULL `organisation_id` foreign
+key to `organisation`, backfilled from the single internal organisation the boot seed
+already guarantees exists. Both land in one bounded, pre-write-path schema migration.
+
+**Why:** `work_item.type_id` was the last unscoped cross-tenant reference — PR #191 already
+composite-scoped `state_id` and `parent_id` the same way. Fixing it alone would still leave
+two other committed designs blocked on the same missing information: `multi-tenancy.md`'s
+RLS prototype needs the tenant on the row to write a policy against, and #198's
+legal-hold-aware purge needs to know a project's organisation to know whether it's under
+hold. One migration releases all three. `ON UPDATE NO ACTION` rather than `CASCADE` is
+load-bearing, not stylistic — PR #191's own O1 finding proved a composite FK with
+`CASCADE` on a mutable referenced column can silently move a row across a workspace
+boundary when that column changes elsewhere; this design deliberately makes a work item's
+`type_id`/`workspace_id` pair immutable rather than reactive.
+
+**Alternatives:** application-level enforcement only (Option B, the spec's own named
+primary control) — cheaper, and #192 alone would close on it, but it leaves the RLS
+backstop and #198's purge blocked on a separate future decision, and it makes an
+inconsistent row possible rather than impossible. A trigger (Option C) was rejected on the
+same precedent that killed a similar trigger in PR #191 S5: a check-then-act trigger
+against another table's live state is racy under ordinary `READ COMMITTED`, and
+`SERIALIZABLE` doesn't close that particular race either.
+
+**Consequences:** the future write path (#23) must set `work_item.workspace_id` on every
+insert — the column is NOT NULL, so this fails closed rather than silently. Changing a
+`work_item_type`'s workspace becomes impossible by construction, which is intended. RLS
+becomes *writable* by this change; it is not itself delivered here. This is a pre-launch
+migration, so `migrations.md`'s two-phase-rollout rule does not apply — re-verify that
+exemption still holds at implementation time, per the decision log's own standing
+condition, rather than assuming it from this entry.
+
+**Decided by:** Thomas, 2026-09-22 (asked directly, per issue #192's own "no agent may pick
+this — it creates a trust boundary" condition).
+
+---
+
 ### 2026-09-22 · #146's fix direction: continue hardening `pr-body.mjs`, not a parser rewrite
 
 **Decision:** issue #146 (CRITICAL — `sections()` let a comment-hidden or genuinely-visible
