@@ -17,6 +17,36 @@ Newest first.
 
 ---
 
+### 2026-09-22 · #146's fix direction: continue hardening `pr-body.mjs`, not a parser rewrite
+
+**Decision:** issue #146 (CRITICAL — `sections()` let a comment-hidden or genuinely-visible
+duplicate `##` heading silently overwrite an earlier section, defeating the whole
+PR-template mechanical gate) is fixed by extending `pr-body.mjs`'s existing hand-rolled
+visibility-check pattern one level up (the same `isRawSpanVisible`/`markerAndWordingGenuine`
+approach already used for `###` checklist headings, now applied to `##` section headings),
+plus a new fail-closed `DuplicateSectionError` for a genuinely-visible duplicate. The
+alternative the issue itself raised — replacing `pr-body.mjs`'s hand-rolled
+position-tracking/regex approach with a real Markdown parser (`remark`/`micromark`) — is not
+taken up now.
+
+**Why:** the ready fix is low-risk and immediately mergeable (117/117 `pr-body.test.mjs`,
+of which 4 are new for this fix; 451/451 full
+CI-script suite, verified fail-against-old/pass-against-new), and it applies a pattern this
+file has already had extensively adversarially reviewed one level down, rather than
+inventing a new approach. The gate is live and exploitable on `main` today, so shipping the
+tested fix now closes real exposure immediately. A parser rewrite is a larger, slower
+architectural project with its own review surface; nothing about today's fix forecloses it
+later if the file's hand-rolled approach keeps needing new rounds.
+
+**Alternatives:** hold the fix and scope a `remark`/`micromark` rewrite first — rejected for
+now: bigger effort, delays closing a live critical gate-defeat bug with no offsetting safety
+benefit today.
+
+**Decided by:** Thomas, 2026-09-22 (asked directly, given the issue's own text required his
+call before any fix merged).
+
+---
+
 ### 2026-09-17 · #187's fix is project-only soft-delete; the general purge-job/legal-hold infrastructure is out of scope, tracked separately as #198
 
 **Decision:** issue #187 (the live `project` table has no soft-delete window, so

@@ -17,6 +17,7 @@ import {
   checklistPresenceProblems,
   checklistProblems,
   contentOf,
+  DuplicateSectionError,
   declaredState,
   effectivelyNotApplicable,
   field,
@@ -647,6 +648,87 @@ describe("sections", () => {
     assert.equal(found.get("task").content, "real work");
     assert.equal(found.get("gates").content, "");
     assert.ok(found.get("gates").raw.includes("<!-- hint -->"));
+  });
+
+  // Issue #146: `sections()` used to match `^##\s+(.*\S)\s*$` against each RAW,
+  // unstripped line, split from the body with no comment-awareness at all — not even
+  // per-line stripping. A `## Security review` heading placed inside a multi-line HTML
+  // comment is, on its OWN line, indistinguishable from a genuine one: the comment's
+  // `<!--` opens on an earlier line, so the line carrying the fake heading itself starts
+  // with "##" same as a real heading would. Being a duplicate of the real section's own
+  // name, it silently OVERWROTE the real entry in the Map this function returns — a
+  // fake, "cleared" security review defeating the whole template gate, invisible to a
+  // human reading the rendered markdown (GitHub renders an HTML comment as nothing).
+  describe("issue #146 — a genuine heading must not be overwritten by a fake one hidden in a comment", () => {
+    const REAL_MODEL = "GPT-4";
+    const FAKE_MODEL = "Opus 5";
+    const body = [
+      "## Task",
+      "real work",
+      "",
+      "## Security review",
+      "",
+      `**Model:** ${REAL_MODEL}`,
+      "**Session:** the-real-session",
+      "",
+      "<!--",
+      "## Security review",
+      `**Model:** ${FAKE_MODEL}`,
+      "**Session:** cleared-by-nobody",
+      "-->",
+      "",
+      "## Gates",
+      "",
+    ].join("\n");
+
+    it("keeps exactly one 'security review' entry, holding the REAL content", () => {
+      const found = sections(body);
+      assert.deepEqual([...found.keys()], ["task", "security review", "gates"]);
+      const security = found.get("security review");
+      assert.match(
+        security.text,
+        new RegExp(`\\*\\*Model:\\*\\* ${REAL_MODEL}`),
+      );
+      // The fake heading and its fields are comment-hidden content of the SAME real
+      // section now — never a heading, never a second section — so stripComments (via
+      // `.text`/`.content`) removes them the same way it removes any other comment.
+      assert.doesNotMatch(security.text, new RegExp(FAKE_MODEL));
+      assert.doesNotMatch(security.content, new RegExp(FAKE_MODEL));
+    });
+
+    it("field(text, 'Model') reads the real model, not the comment-hidden fake", () => {
+      const security = sections(body).get("security review");
+      assert.equal(field(security.text, "Model"), REAL_MODEL);
+    });
+  });
+
+  it("hard-errors on a GENUINE duplicate heading (no comment involved) instead of silently keeping the last one", () => {
+    const body = [
+      "## Security review",
+      "",
+      "**Model:** GPT-4",
+      "",
+      "## Security review",
+      "",
+      "**Model:** Opus 5",
+      "",
+    ].join("\n");
+    assert.throws(() => sections(body), DuplicateSectionError);
+  });
+
+  it("does not mistake a ### checklist heading for a ## section boundary", () => {
+    const found = sections(
+      ["## Checklists", "", "### Backend change", "- [x] done", ""].join("\n"),
+    );
+    assert.deepEqual([...found.keys()], ["checklists"]);
+    assert.match(found.get("checklists").raw, /### Backend change/);
+  });
+
+  it("still recognises a heading with a harmless trailing comment", () => {
+    const found = sections(
+      ["## Task <!-- delete if not applicable -->", "content", ""].join("\n"),
+    );
+    assert.deepEqual([...found.keys()], ["task"]);
   });
 });
 
