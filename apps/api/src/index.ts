@@ -191,6 +191,14 @@ function isApiRequestPath(path: string): boolean {
  *
  * A request path under `/api` is never touched here, matched or not — that
  * surface keeps its own routing and its own 404s, unconditionally.
+ *
+ * This `app.use("*", ...)` registration is itself conditional on `staticRoot` being found —
+ * it never runs, and never appears in `app.routes`, when no build is on disk. That matters to
+ * `packages/permissions`: `DECLARED_ROUTER_MIDDLEWARE` in `route-coverage.ts` declares an
+ * exact, unconditional count of 2 registrations at the same `"ALL /*"` key (CORS and
+ * compress, above), so `pnpm test:permissions` must always run against a router built without
+ * `apps/web/dist` present, or this registration voids that declaration for CORS/compress too
+ * (issue #165 — see `tests/permissions/README.md` and `docs/04-engineering/ci-cd.md`).
  */
 function registerStaticServing(
   app: Hono<AppVariables>,
