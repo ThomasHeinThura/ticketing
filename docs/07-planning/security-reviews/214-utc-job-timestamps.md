@@ -1,6 +1,17 @@
 # Security review — PR #214 (issue #212: compare time-gated timestamps in UTC)
 
-**Reviewed head:** `be79b656c7ca7543839e0b669f63714a613ff91a`
+**Reviewed head:** `9435ddc24d9dc3730c2cd0b93f7e367beba037f4`
+
+Substantively reviewed at `be79b656c7ca7543839e0b669f63714a613ff91a`; clearance extended to
+this head (a merge of `origin/main` into the branch, via an intervening note-only commit
+`c4070bd` that recorded this review) by the same reviewer, who independently verified the
+full `be79b65..9435ddc` diff touches exactly three files (`.husky/pre-commit`,
+`docs/07-planning/status.md`, and this note) and confirmed all eight reviewed artifacts
+(three source, three test, two doc files) are byte-identical by git blob hash. Also
+re-confirmed at the new head in a fresh isolated worktree: `tsc --noEmit` clean, and the
+four relevant integration test files — including `session-cleanup-purge.test.ts` — green
+(4 files / 31 tests) under `Australia/Lord_Howe`/`Pacific/Kiritimati`. Issue #221
+independently re-checked as accurately recording finding F2.
 
 ## What this PR does
 
