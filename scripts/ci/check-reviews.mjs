@@ -21,6 +21,7 @@ import path from "node:path";
 import { changedPaths } from "./lib/diff.mjs";
 import {
   contentOf,
+  DuplicateSectionError,
   field,
   loadBody,
   normaliseHeading,
@@ -282,7 +283,16 @@ async function main() {
     eventPath: process.env.GITHUB_EVENT_PATH,
   });
   if (body.trim() !== "") {
-    const task = sections(body).get(normaliseHeading("Task"));
+    let bodySections;
+    try {
+      bodySections = sections(body);
+    } catch (error) {
+      if (!(error instanceof DuplicateSectionError)) throw error;
+      failures.push(violation("pull request body", error.message));
+      finish({ name: NAME, failures, ok: "unreachable" });
+      return;
+    }
+    const task = bodySections.get(normaliseHeading("Task"));
     const declared = task ? field(contentOf(task.raw), "Spec") : "";
     // Not a bare `/^n\/a$/i` exact match — found adversarially, while
     // shepherding PR #144: that exact-match guard only recognised a Spec
