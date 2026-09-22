@@ -486,9 +486,8 @@ describe("issue #18: instance_setting table invariants (security review findings
       .where(eq(schema.instanceSettingTable.id, "singleton"));
     expect(await isSetupCompleted()).toBe(false);
 
-    const { createId } = await import("@paralleldrive/cuid2");
+    // userTable.id has its own $defaultFn, so no explicit id is needed here.
     await db.insert(schema.userTable).values({
-      id: createId(),
       name: "Pre-existing User",
       email: `pre-existing-${randomUUID()}@example.com`,
       emailVerified: true,
@@ -506,7 +505,10 @@ describe("issue #18: instance_setting table invariants (security review findings
     // Only the back-fill statement (the second one) is relevant here -- the
     // CREATE TABLE already exists from resetTestDatabase()'s own migration
     // run, so re-running it would error.
-    const backfillStatement = statements[statements.length - 1];
+    const backfillStatement = statements.at(-1);
+    if (!backfillStatement) {
+      throw new Error("migration 0061 has no back-fill statement");
+    }
     expect(backfillStatement).toMatch(/INSERT INTO "instance_setting"/);
     await db.execute(sql.raw(backfillStatement));
 
