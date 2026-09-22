@@ -85,6 +85,7 @@ const getProjectRoute = createRoute({
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("No access to the project's workspace"),
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -143,6 +144,9 @@ const updateProjectRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    404: errorResponse(
+      "Project doesn't exist or doesn't belong to the specified workspace",
+    ),
   },
 });
 
@@ -170,6 +174,7 @@ const deleteProjectRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:delete permission",
     ),
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -194,6 +199,9 @@ const archiveProjectRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    404: errorResponse(
+      "Project doesn't exist or doesn't belong to the specified workspace",
+    ),
   },
 });
 
@@ -216,6 +224,9 @@ const unarchiveProjectRoute = createRoute({
     ),
     403: errorResponse(
       "No workspace access, or missing project:update permission",
+    ),
+    404: errorResponse(
+      "Project doesn't exist or doesn't belong to the specified workspace",
     ),
   },
 });
