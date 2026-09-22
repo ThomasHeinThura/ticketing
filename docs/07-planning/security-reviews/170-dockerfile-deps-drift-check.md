@@ -554,3 +554,223 @@ unreadable `FROM` inside the stage) rather than with one more regex widening, ad
 regression tests, and this is otherwise ready.
 
 R2-2, R2-3 and R2-4 are not blocking and need no re-review round of their own.
+
+---
+
+## Round 3 — independent Opus delta-confirmation, 2026-09-22
+
+**Reviewed head:** `466b92ee7e36dd75c50307e8de90ed5d23cd8e4f`
+**Branch:** `fix/170-dockerfile-deps-stage-drift`
+**Previous reviewed head:** `d7048a3d8150521602dc1b3c0653f891e962cf1a`
+**Reviewer:** Opus 5, fresh independent context. Did not author, direct, or remediate this
+change, and did not perform round 1 or round 2.
+**Method:** own detached `git worktree` at the exact head (not `main`, not the worktree the
+fix was authored in). Every behavioural probe ran the real `main()` end-to-end inside a
+throwaway probe repository built from copies of the script, `scripts/ci/lib/`, the
+`Dockerfile`, `pnpm-workspace.yaml` and stub member manifests — never against the real file.
+
+### Scope of the delta
+
+`git diff d7048a3d..466b92e --name-only` is exactly three paths: this note (round 1 +
+round 2, committed for the first time — closing R2-4), `scripts/ci/check-dockerfile-deps.mjs`
+(+85/−18 net) and `scripts/ci/check-dockerfile-deps.test.mjs` (+86). Nothing else. The whole
+PR's diff against its merge base touches `Dockerfile` in **0** lines, and the real
+`/home/ubuntu/ticketing.v2/Dockerfile` is byte-identical before and after all probing
+(`sha256 d75c8ccad9936c8b382e26a31d5e2a09320ee33f36adb559143057afa1a453c3`).
+
+### R2-1 — **CLOSED, and closed at the class level rather than by another widening**
+
+The fix is what it claims. `FROM_LINE` is now `/^FROM\s/i` — the boundary signal is *only*
+that the line's first whitespace-delimited token is `FROM`; no shape between `FROM` and the
+end of the line is encoded anywhere. `stageNameOf()` tests `FROM_LINE` and then takes a
+trailing `/\sAS\s+(\S+)\s*$/i`, so any number of tokens or flags may sit between them;
+`isDepsStageStart()` is `stageNameOf(line)?.toLowerCase() === "deps"`. Traced by reading, not
+from the docstrings: the `start === -1` branch still ends in `continue`, so the `deps` line
+matched by `isDepsStageStart` on that iteration is never re-tested against `FROM_LINE` and
+cannot terminate its own stage (confirmed live — `stageLines[0]` is the `FROM ... AS deps`
+line and the stage has a body).
+
+Round 2's exact probe, reproduced against a scratch copy of the **real** Dockerfile with the
+domain COPY removed from `deps` and re-placed after the inserted boundary:
+
+| Boundary inserted after `deps` | Round 2 | Round 3 |
+| --- | --- | --- |
+| `FROM --platform=$BUILDPLATFORM base AS mid` | `exit=0` ❌ | **`exit=1`** ✅ |
+| `FROM --platform=linux/amd64 node:24` | `exit=0` ❌ | **`exit=1`** ✅ |
+
+### The latent mirror-image bug — **confirmed real, and confirmed closed**
+
+Giving the `deps` stage's *own* opening line a flag:
+
+- `FROM --platform=$BUILDPLATFORM base AS deps`, stage otherwise intact → `exit=0`, 9 matched
+  (the stage is still found — not "no `deps` stage found");
+- the same line with the domain COPY also deleted → `exit=1` naming
+  `packages/domain/package.json` specifically, i.e. the check is genuinely reading that stage
+  rather than passing by accident.
+
+### Hunting a fourth instance of the boundary-detection class
+
+Nineteen fresh probes beyond anything rounds 1–2 tried. **All fail closed.** Reported in full
+including the ones that found nothing:
+
+| # | Probe | Result |
+| --- | --- | --- |
+| N1 | digest-pinned unnamed intermediate stage, `FROM base@sha256:<64 hex>` | `exit=1` ✅ |
+| N2 | three flags at once + tabs and multiple spaces between every token | `exit=1` ✅ |
+| N3 | all-lowercase `from --platform=linux/arm64 base as mid` | `exit=1` ✅ |
+| N4 | leading spaces and a tab before the boundary `FROM` | `exit=1` ✅ |
+| N5 | trailing tab and spaces after `AS mid` | `exit=1` ✅ |
+| N6 | top-level `ARG TARGETPLATFORM` between stages, then a flagged `FROM` | `exit=1` ✅ |
+| B1 | CRLF line endings throughout, flagged boundary | `exit=1` ✅ |
+| B2 | CRLF pristine control | `exit=0` ✅ |
+| B3 | `COPY --link packages/domain/package.json packages/domain/` (real BuildKit flag) | `exit=1`, hard failure naming the extra flag ✅ |
+| B4 | `deps` is the **last** stage in the file, domain COPY deleted | `exit=1` ✅ |
+| B5 | `deps` is the last stage, intact | `exit=0` ✅ |
+| B6 | a second `FROM base AS deps` later in the file holding the domain COPY | `exit=1` ✅ |
+| B7 | `AS`-less flagged boundary `FROM --platform=$BUILDPLATFORM base` | `exit=1` ✅ |
+| B8 | `COPY <<EOF /dest` heredoc form (not just `RUN <<EOF`) inside `deps` | `exit=1` ✅ |
+| B9 | a bare `FROM` line with no arguments inside `deps` | `exit=0` — see R3-2 |
+| H1 | heredoc **inside** `deps` whose body holds `FROM scratch AS mid` | `exit=1` ✅ |
+| H2 | heredoc **before** `deps` whose body is a complete fake `deps` stage | **`exit=0`** ❌ — see R3-1 |
+| H3 | same, but the heredoc body is an *incomplete* fake stage | `exit=1` ✅ |
+| H4 | backslash continuation inside `deps` whose wrapped line begins `FROM` | `exit=1` ✅ |
+
+H1 and H4 are the direction the task specifically asked about — a heredoc body or a wrapped
+line containing `FROM ...` being misread as ending the stage early. It *is* misread that way
+(`extractDepsStage` has no heredoc or continuation awareness), but the consequence is
+truncation, which can only ever lose COPY lines, never gain them. Both fail closed with a
+correct, specific "the `deps` stage does not COPY …" message. Non-blocking by itself; it is
+the input to R3-1 below.
+
+### Round 3 findings
+
+#### R3-1 — NON-BLOCKING (but a genuine fail-**open**) — stage *identification* is not heredoc-aware, so a heredoc body can be read as the `deps` stage instead of the real one
+
+`copiedManifests()` tracks heredocs and hard-fails on their bodies (F3's fix).
+`extractDepsStage()` does not — and it runs first, on the raw file, deciding *which* lines are
+the `deps` stage. So the `deps` stage it hands to `copiedManifests()` can be a heredoc body.
+
+Probed for real. A `RUN cat <<EOF > /tmp/reference-deps-stage.txt` heredoc placed in the
+`base` stage, whose body is a verbatim copy of a complete, correct `deps` stage (its
+`FROM base AS deps` line, the root bootstrap COPY, and all nine per-package COPY lines), with
+the **real** `deps` stage stripped of all nine per-package COPY lines:
+
+```
+exit=0
+check:dockerfile-deps: 9 workspace package manifest(s) match the `deps` stage COPY list.
+```
+
+The gate read the heredoc body and never looked at the real stage. That is #168 recurring
+behind a green gate — the same consequence R2-1 had.
+
+**Why this is not blocking, stated plainly rather than softened.** F2 and R2-1 blocked because
+each was reachable by *one ordinary Dockerfile edit* — un-naming a stage, adding
+`--platform=`. This is not: it requires someone to write a heredoc into an earlier stage whose
+body is a complete and at-the-time-correct duplicate of the deps COPY list, and only then
+becomes dangerous once the real stage drifts away from it. Two things bound it further:
+
+- H3 shows the *accidental* version fails closed and loudly. Any such heredoc whose body is
+  not a complete correct duplicate turns CI red immediately, so the enabling edit cannot be
+  introduced silently.
+- The Dockerfile contains no heredocs at all today, and `deps` is 16 lines of literal COPY.
+
+It is also **not a fourth instance of the boundary-detection class** — `FROM_LINE` correctly
+recognized every one of the nineteen `FROM` spellings above. It is F3's class (a heredoc body
+read as real content) applied to the function F3's fix did not touch. Recording it so the next
+reader does not rediscover it.
+
+**Suggested hardening, for whenever this file is next opened — not a condition of this merge.**
+Move the heredoc tracking into `extractDepsStage()` (or into a shared single pass) so lines
+inside a heredoc cannot be a stage start or a stage boundary. That closes R3-1 and makes H1/H4's
+truncation go away at the same time. Roughly ten lines, and a fixture per direction.
+
+#### R3-2 — INFORMATIONAL — a bare `FROM` line is not a boundary
+
+A line that is exactly `FROM` with no arguments does not match `/^FROM\s/i` and is skipped as
+an unclassifiable non-manifest line, so the stage continues across it (`exit=0` in B9). No
+action: `FROM` with no image is not a valid instruction — `docker build` rejects it outright —
+so it cannot exist in a Dockerfile that builds. Noting it only because it is the single `FROM`
+spelling the new class-level signal does not treat as a boundary, and a future reader should
+know it is deliberate-by-consequence rather than an oversight nobody checked.
+
+#### R2-2, R2-3 — unchanged
+
+Not re-probed beyond confirming the code paths are untouched by this delta. Both remain
+non-blocking exactly as round 2 recorded them.
+
+#### R2-4 — **CLOSED**
+
+This note is committed to the branch as part of `466b92e`. Rounds 1 and 2 are present in full,
+unmodified; this section is appended below them.
+
+### Regression check — every previous round's probe, re-run at this head
+
+| Probe | Result |
+| --- | --- |
+| F1 misdirected destination `COPY packages/domain/package.json packages/ui/` | `exit=1` ✅ |
+| F1 green pair — tab after `COPY`, three spaces between args | `exit=0`, 9 matched ✅ |
+| F2 original — un-named `FROM deps` boundary | `exit=1` ✅ |
+| F3 heredoc body holding a valid-looking domain COPY | `exit=1`, "inside a heredoc" ✅ |
+| F5a `tools/**` added to `pnpm-workspace.yaml`, no COPY line | `exit=1`, names `tools/scaffold` ✅ |
+| F5b same, with `COPY tools/scaffold/package.json tools/scaffold/` | `exit=0`, **10** matched ✅ |
+| original — per-package COPY deleted | `exit=1`, names the manifest ✅ |
+| original — stale `packages/ghostpkg` COPY added | `exit=1`, names it as extra ✅ |
+
+Nothing regressed.
+
+### The new tests
+
+Three tests in one new `describe` (R2-1's flag-bearing boundary, a multi-flag boundary, and
+the latent direction where `deps`'s own line gains a flag). Judged non-vacuous by **mutation
+rather than by reading**: restoring round 2's two pre-fix patterns (`FROM_LINE` back to
+`/^FROM\s+\S+(\s+AS\s+\S+)?\s*$/i` and `stageNameOf`'s body back to
+`/^FROM\s+\S+\s+AS\s+(\S+)\s*$/i`) and leaving everything else alone gives **22 tests, 19
+pass, 3 fail** — exactly the three new ones, and none of the pre-existing nineteen. They
+cannot pass for the wrong reason, and the fix breaks nothing the earlier rounds pinned.
+
+Each asserts on `extractDepsStage`'s output *first* (the moved COPY line must not be inside
+the extracted stage) and only then on `copiedManifests`, which is the ordering R2-1 asked for.
+The multi-flag test uses a deliberately unreal flag combination to prove the signal is
+shape-agnostic rather than hardcoded to `--platform`. Round 2's one recorded gap — no test
+exercises `main()` — is unchanged; I verified that wiring by live probe instead (F5a/F5b
+above run the real `main()` against a live `pnpm-workspace.yaml` edit).
+
+### Suite, lint, integrity
+
+- `node --test 'scripts/ci/**/*.test.mjs'` → **tests 473, suites 85, pass 473, fail 0,
+  skipped 0, todo 0**. Round 2 was 470/84, so the delta is exactly +3 tests in +1 suite.
+  (As in both prior rounds, `typecheck-coverage.test.mjs` spawns the real `tsc` and needs
+  `node_modules` present; symlinked in from the primary checkout, then 473/473.)
+- `biome check` on both changed source files: clean, no fixes applied.
+- The review worktree has no tracked modification after all probing, and the real `Dockerfile`
+  hashes identically to the primary checkout's.
+
+### What round 3 did not do
+
+Did not run `docker build` against any probe Dockerfile — R3-1's consequence is argued from
+stage semantics and #168's own recorded failure, as in rounds 1 and 2. Did not re-probe R2-2
+or R2-3 behaviourally, only confirmed the delta does not touch their code paths. Did not
+re-verify the CI wiring (`ci-fast.yml`, `test-all.mjs`, `ci-cd.md`, `package.json`) — round 2
+verified it at `d7048a3d` and this delta touches none of those four files. Did not review
+anything outside the three changed paths and the artifacts the script reads.
+
+---
+
+## Round 3 verdict — CLEAR WITH FINDINGS (non-blocking)
+
+R2-1 is genuinely closed, and closed the way the standing rule asks: `FROM_LINE = /^FROM\s/i`
+is the class-level signal, not a fourth narrow shape. Nineteen fresh adversarial probes across
+the full `FROM` grammar — digest pins, stacked flags, tabs, CRLF, lowercase, leading and
+trailing whitespace, `ARG` between stages, `deps` as the final stage, duplicate `deps` stages —
+found no `FROM` spelling it misses. The latent mirror-image bug the fix claims to have found is
+real and is closed in both directions. The three new tests fail against the pre-fix code and
+only those three do. Suite 473/473, `biome` clean, delta confined to three intended paths,
+real `Dockerfile` untouched.
+
+**No blocking finding.** R3-1 is a genuine fail-open and is recorded as one rather than
+downgraded — but it is not an instance of the boundary-detection class this round was convened
+over, it is not reachable by any ordinary Dockerfile edit, its accidental form fails closed and
+loudly, and the enabling shape does not exist in this repository. It does not justify a fourth
+round on a CI-tooling fix of this size. R3-2, R2-2 and R2-3 need no action.
+
+This PR is ready to merge on the gates within this review's scope.
