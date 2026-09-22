@@ -76,9 +76,9 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-22 (continuing past the #18 milestone into P1–P7 parallel work per
-standing instruction; #237 in a fix→re-review cycle, #192 cleared its two Sonnet rounds and
-a real governance question, now headed to Opus)
+**Last updated:** 2026-09-22 (#237 merged after three mandatory Opus rounds; #192 cleared all
+three required review rounds and its own governance question, sync in progress, not yet
+merged)
 **Current stage:** P0 · Foundation, continuing into P1–P7 parallel — **Throttle 1 OPEN
 (unchanged); P0 concrete-defect backlog still fully clear (#8/#9 remain, large umbrella
 items, untouched this pass).**
@@ -86,37 +86,48 @@ items, untouched this pass).**
 **PR #235** (#165) merged — doc-only fix, mandatory Opus review CLEAR WITH FINDINGS, F1
 self-fixed in the same PR and disclosed as self-verified; F2 tracked as #236.
 
-**PR #237** (#170, Dockerfile `deps`-stage/workspace drift check): ordinary Sonnet review
-APPROVE, but the **mandatory Opus security review returned CHANGES NEEDED (blocking)** — two
-real false negatives in exactly the defect class the gate exists to close (F1 — COPY
-destination never validated against the source; F2 — the stage-boundary regex required a
-named `AS <stage>`, so an unnamed `FROM` after `deps` let a later stage's COPY lines count
-toward it), plus a false header claim (F3) and zero test coverage (F4). Full findings:
-`docs/07-planning/security-reviews/170-dockerfile-deps-drift-check.md`. The design/CI-wiring
-claims the PR rests on were independently re-verified and do hold. **A fix for F1–F5 has
-landed** (local commit on the branch, not yet pushed): destination backreferenced to the
-source directory, stage boundary now stage-name-optional, a real heredoc/unreadable-line
-hard-failure path, accepted path prefixes now derived from `readWorkspaceRoots()` instead of
-hardcoded, and a new 19-test file — reported 470/470 full suite. **Not yet independently
-re-verified by the orchestrating session or re-reviewed by Opus** — do not treat #237 as
-clear; that verification is the immediate next step.
+**PR #237** (#170, Dockerfile `deps`-stage/workspace drift check) **merged, issue #170
+closed.** Took three mandatory Opus rounds, two of them blocking — genuinely the hardest CI
+fix this session, not a rubber-stamp: round 1 found two real false negatives (COPY
+destination never validated against its source; a stage-boundary regex too narrow to
+recognize an unnamed `FROM` as ending the `deps` stage); round 2's delta-confirmation
+confirmed those fixed but found a *new instance of the same bug class* (a `--platform=` flag
+also defeated the boundary regex); round 3 confirmed a genuine structural fix — recognizing
+any `FROM`-prefixed line as a boundary, not another narrow pattern — closes the whole class,
+after 19 adversarial probes found nothing further. One non-blocking finding left on record
+(R3-1, a latent heredoc-interaction gap, unreachable today). Full record:
+`docs/07-planning/security-reviews/170-dockerfile-deps-drift-check.md`. **Also surfaced a
+real process gap**: this session briefly lost an uncommitted review note (round 1's) during
+an unrelated branch reset before it was ever committed — recovered from a manual backup,
+and a standing rule is now in memory to commit a reviewer's note into its actual PR branch
+immediately, never leave it in the orchestrator's own checkout.
 
 **Issue #192** (work-item tenant attribution, Thomas's "Option A+D" decision): schema slice
-implemented on `feat/192-work-item-tenant-attribution` (still not pushed/PR'd). Independently
-re-verified end-to-end by the orchestrating session on a fresh database — every number
-matches the implementing agent's own report (323/323 unit, 80/80 permissions, 595/595
-integration, typecheck/biome/vocabulary/`drizzle-kit check` clean). **Both required Sonnet
-rounds are in: ordinary review APPROVE; the alignment check came back ALIGNED WITH NOTES**,
-flagging one real governance question — the implementer added a third composite FK
-(`work_item.(workspace_id, project_id) → project(workspace_id, id)`, `ON UPDATE NO ACTION`)
-beyond what the original decision-log entry literally authorized, on its own reading of an
-ambiguous precedent the alignment reviewer found didn't actually license it. **Taken to
-Thomas directly** (not merged on the implementer's own authority): he chose to keep the FK
-and record it now. Recorded as a new decision-log addendum, same day, naming what it extends.
-Redesigns a cross-tenant authority boundary and includes a concurrency-sensitive fix (a
-nested-transaction SAVEPOINT in the workspace-create path), so the mandatory Opus security
-pass is next — **not yet dispatched as of this snapshot.** Do not treat #192 as merged or
-even PR-opened until a later entry says so.
+on PR #239. Independently re-verified end-to-end by the orchestrating session on a fresh
+database — every number matches the implementing agent's own report (323/323 unit, 80/80
+permissions, 595/595 integration, clean typecheck/biome/vocabulary/`drizzle-kit check`).
+**All three required review rounds are in and clear**: ordinary Sonnet APPROVE; alignment
+check ALIGNED WITH NOTES, flagging a real governance question — the implementer added a
+third composite FK beyond what the original decision-log entry literally authorized, on an
+ambiguous precedent the alignment reviewer found didn't actually license it; taken to Thomas
+directly rather than merged on the implementer's own authority, he chose to keep the FK and
+record it (decision-log addendum, same day); mandatory Opus pass **CLEAR WITH FINDINGS
+(non-blocking)** — proved the authority boundary live against real SQL (the exact PR #191 O1
+attack shape and ten others), confirmed the addendum FK is genuinely load-bearing by direct
+mutation, and confirmed the SAVEPOINT concurrency fix by mutation-testing it out. Three
+non-blocking findings filed as follow-ups (#240, #241, #242) rather than fixed in-PR, per
+that review's own explicit instruction that further commits on this specific migration need
+the reviewer's own re-confirmation, not orchestrator self-verification. **A branch-protection
+sync with `main` (after #238 merged) is in progress via a targeted independent delta-review**
+(the note's own instruction ruled out self-verifying this one) — **not yet merged**, do not
+treat #192 as done until a later entry says so.
+
+**A real process mistake found and fixed mid-session**: syncing a reviewed branch with a
+newer `main` via `git rebase` rewrites the reviewed commit into a new SHA, orphaning the
+review note's own `**Reviewed head:**` citation and failing the mechanical PR-template check
+for a reason that looks like a content problem but isn't. Fixed by resetting to the actual
+reviewed commit and using `git merge` instead, which preserves it as a real ancestor — now
+in memory as a standing rule (`feedback-merge-train-candidate-freeze.md`).
 **Updated by:** Claude Sonnet 5 (orchestrating session).
 
 ---
