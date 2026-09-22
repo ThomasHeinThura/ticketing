@@ -317,9 +317,15 @@ export function computeSlaState(
   );
 }
 
-/** The state for an open item at a given consumed percentage (`sla.md` § States). */
+/**
+ * The state for an open item at a given consumed percentage (`sla.md` § States:
+ * `at_risk` is 75%-100% consumed, inclusive of the 100% boundary; `breached` is
+ * strictly over 100%). Exactly 100% consumed is therefore `at_risk`, not `breached` --
+ * verified during review against an independent reviewer's finding that the prior
+ * `>= 100` comparison contradicted the spec's own stated inclusive/exclusive split.
+ */
 function stateForConsumedPct(consumedPct: number, policy: SlaPolicy): SlaState {
-  if (consumedPct >= 100) {
+  if (consumedPct > 100) {
     return "breached";
   }
   if (consumedPct >= policy.atRiskThresholdPct) {

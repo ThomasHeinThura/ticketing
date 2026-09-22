@@ -349,6 +349,22 @@ describe("computeMetricState", () => {
     expect(s.state).toBe("at_risk");
   });
 
+  it("at_risk at exactly 100% consumed, not breached (the review's fix)", () => {
+    // sla.md § States: at_risk is 75%-100% consumed, INCLUSIVE of the 100%
+    // boundary; breached is strictly over 100%. An independent review found the
+    // original `consumedPct >= 100` comparison put exactly-100% into breached,
+    // contradicting this. Fixed to `> 100`; this pins the boundary to the minute.
+    const p = policy(CALENDAR_8X5, 240);
+    const s = computeMetricState(
+      p,
+      facts(),
+      "resolution",
+      new Date("2026-09-14T13:00:00Z"), // 240 of 240 covered minutes -- exactly 100%
+    );
+    expect(s.consumedPct).toBe(100);
+    expect(s.state).toBe("at_risk");
+  });
+
   it("breached past 100%", () => {
     const p = policy(CALENDAR_8X5, 240);
     const s = computeMetricState(
