@@ -1,6 +1,6 @@
 # Security review — PR #216 (issue #206: declare the 404s handlers actually return)
 
-**Reviewed head:** `ebe5d2a7bcb21e86ee7fc90bac6831bd7d18e849`
+**Reviewed head:** `b3641ac55279b56166d43004c89d1350709b6e40`
 
 Fixed at `68f3a6979c3bea4bceb4215ac623e076352ccac2`; confirmed by an independent Opus pass
 via `git merge-tree --write-tree` recomputation of both intervening merge commits (not a
@@ -73,3 +73,11 @@ apps/api/src/task/index.ts apps/api/src/time-entry/index.ts
 apps/api/src/workflow-rule/index.ts tests/api-contract/openapi.json` is empty, and the merge
 commit's two parents' diffs (per-parent attribution, not a two-endpoint diff) confirm the
 same — the only real content is #215's own files, listed above.
+
+One further main-sync landed after that, bringing in PR #222's `status.md` correction —
+docs-only, no file this PR reviewed. Re-checked directly at the final head
+`b3641ac55279b56166d43004c89d1350709b6e40`: `git diff
+ebe5d2a7bcb21e86ee7fc90bac6831bd7d18e849 b3641ac55279b56166d43004c89d1350709b6e40 --
+apps/api/src/column/index.ts apps/api/src/label/index.ts apps/api/src/project/index.ts
+apps/api/src/task/index.ts apps/api/src/time-entry/index.ts
+apps/api/src/workflow-rule/index.ts tests/api-contract/openapi.json` is empty.
