@@ -100,6 +100,7 @@ const getLabelRoute = createRoute({
       "Unknown label, or its workspace could not be determined",
     ),
     403: errorResponse("No access to the label's workspace"),
+    404: errorResponse("Label not found"),
   },
 });
 
@@ -129,7 +130,7 @@ const attachLabelToTaskRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing label:update permission",
     ),
-    404: errorResponse("Task not found"),
+    404: errorResponse("Label or task not found"),
   },
 });
 
@@ -151,7 +152,7 @@ const detachLabelFromTaskRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing label:update permission",
     ),
-    404: errorResponse("Task not found"),
+    404: errorResponse("Label or task not found"),
   },
 });
 
@@ -179,6 +180,7 @@ const updateLabelRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing label:update permission",
     ),
+    404: errorResponse("Label not found"),
   },
 });
 
@@ -202,7 +204,7 @@ const deleteLabelRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing label:delete permission",
     ),
-    404: errorResponse("The label's task no longer exists"),
+    404: errorResponse("Label not found, or its task no longer exists"),
   },
 });
 
