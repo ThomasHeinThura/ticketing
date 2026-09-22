@@ -2,34 +2,44 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-22 — a twelfth pass, same day as the eleventh. Three of the
-four concrete P0 defects the eleventh pass found (#146, #17, #97) are now fixed and merged;
-the fourth (#18) is fixed, tested, and in review (PR #227, not yet merged). #8 and #9
-remain open, large, umbrella items, unchanged.
-> **`main` at that moment:** `6d9f179` (PR #225 — issue #17's session revocation, the last
-> of the four same-day P0 fixes to land).
+> **Snapshot taken:** 2026-09-22 — a thirteenth pass, same day as the eleventh and twelfth.
+**All four concrete P0 defects the eleventh pass found (#18, #146, #17, #97) are now fixed,
+reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
+> **`main` at that moment:** `9c2a16c` (PR #227 — issue #18's setup-token flow, the last of
+> the four same-day P0 fixes to land, after three Opus security-review rounds).
 > Kaneo's `task`/`column` tables and routes remain fully untouched and still live.
-> **Stage:** P0 · Foundation — **Throttle 1 is OPEN; P0 itself is NOT finished, but three of
-> the four eleventh-pass concrete defects are now merged and the fourth is fixed, tested, and
-> in review.** Throttle 1 remains the narrower gate — the organization-plugin retrofit's five
-> specific conditions (below) — and those five remain verified closed. The eleventh pass's
-> live audit found four concrete, reproducible P0 defects:
-> **#18** (first-admin registration bypass — fix implemented and tested in PR #227,
-> **not yet merged**: a durable `instance_setting.setup_completed_at` marker plus a
-> one-hour-or-one-use setup token replaces the old unconditional zero-user bypass; ordinary
-> review, an alignment check, and the mandatory Opus security review are all in progress),
-> **#146** (CRITICAL — closed by PR
-> #223: `sections()` now recognizes a `##` heading only when genuinely visible, and a
-> genuine duplicate is a hard `DuplicateSectionError` rather than silent last-one-wins;
-> Opus review CLEAR WITH FINDINGS, three non-blocking follow-ups (F1, F2, F4) tracked as #226), **#17**
-> (closed by PR #225: sessions minted by the removed MCP OAuth/device flows are expired by
-> migration `0060`; the mandatory Opus review's first pass found and required a fix for a
-> real timezone-comparison bug, fixed and delta-confirmed CLEAR), **#97** (closed by PR
-> #224: the logged-out redirect guard no longer throws on `location.search`'s null-prototype
-> object; a root `errorComponent` added as a last-resort catch-all). Two large, mostly-open
-> umbrella items remain, unchanged from the eleventh pass: **#8** (route-policy retrofit —
-> ~80 inherited routes still unclassified, and the policy registry has zero runtime wiring
-> into `apps/api/src/index.ts` yet, so no request is actually evaluated against it today) and
+> **Stage:** P0 · Foundation — **Throttle 1 is OPEN; P0 itself is NOT finished (see #8/#9
+> below), but the eleventh-pass concrete-defect backlog is fully clear.** Throttle 1 remains
+> the narrower gate — the organization-plugin retrofit's five specific conditions (below) —
+> and those five remain verified closed. The eleventh pass's live audit found four concrete,
+> reproducible P0 defects, all now merged:
+> **#18** (first-admin registration bypass — PR #227: a durable
+> `instance_setting.setup_completed_at` marker plus a one-hour-or-one-use setup token
+> replaces the old unconditional zero-user bypass. This one took the full three-round tier
+> (ordinary Sonnet + alignment check + mandatory Opus), and the Opus pass alone took three
+> rounds: round 1 found a BLOCKING issue (B1 — the new refusal message let an unauthenticated
+> caller distinguish an unclaimed instance from a claimed one, recreating the exact scanning
+> oracle the fix exists to remove); round 2's delta-confirmation found the fix for B1 was
+> itself incomplete in two ways (D1 — adding an `invitationId` field reopened the identical
+> oracle; D2 — a separate Unicode-normalization fix for the bootstrap-email comparison didn't
+> actually work); round 3 confirmed both D1 and D2 genuinely fixed, adversarially, against a
+> real database. Final verdict: CLEAR WITH FINDINGS, all non-blocking. Four follow-up issues
+> filed: #229 (no MFA enrollment — spec gap, no MFA plugin exists in this repo), #230 (no
+> `grant-instance-admin` recovery CLI — same status), #231 (a liveness gap, not an authority
+> one: two armed bootstrap mechanisms racing can leave zero admins, never two), #232 (a
+> narrower residual oracle via `DISABLE_PASSWORD_REGISTRATION`, plus a test-coverage note)),
+> **#146** (CRITICAL — closed by PR #223: `sections()` now recognizes a `##` heading only
+> when genuinely visible, and a genuine duplicate is a hard `DuplicateSectionError` rather
+> than silent last-one-wins; Opus review CLEAR WITH FINDINGS, three non-blocking follow-ups
+> (F1, F2, F4) tracked as #226), **#17** (closed by PR #225: sessions minted by the removed
+> MCP OAuth/device flows are expired by migration `0060`; the mandatory Opus review's first
+> pass found and required a fix for a real timezone-comparison bug, fixed and
+> delta-confirmed CLEAR), **#97** (closed by PR #224: the logged-out redirect guard no
+> longer throws on `location.search`'s null-prototype object; a root `errorComponent` added
+> as a last-resort catch-all). Two large, mostly-open umbrella items remain, unchanged from
+> the eleventh pass: **#8** (route-policy retrofit — ~80 inherited routes still
+> unclassified, and the policy registry has zero runtime wiring into
+> `apps/api/src/index.ts` yet, so no request is actually evaluated against it today) and
 > **#9** (`packages/ui` extraction — only 18 of ~63 primitives moved out of `apps/web`).
 > **Autonomous continuation past Throttle 1 into P1–P7 is authorized** (Thomas, 2026-09-16,
 > reaffirmed 2026-09-22) — running P1–P7 in parallel does not wait on P0's remaining issues,
@@ -66,22 +76,36 @@ remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-22 (three of the four eleventh-pass P0 defects merged same-day;
-the fourth in review)
+**Last updated:** 2026-09-22 (all four eleventh-pass P0 defects now merged — #18 was the
+last, after three Opus security-review rounds)
 **Current stage:** P0 · Foundation — **Throttle 1 OPEN (verified, unchanged); P0 as a whole
-is not finished, but its eleventh-pass concrete-defect backlog is nearly clear.** #146
-(PR #223), #17 (PR #225) and #97 (PR #224) are merged, each with ordinary review and — where
-in security-review scope — a mandatory Opus pass recorded. #18 (PR #227) is implemented,
-independently tested by the orchestrating session (64 files/577 tests, 48/323 unit, 10/79
-permissions unchanged, 57/236 web, all clean; `drizzle-kit check` clean), and is now going
-through a full three-round tier (ordinary Sonnet review, a project-alignment check, and the
-mandatory Opus security review) rather than the reduced one-round tier, because it redesigns
-an authority invariant (who can become the first instance admin) and crosses a migration,
-API and frontend in one change. #8 and #9 remain untouched, large, umbrella items.
-**Updated by:** Claude Sonnet 5 (orchestrating session). Also renumbered two migrations this
-session (`0059`→`0060` for #17, `0060`→`0061` for #18) after sequential same-day merges each
-claimed the next slot first — regenerated via `drizzle-kit generate`, not hand-edited, so the
-journal/snapshot chain stays derived rather than authored.
+is not finished (#8/#9 remain), but the eleventh-pass concrete-defect backlog is fully
+clear.** #18 (PR #227) merged: three Opus security-review rounds, each finding something
+real (B1 blocking on round 1 — a scanning-oracle regression; D1/D2 on round 2's
+delta-confirmation — the B1 fix itself was incomplete in two ways; round 3 confirmed both
+genuinely fixed). Final verdict CLEAR WITH FINDINGS, all non-blocking; four follow-up
+issues filed (#229, #230, #231, #232). #146/#17/#97 were already merged as of the prior
+pass. #8 and #9 remain untouched, large, umbrella items — P0 is not "done," but its known
+concrete-defect backlog from the eleventh-pass audit is.
+**Updated by:** Claude Sonnet 5 (orchestrating session). This session also renumbered two
+migrations (`0059`→`0060` for #17, `0060`→`0061` for #18) after sequential same-day merges
+each claimed the next slot first — regenerated via `drizzle-kit generate`, not hand-edited —
+and fixed two rounds of CI-only typecheck failures on #18 (a stricter `apps/web` tsconfig
+than checked locally, then a stricter `apps/api` tests tsconfig), both self-verified as
+zero-behavior-change mechanical fixes rather than sent through further review rounds.
+
+---
+
+**Earlier the same day:** Claude Sonnet 5 (orchestrating session), three of the four
+eleventh-pass P0 defects merged (#146 via PR #223, #17 via PR #225, #97 via PR #224), each
+with ordinary review and — where in security-review scope — a mandatory Opus pass recorded.
+#18 (PR #227) was implemented and independently tested at that point (64 files/577 tests,
+48/323 unit, 10/79 permissions unchanged, 57/236 web, all clean; `drizzle-kit check` clean)
+but not yet merged — going through the full three-round tier (ordinary Sonnet review, a
+project-alignment check, and the mandatory Opus security review) rather than the reduced
+one-round tier, because it redesigns an authority invariant (who can become the first
+instance admin) and crosses a migration, API and frontend in one change. See the entry
+above for how that review concluded.
 
 ---
 
@@ -1143,6 +1167,68 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-22 · #18 merged after three Opus security-review rounds; all four eleventh-pass P0 defects now closed
+
+Continuing the same day as the entry below. PR #227 (#18's setup-token flow) was
+implemented and independently tested (see the entry below), then went through the full
+three-round review tier the entry below already explains why it needed. What actually
+happened in that tier is worth recording in full, because it is the clearest demonstration
+this session produced of why the tier exists.
+
+**Round 1 (mandatory Opus, first pass): CHANGES NEEDED — one blocking finding.** The fix
+replaced an unconditional "first signup becomes admin" bypass with a token-gated one, and
+its own stated goal was that `GET /api/instance/status` no longer lets anyone scan for an
+unclaimed instance. The reviewer found that goal was not actually met: the new zero-user
+refusal's error message differed from an ordinary registration refusal, so one
+unauthenticated request could still tell an unclaimed instance from a claimed one — and the
+message *named* `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` as the next thing to try. Fixed by reusing
+the ordinary refusal message unconditionally.
+
+**Round 2 (delta-confirmation, second Opus pass, fresh context): CHANGES NEEDED again —
+found the round-1 fix was itself incomplete, in two different ways.** First: the fix
+hard-coded one message, but the ordinary refusal path (`checkRegistrationAllowed`) actually
+has *two* different messages depending on whether an invitation was attempted — and a
+claimed instance can return either, while the zero-user path used to always return the one
+fixed message. Adding an `invitationId` field to the same request reopened the identical
+oracle round 1 had just closed. Second, and unrelated: a separate, non-blocking finding
+from round 1 (a Unicode case-folding trick using U+212A KELVIN SIGN, which reads as a plain
+"k" to a human but is a different character) had also been "fixed" with `.normalize("NFKC")`
+before lowercasing — except NFKC normalizes that exact character to "K" *first*, so the same
+false match still happened one step later. The regression test for that finding was ALSO
+wrong, comparing two different-length strings, so it would have passed regardless of
+whether the bug was present. Both re-fixed: the refusal message now always comes from the
+same `checkRegistrationAllowed` call regardless of claimed/unclaimed state, and Unicode
+normalization was replaced with a plain ASCII-only case fold that cannot touch U+212A at all.
+
+**Round 3 (second delta-confirmation, third fresh Opus context): CLEAR WITH FINDINGS.**
+Verified both fixes adversarially — real HTTP requests against a real database across five
+different request shapes for the first, and against five different Unicode confusables
+(not just the one originally found) for the second — and found nothing further blocking.
+Two new non-blocking observations, neither introduced by the fix: a narrower residual
+oracle via a different registration-control env var, and a note that the regression tests
+for this whole class of finding exercise a different code path than a real deployment's
+request-handling middleware (the invariant holds either way; verified directly).
+
+**Why this is being written up in this much detail**: this project exists because TaskDesk
+v1 shipped eleven authorization holes past a green test suite. This session's own directive
+was speed — one review round where possible, Sonnet for implementation, Opus only for the
+mandatory pass. That directive was followed everywhere it was safe to follow: #146 and #17
+each needed exactly one Opus round (plus one delta-confirmation for an unrelated main-sync,
+which is bookkeeping, not a finding). #18 needed three, and the reason was never "process
+for its own sake" — every one of those three rounds found something a fourth would not have
+caught by assumption alone. Two smaller follow-ups from round 3 are tracked as issue #232;
+the round-1/round-2 findings are fully closed, not deferred.
+
+Four follow-up issues filed against this PR, all pre-existing or narrower-than-before gaps
+rather than regressions: **#229** (no MFA enrollment on the setup page — no MFA plugin
+exists anywhere in this repo), **#230** (no `grant-instance-admin` recovery CLI — no CLI
+entrypoint exists anywhere in this repo), **#231** (a liveness gap: two armed bootstrap
+mechanisms racing concurrently can leave an instance with zero admins, never two — a
+smaller, better-scoped fix than a fifth review round on this PR), **#232** (the narrower
+residual oracle plus the test-coverage note from round 3).
+
+---
 
 ### 2026-09-22 · Three of the four dispatched P0 fixes merged, the fourth in a full review tier
 
