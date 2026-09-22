@@ -17,10 +17,21 @@ export const Route = createFileRoute("/_layout/_authenticated")({
       // children decide whether to skip active-organization mutations.
     }
     if (!session && !sessionError) {
+      // `location.search` is the router's *parsed* search object (built with
+      // `Object.create(null)` — see @tanstack/router-core's qss decode), not
+      // a string. When the query string is empty that object has no
+      // properties and no prototype, so it has no `toString`/`valueOf`/
+      // `Symbol.toPrimitive`, and `pathname + search + hash` throws
+      // "Cannot convert object to primitive value" instead of producing a
+      // path. That throw escaped this beforeLoad uncaught, leaving a
+      // logged-out user on a blank page instead of the sign-in redirect
+      // (#97). `location.href` is the router's own pathname+search+hash
+      // string (see router-core's `buildLocation`), so use that directly
+      // rather than re-deriving it from parts that aren't all strings.
       throw redirect({
         to: "/auth/sign-in",
         search: {
-          redirect: location.pathname + location.search + location.hash,
+          redirect: location.href,
         },
       });
     }
