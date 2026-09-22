@@ -494,3 +494,185 @@ clean.
 Because the orchestrating session authored this remediation, it cannot also be the
 independent reviewer who clears it (`CLAUDE.md`'s no-self-review rule) — a further delta
 confirmation by a fresh, independent context is required before this PR can merge.
+
+---
+
+# Second delta confirmation (third Opus pass) — 2026-09-22
+
+**Reviewed head:** `52953c861ff95a66380b968126bede147b5fca81`
+(branch `fix/18-setup-token-flow`; remediation commit under review `c45bf2e`, plus the
+docs-only `52953c8` on top of it)
+
+**Reviewer:** fresh, independent Opus context. Did not author PR #227, the B1/F2–F5
+remediation, or the D1/D2 remediation, and did not orchestrate any of them.
+
+**Verdict: CLEAR WITH FINDINGS.** D1's fix is correct and I could not break it by any
+request shape I could construct. D2's fix is correct and generalises properly to Unicode
+confusables beyond the Kelvin sign. The restructuring introduced nothing new. Two findings
+below (D3, D4) are real and worth closing, but neither is caused by `c45bf2e` and neither is
+a regression against `main` — D3 is a pre-existing oracle in code this PR never touched, and
+D4 is a test-fidelity gap, not a defect in the shipped behaviour.
+
+## Delta actually reviewed
+
+`git diff 039804c..52953c86` is four files and nothing else:
+`apps/api/src/auth.ts`, `apps/api/src/instance/setup-token.ts`,
+`tests/api-integration/instance-setup-bootstrap.test.ts`, and this note. The source diff
+matches the remediation description exactly; no unrelated change rode along. The full
+`git diff` against the merge-base with `main` (`407c706c`) is coherent with the PR's stated
+purpose — no dependency-graph, CI-machinery or migration-journal change beyond the
+already-reviewed `0061_instance_setting`.
+
+## D1 — confirmed fixed
+
+Verified with real HTTP requests against a real Postgres database (a dedicated
+`opus_r3_d1d2_test` on `td-lane-pg`, migrated with `drizzle-kit migrate`), comparing an
+unclaimed instance against a claimed one for each request shape, byte-for-byte on both
+status and body:
+
+| request shape (`DISABLE_REGISTRATION=true`) | unclaimed vs claimed |
+| --- | --- |
+| plain sign-up, no invitation | byte-identical 403 |
+| `invitationId` in the JSON body, unresolvable | byte-identical 403 |
+| `x-invitation-id` header, unresolvable | byte-identical 403 |
+| `?invitationId=` query string, unresolvable | byte-identical 403 |
+| `invitationId` that fails `normalizeInvitationId`'s syntax regex | byte-identical 403 |
+
+The body-field case is the one D1 named, and it is closed: both instances now return
+`"Registration is currently disabled. You need a valid invitation to create an account."`
+where previously the unclaimed one returned the other message. Reverting only the D1 hunk
+(restoring the hard-coded message) makes the `(D1)` test fail with exactly that message
+divergence; restored afterwards.
+
+Three further things I checked rather than assumed:
+
+- **`allowInvitationByEmail` consistency.** Both call sites now use the literally identical
+  expression `{ allowInvitationByEmail: isOAuthCallbackPath(ctx?.path) }` on the same `ctx`,
+  so they cannot diverge for the same request. For `/sign-up/email` it is `false` on both
+  sides; for `/callback/*` the `hooks.before` middleware's registration check is skipped on
+  a claimed instance too (its final block is gated on `ctx.path === "/sign-up/email"`), so
+  both claimed and unclaimed reach the same `databaseHooks` call with `true`. Symmetric.
+- **The `bootstrapRefusal.allowed` fallback.** With registration open, an unclaimed instance
+  answers 403 and a claimed one answers 200 with a session — the inherent signal the fix's
+  own comment claims, and I confirmed it is the *only* difference there: the 403 body is the
+  same fixed text with and without an `invitationId`, so the open configuration adds no
+  *new* distinguishing signal beyond that 200-vs-403.
+- **Computing `invitationId` earlier.** `normalizeInvitationId` is pure, the binding is a
+  `const` in the same function block, it shadows nothing (the other `invitationId` is in the
+  separate `hooks.before` middleware), and it is read by both branches. No behavioural change
+  anywhere else.
+
+## D2 — confirmed fixed, and it generalises
+
+`foldAsciiCase` matches `/[A-Z]/g` only, so no non-ASCII code point is ever rewritten.
+Verified directly, with `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` set and `isBootstrapAdminEmail`
+called for real:
+
+- U+212A KELVIN SIGN substituted for the leading `k` of a same-length configured address →
+  **rejected** (and I asserted in the same run that `.toLowerCase()` on that string *does*
+  produce the configured address, so the test is exercising a real fold, not a length
+  mismatch).
+- U+017F LATIN SMALL LETTER LONG S for `s` → **rejected** (this one folds under NFKC +
+  `toLowerCase()` too, so the old approach would have matched it as well — the ASCII fold
+  closes the whole class, not just the one instance F4 named).
+- Cyrillic а U+0430 and А U+0410, fullwidth Ａ U+FF21 and ａ U+FF41, Turkish ı U+0131 and
+  İ U+0130 → all **rejected**.
+- Ordinary ASCII case-insensitivity still works: `KOPERATOR@EXAMPLE.COM`,
+  `KoPeRaToR@ExAmPlE.cOm` and a whitespace-padded form all **match**.
+
+End-to-end over the real HTTP sign-up path, on an unclaimed instance with the bootstrap
+email configured: the U+212A variant and a Cyrillic variant are both refused with no user
+row created, and the plain ASCII-uppercase form is accepted (200, one user, promoted).
+Note that the non-ASCII variants are stopped one layer earlier than `isBootstrapAdminEmail`
+— better-auth's own validator answers `400 VALIDATION_ERROR` before the hook runs — which is
+precisely the "correct by accident of a dependency" situation F4 flagged; the ASCII fold now
+makes the function correct on its own terms as well, which is what matters.
+
+Reverting only the D2 hunk (back to `.normalize("NFKC").trim().toLowerCase()`) makes the
+`(F4/D2)` test fail on `isBootstrapAdminEmail(kelvinSignVariant)` returning `true`;
+restored afterwards. The rewritten test is genuinely load-bearing now.
+
+One deliberate narrowing worth recording, not a defect: `normaliseEmail` no longer folds
+case for non-ASCII letters at all, so a configured `TASKDESK_BOOTSTRAP_ADMIN_EMAIL`
+containing an uppercase non-ASCII letter will not match its lowercase form. That is the safe
+direction for an authorization check and matches the documented contract.
+
+## D3 — non-blocking, pre-existing, NOT introduced here: `DISABLE_PASSWORD_REGISTRATION` still distinguishes unclaimed from claimed
+
+The B1/D1 invariant ("this refusal must be impossible to distinguish from an ordinary
+registration refusal, for EVERY shape of request") holds for every request *shape*. It does
+not hold across every instance *configuration*. With `DISABLE_PASSWORD_REGISTRATION=true`
+set at boot, one unauthenticated `POST /api/auth/sign-up/email` still separates the two
+cases — both 403, different bodies:
+
+- unclaimed → `"Registration is currently disabled. Please use a valid invitation link to
+  create an account."`
+- claimed → `"Password registration is currently disabled. Please use a configured social or
+  OIDC sign-in method."`
+
+Reproduced live for both `DISABLE_REGISTRATION=true` and `=false`. The cause is
+`apps/api/src/auth.ts`'s `hooks.before` middleware, where the password-registration refusal
+(and, on `KANEO_CLOUD` deployments, the disposable-email `400`) is gated on
+`!isInstanceAdminSetup` — i.e. deliberately skipped while the instance has zero users, so
+that a legitimate setup-token bootstrap can still get through with those flags set. On an
+unclaimed instance the request therefore falls past both guards into the
+`databaseHooks.user.create.before` bootstrap refusal, which emits a different message.
+
+Why this is not a blocker on this candidate: those three `!isInstanceAdminSetup` gates are
+byte-identical to their state at the merge-base (`git diff 407c706c..52953c86 --
+apps/api/src/auth.ts` touches none of them), and before this PR the same configuration was
+distinguishable far more cheaply — the first signup simply *succeeded* and became admin.
+This PR strictly improves the situation; it just does not reach this particular residual.
+It is also closable, unlike the 200-vs-403 signal the fix documents as inherent: the
+bootstrap refusal could mirror the password-registration message when that flag is set.
+**Recommendation:** open a follow-up issue rather than reopening this PR. If the reviewer of
+record considers B1's invariant absolute across configurations as well as request shapes,
+this is the same class and belongs in #227 — that is a call for Thomas or the orchestrating
+session, not for this review to make unilaterally after four rounds on one finding class.
+
+## D4 — non-blocking: the B1 and D1 regression tests do not exercise the path a real deployment uses for the claimed case
+
+`apps/api/src/auth.ts` captures `DISABLE_REGISTRATION` and `DISABLE_PASSWORD_REGISTRATION`
+into **module-level consts at import time**, and `tests/api-integration/setup.ts` pins both
+to `"false"` before any test module is imported. Setting `process.env.DISABLE_REGISTRATION`
+inside a test therefore never reaches the `hooks.before` middleware — only
+`checkRegistrationAllowed`, which re-reads the variable on every call. So in the `(B1)` and
+`(D1)` tests the *claimed* instance is refused by the `databaseHooks` ordinary branch, not by
+the middleware that would actually refuse it in a real deployment with the flag set at boot.
+
+The invariant still holds on the real path — I re-ran the comparison with the env set before
+module load (`vi.resetModules()` + dynamic re-import) and unclaimed vs claimed came back
+byte-identical for `DISABLE_REGISTRATION=true, DISABLE_PASSWORD_REGISTRATION=false`. So
+this is a test-fidelity finding, not a behaviour finding: the tests pass for a slightly
+different reason than they appear to, and a future change to the middleware's message could
+regress B1 without either test noticing. Worth a note in the test file, or a boot-time-env
+variant of the `(D1)` case, in the same follow-up as D3.
+
+## Evidence
+
+- Dedicated database `opus_r3_d1d2_test` on `td-lane-pg` (127.0.0.1:55440), created for this
+  review and migrated from scratch with `drizzle-kit migrate`. `drizzle-kit check` →
+  `Everything's fine` (no drift).
+- Isolated detached worktree at the exact head SHA; `git status` clean at the end (all probe
+  files removed, both temporary reverts restored via `git checkout --`).
+- `apps/api` integration: **64 files / 583 tests passed** — matches the claimed count.
+- `apps/api` unit: **48 files / 323 tests passed**. Permissions: **10 files / 79 tests
+  passed** (unchanged). `apps/web`: **57 files / 236 tests passed**.
+- `instance-setup-bootstrap.test.ts` alone: 19 passed, including `(D1)` and `(F4/D2)`.
+- Revert experiments: reverting only the D1 hunk fails `(D1)`; reverting only the D2 hunk
+  fails `(F4/D2)`. Both restored.
+
+## Not done in this review
+
+- I did not re-derive passes 1 and 2. F1, F2, F3 and F5 were not re-examined; their prior
+  dispositions stand.
+- I could not drive a real OAuth `/callback/*` request (no provider configured in the test
+  harness). The `allowInvitationByEmail` symmetry for that path is established by reading the
+  source — both branches use the identical expression on the identical `ctx` — not by
+  execution.
+- I did not measure timing. On an unclaimed instance a bogus setup token costs one extra hash
+  plus one `UPDATE` that a claimed instance never performs; at a 3-per-60s sign-up rate limit
+  this is not a practical oracle, but it is not zero either, and nothing in this PR tries to
+  equalise it.
+- I did not review the `apps/web` changes, the migration, or the OpenAPI delta beyond
+  confirming they were unchanged since pass 2.
