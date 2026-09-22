@@ -26,6 +26,31 @@ warning-only mode.
 enumeration lives in `packages/permissions/src/route-coverage.ts` and is shared. The job
 belongs in the **fast** stage, as a required check, alongside lint, typecheck and unit.
 
+**Must run against a router built with `apps/web/dist` (and the production `/app/public`
+equivalent) absent (#165).** `apps/api/src/index.ts`'s `registerStaticServing` adds a third
+`app.use("*", ...)` registration — on top of the two CORS/compress already hold — whenever it
+finds a built web app on disk at import time, and the API app this suite imports
+(`tests/permissions/api-app.ts`) is constructed with the real, unmocked filesystem candidates,
+not a stub. `DECLARED_ROUTER_MIDDLEWARE` in `route-coverage.ts` declares exactly **2**
+registrations at the `"ALL /*"` key (CORS and compress); a third voids that declaration for
+both of them and `isMiddlewareEntry` reclassifies them from middleware into ordinary,
+unpolicied routes — a false, filesystem-triggered failure, not a real coverage gap. This is
+deliberately not "fixed" by adding a third, conditional entry to `DECLARED_ROUTER_MIDDLEWARE`:
+that list is a fixed, hand-reviewed fact about the router's *unconditional* registrations,
+verified by exact count against the real app, and the static-serving middleware's presence
+depends on filesystem state at import time — not something a static declaration can express
+without making the count itself conditional, which is the exact kind of silent-drift
+tolerance `isMiddlewareEntry`'s strict-count design exists to refuse. So: run this command —
+and any future pipeline step shaped like the real Docker image build, which builds the web
+app before the API stage — with `apps/web/dist` not yet built, or built somewhere this
+command's import of `apps/api/src/index.ts` cannot see. Today's CI does this by construction:
+`route-policy` (`.github/workflows/ci-fast.yml`) never builds `apps/web` in its own job, and
+the `pnpm build` step that does is a later, separate stage (see
+[ci-cd.md](../../docs/04-engineering/ci-cd.md)) in an isolated runner. If a future change
+combines those — e.g. testing this suite against an assembled Docker image, or reordering the
+fast stage's steps within one job — re-verify this constraint rather than assuming it still
+holds.
+
 ## What fails the build
 
 | Failure | Where it is caught |

@@ -89,6 +89,20 @@ export type DeclaredRouterMiddleware = {
  * the API's three genuine middleware registrations: `app.use("*", cors(...))`,
  * `app.use(compress())` (both `ALL /*`), and `api.use("*", <auth + Sentry guard>)` (`ALL
  * /api/*`, recorded under the `/api` mount).
+ *
+ * **Deliberately does NOT include `registerStaticServing`'s `app.use("*", ...)`
+ * (`apps/api/src/index.ts`, issue #165).** That registration only exists in `app.routes` when
+ * a built web app happens to be present on disk at import time (`apps/web/dist`, or
+ * `/app/public` in the production image) — a runtime, filesystem-dependent fact, not a fixed
+ * structural property of the router the way the three registrations above are. This list's
+ * `registrations` counts are meant to be exact and unconditional, verified against the real
+ * router by `tests/permissions/route-coverage.test.ts`; making an entry here conditional on
+ * filesystem state would mean the declaration is no longer a fixed, hand-reviewed fact but
+ * something that has to be recomputed per run, which is exactly the kind of silent-drift
+ * tolerance `isMiddlewareEntry`'s strict-count design exists to refuse. Instead,
+ * `pnpm test:permissions` is documented (`tests/permissions/README.md`,
+ * `docs/04-engineering/ci-cd.md`) to always run against a router built without
+ * `apps/web/dist` present.
  */
 export const DECLARED_ROUTER_MIDDLEWARE: readonly DeclaredRouterMiddleware[] = [
   {

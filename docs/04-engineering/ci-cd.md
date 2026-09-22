@@ -70,6 +70,19 @@ stages below.
 └──────────────────────────────────────────────────┘
 ```
 
+**`pnpm test:permissions` must run before `apps/web` is built, against a router that cannot
+see a built `apps/web/dist` (#165).** The Fast stage's ordering above already guarantees this
+— `route-policy` builds nothing and runs in its own job/runner, `Build`'s `pnpm build` is a
+later stage in a separate job — but this is load-bearing, not incidental: `apps/api/src/index.ts`
+registers an extra `app.use("*", ...)` for static serving whenever it finds a built web app on
+disk, and that collides with `DECLARED_ROUTER_MIDDLEWARE`'s exact-count declaration in
+`packages/permissions/src/route-coverage.ts` for the CORS/compress registrations at the same
+key — see `tests/permissions/README.md` for the full mechanism. A future change that runs
+`test:permissions` in the same job/step as (or after) a web build — including anything shaped
+like the Docker image's own `build-web` stage below — must keep `apps/web/dist` out of that
+router's view, or re-derive this constraint; it is not something `route-coverage.ts`'s
+declaration list can absorb without weakening its strict-count design.
+
 **Full — required before merge, runs on the merge queue (or on the `ready-for-review`
 label), target under 45 minutes, sharded four ways:**
 
