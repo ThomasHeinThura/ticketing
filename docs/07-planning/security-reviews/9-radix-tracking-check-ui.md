@@ -300,3 +300,221 @@ redesign of an authority or gate-semantics invariant.
   beyond confirming they have zero imports; pruning them is explicitly out of this slice.
 
 **Verdict: CHANGES NEEDED (blocking) — one finding, B1.**
+
+---
+
+# Round 2 — delta confirmation of the B1 fix (2026-09-22)
+
+**Reviewed head:** `3b158ead2e16aae5bdbac523f9f550236776b8af`
+
+**Reviewer:** Opus 5, a second fresh independent context. Did not author, direct or remediate
+this change and did not write round 1 above. Reviewed in my own isolated detached checkout at
+the exact head above — not `main`, and not the branch's own working worktree.
+
+**Verdict: CLEAR WITH FINDINGS (non-blocking).** B1 is genuinely closed: the original evasion
+is caught, the new tests are non-vacuous under two independent mutations, the negative guard
+holds, and nothing overcorrected. One new non-blocking finding (F7) records three *further*
+evasion shapes I constructed — they are narrower instances of the already-accepted F6 class
+(a regex scanner cannot see an obfuscated specifier), they require deliberate obfuscation
+rather than an ordinary mistake, and they do not reopen B1.
+
+---
+
+## Scope of the fix commit — confirmed
+
+`git diff 9ae24a1..3b158ea` is four files:
+
+```
+apps/web/src/lib/slot.tsx                                |   7 +-
+docs/07-planning/security-reviews/9-radix-tracking-check-ui.md | 302 ++  (new)
+scripts/ci/check-ui.mjs                                  |  13 +-
+scripts/ci/check-ui.test.mjs                             |  26 ++
+```
+
+The three code files are exactly the ones claimed. The fourth is round 1's own review note,
+added by the same commit — content, not a code change. No other file moved: `KNOWN-RADIX.md`,
+`apps/web/package.json`, `pnpm-lock.yaml` and `.github/workflows/ci-fast.yml` are byte-identical
+to round 1's reviewed head (verified with a path-scoped `git diff 9ae24a1..HEAD`, empty).
+
+`check-ui.mjs`'s change is confined to `isRadixSpecifier` and its doc comment. The
+excluded-path list, `IMPORT_SPECIFIER`, the table parser and the reconciliation logic are
+untouched, so round 1's V4/V5/V6 findings still stand at this head unre-examined by design.
+
+## 1. B1's exact evasion is closed — probed, not read
+
+Probed `radixImportsIn` directly by importing it from the checker at this head, rather than
+reasoning about the regex. `radix-ui/slot` now returns `["radix-ui/slot"]`. So do every
+sibling and delivery shape I tried:
+
+| Probe | Result |
+| --- | --- |
+| `import { Slot } from "radix-ui/slot"` (**the B1 evasion**) | caught |
+| `import { Dialog } from "radix-ui/dialog"` | caught |
+| `import x from "radix-ui/react-slot/dist/index.mjs"` (deep subpath) | caught |
+| `import x from "radix-ui//slot"` (double slash) | caught |
+| `import x from "radix-ui/"` (trailing slash only) | caught |
+| `import x from "radix-ui/./slot"` | caught |
+| `import x from "radix-ui/../radix-ui/slot"` | caught |
+| `await import("radix-ui/slot")` / `require("radix-ui/slot")` | caught |
+| `export { Slot } from "radix-ui/slot"` | caught |
+| `import "radix-ui/slot"` (side-effect) | caught |
+| single-quoted, and newline between `from` and the specifier | caught |
+| `import x from "radix-ui/slot" with { type: "json" }` | caught |
+| bare `radix-ui` and `@radix-ui/react-slot` (round 1's existing cases) | caught |
+
+## 2. The negative guard is real — no overcorrection
+
+Every unrelated-but-similar name I tried is correctly **not** flagged: `radix-ui-extras`,
+`radix-ui-extras/something`, `radix-uix/slot`, `radix-ui2`, `my-radix-ui/slot`,
+`@radix-uixyz/foo`, `@acme/radix-ui`, and the bare scope `@radix-ui` (not a resolvable
+package). A comment that merely mentions `radix-ui/slot` next to an unrelated import is also
+not flagged. The anchoring literal `/` is doing exactly the work claimed, so the gate has not
+become noisy.
+
+## 3. The new tests are non-vacuous — mutation-tested twice
+
+Not taken on trust. Two independent mutations of `isRadixSpecifier` only, tests left alone:
+
+| Mutation | Result |
+| --- | --- |
+| revert to round 1's `specifier === "radix-ui" \|\| startsWith("@radix-ui/")` | **2 fail / 22** — both `radix-ui/<subpath>` regression tests go red |
+| overcorrect to `startsWith("radix-ui")` (drop the anchoring slash) | **1 fail / 22** — the `radix-ui-extras` negative test goes red |
+| restored (`git checkout --`) | **22 pass / 22**, working tree clean |
+
+So each of the three added tests pins a distinct real property: the subpath match, that it is
+not `/slot`-specific, and the prefix anchoring. None is vacuous in either direction.
+
+## 4. No path-alias route into a Radix package
+
+Checked for the alias-resolution evasion specifically. `apps/web/tsconfig.json` defines only
+`@/* → ./src/*` and `@i18n/* → ../../i18n/*`; `apps/web/vite.config.ts`'s `resolve.alias` is
+the same two entries. Neither can reach `node_modules`, so no innocuous-looking specifier
+resolves to a Radix package through config today. There is no other alias mechanism in the
+web app.
+
+## F7 (LOW, non-blocking) — three further obfuscation shapes still evade, all in F6's class
+
+Since round 1 found B1 as a variant after several other shapes were already handled, I hunted
+specifically for a new one. Three work, confirmed by real Node resolution rather than by
+inspection:
+
+1. **Escape sequences inside the specifier string.** `import { Slot } from "radix-ui/slot"`
+   — the scanner reads raw source text, where the literal does not contain `/`, so
+   `isRadixSpecifier` never sees it; but JS processes the escape and Node resolves the module.
+   Verified both halves: `await import("react")` resolves `react`, and
+   `await import("@radix-ui/react-dialog")` resolves from `apps/web` today (17
+   `@radix-ui/*` packages are still declared there). `\x2F` behaves the same.
+2. **A comment between `from` and the specifier.** `import { Slot } from /*x*/ "radix-ui/slot"`
+   — `IMPORT_SPECIFIER` requires `from\s+`, which a comment breaks. Valid JS, confirmed
+   executing.
+3. **A template literal in a dynamic import.** ``await import(`radix-ui/slot`)`` — the
+   character class is `["']` only. Confirmed ``await import(`react`)`` resolves.
+
+Two shapes I expected to work do **not**, which is worth recording:
+
+- `import{Slot}from"radix-ui/slot"` (no whitespace) evades `check:ui`, **but `biome ci` fails
+  it** as a formatting error (exit 1, confirmed against the repo's own biome 2.5.7), and
+  `pnpm lint:ci` runs in CI with no `if:` and no `continue-on-error:`. Defence in depth holds
+  here. It does **not** hold for shapes 1 and 3 above — `biome ci` passes both (confirmed,
+  exit 0).
+- Case variation (`RADIX-UI/slot`) evades the match, but is fail-safe: package directories are
+  case-sensitive on Linux, and an uppercase specifier does not resolve on this host
+  (`ERR_MODULE_NOT_FOUND`, confirmed). It would break the Linux CI build rather than sneak
+  past it. npm package names are lowercase-only, so there is nothing to catch.
+
+**Why this is not blocking, and why I am not asking for another round.** B1 was
+`radix-ui/slot` — the shape Radix's own docs teach, which an honest developer writes by
+accident and the gate silently passed. That is a fail-open against mistakes, which is this
+gate's actual threat model. None of shapes 1–3 is accident-shaped; each requires a committer
+deliberately obfuscating a specifier, and a committer willing to do that can equally edit
+`check-ui.mjs`, add a row to `KNOWN-RADIX.md`, or use the computed specifier
+(`import("@radix-ui/" + name)`) that round 1's F6 already accepted as inherent to a
+non-parser scanner. These are narrower instances of F6's class, not a new class — so per
+CLAUDE.md's "stop patching and change altitude", this Opus pass is the closing gate rather
+than the trigger for another round.
+
+**Suggested cheap hardening, for a later slice and not a condition of this merge** — none of
+these needs a parser: add `` ` `` to `IMPORT_SPECIFIER`'s quote class; allow comments/no
+whitespace after `from`; and flag any specifier containing a backslash escape as a violation
+on sight (nothing legitimate in this repo has one). Alternatively, resolve the real fix at the
+dependency layer, where it is structural rather than lexical: the 17 unused `@radix-ui/*`
+packages still declared in `apps/web/package.json` are what make an obfuscated scoped import
+resolve at all. Pruning them — explicitly out of scope for this slice — would make every
+shape above fail at build time regardless of what the scanner sees.
+
+## F8 (INFO) — two doc claims now under-describe the gate
+
+`KNOWN-RADIX.md`'s preamble and `check-ui.mjs`'s own header both still say the gate fires on
+"`@radix-ui/*` or the bare `radix-ui` umbrella package". After this fix it also fires on
+`radix-ui/<subpath>`, so the word "bare" is now narrower than the behaviour. Round 1 cited
+that exact sentence as evidence the implementation missed its written contract; the contract
+is now the conservative side of the discrepancy, which is harmless. Worth one word when
+someone next touches either file. No change asked for here.
+
+## 5. F1's doc-comment fix is accurate
+
+Read `apps/web/src/lib/slot.tsx:88-93` against the code immediately below it. The comment now
+says the component throws on anything other than exactly one valid element child "including a
+falsy child (`null`, `undefined`, `false`)", that this is "stricter than
+`@radix-ui/react-slot`'s `Slot`, which returns a falsy child as-is (rendering nothing)", and
+that no call site reaches the difference today. The guard is
+`if (!React.isValidElement(children) || React.Children.count(children) !== 1) throw` —
+`React.isValidElement(null)` is `false`, so a falsy child does throw. The comment neither
+overclaims (it no longer asserts parity) nor underclaims (it names the exact divergence and
+its direction), and the reachability claim matches round 1's V3 finding that both call sites
+pass exactly one element. Accurate as written.
+
+## 6. Everything green at this head
+
+Re-run by me in my own checkout (Node 24.20.0):
+
+| Check | Result |
+| --- | --- |
+| `node scripts/ci/check-ui.mjs` | `0 unlisted Radix import(s), 0 tracked row(s), all current.` exit 0 |
+| `node --test scripts/ci/check-ui.test.mjs` | **22/22 pass**, 3 suites, 0 fail |
+| `node --test 'scripts/ci/**/*.test.mjs'` | **495/495 pass**, 88 suites, 0 fail |
+| `tsc --noEmit -p tsconfig.json` in `apps/web` | exit 0 |
+| `vite build` in `apps/web` | `✓ built in 12.30s`, exit 0 |
+
+One trap worth recording for the next reviewer: a bare detached worktree with no
+`node_modules` reports **488/495 with 7 failures**. All seven are in
+`scripts/ci/lib/typecheck-coverage.test.mjs` and `scripts/ci/probes/orphan-tsconfig-coverage.test.mjs`,
+which spawn `tsc`; both files are untouched by this PR (`git diff origin/main..HEAD` on those
+paths is empty) and both pass in a tree that has dependencies installed. With `node_modules`
+linked in, the suite is 495/495. The failures are environmental, not a regression.
+
+## 7. The tracked Radix state of the repository is unaffected
+
+`KNOWN-RADIX.md` is byte-identical to round 1's head and still has zero data rows.
+`git grep` for a real Radix import shape across the whole tree (excluding `docs/` and
+`*.md`) returns only the two files the checker excludes by exact path — `check-ui.mjs`'s
+header comment and `check-ui.test.mjs`'s fixture strings, including the three new B1 fixtures.
+`check:ui` is green with those new fixtures present, which independently confirms the
+exclusion list did not need widening and was not widened. The umbrella `radix-ui` remains
+undeclared in `apps/web/package.json`; the 17 unused `@radix-ui/*` entries are unchanged and
+still have zero importers. This commit changed the checker's detection logic and its tests,
+and nothing else.
+
+## Governance
+
+The PR's `## Gates` table cites no waived gate, so the orchestrating session's delegated merge
+authority covers this candidate. Round 1's blocking finding is closed at
+`3b158ead2e16aae5bdbac523f9f550236776b8af`, and this note is the exact-head re-clearance
+round 1 required. Committing this note changes the head SHA again; the change is
+documentation-only and carries no code, so it does not invalidate the verification above —
+but the merging session should confirm the final head differs from
+`3b158ead2e16aae5bdbac523f9f550236776b8af` only by this note.
+
+## What I did not do
+
+- Did not re-verify round 1's V1–V7 from scratch. This was a delta review: I confirmed the
+  fix commit touches nothing those findings rest on, and took them as standing.
+- Did not open a browser. Round 1's disclosure about `apps/web/**` changing with no screen
+  opened still stands; the build and typecheck are green but no running form or timeline was
+  observed.
+- Did not run `pnpm test` or the integration suite — the changed surfaces are the CI checker
+  and one doc comment, and I ran the suites that cover them plus the web typecheck and build.
+- Did not implement F7's suggested hardening or prune the 17 unused `@radix-ui/*` packages.
+  Both are follow-up work, not conditions of this merge.
+
+**Verdict: CLEAR WITH FINDINGS (non-blocking) — F7 and F8, neither blocking. B1 is closed.**
