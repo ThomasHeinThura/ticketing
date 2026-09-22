@@ -1,0 +1,1 @@
+DROP INDEX "workspace_role_workspaceId_idx";
