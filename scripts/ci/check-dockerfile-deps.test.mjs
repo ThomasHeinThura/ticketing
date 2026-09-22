@@ -2,8 +2,10 @@
  * check:dockerfile-deps — unit tests for the pure `deps`-stage parsing functions.
  *
  * Security review, PR #237 (docs/07-planning/security-reviews/170-dockerfile-deps-drift-
- * check.md): F1, F2 and F4 are BLOCKING; F3 and F5 are the recommended fixes that closed
- * alongside them. These tests exercise `extractDepsStage` and `copiedManifests` directly
+ * check.md): round 1's F1, F2 and F4 were BLOCKING (F3 and F5 were the recommended fixes that
+ * closed alongside them); round 2's R2-1 was then BLOCKING on the same stage-boundary
+ * mechanism F2 touched — a `FROM` line carrying a flag (e.g. `--platform=`) was still
+ * invisible as a boundary. These tests exercise `extractDepsStage` and `copiedManifests` directly
  * against fixture Dockerfile strings built inline here — never the real repo `Dockerfile` —
  * so a future edit to the real file cannot make this suite pass or fail for the wrong
  * reason. Each RED case is paired with a GREEN one wherever that is meaningful, so a probe
@@ -188,11 +190,87 @@ describe("check:dockerfile-deps — F2: an un-named FROM still ends the deps sta
   });
 
   it("the deps stage's own `FROM base AS deps` line is not mistaken for a later boundary on the same pass", () => {
-    // Regression guard for the loop shape: ANY_STAGE is only tested once `start` is set, so
-    // the stage's own opening line (matched by STAGE_START) cannot also end it immediately.
+    // Regression guard for the loop shape: FROM_LINE is only tested once `start` is set, so
+    // the stage's own opening line (matched by isDepsStageStart) cannot also end it
+    // immediately.
     const stageLines = extractDepsStage(dockerfile(HAPPY_DEPS_LINES));
     assert.equal(stageLines[0], "FROM base AS deps");
     assert.ok(stageLines.length > 1);
+  });
+});
+
+describe("check:dockerfile-deps — R2-1: a flag-bearing FROM line is still a recognized stage boundary", () => {
+  it("`FROM --platform=$BUILDPLATFORM base AS mid` ends the deps stage, so its COPY lines are not counted as part of deps", () => {
+    const source = [
+      "FROM base AS deps",
+      ROOT_BOOTSTRAP,
+      "COPY packages/ui/package.json packages/ui/",
+      // The round-2 reviewer's exact probe shape: a flag between FROM and the image
+      // reference, which the round-1 fix (`/^FROM\s+\S+(\s+AS\s+\S+)?\s*$/i`) still missed
+      // because it required exactly one token before an optional `AS <name>`.
+      "FROM --platform=$BUILDPLATFORM base AS mid",
+      "COPY packages/domain/package.json packages/domain/",
+      "FROM deps AS build",
+      "COPY . .",
+      "",
+    ].join("\n");
+
+    const stageLines = extractDepsStage(source);
+    assert.equal(
+      stageLines.some((line) => line.includes("packages/domain")),
+      false,
+      "the domain COPY line, which sits after the flag-bearing FROM, must not be part of the extracted deps stage",
+    );
+
+    const copied = copiedManifests(stageLines);
+    assert.equal(copied.has("packages/domain/package.json"), false);
+    assert.equal(copied.has("packages/ui/package.json"), true);
+  });
+
+  it("a multi-flag FROM line (`--platform=` and `--from=`) is recognized as a boundary too, proving the fix is shape-agnostic rather than hardcoded to `--platform`", () => {
+    // `--from=` is not real FROM-instruction syntax today, but the boundary signal must not
+    // care what the flags are or how many there are — only that the line starts with `FROM`.
+    const source = [
+      "FROM base AS deps",
+      ROOT_BOOTSTRAP,
+      "COPY packages/ui/package.json packages/ui/",
+      "FROM --platform=$BUILDPLATFORM --from=builder base AS mid",
+      "COPY packages/domain/package.json packages/domain/",
+      "FROM deps AS build",
+      "COPY . .",
+      "",
+    ].join("\n");
+
+    const stageLines = extractDepsStage(source);
+    assert.equal(
+      stageLines.some((line) => line.includes("packages/domain")),
+      false,
+    );
+    const copied = copiedManifests(stageLines);
+    assert.equal(copied.has("packages/domain/package.json"), false);
+    assert.equal(copied.has("packages/ui/package.json"), true);
+  });
+
+  it("the deps stage's own opening line survives gaining a `--platform=` flag", () => {
+    // The latent version of the same bug class, in the other direction: STAGE_START used to
+    // require exactly one token between `FROM` and `AS`, so `deps` itself would stop being
+    // found the moment its own FROM line gained a flag.
+    const source = [
+      "FROM --platform=$BUILDPLATFORM base AS deps",
+      ROOT_BOOTSTRAP,
+      "COPY packages/domain/package.json packages/domain/",
+      "COPY packages/ui/package.json packages/ui/",
+      "FROM deps AS build",
+      "COPY . .",
+      "",
+    ].join("\n");
+
+    const stageLines = extractDepsStage(source);
+    assert.equal(stageLines[0], "FROM --platform=$BUILDPLATFORM base AS deps");
+
+    const copied = copiedManifests(stageLines);
+    assert.equal(copied.has("packages/domain/package.json"), true);
+    assert.equal(copied.has("packages/ui/package.json"), true);
   });
 });
 

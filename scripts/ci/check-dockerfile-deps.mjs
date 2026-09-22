@@ -47,6 +47,18 @@
  * a COPY line as missing when the line was already present, with no way to satisfy the check
  * short of editing this script. Deriving both sides from the same source removes that.)
  *
+ * **Stage-boundary detection is a class-level rule, not a line shape.** A `FROM` line is
+ * only ever recognized as a boundary (or as the `deps` stage's own start) by its first token
+ * being `FROM` and, for the `deps` start specifically, a trailing `AS <name>` — never by the
+ * full shape of what sits between them. R2-1 (security review, PR #237 round 2) found this
+ * was the third instance of the same underlying bug: F2 (round 1) fixed a boundary pattern
+ * that required `AS <name>`; R2-1 then found the fix still required exactly one token between
+ * `FROM` and `AS`, so `FROM --platform=$BUILDPLATFORM base AS mid` — a real instruction, and
+ * this Dockerfile's own multi-arch `buildx` note above makes it a live concern, not a
+ * hypothetical one — was still invisible as a boundary. The fix is the class-level signal
+ * described on `FROM_LINE` and `stageNameOf()` below, not another narrow shape for whichever
+ * flag Docker adds next.
+ *
  * Usage:
  *   node scripts/ci/check-dockerfile-deps.mjs
  */
@@ -62,17 +74,62 @@ import {
 const NAME = "check:dockerfile-deps";
 export const DOCKERFILE_RELATIVE_PATH = "Dockerfile";
 
-const STAGE_START = /^FROM\s+\S+\s+AS\s+deps\s*$/i;
-// Deliberately does not require `AS <name>`: an un-named `FROM <image>` stage (ordinary —
-// the final stage of a multi-stage build frequently has no name) still ends the `deps`
-// stage's boundary. Security review F2: this used to require a name, so an un-named
-// intermediate stage was invisible as a boundary and a later stage's COPY lines were
-// silently counted as if they belonged to `deps`. Stays distinct from STAGE_START (which
-// still requires the literal `AS deps`) so the two are never confused; the loop in
-// `extractDepsStage` only tests this pattern once `start` is already set, so the `deps`
-// stage's own opening line — matched by STAGE_START on the same iteration — is never
-// re-tested against this looser pattern and double-counted as its own boundary.
-const ANY_STAGE = /^FROM\s+\S+(\s+AS\s+\S+)?\s*$/i;
+/**
+ * Any line that starts a new Dockerfile stage — full stop, nothing else about its shape
+ * matters. Per the Dockerfile grammar a `FROM` instruction is `FROM [--platform=<value>]
+ * <image>[:<tag>|@<digest>] [AS <name>]`, and in principle any number of `--flag=value`
+ * options can precede the image reference (today only `--platform` exists; nothing says it
+ * stays the only one). Recognizing a stage boundary does not require parsing any of that —
+ * the reliable signal is simply that the line's first whitespace-delimited token,
+ * case-insensitively, is `FROM`.
+ *
+ * (R2-1, security review PR #237 round 2: the previous pattern,
+ * `/^FROM\s+\S+(\s+AS\s+\S+)?\s*$/i`, still encoded a *specific* shape — exactly one token
+ * between `FROM` and an optional `AS <name>` — so a real, valid instruction like
+ * `FROM --platform=$BUILDPLATFORM base AS mid` was invisible as a boundary and a later
+ * stage's COPY lines were silently counted as if they belonged to `deps`. That was the
+ * *third* time this same class of bug — a stage-boundary pattern too narrow for the full
+ * `FROM` grammar — was found blocking (F2 in round 1 required `AS <name>`; R2-1 required no
+ * flags). The fix is this one class-level signal, not a fourth narrow shape for the next flag
+ * Docker adds — this Dockerfile's own header already documents multi-arch `buildx` with
+ * `--platform` as a real concern, so the flag form is not hypothetical here.)
+ */
+const FROM_LINE = /^FROM\s/i;
+
+/**
+ * The stage name a `FROM` line assigns, if any — whatever follows a trailing `AS <name>`,
+ * case-insensitively, however many tokens or flags sit between `FROM` and `AS`. `null` for a
+ * line that is not a `FROM` line at all, or that assigns no name.
+ *
+ * Same class-level fix as `FROM_LINE` above, applied to finding the `deps` stage specifically
+ * rather than to recognizing a boundary in general (R2-1: the old `STAGE_START`,
+ * `/^FROM\s+\S+\s+AS\s+deps\s*$/i`, had this identical bug in the other direction — it only
+ * allows exactly one token between `FROM` and `AS`, so the `deps` stage's own opening line
+ * would stop being found the moment it gained a `--platform=` flag).
+ *
+ * @param {string} line a single, already-trimmed Dockerfile line
+ * @returns {string | null}
+ */
+function stageNameOf(line) {
+  if (!FROM_LINE.test(line)) return null;
+  const match = /\sAS\s+(\S+)\s*$/i.exec(line);
+  return match ? match[1] : null;
+}
+
+/**
+ * True for the `deps` stage's own opening line — `FROM <anything> AS deps`, whatever flags or
+ * tokens sit between `FROM` and `AS` — and nothing else. Stays distinct from `FROM_LINE` (which
+ * recognizes any stage boundary) so the two never get confused; the loop in `extractDepsStage`
+ * only tests `FROM_LINE` once `start` is already set, so the `deps` stage's own opening line —
+ * matched by this function on the same iteration — is never re-tested against the looser
+ * pattern and double-counted as its own boundary.
+ *
+ * @param {string} line a single, already-trimmed Dockerfile line
+ * @returns {boolean}
+ */
+function isDepsStageStart(line) {
+  return stageNameOf(line)?.toLowerCase() === "deps";
+}
 
 /** Roots accepted on the Dockerfile side when no live workspace read is available (tests). */
 export const DEFAULT_WORKSPACE_ROOTS = ["apps", "packages"];
@@ -134,10 +191,10 @@ export function extractDepsStage(source) {
 
   for (let i = 0; i < lines.length; i += 1) {
     if (start === -1) {
-      if (STAGE_START.test(lines[i].trim())) start = i;
+      if (isDepsStageStart(lines[i].trim())) start = i;
       continue;
     }
-    if (ANY_STAGE.test(lines[i].trim())) {
+    if (FROM_LINE.test(lines[i].trim())) {
       end = i;
       break;
     }
@@ -203,7 +260,7 @@ export function copiedManifests(stageLines, roots = DEFAULT_WORKSPACE_ROOTS) {
     }
 
     if (line === "" || line.startsWith("#")) continue;
-    if (STAGE_START.test(line)) continue;
+    if (isDepsStageStart(line)) continue;
 
     const heredocStart = HEREDOC_START.exec(line);
     if (heredocStart) {
