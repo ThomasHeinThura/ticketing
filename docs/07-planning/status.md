@@ -2,17 +2,14 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-18 — an eleventh pass, after PR #204 (issue #202) merged:
-> every remaining route that reached a soft-deleted project's children — the column routes,
-> per-task mutation routes, and (found during that PR's own review, one hop further) the
-> workflow-rule routes — now goes through the same freeze PR #200 gave delete itself.
-> **`main` at that moment:** `d29325a` (PR #204's squash; two Sonnet review rounds plus the
-> mandatory Opus pass recorded on the PR — the same tier PR #200 got, since the change
-> touches `apps/api/src/**/controllers/**`, a security-review-scope path). Also since the
-> last snapshot: stale issues **#160** and **#100** — the two doc-vs-live misalignments the
-> morning's cold-read status check (`status-check-2026-09-18.md`) surfaced — were verified
-> against live source, not against their own checkboxes, and closed with evidence
-> comments; and the SLA computation slice (PR #209) opened in review.
+> **Snapshot taken:** 2026-09-18 — an eleventh pass. Two P1 candidates taken from implemented
+to review-complete and remediated (#214, #215), and the tenancy decision that gates the
+work-item write path put to Thomas as a real question (issue #192) rather than silently
+resolved.
+> **`main` at that moment:** `26ec385` (PR #208 — the `legal_hold` table and the
+> legal-hold-aware session-cleanup purge; issue #198 stays open for the remainder, since the
+> project-purging half cannot be written until #192's tenant-attribution question is
+> answered — a work item or project cannot currently name its organisation at all).
 > Kaneo's `task`/`column` tables and routes remain fully untouched and still live.
 > **Stage:** P0 · Foundation — **exit criteria met; Throttle 1 is OPEN.** Autonomous
 > continuation past Throttle 1 is authorized (Thomas, 2026-09-16) — see the session log's
@@ -49,29 +46,23 @@
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-18
-**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN** (unchanged).
-**Updated by:** Claude Code (Sonnet), reconciliation after **PR #204 merged** (`d29325a`,
-closing #202 — the residual soft-deleted-project guards #200's own review scoped: column
-routes, per-task mutation routes, and workflow-rule routes; two Sonnet rounds, round 1
-BLOCKING with a live-reproduced finding, plus the mandatory Opus pass). Also this session:
-issues **#160** (the native invitation list's expired-but-pending rows — option 1 of the
-issue had already landed in `8b92de4`, with its own regression test) and **#100** (the
-retrofit's unclaimed `organization()` client methods — re-ran the issue's own
-comment-vs-code verification; zero live callers remain post-unmount) were verified against
-live source and closed with evidence comments; and **PR #209** (the SLA computation slice,
-pure `packages/domain`) opened in review. PR #107 stays held per Thomas's standing
-decision — still the right mechanical follow-up, nothing depends on it now that the
-plugin is unmounted. Full account in this session's newest log entry, below.
-
-**Earlier — 2026-09-17 (a fourth time):** reconciliation after **PR #200 merged**.
+**Last updated:** 2026-09-18 (the eleventh pass)
+**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** Issue #187
 (the live `project` table's hard-delete route was made destructive by #185's
 `work_item.project_id` CASCADE) is closed: `project` now has its own `deleted_at`/
 `purge_after` columns, delete is an atomic soft-delete, and every read/write path reaching
 a project or its children treats a soft-deleted one as gone. This is unrelated to #23's own
 schema work above — a pre-existing gap in the live `project` table that #185's new FK
 simply made consequential, not one of #23's own integrity findings.
-**Updated by:** Claude Code (Sonnet), reconciliation after **PR #200 merged**. Full
+**Updated by:** GitHub Copilot (DeepSeek V4.1 Flash), the orchestrating session for the P1
+mandate. **Not Claude** — Claude was unavailable this session, and the real model is named
+here because that is the standing instruction. Three independent ordinary reviews were run
+through available non-Claude contexts (all named on their pull requests); **no Opus security
+review was possible**, so two candidates are marked
+`SECURITY REVIEW PENDING — OPUS CAPACITY` and neither may be merged. The previous pass's
+record of PR #200 below is preserved unchanged, since nothing in this session revisited it.
+
+**Previous pass — Updated by:** Claude Code (Sonnet), reconciliation after **PR #200 merged**. Full
 mandatory tier (2 Sonnet + Opus, since the change touches a migration). Round 1 found real,
 overlapping gaps across all three reviewers: task/column creation and several read paths
 (task listing/export, global search, project reorder) didn't check `deletedAt`, live-
@@ -422,12 +413,7 @@ P7 Polish              ░░░░░░░░░░   0%
 **3 closed of 10 total** (#4, #5, #7 — #7 closed 2026-09-09, corrected from the previous
 count of 2); merged slices do not map onto a defined completion figure, and an invented
 one reads as progress nobody measured. The merged pull requests are listed individually
-under ON MAIN below, which is the honest unit of progress here. The same reasoning keeps
-P1–P7's bars at zero: real slices have merged (#179's identity schema; #185/#191/#195's
-work-item schema and its integrity fixes; #175's audit-trail domain module; #204's
-soft-delete-guard completion), and the SLA computation slice (PR #209) is in review — but
-no stage has a defined completion figure to fill a bar with, so the merged-PR lists and
-the session log stay the honest unit of progress, not the bars.
+under ON MAIN below, which is the honest unit of progress here.
 
 **A CRITICAL finding, filed as issue #146, is DECISION REQUIRED for Thomas.** `sections()`
 in `scripts/ci/lib/pr-body.mjs` splits a PR body on raw `##` headings with no HTML-comment
@@ -887,6 +873,32 @@ kaneo's inherited routes present and each carrying a policy**, P0 security revie
 
 ## Blocked
 
+### Open decision — #192, work-item tenant attribution (blocks the P1 write path)
+
+**Awaiting Thomas.** Presented as issue #192's decision request on 2026-09-18: four options
+(denormalise `work_item.workspace_id` with a composite `(workspace_id, type_id)` foreign key
+and `ON UPDATE NO ACTION`; application-level enforcement only; a trigger; and adding
+`workspace.organisation_id` as a separate prerequisite), with the tenancy implications,
+migration effects, concurrency risks and a proposed direction. **No agent may pick this — it
+creates a trust boundary.** The recommendation on the issue is the denormalised column plus
+the `workspace.organisation_id` link, as one bounded pre-write-path schema change, because it
+releases three blocked things at once: #192's cross-tenant gap, the RLS prototype, and #198's
+project purge. It also needs a **new** `UNIQUE (workspace_id, id)` on `work_item_type`, which
+does not exist today.
+
+### Opus security reviews — capacity, not permission
+
+**#214 and #215 are in security-review scope and their Opus passes have not happened.**
+Claude was unavailable throughout this session, and `CLAUDE.md` is explicit that capacity
+exhaustion means the candidate **waits** — it is not downgraded to an available model and it
+is not cleared by a non-independent context. Both are marked
+`SECURITY REVIEW PENDING — OPUS CAPACITY`, neither security-review box is ticked, and neither
+may be merged by anyone, including the orchestrating session: the delegation to merge a
+green candidate explicitly does not cover a candidate whose security review has not been
+performed. Ordinary review capacity itself was also intermittent — the subagent provider
+returned budget-exhausted (403) and connection-reset errors across several attempts, so
+reviews of the other open candidates are queued rather than done.
+
 ### Process deviation — recorded, corrected, not waived
 
 **PR #13 merged on 2026-09-06 before its mandatory security review had been performed.**
@@ -1081,73 +1093,44 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
-### 2026-09-18 · #202 closed (PR #204) — the soft-delete guard is finished; #160 and #100 verified against live source and closed; the SLA computation slice opens in review
+### 2026-09-18 · Two P1 candidates to review-complete, and #192 put to Thomas as a real question
 
-Several lanes ran in parallel this session; this entry records what this one did and did
-not do.
+Continuing autonomously under the P1 mandate. Three things moved.
 
-**PR #204 merged (`d29325a`), closing #202.** The residual routes #200's own review had
-scoped — the column routes and per-task mutation routes, plus the workflow-rule routes
-found one hop further during the PR's own review — now go through the same soft-delete
-freeze as everything else, via a single shared guard rather than per-route copies. Two
-Sonnet review rounds (round 1 BLOCKING, live-reproduced) plus the mandatory Opus pass,
-recorded on the PR. With that, the #200 follow-up chain is fully closed; the soft-delete
-guarantee is no longer route-by-route but structural.
+**Three independent ordinary reviews across the two candidates, run and recorded — and Claude was not available for any of them.** All three ran in GitHub Copilot contexts (**DeepSeek V4.1 Flash**), named on the pull requests because the standing session instruction requires the real model and context to be recorded. None is a Claude review and none is a security review.
 
-**Two stale issues verified against live source and closed, each with an evidence
-comment.** Both were surfaced by the morning's cold-read status check
-(`status-check-2026-09-18.md`), which compared `status.md`'s claims to GitHub and to the
-source, and found these two claims stale:
+- **PR #215** (work-item integrity constraints) received **two** reviews, at the tier its
+  classification calls for (it touches a migration and `apps/api/src/database/**`): a
+  correctness pass at `caa1c7e` — **CLEAR WITH FINDINGS**, having proved the 21 tests
+  non-vacuous by dropping all eight constrained objects and watching 10 of 21 go red — and a
+  deliberately different **project-alignment** lens at `40a51eb` — **ALIGNED WITH
+  CONCERNS**. All findings remediated. The alignment pass caught the sharpest one: my own
+  commit message asserted a design disclosure had been added to the PR body when it had not.
+- **PR #214** (UTC timestamps for the time-gated jobs) was reviewed at `a44b9b9` and came
+  back **BLOCKING** — not for the production fix, which survived every falsification the
+  reviewer constructed, but because the repository's own integration suite goes red whenever
+  the database session timezone is not UTC: the lease *fixtures* still wrote session-local
+  `now()`. Reproduced in both directions (`Asia/Kolkata` and `America/Denver` failing
+  opposite tests), remediated, and re-verified — the **full suite under `Asia/Kolkata`
+  (60 files / 533 tests, green)** and the **targeted lease/session set under
+  `America/Denver` with `TZ=America/New_York` (12 tests, green)**. Both were failing on the
+  reviewed head; neither is now.
 
-- **#160** (the native invitation list filtered `expiresAt > now`, so expired-but-pending
-  rows counted toward the 100-pending ceiling while being invisible to the only route
-  that could find their id): option 1 of the issue itself had already landed in
-  `8b92de4` — `GET /api/workspace/{id}/invitations` now lists every `status = 'pending'`
-  row, expired or not, with a doc comment carrying this issue's own reasoning, and an
-  integration test asserting the expired-but-pending row is listed. Closed on that
-  evidence. PR #208 (#198's first slice: the `legal_hold` table plus the `session-cleanup`
-  purge) is the eventual option 2 and stays in its own lane's review.
-- **#100** (six live `organization()` client methods owned by no retrofit stage; S8a's
-  declared four vs actual nine `setActive` calls): re-ran the issue's own verification
-  procedure, grep hit by grep hit, comment-vs-code distinguished — the exact trap the
-  issue was raised from. On post-unmount `main`, every `authClient.organization.*`
-  mention in `apps/web/src` is inside a comment naming the native replacement; zero live
-  callers remain in any family. Closed; PR #107 (the mechanical tripwire) stays held per
-  Thomas's standing decision and remains the right follow-up to make the zero count
-  derived rather than prose, but nothing depends on it now that the plugin is unmounted.
+**#192 written up as a decision for Thomas**, not decided by an agent — see **Blocked**. The
+new evidence in that write-up is that the missing link is not one unscoped foreign key: the
+same absent `workspace_id`/`organisation_id` also makes the RLS backstop `multi-tenancy.md`
+already commits to *unwritable*, and blocks #198's project-purging half.
 
-**PR #209 opened (draft): the SLA computation slice** — the first new `packages/domain`
-module beyond the existing three (service calendars #33, workflow transitions #31, audit
-trail #37): goal matching by (type × priority) specificity, covered-minus-paused
-arithmetic (SLA-12), due-at projection through calendar windows at millisecond precision
-(SLA-4/5/6, pausing-aware), and the six-state model with stop-fact semantics
-(SLA-2/7/8/9/13) — all pure, no I/O, no ambient clock, 26 tests. Deliberately excludes
-policy CRUD, the four-level resolution chain (SLA-1), version pinning (SLA-3), pause
-write semantics (SLA-11), the `sla-scan` job, routes and UI — those are follow-on slices.
-Written and verified in a sandbox with **no `node` binary** (vitest and `tsc` under bun;
-repo-wide `biome ci .` clean via bunx; the husky wrapper's inability to run there recorded
-on the PR, its content verified standalone — the sandbox limitation is a recorded fact,
-not a skipped gate), rebased onto `main` after #204 merged. In review — not merged, and
-not counted anywhere until it is.
+**Both candidates are `SECURITY REVIEW PENDING — OPUS CAPACITY`** and must not be merged.
+The required `pull request template + security review` check is **correctly red** on both; the
+security-review notes say so explicitly so that neither a later session nor an automated pass
+reads that red as a defect to repair.
 
-**Progress-bar honesty note:** the P1–P7 bars in "Where we are" still read 0%, and that
-is deliberate — merged slices are listed individually rather than turned into an invented
-percentage. The bars understate; the session log and the merged-PR records do not.
-
-**PR #208 merged (`26ec385`) in a parallel lane while this session ran** — the first slice
-of #198: the `legal_hold` table plus the session-purging half of the `session-cleanup`
-job, mandatory Opus review CLEAR WITH FINDINGS (six non-blocking), with **#212** filed for
-the one finding with broader reach (a UTC-database-server assumption shared with the
-existing lease code). #198 stays open — explicitly a first slice; the remaining scope
-(organisation/project purging, the hold placement/lift route, invitation cleanup) is
-blocked on real prerequisites, not a scoping choice. All three of this session's own PRs
-(#209, #210, #213) were rebased onto that merge and re-verified before pushing.
-
-**Not done:** the live UAT redeploy (needs Thomas's infrastructure authorization); #146
-(needs Thomas's fix-direction call); the two SLA (#32) questions, the state-transition
-question and the `workflowRuleTable` question (all still waiting on Thomas); the rest of
-#23 (routes, screens, cutover); issue #8's remaining route scope.
-
+Method note worth keeping: every claim that a post-review delta was comment-only was proved
+rather than asserted — `git diff <sha>..<sha> -- <file> | grep -E "^[+-]" | grep -vE
+"^(\+\+\+|---)" | grep -vE "^[+-][[:space:]]*//"` returning no lines. A commit message
+that claimed a fix it had not made is exactly the failure this guards against, and one
+happened in this session.
 ### 2026-09-17 (later the same day, a fourth time) · #187 closed — a pre-existing gap in the live `project` table, made consequential by #23's new FK, not one of #23's own findings
 
 Same session, continuing autonomously. With #23's schema-integrity findings all closed
