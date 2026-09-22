@@ -70,6 +70,16 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-taskdesk}
       POSTGRES_USER: ${POSTGRES_USER:-taskdesk}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      # postgres:18 changed its default PGDATA to a version-namespaced path
+      # (/var/lib/postgresql/18/docker, for pg_ctlcluster-style upgrades —
+      # docker-library/postgres#1259). Left unset, the entrypoint sees this
+      # service's volume mounted at the now-old /var/lib/postgresql/data path,
+      # decides it is looking at a stale pre-18 layout, and refuses to start —
+      # unconditionally, even against a brand-new empty volume. Pointing PGDATA
+      # at a subdirectory of that same mount keeps the existing volume/mount
+      # layout (and existing deployments' data) unchanged and satisfies the
+      # entrypoint's check.
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
