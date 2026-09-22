@@ -699,3 +699,17 @@ locally: clean. No other file touched.
 
 **Reviewed head:** `8e2aa13e64a1440ab9919c6e1c12095fa08c1cb0` (mechanical fix only; no new
 security-relevant surface)
+
+CI still failed on the same head with two further `apps/api` typecheck errors under
+`tsconfig.tests.json` (also not checked locally against before): a dynamic
+`@paralleldrive/cuid2` import whose types don't resolve from `tests/`, and an unguarded
+array index (`statements[statements.length - 1]`) under `noUncheckedIndexedAccess`. Fixed
+in `eb777ba`: dropped the explicit `id` from the F2 test's user insert (`userTable.id`
+already has its own `$defaultFn`, so passing one was never necessary) and switched to
+`.at(-1)` with an explicit guard. Neither changes what the test actually does — same insert
+shape, same migration statement executed — self-verified the same way as the prior
+mechanical fix: re-ran the exact CI typecheck command (`tsc --noEmit -p tsconfig.tests.json`)
+and the test itself (19/19 pass) locally.
+
+**Reviewed head:** `eb777baefdc8a318397d3ce3f137acb14ed91245` (mechanical fix only; no new
+security-relevant surface)
