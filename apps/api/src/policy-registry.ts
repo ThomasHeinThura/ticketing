@@ -15,6 +15,19 @@
  * verdict is listed in `tests/permissions/inherited-uncovered.json`, which shrinks to nothing
  * as #8 lands. What is declared below is the machinery's proof of life: one of each surface
  * the coverage test has to account for.
+ *
+ * **`GET /api/asset/{id}` is deliberately NOT declared below**, despite being named in #8's own
+ * scope as an inline route. It is registered above the auth guard, so H2
+ * (`isWithinAuthGuardScope()`, `packages/permissions/src/route-coverage.ts`) refuses it a
+ * `capability`/`self`/`portal` policy — but its handler (`index.ts` ~line 397) calls
+ * `authorizeAssetAccess`, which requires a real bearer/API-key/session credential
+ * (`resolveAssetBearerOrCookie` throws 401 on none) and then checks workspace membership. It is
+ * therefore genuinely NOT public, and `delegated` is not available either (`DELEGATED_SURFACES`
+ * is closed and this route fits none of its four members). Stamping `public` here would be
+ * exactly the false-green this issue exists to refuse — the H2 section's own text names this
+ * exact route as the example. Left uncovered, flagged in the #8 classification pass report,
+ * pending a decision on moving its registration below the guard so it can be declared
+ * `capability` honestly.
  */
 
 import {
@@ -26,6 +39,7 @@ import { capabilitiesPolicies } from "./capabilities/policy";
 import { instancePolicies } from "./instance/policy";
 import { invitationPolicies } from "./invitation/policy";
 import { projectPolicies } from "./project/policy";
+import { timeEntryPolicies } from "./time-entry/policy";
 import { workspacePolicies } from "./workspace/policy";
 
 /**
@@ -110,6 +124,78 @@ export const platformPolicies = {
       "no session applies to a direct-PUT upload; authorized instead by a short-lived, " +
       "key-scoped signed token in the query string, verified in writeUploadedObject",
   },
+
+  // --- Issue #8 classification pass: inline routes in index.ts (below), minus
+  // GET /api/asset/{id} — see the PR description / issue #8 report for why that one is NOT
+  // declared here.
+
+  // `GET /api/invitation/public/{id}` (index.ts ~line 372). Read-only preview of a pending
+  // invitation for the recipient, who by definition has not signed in yet — that is the whole
+  // point of a "public" invite-preview link. Registered above the guard; H2 permits public
+  // here honestly because `getInvitationDetails` (apps/api/src/utils/
+  // check-registration-allowed.ts) requires no credential and none is checked. The id is a
+  // `createId()` cuid2 (apps/api/src/database/schema.ts's invitationTable) — collision-
+  // resistant and non-sequential, not a guessable index — so the email address the response
+  // includes is only reachable by whoever already holds the exact invitation link (which was
+  // itself delivered to that same email address), the same trust model as a password-reset
+  // link.
+  "GET /api/invitation/public/{id}": {
+    public: true,
+    reason:
+      "invitation preview for a recipient who has not signed in yet; the invitation id is a " +
+      "non-guessable cuid2, so this is the same trust model as a password-reset link",
+  },
+
+  // `GET /api/auth/get-session` (index.ts ~line 378) and `GET /api/auth/device` (index.ts
+  // ~line 691) are both explicit, OpenAPI-documented carve-outs of the same `/auth/*` mount
+  // the two wildcard entries above already delegate — registered before the wildcard purely
+  // so they get their own schema/description in the OpenAPI document, not because they run
+  // different authorization logic. Both are genuinely unauthenticated-callable by design:
+  // get-session is exactly what a caller with no session yet uses to find that out, and the
+  // OAuth device-authorization flow this lane's `auth/device` participates in is defined to
+  // work before the caller has signed in. `get-session` forwards to `auth.handler` with no
+  // extra logic; `auth/device` redirects a top-level browser navigation to the web app's
+  // device screen (no data disclosed beyond the request's own `user_code`/`ui` query
+  // parameters echoed into the redirect URL) and otherwise forwards to `auth.handler` exactly
+  // like get-session. Same delegated kind and reason as the wildcard above.
+  "GET /api/auth/get-session": {
+    delegated: "better-auth",
+    reason:
+      "better-auth's own session-introspection endpoint, carved out of the /auth/* wildcard " +
+      "only for its OpenAPI documentation; same delegation as the wildcard entries above",
+  },
+  "GET /api/auth/device": {
+    delegated: "better-auth",
+    reason:
+      "OAuth device-authorization flow, carved out of the /auth/* wildcard only for its " +
+      "OpenAPI documentation; unauthenticated by definition (the caller has not signed in " +
+      "yet) and otherwise forwards to auth.handler exactly like the wildcard entries above",
+  },
+
+  // `GET /api/user/avatar/{id}` (index.ts ~line 564) — download a user's avatar image by its
+  // avatar id. Unlike GET /api/asset/{id}, the handler (`user/controllers/get-avatar.ts`)
+  // calls no authorization function at all: it loads the avatar by id and serves the bytes,
+  // full stop. `security: []` in its own OpenAPI route declaration and the response's
+  // `Cache-Control: public, max-age=31536000, immutable` are both consistent with genuine,
+  // deliberate public/CDN-cacheable design (an avatar `<img src>` cannot carry an
+  // Authorization header). The id changes whenever the avatar is replaced
+  // (getUserAvatar's own summary), so the immutable cache is safe.
+  "GET /api/user/avatar/{id}": {
+    public: true,
+    reason:
+      "user avatar image, served with a long-lived immutable cache for <img> embedding; " +
+      "the handler performs no authorization check by design and the id changes on replace",
+  },
+
+  // `GET /api/openapi` (index.ts ~line 620). Serves this API's own OpenAPI 3.1 document — the
+  // schema itself, not any tenant data. No credential is checked. Already named explicitly in
+  // issue #8's own H2 section as pre-existing kaneo behaviour to be classified here.
+  "GET /api/openapi": {
+    public: true,
+    reason:
+      "serves the API's own OpenAPI document (schema only, no tenant data); pre-existing " +
+      "kaneo behaviour, unauthenticated by design",
+  },
 } as const satisfies PolicyMap;
 
 export const POLICY_SOURCES = [
@@ -121,6 +207,7 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/project/policy.ts", policies: projectPolicies },
   { name: "apps/api/src/workspace/policy.ts", policies: workspacePolicies },
   { name: "apps/api/src/invitation/policy.ts", policies: invitationPolicies },
+  { name: "apps/api/src/time-entry/policy.ts", policies: timeEntryPolicies },
   {
     name: "apps/api/src/capabilities/policy.ts",
     policies: capabilitiesPolicies,
