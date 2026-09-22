@@ -1,6 +1,6 @@
 # Security review — PR #216 (issue #206: declare the 404s handlers actually return)
 
-**Reviewed head:** `b3641ac55279b56166d43004c89d1350709b6e40`
+**Reviewed head:** `0846d0c24759635f2bcfe669dc87a9a81f2a08b5`
 
 Fixed at `68f3a6979c3bea4bceb4215ac623e076352ccac2`; confirmed by an independent Opus pass
 via `git merge-tree --write-tree` recomputation of both intervening merge commits (not a
@@ -78,6 +78,14 @@ One further main-sync landed after that, bringing in PR #222's `status.md` corre
 docs-only, no file this PR reviewed. Re-checked directly at the final head
 `b3641ac55279b56166d43004c89d1350709b6e40`: `git diff
 ebe5d2a7bcb21e86ee7fc90bac6831bd7d18e849 b3641ac55279b56166d43004c89d1350709b6e40 --
+apps/api/src/column/index.ts apps/api/src/label/index.ts apps/api/src/project/index.ts
+apps/api/src/task/index.ts apps/api/src/time-entry/index.ts
+apps/api/src/workflow-rule/index.ts tests/api-contract/openapi.json` is empty.
+
+Another sync landed after that, bringing in PR #224's `apps/web` fix (logged-out redirect) —
+no overlap, no file this PR reviewed. Re-checked directly at the final head
+`0846d0c24759635f2bcfe669dc87a9a81f2a08b5`: `git diff
+b3641ac55279b56166d43004c89d1350709b6e40 0846d0c24759635f2bcfe669dc87a9a81f2a08b5 --
 apps/api/src/column/index.ts apps/api/src/label/index.ts apps/api/src/project/index.ts
 apps/api/src/task/index.ts apps/api/src/time-entry/index.ts
 apps/api/src/workflow-rule/index.ts tests/api-contract/openapi.json` is empty.
