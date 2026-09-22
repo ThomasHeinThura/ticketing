@@ -254,3 +254,28 @@ delegated-merge condition on waivers is satisfied.
   something this review needed to quantify.
 - Did not review migrations `0052`–`0062`, which are already on `main` and out of this diff.
 - Did not commit this note or edit the PR body — that is the orchestrating session's action.
+
+---
+
+## Post-review main sync — orchestrating session, self-verified, 2026-09-22
+
+Branch protection required a sync with `main` after this review cleared (PR #247, a
+test-infrastructure-only fix with no schema/migration content, had merged in the meantime).
+Synced via `git merge origin/main` (not rebase — rebasing would rewrite `b92c1cb` into a new
+SHA, orphaning this note's own `**Reviewed head:**` citation).
+
+`git diff b92c1cbec509e30535eea3047cd3cee81948e4f9..bca3918adb718fa5b36e29299ad62edd31aa7519
+--stat`: exactly this note file plus PR #247's own three files
+(`tests/api-integration/helpers/worktree-database-name.ts`,
+`tests/api-integration/setup.ts`, `tests/api/database/worktree-database-name.test.ts`) —
+zero overlap with `apps/api/drizzle/**`, `apps/api/src/database/schema.ts`, or anything else
+this review examined. This review's note carries no instruction barring orchestrator
+self-verification (unlike PR #239/#192's own note, written for a cross-tenant-authority
+migration), so documented transparently as self-verified rather than dispatching a further
+Opus round for a sync with no touched surface in common.
+
+Re-ran the mechanical proof directly at the merge commit: `pg_indexes` on a freshly migrated
+database still shows `workspace_role_workspaceId_idx` absent and the unique-constraint-backed
+index present; `drizzle-kit check` clean.
+
+**Reviewed head:** `bca3918adb718fa5b36e29299ad62edd31aa7519`
