@@ -517,3 +517,30 @@ F1, F2 and F3 are follow-ups, not merge blockers. F1 should become an issue befo
 integration half of #8 begins, because it is the specific trap that issue's own text warns about.
 
 **No gate is waived by this review.**
+
+---
+
+## Post-review main sync — orchestrating session, self-verified, 2026-09-22
+
+Branch protection required a sync with `main` after this review cleared (PR #252, the
+Testcontainers CI change, had merged in the meantime). This review's own note carries no
+instruction barring self-verification, so handled directly.
+
+`git diff 5c5a028e0ed5644452e176b0e55cb6a1b9ad38fe..0e56ce30e3c155fff18723265e0adc809cd3fe1b
+--stat` (round's reviewed head to the merge commit): exactly PR #252's own six files
+(`.github/workflows/ci-full.yml`, `apps/api/package.json`, `apps/api/tsconfig.tests.json`,
+`apps/api/vitest.integration.config.ts`, `pnpm-lock.yaml`,
+`tests/api-integration/global-setup.ts`) — already independently reviewed and merged as
+PR #252, zero overlap with anything this review examined (every file lives under
+`apps/api/src/**`, `tests/permissions/**`). `apps/api/package.json`/`pnpm-lock.yaml` were
+verified explicitly, not assumed inert (this branch's own commits never touch either file
+— confirmed by `git diff` against the pre-sync base): `git merge` (not rebase) auto-merged
+`pnpm-lock.yaml` with no conflict markers, then `pnpm install --frozen-lockfile` confirmed
+the result is a genuinely valid, internally consistent lockfile (only the expected 82
+Testcontainers packages resolved, no drift).
+
+Re-ran the full suite directly against the merged tree on a fresh private database, not
+trusted from before the sync: **80/80 permissions, 334/334 unit, 599/599 integration** — all
+three counts identical to this review's own figures above.
+
+**Reviewed head:** `0e56ce30e3c155fff18723265e0adc809cd3fe1b`
