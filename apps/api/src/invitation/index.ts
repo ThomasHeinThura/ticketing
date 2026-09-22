@@ -39,6 +39,7 @@ const getPendingRoute = createRoute({
   summary: "Get pending invitations",
   description:
     "Get the current user's unexpired, unaccepted invitations. Returns an empty list until the user's email is verified.",
+  middleware: [requireSessionOnly()] as const,
   responses: {
     200: jsonResponse(
       "List of pending invitations",

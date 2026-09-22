@@ -19,23 +19,22 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * another user's -- same shape as accept/reject above. `personParam` states the
  * `no_person_parameter` exemption for the same reason.
  *
- * A gap worth flagging alongside this classification, found while confirming it: the
+ * A gap flagged by the lane that first classified this route, found while confirming it: the
  * 2026-09-08 decision (`docs/07-planning/decision-log.md`, "Native organization routes
  * preserve inherited session-only reach") requires every native route touching "workspace,
  * membership, invitation or capability data" to be session-only in the runtime that ships it
- * -- and this route plainly reads invitation data. Accept/reject/cancel all carry
+ * -- and this route plainly reads invitation data. Accept/reject/cancel all carried
  * `requireSessionOnly()` in their own route middleware; `getPendingRoute`
- * (`apps/api/src/invitation/index.ts`) does not -- it relies only on whatever the app-wide
- * guard populates, which today accepts a personal API key or MCP key exactly as readily as a
- * browser session. This is the same class of gap the decision log itself names as R10 (found
- * live at PR #65's pre-remediation head, on four different routes). Not fixed here: it is a
- * runtime-middleware change to a route this lane was told to classify, not author, and #8's
- * classification is not the place to quietly widen or narrow what a route actually enforces.
- * Flagged for the orchestrating session to decide whether to open an issue or fold it into a
- * follow-up fix; `sessionOnly` is deliberately NOT declared on the policy entry below, because
- * declaring it here would describe a restriction the route does not yet actually enforce --
- * exactly the declared-and-inert shape `packages/permissions/src/policy.ts`'s own doc comment
- * says this registry exists to refuse.
+ * (`apps/api/src/invitation/index.ts`) did not -- it relied only on whatever the app-wide
+ * guard populated, which accepted a personal API key or MCP key exactly as readily as a
+ * browser session. This was the same class of gap the decision log itself names as R10 (found
+ * live at PR #65's pre-remediation head, on four different routes). Fixed in the route-
+ * classification integration pass (issue #8): `getPendingRoute` now carries
+ * `requireSessionOnly()` in its own middleware, identically to its accept/reject/cancel
+ * siblings, so `sessionOnly: true` is declared below to match what the runtime now actually
+ * enforces -- not before, since a declared-but-unenforced flag is exactly the
+ * declared-and-inert shape `packages/permissions/src/policy.ts`'s own doc comment says this
+ * registry exists to refuse.
  *
  * **`GET /api/invitation/{id}` could not be confidently classified and is deliberately left
  * out of the map below -- flagged, not guessed, per this issue's own rule.**
@@ -105,6 +104,7 @@ export const invitationPolicies = {
       reason:
         "returns the caller's own unexpired, unaccepted invitations, filtered by their own session email; the route names no person parameter because the caller is the person",
     },
+    sessionOnly: true,
   },
 
   "POST /api/invitation/{id}/accept": {

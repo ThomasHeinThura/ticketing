@@ -35,11 +35,25 @@ import {
   type PolicyMap,
   type PolicyRegistry,
 } from "@taskdesk/permissions";
+import { activityPolicies } from "./activity/policy";
 import { capabilitiesPolicies } from "./capabilities/policy";
+import { columnPolicies } from "./column/policy";
+import { commentPolicies } from "./comment/policy";
+import { configPolicies } from "./config/policy";
+import { externalLinkPolicies } from "./external-link/policy";
 import { instancePolicies } from "./instance/policy";
 import { invitationPolicies } from "./invitation/policy";
+import { labelPolicies } from "./label/policy";
+import { notificationPolicies } from "./notification/policy";
+import { notificationPreferencesPolicies } from "./notification-preferences/policy";
+import { oauthPolicies } from "./oauth/policy";
 import { projectPolicies } from "./project/policy";
+import { searchPolicies } from "./search/policy";
+import { taskPolicies } from "./task/policy";
+import { taskRelationPolicies } from "./task-relation/policy";
 import { timeEntryPolicies } from "./time-entry/policy";
+import { userPolicies } from "./user/policy";
+import { workflowRulePolicies } from "./workflow-rule/policy";
 import { workspacePolicies } from "./workspace/policy";
 
 /**
@@ -212,6 +226,35 @@ export const POLICY_SOURCES = [
     name: "apps/api/src/capabilities/policy.ts",
     policies: capabilitiesPolicies,
   },
+  { name: "apps/api/src/task/policy.ts", policies: taskPolicies },
+  { name: "apps/api/src/column/policy.ts", policies: columnPolicies },
+  {
+    name: "apps/api/src/task-relation/policy.ts",
+    policies: taskRelationPolicies,
+  },
+  {
+    name: "apps/api/src/workflow-rule/policy.ts",
+    policies: workflowRulePolicies,
+  },
+  {
+    name: "apps/api/src/external-link/policy.ts",
+    policies: externalLinkPolicies,
+  },
+  { name: "apps/api/src/comment/policy.ts", policies: commentPolicies },
+  { name: "apps/api/src/activity/policy.ts", policies: activityPolicies },
+  {
+    name: "apps/api/src/notification/policy.ts",
+    policies: notificationPolicies,
+  },
+  {
+    name: "apps/api/src/notification-preferences/policy.ts",
+    policies: notificationPreferencesPolicies,
+  },
+  { name: "apps/api/src/search/policy.ts", policies: searchPolicies },
+  { name: "apps/api/src/user/policy.ts", policies: userPolicies },
+  { name: "apps/api/src/oauth/policy.ts", policies: oauthPolicies },
+  { name: "apps/api/src/config/policy.ts", policies: configPolicies },
+  { name: "apps/api/src/label/policy.ts", policies: labelPolicies },
 ];
 
 /**
