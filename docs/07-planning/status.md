@@ -2,13 +2,14 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-17 — a tenth pass, after issue #187 (the live `project` table
-> had no soft-delete window, so `work_item.project_id`'s CASCADE from PR #185 made an
-> ordinary delete destructive) closed via PR #200's project-only soft-delete fix
-> **`main` at that moment:** `ca90bbe` (PR #200 — an atomic `UPDATE` replacing the hard
-> `DELETE`, plus filtering every read/write path that reaches a project or its children;
-> two full review rounds, including a live-reproduced set of read-path leaks the mandatory
-> Opus pass found and a subsequent remediation round that closed them).
+> **Snapshot taken:** 2026-09-18 — an eleventh pass. Two P1 candidates taken from implemented
+to review-complete and remediated (#214, #215), and the tenancy decision that gates the
+work-item write path put to Thomas as a real question (issue #192) rather than silently
+resolved.
+> **`main` at that moment:** `26ec385` (PR #208 — the `legal_hold` table and the
+> legal-hold-aware session-cleanup purge; issue #198 stays open for the remainder, since the
+> project-purging half cannot be written until #192's tenant-attribution question is
+> answered — a work item or project cannot currently name its organisation at all).
 > Kaneo's `task`/`column` tables and routes remain fully untouched and still live.
 > **Stage:** P0 · Foundation — **exit criteria met; Throttle 1 is OPEN.** Autonomous
 > continuation past Throttle 1 is authorized (Thomas, 2026-09-16) — see the session log's
@@ -45,7 +46,7 @@
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-17 (later the same day, a fourth time)
+**Last updated:** 2026-09-18 (the eleventh pass)
 **Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** Issue #187
 (the live `project` table's hard-delete route was made destructive by #185's
 `work_item.project_id` CASCADE) is closed: `project` now has its own `deleted_at`/
@@ -53,7 +54,15 @@
 a project or its children treats a soft-deleted one as gone. This is unrelated to #23's own
 schema work above — a pre-existing gap in the live `project` table that #185's new FK
 simply made consequential, not one of #23's own integrity findings.
-**Updated by:** Claude Code (Sonnet), reconciliation after **PR #200 merged**. Full
+**Updated by:** GitHub Copilot (DeepSeek V4.1 Flash), the orchestrating session for the P1
+mandate. **Not Claude** — Claude was unavailable this session, and the real model is named
+here because that is the standing instruction. Three independent ordinary reviews were run
+through available non-Claude contexts (all named on their pull requests); **no Opus security
+review was possible**, so two candidates are marked
+`SECURITY REVIEW PENDING — OPUS CAPACITY` and neither may be merged. The previous pass's
+record of PR #200 below is preserved unchanged, since nothing in this session revisited it.
+
+**Previous pass — Updated by:** Claude Code (Sonnet), reconciliation after **PR #200 merged**. Full
 mandatory tier (2 Sonnet + Opus, since the change touches a migration). Round 1 found real,
 overlapping gaps across all three reviewers: task/column creation and several read paths
 (task listing/export, global search, project reorder) didn't check `deletedAt`, live-
@@ -864,6 +873,32 @@ kaneo's inherited routes present and each carrying a policy**, P0 security revie
 
 ## Blocked
 
+### Open decision — #192, work-item tenant attribution (blocks the P1 write path)
+
+**Awaiting Thomas.** Presented as issue #192's decision request on 2026-09-18: four options
+(denormalise `work_item.workspace_id` with a composite `(workspace_id, type_id)` foreign key
+and `ON UPDATE NO ACTION`; application-level enforcement only; a trigger; and adding
+`workspace.organisation_id` as a separate prerequisite), with the tenancy implications,
+migration effects, concurrency risks and a proposed direction. **No agent may pick this — it
+creates a trust boundary.** The recommendation on the issue is the denormalised column plus
+the `workspace.organisation_id` link, as one bounded pre-write-path schema change, because it
+releases three blocked things at once: #192's cross-tenant gap, the RLS prototype, and #198's
+project purge. It also needs a **new** `UNIQUE (workspace_id, id)` on `work_item_type`, which
+does not exist today.
+
+### Opus security reviews — capacity, not permission
+
+**#214 and #215 are in security-review scope and their Opus passes have not happened.**
+Claude was unavailable throughout this session, and `CLAUDE.md` is explicit that capacity
+exhaustion means the candidate **waits** — it is not downgraded to an available model and it
+is not cleared by a non-independent context. Both are marked
+`SECURITY REVIEW PENDING — OPUS CAPACITY`, neither security-review box is ticked, and neither
+may be merged by anyone, including the orchestrating session: the delegation to merge a
+green candidate explicitly does not cover a candidate whose security review has not been
+performed. Ordinary review capacity itself was also intermittent — the subagent provider
+returned budget-exhausted (403) and connection-reset errors across several attempts, so
+reviews of the other open candidates are queued rather than done.
+
 ### Process deviation — recorded, corrected, not waived
 
 **PR #13 merged on 2026-09-06 before its mandatory security review had been performed.**
@@ -1058,6 +1093,44 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
+### 2026-09-18 · Two P1 candidates to review-complete, and #192 put to Thomas as a real question
+
+Continuing autonomously under the P1 mandate. Three things moved.
+
+**Three independent ordinary reviews across the two candidates, run and recorded — and Claude was not available for any of them.** All three ran in GitHub Copilot contexts (**DeepSeek V4.1 Flash**), named on the pull requests because the standing session instruction requires the real model and context to be recorded. None is a Claude review and none is a security review.
+
+- **PR #215** (work-item integrity constraints) received **two** reviews, at the tier its
+  classification calls for (it touches a migration and `apps/api/src/database/**`): a
+  correctness pass at `caa1c7e` — **CLEAR WITH FINDINGS**, having proved the 21 tests
+  non-vacuous by dropping all eight constrained objects and watching 10 of 21 go red — and a
+  deliberately different **project-alignment** lens at `40a51eb` — **ALIGNED WITH
+  CONCERNS**. All findings remediated. The alignment pass caught the sharpest one: my own
+  commit message asserted a design disclosure had been added to the PR body when it had not.
+- **PR #214** (UTC timestamps for the time-gated jobs) was reviewed at `a44b9b9` and came
+  back **BLOCKING** — not for the production fix, which survived every falsification the
+  reviewer constructed, but because the repository's own integration suite goes red whenever
+  the database session timezone is not UTC: the lease *fixtures* still wrote session-local
+  `now()`. Reproduced in both directions (`Asia/Kolkata` and `America/Denver` failing
+  opposite tests), remediated, and re-verified — the **full suite under `Asia/Kolkata`
+  (60 files / 533 tests, green)** and the **targeted lease/session set under
+  `America/Denver` with `TZ=America/New_York` (12 tests, green)**. Both were failing on the
+  reviewed head; neither is now.
+
+**#192 written up as a decision for Thomas**, not decided by an agent — see **Blocked**. The
+new evidence in that write-up is that the missing link is not one unscoped foreign key: the
+same absent `workspace_id`/`organisation_id` also makes the RLS backstop `multi-tenancy.md`
+already commits to *unwritable*, and blocks #198's project-purging half.
+
+**Both candidates are `SECURITY REVIEW PENDING — OPUS CAPACITY`** and must not be merged.
+The required `pull request template + security review` check is **correctly red** on both; the
+security-review notes say so explicitly so that neither a later session nor an automated pass
+reads that red as a defect to repair.
+
+Method note worth keeping: every claim that a post-review delta was comment-only was proved
+rather than asserted — `git diff <sha>..<sha> -- <file> | grep -E "^[+-]" | grep -vE
+"^(\+\+\+|---)" | grep -vE "^[+-][[:space:]]*//"` returning no lines. A commit message
+that claimed a fix it had not made is exactly the failure this guards against, and one
+happened in this session.
 ### 2026-09-17 (later the same day, a fourth time) · #187 closed — a pre-existing gap in the live `project` table, made consequential by #23's new FK, not one of #23's own findings
 
 Same session, continuing autonomously. With #23's schema-integrity findings all closed
