@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import db from "../database";
+import { dbNowUtc } from "../utils/db-time";
 import { withJobLease } from "./leader-lock";
 
 /**
@@ -84,6 +85,16 @@ export const NOT_UNDER_OPEN_LEGAL_HOLD_FOR_SESSION = sql`
 /**
  * Deletes sessions that have already expired, minus any held scope's.
  *
+ * The cutoff is `dbNowUtc()`, not `now()`, and that is load-bearing rather than cosmetic:
+ * `session.expires_at` is `timestamp without time zone` holding a UTC wall clock (better-auth
+ * writes it through the Drizzle column mapper, `Date.prototype.toISOString()`), while `now()`
+ * is `timestamptz` and would be coerced through the session's `TimeZone` — the database
+ * server's setting. On a server ahead of UTC the unqualified form reads a session that
+ * expires in an hour as already expired and **deletes it**; this is the one place in the tree
+ * where that mistake destroys rows rather than merely gating a lease. See `utils/db-time.ts`
+ * for the measurement, and `tests/api-integration/session-cleanup-server-ahead-of-utc.test.ts`
+ * for the regression test.
+ *
  * A single statement rather than a chunked loop: the work is entirely in the database, so it
  * does not occupy the event loop between batches the way a JavaScript-side iteration would
  * (`background-jobs.md` § Why in-process, on chunking). If this ever needs bounding, the
@@ -93,7 +104,7 @@ export const NOT_UNDER_OPEN_LEGAL_HOLD_FOR_SESSION = sql`
 export async function deleteExpiredSessions(): Promise<number> {
   const result = await db.execute(sql`
     DELETE FROM "session"
-    WHERE "session"."expires_at" <= now()
+    WHERE "session"."expires_at" <= ${dbNowUtc()}
       AND ${NOT_UNDER_OPEN_LEGAL_HOLD_FOR_SESSION};
   `);
 
