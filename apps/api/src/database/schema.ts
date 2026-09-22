@@ -417,25 +417,38 @@ export const jobLeaseTable = pgTable("job_lease", {
 // policy, retention, health thresholds, ...) that belongs to the P4 God Mode work;
 // that lane ALTERs this same table to add its columns rather than defining a
 // second one -- do not redefine `instance_setting` elsewhere.
-export const instanceSettingTable = pgTable("instance_setting", {
-  id: text("id").primaryKey().default("singleton"),
-  // Durable first-run marker (auth-and-identity.md § Break-glass). Non-null means
-  // the instance has been claimed: the zero-user bootstrap bypass in auth.ts and
-  // the TASKDESK_BOOTSTRAP_ADMIN_EMAIL headless path are both permanently inert
-  // from this point on, even if every admin is later deleted and the user count
-  // returns to zero -- there is no way to re-open this by deleting rows.
-  setupCompletedAt: timestamp("setup_completed_at", { mode: "date" }),
-  // SHA-256 hex digest of the current setup token; never the raw token (same
-  // hash-only-at-rest convention as invitation tokens and API keys). Null once
-  // consumed, expired-and-regenerated, or once setup_completed_at is set.
-  setupTokenHash: text("setup_token_hash"),
-  setupTokenExpiresAt: timestamp("setup_token_expires_at", { mode: "date" }),
-  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { mode: "date" })
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
+export const instanceSettingTable = pgTable(
+  "instance_setting",
+  {
+    id: text("id").primaryKey().default("singleton"),
+    // Durable first-run marker (auth-and-identity.md § Break-glass). Non-null means
+    // the instance has been claimed: the zero-user bootstrap bypass in auth.ts and
+    // the TASKDESK_BOOTSTRAP_ADMIN_EMAIL headless path are both permanently inert
+    // from this point on, even if every admin is later deleted and the user count
+    // returns to zero -- there is no way to re-open this by deleting rows.
+    setupCompletedAt: timestamp("setup_completed_at", { mode: "date" }),
+    // SHA-256 hex digest of the current setup token; never the raw token (same
+    // hash-only-at-rest convention as invitation tokens and API keys). Null once
+    // consumed, expired-and-regenerated, or once setup_completed_at is set.
+    setupTokenHash: text("setup_token_hash"),
+    setupTokenExpiresAt: timestamp("setup_token_expires_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    // #18 security review (F3): `id`'s DEFAULT makes "singleton" the row every
+    // writer here intends, but a bare PRIMARY KEY never actually forbids a second
+    // row with a different id -- and every read in setup-token.ts is a `LIMIT 1`
+    // with no WHERE, so a second row (e.g. a future P4 God Mode write that
+    // forgets the id) can silently become the one this code reads, with no test
+    // going red. This CHECK makes the single-row invariant the comment above
+    // already claims into something Postgres actually enforces.
+    check("instance_setting_id_singleton", sql`${table.id} = 'singleton'`),
+  ],
+);
 
 export const taskReminderSentTable = pgTable(
   "task_reminder_sent",

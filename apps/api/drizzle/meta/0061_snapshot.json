@@ -1,5 +1,5 @@
 {
-	"id": "4b91d095-bbd3-4ae4-85cc-f6510f999b0d",
+	"id": "0b42addc-86b1-44fd-8e88-0f1266ba8a47",
 	"prevId": "01c813c5-8494-4695-83f6-d1bba048947e",
 	"version": "7",
 	"dialect": "postgresql",
@@ -1102,7 +1102,12 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"policies": {},
-			"checkConstraints": {},
+			"checkConstraints": {
+				"instance_setting_id_singleton": {
+					"name": "instance_setting_id_singleton",
+					"value": "\"instance_setting\".\"id\" = 'singleton'"
+				}
+			},
 			"isRLSEnabled": false
 		},
 		"public.invitation": {

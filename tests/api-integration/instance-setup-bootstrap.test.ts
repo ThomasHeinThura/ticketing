@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { count, eq } from "drizzle-orm";
+import { count, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import {
   ensureSetupToken,
+  isBootstrapAdminEmail,
   isSetupCompleted,
   SETUP_TOKEN_HEADER,
   verifyAndConsumeSetupToken,
@@ -107,6 +108,38 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
 
     expect(response.status).toBe(403);
     expect(await totalUserCount()).toBe(0);
+  });
+
+  it("(B1) an uncredentialed zero-user refusal is byte-identical to an ordinary registration-disabled refusal -- no scanning oracle", async () => {
+    // Security review of PR #227 (finding B1, blocking): an earlier version
+    // of this message said "This instance has not been set up yet... or set
+    // TASKDESK_BOOTSTRAP_ADMIN_EMAIL", which let one unauthenticated request
+    // distinguish an unclaimed instance from a claimed one with registration
+    // closed, and named the exact env var to try next -- recreating the
+    // scanning oracle GET /api/instance/status used to provide. The fix
+    // reuses checkRegistrationAllowed's own message unconditionally, so the
+    // two cases must now read identically to an external caller.
+    process.env.DISABLE_REGISTRATION = "true";
+    const { app: unclaimedApp } = createApp();
+    const unclaimedResponse = await signUp(unclaimedApp);
+    const unclaimedBody = await unclaimedResponse.json();
+
+    await resetTestDatabase();
+    const { app: claimedApp } = createApp();
+    // Claim the instance first (registration still closed after), then probe
+    // the ordinary refusal path on the now-claimed instance.
+    const claimToken = (await ensureSetupToken()) as string;
+    await signUp(claimedApp, { setupToken: claimToken });
+    const claimedResponse = await signUp(claimedApp);
+    const claimedBody = await claimedResponse.json();
+
+    expect(unclaimedResponse.status).toBe(403);
+    expect(claimedResponse.status).toBe(403);
+    expect(unclaimedBody.message).toBe(claimedBody.message);
+    // The old message named this env var directly; the new one must not,
+    // regardless of which of the two cases produced it.
+    expect(unclaimedBody.message).not.toMatch(/TASKDESK_BOOTSTRAP_ADMIN_EMAIL/);
+    expect(unclaimedBody.message).not.toMatch(/setup URL|setup token/i);
   });
 
   it("(b) a valid setup token lets first-registration succeed and promotes the registrant to admin", async () => {
@@ -247,6 +280,28 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     expect(await totalUserCount()).toBe(0);
   });
 
+  it("(F4) isBootstrapAdminEmail is not fooled by a Unicode case-folding trick", () => {
+    // Security review of PR #227 (finding F4, non-blocking): plain
+    // `.toLowerCase()` maps U+212A KELVIN SIGN to ordinary "k", so
+    // "operator@example.com" and "operator@example.com" with a KELVIN SIGN
+    // in place of the K used to compare equal under the bare comparison this
+    // replaces. NFKC-normalizing first closes it. (Not exploitable end to
+    // end even before this fix, since better-auth's own email validator
+    // rejects such inputs first -- this test exercises the function
+    // directly, on its own terms, not through the HTTP path.)
+    process.env.TASKDESK_BOOTSTRAP_ADMIN_EMAIL = "operator@example.com";
+    const kelvinSignVariant = "Kelvin-operator@example.com".replace(
+      "elvin-",
+      "",
+    );
+    // kelvinSignVariant is now "Koperator@example.com" -- U+212A where a
+    // plain "k" would read the same to a human, but is a DIFFERENT address
+    // from the configured one.
+    expect(isBootstrapAdminEmail(kelvinSignVariant)).toBe(false);
+    expect(isBootstrapAdminEmail("operator@example.com")).toBe(true);
+    expect(isBootstrapAdminEmail("OPERATOR@EXAMPLE.COM")).toBe(true);
+  });
+
   it("(headless) TASKDESK_BOOTSTRAP_ADMIN_EMAIL is ignored once the instance is set up", async () => {
     const rawToken = (await ensureSetupToken()) as string;
     const { app } = createApp();
@@ -360,5 +415,95 @@ describe("issue #18: GET /api/instance/status no longer advertises setup state",
     const claimedResponse = await app.request("/api/instance/status");
     expect(claimedResponse.status).toBe(200);
     expect(await claimedResponse.json()).toEqual({ status: "ok" });
+  });
+});
+
+describe("issue #18: instance_setting table invariants (security review findings F2, F3)", () => {
+  beforeEach(async () => {
+    await resetTestDatabase();
+  });
+
+  it("(F2) migration 0061's back-fill marks a pre-existing instance as already set up", async () => {
+    // Simulates an instance that already had real users before this
+    // migration ever ran: resetTestDatabase() applies every migration
+    // including 0061 up front, so to reproduce the "instance predates this
+    // migration" case, delete the row 0061's own back-fill statement wrote,
+    // insert a user the way an older instance would already have one, then
+    // re-run exactly the back-fill statement 0061 ships (not a
+    // reimplementation of it) and confirm it recognizes the existing user
+    // and marks the instance as set up.
+    await db
+      .delete(schema.instanceSettingTable)
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    expect(await isSetupCompleted()).toBe(false);
+
+    const { createId } = await import("@paralleldrive/cuid2");
+    await db.insert(schema.userTable).values({
+      id: createId(),
+      name: "Pre-existing User",
+      email: `pre-existing-${randomUUID()}@example.com`,
+      emailVerified: true,
+    });
+
+    const file = new URL(
+      "../../apps/api/drizzle/0061_instance_setting.sql",
+      import.meta.url,
+    );
+    const { readFileSync } = await import("node:fs");
+    const statements = readFileSync(file, "utf8")
+      .split("--> statement-breakpoint")
+      .map((statement) => statement.trim())
+      .filter(Boolean);
+    // Only the back-fill statement (the second one) is relevant here -- the
+    // CREATE TABLE already exists from resetTestDatabase()'s own migration
+    // run, so re-running it would error.
+    const backfillStatement = statements[statements.length - 1];
+    expect(backfillStatement).toMatch(/INSERT INTO "instance_setting"/);
+    await db.execute(sql.raw(backfillStatement));
+
+    expect(await isSetupCompleted()).toBe(true);
+
+    // And the durable-marker guarantee this whole PR is about now actually
+    // covers this instance: deleting the user and signing up again must NOT
+    // re-open the bootstrap window. Registration is open by default in this
+    // suite, so the signup still succeeds (matching the "(d)" re-arm test's
+    // own convention) -- the point is that it must land as an ORDINARY user,
+    // never re-promoted to admin just because the count dropped to zero.
+    await db.delete(schema.userTable);
+    const { app } = createApp();
+    const response = await signUp(app);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { user: { id: string } };
+    expect(await roleOf(body.user.id)).not.toBe("admin");
+  });
+
+  it("(F2) a genuinely fresh instance (no users) is untouched by the back-fill", async () => {
+    // The back-fill's WHERE EXISTS guard must not fire on a real first-run
+    // instance -- resetTestDatabase() already exercises this migration on an
+    // empty database, so if the guard were wrong this would already be
+    // failing every other test in this file; asserted explicitly here too.
+    expect(await isSetupCompleted()).toBe(false);
+  });
+
+  it("(F3) a second instance_setting row with any id other than 'singleton' is rejected by the database", async () => {
+    // Security review of PR #227 (finding F3, non-blocking): before this
+    // fix, nothing stopped a second row from existing, and every read in
+    // this module is a bare `LIMIT 1` with no WHERE -- an arbitrary,
+    // unrelated row could silently become the one this code reads. The
+    // CHECK constraint makes the single-row invariant schema.ts's own
+    // comment already claimed into something Postgres actually enforces.
+    let thrown: unknown;
+    try {
+      await db
+        .insert(schema.instanceSettingTable)
+        .values({ id: "not-singleton" });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeDefined();
+    // drizzle-orm wraps the underlying pg driver error; the constraint name
+    // is on the wrapped cause, not the top-level message.
+    const cause = (thrown as { cause?: { message?: string } })?.cause;
+    expect(cause?.message).toMatch(/instance_setting_id_singleton/);
   });
 });

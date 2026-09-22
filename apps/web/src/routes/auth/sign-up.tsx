@@ -1,5 +1,10 @@
-import { createFileRoute, useSearch } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useNavigate,
+  useSearch,
+} from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@taskdesk/ui";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod/v4";
 import { AuthLayout } from "@/components/auth/layout";
@@ -30,12 +35,33 @@ export const Route = createFileRoute("/auth/sign-up")({
 function SignUp() {
   const { t } = useTranslation();
   const search = useSearch({ from: "/auth/sign-up" });
+  const navigate = useNavigate({ from: "/auth/sign-up" });
   const { data: config } = useGetConfig();
 
   const invitationId = search.invitationId;
   const prefillEmail = search.email;
-  const setupToken = search.setupToken;
+  // #18 security review (F5, non-blocking): the token is captured into a ref
+  // on first render, then stripped from the URL below -- it stays available
+  // for this page's own submit, but no longer sits in the address bar,
+  // browser history, or a Referer header sent to any third-party resource
+  // this page loads. One-hour-or-one-use already bounds the real risk; this
+  // costs nothing and closes it further.
+  const setupTokenRef = useRef(search.setupToken);
+  const setupToken = setupTokenRef.current;
   const isInstanceAdminSetup = Boolean(setupToken);
+
+  // Intentionally mount-only: this strips the token from the URL exactly
+  // once, right after the ref above has already captured it for actual use.
+  // Re-running on navigate's own identity churn would create a loop.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally mount-only, see comment above
+  useEffect(() => {
+    if (search.setupToken) {
+      navigate({
+        search: (prev) => ({ ...prev, setupToken: undefined }),
+        replace: true,
+      });
+    }
+  }, []);
 
   const baseUrl = import.meta.env.VITE_CLIENT_URL ?? window.location.origin;
   const callbackURL = invitationId

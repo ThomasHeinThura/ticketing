@@ -42,6 +42,12 @@ export async function isSetupCompleted(): Promise<boolean> {
   const [row] = await db
     .select({ setupCompletedAt: instanceSettingTable.setupCompletedAt })
     .from(instanceSettingTable)
+    // #18 security review (F3): scoped explicitly to the one row this whole
+    // module means, on top of (not instead of) the table's own
+    // instance_setting_id_singleton CHECK constraint -- belt and suspenders,
+    // since a `LIMIT 1` with no WHERE returns whichever row Postgres happens
+    // to return first if a second one ever existed.
+    .where(eq(instanceSettingTable.id, SETUP_TOKEN_SINGLETON_ID))
     .limit(1);
   return row?.setupCompletedAt != null;
 }
@@ -72,7 +78,7 @@ export async function ensureSetupToken(): Promise<string | null> {
   const tokenHash = hashSetupToken(rawToken);
   const expiresAt = new Date(Date.now() + SETUP_TOKEN_TTL_MS);
 
-  await db
+  const written = await db
     .insert(instanceSettingTable)
     .values({
       id: SETUP_TOKEN_SINGLETON_ID,
@@ -89,7 +95,18 @@ export async function ensureSetupToken(): Promise<string | null> {
       // Defense in depth: even if isSetupCompleted() above raced with a
       // concurrent completion, never overwrite a completed instance's row.
       where: isNull(instanceSettingTable.setupCompletedAt),
-    });
+    })
+    .returning({ id: instanceSettingTable.id });
+
+  if (written.length === 0) {
+    // #18 security review (F5): the WHERE guard above fired, meaning a
+    // concurrent completion raced us between isSetupCompleted() and here.
+    // Nothing was actually stored -- printing and returning the token anyway
+    // would advertise a credential that can never verify. Silence is correct:
+    // the instance is now claimed, and the caller (runStartupTasks) has
+    // nothing to print.
+    return null;
+  }
 
   const agentUrl = process.env.TASKDESK_AGENT_URL || "http://localhost:5173";
   const setupUrl = `${agentUrl.replace(/\/$/, "")}/auth/sign-up?setupToken=${rawToken}`;
@@ -126,6 +143,7 @@ export async function verifyAndConsumeSetupToken(
     .set({ setupTokenHash: null, setupTokenExpiresAt: null })
     .where(
       and(
+        eq(instanceSettingTable.id, SETUP_TOKEN_SINGLETON_ID),
         eq(instanceSettingTable.setupTokenHash, candidateHash),
         gt(instanceSettingTable.setupTokenExpiresAt, new Date()),
       ),
@@ -142,6 +160,20 @@ export async function verifyAndConsumeSetupToken(
  * restarting) see the current value. Ignored once the instance is claimed --
  * callers must check isSetupCompleted() themselves before relying on this.
  */
+/**
+ * NFKC-normalizes before folding case, so a compatibility character that
+ * lowercases to something else -- the sharpest example, U+212A KELVIN SIGN,
+ * which `String.prototype.toLowerCase()` alone maps to plain "k" -- can't make
+ * two visibly-different strings compare equal. #18 security review (F4): the
+ * bare `.toLowerCase()` this replaces was not exploitable end-to-end only
+ * because better-auth's own email validator happens to reject such inputs
+ * first, which made this function correct by accident of a dependency rather
+ * than on its own terms.
+ */
+function normaliseEmail(value: string): string {
+  return value.normalize("NFKC").trim().toLowerCase();
+}
+
 export function isBootstrapAdminEmail(email: unknown): boolean {
   const configured = process.env.TASKDESK_BOOTSTRAP_ADMIN_EMAIL?.trim();
   if (!configured) {
@@ -150,5 +182,5 @@ export function isBootstrapAdminEmail(email: unknown): boolean {
   if (typeof email !== "string" || !email) {
     return false;
   }
-  return email.trim().toLowerCase() === configured.toLowerCase();
+  return normaliseEmail(email) === normaliseEmail(configured);
 }

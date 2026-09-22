@@ -410,9 +410,21 @@ export const auth = betterAuth({
               return;
             }
 
+            // #18 security review (B1): this message must never differ from
+            // an ordinary registration refusal. An earlier version said "This
+            // instance has not been set up yet... or set
+            // TASKDESK_BOOTSTRAP_ADMIN_EMAIL" -- which let one unauthenticated
+            // request distinguish an unclaimed instance from a claimed one
+            // with registration disabled, and named the exact env var to try
+            // next. That re-created the scanning oracle GET /api/instance/status
+            // used to provide, which this whole change exists to remove. The
+            // setup URL and token are still printed to the boot log
+            // (ensureSetupToken) and documented in the runbook -- an operator
+            // never needs this response to learn them, so nothing operational
+            // is lost by making it identical to the ordinary case.
             throw new APIError("FORBIDDEN", {
               message:
-                "This instance has not been set up yet. Use the setup URL and token printed in the container log (or ask your operator), or set TASKDESK_BOOTSTRAP_ADMIN_EMAIL for a headless install.",
+                "Registration is currently disabled. Please use a valid invitation link to create an account.",
             });
           }
 
