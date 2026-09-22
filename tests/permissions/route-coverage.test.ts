@@ -94,11 +94,15 @@ describe("route coverage", () => {
   });
 
   it("proves the ordering data is real: known above-guard routes are actually above the guard", async () => {
-    // Not a vacuous check — GET /api/asset/{id} is H2's own illustrative example, and
-    // GET /api/user/avatar/{id} is the finding's second one. Both are registered in
-    // apps/api/src/index.ts before `api.use("*", <the auth guard>)`, and neither has a policy
-    // yet (both are still in tests/permissions/inherited-uncovered.json), so this asserts
-    // registrationIndex against the real router rather than a fixture standing in for it.
+    // Not a vacuous check. GET /api/asset/{id} was H2's own illustrative example of a route
+    // wrongly registered above the guard — issue #8's classification pass fixed that by
+    // moving its registration below `api.use("*", <the auth guard>)` (see
+    // apps/api/src/asset/policy.ts), so it is asserted absent from this set below, proving
+    // the move actually took and isn't just a policy declared over stale position data.
+    // GET /api/openapi and GET /api/user/avatar/{id} are two routes that stay above the guard
+    // by design — both are genuinely public (no credential is checked on either path) — so
+    // this asserts registrationIndex against the real router rather than a fixture standing
+    // in for it.
     const routes = await loadRouterRoutes();
     expect(authGuardIndex).toEqual(expect.any(Number));
     const aboveGuard = new Set(
@@ -106,8 +110,9 @@ describe("route coverage", () => {
         .filter((route) => route.registrationIndex < (authGuardIndex as number))
         .map((route) => route.routeKey),
     );
-    expect(aboveGuard.has("GET /api/asset/{id}")).toBe(true);
+    expect(aboveGuard.has("GET /api/openapi")).toBe(true);
     expect(aboveGuard.has("GET /api/user/avatar/{id}")).toBe(true);
+    expect(aboveGuard.has("GET /api/asset/{id}")).toBe(false);
   });
 
   it("has a policy for every route, except the inherited ones #8 has yet to classify", () => {
