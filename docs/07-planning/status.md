@@ -21,7 +21,7 @@ remain open, large, umbrella items, unchanged.
 > **#146** (CRITICAL — closed by PR
 > #223: `sections()` now recognizes a `##` heading only when genuinely visible, and a
 > genuine duplicate is a hard `DuplicateSectionError` rather than silent last-one-wins;
-> Opus review CLEAR WITH FINDINGS, four non-blocking follow-ups tracked as #226), **#17**
+> Opus review CLEAR WITH FINDINGS, three non-blocking follow-ups (F1, F2, F4) tracked as #226), **#17**
 > (closed by PR #225: sessions minted by the removed MCP OAuth/device flows are expired by
 > migration `0060`; the mandatory Opus review's first pass found and required a fix for a
 > real timezone-comparison bug, fixed and delta-confirmed CLEAR), **#97** (closed by PR
@@ -1165,7 +1165,7 @@ now that this session drives P1/P2 directly.
 - **#146** (PR #223) — Thomas made the fix-direction call the issue itself required
   (continue hardening `pr-body.mjs`'s existing pattern vs. a `remark`/`micromark` rewrite;
   recorded in the decision log above the P187 entry) — chose to ship the hardening fix.
-  Mandatory Opus review: CLEAR WITH FINDINGS (non-blocking); four minor follow-ups tracked
+  Mandatory Opus review: CLEAR WITH FINDINGS (non-blocking); three minor follow-ups (F1, F2, F4) tracked
   as issue #226.
 - **#17** (PR #225) — the mandatory Opus review's first pass found a real, blocking bug: the
   revocation migration compared a `timestamp without time zone` column against a
