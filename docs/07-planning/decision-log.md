@@ -29,7 +29,8 @@ alternative the issue itself raised — replacing `pr-body.mjs`'s hand-rolled
 position-tracking/regex approach with a real Markdown parser (`remark`/`micromark`) — is not
 taken up now.
 
-**Why:** the ready fix is low-risk and immediately mergeable (117/117 new tests, 451/451 full
+**Why:** the ready fix is low-risk and immediately mergeable (117/117 `pr-body.test.mjs`,
+of which 4 are new for this fix; 451/451 full
 CI-script suite, verified fail-against-old/pass-against-new), and it applies a pattern this
 file has already had extensively adversarially reviewed one level down, rather than
 inventing a new approach. The gate is live and exploitable on `main` today, so shipping the
