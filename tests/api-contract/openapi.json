@@ -28,16 +28,15 @@
       "InstanceStatus": {
         "type": "object",
         "properties": {
-          "hasUsers": {
-            "type": "boolean"
-          },
-          "hasAdmin": {
-            "type": "boolean"
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
           }
         },
         "required": [
-          "hasUsers",
-          "hasAdmin"
+          "status"
         ]
       },
       "Config": {
@@ -2545,7 +2544,7 @@
           "Instance"
         ],
         "summary": "Get instance status",
-        "description": "Public instance setup status. When hasUsers is false the next signup becomes the instance admin.",
+        "description": "Public liveness probe for the auth surface. Deliberately a constant shape (#18): it never reveals whether the instance has been claimed, so an unauthenticated caller cannot scan for an unclaimed instance to race for admin. First-run setup is reached through the one-time setup URL and token printed to the container log, not discovered from here.",
         "security": [],
         "responses": {
           "200": {

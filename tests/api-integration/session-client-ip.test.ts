@@ -5,6 +5,7 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
 import { requireRow } from "./helpers/fixtures";
+import { ensureNotFirstSignup } from "./helpers/organization-http";
 
 /**
  * A throwaway sign-up password, assembled at runtime rather than written down.
@@ -19,6 +20,11 @@ import { requireRow } from "./helpers/fixtures";
 const throwawayPassword = () => `Pw-${randomUUID()}`;
 
 async function signUpWithForwardedFor(forwardedFor: string) {
+  // #18: a zero-user instance now refuses sign-up without a setup token.
+  // These tests are about which IP lands on the session, not about instance-
+  // admin bootstrap, so plant a throwaway user directly first.
+  await ensureNotFirstSignup();
+
   const { app } = createApp();
   const email = `ip-${randomUUID()}@example.com`;
 
@@ -99,6 +105,7 @@ describe("the client IP recorded on a session", () => {
     // kaneo listed cf-connecting-ip FIRST in ipAddressHeaders. It is single
     // valued, so nothing could validate it, and TaskDesk is not behind
     // Cloudflare — it simply arrived from whoever set it. It is no longer read.
+    await ensureNotFirstSignup();
     const { app } = createApp();
     const email = `ip-cf-${randomUUID()}@example.com`;
 
@@ -141,6 +148,7 @@ describe("the client IP recorded on a session", () => {
   it("cannot be steered by forging the internal header itself", async () => {
     // buildAuthRequest strips any inbound x-taskdesk-client-ip before setting
     // it. Without that strip this fix would just have renamed the hole.
+    await ensureNotFirstSignup();
     const { app } = createApp();
     const email = `ip-int-${randomUUID()}@example.com`;
 

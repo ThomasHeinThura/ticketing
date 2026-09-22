@@ -24,6 +24,7 @@ import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
+import { ensureSetupToken } from "./instance/setup-token";
 import invitation from "./invitation";
 import label from "./label";
 import { migrateColumns } from "./migrations/column-migration";
@@ -348,14 +349,12 @@ export function createApp(options: { staticRoot?: string } = {}) {
       tags: ["Instance"],
       summary: "Get instance status",
       description:
-        "Public instance setup status. When hasUsers is false the next signup becomes the instance admin.",
+        "Public liveness probe for the auth surface. Deliberately a constant shape (#18): it never reveals whether the instance has been claimed, so an unauthenticated caller cannot scan for an unclaimed instance to race for admin. First-run setup is reached through the one-time setup URL and token printed to the container log, not discovered from here.",
       security: [],
       responses: {
         200: jsonResponse(
           "Instance status",
-          z
-            .object({ hasUsers: z.boolean(), hasAdmin: z.boolean() })
-            .openapi("InstanceStatus"),
+          z.object({ status: z.literal("ok") }).openapi("InstanceStatus"),
         ),
       },
     }),
@@ -975,6 +974,11 @@ export async function runStartupTasks() {
   await migrateColumns();
   await seedDefaultWorkspaceRoles();
   await seedInternalOrganisationAndStaffPersons();
+
+  // #18: print a fresh setup token (and invalidate the previous one) on
+  // every boot while the instance is unclaimed. A no-op once
+  // instance_setting.setup_completed_at is set.
+  await ensureSetupToken();
 
   initializePlugins();
   initializeScheduler();

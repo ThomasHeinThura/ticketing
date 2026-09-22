@@ -22,7 +22,7 @@ import { CAPABILITY_CHECKS } from "../../apps/api/src/capabilities/capability-ch
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import { signUpUser } from "./helpers/organization-http";
+import { signUpInstanceAdmin, signUpUser } from "./helpers/organization-http";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import { updateWorkspaceMemberRoleNative } from "./helpers/workspace-membership-write-http";
 import {
@@ -679,7 +679,7 @@ describe("instance-admin bypass closure (mirrors S4/S5's own A2-P17 tests)", () 
     // admin by the first-run bootstrap (matches workspace-write-authorization
     // .test.ts's A2-P17 pattern) -- sign this one up before the workspace
     // owner so it is genuinely the first user.
-    const instanceAdmin = await signUpUser(app);
+    const instanceAdmin = await signUpInstanceAdmin(app);
     const [adminRow] = await db
       .select({ role: schema.userTable.role })
       .from(schema.userTable)
@@ -707,7 +707,7 @@ describe("instance-admin bypass closure (mirrors S4/S5's own A2-P17 tests)", () 
 
   it("the SAME instance admin succeeds once their workspace role actually is admin", async () => {
     const { app } = createApp();
-    const instanceAdmin = await signUpUser(app);
+    const instanceAdmin = await signUpInstanceAdmin(app);
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "BypassOk");
     await db.insert(schema.workspaceUserTable).values({
