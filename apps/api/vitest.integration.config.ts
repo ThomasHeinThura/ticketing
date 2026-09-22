@@ -5,6 +5,10 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["../../tests/api-integration/**/*.test.ts"],
+    // Runs once, in the main process, before setupFiles/workers -- see that
+    // file for why this is the right place to start a CI-only Testcontainers
+    // Postgres (#10).
+    globalSetup: ["../../tests/api-integration/global-setup.ts"],
     setupFiles: ["../../tests/api-integration/setup.ts"],
     fileParallelism: false,
     maxWorkers: 1,
