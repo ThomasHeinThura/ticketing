@@ -17,6 +17,37 @@ Newest first.
 
 ---
 
+### 2026-09-22 · #261's mandatory Opus review F1: `project.slug` becomes globally unique
+
+**Decision:** `project.slug` gets a real, instance-wide unique constraint. `work_item.key`
+(`{project.slug}-{number}`) keeps its existing global unique index as originally designed —
+the fix is on the `slug` side, not the `key` side.
+
+**Why:** PR #261's mandatory Opus security review found that `work_item.key`'s global
+uniqueness was built on an assumption a comment in `apps/api/src/database/schema.ts` stated
+as fact but that was never actually true or enforced: "`project.slug` is already unique per
+instance." It is not — `project/schema.ts` validates it as a bare `z.string()` with no
+uniqueness check anywhere, DB or application-level. Reproduced live: two different
+workspaces each creating a project slugged `ACME` collide on their first work-item key,
+and the second workspace's project is permanently unable to create a work item afterward
+(the counter advances on every retry but the insert always collides on the same key). It is
+also exploitable as a targeted attack — an attacker can advance their own same-slugged
+project's counter to deliberately burn a specific key in a victim's project, no advance
+knowledge of the victim required beyond a guessable slug.
+
+**Alternatives:** scope `work_item.key` uniqueness per workspace (`UNIQUE (workspace_id,
+key)`) instead of globally — rejected by Thomas in favor of the global-slug-uniqueness fix,
+which keeps the simpler global-key design the schema already assumed, at the cost of
+`project.slug` becoming a single first-come-first-served namespace across the whole
+instance rather than per-tenant. Existing rows with colliding slugs need a migration-time
+resolution (deduplicate/suffix) before the constraint can be added.
+
+**Decided by:** Thomas, 2026-09-22 (asked directly via a tight two-option choice after the
+mandatory Opus review flagged this as blocking and a genuine architecture call, not
+something to guess at).
+
+---
+
 ### 2026-09-22 · #192 addendum: a third composite FK anchoring `work_item.workspace_id` to `project`
 
 **Decision:** extends the "#192's tenant-attribution decision: Option A+D" entry
