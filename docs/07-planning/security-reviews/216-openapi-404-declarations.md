@@ -1,6 +1,6 @@
 # Security review — PR #216 (issue #206: declare the 404s handlers actually return)
 
-**Reviewed head:** `8b9c9133eab91309f1241079d5dee223c88902c5`
+**Reviewed head:** `ebe5d2a7bcb21e86ee7fc90bac6831bd7d18e849`
 
 Fixed at `68f3a6979c3bea4bceb4215ac623e076352ccac2`; confirmed by an independent Opus pass
 via `git merge-tree --write-tree` recomputation of both intervening merge commits (not a
@@ -57,8 +57,19 @@ No authorization, permission, or route-path change anywhere in this PR — confi
 
 Two further main-syncs landed after the confirmation above (PR #213's test-hygiene fixes,
 PR #214's UTC timestamp fix — neither touches any file this PR reviewed). Re-checked
-directly at the final head `8b9c9133eab91309f1241079d5dee223c88902c5`: `git diff
+directly at `8b9c9133eab91309f1241079d5dee223c88902c5`: `git diff
 2f397053595a746c6131499b74daa88179db551b 8b9c9133eab91309f1241079d5dee223c88902c5 --
 apps/api/src/column/index.ts apps/api/src/label/index.ts apps/api/src/project/index.ts
 apps/api/src/task/index.ts apps/api/src/time-entry/index.ts
 apps/api/src/workflow-rule/index.ts tests/api-contract/openapi.json` is empty.
+
+One further main-sync landed after that, bringing in PR #215's constraint-migration PR
+(`apps/api/drizzle/0059_work_item_integrity_checks.sql`, `apps/api/src/database/schema.ts`,
+its own test file and security-review note — no file this PR reviewed). Re-checked directly
+at the final head `ebe5d2a7bcb21e86ee7fc90bac6831bd7d18e849`: `git diff
+8b9c9133eab91309f1241079d5dee223c88902c5 ebe5d2a7bcb21e86ee7fc90bac6831bd7d18e849 --
+apps/api/src/column/index.ts apps/api/src/label/index.ts apps/api/src/project/index.ts
+apps/api/src/task/index.ts apps/api/src/time-entry/index.ts
+apps/api/src/workflow-rule/index.ts tests/api-contract/openapi.json` is empty, and the merge
+commit's two parents' diffs (per-parent attribution, not a two-endpoint diff) confirm the
+same — the only real content is #215's own files, listed above.
