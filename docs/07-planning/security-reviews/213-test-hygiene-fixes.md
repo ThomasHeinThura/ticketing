@@ -1,6 +1,18 @@
 # Security review — PR #213 (issue #95: two LOW test-hygiene fixes deferred from #77)
 
-**Reviewed head:** `a4afd5680e17043406f582f83489ad94bd2e5bce`
+**Reviewed head:** `cd7f2953b34f507304c5abe13b84e4971814b25d`
+
+Substantively reviewed at `a4afd5680e17043406f582f83489ad94bd2e5bce`; clearance extended to
+this head (a merge of `origin/main` into the branch, via an intervening note-only commit
+that recorded this review) by the same reviewer, who independently verified — by the union
+of each merge parent's own diff, not a two-endpoint diff alone, since that method can miss a
+change-then-revert or a merge that silently substitutes content from an ancestor — that
+exactly three paths landed (`.husky/pre-commit`, `docs/07-planning/status.md`, and this
+note), confirmed both reviewed test files byte-identical by git blob hash, and re-executed
+at the new head in a fresh worktree: unit 11/11, integration 12/12, both mutation proofs
+reproduced identically. Scope note: this clearance covers the two test files only —
+`.husky/pre-commit` came from PR #211, already independently reviewed and merged on its own
+account, not assessed by this reviewer.
 
 ## What this PR does
 
