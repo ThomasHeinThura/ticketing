@@ -773,4 +773,30 @@ over, it is not reachable by any ordinary Dockerfile edit, its accidental form f
 loudly, and the enabling shape does not exist in this repository. It does not justify a fourth
 round on a CI-tooling fix of this size. R3-2, R2-2 and R2-3 need no action.
 
+---
+
+## Post-round-3 main sync — orchestrating session, self-verified, 2026-09-22
+
+Branch protection required a sync with `main` after round 3 cleared (PR #238, a docs-only
+decision-log and `status.md` reconciliation, had merged in the meantime). Synced via `git
+merge origin/main` (not rebase — rebasing would rewrite `37729d1` and every earlier reviewed
+commit into new SHAs, orphaning this note's own `**Reviewed head:**` citations).
+
+`git diff 37729d168d682bd4e24706e9eb076ca92cdbacd3..5f41b1f --stat` (round 3's reviewed head
+to the merge commit): exactly `docs/07-planning/decision-log.md` and
+`docs/07-planning/status.md`, 86 insertions, 17 deletions — the same two files PR #238
+touched, with the exact content already on `main`. Zero overlap with `scripts/ci/**`,
+`.github/**`, or the `Dockerfile` — everything this review examined. Re-ran the check script
+and its test file at the merge commit: `9 workspace package manifest(s) match`, 22/22 tests
+pass, matching round 3 exactly.
+
+This is the established "orchestrator self-verification for a pure no-overlap sync" pattern
+— this review note carries no instruction barring it (unlike PR #239/#192's own note, which
+explicitly does, for a cross-tenant-authority migration; this is a CI-tooling fix with no
+such invariant at stake). Documented transparently rather than silently extending round 3's
+clearance to a head it never saw.
+
+**Reviewed head:** `5f41b1fd1be90cf5a96eefdd3a46c0ce5ab88819`
+
+
 This PR is ready to merge on the gates within this review's scope.
