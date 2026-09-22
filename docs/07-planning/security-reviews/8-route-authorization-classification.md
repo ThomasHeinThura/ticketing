@@ -564,3 +564,30 @@ neither this sync nor the prior one touched anything under `apps/api/src/**` or
 `tests/api-integration/**` beyond what the first sync already re-verified in full.
 
 **Reviewed head:** `4e2eba394f56b72927c668516f2f04792487f723`
+
+---
+
+## OpenAPI fixture regeneration — orchestrating session, self-verified, 2026-09-22
+
+`contract - OpenAPI drift` (a required `protect-main` status check) failed on this PR's own
+CI: `tests/api-contract/openapi.json` had never been regenerated after the asset-route fix
+in §2 changed that route's live `description`, dropped its `security: []` marker, and added
+a `401` response — the check's own message confirmed the shape: "no route added or removed
+— a schema, parameter or description changed."
+
+This is a build-artifact catch-up, not a new change under review: `pnpm openapi:write`
+deterministically derives this file from the route definitions in `apps/api/src/index.ts`,
+which this review already read in full at §2 (the byte-identical-handler, moved-registration
+diff). Ran it and confirmed the entire diff is exactly that — the `/asset/{id}` entry shifts
+position (reflecting its actual registration-order move below the guard), `security: []` is
+removed, the `description` field is updated to state the real credentialed requirement, and
+`401`/`403`/`404` responses gain a `content` schema matching the route's real error-response
+shape. No route added or removed; no other of the 102 operations touched (`git diff --stat`
+confirms a single file, and the diff itself confirms a single path entry moved plus its own
+fields updated — nothing else). Re-ran the full suite against the result: **80/80
+permissions, typecheck clean across all 4 workspace projects, `biome check` clean**. Did not
+re-run the full unit/integration suites a third time in this session, since this change
+touches no application logic, only a generated contract fixture already covered by the
+typecheck and permissions re-runs above and by this review's own §2 handler-diff verification.
+
+**Reviewed head:** `9fdd7088bab4d6537f777d2db7ff196e2f902dc3`
