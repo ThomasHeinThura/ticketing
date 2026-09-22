@@ -14,6 +14,7 @@ import {
   organisationQuotaTable,
   organisationTable,
   personTable,
+  projectSlugClaimTable,
   projectTable,
   roleTable,
   sessionTable,
@@ -115,6 +116,20 @@ export const projectTableRelations = relations(
     columns: many(columnTable),
     workflowRules: many(workflowRuleTable),
     notificationWorkspaceProjects: many(userNotificationWorkspaceProjectTable),
+  }),
+);
+
+// #261 F1's delta-confirmation (D1) -- query-API sugar only, not backed by a real FK (see
+// `projectSlugClaimTable`'s own schema.ts comment for why that table carries no
+// `.references()` back to `project.id`, mirroring `workItemKeyClaimTable`'s identical
+// reasoning below).
+export const projectSlugClaimTableRelations = relations(
+  projectSlugClaimTable,
+  ({ one }) => ({
+    project: one(projectTable, {
+      fields: [projectSlugClaimTable.projectId],
+      references: [projectTable.id],
+    }),
   }),
 );
 

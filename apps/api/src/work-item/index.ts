@@ -85,6 +85,13 @@ const createWorkItemRoute = createRoute({
       "No workspace access, or missing work_item:create permission",
     ),
     404: errorResponse("Project not found"),
+    // #23's mandatory Opus security review of PR #261, F1's delta-confirmation (D1,
+    // 2026-09-22): defence in depth for a poisoned key range that predates the
+    // `project_slug_claim` fix (see `create-work-item.ts`'s own catch clause) -- expected
+    // to be effectively unreachable going forward, not a normal-path response.
+    409: errorResponse(
+      "This work item's key is already claimed by another work item",
+    ),
   },
 });
 

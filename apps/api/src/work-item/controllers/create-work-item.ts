@@ -7,6 +7,7 @@ import {
   workItemTable,
   workItemTypeTable,
 } from "../../database/schema";
+import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { claimWorkItemNumber } from "./claim-work-item-number";
 
 type CreateWorkItemInput = {
@@ -91,31 +92,57 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // concurrency analysis and the `project.key` naming judgment call (this codebase's
   // live column is `project.slug`, which already plays exactly that role --
   // `project/index.ts`: "The slug becomes the prefix of its task identifiers").
-  return db.transaction(async (tx) => {
-    const number = await claimWorkItemNumber(project.id, tx);
-    const key = `${project.slug}-${number}`;
+  try {
+    return await db.transaction(async (tx) => {
+      const number = await claimWorkItemNumber(project.id, tx);
+      const key = `${project.slug}-${number}`;
 
-    const [created] = await tx
-      .insert(workItemTable)
-      .values({
-        projectId: project.id,
-        workspaceId: project.workspaceId,
-        typeId: type.id,
-        number,
-        key,
-        title,
-        description: description ?? null,
-        stateId: defaultState.id,
-        priority: priority ?? null,
-      })
-      .returning();
+      const [created] = await tx
+        .insert(workItemTable)
+        .values({
+          projectId: project.id,
+          workspaceId: project.workspaceId,
+          typeId: type.id,
+          number,
+          key,
+          title,
+          description: description ?? null,
+          stateId: defaultState.id,
+          priority: priority ?? null,
+        })
+        .returning();
 
-    if (!created) {
-      throw new HTTPException(500, { message: "Failed to create work item" });
+      if (!created) {
+        throw new HTTPException(500, {
+          message: "Failed to create work item",
+        });
+      }
+
+      return created;
+    });
+  } catch (error) {
+    // #23's mandatory Opus security review of PR #261, F1's delta-confirmation (D1,
+    // 2026-09-22, "what would close it" #2): defence in depth. `project_slug_claim`
+    // (see `create-project.ts`/`update-project.ts`) is meant to stop a poisoned key
+    // range from ever being reachable, but this is the failure mode if it is ever wrong,
+    // bypassed, or if a pre-existing poisoned range predates that fix (migration 0065's
+    // own backfill cannot see a slug freed before it ran -- see that migration's
+    // comment). `work_item_claim_key()`'s trigger (migration 0055) inserts into
+    // `work_item_key_claim` BEFORE this INSERT and raises a genuine `unique_violation` on
+    // its PRIMARY KEY when the SAME key string was already claimed by a DIFFERENT work
+    // item -- previously an unhandled raw `{"message":"Internal Server Error"}` 500 with
+    // nothing in the response to act on. Mapped here to a clean, understandable 409
+    // instead (`app.onError`'s handling of a >=500 `HTTPException` is a pre-existing,
+    // separately-scoped gap -- its own `if` block is empty -- so this alone does not add
+    // logging; it only stops the response itself from being opaque).
+    if (isUniqueViolation(error, "key")) {
+      throw new HTTPException(409, {
+        message:
+          "This work item's key is already claimed by another work item; the project's key range may be poisoned by a retired slug -- contact an administrator",
+      });
     }
-
-    return created;
-  });
+    throw error;
+  }
 }
 
 export default createWorkItem;

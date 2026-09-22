@@ -10097,6 +10097,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "This work item's key is already claimed by another work item",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },

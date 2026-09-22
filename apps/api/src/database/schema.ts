@@ -353,6 +353,50 @@ export const projectTable = pgTable(
   ],
 );
 
+// #261 F1's Opus delta-confirmation review (D1, 2026-09-22): `project_slug_unique` above
+// only constrains the set of slugs held by rows CURRENTLY in `project`. `work_item.key`
+// (`{project.slug}-{number}`) is generated from `project.slug` but claimed permanently in
+// `work_item_key_claim`, which -- by explicit, deliberate design (that table's own comment)
+// -- NEVER releases a claim, even after the work item or its project is gone. So a slug
+// that is merely unique among LIVE rows can still be freed (by renaming the project that
+// holds it, or by hard-deleting its workspace, which cascades the project away with no FK
+// stopping it) and handed to an unrelated later tenant, who then collides on a key range
+// the first slug-holder already burned -- the exact cross-tenant permanent DoS D1
+// reproduced twice, by both release paths, against the fix that added only the
+// live-uniqueness constraint.
+//
+// THE FIX: a permanent claim registry for `project.slug`, mirroring `work_item_key_claim`'s
+// own lifetime semantics EXACTLY -- once a slug is claimed here, by ANY project, it is
+// claimed forever, independent of whether that project is later renamed away from it,
+// soft-deleted, or hard-deleted via its workspace. This makes the generator namespace
+// (`project.slug`) exactly as durable as the namespace it feeds (`work_item_key_claim.key`),
+// closing both release paths with one mechanism -- neither depends on any row's current
+// state.
+//
+// `project_id` here is deliberately NOT a foreign key, for the identical reason
+// `work_item_key_claim.work_item_id` is not one (see that table's own comment): a real FK
+// to `project.id` would need `ON DELETE CASCADE` (which would silently free the slug the
+// instant its project is hard-deleted -- exactly what this table exists to prevent) or
+// `ON DELETE RESTRICT` (which would make a workspace's cascade-delete of its own projects
+// fail outright, a behaviour change to a P0-deliberate hard-delete path this migration does
+// not own). So: no FK. `project_id` is populated once at claim time and is not load-bearing
+// after that -- the uniqueness guarantee is `slug`'s PRIMARY KEY, not this column.
+//
+// POPULATED AT THE APPLICATION LAYER, not by a trigger (unlike `work_item_key_claim`,
+// which needs one because `work_item` has no single, small set of writers). `project` has
+// exactly two: `create-project.ts` (claims the new slug in the same transaction as the
+// project insert) and `update-project.ts` (claims the NEW slug on rename, in the same
+// transaction as the update -- the OLD slug is never released, by design: see this table's
+// own "claimed forever" rule above). Both check this table before writing, for a clean 409
+// (`ProjectSlugTakenError`) rather than a raw constraint violation; the PRIMARY KEY here is
+// the backstop for the race between that check and the write, same idiom as
+// `project_slug_unique` itself.
+export const projectSlugClaimTable = pgTable("project_slug_claim", {
+  slug: text("slug").primaryKey(),
+  projectId: text("project_id").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+});
+
 export const columnTable = pgTable(
   "column",
   {
