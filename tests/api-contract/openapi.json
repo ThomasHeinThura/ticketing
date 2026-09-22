@@ -3163,6 +3163,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "That project slug is already taken",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -3314,6 +3324,16 @@
           },
           "404": {
             "description": "Project doesn't exist or doesn't belong to the specified workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "That project slug is already taken",
             "content": {
               "text/plain": {
                 "schema": {
