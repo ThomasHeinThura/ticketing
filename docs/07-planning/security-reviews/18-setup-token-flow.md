@@ -301,3 +301,196 @@ must not be internet-reachable before it is claimed, is a product decision, not 
   created no user.
 - Did not re-audit `checkRegistrationAllowed` or the invitation flow beyond confirming this
   PR does not change them.
+
+---
+
+# Delta confirmation — 2026-09-22
+
+**Reviewed head:** `039804c9d9b5ef0d23a1a24fbc74edb5c3fe4860`
+
+Reviewed by a second fresh, independent Opus context that neither authored, directed, nor
+remediated this change, and which did not perform the original review above. Checked out in
+an isolated worktree at the exact head above (merge-base with `main` is
+`407c706c02f025613d548d71f307388e472f1bb5`), against a private Postgres database
+(`td_opus_227_delta`, `td_opus_227_f2` on `td-lane-pg`), not against `main`.
+
+Scope: confirm the remediation of **B1** and **F2–F5** claimed in `75b80ce`. **F1** was
+deferred to a tracked follow-up and was not re-derived here.
+
+**Verdict: CHANGES NEEDED — B1 is closed on the path that was tested and re-opened by a
+one-field variant of the same request; F4's claimed fix does not do what it claims and its
+regression test is vacuous.**
+
+## Delta actually reviewed
+
+The originally-reviewed head `7b41597` is the branch's *first* commit, so four commits sit
+between it and the current head — one more than the remediation commit named in the brief:
+
+| Commit | Contents | In the claimed remediation? |
+| --- | --- | --- |
+| `f3e6f4b` | `data-model.md` — names `setup_token_hash` / `setup_token_expires_at` | No (docs only) |
+| `f96e2cb` | deletes `apps/web` `get-instance-status.ts` fetcher + `use-instance-status.ts` hook | No (dead-code cleanup the original review flagged) |
+| `75b80ce` | B1 + F2–F5 | Yes |
+| `a154be9` | merge of `origin/main` — brings only `docs/07-planning/status.md` | n/a |
+| `039804c` | this review note | n/a |
+
+Both out-of-claim commits are benign and verified: the two deleted web modules have **zero**
+remaining references anywhere in `apps/web/src`, both parent directories are gone, and the
+`apps/web` suite is green. Nothing else outside the claimed remediation slipped in.
+
+## Findings
+
+### D1 (BLOCKING) — B1's scanning oracle is re-opened by adding any `invitationId` to the same request
+
+The B1 message fix is real and its test is genuinely load-bearing (reverting only the message
+literal makes `(B1)` fail — verified). But it closes the oracle only for a sign-up request
+that carries **no** invitation id. Adding one syntactically-valid junk id — the whole
+requirement is `/^[a-z0-9_-]{1,128}$/i` — restores the distinguisher, still unauthenticated,
+still one request.
+
+The cause is `auth.ts`'s HTTP-level `hooks.before` middleware, which computes
+`isInstanceAdminSetup = existingUserCount === 0` and returns *early* on a zero-user instance,
+so an unclaimed instance never reaches `checkRegistrationAllowed` at all and is refused later
+by the `databaseHooks` branch with the "no invitation presented" message — while a claimed
+instance does reach `checkRegistrationAllowed`, which has **two** distinct refusal strings.
+
+Measured on a real instance, `DISABLE_REGISTRATION=true`, both requests unauthenticated:
+
+| Request | Unclaimed instance | Claimed instance |
+| --- | --- | --- |
+| no `invitationId` | 403 `Registration is currently disabled. Please use a valid invitation link to create an account.` | 403 *(identical)* |
+| `invitationId: "notarealinvite"` | 403 `Registration is currently disabled. Please use a valid invitation link to create an account.` | 403 `Registration is currently disabled. You need a valid invitation to create an account.` |
+
+The second row is the finding. This is not a new class — it is B1, in the exact configuration
+B1 is about, reachable by adding one field. It is strictly weaker than the original (it does
+not name `TASKDESK_BOOTSTRAP_ADMIN_EMAIL`), but "unclaimed" is precisely the signal that makes
+guessing the bootstrap address worth attempting, so it feeds the same chain. The per-IP
+sign-up limiter (3/60s) does not mitigate host-scanning, which sends one request per host.
+
+The original review's own "Not done in this review" section says it did not re-audit
+`checkRegistrationAllowed` — which is where the remaining half of the oracle lives.
+
+Suggested fix: refuse the uncredentialed zero-user case with `checkRegistrationAllowed`'s
+message **for the same inputs** (i.e. call it and reuse `result.reason`), or collapse
+`check-registration-allowed.ts`'s two refusal strings into one. The `(B1)` regression test
+must then be parameterised over `invitationId` present/absent — as written it would not have
+caught this.
+
+### D2 (non-blocking, but the claim is wrong) — F4 is not fixed, and its test cannot fail
+
+`normaliseEmail()` NFKC-normalizes before folding case. NFKC maps **U+212A KELVIN SIGN to
+`K`**, which then lowercases to `k` — so the exact trick F4 named still produces a false
+match. Measured:
+
+- configured `koperator@example.com`, candidate `Koperator@example.com` → `true`
+  under the old code **and** `true` under the new code. Unchanged.
+- NFKC also *widens* matching: fullwidth `ａdmin@example.com` vs `admin@example.com` was
+  `false` before and is `true` now.
+
+The shipped `(F4)` test does not detect this because its candidate **prepends** the Kelvin
+sign to the configured address (`K` + `operator@example.com` vs `operator@example.com`)
+rather than substituting it for a `k`. That is a different string by one extra character
+under any normalization. Verified directly: reverting `normaliseEmail` to the bare
+`value.trim().toLowerCase()` it replaced leaves the `(F4)` test **passing**.
+
+End-to-end security impact remains nil, for the reason the original review gave and for one
+more: on an unclaimed instance, presenting the *correct* bootstrap address already succeeds by
+design, so a homograph of it grants nothing extra. But a green test asserting a property that
+is not true is the failure mode this project's process exists to prevent, and the note that
+F4 is closed should not stand. Either normalize *and* reject non-ASCII/non-normalized
+addresses, or withdraw the claim; either way the test must fail when the fix is removed.
+
+### D3 (informational) — one read F3 claims to have scoped is still unscoped
+
+`isSetupCompleted()` and `verifyAndConsumeSetupToken()` are now `WHERE id = 'singleton'`, but
+the read inside `auth.ts`'s advisory-locked `after` hook is still
+`.from(instanceSettingTable).limit(1)` with no `WHERE`. Harmless in practice — the new CHECK
+makes a second row impossible — but the remediation's claim of "WHERE-scoped reads" is not
+complete.
+
+## Confirmed correct
+
+- **B1 (partial, see D1).** Message is byte-identical to `check-registration-allowed.ts`'s
+  no-invitation-presented string; the `(B1)` test fails when only the message literal is
+  reverted.
+- **B1's chained escalation, re-derived.** Presenting the *correct* `TASKDESK_BOOTSTRAP_ADMIN_EMAIL`
+  on an unclaimed, registration-closed instance still returns 200 and `role: admin`. That is
+  the specified headless-install path, not a defect — B1 was always about the message naming
+  the mechanism, not about the mechanism. Confirmed unchanged and correct.
+- **F2.** Verified against the *shipped* SQL, not a reimplementation, on two databases:
+  migrated a fresh database to 0060-equivalent state, inserted a user row, ran
+  `0061_instance_setting.sql` verbatim through `psql` → singleton row created with
+  `setup_completed_at` non-null. On a genuinely fresh database (no `user` rows) the
+  `WHERE EXISTS` guard correctly wrote nothing. `--> statement-breakpoint` splits cleanly and
+  `drizzle-kit migrate` applies the file without error.
+- **F3.** The CHECK is really on the table
+  (`CHECK (id = 'singleton'::text)`). `INSERT ... VALUES ('not-singleton')` is rejected by
+  Postgres with `instance_setting_id_singleton`; `INSERT ... VALUES ('singleton')` succeeds;
+  a second default insert is rejected by the primary key. PK + CHECK together make exactly-one-row
+  a real invariant.
+- **F5 (partial, as claimed).** `ensureSetupToken()` now `.returning()`s and returns `null`
+  when the `onConflictDoUpdate` WHERE guard suppresses the write, so it can no longer print a
+  token it did not store. `sign-up.tsx` captures the token into a ref on first render and
+  strips it from the URL with a mount-only `replace` navigation. The one-hour TTL still has
+  **no** regression test — correctly still open.
+- **F1 / issue #231.** Open, and an accurate description of the deferred finding: the
+  zero-admin liveness race between two simultaneously-armed mechanisms, explicitly noting two
+  admins remain impossible, that `main` is worse today, the DB-access recovery path, and a
+  concrete suggested fix plus the regression test it needs.
+
+## Evidence
+
+- `apps/api` integration: **64 files / 582 tests passed** (expected 64/582).
+- `apps/api` unit: **48 / 323 passed** (expected 48/323; requires `packages/permissions` and
+  `packages/email` built first — a bare worktree fails to resolve them).
+- `apps/api` permissions: **10 / 79 passed**, unchanged.
+- `apps/web`: **57 files / 236 tests passed** (expected 57/236).
+- `drizzle-kit check`: `Everything's fine` — no drift.
+- `instance-setup-bootstrap.test.ts` alone: 18 passed, including all five new cases.
+- Negative controls: reverting only the B1 message literal → `(B1)` fails as designed.
+  Reverting only the F4 NFKC call → `(F4)` still passes (D2).
+
+## Not done in this delta confirmation
+
+- Did not re-derive the original review's cleared areas (cryptography, single-use consumption,
+  the durable marker, advisory-locked promotion, `GET /api/instance/status`) beyond confirming
+  `75b80ce` did not disturb them.
+- Did not re-derive F1; it is tracked in #231 and out of scope here.
+- Did not exercise the `sign-up.tsx` URL-stripping in a real browser — read and reasoned
+  about only; the `apps/web` suite has no test covering it.
+- Did not audit the invitation flow itself, only the two refusal strings in
+  `check-registration-allowed.ts` that D1 depends on.
+- Did not test OAuth/OIDC or magic-link creation paths.
+
+---
+
+## Remediation of D1 and D2 — 2026-09-22 (orchestrating session, awaiting delta-confirmation)
+
+Both findings above addressed in commit `c45bf2e`.
+
+**D1:** `invitationId` is now normalized once, up front, and the SAME
+`checkRegistrationAllowed(user.email, invitationId, ...)` call decides the refusal message
+in both the zero-user bootstrap branch and the ordinary registration branch — identical
+inputs now produce identical outputs regardless of claimed/unclaimed state, for any
+request shape, not just the plain one B1 originally tested. When that call itself reports
+`allowed: true` (registration open), there is no error message to mirror (a claimed+open
+instance answers 200, not an error body), so this falls back to the original fixed refusal
+text; the residual 200-vs-403 signal in that one configuration is inherent to never letting
+an unauthenticated signup through on an unclaimed instance at all.
+
+**D2:** replaced the NFKC-then-lowercase comparison with an ASCII-only case fold
+(`foldAsciiCase`, matching only `[A-Z]`), which cannot touch U+212A regardless of NFKC's own
+decomposition tables. Also rewrote the F4 test: it now substitutes U+212A for the leading
+"k" of a same-length configured address (`kelvinSignVariant.length === "koperator@example
+.com".length`, asserted explicitly), rather than the original's length-mismatched
+construction that could never have failed regardless of the underlying bug.
+
+New test (D1) and rewritten test (F4/D2) both confirmed, by the orchestrating session, to
+fail against their respective pre-fix code and pass against the fix (temporarily reverted
+each in turn, re-ran, restored). Full suite re-verified: 64 files/583 tests (integration,
++1 over the prior 582), 48/323 unit, 10/79 permissions (unchanged), `drizzle-kit check`
+clean.
+
+Because the orchestrating session authored this remediation, it cannot also be the
+independent reviewer who clears it (`CLAUDE.md`'s no-self-review rule) — a further delta
+confirmation by a fresh, independent context is required before this PR can merge.
