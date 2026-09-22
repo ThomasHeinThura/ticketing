@@ -47,6 +47,16 @@
 --
 -- Idempotent by construction: a second run assigns the same value to the same
 -- rows and changes nothing further.
+--
+-- `created_at` is `timestamp without time zone`, holding UTC wall clock (see
+-- `apps/api/src/utils/db-time.ts` and `coding-standards.md` § Database). Comparing it
+-- against a `TIMESTAMPTZ` literal would make Postgres reinterpret that UTC wall-clock
+-- value as *local* time in the database server's own `TimeZone` setting, sliding the
+-- boundary by the server's offset -- on a server behind UTC that silently leaves live
+-- exactly the pre-cutoff sessions this migration exists to expire (found by the
+-- mandatory security review of PR #225, proved live under America/New_York). Using a
+-- naive `TIMESTAMP` literal in the column's own UTC wall-clock convention keeps the
+-- comparison `timestamp` against `timestamp`, so no session setting can enter into it.
 UPDATE "session"
 SET "expires_at" = "created_at"
-WHERE "created_at" < TIMESTAMPTZ '2026-09-07T09:15:26Z';
+WHERE "created_at" < TIMESTAMP '2026-09-07 09:15:26';
