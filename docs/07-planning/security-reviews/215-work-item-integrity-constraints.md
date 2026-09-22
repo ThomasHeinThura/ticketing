@@ -1,6 +1,6 @@
 # Security review — PR #215 (issue #189: constrain enum-like and numeric work-item columns)
 
-**Reviewed head:** `e47efcc0b26cca788e8f67a97b4f0ece8312a094`
+**Reviewed head:** `619ad0f6bdad66017f763dfb44b8968dea60ccbd`
 
 Substantively reviewed at `4d5dafd64ce3c62ccb136211d6fbe52af1fe810d`; clearance extended to
 this head (a merge of `origin/main` into the branch) by the same reviewer, who
@@ -21,6 +21,12 @@ Re-checked directly by the orchestrating session rather than a further reviewer 
 e47efcc0b26cca788e8f67a97b4f0ece8312a094 -- apps/api/drizzle/0059_work_item_integrity_checks.sql
 apps/api/src/database/schema.ts tests/api-integration/work-item-integrity-constraints.test.ts`
 is empty, and `drizzle-kit check` was re-run at this exact head and still reports no drift.
+
+A second further sync landed at `619ad0f`, bringing in PRs #213 and #214 (unrelated files,
+no overlap). Re-checked directly: `git diff e47efcc0b26cca788e8f67a97b4f0ece8312a094
+619ad0f6bdad66017f763dfb44b8968dea60ccbd -- apps/api/drizzle/0059_work_item_integrity_checks.sql
+apps/api/src/database/schema.ts tests/api-integration/work-item-integrity-constraints.test.ts`
+is empty, and `drizzle-kit check` re-run again at this final head still reports no drift.
 
 ## What this PR does
 
