@@ -504,3 +504,17 @@ tests/api-integration/session-oauth-removal-revocation-behind-utc.test.ts` is em
 `drizzle-kit check` re-run at the new head still reports no drift.
 
 **Reviewed head:** `f1506042b77ff7df490296ef279578f303c0d847`
+
+---
+
+## Further sync — 2026-09-22, head advanced to `3e7e8a8`
+
+One further main-sync landed (PR #223's #146 fix — `scripts/ci/**`, its own decision-log
+entry and security-review note; no file this review covers). Re-checked directly: `git diff
+f1506042b77ff7df490296ef279578f303c0d847 3e7e8a8edcf671731601fc8320662f80adf8a840 --
+apps/api/drizzle/0060_revoke_pre_oauth_removal_sessions.sql
+apps/api/drizzle/meta/0060_snapshot.json apps/api/drizzle/meta/_journal.json
+tests/api-integration/session-oauth-removal-revocation.test.ts
+tests/api-integration/session-oauth-removal-revocation-behind-utc.test.ts` is empty.
+
+**Reviewed head:** `3e7e8a8edcf671731601fc8320662f80adf8a840`
