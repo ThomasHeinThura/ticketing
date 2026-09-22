@@ -11,9 +11,23 @@ resolved.
 > project-purging half cannot be written until #192's tenant-attribution question is
 > answered — a work item or project cannot currently name its organisation at all).
 > Kaneo's `task`/`column` tables and routes remain fully untouched and still live.
-> **Stage:** P0 · Foundation — **exit criteria met; Throttle 1 is OPEN.** Autonomous
-> continuation past Throttle 1 is authorized (Thomas, 2026-09-16) — see the session log's
-> newest entry for what that wave landed and what it found.
+> **Stage:** P0 · Foundation — **Throttle 1 is OPEN; P0 itself is NOT finished.** Correction
+> (2026-09-22): this file previously said "exit criteria met," conflating two different
+> things. Throttle 1 is a narrower gate — the organization-plugin retrofit's five specific
+> conditions (below) — and those five really did verify closed. But P0 as a whole has its
+> own separate issue list, and a live audit (2026-09-22, checked against current source, not
+> against issue text or this file) found real, unpatched, reproducible defects still open:
+> **#18** (first-admin registration bypass — no setup-token flow exists, blocks any public
+> instance exposure), **#146** (CRITICAL — a comment-hidden duplicate heading defeats the
+> whole PR-template security-review gate), **#17** (sessions minted by the removed MCP
+> OAuth/device flows were never revoked), **#97** (logged-out users get a blank page instead
+> of a sign-in redirect). Plus two large, mostly-open umbrella items: **#8** (route-policy
+> retrofit — ~80 inherited routes still unclassified, and the policy registry has zero
+> runtime wiring into `apps/api/src/index.ts` yet, so no request is actually evaluated
+> against it today) and **#9** (`packages/ui` extraction — only 18 of ~63 primitives moved
+> out of `apps/web`). **Autonomous continuation past Throttle 1 into P1–P7 is authorized**
+> (Thomas, 2026-09-16, reaffirmed 2026-09-22) — running P1–P7 in parallel does not wait on
+> P0's remaining issues, but they are not done and this file should not imply otherwise.
 > **Throttle 1: OPEN.** All five conditions verified live, not rounded up: #5 closed, #6
 > closed 2026-09-16 (every substantive item in its real checklist checked against live
 > source, not against this file or the issue's own stale checkboxes), #7 closed,
@@ -46,21 +60,34 @@ resolved.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-18 (the eleventh pass)
-**Current stage:** P0 · Foundation — **exit criteria met; Throttle 1 OPEN.** Issue #187
-(the live `project` table's hard-delete route was made destructive by #185's
+**Last updated:** 2026-09-22 (P0 status correction, and dispatching fixes for four of the
+still-open P0 defects)
+**Current stage:** P0 · Foundation — **Throttle 1 OPEN (verified, unchanged); P0 as a whole
+is not finished.** This pass corrects a wording problem in every prior snapshot back to
+2026-09-16: "exit criteria met" was true only of Throttle 1's own five conditions (the
+organization-plugin retrofit), never of P0 as a whole, and nothing in this file said so
+plainly until now. A live audit against current source (not against issue text, not against
+this file) found #18, #146, #17, #97 all still real, reproducible, and unpatched, and #8/#9
+still substantially open (see the corrected header above for specifics). Fixes for all four
+concrete defects are now in progress — see the session log's newest entry.
+**Updated by:** Claude Sonnet 5 (orchestrating session), correcting the record and
+dispatching the four fixes above. Merge into main not yet done for any of them.
+
+---
+
+**Earlier the same day:** GitHub Copilot (DeepSeek V4.1 Flash), the orchestrating session
+for the P1 mandate. **Not Claude** — Claude was unavailable this session, and the real
+model is named here because that is the standing instruction. Three independent ordinary
+reviews were run through available non-Claude contexts (all named on their pull requests);
+**no Opus security review was possible**, so two candidates were marked
+`SECURITY REVIEW PENDING — OPUS CAPACITY` and neither could be merged at the time. Issue
+#187 (the live `project` table's hard-delete route was made destructive by #185's
 `work_item.project_id` CASCADE) is closed: `project` now has its own `deleted_at`/
 `purge_after` columns, delete is an atomic soft-delete, and every read/write path reaching
 a project or its children treats a soft-deleted one as gone. This is unrelated to #23's own
 schema work above — a pre-existing gap in the live `project` table that #185's new FK
-simply made consequential, not one of #23's own integrity findings.
-**Updated by:** GitHub Copilot (DeepSeek V4.1 Flash), the orchestrating session for the P1
-mandate. **Not Claude** — Claude was unavailable this session, and the real model is named
-here because that is the standing instruction. Three independent ordinary reviews were run
-through available non-Claude contexts (all named on their pull requests); **no Opus security
-review was possible**, so two candidates are marked
-`SECURITY REVIEW PENDING — OPUS CAPACITY` and neither may be merged. The previous pass's
-record of PR #200 below is preserved unchanged, since nothing in this session revisited it.
+simply made consequential, not one of #23's own integrity findings. The previous pass's
+record of PR #200 below is preserved unchanged, since nothing in that session revisited it.
 
 **Previous pass — Updated by:** Claude Code (Sonnet), reconciliation after **PR #200 merged**. Full
 mandatory tier (2 Sonnet + Opus, since the change touches a migration). Round 1 found real,
@@ -1092,6 +1119,51 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-22 · P0 status correction, and fixes dispatched for four real P0 defects
+
+Claude Sonnet 5 resumed the orchestrating session (Claude capacity restored). Thomas
+flagged directly that P0 looked unfinished despite this file's prior "exit criteria met"
+wording; rather than take either claim on faith, ran a live audit against current source
+for every open P0-titled issue plus the ones a prior external review had specifically named.
+
+**The audit confirmed Thomas's concern.** "Exit criteria met" conflated Throttle 1's own
+five conditions (genuinely closed, unchanged by this correction) with P0 as a whole (not
+close to done). Found four concrete, reproducible, currently-live defects with no code
+change needed to confirm them — they were simply still there:
+- **#18** — `apps/api/src/auth.ts`'s zero-user registration bypass has no setup-token check
+  anywhere in the codebase; the first anonymous visitor to reach an unclaimed instance
+  becomes its admin. Blocks any public exposure of a fresh instance.
+- **#146** (CRITICAL) — `scripts/ci/lib/pr-body.mjs`'s `sections()` matches `##` headings
+  against raw markdown lines before any comment-stripping, so a `##` heading hidden inside
+  an HTML comment is still recognized and silently overwrites an earlier same-named section
+  — a fake "cleared" security-review section could defeat the mechanical gate.
+- **#17** — sessions minted via the MCP OAuth and device-authorization flows (removed under
+  #6) were never revoked; the migrations that dropped those flows' own state tables say so
+  in their own comments.
+- **#97** — `apps/web`'s `_authenticated.tsx` still string-concatenates `location.search`
+  directly in its logged-out redirect guard; a logged-out user hitting a protected route
+  gets a blank page instead of a sign-in redirect.
+
+Also confirmed two large umbrella P0 issues are still substantially open, not stale
+paperwork: **#8** (the route-policy retrofit — ~80 inherited routes still unclassified, and
+the policy registry has zero runtime wiring into `apps/api/src/index.ts`, so no request is
+actually evaluated against a policy today) and **#9** (`packages/ui` extraction — only 18 of
+roughly 63 primitives moved out of `apps/web`).
+
+**Fixes for the four concrete defects dispatched to Sonnet implementation lanes, in
+parallel, per Thomas's explicit "P0–P7 in parallel, one review round, finish this week"
+instruction.** Each is a bounded, well-scoped fix in its own isolated worktree; none merged
+yet as of this entry. #8 and #9 are large enough that they need their own dedicated slices
+rather than a same-day fix — tracked as ongoing P0 work, not reopened as new issues (they
+were never closed).
+
+**Also in flight the same session**: a backlog of P1/P2 review gates left pending during
+the capacity outage (PRs #213–#219) reviewed and merged (or in the merge queue) — real
+defects found in several (a missing 404 declaration, a mismatched doc-comment/test-name
+pair, a test that only ever exercised UTC despite claiming to verify non-UTC behavior, and
+— still open as of this entry — PR #209's `consumedPct >= 100` boundary contradicting
+`sla.md`'s stated inclusive/exclusive split for `at_risk`/`breached`).
 
 ### 2026-09-18 · Two P1 candidates to review-complete, and #192 put to Thomas as a real question
 
