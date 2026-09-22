@@ -44,7 +44,11 @@ async function roleOf(userId: string): Promise<string | null> {
 
 function signUp(
   app: ReturnType<typeof createApp>["app"],
-  overrides: { email?: string; setupToken?: string } = {},
+  overrides: {
+    email?: string;
+    setupToken?: string;
+    invitationId?: string;
+  } = {},
 ) {
   const headers: Record<string, string> = {
     "content-type": "application/json",
@@ -63,6 +67,9 @@ function signUp(
       email: overrides.email ?? `bootstrap-${randomUUID()}@example.com`,
       password: throwawayPassword(),
       name: "Bootstrap Candidate",
+      ...(overrides.invitationId
+        ? { invitationId: overrides.invitationId }
+        : {}),
     }),
   });
 }
@@ -140,6 +147,42 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     // regardless of which of the two cases produced it.
     expect(unclaimedBody.message).not.toMatch(/TASKDESK_BOOTSTRAP_ADMIN_EMAIL/);
     expect(unclaimedBody.message).not.toMatch(/setup URL|setup token/i);
+  });
+
+  it("(D1) the refusal stays byte-identical even when the request carries an invitationId", async () => {
+    // Delta-confirmation review of PR #227 (finding D1, blocking): B1's
+    // first fix hard-coded ONE fixed message for the zero-user refusal,
+    // which matched checkRegistrationAllowed's "no invitation attempted"
+    // message -- but that function has a SECOND, different message for "an
+    // invitationId was given but didn't resolve to anything", and a claimed
+    // instance reaches that function (and so can return either message)
+    // while an unclaimed instance used to short-circuit before ever
+    // reaching it, always with the fixed one. Adding an invitationId to the
+    // request reopened the exact same oracle B1 closed for the plain case.
+    // The fix calls checkRegistrationAllowed with the SAME arguments in
+    // both branches, so whichever of its two messages comes back is
+    // identical for identical inputs, regardless of claimed/unclaimed state.
+    process.env.DISABLE_REGISTRATION = "true";
+    const bogusInvitationId = "not-a-real-invitation";
+
+    const { app: unclaimedApp } = createApp();
+    const unclaimedResponse = await signUp(unclaimedApp, {
+      invitationId: bogusInvitationId,
+    });
+    const unclaimedBody = await unclaimedResponse.json();
+
+    await resetTestDatabase();
+    const { app: claimedApp } = createApp();
+    const claimToken = (await ensureSetupToken()) as string;
+    await signUp(claimedApp, { setupToken: claimToken });
+    const claimedResponse = await signUp(claimedApp, {
+      invitationId: bogusInvitationId,
+    });
+    const claimedBody = await claimedResponse.json();
+
+    expect(unclaimedResponse.status).toBe(403);
+    expect(claimedResponse.status).toBe(403);
+    expect(unclaimedBody.message).toBe(claimedBody.message);
   });
 
   it("(b) a valid setup token lets first-registration succeed and promotes the registrant to admin", async () => {
@@ -280,7 +323,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     expect(await totalUserCount()).toBe(0);
   });
 
-  it("(F4) isBootstrapAdminEmail is not fooled by a Unicode case-folding trick", () => {
+  it("(F4/D2) isBootstrapAdminEmail is not fooled by a Unicode case-folding trick", () => {
     // Security review of PR #227 (finding F4, non-blocking): plain
     // `.toLowerCase()` maps U+212A KELVIN SIGN to ordinary "k", so
     // "operator@example.com" and "operator@example.com" with a KELVIN SIGN
@@ -289,17 +332,23 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     // end even before this fix, since better-auth's own email validator
     // rejects such inputs first -- this test exercises the function
     // directly, on its own terms, not through the HTTP path.)
-    process.env.TASKDESK_BOOTSTRAP_ADMIN_EMAIL = "operator@example.com";
-    const kelvinSignVariant = "Kelvin-operator@example.com".replace(
-      "elvin-",
-      "",
-    );
-    // kelvinSignVariant is now "Koperator@example.com" -- U+212A where a
-    // plain "k" would read the same to a human, but is a DIFFERENT address
-    // from the configured one.
+    process.env.TASKDESK_BOOTSTRAP_ADMIN_EMAIL = "koperator@example.com";
+    const kelvinSignVariant = "\u212Aoperator@example.com";
+    // This must be the actual U+212A code point, not merely an ASCII "K" --
+    // an earlier version of this test built its variant by prepending
+    // U+212A to "operator@example.com" (an entirely different, longer
+    // string than the configured "operator@example.com", not a
+    // same-length substitution of a look-alike character for the real k),
+    // so it passed for the trivial reason that the two strings had
+    // different lengths, regardless of whether the underlying Unicode
+    // case-folding bug was present. This version substitutes U+212A for
+    // the leading "k" of a same-length configured address instead.
+    expect(kelvinSignVariant.codePointAt(0)).toBe(0x212a);
+    expect(kelvinSignVariant.length).toBe("koperator@example.com".length);
+
     expect(isBootstrapAdminEmail(kelvinSignVariant)).toBe(false);
-    expect(isBootstrapAdminEmail("operator@example.com")).toBe(true);
-    expect(isBootstrapAdminEmail("OPERATOR@EXAMPLE.COM")).toBe(true);
+    expect(isBootstrapAdminEmail("koperator@example.com")).toBe(true);
+    expect(isBootstrapAdminEmail("KOPERATOR@EXAMPLE.COM")).toBe(true);
   });
 
   it("(headless) TASKDESK_BOOTSTRAP_ADMIN_EMAIL is ignored once the instance is set up", async () => {

@@ -393,6 +393,16 @@ export const auth = betterAuth({
             .from(schema.userTable);
           const existingUserCount = userCountRow?.value ?? 0;
 
+          // Computed once, up front, so the SAME call with the SAME
+          // arguments is what decides every refusal message below --
+          // zero-user or not. See the #18 security review (D1) comment on
+          // the throw sites for why this matters.
+          const invitationId = normalizeInvitationId(
+            ctx?.body?.invitationId ||
+              ctx?.query?.invitationId ||
+              ctx?.headers?.get("x-invitation-id"),
+          );
+
           if (existingUserCount === 0 && !(await isSetupCompleted())) {
             // This is the one-time bootstrap. It is allowed through even
             // when DISABLE_REGISTRATION / DISABLE_PASSWORD_REGISTRATION are
@@ -410,29 +420,47 @@ export const auth = betterAuth({
               return;
             }
 
-            // #18 security review (B1): this message must never differ from
-            // an ordinary registration refusal. An earlier version said "This
-            // instance has not been set up yet... or set
-            // TASKDESK_BOOTSTRAP_ADMIN_EMAIL" -- which let one unauthenticated
-            // request distinguish an unclaimed instance from a claimed one
-            // with registration disabled, and named the exact env var to try
-            // next. That re-created the scanning oracle GET /api/instance/status
-            // used to provide, which this whole change exists to remove. The
-            // setup URL and token are still printed to the boot log
-            // (ensureSetupToken) and documented in the runbook -- an operator
-            // never needs this response to learn them, so nothing operational
-            // is lost by making it identical to the ordinary case.
+            // #18 security review (B1, then D1): this refusal must be
+            // impossible to distinguish from an ordinary registration
+            // refusal, for EVERY shape of request, not just the plain one.
+            // B1's first fix hard-coded one fixed message here -- which
+            // closed the plain case but reopened the same oracle the moment
+            // a caller added an `invitationId`: checkRegistrationAllowed
+            // below has two different messages (no invitation attempted vs.
+            // an invitation that didn't resolve), and a claimed instance
+            // reaches it while an unclaimed one used to short-circuit here
+            // first with only ever the first message -- so which of the two
+            // messages came back told an attacker claimed from unclaimed
+            // just as reliably as the original, more obviously-named one
+            // did. On a genuinely empty instance no invitation can ever
+            // exist (nothing has created a workspace or sent one yet), so
+            // calling the SAME function with the SAME arguments here always
+            // reproduces whichever of its two refusal messages a claimed
+            // instance would give for that identical request shape, because
+            // it is literally the same call. When registration is open
+            // (DISABLE_REGISTRATION=false), that call would itself say
+            // "allowed" -- but there is no message to mirror in that branch
+            // either, since a claimed+open instance would answer with 200,
+            // not an error body, so this falls back to the same fixed
+            // refusal text as before; the remaining 200-vs-403 signal in
+            // that specific configuration is inherent to never letting an
+            // unauthenticated signup through on an unclaimed instance, not
+            // something a message change can close. The setup URL and token
+            // are still printed to the boot log (ensureSetupToken) and
+            // documented in the runbook -- an operator never needs this
+            // response to learn them.
+            const bootstrapRefusal = await checkRegistrationAllowed(
+              user.email,
+              invitationId,
+              { allowInvitationByEmail: isOAuthCallbackPath(ctx?.path) },
+            );
             throw new APIError("FORBIDDEN", {
-              message:
-                "Registration is currently disabled. Please use a valid invitation link to create an account.",
+              message: bootstrapRefusal.allowed
+                ? "Registration is currently disabled. Please use a valid invitation link to create an account."
+                : bootstrapRefusal.reason,
             });
           }
 
-          const invitationId = normalizeInvitationId(
-            ctx?.body?.invitationId ||
-              ctx?.query?.invitationId ||
-              ctx?.headers?.get("x-invitation-id"),
-          );
           const result = await checkRegistrationAllowed(
             user.email,
             invitationId,

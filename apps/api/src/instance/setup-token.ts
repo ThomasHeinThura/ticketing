@@ -154,24 +154,34 @@ export async function verifyAndConsumeSetupToken(
 }
 
 /**
+ * ASCII-only case fold: lowercases exactly the 26 Latin letters and leaves
+ * every other code point untouched, rather than calling
+ * `String.prototype.toLowerCase()`. #18 security review (D2, correcting an
+ * earlier F4 fix that did not actually work): `.toLowerCase()` performs full
+ * Unicode case folding, which maps some *compatibility* characters onto a
+ * plain ASCII letter -- U+212A KELVIN SIGN folds straight to "k". The first
+ * attempt at fixing this tried `.normalize("NFKC")` before `.toLowerCase()`,
+ * but NFKC normalizes U+212A to "K" *first*, so the very same fold happens
+ * one step earlier and the two strings still compare equal -- verified live:
+ * `"K".normalize("NFKC").toLowerCase() === "k"`. NFKC also widens
+ * matching further (e.g. fullwidth "ａ" folds to ASCII "a"), so it was
+ * strictly the wrong tool. Folding only `[A-Z]` byte-for-byte sidesteps
+ * Unicode case-folding data entirely: U+212A is outside that range, so it
+ * is never touched and can never equal ASCII "k".
+ */
+function foldAsciiCase(value: string): string {
+  return value.replace(/[A-Z]/g, (letter) => letter.toLowerCase());
+}
+
+/**
  * The headless-install override (TASKDESK_BOOTSTRAP_ADMIN_EMAIL,
  * configuration-reference.md). Read fresh on every call rather than cached
  * at module load, so tests (and a real operator setting it after boot, then
  * restarting) see the current value. Ignored once the instance is claimed --
  * callers must check isSetupCompleted() themselves before relying on this.
  */
-/**
- * NFKC-normalizes before folding case, so a compatibility character that
- * lowercases to something else -- the sharpest example, U+212A KELVIN SIGN,
- * which `String.prototype.toLowerCase()` alone maps to plain "k" -- can't make
- * two visibly-different strings compare equal. #18 security review (F4): the
- * bare `.toLowerCase()` this replaces was not exploitable end-to-end only
- * because better-auth's own email validator happens to reject such inputs
- * first, which made this function correct by accident of a dependency rather
- * than on its own terms.
- */
 function normaliseEmail(value: string): string {
-  return value.normalize("NFKC").trim().toLowerCase();
+  return foldAsciiCase(value.trim());
 }
 
 export function isBootstrapAdminEmail(email: unknown): boolean {
