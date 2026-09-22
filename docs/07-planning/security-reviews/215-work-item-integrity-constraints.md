@@ -1,6 +1,17 @@
 # Security review — PR #215 (issue #189: constrain enum-like and numeric work-item columns)
 
-**Reviewed head:** `4d5dafd64ce3c62ccb136211d6fbe52af1fe810d`
+**Reviewed head:** `7fa20045ebc70577546452fda5ee339d74171834`
+
+Substantively reviewed at `4d5dafd64ce3c62ccb136211d6fbe52af1fe810d`; clearance extended to
+this head (a merge of `origin/main` into the branch) by the same reviewer, who
+independently verified true merge parentage, confirmed the full diff is exactly three files
+(`.husky/pre-commit`, `docs/07-planning/status.md`, this note) with no `apps/api/` change at
+all, and checked git-object-hash identity on a wider surface than the migration/schema/test
+files alone — including `drizzle/meta/_journal.json`, `drizzle/meta/0059_snapshot.json`,
+`drizzle.config.ts`, and the integration test setup/helpers — to rule out another lane
+having slipped in a colliding migration. Also re-observed at the new head in a fresh
+worktree, not only inferred from hashes: `drizzle-kit check` clean, 21/21 integration tests
+green, all 8 constrained objects present in the migrated catalogue.
 
 ## What this PR does
 
