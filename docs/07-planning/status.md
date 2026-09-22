@@ -1213,12 +1213,18 @@ request-handling middleware (the invariant holds either way; verified directly).
 **Why this is being written up in this much detail**: this project exists because TaskDesk
 v1 shipped eleven authorization holes past a green test suite. This session's own directive
 was speed — one review round where possible, Sonnet for implementation, Opus only for the
-mandatory pass. That directive was followed everywhere it was safe to follow: #146 and #17
-each needed exactly one Opus round (plus one delta-confirmation for an unrelated main-sync,
-which is bookkeeping, not a finding). #18 needed three, and the reason was never "process
-for its own sake" — every one of those three rounds found something a fourth would not have
-caught by assumption alone. Two smaller follow-ups from round 3 are tracked as issue #232;
-the round-1/round-2 findings are fully closed, not deferred.
+mandatory pass. That directive was followed everywhere it was safe to follow, but "one
+round" meant one round that actually closes the finding, not one round regardless of what
+it finds: **#17**'s single mandatory Opus round found its own real, blocking bug (the
+revocation migration's timezone-comparison defect, described in its own entry above), fixed
+and delta-confirmed clear in a second pass — a genuine finding, not bookkeeping. **#146**'s
+single Opus round was clean on the substance (CLEAR WITH FINDINGS, all non-blocking); the
+extra confirmations recorded on that PR were plain main-sync bookkeeping (verifying an
+unrelated merge didn't touch the reviewed files), not additional findings. **#18** needed
+three real rounds, and the reason was never "process for its own sake" — every one of them
+found something a fourth would not have caught by assumption alone. Two smaller follow-ups
+from round 3 are tracked as issue #232; the round-1/round-2 findings are fully closed, not
+deferred.
 
 Four follow-up issues filed against this PR, all pre-existing or narrower-than-before gaps
 rather than regressions: **#229** (no MFA enrollment on the setup page — no MFA plugin
