@@ -1,6 +1,6 @@
 # Security review — PR #214 (issue #212: compare time-gated timestamps in UTC)
 
-**Reviewed head:** `9435ddc24d9dc3730c2cd0b93f7e367beba037f4`
+**Reviewed head:** `274c03ced5a147dc87189dffb4e0351c7dcf89b8`
 
 Substantively reviewed at `be79b656c7ca7543839e0b669f63714a613ff91a`; clearance extended to
 this head (a merge of `origin/main` into the branch, via an intervening note-only commit
@@ -12,6 +12,16 @@ re-confirmed at the new head in a fresh isolated worktree: `tsc --noEmit` clean,
 four relevant integration test files — including `session-cleanup-purge.test.ts` — green
 (4 files / 31 tests) under `Australia/Lord_Howe`/`Pacific/Kiritimati`. Issue #221
 independently re-checked as accurately recording finding F2.
+
+One further main-sync landed after that confirmation, at `9435ddc`, bringing in PR #217's
+migration-comment edit (already independently proven comment-only by its own reviewer,
+twice over) — no file shared with this PR. Re-checked directly by the orchestrating session
+rather than a further reviewer round: `git diff 9435ddc24d9dc3730c2cd0b93f7e367beba037f4
+274c03ced5a147dc87189dffb4e0351c7dcf89b8 -- apps/api/src/utils/db-time.ts
+apps/api/src/scheduler/leader-lock.ts apps/api/src/scheduler/session-cleanup.ts
+tests/api-integration/leader-lock.test.ts
+tests/api-integration/session-cleanup-server-ahead-of-utc.test.ts
+tests/api-integration/session-cleanup-server-behind-utc.test.ts` is empty.
 
 ## What this PR does
 
