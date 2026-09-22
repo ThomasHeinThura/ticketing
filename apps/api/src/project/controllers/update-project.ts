@@ -1,7 +1,9 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable } from "../../database/schema";
+import { isUniqueViolation } from "../../utils/is-unique-violation";
+import { ProjectSlugTakenError } from "./create-project";
 
 async function updateProject(
   id: string,
@@ -34,18 +36,38 @@ async function updateProject(
     });
   }
 
-  const [updatedWorkspace] = await db
-    .update(projectTable)
-    .set({
-      name,
-      icon,
-      slug,
-      description,
-    })
-    .where(eq(projectTable.id, id))
-    .returning();
+  // #23's mandatory Opus security review of PR #261, finding F1: answer a slug collision
+  // before attempting the write where we can, so the common case is a clean 409 rather
+  // than a caught driver error. Mirrors `update-workspace.ts`'s own pre-check exactly.
+  // The catch below still covers the race between this read and the update.
+  const [clash] = await db
+    .select({ id: projectTable.id })
+    .from(projectTable)
+    .where(and(eq(projectTable.slug, slug), ne(projectTable.id, id)))
+    .limit(1);
+  if (clash) {
+    throw new ProjectSlugTakenError(slug);
+  }
 
-  return updatedWorkspace;
+  try {
+    const [updatedWorkspace] = await db
+      .update(projectTable)
+      .set({
+        name,
+        icon,
+        slug,
+        description,
+      })
+      .where(eq(projectTable.id, id))
+      .returning();
+
+    return updatedWorkspace;
+  } catch (error) {
+    if (isUniqueViolation(error, "slug")) {
+      throw new ProjectSlugTakenError(slug);
+    }
+    throw error;
+  }
 }
 
 export default updateProject;

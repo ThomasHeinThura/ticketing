@@ -1,6 +1,7 @@
 import { eq, max, sql } from "drizzle-orm";
 import db from "../../database";
 import { columnTable, projectTable } from "../../database/schema";
+import { isUniqueViolation } from "../../utils/is-unique-violation";
 
 export const DEFAULT_PROJECT_COLUMNS = [
   { name: "To Do", slug: "to-do", position: 0, isFinal: false },
@@ -9,7 +10,39 @@ export const DEFAULT_PROJECT_COLUMNS = [
   { name: "Done", slug: "done", position: 3, isFinal: true },
 ] as const;
 
+/**
+ * #23's mandatory Opus security review of PR #261, finding F1 (decision log 2026-09-22):
+ * `project.slug` is now globally unique (migration 0064), because `work_item.key`
+ * (`{project.slug}-{number}`) was already assuming that and carries its own global unique
+ * index on top of it -- a colliding slug used to permanently 500 the victim project's
+ * first work-item create. Mirrors `WorkspaceSlugTakenError`
+ * (`workspace/controllers/create-workspace.ts`) exactly: the DB constraint is the
+ * backstop, this is the clean error a caller actually gets.
+ */
+export class ProjectSlugTakenError extends Error {
+  constructor(public readonly slug: string) {
+    super(`Project slug "${slug}" is already taken`);
+    this.name = "ProjectSlugTakenError";
+  }
+}
+
 async function createProject(
+  workspaceId: string,
+  name: string,
+  icon: string,
+  slug: string,
+) {
+  try {
+    return await createProjectRow(workspaceId, name, icon, slug);
+  } catch (error) {
+    if (isUniqueViolation(error, "slug")) {
+      throw new ProjectSlugTakenError(slug);
+    }
+    throw error;
+  }
+}
+
+async function createProjectRow(
   workspaceId: string,
   name: string,
   icon: string,
