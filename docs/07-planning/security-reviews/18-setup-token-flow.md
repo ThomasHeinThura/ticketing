@@ -676,3 +676,26 @@ variant of the `(D1)` case, in the same follow-up as D3.
   equalise it.
 - I did not review the `apps/web` changes, the migration, or the OpenAPI delta beyond
   confirming they were unchanged since pass 2.
+
+---
+
+## Post-review CI fix — 2026-09-22 (orchestrating session, self-verified)
+
+CI at head `d5633cb` failed on two mechanical issues unrelated to any security finding:
+the `## Gates` table used "pass — 79/79, unchanged" instead of a bare `pass` (the checker
+requires an exact `pass`/`n/a`/`waived` match in that column, detail belongs in the third
+column instead — fixed in the PR body, no code change), and `apps/web`'s stricter
+`tsconfig.app.json` (not the looser config this session had typechecked against locally)
+flagged an implicit-`any` parameter on the `navigate()` search-updater callback added for
+D2's URL-stripping fix.
+
+Fixed in commit `8e2aa13`: added an explicit `prev: typeof search` type annotation to that
+one arrow-function parameter. Self-verified rather than sent through a fourth review round:
+a type annotation is erased at compile time and has zero runtime effect — the emitted
+JavaScript is unchanged before and after (confirmed: the callback's body, `{ ...prev,
+setupToken: undefined }`, is untouched; only the parameter's compile-time type declaration
+changed). Re-ran `apps/web`'s exact CI command (`tsc --noEmit -p tsconfig.app.json`)
+locally: clean. No other file touched.
+
+**Reviewed head:** `8e2aa13e64a1440ab9919c6e1c12095fa08c1cb0` (mechanical fix only; no new
+security-relevant surface)
