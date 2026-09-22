@@ -41,40 +41,23 @@ jobs:
     # never ran. That is the trap this file's own header warns about: "a skipped job is not
     # a passing gate, and treating it as one is how a suite goes green over nothing."
     #
-    # It costs one Postgres service container and ~90s. If a future expensive matrix needs
-    # label-gating, gate THAT matrix and leave this job unconditional.
+    # It costs one Testcontainers-managed Postgres container and ~90s. If a future expensive
+    # matrix needs label-gating, gate THAT matrix and leave this job unconditional.
+    #
+    # ci-cd.md and testing-strategy.md say Testcontainers, and now this job actually does:
+    # tests/api-integration/global-setup.ts starts a Postgres 18 Testcontainer and points
+    # TASKDESK_DATABASE_URL at it when CI=true (issue #10). No `services:` block and no
+    # fixed 5432 port mapping are needed -- Testcontainers picks an ephemeral host port
+    # itself and manages the container's full lifecycle from inside the test run.
+    #
+    # No extra runner permissions are needed for this. ubuntu-latest GitHub-hosted runners
+    # ship Docker Engine with the invoking user already in the `docker` group, so the
+    # Testcontainers Node client talks to /var/run/docker.sock the same way it would on a
+    # developer machine -- no `--privileged`, no Docker-in-Docker, no additional `permissions:`
+    # block. (Verified against Testcontainers' own CI documentation, not guessed; unverified
+    # by an actual GitHub Actions run from this change -- see the PR for that confirmation.)
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    services:
-      postgres:
-        # ci-cd.md and testing-strategy.md say Testcontainers. The inherited suite connects
-        # to TASKDESK_DATABASE_URL instead, so it gets a Postgres 18 service container here
-        # and the Testcontainers move stays visible as unfinished work rather than being
-        # quietly claimed. The version is the one docs/01-architecture/tech-stack.md pins.
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_DB: taskdesk_test
-          # No password, deliberately, and none was ever meaningful here. A literal
-          # credential in a workflow file is a secret-scanner finding whether or not it
-          # guards anything, and inventing a less obvious one would still teach readers
-          # that credentials belong in this file.
-          #
-          # trust is sound for exactly this shape and no other: the container publishes
-          # onto the ephemeral runner's loopback only, the runner is single-tenant and is
-          # destroyed with the job, and the database holds fixtures. It is NOT a pattern
-          # for anything that outlives a job — real deployments require a password and
-          # generate it (docs/05-operations, and the chart refuses to render without one).
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-    env:
-      TASKDESK_DATABASE_URL: postgresql://postgres@localhost:5432/taskdesk_test
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup

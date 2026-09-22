@@ -26,6 +26,9 @@
 			"pg": [
 				"./node_modules/@types/pg"
 			],
+			"@testcontainers/postgresql": [
+				"./node_modules/@testcontainers/postgresql"
+			],
 			"better-auth/types": [
 				"./node_modules/better-auth/dist/types/index.d.mts"
 			]
