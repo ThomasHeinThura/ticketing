@@ -289,7 +289,10 @@ export const workspaceRoleTable = pgTable(
       .notNull(),
   },
   (table) => [
-    index("workspace_role_workspaceId_idx").on(table.workspaceId),
+    // `workspace_role_workspaceId_idx` (plain index on workspace_id alone) was removed in
+    // #135: migration 0051 (issue #118) added `UNIQUE (workspace_id, role)`, whose own
+    // composite index already has workspace_id as the leading column, so the plain index was
+    // redundant storage/maintenance cost with no query it uniquely served.
     index("workspace_role_role_idx").on(table.role),
   ],
 );
