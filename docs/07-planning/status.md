@@ -2,32 +2,38 @@
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-18 — an eleventh pass. Two P1 candidates taken from implemented
-to review-complete and remediated (#214, #215), and the tenancy decision that gates the
-work-item write path put to Thomas as a real question (issue #192) rather than silently
-resolved.
-> **`main` at that moment:** `26ec385` (PR #208 — the `legal_hold` table and the
-> legal-hold-aware session-cleanup purge; issue #198 stays open for the remainder, since the
-> project-purging half cannot be written until #192's tenant-attribution question is
-> answered — a work item or project cannot currently name its organisation at all).
+> **Snapshot taken:** 2026-09-22 — a twelfth pass, same day as the eleventh. Three of the
+four concrete P0 defects the eleventh pass found (#146, #17, #97) are now fixed and merged;
+the fourth (#18) is fixed, tested, and in review (PR #227, not yet merged). #8 and #9
+remain open, large, umbrella items, unchanged.
+> **`main` at that moment:** `6d9f179` (PR #225 — issue #17's session revocation, the last
+> of the four same-day P0 fixes to land).
 > Kaneo's `task`/`column` tables and routes remain fully untouched and still live.
-> **Stage:** P0 · Foundation — **Throttle 1 is OPEN; P0 itself is NOT finished.** Correction
-> (2026-09-22): this file previously said "exit criteria met," conflating two different
-> things. Throttle 1 is a narrower gate — the organization-plugin retrofit's five specific
-> conditions (below) — and those five really did verify closed. But P0 as a whole has its
-> own separate issue list, and a live audit (2026-09-22, checked against current source, not
-> against issue text or this file) found real, unpatched, reproducible defects still open:
-> **#18** (first-admin registration bypass — no setup-token flow exists, blocks any public
-> instance exposure), **#146** (CRITICAL — a comment-hidden duplicate heading defeats the
-> whole PR-template security-review gate), **#17** (sessions minted by the removed MCP
-> OAuth/device flows were never revoked), **#97** (logged-out users get a blank page instead
-> of a sign-in redirect). Plus two large, mostly-open umbrella items: **#8** (route-policy
-> retrofit — ~80 inherited routes still unclassified, and the policy registry has zero
-> runtime wiring into `apps/api/src/index.ts` yet, so no request is actually evaluated
-> against it today) and **#9** (`packages/ui` extraction — only 18 of ~63 primitives moved
-> out of `apps/web`). **Autonomous continuation past Throttle 1 into P1–P7 is authorized**
-> (Thomas, 2026-09-16, reaffirmed 2026-09-22) — running P1–P7 in parallel does not wait on
-> P0's remaining issues, but they are not done and this file should not imply otherwise.
+> **Stage:** P0 · Foundation — **Throttle 1 is OPEN; P0 itself is NOT finished, but three of
+> the four eleventh-pass concrete defects are now merged and the fourth is fixed, tested, and
+> in review.** Throttle 1 remains the narrower gate — the organization-plugin retrofit's five
+> specific conditions (below) — and those five remain verified closed. The eleventh pass's
+> live audit found four concrete, reproducible P0 defects:
+> **#18** (first-admin registration bypass — fix implemented and tested in PR #227,
+> **not yet merged**: a durable `instance_setting.setup_completed_at` marker plus a
+> one-hour-or-one-use setup token replaces the old unconditional zero-user bypass; ordinary
+> review, an alignment check, and the mandatory Opus security review are all in progress),
+> **#146** (CRITICAL — closed by PR
+> #223: `sections()` now recognizes a `##` heading only when genuinely visible, and a
+> genuine duplicate is a hard `DuplicateSectionError` rather than silent last-one-wins;
+> Opus review CLEAR WITH FINDINGS, three non-blocking follow-ups (F1, F2, F4) tracked as #226), **#17**
+> (closed by PR #225: sessions minted by the removed MCP OAuth/device flows are expired by
+> migration `0060`; the mandatory Opus review's first pass found and required a fix for a
+> real timezone-comparison bug, fixed and delta-confirmed CLEAR), **#97** (closed by PR
+> #224: the logged-out redirect guard no longer throws on `location.search`'s null-prototype
+> object; a root `errorComponent` added as a last-resort catch-all). Two large, mostly-open
+> umbrella items remain, unchanged from the eleventh pass: **#8** (route-policy retrofit —
+> ~80 inherited routes still unclassified, and the policy registry has zero runtime wiring
+> into `apps/api/src/index.ts` yet, so no request is actually evaluated against it today) and
+> **#9** (`packages/ui` extraction — only 18 of ~63 primitives moved out of `apps/web`).
+> **Autonomous continuation past Throttle 1 into P1–P7 is authorized** (Thomas, 2026-09-16,
+> reaffirmed 2026-09-22) — running P1–P7 in parallel does not wait on P0's remaining issues,
+> but #8/#9 are not done and this file should not imply otherwise.
 > **Throttle 1: OPEN.** All five conditions verified live, not rounded up: #5 closed, #6
 > closed 2026-09-16 (every substantive item in its real checklist checked against live
 > source, not against this file or the issue's own stale checkboxes), #7 closed,
@@ -60,18 +66,34 @@ resolved.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-22 (P0 status correction, and dispatching fixes for four of the
-still-open P0 defects)
+**Last updated:** 2026-09-22 (three of the four eleventh-pass P0 defects merged same-day;
+the fourth in review)
 **Current stage:** P0 · Foundation — **Throttle 1 OPEN (verified, unchanged); P0 as a whole
-is not finished.** This pass corrects a wording problem in every prior snapshot back to
-2026-09-16: "exit criteria met" was true only of Throttle 1's own five conditions (the
-organization-plugin retrofit), never of P0 as a whole, and nothing in this file said so
-plainly until now. A live audit against current source (not against issue text, not against
-this file) found #18, #146, #17, #97 all still real, reproducible, and unpatched, and #8/#9
-still substantially open (see the corrected header above for specifics). Fixes for all four
-concrete defects are now in progress — see the session log's newest entry.
-**Updated by:** Claude Sonnet 5 (orchestrating session), correcting the record and
-dispatching the four fixes above. Merge into main not yet done for any of them.
+is not finished, but its eleventh-pass concrete-defect backlog is nearly clear.** #146
+(PR #223), #17 (PR #225) and #97 (PR #224) are merged, each with ordinary review and — where
+in security-review scope — a mandatory Opus pass recorded. #18 (PR #227) is implemented,
+independently tested by the orchestrating session (64 files/577 tests, 48/323 unit, 10/79
+permissions unchanged, 57/236 web, all clean; `drizzle-kit check` clean), and is now going
+through a full three-round tier (ordinary Sonnet review, a project-alignment check, and the
+mandatory Opus security review) rather than the reduced one-round tier, because it redesigns
+an authority invariant (who can become the first instance admin) and crosses a migration,
+API and frontend in one change. #8 and #9 remain untouched, large, umbrella items.
+**Updated by:** Claude Sonnet 5 (orchestrating session). Also renumbered two migrations this
+session (`0059`→`0060` for #17, `0060`→`0061` for #18) after sequential same-day merges each
+claimed the next slot first — regenerated via `drizzle-kit generate`, not hand-edited, so the
+journal/snapshot chain stays derived rather than authored.
+
+---
+
+**Earlier the same day:** Claude Sonnet 5 (orchestrating session), P0 status correction and
+dispatching fixes for four of the still-open P0 defects. This pass corrected a wording
+problem in every prior snapshot back to 2026-09-16: "exit criteria met" was true only of
+Throttle 1's own five conditions (the organization-plugin retrofit), never of P0 as a whole,
+and nothing in this file said so plainly until then. A live audit against current source
+(not against issue text, not against this file) found #18, #146, #17, #97 all still real,
+reproducible, and unpatched, and #8/#9 still substantially open. Fixes for all four concrete
+defects were dispatched to Sonnet implementation lanes, none merged yet as of that entry —
+see the session log's entry immediately below for what happened next the same day.
 
 ---
 
@@ -1121,6 +1143,67 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-22 · Three of the four dispatched P0 fixes merged, the fourth in a full review tier
+
+Continuing the same day as the entry below. Thomas's direction for this stretch: parallelize
+P1–P7, one ordinary review round rather than several, Sonnet for implementation, Opus for
+the mandatory security pass, and retake the P1/P2 lanes previously held by other coding
+agents (Copilot/DeepSeek, Cline/GLM) — reviewing their work rather than trusting it
+unverified, since Thomas does not have independent confidence in its quality.
+
+**Backlog review, PRs #213–#219**: reviewed and merged (a missing OpenAPI 404 declaration
+found and fixed in #216; a mismatched doc-comment/test-name pair in #218; a test that only
+ever exercised UTC despite claiming to verify non-UTC behavior in #219; a real
+`consumedPct >= 100` boundary bug in #209 contradicting `sla.md`'s stated inclusive/exclusive
+split for `at_risk`/`breached`, found, fixed, and regression-tested). PR #210 (a stale P2
+lane-coordination ledger whose body no longer matched its own diff) closed as superseded
+rather than resurrected — nothing referenced it and its coordination model no longer applies
+now that this session drives P1/P2 directly.
+
+**The four eleventh-pass P0 defects**: three merged this session.
+- **#146** (PR #223) — Thomas made the fix-direction call the issue itself required
+  (continue hardening `pr-body.mjs`'s existing pattern vs. a `remark`/`micromark` rewrite;
+  recorded in the decision log above the P187 entry) — chose to ship the hardening fix.
+  Mandatory Opus review: CLEAR WITH FINDINGS (non-blocking); three minor follow-ups (F1, F2, F4) tracked
+  as issue #226.
+- **#17** (PR #225) — the mandatory Opus review's first pass found a real, blocking bug: the
+  revocation migration compared a `timestamp without time zone` column against a
+  `TIMESTAMPTZ` literal, which is server-`TimeZone`-dependent and would under-invalidate on
+  a non-UTC server (proved live under `America/New_York`). Fixed to a naive `TIMESTAMP`
+  literal; delta-confirmed CLEAR across 5 timezones and 5 `DateStyle` settings by a second
+  independent Opus pass, plus an independent ordinary Sonnet review (the orchestrating
+  session could not self-certify this one, having performed the fix).
+- **#97** (PR #224) — the logged-out redirect guard threw on `location.search`'s
+  null-prototype object (from `@tanstack/router-core`'s `qss` decode); fixed to use
+  `location.href`, plus a new root `errorComponent` as a last-resort catch-all.
+
+**#18** (PR #227) — implemented and independently tested by the orchestrating session (64
+files/577 tests integration, 48/323 unit, 10/79 permissions unchanged, 57/236 web; all
+clean), but **not yet merged**. This one is going through the full three-round tier
+(ordinary Sonnet review + a project-alignment check + the mandatory Opus security pass, all
+in parallel) rather than the reduced one-round tier Thomas asked for elsewhere this session
+— it redesigns an authority invariant (who can become the first instance admin), crosses a
+migration, the API and the frontend in one change, and involves real concurrency reasoning
+(a race between the pre-insert token check and the post-insert admin-promotion lock). This
+is `AGENTS.md`'s own review-tier table applied by risk, not a shortcut.
+
+**Two migration-numbering collisions, both from parallel same-day work**: #17's fix
+generated migration `0059` in an isolated worktree, which collided with PR #215's `0059`
+merging to `main` first; renumbered to `0060` via a fresh `drizzle-kit generate` (not a
+hand-rename) so the journal/snapshot chain stayed derived rather than authored. The same
+then happened to #18 once #17's fix claimed `0060` — renumbered again, to `0061`, the same
+way. Neither renumbering changed the actual migration content; both were verified
+byte-identical before and after.
+
+**A governance point surfaced and corrected**: an Opus reviewer flagged that the
+orchestrating session had recorded itself as the sole independent ordinary reviewer on PR
+#225 after having performed that PR's own remediation (the migration renumbering) —
+`CLAUDE.md`'s rule is that a context which materially authored or remediated a change cannot
+also clear it. Fixed by dispatching a genuinely independent Sonnet reviewer and replacing
+the self-recorded review in the PR body with that one.
+
+---
 
 ### 2026-09-22 · P0 status correction, and fixes dispatched for four real P0 defects
 
