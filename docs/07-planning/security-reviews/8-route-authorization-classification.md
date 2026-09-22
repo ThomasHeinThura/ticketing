@@ -544,3 +544,23 @@ trusted from before the sync: **80/80 permissions, 334/334 unit, 599/599 integra
 three counts identical to this review's own figures above.
 
 **Reviewed head:** `0e56ce30e3c155fff18723265e0adc809cd3fe1b`
+
+---
+
+## Second post-review main sync — orchestrating session, self-verified, 2026-09-22
+
+`main` advanced again (PR #253, the Radix-tracking `check:ui` gate) before this branch's
+PR could open. `git diff 0e56ce30e3c155fff18723265e0adc809cd3fe1b..4e2eba394f56b72927c668516f2f04792487f723
+--stat`: exactly PR #253's own twelve files (`.github/workflows/ci-fast.yml`,
+`KNOWN-RADIX.md`, `apps/web/package.json`, `apps/web/src/components/ui/{form,timeline}.tsx`,
+`apps/web/src/lib/slot.tsx`, its own security-review note, `package.json`, `pnpm-lock.yaml`,
+`scripts/ci/check-ui.mjs`, `scripts/ci/check-ui.test.mjs`, `scripts/ci/test-all.mjs`) —
+already independently reviewed (two Opus rounds) and merged as PR #253, zero overlap with
+anything this review examined. `pnpm-lock.yaml` verified again, not assumed: `git merge`
+auto-merged cleanly, `pnpm install --frozen-lockfile` confirmed validity. Re-ran
+`test:permissions` (80/80, unchanged) and `check:ui` (clean) directly against the merged
+tree; full unit/integration suites not re-run a third time in the same session since
+neither this sync nor the prior one touched anything under `apps/api/src/**` or
+`tests/api-integration/**` beyond what the first sync already re-verified in full.
+
+**Reviewed head:** `4e2eba394f56b72927c668516f2f04792487f723`
