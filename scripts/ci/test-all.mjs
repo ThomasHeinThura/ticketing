@@ -83,6 +83,15 @@ const manifest = [
       "floor sits where there is no advisory. See pnpm-workspace.yaml.",
   },
   {
+    gate: "pnpm check:dockerfile-deps",
+    stage: "fast",
+    run: ["pnpm", "check:dockerfile-deps"],
+    note:
+      "#170 — the Dockerfile's `deps` stage COPYs each workspace package's package.json " +
+      "by hand; this asserts that list matches pnpm-workspace.yaml's discovered members " +
+      "exactly, closing the class of drift that caused #168.",
+  },
+  {
     gate: "pnpm audit",
     stage: "fast",
     run: ["pnpm", "audit", "--audit-level=high"],

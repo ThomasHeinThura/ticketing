@@ -43,6 +43,7 @@ stages below.
 │ pnpm check:i18n      en-US complete              │
 │ pnpm audit           high/critical fails         │
 │ pnpm check:overrides one override source only    │
+│ pnpm check:dockerfile-deps Dockerfile=workspace  │
 │ gitleaks             no secrets in the diff      │
 │ pnpm check:queries   no db.select() outside repo │
 │ pnpm check:inventory screen counts match rows    │
