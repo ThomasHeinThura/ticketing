@@ -421,6 +421,13 @@
 			"when": 1789732740326,
 			"tag": "0059_work_item_integrity_checks",
 			"breakpoints": true
+		},
+		{
+			"idx": 60,
+			"version": "7",
+			"when": 1790044007365,
+			"tag": "0060_revoke_pre_oauth_removal_sessions",
+			"breakpoints": true
 		}
 	]
 }
