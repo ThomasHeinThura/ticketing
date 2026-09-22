@@ -487,3 +487,20 @@ leaks nothing, and one pre-existing process point already raised. **None of them
 merge**, and none requires another review round.
 
 No waiver is involved in this verdict.
+
+---
+
+## Further syncs — 2026-09-22, head advanced to `f150604`
+
+Two further main-syncs landed after the delta confirmation above (PR #216's OpenAPI 404
+declarations, PR #219's calendar-preview merge — neither touches any file this review
+covers). Re-checked directly by the orchestrating session rather than a third reviewer
+round, given neither shares a file with this PR: `git diff
+1641f1e3fe7f1a23389c79366d05aad3f1624aba f1506042b77ff7df490296ef279578f303c0d847 --
+apps/api/drizzle/0060_revoke_pre_oauth_removal_sessions.sql
+apps/api/drizzle/meta/0060_snapshot.json apps/api/drizzle/meta/_journal.json
+tests/api-integration/session-oauth-removal-revocation.test.ts
+tests/api-integration/session-oauth-removal-revocation-behind-utc.test.ts` is empty, and
+`drizzle-kit check` re-run at the new head still reports no drift.
+
+**Reviewed head:** `f1506042b77ff7df490296ef279578f303c0d847`
