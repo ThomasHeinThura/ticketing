@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, vi } from "vitest";
+import { deriveWorktreeTestDatabaseUrl } from "./helpers/worktree-database-name";
 
 // Prevent dotenv-mono from loading the local .env file during tests.
 // All env vars are set explicitly below; the .env file must be ignored.
@@ -42,9 +43,12 @@ function assertTestDatabaseUrl(connectionString: string) {
   }
 }
 
+const currentDir = dirname(fileURLToPath(import.meta.url));
+// tests/api-integration/setup.ts -> repo/worktree root.
+const worktreeRoot = resolve(currentDir, "../..");
+
 function readDatabaseUrlFromEnvFile() {
-  const currentDir = dirname(fileURLToPath(import.meta.url));
-  const envPath = resolve(currentDir, "../../.env");
+  const envPath = resolve(worktreeRoot, ".env");
 
   if (!existsSync(envPath)) {
     return null;
@@ -56,8 +60,14 @@ function readDatabaseUrlFromEnvFile() {
   return raw ? stripEnvValueQuotes(raw) : null;
 }
 
-const defaultTestDatabaseUrl =
-  "postgresql://postgres:postgres@localhost:5432/taskdesk_test";
+// #113: no explicit TASKDESK_DATABASE_URL and no .env fallback used to mean
+// every lane silently shared one fixed database
+// (postgresql://postgres:postgres@localhost:5432/taskdesk_test), so
+// concurrent lanes truncated each other's rows mid-test. Deriving a
+// per-worktree name here instead makes isolation the default; anyone who
+// wants a shared database still gets one by setting TASKDESK_DATABASE_URL
+// explicitly (unchanged -- see the `fromEnv` branch below).
+const defaultTestDatabaseUrl = deriveWorktreeTestDatabaseUrl(worktreeRoot);
 const envDatabaseUrl = process.env.TASKDESK_DATABASE_URL?.trim();
 const fromEnv = envDatabaseUrl ? stripEnvValueQuotes(envDatabaseUrl) : "";
 const rawDatabaseUrl =
