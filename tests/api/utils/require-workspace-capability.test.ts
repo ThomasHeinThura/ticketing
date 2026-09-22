@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { roleGrantsOwner } from "../../../apps/api/src/utils/workspace-member-roles";
@@ -204,22 +202,22 @@ describe("requireWorkspaceCapability", () => {
    * This pins the dependency where it lives, so the reword fails HERE rather
    * than quietly disarming a probe three files away.
    */
-  it("L1 the gate's refusal message differs from the transfer controller's, which is what R4 relies on", () => {
+  it("L1 the gate's refusal message differs from the transfer controller's, which is what R4 relies on", async () => {
     const gateMessage = "Insufficient permissions";
     const controllerMessage = new CallerNotOwnerError().message;
 
     expect(controllerMessage).not.toBe(gateMessage);
-    // And the gate really does use that literal — if this drifts, R4's
-    // assertion is asserting a string nothing produces.
-    expect(
-      readFileSync(
-        resolve(
-          import.meta.dirname,
-          "../../../apps/api/src/utils/require-workspace-capability.ts",
-        ),
-        "utf8",
-      ),
-    ).toContain(`message: "${gateMessage}"`);
+    // And the gate really does emit that literal — asserted behaviourally,
+    // through the real middleware (`probe()`'s 403 response body), not pinned
+    // to the source text of `require-workspace-capability.ts`, which any
+    // behaviour-preserving refactor (hoisting the string to a shared constant,
+    // extracting a `forbidden()` helper) used to turn red while the behaviour
+    // was fine. If this drifts, R4's assertion is distinguishing two bodies
+    // that no longer differ, or asserting a string nothing produces.
+    state.roleByUser["user-manager"] = "manager";
+    const res = await probe("user-manager");
+    expect(res.status).toBe(403);
+    expect(await res.text()).toBe(gateMessage);
   });
 
   /**
