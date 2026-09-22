@@ -3,6 +3,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { resetTestDatabase } from "./helpers/database";
 import { ensureNotFirstSignup } from "./helpers/organization-http";
 
@@ -87,11 +88,13 @@ describe("R2: session.active_organization_id is NOT retroactively backfilled int
     // -- seeded directly here, but equivalent to an invite being accepted
     // later in the same session's lifetime.
     const workspaceId = `workspace-${randomUUID()}`;
+    const organisation = await ensureInternalOrganisation();
     await db.insert(schema.workspaceTable).values({
       id: workspaceId,
       name: "Joined Late",
       slug: `joined-late-${randomUUID()}`,
       createdAt: new Date(),
+      organisationId: organisation.id,
     });
     await db.insert(schema.workspaceUserTable).values({
       workspaceId,

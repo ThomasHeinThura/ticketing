@@ -50,6 +50,7 @@ import { eq } from "drizzle-orm";
 import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { resetTestDatabase } from "./helpers/database";
 import { requireRow } from "./helpers/fixtures";
 
@@ -110,6 +111,7 @@ async function raceAgainstTimeout(
 // ── Minimal fixture builders -- same pattern as work-item-schema-integrity.test.ts ──
 
 async function makeWorkspace() {
+  const organisation = await ensureInternalOrganisation();
   return requireRow(
     await db
       .insert(schema.workspaceTable)
@@ -117,6 +119,7 @@ async function makeWorkspace() {
         name: "Parent Cycle Guard Test Workspace",
         slug: `pcg-ws-${randomUUID()}`,
         createdAt: new Date(),
+        organisationId: organisation.id,
       })
       .returning(),
     "makeWorkspace",
@@ -210,6 +213,7 @@ async function makeWorkItem(
       .insert(schema.workItemTable)
       .values({
         projectId: fixture.project.id,
+        workspaceId: fixture.workspace.id,
         typeId: fixture.type.id,
         stateId: fixture.state.id,
         number,
@@ -232,6 +236,7 @@ describe("#188 -- direct self-parenting is rejected (work_item_parent_not_self C
       db.insert(schema.workItemTable).values({
         id,
         projectId: fixture.project.id,
+        workspaceId: fixture.workspace.id,
         typeId: fixture.type.id,
         stateId: fixture.state.id,
         number: 1,

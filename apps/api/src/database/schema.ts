@@ -145,6 +145,36 @@ export const workspaceTable = pgTable("workspace", {
   id: text("id")
     .$defaultFn(() => createId())
     .primaryKey(),
+  // #192: every workspace is scoped to exactly one organisation -- decision log
+  // 2026-09-22 "#192's tenant-attribution decision: Option A+D". NOT NULL, backfilled by
+  // this migration's own SQL to the single internal organisation the boot seed guarantees
+  // (`apps/api/src/utils/seed-internal-organisation.ts`) -- every workspace this codebase
+  // could have created before this column existed was, in effect, internal (there is no
+  // route today that creates a workspace for any other organisation), so backfilling every
+  // existing row to that one organisation is not a guess, it is what was already true.
+  // `references(() => organisationTable.id)` is a forward reference (organisationTable is
+  // declared later in this file) -- safe because Drizzle only invokes this callback lazily,
+  // after the whole module has finished evaluating.
+  //
+  // `ON DELETE RESTRICT`, not CASCADE: this codebase has no organisation-delete route yet
+  // (organisation.deleted_at/purge_after exist since PR #179 but nothing sets or purges
+  // them -- decision log 2026-09-17 "#187's fix is project-only soft-delete..."), so this
+  // never fires today. RESTRICT is the conservative default until a real purge job (#198)
+  // deliberately decides whether deleting an organisation should cascade through every
+  // workspace it owns (and, transitively, every project/work_item beneath it) -- matching
+  // this schema's general "a referenced entity in active use cannot vanish out from under
+  // its dependents" pattern rather than silently wiring a new mass-cascade path as a side
+  // effect of this migration. `ON UPDATE CASCADE`: `organisation.id` is an immutable
+  // primary key with no update route, the same as every other single-column `*_id ->
+  // *.id` reference in this file that already uses `onUpdate: "cascade"` safely -- #191's
+  // O1 lesson is specifically about a composite FK whose referenced column set includes a
+  // *mutable, non-PK* column, which does not apply here.
+  organisationId: text("organisation_id")
+    .notNull()
+    .references(() => organisationTable.id, {
+      onDelete: "restrict",
+      onUpdate: "cascade",
+    }),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   logo: text("logo"),
@@ -1280,6 +1310,15 @@ export const workItemTypeTable = pgTable(
       table.workspaceId,
       table.key,
     ),
+    // #192 (decision log 2026-09-22 "#192's tenant-attribution decision: Option A+D"):
+    // composite-FK target for `work_item.type_id` below, the same `(scope_id, id)`
+    // technique `project_workspace_id_id_unique`/`state_project_id_id_unique` already use.
+    // `id` alone is already a PK/unique, but Postgres requires an explicit unique
+    // constraint on the EXACT column tuple a composite FK targets.
+    unique("work_item_type_workspace_id_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
     // #189 S7 -- `data-model.md` §4 states `category` (`service`|`delivery`) verbatim,
     // and the document's Conventions section requires "Enumerations are Postgres enums or
     // `CHECK` constraints, never free text". A `CHECK`, not a Postgres enum type, so every
@@ -1514,46 +1553,52 @@ export const workItemTable = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
-    // Judgment call: RESTRICT, not stated explicitly in data-model.md §4. Matches this
-    // schema's existing "a referenced entity in active use cannot vanish out from under
-    // its dependents" pattern (`state.state_template_id`, `membership.role_id`) -- a
-    // work item type cannot be deleted while items of that type still exist. Flagged in
-    // the PR body.
+    // #192 (decision log 2026-09-22 "#192's tenant-attribution decision: Option A+D"):
+    // denormalised from `project.workspace_id` at row-creation time (that write path is
+    // #23's, not built here -- this migration only gives it the column, the shape and
+    // the constraints to write into). Closes the gap the long comment previously on
+    // `typeId` here described at length: `work_item` used to carry no `workspace_id` of
+    // its own, so nothing could pin `type_id` to a `work_item_type` row in the SAME
+    // workspace as this item's own `project_id` -- the cross-TENANT half of #186 S2,
+    // which #191's Opus review judged more security-relevant than the cross-PROJECT
+    // halves (`state_id`/`parent_id`) that PR already closed, because it crosses a
+    // workspace boundary rather than only a project boundary within one workspace.
     //
-    // #186 S2, deliberately NOT closed at the DB level here (see the PR body's "Not
-    // done" for the full reasoning): nothing pins this `type_id` to a `work_item_type`
-    // row in the SAME workspace as this item's own `project_id`. Unlike `state_id`/
-    // `parent_id` below, `work_item` carries no `workspace_id` of its own -- only
-    // `project_id`, one hop away from `project.workspace_id` -- and data-model.md §4
-    // does not list a `workspace_id` column on `work_item`. A composite FK (a
-    // declarative constraint) can only compare columns that live directly on the two
-    // tables it joins; there is no direct column pair here for one to check.
+    // Two composite FKs below both anchor on this column ("the same double-composite-FK
+    // technique `state`/`parent_id` use", as this column's own removed comment put it,
+    // now applied twice over):
     //
-    // Denormalising a redundant `work_item.workspace_id` column (kept in sync via the
-    // same double-composite-FK technique `state`/`parent_id` use below) is ONE DB-level
-    // option, but -- corrected per #191's independent review, which found the original
-    // wording here overstated -- it is not the only one: a `BEFORE INSERT OR UPDATE OF
-    // type_id, project_id` trigger on `work_item` (the same class of hand-written,
-    // cross-table check this file already uses elsewhere for #186 S5, before #191's own
-    // review replaced THAT one with a real constraint for race-freedom reasons that do
-    // not obviously apply here the same way) could also close this at the DB level with
-    // no schema change. Both were considered; neither is adopted here. This is a real
-    // schema-shape decision -- which mechanism, if either, is worth its cost against a
-    // gap that #191's Opus review confirms is the MORE security-relevant half of #186 S2
-    // (it crosses a tenant/workspace boundary, where `state_id`/`parent_id` only cross a
-    // project boundary within one workspace) -- bigger than what a three-finding
-    // integrity fix should decide unilaterally, and belongs in the decision log before
-    // #23's write path lands, not silently in this comment. Left, for now, as an
-    // accepted gap requiring an application-level check (validate
-    // `work_item_type.workspace_id = project.workspace_id` at write time), which is
-    // real but weaker than a DB-level guarantee: it is not enforced against direct SQL,
-    // a bulk import, or any future write path that forgets to call it.
-    typeId: text("type_id")
-      .notNull()
-      .references(() => workItemTypeTable.id, {
-        onDelete: "restrict",
-        onUpdate: "cascade",
-      }),
+    //   1. `(workspace_id, project_id) -> project(workspace_id, id)` pins this column to
+    //      the TRUE workspace of this item's own `project_id`, so the denormalised value
+    //      can never drift from the project it was copied from -- without this, a
+    //      trustworthy `workspace_id` would depend entirely on the write path getting it
+    //      right, which is exactly the "not enforced against direct SQL, a bulk import,
+    //      or any future write path that forgets to call it" gap the removed comment
+    //      flagged. Intentionally redundant with the plain `project_id -> project.id` FK
+    //      above (both must hold; Postgres allows both), rather than removing that
+    //      existing FK -- narrower diff, and matches this migration's scope exactly.
+    //   2. `(workspace_id, type_id) -> work_item_type(workspace_id, id)` is the fix #192
+    //      itself asks for -- replaces the plain single-column `type_id ->
+    //      work_item_type.id` FK this column used to carry (see `typeId` below), the
+    //      same way `state_id`/`parent_id` replaced their own plain FKs with composite
+    //      ones for #186 S2.
+    //
+    // Both FKs' `onUpdate` is `"no action"`, never `"cascade"` -- #191's O1 finding
+    // (`state_id`'s own comment below has the full incident) proved a composite FK whose
+    // referenced column set includes a mutable, non-PK column can silently cascade a
+    // work item across a tenant/project boundary if that keyword is `"cascade"`. Both
+    // FKs here reference `project.workspace_id` / `work_item_type.workspace_id`, which
+    // are exactly that shape of column, so the same defensive default applies.
+    workspaceId: text("workspace_id").notNull(),
+    // #192: still `ON DELETE RESTRICT` (unchanged), but no longer a plain single-column
+    // `.references()` -- see the `workspaceId` column comment above and the two
+    // composite `foreignKey()` calls below for the full design. Judgment call, carried
+    // over unchanged from before this migration: RESTRICT is not stated explicitly in
+    // data-model.md §4, but matches this schema's existing "a referenced entity in
+    // active use cannot vanish out from under its dependents" pattern
+    // (`state.state_template_id`, `membership.role_id`) -- a work item type cannot be
+    // deleted while items of that type still exist.
+    typeId: text("type_id").notNull(),
     number: integer("number").notNull(),
     // Stored once at insert from `{project.key}-{number}`, never regenerated for the
     // same project (data-model.md §4). A cross-project move re-keys the item -- the old
@@ -1752,6 +1797,9 @@ export const workItemTable = pgTable(
     uniqueIndex("work_item_key_unique").on(table.key),
     index("work_item_typeId_idx").on(table.typeId),
     index("work_item_stateId_idx").on(table.stateId),
+    // #192: RLS-and-purge-backstop lookups (`multi-tenancy.md`'s RLS prototype, #198's
+    // purge) filter directly on `work_item.workspace_id` -- see the column's own comment.
+    index("work_item_workspaceId_idx").on(table.workspaceId),
     index("work_item_requesterId_idx").on(table.requesterId),
     index("work_item_parentId_idx").on(table.parentId),
     // Deliberately NOT added here: the "## Indexing" GIN trigram title index and the
@@ -1812,6 +1860,35 @@ export const workItemTable = pgTable(
     foreignKey({
       columns: [table.projectId, table.parentId],
       foreignColumns: [table.projectId, table.id],
+    })
+      .onDelete("restrict")
+      .onUpdate("no action"),
+    // #192 -- anchors the denormalised `workspace_id` column (see its own comment above)
+    // to the TRUE workspace of this item's own `project_id`, via `project`'s existing
+    // `project_workspace_id_id_unique` target. `onDelete("cascade")` matches the plain
+    // `project_id -> project.id` FK above exactly (both fire on the same event; agreeing
+    // cascades on the same referencing table are safe -- the second is simply a no-op
+    // once the first has already removed the row) -- `"restrict"` here would instead
+    // BLOCK an ordinary project deletion the existing FK already permits, which would be
+    // a real behaviour regression, not a safety improvement. `onUpdate("no action")`
+    // per #191's O1 lesson (this FK's referenced columns include the mutable
+    // `project.workspace_id`).
+    foreignKey({
+      columns: [table.workspaceId, table.projectId],
+      foreignColumns: [projectTable.workspaceId, projectTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("no action"),
+    // #192 -- the fix issue #192 itself asks for: pins `type_id` to a `work_item_type`
+    // row in THIS item's own `workspace_id`, closing the cross-tenant half of #186 S2
+    // (see the `workspaceId`/`typeId` column comments above for the full design and the
+    // decision-log citation). `onDelete("restrict")` matches the single-column FK this
+    // replaces (a work item type cannot be deleted while items of that type still
+    // exist). `onUpdate("no action")` per #191's O1 lesson (this FK's referenced columns
+    // include the mutable `work_item_type.workspace_id`).
+    foreignKey({
+      columns: [table.workspaceId, table.typeId],
+      foreignColumns: [workItemTypeTable.workspaceId, workItemTypeTable.id],
     })
       .onDelete("restrict")
       .onUpdate("no action"),

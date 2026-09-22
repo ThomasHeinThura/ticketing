@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import { taskReminderSentTable } from "../../../apps/api/src/database/schema";
+import { ensureInternalOrganisation } from "../../../apps/api/src/utils/seed-internal-organisation";
 import { resetTestDatabase } from "./database";
 
 async function seedTaskReminderSentRow(): Promise<string> {
@@ -19,11 +20,13 @@ async function seedTaskReminderSentRow(): Promise<string> {
     emailVerified: true,
     name: "Reminder Test User",
   });
+  const organisation = await ensureInternalOrganisation();
   await db.insert(schema.workspaceTable).values({
     id: workspaceId,
     createdAt: new Date(),
     name: "Reminder Workspace",
     slug: `workspace-${randomUUID()}`,
+    organisationId: organisation.id,
   });
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,

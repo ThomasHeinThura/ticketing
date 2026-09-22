@@ -6,6 +6,7 @@ import {
 } from "@taskdesk/permissions";
 import db, { schema } from "../../../apps/api/src/database";
 import { DEFAULT_PROJECT_COLUMNS } from "../../../apps/api/src/project/controllers/create-project";
+import { ensureInternalOrganisation } from "../../../apps/api/src/utils/seed-internal-organisation";
 
 export type SeededMemberContext = {
   user: typeof schema.userTable.$inferSelect;
@@ -67,6 +68,11 @@ export async function createWorkspaceMember(
     "createWorkspaceMember: user",
   );
 
+  // #192: `workspace.organisation_id` is NOT NULL -- `resetTestDatabase` re-establishes
+  // the internal organisation after every truncate, so this is a plain lookup in practice,
+  // but calling the same idempotent get-or-create the app itself uses is safe either way.
+  const organisation = await ensureInternalOrganisation();
+
   const workspace = requireRow(
     await db
       .insert(schema.workspaceTable)
@@ -75,6 +81,7 @@ export async function createWorkspaceMember(
         createdAt: new Date(),
         name: overrides?.workspaceName || "Integration Test Workspace",
         slug: `workspace-${randomUUID()}`,
+        organisationId: organisation.id,
       })
       .returning(),
     "createWorkspaceMember: workspace",

@@ -120,6 +120,7 @@ async function makeWorkItemUnder(workspaceId: string, projectId: string) {
       .insert(schema.workItemTable)
       .values({
         projectId,
+        workspaceId,
         typeId: type.id,
         stateId: state.id,
         number: 1,
