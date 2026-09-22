@@ -48,10 +48,19 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * batch adds. See that file for the full reasoning, including why it is not #66 despite
  * touching the same permission rows.
  *
- * **`GET /api/workspace/{id}/members` is deliberately absent from this file.** It predates
- * this batch (retrofit plan §3, S2 row: "already exists") and is classified by #8 alongside
- * the rest of the inherited surface — it is listed in
- * `tests/permissions/inherited-uncovered.json`, unmodified by this batch.
+ * **`GET /api/workspace/{workspaceId}/members` is now classified below, by #8.** It predates
+ * this batch (retrofit plan §3, S2 row: "already exists") and was left for #8's pass, as
+ * `tests/permissions/inherited-uncovered.json` recorded. Same capability, scope and
+ * `scopeSource` as its sibling `GET /api/workspace/{workspaceId}/invitations` immediately
+ * below it, and for the same reason: `getWorkspaceMembersCtrl` (`apps/api/src/workspace/
+ * controllers/get-workspace-members.ts`) queries `workspace_user`/`user` by the path's own
+ * `workspaceId` and loads no `workspace` row itself, but it is the identical query the compound
+ * `GET /api/workspace/{workspaceId}` detail route already runs and returns embedded — that
+ * route's own `getWorkspaceDetail` (`get-workspace-detail.ts`) calls the very same
+ * `getWorkspaceMembers` function after loading the workspace row and 404ing if it is gone. A
+ * standalone call for the same slice cannot reasonably need more authority than the compound
+ * one already grants, so this reuses `scopeSource: "row"` by the same analogy the invitations
+ * route below uses, not because this route's own query loads a `workspace` row.
  *
  * **Also covers the five native S5 membership-write routes** (retrofit plan §3, S5 row, issue
  * #6): adding a member, removing one, changing a member's role, leaving, and the atomic
@@ -164,6 +173,20 @@ export const workspacePolicies = {
   // response, so a standalone call for the same slice cannot reasonably need more authority
   // than the compound one does.
   "GET /api/workspace/{workspaceId}/invitations": {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+
+  // Issue #8 — a workspace's member list, with roles. See the file comment above for why this
+  // reuses `workspace:read` / `scope: "workspace"` / `scopeSource: "row"` from its two siblings
+  // immediately above, even though its own query loads no `workspace` row directly.
+  // `requireSessionOnly()` is wired into this route's own middleware
+  // (`apps/api/src/workspace/index.ts`, `getWorkspaceMembersRoute`) specifically so runtime
+  // enforcement would not lag this declaration — see that route's own doc comment.
+  "GET /api/workspace/{workspaceId}/members": {
     capability: "workspace:read",
     scope: "workspace",
     scopeSource: "row",
