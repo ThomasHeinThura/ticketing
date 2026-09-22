@@ -68,9 +68,10 @@ export async function createWorkspaceMember(
     "createWorkspaceMember: user",
   );
 
-  // #192: `workspace.organisation_id` is NOT NULL -- `resetTestDatabase` re-establishes
-  // the internal organisation after every truncate, so this is a plain lookup in practice,
-  // but calling the same idempotent get-or-create the app itself uses is safe either way.
+  // #192: `workspace.organisation_id` is NOT NULL -- `resetTestDatabase` only truncates,
+  // it does not reseed, so the internal organisation is genuinely absent after a reset and
+  // this is a real create-on-first-use, not a lookup. Calling the same idempotent
+  // get-or-create the app itself uses is correct in both cases regardless.
   const organisation = await ensureInternalOrganisation();
 
   const workspace = requireRow(
