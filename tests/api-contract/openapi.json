@@ -2576,49 +2576,6 @@
         }
       }
     },
-    "/asset/{id}": {
-      "get": {
-        "operationId": "getAsset",
-        "tags": [
-          "Assets"
-        ],
-        "summary": "Download asset",
-        "description": "Download an uploaded asset. Readable without signing in only when it belongs to a public project; image types are served inline, everything else as an attachment.",
-        "security": [],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string"
-            },
-            "required": true,
-            "name": "id",
-            "in": "path"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The requested asset binary stream",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          },
-          "304": {
-            "description": "Not modified"
-          },
-          "403": {
-            "description": "No access to this asset"
-          },
-          "404": {
-            "description": "Asset not found"
-          }
-        }
-      }
-    },
     "/storage/filesystem-upload": {
       "put": {
         "operationId": "uploadFilesystemStorageObject",
@@ -2798,6 +2755,72 @@
           },
           "302": {
             "description": "Redirects the browser to the web app device screen"
+          }
+        }
+      }
+    },
+    "/asset/{id}": {
+      "get": {
+        "operationId": "getAsset",
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Download asset",
+        "description": "Download an uploaded asset. Requires a real credential (session, personal API key, or MCP key) and membership of the asset's workspace; image types are served inline, everything else as an attachment.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The requested asset binary stream",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified"
+          },
+          "401": {
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this asset",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Asset not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
