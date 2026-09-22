@@ -1,71 +1,68 @@
-# Pre-merge security review — PR #215 (work-item integrity constraints)
+# Security review — PR #215 (issue #189: constrain enum-like and numeric work-item columns)
 
-**Reviewed head:** none — **no security review has been performed**, so this field cannot be filled honestly. `check:pr-template` requires a forty-character SHA here and rejects a note without one, which means the required `pull request template + security review` check on PR #215 is **correctly red** and must stay red until an Opus review runs and writes its verdict below. Do not "fix" that red by inventing a head, and do not weaken the gate to let a pending note pass — a note with no reviewed head attached is exactly the artefact that check exists to catch.
+**Reviewed head:** `4d5dafd64ce3c62ccb136211d6fbe52af1fe810d`
 
-## Status: SECURITY REVIEW PENDING — OPUS CAPACITY
+## What this PR does
 
-**This is not a security review.** It is the record the pull-request template requires, filed
-in advance so the review has a home and so the gap is visible rather than implied. It asserts
-nothing about the change's security properties.
+Closes issue #189's data-integrity hardening backlog: adds `CHECK` constraints on
+`work_item`/`work_item_type`/`state_template` enum-like and numeric columns (`priority`,
+`number > 0`, `position <> 'NaN'`, category/group/visibility enums) plus a partial unique
+index, via migration `apps/api/drizzle/0059_work_item_integrity_checks.sql` (8 statements:
+7 `ADD CONSTRAINT ... CHECK`, 1 `CREATE UNIQUE INDEX`). No column added, dropped, narrowed,
+or renamed; no data rewritten.
 
-**Why it is pending.** This change is in security-review scope: the classifier reaches it
-through `apps/api/drizzle/*.sql` (migration `0059_work_item_integrity_checks.sql`) and
-`apps/api/src/database/**`. `AGENTS.md` and `CLAUDE.md` require an independent **Opus** pass
-for it. Claude is currently unavailable, and `CLAUDE.md` is explicit about what that means:
-*"Capacity exhaustion means wait, not substitute."* The candidate therefore waits, marked,
-rather than being downgraded to an available model or cleared by a non-independent context.
+## Prior review rounds (both ordinary tier, before this pass)
 
-**What must not happen to this branch in the meantime:** it must not be merged, and the
-security-review checkbox must not be ticked. The orchestrating session's delegation to merge
-green candidates does **not** extend to a candidate whose security review has not happened.
+Two rounds (Copilot/DeepSeek, not Claude): correctness pass at `caa1c7e`, CLEAR WITH
+FINDINGS; alignment pass at `40a51eb`, ALIGNED WITH CONCERNS. Both recorded in full on the
+PR with what each checked. The candidate correctly carried a `SECURITY REVIEW PENDING —
+OPUS CAPACITY` placeholder rather than a fabricated clearance while Claude was unavailable.
 
-## What the two ordinary reviews did and did not cover
+## Mandatory Opus review (this pass)
 
-Both ran in GitHub Copilot contexts (DeepSeek V4.1 Flash) — **not Claude**, and the real
-models are named in the pull request because recording them is required. Neither is a
-security review and neither substitutes for one.
+**Verdict: CLEAR WITH FINDINGS — non-blocking. Nothing should block merge.**
 
-- **Correctness (head `caa1c7e`)** — CLEAR WITH FINDINGS. Verified each constraint actually
-  rejects, proved the 21 tests non-vacuous by dropping all eight objects and watching 10 of
-  21 go red, checked every value set against `data-model.md` character-for-character, and
-  confirmed a clean apply with no `drizzle-kit` drift.
-- **Project alignment (head `40a51eb`)** — ALIGNED WITH CONCERNS. Confirmed the change is
-  issue #189's own scope and that its vocabulary is not invented; found a design disclosure
-  promised in the source but absent from the PR body (now added), a wrong decision-log
-  citation, and a gate credited with a check it does not perform.
+Independently re-derived, not accepted from the two prior rounds:
 
-Both findings sets are remediated. `caa1c7e → 40a51eb` and `40a51eb → c49b3e1` are proven
-comment-and-documentation only — no changed line in `schema.ts` other than a `//` comment, and
-no `sql`` expression in either diff — so both verdicts stand for the executable content at
-this head.
+- **Migration safety**: all 8 statements are additive; all 7 CHECKs land as
+  `convalidated = t` (validate existing rows), which is irrelevant here because the live
+  UAT stack is independently confirmed to still be v1 (Postgres 16, 76 tables) and contains
+  none of the five constrained tables.
+- **Every bound verified correct, no off-by-one, no wrong direction** — probed against a
+  real PostgreSQL 18: `number > 0` rejects 0/-1, accepts 1, on both INSERT and UPDATE;
+  `position <> 'NaN'` rejects NaN/nan (confirming the issue's originally-suggested
+  `CHECK (position = position)` would NOT have worked, since Postgres `numeric` treats
+  `NaN = NaN` as true) while accepting negative and fractional values; `Infinity` is
+  separately blocked by the column's own `numeric(20,10)` typmod. All enum value sets match
+  `data-model.md` character-for-character, including the US-spelling trap
+  (`organization` correctly rejected; the doc says `organisation`).
+- **Drift**: `drizzle-kit check` clean; regenerating from `schema.ts` after rolling back the
+  0059 artifacts produces a byte-identical migration with exactly 8 statements.
+- **Tests**: 21/21 pass on a clean database; non-vacuity independently re-proven by dropping
+  all 8 constrained objects — exactly 10 of 21 tests go red, covering all 8 objects.
+- **Exact-head discipline**: `caa1c7e..4d5dafd` changes no executable content at all —
+  migration SQL, snapshot, journal, and test file are byte-identical; every changed
+  `schema.ts` line between those heads is a comment.
+- **The two surfaces this PR's own note asked an Opus pass to start from, both resolved**:
+  the deliberately-unscoped partial unique index is the *safer* of the two possible designs
+  (a narrower `and archived_at is null` form would let an archived row keep `is_default`,
+  making a naive "resolve the project's default state" query return two rows) — confirmed
+  live: an archived state holding `is_default` correctly blocks a new live default. And a
+  unique index has no authority effect regardless — it can only refuse a write, never pin a
+  row into another tenant's scope, so this is materially unlike the PR #191 O1 precedent the
+  placeholder note worried about. This PR neither closes nor widens issue #192 (`work_item.
+  type_id` cross-tenant consistency) — verified live that the relevant FK/unique-index
+  prerequisites for closing #192 still don't exist, and this PR correctly doesn't add them.
 
-## What an Opus reviewer should examine first
-
-Named so the pass starts from the risk rather than the diff:
-
-1. **Do these eight constraints close the attack they claim to?** `position <> 'NaN'`,
-   `number > 0`, and the seven value-set `CHECK`s are the only server-side enforcement of
-   invariants that a future write path (#23) will depend on. Nothing enforces them in
-   `packages/domain` today.
-2. **Is the deliberately unscoped partial unique index a tenancy problem?**
-   `state_project_default_unique` keys on `(project_id) where is_default` and is **not**
-   scoped to `archived_at is null`. `project_id` is itself tenant-bound, so this looks
-   in-boundary — but the project has a precedent for exactly this class being wrong
-   (PR #191's O1 finding, where a composite FK on a mutable column with `ON UPDATE CASCADE`
-   produced a cross-tenant write path). It deserves an explicit verdict, not an assumption.
-3. **#192 is adjacent and unresolved.** A `wsA`-scoped work item can still reference a
-   `wsB`-scoped `work_item_type`; this migration does not change that. The decision request
-   is on issue #192 and awaits Thomas. A reviewer should confirm this PR neither closes nor
-   widens that gap.
-4. **`work_item_type` has no `UNIQUE (workspace_id, id)`.** #192's proposed composite FK
-   needs it. Confirm the absence here is the sequencing noted in the PR body and not an
-   oversight.
-5. **No `audit_log` table exists**, so none of these constraints is audited. Confirm that is
-   unchanged from `main` and not a regression introduced here.
-
-## Reviewer instruction
-
-Replace this file's status with a real verdict, name the exact reviewed SHA, state what was
-checked (not merely read), and record any blocking finding. If the head has moved, the
-review is void for the new head unless the delta is outside security scope or the review
-says otherwise.
+**Findings, all non-blocking:**
+- No test asserts that an archived state holding `is_default` blocks a new default — verified
+  by hand during this review, should have a regression test; worth a tracked note on #23 so
+  the write path implements the "archive must clear or re-nominate `is_default`" requirement
+  (currently only in a `schema.ts` comment and the PR body).
+- `work_item.priority` stays nullable and the CHECK permits NULL — deliberate and tested, not
+  a regression, but worth stating so a future data migration doesn't assume totality.
+- `organisation.default_customer_visibility` carries the same `private`|`organisation`
+  vocabulary and is not constrained here — correctly out of #189's scope, but the same class
+  of gap on a security-relevant column, worth tracking separately.
+- `data-model.md`'s new text states "at most one per project" without the archived-state
+  nuance that makes the invariant stricter than it reads.
