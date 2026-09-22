@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -119,7 +119,12 @@ describe("API integration: account deletion", () => {
     const realOwnersAfter = await db
       .select({ userId: schema.workspaceUserTable.userId })
       .from(schema.workspaceUserTable)
-      .where(eq(schema.workspaceUserTable.workspaceId, owner.workspace.id));
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, owner.workspace.id),
+          eq(schema.workspaceUserTable.role, "owner"),
+        ),
+      );
     expect(realOwnersAfter.some((row) => row.userId === owner.user.id)).toBe(
       true,
     );
