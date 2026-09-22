@@ -1,7 +1,19 @@
 import { Cron } from "croner";
 import { checkDueDateReminders } from "./due-date-reminders";
+import { runSessionCleanup } from "./session-cleanup";
 
 const jobs: Cron[] = [];
+
+/**
+ * What was registered, keyed by the name `background-jobs.md` calls the job's identifier.
+ *
+ * Kept alongside `jobs` because a bare `Cron` does not remember the name it was registered
+ * under, and a test that can only see patterns cannot tell *which* job a cadence belongs to —
+ * transposing two jobs' patterns would leave every other assertion in the suite green. An
+ * independent review of #208 demonstrated exactly that, so the mapping is kept rather than
+ * inferred.
+ */
+const registeredByName = new Map<string, Cron>();
 
 type JobOutcome = { degraded?: boolean };
 
@@ -30,13 +42,36 @@ function withCheckIn<T>(name: string, fn: () => Promise<T>) {
 }
 
 export function initializeScheduler(): void {
-  jobs.push(
-    new Cron(
-      "*/5 * * * *",
-      withCheckIn("due-date-reminders", checkDueDateReminders),
-    ),
+  const definitions: ReadonlyArray<{
+    name: string;
+    pattern: string;
+    handler: () => Promise<unknown>;
+  }> = [
+    // background-jobs.md's cadence table.
+    {
+      name: "due-date-reminders",
+      pattern: "*/5 * * * *",
+      handler: checkDueDateReminders,
+    },
+    {
+      name: "session-cleanup",
+      pattern: "15 3 * * *",
+      handler: runSessionCleanup,
+    },
+  ];
+
+  for (const definition of definitions) {
+    const job = new Cron(
+      definition.pattern,
+      withCheckIn(definition.name, definition.handler),
+    );
+    jobs.push(job);
+    registeredByName.set(definition.name, job);
+  }
+
+  console.log(
+    "⏰ Scheduler started (due-date reminders every 5 minutes, session cleanup daily 03:15)",
   );
-  console.log("⏰ Scheduler started (due-date reminders every 5 minutes)");
 }
 
 /**
@@ -53,9 +88,21 @@ export function registeredJobs(): readonly Cron[] {
   return jobs;
 }
 
+/**
+ * The registered jobs by the name they were registered under, for tests.
+ *
+ * `registeredJobs()` alone cannot answer "is `session-cleanup` on its spec'd cadence" — it
+ * exposes patterns without names, so it cannot tell a correct registration from two jobs whose
+ * patterns were transposed.
+ */
+export function registeredJobByName(name: string): Cron | undefined {
+  return registeredByName.get(name);
+}
+
 export function shutdownScheduler(): void {
   for (const job of jobs) {
     job.stop();
   }
   jobs.length = 0;
+  registeredByName.clear();
 }
