@@ -5,11 +5,13 @@
 # the document does not declare: scripts/ci/test-all.mjs reconciles the two on every run,
 # and the `gates-declared` job below fails if they drift apart.
 #
-# Gates that cannot exist yet — check:tokens, check:ui, check:deps, check:queries,
-# check:inventory, test:coverage, test:mcp, check:bundle-purity, check:bundle-size — have
-# no job here on purpose. `pnpm test:all --list` prints each one with the reason and the
-# issue that unblocks it. A job that passed because it found nothing to check would look
-# like coverage and be worth less than nothing.
+# Gates that cannot exist yet — check:tokens, check:deps, check:queries, check:inventory,
+# test:coverage, test:mcp, check:bundle-purity, check:bundle-size — have no job here on
+# purpose. `pnpm test:all --list` prints each one with the reason and the issue that
+# unblocks it. A job that passed because it found nothing to check would look like coverage
+# and be worth less than nothing. (`check:ui` is enabled, in the `registers` job below —
+# #9's Radix-tracking slice, only; its "no bespoke primitives" / "no Radix/Base UI import
+# outside packages/ui" clauses still have nothing to be true of.)
 #
 # Workflow hardening (ci-cd.md § Secrets): permissions are read-only at the top, no job
 # here signs or publishes anything, and every third-party action is pinned by commit SHA.
@@ -157,6 +159,14 @@ jobs:
         # list drifted twice (packages/domain and packages/ui both went missing, #168).
         # This asserts it matches pnpm-workspace.yaml's actual discovered members.
         run: pnpm check:dockerfile-deps
+      - name: pnpm check:ui
+        # #9 — the Radix-tracking half of G1 only (packages/ui has 18 of 63 primitives
+        # moved so far; "no bespoke primitives" and "no Radix/Base UI import outside
+        # packages/ui" have nothing to be true of yet). Fails if any file imports
+        # `@radix-ui/*` or the bare `radix-ui` package without a matching row in
+        # KNOWN-RADIX.md — currently zero rows, since both real Radix imports
+        # (form.tsx, timeline.tsx) were replaced by a local `Slot` in the same change.
+        run: pnpm check:ui
 
   pull-request:
     name: pull request template + security review

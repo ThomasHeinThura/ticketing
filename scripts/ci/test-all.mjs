@@ -63,8 +63,13 @@ const manifest = [
   {
     gate: "pnpm check:ui",
     stage: "fast",
-    run: null,
-    why: "packages/ui does not exist yet (#9), so 'no bespoke primitives' and 'no Radix/Base UI import outside packages/ui' have nothing to be true of. KNOWN-RADIX.md does not exist either.",
+    run: ["pnpm", "check:ui"],
+    note:
+      "partial. Only the Radix-tracking half of G1 is enforced so far (scripts/ci/" +
+      "check-ui.mjs) — every real @radix-ui/* / radix-ui import in the repo is listed in " +
+      "KNOWN-RADIX.md's table (today: none). 'No bespoke primitives' and 'no Radix/Base UI " +
+      "import outside packages/ui' still have nothing to be true of until the remaining " +
+      "primitives move out of apps/web/src/components/ui (#9).",
   },
   {
     gate: "pnpm check:deps",

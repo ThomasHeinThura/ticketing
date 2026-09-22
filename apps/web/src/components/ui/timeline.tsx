@@ -1,9 +1,9 @@
 "use client";
 
-import { Slot } from "radix-ui";
 import * as React from "react";
 
 import { cn } from "@/lib/cn";
+import { Slot } from "@/lib/slot";
 
 // Types
 type TimelineContextValue = {
@@ -95,7 +95,7 @@ function TimelineDate({
   className,
   ...props
 }: TimelineDateProps) {
-  const Comp = asChild ? Slot.Root : "time";
+  const Comp = asChild ? Slot : "time";
 
   return (
     <Comp
