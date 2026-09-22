@@ -68,6 +68,10 @@ const createColumnRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    // #202: `create-column.ts` rejects a soft-deleted project via
+    // `getProjectWorkspaceId`, the same helper `getColumns`/`reorderColumns` use --
+    // missed by this PR's own sweep, same reasoning as those two routes' 404.
+    404: errorResponse("Project not found"),
     409: errorResponse("The slug is reserved, or already used in this project"),
   },
 });
@@ -127,6 +131,7 @@ const updateColumnRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    404: errorResponse("Column not found"),
   },
 });
 
@@ -151,6 +156,7 @@ const deleteColumnRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    404: errorResponse("Column not found"),
     409: errorResponse("The column still contains tasks"),
   },
 });
