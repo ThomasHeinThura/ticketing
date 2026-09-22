@@ -276,3 +276,111 @@ by execution. No new fail-open path exists. The change is correctly scoped to `s
 plus the decision-log entry. F1, F2 and F4 are worth one tracked follow-up issue between them;
 none of them blocks this merge, and every one of them describes a state strictly better than
 what is on `main` today.
+
+---
+
+# Delta review — 2026-09-22, head advanced to `71ed064`
+
+**Reviewed head:** `71ed0648865493955225154b4293ce3d80b7dd49`
+
+**Reviewer:** Opus 5 (1M context), a second fresh independent context. It did not author,
+direct, or remediate this change or any of the five commits that landed after
+`9f4ae0a`; in particular it did not author `1b0673c`, the decision-log correction examined
+below. Verified in its own isolated detached worktree at `71ed064`.
+
+**Why this section exists.** Rule 3 of `scripts/ci/lib/security-review-note.mjs` judges
+staleness over *every commit that landed* after the newest attested head, not over the net
+tree between the two endpoints — deliberately, because an unreviewed commit plus its revert
+cancels out in a net diff (that file's own GPT-F5 bypass). Five commits landed after
+`9f4ae0a`, so the note went stale mechanically. This section is the delta review that rule
+asks for, and it re-derives the claim rather than accepting it.
+
+## Every landed commit in `9f4ae0a..71ed064`, judged on what it contributed
+
+| Commit | Kind | Paths it contributed |
+| --- | --- | --- |
+| `665ceb4` | from `main`, PR #224 | `apps/web/src/routes/**` (3 files) |
+| `54cfb22` | merge of `main` into the branch | nothing of its own — see below |
+| `1b0673c` | branch | `docs/07-planning/decision-log.md` only |
+| `fd24988` | branch | `docs/07-planning/security-reviews/146-comment-hidden-heading.md` only |
+| `16ff76c` | from `main`, PR #216 | `apps/api/src/**`, `tests/api-contract/openapi.json`, `docs/07-planning/security-reviews/216-openapi-404-declarations.md` |
+| `71ed064` | merge of `main` into the branch | nothing of its own — see below |
+
+**Neither merge is an evil merge.** Checked by diffing each merge against *both* parents, not
+by trusting the commit message. `git diff 9f4ae0a 54cfb22` is exactly `665ceb4`'s own
+diffstat, and `git diff fd24988 71ed064` is exactly `16ff76c`'s own diffstat — so neither
+merge commit smuggled in content that is in no parent, and neither dropped a parent's content
+during conflict resolution.
+
+## The reviewed surface is byte-identical, proved three ways
+
+1. **Tree object identity.** `git rev-parse 9f4ae0a:scripts/ci` and
+   `git rev-parse 71ed064:scripts/ci` are the same object,
+   `d799d3d213ba3dc1157e6c3667abf602f39d8b91`. Every file under `scripts/ci/**` is
+   bit-for-bit what was reviewed.
+2. **Scoped endpoint diff.** `git diff 9f4ae0a 71ed064 -- scripts/ci/` is empty.
+3. **Net PR contribution, against the moved merge base.** The merge base with `main` advanced
+   from `cd21e5a` to `16ff76c`. `main` itself touched nothing under `scripts/ci/**` across
+   that span, and the PR's net contribution (`git diff <merge-base> <head> -- scripts/ci/`) is
+   the identical 342-line diff before and after. The code that would land is unchanged.
+
+Also confirmed unchanged across the delta: `.github/**`, every `package.json`,
+`pnpm-lock.yaml`, `pnpm-workspace.yaml`, and `docs/04-engineering/ci-cd.md` (whose glob list
+*defines* security-review scope). So nothing moved the scope boundary, the gate wiring, or
+the dependency graph underneath the original review.
+
+## The one in-scope change: `1b0673c`, the decision-log wording fix
+
+Read as a diff, not as a commit message. It is a two-line edit inside the `Why:` paragraph of
+the #146 entry, and nothing else:
+
+```diff
+-**Why:** the ready fix is low-risk and immediately mergeable (117/117 new tests, 451/451 full
++**Why:** the ready fix is low-risk and immediately mergeable (117/117 `pr-body.test.mjs`,
++of which 4 are new for this fix; 451/451 full
+ CI-script suite, verified fail-against-old/pass-against-new), and it applies a pattern this
+```
+
+This is exactly finding **F5** above, and the correction is faithful to what I measured: 117
+is the whole suite, 4 are new. The decision itself, its `Alternatives`, its `Decided-by`
+attribution, and every other entry in the file are untouched. No authority, scope, gate
+semantics or product decision changed.
+
+One note on append-only discipline, since this edits an existing entry rather than adding a
+new one: the #146 entry does **not** exist on `origin/main` — it is introduced by this same
+unmerged PR. Correcting a factual claim in an entry before it first lands is not rewriting
+committed decision history, so `CLAUDE.md`'s append-only rule is not engaged here. Had the
+entry already been on `main`, this would have needed a superseding entry instead.
+
+## Tests re-run at the new head, not carried over
+
+Run in the isolated worktree at `71ed064` after `pnpm install --frozen-lockfile`, on Node
+v24.20.0:
+
+- `node --test scripts/ci/lib/pr-body.test.mjs` — **117 pass, 0 fail** (17 suites).
+- `node --test 'scripts/ci/**/*.test.mjs'` — **451 pass, 0 fail** (76 suites, 26.6 s).
+
+Both counts match the PR's claim exactly. Nothing regressed; the two merged-in PRs do not
+disturb the CI-script suite.
+
+## What this delta review did NOT do
+
+- It did not re-derive the #146 visibility logic, the adversarial payload matrix, or the
+  fail-closed analysis of the three callers. It did not need to: the tree object proves the
+  code is the same bytes the original review read at `9f4ae0a`. If that surface had changed
+  by even one byte, this section would say so and would not have cleared it.
+- It did not review PR #224's `apps/web` change or PR #216's `apps/api` / OpenAPI change on
+  their merits. Both merged to `main` through their own gates; this review only confirmed
+  they land outside the surface #223's clearance covers.
+- It did not merge, did not edit `## Gates`, did not waive anything, and modified no file in
+  the repository other than this note.
+
+## Delta verdict
+
+**The original CLEAR WITH FINDINGS (non-blocking) verdict stands unchanged, now at head
+`71ed0648865493955225154b4293ce3d80b7dd49`.**
+
+Nothing in the security-review surface this clearance covers changed. The only in-scope edit
+is a purely textual correction that this review's own F5 asked for, and it is accurate. The
+five intervening commits are two unrelated `main` merges, a review artefact, and that wording
+fix. F1, F2 and F4 remain open as follow-ups and still block nothing.
