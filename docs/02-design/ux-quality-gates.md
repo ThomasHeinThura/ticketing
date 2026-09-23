@@ -39,9 +39,26 @@ for colour, spacing, radius or z-index, outside `packages/ui/src/styles/`.
 
 Run by `scripts/check-tokens.mjs`, inherited from v1 — one of the few things it got right.
 
+**Known gap, not yet closeable:** this does not catch a hard-coded density utility (`py-3`
+on a table row) that defeats the comfortable/compact preference — only an *arbitrary*
+value (`p-[13px]`) fails today. [design-tokens.md](design-tokens.md#spacing-z-index-type-scale-shadow-layout--deleted)
+states why: TaskDesk deliberately deleted its own `--space-*` token layer and left the
+density mechanism itself (a semantic spacing token set, or a density utility class) as an
+open follow-up, "recorded here once decided" rather than guessed at now. `G2` gains this
+check once that mechanism is chosen; until then `H5`, a human gate, is the only backstop —
+which is the gap this finding is naming, not a defect in this gate's own logic.
+
 ### G3 · Contrast
 
 **Fails on:** any declared foreground/background pair below WCAG AA, in either theme.
+
+The declared pairs and the token values this checks are real inputs, not a hypothetical:
+[design-tokens.md](design-tokens.md)'s "Semantic assignments", "Status colours" and
+"Priority and SLA colour tokens" sections give every token a value in both themes, and its
+["Contrast (G3)"](design-tokens.md#contrast-g3) section defines the `pairs.json` schema —
+one entry per declared foreground/background combination, `minRatio` 4.5 for body text and
+3 for large text and non-text indicators. `check-tokens.mjs` composites translucent tokens
+over their effective backdrop before measuring, per that section.
 
 ### G4 · Accessibility
 
@@ -56,19 +73,33 @@ those trees, never hand-maintained** — or a declared route that fails the buil
 round-trip test. `check:inventory` compares the screen inventory's canonical routes (query
 strings stripped) against the same generated list, so there is one source of truth.
 
+**Also fails on:** for every list surface (a `route`-kind screen with filters, a layout
+switch or a saved-view lens — the `Work`, `Backlog`, `Triage`, `Views` and `My work`
+inventory rows), an E2E assertion that applying a filter changes the URL to encode it, and
+that reloading that exact URL restores the same filter and layout state. Route registration
+is necessary but not sufficient: `RP-8` ("the full filter state is in the URL") and `SV-19`
+("every view has a URL that fully encodes it") are the substance principle 4 is about, and
+only a round-trip test on view state — not merely on route existence — checks them.
+
 **Why:** v1 had screens reachable only by clicking through a sidebar, and nested report
 tabs with no address, so a manager could not link a colleague to what they were both
 discussing.
 
 ### G6 · Every screen has four states
 
-**Fails on:** a route component with no empty, loading and error state exercised in tests.
+**Fails on:** a route component with no empty, loading, error or **partial** state
+exercised in tests — matching all four states [design-principles.md](design-principles.md)
+principle 7 requires, not three.
 
 The automated check is structural and deliberately narrow: every route module registers
-its `Empty`, `Loading` and `Error` state components (an AST check), and the E2E fixture
-drives all three conditions for every route and asserts the registered component rendered.
-Whether a state is *good* — not a bare "No results", not an unstyled error — is **H4**, a
-human gate; this gate does not claim it.
+its `Empty`, `Loading`, `Error` and `Partial` state components (an AST check), and the E2E
+fixture drives all four conditions for every route and asserts the registered component
+rendered. Partial is mocked as a batch/list response where some records resolve and others
+error (or, for a single-resource route, as a response with some fields present and others
+flagged unavailable) — the route renders what it has and marks what is missing, per
+principle 7, rather than falling back to the Error state on a partial failure. Whether a
+state is *good* — not a bare "No results", not an unstyled error — is **H4**, a human gate;
+this gate does not claim it.
 
 ### G7 · Storybook coverage
 
@@ -78,6 +109,10 @@ human gate; this gate does not claim it.
 
 **Fails on:** an unapproved pixel change to any Storybook story or to any key screen
 snapshot.
+
+**Key screens** are every `route`-kind row of the [screen inventory](screen-inventory.md) —
+that document is the single source, so a screen added there gets its G8 baseline in the
+same pull request rather than a second, separately-maintained list drifting from it.
 
 Approving a diff is an explicit action in the pull request, which puts intentional visual
 change in front of a reviewer and catches unintentional change immediately rather than
@@ -124,6 +159,22 @@ sizes are measured by `size-limit` on the two entry bundles; field INP is observ
 production ([observability.md](../01-architecture/observability.md)), not gated in CI — a
 shared runner cannot measure it.
 
+**Measurement, per metric** (the harness this gate needs, not yet built):
+
+| Metric | Tool | Throttling | Target route | Sample / flake policy |
+| --- | --- | --- | --- | --- |
+| LCP, CLS, route transition | Playwright, `PerformanceObserver` marks read via CDP | Network: Lighthouse's "Fast 4G" profile (1.6 Mbps down / 750 Kbps up / 150 ms RTT) via `Network.emulateNetworkConditions`; CPU: 4× slowdown via `Emulation.setCPUThrottlingRate` | `Work — list` (seeded, P1's canonical list surface) → `Work item — full page` for the transition row | Median of three runs; one automatic re-run on a failing sample before the build fails, per metric |
+| Interaction latency (INP proxy) | Playwright, timestamped click-to-paint on the named core journeys (`G10`'s list) | Same profile as above | The journey's own screen | Median of three runs, same re-run policy |
+| Board render (200 items) | Playwright, time from navigation to last row painted | Unthrottled — measures the app's own render cost, not the network | `Work — board`, seeded | Median of three runs |
+| List render (500 rows) | Same method | Unthrottled | `Work — list`, seeded | Median of three runs |
+| Board drag (p95 frame time) | Already specified above — a scripted 2 s drag, median of three runs | Unthrottled | `Work — board` | As stated in the table row |
+| Agent / portal bundle size | `size-limit` | n/a | n/a | Single measurement; a regression fails immediately, no re-run (deterministic) |
+
+CPU/network throttling applies only to the metrics a real user's device and connection
+would affect (LCP, INP, CLS, route transition); render-time and bundle-size rows measure
+the application's own work and are deliberately left unthrottled so a regression there is
+never masked by throttling noise.
+
 ### G12 · Portal bundle purity
 
 **Fails on:** any module under `routes/agent/` or `components/god-mode/` appearing in the
@@ -144,6 +195,20 @@ G11's page-level CLS row, not a duplicate of it.
 
 Skeletons must match the shape of what replaces them. This is the difference between an
 interface that feels solid and one that jumps.
+
+### G14 · Terminology overlay
+
+**Fails on:** any screen whose visual-regression snapshot changes under a worst-case
+terminology-override fixture (a very long override string, and a plural form that looks
+nothing like the singular — [i18n.md](../01-architecture/i18n.md), `GM-T4`), or whose
+accessible name no longer matches its visible label under that same override
+([accessibility.md](accessibility.md), [i18n.md](../01-architecture/i18n.md)).
+
+`G8`'s tool and in-repo baselines run a second pass with every `term:*` key resolved to the
+fixture instead of its shipped string, over the same key-screen set `G8` covers. A snapshot
+diff, or an axe/accessible-name check failing, fails the build. This is the CI form of the
+"exhaustively tested" claim [ADR 0012](../01-architecture/adr/0012-terminology-overlay.md)
+makes for the terminology overlay — previously an ADR promise with no gate behind it.
 
 ---
 
@@ -186,9 +251,13 @@ Does it honour comfortable versus compact, or did someone hard-code padding?
 
 ### H6 · Mobile
 
-Does it work at 375 px? The agent workspace need not be beautiful on a phone, but it must
-be usable. The portal must be genuinely good on a phone, because that is where customers
-will use it.
+Does it work at **320 px** — matching [accessibility.md](accessibility.md)'s WCAG 1.4.10
+commitment, not the 375 px this gate previously stated. An automated Playwright project
+(`--project=mobile-320`, [ci-cd.md](../04-engineering/ci-cd.md)) already asserts the
+portal's core journeys at this width in the full CI stage; `H6` is the human sanity check
+alongside it, for surfaces and judgment calls the automated project does not cover. The
+agent workspace need not be beautiful on a phone, but it must be usable. The portal must be
+genuinely good on a phone, because that is where customers will use it.
 
 ---
 
@@ -286,3 +355,4 @@ to confirm, and no amount of parsing changes it.
 - [Design principles](design-principles.md) · [Accessibility](accessibility.md)
 - [Definition of Done](../04-engineering/definition-of-done.md)
 - [Testing strategy](../04-engineering/testing-strategy.md)
+- [Internationalisation](../01-architecture/i18n.md) — the layer `G14` and ADR 0012 build on
