@@ -75,6 +75,14 @@ jobs:
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Run browser smoke
         run: pnpm --filter @taskdesk/web test:e2e
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-smoke
+          path: apps/web/test-results/
+          if-no-files-found: warn
+          retention-days: 7
 
   a11y:
     name: NOT ENABLED - a11y (G4, axe)
