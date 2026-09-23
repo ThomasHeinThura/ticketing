@@ -5,6 +5,16 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+## Format
+
+```markdown
+### YYYY-MM-DD · Short title
+**Decision:** what we are doing
+**Why:** the reasoning
+**Alternatives:** what was rejected, briefly
+**Decided by:** who
+```
+
 ### 2026-09-23 · Current-model ordinary-review fallback when Sonnet is unavailable; Opus remains mandatory
 
 **Supersedes (narrowly):** the reviewer-provider clause in the 2026-09-23 temporary fallback (#345), only when a fresh Claude Sonnet context is unavailable.
@@ -35,16 +45,6 @@ package boundary used by primitive stories.
 
 **Decided by:** Storybook 10 is already selected by `tech-stack.md`; the pin and compatibility
 result were recorded by the implementing agent, 2026-09-23.
-
-## Format
-
-```markdown
-### YYYY-MM-DD · Short title
-**Decision:** what we are doing
-**Why:** the reasoning
-**Alternatives:** what was rejected, briefly
-**Decided by:** who
-```
 
 ---
 
