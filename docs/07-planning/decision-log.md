@@ -27,22 +27,32 @@ removed.
 **Decision:** Every shipped deployment (`compose.yml`, `charts/taskdesk/**`, `deploy/**`)
 uses two Postgres roles:
 - **Migration/owner role.** `TASKDESK_MIGRATION_DATABASE_URL` connects as the role that
-  owns every table. It is used only to run migrations and the grant step at boot.
+  owns every table. It is used **only by a separate one-shot migrate process**
+  (`TASKDESK_ROLE=migrate`): a compose `migrate` service, or a Helm pre-install/pre-upgrade
+  hook Job. That process runs the migrations and the grant step, then exits. **The
+  long-running API and jobs processes never receive this URL.** The API refuses to start if
+  it is present in its environment (`assertNoMigrationUrlInApiProcess`), because closing a
+  connection pool does not remove a credential from the process environment
+  (`/proc/self/environ`). This was found by PR #308's Opus review, S1.
 - **Application role.** `TASKDESK_DATABASE_URL` connects as `taskdesk_app`. It is not a
   superuser, it owns nothing, and it has DML only. On `audit_log` and `activity` it has
   `INSERT` and `SELECT` only, with no `UPDATE`, `DELETE` or `TRUNCATE`.
 
-Grants are applied by a startup step (`ensureApplicationRole`) that runs as the owner right
-after `migrate()`, not by a migration file. It does `REVOKE ALL`, then precise `GRANT`s,
+Grants are applied by the migrate process (`ensureApplicationRole`), which runs as the owner right
+after `migrate()`. They are not applied by a migration file. The app role's password is sent as a
+pre-computed **SCRAM-SHA-256 verifier**, never as plaintext, and errors from that step carry no
+query text. Without this, a failed or DDL-logged `CREATE ROLE … PASSWORD` would write the password
+to the API and server logs (Opus S2). It does `REVOKE ALL`, then precise `GRANT`s,
 plus `ALTER DEFAULT PRIVILEGES`, so it is idempotent. It re-derives the grants from the
-live table list and `APPEND_ONLY_TABLES` on every boot. Boot then **refuses to start**
+live table list and `APPEND_ONLY_TABLES` on every migrate run. The API process then **refuses to start**
 (`assertApplicationRoleIsNotPrivileged`) if the connected application role, or any role it can reach,
 does any of the following. "Reach" means through membership or `SET ROLE`, checked transitively with
 `pg_has_role(…, 'MEMBER')`. The refusal conditions are:
 - it is a superuser;
 - it can create roles, bypass row-level security, or start replication;
 - it is a member of `pg_write_server_files`, `pg_read_server_files`,
-  `pg_execute_server_program`, `pg_signal_backend` or `pg_database_owner`;
+  `pg_execute_server_program`, `pg_signal_backend`, `pg_database_owner`,
+  `pg_write_all_data` or `pg_read_all_data`;
 - it owns anything in `pg_class`, `pg_proc`, `pg_namespace` or `pg_type`.
 
 The role create-and-grant step runs under a transaction-scoped advisory lock, so two
@@ -54,16 +64,28 @@ append-only or no-DDL controls this check exists for (PR #308's review):
   filesystem from a large object needs `pg_read_server_files` or `pg_write_server_files`,
   and those are already refused.
 
-`TASKDESK_MIGRATION_DATABASE_URL` is optional and falls back to `TASKDESK_DATABASE_URL`.
-That keeps single-URL local development working. In that fallback, the grant step detects
-that the app role is the connecting role and does not modify it.
+There is **no single-URL mode for the API**. If the API is connected as the table owner, the
+privilege check refuses to boot, whatever the environment. Local development uses the same
+two steps: run `TASKDESK_ROLE=migrate` once with the owner URL, then serve against the app role.
+This is documented in `configuration-reference.md`. For a Helm external database with
+`migration.enabled: false`, the migrate Job uses the app credential. It then fails loudly at
+install if that role cannot run DDL, rather than silently running the API as the owner.
+
+**`activity` rows are removed by cascade, and that is decided behaviour** (Opus S4). They
+disappear when their work item is hard-deleted, or when a project or workspace delete cascades
+to them through migration `0066`'s `ON DELETE CASCADE`. `taskdesk_app` still cannot `UPDATE`,
+`DELETE` or `TRUNCATE` `activity` directly. `DELETE` is deliberately **not** revoked on
+`work_item`/`project`, per the 2026-09-23 activity addendum's CASCADE decision. So a compromised
+API process can erase `activity` history only by deleting the work item, project or workspace it
+belongs to. `audit_log` has no such cascade (`workspace_id` has no foreign key), and it records
+the deletion itself.
 
 **Why:** The earlier entry recorded a residual risk. The API ran as the superuser table
 owner, so a compromised API process could `ALTER TABLE … DISABLE TRIGGER` or `TRUNCATE`
 and defeat the audit trail. This closes the first of the two items that entry said must
 land. A grant is the control Postgres actually enforces against a non-owner.
 
-The step runs at boot, not as a migration, for two reasons:
+The grant step runs in the migrate process rather than as a journal migration, for two reasons:
 - a journal migration runs once and can't carry a deployment-specific, rotatable password;
 - a future append-only table then gets its restriction automatically, not by someone
   remembering to add it.
@@ -81,10 +103,14 @@ role yet, because that job doesn't exist yet.
 - A dedicated non-superuser owner role separate from the image init user. Deferred: it is
   more provisioning work for BYO Postgres, and it doesn't change what the API process can
   do.
+- Keep migrations in the API process and narrow every claim to SQL-level compromise only.
+  Rejected: it leaves the superuser credential inside the process that serves requests, and
+  it would have needed Thomas's recorded risk acceptance.
 
 **Operational consequence:** existing deployments need the new
 `TASKDESK_APP_DB_PASSWORD` (compose) or `taskdesk.env.database.app*` values (Helm), and a
-redeploy. The UAT redeploy needs Thomas's authorization. It is not implied by this entry.
+redeploy. The redeploy now runs the `migrate` service or Job before the API: `scripts/deploy.sh`'s
+`upgrade`/`rollback` run `migrate` explicitly first. The UAT redeploy needs Thomas's authorization. It is not implied by this entry.
 
 **Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation.
 There was one clearly recommended option, the two-role split that AU-3 and `migrations.md`

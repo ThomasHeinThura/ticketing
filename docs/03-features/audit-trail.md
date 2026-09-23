@@ -97,7 +97,9 @@ it.
     non-owner, non-superuser role", PR #308). The API connects as `taskdesk_app`, which is
     not a superuser and owns no table. On `audit_log` and `activity` it holds only
     `INSERT` and `SELECT`. `ensureApplicationRole` re-derives these grants from
-    `APPEND_ONLY_TABLES` at every boot. Boot refuses to start if the connected role, or
+    `APPEND_ONLY_TABLES` on every run of the separate one-shot migrate process. The API
+    process never receives the owner credential, and refuses to start if it does. The
+    API refuses to start if the connected role, or
     any role it can reach through membership or `SET ROLE`, holds any elevated attribute or
     predefined role, or owns any object (`assertApplicationRoleIsNotPrivileged`; the full list is
     in the decision log entry).
@@ -115,9 +117,11 @@ it.
   **What remains, stated plainly:** the migration/owner role (`TASKDESK_MIGRATION_DATABASE_URL`)
   is still the postgres image's init user, and so a superuser. Anyone holding that
   credential can disable the triggers and rewrite the table, so it must stay
-  operator-only. Under the single-URL fallback, where `TASKDESK_MIGRATION_DATABASE_URL`
-  is unset (local development only), the API still connects as the owner and only the
-  triggers apply.
+  operator-only. It reaches only the migrate process, never the serving API. There is no
+  single-URL mode for the API: connected as the owner, it refuses to boot. **`activity`**
+  rows are also removed by cascade when their work item, project or workspace is deleted
+  (migration `0066`, the decided CASCADE). `taskdesk_app` cannot mutate `activity`
+  directly, but it can delete the parent row.
 
   `audit-purge`, run as a separate maintenance role, is the only thing that deletes rows,
   and only the oldest-past-retention range.
