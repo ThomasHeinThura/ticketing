@@ -1325,5 +1325,6 @@ check:vocabulary` now passes (54 table declarations, all registered). Re-ran `pn
 typecheck`, `pnpm biome check .`, and `pnpm test:permissions` (80/80) against the result —
 unaffected, as expected for a docs-only addition.
 
-**Reviewed head:** `cbf3b48` (the `data-model.md` commit above; this note's own commit is
-note-only and needs no further citation, per this check's own stated rule).
+**Reviewed head:** `cbf3b481c736215cf813c46737f27d9556538cfe` (the `data-model.md` commit
+above; this note's own commit is note-only and needs no further citation, per this check's
+own stated rule).
