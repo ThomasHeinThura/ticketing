@@ -13,6 +13,25 @@ changed — in order.
 Separating "comments" from "history" into two tabs is a mistake: the reason a field changed
 is usually in a comment three lines above the change, and splitting them destroys that.
 
+## Data
+
+[`data-model.md`](../01-architecture/data-model.md) §4 is authoritative for every column.
+
+- `comment` — `work_item_id`, `author_id`, `actor_type`, `body jsonb`, `visibility`
+  (`public`\|`internal`), `activity_id` null, `edited_at`, `deleted_at`/`deleted_by` (the
+  `CA-18` tombstone).
+- `comment_version` — `comment_id`, `number`, `body jsonb`, `edited_by`, `created_at` — the
+  edit history `CA-17` renders.
+- `activity` — `work_item_id`, `actor_id`, `actor_type`, `verb`, `field`, `old_value`,
+  `new_value`, `payload jsonb`, `visibility`, `workflow_version_id` null, `created_at`.
+- `canned_response` — `workspace_id`, `name`, `body jsonb`, `visibility_default`,
+  `created_by`.
+- `project.default_comment_visibility` (`public`\|`internal`, default `internal`) — `CA-2`'s
+  per-project default.
+- Attachment linkage: `attachment.comment_id` (`CHECK` exactly one of `work_item_id` \|
+  `comment_id` \| `submission_id`) is how an image pasted into a comment (`CA-15`) attaches
+  to that comment rather than to the work item directly.
+
 ## The visibility rule
 
 **Every comment is either `public` or `internal`.** This is the single most
@@ -27,9 +46,11 @@ security-sensitive field in the product.
 
 - `CA-1` Visibility is chosen explicitly at composition, with the current choice always
   visible. There is no ambiguity about who is about to read what.
-- `CA-2` The default is configurable per project. For customer-facing service desks it
-  should default to **internal**, because an accidental internal note is embarrassing and
-  an accidental public note can be catastrophic.
+- `CA-2` The default is configurable per project — `project.default_comment_visibility`
+  ([data-model.md](../01-architecture/data-model.md) §3), `public`\|`internal`, seeded
+  `internal`. For customer-facing service desks it should default to **internal**, because
+  an accidental internal note is embarrassing and an accidental public note can be
+  catastrophic.
 - `CA-3` Internal comments are filtered **server-side in the portal router**. Never in the
   client, never by a CSS class, never by a conditional render.
 - `CA-4` Visibility cannot be changed after posting. A comment sent to a customer has been
@@ -61,21 +82,32 @@ security-sensitive field in the product.
   into one entry — "Jane changed priority, due date and 2 labels" — expandable.
 - `CA-9` System actions are attributed to the automation or job that made them, never to a
   person.
-- `CA-10` Activity is never edited or deleted, including when a work item is archived.
+- `CA-10` Activity is never edited or deleted, including when a work item is archived —
+  except when the parent work item is purged at the end of the soft-delete window, or its
+  workspace is hard-deleted (the tenant deletion cascade — decision log 2026-09-23,
+  "Activity addendum").
 
 ## Composition
 
 - `CA-11` Rich text via Tiptap: bold, italic, lists, links, code, code blocks, tables,
-  images, task lists.
+  images, task lists. The serialized `body jsonb` document is capped at **256 KiB** and
+  **10,000 nodes**; a comment over either limit is rejected with the standard 422
+  validation contract ([api-design.md](../01-architecture/api-design.md) "Errors" —
+  `errors[]` gives field-level detail, `path: "body"`).
 - `CA-12` `@mention` a person to notify them and add them as a watcher. Mentioning someone
   without reach on the work item warns and does not notify.
 - `CA-13` A customer cannot be mentioned in an internal comment. The picker excludes them.
 - `CA-14` `#SUP-123` links a work item inline, rendering key, title and state.
 - `CA-15` Pasting or dropping an image uploads it as an attachment and inserts a
   reference. Never base64 into the document.
-- `CA-16` Drafts persist per work item per user, surviving a closed tab.
-- `CA-17` Editing is allowed for 15 minutes by the author, after which the comment shows
-  "edited" with a hover-revealed history.
+- `CA-16` Drafts persist per work item per user, surviving a closed tab — stored in
+  `localStorage`, and therefore per device: a draft started on one device is not visible
+  on another.
+- `CA-17` Editing is allowed for 15 minutes by the author. After that window, editing is
+  **refused** — a 403 — unless the actor holds `comment:update_any`. Each edit writes a new
+  `comment_version (comment_id, number, body, edited_by, created_at)` row
+  ([data-model.md](../01-architecture/data-model.md) §4); the comment shows "edited" with a
+  hover-revealed history built from those versions.
 - `CA-18` Deleting sets `comment.deleted_at` / `deleted_by` and clears the body; the row and
   its activity stay, and the tombstone renders from those two columns — "Comment deleted by
   Jane, 2 March" — never a
@@ -90,11 +122,20 @@ security-sensitive field in the product.
 ## Canned responses
 
 - `CA-19` A workspace may define reusable snippets with placeholders for requester name,
-  work item key and due date.
+  work item key and due date — the `canned_response` table
+  ([data-model.md](../01-architecture/data-model.md) §4). Creating, editing and deleting a
+  canned response requires `workspace:manage_settings`
+  ([rbac.md](../01-architecture/rbac.md)); reading the list to insert one only requires
+  `work_item:read` on the work item being commented on.
 - `CA-20` Inserted from the composer, then editable before sending. Never sent
   automatically.
 
 ## Permissions
+
+Ownership is `row.person_id === identity.personId` (the comment's `author_id`), matching
+[rbac.md](../01-architecture/rbac.md)'s worked `PATCH /api/comments/{id}` example: an
+`orOwner` branch grants the `_own` capability only within the 15-minute window, with the
+`_any` capability as the unconditional override.
 
 | Action | Capability |
 | --- | --- |
@@ -102,8 +143,9 @@ security-sensitive field in the product.
 | Read internal comments | `work_item:read` + staff side |
 | Post public | `comment:create` |
 | Post internal | `comment:create_internal` |
-| Edit own within window | `comment:create` |
+| Edit own within window | `comment:update_own` (owner predicate, `withinMinutes: 15`) |
 | Edit anyone's | `comment:update_any` |
+| Delete own | `comment:delete_own` (owner predicate) |
 | Delete anyone's | `comment:delete_any` |
 
 ## Screens
@@ -117,9 +159,15 @@ last being how a staff member checks what the customer has actually seen.
 ```
 GET    /api/work-items/{key}/activity          work_item:read
 POST   /api/work-items/{key}/comments          comment:create | comment:create_internal
-PATCH  /api/comments/{id}                      author within window, or comment:update_any
-DELETE /api/comments/{id}                      author, or comment:delete_any
+PATCH  /api/comments/{id}                      comment:update_any, or comment:update_own
+                                                (owner, within 15 minutes)
+DELETE /api/comments/{id}                      comment:delete_any, or comment:delete_own
+                                                (owner)
 GET    /api/portal/requests/{ref}/activity     (portal router — public only)
+GET    /api/canned-responses                   work_item:read
+POST   /api/canned-responses                   workspace:manage_settings
+PATCH  /api/canned-responses/{id}              workspace:manage_settings
+DELETE /api/canned-responses/{id}              workspace:manage_settings
 ```
 
 The portal endpoint is a separate handler, not the same handler with a filter, so it is
@@ -131,11 +179,22 @@ impossible to leak internal content through a forgotten branch.
 | --- | --- |
 | Customer mentioned in a public comment | Notified normally |
 | Mentioned person later loses reach | Existing mention remains; no further notifications |
-| Comment on a deleted work item | Deleted with it |
+| Comment on a soft-deleted work item | Hidden along with the work item, not deleted; both reappear together if the work item is restored within its 30-day soft-delete window. Removed only at purge, at the end of that window ([work-items.md](work-items.md) `WI-21`) |
 | Very long comment | Collapsed above 400 words with "show more" |
 | Image in a comment, attachment later deleted | Renders a "image unavailable" placeholder |
 | Two people editing one comment | Only the author may edit; no conflict possible |
 | Activity for a field the viewer cannot see | Suppressed entirely, not shown as redacted |
+
+## Out of scope
+
+- Threaded replies within one comment stream — the stream is flat, ordered by time, per
+  `CA-8`'s grouping only.
+- Reactions/emoji on comments.
+- Rich analytics on canned-response usage — `CA-19`/`CA-20` are the composer affordance
+  only.
+- Per-organisation or per-customer default comment visibility — `CA-2`'s default is
+  per-project only; a finer-grained default is [settings-hierarchy.md](settings-hierarchy.md)'s
+  concern (P4), not this spec's.
 
 ## Testing
 
@@ -150,6 +209,10 @@ Unit: activity grouping window; mention parsing; work item reference parsing.
 
 E2E: post internal and public comments, sign in as the customer, confirm only the public
 one is present in the DOM.
+
+## Open questions
+
+None.
 
 ## Related
 

@@ -1,5 +1,14 @@
 import { DEFAULT_ROLE_NAMES } from "@taskdesk/permissions";
-import { Badge, Button } from "@taskdesk/ui";
+import {
+  Badge,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@taskdesk/ui";
 import {
   CopyIcon,
   EllipsisIcon,
@@ -42,14 +51,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
 
 type Props = {
   workspaceId: string;

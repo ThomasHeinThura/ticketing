@@ -1,13 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@taskdesk/ui";
 import { mergeAttributes, Node } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import { useTranslation } from "react-i18next";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/preview-card";
 import getProject from "@/fetchers/project/get-project";
 import getTask from "@/fetchers/task/get-task";
 import { escapeHtml, isValidUrl } from "./url-safety";

@@ -4,6 +4,33 @@ import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import { validateWorkspaceAccess } from "./validate-workspace-access";
 
+// T4 (independent Opus security review of PR #271, delta round): a NUL byte in an id
+// pulled from a path param (e.g. `GET /api/projects/%00/work-items`, `fromProject`'s
+// `idKey`) reached `lookupWorkspaceId`'s query unvalidated, threw, and was caught by that
+// function's own fail-closed `catch` as a masked 503 ("Could not verify workspace
+// access") -- Postgres `text`/`uuid` columns reject a NUL outright, and no legitimate id
+// this codebase issues (cuid2, `{slug}-{number}`) ever contains one.
+//
+// FIRST ROUND of this fix treated a NUL-bearing id as simply ABSENT, falling through to
+// the generic "workspace id could not be determined" 400 -- but "absent" is exactly what
+// makes the 8 `[lookup, query]`-shaped helpers (`fromTask`, `fromTaskId`, `fromLabel`,
+// `fromTimeEntry`, `fromActivity`, `fromComment`, `fromColumn`, `fromWorkflowRule`) fall
+// through to their OWN `{ type: "query", key: "workspaceId" }` source next -- exactly
+// issue #256's caller-supplied-`?workspaceId=` fallback class this file's own `catch`
+// comment above already documents. A request with a NUL-bearing lookup id and a
+// `?workspaceId=<the caller's own real workspace>` therefore PASSED this middleware
+// against that workspace, and only then 500'd inside the controller trying to act on the
+// NUL id -- fail-open relative to the original fail-closed 503, not a fix. So: a NUL byte
+// in ANY source's id is answered with an IMMEDIATE 400, the same way an empty/missing
+// `key` already is in `require-work-item-reach.ts` -- never treated as absent, and never
+// allowed to fall through to a later source.
+function hasNulByte(value: string): boolean {
+  return value.includes("\u0000");
+}
+
+const NUL_BYTE_MESSAGE =
+  "Workspace/resource id must not contain a NUL (\\u0000) byte";
+
 type WorkspaceIdSource =
   | { type: "query"; key: string }
   | { type: "body"; key: string }
@@ -55,13 +82,25 @@ export function workspaceAccessMiddleware(
 
     for (const source of config.sources) {
       if (source.type === "query") {
-        workspaceId = c.req.query(source.key) || null;
+        const raw = c.req.query(source.key) || null;
+        if (raw && hasNulByte(raw)) {
+          throw new HTTPException(400, { message: NUL_BYTE_MESSAGE });
+        }
+        workspaceId = raw;
       } else if (source.type === "body") {
         const body = await readJsonObjectBody(c);
         const bodyValue = body[source.key];
-        workspaceId = typeof bodyValue === "string" ? bodyValue : null;
+        const raw = typeof bodyValue === "string" ? bodyValue : null;
+        if (raw && hasNulByte(raw)) {
+          throw new HTTPException(400, { message: NUL_BYTE_MESSAGE });
+        }
+        workspaceId = raw;
       } else if (source.type === "param") {
-        workspaceId = c.req.param(source.key) || null;
+        const raw = c.req.param(source.key) || null;
+        if (raw && hasNulByte(raw)) {
+          throw new HTTPException(400, { message: NUL_BYTE_MESSAGE });
+        }
+        workspaceId = raw;
       } else if (source.type === "lookup") {
         const body = await readJsonObjectBody(c);
         const bodyId = body[source.idKey];
@@ -71,6 +110,13 @@ export function workspaceAccessMiddleware(
         // caller authorize against one resource (`?taskId=<mine>`) while the
         // handler acted on another (`{"taskId": "<someone else's>"}`).
         const id = c.req.param(source.idKey) || idFromBody;
+        if (id && hasNulByte(id)) {
+          // NEVER treat this as absent -- that would fall through to this
+          // helper's own `{ type: "query", key: "workspaceId" }` source next,
+          // which is exactly issue #256's caller-supplied-fallback class (see
+          // the file comment above `hasNulByte`).
+          throw new HTTPException(400, { message: NUL_BYTE_MESSAGE });
+        }
         if (id) {
           workspaceId = await lookupWorkspaceId(source.resource, id);
         }
@@ -81,6 +127,9 @@ export function workspaceAccessMiddleware(
           const taskIds = ids.filter(
             (id): id is string => typeof id === "string",
           );
+          if (taskIds.some(hasNulByte)) {
+            throw new HTTPException(400, { message: NUL_BYTE_MESSAGE });
+          }
           if (taskIds.length > 0) {
             const tasks = await db
               .select({ workspaceId: schema.projectTable.workspaceId })

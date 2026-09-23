@@ -1,4 +1,15 @@
-import { Badge, Button, Frame, FramePanel } from "@taskdesk/ui";
+import {
+  Badge,
+  Button,
+  Frame,
+  FramePanel,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@taskdesk/ui";
 import { Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,14 +26,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
 
 type ApiKeyTableProps = {
   apiKeys: ApiKey[];

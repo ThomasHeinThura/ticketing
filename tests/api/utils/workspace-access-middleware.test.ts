@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { state } = vi.hoisted(() => ({
-  state: { lookedUpIds: [] as string[] },
+  state: { lookedUpIds: [] as string[], handlerReached: false },
 }));
 
 const WORKSPACE_BY_TASK: Record<string, string> = {
@@ -83,9 +83,25 @@ function post(query: string, body: Record<string, unknown>) {
   });
 }
 
+// `fromTask` is one of the 8 `[{ type: "lookup" }, { type: "query", key:
+// "workspaceId" }]`-shaped helpers -- a NUL-bearing path-param id must never fall
+// through to the `?workspaceId=` source that follows it in the same list.
+function buildTaskApp() {
+  return new Hono<{ Variables: { userId: string } }>()
+    .use("*", async (c, next) => {
+      c.set("userId", "user-1");
+      return next();
+    })
+    .get("/task/:id", workspaceAccess.fromTask(), async (c) => {
+      state.handlerReached = true;
+      return c.json({ actedOn: c.req.param("id") });
+    });
+}
+
 describe("workspaceAccess lookup sources", () => {
   beforeEach(() => {
     state.lookedUpIds.length = 0;
+    state.handlerReached = false;
   });
 
   it("authorizes against the body id the handler will act on", async () => {
@@ -109,5 +125,30 @@ describe("workspaceAccess lookup sources", () => {
 
     expect(state.lookedUpIds).toEqual(["task-in-other-workspace"]);
     expect(res.status).toBe(403);
+  });
+
+  it("T4 follow-up (ordinary review of the #271 delta-round PR): a NUL byte in the lookup id is an immediate 400, never a fall-through to the caller-supplied ?workspaceId=, and never reaches the handler", async () => {
+    const res = await buildTaskApp().request(
+      `/task/${encodeURIComponent("\u0000x")}?workspaceId=workspace-mine`,
+    );
+
+    expect(res.status).toBe(400);
+    expect(state.handlerReached).toBe(false);
+    // Never even reached `lookupWorkspaceId` -- the NUL byte is rejected before the
+    // DB lookup, not merely treated as "not found".
+    expect(state.lookedUpIds).toEqual([]);
+  });
+
+  it("a well-formed lookup id still falls through to ?workspaceId= exactly as before, once it's genuinely absent", async () => {
+    const res = await buildTaskApp().request(
+      "/task/task-does-not-exist?workspaceId=workspace-mine",
+    );
+
+    // The id resolves to no row (a real "absent" case, not a NUL byte), so this
+    // still legitimately falls through to the query fallback and succeeds against
+    // the caller's own workspace -- proving the NUL fix didn't remove the
+    // fallback for the case it's actually meant for.
+    expect(res.status).toBe(200);
+    expect(state.handlerReached).toBe(true);
   });
 });

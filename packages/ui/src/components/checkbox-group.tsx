@@ -2,7 +2,7 @@
 
 import { CheckboxGroup as CheckboxGroupPrimitive } from "@base-ui/react/checkbox-group";
 
-import { cn } from "@/lib/cn";
+import { cn } from "../lib/cn";
 
 function CheckboxGroup({ className, ...props }: CheckboxGroupPrimitive.Props) {
   return (
