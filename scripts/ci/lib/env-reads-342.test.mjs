@@ -69,6 +69,30 @@ test("environment detector still attributes direct, computed, destructured, and 
   );
 });
 
+test("environment detector ignores nested properties named like runtime globals", () => {
+  assert.deepEqual(
+    findEnvReads(
+      [
+        "const options = { process: { env: { SAFE: true } } };",
+        "use(options.process.env.SAFE);",
+        "const wrapper = { globalThis: { process: { env: { SAFE: true } } } };",
+        "use(wrapper.globalThis.process.env.SAFE);",
+      ].join("\n"),
+    ),
+    [],
+  );
+  assert.deepEqual(
+    findEnvReads(
+      "const processAlias = process; use(options.processAlias.env.SAFE);",
+    ),
+    [],
+  );
+  assert.deepEqual(
+    findEnvReads('import { env } from "node:process"; use(options.env.SAFE);'),
+    [],
+  );
+});
+
 test("environment detector ignores comments and quoted text", () => {
   assert.deepEqual(
     findEnvReads('// process.env.NOPE\nconst text = "process.env.NOPE";'),
@@ -97,6 +121,18 @@ test("environment detector skips regular-expression bodies but keeps division ex
   assert.deepEqual(
     findEnvReads("class Check {} /process.env.SECRET/.test(value);"),
     [],
+  );
+  assert.deepEqual(
+    findEnvReads("const ratio = function() {} / process.env.RATE;").map(
+      ({ name }) => name,
+    ),
+    ["RATE"],
+  );
+  assert.deepEqual(
+    findEnvReads("const ratio = class {} / process.env.RATE;").map(
+      ({ name }) => name,
+    ),
+    ["RATE"],
   );
   assert.deepEqual(
     findEnvReads("const rate = value / process.env.RATE;").map(

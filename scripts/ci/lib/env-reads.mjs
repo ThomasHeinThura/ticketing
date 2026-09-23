@@ -66,6 +66,16 @@ function tokenize(source) {
     "<",
     ">",
   ]);
+  const expressionPrefixKeywords = new Set([
+    "await",
+    "return",
+    "throw",
+    "yield",
+  ]);
+  const expressionPrefixPunctuation = new Set(["=", "(", "[", ":", ",", "=>"]);
+  const isExpressionPrefix = (value) =>
+    expressionPrefixKeywords.has(value) ||
+    expressionPrefixPunctuation.has(value);
   const canStartRegex = (previous) => {
     if (!previous) return true;
     if (
@@ -129,7 +139,13 @@ function tokenize(source) {
                 // and parameter list, unlike function expressions' lexical use.
                 for (let prior = open - 1; prior >= 0; prior -= 1) {
                   if ([";", "{", "}"].includes(tokens[prior].value)) break;
-                  if (tokens[prior].value === "function") return true;
+                  if (tokens[prior].value === "function") {
+                    const beforeFunction =
+                      tokens[prior - 1]?.value === "async"
+                        ? tokens[prior - 2]?.value
+                        : tokens[prior - 1]?.value;
+                    return !isExpressionPrefix(beforeFunction);
+                  }
                 }
                 return false;
               }
@@ -142,7 +158,8 @@ function tokenize(source) {
           if (beforeBlock) {
             for (let prior = tokenIndex - 1; prior >= 0; prior -= 1) {
               if ([";", "{", "}"].includes(tokens[prior].value)) break;
-              if (tokens[prior].value === "class") return true;
+              if (tokens[prior].value === "class")
+                return !isExpressionPrefix(tokens[prior - 1]?.value);
             }
           }
           return false;
@@ -289,10 +306,19 @@ function collectTokenAliases(tokens) {
   return { processAliases, envAliases, envAliasDeclarations };
 }
 
+function isRootIdentifier(tokens, index) {
+  // A property named `process` or `globalThis` is not the Node global. In
+  // particular, `options.process.env.X` must not be classified as an env read.
+  return tokens[index - 1]?.value !== "." && tokens[index - 1]?.value !== "?.";
+}
+
 function parseEnvObject(tokens, index, processAliases, envAliases) {
   const value = tokens[index]?.value;
-  const processName = value === "process" || processAliases.has(value);
+  const rootIdentifier = isRootIdentifier(tokens, index);
+  const processName =
+    rootIdentifier && (value === "process" || processAliases.has(value));
   const globalProcess =
+    rootIdentifier &&
     (value === "global" || value === "globalThis") &&
     tokens[index + 1]?.value === "." &&
     tokens[index + 2]?.value === "process";
@@ -314,6 +340,7 @@ function parseEnvObject(tokens, index, processAliases, envAliases) {
     return null;
   }
   if (
+    rootIdentifier &&
     value === "import" &&
     tokens[index + 1]?.value === "." &&
     tokens[index + 2]?.value === "meta"
@@ -329,6 +356,7 @@ function parseEnvObject(tokens, index, processAliases, envAliases) {
       return { object: "import.meta.env", end: index + 5 };
   }
   if (
+    rootIdentifier &&
     value === "Reflect" &&
     tokens[index + 1]?.value === "." &&
     tokens[index + 2]?.value === "get" &&
@@ -352,6 +380,7 @@ function parseEnvObject(tokens, index, processAliases, envAliases) {
     }
   }
   if (
+    rootIdentifier &&
     value === "require" &&
     tokens[index + 1]?.value === "(" &&
     tokens[index + 2]?.value === "process" &&
@@ -361,7 +390,8 @@ function parseEnvObject(tokens, index, processAliases, envAliases) {
   ) {
     return { object: "process.env", end: index + 5 };
   }
-  if (envAliases.has(value)) return { object: "process.env", end: index };
+  if (rootIdentifier && envAliases.has(value))
+    return { object: "process.env", end: index };
   return null;
 }
 
