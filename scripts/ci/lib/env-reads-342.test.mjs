@@ -83,6 +83,14 @@ test("environment detector skips regular-expression bodies but keeps division ex
     [],
   );
   assert.deepEqual(
+    findEnvReads("do /process.env.SECRET/.test(value); while (false);"),
+    [],
+  );
+  assert.deepEqual(
+    findEnvReads("if (ok) {} /process.env.SECRET/.test(value);"),
+    [],
+  );
+  assert.deepEqual(
     findEnvReads("const rate = value / process.env.RATE;").map(
       ({ name }) => name,
     ),

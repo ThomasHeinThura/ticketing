@@ -31,6 +31,7 @@ function tokenize(source) {
     "await",
     "case",
     "delete",
+    "do",
     "else",
     "in",
     "instanceof",
@@ -72,15 +73,61 @@ function tokenize(source) {
       regexPrefixPunctuation.has(previous.value)
     )
       return true;
-    if (previous.value !== ")") return false;
-    let depth = 0;
-    for (let tokenIndex = tokens.length - 1; tokenIndex >= 0; tokenIndex -= 1) {
-      const value = tokens[tokenIndex].value;
-      if (value === ")") depth += 1;
-      else if (value === "(" && --depth === 0) {
-        return new Set(["if", "while", "for", "with", "switch", "catch"]).has(
-          tokens[tokenIndex - 1]?.value,
-        );
+    if (previous.value === ")") {
+      let depth = 0;
+      for (
+        let tokenIndex = tokens.length - 1;
+        tokenIndex >= 0;
+        tokenIndex -= 1
+      ) {
+        const value = tokens[tokenIndex].value;
+        if (value === ")") depth += 1;
+        else if (value === "(" && --depth === 0) {
+          return new Set(["if", "while", "for", "with", "switch", "catch"]).has(
+            tokens[tokenIndex - 1]?.value,
+          );
+        }
+      }
+    }
+    // A slash after a statement block starts a new expression. Distinguish that
+    // closing brace from an object literal by inspecting the token that opened it.
+    if (previous.value === "}") {
+      let depth = 0;
+      for (
+        let tokenIndex = tokens.length - 1;
+        tokenIndex >= 0;
+        tokenIndex -= 1
+      ) {
+        const value = tokens[tokenIndex].value;
+        if (value === "}") depth += 1;
+        else if (value === "{" && --depth === 0) {
+          const beforeBlock = tokens[tokenIndex - 1]?.value;
+          if (
+            !beforeBlock ||
+            [";", "}", "else", "try", "finally", "do", "=>"].includes(
+              beforeBlock,
+            )
+          )
+            return true;
+          if (beforeBlock === ")") {
+            let parens = 0;
+            for (let open = tokenIndex - 1; open >= 0; open -= 1) {
+              if (tokens[open].value === ")") parens += 1;
+              else if (tokens[open].value === "(" && --parens === 0) {
+                return new Set([
+                  "if",
+                  "while",
+                  "for",
+                  "with",
+                  "switch",
+                  "catch",
+                  "function",
+                ]).has(tokens[open - 1]?.value);
+              }
+            }
+          }
+          return false;
+        }
       }
     }
     return false;
