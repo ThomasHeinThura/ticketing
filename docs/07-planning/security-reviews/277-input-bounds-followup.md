@@ -163,3 +163,39 @@ green. S1–S3 are non-blocking.
 - Did not audit the raw pre-validation param reads outside the shared middleware (listed in §1)
   for NUL 500s. They are outside this PR's claim.
 - Did not push, comment, merge or commit. This note is uncommitted in the review worktree.
+
+---
+
+# Base-merge confirmation (917b5b0)
+
+**Reviewer:** Opus 5.5, fresh independent context. Did not author, direct, or remediate this change.
+**Reviewed head:** `917b5b018ade78f0d7bfc3da18220dbd7512a58e`
+**Date:** 2026-09-23
+
+This head is `main` merged into the branch after the verdict above. It was confirmed as the PR
+head via `gh pr view 277 --json headRefOid`. What I checked:
+
+- `git log --oneline 25390dd..917b5b0` shows exactly three commits: `4a65439` (#278, docs),
+  `36af235` (#280, UI primitive relocation) and the merge `917b5b0` (parents `25390dd`, `36af235`).
+  `36af235` is the current `origin/main`.
+- `git diff --name-only 25390dd 917b5b0` touches only `apps/web/`, `packages/ui/` and `docs/`
+  (58 files). `git diff --stat 25390dd 917b5b0 -- apps/api tests scripts package.json
+  pnpm-lock.yaml pnpm-workspace.yaml '**/package.json'` is empty, so there is **no change to the
+  API, any test tree (`tests/api*`, `tests/permissions`), CI scripts, the OpenAPI contract or the
+  dependency graph**.
+- `git diff --stat 6e93230 917b5b0 -- apps/api tests scripts` is empty, so
+  `utils/workspace-access-middleware.ts`, `work-item/**` and the middleware tests are
+  byte-identical to the reviewed head.
+- No conflict-resolution edits: `git diff 36af235 917b5b0` (excluding `docs/`) is patch-identical
+  to this PR's reviewed code delta at `6e93230`.
+- #280 and this PR's API surface: in `apps/web`, 10 files are deleted (primitives moved to
+  `packages/ui/src/components`). The other 30 modified files have import-only changes: with rename
+  detection, no non-import line changes. No fetch/client call, date serialisation
+  (`toISOString`), or work-item/workspace-id request code is touched, so nothing on the web side
+  can change what reaches this PR's middleware or validators. `packages/ui` is presentational
+  components, their tests and `index.ts` exports.
+- This note at `917b5b0` is byte-identical to my verdict copy.
+
+The security analysis above carries over to this head unchanged. I did not re-run the suites,
+because no API, test or dependency file changed. **Verdict at `917b5b0`: CLEAR WITH FINDINGS**,
+the same as at `6e93230`, with S1–S3 non-blocking.
