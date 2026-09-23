@@ -1544,8 +1544,9 @@ Newest first. One entry per working session.
 
 ### 2026-09-23 (fifth pass) · P0 review and integration lanes advanced
 
-PR #352 / issue #342 is at `6bbe66e769ffb2371efa427a315075eb25abe677`; it remains open
-and cannot merge until its required independent Opus security review clears. Current-model
+PR #352 / issue #342 is at `d7274002543b6f016a53ad5962181d63617f6921` (detector code at
+`6bbe66e769ffb2371efa427a315075eb25abe677`); it remains open and cannot merge until its
+required independent Opus security review clears. Current-model
 ordinary review found repeated false positives where valid JavaScript regular-expression
 literals followed other statements. After three rounds found the same lexer limitation, the
 detector was changed to recognize lexical statement contexts; further review found function
@@ -1560,9 +1561,20 @@ pass without another ordinary round; Opus remains pending.
 PR #334 / issue #319 was refreshed with current `main` at
 `fe89dd9b2f60dd5ca6aee5a803bb84178a384b75`; the merge was clean. Permission checks pass
 (80 API permission tests, 261 package tests, and 51 targeted API tests). GitHub checks are
-running; a fresh exact-head Opus review remains required. PR #338 / issue #317 is being
-refreshed against current `main`. PR #331 / issue #11 release hardening is in progress from
-the ordinary review findings. None of these candidates is merged or claimed complete.
+running; an exact-head ordinary merge-delta review found no code changes, and Opus review
+remains required. PR #338 / issue #317 is refreshed at
+`2c859dfdd1005f00dad5b850af95cfac80510a9d`; targeted integration passed (6/6), route
+coverage/matrix passed (32/32), and its ordinary merge-delta review found no code changes.
+PR #323 / issue #8 Slice 2 is refreshed at `50a05d5072655348973720dc65aa11cf3637e266`;
+permissions (80), shadow unit (26), and Testcontainers integration (10) passed, and its
+ordinary merge-delta review found no code changes. These candidates still need exact-head
+Opus review; #323/#338/#334 GitHub checks are not fully green while review gates are pending.
+
+PR #331 / issue #11 hardening is implemented at `3ae13260a895562c133c27ab2babda5ebe3072f3`:
+build/scan and signing/publishing authority are separated, inputs and deployment digests
+are pinned, and `ci-cd.md` now matches the split. Independent current-model ordinary review
+passed at this exact head. GitHub checks are rerunning after the docs delta; Opus remains
+mandatory. No candidate is merged or claimed complete.
 
 P0 #323 / issue #8 Slice 2 remains open and #324 depends on it. #337 remains blocked by its
 owning feature-spec review. No P0 foundation gate is claimed closed by this pass.
