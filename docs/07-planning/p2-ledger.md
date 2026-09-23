@@ -156,16 +156,20 @@ Ordinary/alignment reviews: recorded per PR with actual model identities.
 
 ## Next slices, dependency-cleared (no waiting required)
 
-1. **Submission/intake pure domain** — submission state machine, `SUB-n` allocation,
-   form validation with `showIf` evaluation, catalogue visibility. §13/§14 closed; no
-   storage needed for the pure layer.
-2. **Audit reconstruction/verification pure functions** over the landed `audit_log`
-   (chain verify, window query, actor indexing) — §16 closed.
-3. **Spec-closure passes (P2-owned only):** `service-management.md` (22 ln — incl. the
-   CAB-membership finding that gates `approval:decide_cab`), `agile.md` (17 — milestones/
-   prerequisites/stakeholders), `knowledge-base.md` (19). **Reassigned: `views.md` and
-   `search-and-saved-views.md` are P1 sections** — ownership corrected 2026-09-23; the
-   P2 lane notifies the P1 (Copilot) lane rather than editing them (AGENTS do-not 20).
+1. **Submission/intake pure domain** — DONE, in review: PR **#328** (`ec4efb0`+):
+   submission state machine, `SUB-n`, form validation/`showIf`/`mapsTo`, catalogue
+   visibility. Extended with the spec's remaining pure Testing demands (IQ-8 description
+   rendering, IQ-18 duplicate similarity scoring).
+2. **Audit reconstruction/verification pure functions** — already exist on main
+   (`canonicalRowHash`, `reconstructAt`); remaining audit work is the authorized-access
+   API, blocked on shared-surface ownership acknowledgement (registry/`index.ts`).
+3. **Spec-closure passes: REASSIGNED — P5, not P2.** `views.md`/`search-and-saved-views.md`
+   are P1 sections (Copilot lane); `agile.md` (§9), `knowledge-base.md` (§18) and
+   `service-management.md` (§19) are **Stage: P5** in their own front-matter. P2 does not
+   touch them (mandate: no P3–P7 expansion; AGENTS do-not 20). The CAB-membership finding
+   in §19 is a **known dependency of the `approval:decide_cab` route only** — approvals
+   storage/API/`approval:decide` proceed without it; `decide_cab` waits for P5 (or
+   Thomas's call to front-load the `team.is_cab` answer).
 4. **Coordinated first P2 migration batch** — the moment the 0068 collision settles:
    calendar + SLA + submission + approval + workflow tables in one ordered PR
    (full review tiers + mandatory Opus).
