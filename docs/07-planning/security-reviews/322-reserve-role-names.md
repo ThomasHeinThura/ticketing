@@ -240,3 +240,13 @@ head:
 The check fails closed on a missing row and on a DB error. Legacy and adapter agree on every
 reachable case. S1, S2 and S3 are non-blocking. I recommend correcting S1's decision-log wording
 before or soon after the merge, and taking S2 into #323.
+
+## Docs-delta attestation
+
+**Reviewed head:** `6f67529deaea9ca6a3fa72e009bc6d0f3e6f028f`
+
+The only change from `512ade4` to `6f67529` is commit `6f67529`. It touches only
+`docs/07-planning/decision-log.md`, one paragraph. The new wording names the native
+delete-then-recreate path on `main` and says the window lasts until #322 deploys, which resolves S1
+as recorded above. No code changed. **Verdict: CLEAR WITH FINDINGS holds at this head.** S1 is
+resolved in the docs; S2 and S3 remain non-blocking follow-ups.
