@@ -17,6 +17,35 @@ Newest first.
 
 ---
 
+### 2026-09-23 · Until the lane agents' review capacity returns (2026-09-30), a fresh Claude Sonnet context does the ordinary independent review
+
+**Supersedes (temporarily):** the 2026-09-23 entry "Three non-Claude implementation agents take the P0/P1/P2 lanes…". That entry says the lane agents review each other. The agents have reported no ordinary-review capacity until 2026-09-30T15:27Z.
+
+**Decision:** Until the agents' capacity returns, the orchestrating Claude session commissions a **fresh Claude Sonnet context** as the ordinary independent reviewer for lane-agent PRs. Claude Sonnet was the project's ordinary-review tier before 2026-09-23, so this is not a downgrade. It stays independent, because no Claude context authored these PRs. Every other rule in that entry is unchanged:
+- the reviewer's model and the exact SHA it reviewed are recorded;
+- the attestation is spot-checked against the commit authors;
+- an Opus 5.5 review is required for security scope;
+- the exact head must be green;
+- no waiver is allowed without Thomas.
+
+From 2026-09-30 the agents review each other again.
+
+**Why:** Otherwise every lane PR stalls for a week. The capacity rule forbids downgrading or fabricating a review, and this does neither.
+
+**Decided by:** the orchestrating session, 2026-09-23. Thomas expressed no preference when asked, so the recommended option applies under the standing delegation.
+
+### 2026-09-23 · Workspace audit reads are filtered by project reach (AU-10)
+
+**Decision:** A reader of the workspace audit log (`workspace:manage_settings`) sees rows that are not project-scoped, plus rows for projects they can reach under the application's normal reach rules. That includes per-workspace `sees_all` (#319/#334). They never see rows for projects outside their reach. `audit_log` gains a nullable `project_id` with no FK, which follows `workspace_id`'s precedent, and it is recorded for every project-scoped action. The implementation is tracked in #344. **It must land before the first project-scoped audit writer merges.** Until then, PR #343's unfiltered workspace read exposes nothing extra, because no rows are project-scoped yet.
+
+**Why:** PR #343's Opus review (S1) and the 2026-09-05 security review ("Logging and audit access scope") found that a manager with no project access would otherwise read those projects' `before`/`after` payloads. That is the same reach rule the rest of the application enforces.
+
+**Alternatives:**
+- Restrict audit reads to owner, admin or `sees_all`. Rejected: managers would lose audit access entirely.
+- Accept unfiltered reads as AU-10's text allowed. Rejected: that is the gap the security review flagged.
+
+**Decided by:** Thomas, 2026-09-23, in session. He chose the recommended option.
+
 ### 2026-09-23 · Three non-Claude implementation agents take the P0/P1/P2 lanes; the Claude session does Opus 5.5 security review and merge only
 
 **Supersedes (in part):**
