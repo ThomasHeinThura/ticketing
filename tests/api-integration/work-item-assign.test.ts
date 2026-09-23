@@ -16,7 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
-import { mockAuthenticatedSession } from "./helpers/auth";
+import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
@@ -526,16 +526,31 @@ describe("API integration: work item assignment (#30, assignment.md)", () => {
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.key, key));
     expect(row?.assigneeId).toBeNull();
+  });
 
-    // No session at all. The reach middleware resolves the key BEFORE any capability
-    // decision, so an unauthenticated caller gets the same 404 an unknown key gets --
-    // fail-closed and non-distinguishing, not a 401 that would confirm the key exists.
+  it("an unauthenticated caller is refused 401 (and does not reach the reach resolver)", async () => {
+    const { creator, project, type } = await setupProject();
+    const target = await addPersonOnRoster({
+      projectId: project.id,
+    });
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    mockAnonymousSession();
     const anonymous = await app.request(`/api/work-items/${key}/assign`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ assigneeId: target.id }),
     });
-    expect(anonymous.status).toBe(404);
+    expect(anonymous.status).toBe(401);
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    expect(row?.assigneeId).toBeNull();
   });
 
   it("a NUL byte in assigneeId is a 400, not a 500", async () => {

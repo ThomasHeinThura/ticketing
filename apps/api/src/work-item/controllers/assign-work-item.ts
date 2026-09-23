@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -111,6 +111,10 @@ export async function assignWorkItem(
     )
     .limit(1);
 
+  // AS-5 applies to EVERY assignment, including a redundant re-assign of the current
+  // holder: a deactivated holder is reported (400) rather than silently re-affirmed.
+  // `AS-8`'s retention is about DISPLAY of an assignment that already exists; it is not a
+  // licence to make a new one to an inactive person.
   if (!roster) {
     throw new HTTPException(400, {
       message:
@@ -142,9 +146,12 @@ export async function assignWorkItem(
       .update(workItemTable)
       .set({
         assigneeId: input.assigneeId,
-        // Any field write moves the version forward, the same as `update-work-item.ts` --
-        // an `If-Match` read either side of an assignment is not allowed to be stale.
-        version: item.version + 1,
+        // ATOMIC increment -- `item.version + 1` computed in JS from the pre-transaction
+        // read was a lost-update bug the ordinary review of PR #353 caught: a concurrent
+        // `PATCH` between the read and this write collapsed two bumps into one and could
+        // even move the version BACKWARDS for an `If-Match` reader. The CAS clause below
+        // guards the ASSIGNEE; this expression guards the version.
+        version: sql`${workItemTable.version} + 1`,
         updatedAt: new Date(),
       })
       .where(
