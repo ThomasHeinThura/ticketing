@@ -128,6 +128,14 @@ test("environment detector skips regular-expression bodies but keeps division ex
     ),
     ["RATE"],
   );
+  for (const prefix of ["!", "typeof ", "void "]) {
+    assert.deepEqual(
+      findEnvReads(
+        `const ratio = ${prefix}function() {} / process.env.RATE;`,
+      ).map(({ name }) => name),
+      ["RATE"],
+    );
+  }
   assert.deepEqual(
     findEnvReads("const ratio = class {} / process.env.RATE;").map(
       ({ name }) => name,

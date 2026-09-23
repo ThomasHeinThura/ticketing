@@ -71,8 +71,20 @@ function tokenize(source) {
     "return",
     "throw",
     "yield",
+    "typeof",
+    "void",
+    "delete",
   ]);
-  const expressionPrefixPunctuation = new Set(["=", "(", "[", ":", ",", "=>"]);
+  const expressionPrefixPunctuation = new Set([
+    "=",
+    "(",
+    "[",
+    ":",
+    ",",
+    "=>",
+    "!",
+    "~",
+  ]);
   const isExpressionPrefix = (value) =>
     expressionPrefixKeywords.has(value) ||
     expressionPrefixPunctuation.has(value);
