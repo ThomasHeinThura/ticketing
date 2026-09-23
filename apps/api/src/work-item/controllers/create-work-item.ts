@@ -8,6 +8,7 @@ import {
   workItemTypeTable,
 } from "../../database/schema";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
+import { type ActivityActorType, recordWorkItemActivity } from "../activity";
 import { claimWorkItemNumber } from "./claim-work-item-number";
 
 type CreateWorkItemInput = {
@@ -17,6 +18,9 @@ type CreateWorkItemInput = {
   title: string;
   description?: unknown;
   priority?: "low" | "medium" | "high" | "urgent";
+  /** The person making the request -- `c.get("userId")` at the route (WI-6, CA-9). */
+  actorId: string;
+  actorType: ActivityActorType;
 };
 
 /**
@@ -27,8 +31,16 @@ type CreateWorkItemInput = {
  * ever sees.
  */
 export async function createWorkItem(input: CreateWorkItemInput) {
-  const { projectId, workspaceId, typeId, title, description, priority } =
-    input;
+  const {
+    projectId,
+    workspaceId,
+    typeId,
+    title,
+    description,
+    priority,
+    actorId,
+    actorType,
+  } = input;
 
   // `workspaceId` here is the one the route's own middleware already resolved (the
   // project's true workspace, from a DB lookup) -- re-checking it against the freshly
@@ -117,6 +129,24 @@ export async function createWorkItem(input: CreateWorkItemInput) {
           message: "Failed to create work item",
         });
       }
+
+      // WI-6/CA-6: one `created` row, in the SAME transaction as the insert -- if the
+      // activity insert fails, the whole create rolls back (no work item without its
+      // journal entry). Verb `created` has no `field` (`resolveVisibility`'s
+      // `PUBLIC_PAIRS` has `(created, null)`), so this is `public` by CA-7's table --
+      // its `payload` is therefore deliberately narrow (key/title only, per this
+      // module's own "CALLER OBLIGATION" doc comment on `recordWorkItemActivity`):
+      // never the assignee, requester, or anything else CA-7 marks `internal`.
+      await recordWorkItemActivity(tx, [
+        {
+          workspaceId: created.workspaceId,
+          workItemId: created.id,
+          actorId,
+          actorType,
+          verb: "created",
+          payload: { key: created.key, title: created.title },
+        },
+      ]);
 
       return created;
     });

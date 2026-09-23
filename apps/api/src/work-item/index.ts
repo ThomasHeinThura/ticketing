@@ -210,6 +210,8 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
       title,
       description,
       priority,
+      actorId: c.get("userId"),
+      actorType: "person",
     });
     return c.json(created, 200);
   })
@@ -248,13 +250,20 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
     }
 
     try {
-      const updated = await updateWorkItem(key, workspaceId, assertedVersion, {
-        title,
-        description,
-        priority,
-        startDate,
-        dueDate,
-      });
+      const updated = await updateWorkItem(
+        key,
+        workspaceId,
+        assertedVersion,
+        c.get("userId"),
+        "person",
+        {
+          title,
+          description,
+          priority,
+          startDate,
+          dueDate,
+        },
+      );
       return c.json(updated, 200);
     } catch (error) {
       if (error instanceof WorkItemVersionConflictError) {
