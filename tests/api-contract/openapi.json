@@ -3874,7 +3874,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing the permission the operation needs",
+            "description": "Missing the permission the operation needs, or no access to this workspace",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7076,7 +7076,7 @@
             }
           },
           "400": {
-            "description": "Label and task belong to different workspaces",
+            "description": "taskId must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {

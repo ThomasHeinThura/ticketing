@@ -125,7 +125,13 @@ const bulkUpdateTasksRoute = createRoute({
     400: errorResponse(
       "Invalid body, or the tasks span more than one workspace",
     ),
-    403: errorResponse("Missing the permission the operation needs"),
+    // S1 (Opus review of PR #307, delta round): restores `main`'s own membership
+    // check on the resolved workspace, independent of the instance-admin bypass
+    // every other check in this chain has -- an instance admin who isn't a member
+    // of the tasks' workspace gets this same 403, not the permission-only one.
+    403: errorResponse(
+      "Missing the permission the operation needs, or no access to this workspace",
+    ),
     // #290: an id set that resolves to no reachable task now answers this same 404
     // whether the ids don't exist at all or exist in a workspace the caller can't
     // reach (`workspaceAccess.fromTasks()`), never a distinguishing 403.

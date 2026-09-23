@@ -267,3 +267,118 @@ describe("issue #290 (S4): NUL-byte sweep on body id fields that reach a DB look
     expect(response.status).toBe(200);
   });
 });
+
+// Issue #307 S5 (Opus review of PR #307, delta round): four more NUL-to-500 gaps in
+// the task router this PR already touches, named explicitly in the review.
+describe("issue #307 (S5): NUL-byte sweep, task router follow-up", () => {
+  beforeEach(async () => {
+    await resetTestDatabase();
+  });
+
+  it("POST /api/task/{projectId}: a NUL byte in the body userId is a clean 400, not a 500 (create-task.ts)", async () => {
+    const member = await createWorkspaceMember();
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/task/${project.id}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: "Task",
+        description: "",
+        priority: "low",
+        status: "to-do",
+        userId: "\u0000x",
+      }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("POST /api/task/import/{projectId}: a NUL byte in tasks[].userId is a clean 400, not a 500 (import-tasks.ts)", async () => {
+    const member = await createWorkspaceMember();
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/task/import/${project.id}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        tasks: [
+          {
+            title: "Imported task",
+            status: "to-do",
+            userId: "\u0000x",
+          },
+        ],
+      }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("GET /api/task/tasks/{projectId}?assigneeId=: a NUL byte is a clean 400, not a 500 (get-tasks.ts)", async () => {
+    const member = await createWorkspaceMember();
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/task/tasks/${project.id}?assigneeId=${encodeURIComponent("\u0000x")}`,
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("PATCH /api/task/bulk: a NUL byte in addLabel's value is a clean 400, not a 500 (bulk-update-tasks.ts)", async () => {
+    const member = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await seedTask(project.id, columns.todo.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request("/api/task/bulk", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        taskIds: [task.id],
+        operation: "addLabel",
+        value: "\u0000x",
+      }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("PATCH /api/task/bulk: a NUL byte in removeLabel's value is a clean 400, not a 500 (bulk-update-tasks.ts)", async () => {
+    const member = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await seedTask(project.id, columns.todo.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request("/api/task/bulk", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        taskIds: [task.id],
+        operation: "removeLabel",
+        value: "\u0000x",
+      }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+});

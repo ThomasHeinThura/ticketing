@@ -598,7 +598,7 @@ describe("API integration: workspace RBAC enforcement", () => {
       expect(persisted?.userId).toBe(admin.user.id);
     });
 
-    it("does not copy a label from another workspace in bulk", async () => {
+    it("issue #307 S2: does not copy a label from another workspace in bulk, and answers exactly like a nonexistent label id", async () => {
       const member = await createWorkspaceMember({ role: "member" });
       const foreign = await createWorkspaceMember({ role: "admin" });
       const { project, columns } = await createProjectFixture({
@@ -620,7 +620,7 @@ describe("API integration: workspace RBAC enforcement", () => {
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
 
-      const response = await app.request("/api/task/bulk", {
+      const withForeign = await app.request("/api/task/bulk", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -629,7 +629,28 @@ describe("API integration: workspace RBAC enforcement", () => {
           value: foreignLabel.id,
         }),
       });
-      expect(response.status).toBe(400);
+      const withNonexistent = await app.request("/api/task/bulk", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          taskIds: [task.id],
+          operation: "addLabel",
+          value: randomUUID(),
+        }),
+      });
+
+      // Before the #307 delta round, a foreign label id resolved and then 400'd
+      // "must belong to the same workspace" -- distinguishable from the 404 a
+      // nonexistent label id already gave. `bulk-update-tasks.ts` now scopes the
+      // label lookup itself to the caller's workspace, so both are the same 404.
+      const [foreignBody, nonexistentBody] = await Promise.all([
+        withForeign.text(),
+        withNonexistent.text(),
+      ]);
+      expect(withForeign.status).toBe(withNonexistent.status);
+      expect(withForeign.status).toBe(404);
+      expect(foreignBody).toBe(nonexistentBody);
+      expect(foreignBody).toBe("Label not found");
 
       const copiedLabel = await db.query.labelTable.findFirst({
         where: and(
@@ -638,6 +659,107 @@ describe("API integration: workspace RBAC enforcement", () => {
         ),
       });
       expect(copiedLabel).toBeUndefined();
+    });
+
+    it("issue #307 S2: removing a label from another workspace in bulk answers exactly like a nonexistent label id", async () => {
+      const member = await createWorkspaceMember({ role: "member" });
+      const foreign = await createWorkspaceMember({ role: "admin" });
+      const { project, columns } = await createProjectFixture({
+        workspaceId: member.workspace.id,
+      });
+      const task = await seedTask(project.id, columns.todo.id);
+      const foreignLabel = requireRow(
+        await db
+          .insert(schema.labelTable)
+          .values({
+            name: "foreign-only",
+            color: "#000000",
+            workspaceId: foreign.workspace.id,
+          })
+          .returning(),
+        "foreignLabel",
+      );
+
+      mockAuthenticatedSession(member.user);
+      const { app } = createApp();
+
+      const withForeign = await app.request("/api/task/bulk", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          taskIds: [task.id],
+          operation: "removeLabel",
+          value: foreignLabel.id,
+        }),
+      });
+      const withNonexistent = await app.request("/api/task/bulk", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          taskIds: [task.id],
+          operation: "removeLabel",
+          value: randomUUID(),
+        }),
+      });
+
+      // Before the #307 delta round, a foreign label id resolved, then the DELETE's
+      // own workspace-scoped WHERE silently matched nothing -- a 200 with
+      // `updatedCount: 0`, distinguishable from the 404 a nonexistent label id
+      // already gave. Scoping the initial lookup makes both this same 404.
+      const [foreignBody, nonexistentBody] = await Promise.all([
+        withForeign.text(),
+        withNonexistent.text(),
+      ]);
+      expect(withForeign.status).toBe(withNonexistent.status);
+      expect(withForeign.status).toBe(404);
+      expect(foreignBody).toBe(nonexistentBody);
+      expect(foreignBody).toBe("Label not found");
+    });
+
+    it("issue #307 S1 (BLOCKING): an instance admin who is not a member of the workspace cannot bulk-delete its tasks", async () => {
+      const victim = await createWorkspaceMember({ role: "member" });
+      const { project, columns } = await createProjectFixture({
+        workspaceId: victim.workspace.id,
+      });
+      const task = await seedTask(project.id, columns.todo.id);
+
+      // A site-wide instance admin (`user.role = "admin"`) who has never joined
+      // the victim's workspace -- distinct from a workspace-scoped "admin" role,
+      // which `createWorkspaceMember({ role: "admin" })` sets on `workspace_member`.
+      const instanceAdmin = await createWorkspaceMember({ role: "member" });
+      await db
+        .update(schema.userTable)
+        .set({ role: "admin" })
+        .where(eq(schema.userTable.id, instanceAdmin.user.id));
+
+      mockAuthenticatedSession(instanceAdmin.user);
+      const { app } = createApp();
+
+      const response = await app.request("/api/task/bulk", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          taskIds: [task.id],
+          operation: "delete",
+        }),
+      });
+
+      // Before the #290 follow-up round accidentally deleted this controller's own
+      // membership check, `main` refused this with 403 even for a site-wide
+      // instance admin -- `workspaceAccess.fromTasks()` and
+      // `requireBulkTaskPermission` both let an instance admin through via their
+      // own generic bypass, so only this controller's OWN membership check ever
+      // enforced "an instance admin still needs to be a member to bulk-mutate a
+      // workspace's tasks". Restored.
+      expect(response.status).toBe(403);
+      await expect(response.text()).resolves.toBe(
+        "You don't have access to this workspace",
+      );
+
+      const survivingTask = await db.query.taskTable.findFirst({
+        where: eq(schema.taskTable.id, task.id),
+      });
+      expect(survivingTask).toBeDefined();
     });
   });
 

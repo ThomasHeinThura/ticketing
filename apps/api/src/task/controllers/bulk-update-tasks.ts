@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -7,9 +7,11 @@ import {
   projectTable,
   taskTable,
   userTable,
+  workspaceUserTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { assertAssignableUser } from "../../utils/assert-assignable-user";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
 import {
   assertValidPriority,
   assertValidTaskStatus,
@@ -37,6 +39,58 @@ async function bulkUpdateTasks({
   userId: string;
   workspaceId: string;
 }) {
+  // S6 (Opus review of PR #307, delta round): `bulkUpdateTasks` has exactly one
+  // caller (`task/index.ts`'s `bulkUpdateTasksRoute` handler), whose middleware
+  // chain always starts with `workspaceAccess.fromTasks()` -- the only path that
+  // reaches this function's caller always sets `workspaceId`. But that is an
+  // invariant of today's route wiring, not of this function's signature: a future
+  // re-mount without `fromTasks()` would pass `undefined` through to the `eq(...)`
+  // filter below, which happens to match no row and so fails closed as a 404 --
+  // correct by accident, not by design. Fail loudly instead, so a wiring mistake
+  // is a 500 in the logs, not a silent 404 nobody investigates. Deliberately not a
+  // 403: leaking "you'd need a capability" for an indeterminate workspace is worse
+  // than an opaque 500.
+  if (!workspaceId) {
+    throw new HTTPException(500, {
+      message: "Could not determine workspace for this request",
+    });
+  }
+
+  // S1 (Opus review of PR #307, delta round; BLOCKING): the #290 follow-up round
+  // deleted this membership check entirely, relying only on
+  // `workspaceAccess.fromTasks()` (which lets a site-wide instance admin through
+  // via `validateWorkspaceAccess`'s own bypass) and `requireBulkTaskPermission`
+  // (same bypass, `require-workspace-permission.ts`'s `isInstanceAdmin` check).
+  // `main` never granted an instance admin who is NOT a member of a workspace the
+  // ability to bulk-mutate that workspace's tasks -- this function's own
+  // membership check was the only place that authority was enforced, independent
+  // of the generic instance-admin bypass every other check in the chain has. That
+  // is an authority change no one recorded (CLAUDE.md: authority changes must be
+  // recorded before dependent code merges). Restored here, keyed on the
+  // ALREADY-VALIDATED `workspaceId` from `workspaceAccess.fromTasks()` rather than
+  // re-deriving it from a second task query -- this cannot reopen the #290/#285
+  // oracle: `workspaceId` is only ever a workspace `fromTasks()` has already
+  // proven is reachable OR the caller's own admin bypass, and a plain 403 for
+  // "you (a real person, or an admin without membership) aren't a member of a
+  // workspace you can already reach" reveals nothing about any OTHER workspace or
+  // row.
+  const [membership] = await db
+    .select({ id: workspaceUserTable.id })
+    .from(workspaceUserTable)
+    .where(
+      and(
+        eq(workspaceUserTable.userId, userId),
+        eq(workspaceUserTable.workspaceId, workspaceId),
+      ),
+    )
+    .limit(1);
+
+  if (!membership) {
+    throw new HTTPException(403, {
+      message: "You don't have access to this workspace",
+    });
+  }
+
   // #290 follow-up (mixed-id oracle): this used to resolve tasks across ANY
   // workspace the ids happened to belong to, then group by workspace and check
   // membership itself -- repeating (and re-triggering) the exact bug
@@ -47,8 +101,11 @@ async function bulkUpdateTasks({
   // workspace before this controller ever runs (`c.get("workspaceId")`, set by the
   // middleware) -- filtering to it here, in the same query, means a task id that
   // is either nonexistent OR in a workspace the caller can't reach is silently
-  // absent from `tasks`, exactly the same as before: no second resolution, no second
-  // membership check, and no way for the two cases to answer differently.
+  // absent from `tasks`, exactly the same as before: no second resolution, and no
+  // way for the two cases to answer differently. (The membership check just above
+  // is a DIFFERENT, orthogonal check -- "is this caller a member of the one
+  // workspace already proven reachable", never "which workspace do these ids
+  // belong to".)
   const tasks = await db
     .select({
       id: taskTable.id,
@@ -217,19 +274,29 @@ async function bulkUpdateTasks({
       if (!value) {
         throw new HTTPException(400, { message: "Label ID is required" });
       }
+      // S5 (Opus review of PR #307, delta round): reaches the query below
+      // unvalidated -- a NUL byte would otherwise 500 instead of a clean 400.
+      rejectNulByte(value, "Label id");
 
+      // S2 (Opus review of PR #307, delta round): scoped to `workspaceId` (or no
+      // workspace at all -- a label with a null `workspaceId` is not tied to any
+      // one workspace) in the query itself, so a label id belonging to ANOTHER
+      // workspace is indistinguishable from a nonexistent one -- both now 404
+      // here, instead of a nonexistent id 404ing while a foreign id resolved and
+      // then 400'd "must belong to the same workspace", which is the #290/#285
+      // existence-oracle class applied to label ids.
       const label = await db.query.labelTable.findFirst({
-        where: eq(labelTable.id, value),
+        where: and(
+          eq(labelTable.id, value),
+          or(
+            eq(labelTable.workspaceId, workspaceId),
+            isNull(labelTable.workspaceId),
+          ),
+        ),
       });
 
       if (!label) {
         throw new HTTPException(404, { message: "Label not found" });
-      }
-
-      if (label.workspaceId && label.workspaceId !== workspaceId) {
-        throw new HTTPException(400, {
-          message: "Label and tasks must belong to the same workspace",
-        });
       }
 
       for (const task of tasks) {
@@ -269,9 +336,22 @@ async function bulkUpdateTasks({
       if (!value) {
         throw new HTTPException(400, { message: "Label ID is required" });
       }
+      // S5 (Opus review of PR #307, delta round): reaches the query below
+      // unvalidated -- a NUL byte would otherwise 500 instead of a clean 400.
+      rejectNulByte(value, "Label id");
 
+      // S2 (Opus review of PR #307, delta round): same scoping as `addLabel`
+      // above -- a foreign label id used to silently no-op here (200,
+      // `updatedCount: 0`, from the DELETE's own workspace-scoped WHERE), while a
+      // nonexistent one 404'd. Scoping the initial lookup itself makes both 404.
       const label = await db.query.labelTable.findFirst({
-        where: eq(labelTable.id, value),
+        where: and(
+          eq(labelTable.id, value),
+          or(
+            eq(labelTable.workspaceId, workspaceId),
+            isNull(labelTable.workspaceId),
+          ),
+        ),
       });
 
       if (!label) {

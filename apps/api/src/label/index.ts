@@ -125,10 +125,12 @@ const attachLabelToTaskRoute = createRoute({
   },
   responses: {
     200: jsonResponse("Label attached to task successfully", labelSchema),
-    // #290: an unknown/out-of-reach label id 404s via `workspaceAccess.fromLabel()`
-    // (below); this 400 is the controller's own "different workspaces" check, once
-    // both rows are confirmed to exist.
-    400: errorResponse("Label and task belong to different workspaces"),
+    // S2 (Opus review of PR #307, delta round): an out-of-reach OR nonexistent
+    // taskId now both 404 `Task not found` -- `assign-label-to-task.ts` scopes its
+    // task lookup to the label's own already-reach-checked workspace, so a foreign
+    // task simply doesn't match. This 400 remains only for a NUL byte in `taskId`
+    // and an internal same-transaction race guard, never a distinguishing signal.
+    400: errorResponse("taskId must not contain a NUL (\\u0000) byte"),
     403: errorResponse("Missing label:update permission"),
     404: errorResponse("Label or task not found"),
   },
