@@ -377,6 +377,8 @@ were logged. OpenProject's model; the alternative silently rewrites history.
 | `import_run` | `plugin_id`, `workspace_id` **not null**, `project_id` null — the import target, and what the run-level `audit_log` row copies its `workspace_id` from; `started_by`, `state`, `source_ref`, `profile_id`, `stats jsonb`, `log jsonb` |
 | `import_mapping_profile` | `plugin_id`, `source_ref`, `name`, `mapping jsonb`, `created_by` — the operator-edited field/value mapping |
 | `import_record_link` | `import_run_id`, `source_type`, `source_id`, `target_type`, `target_id` — the row-level idempotency ledger (formerly `import_mapping`) |
+| `policy_shadow_tally` | Issue #8, Slice 2's shadow-mode coverage counter. `day` (UTC date), `route_key`, `router_group`, `outcome` (`agree`\|`legacy_allow_policy_deny`\|`legacy_deny_policy_allow`\|`unevaluated`\|`evaluator_error`), `reason_code` null, `count`, `last_seen_at`. Unique `(day, route_key, outcome, reason_code)`, `NULLS NOT DISTINCT`. Upserted with `count = count + 1` on every request the shadow middleware evaluates, agreements included — this is what makes "a router with unevaluated requests is not clean" (the addendum on issue #8) checkable at all. See [Policy shadow evidence](#policy-shadow-evidence-issue-8-slice-2) below |
+| `policy_shadow_event` | One row per non-`agree` shadow outcome, capped at 50 rows per `(day, route_key, outcome, reason_code)` bucket by the writer (not a database constraint): `route_key`, `router_group`, `policy_kind` null, `policy_capability` null, `outcome` (the four non-`agree` values above), `reason_code` null, `legacy_allowed` null, `legacy_status` null, `policy_allowed` null, `policy_status` null, `policy_code` null, `diagnostic` null, `identity_kind` null, `workspace_id` null, `trace_id` null (accepted from the caller only when it matches `^[A-Za-z0-9._-]{1,128}$` — and untrusted even when it passes, per `shadow-evaluation.ts`'s own comment; otherwise generated server-side), `created_at`. Ids and decision codes only — **never** a request body, header, secret, email or name. No foreign key to `workspace`/`user`/`project`: evidence about a row must keep recording through the exact conditions it exists to catch (a stale or foreign id), and must never itself block that row's deletion |
 | `pending_action` | The server-enforced approval record for every user-initiated deletion and every destructive MCP call ([pending-actions.md](pending-actions.md)): `requested_by_person_id`, `credential_type` (`session`\|`api_key`), `credential_id` null, `origin` (`web`\|`api`\|`mcp`), `action` (`delete`\|`bulk_delete`\|`purge`\|`mcp_destructive`), `target_type`, `target_ids text[]` (**sorted**), `target_versions jsonb` null, `payload jsonb` (the canonical request this approval is bound to — `action`, `route_key`, `target_type`, the sorted `target_ids`, the scope ids, `confirmation_required`; `payload_hash` is taken over exactly this and nothing else, so two agents hash the same bytes), `route_key text` (the policy-registry key of the route that would execute — re-run at approval time, so the decision is checked against the same policy the request was), `payload_hash`, `payload_summary jsonb` (what the dialog renders), `workspace_id` null, `project_id` null, `organisation_id` null, `confirmation_required` (`click`\|`typed_name`\|`typed_count`\|`typed_name_step_up`\|`typed_count_step_up`), `confirmation_supplied jsonb` null, `state` (`pending`\|`approved`\|`denied`\|`cancelled`\|`expired`\|`invalidated`\|`executed`\|`failed`), `invalidation_reason text` null (set with `state = 'invalidated'`, one of `credential_revoked`\|`requester_deactivated`\|`reach_lost`\|`capability_removed`\|`version_changed`\|`scope_changed` — the `PA-9` causes, so the dialog can say which one), `created_at`, `expires_at` (+15 min), `decided_by_person_id` null, `decision_session_id` null, `decided_at` null, `step_up_token_id` null, `executed_at` null, `error` null, `trace_id`. Single-use by state machine; every transition writes `audit_log` |
 
 `outbox` is the reliability mechanism for webhooks and notifications: a mutation writes
@@ -459,6 +461,34 @@ somewhere the database role cannot itself rewrite (an external, periodically exp
 independently-witnessed copy — `audit_chain_anchor` narrows the *window* `audit-purge`
 can rewrite between anchors, but does not itself anchor outside the database) or a hash
 keyed with a secret the database role does not hold.
+
+### Policy shadow evidence (issue #8, Slice 2)
+
+`policy_shadow_tally` and `policy_shadow_event` (migration `apps/api/drizzle/
+0069_policy_shadow_tables.sql`) are the evidence store for issue #8's shadow-mode
+middleware — the 2026-09-23 decision log entry's "about 7 clean days on UAT" rule needs
+somewhere queryable to prove clean from, not container stdout, which rotates.
+
+Declared as a standalone Drizzle table pair in `apps/api/src/permissions/shadow-schema.ts`,
+not in this repository's central `apps/api/src/database/schema.ts` — see that file's own
+doc comment. `pnpm check:vocabulary` scans every workspace file for `pgTable(...)`, so both
+names are registered here regardless of which file declares them.
+
+**Retention: 30 days**, pruned by the writer itself (`apps/api/src/permissions/
+shadow-store.ts`), at most once per UTC day per process, in bounded batches — there is no
+background-jobs runner yet (`apps/api/src/jobs/` does not exist; [background-jobs.md]
+(background-jobs.md)'s closed list has nothing to add this to). This should move onto a
+real job the day one exists; noted here so it is not mistaken for the intended long-term
+shape.
+
+**Writes never affect the request.** Both tables are written after the response has
+already been produced, off the request's own promise chain; a failed write is caught and
+logged, never surfaced as a changed response.
+
+The per-router summary (agree/disagree/unevaluated counts, latest disagreements — what a
+cut-over PR cites as its evidence) is a documented SQL query against these two tables, not
+a new HTTP endpoint (a route needs its own policy and review, out of this slice's scope):
+see [runbook.md § Policy shadow summary](../05-operations/runbook.md#policy-shadow-summary).
 
 ## Indexing
 
