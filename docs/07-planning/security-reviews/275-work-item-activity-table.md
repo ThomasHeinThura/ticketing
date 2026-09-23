@@ -382,3 +382,94 @@ updated in the same change.
 - I did not re-run the full 672-test suite; I ran the affected suites only.
 - I did not re-run PG17. The block is version-agnostic, and PG16 covers the same branch.
 - No push, comment or merge.
+
+---
+
+# Closing round (2cf9852)
+
+**Reviewer:** Opus 5.5, fresh independent context. Did not author, direct, or remediate this change.
+
+**Reviewed head:** `2cf9852fadd841a4255fca694863eb7ccd6e075b`
+
+**Reviewed SHA:** `2cf9852fadd841a4255fca694863eb7ccd6e075b` (confirmed via `gh pr view 275 --json headRefOid`; `origin/main` is an ancestor).
+**Delta reviewed:** `git diff 635fd29 852ba53` (the redesign) plus the two merge
+resolutions, `45ef0e1` (#274; conflict in `decision-log.md` only) and `2cf9852` (#279,
+`status.md` only). `24d18ac` is this note, byte-identical to my copy.
+**Date:** 2026-09-23
+
+## Verdict
+
+**CLEAR.** D1 is closed by a change of shape, not by one more branch. Visibility is now
+decided by membership of a single `(verb, field)` key in two module-private allowlists, and
+there is no `if` over `verb` or `field` left to fail open. I found no new class of problem.
+S1, S5 and S6 are intact after both merges.
+
+| # | Verdict at 2cf9852 |
+| --- | --- |
+| S1 | **Closed, intact.** Migration, `schema.ts` and the delete paths are untouched since `635fd29`. The PG18 catalog shows `confdeltype = c`, `confupdtype = a`. |
+| S2 | **Closed** (subsumed by the allowlist) |
+| S3 | **Closed.** `public` is honoured only for pairs in `PUBLIC_PAIRS ∪ CONDITIONAL_PUBLIC_PAIRS`; everything else throws. |
+| S4 | **Closed, intact** |
+| S5 | **Closed, intact.** The migration is byte-identical to `635fd29`, which I verified on PG16 last round. 0 `activity%`-named constraints remain on `task_activity` (PG18). |
+| S6 | **Closed, intact.** `.returning()` still lists explicit columns without `seq`. A new comment on `relations.ts`'s `activities` puts the `seq`-drop obligation on #27. |
+| D1 | **Closed** |
+| D2 | **Closed.** A no-op `public` on an already-public pair returns `public`. |
+| D3 | **Closed.** The conditional pairs are exactly `(attachment.added, —)` and `(updated, custom_field)`. |
+
+## What I attacked
+
+**Key collisions.** `pairKey` is `${verb}\u0000${field ?? ""}`, and every allowlisted key
+contains exactly one `\u0000`. An input with `\u0000` anywhere in `verb` or `field` produces
+at least two, so it cannot equal any allowlisted key. It resolves `internal`, or throws on a
+`public` override. Postgres `text` also rejects NUL at insert. I probed `created\u0000`,
+`updated\u0000priority`, `priority\u0000` and `\u0000priority` with every verb in the matrix,
+and none escalated.
+
+`field: ""` is the same key as `null` and `undefined`. So `{created, field: ""}` is `public`,
+and `{attachment.added, field: ""}` accepts the conditional override. This is not an
+escalation: an empty string names no internal field, and CA-7's public row is the bare verb.
+Info only. If you want it strict, normalise `""` to `null` in `recordWorkItemActivity`.
+
+**Prototype keys.** `__proto__`, `constructor`, `hasOwnProperty` and the empty verb all
+resolve `internal`. The allowlists are `Set`s, and neither is exported, so no caller can
+mutate them. `ReadonlySet` is type-level only, but the module scope is the real guard.
+
+**Override escalation.** I ran an independent 1,470-case probe: 14 verbs × 15 fields
+(including `undefined`/`null`/`""`/NUL/prototype names), each with no override, `public`,
+`internal`, and the junk values `"PUBLIC"`, `true`, `1` and `"public "`. The results:
+
+- Derived visibility matched my own transcription of CA-7 in every case.
+- `public` succeeded only on the nine public pairs and the two conditional pairs; every
+  other case threw.
+- `internal` always returned `internal`.
+- Junk values fell through to derivation.
+
+There were 0 mismatches.
+
+**The test's expected set against CA-7.** `expectedUnconditionalVisibility` has the five bare
+verbs and `updated` × {priority, due_date, title, description}. That is CA-7's public row read
+through CA-6's rule that a field edit is `updated` plus the field name, with `attachment.added`
+correctly moved to the conditional set. Every internal item CA-7 names (`assignee`, `watcher`,
+`label`, `custom_field`, `estimate`, `cycle`, `module`, `relation`, `parent`, `time_entry`,
+`sla_pause`) appears in the field list, together with unknown and case/space variants. It
+imports only `resolveVisibility`, not the sets, so it is a genuine independent oracle.
+
+**Interaction with the `main` merges.** The merges touch no file under `apps/api/src` or
+`apps/api/drizzle`. Nothing outside `work-item/activity.ts` imports `recordWorkItemActivity`,
+`diffWorkItemFieldChanges` or `resolveVisibility`. `work-item/controllers/*.ts`, including
+#271's `update-work-item.ts`, has no reference to `activity`, so the writer is still unwired
+and no route has a new 500 path. `main` still ends at migration 0065, so there is no number
+clash. The `decision-log.md` resolution deletes no line of `main`'s. It only adds the addendum,
+placed newest-first above the entry it extends.
+
+## Verification run (this round)
+
+- On `pr275_opus_test` (td-lane-pg, PG18): `work-item-activity-table`, `account-deletion`,
+  `comment`, `task-title-activity` and `work-item-update`, plus the throwaway 1,470-case probe —
+  6 files, 344 tests passed. The probe file was deleted, and the DB was dropped.
+
+## What I did not do (this round)
+
+- I did not re-run PG16 or PG17, because the migration is unchanged since the round I did.
+- I did not run the full suite.
+- No push, comment or merge.
