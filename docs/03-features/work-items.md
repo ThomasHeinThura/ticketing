@@ -73,8 +73,10 @@ whether it is an epic, and which custom fields apply.
   UI can offer a resolution. The one exception is rank: changes go through
   `POST /work-items/{key}/rank` (`WI-11`), are exempt from `If-Match`, and are
   last-write-wins — every other field write is version-checked.
-- `WI-8` Title, description, priority, dates, labels and custom fields may be changed by
-  anyone with `work_item:update` on the project.
+- `WI-8` Title, description, dates, labels and custom fields may be changed by anyone with
+  `work_item:update` on the project. Priority is separate: changing it needs
+  `work_item:set_priority`, not `work_item:update` (see the Permissions table below). A
+  customer's raise-only path — `work_item:escalate_priority` — is a later slice.
 - `WI-9` State changes go through the workflow — see [workflows](workflows.md). They are
   never a plain field update.
 - `WI-10` Assignment follows [assignment rules](assignment.md).

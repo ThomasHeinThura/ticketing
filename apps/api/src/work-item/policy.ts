@@ -76,6 +76,14 @@ export const workItemPolicies = {
   // -- `requireWorkItemReach()` resolves the row by key before the handler runs, and the
   // controller (`update-work-item.ts`) re-scopes its own write by the SAME key+workspaceId
   // pair -- `scopeSource: "row"`.
+  //
+  // The declared capability below is `work_item:update`, which gates every field this
+  // route accepts EXCEPT `priority` -- rbac.md scopes that one to `work_item:set_priority`
+  // specifically. That extra, field-level check cannot be expressed as a second route
+  // policy entry (a `PolicyMap` has one capability per route) or a second `middleware`
+  // entry (the body isn't parsed yet when `middleware` runs -- `apiRouter`'s comment in
+  // `../openapi.ts`), so `./index.ts`'s handler calls `assertCallerHasCapability`
+  // directly, after body validation, when the body sets `priority`.
   "PATCH /api/work-items/{key}": {
     capability: "work_item:update",
     scope: "work_item",

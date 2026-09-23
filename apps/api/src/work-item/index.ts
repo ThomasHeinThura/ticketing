@@ -5,7 +5,10 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
-import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
+import {
+  assertCallerHasCapability,
+  requireWorkspaceCapability,
+} from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createWorkItem from "./controllers/create-work-item";
 import getWorkItemByKey from "./controllers/get-work-item";
@@ -161,7 +164,9 @@ const updateWorkItemRoute = createRoute({
     "Partially update a work item's title, description, priority, startDate or dueDate " +
     "(`WI-8`). Requires `If-Match` with the work item's current version (`WI-7`); a " +
     "mismatch returns 409 with both versions. Label/custom-field editing, state " +
-    "transitions and assignment are not part of this route -- see their own mechanisms.",
+    "transitions and assignment are not part of this route -- see their own mechanisms. " +
+    "Changing `priority` additionally requires `work_item:set_priority` " +
+    "(`docs/01-architecture/rbac.md`) -- `work_item:update` alone is not enough.",
   middleware: [
     requireWorkItemReach(),
     requireWorkspaceCapability("work_item:update"),
@@ -178,7 +183,8 @@ const updateWorkItemRoute = createRoute({
     200: jsonResponse("The updated work item", workItemSchema),
     400: errorResponse("Invalid body, or a malformed If-Match header"),
     403: errorResponse(
-      "No workspace access, or missing work_item:update permission",
+      "No workspace access, missing work_item:update permission, or (when the body " +
+        "sets priority) missing work_item:set_priority",
     ),
     404: errorResponse("Work item not found"),
     409: jsonResponse(
@@ -222,6 +228,20 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
     const assertedVersion = Number(ifMatch.replaceAll('"', ""));
     const { title, description, priority, startDate, dueDate } =
       c.req.valid("json");
+
+    // Field-level authority, on top of the route's `work_item:update` gate above: rbac.md
+    // scopes `priority` specifically to `work_item:set_priority`, not `work_item:update` --
+    // see `assertCallerHasCapability`'s own doc comment for why this cannot be a second
+    // `middleware` entry (the body isn't parsed yet when `middleware` runs). Runs BEFORE
+    // `updateWorkItem` so a caller who fails it writes nothing -- no partial update of the
+    // other fields.
+    if (priority !== undefined) {
+      await assertCallerHasCapability(
+        workspaceId,
+        c.get("userId"),
+        "work_item:set_priority",
+      );
+    }
 
     try {
       const updated = await updateWorkItem(key, workspaceId, assertedVersion, {

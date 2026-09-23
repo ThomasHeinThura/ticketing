@@ -5,7 +5,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
@@ -14,6 +14,36 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+
+// F-A's negative case needs a caller who holds `work_item:update` but NOT
+// `work_item:set_priority` -- every seeded `BUILT_IN_ROLES` entry that has the first
+// also has the second (`packages/permissions/src/roles.ts`: owner/admin/manager/lead/
+// member all bundle both), and there is no live mechanism yet for assigning a genuinely
+// custom, per-workspace role's own capability set to `workspace_member.role`
+// (`require-workspace-capability.ts`'s own doc comment -- the `role.capabilities` column
+// exists on `role`/`roleTable` but nothing wires it into `builtInRoleHasCapability` yet).
+// So this test adds one extra, test-only entry to the real `BUILT_IN_ROLES` data --
+// everything else from the actual module is passed through unchanged -- and assigns its
+// key directly to a `workspace_member.role` row the same way `addWorkspaceMember` below
+// always has (that column is plain, unconstrained `text`).
+vi.mock("@taskdesk/permissions", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@taskdesk/permissions")>();
+  return {
+    ...actual,
+    BUILT_IN_ROLES: {
+      ...actual.BUILT_IN_ROLES,
+      test_updater_no_set_priority: {
+        key: "test_updater_no_set_priority",
+        scope: "workspace",
+        rank: 40,
+        intent:
+          "Test-only role (F-A regression): work_item:update without work_item:set_priority",
+        isEditable: true,
+        capabilities: ["work_item:update"],
+      },
+    },
+  };
+});
 
 async function makeWorkItemType(workspaceId: string) {
   const now = new Date();
@@ -245,6 +275,26 @@ describe("API integration: work item update (#23 second slice)", () => {
     expect(response.status).toBe(400);
   });
 
+  it("F-B: an If-Match version above the Postgres integer max is a 400, not a 500", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Overflowing If-Match",
+    });
+    const createdBody = (await created.json()) as { key: string };
+
+    const response = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { title: "Should be rejected before it reaches Postgres" },
+      "99999999999999999999",
+    );
+    expect(response.status).toBe(400);
+  });
+
   it("WI-7: a stale If-Match returns 409 with both the asserted and current versions", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);
@@ -364,6 +414,102 @@ describe("API integration: work item update (#23 second slice)", () => {
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.key, createdBody.key));
     expect(row?.title).toBe("Viewer should not edit this");
+  });
+
+  it("permissions (F-A): work_item:update alone is not enough to change priority -- 403, and nothing is written, but the same caller can still update title", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Priority is guarded",
+      priority: "low",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+    expect(createdBody.version).toBe(1);
+
+    const updaterOnly = await addWorkspaceMember(
+      creator.workspace.id,
+      "test_updater_no_set_priority",
+    );
+    mockAuthenticatedSession(updaterOnly);
+
+    // A body that ALSO includes a field genuinely covered by work_item:update: the whole
+    // request is refused, not just the priority field -- no partial write of title either.
+    const mixedAttempt = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { title: "Should not be written", priority: "urgent" },
+      createdBody.version,
+    );
+    expect(mixedAttempt.status).toBe(403);
+
+    // priority-only, same refusal.
+    const priorityOnlyAttempt = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { priority: "urgent" },
+      createdBody.version,
+    );
+    expect(priorityOnlyAttempt.status).toBe(403);
+
+    const [afterRefusals] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, createdBody.key));
+    expect(afterRefusals?.title).toBe("Priority is guarded");
+    expect(afterRefusals?.priority).toBe("low");
+    expect(afterRefusals?.version).toBe(1);
+
+    // The SAME caller, same role, succeeds on a field work_item:update alone does cover.
+    const titleOnly = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { title: "Renamed by updater-only role" },
+      createdBody.version,
+    );
+    expect(titleOnly.status).toBe(200);
+    const titleOnlyBody = (await titleOnly.json()) as {
+      title: string;
+      version: number;
+    };
+    expect(titleOnlyBody.title).toBe("Renamed by updater-only role");
+    expect(titleOnlyBody.version).toBe(2);
+  });
+
+  it("permissions (F-A): a role holding work_item:set_priority can change priority (200)", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Lead may reprioritise",
+      priority: "low",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+
+    // `lead` explicitly lists `work_item:set_priority`
+    // (`packages/permissions/src/roles.ts`).
+    const lead = await addWorkspaceMember(creator.workspace.id, "lead");
+    mockAuthenticatedSession(lead);
+
+    const response = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { priority: "urgent" },
+      createdBody.version,
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { priority: string };
+    expect(body.priority).toBe("urgent");
   });
 
   it("WI-7: a concurrent-update race asserting the same starting version resolves to exactly one 200 and one 409, never both or neither", async () => {

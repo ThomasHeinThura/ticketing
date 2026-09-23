@@ -63,11 +63,25 @@ export const updateWorkItemBody = z
 // Header value is the quoted version string per `api-design.md` (`If-Match: "<version>"`,
 // the same quoted-token shape as an `ETag`) -- accepted with or without the quotes since
 // real HTTP clients vary, but always digits underneath.
+//
+// `work_item.version` is a Postgres `integer` (`database/schema.ts`), max 2147483647 --
+// the regex above only shapes the string as "digits, optionally quoted", so an
+// out-of-range value like `99999999999999999999` passed the regex, reached the `WHERE
+// version = $assertedVersion` comparison in `update-work-item.ts`, and Postgres rejected
+// the out-of-range integer literal with a 500 instead of this route's normal 400/404/409.
+// The `.refine` below rejects it at the validation boundary instead, matching every other
+// out-of-range/malformed-input case this route already answers with 400.
+const POSTGRES_INTEGER_MAX = 2147483647;
+
 export const ifMatchHeader = z.object({
   "if-match": z
     .string()
     .regex(
       /^"?\d+"?$/,
       'If-Match must be the work item\'s current version, e.g. "3"',
+    )
+    .refine(
+      (value) => Number(value.replaceAll('"', "")) <= POSTGRES_INTEGER_MAX,
+      `If-Match must not exceed ${POSTGRES_INTEGER_MAX} (work_item.version is a Postgres integer)`,
     ),
 });

@@ -10238,7 +10238,7 @@
           "Work items"
         ],
         "summary": "Update work item",
-        "description": "Partially update a work item's title, description, priority, startDate or dueDate (`WI-8`). Requires `If-Match` with the work item's current version (`WI-7`); a mismatch returns 409 with both versions. Label/custom-field editing, state transitions and assignment are not part of this route -- see their own mechanisms.",
+        "description": "Partially update a work item's title, description, priority, startDate or dueDate (`WI-8`). Requires `If-Match` with the work item's current version (`WI-7`); a mismatch returns 409 with both versions. Label/custom-field editing, state transitions and assignment are not part of this route -- see their own mechanisms. Changing `priority` additionally requires `work_item:set_priority` (`docs/01-architecture/rbac.md`) -- `work_item:update` alone is not enough.",
         "parameters": [
           {
             "schema": {
@@ -10328,7 +10328,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing work_item:update permission",
+            "description": "No workspace access, missing work_item:update permission, or (when the body sets priority) missing work_item:set_priority",
             "content": {
               "text/plain": {
                 "schema": {
