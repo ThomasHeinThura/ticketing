@@ -36,6 +36,10 @@ Collaboration is expressed by watchers, sub-tasks and comments.
   refuses it.
 - `AS-5` The assignable list is the **project roster**, not the whole directory.
   Assigning someone who is not on the project is refused with a suggestion to add them.
+  Only active people (`person.active = true`) are eligible for any assignment, direct or
+  default. Assigning to a deactivated person is refused. *(Generalises the
+  "default assignee is inactive" edge case below to every assignment, not only a
+  default.)*
 
 **Identity, not display name**
 
@@ -81,6 +85,8 @@ Collaboration is expressed by watchers, sub-tasks and comments.
   ([events.md](../01-architecture/events.md)).
 - `AS-18` Assigning yourself does not notify you. `work_item.assigned` still emits (for
   automations, webhooks and activity) — only the notification fan-out excludes the actor.
+  The actor is never notified of their own action, and this covers unassigning yourself
+  as well as assigning yourself.
 
 ## Permissions
 
