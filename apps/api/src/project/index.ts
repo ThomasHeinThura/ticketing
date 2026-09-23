@@ -85,10 +85,11 @@ const getProjectRoute = createRoute({
   request: { params: projectParam },
   responses: {
     200: jsonResponse("Project details", projectSchema),
+    // #290: an out-of-reach project now gets this identical 400 too, not the 403
+    // `workspaceAccess.fromProject` used to answer for it (#202's own precedent).
     400: errorResponse(
       "Unknown project, or its workspace could not be determined",
     ),
-    403: errorResponse("No access to the project's workspace"),
     404: errorResponse("Project not found"),
   },
 });
@@ -144,10 +145,8 @@ const updateProjectRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The updated project", projectSchema),
-    400: errorResponse("Invalid body, or unknown project"),
-    403: errorResponse(
-      "No workspace access, or missing project:update permission",
-    ),
+    400: errorResponse("Invalid body, or unknown/unreachable project"),
+    403: errorResponse("Missing project:update permission"),
     404: errorResponse(
       "Project doesn't exist or doesn't belong to the specified workspace",
     ),
@@ -176,9 +175,7 @@ const deleteProjectRoute = createRoute({
     400: errorResponse(
       "Unknown project, or its workspace could not be determined",
     ),
-    403: errorResponse(
-      "No workspace access, or missing project:delete permission",
-    ),
+    403: errorResponse("Missing project:delete permission"),
     404: errorResponse("Project not found"),
   },
 });
@@ -201,9 +198,7 @@ const archiveProjectRoute = createRoute({
     400: errorResponse(
       "Unknown project, or its workspace could not be determined",
     ),
-    403: errorResponse(
-      "No workspace access, or missing project:update permission",
-    ),
+    403: errorResponse("Missing project:update permission"),
     404: errorResponse(
       "Project doesn't exist or doesn't belong to the specified workspace",
     ),
@@ -227,9 +222,7 @@ const unarchiveProjectRoute = createRoute({
     400: errorResponse(
       "Unknown project, or its workspace could not be determined",
     ),
-    403: errorResponse(
-      "No workspace access, or missing project:update permission",
-    ),
+    403: errorResponse("Missing project:update permission"),
     404: errorResponse(
       "Project doesn't exist or doesn't belong to the specified workspace",
     ),

@@ -29,10 +29,10 @@ const getTaskTimeEntriesRoute = createRoute({
   request: { params: taskIdParam },
   responses: {
     200: jsonResponse("List of time entries for the task", timeEntryListSchema),
-    400: errorResponse(
-      "Unknown task, or its workspace could not be determined",
-    ),
-    403: errorResponse("No access to the task's workspace"),
+    // #290: a task that doesn't exist and a task in a workspace the caller can't
+    // reach both answer this same 404 now, via `workspaceAccess.fromTaskId()`.
+    400: errorResponse("taskId must not contain a NUL (\\u0000) byte"),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -47,10 +47,10 @@ const getTimeEntryRoute = createRoute({
   request: { params: timeEntryParam },
   responses: {
     200: jsonResponse("Time entry details", timeEntrySchema),
-    400: errorResponse(
-      "Unknown entry, or its workspace could not be determined",
-    ),
-    403: errorResponse("No access to the entry's workspace"),
+    // #290: a nonexistent entry and an entry in a workspace the caller can't reach
+    // both answer this same 404 now, via `workspaceAccess.fromTimeEntry()`.
+    400: errorResponse("id must not contain a NUL (\\u0000) byte"),
+    404: errorResponse("Time entry not found"),
   },
 });
 
@@ -74,10 +74,11 @@ const createTimeEntryRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created time entry", timeEntrySchema),
-    400: errorResponse("Invalid timestamps, or unknown task"),
-    403: errorResponse(
-      "No workspace access, or missing task:update permission",
-    ),
+    // #290: an unknown/out-of-reach task 404s via `workspaceAccess.fromTaskId()`
+    // (below), before this route's own body validation runs.
+    400: errorResponse("Invalid timestamps"),
+    403: errorResponse("Missing task:update permission"),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -102,10 +103,8 @@ const updateTimeEntryRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The updated time entry", timeEntrySchema),
-    400: errorResponse("Invalid timestamps, or unknown entry"),
-    403: errorResponse(
-      "No workspace access, or missing task:update permission",
-    ),
+    400: errorResponse("Invalid timestamps"),
+    403: errorResponse("Missing task:update permission"),
     404: errorResponse("Time entry not found"),
   },
 });

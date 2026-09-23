@@ -400,7 +400,7 @@ describe("API integration: task image upload finalize", () => {
     expect(response.status).toBe(401);
   });
 
-  it("rejects requests from users outside the workspace", async () => {
+  it("issue #290: answers requests from users outside the workspace with the same 404 an unknown task id gets, not a distinguishing 403", async () => {
     process.env.KANEO_API_URL = "http://localhost:1337";
 
     const member = await createWorkspaceMember();
@@ -458,9 +458,11 @@ describe("API integration: task image upload finalize", () => {
       },
     );
 
-    expect(response.status).toBe(403);
-    await expect(response.text()).resolves.toBe(
-      "You don't have access to this workspace",
-    );
+    // Before #290, `workspaceAccess.fromTask()` answered 403 for a task that exists in
+    // a workspace the caller can't reach, distinguishing it from a nonexistent task
+    // (404). It now answers both identically -- see
+    // `tests/api/utils/workspace-access-middleware.test.ts` for the helper-level proof.
+    expect(response.status).toBe(404);
+    await expect(response.text()).resolves.toBe("Task not found");
   });
 });

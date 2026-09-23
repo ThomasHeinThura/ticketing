@@ -33,10 +33,10 @@ const getActivitiesRoute = createRoute({
   request: { params: taskIdParam },
   responses: {
     200: jsonResponse("List of activities for the task", activityListSchema),
-    400: errorResponse(
-      "Unknown task, or its workspace could not be determined",
-    ),
-    403: errorResponse("No access to the task's workspace"),
+    // #290: a task that doesn't exist and a task in a workspace the caller can't
+    // reach both answer this same 404 now, via `workspaceAccess.fromTaskId()`.
+    400: errorResponse("taskId must not contain a NUL (\\u0000) byte"),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -60,10 +60,9 @@ const createActivityRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created activity", activitySchema),
-    400: errorResponse("Invalid body, or unknown task"),
-    403: errorResponse(
-      "No workspace access, or missing task:update permission",
-    ),
+    400: errorResponse("Invalid body"),
+    403: errorResponse("Missing task:update permission"),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -87,10 +86,9 @@ const createCommentRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created comment", activitySchema),
-    400: errorResponse("Invalid body, or unknown task"),
-    403: errorResponse(
-      "No workspace access, or missing task:update permission",
-    ),
+    400: errorResponse("Invalid body"),
+    403: errorResponse("Missing task:update permission"),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -110,8 +108,8 @@ const updateCommentRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The updated comment", activitySchema),
-    400: errorResponse("Invalid body, or unknown activity"),
-    403: errorResponse("Not the author, or no access to the workspace"),
+    400: errorResponse("Invalid body"),
+    403: errorResponse("Not the author"),
     404: errorResponse("Comment not found"),
   },
 });
@@ -132,8 +130,8 @@ const deleteCommentRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The deleted comment", activitySchema),
-    400: errorResponse("Invalid body, or unknown activity"),
-    403: errorResponse("Not the author, or no access to the workspace"),
+    400: errorResponse("Invalid body"),
+    403: errorResponse("Not the author"),
     404: errorResponse("Comment not found"),
   },
 });

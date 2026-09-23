@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { columnTable, workflowRuleTable } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
 
 async function upsertWorkflowRule({
   projectId,
@@ -15,6 +16,12 @@ async function upsertWorkflowRule({
   eventType: string;
   columnId: string;
 }) {
+  // #290 S4 sweep: `columnId` is a body field, not covered by any
+  // `workspaceAccess.*` lookup (`upsertWorkflowRuleRoute` scopes from `projectId`,
+  // not `columnId`) -- a NUL byte here reached `eq(columnTable.id, columnId)`
+  // unvalidated and 500'd, the same class #281 fixed for path/query ids.
+  rejectNulByte(columnId, "Column id");
+
   // #202: this route's subject IS a project (`workspaceAccess.fromProject`), so a
   // soft-deleted project's automation must be frozen for its 30-day recovery window
   // (#187, PR-16) -- without this, a new rule could still be created against a

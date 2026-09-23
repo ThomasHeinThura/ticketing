@@ -3334,16 +3334,6 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
-          "403": {
-            "description": "No access to the project's workspace",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
           "404": {
             "description": "Project not found",
             "content": {
@@ -3415,7 +3405,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown project",
+            "description": "Invalid body, or unknown/unreachable project",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3428,7 +3418,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing project:update permission",
+            "description": "Missing project:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3501,7 +3491,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing project:delete permission",
+            "description": "Missing project:delete permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3659,7 +3649,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing project:update permission",
+            "description": "Missing project:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3724,7 +3714,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing project:update permission",
+            "description": "Missing project:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3874,16 +3864,6 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
-          "403": {
-            "description": "No access to the project's workspace",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
           "404": {
             "description": "Project not found",
             "content": {
@@ -3972,7 +3952,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing the permission the operation needs",
+            "description": "Missing the permission the operation needs, or no access to this workspace",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4072,7 +4052,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown project",
+            "description": "Invalid body, or unknown/unreachable project",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4085,7 +4065,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:create permission",
+            "description": "Missing task:create permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4137,7 +4117,7 @@
             }
           },
           "400": {
-            "description": "Unknown task, or its workspace could not be determined",
+            "description": "id must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4148,16 +4128,6 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
-          },
-          "403": {
-            "description": "No access to the task's workspace",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
           },
           "404": {
             "description": "Task not found",
@@ -4254,7 +4224,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown task",
+            "description": "Invalid body",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4267,7 +4237,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update or task:assign permission",
+            "description": "Missing task:update or task:assign permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4317,7 +4287,7 @@
             }
           },
           "400": {
-            "description": "Unknown task, or its workspace could not be determined",
+            "description": "id must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4330,7 +4300,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:delete permission",
+            "description": "Missing task:delete permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4404,7 +4374,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown task",
+            "description": "Invalid body",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4417,7 +4387,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4480,16 +4450,6 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
-          },
-          "403": {
-            "description": "No access to the project's workspace",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
           },
           "404": {
             "description": "Project not found",
@@ -4591,7 +4551,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown project",
+            "description": "Invalid body, or unknown/unreachable project",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4604,7 +4564,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:create permission",
+            "description": "Missing task:create permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4674,7 +4634,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown task",
+            "description": "Invalid body",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4687,7 +4647,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4764,7 +4724,7 @@
             }
           },
           "400": {
-            "description": "Invalid priority, or unknown task",
+            "description": "Invalid priority",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4777,7 +4737,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4851,7 +4811,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown task",
+            "description": "Invalid body",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4864,7 +4824,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, missing task:assign permission, or the assignee is not a member of this workspace",
+            "description": "Missing task:assign permission, or the assignee is not a member of this workspace",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4931,7 +4891,7 @@
             }
           },
           "400": {
-            "description": "Invalid date, or unknown task",
+            "description": "Invalid date",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4944,7 +4904,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5014,7 +4974,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown task",
+            "description": "Invalid body",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5027,7 +4987,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5127,7 +5087,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5242,7 +5202,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5312,7 +5272,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown task",
+            "description": "Invalid body",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5325,7 +5285,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5391,16 +5351,6 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
-          },
-          "403": {
-            "description": "No access to the project's workspace",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
           },
           "404": {
             "description": "Project not found",
@@ -5470,7 +5420,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown project",
+            "description": "Invalid body, or unknown/unreachable project",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5483,7 +5433,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing project:update permission",
+            "description": "Missing project:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5582,7 +5532,7 @@
             }
           },
           "400": {
-            "description": "A column does not belong to this project",
+            "description": "A column does not belong to this project, or the project id is unknown/unreachable",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5595,7 +5545,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing project:update permission",
+            "description": "Missing project:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5677,7 +5627,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown column",
+            "description": "Invalid body",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5690,7 +5640,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing project:update permission",
+            "description": "Missing project:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5740,7 +5690,7 @@
             }
           },
           "400": {
-            "description": "Unknown column, or its workspace could not be determined",
+            "description": "id must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5753,7 +5703,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing project:update permission",
+            "description": "Missing project:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5818,7 +5768,7 @@
             }
           },
           "400": {
-            "description": "Unknown task, or its workspace could not be determined",
+            "description": "taskId must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5830,8 +5780,8 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
-          "403": {
-            "description": "No access to the task's workspace",
+          "404": {
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5902,7 +5852,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown task",
+            "description": "Invalid body",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5915,7 +5865,17 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5969,7 +5929,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown task",
+            "description": "Invalid body",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5982,7 +5942,17 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6034,7 +6004,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown activity",
+            "description": "Invalid body",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6047,7 +6017,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not the author, or no access to the workspace",
+            "description": "Not the author",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6105,7 +6075,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown activity",
+            "description": "Invalid body",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6118,7 +6088,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not the author, or no access to the workspace",
+            "description": "Not the author",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6173,7 +6143,7 @@
             }
           },
           "400": {
-            "description": "Unknown task, or its workspace could not be determined",
+            "description": "taskId must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6185,8 +6155,8 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
-          "403": {
-            "description": "No access to the task's workspace",
+          "404": {
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6259,7 +6229,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown task",
+            "description": "Invalid body",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6272,7 +6242,17 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6333,7 +6313,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown comment",
+            "description": "Invalid body",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6396,7 +6376,7 @@
             }
           },
           "400": {
-            "description": "Unknown comment, or its workspace could not be determined",
+            "description": "id must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6464,7 +6444,7 @@
             }
           },
           "400": {
-            "description": "Unknown task, or its workspace could not be determined",
+            "description": "taskId must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6476,8 +6456,8 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
-          "403": {
-            "description": "No access to the task's workspace",
+          "404": {
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6519,7 +6499,7 @@
             }
           },
           "400": {
-            "description": "Unknown entry, or its workspace could not be determined",
+            "description": "id must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6531,8 +6511,8 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
-          "403": {
-            "description": "No access to the entry's workspace",
+          "404": {
+            "description": "Time entry not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6600,7 +6580,7 @@
             }
           },
           "400": {
-            "description": "Invalid timestamps, or unknown entry",
+            "description": "Invalid timestamps",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6613,7 +6593,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6688,7 +6668,7 @@
             }
           },
           "400": {
-            "description": "Invalid timestamps, or unknown task",
+            "description": "Invalid timestamps",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6701,7 +6681,17 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6746,7 +6736,7 @@
             }
           },
           "400": {
-            "description": "Unknown task, or its workspace could not be determined",
+            "description": "taskId must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6758,8 +6748,8 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
-          "403": {
-            "description": "No access to the task's workspace",
+          "404": {
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6943,7 +6933,7 @@
             }
           },
           "400": {
-            "description": "Unknown label, or its workspace could not be determined",
+            "description": "id must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6954,16 +6944,6 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
-          },
-          "403": {
-            "description": "No access to the label's workspace",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
           },
           "404": {
             "description": "Label not found",
@@ -7028,7 +7008,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown label",
+            "description": "Invalid body",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7041,7 +7021,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing label:update permission",
+            "description": "Missing label:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7091,7 +7071,7 @@
             }
           },
           "400": {
-            "description": "Unknown label, or its workspace could not be determined",
+            "description": "id must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7104,7 +7084,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing label:delete permission",
+            "description": "Missing label:delete permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7174,7 +7154,7 @@
             }
           },
           "400": {
-            "description": "Unknown label, or label and task belong to different workspaces",
+            "description": "taskId must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7187,7 +7167,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing label:update permission",
+            "description": "Missing label:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7237,7 +7217,7 @@
             }
           },
           "400": {
-            "description": "Unknown label, or label is not assigned to a task",
+            "description": "Label is not assigned to a task",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7250,7 +7230,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing label:update permission",
+            "description": "Missing label:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7924,7 +7904,7 @@
             }
           },
           "400": {
-            "description": "Unknown task, or its workspace could not be determined",
+            "description": "taskId must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7936,8 +7916,8 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
-          "403": {
-            "description": "No access to the task's workspace",
+          "404": {
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8013,7 +7993,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8078,7 +8058,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8133,7 +8113,7 @@
             }
           },
           "400": {
-            "description": "Unknown task, or its workspace could not be determined",
+            "description": "taskId must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8145,8 +8125,8 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
-          "403": {
-            "description": "No access to the task's workspace",
+          "404": {
+            "description": "Task not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8202,16 +8182,6 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
-          },
-          "403": {
-            "description": "No access to the project's workspace",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
           },
           "404": {
             "description": "Project not found",
@@ -8280,7 +8250,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or unknown project",
+            "description": "Invalid body, or unknown/unreachable project",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8293,7 +8263,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing project:update permission",
+            "description": "Missing project:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8345,7 +8315,7 @@
             }
           },
           "400": {
-            "description": "Unknown rule, or its workspace could not be determined",
+            "description": "id must not contain a NUL (\\u0000) byte",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8358,7 +8328,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing project:update permission",
+            "description": "Missing project:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10181,7 +10151,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, unknown/cross-workspace type, or the project has no default state",
+            "description": "Invalid body, unknown/unreachable/cross-workspace type, or the project has no default state",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10194,7 +10164,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing work_item:create permission",
+            "description": "Missing work_item:create permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10331,7 +10301,7 @@
             }
           },
           "400": {
-            "description": "Invalid query parameter (unknown sort field, out-of-range limit, malformed cursor, NUL byte, etc.)",
+            "description": "Unknown project or its workspace could not be determined, or an invalid query parameter (unknown sort field, out-of-range limit, malformed cursor, NUL byte, etc.)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10344,7 +10314,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing work_item:read permission",
+            "description": "Missing work_item:read permission",
             "content": {
               "text/plain": {
                 "schema": {

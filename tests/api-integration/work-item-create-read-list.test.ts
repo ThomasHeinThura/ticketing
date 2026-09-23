@@ -410,7 +410,7 @@ describe("API integration: work item create/read/list (#23)", () => {
     expect(rows).toHaveLength(0);
   });
 
-  it("permissions: a caller with no workspace membership at all is refused", async () => {
+  it("issue #290: a caller with no workspace membership at all gets the same 400 an unknown project id gets, not a distinguishing 403", async () => {
     const { project, type } = await setupProjectWithDefaultState();
     const stranger = await createWorkspaceMember({ role: "member" }); // a DIFFERENT workspace
     mockAuthenticatedSession(stranger.user);
@@ -420,7 +420,15 @@ describe("API integration: work item create/read/list (#23)", () => {
       typeId: type.id,
       title: "Stranger should not reach this project",
     });
-    expect(response.status).toBe(403);
+
+    // Before #290, `workspaceAccess.fromProject` answered 403 for a project the
+    // caller can't reach, distinguishable from the 400 an unknown project id gets.
+    // It now answers this exactly like the unknown-id case (#202's own precedent for
+    // this helper), never a 403.
+    expect(response.status).toBe(400);
+    await expect(response.text()).resolves.toBe(
+      "Workspace ID could not be determined",
+    );
   });
 
   it("GET /api/work-items/{key}: returns the right shape, and 404s on a nonexistent key", async () => {

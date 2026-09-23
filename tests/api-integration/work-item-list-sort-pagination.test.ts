@@ -569,7 +569,15 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
     expect((secondPage.body as ListBody).meta.total).toBe(5);
   });
 
-  it("reach is unchanged: a caller without workspace membership still gets 403, whatever filters/sort are supplied", async () => {
+  it("reach is unchanged: a caller without workspace membership still can't reach the list, whatever filters/sort are supplied", async () => {
+    // #290/#307 (merged into `main` after this test was first written): an
+    // out-of-reach project now answers the SAME 400 an unknown project id gets,
+    // rather than a distinguishing 403 -- closing the cross-workspace existence
+    // oracle `workspaceAccess.fromProject()` otherwise leaves open (`workspace-
+    // access-middleware.ts`'s own file comment has the full incident). 403 stays
+    // reserved for a reachable workspace with a missing capability. Reach itself
+    // is still exactly as narrow as before -- only the status code that proves it
+    // changed, not from a change made in this PR.
     const { project, type } = await setupProject();
     const stranger = await createWorkspaceMember({ role: "member" });
     mockAuthenticatedSession(stranger.user);
@@ -581,7 +589,7 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
       project.id,
       "sort=priority&dir=desc&limit=5&state=anything&assignee=me",
     );
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(400);
   });
 
   it("visibility is unchanged: filtering/sorting cannot surface a work item from a DIFFERENT project", async () => {

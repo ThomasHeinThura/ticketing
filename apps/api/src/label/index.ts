@@ -35,10 +35,11 @@ const getTaskLabelsRoute = createRoute({
   request: { params: taskIdParam },
   responses: {
     200: jsonResponse("List of labels for the task", labelListSchema),
-    400: errorResponse(
-      "Unknown task, or its workspace could not be determined",
-    ),
-    403: errorResponse("No access to the task's workspace"),
+    // #290: a task that doesn't exist and a task in a workspace the caller can't
+    // reach both answer this same 404 now, via `workspaceAccess.fromTaskId()` -- see
+    // `workspace-access-middleware.ts`. Only a NUL byte in `taskId` reaches 400.
+    400: errorResponse("taskId must not contain a NUL (\\u0000) byte"),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -96,10 +97,10 @@ const getLabelRoute = createRoute({
   request: { params: labelParam },
   responses: {
     200: jsonResponse("Label details", labelSchema),
-    400: errorResponse(
-      "Unknown label, or its workspace could not be determined",
-    ),
-    403: errorResponse("No access to the label's workspace"),
+    // #290: a nonexistent label and a label in a workspace the caller can't reach
+    // both answer this same 404 now, via `workspaceAccess.fromLabel()`. Only a NUL
+    // byte in `id` reaches 400.
+    400: errorResponse("id must not contain a NUL (\\u0000) byte"),
     404: errorResponse("Label not found"),
   },
 });
@@ -124,12 +125,13 @@ const attachLabelToTaskRoute = createRoute({
   },
   responses: {
     200: jsonResponse("Label attached to task successfully", labelSchema),
-    400: errorResponse(
-      "Unknown label, or label and task belong to different workspaces",
-    ),
-    403: errorResponse(
-      "No workspace access, or missing label:update permission",
-    ),
+    // S2 (Opus review of PR #307, delta round): an out-of-reach OR nonexistent
+    // taskId now both 404 `Task not found` -- `assign-label-to-task.ts` scopes its
+    // task lookup to the label's own already-reach-checked workspace, so a foreign
+    // task simply doesn't match. This 400 remains only for a NUL byte in `taskId`
+    // and an internal same-transaction race guard, never a distinguishing signal.
+    400: errorResponse("taskId must not contain a NUL (\\u0000) byte"),
+    403: errorResponse("Missing label:update permission"),
     404: errorResponse("Label or task not found"),
   },
 });
@@ -148,10 +150,8 @@ const detachLabelFromTaskRoute = createRoute({
   request: { params: labelParam },
   responses: {
     200: jsonResponse("Label detached from task successfully", labelSchema),
-    400: errorResponse("Unknown label, or label is not assigned to a task"),
-    403: errorResponse(
-      "No workspace access, or missing label:update permission",
-    ),
+    400: errorResponse("Label is not assigned to a task"),
+    403: errorResponse("Missing label:update permission"),
     404: errorResponse("Label or task not found"),
   },
 });
@@ -176,10 +176,8 @@ const updateLabelRoute = createRoute({
   },
   responses: {
     200: jsonResponse("Label updated successfully", labelSchema),
-    400: errorResponse("Invalid body, or unknown label"),
-    403: errorResponse(
-      "No workspace access, or missing label:update permission",
-    ),
+    400: errorResponse("Invalid body"),
+    403: errorResponse("Missing label:update permission"),
     404: errorResponse("Label not found"),
   },
 });
@@ -198,12 +196,8 @@ const deleteLabelRoute = createRoute({
   request: { params: labelParam },
   responses: {
     200: jsonResponse("Label deleted successfully", labelSchema),
-    400: errorResponse(
-      "Unknown label, or its workspace could not be determined",
-    ),
-    403: errorResponse(
-      "No workspace access, or missing label:delete permission",
-    ),
+    400: errorResponse("id must not contain a NUL (\\u0000) byte"),
+    403: errorResponse("Missing label:delete permission"),
     404: errorResponse("Label not found, or its task no longer exists"),
   },
 });

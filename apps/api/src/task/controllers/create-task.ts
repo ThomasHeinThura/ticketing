@@ -7,6 +7,7 @@ import {
   assertAssignableUser,
   getProjectWorkspaceId,
 } from "../../utils/assert-assignable-user";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { assertValidTaskStatus } from "../validate-task-fields";
 import { claimTaskNumber } from "./claim-task-numbers";
 
@@ -35,6 +36,12 @@ async function createTask({
   const resolvedPriority = priority || "no-priority";
 
   const normalizedUserId = userId?.trim() || undefined;
+  // S5 (Opus review of PR #307, delta round): reaches `assertAssignableUser`'s and
+  // the raw `eq(userTable.id, ...)` query below unvalidated -- a NUL byte would
+  // otherwise 500 instead of a clean 400.
+  if (normalizedUserId) {
+    rejectNulByte(normalizedUserId, "Assignee id");
+  }
 
   // #187: rejects a soft-deleted (or nonexistent) project before anything is created
   // under it. `getProjectWorkspaceId` excludes soft-deleted projects the same way

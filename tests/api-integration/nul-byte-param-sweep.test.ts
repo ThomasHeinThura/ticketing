@@ -1,8 +1,33 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember } from "./helpers/fixtures";
+import {
+  createProjectFixture,
+  createWorkspaceMember,
+  requireRow,
+} from "./helpers/fixtures";
+
+async function seedTask(projectId: string, columnId: string, userId?: string) {
+  return requireRow(
+    await db
+      .insert(schema.taskTable)
+      .values({
+        projectId,
+        title: "Seeded task",
+        description: "Existing",
+        priority: "medium",
+        status: "to-do",
+        columnId,
+        number: 1,
+        position: 1,
+        ...(userId ? { userId } : {}),
+      })
+      .returning(),
+    "seedTask",
+  );
+}
 
 // Issue #281 (follow-up to #277's Opus review): raw `c.req.param()`/`c.req.query()`
 // reads outside `workspace-access-middleware.ts` (and `require-work-item-reach.ts`,
@@ -60,6 +85,299 @@ describe("API integration: #281 NUL-byte sweep on raw param/query reads", () => 
       `/api/ws/${encodeURIComponent("\u0000x")}`,
       { headers: { Upgrade: "websocket", Connection: "Upgrade" } },
     );
+
+    expect(response.status).toBe(400);
+  });
+});
+
+// Issue #285's S4 finding, and this sweep's own follow-up: a NUL byte in a JSON BODY
+// id field that reaches a DB lookup directly -- not through a `workspaceAccess.*`
+// source, and not through `scopeToRelation`'s already-guarded path param -- also
+// 500'd. Each case below names the exact unguarded field and where the guard landed.
+describe("issue #290 (S4): NUL-byte sweep on body id fields that reach a DB lookup", () => {
+  beforeEach(async () => {
+    await resetTestDatabase();
+  });
+
+  it("POST /api/task-relation: a NUL byte in sourceTaskId is a clean 400, not a 500 (scopeToSourceTask)", async () => {
+    const member = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await seedTask(project.id, columns.todo.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request("/api/task-relation", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        sourceTaskId: "\u0000x",
+        targetTaskId: task.id,
+        relationType: "blocks",
+      }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("POST /api/task-relation: a NUL byte in targetTaskId is a clean 400, not a 500 (create-task-relation.ts)", async () => {
+    const member = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await seedTask(project.id, columns.todo.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request("/api/task-relation", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        sourceTaskId: task.id,
+        targetTaskId: "\u0000x",
+        relationType: "blocks",
+      }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("PUT /api/label/{id}/task: a NUL byte in the taskId body field is a clean 400, not a 500 (assign-label-to-task.ts)", async () => {
+    const member = await createWorkspaceMember();
+    const { workspace } = member;
+    const label = requireRow(
+      await db
+        .insert(schema.labelTable)
+        .values({
+          workspaceId: workspace.id,
+          name: "Bug",
+          color: "#ef4444",
+        })
+        .returning(),
+      "label",
+    );
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/label/${label.id}/task`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ taskId: "\u0000x" }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("POST /api/label: a NUL byte in the optional taskId body field is a clean 400, not a 500 (create-label.ts)", async () => {
+    const member = await createWorkspaceMember();
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request("/api/label", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: "Bug",
+        color: "#ef4444",
+        workspaceId: member.workspace.id,
+        taskId: "\u0000x",
+      }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("PUT /api/workflow-rule/{projectId}: a NUL byte in the columnId body field is a clean 400, not a 500 (upsert-workflow-rule.ts)", async () => {
+    // "member" lacks project:update; the route's own permission gate would 403
+    // before this test could reach the NUL check.
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/workflow-rule/${project.id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        integrationType: "github",
+        eventType: "issue.closed",
+        columnId: "\u0000x",
+      }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("PUT /api/task/move/{id}: a NUL byte in the destinationProjectId body field is a clean 400, not a 500 (move-task.ts)", async () => {
+    const member = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await seedTask(project.id, columns.todo.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/task/move/${task.id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ destinationProjectId: "\u0000x" }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("PUT /api/task/assignee/{id}: a NUL byte in the userId body field is a clean 400, not a 500 (update-task-assignee.ts)", async () => {
+    // "member" lacks task:assign; the route's own permission gate would 403 before
+    // this test could reach the NUL check.
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await seedTask(project.id, columns.todo.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/task/assignee/${task.id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ userId: "\u0000x" }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("PUT /api/task/assignee/{id}: null userId (unassign) still works -- the NUL guard only runs on a real string", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await seedTask(project.id, columns.todo.id, member.user.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/task/assignee/${task.id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ userId: null }),
+    });
+
+    expect(response.status).toBe(200);
+  });
+});
+
+// Issue #307 S5 (Opus review of PR #307, delta round): four more NUL-to-500 gaps in
+// the task router this PR already touches, named explicitly in the review.
+describe("issue #307 (S5): NUL-byte sweep, task router follow-up", () => {
+  beforeEach(async () => {
+    await resetTestDatabase();
+  });
+
+  it("POST /api/task/{projectId}: a NUL byte in the body userId is a clean 400, not a 500 (create-task.ts)", async () => {
+    const member = await createWorkspaceMember();
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/task/${project.id}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: "Task",
+        description: "",
+        priority: "low",
+        status: "to-do",
+        userId: "\u0000x",
+      }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("POST /api/task/import/{projectId}: a NUL byte in tasks[].userId is a clean 400, not a 500 (import-tasks.ts)", async () => {
+    const member = await createWorkspaceMember();
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/task/import/${project.id}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        tasks: [
+          {
+            title: "Imported task",
+            status: "to-do",
+            userId: "\u0000x",
+          },
+        ],
+      }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("GET /api/task/tasks/{projectId}?assigneeId=: a NUL byte is a clean 400, not a 500 (get-tasks.ts)", async () => {
+    const member = await createWorkspaceMember();
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/task/tasks/${project.id}?assigneeId=${encodeURIComponent("\u0000x")}`,
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("PATCH /api/task/bulk: a NUL byte in addLabel's value is a clean 400, not a 500 (bulk-update-tasks.ts)", async () => {
+    const member = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await seedTask(project.id, columns.todo.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request("/api/task/bulk", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        taskIds: [task.id],
+        operation: "addLabel",
+        value: "\u0000x",
+      }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("PATCH /api/task/bulk: a NUL byte in removeLabel's value is a clean 400, not a 500 (bulk-update-tasks.ts)", async () => {
+    const member = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await seedTask(project.id, columns.todo.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request("/api/task/bulk", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        taskIds: [task.id],
+        operation: "removeLabel",
+        value: "\u0000x",
+      }),
+    });
 
     expect(response.status).toBe(400);
   });
