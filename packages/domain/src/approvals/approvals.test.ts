@@ -221,21 +221,39 @@ describe("validateApprovalRequest", () => {
     expect(validateApprovalRequest(baseInput())).toEqual({ ok: true });
   });
 
+  it("AP-1: a non-staff requester is refused for kind = customer", () => {
+    const result = validateApprovalRequest(
+      baseInput({ isRequesterStaff: false }),
+    );
+    expect(result).toEqual({ ok: false, reasons: ["requester_not_staff"] });
+  });
+
+  it("AP-1: a staff requester is accepted for kind = customer", () => {
+    const result = validateApprovalRequest(
+      baseInput({ isRequesterStaff: true }),
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("AP-2: a non-staff requester is refused for kind = cab (customer-cannot-request-cab)", () => {
+    const result = validateApprovalRequest(
+      baseInput({ kind: "cab", isRequesterStaff: false, isChangeType: true }),
+    );
+    expect(result).toEqual({ ok: false, reasons: ["cab_requires_staff"] });
+  });
+
+  it("AP-2: a staff requester is accepted for kind = cab (given is_change)", () => {
+    const result = validateApprovalRequest(
+      baseInput({ kind: "cab", isRequesterStaff: true, isChangeType: true }),
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
   it("requester-cannot-self-approve: refused at request time (edge case 422)", () => {
     const result = validateApprovalRequest(
       baseInput({ approverId: "requester" }),
     );
     expect(result).toEqual({ ok: false, reasons: ["self_approval"] });
-  });
-
-  it("customer-cannot-request-cab: a non-staff requester is refused for kind = cab", () => {
-    const result = validateApprovalRequest(
-      baseInput({ kind: "cab", isRequesterStaff: false, isChangeType: true }),
-    );
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reasons).toContain("cab_requires_staff");
-    }
   });
 
   it("AP-2: a CAB request on a non-change work item type is refused even for staff", () => {

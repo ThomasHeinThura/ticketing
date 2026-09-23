@@ -90,9 +90,11 @@ export interface ApprovalGate {
   kind?: ApprovalKind;
 }
 
-/** Why a new approval request is refused, independent of capabilities (`AP-2`, `AP-4`, edge cases). */
+/** Why a new approval request is refused, independent of capabilities (`AP-1`, `AP-2`, `AP-4`, edge cases). */
 export type ApprovalRequestRefusalReason =
   | "self_approval"
+  /** AP-1: a customer approval requires staff standing too — Permissions § "Request a customer approval", "Staff only". */
+  | "requester_not_staff"
   | "cab_requires_staff"
   | "cab_requires_change_type"
   | "expiry_not_in_future"
@@ -112,7 +114,7 @@ export interface ApprovalRequestInput {
   isChangeType: boolean;
 }
 
-/** Why a decision attempt is refused (`AP-7`, `AP-8`, `AP-9`, `AP-16`'s CAB-membership half). */
+/** Why a decision attempt is refused (`AP-7`, `AP-8`, `AP-9`, and the Permissions table's "Decide a CAB approval" row — CAB-membership is a Permissions-table rule, not `AP-16`, which is the gate's own kind-matching rule; see `ApprovalGate.kind` above). */
 export type ApprovalDecisionRefusalReason =
   | "not_pending"
   | "not_named_approver"
@@ -120,7 +122,7 @@ export type ApprovalDecisionRefusalReason =
   | "not_cab_member"
   | "note_required";
 
-/** Everything `evaluateApprovalDecision` needs. `cabMemberIds` is a caller-supplied membership set — this module never looks membership up (`AP-16`, `rbac.md`). */
+/** Everything `evaluateApprovalDecision` needs. `cabMemberIds` is a caller-supplied membership set — this module never looks membership up (`approvals.md` § Permissions, "Decide a CAB approval"; `rbac.md`). */
 export interface ApprovalDecisionInput {
   approval: Approval;
   actingPersonId: string;

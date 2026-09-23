@@ -110,11 +110,18 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  *   *deciding*, applied at the moment the pairing is created — refusing it here is what
  *   makes the case in `evaluateApprovalDecision` below structurally unreachable through
  *   this module's own request path, not merely tested for.
- * - **`AP-2`**: a CAB approval requires staff standing and `work_item_type.is_change`.
- *   Both are independently reported when both fail — the v1 defect this closes ("a
- *   customer-side account could request an internal CAB approval") was a single missing
- *   check, not two, but nothing says a customer account can't also target a non-change
- *   item, and the caller should see both.
+ * - **`AP-1`**: "A customer approval may be requested **by staff** with `approval:request`"
+ *   (`approvals.md:45`), also the Permissions table's own "Request a customer approval |
+ *   `approval:request` | **Staff only**" (`approvals.md:117`). Checked here independent of
+ *   the `approval:request` capability, the same defense-in-depth stance `AP-8` takes for
+ *   self-approval — a capability grant is not this module's business to trust blindly.
+ * - **`AP-2`**: a CAB approval requires staff standing (the same staff-only rule `AP-1`
+ *   states for a customer approval, restated for CAB in the Permissions table's "Request a
+ *   CAB approval | `approval:request_cab` | Staff only, ...") and `work_item_type.is_change`.
+ *   Both — plus the shared staff check above — are independently reported when they fail:
+ *   the v1 defect this closes ("a customer-side account could request an internal CAB
+ *   approval") was a single missing check, not several, but nothing says a customer
+ *   account can't also target a non-change item, and the caller should see all of it.
  * - **Expiry**: "Expiry set in the past" (`expiresAt <= now`, strictly — an approval that
  *   expires the instant it is created satisfies no gate and reminds nobody, so it is
  *   treated the same as already in the past) and `AP-4`'s 90-day cap.
@@ -128,13 +135,17 @@ export function validateApprovalRequest(
     reasons.push("self_approval");
   }
 
-  if (input.kind === "cab") {
-    if (!input.isRequesterStaff) {
-      reasons.push("cab_requires_staff");
-    }
-    if (!input.isChangeType) {
-      reasons.push("cab_requires_change_type");
-    }
+  if (!input.isRequesterStaff) {
+    // AP-1's "Staff only" applies to a customer approval exactly as AP-2's does to a CAB
+    // one; the reason code still distinguishes which rule fired, since a customer-kind
+    // refusal and a CAB-kind refusal are different messages at the caller's 422 body.
+    reasons.push(
+      input.kind === "cab" ? "cab_requires_staff" : "requester_not_staff",
+    );
+  }
+
+  if (input.kind === "cab" && !input.isChangeType) {
+    reasons.push("cab_requires_change_type");
   }
 
   if (input.expiresAt.getTime() <= input.now.getTime()) {
@@ -150,7 +161,10 @@ export function validateApprovalRequest(
 }
 
 // ---------------------------------------------------------------------------
-// CAB membership — AP-16, Permissions ("Decide a CAB approval").
+// CAB membership — Permissions § "Decide a CAB approval" (approvals.md:118 — "Must also be
+// a team_member of the team flagged is_cab ... capability and membership are both
+// required, not either alone"). Not AP-16, which is the gate's own kind-matching rule
+// (a requires_cab gate only counts kind = 'cab' approvals) — see ApprovalGate.kind above.
 // ---------------------------------------------------------------------------
 
 /**
@@ -167,7 +181,7 @@ export function isCabMember(
 }
 
 // ---------------------------------------------------------------------------
-// Deciding — AP-7, AP-8, AP-9, AP-16 (membership half).
+// Deciding — AP-7, AP-8, AP-9, and Permissions § "Decide a CAB approval" (CAB membership).
 // ---------------------------------------------------------------------------
 
 /**
@@ -203,9 +217,11 @@ export function decisionNoteSatisfies(
  *   no visibility into), so the decision-time check stands on its own, exactly as `AP-8`'s
  *   own wording ("Nobody may approve a request they raised") states it as a rule about
  *   deciding, not only about requesting.
- * - **`AP-16`**: a `kind: "cab"` approval additionally requires CAB membership.
- *   `cabMemberIds` must be supplied for a CAB approval; an omitted set is treated as "not
- *   a member" (fail closed — never assume membership when the caller did not resolve it).
+ * - **Permissions § "Decide a CAB approval"** (`approvals.md:118`): a `kind: "cab"`
+ *   approval additionally requires CAB membership — not `AP-16`, which is the gate's own
+ *   kind-matching rule (see `ApprovalGate.kind`'s doc comment). `cabMemberIds` must be
+ *   supplied for a CAB approval; an omitted set is treated as "not a member" (fail closed —
+ *   never assume membership when the caller did not resolve it).
  * - **State**: only `pending` may be decided (`AP-10`: "A decision is final"; `AP-14`: an
  *   expired approval cannot be approved after the fact).
  */
