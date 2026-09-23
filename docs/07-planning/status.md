@@ -89,7 +89,8 @@ but its runtime integration is still open. **#9: 47 of ~61 primitives now live i
 Radix `Slot` (form, timeline), an app wrapper (avatar, #286-style), the `input-otp` npm
 dependency, and Sentry (the error-* files). **#23 (P1):** create/read/list, field update, and the WI-6
 activity-and-events wiring (#292) are merged. Delete, bulk, rank, hierarchy and watchers
-remain; `audit_log` (#37) is in flight (see the re-verify block below). **P2:** the approvals and assignment rules exist as pure
+remain. `audit_log`'s table and writer (#37, first slice) are merged as #291; nothing writes
+to it yet. **P2:** the approvals and assignment rules exist as pure
 functions (#287/#289), with no HTTP wiring yet.
 
 **Merged this third pass (2026-09-23):**
@@ -114,16 +115,18 @@ functions (#287/#289), with no HTTP wiring yet.
   (`design-system.md` "Caller-supplied labels"). Its focus-return tests were rewritten
   because the old ones passed even when focus return was broken.
 
-**Also merged, after this pass was drafted:** **#292**, the WI-6 wiring. Work-item
-create and update now write `activity` rows and emit `work_item.created`/`updated` after
-commit. It took three Sonnet reviews and Opus 5.5, CLEAR WITH FINDINGS; the follow-ups are
-#298.
+**Also merged, after this pass was drafted:**
+- **#292**, the WI-6 wiring. Work-item create and update now write `activity` rows and emit
+  `work_item.created`/`updated` after commit. It had three Sonnet reviews and Opus 5.5 was
+  CLEAR WITH FINDINGS; the follow-ups are #298.
+- **#291**, `audit_log` (#37's first slice). It is a trigger-based append-only control,
+  recorded in the decision log. The reviews found a TRUNCATE bypass and three false-tamper
+  bugs, all fixed; the hashed value is now normalised once and then hashed and stored. A
+  gitleaks false positive on a test fixture was dismissed by exact fingerprint, and Thomas
+  decided that (decision log). Its residual risk, a superuser owner, is #296.
 
-**In flight at this snapshot** (re-verify in GitHub):
-- **#291** (`audit_log`): a trigger-based append-only control. Reviews found a TRUNCATE
-  bypass and three false-tamper bugs, all fixed. The hashed value is now normalised once,
-  then hashed and stored. A gitleaks false positive on a test fixture was dismissed by exact
-  fingerprint; Thomas decided that (decision log).
+**In flight at this snapshot** (re-verify in GitHub): #296, the DB role split; a slicing plan
+for #8's runtime integration.
 
 **The principal P0 blocker, stated plainly:** #8's **runtime** integration. The declarative
 policy registry is built and every route is classified, but **no request is evaluated
