@@ -76,17 +76,85 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-23, later the same day (#23's second slice, `PATCH` with
-optimistic concurrency, merged as PR #271 after two Opus 5.5 rounds; #9's second primitive
-batch merged as PR #274 after its browser check found and fixed a real rendering defect; the
-default Opus reviewer is now Opus 5.5, PR #272; the work-item activity-table decision and a
-standing delegation recorded, PR #273)
-**Current stage:** P0 · Foundation, continuing into P1–P7 parallel — **Throttle 1 OPEN
-(unchanged); P0 concrete-defect backlog fully clear. #8's classification pass is done (PR
-#259, merged); its separate runtime-integration obligation remains open, so #8 itself stays
-open. #9: 27 of ~61 primitives now live in `packages/ui` (batch 2 merged as #274); 34
-remain. #23 (P1): create/read/list (#261) and field update (#271) are merged. Delete, bulk,
-rank, hierarchy, watchers, and wiring activity rows into create/update remain open.**
+**Last updated:** 2026-09-23, third pass that day. Eleven more PRs have merged since the
+second pass: #275 (the work-item `activity` table), #277 (input hardening), #278/#282/#283
+(design-system, comments-and-activity, approvals and assignment specs cleared of review
+findings), #280/#284/#293 (three #9 primitive batches), #285 (the `?workspaceId=`
+fallback removed, #256), and #287/#289 (assignment and approvals as pure `packages/domain`
+functions).
+**Current stage:** P0 · Foundation, continuing into P1–P7 parallel. **Throttle 1 OPEN
+(unchanged); P0 concrete-defect backlog fully clear.** #8's classification pass is done,
+but its runtime integration is still open. **#9: 47 of ~61 primitives now live in
+`packages/ui`, and 14 remain.** Those are mostly blocked on i18n (breadcrumb, pagination),
+Radix `Slot` (form, timeline), an app wrapper (avatar, #286-style), the `input-otp` npm
+dependency, and Sentry (the error-* files). **#23 (P1):** create/read/list, field update, and the WI-6
+activity-and-events wiring (#292) are merged. Delete, bulk, rank, hierarchy and watchers
+remain. `audit_log`'s table and writer (#37, first slice) are merged as #291; nothing writes
+to it yet. **P2:** the approvals and assignment rules exist as pure
+functions (#287/#289), with no HTTP wiring yet.
+
+**Merged this third pass (2026-09-23):**
+- **#275** — the work-item `activity` table, with kaneo's table renamed `task_activity`
+  (decision log 2026-09-23). Opus found `ON DELETE RESTRICT` would make workspaces
+  undeletable; it is now CASCADE, recorded in a decision-log addendum. Opus also found
+  fail-open visibility mapping in three rounds running. Per AGENTS.md "change altitude",
+  `resolveVisibility` became an exhaustive `(verb, field)` allowlist, and a 1,470-case probe
+  found no mismatches.
+- **#285** — #256 closed. All 36 call sites were audited, and a failed row lookup is now 404
+  with no caller-supplied workspace fallback. Two follow-ups remain: the pre-existing
+  cross-tenant 403-vs-404 existence oracle (**#290**, with #285's Opus S1–S4 added to it),
+  and consolidating the two NUL helpers (#288).
+- **#287/#289** — assignment and approvals domain modules. #287's first draft built on a
+  **stale main checkout** and invented a spec row; its reviewer caught it by reading
+  `origin/main`. See the process facts below.
+- **#278/#282/#283** — specs cleared. Thomas picked **Recharts**, **react-grid-layout** and
+  **Playwright screenshots** for G8. That resolves the G8 open decision; the dependencies
+  land with their first use.
+- **#280/#284/#293** — UI primitive batches. #293 changed an API, so it was not
+  relocation-only: `dialog`/`sheet`/`combobox` now take a required caller-supplied label
+  (`design-system.md` "Caller-supplied labels"). Its focus-return tests were rewritten
+  because the old ones passed even when focus return was broken.
+
+**Also merged, after this pass was drafted:**
+- **#292**, the WI-6 wiring. Work-item create and update now write `activity` rows and emit
+  `work_item.created`/`updated` after commit. It had three Sonnet reviews and Opus 5.5 was
+  CLEAR WITH FINDINGS; the follow-ups are #298.
+- **#291**, `audit_log` (#37's first slice). It is a trigger-based append-only control,
+  recorded in the decision log. The reviews found a TRUNCATE bypass and three false-tamper
+  bugs, all fixed; the hashed value is now normalised once and then hashed and stored. A
+  gitleaks false positive on a test fixture was dismissed by exact fingerprint, and Thomas
+  decided that (decision log). Its residual risk, a superuser owner, is #296.
+
+**In flight at this snapshot** (re-verify in GitHub): #296, the DB role split; a slicing plan
+for #8's runtime integration.
+
+**The principal P0 blocker, stated plainly:** #8's **runtime** integration. The declarative
+policy registry is built and every route is classified, but **no request is evaluated
+against it**: nothing on the request path calls an evaluator, and an invalid registry does
+not fail at boot. Routes are still authorized today, by hand-written per-route middleware
+(`requireWorkspaceCapability`, `requireWorkItemReach`, …). So they aren't unprotected. But
+the registry is not yet the single source of truth, and every open checkbox in #8's runtime
+section is still unticked. That, and #296 below, come before any UAT claim that "the gates
+are enforced".
+
+**New issue that matters for UAT:** **#296**. The API connects to Postgres as the table
+owner, which the official image makes a **superuser**, in both compose and Helm. Every
+database-level control, the audit trigger included, assumes it isn't one. The recommended
+fix is the migration-role and app-role split.
+
+**Process facts learned this pass (durable, also in memory):**
+- `git pull --ff-only` in the main checkout fails silently here. Use
+  `git fetch && git merge --ff-only origin/main`, and lanes read specs via
+  `git show origin/main:<path>`.
+- `scripts/ci/check-pr-template.mjs` must run from inside the PR's worktree, because it
+  derives the repo root from its own path.
+- Lanes repeatedly deleted template headings. Prompts now require running the template check
+  before opening a PR.
+- The org's monthly spend limit stopped six agents at once. One lane died mid-mutation-check
+  with a deliberately broken file in its worktree. On recovery, run
+  `grep MUTATION-TEST` before resuming.
+- GitHub once failed to sync a PR's head after `update-branch`. Closing and reopening the
+  PR fixed it. Check CI conclusions against the exact commit, not the PR summary.
 
 **Merged this pass (2026-09-23, after the entry below):**
 - **PR #271** — `PATCH /api/work-items/{key}` (WI-7/WI-8). A required `If-Match`
@@ -111,15 +179,7 @@ rank, hierarchy, watchers, and wiring activity rows into create/update remain op
   delegation**: take the recommended option, and ask Thomas only on a real trade-off; and
   #271's `If-Match` and 409 calls.
 
-**In flight at this snapshot** (re-verify in GitHub): **#275** (the new `activity` table
-and the legacy rename) — Opus 5.5 found the `ON DELETE RESTRICT` blocker (workspaces would
-have become undeletable; now CASCADE, with a recorded decision-log addendum) and, across
-three rounds, recurring fail-open visibility mapping; it is being restructured into an
-exhaustive allowlist. **#277** (T1–T4 hardening; it touches `utils/workspace-access-middleware.ts`,
-so it needs Opus). A spec-only lane is closing `design-system.md`'s six review findings
-(Thomas, 2026-09-23: #9 relocation batches cite `ui-extraction-plan.md` meanwhile — the
-decision log records this, on #274). The chart library, dashboard grid, and snapshot tool are
-Thomas's picks. #9 batch 3 is in progress.
+_(Second-pass in-flight list superseded by the third-pass block above.)_
 
 **Process facts learned this pass (durable):** bring a PR current with `main` *before*
 its final Opus pass. The template gate binds the note to `**Reviewed head:** <40-char sha>`
@@ -1418,6 +1478,27 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-23 (third pass) · 11 more PRs merged; spec gates honoured, not routed around; an outage recovered cleanly
+
+This pass shows the gates working as designed. `check:reviews` blocked #274 and #275
+because specs they depended on still had stale open review findings. Each time, the answer
+was to close those findings properly: #282 for comments-and-activity, #283 for approvals and
+assignment, #278 for design-system, where Thomas made the three dependency picks. The Spec
+field was not edited to get past the gate. The one case where editing it *was* right went to
+Thomas (#274), and he chose "both".
+
+Review caught real defects before merge:
+- a TRUNCATE bypass of the audit trigger;
+- false-tamper verification;
+- undeletable workspaces;
+- fail-open customer visibility;
+- misattributed API-key actors;
+- hollow focus tests;
+- an invented spec rule.
+
+An org spend-limit outage mid-session was recovered with nothing lost. A mutated file was
+caught before commit.
 
 ### 2026-09-23 · #271 and #274 merged; Opus 5.5 default; activity-table decision; three blockers caught before merge
 
