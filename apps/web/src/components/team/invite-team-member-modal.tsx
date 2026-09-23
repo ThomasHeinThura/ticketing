@@ -1,6 +1,16 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, Input } from "@taskdesk/ui";
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogFooter,
+  DialogHeader,
+  DialogPanel,
+  DialogPopup,
+  DialogTitle,
+  Input,
+} from "@taskdesk/ui";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -9,15 +19,6 @@ import useInviteWorkspaceUser from "@/hooks/mutations/workspace-user/use-invite-
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
-import {
-  Dialog,
-  DialogClose,
-  DialogFooter,
-  DialogHeader,
-  DialogPanel,
-  DialogPopup,
-  DialogTitle,
-} from "../ui/dialog";
 import {
   Form,
   FormControl,
@@ -118,7 +119,10 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={resetAndCloseModal}>
-      <DialogPopup className="w-full max-w-md">
+      <DialogPopup
+        className="w-full max-w-md"
+        closeLabel={t("common:actions.close")}
+      >
         <DialogHeader>
           <DialogTitle>
             {createdInvitation

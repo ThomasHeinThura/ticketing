@@ -1,11 +1,11 @@
 "use client";
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { Button, ScrollArea } from "@taskdesk/ui";
 import { XIcon } from "lucide-react";
 import * as React from "react";
-import { cn } from "@/lib/cn";
-import { i18n } from "@/lib/i18n";
+import { cn } from "../lib/cn";
+import { Button } from "./button";
+import { ScrollArea } from "./scroll-area";
 
 const DialogCreateHandle = DialogPrimitive.createHandle;
 
@@ -85,16 +85,29 @@ function DialogViewport({
   );
 }
 
+type DialogPopupOwnProps =
+  | {
+      showCloseButton?: true;
+      bottomStickOnMobile?: boolean;
+      /** Accessible name for the close button. Required whenever the close button renders. */
+      closeLabel: string;
+    }
+  | {
+      showCloseButton: false;
+      bottomStickOnMobile?: boolean;
+      closeLabel?: string;
+    };
+
+type DialogPopupProps = DialogPrimitive.Popup.Props & DialogPopupOwnProps;
+
 function DialogPopup({
   className,
   children,
   showCloseButton = true,
   bottomStickOnMobile = true,
+  closeLabel,
   ...props
-}: DialogPrimitive.Popup.Props & {
-  showCloseButton?: boolean;
-  bottomStickOnMobile?: boolean;
-}) {
+}: DialogPopupProps) {
   return (
     <DialogPortal>
       <DialogBackdrop forceRender />
@@ -117,7 +130,7 @@ function DialogPopup({
           {children}
           {showCloseButton && (
             <DialogPrimitive.Close
-              aria-label={i18n.t("common:actions.close")}
+              aria-label={closeLabel}
               className="absolute end-2 top-2"
               render={<Button size="icon" variant="ghost" />}
             >

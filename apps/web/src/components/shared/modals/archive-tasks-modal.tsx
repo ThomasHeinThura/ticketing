@@ -1,13 +1,13 @@
-import { Button } from "@taskdesk/ui";
-import { Archive } from "lucide-react";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@taskdesk/ui";
+import { Archive } from "lucide-react";
 
 type ArchiveTasksModalProps = {
   open: boolean;

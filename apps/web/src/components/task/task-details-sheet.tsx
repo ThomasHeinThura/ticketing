@@ -1,6 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
+  Sheet,
+  SheetContent,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -9,7 +11,6 @@ import {
 import { Maximize2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetTask from "@/hooks/queries/task/use-get-task";
 import TaskDeleteButton from "./task-delete-button";
@@ -68,6 +69,7 @@ export default function TaskDetailsSheet({
       <SheetContent
         side="right"
         className="w-full max-w-full sm:max-w-lg md:max-w-2xl lg:max-w-4xl p-0 gap-0 [&>button]:hidden"
+        closeLabel={t("common:actions.close")}
       >
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-background shrink-0">
           <div className="flex items-center gap-2">
