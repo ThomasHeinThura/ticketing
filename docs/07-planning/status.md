@@ -1542,6 +1542,30 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
+### 2026-09-23 (follow-up) · P0 history refreshes and ordinary review deltas
+
+**#323 / issue #8:** PR head `8fe8fdf16db53e7de2d43344f3fcdcee7e89c617` is a linear,
+tree-preserving refresh of `50a05d5072655348973720dc65aa11cf3637e266` (tree
+`0fdc8cf701d7c82e24a483ad77ceddb1d69f166e`). It removes the unrelated historical
+`52d1afc` chart-placeholder commit after GitGuardian identified `passwordKey: postgres_uri`
+as a generic-password finding; the finding was not dismissed, and GitGuardian is now green.
+Migration 0069's journal and snapshot chain follow #322's 0068 migration. Independent
+GPT-6 Luna ordinary review found no blocking issue; the reviewer noted generic 404
+classification can add noise, which remains fail-safe and must be accounted for before
+cut-over. Exact-head Opus review is still mandatory and pending; CI is refreshing.
+
+**#334 / issue #319:** exact head `51af10d116eebe4f9b0ccff9f752c1a69c7df326` received a
+fresh independent GPT-6 Luna **PASS**. The reviewer confirmed workspace-specific reach and
+role provenance through all consumers, and called out stale PR metadata; the PR body now
+records the exact head, the review scope and the still-pending exact-head Opus pass. CI's
+security-review-template check remains red until Opus evidence is available.
+
+**#331 / issue #11:** exact head `22fde4739ce7b970e48b57fcf16a0de314b2302c` fixed the
+three earlier ordinary blockers, as confirmed by an independent GPT-6 review, but that
+review found the post-upgrade rollback hint still emitted an unusable digest/tag command.
+The hint is now being corrected and the next candidate still requires fresh ordinary review,
+all checks, and Opus. No merge or release was triggered.
+
 ### 2026-09-23 · P0 release and primitive integration checks; #331 returned for remediation
 
 Continued the P0 integration queue on isolated branches. For **#341**, rebuilt the exact

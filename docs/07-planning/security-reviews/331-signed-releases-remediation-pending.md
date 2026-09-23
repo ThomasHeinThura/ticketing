@@ -17,8 +17,15 @@ The independent ordinary review of `77e116e00357e3dad09b1a5f55a974c9dcf8e5c6` re
 **CHANGES NEEDED** with three release-path blockers: GHCR login occurred after cosign
 signing; the default SLSA predicate described the workflow dispatch SHA rather than an
 older selected source SHA; and rollback verified a digest using the currently configured
-tag instead of the tag signed for that digest. These findings are being remediated in the
-current unreviewed delta. They are not Opus clearance.
+tag instead of the tag signed for that digest. The remediation was confirmed by the next
+independent ordinary delta review; this remains ordinary evidence only, not Opus clearance.
+
+The independent ordinary delta review of `22fde4739ce7b970e48b57fcf16a0de314b2302c`
+confirmed those three fixes, but found a further usability blocker in the upgrade success
+hint: it still printed the full `repository@digest` reference and omitted the now-required
+signed release tag. The current unreviewed delta derives the prior running container's tag
+and prints a complete rollback command only when both values are known; otherwise it asks
+the operator to confirm the tag. No live release/registry rollback has been run.
 
 ## Remediation scope recorded for the pending pass
 
@@ -36,6 +43,8 @@ current unreviewed delta. They are not Opus clearance.
   custom predicate binding the artifact digest to the validated selected source commit
   while retaining the SLSA workflow provenance; require the signed tag for rollback and
   persist that tag with its digest.
+- Follow-up ordinary-review delta: the post-upgrade hint derives the previous image's
+  configured tag from the still-running old container and pairs it with the bare digest.
 
 **Unblocker:** an independent authenticated Opus 5.5 reviewer. Current-session
 `claude auth status` reports `loggedIn: false`; another model cannot substitute.

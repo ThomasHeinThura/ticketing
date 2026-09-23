@@ -181,7 +181,10 @@ that was signed when that image was published, stores both values in `.env`, and
 the service back with `--wait`. For example, pass `v2.0.0` when rolling back to a digest
 published as `v2.0.0`. **Rolling back
 onto an unverified digest is still a supply-chain decision** — which is why the manual
-sequence below is the labelled fallback rather than the procedure:
+sequence below is the labelled fallback rather than the procedure. After an upgrade the
+script prints a complete rollback command using the prior running container's digest and
+configured image tag. If it cannot recover that signed tag, it says so instead of printing
+a command that cannot pass verification:
 
 ```bash
 dc down taskdesk                     # no signature verification

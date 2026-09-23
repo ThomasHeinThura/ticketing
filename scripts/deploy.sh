@@ -411,7 +411,15 @@ case "$MODE" in
   upgrade)
     say "before an upgrade: take a database backup and note the current digest."
     CURRENT="$(docker inspect --format '{{index .RepoDigests 0}}' "$(dc images -q taskdesk 2>/dev/null | head -1)" 2>/dev/null || true)"
-    [ -n "$CURRENT" ] && printf '    current: %s\n' "$CURRENT"
+    CURRENT_CONTAINER="$(dc ps -q taskdesk 2>/dev/null | head -1)"
+    CURRENT_IMAGE_REF="$(docker inspect --format '{{.Config.Image}}' "$CURRENT_CONTAINER" 2>/dev/null || true)"
+    CURRENT_TAG="${CURRENT_IMAGE_REF%@*}"
+    CURRENT_TAG="${CURRENT_TAG##*:}"
+    if [ -n "$CURRENT" ] && [[ "$CURRENT_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+      printf '    current: %s (signed tag: %s)\n' "$CURRENT" "$CURRENT_TAG"
+    elif [ -n "$CURRENT" ]; then
+      printf '    current: %s (could not read the configured signed tag)\n' "$CURRENT"
+    fi
     resolve_and_verify_image
     say "pulling"
     dc pull migrate taskdesk
@@ -443,7 +451,12 @@ case "$MODE" in
     dc up -d --wait taskdesk
     assert_port_unpublished
     probe_api
-    ok "upgraded. Roll back with: scripts/deploy.sh rollback ${CURRENT:-<digest>}"
+    if [ -n "$CURRENT" ] && [[ "$CURRENT_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+      CURRENT_DIGEST="${CURRENT##*@}"
+      ok "upgraded. Roll back with: scripts/deploy.sh rollback ${CURRENT_DIGEST} ${CURRENT_TAG}"
+    else
+      ok "upgraded. Previous image digest was ${CURRENT:-unavailable}; confirm its signed image tag before rollback."
+    fi
     ;;
 
   rollback)
