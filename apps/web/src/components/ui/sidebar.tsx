@@ -7,6 +7,11 @@ import {
   Input,
   ScrollArea,
   Separator,
+  Sheet,
+  SheetDescription,
+  SheetHeader,
+  SheetPopup,
+  SheetTitle,
   Skeleton,
   Tooltip,
   TooltipPopup,
@@ -16,13 +21,6 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Sheet,
-  SheetDescription,
-  SheetHeader,
-  SheetPopup,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/cn";
 
@@ -190,6 +188,7 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset";
   collapsible?: "offcanvas" | "icon" | "none";
 }) {
+  const { t } = useTranslation();
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
   if (collapsible === "none") {
@@ -212,6 +211,7 @@ function Sidebar({
       <Sheet onOpenChange={setOpenMobile} open={openMobile} {...props}>
         <SheetPopup
           className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+          closeLabel={t("common:actions.close")}
           data-mobile="true"
           data-sidebar="sidebar"
           data-slot="sidebar"

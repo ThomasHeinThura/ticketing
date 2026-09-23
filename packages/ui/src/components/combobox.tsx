@@ -1,11 +1,11 @@
 "use client";
 
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
-import { Input, ScrollArea } from "@taskdesk/ui";
 import { ChevronsUpDownIcon, XIcon } from "lucide-react";
 import * as React from "react";
-import { cn } from "@/lib/cn";
-import { i18n } from "@/lib/i18n";
+import { cn } from "../lib/cn";
+import { Input } from "./input";
+import { ScrollArea } from "./scroll-area";
 
 const ComboboxContext = React.createContext<{
   chipsRef: React.RefObject<Element | null> | null;
@@ -51,20 +51,37 @@ function ComboboxChipsInput({
   );
 }
 
+type ComboboxInputOwnProps =
+  | {
+      showTrigger?: boolean;
+      showClear?: false;
+      startAddon?: React.ReactNode;
+      size?: "sm" | "default" | "lg" | number;
+      /** Accessible name for the clear button. Required whenever the clear button renders. */
+      clearLabel?: string;
+    }
+  | {
+      showTrigger?: boolean;
+      showClear: true;
+      startAddon?: React.ReactNode;
+      size?: "sm" | "default" | "lg" | number;
+      clearLabel: string;
+    };
+
+type ComboboxInputProps = Omit<ComboboxPrimitive.Input.Props, "size"> &
+  ComboboxInputOwnProps & {
+    ref?: React.Ref<HTMLInputElement>;
+  };
+
 function ComboboxInput({
   className,
   showTrigger = true,
   showClear = false,
   startAddon,
   size,
+  clearLabel,
   ...props
-}: Omit<ComboboxPrimitive.Input.Props, "size"> & {
-  showTrigger?: boolean;
-  showClear?: boolean;
-  startAddon?: React.ReactNode;
-  size?: "sm" | "default" | "lg" | number;
-  ref?: React.Ref<HTMLInputElement>;
-}) {
+}: ComboboxInputProps) {
   const sizeValue = (size ?? "default") as "sm" | "default" | "lg" | number;
 
   return (
@@ -111,7 +128,7 @@ function ComboboxInput({
       )}
       {showClear && (
         <ComboboxClear
-          aria-label={i18n.t("common:actions.remove")}
+          aria-label={clearLabel}
           className={cn(
             "-translate-y-1/2 absolute top-1/2 inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-transparent opacity-80 outline-none transition-opacity pointer-coarse:after:absolute pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11 hover:opacity-100 has-[+[data-slot=combobox-clear]]:hidden sm:size-7 [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
             sizeValue === "sm" ? "end-0" : "end-0.5",
@@ -371,7 +388,12 @@ function ComboboxChips({
   );
 }
 
-function ComboboxChip({ children, ...props }: ComboboxPrimitive.Chip.Props) {
+type ComboboxChipProps = ComboboxPrimitive.Chip.Props & {
+  /** Accessible name for this chip's remove button. */
+  removeLabel: string;
+};
+
+function ComboboxChip({ children, removeLabel, ...props }: ComboboxChipProps) {
   return (
     <ComboboxPrimitive.Chip
       className="flex items-center rounded-[calc(var(--radius-md)-1px)] bg-accent ps-2 font-medium text-accent-foreground text-sm outline-none sm:text-xs/(--text-xs--line-height) [&_svg:not([class*='size-'])]:size-4 sm:[&_svg:not([class*='size-'])]:size-3.5"
@@ -379,7 +401,7 @@ function ComboboxChip({ children, ...props }: ComboboxPrimitive.Chip.Props) {
       {...props}
     >
       {children}
-      <ComboboxChipRemove />
+      <ComboboxChipRemove aria-label={removeLabel} />
     </ComboboxPrimitive.Chip>
   );
 }
@@ -387,7 +409,6 @@ function ComboboxChip({ children, ...props }: ComboboxPrimitive.Chip.Props) {
 function ComboboxChipRemove(props: ComboboxPrimitive.ChipRemove.Props) {
   return (
     <ComboboxPrimitive.ChipRemove
-      aria-label={i18n.t("common:actions.remove")}
       className="h-full shrink-0 cursor-pointer px-1.5 opacity-80 hover:opacity-100 [&_svg:not([class*='size-'])]:size-4 sm:[&_svg:not([class*='size-'])]:size-3.5"
       data-slot="combobox-chip-remove"
       {...props}

@@ -1,15 +1,15 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@taskdesk/ui";
-import { saveAs } from "file-saver";
-import { Download, Loader2, Upload } from "lucide-react";
-import { useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
+  Button,
   Dialog,
   DialogClose,
   DialogPopup,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@taskdesk/ui";
+import { saveAs } from "file-saver";
+import { Download, Loader2, Upload } from "lucide-react";
+import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import useExportTasks from "@/hooks/mutations/task/use-export-tasks";
 import useImportTasks from "@/hooks/mutations/task/use-import-tasks";
 import { cn } from "@/lib/cn";
@@ -165,7 +165,10 @@ export function TasksImportExport({ project }: TasksImportExportProps) {
       </div>
 
       <Dialog open={isImportOpen} onOpenChange={resetAndCloseModal}>
-        <DialogPopup className="w-full max-w-md">
+        <DialogPopup
+          className="w-full max-w-md"
+          closeLabel={t("common:actions.close")}
+        >
           <div className="bg-card rounded-lg shadow-xl border border-border">
             <div className="flex items-center justify-between p-4 border-b border-border">
               <DialogTitle className="text-lg font-semibold text-foreground">
