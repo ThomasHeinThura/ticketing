@@ -128,12 +128,18 @@ by the portal-boundary middleware ([auth-and-identity.md](auth-and-identity.md))
 membership came from an ancestor project, per OpenProject's model.
 
 **`workspace_role`** (`id`, `workspace_id`, `role` a name, `permission` a JSON
-`{resource: action[]}` map, `created_at`, `updated_at`, `UNIQUE (workspace_id, role)`) is the
-LEGACY, pre-`role`-table shape kaneo's inherited better-auth `organization()` plugin uses —
-inherited, transitional, and on its way out once the `organization()` retrofit (issue #6)
-reaches S10 and the plugin unmounts. The organization-plugin retrofit's S7 stage gives it its
-first native (non-plugin) route surface; the table above is the FUTURE shape this one is
-replaced by, not a variant of it.
+`{resource: action[]}` map, `is_system boolean not null default false` (issue #318,
+security — `true` only for a row `seed-default-workspace-roles.ts`'s backfill or
+`create-workspace.ts`'s creation-time seed inserted for `viewer`/`member`/`admin`; a custom
+row `create-workspace-role.ts` inserts is always `false`, including one that shares a
+`BUILT_IN_ROLES` name — distinguishes a genuine seeded built-in row from a custom row that
+merely took the name, which the legacy capability check and `resolveIdentity`'s adapter both
+require before granting that name's built-in capabilities; see rbac.md), `created_at`,
+`updated_at`, `UNIQUE (workspace_id, role)`) is the LEGACY, pre-`role`-table shape kaneo's
+inherited better-auth `organization()` plugin uses — inherited, transitional, and on its way
+out once the `organization()` retrofit (issue #6) reaches S10 and the plugin unmounts. The
+organization-plugin retrofit's S7 stage gives it its first native (non-plugin) route
+surface; the table above is the FUTURE shape this one is replaced by, not a variant of it.
 
 ### External identity — OIDC connections and SCIM provisioning
 
