@@ -111,7 +111,18 @@ export async function resetTestDatabase() {
 
   const formattedTableNames = tableNames.map(quoteIdentifier).join(", ");
 
-  await db.execute(
-    sql.raw(`TRUNCATE TABLE ${formattedTableNames} RESTART IDENTITY CASCADE`),
-  );
+  // `audit_log`'s own append-only triggers (issue #37, `apps/api/src/audit/`) correctly
+  // refuse an ordinary TRUNCATE -- including THIS administrative, whole-database test
+  // reset, which truncates every table in one statement. `SET LOCAL
+  // session_replication_role = replica` disables user-defined triggers for the
+  // duration of this one transaction only (reverted automatically at COMMIT/ROLLBACK,
+  // never touched outside a test harness) -- it does NOT disable TRUNCATE's own CASCADE
+  // behaviour, which is driven by foreign-key metadata, not by firing row/statement
+  // triggers, so every other table's cascade-truncate is unaffected.
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`SET LOCAL session_replication_role = replica`);
+    await tx.execute(
+      sql.raw(`TRUNCATE TABLE ${formattedTableNames} RESTART IDENTITY CASCADE`),
+    );
+  });
 }

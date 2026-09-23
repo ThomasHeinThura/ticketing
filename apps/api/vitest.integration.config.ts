@@ -39,6 +39,14 @@ export default defineConfig({
         __dirname,
         "../../packages/permissions/src/index.ts",
       ),
+      // Same reasoning as `@taskdesk/permissions` above: `tests/api-integration/`
+      // lives outside any package, so plain node_modules resolution only works by
+      // accident of `apps/api`'s own dependency graph. `audit-log.test.ts` (issue #37)
+      // imports `@taskdesk/domain` directly to independently recompute `row_hash`.
+      "@taskdesk/domain": resolve(
+        __dirname,
+        "../../packages/domain/src/index.ts",
+      ),
     },
   },
 });

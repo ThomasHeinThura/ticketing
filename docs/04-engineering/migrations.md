@@ -112,10 +112,21 @@ BY tgname;` against the migrated schema before shipping either trigger.
 
 ## Append-only tables
 
-`audit_log` and `activity` are append-only by **grant** as well as by the absence of an
-endpoint: the grants are appended to the generated migration that creates them, and create a
-role `taskdesk_app` with `INSERT, SELECT` and no `UPDATE, DELETE` on both tables; the retention purge runs as a separate `taskdesk_maint`
-role from the `audit-purge` job's own connection.
+`audit_log` is append-only by absence of an endpoint and by two triggers, migration `0067`:
+`audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR EACH ROW` /
+`audit_log_reject_mutation()`), which raises on every UPDATE/DELETE attempt except `AU-7`'s
+`organisation_id`-to-NULL tombstone; and `audit_log_append_only_truncate` (`BEFORE TRUNCATE
+... FOR EACH STATEMENT` / `audit_log_reject_truncate()`), which raises unconditionally,
+because a row-level trigger never fires for `TRUNCATE` at all (verified live: without it, a
+`TRUNCATE audit_log` emptied the table with no error). The
+`taskdesk_app`/`taskdesk_maint` role split this section used to describe — a lesser-privileged
+app role with `INSERT, SELECT` and no `UPDATE, DELETE`, and a separate maintenance role for
+`audit-purge` — is **not implemented**: `compose.yml`, `charts/taskdesk/**` and `deploy/**`
+provision exactly one Postgres role, which owns every table it migrates and so keeps full DML
+regardless of any `REVOKE` (decision log, 2026-09-23, "`audit_log` is append-only by trigger,
+not by grant"). It could still land later as `audit-purge`'s own infrastructure work, at which
+point the grant becomes the primary control and the trigger a second one. `activity` gets the
+same trigger-based treatment the next time it is touched; it is not append-only today.
 
 ## Seeds
 
