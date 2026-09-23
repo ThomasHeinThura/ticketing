@@ -472,3 +472,134 @@ mismatches between what is hashed and what is stored.
 - S7 is a narrower instance of S2's class. Its fix is a few lines plus one regression test.
 - A delta check of that fix alone is enough to close this review; a full Opus round is not
   needed.
+
+---
+
+## Closing check (a43cca0)
+
+**Reviewer:** Opus 5.5, the same context as the two rounds above. I did not author, direct
+or remediate the fix.
+
+**Reviewed head:** `a43cca0e1679fdd2753d8837ed0943c311d4ada4`
+
+I confirmed the head with `gh pr view 291 --json headRefOid`.
+
+**Delta reviewed:**
+- `84fd35d`: the note, plus the decision-log anchor wording.
+- `3403640`: the S7 fix and S6's split on `.`.
+- The merge `a43cca0`, which brought in #292.
+
+**Test evidence at this head:**
+- Full integration suite on the private database `pr291_opus_test` (td-lane-pg): **74 files,
+  1025 tests, all passed.**
+- `node --test 'scripts/ci/**/*.test.mjs'`: **495 tests in 88 suites, all passed.**
+- A throwaway probe file, deleted afterwards and not committed.
+- The database was dropped afterwards.
+
+### S7: CLOSED, structurally
+
+`appendAuditLog` now normalises `before` and `after` exactly once, as
+`JSON.parse(JSON.stringify(value))`. That one normalised value then goes to all three places:
+- the secret check,
+- `canonicalRowHash`,
+- the INSERT (`JSON.stringify(normalized)`).
+
+So nothing reaches the hash that does not also reach the stored bytes. The only remaining
+transformation is Postgres's own jsonb parse, and `verifyAuditChain` re-canonicalises after it
+reads the row back. Key order, whitespace and number formatting therefore cannot diverge.
+
+Each of the following inputs was written, read back and verified `ok`:
+
+| Input | Stored as | Result |
+| --- | --- | --- |
+| Sparse array at top level | `[null,null,"x"]` | `ok` |
+| Sparse array nested in an object | nulls in place of holes | `ok` |
+| Sparse array nested in an array | nulls in place of holes | `ok` |
+| `undefined` member | member dropped | `ok` |
+| `undefined` array element | `null` | `ok` |
+| `-0`, including inside an array | `0` | `ok` |
+| NFC key and value | unchanged | `ok` |
+| NFD key and value | unchanged | `ok` |
+| NFC and NFD forms as sibling keys | kept as two distinct keys | `ok` |
+| Astral characters | unchanged | `ok` |
+| U+2028 and U+2029 | unchanged | `ok` |
+| `0.1`, `1e-7`, `1e21`, `5e-324`, `MAX_VALUE` | unchanged | `ok` |
+| `9007199254740993` | the same double on both sides | `ok` |
+| `__proto__` as an own key | unchanged | `ok` |
+| Keys `""`, `"2"`, `"10"` | unchanged | `ok` |
+| Nesting 100 objects deep | unchanged | `ok` |
+| Nesting 1000 arrays deep | unchanged | `ok` |
+
+These fail closed, with nothing written and the chain healthy afterwards:
+- 5000-deep and 100000-deep nesting (`RangeError`);
+- `\u0000` and a lone surrogate (Postgres rejects them);
+- `BigInt`.
+
+A `toJSON` that returns `{password: …}` is now caught by the secret check, because the check
+runs on the normalised value.
+
+One side effect, NON-BLOCKING and not an integrity issue. `NaN`, `Infinity` and `Date` values
+are now coerced to `null` or an ISO string instead of throwing, so what is stored is still
+exactly what is hashed. The cost is fidelity: a caller's `NaN` is now recorded as `null`.
+
+### S6 dot split: CLOSED, with no new false positive on catalogue shapes
+
+`smtp.password` and `auth.password` are now refused.
+
+These all still pass:
+- `api_key.created`, in both camelCase and snake_case, with keys taken from `data-model.md`'s
+  `api_key` columns: `apikeyId`/`apikey_id`, `prefix`, `capabilities: ["api_key:manage", …]`,
+  `ipAllowlist`, `rateLimitPerMinute`, `expiresAt`, `lastUsedAt`, `lastUsedIp`, `isMcp`;
+- `api_key.revoked` (`disabledAt`, `disabledReason`, `apiKeyId`);
+- `webhook.created` (`url`, `events`, `active`, `createdBy`);
+- `webhook.secret_rotated` (`secretRotatedAt`, `secret_rotated_at`);
+- `webhook.deleted`;
+- `plugin.changed`, whether the changes are recorded as `changedKeys: ["smtp.password", …]` or
+  as `{"smtp.host": …, "smtp.port": …}`.
+
+Capability ids use `:` (`api_key:manage`) and are array values, so the split does not touch
+them.
+
+`{"smtp.password": true}` is refused. This is the documented fail-closed near-miss behaviour
+AU-2 now describes, and `changedKeys` is the recording shape to use instead.
+
+### #292 merge: no interaction
+
+The merge's changes relative to its first parent are exactly `main`'s delta, 9 files:
+- `apps/api/src/work-item/**`;
+- `docs/01-architecture/events.md`;
+- #292's own security note;
+- `scripts/ci/probes/check-events.test.mjs`;
+- two work-item integration tests.
+
+**No file is touched by both #291 and #292.** Nothing under `apps/api/src/work-item/**`
+references `appendAuditLog` or `audit_log`, apart from one doc comment.
+
+### Other checks
+
+**Decision-log wording (S5 nit): CLOSED.** The entry now says the anchor must be stored
+outside this database.
+
+### Per-finding verdicts
+
+| Finding | Verdict |
+| --- | --- |
+| S1 | CLOSED |
+| S2 | CLOSED |
+| S3 | CLOSED |
+| S4 | CLOSED |
+| S5 | CLOSED |
+| S6 | CLOSED; residual gaps documented and accepted in AU-2 |
+| S7 | CLOSED |
+| Nit | CLOSED |
+
+### Overall verdict (a43cca0)
+
+**CLEAR.** No blocking findings remain at `a43cca0e1679fdd2753d8837ed0943c311d4ada4`.
+
+The residuals are documented, owned, and not this PR's to close:
+- the owner/superuser risk, tracked in #296;
+- the need for an anchor outside the database;
+- the `audit-purge` empty-table restart.
+
+The `NaN`/`Date` coercion is a NON-BLOCKING fidelity note.
