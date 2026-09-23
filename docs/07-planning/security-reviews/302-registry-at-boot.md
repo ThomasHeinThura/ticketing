@@ -141,3 +141,14 @@ the merge gate still requires "unit + component" to go green there.
 
 **Verdict at `54f8fd10adc63d9c257b35a74618b92f902e4150`: CLEAR.**
 The commit that adds this section changes only this file.
+
+## Delta re-check (`main` merge only)
+
+**Reviewed head:** `5116f455aa514fc6fb38802a7e41d0f3bbb8840b`
+(confirmed via `gh pr view 302 --json headRefOid`). The only commit after `8a63c35` is the merge
+`5116f45`, with parents `8a63c35` and `e34dc5e` (on `origin/main`). `git diff-tree --cc` shows no
+conflict resolution. The merge brings in docs only: 7 files, all under `docs/`, from #301, #303
+and #304. `git diff 54f8fd1 5116f45 -- apps tests packages scripts .github Dockerfile deploy
+package.json pnpm-lock.yaml pnpm-workspace.yaml` is empty, and every PR-owned file is
+byte-identical to `8a63c35`.
+**Verdict at `5116f455aa514fc6fb38802a7e41d0f3bbb8840b`: CLEAR.** No code change since the CLEAR at `54f8fd1`.
