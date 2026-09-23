@@ -221,7 +221,7 @@ taskdesk:
         database: taskdesk
         username: taskdesk_user
         password: ""
-        # Use existing secret for external database credentials in the form of a uri, e.g.: "postgresql://user:pass@host:port/db"
+        # Use existing secret for external database credentials in the form of a uri (scheme, userinfo, host, port, database)
         existingSecret:
           enabled: false
           name: ""

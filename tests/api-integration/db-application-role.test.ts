@@ -802,7 +802,7 @@ describe("SCRAM verifier (S2, independent Opus 5.5 review of PR #308)", () => {
     const weakOwnerDb = drizzle(weakOwnerPool, { schema });
 
     const targetRoleName = `taskdesk_app_shouldfail_${randomSuffix()}`;
-    const targetPassword = `S3cretLeakMarker_${randomSuffix()}`;
+    const targetPassword = `EnsureRoleProbeValue_${randomSuffix()}`;
     const targetUrl = new URL(baseUrl);
     targetUrl.username = targetRoleName;
     targetUrl.password = targetPassword;
