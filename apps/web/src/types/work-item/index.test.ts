@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { WorkItem } from "./index";
-import { parseWorkItemRow } from "./index";
+import type { WorkItem, WorkItemDetail } from "./index";
+import {
+  extractDescription,
+  parseWorkItemDetailRow,
+  parseWorkItemRow,
+} from "./index";
 
 function makeItem(overrides: Partial<WorkItem> = {}): WorkItem {
   return {
@@ -156,5 +160,104 @@ describe("parseWorkItemRow", () => {
     expect(row.title).toBe("");
     expect(row.priority).toBeNull();
     expect(row.dueDate).toBeNull();
+  });
+});
+
+function makeDetail(overrides: Partial<WorkItemDetail> = {}): WorkItemDetail {
+  return {
+    ...makeItem(),
+    stateName: "Backlog",
+    stateCategory: "backlog",
+    assigneeName: null,
+    ...overrides,
+  } as WorkItemDetail;
+}
+
+describe("parseWorkItemDetailRow", () => {
+  it("flags nothing on a fully valid detail row", () => {
+    const row = parseWorkItemDetailRow(makeDetail());
+    expect(row.unavailableFields).toEqual([]);
+    expect(row.stateName).toBe("Backlog");
+    expect(row.key).toBe("PROJ-123");
+  });
+
+  it("flags stateName alongside the list-level fields it shares with parseWorkItemRow", () => {
+    const row = parseWorkItemDetailRow(
+      makeDetail({ title: "", stateName: "", dueDate: "not-a-real-date" }),
+    );
+    expect(row.unavailableFields).toEqual(["title", "dueDate", "stateName"]);
+  });
+
+  it("flags a whitespace-only state name", () => {
+    const row = parseWorkItemDetailRow(makeDetail({ stateName: "   " }));
+    expect(row.unavailableFields).toEqual(["stateName"]);
+  });
+
+  it("flags a non-string state name (wrong type)", () => {
+    // biome-ignore lint/suspicious/noExplicitAny: exercising a malformed wire value
+    const row = parseWorkItemDetailRow(makeDetail({ stateName: 42 as any }));
+    expect(row.unavailableFields).toEqual(["stateName"]);
+  });
+
+  it("treats a null assigneeName as valid and unflagged", () => {
+    const row = parseWorkItemDetailRow(
+      makeDetail({ assigneeId: "person_1", assigneeName: null }),
+    );
+    expect(row.unavailableFields).toEqual([]);
+    expect(row.assigneeName).toBeNull();
+  });
+});
+
+describe("extractDescription", () => {
+  it("returns none for null and undefined", () => {
+    expect(extractDescription(null)).toEqual({ kind: "none" });
+    expect(extractDescription(undefined)).toEqual({ kind: "none" });
+  });
+
+  it("returns none for an empty or whitespace-only string", () => {
+    expect(extractDescription("")).toEqual({ kind: "none" });
+    expect(extractDescription("   \n  ")).toEqual({ kind: "none" });
+  });
+
+  it("returns a plain-text description as-is", () => {
+    expect(extractDescription("Investigate the login bug")).toEqual({
+      kind: "text",
+      text: "Investigate the login bug",
+    });
+  });
+
+  it("extracts paragraph text from a Tiptap document, block-separated", () => {
+    const doc = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "First paragraph" }],
+        },
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Second paragraph" }],
+        },
+      ],
+    };
+
+    expect(extractDescription(doc)).toEqual({
+      kind: "text",
+      text: "First paragraph\n\nSecond paragraph",
+    });
+  });
+
+  it("returns none for an empty document", () => {
+    expect(extractDescription({ type: "doc", content: [] })).toEqual({
+      kind: "none",
+    });
+  });
+
+  it("returns unsupported for a value it cannot read, rather than pretending there is no description", () => {
+    expect(extractDescription(42)).toEqual({ kind: "unsupported" });
+    expect(extractDescription([1, 2])).toEqual({ kind: "unsupported" });
+    expect(extractDescription({ foo: "bar" })).toEqual({
+      kind: "unsupported",
+    });
   });
 });

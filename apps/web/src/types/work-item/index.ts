@@ -111,3 +111,136 @@ export function parseWorkItemRow(raw: WorkItem): WorkItemRow {
     unavailableFields,
   };
 }
+
+/**
+ * The wire shape of `GET /api/work-items/{key}` -- the same shape as a list row plus the
+ * display fields the detail route resolves server-side
+ * (`apps/api/src/work-item/controllers/get-work-item.ts`, same names/semantics as the
+ * list route's resolution): `stateName`, `stateCategory` and `assigneeName`.
+ * `assigneeName` is null when the item is unassigned, when the assignee is a placeholder
+ * person with no linked user, or when the assignee's user is not a member of this work
+ * item's workspace -- in every case the raw `assigneeId` is still present, so this
+ * screen can tell "assigned, name not resolvable" apart from "unassigned".
+ */
+export type WorkItemDetail = InferResponseType<
+  (typeof client)["work-items"][":key"]["$get"],
+  200
+>;
+
+export type WorkItemDetailField =
+  | "key"
+  | "title"
+  | "priority"
+  | "dueDate"
+  | "stateName";
+
+export type WorkItemDetailRow = WorkItemDetail & {
+  unavailableFields: WorkItemDetailField[];
+};
+
+/**
+ * Validates one raw `GET /api/work-items/{key}` response against the fields the detail
+ * page displays, marking any that fail as unavailable rather than throwing -- the same
+ * boundary principle `parseWorkItemRow` applies to list rows (see its own comment for
+ * why this validation exists rather than trusting `InferResponseType`). `stateName`
+ * joins the list's four fields for the same reason they are checked there: the header
+ * renders it, and a blank state name would otherwise render as an indistinct empty
+ * badge rather than a visible "Unavailable".
+ */
+export function parseWorkItemDetailRow(raw: WorkItemDetail): WorkItemDetailRow {
+  const unavailableFields: WorkItemDetailField[] = [];
+
+  const validKey = hasValidKey(raw.key, raw.number);
+  if (!validKey) unavailableFields.push("key");
+
+  const validTitle = hasValidTitle(raw.title);
+  if (!validTitle) unavailableFields.push("title");
+
+  const validPriority = hasValidPriority(raw.priority);
+  if (!validPriority) unavailableFields.push("priority");
+
+  const validDueDate = hasValidDueDate(raw.dueDate);
+  if (!validDueDate) unavailableFields.push("dueDate");
+
+  const validStateName =
+    typeof raw.stateName === "string" && raw.stateName.trim().length > 0;
+  if (!validStateName) unavailableFields.push("stateName");
+
+  return {
+    ...raw,
+    key: validKey ? raw.key : "",
+    title: validTitle ? raw.title : "",
+    priority: validPriority ? raw.priority : null,
+    dueDate: validDueDate ? raw.dueDate : null,
+    unavailableFields,
+  };
+}
+
+/**
+ * What the detail page can render for `work_item.description`.
+ *
+ * `work_item.description` is opaque `jsonb` (`apps/api/src/work-item/schema.ts`): today
+ * that means `null`, a plain string, or a Tiptap document (the document shape the task
+ * description editor writes elsewhere in this app). Full rich-text rendering is a later
+ * slice; this extracts a document's text so the description is readable now -- with the
+ * honest `unsupported` outcome for a shape this function cannot read, rather than
+ * silently rendering "No description" for a description that exists.
+ */
+export type DescriptionContent =
+  | { kind: "none" }
+  | { kind: "text"; text: string }
+  | { kind: "unsupported" };
+
+function collectDocumentText(node: unknown, out: string[]): boolean {
+  if (node === null || node === undefined) return true;
+  if (typeof node !== "object") return false;
+
+  const record = node as Record<string, unknown>;
+  if (typeof record.text === "string") {
+    out.push(record.text);
+    return true;
+  }
+
+  const content = record.content;
+  if (content === undefined) {
+    // A structural node with no text of its own (e.g. an image, a hard break).
+    return true;
+  }
+  if (!Array.isArray(content)) return false;
+
+  for (const child of content) {
+    if (!collectDocumentText(child, out)) return false;
+    // Block separation -- a paragraph ends where the next one begins.
+    out.push("\n");
+  }
+  return true;
+}
+
+function isDocumentLike(value: Record<string, unknown>): boolean {
+  return typeof value.type === "string" || Array.isArray(value.content);
+}
+
+export function extractDescription(description: unknown): DescriptionContent {
+  if (description === null || description === undefined) {
+    return { kind: "none" };
+  }
+
+  if (typeof description === "string") {
+    return description.trim().length === 0
+      ? { kind: "none" }
+      : { kind: "text", text: description };
+  }
+
+  if (typeof description !== "object" || Array.isArray(description)) {
+    return { kind: "unsupported" };
+  }
+
+  const record = description as Record<string, unknown>;
+  if (!isDocumentLike(record)) return { kind: "unsupported" };
+
+  const parts: string[] = [];
+  if (!collectDocumentText(record, parts)) return { kind: "unsupported" };
+
+  const text = parts.join("").trim();
+  return text.length === 0 ? { kind: "none" } : { kind: "text", text };
+}
