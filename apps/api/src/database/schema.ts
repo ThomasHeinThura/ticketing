@@ -2261,6 +2261,176 @@ export const watcherTable = pgTable(
   ],
 );
 
+// `audit_log` -- data-model.md S11's row, and its own section "The audit hash chain"
+// (issue #37, first slice: table + writer only, no routes/UI, nothing wired into a
+// mutation yet). `AU-3`: "Append-only. No API can update or delete a row ... the
+// application's own database role holds no UPDATE/DELETE grant on audit_log." That
+// grant-based mechanism is NOT expressible in this deployment shape today (disclosed
+// in this PR's body, not silently worked around): `compose.yml`/`charts/taskdesk`/
+// `deploy/` provision exactly ONE Postgres role (`taskdesk`, `TASKDESK_DATABASE_URL`'s
+// user) -- the same role both runs `drizzle-kit migrate` (so it owns every table,
+// including this one) and is what the running API process connects as. A Postgres table
+// owner always retains full DML privileges on its own table regardless of any REVOKE --
+// only `ALTER TABLE ... OWNER TO` a *different*, lesser-privileged role would make a
+// grant-based restriction real, and that would require provisioning a second DB role in
+// `compose.yml`/the Helm chart/`deploy/` (the `taskdesk_app`/`taskdesk_maint` split
+// `docs/04-engineering/migrations.md`'s "Append-only tables" section describes) -- out
+// of scope for a schema-and-writer slice; tracked as a real gap, not assumed away. The
+// migration still issues `REVOKE UPDATE, DELETE, TRUNCATE ... FROM PUBLIC` as harmless
+// defense-in-depth for any future lesser-privileged role, but that REVOKE is NOT what
+// makes this table append-only today.
+//
+// The actual, load-bearing mechanism here is two triggers (migration 0067):
+// `audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR EACH ROW`) that raises for
+// every UPDATE/DELETE except ONE carve-out, and `audit_log_append_only_truncate`
+// (`BEFORE TRUNCATE ... FOR EACH STATEMENT`) that unconditionally raises for TRUNCATE --
+// a SEPARATE trigger because a row-level trigger never fires for TRUNCATE at all
+// (confirmed live: TRUNCATE emptied the table with zero rows firing the row-level
+// trigger, no error). Both fire against every role, including the table's owner, for an
+// ORDINARY UPDATE/DELETE/TRUNCATE statement. **Stated plainly, not overstated** (Opus
+// security review of PR #291, S5): the official `postgres` image makes this one
+// connecting role a SUPERUSER, so these triggers stop an accidental or buggy
+// application query and every non-owner role -- NOT a compromised owner/superuser
+// connection, which can disable or drop either trigger outright (`ALTER TABLE ...
+// DISABLE TRIGGER`, `DROP TRIGGER`, `SET session_replication_role = replica`, or
+// `CREATE RULE ... DO INSTEAD NOTHING`). `AU-15`'s hash chain narrows that residual to
+// detecting a NAIVE edit after the fact via `audit-verify`; it does not catch an actor
+// who can also recompute the chain forward or delete its newest rows -- see AU-15 and
+// `data-model.md`'s "known limit" paragraph for the honest statement of what remains.
+//
+// The one carve-out: `organisation_id`'s own `ON DELETE SET NULL` FK action below is
+// itself implemented by Postgres as an UPDATE against THIS table -- confirmed live,
+// deleting a referenced `organisation` row raised straight through this trigger before
+// the carve-out existed. The trigger function allows that shape (only `organisation_id`
+// changing, only non-null -> NULL, every other column identical to OLD) ONLY when the
+// referenced organisation row no longer exists (`NOT EXISTS (SELECT 1 FROM organisation
+// WHERE id = OLD.organisation_id)`, migration 0067) -- tightened after Opus security
+// review of PR #291, S4, which reproduced a direct `UPDATE ... SET organisation_id =
+// NULL` succeeding against a STILL-LIVE organisation's rows under the original,
+// column-equality-only carve-out (nothing distinguished the real FK-driven tombstone
+// from an ordinary direct update to the same effect). Every other case is rejected,
+// including reassigning `organisation_id` to a different non-null value. See the
+// trigger function's own comment in migration 0067.
+//
+// `organisation_id` is `ON DELETE SET NULL` -- `AU-7`'s tombstone, mirroring
+// `data-model.md` S11's own words for this exact column. `workspace_id` carries
+// deliberately NO foreign key: S11 is silent on its referential action (only
+// `organisation_id` is called out), and inventing an undocumented CASCADE or SET NULL
+// here would be a guess `AGENTS.md` do-not 17 forbids -- a plain, unconstrained column
+// keeps every audit row intact regardless of a workspace's later lifecycle, consistent
+// with the whole point of this table (survive the deletion of what it describes).
+// Flagged in this PR's body as a genuine spec gap for a `data-model.md` clarification,
+// not resolved by this schema alone.
+//
+// `actor_id`/`api_key_id`/`impersonator_id`/`entity_id` carry NO foreign key, on
+// purpose: they reference heterogeneous tables depending on `actor_type`/`entity_type`,
+// and per the "Actor deleted" edge case ("Rows retain the id and a tombstoned display
+// name"), an audit row must keep working after the entity it names is hard-deleted --
+// a hard FK would force a NULL/CASCADE the moment that happened, which is exactly the
+// failure this table exists to not have.
+//
+// `created_at` is `timestamptz`, matching data-model.md S11's "microsecond-precision
+// UTC ISO-8601" hash input requirement -- but note that a plain `SELECT created_at`
+// through `node-postgres`'s default type parser loses that precision (a JS `Date` is
+// millisecond-resolution only). `apps/api/src/audit/audit-writer.ts` never reads this
+// column through drizzle's ORM read path for hashing purposes; it always reads it back
+// via `to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')` in the
+// same statement, in both the insert and `verifyAuditChain`'s walk, so both call sites
+// agree on the exact same microsecond-precision string every time.
+//
+// `prev_hash`/`row_hash` are CHECK-constrained to exactly 64 lowercase hex characters --
+// the same shape `packages/domain/src/audit/audit.ts`'s `PREV_HASH_PATTERN` already
+// enforces at the pure-function layer; the DB-level CHECK is redundant-but-cheap
+// defense-in-depth against a row ever entering the table any other way.
+export const auditLogTable = pgTable(
+  "audit_log",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    actorId: text("actor_id"),
+    actorType: text("actor_type").notNull(),
+    apiKeyId: text("api_key_id"),
+    impersonatorId: text("impersonator_id"),
+    actorIp: text("actor_ip"),
+    userAgent: text("user_agent"),
+    traceId: text("trace_id"),
+    workspaceId: text("workspace_id"),
+    organisationId: text("organisation_id").references(
+      () => organisationTable.id,
+      { onDelete: "set null", onUpdate: "cascade" },
+    ),
+    action: text("action").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+    before: jsonb("before"),
+    after: jsonb("after"),
+    createdAt: timestamp("created_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+    prevHash: text("prev_hash").notNull(),
+    rowHash: text("row_hash").notNull(),
+    // NOT part of data-model.md S11's column list, and NOT a hash input (row_hash's
+    // recipe is a closed, exact list that does not name it) -- a genuine gap this
+    // implementation revealed and is disclosed here, the same way migration 0066 added
+    // `activity.seq` for an analogous reason (decision log 2026-09-16,
+    // "reconstructAt's same-instant tie-break needs a real ordering signal this schema
+    // does not yet have"). The writer serialises every insert with
+    // `pg_advisory_xact_lock(AUDIT_CHAIN_LOCK_KEY)` and then must find "the current
+    // head" to read its `row_hash` as this insert's `prev_hash` -- `created_at` alone
+    // cannot do that reliably: two serialized inserts can still read an identical
+    // `now()` microsecond value (Postgres timestamps have finite, not infinite,
+    // resolution), which would make "the newest row by created_at" ambiguous between
+    // them. `seq` is a `GENERATED ALWAYS AS IDENTITY` column assigned in true insertion
+    // order -- since the advisory lock guarantees only one INSERT is ever in flight at a
+    // time, "the row with the highest seq" is always unambiguous. Never returned in any
+    // API response, never referenced by a foreign key, never a primary key -- purely an
+    // internal chain-head-finding aid. Flagged in this PR's body as a `data-model.md`
+    // correction, not silently added.
+    seq: bigint("seq", { mode: "bigint" }).generatedAlwaysAsIdentity(),
+  },
+  (table) => [
+    // "## Indexing": create index on audit_log (entity_type, entity_id, created_at
+    // desc); create index on audit_log (workspace_id, created_at desc).
+    index("audit_log_entity_type_entity_id_created_at_idx").on(
+      table.entityType,
+      table.entityId,
+      table.createdAt.desc(),
+    ),
+    index("audit_log_workspace_id_created_at_idx").on(
+      table.workspaceId,
+      table.createdAt.desc(),
+    ),
+    check(
+      "audit_log_prev_hash_shape",
+      sql`${table.prevHash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check("audit_log_row_hash_shape", sql`${table.rowHash} ~ '^[0-9a-f]{64}$'`),
+    unique("audit_log_seq_unique").on(table.seq),
+    // Opus security review of PR #291, S3: under an isolation level stronger than the
+    // codebase's own default (READ COMMITTED) -- REPEATABLE READ or SERIALIZABLE, which
+    // nothing here uses today, per `project/controllers/delete-project.ts`'s own
+    // comment, but a future caller could -- a caller transaction can read a stale
+    // "current head" (its snapshot predates a concurrent holder's commit), so two rows
+    // end up sharing the same `prev_hash` -- the chain silently forks instead of
+    // staying linear. `UNIQUE (prev_hash)` turns that fork into a hard INSERT failure
+    // (`23505`) the instant it would happen, rather than a fork `verifyAuditChain`
+    // might not notice until much later (a fork is NOT automatically a `prev_hash`
+    // mismatch from any single row's own point of view -- each forked row's `prev_hash`
+    // correctly points at the real predecessor it read; only the two SIBLINGS sharing
+    // that same predecessor reveal the fork, which this constraint catches directly
+    // instead of relying on it surfacing at verify time at all). The first-ever row's
+    // `prev_hash` is `ZERO_HASH` (64 hex `0`s) -- this cannot collide with any later
+    // row: after the first successful insert the table is never empty again (append-
+    // only), so `appendAuditLog`'s "read the current head" step always finds a REAL row
+    // hash to chain from, and can never legitimately read `ZERO_HASH` a second time.
+    unique("audit_log_prev_hash_unique").on(table.prevHash),
+  ],
+);
+
 // Auth-schema compatible aliases in schema.ts
 export const user = userTable;
 export const session = sessionTable;

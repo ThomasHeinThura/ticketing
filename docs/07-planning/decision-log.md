@@ -17,6 +17,79 @@ Newest first.
 
 ---
 
+### 2026-09-23 · gitleaks false positive on `audit_log` secret-refusal test fixtures — dismissed by exact fingerprint
+
+**Decision:** two gitleaks `generic-api-key` findings are added to a new root `.gitleaksignore`.
+They are in `tests/api-integration/audit-log.test.ts`, at commit `dc63e85` line 188 and
+commit `4f20080` line 545. Each is suppressed by its exact fingerprint
+(`commit:file:rule:line`), never by path or by rule. The fixture value (`sk_live_abc123`) is
+also changed to an obviously fake `fake-api-key-for-test` at the head, so no new finding can
+arise from it.
+
+**Why:** the value is not a secret. It is test input proving that the AU-2 secret check
+refuses an `after` payload whose key is `apiKey`. gitleaks scans every commit in a PR's
+range, so fixing the head alone could not clear the required `supply chain - secret scan`
+check. The findings already live in commits `dc63e85` and `4f20080`, and removing them would
+mean rewriting pushed history.
+
+**Alternatives:** close PR #291 and open a fresh single-commit PR with fake values, so the
+old commits are never scanned. Rejected: it would need Opus to re-attest a new PR, and the
+review history would sit on a closed PR. A path- or rule-wide ignore was rejected outright,
+because it would blind the scanner to real secrets in that file.
+
+**Decided by:** Thomas, via `AskUserQuestion`, 2026-09-23 — "Suppress by fingerprint". This
+follows the precedent of the CodeQL alert #2 dismissal (2026-09-17).
+
+---
+
+### 2026-09-23 · `audit_log` is append-only by trigger, not by grant — this deployment has exactly one Postgres role
+
+**Decision:** `audit_log` is made append-only by two triggers in migration `0067`:
+- `audit_log_append_only` / `audit_log_reject_mutation()`, a `BEFORE UPDATE OR DELETE`
+  row trigger. It raises on every row mutation except AU-7's `organisation_id`-to-NULL
+  tombstone.
+- `audit_log_append_only_truncate` / `audit_log_reject_truncate()`, a `BEFORE TRUNCATE`
+  statement trigger. Row triggers never fire on `TRUNCATE`, so without it the owning role
+  could empty the table. PR #291's ordinary review reproduced that live.
+
+The integration-test reset truncates every table. It turns triggers off for that one
+transaction only (`SET LOCAL session_replication_role = replica`), in test code only. This replaces
+the `taskdesk_app` / `taskdesk_maint` role split that AU-3 and `migrations.md` describe.
+`UNIQUE (prev_hash)` turns any chain fork into a failed insert. `REVOKE UPDATE, DELETE, TRUNCATE … FROM PUBLIC` stays as defence in depth for a future
+lesser-privileged role, but against the table owner today it does nothing. `activity`
+gets the same treatment the next time it is touched. AU-3, AU-15 and `migrations.md`'s
+"Append-only tables" section are corrected in the same change as this entry (PR #291).
+`data-model.md` §11 already was.
+
+**Why:** `compose.yml`, `charts/taskdesk/**` and `deploy/**` provision exactly one Postgres
+role. That role owns every table it migrates, so it keeps full DML whatever is revoked. The
+two-role split was specified but never implemented anywhere. PR #291's alignment check
+verified this against each deployment file. A trigger stops application bugs and every role that doesn't own the table.
+
+**What it does not stop.** This was found by #291's Opus review (S5), and it corrects an
+earlier draft of this entry, which overclaimed. In both compose and Helm the API connects as
+the table owner, and the official postgres image makes that role a **superuser**. So a
+compromised API process can still `ALTER TABLE … DISABLE TRIGGER`, or add a rule that
+silently drops audit inserts. AU-15's hash chain does **not** catch that after the fact: the
+hash has no key, and no head is anchored outside the database, so the same actor can
+recompute the rows that follow or delete the newest ones. This residual risk stays open
+until two separate pieces of work land:
+- the app role stops being the superuser owner (#296);
+- a chain anchor stored **outside** this database (the planned `audit_chain_anchor` / `audit-purge` table lives inside it, so on its own it isn't enough), or a keyed hash, is added.
+
+**Alternatives:** implement the real two-role split now: a lesser-privileged app role owns
+nothing, and migrations run as a separate role. Rejected for this slice. It is deployment
+and credential work across compose, Helm and `deploy/`, and it would block a schema-and-writer
+slice on infrastructure unrelated to it. It can still land later as `audit-purge`'s own
+infrastructure work, and then the grant becomes the primary control and the trigger a
+second one.
+
+**Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation.
+There was one clearly recommended option. PR #291's alignment review drafted the entry and
+judged it not a two-way trade-off.
+
+---
+
 ### 2026-09-23 · Dependency picks: Recharts for charts, react-grid-layout for the dashboard grid, Playwright screenshots for G8
 
 **Decision:** three new dependencies are chosen for the design system. They are **not
