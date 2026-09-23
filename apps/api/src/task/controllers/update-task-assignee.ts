@@ -7,6 +7,7 @@ import {
   assertAssignableUser,
   getProjectWorkspaceId,
 } from "../../utils/assert-assignable-user";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
 
 async function updateTaskAssignee({
   id,
@@ -17,6 +18,15 @@ async function updateTaskAssignee({
   userId: string | null;
   currentUserId: string;
 }) {
+  // #290 S4 sweep: `userId` is a body field, not covered by `workspaceAccess.
+  // fromTask()` (which only guards `id`) -- a NUL byte here reached
+  // `assertAssignableUser`'s/`eq(userTable.id, ...)`'s raw queries below unvalidated
+  // and 500'd, the same class #281 fixed for path/query ids. `null` (unassign) is
+  // left alone.
+  if (userId) {
+    rejectNulByte(userId, "Assignee id");
+  }
+
   const existingTask = await db.query.taskTable.findFirst({
     where: eq(taskTable.id, id),
   });

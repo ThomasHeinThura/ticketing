@@ -4,6 +4,7 @@ import db from "../../database";
 import { columnTable, projectTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { filterAssignableUsers } from "../../utils/assert-assignable-user";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
 import {
   coercePriority,
   coerceStatus,
@@ -46,6 +47,12 @@ async function importTasks(
         .filter((id): id is string => Boolean(id)),
     ),
   ];
+  // S5 (Opus review of PR #307, delta round): reaches `filterAssignableUsers`'s
+  // `inArray(workspaceUserTable.userId, ...)` query below unvalidated -- a NUL
+  // byte would otherwise 500 instead of a clean 400.
+  for (const assigneeId of assigneeIds) {
+    rejectNulByte(assigneeId, "Assignee id");
+  }
 
   const assignableIds = await filterAssignableUsers(
     assigneeIds,

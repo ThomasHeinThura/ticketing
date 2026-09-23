@@ -128,12 +128,13 @@ const createWorkItemRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created work item", workItemSchema),
+    // #290: an unknown/out-of-reach project now 400s uniformly via
+    // `workspaceAccess.fromProject()` (#202's own precedent for this helper), folded
+    // into this same 400 alongside the route's other malformed-request cases.
     400: errorResponse(
-      "Invalid body, unknown/cross-workspace type, or the project has no default state",
+      "Invalid body, unknown/unreachable/cross-workspace type, or the project has no default state",
     ),
-    403: errorResponse(
-      "No workspace access, or missing work_item:create permission",
-    ),
+    403: errorResponse("Missing work_item:create permission"),
     404: errorResponse("Project not found"),
     // #23's mandatory Opus security review of PR #261, F1's delta-confirmation (D1,
     // 2026-09-22): defence in depth for a poisoned key range that predates the
@@ -161,9 +162,12 @@ const listWorkItemsRoute = createRoute({
   request: { params: projectIdParam },
   responses: {
     200: jsonResponse("The project's work items", workItemListSchema),
-    403: errorResponse(
-      "No workspace access, or missing work_item:read permission",
+    // #290: an unknown/out-of-reach project 400s via `workspaceAccess.fromProject()`
+    // before this route's own permission check runs (#202's own precedent).
+    400: errorResponse(
+      "Unknown project, or its workspace could not be determined",
     ),
+    403: errorResponse("Missing work_item:read permission"),
     // #202 / PR #204's freeze invariant (independent Opus security review of PR #271,
     // S2): a soft-deleted project's work-item list now 404s, matching every other
     // project-scoped route's convention for a soft-deleted subject.
