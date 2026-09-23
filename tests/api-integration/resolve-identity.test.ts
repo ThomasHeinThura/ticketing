@@ -6,7 +6,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import { seedInternalOrganisationAndStaffPersons } from "../../apps/api/src/utils/seed-internal-organisation";
@@ -127,14 +127,14 @@ describe("resolveIdentity (loader) — a multi-workspace user, and bounded query
     await backfillStaffPersons();
 
     let selectCalls = 0;
+    type SelectFn = typeof db.select;
+    const realSelect: (...args: Parameters<SelectFn>) => ReturnType<SelectFn> =
+      db.select.bind(db);
     const countingExecutor: Pick<typeof db, "select"> = {
-      select: vi.fn((...args: unknown[]) => {
+      select: ((...args: Parameters<SelectFn>) => {
         selectCalls += 1;
-        // biome-ignore lint/suspicious/noExplicitAny: spreading the real overloaded
-        // `db.select` signature through a thin counting wrapper -- the wrapper only needs
-        // to forward whatever it was given, never to reproduce the overload itself.
-        return (db.select as (...a: any[]) => unknown)(...args);
-      }) as typeof db.select,
+        return realSelect(...args);
+      }) as SelectFn,
     };
 
     const identity = await resolveIdentity(
