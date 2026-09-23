@@ -216,15 +216,18 @@ EOF
 fi
 
 # ---------------------------------------------------------------------------
-# Image signature — verified before anything is pulled
+# Image signature — resolve a mutable tag once, then verify and pull only the
+# immutable digest. Compose receives the digest through the exported variable.
 # ---------------------------------------------------------------------------
+IMAGE_REPOSITORY="ghcr.io/thomasheinthura/taskdesk"
+
 image_ref() {
   local tag="${TASKDESK_IMAGE_TAG:-v2.0.0}"
   local digest="${1:-${TASKDESK_IMAGE_DIGEST:-}}"
   if [ -n "$digest" ]; then
-    printf 'ghcr.io/thomasheinthura/taskdesk:%s@%s' "$tag" "$digest"
+    printf '%s@%s' "$IMAGE_REPOSITORY" "$digest"
   else
-    printf 'ghcr.io/thomasheinthura/taskdesk:%s' "$tag"
+    printf '%s:%s' "$IMAGE_REPOSITORY" "$tag"
   fi
 }
 
@@ -247,6 +250,25 @@ verify_signature() {
     "$ref" >/dev/null \
     || die "signature verification FAILED for $ref — not pulling. Nothing has changed."
   ok "signature verified"
+}
+
+resolve_and_verify_image() {
+  local digest="${TASKDESK_IMAGE_DIGEST:-}"
+  if [ -z "$digest" ]; then
+    local tag_ref
+    tag_ref="$(image_ref)"
+    say "resolving $tag_ref to an immutable digest"
+    command -v docker >/dev/null 2>&1 || die "docker is not installed"
+    local inspect_output
+    inspect_output="$(docker buildx imagetools inspect "$tag_ref")" \
+      || die "could not resolve $tag_ref to an immutable digest"
+    digest="$(printf '%s\n' "$inspect_output" | sed -n 's/^Digest: //p' | head -n 1)"
+  fi
+  [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
+    || die "TASKDESK_IMAGE_DIGEST must be a full lowercase sha256 digest"
+  TASKDESK_IMAGE_DIGEST="$digest"
+  export TASKDESK_IMAGE_DIGEST
+  verify_signature "${IMAGE_REPOSITORY}@${digest}"
 }
 
 # ---------------------------------------------------------------------------
@@ -367,7 +389,7 @@ case "$MODE" in
 
   production)
     [ -n "${DOMAIN:-}" ] || die "DOMAIN is not set in .env — every Traefik router rule needs it"
-    verify_signature "$(image_ref)"
+    resolve_and_verify_image
     say "pulling"
     dc pull
     wait_for_deps
@@ -384,7 +406,7 @@ case "$MODE" in
     say "before an upgrade: take a database backup and note the current digest."
     CURRENT="$(docker inspect --format '{{index .RepoDigests 0}}' "$(dc images -q taskdesk 2>/dev/null | head -1)" 2>/dev/null || true)"
     [ -n "$CURRENT" ] && printf '    current: %s\n' "$CURRENT"
-    verify_signature "$(image_ref)"
+    resolve_and_verify_image
     say "pulling"
     dc pull migrate taskdesk
     # issue #296: `migrate` and `taskdesk` share an image tag, but a completed
@@ -420,7 +442,9 @@ case "$MODE" in
 
   rollback)
     say "rolling back to $ROLLBACK_DIGEST"
-    verify_signature "$(image_ref "$ROLLBACK_DIGEST")"
+    TASKDESK_IMAGE_DIGEST="$ROLLBACK_DIGEST"
+    export TASKDESK_IMAGE_DIGEST
+    resolve_and_verify_image
     if grep -q '^TASKDESK_IMAGE_DIGEST=' "$ENV_FILE"; then
       sed -i.bak "s|^TASKDESK_IMAGE_DIGEST=.*|TASKDESK_IMAGE_DIGEST=${ROLLBACK_DIGEST}|" "$ENV_FILE" && rm -f "$ENV_FILE.bak"
     else
