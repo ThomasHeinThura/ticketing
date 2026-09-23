@@ -9,6 +9,7 @@ import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import {
+  isGenuineBuiltInRoleGrant,
   isUnambiguousMembership,
   workspaceMemberRoles,
 } from "./workspace-member-roles";
@@ -220,17 +221,12 @@ export async function builtInRoleHasCapability(
  * `"manager"` and self-assigning it, then reading as a built-in manager with all 57 of that
  * role's capabilities.
  *
- * `"owner"` is special-cased to always genuine: it is the one built-in name NEVER seeded a
- * `workspace_role` row at all (retrofit plan R5 -- `create-workspace.ts`'s own comment),
- * and it has been reserved from custom creation since before this fix, so a
- * `workspace_member.role` value of `"owner"` cannot come from anywhere but the compiled-in
- * static role. Querying `workspace_role` for it would only ever find "no row" and deny --
- * the wrong, fail-CLOSED-on-the-wrong-thing answer for the one role every workspace has.
- *
- * Every other key is genuine only when a `workspace_role` row for `(workspaceId, role)`
- * exists AND its `is_system` column is `true`. `UNIQUE (workspace_id, role)` (migration
- * 0051) means at most one row can ever match, so this is a presence check, not a
- * most-recent-wins one.
+ * This function's own job is only the I/O: read `workspace_role.is_system` for
+ * `(workspaceId, role)`, then hand the answer to `isGenuineBuiltInRoleGrant`
+ * (`workspace-member-roles.ts`) -- the exact same predicate `resolve-identity.ts`'s pure
+ * mapper calls, so the two can never independently drift out of agreement. `UNIQUE
+ * (workspace_id, role)` (migration 0051) means at most one row can ever match, so the
+ * `.limit(1)` below is a presence check, not a most-recent-wins one.
  */
 async function isGenuineBuiltInRoleAssignment(
   executor: DbOrTx,
@@ -250,5 +246,5 @@ async function isGenuineBuiltInRoleAssignment(
     )
     .limit(1);
 
-  return row?.isSystem === true;
+  return isGenuineBuiltInRoleGrant(role, row?.isSystem === true);
 }

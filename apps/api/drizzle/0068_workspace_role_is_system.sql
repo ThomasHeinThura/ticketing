@@ -14,9 +14,50 @@
 -- default). `owner` never gets a `workspace_role` row at all (retrofit plan R5) and is
 -- special-cased by both resolvers rather than checked against this column.
 --
--- Existing rows backfill to `false` -- the safe default, since a pre-existing row cannot be
--- proven genuine after the fact. This is intentional: it re-classifies any already-created
--- collision as non-genuine (denying built-in capabilities to it) rather than trusting its
--- name. See `apps/api/scripts/audit-reserved-workspace-role-names.ts` for the read-only
--- report that finds rows this affects.
+-- BLOCKING FIX (independent Sonnet review of pull request #322, at head `8f8e9d6`,
+-- reproduced live): the FIRST version of this migration added the column with no backfill,
+-- and `seedDefaultWorkspaceRoles()` only inserts MISSING rows (`onConflictDoNothing`) --
+-- it never updates an existing one. Every already-existing `viewer`/`member`/`admin` row
+-- (i.e. every one of them, on every deployment that has ever run) would have stayed
+-- `is_system = false` after this migration, and both resolvers now require `is_system` for
+-- a non-`owner` grant -- so every existing admin, member and viewer would have lost their
+-- built-in capabilities on deploy. CI never caught it because CI always migrates an empty
+-- database (no pre-existing rows to lose).
+--
+-- The backfill below applies the SAME name-based trust rule this PR already uses for a
+-- freshly-seeded row: a `workspace_role` row named `viewer`, `member` or `admin` is trusted
+-- to be the genuine one. `UNIQUE (workspace_id, role)` (migration 0051) means at most one
+-- row can exist per `(workspace_id, role)` pair, so this UPDATE cannot mark two rows
+-- genuine for the same name in the same workspace.
+--
+-- EDGE CASE, CHECKED AND DISCLOSED (not silently decided) -- could a pre-existing row named
+-- `viewer`/`member`/`admin` be a CUSTOM row that took the name before it was enforced,
+-- rather than the genuine seed? `git log -p` on `seed-default-workspace-roles.ts` and
+-- `create-workspace.ts` shows: the still-mounted `organization()` plugin's own `create-role`
+-- route validated a role name as a bare `z.string()` (no reserved-name check at all) from
+-- this repository's very first commit until S10 unmounted the plugin, and
+-- `create-workspace.ts` only started seeding `viewer`/`member`/`admin` TRANSACTIONALLY at
+-- workspace-creation time from `feat(#6): native workspace writes ... (S4)` onward --
+-- before that commit, a workspace created through the plugin's own `create-organization`
+-- had no default-role row at all until the NEXT API boot's `seedDefaultWorkspaceRoles()`
+-- backfill ran. In the window between such a workspace's creation and that next boot, the
+-- plugin's unrestricted `create-role` could have inserted a custom row literally named
+-- `viewer`, `member` or `admin` for it -- and `seedDefaultWorkspaceRoles()`'s
+-- `onConflictDoNothing` would then have left that custom row in place forever, rather than
+-- overwriting it with the genuine payload. This backfill trusts that row's NAME the same
+-- way the rest of this PR trusts a freshly-seeded row's name, and marks it genuine too --
+-- exactly the same "distrust-by-name is not implemented" gap create-workspace-role.ts's own
+-- reserved-name check accepts for these three names (a real, already-seeded collision was
+-- never distinguishable from the genuine row before this column existed, precisely because
+-- nothing recorded which one a given row was). No evidence in this repository's own history
+-- shows this window was ever exploited, and `seedDefaultWorkspaceRoles()`'s idempotent
+-- self-heal below runs the same boot-time deploy this migration ships with, so the window
+-- is bounded to deployments where BOTH a plugin-created workspace once existed in that
+-- narrow pre-S4 gap AND a colliding custom role was minted before the next restart. See the
+-- pull request body for how this is disclosed and why option A (report-only) was chosen
+-- over silently rewriting these rows differently from every other genuinely-seeded one.
 ALTER TABLE "workspace_role" ADD COLUMN "is_system" boolean DEFAULT false NOT NULL;
+--> statement-breakpoint
+UPDATE "workspace_role"
+   SET "is_system" = true
+ WHERE "role" IN ('viewer', 'member', 'admin');

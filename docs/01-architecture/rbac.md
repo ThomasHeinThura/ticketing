@@ -275,9 +275,16 @@ the API distinguish "your membership row is corrupt" from "your role has no such
 
 ## Built-in roles and their capabilities
 
-Seeded on workspace creation. All except `owner` are editable. **This table is the seed
-data and the permission-matrix fixture** — a change here is a change to both, and shows
-up in review as a diff.
+**Only `viewer`/`member`/`admin` are actually seeded a `workspace_role` row on workspace
+creation, in P0's legacy shape** (independent alignment check of pull request #322: this
+line used to say every built-in role is seeded, which was never true here — corrected
+2026-09-23, issue #318). `owner` is never seeded a row at all (it is the compiled-in static
+role — retrofit plan R5). `manager`, `lead`, `customer` and `instance_admin` are reserved
+NAMES (issue #318, below) with no seed row in this legacy shape either — nothing in this
+codebase's own write paths ever produces a genuine `workspace_member.role` of one of those
+four today. All except `owner` are editable. **This table is the seed data and the
+permission-matrix fixture** — a change here is a change to both, and shows up in review as
+a diff.
 
 | Key | Rank | Intent | Capabilities |
 | --- | --- | --- | --- |

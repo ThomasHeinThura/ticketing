@@ -138,7 +138,10 @@ import {
 } from "@taskdesk/permissions";
 import { and, eq, inArray } from "drizzle-orm";
 import db, { schema } from "../database";
-import { resolveMembershipRoleFrom } from "../utils/workspace-member-roles";
+import {
+  isGenuineBuiltInRoleGrant,
+  resolveMembershipRoleFrom,
+} from "../utils/workspace-member-roles";
 
 /* ------------------------------------------------------------------ *
  * The pure mapper
@@ -161,7 +164,8 @@ export type WorkspaceMembershipFact = {
    * (`seed-default-workspace-roles.ts`/`create-workspace.ts` set it `true`;
    * `create-workspace-role.ts` never does). Always `false` from the real loader for
    * `"owner"`, which never gets a `workspace_role` row at all (retrofit plan R5) —
-   * `isGenuineBuiltInRoleGrant` below special-cases `"owner"` rather than trusting this
+   * `isGenuineBuiltInRoleGrant` (`workspace-member-roles.ts`, shared with
+   * `require-workspace-capability.ts`) special-cases `"owner"` rather than trusting this
    * field for it, the same split `require-workspace-capability.ts`'s
    * `isGenuineBuiltInRoleAssignment` uses. Without this field (or before it existed), a
    * custom role an administrator named e.g. `"manager"` read as indistinguishable from a
@@ -283,23 +287,6 @@ function isBuiltInWorkspaceRoleKey(value: string): value is BuiltInRoleKey {
     Object.hasOwn(BUILT_IN_ROLES, value) &&
     BUILT_IN_ROLES[value as BuiltInRoleKey].scope === "workspace"
   );
-}
-
-/**
- * Issue #318 (security), Opus review of PR #315 finding S2. `isBuiltInWorkspaceRoleKey`
- * only proves `role` NAMES a workspace-scope built-in — it says nothing about whether THIS
- * `workspace_member` row is genuinely that built-in or a custom row that merely took the
- * name (`create-workspace-role.ts` reserved only `"owner"` until this fix). Mirrors
- * `require-workspace-capability.ts`'s `isGenuineBuiltInRoleAssignment` exactly, so the two
- * can never disagree about which rows are genuine: `"owner"` is always genuine (never a
- * `workspace_role` row, reserved from custom creation), every other key only when the
- * loader found a `workspace_role` row with `is_system = true` for it.
- */
-function isGenuineBuiltInRoleGrant(
-  role: BuiltInRoleKey,
-  isSystemRole: boolean,
-): boolean {
-  return role === "owner" || isSystemRole;
 }
 
 /** `keyCapabilities` for a key-credentialed identity — never `undefined`, never a guess. */

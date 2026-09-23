@@ -283,6 +283,36 @@ describe("builtInRoleHasCapability — issue #318, the genuine-row check", () =>
       ).toBe(true);
     }
   });
+
+  it("issue #320 S4: 'customer' can never gain work_item:read through this gate, no matter what workspace_role rows exist -- it is never seeded, so it can never be genuine", async () => {
+    // Unlike `manager`/`admin`/etc, `customer` HOLDS `work_item:read`
+    // (`CUSTOMER_CAPABILITIES`), so this reaches the genuine-row check rather than being
+    // refused by the capability-implication short-circuit alone -- the case #320's review
+    // found reachable through the legacy `Object.hasOwn(BUILT_IN_ROLES, role)` check, which
+    // has no scope filter at all.
+    expect(
+      await builtInRoleHasCapability("ws-1", "customer", "work_item:read"),
+    ).toBe(false);
+
+    // Even a colluding row that SOMEHOW got marked is_system -- e.g. a future bug in
+    // seed-default-workspace-roles.ts -- would not help, because that function only ever
+    // touches `viewer`/`member`/`admin`; this asserts the CURRENT mechanism denies it, and
+    // is here so the seed function's own scope is pinned by a second, independent test.
+    state.systemRoleByWorkspaceRole["ws-1\u0000customer"] = false;
+    expect(
+      await builtInRoleHasCapability("ws-1", "customer", "work_item:read"),
+    ).toBe(false);
+  });
+
+  it("issue #320 S4: 'instance_admin' never gains a workspace capability through this gate -- it holds no workspace-scope capability at all, so the capability check denies it before the genuine-row check even runs", async () => {
+    expect(
+      await builtInRoleHasCapability(
+        "ws-1",
+        "instance_admin",
+        "work_item:read",
+      ),
+    ).toBe(false);
+  });
 });
 
 /**

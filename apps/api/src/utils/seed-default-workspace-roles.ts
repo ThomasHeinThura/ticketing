@@ -1,5 +1,5 @@
 import { DEFAULT_ROLE_NAMES, defaultRolePayloads } from "@taskdesk/permissions";
-import { and, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import db, { schema } from "../database";
 
 /**
@@ -22,6 +22,15 @@ import db, { schema } from "../database";
  * would let one replica's insert 23505 and `process.exit(1)` in `runStartupTasks`'s
  * catch, crashing a whole replica over an ordinary concurrent-boot race). The conflict
  * target makes the race resolve to a silent no-op for whichever replica loses it, instead.
+ *
+ * SELF-HEALS `is_system` for existing rows too (issue #318, security -- independent Sonnet
+ * review of pull request #322, BLOCKING finding). Migration `0068` itself backfills every
+ * existing `viewer`/`member`/`admin` row to `is_system = true`, but this function is the
+ * SAME idempotent, every-boot mechanism that repairs a workspace missing a default-role row
+ * at all -- so it repairs a deployment that somehow ran `0068` without that migration's own
+ * `UPDATE` the identical way: on every boot, not just once. `onConflictDoNothing`'s insert
+ * path can never flip an EXISTING row's `is_system`, which is exactly the bug the migration
+ * fix closes for the one-time case; this closes it for "ran anyway", forward, forever.
  */
 export async function seedDefaultWorkspaceRoles() {
   try {
@@ -41,6 +50,31 @@ export async function seedDefaultWorkspaceRoles() {
         "🛈 workspace_role table does not exist; skipping default-role seed.",
       );
       return;
+    }
+
+    // Issue #318 (security) self-heal, run every boot regardless of whether any workspace
+    // is missing a row: any `viewer`/`member`/`admin` row that is not yet `is_system = true`
+    // is repaired unconditionally. `UNIQUE (workspace_id, role)` means this can only ever
+    // match the one genuine row per workspace for each of these three names -- see this
+    // function's own doc comment and migration `0068`'s own comment for why a plain
+    // migration-time backfill is not enough on its own.
+    const healed = await db
+      .update(schema.workspaceRoleTable)
+      .set({ isSystem: true })
+      .where(
+        and(
+          inArray(
+            schema.workspaceRoleTable.role,
+            DEFAULT_ROLE_NAMES as unknown as string[],
+          ),
+          eq(schema.workspaceRoleTable.isSystem, false),
+        ),
+      )
+      .returning({ id: schema.workspaceRoleTable.id });
+    if (healed.length > 0) {
+      console.log(
+        `✅ Self-healed is_system = true on ${healed.length} existing default workspace role row(s) (issue #318).`,
+      );
     }
 
     const workspaces = await db

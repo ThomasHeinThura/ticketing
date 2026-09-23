@@ -555,6 +555,48 @@ describe("API integration: work item create/read/list (#23)", () => {
     });
   });
 
+  describe("issue #320 (security), S4: 'customer'/'instance_admin' as a literal workspace_member.role string", () => {
+    // Opus review of #320, finding S4 (pre-existing on `main`): a `workspace_member` row
+    // whose `role` is literally `"customer"` used to pass the legacy read at
+    // `require-workspace-capability.ts:194` (`Object.hasOwn(BUILT_IN_ROLES, role)`, with no
+    // scope check at all -- unlike `resolve-identity.ts`'s `isBuiltInWorkspaceRoleKey`,
+    // which already refused `customer`/`instance_admin` by `scope !== "workspace"`) and got
+    // 200 on a work-item read, although the permission matrix says a customer gets 403 and
+    // `customer` is "off the ladder ... never a workspace role" (rbac.md). This issue's
+    // genuine-row requirement closes it from a different angle than a scope check would:
+    // `customer` (organisation-scope) and `instance_admin` (instance-scope) are BOTH never
+    // seeded a `workspace_role` row in any workspace (`seed-default-workspace-roles.ts`
+    // only ever inserts `viewer`/`member`/`admin`), so neither can ever be `is_system`, so
+    // `isGenuineBuiltInRoleGrant` denies both unconditionally -- the same mechanism that
+    // closes `manager`/`lead`.
+    function listWorkItemsRequest(
+      app: ReturnType<typeof createApp>["app"],
+      projectId: string,
+    ) {
+      return app.request(`/api/projects/${projectId}/work-items`);
+    }
+
+    for (const reservedRole of ["customer", "instance_admin"] as const) {
+      it(`a workspace_member row literally named "${reservedRole}" gets no work_item:read capability, and 403s on the real route`, async () => {
+        const { project } = await setupProjectWithDefaultState();
+        const workspaceId = (
+          await db.query.projectTable.findFirst({
+            where: eq(schema.projectTable.id, project.id),
+          })
+        )?.workspaceId as string;
+        const asReservedRole = await addWorkspaceMemberWithoutGenuineRow(
+          workspaceId,
+          reservedRole,
+        );
+        mockAuthenticatedSession(asReservedRole);
+        const { app } = createApp();
+
+        const response = await listWorkItemsRequest(app, project.id);
+        expect(response.status, reservedRole).toBe(403);
+      });
+    }
+  });
+
   it("issue #290: a caller with no workspace membership at all gets the same 400 an unknown project id gets, not a distinguishing 403", async () => {
     const { project, type } = await setupProjectWithDefaultState();
     const stranger = await createWorkspaceMember({ role: "member" }); // a DIFFERENT workspace
