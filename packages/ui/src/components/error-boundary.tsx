@@ -1,16 +1,21 @@
 import React from "react";
-import { ErrorDisplay } from "./error-display";
+
+export type ErrorBoundaryFallbackProps = {
+  error: Error;
+  resetError: () => void;
+};
+
+export type ErrorBoundaryProps = {
+  children: React.ReactNode;
+  fallback: React.ComponentType<ErrorBoundaryFallbackProps>;
+};
 
 type ErrorBoundaryState = {
   hasError: boolean;
   error?: Error;
 };
 
-type ErrorBoundaryProps = {
-  children: React.ReactNode;
-  fallback?: React.ComponentType<{ error: Error; resetError: () => void }>;
-};
-
+/** Catches render errors and lets callers supply their own fallback UI. */
 export class ErrorBoundary extends React.Component<
   ErrorBoundaryProps,
   ErrorBoundaryState
@@ -34,7 +39,7 @@ export class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      if (this.props.fallback && this.state.error) {
+      if (this.state.error) {
         const FallbackComponent = this.props.fallback;
         return (
           <FallbackComponent
@@ -43,12 +48,8 @@ export class ErrorBoundary extends React.Component<
           />
         );
       }
-
-      return (
-        <ErrorDisplay error={this.state.error} onRetry={this.resetError} />
-      );
+      return null;
     }
-
     return this.props.children;
   }
 }

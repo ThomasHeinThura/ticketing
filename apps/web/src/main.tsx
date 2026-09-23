@@ -6,10 +6,10 @@ import { useTranslation } from "react-i18next";
 import queryClient from "@/query-client";
 import "@/index.css";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
+import { AppErrorBoundary } from "./components/app-error-boundary";
 import { KeyboardShortcutsHelp } from "./components/keyboard-shortcuts-help";
 import AuthProvider from "./components/providers/auth-provider";
 import { ThemeProvider } from "./components/providers/theme-provider";
-import { ErrorBoundary } from "./components/ui/error-boundary";
 import { KeyboardShortcutsProvider } from "./hooks/use-keyboard-shortcuts";
 import { captureCheckoutIntent } from "./lib/checkout-intent";
 import { AppI18nProvider } from "./lib/i18n/provider";
@@ -93,7 +93,7 @@ if (!rootElement.innerHTML) {
   const root = createRoot(rootElement);
   root.render(
     <StrictMode>
-      <ErrorBoundary fallback={RootCrashFallback}>
+      <AppErrorBoundary fallback={RootCrashFallback}>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <AuthProvider>
@@ -106,7 +106,7 @@ if (!rootElement.innerHTML) {
             </AuthProvider>
           </ThemeProvider>
         </QueryClientProvider>
-      </ErrorBoundary>
+      </AppErrorBoundary>
     </StrictMode>,
   );
 }
