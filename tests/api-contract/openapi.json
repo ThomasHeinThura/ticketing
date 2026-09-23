@@ -2563,6 +2563,20 @@
             "type": "string",
             "description": "One of: private, organisation."
           },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "dueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
           "archivedAt": {
             "type": [
               "string",
@@ -2604,6 +2618,8 @@
           "parentId",
           "position",
           "customerVisibility",
+          "startDate",
+          "dueDate",
           "archivedAt",
           "deletedAt",
           "version",

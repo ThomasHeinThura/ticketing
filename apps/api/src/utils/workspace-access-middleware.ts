@@ -12,8 +12,8 @@ import { validateWorkspaceAccess } from "./validate-workspace-access";
 // this codebase issues (cuid2, `{slug}-{number}`) ever contains one.
 //
 // FIRST ROUND of this fix treated a NUL-bearing id as simply ABSENT, falling through to
-// the generic "workspace id could not be determined" 400 -- but "absent" is exactly what
-// makes the 8 `[lookup, query]`-shaped helpers (`fromTask`, `fromTaskId`, `fromLabel`,
+// the generic "workspace id could not be determined" 400 -- but "absent" used to be what
+// made the 8 `[lookup, query]`-shaped helpers (`fromTask`, `fromTaskId`, `fromLabel`,
 // `fromTimeEntry`, `fromActivity`, `fromComment`, `fromColumn`, `fromWorkflowRule`) fall
 // through to their OWN `{ type: "query", key: "workspaceId" }` source next -- exactly
 // issue #256's caller-supplied-`?workspaceId=` fallback class this file's own `catch`
@@ -23,13 +23,43 @@ import { validateWorkspaceAccess } from "./validate-workspace-access";
 // NUL id -- fail-open relative to the original fail-closed 503, not a fix. So: a NUL byte
 // in ANY source's id is answered with an IMMEDIATE 400, the same way an empty/missing
 // `key` already is in `require-work-item-reach.ts` -- never treated as absent, and never
-// allowed to fall through to a later source.
+// allowed to fall through to a later source. (Issue #256 has since removed that fallback
+// entirely for the 8 helpers above, so this particular fall-through no longer exists --
+// the NUL check stays, unconditionally, because it is still the right answer for every
+// other source shape.)
 function hasNulByte(value: string): boolean {
   return value.includes("\u0000");
 }
 
 const NUL_BYTE_MESSAGE =
   "Workspace/resource id must not contain a NUL (\\u0000) byte";
+
+// Issue #256: a failed row lookup for these resources is a genuinely missing resource,
+// not a malformed request -- so it answers with the same 404 the resource's own
+// controller already uses when a caller reaches it with a fabricated `?workspaceId=`
+// (`get-label.ts`, `update-time-entry.ts`, `delete-workflow-rule.ts`, etc. all 404 with
+// exactly this wording). `"project"` is deliberately absent: `fromProject` has always
+// answered the generic 400 for an unknown id (`workflow-rule/index.ts`'s own route
+// comments document this, and #202's tests depend on it), and #256 does not touch it --
+// only the 8 `[lookup, query]`-shaped helpers below ever resolve one of these 7 resources.
+const RESOURCE_NOT_FOUND_MESSAGE: Record<
+  | "task"
+  | "label"
+  | "timeEntry"
+  | "activity"
+  | "comment"
+  | "column"
+  | "workflowRule",
+  string
+> = {
+  task: "Task not found",
+  label: "Label not found",
+  timeEntry: "Time entry not found",
+  activity: "Activity not found",
+  comment: "Comment not found",
+  column: "Column not found",
+  workflowRule: "Workflow rule not found",
+};
 
 type WorkspaceIdSource =
   | { type: "query"; key: string }
@@ -119,6 +149,20 @@ export function workspaceAccessMiddleware(
         }
         if (id) {
           workspaceId = await lookupWorkspaceId(source.resource, id);
+          if (!workspaceId && source.resource !== "project") {
+            // #256: the row genuinely doesn't exist -- no more falling through to a
+            // caller-supplied `?workspaceId=` to keep going. Answered as a clean 404,
+            // matching what these resources' own controllers already say when they hit
+            // this same "no such row" condition (`get-label.ts`, `update-time-entry.ts`,
+            // `delete-workflow-rule.ts`, ...), so a nonexistent id is indistinguishable
+            // from one that belongs to someone else -- no existence oracle. `"project"`
+            // is excluded because `fromProject` is not one of #256's 8 helpers and its
+            // generic-400-on-unknown-id behaviour is unchanged (see the comment on
+            // `RESOURCE_NOT_FOUND_MESSAGE` above).
+            throw new HTTPException(404, {
+              message: RESOURCE_NOT_FOUND_MESSAGE[source.resource],
+            });
+          }
         }
       } else if (source.type === "lookupMany") {
         const body = await readJsonObjectBody(c);
@@ -323,10 +367,14 @@ async function lookupWorkspaceId(
     // Fail CLOSED. This used to `return null`, which is indistinguishable from
     // "the row does not exist" — and several sources (fromTask, fromTaskId,
     // fromLabel, fromComment, fromColumn, fromTimeEntry, fromActivity,
-    // fromWorkflowRule) fall back to an attacker-supplied `?workspaceId=` when
-    // the lookup yields null. A transient database error therefore downgraded a
-    // tenant check to caller-controlled input while the handler still acted on
-    // the resource id from the path. Issue #6.
+    // fromWorkflowRule) used to fall back to an attacker-supplied `?workspaceId=`
+    // when the lookup yielded null. A transient database error therefore downgraded
+    // a tenant check to caller-controlled input while the handler still acted on
+    // the resource id from the path. Issue #6. (Issue #256 has since removed that
+    // fallback entirely, so a `null` result from a genuinely absent row is now
+    // answered with a 404 by the caller of `lookupWorkspaceId`, never a fallback —
+    // but a transient error must still fail closed here, not `return null`, the
+    // same as before.)
     console.error(`Error looking up workspaceId for ${resource}:`, error);
     throw new HTTPException(503, {
       message: "Could not verify workspace access. Please retry.",
@@ -351,18 +399,12 @@ export const workspaceAccess = {
 
   fromTask: (idKey = "id") =>
     workspaceAccessMiddleware({
-      sources: [
-        { type: "lookup", resource: "task", idKey },
-        { type: "query", key: "workspaceId" },
-      ],
+      sources: [{ type: "lookup", resource: "task", idKey }],
     }),
 
   fromTaskId: (idKey = "taskId") =>
     workspaceAccessMiddleware({
-      sources: [
-        { type: "lookup", resource: "task", idKey },
-        { type: "query", key: "workspaceId" },
-      ],
+      sources: [{ type: "lookup", resource: "task", idKey }],
     }),
 
   fromTasks: (idKey = "taskIds") =>
@@ -372,49 +414,31 @@ export const workspaceAccess = {
 
   fromLabel: (idKey = "id") =>
     workspaceAccessMiddleware({
-      sources: [
-        { type: "lookup", resource: "label", idKey },
-        { type: "query", key: "workspaceId" },
-      ],
+      sources: [{ type: "lookup", resource: "label", idKey }],
     }),
 
   fromTimeEntry: (idKey = "id") =>
     workspaceAccessMiddleware({
-      sources: [
-        { type: "lookup", resource: "timeEntry", idKey },
-        { type: "query", key: "workspaceId" },
-      ],
+      sources: [{ type: "lookup", resource: "timeEntry", idKey }],
     }),
 
   fromActivity: (idKey = "id") =>
     workspaceAccessMiddleware({
-      sources: [
-        { type: "lookup", resource: "activity", idKey },
-        { type: "query", key: "workspaceId" },
-      ],
+      sources: [{ type: "lookup", resource: "activity", idKey }],
     }),
 
   fromComment: (idKey = "id") =>
     workspaceAccessMiddleware({
-      sources: [
-        { type: "lookup", resource: "comment", idKey },
-        { type: "query", key: "workspaceId" },
-      ],
+      sources: [{ type: "lookup", resource: "comment", idKey }],
     }),
 
   fromColumn: (idKey = "id") =>
     workspaceAccessMiddleware({
-      sources: [
-        { type: "lookup", resource: "column", idKey },
-        { type: "query", key: "workspaceId" },
-      ],
+      sources: [{ type: "lookup", resource: "column", idKey }],
     }),
 
   fromWorkflowRule: (idKey = "id") =>
     workspaceAccessMiddleware({
-      sources: [
-        { type: "lookup", resource: "workflowRule", idKey },
-        { type: "query", key: "workspaceId" },
-      ],
+      sources: [{ type: "lookup", resource: "workflowRule", idKey }],
     }),
 };
