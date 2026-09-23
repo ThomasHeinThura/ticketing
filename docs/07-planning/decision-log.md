@@ -17,6 +17,39 @@ Newest first.
 
 ---
 
+### 2026-09-23 · `audit_log` is append-only by trigger, not by grant — this deployment has exactly one Postgres role
+
+**Decision:** `audit_log` is made append-only by a `BEFORE UPDATE OR DELETE` trigger
+(`audit_log_append_only` / `audit_log_reject_mutation()`, migration `0067`). The trigger
+raises on every mutation except AU-7's `organisation_id`-to-NULL tombstone. This replaces
+the `taskdesk_app` / `taskdesk_maint` role split that AU-3 and `migrations.md` describe.
+`REVOKE UPDATE, DELETE … FROM PUBLIC` stays as defence in depth for a future
+lesser-privileged role, but against the table owner today it does nothing. `activity`
+gets the same treatment the next time it is touched. AU-3, AU-15 and `migrations.md`'s
+"Append-only tables" section are corrected in the same change as this entry (PR #291).
+`data-model.md` §11 already was.
+
+**Why:** `compose.yml`, `charts/taskdesk/**` and `deploy/**` provision exactly one Postgres
+role. That role owns every table it migrates, so it keeps full DML whatever is revoked. The
+two-role split was specified but never implemented anywhere. PR #291's alignment check
+verified this against each deployment file. A trigger is enforced against every role,
+including the owner. The risk that remains is a privileged actor running
+`ALTER TABLE … DISABLE TRIGGER`. AU-15's hash chain and `audit-verify` already exist to
+catch exactly that after the fact.
+
+**Alternatives:** implement the real two-role split now: a lesser-privileged app role owns
+nothing, and migrations run as a separate role. Rejected for this slice. It is deployment
+and credential work across compose, Helm and `deploy/`, and it would block a schema-and-writer
+slice on infrastructure unrelated to it. It can still land later as `audit-purge`'s own
+infrastructure work, and then the grant becomes the primary control and the trigger a
+second one.
+
+**Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation.
+There was one clearly recommended option. PR #291's alignment review drafted the entry and
+judged it not a two-way trade-off.
+
+---
+
 ### 2026-09-23 · Dependency picks: Recharts for charts, react-grid-layout for the dashboard grid, Playwright screenshots for G8
 
 **Decision:** three new dependencies are chosen for the design system. They are **not
