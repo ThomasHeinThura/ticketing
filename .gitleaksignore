@@ -1,0 +1,5 @@
+# False positives, dismissed by Thomas on 2026-09-23. Decision log: "gitleaks false positive on
+# audit_log secret-refusal test fixtures". Each line is one exact finding (commit:file:rule:line).
+# Never widen these into path- or rule-wide ignores.
+dc63e859546223ac9c11abc3c1d36a5c79ef445e:tests/api-integration/audit-log.test.ts:generic-api-key:188
+4f20080a03bb5fe6804cfe32e79e21932d926300:tests/api-integration/audit-log.test.ts:generic-api-key:545

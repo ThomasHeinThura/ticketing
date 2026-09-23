@@ -185,7 +185,7 @@ describe("appendAuditLog", () => {
         baseInput({
           action: "plugin.changed",
           before: null,
-          after: { apiKey: "sk_live_abc123" },
+          after: { apiKey: "fake-api-key-for-test" },
         }),
       ),
     ).rejects.toThrow(/looks like a secret value/i);
@@ -542,7 +542,7 @@ describe("AU-2 secret backstop -- segment matching, not substring (S6)", () => {
     ],
     ["pwd (S6 bypass)", { pwd: "hunter2" }],
     ["passphrase (S6 bypass)", { passphrase: "correct horse battery staple" }],
-    ["apiKey compound segment pair", { apiKey: "sk_live_abc123" }],
+    ["apiKey compound segment pair", { apiKey: "fake-api-key-for-test" }],
     ["privateKey compound segment pair", { privateKey: "-----BEGIN KEY-----" }],
     [
       "dotted path smtp.password (S6 delta round)",

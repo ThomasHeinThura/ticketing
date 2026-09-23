@@ -17,6 +17,31 @@ Newest first.
 
 ---
 
+### 2026-09-23 · gitleaks false positive on `audit_log` secret-refusal test fixtures — dismissed by exact fingerprint
+
+**Decision:** two gitleaks `generic-api-key` findings are added to a new root `.gitleaksignore`.
+They are in `tests/api-integration/audit-log.test.ts`, at commit `dc63e85` line 188 and
+commit `4f20080` line 545. Each is suppressed by its exact fingerprint
+(`commit:file:rule:line`), never by path or by rule. The fixture value (`sk_live_abc123`) is
+also changed to an obviously fake `fake-api-key-for-test` at the head, so no new finding can
+arise from it.
+
+**Why:** the value is not a secret. It is test input proving that the AU-2 secret check
+refuses an `after` payload whose key is `apiKey`. gitleaks scans every commit in a PR's
+range, so fixing the head alone could not clear the required `supply chain - secret scan`
+check. The findings already live in commits `dc63e85` and `4f20080`, and removing them would
+mean rewriting pushed history.
+
+**Alternatives:** close PR #291 and open a fresh single-commit PR with fake values, so the
+old commits are never scanned. Rejected: it would need Opus to re-attest a new PR, and the
+review history would sit on a closed PR. A path- or rule-wide ignore was rejected outright,
+because it would blind the scanner to real secrets in that file.
+
+**Decided by:** Thomas, via `AskUserQuestion`, 2026-09-23 — "Suppress by fingerprint". This
+follows the precedent of the CodeQL alert #2 dismissal (2026-09-17).
+
+---
+
 ### 2026-09-23 · `audit_log` is append-only by trigger, not by grant — this deployment has exactly one Postgres role
 
 **Decision:** `audit_log` is made append-only by two triggers in migration `0067`:
