@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 
 /**
  * Require the caller to be an actual `workspace_member` of the workspace
@@ -37,6 +38,7 @@ export async function requireWorkspaceMembership(c: Context, next: Next) {
   const userId = c.get("userId");
   const workspaceId = c.get("workspaceId");
   if (!userId || !workspaceId) {
+    setShadowLegacyAuthorization(c, "denied");
     throw new HTTPException(403, {
       message: "You don't have access to this workspace",
     });
@@ -54,10 +56,12 @@ export async function requireWorkspaceMembership(c: Context, next: Next) {
     .limit(1);
 
   if (!membership) {
+    setShadowLegacyAuthorization(c, "denied");
     throw new HTTPException(403, {
       message: "You don't have access to this workspace",
     });
   }
 
+  setShadowLegacyAuthorization(c, "allowed");
   return next();
 }

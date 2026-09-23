@@ -2,6 +2,7 @@ import { builtInRoles } from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
+import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { isInstanceAdmin } from "./is-instance-admin";
 import {
   resolveMembershipRole,
@@ -61,6 +62,7 @@ export function requireWorkspaceRoleAuthority(permissions: PermissionMap) {
     const workspaceId = c.get("workspaceId");
     const userId = c.get("userId");
     if (!workspaceId || !userId) {
+      setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
 
@@ -81,6 +83,7 @@ export function requireWorkspaceRoleAuthority(permissions: PermissionMap) {
     // the instance-admin bypass from standing in for a workspace role it never read.
     const membership = await resolveMembershipRole(db, workspaceId, userId);
     if (!membership.ok) {
+      setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
     const role = membership.role;
@@ -91,9 +94,11 @@ export function requireWorkspaceRoleAuthority(permissions: PermissionMap) {
         : await ownRoleStatements(workspaceId, role);
 
     if (!statements || !satisfies(statements, permissions)) {
+      setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
 
+    setShadowLegacyAuthorization(c, "allowed");
     return next();
   };
 }

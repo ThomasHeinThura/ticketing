@@ -20,7 +20,9 @@ import type {
   ResolvedIdentity,
 } from "@taskdesk/permissions";
 import {
+  instanceScope,
   isCapabilityPolicy,
+  NO_PERSON_PARAMETER,
   NO_SINGLE_RESOURCE,
   type PolicyContext,
   type PolicyDecision,
@@ -68,6 +70,8 @@ export const UNEVALUATED_REASON_CODES = [
    * against either side (#323 Opus S1).
    */
   "scope_source_unavailable",
+  /** The handler owns authorization, so its result is not comparable to a declarative allow. */
+  "delegated_to_handler",
 ] as const;
 
 export type UnevaluatedReasonCode = (typeof UNEVALUATED_REASON_CODES)[number];
@@ -120,6 +124,8 @@ export function buildShadowPolicySide(args: {
   readonly entry: RegistryEntry | undefined;
   readonly identity: ResolvedIdentity | null;
   readonly workspaceId: string | null;
+  /** Provenance from the middleware that supplied workspaceId; never inferred here. */
+  readonly workspaceIdSource: "row" | "request" | null;
   /** Set only on routes whose existing middleware already resolved a project row (today:
    *  `workspaceAccess.fromProject`'s lookup source). See `workspace-access-middleware.ts`. */
   readonly projectId?: string | null;
@@ -133,6 +139,7 @@ export function buildShadowPolicySide(args: {
     entry,
     identity,
     workspaceId,
+    workspaceIdSource,
     projectId = null,
     workItemId = null,
   } = args;
@@ -148,7 +155,11 @@ export function buildShadowPolicySide(args: {
   // registry's own discriminant (`RegistryEntry.kind`) — `Policy` itself is a structural
   // union with no shared `kind` field, so this reads the registry's classification rather
   // than re-deriving it.
-  if (entry.kind === "public" || entry.kind === "delegated") {
+  if (entry.kind === "delegated") {
+    return "delegated_to_handler";
+  }
+
+  if (entry.kind === "public") {
     return {
       entry,
       context: { identity, target: {} },
@@ -163,11 +174,21 @@ export function buildShadowPolicySide(args: {
   }
 
   if (entry.kind === "self") {
-    // Slice 2 does not attempt to resolve an arbitrary route's person-identifying path/query
-    // parameter generically — that is route-specific knowledge this middleware, mounted
-    // once globally, does not have. Disclosed as its own reason code rather than guessed at
-    // (a wrong guess here would silently manufacture disagreements that are Slice 2's own
-    // fault, not a real legacy-vs-policy gap).
+    // An explicit no-parameter declaration is sufficient to use the evaluator's sentinel.
+    // Named person parameters remain unevaluated until a route-specific mapping supplies
+    // the actual path/query value; this global middleware does not guess.
+    if (
+      "personParam" in policy &&
+      typeof policy.personParam === "object" &&
+      policy.personParam !== null &&
+      "exempt" in policy.personParam &&
+      policy.personParam.exempt === "no_person_parameter"
+    ) {
+      return {
+        entry,
+        context: { identity, target: {}, targetPersonId: NO_PERSON_PARAMETER },
+      };
+    }
     return "self_target_unavailable";
   }
 
@@ -194,7 +215,9 @@ export function buildShadowPolicySide(args: {
   // `workspace-access-middleware.ts` should expose WHICH source kind produced
   // `workspaceId` so a `row` policy is only ever evaluated against a real row.
   let scope: ResolvedScope;
-  if (policy.scope === "workspace") {
+  if (policy.scope === "instance") {
+    scope = instanceScope();
+  } else if (policy.scope === "workspace") {
     if (workspaceId === null || workspaceId === "") {
       return "row_scope_unavailable";
     }
@@ -222,6 +245,13 @@ export function buildShadowPolicySide(args: {
     return "row_scope_unavailable";
   }
 
+  if (
+    policy.scope !== "instance" &&
+    (workspaceIdSource === null || workspaceIdSource !== policy.scopeSource)
+  ) {
+    return "scope_source_unavailable";
+  }
+
   // `reach: "required"` makes `context.inReach` mandatory — `evaluatePolicy` denies
   // (`policy_context_incomplete`) rather than guess when it is absent (defect 5). Slice 2
   // can only answer this honestly for `workspace` scope, from data already inside the
@@ -239,10 +269,16 @@ export function buildShadowPolicySide(args: {
   if (reachExempt) {
     inReach = NO_SINGLE_RESOURCE;
   } else if (reach === "required") {
-    if (policy.scope !== "workspace") {
+    if (policy.scope === "workspace") {
+      inReach = workspaceInReach(identity, workspaceId as string);
+    } else if (identity.reach.kind === "all") {
+      // Instance-wide reach is sufficient for any concrete scope and needs no
+      // project hierarchy or team-owner facts. Other non-workspace cases remain
+      // unevaluated until their full reach facts can be loaded safely.
+      inReach = true;
+    } else {
       return "reach_unavailable";
     }
-    inReach = workspaceInReach(identity, workspaceId as string);
   }
 
   return {
@@ -333,23 +369,4 @@ export function compareShadowOutcome(
 
   // legacy denied, policy allowed.
   return { outcome: "legacy_deny_policy_allow", reasonCode: null };
-}
-
-/**
- * Whether an HTTP status the shadow middleware observed from the legacy path represents an
- * authorization-shaped denial (401/403), or a reach denial this codebase deliberately masks
- * as a 404 indistinguishable from "genuinely does not exist" (#256, #290, #261 F2 — the
- * whole reason those routes 404 rather than 403 for an out-of-reach row). Any other status —
- * 2xx, a validation 400, or a 500 unrelated bug — means the legacy path let the request
- * reach its handler; the shadow comparison is about the AUTHORIZATION decision, not about
- * whether the handler itself later succeeded.
- *
- * This is a deliberate, documented heuristic, not a certainty: a plain business 404 (an id
- * that never existed, from a route with no reach ambiguity at all) and a masked-reach 404
- * are genuinely indistinguishable from outside the handler, by this codebase's own design.
- * Treating both as "legacy denied" is the same answer the codebase already gives a real
- * caller, so it cannot manufacture a disagreement the caller wouldn't also see.
- */
-export function isLegacyDenialStatus(status: number): boolean {
-  return status === 401 || status === 403 || status === 404;
 }

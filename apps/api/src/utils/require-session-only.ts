@@ -1,5 +1,6 @@
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 
 /**
  * Session-only enforcement, applied at request time.
@@ -51,6 +52,7 @@ import { HTTPException } from "hono/http-exception";
 export function requireSessionOnly() {
   return async (c: Context, next: Next) => {
     if (c.get("apiKey")) {
+      setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, {
         message:
           "session_required: this route accepts a browser session only, not an API key",
@@ -62,16 +64,19 @@ export function requireSessionOnly() {
     } | null;
 
     if (!session) {
+      setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(401, { message: "Unauthorized" });
     }
 
     if (session.impersonatedBy) {
+      setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, {
         message:
           "session_required: this route accepts a browser session only, not an impersonation session",
       });
     }
 
+    setShadowLegacyAuthorization(c, "allowed");
     return next();
   };
 }

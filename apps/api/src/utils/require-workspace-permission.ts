@@ -2,6 +2,7 @@ import { type BuiltInRoleName, builtInRoles } from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
+import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { isInstanceAdmin } from "./is-instance-admin";
 import {
   type MembershipRoleResolution,
@@ -256,16 +257,20 @@ export function requireWorkspacePermission(permissions: PermissionMap) {
       | { permissions?: Record<string, string[]> | null }
       | undefined;
     if (apiKey?.permissions && !satisfies(apiKey.permissions, permissions)) {
+      setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Insufficient API key scope" });
     }
 
     if (!(await hasWorkspacePermission(c, permissions))) {
       if (!c.get("userId")) {
+        setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(401, { message: "Unauthorized" });
       }
+      setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
 
+    setShadowLegacyAuthorization(c, "allowed");
     return next();
   };
 }

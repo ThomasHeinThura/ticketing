@@ -36,11 +36,10 @@
  * could produce a spurious disagreement, indistinguishable in the evidence from a genuine
  * one. Documented here and in the PR body, not fixed in this slice.
  *
- * **Legacy outcome is read from the final response status alone**, not from a try/catch
- * around `next()`: `apps/api/src/index.ts`'s `app.onError` already converts every thrown
- * `HTTPException` (and every other error) into a `Response` before `next()` here ever
- * resolves, so `next()` never throws — see `shadow-evaluation.ts`'s `isLegacyDenialStatus`
- * for the 401/403/404 heuristic this relies on.
+ * **Legacy authorization is explicit context written by authorization middleware.**
+ * Response status is retained as diagnostic evidence, but never decides whether legacy
+ * allowed or denied. A route whose authorization path has not recorded a decision is
+ * conservatively `legacy_outcome_unknown`.
  */
 
 import {
@@ -49,14 +48,16 @@ import {
   isCapabilityPolicy,
   normaliseRouteKey,
 } from "@taskdesk/permissions";
+import { eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
+import db, { schema } from "../database";
 import { policyRegistry } from "../policy-registry";
 import { resolveIdentity } from "./resolve-identity";
 import { policyShadowEnabled } from "./shadow-config";
+import type { ShadowLegacyAuthorization } from "./shadow-context";
 import {
   buildShadowPolicySide,
   compareShadowOutcome,
-  isLegacyDenialStatus,
   type LegacyOutcome,
   type ShadowPolicySide,
 } from "./shadow-evaluation";
@@ -190,6 +191,8 @@ async function runShadowEvaluation(
   const policy = policyFactsFor(entry);
   const routerGroup = routerGroupFor(entry?.source);
   const workspaceId = (c.get("workspaceId") as string | undefined) ?? null;
+  let workspaceIdSource =
+    (c.get("workspaceIdSource") as "row" | "request" | undefined) ?? null;
   const projectId = (c.get("projectId") as string | undefined) ?? null;
   const workItemId = (c.get("workItemId") as string | undefined) ?? null;
   const apiKey = c.get("apiKey") as ApiKeyContextValue;
@@ -199,6 +202,30 @@ async function runShadowEvaluation(
 
   let policySide: ReturnType<typeof buildShadowPolicySide>;
   try {
+    // Some workspace routes declare row provenance because their handler reads the
+    // workspace row, while the reach middleware starts from a path/query value. On
+    // denied requests that handler never runs, so resolve the declared target after
+    // the response (inside the bounded shadow queue) before deciding its provenance.
+    // A missing row stays unevaluated; a caller-supplied id is never promoted to row
+    // evidence without this authoritative lookup.
+    if (
+      workspaceId !== null &&
+      workspaceIdSource === "request" &&
+      entry !== undefined &&
+      isCapabilityPolicy(entry.policy) &&
+      entry.policy.scope === "workspace" &&
+      entry.policy.scopeSource === "row"
+    ) {
+      const [workspace] = await db
+        .select({ id: schema.workspaceTable.id })
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, workspaceId))
+        .limit(1);
+      if (workspace) {
+        workspaceIdSource = "row";
+      }
+    }
+
     const identity = userId
       ? await resolveIdentity({
           userId,
@@ -213,6 +240,7 @@ async function runShadowEvaluation(
       entry,
       identity,
       workspaceId,
+      workspaceIdSource,
       projectId,
       workItemId,
     });
@@ -439,11 +467,13 @@ export async function runNextWithPolicyShadow(
   await next();
 
   const status = c.res?.status ?? 0;
-  const legacy: LegacyOutcome = {
-    known: true,
-    allowed: !isLegacyDenialStatus(status),
-    status,
-  };
+  const authorization = c.get("legacyAuthorization") as
+    | ShadowLegacyAuthorization
+    | undefined;
+  const legacy: LegacyOutcome =
+    authorization === undefined
+      ? { known: false }
+      : { known: true, allowed: authorization === "allowed", status };
 
   const routeKey = attributedRouteKey(c);
   if (routeKey === null) {

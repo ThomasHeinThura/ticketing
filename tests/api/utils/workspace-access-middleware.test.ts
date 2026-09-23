@@ -39,9 +39,13 @@ vi.mock("../../../apps/api/src/database", async () => {
   // reaching into the condition object's internals.
   const dialect = new PgDialect();
   let boundId: string | undefined;
+  let selectedFields: string[] = [];
 
   const chain = {
-    select: () => chain,
+    select: (selection: Record<string, unknown>) => {
+      selectedFields = Object.keys(selection);
+      return chain;
+    },
     from: () => chain,
     innerJoin: () => chain,
     where: (condition: Parameters<typeof dialect.sqlToQuery>[0]) => {
@@ -57,7 +61,15 @@ vi.mock("../../../apps/api/src/database", async () => {
       }
       state.lookedUpIds.push(boundId);
       const workspaceId = WORKSPACE_BY_TASK[boundId];
-      return workspaceId ? [{ workspaceId }] : [];
+      if (!workspaceId) return [];
+      const values: Record<string, string> = {
+        workspaceId,
+        projectId: `project-${boundId}`,
+        workItemId: boundId,
+      };
+      return [
+        Object.fromEntries(selectedFields.map((key) => [key, values[key]])),
+      ];
     },
   };
 
@@ -141,6 +153,114 @@ describe("workspaceAccess lookup sources", () => {
   beforeEach(() => {
     state.lookedUpIds.length = 0;
     state.handlerReached = false;
+  });
+
+  it("marks an out-of-reach fromProject denial explicitly before returning its legacy 400", async () => {
+    const app = new Hono<{
+      Variables: {
+        userId: string;
+        workspaceId?: string;
+        workspaceIdSource?: "row" | "request";
+        legacyAuthorization?: "allowed" | "denied";
+      };
+    }>()
+      .use("*", async (c, next) => {
+        c.set("userId", "user-1");
+        return next();
+      })
+      .get("/project/:id", workspaceAccess.fromProject(), (c) =>
+        c.json({ reached: true }),
+      )
+      .onError((error, c) =>
+        c.json({
+          originalStatus: error instanceof HTTPException ? error.status : 500,
+          workspaceId: c.get("workspaceId"),
+          workspaceIdSource: c.get("workspaceIdSource"),
+          legacyAuthorization: c.get("legacyAuthorization"),
+        }),
+      );
+
+    const response = await app.request("/project/project-in-other-workspace");
+    expect(await response.json()).toEqual({
+      originalStatus: 400,
+      workspaceId: "workspace-theirs",
+      workspaceIdSource: "row",
+      legacyAuthorization: "denied",
+    });
+  });
+
+  it("exposes the resolved task and project rows before an out-of-reach denial", async () => {
+    const app = new Hono<{
+      Variables: {
+        userId: string;
+        workspaceId?: string;
+        workspaceIdSource?: "row" | "request";
+        projectId?: string;
+        workItemId?: string;
+        legacyAuthorization?: "allowed" | "denied";
+      };
+    }>()
+      .use("*", async (c, next) => {
+        c.set("userId", "user-1");
+        return next();
+      })
+      .get("/task/:id", workspaceAccess.fromTask(), (c) =>
+        c.json({ reached: true }),
+      )
+      .onError((error, c) =>
+        c.json({
+          originalStatus: error instanceof HTTPException ? error.status : 500,
+          workspaceId: c.get("workspaceId"),
+          workspaceIdSource: c.get("workspaceIdSource"),
+          projectId: c.get("projectId"),
+          workItemId: c.get("workItemId"),
+          legacyAuthorization: c.get("legacyAuthorization"),
+        }),
+      );
+
+    const response = await app.request("/task/task-in-other-workspace");
+    expect(await response.json()).toEqual({
+      originalStatus: 404,
+      workspaceId: "workspace-theirs",
+      workspaceIdSource: "row",
+      projectId: "project-task-in-other-workspace",
+      workItemId: "task-in-other-workspace",
+      legacyAuthorization: "denied",
+    });
+  });
+
+  it("exposes a denied param target as request-sourced evidence", async () => {
+    const app = new Hono<{
+      Variables: {
+        userId: string;
+        workspaceId?: string;
+        workspaceIdSource?: "row" | "request";
+        legacyAuthorization?: "allowed" | "denied";
+      };
+    }>()
+      .use("*", async (c, next) => {
+        c.set("userId", "user-1");
+        return next();
+      })
+      .get("/workspace/:workspaceId", workspaceAccess.fromParam(), (c) =>
+        c.json({ reached: true }),
+      )
+      .onError((error, c) =>
+        c.json({
+          originalStatus: error instanceof HTTPException ? error.status : 500,
+          workspaceId: c.get("workspaceId"),
+          workspaceIdSource: c.get("workspaceIdSource"),
+          legacyAuthorization: c.get("legacyAuthorization"),
+        }),
+      );
+
+    const response = await app.request("/workspace/workspace-theirs");
+    expect(await response.json()).toEqual({
+      originalStatus: 403,
+      workspaceId: "workspace-theirs",
+      workspaceIdSource: "request",
+      legacyAuthorization: "denied",
+    });
   });
 
   it("authorizes against the body id the handler will act on", async () => {

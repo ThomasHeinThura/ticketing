@@ -364,6 +364,7 @@ describe("an evaluator exception never affects the response", () => {
 });
 
 const LABEL_WORKSPACE_ROUTE_KEY = "GET /api/label/workspace/{workspaceId}";
+const WORKSPACE_DETAIL_ROUTE_KEY = "GET /api/workspace/{workspaceId}";
 const PROJECT_REORDER_ROUTE_KEY = "PUT /api/project/reorder";
 const PROJECT_UPDATE_ROUTE_KEY = "PUT /api/project/{id}";
 const INVITATION_PENDING_ROUTE_KEY = "GET /api/invitation/pending";
@@ -401,6 +402,30 @@ describe("#323 Opus S1 — a request-sourced workspace route fully evaluates to 
       await shadowTalliesFor(LABEL_WORKSPACE_ROUTE_KEY)
     ).filter((row) => row.outcome === "legacy_allow_policy_deny");
     expect(disagreeTallies).toEqual([]);
+  });
+});
+
+describe("#324 — denied param workspace scope is checked against a verified row", () => {
+  it("records a nonmember's 403 as agree on GET /api/workspace/{workspaceId}", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const owner = await createWorkspaceMember();
+    const other = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(other.user);
+
+    const response = await fresh.app.request(
+      `/api/workspace/${owner.workspace.id}`,
+    );
+    expect(response.status).toBe(403);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const tallies = await shadowTalliesFor(WORKSPACE_DETAIL_ROUTE_KEY);
+    expect(tallies.some((row) => row.outcome === "agree")).toBe(true);
+    expect(
+      tallies.some((row) => row.outcome === "legacy_deny_policy_allow"),
+    ).toBe(false);
   });
 });
 
@@ -477,6 +502,14 @@ describe("#323 Opus S2 — evidence is attributed to the route that actually ran
     expect(
       (await shadowTalliesFor(WS_USER_ROUTE_KEY)).length,
     ).toBeGreaterThanOrEqual(1);
+    const delegated = await shadowTalliesFor(WS_USER_ROUTE_KEY);
+    expect(
+      delegated.some(
+        (row) =>
+          row.outcome === "unevaluated" &&
+          row.reasonCode === "delegated_to_handler",
+      ),
+    ).toBe(true);
     expect(await shadowTalliesFor(WS_PROJECT_ROUTE_KEY)).toEqual([]);
   });
 });

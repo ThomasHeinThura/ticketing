@@ -9,12 +9,16 @@
  * `legacy_allow_policy_deny` (issue #8's own required example).
  */
 import type { RegistryEntry, ResolvedIdentity } from "@taskdesk/permissions";
-import { BUILT_IN_ROLES, evaluatePolicy } from "@taskdesk/permissions";
+import {
+  BUILT_IN_ROLES,
+  evaluatePolicy,
+  NO_PERSON_PARAMETER,
+  NO_SINGLE_RESOURCE,
+} from "@taskdesk/permissions";
 import { describe, expect, it } from "vitest";
 import {
   buildShadowPolicySide,
   compareShadowOutcome,
-  isLegacyDenialStatus,
   type LegacyOutcome,
 } from "../../../apps/api/src/permissions/shadow-evaluation";
 import { normaliseTraceId } from "../../../apps/api/src/permissions/shadow-middleware";
@@ -38,11 +42,33 @@ const PUBLIC_ENTRY: RegistryEntry = {
   policy: { public: true, reason: "liveness probe" },
 };
 
+const DELEGATED_ENTRY: RegistryEntry = {
+  routeKey: "GET /api/ws/user",
+  kind: "delegated",
+  source: "apps/api/src/policy-registry.ts (websocket)",
+  policy: {
+    delegated: "websocket",
+    reason: "websocket upgrade is authenticated by its handler",
+  },
+};
+
 const SELF_ENTRY: RegistryEntry = {
   routeKey: "GET /api/user/{id}",
   kind: "self",
   source: "apps/api/src/user/policy.ts",
   policy: { authenticated: true, self: true, personParam: "id" },
+};
+
+const SELF_EXEMPT_ENTRY: RegistryEntry = {
+  ...SELF_ENTRY,
+  policy: {
+    authenticated: true,
+    self: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason: "caller is the target",
+    },
+  },
 };
 
 const PORTAL_ENTRY: RegistryEntry = {
@@ -79,23 +105,9 @@ function identity(overrides: Partial<ResolvedIdentity> = {}): ResolvedIdentity {
 
 const ALLOWED: LegacyOutcome = { known: true, allowed: true, status: 200 };
 const DENIED_403: LegacyOutcome = { known: true, allowed: false, status: 403 };
+const DENIED_400: LegacyOutcome = { known: true, allowed: false, status: 400 };
 const DENIED_404: LegacyOutcome = { known: true, allowed: false, status: 404 };
 const UNKNOWN: LegacyOutcome = { known: false };
-
-describe("isLegacyDenialStatus", () => {
-  it("treats 401/403/404 as denial", () => {
-    expect(isLegacyDenialStatus(401)).toBe(true);
-    expect(isLegacyDenialStatus(403)).toBe(true);
-    expect(isLegacyDenialStatus(404)).toBe(true);
-  });
-
-  it("treats 2xx, validation 4xx and 5xx as allowed-through", () => {
-    expect(isLegacyDenialStatus(200)).toBe(false);
-    expect(isLegacyDenialStatus(204)).toBe(false);
-    expect(isLegacyDenialStatus(400)).toBe(false);
-    expect(isLegacyDenialStatus(500)).toBe(false);
-  });
-});
 
 describe("buildShadowPolicySide", () => {
   it("no_policy_registered when the registry has no entry for this route", () => {
@@ -103,6 +115,7 @@ describe("buildShadowPolicySide", () => {
       entry: undefined,
       identity: identity(),
       workspaceId: "ws_1",
+      workspaceIdSource: "row",
     });
     expect(result).toBe("no_policy_registered");
   });
@@ -112,10 +125,57 @@ describe("buildShadowPolicySide", () => {
       entry: PUBLIC_ENTRY,
       identity: null,
       workspaceId: null,
+      workspaceIdSource: null,
     });
     expect(result).not.toBe("no_policy_registered");
     if (typeof result === "string") throw new Error("expected a context");
     expect(result.context.identity).toBeNull();
+  });
+
+  it("resolves an explicitly exempt self target to the authenticated person's id", () => {
+    const result = buildShadowPolicySide({
+      entry: SELF_EXEMPT_ENTRY,
+      identity: identity(),
+      workspaceId: null,
+      workspaceIdSource: null,
+    });
+    if (typeof result === "string") throw new Error("expected a context");
+    expect(result.context.targetPersonId).toBe(NO_PERSON_PARAMETER);
+    expect(evaluatePolicy(result.entry.policy, result.context)).toEqual(
+      expect.objectContaining({ allowed: true }),
+    );
+  });
+
+  it("leaves handler-owned delegated authorization unevaluated", () => {
+    expect(
+      buildShadowPolicySide({
+        entry: DELEGATED_ENTRY,
+        identity: null,
+        workspaceId: null,
+        workspaceIdSource: null,
+      }),
+    ).toBe("delegated_to_handler");
+  });
+
+  it("constructs the id-free scope declared by an instance policy", () => {
+    const instanceEntry: RegistryEntry = {
+      ...CAPABILITY_ENTRY,
+      policy: {
+        capability: "instance:admin",
+        scope: "instance",
+        scopeSource: "instance",
+        reach: { exempt: "no_single_resource", reason: "instance-wide policy" },
+      },
+    };
+    const result = buildShadowPolicySide({
+      entry: instanceEntry,
+      identity: identity(),
+      workspaceId: null,
+      workspaceIdSource: null,
+    });
+    if (typeof result === "string") throw new Error("expected a context");
+    expect(result.context.scope).toEqual({ kind: "instance" });
+    expect(result.context.inReach).toBe(NO_SINGLE_RESOURCE);
   });
 
   it("missing_identity for a capability policy with no resolved identity", () => {
@@ -123,6 +183,7 @@ describe("buildShadowPolicySide", () => {
       entry: CAPABILITY_ENTRY,
       identity: null,
       workspaceId: "ws_1",
+      workspaceIdSource: "row",
     });
     expect(result).toBe("missing_identity");
   });
@@ -132,6 +193,7 @@ describe("buildShadowPolicySide", () => {
       entry: CAPABILITY_ENTRY,
       identity: identity(),
       workspaceId: null,
+      workspaceIdSource: null,
     });
     expect(result).toBe("row_scope_unavailable");
   });
@@ -141,6 +203,7 @@ describe("buildShadowPolicySide", () => {
       entry: CAPABILITY_ENTRY,
       identity: identity(),
       workspaceId: "ws_1",
+      workspaceIdSource: "row",
     });
     if (typeof result === "string") throw new Error("expected a context");
     expect(result.context.scope).toEqual(
@@ -153,6 +216,7 @@ describe("buildShadowPolicySide", () => {
       entry: CAPABILITY_ENTRY,
       identity: identity(),
       workspaceId: "ws_1",
+      workspaceIdSource: "row",
     });
     if (typeof result === "string") throw new Error("expected a context");
     expect(result.context.inReach).toBe(true);
@@ -163,6 +227,7 @@ describe("buildShadowPolicySide", () => {
       entry: CAPABILITY_ENTRY,
       identity: identity(),
       workspaceId: "ws_other",
+      workspaceIdSource: "row",
     });
     if (typeof result === "string") throw new Error("expected a context");
     expect(result.context.inReach).toBe(false);
@@ -180,9 +245,29 @@ describe("buildShadowPolicySide", () => {
       entry: projectEntry,
       identity: identity(),
       workspaceId: "ws_1",
+      workspaceIdSource: "row",
       projectId: "proj_1",
     });
     expect(result).toBe("reach_unavailable");
+  });
+
+  it("can evaluate a project reach when the resolved identity has instance-wide reach", () => {
+    const projectEntry: RegistryEntry = {
+      ...CAPABILITY_ENTRY,
+      policy: {
+        ...CAPABILITY_ENTRY.policy,
+        scope: "project",
+      } as never,
+    };
+    const result = buildShadowPolicySide({
+      entry: projectEntry,
+      identity: identity({ reach: { kind: "all" } }),
+      workspaceId: "ws_1",
+      workspaceIdSource: "row",
+      projectId: "proj_1",
+    });
+    if (typeof result === "string") throw new Error("expected a context");
+    expect(result.context.inReach).toBe(true);
   });
 
   it("row_scope_unavailable for a project-scope policy with no projectId on context", () => {
@@ -194,6 +279,7 @@ describe("buildShadowPolicySide", () => {
       entry: projectEntry,
       identity: identity(),
       workspaceId: "ws_1",
+      workspaceIdSource: "row",
       projectId: null,
     });
     expect(result).toBe("row_scope_unavailable");
@@ -204,6 +290,7 @@ describe("buildShadowPolicySide", () => {
       entry: SELF_ENTRY,
       identity: identity(),
       workspaceId: null,
+      workspaceIdSource: null,
     });
     expect(result).toBe("self_target_unavailable");
   });
@@ -213,6 +300,7 @@ describe("buildShadowPolicySide", () => {
       entry: PORTAL_ENTRY,
       identity: identity({ side: "customer", portal: "customer" }),
       workspaceId: null,
+      workspaceIdSource: null,
     });
     expect(result).toBe("portal_predicate_unavailable");
   });
@@ -301,6 +389,28 @@ describe("compareShadowOutcome — the addendum's five categories", () => {
       workspaceId: "ws_1",
       traceId: null,
       legacy: DENIED_403,
+      policy: {
+        evaluated: true,
+        errored: false,
+        decision: { allowed: true, requiresElevation: false },
+      },
+    });
+    expect(result).toEqual({
+      outcome: "legacy_deny_policy_allow",
+      reasonCode: null,
+    });
+  });
+
+  it("uses the explicit legacy decision when a denied route answers 400", () => {
+    const result = compareShadowOutcome({
+      routeKey: "GET /api/project/{id}",
+      routerGroup: "project",
+      policyKind: "capability",
+      policyCapability: "project:read",
+      identityKind: "session",
+      workspaceId: "ws_other",
+      traceId: null,
+      legacy: DENIED_400,
       policy: {
         evaluated: true,
         errored: false,
@@ -416,6 +526,7 @@ describe("#323 Opus S1 — scope provenance branches on the policy's scopeSource
       entry: REQUEST_SOURCED,
       identity: identity(),
       workspaceId: "ws_1",
+      workspaceIdSource: "request",
     });
     if (typeof result === "string") {
       throw new Error(`expected a context, got ${result}`);
@@ -449,6 +560,7 @@ describe("#323 Opus S1 — scope provenance branches on the policy's scopeSource
       entry: CAPABILITY_ENTRY,
       identity: identity(),
       workspaceId: "ws_1",
+      workspaceIdSource: "row",
     });
     if (typeof result === "string") {
       throw new Error(`expected a context, got ${result}`);
@@ -457,6 +569,16 @@ describe("#323 Opus S1 — scope provenance branches on the policy's scopeSource
     const code = decision.allowed ? null : decision.code;
     expect(code).not.toBe("scope_source_mismatch");
     expect(code).not.toBe("scope_mismatch");
+  });
+
+  it("refuses to evaluate row policy against request-sourced workspace evidence", () => {
+    const result = buildShadowPolicySide({
+      entry: CAPABILITY_ENTRY,
+      identity: identity(),
+      workspaceId: "ws_1",
+      workspaceIdSource: "request",
+    });
+    expect(result).toBe("scope_source_unavailable");
   });
 
   it("a scope-source artifact decision is unevaluated, NEVER filed as a disagreement", () => {

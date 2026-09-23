@@ -15,6 +15,14 @@ Newest first.
 
 **Decided by:** Thomas, 2026-09-23, in session.
 
+### 2026-09-23 · Provision a local staff person during post-boot password signup
+
+**Decision:** The `/sign-up/email` user-create hook ensures an internal staff `person` row exists before a local password signup completes. It does not assign a person to an OAuth callback; the identity connection must determine portal and organisation when that provisioning path is implemented.
+
+**Why:** The boot seed only covers users present at startup, so later local signups otherwise resolve to `missing_identity` (#315 S7). Treating every external callback as internal staff would invent portal and organisation authority. The route-specific local-signup hook follows the current boot-seed rule while leaving external identity provisioning to its declared connection.
+
+**Decided by:** Thomas, 2026-09-23, by approving #324's signup-or-lazy-resolution acceptance and continuing this implementation.
+
 ## Format
 
 ```markdown
