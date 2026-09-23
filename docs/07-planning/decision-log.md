@@ -5,6 +5,16 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-23 · Current-model ordinary-review fallback when Sonnet is unavailable; Opus remains mandatory
+
+**Supersedes (narrowly):** the reviewer-provider clause in the 2026-09-23 temporary fallback (#345), only when a fresh Claude Sonnet context is unavailable.
+
+**Decision:** The orchestrating session may commission a fresh, independent context using the currently available model for ordinary review of lane work. Record the actual model, exact candidate SHA, checked evidence, verdict, and findings. This does not change reviewer independence or the review count required by risk classification. It never substitutes for the final Opus 5.5 review on security-scope work; such a candidate waits for Opus before merge.
+
+**Why:** Claude Sonnet is unavailable in the current session, while P0 work should continue. The user explicitly authorized the current model as the ordinary-review fallback and reaffirmed that Opus remains the final reviewer.
+
+**Decided by:** Thomas, 2026-09-23, in session.
+
 ## Format
 
 ```markdown
