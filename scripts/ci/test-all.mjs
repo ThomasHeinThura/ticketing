@@ -353,14 +353,12 @@ const STAGE_AUTHORITY = new Map([
     "full",
     {
       workflow: ".github/workflows/ci-full.yml",
-      // ci-cd.md: "Full — required before merge, runs on the merge queue (or on the
-      // `ready-for-review` label)". Required BEFORE MERGE, not on every push. Its
-      // `pull_request` list is deliberately narrowed to [labeled, synchronize,
-      // ready_for_review] and therefore does NOT cover `opened` — which is sound only
-      // because `merge_group` covers the boundary where the stage is actually required.
-      // That is the whole proof, and it is why `requireTriggers` names merge_group: strip
-      // it and the narrowing stops being defensible, and this check goes red.
-      requirePullRequestTypes: null,
+      // The active protect-main ruleset requires integration and browser-smoke contexts
+      // on the PR itself, as well as on merge_group. Explicit `types` replaces GitHub's
+      // defaults, so include opened/reopened/synchronize to ensure those required
+      // contexts are produced for every candidate, including a PR created with all
+      // commits already pushed. Labels and ready_for_review are additional triggers.
+      requirePullRequestTypes: DEFAULT_PULL_REQUEST_TYPES,
       requireTriggers: ["merge_group"],
       why:
         "Full is required before merge and runs on the merge queue, so merge_group is " +
