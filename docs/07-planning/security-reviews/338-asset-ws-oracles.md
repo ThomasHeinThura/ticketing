@@ -188,3 +188,150 @@ explicitly on #317 that it is accepted as is.
 - I did not measure timing over a real network. The numbers are in-process medians.
 - I did not re-run the suites on `5917678` itself. The tree is identical, so the results carry over.
 - I did not modify code, approve on GitHub, or merge.
+
+---
+
+## Delta review: #317 S4, reach folded into the lookup (`691f735`)
+
+**Reviewer:** Opus 5.5, fresh independent context. Did not author, direct, or remediate this change.
+**Reviewed head:** `691f735e686e2f7569934d8433f485a6cc928ef7`
+**Also verified at the later heads.** The branch moved while I was reviewing: `691f735` → `b92ebdc4771a5cf2b74c0783f5510d11d05163a2` → `790400785dccbbcf883c043aef4a80d9b380757c`.
+- Each of the four `main` merges in that range (`e14e3d4`, `84358c4`, `7389aa4`, `479869f`) reproduces exactly under `git merge-tree --write-tree`, so none carries hand edits.
+- `workspace-access-middleware.ts` and `validate-workspace-access.ts` are byte-identical at all three heads.
+- The only non-merge changes after `691f735` are `7a40cad` (test only, `existence-oracle-317.test.ts` +138) and three commits that edit only `docs/07-planning/status.md` (`ea37521`, `b92ebdc`, `7904007`). `7904007` changes no code (`git diff b92ebdc 7904007 -- apps tests packages scripts` is empty).
+- I re-ran the full suites and the key mutation at `b92ebdc`. Everything below holds for `7904007`'s code.
+**Code delta:** `691f735` "fix(auth): fold workspace reach into resource lookup", by `Codex GPT-6 <codex-gpt6@taskdesk.local>`. It changes `workspace-access-middleware.ts` (+137/-70), the middleware unit test, `existence-oracle-317.test.ts` and `status.md`.
+**Scratch:** worktree `pr338-opus-delta`, DB `pr338_opus_delta_test`, scratch files `pr338-opus-*`. All deleted afterwards.
+
+### Delta verdict
+
+**CHANGES NEEDED. One finding is BLOCKING (D1). It needs a test only. The code at head is correct.**
+
+- **Equivalence.** The folded predicate matches `validateWorkspaceAccess` exactly for every caller type I tried: 352 old-vs-new cells, **0 mismatches**.
+- **The oracles stay closed.** Foreign and missing are byte-identical on all 8 lookups and on `lookupMany`: **0 oracles**.
+- **SQL.** It is parameterised and correctly parenthesised today.
+- **Timing.** The gap is gone.
+- **The gap (D1).** Nothing in the test suite pins the predicate's operator precedence. If the parentheses around `admin OR member` are removed (this is #320's leak class), all 1146 integration tests still pass. That broken build returns another tenant's label to a plain member and lets them delete it. For core authorization code built on precedence-sensitive raw SQL, that has to have a regression test before merge.
+
+| # | Severity | Summary |
+| --- | --- | --- |
+| D1 | **BLOCKING** | No test catches losing the predicate's outer parentheses. With `(EXISTS admin OR EXISTS member)` un-parenthesised, `GET` and `DELETE /api/label/{foreign}` return 200 and delete the foreign row, and the whole suite stays green. |
+| D2 | NON-BLOCKING | A DB error on the folded single-lookup reach check now answers **503** (`lookupWorkspaceId`'s catch). Before it was **500**, and `lookupMany` still answers **500**. Both fail closed. |
+| D3 | NON-BLOCKING | The correlation `"workspace_member"."workspace_id" = <outer>.workspace_id` relies on Drizzle table-qualifying the outer column. It does today, but an `alias()`-ed lookup would silently correlate wrongly. D1's test would catch that. |
+| D4 | NON-BLOCKING (process) | Lane commits `691f735`, `ea37521`, `b92ebdc` and `7904007` edit the orchestrator-owned `docs/07-planning/status.md` and add session-log claims. `CLAUDE.md` makes that file read-only for lanes. The orchestrator should verify or strip these before merge. |
+| D5 | NON-BLOCKING | The middleware unit test's DB mock now hardcodes reach (`workspaceId === "workspace-mine"`), so the unit suite no longer exercises reach logic, only that the SQL contains `EXISTS` and `"workspace_member"`. Reach is covered only by integration tests. |
+
+### 1. Semantic equivalence: old vs new on the same fixtures
+
+I ran the pre-delta middleware (copied from `e14e3d4`) and the new middleware side by side. Both
+were mounted on identical minimal Hono apps, with the same `userId` and `apiKey` context, on the same
+fixtures: workspaces A and B, each holding a project, task, label, time entry, activity, comment,
+column and workflow rule. I compared status, body and sorted headers for the own id, the foreign id
+and a missing id, across all 8 `lookup` kinds plus 8 `lookupMany` mixes.
+
+| Caller | Own / foreign / missing (all 8 lookups) | `lookupMany` | Old = new |
+| --- | --- | --- | --- |
+| member of A | 200 / 404 / 404 (project 200 / 400 / 400) | `[own, foreign]` = `[own, missing]` = 200; `[foreign]` = `[missing]` = 404 | yes |
+| non-member (C) | 404 / 404 / 404 | all 404 | yes |
+| instance admin, non-member | 200 / 200 / 404 | `[own, foreign]` 400 "same workspace"; `[foreign]` 200 | yes (admin bypass unchanged) |
+| member A + own enabled key | same as member | same | yes |
+| member A + **revoked** key | 404 / 404 / 404 | all 404 | yes |
+| non-member C + own key | 404 everywhere | 404 | yes |
+| member A + **key owned by C** (mismatch) | 404 everywhere | 404 | yes |
+| admin + own key | same as admin | same | yes |
+| admin + **revoked** key | 404 everywhere | 404 | yes |
+| member A + nonexistent key id | 404 everywhere | 404 | yes |
+| **deactivated** (`banned = true`) member of A | 200 / 404 / 404 | same as member | yes |
+
+**Total: 352 cells, 0 mismatches, 0 foreign-vs-missing differences.**
+
+- **Deactivated users** pass in both versions. `validateWorkspaceAccess` has never checked `banned`; session revocation does that. So there is no widening, just the same behaviour.
+- **Key expiry** is not re-checked by either version. `verifyApiKey` checks it upstream. That is also the same.
+- **No path left behind.** Every `lookup`/`lookupMany` answer is now produced by the null-row branch. No caller depends on the old 403-remap path. `fromQuery`, `fromBody` and `fromParam` still go through the unchanged post-loop `validateWorkspaceAccess`. `lookupWorkspaceId` has no other callers.
+
+### 2. #290 / #307 invariants
+
+- **Through the real app** (`createApp`, member A): a foreign label and a missing one both give `404 Label not found` with identical headers. `PATCH /api/task/bulk` with `[own, foreign]` and with `[own, missing]` returns byte-identical `200 {"success":true,"updatedCount":1}`, and the foreign task's priority stays unchanged (`medium`).
+- **#307 S1's restored bulk membership check still holds.** A non-member instance admin sending `PATCH /api/task/bulk` `delete` on B's task gets `403 You don't have access to this workspace`, and the task still exists.
+
+### 3. SQL: every case rendered
+
+I captured every case at the `pg` pool with an API-key caller. Every case is **one** query. For example, `label`:
+
+```sql
+select "workspace_id" from "label"
+where ("label"."id" = $1 and ((
+  EXISTS (SELECT 1 FROM "user" WHERE "user"."id" = $2 AND "user"."role" = 'admin')
+  OR EXISTS (SELECT 1 FROM "workspace_member" WHERE "workspace_member"."user_id" = $3
+             AND "workspace_member"."workspace_id" = "label"."workspace_id")
+) and EXISTS (SELECT 1 FROM "apikey" WHERE "apikey"."id" = $4
+             AND ("apikey"."reference_id" = $5 OR "apikey"."user_id" = $6)
+             AND "apikey"."enabled" = true))) limit $7
+```
+
+- **The other cases.** `project`, `task`, `timeEntry`, `activity`, `comment` (with `"task_activity"."type" = $2` as its own conjunct), `column`, `workflowRule` and `lookupMany` (`"task"."id" in ($1, $2)`, no limit) render the same shape. Each correlates to `"project"."workspace_id"` on the joined project, or to `"label"."workspace_id"`.
+- **Without a key**, the predicate is `("label"."id" = $1 and ( EXISTS … OR EXISTS … ))`.
+- **Parameterised throughout.** Every user-controlled value is a bind parameter. The only literals are `'admin'` and `true`, which are constants. An id of `x' OR '1'='1` arrives as `$1`.
+- **Precedence.** Every `OR` sits inside a parenthesised group. The one that matters is the template's own `( … OR … )` at `workspace-access-middleware.ts:286`/`:297`. Drizzle's `and()` does **not** add parentheses around its operands (the no-key rendering shows this), so those template parentheses are load-bearing. That is D1.
+
+### 4. Timing
+
+Measured in-process through the middleware harness: 300 interleaved samples after 30 warm-ups, member A, foreign id vs missing id.
+
+| Lookup | Old: missing / foreign | New: missing / foreign |
+| --- | --- | --- |
+| `task` | 0.556 ms / 1.279 ms | 0.768 ms / 0.802 ms |
+| `label` | 0.248 ms / 0.630 ms | 0.386 ms / 0.392 ms |
+
+- **The gap closes.** Old foreign cost was 2.3x to 2.5x the missing cost. New, the two are within 0.03 ms.
+- **The query count is equal.** It is 1 in both cases, where before it was 1 vs 3.
+- **The real cost.** A missing lookup got a little slower, because the reach subqueries now run on every lookup. That is the price of equalisation, and it is small.
+- **Asset and ws routes.** #317's asset and ws routes (S1 in the review above) still do their reach check separately. This delta does not touch them.
+
+### 5. Tests and mutation checks
+
+- **M1: drop the membership correlation** (`AND workspace_member.workspace_id = <outer>` removed). The suite goes **red**: 6 failures, including `workspace-rbac.test.ts`'s #290 mixed-id tests, `work-item-create-read-list.test.ts`'s #290 test, and `existence-oracle-317.test.ts`'s S4 test.
+- **M2: drop the membership branch entirely.** **Red**: 38 failures in `workspace-rbac.test.ts` alone.
+- **M3: drop the outer parentheses of `reach`** (the #320 class). **Green: 1146/1146** at `b92ebdc`, including `7a40cad`'s new API-key and bulk tests. See D1.
+- **After each mutation** I restored the file, `git diff --quiet HEAD` passed, and the scratch files were deleted.
+- **Suites at `691f735`:** unit **55 files / 441**, integration **81 / 1111**, `test:permissions` **10 / 80**, `scripts/ci` **495 / 0 fail**, `check:openapi` 106 operations, API typecheck clean.
+- **Suites at `b92ebdc`** (code identical to `7904007`): unit **57 / 450**, integration **84 / 1146**, `test:permissions` **10 / 80**, `scripts/ci` **495 / 0 fail**, `check:openapi` 106 operations, API typecheck clean.
+
+## D1: No test catches losing the predicate's precedence (BLOCKING)
+
+**Where:** `workspace-access-middleware.ts:286-297`. The `sql\`( EXISTS … OR EXISTS … )\`` wrapper is the only thing grouping the `OR`, because Drizzle's `and()` does not parenthesise its operands.
+
+**What happens without it.** The where clause becomes `id = $1 AND EXISTS(admin) OR EXISTS(member of <this row's> workspace)`. For a plain member that is true for **every row in their own workspace**, whatever the id. The lookup therefore returns the caller's own workspace for a foreign or missing id, and the handler then acts on the path id. I demonstrated this at `b92ebdc` with the parentheses removed:
+- member A requests `GET /api/label/{B's label}` and gets **200** with B's label (`"name":"SECRET-FOREIGN"`, B's `workspaceId`);
+- `DELETE /api/label/{B's label}` returns **200**, and B's label is deleted.
+
+At the real head the same requests give `404 Label not found` and the label survives.
+
+**Why the existing tests miss it.** Every #290/#317 fixture gives the caller **no rows of the same kind in their own workspace**, so the broken OR has nothing to match. `7a40cad`'s new tests have the same shape. The unit test's mock hardcodes reach and only asserts that `EXISTS` and `"workspace_member"` appear.
+
+**Required fix (test only).** Add an integration test where the caller owns at least one row of the kind being looked up in their own workspace, then requests a foreign id and a missing id. Assert:
+- both answer the resource's 404 byte-identically;
+- a mutating request (for example `DELETE`) leaves the foreign row intact.
+
+Cover at least one direct-table lookup (`label`), one joined lookup (`task` or `column`), and `lookupMany` (the caller holds 2+ tasks, sends `[foreign]` and `[missing]`, and gets `404 No tasks found` for both). Then confirm that M3 goes red. A test asserting the rendered SQL shape can be added too, but only alongside the behavioural test, not instead of it.
+
+## D2–D5 (NON-BLOCKING)
+
+- **D2.** Before, a reach-check DB error was a raw `pg` error from `validateWorkspaceAccess`, outside `lookupWorkspaceId`'s try, and answered 500. It is now inside the try and answers `503 Could not verify workspace access`. `lookupMany`'s query is unwrapped and still answers 500. Both fail closed. The codes are just inconsistent.
+- **D3.** Correlation relies on Drizzle emitting `"label"."workspace_id"`/`"project"."workspace_id"`, and it does in every rendered case. A future `alias()`-ed table would need care. D1's test would catch a miscorrelation.
+- **D4.** A lane is editing `docs/07-planning/status.md` on a feature branch, with multi-paragraph session-log entries, in four commits. Some claims, such as "bulk-specific coverage is still not demonstrated", are now stale after `7a40cad`. This is the orchestrator's surface.
+- **D5.** Since `691f735`, `tests/api/utils/workspace-access-middleware.test.ts`'s mock decides reach itself, so the unit suite asserts only the SQL's text fragments.
+
+## Other observations (not findings)
+
+- **GitGuardian** flagged `charts/taskdesk/values.yaml:245` in merge commit `84358c4`. That line is `passwordKey: postgres_uri`, a key name and not a secret. It arrives unchanged from `main` (#308): `git diff 5ada9c5 b92ebdc -- charts` is empty. It is not this PR's content, and it looks like a false positive.
+- **Ordinary review.** The PR has a comment recording "Independent ordinary review at `691f735…`: APPROVE WITH NOTES. Claude Sonnet, fresh context", under the #345 review fallback. It is bound to `691f735`, not to the current head `7904007`. The code is identical, but that binding is for the orchestrator to judge.
+- **`## Implemented by`** still names only "Codex agent". The S4 commits are `Codex GPT-6 <codex-gpt6@taskdesk.local>` and the S3 commit is `Claude Code`.
+- **`check-pr-template.mjs`** on the current body: rc=1. The `## Security review` note link is missing, and the Opus checkbox is unticked.
+
+## What I did not do in the delta
+
+- I did not measure timing through the full app stack or over a network. The numbers come from the middleware harness, in-process.
+- I did not re-run M1 and M2 at `b92ebdc`. The middleware is byte-identical to `691f735`, and M3, the key one, I did re-run at `b92ebdc`.
+- I did not review the `main`-side content brought in by the merges (#308, #322, #336, #345, #350) beyond confirming the merges are clean. Those have their own reviews.
+- I did not modify code, approve on GitHub, or merge.
