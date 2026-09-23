@@ -50,6 +50,7 @@ import getAvatar from "./user/controllers/get-avatar";
 import { buildAuthRequest } from "./utils/auth-request";
 import { authenticateApiRequest } from "./utils/authenticate-api-request";
 import { authorizeAssetAccess } from "./utils/authorize-asset-access";
+import { backfillWorkspaceAndProjectDefaults } from "./utils/backfill-workspace-project-defaults";
 import { getInvitationDetails } from "./utils/check-registration-allowed";
 import { migrateApiKeyReferenceId } from "./utils/migrate-apikey-reference-id";
 import { migrateNotificationPreferencesSchema } from "./utils/migrate-notification-preferences-schema";
@@ -1014,6 +1015,11 @@ export async function runStartupTasks() {
   await migrateColumns();
   await seedDefaultWorkspaceRoles();
   await seedInternalOrganisationAndStaffPersons();
+
+  // #316: backfill the default work-item types, state templates and project states
+  // that #309/#313 only seed on NEW workspace/project creation -- see that file's own
+  // doc comment for the mechanism and why it is a boot step, not a migration.
+  await backfillWorkspaceAndProjectDefaults();
 
   // #18: print a fresh setup token (and invalidate the previous one) on
   // every boot while the instance is unclaimed. A no-op once
