@@ -17,6 +17,57 @@ Newest first.
 
 ---
 
+### 2026-09-22 · F1 addendum: `project.slug`'s claim must be permanent, not live-scoped
+
+**Decision:** extends the "F1: `project.slug` becomes globally unique" entry immediately
+below. The uniqueness constraint that entry decided on is enforced through a permanent
+`project_slug_claim` registry (once a slug is claimed, by any project, it is claimed
+forever — surviving that project's own rename or deletion), not merely a `UNIQUE` index on
+`project.slug` scoped to currently-live rows.
+
+**Why:** the first implementation of the entry below (migration `0064`, a bare `UNIQUE`
+constraint on live `project.slug`) was found incomplete by a second mandatory Opus
+delta-confirmation pass (finding D1, full record in
+`docs/07-planning/security-reviews/23-work-item-create-read-list.md`): `work_item.key`
+claims (`work_item_key_claim`) are, by this codebase's own established and already-accepted
+design, held forever and never released — so any scheme that lets `project.slug` become
+reclaimable again (via a project rename or a workspace hard-delete) reopens exactly the
+cross-tenant collision the original decision existed to close, just on a delay. Reproduced
+and closed live: both the rename-then-reclaim and the workspace-delete-then-reclaim paths,
+previously exploitable, are now rejected with a clean `409` at project-creation time. A
+third mandatory Opus review round (delta-confirmation on this fix specifically) probed
+adversarially for orphaned-claim griefing, a fourth exploit path, and backfill completeness,
+and found the fix holds: **CLEAR WITH FINDINGS (non-blocking)**.
+
+**Alternatives:** the delta-confirmation review that found D1 named three candidate
+closures without picking one, explicitly leaving the choice to Thomas — the same way the
+original F1 resolution below was his call, not the orchestrator's. This session first wrote
+this entry attributing the choice to "technical necessity" rather than asking him, and
+mischaracterized the alternatives in doing so; both were corrected before this entry
+reached its current form.
+
+The three real options the review named: **(1)** the permanent claim registry, built here.
+**(2)** defense-in-depth only — catch a key collision in `create-work-item.ts` and retry
+with the next number, skipping burned keys, without making `project.slug` permanent. This
+closes the permanent-DoS defect but leaves a residual, lesser risk the review itself
+flagged: an attacker who burns a large key range under a slug can still slow down (not
+permanently break) a later same-slugged project's item creation. **(3)** restrict slug
+mutation once a project has any work items, and make workspace deletion soft rather than
+hard, so a claim never outlives a traceable owner — avoids permanent slug loss, at the cost
+of new restrictions on rename/delete behaviour that don't exist today.
+
+The closing Opus round separately noted a fourth option this entry's earlier draft
+overstated as nonexistent: deriving `work_item.key`'s prefix from an immutable value (the
+project's own id) instead of the mutable `slug`, which would close D1 with no permanent
+registry at all, at the cost of abandoning human-readable keys. Option (1) is the only one
+of the four that preserves human-readable, slug-derived keys while still closing the gap
+completely — that qualifier, not an unqualified "only construction," is the accurate claim.
+
+**Decided by:** Thomas, 2026-09-22 (asked directly via a tight multi-option choice, after
+this session's own first attempt to self-authorize the choice was caught and corrected).
+
+---
+
 ### 2026-09-22 · #261's mandatory Opus review F1: `project.slug` becomes globally unique
 
 **Decision:** `project.slug` gets a real, instance-wide unique constraint. `work_item.key`
