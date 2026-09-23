@@ -160,12 +160,18 @@ const EXEMPT_LAST_SEGMENTS = new Set(["id", "at", "count"]);
  * matching is insensitive to whichever convention a given caller's payload happens to
  * use. */
 function keySegments(key: string): string[] {
-  return key
-    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
-    .split(/[_\-\s]+/)
-    .filter((segment) => segment.length > 0)
-    .map((segment) => segment.toLowerCase());
+  return (
+    key
+      .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+      .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+      // `.` splits a dotted path (Opus security review of PR #291, delta round: "the
+      // natural shape of a plugin-configuration diff, such as smtp.password, which is
+      // exactly AU-2's own example") -- `smtp.password`/`auth.password` must match
+      // exactly the same way `smtp_password`/`authPassword` already do.
+      .split(/[_\-.\s]+/)
+      .filter((segment) => segment.length > 0)
+      .map((segment) => segment.toLowerCase())
+  );
 }
 
 function isSecretShapedKey(key: string): boolean {
@@ -280,8 +286,34 @@ export async function appendAuditLog(
 
   const before = truncateIfOversized(input.before);
   const after = truncateIfOversized(input.after);
-  assertNoObviousSecret(before, "before");
-  assertNoObviousSecret(after, "after");
+
+  // S7 (Opus security review of PR #291, delta round at a800c08): a residual of S2's
+  // class, found after S2's own fix landed. `canonicalJson` (packages/domain) renders
+  // an ARRAY HOLE (`const a = []; a[1] = 1`) as `[,1]` -- `Array.prototype.map` skips
+  // holes and `join` renders one as the empty string -- while `JSON.stringify`, which
+  // this writer binds for storage, renders the SAME array as `[null,1]`. The row would
+  // store something other than what was hashed: an untampered row whose `row_hash`
+  // could never again match what `verifyAuditChain` recomputes, on an append-only table
+  // that can never be repaired, permanently hiding any real tampering after it (the
+  // exact same consequence S1 and S2 both had). This is the THIRD time this class of
+  // bug has appeared (a stale-Date read in an earlier draft, S2's raw-string binding,
+  // now this), so the fix here is structural, not one more special case: normalise
+  // `before`/`after` to their OWN round-tripped JSON form exactly once, right here, and
+  // use that SAME normalised value for both the hash and the stored bytes from this
+  // point on. `JSON.stringify` already collapses a hole to `null` (matching what it
+  // will store either way), so after this line nothing can reach `canonicalRowHash`
+  // that does not ALSO reach the INSERT below -- the whole class of "hashed one thing,
+  // stored another" is closed by construction, not by enumerating more shapes.
+  // `JSON.stringify` throwing on a genuinely non-serialisable value (a `BigInt` member)
+  // is the same throw-before-any-SQL behaviour this function already had, preserved
+  // here rather than removed.
+  const normalizedBefore =
+    before === null ? null : (JSON.parse(JSON.stringify(before)) as JsonValue);
+  const normalizedAfter =
+    after === null ? null : (JSON.parse(JSON.stringify(after)) as JsonValue);
+
+  assertNoObviousSecret(normalizedBefore, "before");
+  assertNoObviousSecret(normalizedAfter, "after");
 
   // Everything below runs inside ONE transaction, on ONE session -- load-bearing, not
   // a style choice. `pg_advisory_xact_lock` is scoped to the session/transaction that
@@ -337,8 +369,8 @@ export async function appendAuditLog(
         action: input.action,
         entityType: input.entityType,
         entityId: input.entityId,
-        before,
-        after,
+        before: normalizedBefore,
+        after: normalizedAfter,
         createdAt: nowRow.now_iso,
       },
       prevHash,
@@ -359,8 +391,10 @@ export async function appendAuditLog(
     // `canonicalJson`/`canonicalRowHash` computed the hash over, for every top-level
     // shape a `JsonValue` can be, not only objects.
     const id = createId();
-    const beforeJson = before === null ? null : JSON.stringify(before);
-    const afterJson = after === null ? null : JSON.stringify(after);
+    const beforeJson =
+      normalizedBefore === null ? null : JSON.stringify(normalizedBefore);
+    const afterJson =
+      normalizedAfter === null ? null : JSON.stringify(normalizedAfter);
     const insertResult = await tx.execute<{
       id: string;
       seq: string;

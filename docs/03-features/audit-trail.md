@@ -77,7 +77,19 @@ it.
   left as an undocumented implementation detail (Opus security review of PR #291, S6).
   A key whose last segment is `id`, `at` or `count` is exempt regardless of an earlier
   match (`apiKeyId`, `secretRotatedAt`, `tokenExpiresAt` name metadata about a secret,
-  never the secret itself).
+  never the secret itself). Segments split on `.` as well as `camelCase`/`snake_case`/
+  `kebab-case`, so a dotted plugin-configuration path (`smtp.password`, `auth.password`
+  — this rule's own example above) is caught the same way `smtp_password` already was
+  (Opus security review of PR #291, delta round). A key whose own name only *implies* a
+  secret without naming one (`hasPassword`, `passwordSet`) is refused too, deliberately
+  failing closed rather than trying to carve out every such near-miss — this backstop is
+  explicitly "not a substitute for this rule" above, and a caller that hits this false
+  positive should record the fact as its own differently-named field, not fight the
+  backstop. Left as documented, accepted gaps rather than chased further, since any
+  fixed list of names can be defeated by picking a different one: Unicode lookalikes (a
+  Cyrillic `pаssword`), single-word compounds (`accesstoken`), a digit suffix
+  (`password2`), an unlisted name (`bearer`, `cookie`, `otp`), and a secret placed under
+  an exempt-suffixed key (`passwordId`) all still bypass it.
 - `AU-3` Append-only. No API can update, delete or truncate a row. Enforced two ways: no
   endpoint exists to do any of the three, and — the deeper control — two triggers:
   `audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR EACH ROW` /

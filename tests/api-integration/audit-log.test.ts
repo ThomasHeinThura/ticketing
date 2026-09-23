@@ -544,6 +544,14 @@ describe("AU-2 secret backstop -- segment matching, not substring (S6)", () => {
     ["passphrase (S6 bypass)", { passphrase: "correct horse battery staple" }],
     ["apiKey compound segment pair", { apiKey: "sk_live_abc123" }],
     ["privateKey compound segment pair", { privateKey: "-----BEGIN KEY-----" }],
+    [
+      "dotted path smtp.password (S6 delta round)",
+      { "smtp.password": "hunter2" },
+    ],
+    [
+      "dotted path auth.password (S6 delta round)",
+      { "auth.password": "hunter2" },
+    ],
   ];
 
   it.each(secretShapedPayloads)("refuses %s", async (_label, after) => {
@@ -576,4 +584,91 @@ describe("AU-2 secret backstop -- segment matching, not substring (S6)", () => {
       expect(raw.after).toEqual(after);
     },
   );
+});
+
+describe("appendAuditLog / verifyAuditChain -- sparse arrays (S7)", () => {
+  it("a top-level array hole is hashed and stored identically", async () => {
+    // A genuine array hole (`Array.prototype.map` skips it, `JSON.stringify` renders
+    // it as `null`) -- Opus security review of PR #291, delta round, S7. Built via
+    // assignment past the end, not sparse-array literal syntax, so no lint suppression
+    // is needed here.
+    const sparse: unknown[] = [];
+    sparse[1] = 1;
+
+    const result = await appendAuditLog(
+      db,
+      baseInput({ after: sparse as unknown as JsonValue }),
+    );
+    const raw = await readRawRow(result.id);
+    expect(raw.after).toEqual([null, 1]);
+
+    const verifyResult = await verifyAuditChain(db);
+    expect(verifyResult.ok).toBe(true);
+  });
+
+  it("a hole nested inside an object is hashed and stored identically", async () => {
+    const sparse: unknown[] = [];
+    sparse[1] = 1;
+
+    const result = await appendAuditLog(
+      db,
+      baseInput({ after: { list: sparse } as unknown as JsonValue }),
+    );
+    const raw = await readRawRow(result.id);
+    expect(raw.after).toEqual({ list: [null, 1] });
+
+    const verifyResult = await verifyAuditChain(db);
+    expect(verifyResult.ok).toBe(true);
+  });
+
+  it("a hole nested inside nested arrays is hashed and stored identically", async () => {
+    const innerSparse: unknown[] = [];
+    innerSparse[1] = 1;
+    const outer: unknown[] = [innerSparse, "sibling"];
+
+    const result = await appendAuditLog(
+      db,
+      baseInput({ after: outer as unknown as JsonValue }),
+    );
+    const raw = await readRawRow(result.id);
+    expect(raw.after).toEqual([[null, 1], "sibling"]);
+
+    const verifyResult = await verifyAuditChain(db);
+    expect(verifyResult.ok).toBe(true);
+  });
+
+  it("property-style: a table of awkward inputs all append and verify ok", async () => {
+    const topLevelSparse: unknown[] = [];
+    topLevelSparse[2] = "third";
+
+    const awkwardInputs: Array<[string, unknown]> = [
+      ["a top-level array hole", topLevelSparse],
+      ["negative zero", -0],
+      ["an object with an undefined member", { present: 1, absent: undefined }],
+      [
+        "a nested plain object with no toJSON",
+        { outer: { inner: { value: true, list: [1, 2, 3] } } },
+      ],
+      ["unicode content", { name: "héllo wörld – 日本語 🎉", combining: "é" }],
+    ];
+
+    for (const [_label, value] of awkwardInputs) {
+      const result = await appendAuditLog(
+        db,
+        baseInput({
+          entityId: `s7-${randomUUID()}`,
+          after: value as JsonValue,
+        }),
+      );
+      const raw = await readRawRow(result.id);
+      // What came back from `audit_log` must deep-equal the SAME JSON round trip
+      // `appendAuditLog` itself applies before hashing/storing -- jsonb does not
+      // preserve object key insertion order, so this compares by VALUE, never by the
+      // serialised text's byte order.
+      expect(raw.after).toEqual(JSON.parse(JSON.stringify(value)));
+
+      const verifyResult = await verifyAuditChain(db);
+      expect(verifyResult.ok).toBe(true);
+    }
+  });
 });
