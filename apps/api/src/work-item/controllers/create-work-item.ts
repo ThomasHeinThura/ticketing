@@ -7,7 +7,9 @@ import {
   workItemTable,
   workItemTypeTable,
 } from "../../database/schema";
+import { publishEvent } from "../../events";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
+import { type ActivityActorType, recordWorkItemActivity } from "../activity";
 import { claimWorkItemNumber } from "./claim-work-item-number";
 
 type CreateWorkItemInput = {
@@ -17,6 +19,9 @@ type CreateWorkItemInput = {
   title: string;
   description?: unknown;
   priority?: "low" | "medium" | "high" | "urgent";
+  /** The person making the request -- `c.get("userId")` at the route (WI-6, CA-9). */
+  actorId: string;
+  actorType: ActivityActorType;
 };
 
 /**
@@ -27,8 +32,16 @@ type CreateWorkItemInput = {
  * ever sees.
  */
 export async function createWorkItem(input: CreateWorkItemInput) {
-  const { projectId, workspaceId, typeId, title, description, priority } =
-    input;
+  const {
+    projectId,
+    workspaceId,
+    typeId,
+    title,
+    description,
+    priority,
+    actorId,
+    actorType,
+  } = input;
 
   // `workspaceId` here is the one the route's own middleware already resolved (the
   // project's true workspace, from a DB lookup) -- re-checking it against the freshly
@@ -92,12 +105,13 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // concurrency analysis and the `project.key` naming judgment call (this codebase's
   // live column is `project.slug`, which already plays exactly that role --
   // `project/index.ts`: "The slug becomes the prefix of its task identifiers").
+  let created: typeof workItemTable.$inferSelect;
   try {
-    return await db.transaction(async (tx) => {
+    created = await db.transaction(async (tx) => {
       const number = await claimWorkItemNumber(project.id, tx);
       const key = `${project.slug}-${number}`;
 
-      const [created] = await tx
+      const [inserted] = await tx
         .insert(workItemTable)
         .values({
           projectId: project.id,
@@ -112,13 +126,31 @@ export async function createWorkItem(input: CreateWorkItemInput) {
         })
         .returning();
 
-      if (!created) {
+      if (!inserted) {
         throw new HTTPException(500, {
           message: "Failed to create work item",
         });
       }
 
-      return created;
+      // WI-6/CA-6: one `created` row, in the SAME transaction as the insert -- if the
+      // activity insert fails, the whole create rolls back (no work item without its
+      // journal entry). Verb `created` has no `field` (`resolveVisibility`'s
+      // `PUBLIC_PAIRS` has `(created, null)`), so this is `public` by CA-7's table --
+      // its `payload` is therefore deliberately narrow (key/title only, per this
+      // module's own "CALLER OBLIGATION" doc comment on `recordWorkItemActivity`):
+      // never the assignee, requester, or anything else CA-7 marks `internal`.
+      await recordWorkItemActivity(tx, [
+        {
+          workspaceId: inserted.workspaceId,
+          workItemId: inserted.id,
+          actorId,
+          actorType,
+          verb: "created",
+          payload: { key: inserted.key, title: inserted.title },
+        },
+      ]);
+
+      return inserted;
     });
   } catch (error) {
     // #23's mandatory Opus security review of PR #261, F1's delta-confirmation (D1,
@@ -143,6 +175,36 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     }
     throw error;
   }
+
+  // `docs/01-architecture/events.md` ~51: `work_item.created`'s declared payload,
+  // beyond key + url, is `typeId`, `stateId`, `requesterId`, `source`. Emitted AFTER
+  // the transaction above has committed -- matching every existing `publishEvent`
+  // caller's own after-commit placement (`create-task.ts`, `create-comment.ts`) -- so a
+  // subscriber (webhook delivery, an automation trigger) never observes an event for a
+  // row it cannot yet read back. `source` is hardcoded `"agent"`: this route requires
+  // `work_item:create` via workspace membership (`index.ts`'s own file comment), i.e.
+  // the staff-facing create path, not a customer-portal intake flow, which does not
+  // exist yet -- flagged as a judgment call in this PR's body, since `events.md`'s
+  // `source` enum has no "this is the only creation surface today" case.
+  // `visibility: "public"` is fixed, not derived per-request: `resolveVisibility`'s
+  // `PUBLIC_PAIRS` has `(created, null)` unconditionally (`activity.ts`), so a
+  // `work_item.created` event -- one per row, always verb `created`, no field -- is
+  // always public, the same way its `activity` row always is.
+  await publishEvent("work_item.created", {
+    workItemId: created.id,
+    key: created.key,
+    workspaceId: created.workspaceId,
+    projectId: created.projectId,
+    typeId: created.typeId,
+    stateId: created.stateId,
+    requesterId: created.requesterId,
+    source: "agent",
+    visibility: "public",
+    actorId,
+    actorType,
+  });
+
+  return created;
 }
 
 export default createWorkItem;
