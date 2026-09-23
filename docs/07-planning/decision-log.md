@@ -17,6 +17,36 @@ Newest first.
 
 ---
 
+### 2026-09-23 · Activity addendum: `ON DELETE CASCADE`, and Postgres 16 stays supported
+
+**Decision:** extends the entry immediately below. Two details it left open, both found by
+PR #275's mandatory Opus 5.5 review (`docs/07-planning/security-reviews/
+275-work-item-activity-table.md`, S1 and S5).
+
+1. **`activity`'s composite foreign key to `work_item` is `ON DELETE CASCADE`** (still
+   `ON UPDATE NO ACTION`). Work items are hard-deleted today, by cascade, when a workspace
+   is deleted (`delete-workspace.ts`) and when a sole owner deletes their account
+   (`delete-account-data.ts`); #198's purge will hard-delete expired projects. With
+   `RESTRICT`, one activity row made all of those fail, so any workspace that ever had a
+   work item could never be deleted. `data-model.md`'s "retained forever" means activity
+   has no time-based purge of its own. It does not mean the journal outlives the hard
+   deletion of its own tenant. Legal hold (#198) is the mechanism that stops a deletion
+   when data must be kept.
+2. **Migration `0066` works on Postgres 16 and 17 as well as 18.** Postgres 18 names
+   per-column `NOT NULL` constraints and earlier versions do not. So those renames run
+   only when the constraint exists. The Helm chart still defaults to Postgres 16, and
+   raising the minimum is a separate decision.
+
+**Alternatives:** `RESTRICT` plus an explicit activity delete in every hard-delete path.
+Rejected: it gives the same result with more code, and every future delete path has to
+remember it. Making Postgres 18 the hard minimum instead of conditional renames.
+Rejected for now: it would change a deployment requirement inside a table migration.
+
+**Decided by:** the orchestrating session, 2026-09-23, under the standing delegation
+(recommended option).
+
+---
+
 ### 2026-09-23 · Work-item activity gets its own `activity` table; kaneo's becomes `task_activity`
 
 **Decision:** the table `data-model.md` §4 names `activity` is built now, as its own small
