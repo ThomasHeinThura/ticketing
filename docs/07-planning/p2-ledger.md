@@ -161,8 +161,11 @@ Ordinary/alignment reviews: recorded per PR with actual model identities.
    storage needed for the pure layer.
 2. **Audit reconstruction/verification pure functions** over the landed `audit_log`
    (chain verify, window query, actor indexing) — §16 closed.
-3. **Spec-closure passes** for `views.md`, `attachments.md`, `search-and-saved-views.md`
-   to unlock their slices (findings whose storage the data model already resolved).
+3. **Spec-closure passes (P2-owned only):** `service-management.md` (22 ln — incl. the
+   CAB-membership finding that gates `approval:decide_cab`), `agile.md` (17 — milestones/
+   prerequisites/stakeholders), `knowledge-base.md` (19). **Reassigned: `views.md` and
+   `search-and-saved-views.md` are P1 sections** — ownership corrected 2026-09-23; the
+   P2 lane notifies the P1 (Copilot) lane rather than editing them (AGENTS do-not 20).
 4. **Coordinated first P2 migration batch** — the moment the 0068 collision settles:
    calendar + SLA + submission + approval + workflow tables in one ordered PR
    (full review tiers + mandatory Opus).
