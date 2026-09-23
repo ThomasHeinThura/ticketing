@@ -329,3 +329,15 @@ mutations had been reverted.
 - I did not re-audit files the fix round did not touch.
 - I did not re-measure S4 timing, which is #317.
 - I did not approve, comment on, or merge the PR. I committed only this note.
+
+---
+
+## Main-merge attestation
+
+**Reviewed head:** `0bb13a4735116a04f510cac933dad70383812eb3`
+
+- **The range.** The only first-parent commit after `582d77f` is the `main` merge `0bb13a4`, whose parents are `582d77f` and `3395e22`, which is #315.
+- **No conflict resolution.** `git diff-tree --cc` shows no combined diff. `git merge-tree --write-tree 582d77f 3395e22` reproduces the tree exactly (`390abf3e…`).
+- **Nothing PR-owned changed.** #315 changes 5 files: `apps/api/src/permissions/resolve-identity.ts`, `apps/api/vitest.config.ts`, its own review note, and two test files. None of them overlaps with any file #307 edits, `workspace-access-middleware.ts` included.
+
+**Verdict: CLEAR.** This is a pure `main` merge. My delta clearance at `ba1447c` carries over unchanged.
