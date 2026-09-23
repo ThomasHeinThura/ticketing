@@ -1345,10 +1345,11 @@ does not exist today.
 
 ### P3 identity candidate — independent review capacity and real-tenant gate
 
-The P3 identity domain candidate on `feat/p3-identity-portal` is implemented and locally
-verified, but it has not received the required independent review. Two fresh Sonnet ordinary
-reviews and a full Opus security review are still required; those model tiers are unavailable
-in this session, so the candidate must wait for those reviewers and cannot merge. The full
+The P3 identity domain candidate is in draft PR #346 from `feat/p3-identity-portal`; it is
+implemented and locally verified, but it has not received independent review. Thomas has
+authorized two fresh GPT-6 reviewer contexts to substitute for unavailable Sonnet ordinary
+reviews for this candidate. A full Opus security review is still required; that tier is
+unavailable in this session, so the candidate cannot merge. The full
 P3 identity gate also remains open until all 25 named acceptance tests pass against a real
 Microsoft Entra test tenant. A domain-only unit suite does not satisfy that provider gate.
 Thomas or a session with the required reviewer capacity unblocks the reviews; an operator
@@ -1579,7 +1580,8 @@ decision. Thomas also chose a shared generic 409 response for same- and cross-co
 SCIM conflicts; IP-18/IP-32 now hide resource ids while provisioning events preserve the
 internal distinction. This is a domain-only implementation slice: identity persistence,
 routes, portal screens, real-tenant tests, and both P3 completion issues remain open. No
-independent Sonnet/Opus review has run on this head.
+independent review has run on this head. Draft PR #346 is open; two fresh GPT-6 ordinary
+reviews are authorized in place of Sonnet, while the final Opus review remains mandatory.
 
 ### 2026-09-23 (third pass) · 11 more PRs merged; spec gates honoured, not routed around; an outage recovered cleanly
 
