@@ -1542,6 +1542,34 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
+### 2026-09-23 (fourth pass) · Review fallback aligned; P0 environment-read bypass under repair
+
+PR #351 merged as `7bebaf6`. The model-tier guidance now records Thomas's authorization to
+use a fresh, independent current-model context for ordinary reviews while Claude Sonnet is
+unavailable through 2026-09-30. Risk-based review counts and exact-head evidence remain in
+force. Opus 5.5 remains mandatory for security-scope work and unavailable Opus still blocks
+merge.
+
+P0 #342 is in implementation on a local branch from `7bebaf6`; it is not merged or claimed
+done. The `check:env` scanner now tokenizes source so the listed computed, optional, aliased,
+global, `Reflect.get`, `node:process`, CommonJS, `import.meta`, comment-separated and template
+interpolation shapes are recorded. The focused cases pass. The changed scanner also found an
+approved template-interpolation read in `apps/api/src/utils/send-workspace-invitation-email.ts`
+that the old `$`-prefix exclusion missed. All 28 approved reads match the config reference;
+the inherited unapproved-name baseline remains unchanged. Full CI-script tests pass (510/510);
+the mandatory Opus review is outstanding.
+
+PR #323 / issue #8 Slice 2 and PR #338 / issue #317 have their required code and integration
+checks green, but their required `pull request template + security review` checks fail because
+their security-review notes are stale at the current heads. Both need a fresh Opus delta pass;
+neither is merge-ready. GitGuardian also reports a `passwordKey: postgres_uri` placeholder in
+the chart values on those candidates; inspection confirms it is a Secret key name, not a
+credential. The PR check is non-required but remains reported as failing.
+
+Other live P0 work remains open: #8, #9, #10, #11, #317, #319, #324, #337, and #342. #324
+depends on #323. #337 remains blocked by its owning feature-spec review. No stage-completion
+gate is claimed closed by this pass.
+
 ### 2026-09-23 (third pass) · 11 more PRs merged; spec gates honoured, not routed around; an outage recovered cleanly
 
 This pass shows the gates working as designed. `check:reviews` blocked #274 and #275

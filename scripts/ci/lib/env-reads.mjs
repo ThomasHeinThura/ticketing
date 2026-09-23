@@ -13,13 +13,6 @@
  * attributable to an approved entry in docs/05-operations/configuration-reference.md.
  */
 
-const ACCESS =
-  /(?<![\w$.])(process\s*\.\s*env|import\s*\.\s*meta\s*\.\s*env)(?![\w$])/g;
-
-const NAMED = /^\s*\??\.\s*([A-Za-z_$][A-Za-z0-9_$]*)/;
-const BRACKET_LITERAL = /^\s*\??\.?\[\s*(["'])((?:[^"'\\]|\\.)*)\1\s*\]/;
-const BRACKET_COMPUTED = /^\s*\??\.?\[/;
-
 /** `import.meta.env` members Vite defines itself; they are not deployment configuration. */
 export const viteBuiltIns = new Set([
   "MODE",
@@ -30,66 +23,201 @@ export const viteBuiltIns = new Set([
   "LEGACY",
 ]);
 
-function lineOf(source, index) {
-  let line = 1;
-  for (let i = 0; i < index; i += 1) {
-    if (source.charCodeAt(i) === 10) {
-      line += 1;
+function tokenize(source) {
+  const tokens = [];
+  const add = (value, type, start, end) =>
+    tokens.push({ value, type, start, end });
+  const scan = (from, inTemplateExpression = false) => {
+    let index = from;
+    let braceDepth = 0;
+    while (index < source.length) {
+      const char = source[index];
+      if (/\s/.test(char)) {
+        index += 1;
+        continue;
+      }
+      if (source.startsWith("//", index)) {
+        const end = source.indexOf("\n", index + 2);
+        index = end < 0 ? source.length : end + 1;
+        continue;
+      }
+      if (source.startsWith("/*", index)) {
+        const end = source.indexOf("*/", index + 2);
+        index = end < 0 ? source.length : end + 2;
+        continue;
+      }
+      if (inTemplateExpression && char === "}") {
+        if (braceDepth === 0) return index + 1;
+        braceDepth -= 1;
+        add("}", "punct", index, index + 1);
+        index += 1;
+        continue;
+      }
+      if (char === "{") {
+        if (inTemplateExpression) braceDepth += 1;
+        add(char, "punct", index, index + 1);
+        index += 1;
+        continue;
+      }
+      if (char === "'" || char === '"') {
+        const quote = char;
+        const start = index++;
+        let value = "";
+        while (index < source.length && source[index] !== quote) {
+          if (source[index] === "\\" && index + 1 < source.length) {
+            value += source[index + 1];
+            index += 2;
+          } else {
+            value += source[index++];
+          }
+        }
+        if (source[index] === quote) index += 1;
+        add(value, "string", start, index);
+        continue;
+      }
+      if (char === "`") {
+        index += 1;
+        while (index < source.length) {
+          if (source[index] === "\\") {
+            index += 2;
+            continue;
+          }
+          if (source[index] === "`") {
+            index += 1;
+            break;
+          }
+          if (source.startsWith("${", index)) {
+            index = scan(index + 2, true);
+            continue;
+          }
+          index += 1;
+        }
+        continue;
+      }
+      if (/[A-Za-z_$]/.test(char)) {
+        const start = index++;
+        while (index < source.length && /[\w$]/.test(source[index])) index += 1;
+        add(source.slice(start, index), "id", start, index);
+        continue;
+      }
+      const operator = ["...", "?."].find((candidate) =>
+        source.startsWith(candidate, index),
+      );
+      if (operator) {
+        add(operator, "punct", index, index + operator.length);
+        index += operator.length;
+        continue;
+      }
+      add(char, "punct", index, index + 1);
+      index += 1;
     }
-  }
-  return line;
+    return index;
+  };
+  scan(0);
+  return tokens;
 }
 
-/**
- * Walk backwards from an `=` to the `{` that opens the destructuring pattern before it,
- * so `const { SMTP_HOST, SMTP_PORT } = process.env` resolves to two named reads.
- *
- * @returns {string[] | null} the destructured keys, or null when this is not a pattern
- */
-function destructuredKeys(source, equalsIndex) {
-  let i = equalsIndex - 1;
-  while (i >= 0 && /\s/.test(source[i])) {
-    i -= 1;
-  }
-  if (i < 0 || source[i] !== "}") {
-    return null;
-  }
-
-  let depth = 0;
-  const end = i;
-  while (i >= 0) {
-    const char = source[i];
-    if (char === "}") {
-      depth += 1;
-    } else if (char === "{") {
-      depth -= 1;
-      if (depth === 0) {
-        break;
+function collectTokenAliases(tokens) {
+  const processAliases = new Set();
+  const envAliases = new Set();
+  for (let i = 0; i < tokens.length; i += 1) {
+    if (tokens[i].value === "import" && tokens[i + 1]?.value === "{") {
+      let close = i + 2;
+      while (close < tokens.length && tokens[close].value !== "}") close += 1;
+      if (tokens[close + 2]?.value === "node:process") {
+        for (let j = i + 2; j < close; j += 1) {
+          if (tokens[j].value === "env")
+            envAliases.add(
+              tokens[j + 2]?.value === "as" ? tokens[j + 3]?.value : "env",
+            );
+        }
       }
     }
-    i -= 1;
-  }
-  if (i < 0) {
-    return null;
-  }
-
-  const body = source.slice(i + 1, end);
-  if (body.includes("...")) {
-    return null;
-  }
-
-  const keys = [];
-  for (const part of body.split(",")) {
-    const key = /^\s*([A-Za-z_$][A-Za-z0-9_$]*)/.exec(part);
-    if (!key) {
-      if (part.trim() !== "") {
-        return null;
-      }
-      continue;
+    if (
+      tokens[i].type === "id" &&
+      tokens[i + 1]?.value === "=" &&
+      tokens[i + 2]?.value === "process"
+    ) {
+      processAliases.add(tokens[i].value);
     }
-    keys.push(key[1]);
   }
-  return keys.length > 0 ? keys : null;
+  return { processAliases, envAliases };
+}
+
+function parseEnvObject(tokens, index, processAliases, envAliases) {
+  const value = tokens[index]?.value;
+  const processName = value === "process" || processAliases.has(value);
+  const globalProcess =
+    (value === "global" || value === "globalThis") &&
+    tokens[index + 1]?.value === "." &&
+    tokens[index + 2]?.value === "process";
+  let processIndex = index;
+  if (globalProcess) processIndex = index + 2;
+  if (processName || globalProcess) {
+    const dot = tokens[processIndex + 1]?.value;
+    if (
+      (dot === "." || dot === "?.") &&
+      tokens[processIndex + 2]?.value === "env"
+    )
+      return { object: "process.env", end: processIndex + 2 };
+    if (
+      dot === "[" &&
+      tokens[processIndex + 2]?.value === "env" &&
+      tokens[processIndex + 3]?.value === "]"
+    )
+      return { object: "process.env", end: processIndex + 3 };
+    return null;
+  }
+  if (
+    value === "import" &&
+    tokens[index + 1]?.value === "." &&
+    tokens[index + 2]?.value === "meta"
+  ) {
+    const dot = tokens[index + 3]?.value;
+    if ((dot === "." || dot === "?.") && tokens[index + 4]?.value === "env")
+      return { object: "import.meta.env", end: index + 4 };
+    if (
+      dot === "[" &&
+      tokens[index + 4]?.value === "env" &&
+      tokens[index + 5]?.value === "]"
+    )
+      return { object: "import.meta.env", end: index + 5 };
+  }
+  if (
+    value === "Reflect" &&
+    tokens[index + 1]?.value === "." &&
+    tokens[index + 2]?.value === "get" &&
+    tokens[index + 3]?.value === "("
+  ) {
+    const source = parseEnvObject(
+      tokens,
+      index + 3,
+      processAliases,
+      envAliases,
+    );
+    if (source) return { object: source.object, end: index + 2 };
+    if (
+      tokens[index + 3]?.value === "(" &&
+      (tokens[index + 4]?.value === "process" ||
+        processAliases.has(tokens[index + 4]?.value)) &&
+      tokens[index + 5]?.value === "," &&
+      tokens[index + 6]?.value === "env"
+    ) {
+      return { object: "process.env", end: index + 7 };
+    }
+  }
+  if (
+    value === "require" &&
+    tokens[index + 1]?.value === "(" &&
+    tokens[index + 2]?.value === "process" &&
+    tokens[index + 3]?.value === ")" &&
+    tokens[index + 4]?.value === "." &&
+    tokens[index + 5]?.value === "env"
+  ) {
+    return { object: "process.env", end: index + 5 };
+  }
+  if (envAliases.has(value)) return { object: "process.env", end: index };
+  return null;
 }
 
 /**
@@ -106,64 +234,86 @@ function destructuredKeys(source, equalsIndex) {
  * @returns {EnvRead[]}
  */
 export function findEnvReads(source) {
+  const tokens = tokenize(source);
+  const { processAliases, envAliases } = collectTokenAliases(tokens);
   const reads = [];
-  ACCESS.lastIndex = 0;
-
-  for (
-    let match = ACCESS.exec(source);
-    match !== null;
-    match = ACCESS.exec(source)
-  ) {
-    const object =
-      match[1].replace(/\s+/g, "") === "process.env"
-        ? "process.env"
-        : "import.meta.env";
-    const start = match.index;
-    const end = start + match[0].length;
-    const after = source.slice(end, end + 200);
-    const line = lineOf(source, start);
-    const snippet = (source.split("\n")[line - 1] ?? "").trim();
-    const base = { object, line, snippet };
-
-    const named = NAMED.exec(after);
-    if (named) {
-      reads.push({ ...base, kind: "named", name: named[1] });
-      continue;
-    }
-
-    const literal = BRACKET_LITERAL.exec(after);
-    if (literal) {
-      reads.push({ ...base, kind: "named", name: literal[2] });
-      continue;
-    }
-
-    if (BRACKET_COMPUTED.test(after)) {
-      reads.push({ ...base, kind: "computed", name: null });
-      continue;
-    }
-
-    let before = start - 1;
-    while (before >= 0 && /\s/.test(source[before])) {
-      before -= 1;
-    }
+  const lines = source.split("\n");
+  const addRead = (token, object, kind, name = null) => {
+    const line = source.slice(0, token.start).split("\n").length;
+    reads.push({
+      object,
+      kind,
+      name,
+      line,
+      snippet: (lines[line - 1] ?? "").trim(),
+    });
+  };
+  const seen = new Set();
+  for (let i = 0; i < tokens.length; i += 1) {
     if (
-      before >= 0 &&
-      source[before] === "=" &&
-      source[before - 1] !== "=" &&
-      source[before - 1] !== "!"
+      tokens[i].value === "process" &&
+      tokens[i - 1]?.value === "=" &&
+      tokens[i - 2]?.value === "}"
     ) {
-      const keys = destructuredKeys(source, before);
-      if (keys) {
-        for (const key of keys) {
-          reads.push({ ...base, kind: "named", name: key });
+      let open = i - 3;
+      while (open >= 0 && tokens[open].value !== "{") open -= 1;
+      for (let key = open + 1; open >= 0 && key < i - 2; key += 1) {
+        const value = tokens[key].value;
+        if (value === "env" && tokens[key - 1]?.value !== ":") {
+          addRead(tokens[i], "process.env", "alias");
+          break;
+        }
+      }
+    }
+    const parsed = parseEnvObject(tokens, i, processAliases, envAliases);
+    if (!parsed) continue;
+    const token = tokens[i];
+    let kind = "alias";
+    let name = null;
+    const next = tokens[parsed.end + 1];
+    if (next?.value === "." || next?.value === "?.") {
+      kind = "named";
+      name = tokens[parsed.end + 2]?.value ?? null;
+    } else if (next?.value === "[") {
+      const member = tokens[parsed.end + 2];
+      const close = tokens[parsed.end + 3];
+      if (close?.value !== "]") kind = "computed";
+      else if (member?.type === "string") {
+        kind = "named";
+        name = member.value;
+      } else kind = "computed";
+    } else if (tokens[parsed.end]?.value === "env" && next?.type === "id") {
+      kind = "named";
+      name = next.value;
+    }
+
+    // Destructuring the whole process.env object resolves the requested keys individually.
+    if (
+      kind === "alias" &&
+      tokens[parsed.end]?.value === "env" &&
+      tokens[parsed.end + 1]?.value === ";"
+    ) {
+      const equals = tokens[i - 1]?.value === "=" ? i - 1 : -1;
+      if (equals > 0 && tokens[equals - 1]?.value === "}") {
+        let open = equals - 2;
+        while (open >= 0 && tokens[open].value !== "{") open -= 1;
+        for (let key = open + 1; open >= 0 && key < equals - 1; key += 1) {
+          if (tokens[key].type === "id" && tokens[key - 1]?.value !== ":") {
+            const id = `${tokens[i].start}:${tokens[key].value}`;
+            if (!seen.has(id)) {
+              seen.add(id);
+              addRead(token, parsed.object, "named", tokens[key].value);
+            }
+          }
         }
         continue;
       }
     }
-
-    reads.push({ ...base, kind: "alias", name: null });
+    const id = `${token.start}:${parsed.object}:${kind}:${name ?? ""}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    addRead(token, parsed.object, kind, name);
   }
-
   return reads;
 }
 
