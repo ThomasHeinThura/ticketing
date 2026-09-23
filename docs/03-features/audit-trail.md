@@ -90,28 +90,33 @@ it.
   Cyrillic `pаssword`), single-word compounds (`accesstoken`), a digit suffix
   (`password2`), an unlisted name (`bearer`, `cookie`, `otp`), and a secret placed under
   an exempt-suffixed key (`passwordId`) all still bypass it.
-- `AU-3` Append-only. No API can update, delete or truncate a row. Enforced two ways: no
-  endpoint exists to do any of the three, and — the deeper control — two triggers:
-  `audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR EACH ROW` /
-  `audit_log_reject_mutation()`, migration `0067`) raises on every UPDATE/DELETE
-  attempt, with one carve-out: `AU-7`'s `organisation_id`-to-NULL tombstone, which
-  Postgres implements as an `UPDATE` against this same table, allowed only when the
-  referenced organisation row no longer exists — never against a live organisation's
-  rows; and `audit_log_append_only_truncate` (`BEFORE TRUNCATE ... FOR EACH STATEMENT` /
-  `audit_log_reject_truncate()`, migration `0067`) raises unconditionally, because a
-  row-level trigger never fires for `TRUNCATE` at all. Both fire against every role,
-  including the table's owner, for an ORDINARY UPDATE/DELETE/TRUNCATE statement — this
-  deployment provisions exactly one Postgres role, which owns `audit_log` and so keeps
-  full DML whatever is revoked from it (decision log, 2026-09-23, "`audit_log` is
-  append-only by trigger, not by grant") — but that role is also a **superuser** under
-  the official `postgres` image's own default (`compose.yml`, `charts/taskdesk/
-  templates/postgresql-deployment.yaml`). Stated plainly, not overstated: these triggers
-  stop an accidental or buggy application query and every non-owner role, not a
-  **compromised owner/superuser connection**, which can disable or drop either trigger
-  outright (`ALTER TABLE ... DISABLE TRIGGER`, `DROP TRIGGER`, `SET
-  session_replication_role = replica`, or even `CREATE RULE ... DO INSTEAD NOTHING`) —
-  closing that residual needs the real two-role split this deployment does not
-  provision today (Opus security review of PR #291, S5).
+- `AU-3` Append-only. No API can update, delete or truncate a row. It is enforced in
+  three layers:
+  - No endpoint exists that does any of the three.
+  - **Grants are the primary control** (decision log, 2026-09-23, "The API connects as a
+    non-owner, non-superuser role", PR #308). The API connects as `taskdesk_app`, which is
+    not a superuser and owns no table. On `audit_log` and `activity` it holds only
+    `INSERT` and `SELECT`. `ensureApplicationRole` re-derives these grants from
+    `APPEND_ONLY_TABLES` at every boot, and boot refuses to start if the connected role is
+    a superuser or owns a table (`assertApplicationRoleIsNotPrivileged`).
+  - **Triggers are the second layer**, both from migration `0067`:
+    - `audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR EACH ROW` /
+      `audit_log_reject_mutation()`) raises on every UPDATE or DELETE. It allows one
+      carve-out, `AU-7`'s `organisation_id`-to-NULL tombstone. Postgres implements that
+      as an `UPDATE` against this table, and the trigger permits it only when the
+      referenced organisation row no longer exists, never against a live organisation's
+      rows.
+    - `audit_log_append_only_truncate` (`BEFORE TRUNCATE ... FOR EACH STATEMENT` /
+      `audit_log_reject_truncate()`) raises unconditionally, because a row-level trigger
+      never fires for `TRUNCATE`.
+
+  **What remains, stated plainly:** the migration/owner role (`TASKDESK_MIGRATION_DATABASE_URL`)
+  is still the postgres image's init user, and so a superuser. Anyone holding that
+  credential can disable the triggers and rewrite the table, so it must stay
+  operator-only. Under the single-URL fallback, where `TASKDESK_MIGRATION_DATABASE_URL`
+  is unset (local development only), the API still connects as the owner and only the
+  triggers apply.
+
   `audit-purge`, run as a separate maintenance role, is the only thing that deletes rows,
   and only the oldest-past-retention range.
 - `AU-4` An impersonated action records **both** identities.
@@ -176,11 +181,10 @@ Borrowed from OpenProject's journal design.
   an `audit_chain_anchor` row that `audit-verify` starts from. `audit-verify` (on demand,
   and at every restore drill) walks the chain and detects a NAIVE edit — a row altered,
   or deleted, in place while the rest of the chain is left alone — which is the residual
-  risk left after `audit_log_append_only`'s trigger (`AU-3`) already refuses an ordinary
-  `UPDATE`/`DELETE`/`TRUNCATE` (decision log, 2026-09-23, "`audit_log` is append-only by
-  trigger, not by grant"). Stated plainly, not overstated (Opus security review of PR
+  risk left after `AU-3`'s grants and triggers already refuse an ordinary
+  `UPDATE`/`DELETE`/`TRUNCATE`. Stated plainly, not overstated (Opus security review of PR
   #291, S5): the chain is an **unkeyed** SHA-256 with no head anchored outside the
-  database itself. An actor able to disable the trigger (the same owner/superuser tier
+  database itself. An actor able to disable the trigger (the migration/owner credential
   `AU-3` names above) can recompute every row from the point of alteration forward — the
   chain verifies as intact either way, because it only proves internal self-consistency,
   never that the current head matches some independently-held record of an earlier one —

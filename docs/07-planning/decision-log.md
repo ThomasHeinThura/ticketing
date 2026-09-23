@@ -17,6 +17,64 @@ Newest first.
 
 ---
 
+### 2026-09-23 · The API connects as a non-owner, non-superuser role; append-only is enforced by grant first, trigger second (#296)
+
+**Supersedes (in part):** the 2026-09-23 entry "`audit_log` is append-only by trigger, not
+by grant — this deployment has exactly one Postgres role". Its premise, one role, stops
+being true with PR #308. The triggers from `0067` stay as a second layer. They are not
+removed.
+
+**Decision:** Every shipped deployment (`compose.yml`, `charts/taskdesk/**`, `deploy/**`)
+uses two Postgres roles:
+- **Migration/owner role.** `TASKDESK_MIGRATION_DATABASE_URL` connects as the role that
+  owns every table. It is used only to run migrations and the grant step at boot.
+- **Application role.** `TASKDESK_DATABASE_URL` connects as `taskdesk_app`. It is not a
+  superuser, it owns nothing, and it has DML only. On `audit_log` and `activity` it has
+  `INSERT` and `SELECT` only, with no `UPDATE`, `DELETE` or `TRUNCATE`.
+
+Grants are applied by a startup step (`ensureApplicationRole`) that runs as the owner right
+after `migrate()`, not by a migration file. It does `REVOKE ALL`, then precise `GRANT`s,
+plus `ALTER DEFAULT PRIVILEGES`, so it is idempotent. It re-derives the grants from the
+live table list and `APPEND_ONLY_TABLES` on every boot. Boot then **refuses to start** if
+the connected application role is a superuser or owns any table
+(`assertApplicationRoleIsNotPrivileged`).
+
+`TASKDESK_MIGRATION_DATABASE_URL` is optional and falls back to `TASKDESK_DATABASE_URL`.
+That keeps single-URL local development working. In that fallback, the grant step detects
+that the app role is the connecting role and does not modify it.
+
+**Why:** The earlier entry recorded a residual risk. The API ran as the superuser table
+owner, so a compromised API process could `ALTER TABLE … DISABLE TRIGGER` or `TRUNCATE`
+and defeat the audit trail. This closes the first of the two items that entry said must
+land. A grant is the control Postgres actually enforces against a non-owner.
+
+The step runs at boot, not as a migration, for two reasons:
+- a journal migration runs once and can't carry a deployment-specific, rotatable password;
+- a future append-only table then gets its restriction automatically, not by someone
+  remembering to add it.
+
+**What it still does not stop:** the owner role is still the postgres image's init user,
+and so still a superuser at cluster init. Anyone holding
+`TASKDESK_MIGRATION_DATABASE_URL`'s credentials can do anything, so that credential must
+stay operator-only. The second item from the earlier entry is **still open**: a chain
+anchor outside this database, or a keyed hash. There is no `taskdesk_maint`/`audit-purge`
+role yet, because that job doesn't exist yet.
+
+**Alternatives:**
+- Grants in a Drizzle migration. Rejected: it can't carry the password, and it runs once.
+- Keep the single role and rely on triggers. Rejected: the superuser owner can disable them.
+- A dedicated non-superuser owner role separate from the image init user. Deferred: it is
+  more provisioning work for BYO Postgres, and it doesn't change what the API process can
+  do.
+
+**Operational consequence:** existing deployments need the new
+`TASKDESK_APP_DB_PASSWORD` (compose) or `taskdesk.env.database.app*` values (Helm), and a
+redeploy. The UAT redeploy needs Thomas's authorization. It is not implied by this entry.
+
+**Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation.
+There was one clearly recommended option, the two-role split that AU-3 and `migrations.md`
+already specified. Mechanism by PR #308's lane. Recorded before #308 merges.
+
 ### 2026-09-23 · P1's UI path: new v2 work-item screens on the new API, then retire kaneo's task stack
 
 **Supersedes (in part):** the mechanism in the 2026-09-16 entry "#23's `task` → `work_item`
