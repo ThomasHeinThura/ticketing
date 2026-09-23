@@ -17,6 +17,23 @@ Newest first.
 
 ---
 
+### 2026-09-23 · Built-in role names are reserved; a built-in grant needs a genuine seeded row (`workspace_role.is_system`); existing data is reported, not rewritten (#318)
+
+**Decision:** Every `BUILT_IN_ROLES` key is reserved as a custom workspace role name. It is normalised the same way as the existing `owner` check and gets the same refusal. The legacy check (`require-workspace-capability.ts`) and the adapter (`resolve-identity.ts`) grant a built-in role's capabilities only to `owner`, or to a `workspace_role` row with `is_system = true`, through one shared predicate (`isGenuineBuiltInRoleGrant`). Migration `0068` adds `is_system` and **backfills `true` for every existing `viewer`/`member`/`admin` row**. `seedDefaultWorkspaceRoles()` repeats that repair on every boot. Without the backfill, every existing admin, member and viewer would have lost their built-in capabilities on deploy. PR #322's ordinary review found this; CI had missed it because it always migrates an empty database.
+
+**Existing custom rows that use a built-in name are reported, not rewritten.** This is option A. `apps/api/scripts/audit-reserved-workspace-role-names.ts` is read-only, and it is run once against UAT at the next redeploy. The runtime rule already neutralises every collision, so a report is enough. An admin-facing "rename this role" affordance (option C) belongs with #40, the P4 roles UI.
+
+**Known residual, stated plainly:** before S4, better-auth's `create-role` accepted any name. In that window, a custom row named `viewer`/`member`/`admin` could have been planted in a workspace before its default roles were seeded. The name-based backfill marks such a row genuine. That preserves the access it already had on `main` through the bug being fixed, so it grants nothing new. After the backfill, though, the audit script can no longer tell such a row apart from a genuine seeded row. This was confirmed by #322's delta review, from `git log -p` and the installed better-auth source. No evidence of exploitation exists.
+
+**Why:** A role row's name was being trusted as proof that it is a built-in role, and that allowed escalation (#315 Opus S2). The row's provenance has to be stored somewhere. `UNIQUE (workspace_id, role)` plus seeding at creation make the name trustworthy for the three seeded names in existing data, but for nothing else.
+
+**Alternatives:**
+- A report plus a startup log line (option B). Deferred: it is not needed for safety.
+- Silently renaming or reassigning colliding roles. Rejected: #318 forbids touching anyone's role silently.
+- Backfilling nothing. Rejected, because it strips every existing admin's capabilities.
+
+**Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation. The runtime fix makes option A sufficient.
+
 ### 2026-09-23 · P1's UI path: new v2 work-item screens on the new API, then retire kaneo's task stack
 
 **Supersedes (in part):** the mechanism in the 2026-09-16 entry "#23's `task` → `work_item`
