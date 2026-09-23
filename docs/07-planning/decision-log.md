@@ -83,6 +83,58 @@ From 2026-09-30 the agents review each other again. Thomas later explicitly dire
 **Decided by:** the orchestrating session, 2026-09-23. Thomas expressed no preference when asked, so the recommended option applies under the standing delegation.
 
 
+### 2026-09-23 · Workspace audit reads are filtered by project reach (AU-10)
+
+**Decision:** A reader of the workspace audit log (`workspace:manage_settings`) sees rows that are not project-scoped, plus rows for projects they can reach under the application's normal reach rules. That includes per-workspace `sees_all` (#319/#334). They never see rows for projects outside their reach. `audit_log` gains a nullable `project_id` with no FK, which follows `workspace_id`'s precedent, and it is recorded for every project-scoped action. The implementation is tracked in #344. **It must land before the first project-scoped audit writer merges.** Until then, PR #343's unfiltered workspace read exposes nothing extra, because no rows are project-scoped yet.
+
+**Why:** PR #343's Opus review (S1) and the 2026-09-05 security review ("Logging and audit access scope") found that a manager with no project access would otherwise read those projects' `before`/`after` payloads. That is the same reach rule the rest of the application enforces.
+
+**Alternatives:**
+- Restrict audit reads to owner, admin or `sees_all`. Rejected: managers would lose audit access entirely.
+- Accept unfiltered reads as AU-10's text allowed. Rejected: that is the gap the security review flagged.
+
+**Decided by:** Thomas, 2026-09-23, in session. He chose the recommended option.
+
+### 2026-09-23 · Three non-Claude implementation agents take the P0/P1/P2 lanes; the Claude session does Opus 5.5 security review and merge only
+
+**Supersedes (in part):**
+- `CLAUDE.md`'s "Model tiers" statement that non-Claude specialist agents for coding "did not work out and are not part of this project's process";
+- the earlier entry recording that the DeepSeek/GLM-routed implementation agents were dropped (line ~1187).
+
+Neither older text is rewritten.
+
+**Decision:** From 2026-09-23, implementation and Sonnet-tier work on the P0, P1 and P2 lanes is done by three agents that Thomas runs:
+- GPT-6 Luna;
+- DeepSeek 4.1 Flash, through GitHub Copilot;
+- mimo-v2.26 Flash, through Cline.
+
+Sonnet-tier work means implementation, fix rounds and ordinary reviews. The Claude Code session's role narrows to two things:
+- the **final independent Opus 5.5 security review** of every security-scope PR (`docs/04-engineering/ci-cd.md`'s path list), run in a fresh context separate from the author;
+- **merging** fully-green candidates through the protected flow, under the 2026-09-15 delegated merge authority.
+
+**The gates are unchanged.** Every PR still needs all of the following on its exact head:
+- an **independent ordinary review**, meaning a different agent or context from the author, with its actual model identity recorded in `## Reviewed by`;
+- the Opus 5.5 security review, where the change is in security scope;
+- every required check green;
+- no waived gate.
+
+A waived gate still needs Thomas. The Claude session merges only after verifying each gate itself, never on another agent's report of green. An agent never approves its own work, whatever its vendor.
+
+**How independence is verified, stated honestly.** Independence rests on the PR's own attestation. The Claude session checks that attestation at merge; it is not a cryptographic guarantee. Before every merge, the session checks:
+- `## Implemented by` names the authoring agent and model.
+- `## Reviewed by` names a **different** agent and model, gives the exact SHA it reviewed, and has its verdict recorded on the PR.
+- The same agent or tool is never both author and ordinary reviewer, and a reviewing agent can't clear a fix round it wrote itself.
+- For security-scope PRs, the Opus 5.5 review is always a fresh Claude context commissioned by this session, never one of the three lane agents.
+- The commit authors (`git log --format='%an <%ae>' main..HEAD`) are spot-checked against `## Implemented by`.
+
+**Commit identity rule, from 2026-09-23.** Each lane agent commits under its own distinct git author identity that names the tool, as Cline already does (`Cline (…) <agent@taskdesk.local>`). No lane agent may commit as `Claude Code <noreply@anthropic.com>`, which is this session's identity. PR #336's review found that several agent-authored PRs (#326, #331–#335) were committed under that identity. Where that has already happened, the PR's `## Implemented by` must name the real authoring agent, and the mismatch is noted on the PR before merge. A PR whose attestation and commits can't be reconciled does not merge.
+
+If any of these is missing, the PR does not merge. It waits, and the PR says what is missing.
+
+**Why:** Thomas's instruction on 2026-09-23. Claude's spend limit was being reached repeatedly mid-lane, and it is better spent on the Opus-tier review that nothing else on the project can do.
+
+**Decided by:** Thomas, 2026-09-23, in session. The orchestrating Claude session recorded it. Thomas then separately confirmed that the three agents do the **ordinary independent reviews** as well as the implementation, reviewing each other's PRs. He answered that one explicit question after PR #336's first review asked for it, choosing it over keeping ordinary reviews on a fresh Claude Sonnet context. Opus 5.5 stays the security reviewer.
+
 ### 2026-09-23 · Built-in role names are reserved; a built-in grant needs a genuine seeded row (`workspace_role.is_system`); existing data is reported, not rewritten (#318)
 
 **Decision:** Every `BUILT_IN_ROLES` key is reserved as a custom workspace role name. It is normalised the same way as the existing `owner` check and gets the same refusal. The legacy check (`require-workspace-capability.ts`) and the adapter (`resolve-identity.ts`) grant a built-in role's capabilities only to `owner`, or to a `workspace_role` row with `is_system = true`, through one shared predicate (`isGenuineBuiltInRoleGrant`). Migration `0068` adds `is_system` and **backfills `true` for every existing `viewer`/`member`/`admin` row**. `seedDefaultWorkspaceRoles()` repeats that repair on every boot. Without the backfill, every existing admin, member and viewer would have lost their built-in capabilities on deploy. PR #322's ordinary review found this; CI had missed it because it always migrates an empty database.
