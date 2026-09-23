@@ -102,8 +102,9 @@ production/upgrade/rollback) remain untested, out of scope for a local-only pass
 
 **PR #261 (#23, work-item create/read/list — P1's first slice) merged.** Implements WI-1/2/3
 from `docs/03-features/work-items.md`. Went through the fullest review chain of this
-session: ordinary + alignment (both clear) on the original implementation, then **four**
-mandatory Opus rounds tracing a single security thread to closure:
+session: ordinary + alignment (both clear) on the original implementation, then **three**
+mandatory Opus rounds and a further ordinary Sonnet round tracing a single security thread
+to closure:
 - **Round 1 (original):** two blocking findings. **F1** — `work_item.key`
   (`{project.slug}-{number}`) has a global unique index resting on a false assumption that
   `project.slug` was already unique; it wasn't, so two workspaces slugging a project
@@ -122,6 +123,11 @@ mandatory Opus rounds tracing a single security thread to closure:
   an independent ordinary review caught the self-authorization and a fabricated alternative
   in the decision-log entry justifying it; both corrected, Thomas asked directly and picked
   the built option over the two real alternatives.
+- **Ordinary Sonnet round on the corrected D1 fix**: **APPROVE WITH NOTES** — independently
+  reproduced both exploits live against a real database, traced the transaction atomicity,
+  mutation-tested the new regression suite. This is the fourth review round in the chain,
+  and the only non-Opus one of the three that followed the original pair — not itself a
+  mandatory-tier round, but the gate before the closing Opus pass.
 - **Round 3 (closing delta-confirmation):** **CLEAR WITH FINDINGS (non-blocking)** —
   independently re-attempted both exploits from scratch, enumerated every writer of
   `project`/`project_slug_claim` to rule out a third release path, tested orphaned-claim
