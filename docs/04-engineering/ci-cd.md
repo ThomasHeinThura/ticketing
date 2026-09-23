@@ -28,6 +28,12 @@ stages below.
 
 **Fast — required on every push, target under 15 minutes:**
 
+Every gate whose failure must block merging is also listed by its exact check context in
+the active `protect-main` ruleset. Adding a new standalone job here is not sufficient by
+itself: update the ruleset to require its context and verify the live rule after the change.
+As of 2026-09-23, `domain coverage (90%)` is required alongside the contexts listed in the
+repository's active ruleset.
+
 ```
 ┌─ Setup ──────────────────────────────────────────┐
 │ pnpm install --frozen-lockfile                   │
