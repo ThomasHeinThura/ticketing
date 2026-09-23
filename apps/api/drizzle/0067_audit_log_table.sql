@@ -6,17 +6,26 @@
 -- own database role holds no UPDATE/DELETE grant on audit_log") describe a role split
 -- this deployment does not provision: `compose.yml`/`charts/taskdesk`/`deploy/` create
 -- exactly ONE Postgres role (`taskdesk`), which both runs every migration (so it OWNS
--- this table) and is what the running API connects as. A table owner keeps full DML
--- privileges regardless of any REVOKE -- only moving ownership to a second, lesser
--- role would make a grant restriction real, and provisioning that second role
--- (`taskdesk_app`/`taskdesk_maint`, per `docs/04-engineering/migrations.md`'s "Append-only
--- tables" section) is infrastructure work outside a schema-and-writer slice. So:
---   1. `REVOKE UPDATE, DELETE ... FROM PUBLIC` below is harmless, defense-in-depth for a
---      FUTURE lesser-privileged role, not what makes this table append-only today.
---   2. The actual, load-bearing control is `audit_log_append_only`, a `BEFORE UPDATE OR
---      DELETE` trigger that unconditionally raises -- enforced regardless of which role
---      issues the statement (short of a superuser disabling triggers, the same residual
---      risk `AU-15`'s hash chain exists to catch after the fact via `audit-verify`).
+-- this table) and is what the running API connects as -- and the official `postgres`
+-- image makes that role a SUPERUSER (Opus security review of PR #291, S5). A table
+-- owner keeps full DML privileges regardless of any REVOKE, and a superuser can disable
+-- or drop a trigger outright -- so what follows stops accidental and buggy writes and
+-- every non-owner role, NOT a compromised owner/superuser connection. Closing that
+-- residual needs the real two-role split (`taskdesk_app`/`taskdesk_maint`, per
+-- `docs/04-engineering/migrations.md`'s "Append-only tables" section) and, for the hash
+-- chain, an externally-anchored or keyed hash -- both out of scope for a
+-- schema-and-writer slice; tracked as a real gap, not assumed away. So:
+--   1. `REVOKE UPDATE, DELETE, TRUNCATE ... FROM PUBLIC` below is harmless,
+--      defense-in-depth for a FUTURE lesser-privileged role, not what makes this table
+--      append-only today.
+--   2. The actual, load-bearing controls are two triggers: `audit_log_append_only`
+--      (`BEFORE UPDATE OR DELETE ... FOR EACH ROW`), which raises for every UPDATE/
+--      DELETE except one carve-out, and `audit_log_append_only_truncate` (`BEFORE
+--      TRUNCATE ... FOR EACH STATEMENT`), which raises unconditionally -- a row-level
+--      trigger never fires for TRUNCATE at all (confirmed live: without the second
+--      trigger, TRUNCATE emptied the table with zero rows firing the row-level trigger,
+--      no error). Both are enforced regardless of which NON-OWNER role issues the
+--      statement, but neither survives the owning role disabling them.
 --
 -- `seq` (`GENERATED ALWAYS AS IDENTITY`) is NOT in `data-model.md` S11's column list and
 -- is NOT part of the hash input -- a genuine gap this implementation revealed, disclosed
@@ -25,6 +34,17 @@
 -- inserts, and `created_at` alone cannot guarantee that (finite timestamp resolution).
 -- Same category of internal-ordering-only exception to "surrogate ids are never
 -- sequential" that migration 0066 already established for `activity.seq`.
+--
+-- `UNIQUE (prev_hash)` (Opus security review of PR #291, S3): under an isolation level
+-- stronger than this codebase's default (REPEATABLE READ/SERIALIZABLE -- unused today,
+-- per `project/controllers/delete-project.ts`'s own comment, but not forbidden for a
+-- future caller), a caller transaction can read a stale "current head" and two rows can
+-- end up sharing the same `prev_hash`, forking the chain instead of extending it
+-- linearly. This constraint turns that fork into a hard `23505` INSERT failure the
+-- instant it would happen. The very first row's `prev_hash` is `ZERO_HASH` and can never
+-- collide: after the first successful insert the table is never empty again
+-- (append-only), so "read the current head" always finds a real predecessor hash from
+-- then on -- see `schema.ts`'s comment on this constraint for the full reasoning.
 CREATE TABLE "audit_log" (
 	"id" text PRIMARY KEY NOT NULL,
 	"actor_id" text,
@@ -46,6 +66,7 @@ CREATE TABLE "audit_log" (
 	"row_hash" text NOT NULL,
 	"seq" bigint GENERATED ALWAYS AS IDENTITY (sequence name "audit_log_seq_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	CONSTRAINT "audit_log_seq_unique" UNIQUE("seq"),
+	CONSTRAINT "audit_log_prev_hash_unique" UNIQUE("prev_hash"),
 	CONSTRAINT "audit_log_prev_hash_shape" CHECK ("audit_log"."prev_hash" ~ '^[0-9a-f]{64}$'),
 	CONSTRAINT "audit_log_row_hash_shape" CHECK ("audit_log"."row_hash" ~ '^[0-9a-f]{64}$')
 );
@@ -56,7 +77,7 @@ CREATE INDEX "audit_log_workspace_id_created_at_idx" ON "audit_log" USING btree 
 -- Defense-in-depth only -- see the header comment above. A no-op against the table
 -- OWNER (the only role that exists in this deployment shape today), real the moment a
 -- second, lesser-privileged role is ever provisioned and used to connect the API.
-REVOKE UPDATE, DELETE ON "audit_log" FROM PUBLIC;--> statement-breakpoint
+REVOKE UPDATE, DELETE, TRUNCATE ON "audit_log" FROM PUBLIC;--> statement-breakpoint
 -- `AU-7`: "Deleting an organisation tombstones its audit rows ... the mechanism is
 -- `audit_log.organisation_id`'s `ON DELETE SET NULL` ... only the organisation link is
 -- nulled." Postgres implements that FK action internally as an UPDATE on THIS table
@@ -65,7 +86,20 @@ REVOKE UPDATE, DELETE ON "audit_log" FROM PUBLIC;--> statement-breakpoint
 -- not permitted"). So the append-only trigger must allow EXACTLY that one
 -- system-generated update and nothing resembling it: `organisation_id` changing from
 -- non-null to NULL, with every other column, including `organisation_id` changing to
--- anything other than NULL, byte-for-byte identical to OLD.
+-- anything other than NULL, byte-for-byte identical to OLD --
+--
+-- AND (Opus security review of PR #291, S4) only when the referenced `organisation` row
+-- is ACTUALLY gone: `NOT EXISTS (SELECT 1 FROM organisation WHERE id = OLD.
+-- organisation_id)`. Without this check, the carve-out as originally written could not
+-- tell the FK's `ON DELETE SET NULL` action apart from an ordinary, direct `UPDATE
+-- audit_log SET organisation_id = NULL` issued against a row whose organisation is still
+-- very much alive -- reproduced live by the reviewer: that direct UPDATE succeeded even
+-- though `org-p6` still existed, silently detaching the row from a live organisation's
+-- scoped audit view (AU-10/AU-11 reach) with `verifyAuditChain` still reporting `ok`
+-- (`organisation_id` is excluded from the hash by design). The referenced row is already
+-- gone by the time Postgres actually fires the RI action, so `NOT EXISTS` is true for
+-- the real tombstone case and false for a live one -- this closes the gap without
+-- weakening the carve-out's own column-equality checks below it at all.
 CREATE FUNCTION audit_log_reject_mutation() RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -95,6 +129,9 @@ BEGIN
     IF NEW.organisation_id IS NOT NULL THEN
       RAISE EXCEPTION 'audit_log is append-only: organisation_id may only be set to NULL (the AU-7 tombstone), never reassigned (row id %)', OLD.id;
     END IF;
+    IF EXISTS (SELECT 1 FROM organisation WHERE id = OLD.organisation_id) THEN
+      RAISE EXCEPTION 'audit_log is append-only: organisation_id may only be set to NULL when that organisation no longer exists (the AU-7 tombstone fires from ON DELETE, not on a live organisation) (row id %)', OLD.id;
+    END IF;
     RETURN NEW;
   END IF;
 
@@ -116,7 +153,7 @@ CREATE TRIGGER audit_log_append_only
 -- `TRUNCATE` at all (confirmed live -- three rows inserted, then `TRUNCATE audit_log`,
 -- then zero rows, no error, the row-level trigger never ran), and the single owning
 -- role in this deployment shape (see header comment) holds `TRUNCATE` privilege on its
--- own table regardless of any `REVOKE`, the same reasoning that makes the REVOKE below
+-- own table regardless of any `REVOKE`, the same reasoning that makes the REVOKE above
 -- defense-in-depth rather than the real control. `TRUNCATE` has no per-row concept
 -- (no `OLD`/`NEW`, and AU-7's tombstone carve-out above is meaningless against it --
 -- there is no row left to carve an exception for), so this is a SEPARATE function and a
@@ -129,11 +166,6 @@ BEGIN
   RAISE EXCEPTION 'audit_log is append-only: TRUNCATE is not permitted';
 END;
 $$;--> statement-breakpoint
--- Defense-in-depth only -- see the header comment. A no-op against the table OWNER (the
--- only role that exists in this deployment shape today), real the moment a second,
--- lesser-privileged role is ever provisioned and used to connect the API. Same wording
--- as the `UPDATE, DELETE` revoke above, for the same reason.
-REVOKE TRUNCATE ON "audit_log" FROM PUBLIC;--> statement-breakpoint
 CREATE TRIGGER audit_log_append_only_truncate
   BEFORE TRUNCATE ON "audit_log"
   FOR EACH STATEMENT

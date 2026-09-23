@@ -2286,20 +2286,31 @@ export const watcherTable = pgTable(
 // (`BEFORE TRUNCATE ... FOR EACH STATEMENT`) that unconditionally raises for TRUNCATE --
 // a SEPARATE trigger because a row-level trigger never fires for TRUNCATE at all
 // (confirmed live: TRUNCATE emptied the table with zero rows firing the row-level
-// trigger, no error). Both are enforced at the database level regardless of which role
-// issues the statement (short of a superuser disabling triggers, the same residual risk
-// `AU-15`'s hash chain exists to detect after the fact via `audit-verify`), so together
-// they survive a compromised or buggy API process exactly the way `AU-3`'s own stated
-// rationale asks for, just via a different mechanism than the doc's literal words
-// describe.
+// trigger, no error). Both fire against every role, including the table's owner, for an
+// ORDINARY UPDATE/DELETE/TRUNCATE statement. **Stated plainly, not overstated** (Opus
+// security review of PR #291, S5): the official `postgres` image makes this one
+// connecting role a SUPERUSER, so these triggers stop an accidental or buggy
+// application query and every non-owner role -- NOT a compromised owner/superuser
+// connection, which can disable or drop either trigger outright (`ALTER TABLE ...
+// DISABLE TRIGGER`, `DROP TRIGGER`, `SET session_replication_role = replica`, or
+// `CREATE RULE ... DO INSTEAD NOTHING`). `AU-15`'s hash chain narrows that residual to
+// detecting a NAIVE edit after the fact via `audit-verify`; it does not catch an actor
+// who can also recompute the chain forward or delete its newest rows -- see AU-15 and
+// `data-model.md`'s "known limit" paragraph for the honest statement of what remains.
 //
 // The one carve-out: `organisation_id`'s own `ON DELETE SET NULL` FK action below is
 // itself implemented by Postgres as an UPDATE against THIS table -- confirmed live,
 // deleting a referenced `organisation` row raised straight through this trigger before
-// the carve-out existed. The trigger function allows exactly that one shape (only
-// `organisation_id` changing, only non-null -> NULL, every other column identical to
-// OLD) and rejects everything else, including reassigning `organisation_id` to a
-// different non-null value. See the trigger function's own comment in migration 0067.
+// the carve-out existed. The trigger function allows that shape (only `organisation_id`
+// changing, only non-null -> NULL, every other column identical to OLD) ONLY when the
+// referenced organisation row no longer exists (`NOT EXISTS (SELECT 1 FROM organisation
+// WHERE id = OLD.organisation_id)`, migration 0067) -- tightened after Opus security
+// review of PR #291, S4, which reproduced a direct `UPDATE ... SET organisation_id =
+// NULL` succeeding against a STILL-LIVE organisation's rows under the original,
+// column-equality-only carve-out (nothing distinguished the real FK-driven tombstone
+// from an ordinary direct update to the same effect). Every other case is rejected,
+// including reassigning `organisation_id` to a different non-null value. See the
+// trigger function's own comment in migration 0067.
 //
 // `organisation_id` is `ON DELETE SET NULL` -- `AU-7`'s tombstone, mirroring
 // `data-model.md` S11's own words for this exact column. `workspace_id` carries
@@ -2399,6 +2410,24 @@ export const auditLogTable = pgTable(
     ),
     check("audit_log_row_hash_shape", sql`${table.rowHash} ~ '^[0-9a-f]{64}$'`),
     unique("audit_log_seq_unique").on(table.seq),
+    // Opus security review of PR #291, S3: under an isolation level stronger than the
+    // codebase's own default (READ COMMITTED) -- REPEATABLE READ or SERIALIZABLE, which
+    // nothing here uses today, per `project/controllers/delete-project.ts`'s own
+    // comment, but a future caller could -- a caller transaction can read a stale
+    // "current head" (its snapshot predates a concurrent holder's commit), so two rows
+    // end up sharing the same `prev_hash` -- the chain silently forks instead of
+    // staying linear. `UNIQUE (prev_hash)` turns that fork into a hard INSERT failure
+    // (`23505`) the instant it would happen, rather than a fork `verifyAuditChain`
+    // might not notice until much later (a fork is NOT automatically a `prev_hash`
+    // mismatch from any single row's own point of view -- each forked row's `prev_hash`
+    // correctly points at the real predecessor it read; only the two SIBLINGS sharing
+    // that same predecessor reveal the fork, which this constraint catches directly
+    // instead of relying on it surfacing at verify time at all). The first-ever row's
+    // `prev_hash` is `ZERO_HASH` (64 hex `0`s) -- this cannot collide with any later
+    // row: after the first successful insert the table is never empty again (append-
+    // only), so `appendAuditLog`'s "read the current head" step always finds a REAL row
+    // hash to chain from, and can never legitimately read `ZERO_HASH` a second time.
+    unique("audit_log_prev_hash_unique").on(table.prevHash),
   ],
 );
 

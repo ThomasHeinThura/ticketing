@@ -375,9 +375,205 @@ describe("verifyAuditChain", () => {
 
     const result = await verifyAuditChain(db);
     expect(result.ok).toBe(false);
-    // r2's seq is missing from the walk entirely -- detected as a sequence gap at r3,
-    // before its (now-unverifiable) prev_hash pointer is even checked.
+    // r2 is gone, so r3's stored prev_hash (r2's row_hash) no longer matches the
+    // chain's actual running expected hash (r1's row_hash) -- S1 fix (Opus review of
+    // PR #291): a missing/deleted row is caught by THIS check alone, never by a
+    // seq-contiguity check, which would also fire on a merely rolled-back append (see
+    // "a rolled-back write leaves a harmless seq gap" below).
     expect(result.firstBreak?.id).toBe(r3.id);
-    expect(result.firstBreak?.reason).toBe("sequence_gap");
+    expect(result.firstBreak?.reason).toBe("prev_hash_mismatch");
   });
+
+  it("a rolled-back write leaves a harmless seq gap -- verify still reports ok (S1)", async () => {
+    // Opus security review of PR #291, S1: `seq` is `GENERATED ALWAYS AS IDENTITY`,
+    // which is non-transactional -- a rolled-back append still consumes a seq value,
+    // leaving a permanent, entirely legitimate gap. The chain itself is intact (the
+    // rolled-back row never existed to chain from), so this must NOT be reported as a
+    // break.
+    await appendAuditLog(db, baseInput());
+    await db
+      .transaction(async (tx) => {
+        await appendAuditLog(tx, baseInput());
+        throw new Error("deliberate rollback");
+      })
+      .catch(() => {});
+    await appendAuditLog(db, baseInput());
+
+    const result = await verifyAuditChain(db);
+    expect(result.ok).toBe(true);
+    expect(result.rowsChecked).toBe(2);
+    expect(result.firstBreak).toBeNull();
+  });
+
+  it("a rolled-back savepoint inside a committed outer transaction is also harmless (S1)", async () => {
+    await appendAuditLog(db, baseInput());
+    await db.transaction(async (tx) => {
+      await appendAuditLog(tx, baseInput());
+      await tx
+        .transaction(async (nestedTx) => {
+          await appendAuditLog(nestedTx, baseInput());
+          throw new Error("deliberate savepoint rollback");
+        })
+        .catch(() => {});
+      await appendAuditLog(tx, baseInput());
+    });
+
+    const result = await verifyAuditChain(db);
+    expect(result.ok).toBe(true);
+    expect(result.rowsChecked).toBe(3);
+  });
+});
+
+describe("appendAuditLog / verifyAuditChain -- top-level JSON shapes (S2)", () => {
+  it.each([
+    ["a string", "hello"],
+    ["a numeric-looking string", "123"],
+    ['the string "null"', "null"],
+    ["a JSON-object-looking string", '{"a":1}'],
+    ["a number", 42],
+    ["a boolean", true],
+    ["an empty array", []],
+    ["a non-empty array", [1, 2, 3]],
+    ["an object", { a: 1 }],
+  ] as const)(
+    "round-trips %s as a top-level `after` value, and verify stays ok",
+    async (_label, value) => {
+      const result = await appendAuditLog(
+        db,
+        baseInput({ after: value as JsonValue }),
+      );
+      const raw = await readRawRow(result.id);
+      expect(raw.after).toEqual(value);
+
+      const verifyResult = await verifyAuditChain(db);
+      expect(verifyResult.ok).toBe(true);
+    },
+  );
+
+  it("round-trips null as before/after", async () => {
+    const result = await appendAuditLog(
+      db,
+      baseInput({ before: null, after: null }),
+    );
+    const raw = await readRawRow(result.id);
+    expect(raw.before).toBeNull();
+    expect(raw.after).toBeNull();
+
+    const verifyResult = await verifyAuditChain(db);
+    expect(verifyResult.ok).toBe(true);
+  });
+});
+
+describe("audit_log_prev_hash_unique (S3)", () => {
+  it("refuses a forced duplicate prev_hash insert", async () => {
+    const r1 = await appendAuditLog(db, baseInput());
+    const forcedId = `forced-${randomUUID()}`;
+    const forcedRowHash = "9".repeat(64);
+    await expectRejectionMatching(
+      db.execute(
+        sql`INSERT INTO audit_log (id, actor_type, action, entity_type, entity_id, prev_hash, row_hash)
+            VALUES (${forcedId}, 'system', 'test.action', 'foo', 'bar', ${r1.prevHash}, ${forcedRowHash})`,
+      ),
+      /duplicate key value violates unique constraint "audit_log_prev_hash_unique"/i,
+    );
+  });
+
+  it("the very first row's ZERO_HASH prev_hash does not conflict with anything", async () => {
+    // Only one row can EVER be the first row in a non-empty table -- the constraint
+    // does not (and must not) block the ordinary case of a fresh, empty audit_log.
+    const result = await appendAuditLog(db, baseInput());
+    expect(result.prevHash).toBe(ZERO_HASH);
+  });
+});
+
+describe("AU-7 tombstone carve-out is tightened to the real FK action (S4)", () => {
+  it("refuses a direct UPDATE ... SET organisation_id = NULL while the organisation still exists", async () => {
+    const organisation = await makeOrganisation();
+    const result = await appendAuditLog(
+      db,
+      baseInput({
+        action: "organisation.created",
+        organisationId: organisation.id,
+      }),
+    );
+
+    await expectRejectionMatching(
+      db.execute(
+        sql`UPDATE audit_log SET organisation_id = NULL WHERE id = ${result.id}`,
+      ),
+      /append-only/i,
+    );
+
+    const raw = await db.execute<{ organisation_id: string | null }>(
+      sql`SELECT organisation_id FROM audit_log WHERE id = ${result.id}`,
+    );
+    expect(raw.rows[0]?.organisation_id).toBe(organisation.id);
+  });
+
+  it("still tombstones when the organisation is actually deleted", async () => {
+    const organisation = await makeOrganisation();
+    const result = await appendAuditLog(
+      db,
+      baseInput({
+        action: "organisation.created",
+        organisationId: organisation.id,
+      }),
+    );
+
+    await db
+      .delete(schema.organisationTable)
+      .where(eq(schema.organisationTable.id, organisation.id));
+
+    const raw = await db.execute<{ organisation_id: string | null }>(
+      sql`SELECT organisation_id FROM audit_log WHERE id = ${result.id}`,
+    );
+    expect(raw.rows[0]?.organisation_id).toBeNull();
+  });
+});
+
+describe("AU-2 secret backstop -- segment matching, not substring (S6)", () => {
+  const secretShapedPayloads: Array<[string, JsonValue]> = [
+    ["password as a string", { password: "hunter2" }],
+    ["password as an array (S6 bypass)", { password: ["hunter2"] }],
+    ["token as a number (S6 bypass)", { token: 123456 }],
+    [
+      "nested credentials object (S6 bypass)",
+      { credentials: { value: "s3cr3t" } },
+    ],
+    ["pwd (S6 bypass)", { pwd: "hunter2" }],
+    ["passphrase (S6 bypass)", { passphrase: "correct horse battery staple" }],
+    ["apiKey compound segment pair", { apiKey: "sk_live_abc123" }],
+    ["privateKey compound segment pair", { privateKey: "-----BEGIN KEY-----" }],
+  ];
+
+  it.each(secretShapedPayloads)("refuses %s", async (_label, after) => {
+    await expect(
+      appendAuditLog(db, baseInput({ action: "plugin.changed", after })),
+    ).rejects.toThrow(/looks like a secret value/i);
+  });
+
+  const metadataShapedPayloads: Array<[string, JsonValue]> = [
+    ["apiKeyId (S6 false positive)", { apiKeyId: "key_123" }],
+    [
+      "secretRotatedAt (S6 false positive)",
+      { secretRotatedAt: "2026-09-23T00:00:00Z" },
+    ],
+    [
+      "tokenExpiresAt (S6 false positive)",
+      { tokenExpiresAt: "2026-09-23T00:00:00Z" },
+    ],
+    ["a webhook secretCount", { secretCount: 3 }],
+  ];
+
+  it.each(metadataShapedPayloads)(
+    "allows %s -- it names metadata, not the secret itself",
+    async (_label, after) => {
+      const result = await appendAuditLog(
+        db,
+        baseInput({ action: "plugin.changed", after }),
+      );
+      const raw = await readRawRow(result.id);
+      expect(raw.after).toEqual(after);
+    },
+  );
 });

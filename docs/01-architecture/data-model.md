@@ -362,7 +362,7 @@ were logged. OpenProject's model; the alternative silently rewrites history.
 | `webhook` | `workspace_id`, `url`, `secret` (encrypted), `secret_previous`, `secret_rotated_at`, `events text[]`, `active`, `disabled_at`, `disabled_reason`, `created_by` |
 | `webhook_delivery` | `webhook_id`, `event_id`, `attempt`, `status_code`, `duration_ms`, `request_body jsonb`, `response_body` (truncated), `error`, `attempted_at` |
 | `external_link` | `entity_type`, `entity_id`, `system`, `external_id`, `url`, `title`, `project_id` null, `organisation_id` null (denormalised at insert, for the same reach-filtering reason as `custom_field_value`) — provenance for any entity, not only work items |
-| `audit_log` | `actor_id`, `actor_type`, `api_key_id` null, `impersonator_id` null, `actor_ip`, `user_agent`, `trace_id`, `workspace_id` null (no foreign key, deliberately — see below), `organisation_id` null (`ON DELETE SET NULL` — the tombstone), `action` (a dotted key from the **audit action catalogue** in [audit-trail.md](../03-features/audit-trail.md#audit-action-catalogue) — an [events.md](events.md) key where one exists, otherwise one of the audit-only keys listed there), `entity_type`, `entity_id`, `before jsonb`, `after jsonb`, `created_at`, **`prev_hash`**, **`row_hash`** — the tamper-evidence chain; the exact hash input, the writer serialisation and the purge anchor are defined in [The audit hash chain](#the-audit-hash-chain) below and nowhere else. `prev_hash` of the first row is the zero hash; verified by `audit-verify` on demand and at every restore drill. Append-only in this deployment shape via two triggers, not a grant — `audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR EACH ROW`) and `audit_log_append_only_truncate` (`BEFORE TRUNCATE ... FOR EACH STATEMENT`, since a row-level trigger never fires for `TRUNCATE` at all) — see issue #37's PR for why the grant this row used to describe is not expressible here (`compose.yml`/the Helm chart/`deploy/` provision exactly one Postgres role, which owns this table and cannot be restricted from itself by `REVOKE`). Also carries `seq` (`bigint generated always as identity`, unique, NOT part of the hash input) — an internal, never-referenced ordering column the writer uses to find the current chain head race-free under `pg_advisory_xact_lock`; `created_at` alone cannot do this (finite timestamp resolution). `workspace_id` deliberately carries no foreign key: unlike `organisation_id`, no referential action for it is specified anywhere, and this table's whole purpose is to survive the deletion of what it describes, so inventing an undocumented CASCADE/SET NULL here would risk exactly the wrong default |
+| `audit_log` | `actor_id`, `actor_type`, `api_key_id` null, `impersonator_id` null, `actor_ip`, `user_agent`, `trace_id`, `workspace_id` null (no foreign key, deliberately — see below), `organisation_id` null (`ON DELETE SET NULL` — the tombstone), `action` (a dotted key from the **audit action catalogue** in [audit-trail.md](../03-features/audit-trail.md#audit-action-catalogue) — an [events.md](events.md) key where one exists, otherwise one of the audit-only keys listed there), `entity_type`, `entity_id`, `before jsonb`, `after jsonb`, `created_at`, **`prev_hash`**, **`row_hash`** — the tamper-evidence chain; the exact hash input, the writer serialisation and the purge anchor are defined in [The audit hash chain](#the-audit-hash-chain) below and nowhere else. `prev_hash` of the first row is the zero hash; verified by `audit-verify` on demand and at every restore drill. Append-only in this deployment shape via two triggers, not a grant — `audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR EACH ROW`) and `audit_log_append_only_truncate` (`BEFORE TRUNCATE ... FOR EACH STATEMENT`, since a row-level trigger never fires for `TRUNCATE` at all) — see issue #37's PR for why the grant this row used to describe is not expressible here (`compose.yml`/the Helm chart/`deploy/` provision exactly one Postgres role, which owns this table and cannot be restricted from itself by `REVOKE`). Also carries `seq` (`bigint generated always as identity`, unique, NOT part of the hash input) — an internal, never-referenced ordering column the writer uses to find the current chain head race-free under `pg_advisory_xact_lock`; `created_at` alone cannot do this (finite timestamp resolution). `prev_hash` is additionally `UNIQUE` (Opus security review of PR #291, S3) — turns a chain fork under a caller isolation level stronger than READ COMMITTED into a hard insert failure rather than a silent second branch; the first row's `ZERO_HASH` cannot collide, since after the first insert the table is never empty again. The `AU-7` carve-out only allows `organisation_id` to become `NULL` when that organisation row no longer exists (S4) — a direct `UPDATE` against a still-live organisation's rows is refused. `workspace_id` deliberately carries no foreign key: unlike `organisation_id`, no referential action for it is specified anywhere, and this table's whole purpose is to survive the deletion of what it describes, so inventing an undocumented CASCADE/SET NULL here would risk exactly the wrong default |
 | `audit_chain_anchor` | `created_at`, `purged_through_at` (the `created_at` of the newest purged row), `last_purged_row_hash`, `first_purged_created_at`, `purged_count`, `next_row_hash` null (the `row_hash` of the oldest surviving row, whose `prev_hash` now points at a deleted row). Written by `audit-purge`, one row per purge run; `audit-verify` starts its walk from the newest anchor instead of the zero hash. Anchors are never purged |
 | `saved_view` | `owner_id`, `scope`, `scope_id` (the query context), `visibility` (`private`\|`team`\|`workspace`), `shared_with_team_id`, `name`, `query jsonb` (envelope `{ entity, filter, sort, groupBy, columns, aggregate }` — [api-design.md](api-design.md)), `layout` (`board`\|`list`\|`table`\|`calendar`\|`timeline`\|`chart`) |
 | `metric_snapshot` | `period_start`, `period_end`, `grain`, `metric_key`, `project_id` null, `organisation_id` null (**real columns, not `dimensions` keys** — reach filtering sums these on every dashboard load, and a jsonb extraction per row is a full scan), `dimensions jsonb` (every other dimension), `measures jsonb`, `computed_at`. Unique `(metric_key, grain, period_start, project_id, organisation_id, dimensions)` |
@@ -429,14 +429,30 @@ recording the last purged `row_hash`, the purged count and the `created_at` rang
 `audit-verify` starts its walk from the newest anchor rather than the zero hash. A purge
 run that cannot write its anchor does not delete.
 
-**A known limit, stated honestly.** `audit-verify` detects *alteration* of a row already
-written through the normal writer — it cannot detect a raw `INSERT` that bypasses the
-writer entirely and forges a self-consistent `row_hash`/`prev_hash` pair (the chain would
-verify, because every hash it checks really does match its own row's content). Nothing in
-this design closes that without an external anchor outside the database itself —
-`audit_chain_anchor` narrows the window `audit-purge` can rewrite undetected, but does not
-by itself prevent a forged insert between anchors. `AU-15` claims only detection of
-*alteration*, not of a wholly forged row; this is the same limit, not a new one.
+**A known limit, stated honestly (widened by Opus security review of PR #291, S5 — the
+original paragraph named only the forged-insert case, which understated the same limit).**
+`audit-verify`'s chain is an **unkeyed** SHA-256 with no head anchored outside the
+database it lives in. All of the following are the *same* limit, not three separate ones,
+because every one of them is unreachable to `audit-verify` for the identical reason —
+nothing outside the database itself holds an independent copy of what the chain's head
+should be:
+- a raw `INSERT` that bypasses the writer entirely and forges a self-consistent
+  `row_hash`/`prev_hash` pair (the chain verifies, because every hash it checks really
+  does match its own row's content);
+- an actor able to disable `audit_log_append_only` (the owner/superuser tier `AU-3`
+  names) altering row *k* and recomputing every row from *k* forward — the recomputed
+  tail is internally consistent, so the chain verifies end to end;
+- the same actor deleting the newest rows outright — the chain's new (shorter) head still
+  verifies against everything before it, since there is nothing after it left to
+  contradict the deletion.
+
+`AU-15` claims only detection of *alteration left visibly inconsistent* — a naive edit
+that does not also recompute what follows it — never a forged insert, a recompute-forward
+alteration, or a tail truncation. Closing any of these needs either a hash head anchored
+somewhere the database role cannot itself rewrite (an external, periodically exported or
+independently-witnessed copy — `audit_chain_anchor` narrows the *window* `audit-purge`
+can rewrite between anchors, but does not itself anchor outside the database) or a hash
+keyed with a secret the database role does not hold.
 
 ## Indexing
 

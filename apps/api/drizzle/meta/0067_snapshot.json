@@ -1,5 +1,5 @@
 {
-	"id": "b2b42028-521c-4dc8-9ec0-9b3fdacc5b5a",
+	"id": "1e2dcee4-7235-4876-836a-f8526b66d535",
 	"prevId": "a49209be-c8ab-4b70-85d7-77519fd6d38f",
 	"version": "7",
 	"dialect": "postgresql",
@@ -953,6 +953,11 @@
 					"name": "audit_log_seq_unique",
 					"nullsNotDistinct": false,
 					"columns": ["seq"]
+				},
+				"audit_log_prev_hash_unique": {
+					"name": "audit_log_prev_hash_unique",
+					"nullsNotDistinct": false,
+					"columns": ["prev_hash"]
 				}
 			},
 			"policies": {},

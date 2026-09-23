@@ -78,19 +78,117 @@ function truncateIfOversized(
 }
 
 /**
- * `AU-2`: "Secret values are never recorded." This is fundamentally a caller
+ * `AU-2`: "Secret values are never recorded. A plugin configuration change records
+ * which keys changed, never what they changed to." This is fundamentally a caller
  * responsibility -- the writer cannot know what a caller's field means -- but as a
- * best-effort, fail-closed backstop this scans `before`/`after` for object keys whose
- * name suggests a raw secret (password, token, secret, api key, credential,
- * authorization header) paired with a non-empty string value, and refuses to write
- * rather than silently persist what looks like a credential. This is a heuristic, not a
- * proof: it cannot catch a secret placed under an innocuously-named key, and a caller
- * MUST NOT rely on it as the only control -- `audit-trail.md`'s own example ("a plugin
- * configuration change records which keys changed, never what they changed to") is the
- * real contract callers must uphold by construction.
+ * best-effort, fail-closed backstop this scans `before`/`after`, recursively through
+ * every nested object and array, for a KEY that looks like a secret's name, and refuses
+ * to write rather than silently persist what a matching key maps to. This is a
+ * heuristic, not a proof: it cannot catch a secret placed under an innocuously-named
+ * key, and a caller MUST NOT rely on it as the only control -- `audit-trail.md`'s own
+ * "which keys changed, never what they changed to" is the real contract callers must
+ * uphold by construction.
+ *
+ * **Rewritten (Opus security review of PR #291, S6)** from a single case-insensitive
+ * substring regex, which the reviewer showed was both bypassable and prone to false
+ * positives that would silently drop a legitimate audit row under `AU-14`'s "the
+ * mutation still succeeds" rule once wiring lands:
+ * - `{password: ["hunter2"]}` bypassed the old check entirely -- it only compared
+ *   `typeof member === "string"`, so an array or object VALUE under a matching key was
+ *   never checked at all, only recursed into (for its OWN nested keys).
+ * - `{token: 123456}` (a numeric OTP) bypassed it for the same reason -- a number is
+ *   never a string.
+ * - `{apiKeyId: "key_123"}`, `{secretRotatedAt: "..."}` and `{tokenExpiresAt: "..."}`
+ *   were all wrongly refused -- exactly the shapes `api_key.created` and
+ *   `webhook.secret_rotated`'s own catalogue entries (`actions.ts`) would need to
+ *   record once wired, since the substring match saw "secret"/"token" inside a
+ *   perfectly ordinary metadata field name.
+ *
+ * The fix: split each key into normalised segments (`apiKeyId` -> `["api","key","id"]`,
+ * `secret_rotated_at` -> `["secret","rotated","at"]`) and match WHOLE segments, never
+ * substrings -- `secretRotatedAt` no longer matches merely because the six characters
+ * "secret" appear inside it. A key whose LAST segment is `id`, `at` or `count` is
+ * exempt outright (Opus: "*Id, *At and *Count suffixes are exempt") -- those name
+ * metadata ABOUT a secret (when it rotates, its identifier, how many exist), never the
+ * secret's own value, and are exactly the audit action catalogue's own `after` shapes
+ * for `api_key.created`/`webhook.secret_rotated`. Once past that exemption, a match on
+ * ANY remaining segment (or an adjacent compound pair -- `api`+`key`, `private`+`key`,
+ * and so on) refuses the write for ANY non-null value the key maps to -- a string, a
+ * number, a boolean, an array or an object -- not only a non-empty string, since
+ * `{token: 123456}` and `{password: ["hunter2"]}` are exactly as much a secret leak as
+ * a plain string one.
+ *
+ * `docs/03-features/audit-trail.md`'s AU-2 does not itself name a list of secret-like
+ * segments -- checked, it says only "secret values are never recorded" with the one
+ * plugin-configuration example. Per this PR's own remediation instructions, the segment
+ * list below is chosen conservatively (covering every case the security review actually
+ * demonstrated, plus the same-shaped near-misses a reviewer would try next) and is
+ * written into AU-2 itself in the same change, rather than left as an undocumented
+ * implementation detail only this file knows about.
  */
-const SECRET_KEY_PATTERN =
-  /(password|secret|token|api[_-]?key|private[_-]?key|credential|authoriz)/i;
+const SECRET_WHOLE_SEGMENTS = new Set([
+  "password",
+  "secret",
+  "token",
+  "credential",
+  "credentials",
+  "pwd",
+  "passphrase",
+  "authorization",
+  "authorisation",
+]);
+
+/** Adjacent-segment pairs that are secret-shaped together even though neither half is
+ * on its own (`key` alone would false-positive on `sortKey`/`primaryKey`/`foreignKey`,
+ * so it is never a whole-segment trigger by itself -- only paired with one of these). */
+const SECRET_COMPOUND_SEGMENT_PAIRS = new Set([
+  "api|key",
+  "private|key",
+  "encryption|key",
+  "signing|key",
+  "access|token",
+  "client|secret",
+]);
+
+/** A key ending in one of these segments names metadata ABOUT a value (when it
+ * happened, its own identifier, how many), never the value itself -- exempt
+ * unconditionally, regardless of what any earlier segment matches. */
+const EXEMPT_LAST_SEGMENTS = new Set(["id", "at", "count"]);
+
+/** Splits a key into lowercase segments on `camelCase`, `snake_case` and `kebab-case`
+ * boundaries alike -- `apiKeyId` and `api_key_id` both become `["api","key","id"]`, so
+ * matching is insensitive to whichever convention a given caller's payload happens to
+ * use. */
+function keySegments(key: string): string[] {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .split(/[_\-\s]+/)
+    .filter((segment) => segment.length > 0)
+    .map((segment) => segment.toLowerCase());
+}
+
+function isSecretShapedKey(key: string): boolean {
+  const segments = keySegments(key);
+  if (segments.length === 0) {
+    return false;
+  }
+  const lastSegment = segments[segments.length - 1];
+  if (lastSegment !== undefined && EXEMPT_LAST_SEGMENTS.has(lastSegment)) {
+    return false;
+  }
+  if (segments.some((segment) => SECRET_WHOLE_SEGMENTS.has(segment))) {
+    return true;
+  }
+  for (let i = 0; i < segments.length - 1; i++) {
+    if (
+      SECRET_COMPOUND_SEGMENT_PAIRS.has(`${segments[i]}|${segments[i + 1]}`)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 function assertNoObviousSecret(
   value: JsonValue | null,
@@ -115,11 +213,7 @@ function assertNoObviousSecret(
       continue;
     }
     for (const [key, member] of Object.entries(current)) {
-      if (
-        SECRET_KEY_PATTERN.test(key) &&
-        typeof member === "string" &&
-        member.length > 0
-      ) {
+      if (isSecretShapedKey(key) && member !== null) {
         throw new Error(
           `appendAuditLog: refusing to write ${fieldName} -- key "${key}" looks like a ` +
             "secret value (AU-2: secret values are never recorded). Record which keys " +
@@ -152,8 +246,12 @@ function validateAction(action: string): void {
 }
 
 /**
- * Appends one row to `audit_log`, inside the caller's own transaction (`dbOrTx`) --
- * never opens its own. `AU-15`/`data-model.md`'s "The audit hash chain":
+ * Appends one row to `audit_log`. Runs every step below inside ONE transaction on ONE
+ * session: when `dbOrTx` is an already-open caller transaction, that means a nested
+ * `SAVEPOINT` on the caller's own session; when `dbOrTx` is the root `db`, this
+ * function deliberately opens a real transaction of its own (see the comment right
+ * before `dbOrTx.transaction(...)` below for why that self-opened transaction is
+ * required, not incidental). `AU-15`/`data-model.md`'s "The audit hash chain":
  *
  *   1. Take `pg_advisory_xact_lock(AUDIT_CHAIN_LOCK_KEY)` first, in this transaction --
  *      serialises every concurrent `audit_log` insert across the whole instance.
@@ -246,11 +344,23 @@ export async function appendAuditLog(
       prevHash,
     );
 
-    // Step 5. `before`/`after` are bound as plain JS values with an explicit
-    // `::jsonb` cast -- `pg` (node-postgres) JSON.stringifies a plain object/array
-    // parameter automatically, so no manual string-escaping is needed or attempted
-    // here.
+    // Step 5. `before`/`after` are bound as EXPLICIT `JSON.stringify(...)` text, cast
+    // to `::jsonb` -- never the raw JS value (Opus security review of PR #291, S2).
+    // `node-postgres` only JSON-encodes a plain object/array parameter; a JS STRING is
+    // sent verbatim as text and then *parsed* as JSON by the `::jsonb` cast, so a
+    // top-level string like `"123"`, `"null"` or `'{"a":1}'` was silently stored as a
+    // jsonb number/null/object instead of the JSON string `canonicalRowHash` actually
+    // hashed -- an untampered row whose stored `row_hash` could never again match what
+    // `verifyAuditChain` recomputes from it. A top-level array fared worse: drizzle's
+    // `sql` template expands a JS array into a `($1, $2, ...)` parameter list, not one
+    // value, so `after: [1, 2]` raised a raw SQL syntax error rather than writing
+    // anything. `beforeJson`/`afterJson` below (a `null` SQL parameter for a `null`
+    // `before`/`after`, `JSON.stringify(value)` otherwise) send exactly the JSON text
+    // `canonicalJson`/`canonicalRowHash` computed the hash over, for every top-level
+    // shape a `JsonValue` can be, not only objects.
     const id = createId();
+    const beforeJson = before === null ? null : JSON.stringify(before);
+    const afterJson = after === null ? null : JSON.stringify(after);
     const insertResult = await tx.execute<{
       id: string;
       seq: string;
@@ -266,7 +376,7 @@ export async function appendAuditLog(
           ${input.userAgent ?? null}, ${input.traceId ?? null},
           ${input.workspaceId ?? null}, ${input.organisationId ?? null},
           ${input.action}, ${input.entityType}, ${input.entityId},
-          ${before}::jsonb, ${after}::jsonb,
+          ${beforeJson}::jsonb, ${afterJson}::jsonb,
           ${nowRow.now_text}::timestamptz, ${prevHash}, ${rowHash}
         )
         RETURNING id, seq

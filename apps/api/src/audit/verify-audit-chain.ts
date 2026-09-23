@@ -19,7 +19,7 @@ export interface AuditChainBreak {
   seq: bigint;
   expectedPrevHash: string;
   actualPrevHash: string;
-  reason: "prev_hash_mismatch" | "row_hash_mismatch" | "sequence_gap";
+  reason: "prev_hash_mismatch" | "row_hash_mismatch";
 }
 
 export interface VerifyAuditChainResult {
@@ -63,11 +63,20 @@ interface AuditLogChainRow {
  *   - this row's stored `row_hash` does not equal the hash recomputed from its own
  *     content -- the row's own data was altered after being written.
  *
- * A gap in `seq` (a row deleted -- which the `audit_log_append_only` trigger should
- * make impossible through the API, but this function must still detect it if it
- * somehow happens, e.g. a superuser bypassing the trigger) is reported as its own break
- * reason rather than silently reindexing around the hole, since a missing row breaks
- * the very `prev_hash` pointer it was in the middle of.
+ * Deliberately does NOT check `seq` for contiguity. `seq` is `GENERATED ALWAYS AS
+ * IDENTITY` (schema.ts's own comment on `auditLogTable.seq`), and identity values are
+ * non-transactional: a rolled-back `appendAuditLog` (its caller's transaction or an
+ * enclosing savepoint aborting, exactly the case `AU-14` leaves to the caller) still
+ * consumes a `seq` value, leaving a permanent, entirely legitimate gap. An earlier
+ * version of this function treated any such gap as a break -- since `verifyAuditChain`
+ * returns at the FIRST break and the table is append-only (the offending row can never
+ * be "fixed"), one ordinary rollback would have permanently blinded every future verify
+ * run at that same row, hiding any REAL tampering later in the chain forever (found by
+ * Opus security review of PR #291, S1). A row genuinely deleted from the middle of the
+ * chain (the case this check was originally meant to catch) is already caught below by
+ * the `prev_hash` pointer check -- the next surviving row's `prev_hash` no longer
+ * matches `expectedPrevHash`, exactly as it would for any other missing/altered
+ * predecessor. `seq` is used only for ordering here, never for a contiguity assertion.
  */
 export async function verifyAuditChain(
   dbOrTx: DbOrTx,
@@ -86,25 +95,10 @@ export async function verifyAuditChain(
   );
 
   let expectedPrevHash = ZERO_HASH;
-  let expectedSeq: bigint | null = null;
   let rowsChecked = 0;
 
   for (const row of result.rows) {
     const seq = BigInt(row.seq);
-
-    if (expectedSeq !== null && seq !== expectedSeq) {
-      return {
-        ok: false,
-        rowsChecked,
-        firstBreak: {
-          id: row.id,
-          seq,
-          expectedPrevHash,
-          actualPrevHash: row.prev_hash,
-          reason: "sequence_gap",
-        },
-      };
-    }
 
     if (row.prev_hash !== expectedPrevHash) {
       return {
@@ -157,7 +151,6 @@ export async function verifyAuditChain(
     }
 
     expectedPrevHash = row.row_hash;
-    expectedSeq = seq + 1n;
   }
 
   return { ok: true, rowsChecked, firstBreak: null };

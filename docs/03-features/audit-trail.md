@@ -67,20 +67,39 @@ it.
 - `AU-1` Rows record: actor id, actor IP, user agent, action, entity type, entity id,
   before, after, trace id, timestamp.
 - `AU-2` **Secret values are never recorded.** A plugin configuration change records which
-  keys changed, never what they changed to.
+  keys changed, never what they changed to. The writer's own best-effort backstop
+  (`apps/api/src/audit/audit-writer.ts`'s `assertNoObviousSecret`, not a substitute for
+  this rule) refuses to write any key whose normalised segments match `password`,
+  `secret`, `token`, `credential`/`credentials`, `pwd`, `passphrase`,
+  `authorization`/`authorisation`, or the adjacent pairs `api`+`key`, `private`+`key`,
+  `encryption`+`key`, `signing`+`key`, `access`+`token`, `client`+`secret` — this list
+  did not previously exist anywhere and is written here, in AU-2 itself, rather than
+  left as an undocumented implementation detail (Opus security review of PR #291, S6).
+  A key whose last segment is `id`, `at` or `count` is exempt regardless of an earlier
+  match (`apiKeyId`, `secretRotatedAt`, `tokenExpiresAt` name metadata about a secret,
+  never the secret itself).
 - `AU-3` Append-only. No API can update, delete or truncate a row. Enforced two ways: no
-  endpoint exists to do any of the three, and — the deeper control, surviving even a
-  compromised or buggy API process — two triggers: `audit_log_append_only` (`BEFORE
-  UPDATE OR DELETE ... FOR EACH ROW` / `audit_log_reject_mutation()`, migration `0067`)
-  raises on every UPDATE/DELETE attempt, with one carve-out: `AU-7`'s
-  `organisation_id`-to-NULL tombstone, which Postgres implements as an `UPDATE` against
-  this same table; and `audit_log_append_only_truncate` (`BEFORE TRUNCATE ... FOR EACH
-  STATEMENT` / `audit_log_reject_truncate()`, migration `0067`) raises unconditionally,
-  because a row-level trigger never fires for `TRUNCATE` at all. Both are enforced
-  against every role, including the table's owner, unlike a grant — this deployment
-  provisions exactly one Postgres role, which owns `audit_log` and so keeps full DML
-  whatever is revoked from it (decision log, 2026-09-23, "`audit_log` is append-only by
-  trigger, not by grant").
+  endpoint exists to do any of the three, and — the deeper control — two triggers:
+  `audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR EACH ROW` /
+  `audit_log_reject_mutation()`, migration `0067`) raises on every UPDATE/DELETE
+  attempt, with one carve-out: `AU-7`'s `organisation_id`-to-NULL tombstone, which
+  Postgres implements as an `UPDATE` against this same table, allowed only when the
+  referenced organisation row no longer exists — never against a live organisation's
+  rows; and `audit_log_append_only_truncate` (`BEFORE TRUNCATE ... FOR EACH STATEMENT` /
+  `audit_log_reject_truncate()`, migration `0067`) raises unconditionally, because a
+  row-level trigger never fires for `TRUNCATE` at all. Both fire against every role,
+  including the table's owner, for an ORDINARY UPDATE/DELETE/TRUNCATE statement — this
+  deployment provisions exactly one Postgres role, which owns `audit_log` and so keeps
+  full DML whatever is revoked from it (decision log, 2026-09-23, "`audit_log` is
+  append-only by trigger, not by grant") — but that role is also a **superuser** under
+  the official `postgres` image's own default (`compose.yml`, `charts/taskdesk/
+  templates/postgresql-deployment.yaml`). Stated plainly, not overstated: these triggers
+  stop an accidental or buggy application query and every non-owner role, not a
+  **compromised owner/superuser connection**, which can disable or drop either trigger
+  outright (`ALTER TABLE ... DISABLE TRIGGER`, `DROP TRIGGER`, `SET
+  session_replication_role = replica`, or even `CREATE RULE ... DO INSTEAD NOTHING`) —
+  closing that residual needs the real two-role split this deployment does not
+  provision today (Opus security review of PR #291, S5).
   `audit-purge`, run as a separate maintenance role, is the only thing that deletes rows,
   and only the oldest-past-retention range.
 - `AU-4` An impersonated action records **both** identities.
@@ -143,11 +162,22 @@ Borrowed from OpenProject's journal design.
   `pg_advisory_xact_lock` on the audit constant, so the chain is strictly serial per instance
   even with many replicas; the first row chains from the zero hash, and `audit-purge` writes
   an `audit_chain_anchor` row that `audit-verify` starts from. `audit-verify` (on demand,
-  and at every restore drill) walks the chain, so alteration by a database-level actor is
-  detectable even though `audit_log_append_only`'s trigger (`AU-3`) already refuses an
-  ordinary `UPDATE`/`DELETE` — the residual risk this catches is a privileged actor
-  disabling or bypassing that trigger (decision log, 2026-09-23, "`audit_log` is
-  append-only by trigger, not by grant").
+  and at every restore drill) walks the chain and detects a NAIVE edit — a row altered,
+  or deleted, in place while the rest of the chain is left alone — which is the residual
+  risk left after `audit_log_append_only`'s trigger (`AU-3`) already refuses an ordinary
+  `UPDATE`/`DELETE`/`TRUNCATE` (decision log, 2026-09-23, "`audit_log` is append-only by
+  trigger, not by grant"). Stated plainly, not overstated (Opus security review of PR
+  #291, S5): the chain is an **unkeyed** SHA-256 with no head anchored outside the
+  database itself. An actor able to disable the trigger (the same owner/superuser tier
+  `AU-3` names above) can recompute every row from the point of alteration forward — the
+  chain verifies as intact either way, because it only proves internal self-consistency,
+  never that the current head matches some independently-held record of an earlier one —
+  or delete the newest rows outright, which `audit-verify` also cannot see, since there
+  is nothing after the new (shorter) chain's own head to contradict it. Closing this
+  needs either an externally-anchored head (checked against a copy the database role
+  cannot itself alter — `audit_chain_anchor` narrows the *window* between anchors but
+  does not by itself anchor OUTSIDE the database) or a hash keyed with a secret the
+  database role does not hold.
 
 ## Audit action catalogue
 
