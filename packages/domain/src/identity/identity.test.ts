@@ -266,6 +266,14 @@ describe("P3 identity core", () => {
       ]),
     ).toEqual({ ok: true, value: { userName: "after", active: false } });
     expect(
+      applyScimPatchOps({ userName: "person", active: true }, [
+        { op: "replace", value: { active: false, title: "Support" } },
+      ]),
+    ).toEqual({
+      ok: true,
+      value: { userName: "person", active: false, title: "Support" },
+    });
+    expect(
       applyScimPatchOps({}, [{ op: "replace", path: "role", value: "admin" }]),
     ).toEqual({ ok: false, reason: "forbidden_attribute" });
     expect(

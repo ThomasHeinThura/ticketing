@@ -204,8 +204,9 @@ function readActive(value: unknown): boolean | undefined {
   return undefined;
 }
 
-export function parseScimUser(
+function parseScimUserFields(
   input: unknown,
+  requireCompleteResource: boolean,
 ): ScimResult<ScimPersonAttributes> {
   if (!isRecord(input) || hasForbiddenScimAttribute(input))
     return { ok: false, reason: "forbidden_attribute" };
@@ -222,7 +223,10 @@ export function parseScimUser(
   ]);
   if (Object.keys(input).some((key) => !allowed.has(key)))
     return { ok: false, reason: "invalid_resource" };
-  if (
+  if (input.schemas === undefined) {
+    if (requireCompleteResource)
+      return { ok: false, reason: "invalid_resource" };
+  } else if (
     !Array.isArray(input.schemas) ||
     !input.schemas.includes(SCIM_CORE_USER_SCHEMA) ||
     input.schemas.some(
@@ -230,17 +234,23 @@ export function parseScimUser(
         schema !== SCIM_CORE_USER_SCHEMA &&
         schema !== SCIM_ENTERPRISE_USER_SCHEMA,
     )
-  )
+  ) {
     return { ok: false, reason: "invalid_resource" };
+  }
   const result: ScimPersonAttributes = {};
   if (input.externalId !== undefined) {
     if (typeof input.externalId !== "string")
       return { ok: false, reason: "invalid_resource" };
     result.externalId = input.externalId;
   }
-  if (typeof input.userName !== "string" || input.userName.length === 0)
-    return { ok: false, reason: "invalid_resource" };
-  result.userName = input.userName;
+  if (input.userName === undefined) {
+    if (requireCompleteResource)
+      return { ok: false, reason: "invalid_resource" };
+  } else {
+    if (typeof input.userName !== "string" || input.userName.length === 0)
+      return { ok: false, reason: "invalid_resource" };
+    result.userName = input.userName;
+  }
   if (input.active !== undefined) {
     const active = readActive(input.active);
     if (active === undefined) return { ok: false, reason: "invalid_resource" };
@@ -303,6 +313,12 @@ export function parseScimUser(
   return { ok: true, value: result };
 }
 
+export function parseScimUser(
+  input: unknown,
+): ScimResult<ScimPersonAttributes> {
+  return parseScimUserFields(input, true);
+}
+
 export function scimConflictResponse(
   _conflictClass: ScimConflictClass,
 ): ScimConflictResponse {
@@ -346,7 +362,7 @@ export function applyScimPatchOps(
           if (isForbiddenScimKey(key))
             return { ok: false, reason: "forbidden_attribute" };
         }
-        const parsed = parseScimUser(operation.value);
+        const parsed = parseScimUserFields(operation.value, false);
         if (!parsed.ok) return parsed;
         Object.assign(next, parsed.value);
         continue;
