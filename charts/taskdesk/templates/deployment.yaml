@@ -95,6 +95,23 @@ spec:
                   name: {{ .Values.postgresql.auth.existingSecret }}
                   key: {{ .Values.postgresql.auth.secretKeys.userPasswordKey }}
             {{- end }}
+            {{- if and (not .Values.taskdesk.env.database.external.enabled) .Values.taskdesk.env.database.appExistingSecret.enabled }}
+            - name: TASKDESK_APP_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.taskdesk.env.database.appExistingSecret.name }}
+                  key: {{ .Values.taskdesk.env.database.appExistingSecret.key }}
+            {{- end }}
+            {{- if and .Values.taskdesk.env.database.external.enabled .Values.taskdesk.env.database.external.migration.enabled .Values.taskdesk.env.database.external.migration.existingSecret.enabled }}
+            - name: TASKDESK_EXTERNAL_MIGRATION_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.taskdesk.env.database.external.migration.existingSecret.name }}
+                  key: {{ .Values.taskdesk.env.database.external.migration.existingSecret.passwordKey }}
+            {{- end }}
+            # TASKDESK_DATABASE_URL: the APPLICATION role (issue #296) — never a
+            # Postgres superuser, never owns a table. See values.yaml's
+            # taskdesk.env.database comments for the split's rationale.
             - name: TASKDESK_DATABASE_URL
               {{- if .Values.taskdesk.env.database.external.enabled }}
               {{- if .Values.taskdesk.env.database.external.existingSecret.enabled }}
@@ -106,12 +123,35 @@ spec:
               value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.username }}:{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.password }}@{{ .Values.taskdesk.env.database.external.host }}:{{ .Values.taskdesk.env.database.external.port }}/{{ .Values.taskdesk.env.database.external.database }}"
               {{- end }}
               {{- else }}
+              {{- if .Values.taskdesk.env.database.appExistingSecret.enabled }}
+              value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.appUsername }}:$(TASKDESK_APP_DB_PASSWORD)@{{ include "taskdesk.fullname" . }}-postgresql:{{ .Values.postgresql.service.port }}/{{ .Values.postgresql.auth.database }}"
+              {{- else }}
+              value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.appUsername }}:{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.appPassword }}@{{ include "taskdesk.fullname" . }}-postgresql:{{ .Values.postgresql.service.port }}/{{ .Values.postgresql.auth.database }}"
+              {{- end }}
+              {{- end }}
+            # TASKDESK_MIGRATION_DATABASE_URL: the MIGRATION/OWNER role (issue
+            # #296) — runs migrations, owns every table, and creates/repairs the
+            # application role above. Optional: when neither branch below applies
+            # (an external database with `migration.enabled: false`), it is left
+            # unset and the API falls back to TASKDESK_DATABASE_URL for both,
+            # exactly as before this split — the boot-time
+            # assertApplicationRoleIsNotPrivileged check is what catches that
+            # combination if it turns out unsafe.
+            {{- if not .Values.taskdesk.env.database.external.enabled }}
+            - name: TASKDESK_MIGRATION_DATABASE_URL
               {{- if .Values.postgresql.auth.existingSecret }}
               value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.postgresql.auth.username }}:$(KANEO_POSTGRES_PASSWORD)@{{ include "taskdesk.fullname" . }}-postgresql:{{ .Values.postgresql.service.port }}/{{ .Values.postgresql.auth.database }}"
               {{- else }}
               value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.postgresql.auth.username }}:{{ include "taskdesk.urlencodeUserinfo" .Values.postgresql.auth.password }}@{{ include "taskdesk.fullname" . }}-postgresql:{{ .Values.postgresql.service.port }}/{{ .Values.postgresql.auth.database }}"
               {{- end }}
+            {{- else if .Values.taskdesk.env.database.external.migration.enabled }}
+            - name: TASKDESK_MIGRATION_DATABASE_URL
+              {{- if .Values.taskdesk.env.database.external.migration.existingSecret.enabled }}
+              value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.migration.username }}:$(TASKDESK_EXTERNAL_MIGRATION_DB_PASSWORD)@{{ .Values.taskdesk.env.database.external.migration.host }}:{{ .Values.taskdesk.env.database.external.migration.port }}/{{ .Values.taskdesk.env.database.external.migration.database }}"
+              {{- else }}
+              value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.migration.username }}:{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.migration.password }}@{{ .Values.taskdesk.env.database.external.migration.host }}:{{ .Values.taskdesk.env.database.external.migration.port }}/{{ .Values.taskdesk.env.database.external.migration.database }}"
               {{- end }}
+            {{- end }}
             - name: DISABLE_REGISTRATION
               value: {{ .Values.taskdesk.env.disableRegistration | quote }}
             - name: DISABLE_PASSWORD_REGISTRATION

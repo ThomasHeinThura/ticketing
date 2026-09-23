@@ -1,13 +1,17 @@
 import { sql } from "drizzle-orm";
-import db from "../database";
+import defaultDb, { type DatabaseInstance } from "../database";
 
 /**
  * Migration script to:
  * 1. Rename active_workspace_id to active_organization_id in session table
  * 2. Add created_at column to invitation table if it doesn't exist
  * This runs before Drizzle migrations to ensure the column names match the schema.
+ *
+ * Runs DDL (`ALTER TABLE`), so `runStartupTasks` passes the migration/owner
+ * connection explicitly (issue #296) — the default parameter is a fallback for any
+ * other caller, not the path startup itself takes.
  */
-export async function migrateSessionColumn() {
+export async function migrateSessionColumn(db: DatabaseInstance = defaultDb) {
   console.log(
     "🔄 Checking session table for active_workspace_id to active_organization_id migration...",
   );

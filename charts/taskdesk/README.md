@@ -108,6 +108,11 @@ When CPU autoscaling is enabled, set `taskdesk.resources.requests.cpu`; Kubernet
 | `taskdesk.env.disableRegistration`     | Disable new user registration                                                                                      | `false`                         |
 | `taskdesk.env.disablePasswordRegistration` | Disable password-based account creation while keeping social/OIDC registration available                        | `false`                         |
 | `taskdesk.env.disableEmailOtpSignIn`   | Use email/password sign-in instead of verification codes when SMTP is configured                                   | `false`                         |
+| `taskdesk.env.database.appUsername`    | The APPLICATION role's username (issue #296) — non-superuser, owns no table, created and granted at boot           | `taskdesk_app`                  |
+| `taskdesk.env.database.appPassword`    | The APPLICATION role's password. Required unless `appExistingSecret.enabled` (bundled PostgreSQL only)              | `""`                            |
+| `taskdesk.env.database.appExistingSecret.enabled` | Use an existing secret for the application role's password instead of `appPassword`                       | `false`                         |
+| `taskdesk.env.database.appExistingSecret.name` | Name of the existing secret containing the application role's password                                       | `""`                            |
+| `taskdesk.env.database.appExistingSecret.key` | Key in the existing secret that contains the application role's password                                      | `app-db-password`               |
 | `taskdesk.env.database.external.enabled` | Use external PostgreSQL database (set postgresql.enabled to false)                                               | `false`                         |
 | `taskdesk.env.database.external.host`  | External PostgreSQL host                                                                                           | `""`                            |
 | `taskdesk.env.database.external.port`  | External PostgreSQL port                                                                                           | `5432`                          |
@@ -117,6 +122,9 @@ When CPU autoscaling is enabled, set `taskdesk.resources.requests.cpu`; Kubernet
 | `taskdesk.env.database.external.existingSecret.enabled` | Use an existing secret for the external database connection URI                             | `false`                         |
 | `taskdesk.env.database.external.existingSecret.name` | Name of the secret containing the database connection URI                                    | `""`                            |
 | `taskdesk.env.database.external.existingSecret.passwordKey` | Key in the secret whose value is a full PostgreSQL connection URI                       | `postgres_uri`                  |
+| `taskdesk.env.database.external.migration.enabled` | Point `TASKDESK_MIGRATION_DATABASE_URL` at a separate owner role for an external Postgres (issue #296). When `false`, migrations run as the same role as `taskdesk.env.database.external.*` above | `false` |
+| `taskdesk.env.database.external.migration.host` · `.port` · `.database` · `.username` · `.password` | The external migration/owner role's connection details                                       | `""` / `5432` / `taskdesk` / `""` / `""` |
+| `taskdesk.env.database.external.migration.existingSecret.enabled` · `.name` · `.passwordKey` | Use an existing secret for the external migration role's password instead of `.password`      | `false` / `""` / `postgres_uri` |
 | `taskdesk.extraEnv`                    | Additional Kubernetes EnvVar entries appended to the TaskDesk container                                               | `[]`                            |
 | `taskdesk.extraEnvFrom`                | Additional Kubernetes EnvFromSource entries appended to the TaskDesk container                                        | `[]`                            |
 | `taskdesk.resources`                   | Resource requests and limits for the TaskDesk container (optional, disabled by default)                               | `{}`                            |
@@ -262,6 +270,10 @@ taskdesk:
         username: "taskdesk_user"
         password: "your-db-password"
 ```
+`taskdesk_user` above serves both roles unless you also set `database.external.migration.enabled:
+true` with a separate owner role (issue #296) — see the parameters table above. The API's
+boot-time check refuses to start if that single role turns out to be a Postgres superuser or
+owns a table, so a single-URL external database only works if that role is neither.
 ### Using an Existing Secret for Sensitive Data
 For production environments, it's recommended to store sensitive data like the auth secret and database credentials in Kubernetes Secrets:
 When `postgresql.auth.existingSecret` is used with bundled PostgreSQL, the password is expanded by Kubernetes into `DATABASE_URL` at runtime and must be URL-safe. If your password contains reserved URI characters such as `@`, `:`, `/`, `#`, `%`, or spaces, use an external database and provide the complete connection URI through `taskdesk.env.database.external.existingSecret`.

@@ -143,6 +143,12 @@ command -v openssl >/dev/null 2>&1 || die "openssl is needed to generate secrets
 generate_if_empty TASKDESK_ENCRYPTION_KEY
 generate_if_empty TASKDESK_AUTH_SECRET
 generate_if_empty POSTGRES_PASSWORD
+# The application role's password (issue #296) — a separate secret from
+# POSTGRES_PASSWORD, which now belongs only to the migration/owner connection.
+# The application itself creates the role and sets this password at boot
+# (apps/api/src/database/ensure-application-role.ts); this script only has to
+# make sure a value exists for compose to put in TASKDESK_DATABASE_URL.
+generate_if_empty TASKDESK_APP_DB_PASSWORD
 
 # shellcheck disable=SC1090
 set -a; . "$ENV_FILE"; set +a

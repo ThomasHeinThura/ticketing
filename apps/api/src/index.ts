@@ -18,8 +18,16 @@ import capabilities from "./capabilities";
 import column from "./column";
 import comment from "./comment";
 import config from "./config";
-import db, { getDatabase, schema } from "./database";
+import db, {
+  closeMigrationPool,
+  getDatabase,
+  getMigrationDatabase,
+  schema,
+} from "./database";
+import { assertApplicationRoleIsNotPrivileged } from "./database/assert-application-role-is-not-privileged";
+import { ensureApplicationRole } from "./database/ensure-application-role";
 import { prepareDatabaseStartup } from "./database/prepare-database-startup";
+import { resolveMigrationDatabaseConfig } from "./database/resolve-database-url";
 import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
@@ -980,31 +988,59 @@ export function createApp(options: { staticRoot?: string } = {}) {
 export async function runStartupTasks() {
   const currentDir = dirname(fileURLToPath(import.meta.url));
 
+  // Issue #296: every DDL step below — the hand-written pre-migrate fixups,
+  // Drizzle's own `migrate()`, and the role/grant bootstrap — runs on the
+  // migration/owner connection (`TASKDESK_MIGRATION_DATABASE_URL`, falling back to
+  // `TASKDESK_DATABASE_URL` when unset), never on the application connection
+  // `getDatabase()` serves requests with. `waitForDatabase` also probes on the
+  // migration connection: on a fresh deployment the application role does not
+  // exist yet, and `ensureApplicationRole` (below) is what creates it — probing
+  // with the application connection first would fail before it ever gets the
+  // chance to.
+  const migrationDb = getMigrationDatabase();
+
   await prepareDatabaseStartup({
+    resolveConfig: resolveMigrationDatabaseConfig,
     waitForDatabase: async () => {
       await waitForDatabase({
         query: async () => {
-          await getDatabase().execute(sql`SELECT 1`);
+          await migrationDb.execute(sql`SELECT 1`);
         },
       });
     },
     runStartupMigrations: async () => {
-      await migrateWorkspaceUserEmail();
-      await migrateSessionColumn();
+      await migrateWorkspaceUserEmail(migrationDb);
+      await migrateSessionColumn(migrationDb);
 
       console.log("🔄 Migrating database...");
-      await migrate(getDatabase(), {
+      await migrate(migrationDb, {
         migrationsFolder: `${currentDir}/../drizzle`,
       });
       console.log("✅ Database migrated successfully!");
+
+      // After Drizzle migrations: apikey table must exist so we can align columns
+      // with Better Auth (reference_id + nullable user_id).
+      await migrateApiKeyReferenceId(migrationDb);
+      await migrateNotificationPreferencesSchema(migrationDb);
+
+      // Creates/repairs the non-superuser application role and its grants — must
+      // run as the owner, after the schema it grants on exists, and before
+      // anything below connects as the application role for the first time.
+      await ensureApplicationRole(migrationDb);
     },
   });
 
-  // After Drizzle migrations: apikey table must exist so we can align columns
-  // with Better Auth (reference_id + nullable user_id).
-  await migrateApiKeyReferenceId();
+  // Startup is done with the owner connection: nothing past this point runs DDL,
+  // and holding a second pool open for the rest of the process's life would only
+  // compete with the application pool for the database's max_connections.
+  await closeMigrationPool();
 
-  await migrateNotificationPreferencesSchema();
+  // First use of the application connection. `ensureApplicationRole` above just
+  // created/fixed the role it authenticates as, so this is also the right moment
+  // to assert the invariant every append-only/no-DDL control on this connection
+  // depends on: it must not be a superuser, and it must not own a table.
+  await assertApplicationRoleIsNotPrivileged(getDatabase());
+
   await migrateColumns();
   await seedDefaultWorkspaceRoles();
   await seedInternalOrganisationAndStaffPersons();

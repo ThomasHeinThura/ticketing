@@ -112,21 +112,47 @@ BY tgname;` against the migrated schema before shipping either trigger.
 
 ## Append-only tables
 
-`audit_log` is append-only by absence of an endpoint and by two triggers, migration `0067`:
-`audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR EACH ROW` /
-`audit_log_reject_mutation()`), which raises on every UPDATE/DELETE attempt except `AU-7`'s
-`organisation_id`-to-NULL tombstone; and `audit_log_append_only_truncate` (`BEFORE TRUNCATE
-... FOR EACH STATEMENT` / `audit_log_reject_truncate()`), which raises unconditionally,
-because a row-level trigger never fires for `TRUNCATE` at all (verified live: without it, a
-`TRUNCATE audit_log` emptied the table with no error). The
-`taskdesk_app`/`taskdesk_maint` role split this section used to describe — a lesser-privileged
-app role with `INSERT, SELECT` and no `UPDATE, DELETE`, and a separate maintenance role for
-`audit-purge` — is **not implemented**: `compose.yml`, `charts/taskdesk/**` and `deploy/**`
-provision exactly one Postgres role, which owns every table it migrates and so keeps full DML
-regardless of any `REVOKE` (decision log, 2026-09-23, "`audit_log` is append-only by trigger,
-not by grant"). It could still land later as `audit-purge`'s own infrastructure work, at which
-point the grant becomes the primary control and the trigger a second one. `activity` gets the
-same trigger-based treatment the next time it is touched; it is not append-only today.
+`audit_log` is append-only by absence of an endpoint, by two triggers, AND (issue #296) by
+grant — three independent controls, not one:
+
+- **Triggers, migration `0067`:** `audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR
+  EACH ROW` / `audit_log_reject_mutation()`), which raises on every UPDATE/DELETE attempt
+  except `AU-7`'s `organisation_id`-to-NULL tombstone; and `audit_log_append_only_truncate`
+  (`BEFORE TRUNCATE ... FOR EACH STATEMENT` / `audit_log_reject_truncate()`), which raises
+  unconditionally, because a row-level trigger never fires for `TRUNCATE` at all (verified
+  live: without it, a `TRUNCATE audit_log` emptied the table with no error).
+- **Grant, issue #296:** the application role `taskdesk_app` holds `SELECT, INSERT` and no
+  `UPDATE, DELETE` on `audit_log` (and on `activity`) — no `TRUNCATE`, no DDL, either. This
+  was the primary control this section originally described as unbuilt (decision log,
+  2026-09-23, "`audit_log` is append-only by trigger, not by grant") — it is now built.
+
+The two are deliberately redundant: the trigger closes the gap for any role that DOES hold
+UPDATE/DELETE (a future maintenance role, an operator connected directly), and the grant
+closes it for `taskdesk_app` specifically, which no longer has the privilege to attempt the
+mutation the trigger would otherwise have to reject. `AU-7`'s tombstone survives the grant
+restriction: it fires from `audit_log.organisation_id`'s own `ON DELETE SET NULL` foreign-key
+action when a row is deleted from `organisation`, and Postgres enforces a referential action
+using the privileges checked when the constraint was created, not the deleting session's own
+grants on the referencing table — verified live: a role granted only `SELECT, INSERT` on the
+child table still received the `SET NULL` when the parent row was deleted.
+
+**Mechanism (issue #296):** not a grant hand-written into each table's own generated
+migration, as this section once proposed. That approach could not carry `taskdesk_app`'s
+password (deployment-specific, rotatable) and could not stay correct once a table's
+append-only status changes without a further migration. Instead `ensureApplicationRole`
+(`apps/api/src/database/ensure-application-role.ts`) runs as the **migration/owner role**
+(`TASKDESK_MIGRATION_DATABASE_URL`), once per boot, immediately after Drizzle's `migrate()`:
+it creates/repairs `taskdesk_app` (never a superuser, never a table owner), then re-derives
+every table's grant from `APPEND_ONLY_TABLES`
+(`apps/api/src/database/append-only-tables.ts`) — `SELECT, INSERT` for a table named there,
+`SELECT, INSERT, UPDATE, DELETE` for every other ordinary table — and sets
+`ALTER DEFAULT PRIVILEGES` so a table a *future* migration creates gets the ordinary grant
+automatically. `activity` gets the same grant restriction as `audit_log`; it does not yet
+have `audit_log`'s trigger pair (tracked separately — "gets the same trigger-based treatment
+the next time it is touched").
+
+The retention purge running as a separate `taskdesk_maint` role from the `audit-purge` job's
+own connection is unbuilt scope, tracked on the audit-log work, not issue #296.
 
 ## Seeds
 

@@ -165,6 +165,20 @@ taskdesk:
     disableEmailOtpSignIn: false
     # Database configuration
     database:
+      # The APPLICATION role (issue #296): TASKDESK_DATABASE_URL connects as this
+      # role, which serves every request. Never a Postgres superuser, never owns a
+      # table — it is created and granted its DML-only privileges at boot by the
+      # application itself (apps/api/src/database/ensure-application-role.ts),
+      # over the migration/owner connection below. These values only need to
+      # supply a username and a password for it; nothing here runs any SQL.
+      appUsername: taskdesk_app
+      appPassword: ""
+      # Use an existing secret for the application role's password instead of
+      # `appPassword` above.
+      appExistingSecret:
+        enabled: false
+        name: ""
+        key: app-db-password
       # Use external PostgreSQL (set postgresql.enabled to false)
       # Important: when using external postgres, make sure you have set up the db user correctly:
       #   CREATE DATABASE taskdesk;
@@ -174,6 +188,13 @@ taskdesk:
       #   GRANT USAGE ON SCHEMA public TO taskdesk_user;
       #   GRANT CREATE ON SCHEMA public TO taskdesk_user;
       #   ALTER SCHEMA public OWNER TO taskdesk_user;
+      # `taskdesk_user` above is the MIGRATION/OWNER role once `migration.enabled`
+      # is set below — see its comment. Left at `migration.enabled: false` (the
+      # default), this external block's own username/password serves BOTH roles,
+      # exactly as every deployment worked before issue #296; the API's boot-time
+      # `assertApplicationRoleIsNotPrivileged` check refuses to start if that
+      # single role turns out to be a superuser or a table owner, rather than
+      # silently accepting it.
       external:
         enabled: false
         host: ""
@@ -186,6 +207,23 @@ taskdesk:
           enabled: false
           name: ""
           passwordKey: postgres_uri
+        # The MIGRATION/OWNER connection for an external Postgres (issue #296): a
+        # role that owns every table and is allowed to run DDL, separate from the
+        # application role above. Set `enabled: true` and point this at that role
+        # once your external Postgres has one provisioned
+        # (docs/05-operations/configuration-reference.md has the split's full
+        # rationale).
+        migration:
+          enabled: false
+          host: ""
+          port: 5432
+          database: taskdesk
+          username: ""
+          password: ""
+          existingSecret:
+            enabled: false
+            name: ""
+            passwordKey: postgres_uri
   # Additional environment variables for the taskdesk container.
   # Each entry is a standard Kubernetes EnvVar (supports `value` or `valueFrom`).
   # Useful for CUSTOM_OAUTH_*, SMTP_*, etc. without editing the chart.

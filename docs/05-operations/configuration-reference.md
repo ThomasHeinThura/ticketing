@@ -6,7 +6,7 @@ Two kinds of configuration, and the distinction is the whole point of the archit
 | --- | --- | --- |
 | Where | Environment variables | God Mode, stored in the database |
 | Changing it needs | A restart | Nothing |
-| Amount | Five required; eight optional per-process switches; `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` for headless installs; the three `POSTGRES_*` variables are read by the Postgres image only | Everything else |
+| Amount | Five required; one more optional (`TASKDESK_MIGRATION_DATABASE_URL`); eight optional per-process switches; `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` for headless installs; the three `POSTGRES_*` variables are read by the Postgres image only | Everything else |
 | Why | Needed *to reach* the configuration | Varies per deployment and per customer |
 
 See [plugin architecture](../01-architecture/plugin-architecture.md) and
@@ -20,16 +20,32 @@ See [plugin architecture](../01-architecture/plugin-architecture.md) and
 
 | Variable | Example | Notes |
 | --- | --- | --- |
-| `TASKDESK_DATABASE_URL` | `postgres://taskdesk:…@postgres:5432/taskdesk` | Where configuration lives |
+| `TASKDESK_DATABASE_URL` | `postgres://taskdesk_app:…@postgres:5432/taskdesk` | Where configuration lives. The role the API serves every request as — non-superuser, owns no table, DML-only grants (issue #296). Falls back to deriving from `POSTGRES_*` when unset, same as before |
 | `TASKDESK_ENCRYPTION_KEY` | 64 hex characters | Decrypts plugin secrets. **Lose this and every configured integration must be reconfigured.** Generate: `openssl rand -hex 32` |
 | `TASKDESK_AUTH_SECRET` | 64 hex characters | Session signing. Rotating it signs everyone out |
 | `TASKDESK_AGENT_URL` | `https://ticket.example.com` | Public agent origin |
 | `TASKDESK_PORTAL_URL` | `https://portal.example.com` | Public portal origin |
 
+**Database roles, split at deploy time (issue #296):** `TASKDESK_DATABASE_URL` above is the
+**application** role — never a Postgres superuser, never owns a table, and holds only the DML
+it needs: `SELECT`/`INSERT`/`UPDATE`/`DELETE` on ordinary tables, `SELECT`/`INSERT` only on
+append-only tables (`activity`, `audit_log` —
+[migrations.md § Append-only tables](../04-engineering/migrations.md#append-only-tables)). No
+`TRUNCATE`, no DDL. The separate **migration/owner** role — `TASKDESK_MIGRATION_DATABASE_URL`,
+listed in Optional below — runs Drizzle's `migrate()`, the hand-written pre-migrate schema
+fixups, and the role/grant bootstrap (`ensureApplicationRole`) that creates and repairs the
+application role. It owns every table. In the shipped Compose stack it is the Postgres
+image's own init user (`POSTGRES_USER`), which the official image makes a superuser at
+cluster init — unavoidable for this one role, and acceptable because it never serves a
+request. The application never reads any other environment variable to reach the database —
+no separate variable for the audit-purge job's own future `taskdesk_maint`-style connection
+exists yet (unbuilt scope, tracked on the audit-log work, not this issue).
+
 ### Optional
 
 | Variable | Default | Notes |
 | --- | --- | --- |
+| `TASKDESK_MIGRATION_DATABASE_URL` | falls back to `TASKDESK_DATABASE_URL` | The migration/owner connection (issue #296, above). **When unset, the same role runs migrations and serves requests** — the single-URL behaviour every deployment had before issue #296, and what local development still uses by default. A deployment running that way is exactly what `assertApplicationRoleIsNotPrivileged` (a boot-time check) exists to catch: if that single role turns out to be a superuser or a table owner, the API refuses to start rather than serve requests through it silently |
 | `TASKDESK_PORT` | `5173` | Bind port |
 | `TASKDESK_VALKEY_URL` | — | Required for multiple replicas |
 | `TASKDESK_ROLE` | `all` | `web` \| `jobs` \| `all`. Gates the in-process scheduler, so a replica can be dedicated to jobs — the escape hatch in [scaling.md](scaling.md). Inherently per-process; cannot live in the database |
@@ -218,6 +234,11 @@ must be re-entered.
 
 ```bash
 TASKDESK_DATABASE_URL=postgres://taskdesk:taskdesk@localhost:5432/taskdesk
+# TASKDESK_MIGRATION_DATABASE_URL is left unset here on purpose, for a plain
+# `pnpm dev` against a local Postgres outside Compose: the single-URL fallback
+# (issue #296) means the same role runs migrations and serves requests, which
+# is fine for a throwaway local database. The shipped Compose stack itself
+# always sets both — see compose.yml.
 TASKDESK_ENCRYPTION_KEY=<openssl rand -hex 32>
 TASKDESK_AUTH_SECRET=<openssl rand -hex 32>
 TASKDESK_AGENT_URL=https://ticket.localhost
@@ -229,6 +250,11 @@ POSTGRES_USER=taskdesk
 POSTGRES_PASSWORD=taskdesk
 
 # Compose-only — substituted into the YAML, never read by the application
+# The application (`taskdesk_app`) role's password (issue #296). Compose builds
+# TASKDESK_DATABASE_URL from it, and TASKDESK_MIGRATION_DATABASE_URL from
+# POSTGRES_USER/POSTGRES_PASSWORD instead. The application itself creates the
+# taskdesk_app role and sets this password on it at boot.
+TASKDESK_APP_DB_PASSWORD=taskdesk
 DOMAIN=localhost
 TASKDESK_IMAGE_TAG=v2.0.0
 TASKDESK_IMAGE_DIGEST=

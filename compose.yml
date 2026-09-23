@@ -31,11 +31,25 @@ services:
     # No `ports:`. See the header.
     environment:
       # --- the five required bootstrap variables --------------------------
-      TASKDESK_DATABASE_URL: postgres://${POSTGRES_USER:-taskdesk}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-taskdesk}
+      # `taskdesk_app`: a non-superuser, non-owner role (issue #296) — created and
+      # granted its DML-only privileges at boot by the application itself
+      # (apps/api/src/database/ensure-application-role.ts), run over
+      # TASKDESK_MIGRATION_DATABASE_URL below. It never runs DDL and can never
+      # become a superuser, so a compromised API process cannot disable the
+      # append-only triggers/grants on audit_log/activity.
+      TASKDESK_DATABASE_URL: postgres://taskdesk_app:${TASKDESK_APP_DB_PASSWORD:?TASKDESK_APP_DB_PASSWORD is required - run scripts/deploy.sh, which generates it}@postgres:5432/${POSTGRES_DB:-taskdesk}
       TASKDESK_ENCRYPTION_KEY: ${TASKDESK_ENCRYPTION_KEY:?TASKDESK_ENCRYPTION_KEY is required - run scripts/deploy.sh, which generates it}
       TASKDESK_AUTH_SECRET: ${TASKDESK_AUTH_SECRET:?TASKDESK_AUTH_SECRET is required - run scripts/deploy.sh, which generates it}
       TASKDESK_AGENT_URL: ${TASKDESK_AGENT_URL:?TASKDESK_AGENT_URL is required}
       TASKDESK_PORTAL_URL: ${TASKDESK_PORTAL_URL:?TASKDESK_PORTAL_URL is required}
+      # --- the migration/owner connection (issue #296) ---------------------
+      # Optional in general (falls back to TASKDESK_DATABASE_URL when unset — the
+      # single-URL mode local dev and configuration-reference.md still document),
+      # but always set here: `POSTGRES_USER` is the image's init user, which the
+      # official postgres image makes a superuser at cluster init — unavoidable
+      # for this one role. It runs migrations and owns every table; it is
+      # deliberately never the role TASKDESK_DATABASE_URL above connects as.
+      TASKDESK_MIGRATION_DATABASE_URL: postgres://${POSTGRES_USER:-taskdesk}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-taskdesk}
       # --- optional per-process switches ----------------------------------
       TASKDESK_PORT: ${TASKDESK_PORT:-5173}
       TASKDESK_VALKEY_URL: redis://valkey:6379
