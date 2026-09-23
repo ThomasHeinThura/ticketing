@@ -35,9 +35,18 @@ uses two Postgres roles:
 Grants are applied by a startup step (`ensureApplicationRole`) that runs as the owner right
 after `migrate()`, not by a migration file. It does `REVOKE ALL`, then precise `GRANT`s,
 plus `ALTER DEFAULT PRIVILEGES`, so it is idempotent. It re-derives the grants from the
-live table list and `APPEND_ONLY_TABLES` on every boot. Boot then **refuses to start** if
-the connected application role is a superuser or owns any table
-(`assertApplicationRoleIsNotPrivileged`).
+live table list and `APPEND_ONLY_TABLES` on every boot. Boot then **refuses to start**
+(`assertApplicationRoleIsNotPrivileged`) if the connected application role, or any role it can reach,
+does any of the following. "Reach" means through membership or `SET ROLE`, checked transitively with
+`pg_has_role(…, 'MEMBER')`. The refusal conditions are:
+- it is a superuser;
+- it can create roles, bypass row-level security, or start replication;
+- it is a member of `pg_write_server_files`, `pg_read_server_files`,
+  `pg_execute_server_program`, `pg_signal_backend` or `pg_database_owner`;
+- it owns anything in `pg_class`, `pg_proc`, `pg_namespace` or `pg_type`.
+
+The role create-and-grant step runs under a transaction-scoped advisory lock, so two
+replicas booting at once cannot race.
 
 `TASKDESK_MIGRATION_DATABASE_URL` is optional and falls back to `TASKDESK_DATABASE_URL`.
 That keeps single-URL local development working. In that fallback, the grant step detects

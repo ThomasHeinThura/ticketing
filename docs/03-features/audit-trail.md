@@ -97,8 +97,10 @@ it.
     non-owner, non-superuser role", PR #308). The API connects as `taskdesk_app`, which is
     not a superuser and owns no table. On `audit_log` and `activity` it holds only
     `INSERT` and `SELECT`. `ensureApplicationRole` re-derives these grants from
-    `APPEND_ONLY_TABLES` at every boot, and boot refuses to start if the connected role is
-    a superuser or owns a table (`assertApplicationRoleIsNotPrivileged`).
+    `APPEND_ONLY_TABLES` at every boot. Boot refuses to start if the connected role, or
+    any role it can reach through membership or `SET ROLE`, holds any elevated attribute or
+    predefined role, or owns any object (`assertApplicationRoleIsNotPrivileged`; the full list is
+    in the decision log entry).
   - **Triggers are the second layer**, both from migration `0067`:
     - `audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR EACH ROW` /
       `audit_log_reject_mutation()`) raises on every UPDATE or DELETE. It allows one
