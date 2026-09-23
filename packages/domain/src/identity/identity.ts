@@ -17,6 +17,9 @@ import type {
 } from "./types.js";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
+const SCIM_CORE_USER_SCHEMA = "urn:ietf:params:scim:schemas:core:2.0:User";
+const SCIM_ENTERPRISE_USER_SCHEMA =
+  "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -220,14 +223,13 @@ export function parseScimUser(
   if (Object.keys(input).some((key) => !allowed.has(key)))
     return { ok: false, reason: "invalid_resource" };
   if (
-    input.schemas !== undefined &&
-    (!Array.isArray(input.schemas) ||
-      input.schemas.some(
-        (schema) =>
-          schema !== "urn:ietf:params:scim:schemas:core:2.0:User" &&
-          schema !==
-            "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
-      ))
+    !Array.isArray(input.schemas) ||
+    !input.schemas.includes(SCIM_CORE_USER_SCHEMA) ||
+    input.schemas.some(
+      (schema) =>
+        schema !== SCIM_CORE_USER_SCHEMA &&
+        schema !== SCIM_ENTERPRISE_USER_SCHEMA,
+    )
   )
     return { ok: false, reason: "invalid_resource" };
   const result: ScimPersonAttributes = {};
@@ -236,11 +238,9 @@ export function parseScimUser(
       return { ok: false, reason: "invalid_resource" };
     result.externalId = input.externalId;
   }
-  if (input.userName !== undefined) {
-    if (typeof input.userName !== "string")
-      return { ok: false, reason: "invalid_resource" };
-    result.userName = input.userName;
-  }
+  if (typeof input.userName !== "string" || input.userName.length === 0)
+    return { ok: false, reason: "invalid_resource" };
+  result.userName = input.userName;
   if (input.active !== undefined) {
     const active = readActive(input.active);
     if (active === undefined) return { ok: false, reason: "invalid_resource" };
@@ -284,7 +284,9 @@ export function parseScimUser(
             (key) => !["value", "type", "primary", "display"].includes(key),
           ) ||
           (email.primary !== undefined && typeof email.primary !== "boolean") ||
-          (email.value !== undefined && typeof email.value !== "string"),
+          (email.value !== undefined && typeof email.value !== "string") ||
+          (email.type !== undefined && typeof email.type !== "string") ||
+          (email.display !== undefined && typeof email.display !== "string"),
       )
     )
       return { ok: false, reason: "invalid_resource" };

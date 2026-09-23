@@ -45,6 +45,14 @@ function claims(
   };
 }
 
+function scimUser(overrides: Record<string, unknown> = {}) {
+  return {
+    schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+    userName: "person",
+    ...overrides,
+  };
+}
+
 describe("P3 identity core", () => {
   it("IP-26/IP-27: binds the Entra subject to tenant and issuer, then applies address precedence", () => {
     expect(
@@ -178,35 +186,64 @@ describe("P3 identity core", () => {
 
   it("IP-14/IP-31: tolerates only the documented SCIM Entra deviations and refuses authority attributes", () => {
     expect(
-      parseScimUser({ userName: "person", active: "False", title: "Support" }),
+      parseScimUser(scimUser({ active: "False", title: "Support" })),
     ).toEqual({
       ok: true,
       value: { userName: "person", active: false, title: "Support" },
     });
-    expect(parseScimUser({ active: "maybe" })).toEqual({
+    expect(parseScimUser(scimUser({ active: "maybe" }))).toEqual({
       ok: false,
       reason: "invalid_resource",
     });
-    expect(parseScimUser({ active: "false" })).toEqual({
+    expect(parseScimUser(scimUser({ active: "false" }))).toEqual({
+      ok: false,
+      reason: "invalid_resource",
+    });
+    expect(parseScimUser({})).toEqual({
+      ok: false,
+      reason: "invalid_resource",
+    });
+    expect(parseScimUser(scimUser({ userName: "" }))).toEqual({
+      ok: false,
+      reason: "invalid_resource",
+    });
+    expect(parseScimUser({ userName: "person" })).toEqual({
       ok: false,
       reason: "invalid_resource",
     });
     expect(
-      parseScimUser({ userName: "person", workspace_id: "another-workspace" }),
+      parseScimUser(scimUser({ workspace_id: "another-workspace" })),
     ).toEqual({ ok: false, reason: "forbidden_attribute" });
-    expect(parseScimUser({ userName: "person", unknown: "value" })).toEqual({
+    expect(parseScimUser(scimUser({ unknown: "value" }))).toEqual({
       ok: false,
       reason: "invalid_resource",
     });
     expect(
-      parseScimUser({ name: { givenName: "Pat", customField: "x" } }),
+      parseScimUser(scimUser({ name: { givenName: "Pat", customField: "x" } })),
     ).toEqual({
       ok: false,
       reason: "invalid_resource",
     });
-    expect(parseScimUser({ schemas: ["urn:attacker:custom"] })).toEqual({
+    expect(
+      parseScimUser(scimUser({ schemas: ["urn:attacker:custom"] })),
+    ).toEqual({
       ok: false,
       reason: "invalid_resource",
+    });
+    expect(
+      parseScimUser(
+        scimUser({
+          emails: [{ value: "person@example.com", type: 42, display: {} }],
+        }),
+      ),
+    ).toEqual({ ok: false, reason: "invalid_resource" });
+    expect(
+      parseScimUser(
+        scimUser({ emails: [{ value: "person@example.com", type: "work" }] }),
+      ),
+    ).toEqual({
+      ok: true,
+      value: { userName: "person", email: "person@example.com" },
     });
   });
 
