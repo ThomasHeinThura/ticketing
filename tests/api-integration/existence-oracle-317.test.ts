@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import db, { schema } from "../../apps/api/src/database";
+import db, { getDatabasePool, schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -97,6 +97,52 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
 
     await compareResponses(foreign, missing);
     expect(foreign.status).toBe(401);
+  });
+
+  it("P0 S4: foreign and missing lookups use the same single database round trip", async () => {
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const foreignLabel = requireRow(
+      await db
+        .insert(schema.labelTable)
+        .values({
+          name: "Private label",
+          color: "#123456",
+          workspaceId: owner.workspace.id,
+        })
+        .returning(),
+      "foreign label",
+    );
+    mockAuthenticatedSession(caller.user);
+    const { app } = createApp();
+    const querySpy = vi.spyOn(getDatabasePool(), "query");
+
+    const foreign = await app.request(`/api/label/${foreignLabel.id}`);
+    const foreignQueries = querySpy.mock.calls.length;
+    querySpy.mockClear();
+    const missing = await app.request("/api/label/missing-label-s4");
+    const missingQueries = querySpy.mock.calls.length;
+
+    expect(foreign.status).toBe(404);
+    expect(missing.status).toBe(404);
+    expect(foreignQueries).toBe(1);
+    expect(missingQueries).toBe(foreignQueries);
+
+    const medianRequestMs = async (url: string) => {
+      const samples: number[] = [];
+      for (let index = 0; index < 20; index += 1) {
+        const startedAt = performance.now();
+        await app.request(url);
+        samples.push(performance.now() - startedAt);
+      }
+      samples.sort((left, right) => left - right);
+      return samples[Math.floor(samples.length / 2)] ?? 0;
+    };
+    const foreignP50 = await medianRequestMs(`/api/label/${foreignLabel.id}`);
+    const missingP50 = await medianRequestMs("/api/label/missing-label-s4");
+    console.info(
+      `P0 #317 S4 PG18 integration p50: foreign=${foreignP50.toFixed(2)}ms, missing=${missingP50.toFixed(2)}ms; both used ${foreignQueries} SQL round trip.`,
+    );
   });
 
   it("websocket: an authenticated caller receives the unknown-project response for a foreign project", async () => {

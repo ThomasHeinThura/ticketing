@@ -76,6 +76,9 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
+
+**P0 continuation, 2026-09-23. `main` at `33ce9ec`.** #317 S4 now folds user/admin reach and API-key validity into the resource lookup SQL, including bulk task lookup. The focused PG18 integration test observes one SQL round trip for each foreign and missing label ID; 20-request p50 samples were 1.01 ms and 0.88 ms respectively (the issue's prior local baseline was 1.50 ms and 0.71 ms). The full API integration suite passed 81 files / 1,111 tests; focused oracle tests passed 4/4, unit suite passed, lint/typecheck and permission checks passed. This is an implementation candidate, not a closed gate: fresh ordinary review and Opus security review are required on its final SHA before merge. #323's migration alignment candidate and pending review remain recorded above; P0 is still open.
+
 **Fifth pass, 2026-09-23. `main` at `b126c51`.** Merged since the fourth pass:
 - **#306**, the first v2 screen: the work-item list at `/agent/projects/{key}/work`. Sort and
   direction are held in the URL, and it has all five G6 states, including Partial (rows with
