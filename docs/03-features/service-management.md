@@ -21,6 +21,12 @@ A named thing we operate on behalf of customers.
 
 - `SVC-1` A service has a name, description, category, owning team, support level (L1/L2/L3)
   and a service calendar.
+- `SVC-1a` **CAB membership** is a `team` flagged `is_cab`
+  (`team.is_cab`, [data-model.md](../01-architecture/data-model.md)); a person is a CAB
+  member exactly when a `team_member` row links them to that team. `approval:decide_cab`
+  ([rbac.md](../01-architecture/rbac.md)) requires both the capability and that
+  membership — the capability alone is not enough. Cross-referenced from
+  [approvals.md](approvals.md).
 - `SVC-2` A service links to documentation, to its projects and to its knowledge base
   articles.
 - `SVC-3` A work item may reference the service it affects. This is what makes "which
