@@ -2,6 +2,16 @@
 
 What to do when something is wrong. Symptom-first, because that is how you arrive here.
 
+Run the Compose commands below from the TaskDesk checkout on the host. On a production
+host, select the same base and production overlay as `scripts/deploy.sh`:
+
+```bash
+dc() { docker compose -f compose.yml -f deploy/compose.prod.yml "$@"; }
+```
+
+For local development, use `dc() { docker compose -f compose.yml -f deploy/compose.local.yml -f deploy/compose.traefik.yml "$@"; }`.
+The first-run `scripts/deploy.sh local` command sets up the local certificate and secrets.
+
 **Before the metrics commands below will work:** `export METRICS_TOKEN=…`, copied from God
 Mode → Observability. It is **not** an environment variable of the container and there is no
 `TASKDESK_METRICS_TOKEN` — the token is runtime configuration like everything else
@@ -29,7 +39,7 @@ of an instance's whole life happens.
 
 | Cause | Fix |
 | --- | --- |
-| **Setup token expired or lost** | The token is short-lived and single-use. While `setup_completed_at` is null, **every container restart prints a fresh token and invalidates the previous one** ([auth-and-identity.md](../01-architecture/auth-and-identity.md)) — so `docker compose restart taskdesk` and read the new one out of `docker compose logs taskdesk`. Nothing else is lost; no administrator exists yet |
+| **Setup token expired or lost** | The token is short-lived and single-use. While `setup_completed_at` is null, **every container restart prints a fresh token and invalidates the previous one** ([auth-and-identity.md](../01-architecture/auth-and-identity.md)) — so run `dc restart taskdesk` and read the new one out of `dc logs taskdesk`. Nothing else is lost; no administrator exists yet |
 | Setup page says setup is already complete | Someone else claimed the first administrator. Sign in as them, or use break-glass below |
 | Headless install created no administrator | `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` was unset. Set it and restart, or use the setup page |
 | Certificate not issued on the first `up` | DNS did not point here when ACME ran. Fix the record and restart Traefik; the installer's pre-flight exists to catch exactly this ([one-line-install.md](one-line-install.md)) |
@@ -37,23 +47,26 @@ of an instance's whole life happens.
 ### Site is down
 
 ```bash
-docker compose ps
-docker compose logs --tail=200 taskdesk
-curl -sf localhost:5173/api/public/health/live
+dc ps
+dc logs --tail=200 taskdesk
+curl -sf "https://ticket.${DOMAIN}/api/public/health/live"
 ```
+
+For a local stack, use `https://ticket.localhost/api/public/health/live` (the local
+self-signed certificate must be trusted by the client).
 
 | Cause | Fix |
 | --- | --- |
 | Container crash-looping | Read the logs. Usually a bad migration or a missing env var |
 | Postgres unreachable | Check the container; check `TASKDESK_DATABASE_URL` |
-| Traefik not routing | `docker compose logs traefik`; check `DOMAIN` and labels |
+| Traefik not routing | On local development, use `dc logs traefik`. In production, inspect the host proxy's own Compose project or service; TaskDesk's production overlay does not own Traefik. Check `DOMAIN` and labels |
 | Certificate expired | Check the ACME resolver; renew manually if needed |
 | Disk full | `df -h`. Usually Postgres WAL or Docker logs |
 
 ### Slow
 
 ```bash
-curl -H "Authorization: Bearer $METRICS_TOKEN" localhost:9464/metrics | grep -E 'duration|pool|eventloop'
+dc exec -T taskdesk wget -qO- --header="Authorization: Bearer $METRICS_TOKEN" http://127.0.0.1:9464/metrics | grep -E 'duration|pool|eventloop'
 ```
 
 | Cause | Fix |
@@ -81,7 +94,7 @@ curl -H "Authorization: Bearer $METRICS_TOKEN" localhost:9464/metrics | grep -E 
 ### Notifications not arriving
 
 ```bash
-curl -H "Authorization: Bearer $METRICS_TOKEN" localhost:9464/metrics | grep outbox
+dc exec -T taskdesk wget -qO- --header="Authorization: Bearer $METRICS_TOKEN" http://127.0.0.1:9464/metrics | grep outbox
 ```
 
 | Cause | Fix |
@@ -108,8 +121,8 @@ wrong — the inputs are wrong.
 ### Jobs not running
 
 ```bash
-curl -H "Authorization: Bearer $METRICS_TOKEN" localhost:9464/metrics | grep job_last_success
-psql -c "select * from job_lease;"
+dc exec -T taskdesk wget -qO- --header="Authorization: Bearer $METRICS_TOKEN" http://127.0.0.1:9464/metrics | grep job_last_success
+dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-taskdesk}" -c "select * from job_lease;"
 ```
 
 | Cause | Fix |
@@ -137,7 +150,7 @@ psql -c "select * from job_lease;"
 Requires database access. Every step is audited.
 
 ```bash
-docker compose exec taskdesk node dist/cli.js grant-instance-admin you@example.com
+dc exec taskdesk node dist/cli.js grant-instance-admin you@example.com
 ```
 
 The CLI is a build target of the image (`apps/api/src/cli.ts` → `dist/cli.js`,
@@ -160,7 +173,7 @@ the audit log and nobody knows why, treat it as an incident.
 
 ```bash
 scripts/deploy.sh rollback <previous-digest>
-curl -sf localhost:5173/api/public/health/ready
+curl -sf "https://ticket.${DOMAIN}/api/public/health/ready"
 ```
 
 `deploy.sh rollback` verifies the cosign signature on the digest it is about to run, sets
@@ -169,9 +182,9 @@ onto an unverified digest is still a supply-chain decision** — which is why th
 sequence below is the labelled fallback rather than the procedure:
 
 ```bash
-docker compose down taskdesk         # no signature verification
+dc down taskdesk                     # no signature verification
 # edit TASKDESK_IMAGE_DIGEST in .env
-docker compose up -d --wait taskdesk
+dc up -d --wait taskdesk
 ```
 
 **Migrations do not roll back.** If the release included a destructive migration, a code
@@ -218,10 +231,10 @@ God Mode and should be recorded as one.
 ## Useful commands
 
 ```bash
-docker compose logs -f taskdesk
-docker compose exec postgres psql -U taskdesk
-curl -s -b "$ADMIN_SESSION_COOKIE" localhost:5173/api/instance/health/deep | jq   # instance:admin session; the metrics token does not grant this
-curl -s -H "Authorization: Bearer $METRICS_TOKEN" localhost:9464/metrics | grep taskdesk_
+dc logs -f taskdesk
+dc exec postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-taskdesk}"
+curl -s -b "$ADMIN_SESSION_COOKIE" "https://ticket.${DOMAIN}/api/instance/health/deep" | jq   # instance:admin session; the metrics token does not grant this
+dc exec -T taskdesk wget -qO- --header="Authorization: Bearer $METRICS_TOKEN" http://127.0.0.1:9464/metrics | grep taskdesk_
 docker stats
 df -h && du -sh /var/lib/docker/volumes/*
 ```
