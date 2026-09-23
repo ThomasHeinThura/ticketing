@@ -114,16 +114,35 @@ function tokenize(source) {
             for (let open = tokenIndex - 1; open >= 0; open -= 1) {
               if (tokens[open].value === ")") parens += 1;
               else if (tokens[open].value === "(" && --parens === 0) {
-                return new Set([
-                  "if",
-                  "while",
-                  "for",
-                  "with",
-                  "switch",
-                  "catch",
-                  "function",
-                ]).has(tokens[open - 1]?.value);
+                if (
+                  new Set([
+                    "if",
+                    "while",
+                    "for",
+                    "with",
+                    "switch",
+                    "catch",
+                  ]).has(tokens[open - 1]?.value)
+                )
+                  return true;
+                // Named function declarations have a name between the keyword
+                // and parameter list, unlike function expressions' lexical use.
+                for (let prior = open - 1; prior >= 0; prior -= 1) {
+                  if ([";", "{", "}"].includes(tokens[prior].value)) break;
+                  if (tokens[prior].value === "function") return true;
+                }
+                return false;
               }
+            }
+          }
+          // A class declaration's opening brace follows its optional name and
+          // extends clause rather than a parenthesized control condition.
+          if (beforeBlock && tokens[tokenIndex - 2]?.value === "class")
+            return true;
+          if (beforeBlock) {
+            for (let prior = tokenIndex - 1; prior >= 0; prior -= 1) {
+              if ([";", "{", "}"].includes(tokens[prior].value)) break;
+              if (tokens[prior].value === "class") return true;
             }
           }
           return false;
