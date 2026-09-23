@@ -1,15 +1,16 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, KbdSequence } from "@taskdesk/ui";
-import { ArrowUp, Paperclip } from "lucide-react";
-import { useCallback, useState } from "react";
-import { useTranslation } from "react-i18next";
-import CommentEditor from "@/components/activity/comment-editor";
 import {
+  Button,
+  KbdSequence,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@taskdesk/ui";
+import { ArrowUp, Paperclip } from "lucide-react";
+import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
+import CommentEditor from "@/components/activity/comment-editor";
 import useCreateComment from "@/hooks/mutations/comment/use-create-comment";
 import { getModifierKeyText } from "@/hooks/use-keyboard-shortcuts";
 import { cn } from "@/lib/cn";

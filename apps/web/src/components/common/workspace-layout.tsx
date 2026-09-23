@@ -1,4 +1,10 @@
-import { KbdSequence } from "@taskdesk/ui";
+import {
+  KbdSequence,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@taskdesk/ui";
 import type { ReactNode } from "react";
 import Layout from "@/components/common/layout";
 import {
@@ -9,12 +15,6 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { shortcuts } from "@/constants/shortcuts";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { cn } from "@/lib/cn";

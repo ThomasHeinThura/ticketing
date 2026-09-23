@@ -1,4 +1,4 @@
-import { Button, Input } from "@taskdesk/ui";
+import { Button, Input, Switch } from "@taskdesk/ui";
 import { CheckCircle2, Circle, GripVertical, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,7 +7,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
 import columnIcons, {
   DEFAULT_COLUMN_ICON_NAMES,
 } from "@/constants/column-icons";

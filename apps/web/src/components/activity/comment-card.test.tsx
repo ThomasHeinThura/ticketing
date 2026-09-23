@@ -31,8 +31,9 @@ vi.mock("@/lib/format", () => ({
   formatDateTime: () => "Apr 5, 2026, 11:38 AM",
 }));
 
-vi.mock("@/components/ui/tooltip", async () => {
+vi.mock("@taskdesk/ui", async (importOriginal) => {
   const React = await import("react");
+  const actual = await importOriginal<typeof import("@taskdesk/ui")>();
 
   function Tooltip({ children }: { children: ReactNode }) {
     const [open, setOpen] = React.useState(false);
@@ -86,6 +87,7 @@ vi.mock("@/components/ui/tooltip", async () => {
   }
 
   return {
+    ...actual,
     Tooltip,
     TooltipContent,
     TooltipProvider,
