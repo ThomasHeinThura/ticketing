@@ -17,6 +17,36 @@ Newest first.
 
 ---
 
+### 2026-09-23 · Dependency picks: Recharts for charts, react-grid-layout for the dashboard grid, Playwright screenshots for G8
+
+**Decision:** three new dependencies are chosen for the design system. They are **not
+added yet**: each lands in the first pull request that actually uses it, where the
+dependency graph gets its own security review (`package.json` and the lockfile are in
+security scope).
+- **Charts: Recharts** (MIT), wrapped by a `chart` primitive. Series colours come only
+  from the token ramp (G3), and every chart ships its accessible `chart-table`
+  equivalent (RP-11).
+- **Dashboard grid: react-grid-layout** (MIT), wrapped by a `dashboard-grid`
+  primitive with a stated keyboard path (RP-15).
+- **Visual regression (G8): Playwright `toHaveScreenshot`** (Apache-2.0, dev-only),
+  with baselines in the repo. This resolves the "Visual-regression tool for gate G8" open
+  decision in `status.md`.
+
+**Why:** Recharts' SVG output makes the per-chart accessible table and token-only colours
+easiest to build. Its cost is bundle size, about 100–150 KB gzipped, against about 60–80
+for Chart.js. react-grid-layout is built for resize, drag and a persisted layout.
+Extending `@dnd-kit` would avoid a dependency but means building resize ourselves.
+Playwright keeps baselines in the repo with no outside service, which fits a self-hosted
+product, where Chromatic is a paid hosted service. The options, with licence, maintenance
+and bundle-size tables checked against npm and GitHub, are in PR #278's body.
+
+**Alternatives:** Chart.js + react-chartjs-2, visx; extending `@dnd-kit`, gridstack.js;
+Chromatic. Loki was ruled out as unmaintained (no push since 2024-10-12).
+
+**Decided by:** Thomas, 2026-09-23.
+
+---
+
 ### 2026-09-23 · #9's primitive batches cite `ui-extraction-plan.md`; `design-system.md`'s findings close in parallel
 
 **Decision:** pull requests that only *relocate* existing primitives into `packages/ui`
