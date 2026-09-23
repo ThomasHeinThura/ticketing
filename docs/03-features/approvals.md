@@ -117,7 +117,7 @@ Recorded explicitly, because they are easy to reintroduce.
 | Request a customer approval | `approval:request` | Staff only |
 | Request a CAB approval | `approval:request_cab` | Staff only, `work_item_type.is_change` only |
 | Decide | `approval:decide` | Must be the named approver, and not the requester |
-| Decide a CAB approval | `approval:decide_cab` | Must also be a `team_member` of the `team` flagged `is_cab` — see [service-management.md](service-management.md) `SVC-1a` |
+| Decide a CAB approval | `approval:decide_cab` | Must also be a `team_member` of the `team` flagged `is_cab` (`team.is_cab`, [data-model.md](../01-architecture/data-model.md)) — capability and membership are both required, not either alone |
 | Withdraw | `approval:request` | Requester, or instance admin (audited) |
 | See approvals on an item | `work_item:read` | Customers see only approvals addressed to them or that they raised |
 | List my approvals | `{ authenticated: true, self: true }` | `GET /api/me/approvals` — [rbac.md](../01-architecture/rbac.md) policy kind 2, own rows only |
@@ -159,7 +159,9 @@ POST   /api/portal/approvals/{id}/decide      approval:decide
 
 ## Out of scope
 
-- CAB membership definition → [service-management.md](service-management.md)
+- Which team is the CAB, and its roster management UI → [service-management.md](service-management.md);
+  the membership *rule* itself (`team.is_cab` + `team_member`) is defined above, in
+  Permissions, not deferred there
 - Which transitions require approval → [workflows.md](workflows.md)
 
 ## Testing
