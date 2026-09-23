@@ -28,8 +28,10 @@ removed.
 uses two Postgres roles:
 - **Migration/owner role.** `TASKDESK_MIGRATION_DATABASE_URL` connects as the role that
   owns every table. It is used **only by a separate one-shot migrate process**
-  (`TASKDESK_ROLE=migrate`): a compose `migrate` service, or a Helm pre-install/pre-upgrade
-  hook Job. That process runs the migrations and the grant step, then exits. **The
+  (`TASKDESK_ROLE=migrate`): a compose `migrate` service, or a `migrate` initContainer on
+  the Helm `taskdesk` Pod. Kubernetes finishes an initContainer before the Pod's own containers
+  start. That replaced a pre-install hook Job, which timed out on a fresh install because it ran
+  before the chart's ServiceAccount and bundled Postgres existed (Opus delta D2). The process runs the migrations and the grant step, then exits. **The
   long-running API and jobs processes never receive this URL.** The API refuses to start if
   it is present in its environment (`assertNoMigrationUrlInApiProcess`), because closing a
   connection pool does not remove a credential from the process environment
@@ -68,8 +70,14 @@ There is **no single-URL mode for the API**. If the API is connected as the tabl
 privilege check refuses to boot, whatever the environment. Local development uses the same
 two steps: run `TASKDESK_ROLE=migrate` once with the owner URL, then serve against the app role.
 This is documented in `configuration-reference.md`. For a Helm external database with
-`migration.enabled: false`, the migrate Job uses the app credential. It then fails loudly at
-install if that role cannot run DDL, rather than silently running the API as the owner.
+`migration.enabled: false`, one role both migrates and serves, and **the Pod fails closed** in
+one of two ways:
+- if that role can run DDL (the chart's documented setup SQL makes it the schema owner), the
+  initContainer succeeds and the `taskdesk` container then refuses to boot on its own privilege
+  check;
+- if it cannot run DDL, the initContainer itself fails.
+
+In neither case does the API serve as the owner. `charts/taskdesk/README.md` documents this.
 
 **`activity` rows are removed by cascade, and that is decided behaviour** (Opus S4). They
 disappear when their work item is hard-deleted, or when a project or workspace delete cascades
@@ -109,8 +117,10 @@ role yet, because that job doesn't exist yet.
 
 **Operational consequence:** existing deployments need the new
 `TASKDESK_APP_DB_PASSWORD` (compose) or `taskdesk.env.database.app*` values (Helm), and a
-redeploy. The redeploy now runs the `migrate` service or Job before the API: `scripts/deploy.sh`'s
-`upgrade`/`rollback` run `migrate` explicitly first. The UAT redeploy needs Thomas's authorization. It is not implied by this entry.
+redeploy. The redeploy now runs the migrate step before the API:
+- `scripts/deploy.sh`'s `upgrade`/`rollback` run `dc run --rm migrate` explicitly first
+  (`up --wait` on a one-shot service exits non-zero even on success, Opus delta D1);
+- Helm runs it as the initContainer on every rollout. The UAT redeploy needs Thomas's authorization. It is not implied by this entry.
 
 **Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation.
 There was one clearly recommended option, the two-role split that AU-3 and `migrations.md`
