@@ -23,6 +23,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Info,
   ListTodo,
   TriangleAlert,
 } from "lucide-react";
@@ -35,10 +36,10 @@ import {
   type WorkItemSortDirection,
   type WorkItemSortField,
 } from "@/lib/routes";
-import type { WorkItem } from "@/types/work-item";
+import type { WorkItemField, WorkItemRow } from "@/types/work-item";
 
 export type WorkItemListProps = {
-  workItems: WorkItem[] | undefined;
+  workItems: WorkItemRow[] | undefined;
   isLoading: boolean;
   isError: boolean;
   sort: WorkItemSortField;
@@ -61,6 +62,33 @@ function priorityLabel(t: ReturnType<typeof useTranslation>["t"]) {
   };
 }
 
+const FIELD_LABEL_KEYS: Record<WorkItemField, string> = {
+  title: "workItems:list.columnTitle",
+  priority: "workItems:list.columnPriority",
+  dueDate: "workItems:list.columnDueDate",
+};
+
+/** Renders a field marked unavailable by `parseWorkItemRow` -- a visible "Unavailable"
+ * badge plus a field-specific accessible label, e.g. "Title unavailable". */
+function UnavailableField({
+  field,
+  t,
+}: {
+  field: WorkItemField;
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
+  return (
+    <Badge
+      variant="outline"
+      aria-label={t("workItems:list.unavailableFieldLabel", {
+        field: t(FIELD_LABEL_KEYS[field]),
+      })}
+    >
+      {t("workItems:list.unavailable")}
+    </Badge>
+  );
+}
+
 /**
  * The project work-item list (`docs/02-design/screen-inventory.md` "Work — list",
  * `/agent/projects/{key}/work?layout=list`). Read-only per this slice's scope.
@@ -72,6 +100,16 @@ function priorityLabel(t: ReturnType<typeof useTranslation>["t"]) {
  *   or color, and there is no state-lookup endpoint this screen can join against yet.
  * - **Assignee** shows `work_item.assignee_id`, or "Unassigned" when null -- same gap,
  *   no user-lookup this screen can resolve a display name from.
+ *
+ * **Partial state** (G6 / design-principles.md principle 7): a row can arrive with one
+ * or more of its displayed fields failing validation at the fetcher boundary
+ * (`types/work-item/index.ts`'s `parseWorkItemRow` -- see its comment for why this,
+ * not a mocked partial-batch response, is this screen's real partial case). Such a row
+ * still renders -- its valid fields as usual, its invalid fields as an "Unavailable"
+ * badge with a field-specific accessible label -- and a non-blocking notice above the
+ * table says some items couldn't be fully loaded. This never falls back to the error
+ * state: the request succeeded, so `isError` stays false regardless of row-level
+ * validation failures.
  */
 function WorkItemList({
   workItems,
@@ -144,70 +182,100 @@ function WorkItemList({
     );
   }
 
+  const hasPartialFailure = workItems.some(
+    (item) => item.unavailableFields.length > 0,
+  );
+
   return (
-    <Table data-testid="work-item-list-populated">
-      <TableHeader>
-        <TableRow>
-          {SORT_COLUMNS.map(({ field, labelKey }) => (
-            <TableHead key={field} aria-sort={sortAriaValue(field, sort, dir)}>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="-mx-2 h-auto gap-1 px-2 py-1 font-medium text-muted-foreground"
-                onClick={() => handleHeaderClick(field)}
+    <div className="flex flex-col gap-3">
+      {hasPartialFailure && (
+        <Alert variant="warning" data-testid="work-item-list-partial-notice">
+          <Info />
+          <AlertTitle>{t("workItems:list.partialNoticeTitle")}</AlertTitle>
+          <AlertDescription>
+            <p>{t("workItems:list.partialNoticeDescription")}</p>
+          </AlertDescription>
+        </Alert>
+      )}
+      <Table data-testid="work-item-list-populated">
+        <TableHeader>
+          <TableRow>
+            {SORT_COLUMNS.map(({ field, labelKey }) => (
+              <TableHead
+                key={field}
+                aria-sort={sortAriaValue(field, sort, dir)}
               >
-                {t(labelKey)}
-                <SortIcon field={field} sort={sort} dir={dir} />
-              </Button>
-            </TableHead>
-          ))}
-          <TableHead>{t("workItems:list.columnState")}</TableHead>
-          <TableHead>{t("workItems:list.columnAssignee")}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {workItems.map((item) => (
-          <TableRow key={item.id}>
-            <TableCell>
-              <Link
-                to={routes.workItemDetail.path}
-                params={{ key: item.key }}
-                className="font-medium text-primary underline-offset-2 hover:underline"
-              >
-                {item.key}
-              </Link>
-            </TableCell>
-            <TableCell className="max-w-xs truncate whitespace-nowrap">
-              <Link
-                to={routes.workItemDetail.path}
-                params={{ key: item.key }}
-                className="hover:underline"
-                title={item.title}
-              >
-                {item.title}
-              </Link>
-            </TableCell>
-            <TableCell>
-              <span className="inline-flex items-center gap-1.5">
-                {getPriorityIcon(item.priority ?? "no-priority")}
-                {getPriorityLabel(item.priority)}
-              </span>
-            </TableCell>
-            <TableCell>
-              {item.dueDate
-                ? formatDateShort(item.dueDate)
-                : t("workItems:list.noDueDate")}
-            </TableCell>
-            <TableCell>
-              <Badge variant="outline">{item.stateId}</Badge>
-            </TableCell>
-            <TableCell>
-              {item.assigneeId ?? t("workItems:list.unassigned")}
-            </TableCell>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="-mx-2 h-auto gap-1 px-2 py-1 font-medium text-muted-foreground"
+                  onClick={() => handleHeaderClick(field)}
+                >
+                  {t(labelKey)}
+                  <SortIcon field={field} sort={sort} dir={dir} />
+                </Button>
+              </TableHead>
+            ))}
+            <TableHead>{t("workItems:list.columnState")}</TableHead>
+            <TableHead>{t("workItems:list.columnAssignee")}</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {workItems.map((item) => (
+            <TableRow key={item.id}>
+              <TableCell>
+                <Link
+                  to={routes.workItemDetail.path}
+                  params={{ key: item.key }}
+                  className="font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  {item.key}
+                </Link>
+              </TableCell>
+              <TableCell className="max-w-xs truncate whitespace-nowrap">
+                {item.unavailableFields.includes("title") ? (
+                  <UnavailableField field="title" t={t} />
+                ) : (
+                  <Link
+                    to={routes.workItemDetail.path}
+                    params={{ key: item.key }}
+                    className="hover:underline"
+                    title={item.title}
+                  >
+                    {item.title}
+                  </Link>
+                )}
+              </TableCell>
+              <TableCell>
+                {item.unavailableFields.includes("priority") ? (
+                  <UnavailableField field="priority" t={t} />
+                ) : (
+                  <span className="inline-flex items-center gap-1.5">
+                    {getPriorityIcon(item.priority ?? "no-priority")}
+                    {getPriorityLabel(item.priority)}
+                  </span>
+                )}
+              </TableCell>
+              <TableCell>
+                {item.unavailableFields.includes("dueDate") ? (
+                  <UnavailableField field="dueDate" t={t} />
+                ) : item.dueDate ? (
+                  formatDateShort(item.dueDate)
+                ) : (
+                  t("workItems:list.noDueDate")
+                )}
+              </TableCell>
+              <TableCell>
+                <Badge variant="outline">{item.stateId}</Badge>
+              </TableCell>
+              <TableCell>
+                {item.assigneeId ?? t("workItems:list.unassigned")}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 

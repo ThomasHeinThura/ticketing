@@ -2196,6 +2196,8 @@
 			"noPriority": "No priority",
 			"pageTitle": "Work items",
 			"pageTitleWithProject": "Work items · {{project}}",
+			"partialNoticeDescription": "Some work items couldn't be fully loaded. Missing details are marked below.",
+			"partialNoticeTitle": "Some details are missing",
 			"priority": {
 				"high": "High",
 				"low": "Low",
@@ -2203,7 +2205,9 @@
 				"urgent": "Urgent"
 			},
 			"retry": "Retry",
-			"unassigned": "Unassigned"
+			"unassigned": "Unassigned",
+			"unavailable": "Unavailable",
+			"unavailableFieldLabel": "{{field}} unavailable"
 		}
 	}
 }

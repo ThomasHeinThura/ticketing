@@ -53,6 +53,7 @@ const workItem = {
   version: 1,
   createdAt: "2026-09-01T00:00:00.000Z",
   updatedAt: "2026-09-01T00:00:00.000Z",
+  unavailableFields: [] as Array<"title" | "priority" | "dueDate">,
 };
 
 describe("WorkItemList", () => {
@@ -118,6 +119,52 @@ describe("WorkItemList", () => {
     expect(screen.getAllByText("PROJ-123").length).toBeGreaterThan(0);
     expect(screen.getByText("Fix the thing")).toBeInTheDocument();
     expect(screen.getByText("workItems:list.unassigned")).toBeInTheDocument();
+  });
+
+  it("renders the partial state: resolved rows render, missing parts are marked, and the notice shows instead of the error state", () => {
+    const resolvedItem = { ...workItem, id: "wi_1", key: "PROJ-123" };
+    const partialItem = {
+      ...workItem,
+      id: "wi_2",
+      key: "PROJ-124",
+      title: "",
+      priority: "not-a-real-priority",
+      dueDate: "not-a-real-date",
+      unavailableFields: ["title", "priority", "dueDate"] as Array<
+        "title" | "priority" | "dueDate"
+      >,
+    };
+
+    render(
+      <WorkItemList
+        {...baseProps}
+        // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
+        workItems={[resolvedItem, partialItem] as any}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    // The resolved row renders normally.
+    expect(screen.getAllByText("PROJ-123").length).toBeGreaterThan(0);
+    expect(screen.getByText("Fix the thing")).toBeInTheDocument();
+
+    // The partial row still renders (its key), with its missing fields marked rather
+    // than the row being dropped.
+    expect(screen.getAllByText("PROJ-124").length).toBeGreaterThan(0);
+    const unavailableBadges = screen.getAllByText("workItems:list.unavailable");
+    expect(unavailableBadges).toHaveLength(3);
+
+    // The non-blocking notice is shown.
+    expect(
+      screen.getByTestId("work-item-list-partial-notice"),
+    ).toBeInTheDocument();
+
+    // Never falls back to the error state for a partial failure.
+    expect(
+      screen.queryByTestId("work-item-list-error"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("work-item-list-populated")).toBeInTheDocument();
   });
 
   it("calls onSortChange with the toggled direction when a header is clicked twice", () => {

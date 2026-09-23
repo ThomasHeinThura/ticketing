@@ -45,12 +45,14 @@ function compare(
 /**
  * Client-side sort over the whole list (`get-work-items.ts`'s own comment: the API has
  * no sort/filter query parameters yet, and doesn't paginate). Pure: never mutates its
- * input.
+ * input. Generic over `T extends WorkItem` so it also accepts `WorkItemRow` (which adds
+ * `unavailableFields` for the partial state) without losing that field on the sorted
+ * output.
  */
-export function sortWorkItems(
-  workItems: WorkItem[],
+export function sortWorkItems<T extends WorkItem>(
+  workItems: T[],
   field: WorkItemSortField,
   dir: WorkItemSortDirection,
-): WorkItem[] {
+): T[] {
   return [...workItems].sort((a, b) => compare(field, a, b, dir));
 }

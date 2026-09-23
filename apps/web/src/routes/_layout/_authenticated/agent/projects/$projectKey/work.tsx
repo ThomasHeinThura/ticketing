@@ -55,11 +55,12 @@ function WorkItemsRouteComponent() {
     !isWorkspaceLoading && !isProjectsLoading && !!projects && !project;
 
   const {
-    data: workItems,
+    data: workItemsResult,
     isLoading: isWorkItemsLoading,
     isError: isWorkItemsError,
     refetch: refetchWorkItems,
   } = useGetWorkItems({ projectId: project?.id });
+  const workItems = workItemsResult?.items;
 
   const isLoading =
     isWorkspaceLoading ||
