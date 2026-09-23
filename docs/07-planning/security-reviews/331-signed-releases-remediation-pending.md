@@ -13,6 +13,13 @@ remediation to S1/S2 and the follow-up changes to S3–S8, then replace this que
 an actual review record. No `Reviewed head` attestation is included because no reviewer has
 reviewed the current head.
 
+The independent ordinary review of `77e116e00357e3dad09b1a5f55a974c9dcf8e5c6` returned
+**CHANGES NEEDED** with three release-path blockers: GHCR login occurred after cosign
+signing; the default SLSA predicate described the workflow dispatch SHA rather than an
+older selected source SHA; and rollback verified a digest using the currently configured
+tag instead of the tag signed for that digest. These findings are being remediated in the
+current unreviewed delta. They are not Opus clearance.
+
 ## Remediation scope recorded for the pending pass
 
 - S1: separate build/scan from signing/publication; pin the privileged QEMU and BuildKit
@@ -25,6 +32,10 @@ reviewed the current head.
   refuse stale `edge` updates; disable the scanner cache; disable the privileged binfmt cache.
 - S7–S8: add operator verification commands, require an exact lowercase 40-character SHA,
   and correct the CI/CD pipeline description.
+- Ordinary-review delta: authenticate the signer job with GHCR before cosign; add a signed
+  custom predicate binding the artifact digest to the validated selected source commit
+  while retaining the SLSA workflow provenance; require the signed tag for rollback and
+  persist that tag with its digest.
 
 **Unblocker:** an independent authenticated Opus 5.5 reviewer. Current-session
 `claude auth status` reports `loggedIn: false`; another model cannot substitute.

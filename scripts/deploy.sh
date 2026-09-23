@@ -5,7 +5,7 @@
 #   scripts/deploy.sh local                  bring the stack up for development
 #   scripts/deploy.sh production             bring the stack up behind Traefik
 #   scripts/deploy.sh upgrade                verify signature -> pull -> up -d --wait
-#   scripts/deploy.sh rollback <digest>      go back to a known-good digest
+#   scripts/deploy.sh rollback <digest> <tag> go back to a known-good release
 #
 # Flags:
 #   --profile s3        also run the opt-in SeaweedFS object store
@@ -60,6 +60,7 @@ PROFILE_S3=0
 VERIFY=1
 PROBE=1
 ROLLBACK_DIGEST=""
+ROLLBACK_TAG=""
 
 usage() { sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-1}"; }
 
@@ -68,12 +69,15 @@ MODE="$1"; shift
 case "$MODE" in
   local|production|upgrade) ;;
   rollback)
-    [ $# -ge 1 ] || die "rollback needs a digest: scripts/deploy.sh rollback sha256:…"
+    [ $# -ge 2 ] || die "rollback needs a digest and its signed release tag: scripts/deploy.sh rollback sha256:… v2.0.0"
     ROLLBACK_DIGEST="$1"; shift
+    ROLLBACK_TAG="$1"; shift
     case "$ROLLBACK_DIGEST" in
       sha256:*) ;;
       *) die "digest must look like sha256:…  (got '$ROLLBACK_DIGEST')" ;;
     esac
+    [[ "$ROLLBACK_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] \
+      || die "release tag must be a valid container tag (got '$ROLLBACK_TAG')"
     ;;
   -h|--help|help) usage 0 ;;
   *) die "unknown mode '$MODE'. One of: local, production, upgrade, rollback" ;;
@@ -443,10 +447,17 @@ case "$MODE" in
     ;;
 
   rollback)
-    say "rolling back to $ROLLBACK_DIGEST"
+    say "rolling back to $ROLLBACK_TAG ($ROLLBACK_DIGEST)"
+    TASKDESK_IMAGE_TAG="$ROLLBACK_TAG"
+    export TASKDESK_IMAGE_TAG
     TASKDESK_IMAGE_DIGEST="$ROLLBACK_DIGEST"
     export TASKDESK_IMAGE_DIGEST
     resolve_and_verify_image
+    if grep -q '^TASKDESK_IMAGE_TAG=' "$ENV_FILE"; then
+      sed -i.bak "s|^TASKDESK_IMAGE_TAG=.*|TASKDESK_IMAGE_TAG=${ROLLBACK_TAG}|" "$ENV_FILE" && rm -f "$ENV_FILE.bak"
+    else
+      printf 'TASKDESK_IMAGE_TAG=%s\n' "$ROLLBACK_TAG" >> "$ENV_FILE"
+    fi
     if grep -q '^TASKDESK_IMAGE_DIGEST=' "$ENV_FILE"; then
       sed -i.bak "s|^TASKDESK_IMAGE_DIGEST=.*|TASKDESK_IMAGE_DIGEST=${ROLLBACK_DIGEST}|" "$ENV_FILE" && rm -f "$ENV_FILE.bak"
     else

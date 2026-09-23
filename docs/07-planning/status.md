@@ -1542,6 +1542,28 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
+### 2026-09-23 · P0 release and primitive integration checks; #331 returned for remediation
+
+Continued the P0 integration queue on isolated branches. For **#341**, rebuilt the exact
+candidate image, ran the one-shot migration role against a disposable Postgres 18 instance,
+then booted the API with the restricted `taskdesk_app` role. The image health check reached
+`healthy`, and `/api/public/health/live` returned `{"status":"ok"}`. The initial smoke
+attempt using the Postgres superuser was correctly rejected by the API's #308 guard; it was
+not counted as a successful boot. The temporary containers and network were removed.
+
+For **#331**, an independent ordinary review of exact head
+`77e116e00357e3dad09b1a5f55a974c9dcf8e5c6` returned **CHANGES NEEDED**: the signer lacked
+GHCR credentials before `cosign sign`; default SLSA provenance identified the dispatch-time
+`main` tip rather than an older selected source SHA; and rollback used the current tag while
+verifying a prior digest. Remediation is now in progress: signer login precedes signing,
+release publication adds a signed custom predicate for the validated source SHA, and rollback
+requires and persists the digest's signed tag. This delta has not yet received independent
+review or CI. **Opus 5.5 remains required and pending** for #331; no PR was merged.
+
+Next: finish the #331 exact-head review and checks, refresh #334/#338 checks after their
+linear history refreshes, and continue other runnable P0 slices while preserving the pending
+Opus gates.
+
 ### 2026-09-23 (third pass) · 11 more PRs merged; spec gates honoured, not routed around; an outage recovered cleanly
 
 This pass shows the gates working as designed. `check:reviews` blocked #274 and #275

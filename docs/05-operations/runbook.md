@@ -172,12 +172,14 @@ the audit log and nobody knows why, treat it as an incident.
 ## Rolling back
 
 ```bash
-scripts/deploy.sh rollback <previous-digest>
+scripts/deploy.sh rollback <previous-digest> <release-tag>
 curl -sf "https://ticket.${DOMAIN}/api/public/health/ready"
 ```
 
-`deploy.sh rollback` verifies the cosign signature on the digest it is about to run, sets
-`TASKDESK_IMAGE_DIGEST` in `.env`, and brings the service back with `--wait`. **Rolling back
+`deploy.sh rollback` verifies the cosign signature on the digest using the tag annotation
+that was signed when that image was published, stores both values in `.env`, and brings
+the service back with `--wait`. For example, pass `v2.0.0` when rolling back to a digest
+published as `v2.0.0`. **Rolling back
 onto an unverified digest is still a supply-chain decision** — which is why the manual
 sequence below is the labelled fallback rather than the procedure:
 
@@ -212,12 +214,27 @@ cosign verify \
 gh attestation verify "oci://${IMAGE_REF}" \
   --repo ThomasHeinThura/ticketing \
   --signer-workflow ThomasHeinThura/ticketing/.github/workflows/release.yml \
-  --source-digest "$SOURCE_SHA" \
-  --source-ref refs/heads/main
+  --predicate-type 'https://slsa.dev/provenance/v1'
+gh attestation verify "oci://${IMAGE_REF}" \
+  --repo ThomasHeinThura/ticketing \
+  --signer-workflow ThomasHeinThura/ticketing/.github/workflows/release.yml \
+  --predicate-type 'https://github.com/ThomasHeinThura/ticketing/attestations/release-source/v1' \
+  --format json \
+  | jq -e --arg repo 'ThomasHeinThura/ticketing' \
+      --arg source "$SOURCE_SHA" \
+      --arg image 'ghcr.io/thomasheinthura/taskdesk' \
+      'any(.[]; .verificationResult.statement.predicate.sourceRepository == $repo and
+        .verificationResult.statement.predicate.sourceRef == "refs/heads/main" and
+        .verificationResult.statement.predicate.sourceCommit == $source and
+        .verificationResult.statement.predicate.image == $image)'
 ```
 
-Both commands must succeed before promoting a digest. The attestation check also requires
-GitHub CLI authentication with read access to the repository.
+All three checks (cosign signature, workflow SLSA provenance, and the selected-source
+predicate) must succeed before promoting a digest. The GitHub attestation checks also
+require GitHub CLI authentication with read access to the repository. The SLSA predicate
+identifies the workflow run that published the image; the separate signed TaskDesk
+predicate binds that image digest to the validated source SHA, including when a manual
+release selects an older commit on `main`.
 
 ---
 

@@ -256,6 +256,14 @@ jobs:
         with:
           cosign-release: v3.0.5
 
+      # Each job has a fresh Docker config. Log in here before cosign writes
+      # signatures to GHCR; build-scan's registry credentials do not carry over.
+      - name: Log in to GitHub Container Registry for signing
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+          REGISTRY: ghcr.io
+        run: printf '%s' "$GHCR_TOKEN" | docker login "$REGISTRY" --username "$GITHUB_ACTOR" --password-stdin
+
       - name: Sign each published tag with its tag identity
         env:
           IMAGE: ${{ needs.build-scan.outputs.image }}
@@ -278,7 +286,36 @@ jobs:
           subject-digest: ${{ needs.build-scan.outputs.digest }}
           push-to-registry: true
 
-      - name: Log in to GitHub Container Registry
+      # SLSA provenance above describes this workflow run. A manual run may
+      # build an older main commit, so publish a second signed predicate that
+      # binds the image digest to the source SHA validated by build-scan.
+      - name: Write selected-source predicate
+        env:
+          SOURCE_SHA: ${{ needs.build-scan.outputs.source_sha }}
+          IMAGE: ${{ needs.build-scan.outputs.image }}
+          DIGEST: ${{ needs.build-scan.outputs.digest }}
+        run: |
+          set -Eeuo pipefail
+          jq -n \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg sourceRef "refs/heads/main" \
+            --arg sourceCommit "$SOURCE_SHA" \
+            --arg image "$IMAGE" \
+            --arg imageDigest "$DIGEST" \
+            --arg workflowRun "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{sourceRepository:$repository, sourceRef:$sourceRef, sourceCommit:$sourceCommit, image:$image, imageDigest:$imageDigest, workflowRun:$workflowRun}' \
+            > "$RUNNER_TEMP/taskdesk-release-source.json"
+
+      - name: Attest selected source commit for the image digest
+        uses: actions/attest@c32b4b8b198b65d0bd9d63490e847ff7b53989d4 # v4.0.0
+        with:
+          subject-name: ${{ needs.build-scan.outputs.image }}
+          subject-digest: ${{ needs.build-scan.outputs.digest }}
+          predicate-type: https://github.com/ThomasHeinThura/ticketing/attestations/release-source/v1
+          predicate-path: ${{ runner.temp }}/taskdesk-release-source.json
+          push-to-registry: true
+
+      - name: Log in to GitHub Container Registry for tag publication
         env:
           GHCR_TOKEN: ${{ github.token }}
           REGISTRY: ghcr.io
