@@ -76,6 +76,42 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
+**Fifth pass, 2026-09-23. `main` at `b126c51`.** Merged since the fourth pass:
+- **#306**, the first v2 screen: the work-item list at `/agent/projects/{key}/work`. Sort and
+  direction are held in the URL, and it has all five G6 states, including Partial (rows with
+  invalid fields are marked "Unavailable" rather than failing). This is the P1 path decided in
+  the decision log.
+- **#313** (#309). Creating a workspace now seeds the default work-item types and the five
+  state templates, and creating a project seeds its states, all in the same transaction. A
+  fresh instance can create work items.
+- **#321** (#316). A boot-time backfill applies the same defaults, per kind, to workspaces and
+  projects created before #313. It is atomic per workspace and leaves customised rows alone.
+- **#315**, #8 Slice 1. The `resolveIdentity` adapter is on main. Its Opus review found that
+  workspace rows named `instance_admin`/`customer` could mint those grants, which was fixed. It
+  also found a live privilege escalation on main, filed as **#318**: custom roles can take a
+  built-in role name and inherit that role's capabilities.
+- **#307** (#290 and #288). An other-tenant id now answers exactly like a nonexistent one, in
+  every `workspaceAccess.from*` helper, bulk update, task-relation, and the label and move paths.
+  The Opus review caught a dropped membership check in the bulk controller before it merged.
+- **#311**, **#312**: specs cleared, and the fourth status pass.
+
+**In flight at this pass** (re-verify in GitHub):
+- **#308** (#296, DB role split). Migrations and role setup now run as a **separate one-shot
+  `migrate` process** (a compose service; the Helm side is moving from a hook Job to an initContainer in
+  the fix round now in progress), and the serving API never receives the owner credential. The app password is set as a SCRAM verifier. After the latest
+  fix round it **needs a UAT redeploy with a new secret and the new migrate step, which Thomas
+  must authorize.**
+- **#322** (#318), the built-in role name escalation. It adds `workspace_role.is_system`.
+- **#323**, #8 Slice 2, policy shadow mode (`TASKDESK_POLICY_SHADOW`, with evidence in
+  `policy_shadow_tally`/`policy_shadow_event`). Coverage is limited to workspace-scope policies,
+  and #324 (Slice 2b) widens it. **#322 and #323 both claim migration `0068`,** so whichever
+  merges second renumbers.
+- **#320** (#310), the list API's server-side sort, cursor pagination, filters and names. It
+  also switches #306's screen to the paged response.
+
+**Before any router leaves shadow mode:** #318, #319 (`sees_all` reach is not per-workspace),
+#317 (asset, websocket and timing oracles), and #324.
+
 **Fourth pass, 2026-09-23. `main` at `c7b6946`.** Merged since the third pass:
 - **#302**, #8 Slice 0. The policy registry is now imported on the production boot path.
   An invalid registry (a duplicate route key, or a missing required field) makes the built
@@ -156,8 +192,9 @@ for #8's runtime integration.
 
 **The principal P0 blocker, stated plainly:** #8's **runtime** integration. The declarative
 policy registry is built and every route is classified, but **no request is evaluated
-against it**: nothing on the request path calls an evaluator. Since #302, an invalid registry does
-fail at boot. Routes are still authorized today, by hand-written per-route middleware
+against it**: nothing on the request path enforces a policy yet. Since #302, an invalid registry
+fails at boot. Since #315 an identity adapter exists, and #323, once merged, evaluates
+policies in shadow mode only, never blocking. Routes are still authorized today, by hand-written per-route middleware
 (`requireWorkspaceCapability`, `requireWorkItemReach`, …). So they aren't unprotected. But
 the registry is not yet the single source of truth, and every open checkbox in #8's runtime
 section is still unticked. That, and #296 below, come before any UAT claim that "the gates
