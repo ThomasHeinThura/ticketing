@@ -50,7 +50,7 @@ hash has no key, and no head is anchored outside the database, so the same actor
 recompute the rows that follow or delete the newest ones. This residual risk stays open
 until two separate pieces of work land:
 - the app role stops being the superuser owner (#296);
-- an external chain anchor (`audit_chain_anchor` / `audit-purge`) or a keyed hash is added.
+- a chain anchor stored **outside** this database (the planned `audit_chain_anchor` / `audit-purge` table lives inside it, so on its own it isn't enough), or a keyed hash, is added.
 
 **Alternatives:** implement the real two-role split now: a lesser-privileged app role owns
 nothing, and migrations run as a separate role. Rejected for this slice. It is deployment

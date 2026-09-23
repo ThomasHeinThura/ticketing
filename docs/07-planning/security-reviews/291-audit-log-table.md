@@ -280,3 +280,195 @@ S5 is a docs correction and should land with this PR.
 
 Test evidence at this head: integration suite 73 files / 978 tests passed on `pr291_opus_test`.
 The database was dropped afterwards.
+
+---
+
+## Delta-confirmation round (a800c08)
+
+**Reviewer:** Opus 5.5. This is the same context as the review above, confirming a
+remediation round it did not author.
+**Reviewed head:** `a800c08e968b6d98356138542744fcfa4c30eb03`
+(confirmed via `gh pr view 291 --json headRefOid`).
+
+**Delta reviewed:** `git diff ce11fe0 22ab598` (the non-merge commits `6a056a5`, `4f20080`
+and `22ab598`).
+
+**The merge.** The merge `a800c08` changes exactly the files that `main` changed since the
+merge base. That is #293's 8 files: `packages/ui/**` and `docs/02-design/design-system.md`.
+It changes nothing under `apps/api`, `tests`, `scripts`, or any other `docs/` path.
+
+**Test evidence.** The full integration suite ran on the private database `pr291_opus_test`,
+td-lane-pg, Postgres 18.6: **73 files and 1006 tests, all passed**. After that I ran a
+throwaway probe file against the same database. I deleted it afterwards and did not commit
+it. Then I dropped the database.
+
+**Migration metadata.** The migration snapshot `id` was regenerated. The old id is not
+referenced by anything. `0067` is still the newest journal entry, and `main` has nothing
+after `0066`.
+
+### Per-finding verdicts
+
+**S1 — CLOSED.** The `seq`-contiguity check is gone (`verify-audit-chain.ts`). Rows are
+still ordered by `seq`. The PR's new tests cover both rollback shapes. The PR's existing
+deleted-middle-row test still catches a deleted row via `prev_hash_mismatch`. In my own
+probes, every rollback that consumed a `seq` value still verified `ok`.
+
+**S2 — CLOSED for the reported shapes, with one residual in the same class. See S7.**
+`JSON.stringify` is now bound explicitly. These top-level values all round-trip and verify
+`ok`: the string `"hello"`, the string `"null"`, `[1,"2",null]`, `[]`, and `undefined`
+(which is treated as `null`).
+
+These `JSON.stringify`-mangling inputs now fail closed, because the writer throws before
+any SQL runs:
+
+| Input | Where it fails |
+| --- | --- |
+| `BigInt` | at the 64 KB size check |
+| `Date` (member or top-level) | `canonicalJson` rejects the non-plain object |
+| a `toJSON` function member | `canonicalJson` rejects it as a `Function` |
+| a class instance with `toJSON` | `canonicalJson` rejects the non-plain object |
+| `NaN` | `canonicalJson` rejects the non-finite number |
+| a function | `canonicalJson` rejects it |
+| a symbol | `canonicalJson` rejects it |
+| an `undefined` member | `canonicalJson` throws before any SQL |
+| an `undefined` array element | `canonicalJson` throws before any SQL |
+
+An `Object.create(null)` object round-trips correctly.
+
+**S3 — CLOSED.** `UNIQUE (prev_hash)` is in both the migration and the snapshot. I probed it
+three ways:
+
+- **Empty table, two concurrent first inserts, one caller in `REPEATABLE READ`.** The
+  second insert failed with `23505 audit_log_prev_hash_unique`. It did not create a second
+  `ZERO_HASH` root.
+- **Empty table, eight parallel READ COMMITTED appends.** All 8 succeeded. They produced 8
+  distinct `prev_hash` values, exactly one of them `ZERO_HASH`, and the chain verified `ok`.
+- **Non-empty table, `REPEATABLE READ` fork (my original repro).** It now fails with
+  `23505`, and the chain still verifies `ok`.
+
+The claim "`ZERO_HASH` can never be read a second time" holds while no rows are ever
+deleted. It stops holding once `audit-purge` exists: a purge that empties the table would
+make the writer chain from `ZERO_HASH` rather than from the anchor. That is `audit-purge`'s
+design problem, not this PR's.
+
+**S4 — CLOSED.** I checked the timing live. Postgres runs `ON DELETE SET NULL` as an AFTER
+trigger on `organisation`. By the time it updates `audit_log`, the deleted organisation row
+is no longer visible to the same transaction, so `NOT EXISTS` is true for a real tombstone.
+
+| Probe | Result |
+| --- | --- |
+| Direct `UPDATE audit_log SET organisation_id = NULL` on a live organisation | refused |
+| Real `DELETE FROM organisation` | succeeded; both rows were tombstoned |
+| The same direct update, inside a transaction that had just deleted a *different* organisation | refused |
+| `UPDATE organisation SET id = …` (the `ON UPDATE CASCADE` path) | refused; fails closed, as noted before |
+
+The chain verified `ok` after all of these.
+
+**S5 — CLOSED.** These now state the risk accurately, and in the same terms:
+
+- AU-3;
+- AU-15;
+- the `data-model.md` "known limit" paragraph;
+- the migration header;
+- the `schema.ts` comment.
+
+All five say the controls stop buggy queries and non-owner roles, and do not stop an owner
+or superuser. They say the unkeyed, unanchored chain does not catch alter-and-recompute or
+deleting the newest rows. #296 exists and is open.
+
+One wording nit remains in the decision-log entry. Its second closing bullet reads "an
+external chain anchor (`audit_chain_anchor` / `audit-purge`)". `data-model.md`'s own
+paragraph, correctly, says `audit_chain_anchor` "does not by itself anchor outside the
+database". Suggested wording: "an anchor held outside the database (for example an exported
+or witnessed `audit_chain_anchor` head) or a keyed hash". Apart from that the entry is now
+accurate. This is NON-BLOCKING.
+
+**S6 — CLOSED as specified. Residual gaps are NON-BLOCKING and acceptable under AU-2.**
+
+What the probes caught:
+- `accessToken` inside an array of objects;
+- `refresh_token` four levels deep;
+- `PASSWORD`;
+- `API_KEY`;
+- a numeric or array value under a matching key;
+- `{password: false}` and `{password: ""}`.
+
+Legitimate keys the old check wrongly refused, and which now pass: `apiKeyId`,
+`secretRotatedAt`, `tokenExpiresAt`, and `changedKeys: ["password","token"]`.
+
+Still written (bypasses):
+
+| Bypass | Example keys |
+| --- | --- |
+| Unicode lookalikes | Cyrillic `pаssword`, full-width `ｐassword`, a zero-width joiner inside |
+| Single-word compounds | `accesstoken`, `apikey` |
+| Digit suffixes | `password2` |
+| Dotted paths | `auth.password` |
+| Unlisted names | `bearer`, `cookie`, `otp` |
+| A secret hidden under an exempt key | `{passwordId: "hunter2"}`, `{secretId: {value: "s3cr3t"}}` |
+
+The exempt-key bypass is **acceptable per AU-2**. AU-2 now says outright that the backstop
+is "not a substitute for this rule". The rule is a caller contract: record which keys
+changed, never their values. Any list of names can be defeated by picking a different name.
+
+One gap is worth fixing when mutations are wired: **dotted paths**. They are the natural
+shape of a plugin-configuration diff, such as `smtp.password`, which is exactly AU-2's own
+example. Adding `.` and digit boundaries to `keySegments` would close it.
+
+There is also one new false positive: `{hasPassword: true}` is refused. Under AU-14 that
+would drop a legitimate `user.updated` row. Consider exempting boolean values, or an
+`is`/`has` first segment.
+
+**Nit (doc comment) — CLOSED.**
+
+### S7 — BLOCKING — a sparse array in `before`/`after` is still hashed differently from what is stored (a residual of S2)
+
+`canonicalJson` (`packages/domain/src/audit/audit.ts:150`) renders arrays with
+`value.map(...).join(",")`. `Array.prototype.map` skips holes and `join` renders a hole as
+the empty string, so `[ , 1]` is hashed as `[,1]`. `JSON.stringify`, which the writer now
+binds (`audit-writer.ts`, `afterJson`), renders the same array as `[null,1]`. The row
+therefore stores something other than what was hashed.
+
+Reproduction:
+
+```ts
+const a: unknown[] = []; a[1] = 1;
+await appendAuditLog(db, base({ after: a as never }));      // written, stored [null, 1]
+await verifyAuditChain(db);                                  // { ok: false, reason: "row_hash_mismatch" }
+// Same for a nested hole: { list: a } -> stored {"list": [null, 1]} -> row_hash_mismatch
+```
+
+The consequence is the same as S1 and S2. An untampered row fails verification
+permanently. The table is append-only, so the row cannot be repaired. The verifier stops
+at the first break, so every real break later in the chain is hidden.
+
+**How it could happen.** Not through user input: `JSON.parse` never produces holes, and
+neither does `pg`'s JSON decoding. It would take a programmer error such as `new Array(n)`,
+`arr[i] = x` past the end of an array, or `delete arr[i]`. It is still BLOCKING because it
+is the only programmer error the writer lets through *silently and irreversibly*. Every
+other malformed input I tried throws before the insert.
+
+**Fix, either of these, with a regression test for a top-level hole and a nested hole:**
+
+- **(a)** In `appendAuditLog`, normalise once and use the same value for both the hash and
+  the insert:
+  ```ts
+  const normalised = before === null ? null : JSON.parse(beforeJson)
+  ```
+  The same goes for `after`. That makes what is stored and what is hashed identical by
+  construction.
+- **(b)** Have `canonicalJson` throw on a hole. `canonicalJson` is `packages/domain` code,
+  so this is a small change to that package.
+
+Option (a) is simpler, stays inside this PR's files, and also removes the whole class of
+mismatches between what is hashed and what is stored.
+
+### Overall verdict (a800c08)
+
+**CHANGES NEEDED — one BLOCKING finding (S7).**
+
+- S1 through S6 and the nit are closed.
+- The decision-log wording (S5) and the S6 gaps are NON-BLOCKING suggestions.
+- S7 is a narrower instance of S2's class. Its fix is a few lines plus one regression test.
+- A delta check of that fix alone is enough to close this review; a full Opus round is not
+  needed.
