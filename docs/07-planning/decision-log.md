@@ -5,6 +5,27 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-23 · Storybook 10 compatibility spike for `packages/ui`
+
+**Decision:** Pin `storybook` and `@storybook/react-vite` to `10.6.0` in
+`packages/ui`; keep `@tailwindcss/vite` available to the package's Storybook config. The
+representative Button story builds on the current stack: Node `24.20.0`, React `19.2.8`,
+Vite `8.2.1` (Rolldown), and TypeScript `7.0.2`.
+
+**Why:** `pnpm --filter @taskdesk/ui build-storybook` completed successfully. Its output
+reported Vite `8.2.1` and emitted a Rolldown runtime chunk. A TypeScript 7 no-emit check of
+the Storybook config and story passed. The dev server also started; `GET /` returned `200`
+and `/index.json` listed all three Button stories. Storybook's Vite builder needed the
+Tailwind Vite plugin declared directly in `packages/ui` because pnpm does not expose
+`apps/web`'s dependency to that workspace package. Build emitted a non-blocking warning for
+the 1.1 MB preview chunk.
+
+**Alternatives:** A separate app-level Storybook setup would not exercise the design-system
+package boundary used by primitive stories.
+
+**Decided by:** Thomas authorized the recommended Storybook dependency option; implementation
+and compatibility result recorded by the agent, 2026-09-23.
+
 ## Format
 
 ```markdown
