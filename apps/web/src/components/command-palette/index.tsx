@@ -1,11 +1,4 @@
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { Kbd, KbdGroup } from "@taskdesk/ui";
-import { ArrowDownIcon, ArrowUpIcon, CornerDownLeftIcon } from "lucide-react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
-import SearchCommandMenu from "@/components/search-command-menu";
-import CreateTaskModal from "@/components/shared/modals/create-task-modal";
-import CreateWorkspaceModal from "@/components/shared/modals/create-workspace-modal";
 import {
   Command,
   CommandCollection,
@@ -21,7 +14,15 @@ import {
   CommandPanel,
   CommandSeparator,
   CommandShortcut,
-} from "@/components/ui/command";
+  Kbd,
+  KbdGroup,
+} from "@taskdesk/ui";
+import { ArrowDownIcon, ArrowUpIcon, CornerDownLeftIcon } from "lucide-react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import SearchCommandMenu from "@/components/search-command-menu";
+import CreateTaskModal from "@/components/shared/modals/create-task-modal";
+import CreateWorkspaceModal from "@/components/shared/modals/create-workspace-modal";
 import { shortcuts } from "@/constants/shortcuts";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";

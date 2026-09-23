@@ -10,19 +10,17 @@ import {
   NumberFieldInput,
   Radio,
   RadioGroup,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Separator,
   Switch,
 } from "@taskdesk/ui";
 import { CheckCircle, Trash2 } from "lucide-react";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   useDeleteNotificationWorkspaceRule,
   useUpdateNotificationPreferences,

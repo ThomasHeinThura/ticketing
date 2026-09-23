@@ -4,19 +4,6 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@taskdesk/ui";
-import {
-  ChevronDown,
-  ChevronRight,
-  Link2,
-  Plus,
-  Search,
-  X,
-} from "lucide-react";
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
   Command,
   CommandCollection,
   CommandDialog,
@@ -30,14 +17,23 @@ import {
   CommandList,
   CommandPanel,
   CommandSeparator,
-} from "@/components/ui/command";
-import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from "@/components/ui/context-menu";
+} from "@taskdesk/ui";
+import {
+  ChevronDown,
+  ChevronRight,
+  Link2,
+  Plus,
+  Search,
+  X,
+} from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import useCreateTaskRelation from "@/hooks/mutations/task-relation/use-create-task-relation";
 import useDeleteTaskRelation from "@/hooks/mutations/task-relation/use-delete-task-relation";
 import useGetProject from "@/hooks/queries/project/use-get-project";
