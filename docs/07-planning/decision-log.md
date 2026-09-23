@@ -46,7 +46,13 @@ does any of the following. "Reach" means through membership or `SET ROLE`, check
 - it owns anything in `pg_class`, `pg_proc`, `pg_namespace` or `pg_type`.
 
 The role create-and-grant step runs under a transaction-scoped advisory lock, so two
-replicas booting at once cannot race.
+replicas booting at once cannot race. Two things are deliberately **not** refused, because neither can defeat the
+append-only or no-DDL controls this check exists for (PR #308's review):
+- membership in `pg_monitor`, which can read other sessions' statistics and settings but has
+  no data or DDL rights;
+- ownership of large objects, which the app role can create for itself. Reaching the
+  filesystem from a large object needs `pg_read_server_files` or `pg_write_server_files`,
+  and those are already refused.
 
 `TASKDESK_MIGRATION_DATABASE_URL` is optional and falls back to `TASKDESK_DATABASE_URL`.
 That keeps single-URL local development working. In that fallback, the grant step detects
