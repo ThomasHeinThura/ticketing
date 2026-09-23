@@ -32,8 +32,19 @@ function quoteIdentifier(identifier: string): string {
   return `"${identifier.replaceAll('"', '""')}"`;
 }
 
+/** Standard-conforming strings (Postgres's default) treat `\` literally, so only
+ * the enclosing `'` needs doubling — same as `ensure-application-role.ts`'s own
+ * `quoteLiteral`. */
+function quoteLiteral(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`;
+}
+
 function randomHex64(): string {
   return randomBytes(32).toString("hex");
+}
+
+function randomSuffix(): string {
+  return randomUUID().replaceAll("-", "").slice(0, 16);
 }
 
 /** `drizzle-orm` wraps the real Postgres error; the actual driver error (with Postgres's
@@ -463,5 +474,227 @@ describe("issue #296 -- application role is non-superuser, owns nothing, DML-res
         fixture.workItemId,
       ]),
     ).resolves.toBeDefined();
+  });
+});
+
+/**
+ * Independent ordinary review of this PR, at `7434e5b`: BLOCKING finding — the first
+ * version of `assertApplicationRoleIsNotPrivileged` only asked "is `current_user` itself
+ * a superuser, and does `current_user` itself own a table". Reproduced live: after
+ * `GRANT postgres TO taskdesk_app` it still passed, and the app connection could then
+ * `SET ROLE postgres`. It also missed `rolcreaterole`, `rolbypassrls`, and ownership of
+ * sequences, functions and schemas (it only checked `pg_tables`).
+ *
+ * This suite exercises the rewritten, structural version directly (not through
+ * `ensureApplicationRole`, which never produces any of these configurations on its own —
+ * each one here is a deliberately constructed probe role, standing in for a
+ * misconfiguration or a future privilege escalation the check must still catch): one
+ * `it()` per condition the review asked for, each proving the assert throws for that
+ * condition and resolves for a clean role with none of them.
+ */
+describe("assertApplicationRoleIsNotPrivileged -- structural coverage (independent review of #308)", () => {
+  let ownerRoleName: string;
+
+  beforeAll(async () => {
+    const result = await db.execute(sql`SELECT current_user AS name`);
+    const row = result.rows[0] as { name?: string } | undefined;
+    if (!row?.name) {
+      throw new Error(
+        "Could not determine the owner connection's current_user",
+      );
+    }
+    ownerRoleName = row.name;
+  });
+
+  async function makeProbeRole(label: string) {
+    const name = `probe_${label}_${randomSuffix()}`;
+    const password = randomHex64();
+    await db.execute(
+      sql.raw(
+        `CREATE ROLE ${quoteIdentifier(name)} LOGIN PASSWORD ${quoteLiteral(password)} NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`,
+      ),
+    );
+    return { name, password, quoted: quoteIdentifier(name) };
+  }
+
+  async function connectAsProbe(name: string, password: string) {
+    const base = process.env.TASKDESK_DATABASE_URL;
+    if (!base) {
+      throw new Error("TASKDESK_DATABASE_URL must be set for this test");
+    }
+    const url = new URL(base);
+    url.username = name;
+    url.password = password;
+    const pool = new Pool({ connectionString: url.toString() });
+    const probeDb = drizzle(pool, { schema });
+    return { pool, probeDb };
+  }
+
+  /** `DROP OWNED BY` removes everything the probe owns or has been granted in this
+   * database (objects AND privileges) before `DROP ROLE` -- Postgres refuses to drop a
+   * role that still owns something. Role MEMBERSHIP (a probe granted membership in
+   * another role) does not need a separate `REVOKE` first: dropping the member role
+   * removes that `pg_auth_members` row automatically. */
+  async function dropProbeRole(quoted: string) {
+    await db.execute(sql.raw(`DROP OWNED BY ${quoted}`)).catch(() => undefined);
+    await db.execute(sql.raw(`DROP ROLE IF EXISTS ${quoted}`));
+  }
+
+  it("throws when the role is a member of a role with rolsuper (SET ROLE escalation)", async () => {
+    const probe = await makeProbeRole("member");
+    await db.execute(
+      sql.raw(`GRANT ${quoteIdentifier(ownerRoleName)} TO ${probe.quoted}`),
+    );
+    const { pool, probeDb } = await connectAsProbe(probe.name, probe.password);
+    try {
+      await expect(
+        assertApplicationRoleIsNotPrivileged(probeDb),
+      ).rejects.toThrow(/superuser/i);
+    } finally {
+      await pool.end();
+      await dropProbeRole(probe.quoted);
+    }
+  });
+
+  it("throws when the role has CREATEROLE", async () => {
+    const probe = await makeProbeRole("createrole");
+    await db.execute(sql.raw(`ALTER ROLE ${probe.quoted} CREATEROLE`));
+    const { pool, probeDb } = await connectAsProbe(probe.name, probe.password);
+    try {
+      await expect(
+        assertApplicationRoleIsNotPrivileged(probeDb),
+      ).rejects.toThrow(/rolcreaterole|create.*role/i);
+    } finally {
+      await pool.end();
+      await dropProbeRole(probe.quoted);
+    }
+  });
+
+  it("throws when the role has BYPASSRLS", async () => {
+    const probe = await makeProbeRole("bypassrls");
+    await db.execute(sql.raw(`ALTER ROLE ${probe.quoted} BYPASSRLS`));
+    const { pool, probeDb } = await connectAsProbe(probe.name, probe.password);
+    try {
+      await expect(
+        assertApplicationRoleIsNotPrivileged(probeDb),
+      ).rejects.toThrow(/rolbypassrls|bypasses row-level security/i);
+    } finally {
+      await pool.end();
+      await dropProbeRole(probe.quoted);
+    }
+  });
+
+  it("throws when the role owns a sequence", async () => {
+    const probe = await makeProbeRole("seq");
+    const seqName = quoteIdentifier(`probe_owned_seq_${randomSuffix()}`);
+    await db.execute(sql.raw(`CREATE SEQUENCE ${seqName}`));
+    await db.execute(
+      sql.raw(`ALTER SEQUENCE ${seqName} OWNER TO ${probe.quoted}`),
+    );
+    const { pool, probeDb } = await connectAsProbe(probe.name, probe.password);
+    try {
+      await expect(
+        assertApplicationRoleIsNotPrivileged(probeDb),
+      ).rejects.toThrow(/pg_class/i);
+    } finally {
+      await pool.end();
+      await dropProbeRole(probe.quoted);
+    }
+  });
+
+  it("throws when the role owns a function", async () => {
+    const probe = await makeProbeRole("fn");
+    const fnName = quoteIdentifier(`probe_owned_fn_${randomSuffix()}`);
+    await db.execute(
+      sql.raw(
+        `CREATE FUNCTION ${fnName}() RETURNS void LANGUAGE sql AS $body$ SELECT 1 $body$`,
+      ),
+    );
+    await db.execute(
+      sql.raw(`ALTER FUNCTION ${fnName}() OWNER TO ${probe.quoted}`),
+    );
+    const { pool, probeDb } = await connectAsProbe(probe.name, probe.password);
+    try {
+      await expect(
+        assertApplicationRoleIsNotPrivileged(probeDb),
+      ).rejects.toThrow(/pg_proc/i);
+    } finally {
+      await pool.end();
+      await dropProbeRole(probe.quoted);
+    }
+  });
+
+  it("throws when the role owns a schema", async () => {
+    const probe = await makeProbeRole("schema");
+    const schemaName = quoteIdentifier(`probe_owned_schema_${randomSuffix()}`);
+    await db.execute(
+      sql.raw(`CREATE SCHEMA ${schemaName} AUTHORIZATION ${probe.quoted}`),
+    );
+    const { pool, probeDb } = await connectAsProbe(probe.name, probe.password);
+    try {
+      await expect(
+        assertApplicationRoleIsNotPrivileged(probeDb),
+      ).rejects.toThrow(/pg_namespace/i);
+    } finally {
+      await pool.end();
+      await dropProbeRole(probe.quoted);
+    }
+  });
+
+  it("passes for a clean role: no elevated membership, no elevated attributes, owns nothing", async () => {
+    const probe = await makeProbeRole("clean");
+    const { pool, probeDb } = await connectAsProbe(probe.name, probe.password);
+    try {
+      await expect(
+        assertApplicationRoleIsNotPrivileged(probeDb),
+      ).resolves.not.toThrow();
+    } finally {
+      await pool.end();
+      await dropProbeRole(probe.quoted);
+    }
+  });
+});
+
+/**
+ * Non-blocking finding from the independent review of this PR: two replicas booting at
+ * once raced on `ensureApplicationRole`'s `CREATE ROLE`, reproduced live in 2 of 5 trials
+ * (one crashed with a duplicate-object error). `ENSURE_APPLICATION_ROLE_LOCK_NAMESPACE`
+ * (`ensure-application-role.ts`) now wraps the whole create/grant sequence in one
+ * transaction guarded by `pg_advisory_xact_lock` -- this proves two genuinely concurrent
+ * callers no longer race.
+ */
+describe("ensureApplicationRole -- concurrent boot does not race (advisory lock)", () => {
+  it("running it twice concurrently for the same not-yet-existing role does not raise a duplicate-object error", async () => {
+    const roleName = `taskdesk_app_concurrent_${randomSuffix()}`;
+    const password = randomHex64();
+    const originalDatabaseUrl = process.env.TASKDESK_DATABASE_URL;
+    if (!originalDatabaseUrl) {
+      throw new Error("TASKDESK_DATABASE_URL must be set for this test");
+    }
+
+    const url = new URL(originalDatabaseUrl);
+    url.username = roleName;
+    url.password = password;
+    process.env.TASKDESK_DATABASE_URL = url.toString();
+
+    try {
+      await expect(
+        Promise.all([ensureApplicationRole(db), ensureApplicationRole(db)]),
+      ).resolves.toBeDefined();
+    } finally {
+      process.env.TASKDESK_DATABASE_URL = originalDatabaseUrl;
+    }
+
+    const roleCount = await db.execute(
+      sql`SELECT count(*)::int AS count FROM pg_roles WHERE rolname = ${roleName}`,
+    );
+    expect(roleCount.rows[0]?.count).toBe(1);
+
+    await db
+      .execute(sql.raw(`DROP OWNED BY ${quoteIdentifier(roleName)}`))
+      .catch(() => undefined);
+    await db.execute(
+      sql.raw(`DROP ROLE IF EXISTS ${quoteIdentifier(roleName)}`),
+    );
   });
 });
