@@ -65,10 +65,26 @@ function tokenize(source) {
     "<",
     ">",
   ]);
-  const canStartRegex = (previous) =>
-    !previous ||
-    regexPrefixKeywords.has(previous.value) ||
-    regexPrefixPunctuation.has(previous.value);
+  const canStartRegex = (previous) => {
+    if (!previous) return true;
+    if (
+      regexPrefixKeywords.has(previous.value) ||
+      regexPrefixPunctuation.has(previous.value)
+    )
+      return true;
+    if (previous.value !== ")") return false;
+    let depth = 0;
+    for (let tokenIndex = tokens.length - 1; tokenIndex >= 0; tokenIndex -= 1) {
+      const value = tokens[tokenIndex].value;
+      if (value === ")") depth += 1;
+      else if (value === "(" && --depth === 0) {
+        return new Set(["if", "while", "for", "with", "switch", "catch"]).has(
+          tokens[tokenIndex - 1]?.value,
+        );
+      }
+    }
+    return false;
+  };
   const scan = (from, inTemplateExpression = false) => {
     let index = from;
     let braceDepth = 0;
@@ -191,7 +207,7 @@ function collectTokenAliases(tokens) {
           if (tokens[j].value === "env") {
             const alias = tokens[j + 1]?.value === "as" ? tokens[j + 2] : null;
             envAliases.add(alias?.value ?? "env");
-            if (alias) envAliasDeclarations.add(j + 2);
+            envAliasDeclarations.add(alias ? j + 2 : j);
           }
         }
       }
