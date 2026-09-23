@@ -71,6 +71,15 @@ one of these, it is new work — build it from kaneo's primitives, mark it **aut
 extracted** in "What we add for TaskDesk" below, and budget it; do not assume it ships free
 with the extraction.
 
+### Error boundary
+
+`ErrorBoundary` from `@taskdesk/ui` catches errors thrown while rendering its descendants.
+Callers must provide a `fallback` component that receives the `Error` and a `resetError`
+callback. The fallback owns recovery messaging and layout; calling `resetError` retries the
+children. Keep application-specific fallback content in the app and use this primitive for
+the shared catch-and-reset behavior. Error boundaries do not catch errors from event
+handlers or asynchronous callbacks.
+
 ## Navigation — app-shell composites, extracted separately
 
 `nav-main` `nav-projects` `workspace-switcher` live at kaneo's `apps/web/src/components/*`,
