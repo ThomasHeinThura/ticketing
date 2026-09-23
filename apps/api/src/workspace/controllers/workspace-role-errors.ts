@@ -14,11 +14,18 @@
  * class's constructor for the two other call sites that DO pass a real name.
  */
 
-/** `role` in the request body normalizes to `"owner"`. */
+/**
+ * `role` in the request body normalizes to a `BUILT_IN_ROLES` key -- `"owner"`, or (issue
+ * #318, security) any of `admin`/`manager`/`lead`/`member`/`viewer`/`customer`/
+ * `instance_admin`. The `"owner"` message is kept byte-for-byte what it was before #318, so
+ * nothing that matched on it breaks; every other reserved name gets a message naming it.
+ */
 export class RoleNameReservedError extends Error {
-  constructor() {
+  constructor(public readonly role: string = "owner") {
     super(
-      'The role name "owner" is reserved. Ownership is granted only by the ownership-transfer endpoint.',
+      role === "owner"
+        ? 'The role name "owner" is reserved. Ownership is granted only by the ownership-transfer endpoint.'
+        : `The role name "${role}" is reserved for a built-in role and cannot be used for a custom role.`,
     );
     this.name = "RoleNameReservedError";
   }

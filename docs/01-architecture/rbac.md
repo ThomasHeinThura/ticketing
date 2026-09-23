@@ -179,7 +179,31 @@ map), not yet this section's target `role` table with `rank`/`is_system`/`capabi
 jsonb`. `POST/PATCH/DELETE /api/workspace/{workspaceId}/roles` already enforce the first
 guardrail above (cannot grant a capability you do not hold); the rank-comparison and
 last-administrator guardrails remain deferred, for lack of the `rank`/`is_system`
-vocabulary this legacy shape has no columns for.
+vocabulary this legacy shape had no columns for.
+
+**Every `BUILT_IN_ROLES` name is reserved, not just `owner` (issue #318, security).**
+`POST/PATCH /api/workspace/{workspaceId}/roles` refuse a custom role name equal to any
+`BUILT_IN_ROLES` key — `owner`, `admin`, `manager`, `lead`, `member`, `viewer`, `customer`,
+`instance_admin` — case- and whitespace-normalised the same way `owner` alone used to be
+checked. Before this, only `owner` was reserved, so a custom role could be created and
+assigned under e.g. `manager`, and the legacy capability check below granted it that
+built-in's FULL capability set by name alone, regardless of what the row itself declared
+(Opus review of PR #315, finding S2) — a privilege escalation reachable by anyone holding
+`ac:create` and a way to assign roles.
+
+Reserving the name closes creation going forward. Capability resolution also needed its own
+fix, because a row created before this shipped could still collide: the legacy
+`workspace_role` table gained an `is_system boolean not null default false` column
+(distinct from the TARGET `role` table's `is_system` above, which marks a role
+undeletable — this one marks a row as a GENUINE seed, set only by
+`seed-default-workspace-roles.ts`'s backfill and `create-workspace.ts`'s creation-time
+seed for `viewer`/`member`/`admin`, never by the custom-role-create route). Both
+`require-workspace-capability.ts` and `resolveIdentity`'s adapter (`resolve-identity.ts`)
+now grant a `BUILT_IN_ROLES` name's capabilities only when the row is `"owner"` (which never
+gets a `workspace_role` row at all — retrofit plan R5 — and has been reserved from custom
+creation since before this fix) or is backed by a genuine (`is_system = true`) row. A custom
+row that merely shares a built-in's name is treated exactly like any other unrecognised
+role: it grants only what it itself declares, never the built-in's set.
 
 Detail and screens: [Roles and permissions UI](../03-features/roles-and-permissions-ui.md).
 
@@ -251,9 +275,16 @@ the API distinguish "your membership row is corrupt" from "your role has no such
 
 ## Built-in roles and their capabilities
 
-Seeded on workspace creation. All except `owner` are editable. **This table is the seed
-data and the permission-matrix fixture** — a change here is a change to both, and shows
-up in review as a diff.
+**Only `viewer`/`member`/`admin` are actually seeded a `workspace_role` row on workspace
+creation, in P0's legacy shape** (independent alignment check of pull request #322: this
+line used to say every built-in role is seeded, which was never true here — corrected
+2026-09-23, issue #318). `owner` is never seeded a row at all (it is the compiled-in static
+role — retrofit plan R5). `manager`, `lead`, `customer` and `instance_admin` are reserved
+NAMES (issue #318, below) with no seed row in this legacy shape either — nothing in this
+codebase's own write paths ever produces a genuine `workspace_member.role` of one of those
+four today. All except `owner` are editable. **This table is the seed data and the
+permission-matrix fixture** — a change here is a change to both, and shows up in review as
+a diff.
 
 | Key | Rank | Intent | Capabilities |
 | --- | --- | --- | --- |
