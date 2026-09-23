@@ -9,26 +9,26 @@ behaves at the edges, and how it is tested.
 
 | Feature | Stage | Status | Inspired by |
 | --- | :-: | :-: | --- |
-| [Work items](work-items.md) | P1 | ⬜ | kaneo, Plane, v1 |
+| [Work items](work-items.md) | P1 | 🟡 | kaneo, Plane, v1 |
 | [Views and layouts](views.md) | P1 | ⬜ | kaneo |
 | [Projects and engagements](projects-and-engagements.md) | P1 | ⬜ | v1, OpenProject |
 | [Relations and hierarchy](relations-and-hierarchy.md) | P1 | ⬜ | OpenProject |
-| [Comments and activity](comments-and-activity.md) | P1 | ⬜ | kaneo, JSM |
+| [Comments and activity](comments-and-activity.md) | P1 | 🟡 | kaneo, JSM |
 | [Attachments](attachments.md) | P1 | ⬜ | kaneo |
 | [Search and saved views](search-and-saved-views.md) | P1 | ⬜ | kaneo, JSM |
-| [Assignment](assignment.md) | P1 (the rule *engine* ports with `packages/domain` in P2) | ⬜ | v1 |
+| [Assignment](assignment.md) | P1 (the rule *engine* ports with `packages/domain` in P2) | 🟡 | v1 |
 
 ## Service desk
 
 | Feature | Stage | Status | Inspired by |
 | --- | :-: | :-: | --- |
-| [Workflows](workflows.md) | P2 | ⬜ | v1, OpenProject |
-| [SLA](sla.md) | P2 | ⬜ | v1, JSM |
-| [Service calendars](service-calendars.md) | P2 | ⬜ | v1 |
+| [Workflows](workflows.md) | P2 | 🟡 | v1, OpenProject |
+| [SLA](sla.md) | P2 | 🟡 | v1, JSM |
+| [Service calendars](service-calendars.md) | P2 | 🟡 | v1 |
 | [Request types and catalogue](request-types-and-catalogue.md) | P2 | ⬜ | JSM |
 | [Intake queue](intake-queue.md) | P2 | ⬜ | v1, Plane |
-| [Approvals and CAB](approvals.md) | P2 | ⬜ | v1, JSM |
-| [Audit trail](audit-trail.md) | P2 | ⬜ | v1, OpenProject |
+| [Approvals and CAB](approvals.md) | P2 | 🟡 | v1, JSM |
+| [Audit trail](audit-trail.md) | P2 | 🟡 | v1, OpenProject |
 
 ## Portal and identity
 

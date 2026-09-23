@@ -39,64 +39,7 @@ repeated per document.
 
 ## 1. `roles-and-permissions-ui.md`
 ## 2. `god-mode.md`
-
-**Verdict: not-ready.** Thirteen prose sections describing fifteen screens, governed by
-only **six** numbered rules (`GM-1`–`GM-6`). The template says Behaviour "is the bulk of
-the document"; here it is roughly 8% of it. Most of the actual behaviour — impersonation
-limits, health thresholds, organisation suspension, key rotation — lives in unnumbered
-prose or in the edge-case table, so no test can cite it. There is **no Permissions table**
-and **no Data section**, and the route list covers maybe a third of the described surface.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| high | **Contradiction with `configuration-reference.md`.** That document lists two runtime God Mode sections that do not exist here and have no screen in the inventory: **Observability** (Sentry DSN, OTLP endpoint and headers, trace sample rate, metrics bearer token, log level per module) and **AI** (provider, endpoint, API key, model, which features may use it). It also promises "An export of non-secret configuration is available from God Mode as JSON" — no section, no rule, no route. | Add an Observability section + screen (or move it under Plugins and say so), state that AI is configured through the Plugins screen as `ai.*` plugin rows, and add `GET /api/instance/config-export` (`instance:admin` + re-auth) with a rule that secrets are excluded. |
-| high | **The `feature.*` enumeration differs between the two documents that both present it as canonical.** `plugin-architecture.md` lists 13 flags ending `feature.gantt · feature.calendar · feature.pages`. `configuration-reference.md` lists 17, adding `feature.reports`, `feature.automations`, `feature.mcp`. An implementer building the Features screen cannot know which list is the enumeration. | Make `plugin-architecture.md` the single source, add the three missing flags to it, and have `configuration-reference.md` link rather than restate. Add a CI test asserting the flag enum in code equals the doc list. |
-| high | **`instance:manage_plugins` exists in `rbac.md` but no route uses it.** Every plugin route here is `instance:admin`. Either the capability is dead vocabulary or the routes are under-specified — and `rbac.md`'s route-coverage test cannot catch an *unused* capability. | Decide: either police `GET/POST/PATCH /api/instance/plugins*` with `instance:manage_plugins` (and state that `instance:admin` implies it), or delete the capability from `rbac.md`. Add a CI test: "every capability in `capabilities.ts` is referenced by at least one route policy or one documented domain rule." |
-| high | **`GM-2`'s elevated-action list disagrees with `rbac.md`'s.** `GM-2`: identity provider change, granting `instance:admin`, rotating the encryption key, starting impersonation, **exporting all data**. `rbac.md`: identity provider change, granting `instance:admin`, **deleting a workspace or a project**, starting impersonation, rotating the encryption key. Neither is a superset. Separately, the Audit section says CSV export "is itself audited" but does not say whether it is *elevated* — and it is unclear whether "exporting all data" covers it. | Make `rbac.md` the single list, add "exporting instance data (audit CSV, config export, full export)" to it, and have `GM-2` cite it rather than restate it. Name each elevated action's route. |
-| high | Impersonation's entire rule set is prose in the Users section: "shows a persistent banner, is capped at 30 minutes, is doubly audited, and cannot target another instance administrator." Untestable as written — "doubly audited" is undefined, there is no rule for what the impersonator may *do* (may they act as a customer? write comments? approve?), no **stop-impersonation** route, and no statement of what happens at the 30-minute cap. | Promote to numbered rules `GM-7`–`GM-11` covering: session TTL and expiry behaviour, the two audit rows written (start on actor, and every action tagged `impersonated_by`), forbidden targets, forbidden actions (approvals, elevated actions, further impersonation), and add `DELETE /api/instance/impersonate` (self, always allowed). |
-| medium | **No `## Permissions` table** — the template requires one. The API block carries capabilities, but there is no action→capability mapping for the many actions with no listed route. | Add the table. |
-| medium | **No `## Data` section.** The spec never names `instance_setting`, `instance_branding`, `instance_plugin_config`, `instance_feature_flag`, `terminology_override`, `job_lease`, `audit_log`, `organisation`, `import_run`, though every one of them backs a section. | Add a Data section linking to `data-model.md` §1, §2, §11. |
-| medium | **The API list is roughly a third of the described surface.** Missing entirely: organisation PATCH/DELETE/suspend, user suspend/unsuspend/force-sign-out/reset-MFA/delete, storage test/usage, notification channel test send, terminology CRUD + preview, encryption key rotation, audit CSV export, import runs, `DELETE /api/instance/plugins/{id}`, per-job enable/disable and cadence edit. Every one of these is an implementer inventing a route name and a policy. | Complete the route table. Each entry must carry `{ capability, scope }` or `{ public, reason }` per `rbac.md`. |
-| medium | The Health landing page lists what it shows ("disk headroom", "each scheduled job's last successful run") but defines **no thresholds and no status vocabulary**. Green/amber/red on what? A job "last successful run" older than what is a failure? | Add a rule defining the status enum (`ok \| degraded \| failing \| unknown`) and the threshold per check, or state that thresholds are themselves God Mode settings and add them to General. |
-| medium | Encryption key rotation appears in `GM-2` and in the edge-case table but has **no route, no screen, and no section**. `configuration-reference.md` calls it "a God Mode operation". | Add it to the General or Plugins section with `POST /api/instance/rotate-encryption-key` (`instance:admin` + re-auth) and numbered rules for the two-key window. |
-| medium | Terminology: this spec and ADR 0012 both place the editor at God Mode → General, but ADR 0012 also defines **workspace-scope** overrides, and the screen inventory has a `Workspace — terminology` screen. God Mode never mentions the workspace level, and `settings-hierarchy.md` mentions the screen without behaviour. **No document states the precedence UI, the term-key enumeration in a testable form, or the plural-validation rule** ("1 Case" vs "1 Cases" is called out in ADR 0012 as mitigated "by the live preview" — a human eyeball, not a check). | Add numbered rules: the term-key enum (list all ten from ADR 0012), the resolution order, that a workspace override requires `workspace:manage_settings`, and a save-time warning when `plural === singular`. |
-| medium | ADR 0012 says "Portal-facing terminology … is itself just the default override applied to the `customer` portal scope". But `terminology_override.scope` in the data model is only `instance \| workspace` — there is **no portal/audience dimension**, so a customer-facing "request" vs agent-facing "work item" cannot be stored. | Add `audience` (`agent \| customer \| both`, default `both`) to `terminology_override` in the data model, or drop the claim from ADR 0012 and specify portal wording as fixed locale strings. |
-| low | "Fifteen screens" ✓ — the inventory's God Mode section has exactly 15 rows, matching the 13 sections with Authentication and Organisations each split into list + detail. Worth stating that mapping in the spec so the count does not silently drift. | Replace "Fifteen screens" with the explicit list, or link to the anchor. |
-| low | Edge case "Feature flag locked off while a project uses the feature — existing data is retained and hidden" restates `settings-hierarchy.md`'s identical edge case. Duplication drifts. | Keep it in `settings-hierarchy.md` only; link from here. |
-
-Data references: every table implied exists in `data-model.md` ✓ (though never named — see
-above). Capabilities used — `instance:admin`, `instance:read_audit` — present in `rbac.md`
-✓; `instance:manage_plugins` present but unused (above).
-
----
-
 ## 3. `settings-hierarchy.md`
-
-**Verdict: not-ready.** The document's own thesis — "Every setting below appears at exactly
-one level" — is contradicted twice inside the document and once against `god-mode.md`. It
-also lacks four of the template's required sections (Data, Permissions table, Out of scope,
-Open questions) and depends on a database table that does not exist in the data model.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| high | **`workspace_feature_flag` does not exist in the data model.** `ST-1` resolves flags "project → workspace → instance → built-in default" and `plugin-architecture.md` lists all three tables, but `data-model.md` defines only `instance_feature_flag` (§1) and `project_feature_flag` (§3). The middle level of the product's central configuration mechanism has no storage. | Add `workspace_feature_flag (workspace_id, feature_key, enabled)` to `data-model.md` §2 or §3, with a unique index on `(workspace_id, feature_key)`. |
-| high | **`ST-3` contradicts `ST-4`.** `ST-3`: "**Nothing else inherits.** A workspace does not inherit an SLA policy from the instance." `ST-4`: "Where a setting exists at two levels — **SLA policy on a workspace and on a project** — the more specific wins, and the interface says so: 'Inherited from workspace (Standard Support). Override ▾'." One says SLA does not inherit; the other describes SLA inheritance with a UI affordance for it. | Rewrite `ST-3` as "Only feature flags inherit *across* the instance→workspace boundary. Within a workspace, a project inherits its workspace's SLA policy, service calendar and default assignee unless overridden," and enumerate exactly which settings are in that list. |
-| high | **Three levels of SLA policy, not one.** `god-mode.md`'s Organisations section says each organisation carries a "service calendar, default SLA policy". `settings-hierarchy.md` puts SLA policies at workspace, and SLA at project. So an SLA policy resolves from organisation *and* workspace *and* project, with no stated precedence — directly violating "every setting appears at exactly one level". | Decide and state the precedence chain (`project → workspace → organisation`), or remove `default SLA policy` and `service calendar` from the God Mode organisation record. Add a numbered rule and a resolution unit test either way. |
-| high | **Two API policy kinds are used that `rbac.md` does not define:** `GET/PATCH /api/me/settings → self` and `GET /api/features/resolved?project=… → any authenticated session`. `rbac.md`'s `PolicyMap` admits only `{ capability, scope }` or `{ public: true, reason }`. The route-coverage CI test — which "fails if any route has no entry in a policy map" — has nothing to match these against, so either the test fails or someone marks them `public: true`, which for `/api/me/settings` is a data leak. | Add a third policy kind to `rbac.md`: `{ authenticated: true, scope: 'self' }`, define its semantics (the handler may only touch rows keyed to `identity.personId`), and add it to the permission-matrix fixture. `notifications.md` uses the same undefined `(self)` marker — fix both. |
-| medium | **No `## Permissions` table**, no `## Data` section, no `## Out of scope`, and **no `## Open questions` section at all** (not "None." — absent). The README rule is "'Open questions' must be empty before implementation starts"; an absent section is indistinguishable from a forgotten one. | Add all four. Data should name `instance_setting`, `instance_feature_flag`, `workspace_feature_flag`, `project_feature_flag`, `terminology_override`, `audit_log`. |
-| medium | **The screen lists here and in the screen inventory disagree.** This spec gives Workspace a **Danger zone** screen — the inventory has no `Workspace — danger zone` row (only `Project — danger zone`). It gives Project **Labels** and **SLA** screens — the inventory has neither. | Add `Workspace — danger zone` (`…/danger`), `Project — labels`, `Project — SLA` rows to the inventory, or delete them here. |
-| medium | **No routes for workspace- or project-level feature flags.** `god-mode.md` has `PATCH /api/instance/features`; `ST-1`/`ST-2` require the other two levels and the inventory has a `Project — features` screen, but nothing can write them. | Add `GET/PATCH /api/workspaces/{id}/features` (`workspace:manage_settings`) and `GET/PATCH /api/projects/{key}/features` (`project:manage_settings`), and a rule that a write is rejected `409` when the instance flag is `locked`. |
-| medium | `ST-6`: "Every settings screen has a History affordance showing its audit rows inline" — no route returns audit rows scoped to a settings screen, and `audit_log` has no `section`/`screen` dimension to filter on (only `entity_type`, `entity_id`). | Either add `GET /api/audit?entity_type=…&entity_id=…` (`instance:read_audit` or the screen's own capability) and state the entity mapping per screen, or narrow `ST-6` to the screens where the entity is unambiguous. |
-| medium | Edge case "Project moved between workspaces — workspace-scoped configuration is remapped where equivalents exist and reported where they do not" is unimplementable as written. Which config? Matched on what — `key`, `name`? What happens to work items referencing a label or custom field with no equivalent? | Enumerate the remapped entities (labels, custom-field values, work item types, workflows, SLA policies, states) and the matching rule per entity (`key` match, else report and leave null), or refuse the move in P4 and say so. |
-| medium | `settings-hierarchy.md`'s instance list omits Observability and AI, matching `god-mode.md` and contradicting `configuration-reference.md` (see §2). Three documents, two answers. | Fix in `configuration-reference.md` and here together. |
-| low | `ST-7`'s blast-radius numbers ("This affects 340 open work items") need a count endpoint per destructive save; none is specified. | Add a documented convention: every `PATCH` that triggers `ST-7` supports `?dryRun=true` returning `{ affected: { people, workItems, projects } }`. |
-| low | Testing is prose; no file names, no rule ids cited. | Name `flag-resolution.spec.ts` (`ST-1`, `ST-2`), `locked-flag-cannot-be-overridden.spec.ts` (`ST-2`), `inheritance-indicator.spec.ts` (`ST-4`). |
-
-Capabilities used — `instance:admin`, `workspace:manage_settings`, `project:manage_settings`
-— all present in `rbac.md` ✓.
-
----
-
 ## 4. `custom-fields.md`
 
 **Verdict: not-ready.** Behaviour, permissions, API and edge cases are all present and
@@ -312,7 +255,7 @@ specification to a repository outside this one.
 | medium | **The design specification is an unpinned sibling working copy.** "The reference is in the workspace at `../kaneo`… When you are unsure how something should look or behave, **open kaneo and look**." It is present on this machine (`/Users/heinthura/Documents/Workfolder/Development/kaneo`, with `plans/001`–`007`), but it is not vendored, not submoduled, not pinned to a commit, and not available to CI or to an agent working from a fresh clone. `H1` ("Open kaneo. Open this.") is a merge gate that depends on it. | Vendor the reference: add kaneo as a git submodule or `git subtree` at a pinned SHA, or extract the load-bearing parts (the `plans/` motion specs, the token values) into `docs/02-design/` so this repository is self-contained. Record the pinned SHA in `ADR 0001`. |
 | medium | Principle 9 points at "kaneo's motion specs in `plans/001-motion-tokens-and-easing.md` **and the related documents**" — an unenumerated set. `motion.md` does enumerate seven, so the principles doc is the looser of the two. | Replace with a link to `motion.md`, which owns the list. |
 | low | Principle 2's colour table and `design-tokens.md`'s status tokens are two vocabularies for one thing: "Blue / accent — primary action, current selection" has no token (`--color-info` is "neutral informational", `--color-primary` is the action); "Amber — at-risk SLA, warnings, pending approval" maps to `--color-warning`. | Add the token name to each row of principle 2's table so the mapping is explicit. |
-| low | Principle 4 ("Filters, tabs, lenses, selected records, open panels — all URL state") is stated as absolute but `G5` only checks route *registration*, not URL-encoded view state — see §18. | Cross-reference the gate's actual coverage, or strengthen the gate. |
+| low | Principle 4 ("Filters, tabs, lenses, selected records, open panels — all URL state") is stated as absolute; `G5` used to check only route *registration*, not URL-encoded view state. | **Closed** — `G5` in `ux-quality-gates.md` now also requires a round-trip assertion per list surface (`RP-8`, `SV-19`). |
 
 ---
 
@@ -385,90 +328,7 @@ table with a documented alternative for each. Three cross-document conflicts.
 | medium | "Text resizes with browser font settings — `rem` units, **no `px` font sizes**" contradicts `design-tokens.md`'s px type scale (§13). | Same fix — convert `--text-*` to `rem`. |
 | medium | "Automated in `check-tokens.mjs` over **every declared pair**" — the same undefined input as `G3` (§13). This document is where the contract for a "declared pair" should be stated, since it owns the contrast requirement. | Define the manifest format here and point `check-tokens.mjs` at it. |
 | low | The Known exceptions table names "**Gantt**"; the screen inventory and `information-architecture.md` call the same surface "**Timeline**" (`…?layout=timeline`), while the feature flag is `feature.gantt`. Three names for one thing. | Pick one (the flag suggests `gantt`; the UI says `timeline`) and note the alias once. |
-| low | No mention of RTL or of locale-driven layout, though `instance_setting.default_locale` exists, ADR 0012 scopes overrides *per locale*, and God Mode offers a default locale — and **no document in the repository specifies the i18n layer** ADR 0012 says it builds on. | Either state that P4 ships LTR locales only and RTL is a later phase, or add an i18n architecture note. Flagged again in §18. |
-
----
-
-## 17. `screen-inventory.md`
-
-**Verdict: not-ready.** As a register it is well-formed — route, phase, status per row, and
-three good rules. But its own arithmetic is wrong, it is missing roughly twenty screens the
-audited specs require, and it contains a P4 screen for a feature that **has no spec at
-all**.
-
-### Coverage: screens the audited specs require that have no row
-
-| Spec | Missing screen |
-| --- | --- |
-| `settings-hierarchy.md` | `Workspace — danger zone`, `Project — labels`, `Project — SLA` |
-| `custom-fields.md` | Custom field editor, Section manager |
-| `notifications.md` | Per-workspace notification rules; God Mode outbox / dead-letter; portal notification preferences |
-| `automations.md` | `Workspace — automations` |
-| `webhooks-and-api-keys.md` | Webhook editor, Webhook delivery history |
-| `time-and-cost.md` | `Project — budget`, `Workspace — rates`, `Workspace — time activities`, `Workspace — cost types` |
-| `reports-and-dashboards.md` | Dashboard editor |
-| `mcp-server.md` | `God Mode — MCP usage` |
-| `god-mode.md` / `configuration-reference.md` | Observability, config export |
-
-### Coverage: rows with no owning spec
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| high | **`Workspace — teams` is a P4 screen with no feature spec.** `docs/03-features/` has no `teams.md`, yet `team` and `team_member` are in the data model, `SV-17` gives team leads edit rights on team views, `saved_view.shared_with_team_id` is the sharing mechanism, `automations.md` sends notifications "to a person, **a team** or a channel", `reports-and-dashboards.md`'s Capacity report reads `team.capacity_days_per_week`, and `rbac.md`'s reach resolution step 5 is "**Team membership** where the team owns the project" — a reach rule with no document defining how a team comes to own a project. An implementer would invent the entire teams model, including a reach path. | Write `docs/03-features/teams.md` before P4, covering team CRUD, membership, capacity, team-owns-project (the reach rule), and team leads (`SV-17`). Add it to the README's Governance table. |
-| medium | `Workspace — terminology` (P4) has a row, is listed in `settings-hierarchy.md`'s table, and is required by ADR 0012 — but **no document states its behaviour, its capability, or its routes**. `god-mode.md` covers only the instance level. | Own it in `god-mode.md` (both levels, since the term-key enum and preview are the same) or in a new terminology section of `settings-hierarchy.md`; either way add numbered rules and routes. |
-| low | `Profile — appearance` (P1) owns theme, density and default layouts — the preference `design-principles.md` principle 8 and gate `H5` both depend on — with no feature spec. | Fold into a short section of `settings-hierarchy.md`'s Profile table with the storable keys named. |
-
-### The register itself
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| medium | **The Counts table does not match the rows.** Stated: P0 4, P1 27, P2 15, P3 20, P4 18, P5 23, P6 2, total **109**. Actual: P0 **6**, P1 **28**, P2 **16**, P3 **19**, P4 **20**, P5 23, P6 2, total **114**. Every phase but P5 and P6 is wrong, and the document is cited as "the answer to 'what is left?'" and as input to phase planning. | Regenerate the counts, and add a CI check that recomputes them from the rows so they cannot drift again — the same discipline the rest of the corpus applies to route policies. |
-| medium | **The register's first rule contradicts its own contents.** "A screen is not on this list until it is in `lib/routes.ts`" — but `Command palette` (overlay), `Error boundary` (—), `Create work item` (dialog), `Bulk edit` (overlay), `Relations editor` (section), `Approvals panel` (section) and six more have no route. `G5` fails on "a route rendered by the router that is not declared in `lib/routes.ts`", so these rows are outside both the rule and the gate. | Add a `kind` column (`route` / `overlay` / `section` / `dialog`) and restate the rule as "every row of kind `route` is in `lib/routes.ts`". Exclude other kinds from `G5` explicitly. |
-| low | Several routes are abbreviated with a leading ellipsis (`…/appearance`, `…?layout=list`) whose base is inferred from the preceding row. Machine-checking the inventory against `lib/routes.ts` requires expanding these by hand. | Write routes in full, or define the ellipsis convention formally so a script can expand it. |
-
----
-
-## 18. `ux-quality-gates.md`
-
-**Verdict: ready-with-fixes.** The strongest governance idea in the repository — "a pull
-request that fails any gate does not merge", plus a waiver process that explicitly forbids
-an AI agent from self-approving. Assessed against the question asked: **are the 13 gates
-each mechanically checkable as written?**
-
-### Gate-by-gate
-
-| Gate | Mechanically checkable as written? |
-| --- | --- |
-| `G1` No bespoke primitives | **Yes.** A JSX lint rule on five element names, with a comment escape hatch. |
-| `G2` Tokens only | **Partly.** Catches hex/`rgb()`/`hsl()`/`oklch()` and *arbitrary* Tailwind values — but not the density violation the token doc names (`py-3`, a standard-scale utility). See §13. |
-| `G3` Contrast | **No.** "Any **declared** foreground/background pair" — no pair manifest exists and no token has a value. The script has no input. See §13. |
-| `G4` Accessibility | **Yes.** axe critical/serious over E2E screens and Storybook stories; tools named in `accessibility.md`. |
-| `G5` Every screen has a URL | **Partly.** Route registration and round-trip are checkable; the *principle* it enforces ("filters, tabs, lenses, selected records, open panels — all URL state", and `RP-8`) is not checked at all. |
-| `G6` Four states | **No, as written.** The title says four states; the fail condition names **three** ("empty, loading and error"), silently dropping `partial` from `design-principles.md` principle 7. And "'Meaningful' excludes a bare 'No results' or an unstyled error" is a human judgement inside an automated gate. |
-| `G7` Storybook coverage | **Yes.** Exported component without a story — a trivially scriptable check. |
-| `G8` Visual regression | **No.** No tool named ("Chromatic-style" in `design-system.md`), and "any **key screen** snapshot" leaves the set of key screens undefined. |
-| `G9` Reduced motion | **Yes** as a suite-passes check — but see §15: the reduced-motion CSS is invalid, so the suite would pass while reduced motion does nothing. The gate needs to assert the computed duration. |
-| `G10` Keyboard reachability | **Yes.** Eight core journeys are enumerated; each is a Playwright keyboard-only test. The best-specified gate. |
-| `G11` Performance budgets | **Partly.** Nine budgets with real numbers, but no measurement harness, no throttling profile, no target screens for LCP/INP/CLS, and "any board drag frame — 60 fps, no dropped frames" has no stated method. See §15. |
-| `G12` Portal bundle purity | **Yes.** Module-graph assertion on two named directories. Precise and valuable. |
-| `G13` No layout shift on data arrival | **Partly.** CLS < 0.1 is measurable, but the "during the transition from skeleton to content" window is not defined, and it duplicates `G11`'s CLS budget with a different scope. |
-
-**Six of thirteen** (`G1`, `G4`, `G7`, `G9`, `G10`, `G12`) are checkable exactly as written.
-`G3`, `G6` and `G8` cannot be implemented at all without additional decisions.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| high | **`G3` cannot run** — no declared-pair manifest, no token values (§13). It is listed as an automated merge gate that would fail open or fail the build permanently. | Ship the values and the pair manifest with the gate. |
-| high | **`G6` contradicts itself and the principle it enforces**: heading and principle 7 say four states (empty, loading, error, **partial**); the fail condition names three. `partial` is the hardest of the four and the one most likely to be skipped. | Either add `partial` to the fail condition and define how the E2E suite mocks it, or amend principle 7 to three states and say why partial is not gated. |
-| high | **The terminology overlay has no gate**, though ADR 0012 rests its whole "exhaustively tested" claim on one: "a snapshot test can assert every screen re-renders correctly under a worst-case override (very long strings, a plural that looks nothing like the singular)". That test is promised in an ADR and appears in no gate, no testing document and no spec. | Add `G14 · Terminology overlay`: the visual-regression suite runs a second pass under a worst-case override fixture, and the accessible name still matches the visible label (§16). |
-| high | **No document specifies the i18n layer** that ADR 0012 declares it builds on ("rendered through the existing i18n layer as an override on top of the built-in translation"), and no gate covers locale rendering. There is no library choice, no message format, no pluralisation strategy, no locale list, no RTL position — while `instance_setting.default_locale`, `person.locale` and `terminology_override.locale` all exist in the data model. | Write a short `docs/01-architecture/i18n.md` (library, message format, pluralisation, locale list, RTL stance, how an override is layered) before ADR 0012 is implemented. It is a prerequisite for God Mode → General → Terminology. |
-| medium | **`G8` names no tool and no key-screen list**, so it cannot be implemented or reviewed. | Name the tool, list the key screens (or derive them from the inventory's `route`-kind rows), and say where baselines are stored and how a diff is approved. |
-| medium | **`G11` has numbers but no harness.** Which page is measured for LCP? Under what CPU/network throttling? How is "route transition < 300 ms" instrumented? How is a dropped frame detected in headless CI? | Add a measurement appendix: tool per metric, throttling profile, target route per metric, sample count, and the flake policy for the frame assertion. |
-| medium | **`G2` does not enforce density tokens** (§13), leaving `design-tokens.md`'s stated failure mode to `H5`, a human gate — in a document whose premise is "a person under deadline is not a reliable gate". | Extend `check-tokens.mjs` per §13. |
-| medium | **`G5` does not check the thing principle 4 is about.** Route registration is necessary but not sufficient; `RP-8` ("the full filter state is in the URL") and `SV-19` ("every view has a URL that fully encodes it") are the substance, and nothing gates them. | Add to `G5`: for each list surface, an E2E assertion that applying a filter changes the URL and that reloading the URL restores the filter — a round-trip test on view state, not only on routes. |
-| medium | **`H6`'s 375 px is laxer than `accessibility.md`'s 320 px commitment** (§16), and mobile is a human gate rather than an automated viewport project despite the portal being described as phone-first for customers. | Change to 320 px and add an automated 320 px Playwright project for the portal's core journeys. |
-| low | `G13` overlaps `G11`'s CLS budget with an undefined measurement window. | Fold `G13` into `G11` as a scoped CLS assertion, or define the window (from skeleton mount to content paint). |
-| low | The gate list is 13 automated + 6 human + 6 phase, and `screen-inventory.md`'s rule says "a screen is not ✅ until it passes **every** UX quality gate" — which, read literally, blocks every screen on `P3` (keyboard-only day) and `P4` (fresh-eyes test), which are phase-level, not per-screen. | Reword the inventory rule to "every automated gate (`G1`–`G13`) plus the human gates at review". |
+| low | No mention of RTL or of locale-driven layout, though `instance_setting.default_locale` exists, ADR 0012 scopes overrides *per locale*, and God Mode offers a default locale, and previously no document in the repository specified the i18n layer ADR 0012 says it builds on. | **Closed** — `docs/01-architecture/i18n.md` now specifies the layer (library, message format, pluralisation, locale list) and states RTL is not in P0–P4. |
 
 ---
 
