@@ -7,14 +7,17 @@ pipelines.
 
 | Pipeline | Trigger | Does |
 | --- | --- | --- |
-| **Build** | Every pull request and push to `main` | Verify pull requests; on `main`, build, scan, sign and publish the edge image |
-| **Release** | Manual dispatch from `main` | Build, scan, sign and publish a versioned release for a selected `main` SHA |
+| **Build** | Every pull request and push to `main` | Verify pull requests; on `main`, build and scan the edge image, then sign and publish its digest |
+| **Release** | Manual dispatch from `main` | Build and scan a versioned candidate for a selected `main` SHA, then sign and publish its digest |
 | **Promote** | Manual | Move a tested digest from UAT to production |
 
 The build and release pipelines **never deploy** and **never hold production secrets**.
-The release job receives narrowly scoped GitHub permissions to publish packages, create a
-tag and release, request an OIDC signing identity, and write provenance attestations. This
-separation is deliberate: a compromised build pipeline should not be able to reach
+The Release workflow separates the `build-scan` job from `sign-publish`: build and scan
+tools have no OIDC signing identity or write access to GitHub contents/releases, while only
+the publish job receives `id-token: write`, `attestations: write`, and the narrowly scoped
+permissions needed to publish scanned digests, tags, and releases. The build job can write
+only to the registry for its temporary candidate image. This separation is deliberate: a
+compromised build pipeline should not be able to sign or release an image or reach
 production.
 
 **Platform: GitHub Actions** (decided 2026-09-05 — the repository is on GitHub and keyless
@@ -474,10 +477,11 @@ runtime configuration in God Mode — see
 **Workflow hardening — because a compromised CI identity produces a *validly signed*
 image** ([security-model.md](../01-architecture/security-model.md#threat-model)):
 
-- Every workflow declares `permissions:` read-only at the top. The release publishing job
-  alone receives `id-token: write`, `packages: write`, `attestations: write`,
+- Every workflow declares `permissions:` read-only at the top. In the Release workflow,
+  only `sign-publish` receives `id-token: write`, `packages: write`, `attestations: write`,
   `contents: write` (for the selected source tag and GitHub release), and `actions: read`
-  (for provenance).
+  (for provenance). The separate build-scan job has registry write only for its temporary
+  candidate image and cannot mint the signing identity.
 - The Release workflow publishes on protected `main` updates and allows manual release
   dispatch only from `main`; pull requests never sign or publish, and fork PRs run with no
   secrets. A manual release names a source SHA already reachable from `main`.
