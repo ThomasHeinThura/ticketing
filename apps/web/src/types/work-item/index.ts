@@ -240,6 +240,15 @@ function collectDocumentText(node: unknown, out: string[]): boolean {
     return true;
   }
 
+  if (record.type === "hardBreak") {
+    // A hard break (Shift+Enter) is a line break with no text of its own --
+    // `isInlineNode` keeps it from getting a block separator around it, so the
+    // newline has to come from here, or the two lines either side would be glued
+    // together. Found by this delta's confirming review.
+    out.push("\n");
+    return true;
+  }
+
   const content = record.content;
   if (content === undefined) {
     // A structural node with no text of its own (e.g. an image, a hard break).

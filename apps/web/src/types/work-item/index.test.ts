@@ -283,6 +283,27 @@ describe("extractDescription", () => {
     });
   });
 
+  it("keeps a hard break as a newline (Shift+Enter lines must not glue together)", () => {
+    const doc = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Step 1:" },
+            { type: "hardBreak" },
+            { type: "text", text: "Do the thing" },
+          ],
+        },
+      ],
+    };
+
+    expect(extractDescription(doc)).toEqual({
+      kind: "text",
+      text: "Step 1:\nDo the thing",
+    });
+  });
+
   it("separates block children (list items) with a single line break", () => {
     const doc = {
       type: "doc",
