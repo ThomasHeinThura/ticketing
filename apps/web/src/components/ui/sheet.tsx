@@ -1,9 +1,8 @@
 "use client";
 
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
-import { Button } from "@taskdesk/ui";
+import { Button, ScrollArea } from "@taskdesk/ui";
 import { XIcon } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/cn";
 import { i18n } from "@/lib/i18n";
 

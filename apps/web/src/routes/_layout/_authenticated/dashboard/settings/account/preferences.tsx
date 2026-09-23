@@ -4,7 +4,7 @@ import {
   supportedLocales,
 } from "@i18n/resources";
 import { createFileRoute } from "@tanstack/react-router";
-import { Button, Label, Separator } from "@taskdesk/ui";
+import { Button, Label, Separator, Switch } from "@taskdesk/ui";
 import { RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -14,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { useLocale } from "@/hooks/use-locale";
 import {
   isWeekStartDay,

@@ -1,3 +1,4 @@
+import { Checkbox } from "@taskdesk/ui";
 import TaskItem from "@tiptap/extension-task-item";
 import type { NodeViewProps } from "@tiptap/react";
 import {
@@ -6,7 +7,6 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import { useTranslation } from "react-i18next";
-import { Checkbox } from "@/components/ui/checkbox";
 
 function TaskItemNodeView({ editor, node, updateAttributes }: NodeViewProps) {
   const { t } = useTranslation();
