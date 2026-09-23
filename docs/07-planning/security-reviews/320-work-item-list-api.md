@@ -126,3 +126,136 @@ Private DB `pr320_opus_test` on td-lane-pg. I dropped it afterwards. The probe f
 - S3 and S4 should be tracked, not fixed here.
 
 A re-review after the fix can be a narrow delta pass on `list-query.ts` and its tests.
+
+---
+
+## Delta review — fix for S1–S3
+
+**Reviewer:** Opus 5.5, the same fresh context as the first pass. Did not author, direct, or remediate the fix.
+**Reviewed head:** `b6e3454caa1598ce1a1be0010078f410557db444`
+**Date:** 2026-09-23
+
+### Head verification
+
+- `gh pr view 320 --json headRefOid` → `b6e3454caa1598ce1a1be0010078f410557db444`.
+- `b6e3454` is a merge with parents `1e8ad6f` (the fix) and `dd067e2` (`origin/main`, #325). `git diff 1e8ad6f b6e3454` touches only `docs/07-planning/status.md`.
+- `git diff 482c261 b6e3454` touches nothing in `apps/api/src/utils`, `packages/`, `tests/permissions`, `apps/web`, `work-item/index.ts` or `work-item/response.ts`. This review note from the first pass is unchanged. So authz, the matrix and the web client are unchanged since the first pass.
+- The fix touches `list-query.ts`, `controllers/list-work-items.ts`, `schema.ts`, the new `date-bounds.ts`, and `work-item-list-sort-pagination.test.ts`.
+
+### What I probed
+
+Two private DBs on td-lane-pg, both dropped afterwards: `pr320_opus_delta_test` for the suites and `pr320_opus_delta_probe_test` for the probes. The scratch probe file (`tests/api-integration/zz-opus-delta-320.test.ts`) ran over real HTTP through `createApp()` and is not committed.
+
+1. **Suites at this head.** All green:
+   - API unit: **55 files, 441 tests**.
+   - `test:permissions`: **10 files, 80 tests**.
+   - Integration: **80 files, 1115 tests**.
+   - Web: **63 files, 278 tests**.
+   - `node --test 'scripts/ci/**/*.test.mjs'`: **495 tests, 88 suites, 0 fail**.
+2. **S1 walks.** For every sort field × both directions × `limit` 1, 2 and 3, I compared a cursor walk against the unpaged `limit=200` order, requiring identical order, no duplicates and termination.
+   - (a) A mixed set of 9 items: due dates exactly `1900-01-01T00:00:00.000Z` and `9999-12-31T23:59:59.999Z`, three identical mid dates, and four nulls; title and priority ties; `limit=1` crossing from the non-null bucket into the null one. **All 24 walks passed.**
+   - (b) Every row with a null due date and an identical title. **All 24 walks passed.**
+   - My original repro (`dueDate asc`, `limit=1`, three nulls) now terminates with each row exactly once.
+   - The lane's second fix is also correct. The `id` tie-break is now always `id > cursor.id`, which matches `ORDER BY …, id ASC` in both directions.
+3. **The OR-expansion. Values are parameterised, but the expression is not parenthesised, and it escapes the tenant scope.** See **D0**.
+   - Every value is a drizzle-bound parameter (`$n`). The operator and `asc`/`desc` are fixed fragments chosen by an enum branch. There is no string interpolation.
+   - But `nonDueDateCursorCondition` (`list-query.ts:331`) and `dueDateCursorCondition` (`list-query.ts:366`) each return a bare `A or B`, with no outer parentheses. Drizzle's `and()` joins its arguments with ` and ` and does **not** wrap each one.
+   - Rendered through `PgDialect.sqlToQuery` from the real functions:
+     ```
+     ("work_item"."project_id" = $1 and ("work_item"."number" > $2) or ("work_item"."number" = $3 and "work_item"."id" > $4))
+     ("work_item"."project_id" = $1 and (case when "work_item"."due_date" is null then 1 else 0 end = 1) or (case ... = 0 and (...)))
+     ```
+   - Because SQL `AND` binds tighter than `OR`, the second branch runs **without** the `project_id`/`workspace_id`/`archived_at`/`deleted_at` conditions.
+   - The cursor is still bound to sort and direction: a cursor for `key/asc` sent with `dir=desc` gives 400, as does `isNull: true` on a non-`dueDate` sort.
+   - A forged `isNull: true` with `v: null` on `dueDate` narrows to the null bucket after that id (200). A forged `isNull: false` with `v: null` gives 400. A forged `isNull` can only skip rows in the caller's own walk. I originally concluded it can't widen, because the clause is ANDed onto the project and workspace scope. **That is wrong. See D0.**
+   - SQL-injection strings in `v` and `id` returned 200 with 0 rows, as before.
+4. **S2, re-running my wrong-type probes.** Every original case is now **400** with a `cursor: …` message:
+   - `key`: `v` = `"abc"`, `2^40`, `1.5`, `1e400`;
+   - `priority`: `"zzz"`, `0`, and `-1` on `asc`;
+   - `title`: `v` = `5`, and a NUL inside `v`;
+   - `dueDate`: `"not-a-date"`, `"NaN"`, `"-infinity"`, `1e20`, `1899-12-31T23:59:59.999Z`, `+010000-…`;
+   - a NUL in `id`, `id` longer than 64 characters, `isNull` missing or a string, an array payload.
+
+   **Residual:** `Date.parse` is laxer than Postgres. See **D1**.
+5. **S3.** An item pointed by direct SQL at a person in another organisation and workspace: the string `Secret Foreign Person` appears **nowhere** in the response, including with `assignee=<that person id>`. The row still comes back, with `assigneeId` set and `assigneeName: null`.
+   - A same-workspace colleague resolves to their name. After their `workspace_member` row is deleted, they resolve to `null`, even though they are still a member of another workspace.
+   - The web list renders `assigneeId` set with `assigneeName` null as "(inactive)", which matches `work-items.md:201` ("Assignee leaves … shown as '(inactive)'. Not silently unassigned").
+   - **Residual:** a duplicate `workspace_member` row fans out the join. See **D2**.
+6. **Performance.** 100,000 live items in one project, half of them assigned. I ran `EXPLAIN ANALYZE` on the old and new query shapes over the same data, `limit 201`:
+   - `title`/`priority`/`dueDate` first page: old shape about 76 ms, new about 95–107 ms. The added `workspace_member` join costs about 25%. The new `dueDate` ORDER BY is no worse than the old `coalesce`.
+   - `key` first page: 1.1 ms in both.
+   - **`key` deep page: old 0.7 ms, new 24 ms at number 50,000 and 38 ms at 99,000.** See **D3**.
+   - `count(*)`: 28 ms, unchanged.
+
+### Delta findings
+
+**D0 — BLOCKING (a cross-tenant leak, introduced by this fix). A cursor page returns work items from any project in any workspace, including archived and deleted ones.**
+
+- **Where:**
+  - `apps/api/src/work-item/list-query.ts:331` returns `sql\`(${primary} ${op} ${cursor.v}) or (${primary} = ${cursor.v} and id > ${cursor.id})\``.
+  - `list-query.ts:366` has the same shape for `dueDate`: `(isNull = 1) or (isNull = 0 and (...))`.
+  - Both are pushed into `pageConditions` and combined with `.where(and(...pageConditions))` at `controllers/list-work-items.ts:213`. Drizzle's `and()` does not parenthesise its children, so the SQL becomes `project_id = $1 AND workspace_id = $2 AND archived_at IS NULL AND deleted_at IS NULL AND (X) OR (Y)`.
+  - `(Y)` is evaluated against **every row in `work_item`**.
+- **The cursor needs no forging. An ordinary "next page" leaks.**
+- **Minimal live repro** (real HTTP through `createApp()`, two unrelated workspaces):
+  1. The victim, a member of workspace V, creates two items: "VICTIM SECRET TITLE dated" (due 2027-06-01) and "VICTIM SECRET TITLE key1".
+  2. The attacker, a member of an unrelated workspace A only, creates three items in their own project.
+  3. The attacker calls `GET /api/projects/<A project>/work-items?sort=<s>&dir=<d>&limit=1` and follows the returned `nextCursor` unchanged with `limit=50`.
+
+  Results:
+
+  | sort/dir | page 2 titles | victim data leaked |
+  | --- | --- | --- |
+  | `dueDate/asc` | mine-2, mine-3, **VICTIM SECRET TITLE dated** | yes. The `isNull = 1` branch matches every null-due row in the instance, and the date branch every later-dated row |
+  | `key/asc` | **VICTIM SECRET TITLE dated**, mine-2, mine-3 | yes. `number = v AND id > …` matches another project's item with the same number |
+  | `priority/asc` | **VICTIM SECRET TITLE key1**, mine-1, **VICTIM SECRET TITLE dated**, mine-3 | yes |
+  | `dueDate/desc`, `key/desc`, `title/asc` | own rows only | not with this data, but the same shape |
+
+- The leaked rows carry full `work_item` columns (title, description, key, ids) plus resolved `stateName`. A forged cursor makes it trivial to enumerate the whole instance, e.g. `dueDate` with `isNull: false` and the `isNull = 1` branch, or `key` with `v` set to any number and `id: ""`.
+- `meta.total` is unaffected, because the count query has no cursor clause.
+- The first-pass code used a single row-value comparison with no top-level `OR`, so **this regression was introduced by the S1 fix.** The PR's own cross-project replay test didn't catch it because of how the fixture data happened to fall, not because the mechanism holds.
+- **Fix:**
+  - Parenthesise both returned expressions, e.g. `sql\`((...) or (...))\``. Better, build them with drizzle's `or()`/`and()` helpers, which do wrap.
+  - Add a regression test with **two workspaces**, where the victim has a null due date and a colliding `number`, walking every sort and direction with `limit=1` and asserting that no foreign id appears.
+  - The existing replay test should also be made deterministic.
+
+**S1 — CLOSED** for walk correctness, for every value the API can write, but the fix itself introduced D0. **S2 — CLOSED** for every probe in the first pass. **S3 — CLOSED.**
+
+**D1 — NON-BLOCKING. A forged `dueDate` cursor can still give a 500 through date strings that `Date.parse` accepts and Postgres rejects.**
+- `list-query.ts:287` validates with `Date.parse`.
+- These values give **500** with the generic body, with no leak:
+  - `"2026"` (year only);
+  - `"2026-02-31T00:00:00Z"`, a rollover that `Date.parse` normalises but `::timestamp` rejects;
+  - `new Date().toString()` output.
+- `"Thu, 01 Jan 2026 00:00:00 GMT"`, `"1/2/2026"` and `"2026-01-01T05:00:00+05:00"` are accepted (200). For the last one, `::timestamp` drops the offset. That only distorts the forger's own walk.
+- Only a hand-forged cursor reaches this; the server itself only emits `toISOString()` output.
+- **Fix:** require `new Date(v).toISOString() === v`, i.e. exactly the form the server emits.
+
+**D2 — NON-BLOCKING. The new `workspace_member` LEFT JOIN (`controllers/list-work-items.ts:206`) can duplicate a work item in `data`.**
+- `workspace_member` has no unique `(workspace_id, user_id)`; #88 closed the reachable path, but no constraint exists.
+- With two membership rows for the assignee, the page returned the same item twice, `total: 2` against 3 rows in `data`, and `limit` counted the duplicate.
+- A `limit=1` walk happened to dedupe itself, because `id > cursor.id` skips the twin.
+- Only corrupt or legacy data triggers it.
+- **Fix:** replace the join with `exists (select 1 from workspace_member …)`, which cannot fan out.
+
+**D3 — NON-BLOCKING (performance). The OR-expansion lost the index range condition on `key` deep pages.**
+- The old row-value compare `(number, id) > (v, id)` gave `Index Cond: number >= v`.
+- `number > v OR (number = v AND id > …)` is applied only as a filter after `work_item_project_number_unique` scans from the start of the project. Cost is now linear in page depth: 24–38 ms at 50k–99k versus 0.7 ms.
+- A full walk of a 100k-item project at `limit=200` costs about 10 s of database time in total, versus about 0.35 s.
+- Still bounded to one project and to authenticated `work_item:read` callers, so acceptable for P1.
+- **Fix:** add the redundant leading bound `number >= v AND (…)`, and likewise `due_date >= v`/`<=` inside the non-null `dueDate` branch, so the planner keeps the range.
+
+**D4 — NON-BLOCKING (latent). Sub-millisecond due dates still break the `dueDate` walk.**
+- The cursor stores `toISOString()`, which is millisecond precision. Postgres `timestamp` keeps microseconds.
+- With four rows at `2026-10-01 12:00:00.123456` written by direct SQL, `asc`/`limit=1` returned **the same row for all 200 pages**, and `desc` returned **1 of the 4 rows** and stopped.
+- The API itself can't write such a value: `workItemDateTime` transforms to a JS `Date`, which truncates to milliseconds, and it is the only writer of `work_item.due_date`. So this is latent, for a future importer, SQL backfill or `now()`-based writer.
+- **Fix:** compare and sort on `date_trunc('milliseconds', due_date)`, or add a CHECK constraint `due_date = date_trunc('milliseconds', due_date)`.
+
+### Delta verdict
+
+**CHANGES NEEDED** at `b6e3454caa1598ce1a1be0010078f410557db444`, for **D0**, a BLOCKING cross-tenant disclosure.
+- Any authenticated workspace member who follows an unmodified `nextCursor` can read other workspaces' work items, including archived and deleted ones.
+- The fix is a pair of parentheses plus a two-workspace regression test.
+- S1, S2 and S3 are otherwise correctly fixed.
+- D1–D4 are non-blocking. D1 and D3 can go in the same fix-up.
+- After the fix, a narrow delta pass is needed on `list-query.ts` and its test, with the rendered SQL checked.
