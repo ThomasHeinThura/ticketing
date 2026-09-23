@@ -55,3 +55,29 @@ export const workItemVersionConflictSchema = z
       .openapi({ description: "The work item's actual current version." }),
   })
   .openapi("WorkItemVersionConflict");
+
+// `assignment.md`: the assignment as applied. Narrow on purpose -- the caller needs to know
+// who holds the item now, who held it before (so an undo/notification can name them) and the
+// new version (an `If-Match` read either side of an assignment must not be stale).
+export const assignWorkItemResponseSchema = z
+  .object({
+    key: z.string(),
+    assigneeId: z.string(),
+    previousAssigneeId: z.string().nullable(),
+    version: z.number(),
+  })
+  .openapi("WorkItemAssignment");
+
+// The spec's conditional-write conflict: zero rows updated because someone else changed the
+// assignee first. Structured like `workItemVersionConflictSchema` -- there is real data for
+// the client to act on (AS-3's confirmation flow shows who actually holds it now).
+export const workItemAssigneeConflictSchema = z
+  .object({
+    message: z.string(),
+    key: z.string(),
+    currentAssigneeId: z.string().nullable().openapi({
+      description:
+        "Who actually holds the item now; null when it is unassigned.",
+    }),
+  })
+  .openapi("WorkItemAssigneeConflict");

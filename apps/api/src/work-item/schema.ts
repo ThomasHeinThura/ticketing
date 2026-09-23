@@ -247,3 +247,22 @@ export const ifMatchHeader = z.object({
       `If-Match must not exceed ${POSTGRES_INTEGER_MAX} (work_item.version is a Postgres integer)`,
     ),
 });
+
+// `assignment.md` § API: `POST /api/work-items/{key}/assign`. The assignee is a PERSON id
+// (`AS-6` -- identity, not display name; comparisons are by id). `expectedCurrentAssigneeId`
+// is the spec's targeted-reassign guard: omitted/null means "only while unassigned"; a
+// string means "only while still held by this person". A mismatch is a 409, never a silent
+// overwrite (`AS-9`: work is never silently unassigned, and by symmetry never silently
+// reassigned). Same NUL-byte rule as every other text field in this file (S4/T4).
+export const assignWorkItemBody = z.object({
+  assigneeId: z
+    .string()
+    .min(1)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
+  expectedCurrentAssigneeId: z
+    .string()
+    .min(1)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
+    .nullable()
+    .optional(),
+});

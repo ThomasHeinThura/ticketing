@@ -2648,6 +2648,55 @@
           "currentVersion"
         ]
       },
+      "WorkItemAssignment": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "assigneeId": {
+            "type": "string"
+          },
+          "previousAssigneeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "assigneeId",
+          "previousAssigneeId",
+          "version"
+        ]
+      },
+      "WorkItemAssigneeConflict": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "currentAssigneeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Who actually holds the item now; null when it is unassigned."
+          }
+        },
+        "required": [
+          "message",
+          "key",
+          "currentAssigneeId"
+        ]
+      },
       "UserAvatar": {
         "type": "object",
         "properties": {
@@ -10359,6 +10408,107 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WorkItemVersionConflict"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/assign": {
+      "post": {
+        "operationId": "assignWorkItem",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Assign work item",
+        "description": "Assign or reassign a work item (`assignment.md`, `AS-1`/`AS-2`). Requires `work_item:assign`; a caller holding only `work_item:update` may assign the item to themselves. The target must be an active member of the project's roster (`AS-5`). An unconditional assign only succeeds while the item is unassigned; pass `expectedCurrentAssigneeId` to replace a specific holder. A lost race returns 409 with the current assignee. Clearing an assignment, the assignable roster feed and bulk assign are later slices.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "assigneeId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "expectedCurrentAssigneeId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "assigneeId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The assignment as applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemAssignment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or the target is not an active member of the project's roster",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, missing work_item:assign, or (for self-assignment) missing work_item:update",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The assignee changed while this request was in flight",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemAssigneeConflict"
                 }
               }
             }
