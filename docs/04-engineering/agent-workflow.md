@@ -83,7 +83,7 @@ dropped — it did not work out in practice.
 | Implementation subagents — writing code or tests to an already-agreed spec | **Sonnet, spawned explicitly** | This repository's whole premise is that the spec is detailed enough for mechanical implementation ([AGENTS.md](../../AGENTS.md), [SDLC](sdlc.md)) |
 | Ordinary review — ordinary bugs/tests/quality, architecture fit, QA pass | **Sonnet, a fresh independent context** | A different context catches what the authoring context is structurally blind to. Two independent Sonnet reviews minimum for ordinary work, three for broad/high-coupling work — see [AGENTS.md § Review tiers](../../AGENTS.md#review-tiers) |
 | Project-alignment / misalignment check | **Sonnet, a fresh independent context** | Does this change match the spec, the vocabulary, the shared contracts, the five rules — a distinct, explicitly-nameable Sonnet review role |
-| **Review — final independent security / critical review** | **Opus. Always. Not optional, not cost-negotiable.** Spawned as an explicit, separate subagent, or a fresh top-level Opus context | The one checkpoint this repository will not discount for budget or convenience. See below |
+| **Review — final independent security / critical review** | **Opus. Always. Not optional, not cost-negotiable.** Spawned as an explicit, separate subagent, or a fresh top-level Opus context. Default build: **Opus 5.5** (decision log, 2026-09-23) — record that version in the review | The one checkpoint this repository will not discount for budget or convenience. See below |
 
 **Security review is a checkpoint, not a step inside another review.** Every pull request
 and every [stage gate](sdlc.md) that is in security scope gets an explicit, separate
