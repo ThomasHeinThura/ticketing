@@ -243,3 +243,89 @@ At `0ca150d`, after `pnpm install --frozen-lockfile` and
 - I did not audit every `z.string()` body field repo-wide for NUL. I covered only the routers this PR touches (S5).
 - I did not measure timing over a real network. S4's numbers are in-process.
 - I did not approve, comment on, or merge the PR. I committed only this note.
+
+---
+
+## Delta review: the fix round
+
+**Reviewer:** Opus 5.5, the same independent context as above. It did not author, direct, or remediate the fix round.
+**Reviewed head:** `ba1447cc328fa1bd37c87cf36ab9f9f00db71e69`
+**Reviewed SHA:** `ba1447cc328fa1bd37c87cf36ab9f9f00db71e69` (confirmed via `gh pr view 307 --json headRefOid`)
+**Range since `0ca150d`:**
+- `f127c46`: this note only.
+- `a1dea6c`: the lane's fixes.
+- `ba1447c`: a `main` merge of `31eed7b` (#306, #313, #311, #312).
+**Date:** 2026-09-23
+
+### Delta verdict
+
+**CLEAR. S1 (BLOCKING) is closed, and so are S2, S5 and S6. Nothing new is blocking.** S3 and S4 are
+tracked in #317.
+
+### The merge touched none of the PR's files
+
+- `git merge-tree --write-tree a1dea6c 31eed7b` reproduces `ba1447c`'s tree exactly (`331b2b18…`), so there was no conflict resolution and no hand-edit.
+- The files `main` changed since the merge base, 42 of them, do not overlap at all with the files this PR changes.
+
+### S1: closed
+
+- **Verbatim.** The restored block in `bulk-update-tasks.ts:77-92` (`const [membership]` through the 403) is byte-identical to `origin/main`'s. I checked it with `diff` over the extracted block. It is keyed on the middleware-validated `workspaceId`.
+- **Live.** The caller is an instance admin (`user.role = 'admin'`) who is not a member of B. `PATCH /api/task/bulk` returns **403** `You don't have access to this workspace` for both `delete` and `updatePriority` on B's task. The task survives with `priority` unchanged.
+- **Same bytes as `main`.** I ran the same probe with `main`'s `bulk-update-tasks.ts` swapped in. Status, body and every header except `date` are identical. The source was restored afterwards and `git status` was clean.
+- **Nothing beyond `main` changed.** An instance admin who *is* a member of B, even as a `viewer`, still gets 200. That is `hasWorkspacePermission`'s existing bypass, and `main` behaves the same way.
+- **Mutation check.** Disabling the `if (!membership)` throw fails exactly the new `workspace-rbac.test.ts` S1 test: 1 of 49 fail.
+- **No oracle.** The check cannot reopen one. A non-member reaches this point only as an instance admin, for whom every workspace is reachable, so a 403 there says nothing about which rows exist.
+- **One small ordering note.** The check now runs before the task query. So a non-member admin whose ids resolve only to soft-deleted projects gets 403, where `main` gave 404. That is not an oracle, for the reason above.
+
+### S2: closed on all three paths
+
+Live, as a workspace-A `admin`. Every pair matches on status, body and headers, compared minus `date`.
+
+| Path | Foreign id | Nonexistent id | Side effect |
+| --- | --- | --- | --- |
+| bulk `addLabel` `value` | 404 `Label not found` | same | nothing copied |
+| bulk `removeLabel` `value` (the foreign label shares its **name** with a label on my task) | 404 `Label not found` | same | my same-name label survives, and so does the foreign label. The old `200 updatedCount: 0` difference is gone. |
+| `PUT /api/label/{id}/task` `taskId` | 404 `Task not found` | same | label not attached |
+| `PUT /api/task/move/{id}` `destinationProjectId` | 404 `Project not found` | same | task not moved |
+
+- **Legitimate controls still work.** A same-workspace move returns 200, and a bulk `addLabel` with my own label returns 200 with `updatedCount: 1`.
+- **How it is scoped.** Each lookup is scoped in the query itself:
+  - `bulk-update-tasks.ts:285-295` and `:344-354`;
+  - `assign-label-to-task.ts:54-61`, keyed on `label.workspaceId`, which `fromLabel()` already reach-checked;
+  - `move-task.ts:141-147`, keyed on the source project's workspace. The soft-delete freeze still applies to the destination.
+- **Dead branch.** The `or(…, isNull(labelTable.workspaceId))` branch can never match, because `label.workspace_id` is `NOT NULL` in the live schema (checked in `information_schema`). It is harmless.
+- **Race guard.** The remaining 400 at `assign-label-to-task.ts:94` sits inside the transaction. The task was already resolved inside the label's workspace, so this fires only if a label's workspace changes mid-request. That is not a caller-steerable oracle.
+- **The `workspace-rbac.test.ts` change weakens nothing.** The old test asserted `400`, then that no label was copied. The new one asserts that the foreign and nonexistent answers have equal status, that the status is `404`, that the bodies are equal, and that the body is `"Label not found"`. It still asserts that no label was copied. The only change is that it now adopts the nonexistent-id answer. A new `removeLabel` equality test was added next to it.
+
+### S5: closed
+
+Live, with `"\u0000x"`. Each returns 400 with the `rejectNulByte` message, and each guard runs before its query:
+
+- create `userId` at `create-task.ts:43`;
+- import `tasks[].userId` at `import-tasks.ts:54`, a loop that runs before `filterAssignableUsers`;
+- list `?assigneeId=` at `get-tasks.ts:100`;
+- bulk `addLabel`/`removeLabel` `value` at `bulk-update-tasks.ts:279` and `:341`.
+
+### S6: closed
+
+- `bulk-update-tasks.ts:53-57` throws 500 on a falsy `workspaceId` before any DB access.
+- The unit test `tests/api/task/bulk-update-tasks.test.ts` pins it.
+- A 500 carries no tenant signal.
+
+### Verification at `ba1447c`
+
+`pnpm install --frozen-lockfile`, then the two package builds, in a fresh detached worktree.
+Private DB: `pr307_delta_opus_test`. It was recreated fresh for the full run, after all probes and
+mutations had been reverted.
+
+- **Integration:** 77 files, **1050 tests, all passed**.
+- **Unit** (`apps/api`): 53 files, **369 tests, all passed**.
+- **`test:permissions`:** 10 files, **80 tests, all passed**.
+- **`check:openapi`:** matches the API (106 operations).
+- **`node --test 'scripts/ci/**/*.test.mjs'`:** 88 suites, **495 tests, 0 failed**.
+
+### What I did not do in the delta
+
+- I did not re-audit files the fix round did not touch.
+- I did not re-measure S4 timing, which is #317.
+- I did not approve, comment on, or merge the PR. I committed only this note.
