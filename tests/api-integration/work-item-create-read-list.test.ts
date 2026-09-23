@@ -293,6 +293,42 @@ describe("API integration: work item create/read/list (#23)", () => {
     expect(response.status).toBe(400);
   });
 
+  it("S4 (independent Opus security review of PR #271, partial): a NUL byte in title or description is a 400 on create too, not a 500", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const titleWithNul = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "a\u0000b",
+    });
+    expect(titleWithNul.status).toBe(400);
+
+    const descriptionValueWithNul = await createWorkItemRequest(
+      app,
+      project.id,
+      {
+        typeId: type.id,
+        title: "Description NUL value",
+        description: { t: "a\u0000b" },
+      },
+    );
+    expect(descriptionValueWithNul.status).toBe(400);
+
+    const descriptionKeyWithNul = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Description NUL key",
+      description: { "a\u0000": 1 },
+    });
+    expect(descriptionKeyWithNul.status).toBe(400);
+
+    const rows = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.projectId, project.id));
+    expect(rows).toHaveLength(0);
+  });
+
   it("permissions: a caller without work_item:create on the project is refused (403)", async () => {
     const { project, type } = await setupProjectWithDefaultState();
     const workspaceId = (
@@ -382,6 +418,49 @@ describe("API integration: work item create/read/list (#23)", () => {
     expect(response.status).toBe(404);
     const body = await response.text();
     expect(body).toBe("Work item not found");
+  });
+
+  it("S2 (independent Opus security review of PR #271): GET /api/work-items/{key} 404s once its project is soft-deleted, matching #202/PR #204's freeze invariant", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Frozen by project deletion",
+    });
+    const createdBody = (await created.json()) as { key: string };
+
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: new Date(), purgeAfter: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+
+    const response = await app.request(`/api/work-items/${createdBody.key}`);
+    expect(response.status).toBe(404);
+    const body = await response.text();
+    expect(body).toBe("Work item not found");
+  });
+
+  it("S2 (independent Opus security review of PR #271): GET /api/projects/{projectId}/work-items 404s once the project is soft-deleted", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Still listed?",
+    });
+
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: new Date(), purgeAfter: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+
+    const response = await app.request(
+      `/api/projects/${project.id}/work-items`,
+    );
+    expect(response.status).toBe(404);
   });
 
   it("GET /api/projects/{projectId}/work-items: lists the project's items, oldest first", async () => {
