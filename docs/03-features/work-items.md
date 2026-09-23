@@ -184,6 +184,7 @@ POST   /api/work-items/{key}/watch                                      work_ite
 DELETE /api/work-items/{key}/watch                                      work_item:read  — deliberate, see Permissions
 POST   /api/work-items/bulk                                             work_item:read  (workspace) — then each item is re-checked against its own capability; failures reported per WI-25
 GET    /api/work-items/{key}/activity                                   work_item:read
+GET    /api/workspace/{workspaceId}/work-item-types                     workspace:read
 GET    /api/workspaces/{id}/work-item-templates                        workspace:read
 POST   /api/workspaces/{id}/work-item-templates                        workspace:manage_settings
 PATCH  /api/workspaces/{id}/work-item-templates/{templateId}            workspace:manage_settings
