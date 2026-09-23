@@ -17,6 +17,89 @@ Newest first.
 
 ---
 
+### 2026-09-23 · Work-item activity gets its own `activity` table; kaneo's becomes `task_activity`
+
+**Decision:** the table `data-model.md` §4 names `activity` is built now, as its own small
+shared-contract pull request, exactly to that column list (`work_item_id`, `actor_id`,
+`actor_type`, `verb`, `field`, `old_value`, `new_value`, `payload jsonb`, `visibility`,
+`workflow_version_id` null, `created_at`). Kaneo's existing `activity` table — keyed on
+`task_id`, still used by the live legacy task/comment routes — is renamed to
+`task_activity` in the same migration. Only its SQL name (and its index/constraint names)
+change; its columns, data and every legacy route keep working. Once the table exists, #23's
+work-item create and update write paths add their `WI-6` rows. #27 (comments and
+activity) builds its reads, visibility filtering and comment linking on top of this table
+rather than designing it.
+
+Three details decided with it, by the orchestrating session under the standing delegation
+below:
+
+1. **Tenant attribution follows #192.** `activity` carries a NOT NULL `workspace_id`, and
+   `(workspace_id, work_item_id)` is a composite foreign key to `work_item (workspace_id,
+   id)`, `ON UPDATE NO ACTION` — the same shape #192 decided for `work_item` itself, for
+   the same reason. `data-model.md` gains the column in the same change.
+2. **Same-instant ordering (closes the question left open by the 2026-09-16
+   `reconstructAt` entry).** `activity` gets an internal `seq bigint GENERATED ALWAYS AS
+   IDENTITY` column used only as the tie-break for rows sharing one `created_at`. This is a
+   narrow, named exception to `data-model.md`'s "surrogate ids are never sequential". That
+   rule states no rationale of its own. The argument for the exception is made here, as the
+   2026-09-16 entry required: the risk in a sequential id is that it can be guessed or
+   enumerated when used as a reference, and `seq` is never a reference, never leaves the
+   database, and is never in an API response. The primary key stays a CUID2. `seq` gives a
+   **stable, deterministic** tie-break, not true chronology: identity values are assigned at
+   insert, not at commit, so two concurrent transactions can commit out of `seq` order. That
+   is acceptable, because rows sharing one `created_at` are concurrent by definition and have
+   no truer order to preserve. The alternative — inferring order from Postgres transaction
+   internals — was rejected: commit order is not visible to readers, and `xmin` wraps
+   around.
+3. **`audit_log` is not part of this.** It is issue #37's table and lands separately.
+   Until it does, work-item mutations disclose the missing `audit_log` row in their PR's
+   `Not done` rather than inventing a stand-in.
+
+**Why:** Thomas, 2026-09-23, choosing between three options: this one; extending kaneo's
+table in place (rejected — it leaves a hybrid table with two mutually exclusive owners
+that has to be unwound at task cutover); and deferring all activity to #27 (rejected —
+WI-6 would be unmet for UAT, and edits made before #27 lands would have no history).
+
+**Decided by:** Thomas, 2026-09-23 (the table choice); the orchestrating session (details
+1–3).
+
+---
+
+### 2026-09-23 · Standing delegation: take the recommended option; ask only on a real trade-off
+
+**Decision:** when there is one clearly recommended option, the orchestrating session takes
+it without stopping to ask. It records the choice (here, or in the relevant spec) and tells
+Thomas afterwards, with how to reverse it. It asks Thomas only when two or more options are
+each genuinely recommendable, with trade-offs of their own.
+
+**What this does not cover:** waiving a gate, merging a candidate whose `## Gates` table
+cites a waiver, downgrading a required reviewer, and destructive or irreversible actions.
+Those stay Thomas's, unchanged.
+
+**Why:** Thomas, 2026-09-23 — a question he would answer "the recommended one" is pure
+delay under the current delivery pressure.
+
+**Decided by:** Thomas, 2026-09-23.
+
+---
+
+### 2026-09-23 · `PATCH /api/work-items/{key}`: `If-Match` required; its 409 body is route-specific
+
+**Decision:** two judgment calls from PR #271, written down so they are not copied as
+silent precedent. (1) `If-Match` is **required** on this route, not optional.
+`api-design.md` says `PATCH` "may" send it, but `WI-7` says "every other field write is
+version-checked", and a write with no asserted version has nothing to check. The domain
+rule is stricter, and it wins. (2) Its 409 returns `{message, assertedVersion,
+currentVersion}` so the UI can offer a resolution (`WI-7`). This is a one-off for
+work-item version conflicts, **not** a new codebase-wide error shape. The codebase's
+existing gap against `api-design.md`'s RFC 9457 envelope (every route returns `text/plain`
+errors today) is pre-existing and is not changed here.
+
+**Decided by:** the orchestrating session, 2026-09-23 (implementation judgment within
+WI-7).
+
+---
+
 ### 2026-09-23 · The default Opus reviewer is now Opus 5.5
 
 **Decision:** the required final independent security / critical review runs on **Claude
