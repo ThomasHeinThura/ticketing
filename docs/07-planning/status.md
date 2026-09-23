@@ -1542,6 +1542,29 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
+### 2026-09-23 (fifth pass) · P0 review and integration lanes advanced
+
+PR #352 / issue #342 is at `0fc2a286908f16427402de19a40f422507650575`; it remains open
+and cannot merge until its required independent Opus security review clears. Current-model
+ordinary review found repeated false positives where valid JavaScript regular-expression
+literals followed other statements. After three rounds found the same lexer limitation, the
+detector was changed to recognize lexical statement contexts; regression cases cover regex
+literals at file start, after a control condition, after `do`, and after a block, while a
+division expression still reports its real environment read. Plain and aliased
+`node:process` imports are tested. Focused tests pass (18/18), `pnpm check:env` passes with
+28 approved reads, and `pnpm test:ci-scripts` passes (513/513). A fresh ordinary delta
+review of this structural adjustment is in progress; Opus remains mandatory and pending.
+
+PR #334 / issue #319 was refreshed with current `main` at
+`fe89dd9b2f60dd5ca6aee5a803bb84178a384b75`; the merge was clean. Permission checks pass
+(80 API permission tests, 261 package tests, and 51 targeted API tests). GitHub checks are
+running; a fresh exact-head Opus review remains required. PR #338 / issue #317 is being
+refreshed against current `main`. PR #331 / issue #11 release hardening is in progress from
+the ordinary review findings. None of these candidates is merged or claimed complete.
+
+P0 #323 / issue #8 Slice 2 remains open and #324 depends on it. #337 remains blocked by its
+owning feature-spec review. No P0 foundation gate is claimed closed by this pass.
+
 ### 2026-09-23 (fourth pass) · Review fallback aligned; P0 environment-read bypass under repair
 
 PR #351 merged as `7bebaf6`. The model-tier guidance now records Thomas's authorization to
