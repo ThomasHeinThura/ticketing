@@ -82,6 +82,12 @@ export async function seedDefaultWorkspaceRoles() {
           workspaceId,
           role: name,
           permission: JSON.stringify(defaultRolePayloads[name]),
+          // Issue #318 (security): this backfill is one of the two places that seed a
+          // GENUINE built-in role row (the other is `create-workspace.ts`'s creation-time
+          // seed) -- marked so `require-workspace-capability.ts` and `resolve-identity.ts`
+          // can tell it apart from a custom row an administrator later names the same
+          // thing. See `workspace_role.is_system`'s column comment in `schema.ts`.
+          isSystem: true,
           createdAt: now,
           updatedAt: now,
         });

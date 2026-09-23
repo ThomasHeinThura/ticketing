@@ -151,6 +151,9 @@ async function createWorkspace(input: CreateWorkspaceInput) {
               workspaceId: workspace.id,
               role,
               permission: JSON.stringify(defaultRolePayloads[role]),
+              // Issue #318 (security): a genuine built-in seed, not a custom row -- see
+              // `workspace_role.is_system`'s column comment in `schema.ts`.
+              isSystem: true,
               createdAt: now,
               updatedAt: now,
             })),

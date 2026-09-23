@@ -1,0 +1,22 @@
+-- Issue #318 (security). Distinguishes a genuinely seeded built-in `workspace_role` row
+-- from a custom, administrator-created row that merely shares a built-in name.
+--
+-- Before this column, `require-workspace-capability.ts` and `resolve-identity.ts` granted
+-- the full `BUILT_IN_ROLES` capability set to any `workspace_member.role` string that
+-- matched a `BUILT_IN_ROLES` key, with no way to tell a genuine seeded row apart from a
+-- custom one an administrator named e.g. `manager` (Opus review of PR #315, finding S2).
+-- `create-workspace-role.ts:74` reserved only `"owner"`, so any other built-in name could
+-- be taken and then treated as that built-in's full capability set.
+--
+-- `is_system = true` is set only by `seed-default-workspace-roles.ts`'s backfill and
+-- `create-workspace.ts`'s creation-time seed, for the three default role names
+-- (`viewer`/`member`/`admin`). Every row `create-workspace-role.ts` inserts is `false` (the
+-- default). `owner` never gets a `workspace_role` row at all (retrofit plan R5) and is
+-- special-cased by both resolvers rather than checked against this column.
+--
+-- Existing rows backfill to `false` -- the safe default, since a pre-existing row cannot be
+-- proven genuine after the fact. This is intentional: it re-classifies any already-created
+-- collision as non-genuine (denying built-in capabilities to it) rather than trusting its
+-- name. See `apps/api/scripts/audit-reserved-workspace-role-names.ts` for the read-only
+-- report that finds rows this affects.
+ALTER TABLE "workspace_role" ADD COLUMN "is_system" boolean DEFAULT false NOT NULL;
