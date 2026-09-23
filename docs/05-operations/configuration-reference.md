@@ -96,7 +96,13 @@ terms and privacy URLs
 ### Branding
 
 Product name · logo (light, dark) · favicon · accent colour · login background ·
-footer links · custom CSS variable overrides
+footer links
+
+Logo, favicon, login background and accent colour double as a fixed, named set of CSS
+variable overrides, applied at render time with no rebuild — enumerated in
+[`design-system.md`'s Theming section](../02-design/design-system.md#theming), not an
+open-ended custom-variable surface. The accent colour is checked for WCAG AA contrast
+before save.
 
 ### Authentication
 

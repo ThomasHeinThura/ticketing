@@ -98,6 +98,17 @@ and they must look as though they shipped with the system.
 | `calendar-window-editor` | Weekday coverage windows for a service calendar |
 | `form-builder` | Drag-to-arrange request type form designer |
 
+`time-and-cost.md`'s timesheet ("a week grid, person by day, with inline entry, keyboard
+navigation between cells") is not a thirteenth new primitive. It composes the existing
+`data-table` (see "Twelve primitives ... do not exist in kaneo" above — `data-table` is
+authored, not extracted) with an editable-cell variant: each body cell renders an
+inline `duration-input` on focus/click rather than plain text, and column headers are the
+seven weekdays rather than record fields. This is chosen over a dedicated `grid-editor`
+primitive because the two components would share every structural concern — column
+headers, row virtualisation for a long roster, keyboard navigation between cells — and a
+timesheet is, structurally, a table whose cells happen to be editable, not a distinct
+widget shape the way `dashboard-grid` (see below) is.
+
 ## Adding a primitive
 
 1. Check kaneo first. If it exists there, take it rather than writing it.
@@ -148,8 +159,21 @@ workspace switcher, no command palette by default. Same components, less of them
 never an emoji as an icon.
 
 v1 shipped buttons with empty icon paths because icons were referenced from a map that
-had gaps. Importing icons directly makes that failure impossible — a missing icon is a
-compile error.
+had gaps. Importing icons directly makes that failure impossible for **code** — a missing
+icon there is a compile error. But `project.icon`, `work_item_type.icon` and
+`request_type.icon` ([data model](../01-architecture/data-model.md)) are **data**, chosen
+at runtime by an administrator, not by a developer importing a named component — the same
+class of gap v1 hit, just moved from code to configuration.
+
+So: a stored icon value is a **lucide icon name** (e.g. `"circle-alert"`, the kebab-case
+name `lucide-react` exports as a component), validated against a checked-in allowlist —
+`packages/ui/src/lib/icon-names.ts`, generated from the installed `lucide-react` version
+so it can never name an icon that package does not ship. The icon picker offers only
+allowlisted names; nothing writes a `project.icon`/`work_item_type.icon`/
+`request_type.icon` value outside that list. When a stored name is not on the current
+allowlist — a downgraded `lucide-react` version, or a row written before an icon was
+renamed upstream — it renders the documented fallback icon (`circle-help`), never a gap
+and never a compile error at runtime.
 
 ## Theming
 
@@ -157,8 +181,33 @@ Light and dark, driven entirely by CSS variables in `theme.css`. A component nev
 branches on theme; it uses semantic tokens (`bg-background`, `text-muted-foreground`)
 which resolve per theme.
 
-Instance branding overrides a small set of variables at runtime — accent colour, logo,
-login background — injected from `/api/public/branding`. No rebuild.
+Instance branding overrides a small, bounded, named set of CSS variables at runtime,
+injected from `/api/public/branding`. No rebuild. This is the same list named in
+[`plugin-architecture.md`](../01-architecture/plugin-architecture.md#branding) and
+[`configuration-reference.md`](../05-operations/configuration-reference.md#branding) —
+one list, cited in three places, not three lists that can drift apart:
+
+| Variable | Backs |
+| --- | --- |
+| `--brand-accent` | Accent colour — primary buttons, links, focus rings |
+| `--brand-logo-light` | Logo shown on a light background |
+| `--brand-logo-dark` | Logo shown on a dark background |
+| `--brand-login-background` | Login page background image or colour |
+| `--brand-favicon` | Favicon |
+
+Nothing outside this list is accepted. An administrator cannot submit an arbitrary CSS
+variable name or value — `/api/public/branding`'s write path rejects any key not in the
+table above, server-side, before it reaches `instance_branding`. This is a styling-
+injection surface otherwise: an unbounded "custom CSS variable override" lets an
+administrator write anything the theme engine will interpolate into the page.
+
+`--brand-accent` is run through the same contrast check `G3` runs over the committed
+tokens ([`ux-quality-gates.md`](ux-quality-gates.md#g3--contrast)), against both the light
+and dark `--background` it will pair with. A submission that fails AA contrast is not
+silently accepted — God Mode shows the computed ratio and a warning before save, the same
+shape as any other validated form field. `G3`'s own CI check only ever sees the committed
+tokens; this runtime check is God Mode's job, not CI's, because the value does not exist
+until an administrator saves it.
 
 ## Storybook
 
