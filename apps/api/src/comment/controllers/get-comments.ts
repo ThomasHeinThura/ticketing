@@ -1,30 +1,30 @@
 import { and, asc, eq, isNotNull } from "drizzle-orm";
 import db from "../../database";
-import { activityTable, userTable } from "../../database/schema";
+import { taskActivityTable, userTable } from "../../database/schema";
 
 async function getComments(taskId: string) {
   const comments = await db
     .select({
-      id: activityTable.id,
-      taskId: activityTable.taskId,
+      id: taskActivityTable.id,
+      taskId: taskActivityTable.taskId,
       userId: userTable.id,
-      content: activityTable.content,
-      createdAt: activityTable.createdAt,
-      updatedAt: activityTable.updatedAt,
+      content: taskActivityTable.content,
+      createdAt: taskActivityTable.createdAt,
+      updatedAt: taskActivityTable.updatedAt,
       userName: userTable.name,
       userImage: userTable.image,
     })
-    .from(activityTable)
-    .innerJoin(userTable, eq(activityTable.userId, userTable.id))
+    .from(taskActivityTable)
+    .innerJoin(userTable, eq(taskActivityTable.userId, userTable.id))
     .where(
       and(
-        eq(activityTable.taskId, taskId),
-        eq(activityTable.type, "comment"),
-        isNotNull(activityTable.userId),
-        isNotNull(activityTable.content),
+        eq(taskActivityTable.taskId, taskId),
+        eq(taskActivityTable.type, "comment"),
+        isNotNull(taskActivityTable.userId),
+        isNotNull(taskActivityTable.content),
       ),
     )
-    .orderBy(asc(activityTable.createdAt));
+    .orderBy(asc(taskActivityTable.createdAt));
 
   return comments.map((c) => ({
     id: c.id,

@@ -1,8 +1,8 @@
 import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import db from "../../database";
 import {
-  activityTable,
   projectTable,
+  taskActivityTable,
   taskTable,
   userTable,
   workspaceTable,
@@ -405,7 +405,7 @@ async function globalSearch(params: SearchParams): Promise<{
   }
 
   if (type === "all" || type === "comments" || type === "activities") {
-    const searchableActivityText = sql<string>`COALESCE(${activityTable.content}, CAST(${activityTable.eventData} AS text), '')`;
+    const searchableActivityText = sql<string>`COALESCE(${taskActivityTable.content}, CAST(${taskActivityTable.eventData} AS text), '')`;
     const activityRelevanceScore = sql<number>`
       CASE
         WHEN LOWER(${searchableActivityText}) LIKE ${searchPattern} THEN 2
@@ -416,11 +416,11 @@ async function globalSearch(params: SearchParams): Promise<{
 
     const activityQuery = db
       .select({
-        id: activityTable.id,
-        type: activityTable.type,
-        content: activityTable.content,
-        eventData: activityTable.eventData,
-        taskId: activityTable.taskId,
+        id: taskActivityTable.id,
+        type: taskActivityTable.type,
+        content: taskActivityTable.content,
+        eventData: taskActivityTable.eventData,
+        taskId: taskActivityTable.taskId,
         taskTitle: taskTable.title,
         taskNumber: taskTable.number,
         projectId: projectTable.id,
@@ -428,16 +428,16 @@ async function globalSearch(params: SearchParams): Promise<{
         projectSlug: projectTable.slug,
         workspaceId: projectTable.workspaceId,
         workspaceName: workspaceTable.name,
-        userId: activityTable.userId,
+        userId: taskActivityTable.userId,
         userName: userTable.name,
-        createdAt: activityTable.createdAt,
+        createdAt: taskActivityTable.createdAt,
         relevanceScore: activityRelevanceScore.as("relevanceScore"),
       })
-      .from(activityTable)
-      .leftJoin(taskTable, eq(activityTable.taskId, taskTable.id))
+      .from(taskActivityTable)
+      .leftJoin(taskTable, eq(taskActivityTable.taskId, taskTable.id))
       .leftJoin(projectTable, eq(taskTable.projectId, projectTable.id))
       .leftJoin(workspaceTable, eq(projectTable.workspaceId, workspaceTable.id))
-      .leftJoin(userTable, eq(activityTable.userId, userTable.id))
+      .leftJoin(userTable, eq(taskActivityTable.userId, userTable.id))
       .where(
         and(
           workspaceFilter,
@@ -446,10 +446,12 @@ async function globalSearch(params: SearchParams): Promise<{
             ilike(searchableActivityText, searchPattern),
             ilike(taskTable.title, searchPattern),
           ),
-          type === "comments" ? eq(activityTable.type, "comment") : undefined,
+          type === "comments"
+            ? eq(taskActivityTable.type, "comment")
+            : undefined,
         ),
       )
-      .orderBy(desc(activityRelevanceScore), desc(activityTable.createdAt))
+      .orderBy(desc(activityRelevanceScore), desc(taskActivityTable.createdAt))
       .limit(limit);
 
     const activities = await activityQuery;

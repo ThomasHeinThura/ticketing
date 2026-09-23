@@ -1,9 +1,9 @@
 import { and, eq, inArray, like } from "drizzle-orm";
 import db from "../database";
 import {
-  activityTable,
   assetTable,
   commentTable,
+  taskActivityTable,
   taskTable,
 } from "../database/schema";
 import { deleteStorageObject } from "./index";
@@ -69,12 +69,12 @@ async function isAssetReferencedElsewhere(
   }
 
   const activityRefs = await db
-    .select({ content: activityTable.content })
-    .from(activityTable)
+    .select({ content: taskActivityTable.content })
+    .from(taskActivityTable)
     .where(
       and(
-        eq(activityTable.taskId, taskId),
-        like(activityTable.content, pattern),
+        eq(taskActivityTable.taskId, taskId),
+        like(taskActivityTable.content, pattern),
       ),
     );
 
