@@ -26,29 +26,55 @@ See [plugin architecture](../01-architecture/plugin-architecture.md) and
 | `TASKDESK_AGENT_URL` | `https://ticket.example.com` | Public agent origin |
 | `TASKDESK_PORTAL_URL` | `https://portal.example.com` | Public portal origin |
 
-**Database roles, split at deploy time (issue #296):** `TASKDESK_DATABASE_URL` above is the
-**application** role — never a Postgres superuser, never owns a table, and holds only the DML
-it needs: `SELECT`/`INSERT`/`UPDATE`/`DELETE` on ordinary tables, `SELECT`/`INSERT` only on
-append-only tables (`activity`, `audit_log` —
+**Database roles, split at deploy time, in two separate processes (issue #296):**
+`TASKDESK_DATABASE_URL` above is the **application** role — never a Postgres superuser,
+never owns anything, and holds only the DML it needs: `SELECT`/`INSERT`/`UPDATE`/`DELETE` on
+ordinary tables, `SELECT`/`INSERT` only on append-only tables (`activity`, `audit_log` —
 [migrations.md § Append-only tables](../04-engineering/migrations.md#append-only-tables)). No
-`TRUNCATE`, no DDL. The separate **migration/owner** role — `TASKDESK_MIGRATION_DATABASE_URL`,
-listed in Optional below — runs Drizzle's `migrate()`, the hand-written pre-migrate schema
-fixups, and the role/grant bootstrap (`ensureApplicationRole`) that creates and repairs the
-application role. It owns every table. In the shipped Compose stack it is the Postgres
-image's own init user (`POSTGRES_USER`), which the official image makes a superuser at
-cluster init — unavoidable for this one role, and acceptable because it never serves a
-request. The application never reads any other environment variable to reach the database —
-no separate variable for the audit-purge job's own future `taskdesk_maint`-style connection
+`TRUNCATE`, no DDL. It is the **only** database credential the long-running API process
+(`TASKDESK_ROLE=web`/`jobs`/`all`) ever receives.
+
+The separate **migration/owner** role — `TASKDESK_MIGRATION_DATABASE_URL`, listed in Optional
+below — runs Drizzle's `migrate()`, the hand-written pre-migrate schema fixups, and the
+role/grant bootstrap (`ensureApplicationRole`) that creates and repairs the application role.
+It owns every table. In the shipped Compose stack it is the Postgres image's own init user
+(`POSTGRES_USER`), which the official image makes a superuser at cluster init — unavoidable
+for this one role.
+
+**As of the independent Opus 5.5 security review of PR #308 (finding S1, BLOCKING), this
+credential is used by a genuinely separate, one-shot process, never the long-running one that
+serves requests.** Closing a database connection pool does not remove an already-set
+environment variable from a running process (`/proc/self/environ` keeps it for the process's
+whole life, reachable by any process-level compromise — RCE, a malicious dependency, an
+arbitrary file read — regardless of what the application code does with the connection
+afterwards), so handing the owner credential to the serving process at boot and merely
+"closing the pool" after migrations does not keep it out of that process's reach. Instead:
+
+- `TASKDESK_ROLE=migrate` (a fifth value alongside `all`/`web`/`jobs`) selects a dedicated
+  entry point (`runMigrationStep` in `apps/api/src/index.ts`) that runs migrations and the
+  role/grant bootstrap against `TASKDESK_MIGRATION_DATABASE_URL`, then exits. It never binds a
+  port and never touches `TASKDESK_DATABASE_URL`.
+- In the shipped Compose stack, `migrate` is a one-shot service that alone receives
+  `TASKDESK_MIGRATION_DATABASE_URL`; the `taskdesk` service `depends_on` it completing
+  successfully and never receives that variable at all.
+- In the Helm chart, `Job taskdesk-migrate` is a pre-install/pre-upgrade hook that alone
+  receives it; the API Deployment(s) never do.
+- The serving process refuses to start if it ever finds `TASKDESK_MIGRATION_DATABASE_URL` in
+  its own environment anyway (`assertNoMigrationUrlInApiProcess`) — a structural backstop for
+  a misconfigured overlay or a hand-run container, not the primary control.
+
+The application never reads any other environment variable to reach the database — no
+separate variable for the audit-purge job's own future `taskdesk_maint`-style connection
 exists yet (unbuilt scope, tracked on the audit-log work, not this issue).
 
 ### Optional
 
 | Variable | Default | Notes |
 | --- | --- | --- |
-| `TASKDESK_MIGRATION_DATABASE_URL` | falls back to `TASKDESK_DATABASE_URL` | The migration/owner connection (issue #296, above). **When unset, the same role runs migrations and serves requests** — the single-URL behaviour every deployment had before issue #296, and what local development still uses by default. A deployment running that way is exactly what `assertApplicationRoleIsNotPrivileged` (a boot-time check) exists to catch: if that single role turns out to be a superuser or a table owner, the API refuses to start rather than serve requests through it silently |
+| `TASKDESK_MIGRATION_DATABASE_URL` | falls back to `TASKDESK_DATABASE_URL` | The migration/owner connection (issue #296, above), read only by the `TASKDESK_ROLE=migrate` process. **Only ever set on that process** — the Compose `migrate` service, the Helm `Job taskdesk-migrate` — never on `web`/`jobs`/`all`, which refuse to start if they find it. When unset, `runMigrationStep` falls back to `TASKDESK_DATABASE_URL` for the migrate process only — see "Local development" below for what that means in practice and when it is safe |
 | `TASKDESK_PORT` | `5173` | Bind port |
 | `TASKDESK_VALKEY_URL` | — | Required for multiple replicas |
-| `TASKDESK_ROLE` | `all` | `web` \| `jobs` \| `all`. Gates the in-process scheduler, so a replica can be dedicated to jobs — the escape hatch in [scaling.md](scaling.md). Inherently per-process; cannot live in the database |
+| `TASKDESK_ROLE` | `all` | `web` \| `jobs` \| `all` \| `migrate`. `web`/`jobs`/`all` gate the in-process scheduler, so a replica can be dedicated to jobs — the escape hatch in [scaling.md](scaling.md). `migrate` (issue #296, S1) selects a different entry point entirely — `runMigrationStep`, which runs migrations and the database role/grant bootstrap against `TASKDESK_MIGRATION_DATABASE_URL` and exits; it never binds a port and is never a long-running process. Inherently per-process; cannot live in the database |
 | `TASKDESK_ENCRYPTION_KEY_PREVIOUS` | — | Set only during key rotation: the old key, readable, while `secrets-rekey` re-encrypts under the new one. Key material — inherently env. See [runbook](runbook.md) |
 | `TASKDESK_TRUST_PROXY` | `1` | **Number of trusted reverse-proxy hops**, not a boolean: `1` = Traefik directly in front (the shipped compose); `2` = a load balancer in front of Traefik; `0` = no proxy, use the socket address. The client IP is read from `X-Forwarded-For` at exactly that hop, so a forged header moves no rate-limit bucket and satisfies no API-key IP allowlist. Must be known before the first request can be attributed to an IP. Meaningful only because the application port is **never published** in production — reachable from the proxy network alone ([traefik-and-domains.md](traefik-and-domains.md)). **Measured, never assumed:** the shipped Compose overlays set it, the method and the captured values are in [proxy-topology-evidence.md](proxy-topology-evidence.md), and where a CDN terminates TLS in front of Traefik the answer is `2` |
 | `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` | — | **Headless installs only.** The normal first run needs no variable: on an empty database the app serves a one-time **setup page**, unlocked by a token printed in the container log, where the first administrator is created (see [one-line-install.md](one-line-install.md)) |
@@ -230,15 +256,35 @@ must be re-entered.
 
 ## Local development
 
-`deploy/.env.example`:
+**Two steps, not one (issue #296, S5 — independent Opus 5.5 review of PR #308).** A single
+Postgres superuser URL used for both migrations and serving no longer boots at all: the API's
+own `assertApplicationRoleIsNotPrivileged` check refuses to start against a role that is a
+superuser or owns a table, and a fresh local Postgres role that ran the migrations is exactly
+that. This is deliberate — the check does not carve out an exception for `NODE_ENV !==
+"production"`, because a silent exception is exactly the kind of thing that gets copied
+into a real deployment's `.env` by accident. The documented path mirrors what Compose and
+Helm actually do: run the migration step once (against the local Postgres superuser), then
+run the API against a separate, ordinary role.
 
 ```bash
-TASKDESK_DATABASE_URL=postgres://taskdesk:taskdesk@localhost:5432/taskdesk
-# TASKDESK_MIGRATION_DATABASE_URL is left unset here on purpose, for a plain
-# `pnpm dev` against a local Postgres outside Compose: the single-URL fallback
-# (issue #296) means the same role runs migrations and serves requests, which
-# is fine for a throwaway local database. The shipped Compose stack itself
-# always sets both — see compose.yml.
+# 1. One-time (or after a schema change): run migrations and create/repair the local
+#    application role, against the local Postgres superuser.
+TASKDESK_ROLE=migrate \
+TASKDESK_MIGRATION_DATABASE_URL=postgres://taskdesk:taskdesk@localhost:5432/taskdesk \
+TASKDESK_DATABASE_URL=postgres://taskdesk_app:taskdesk_app@localhost:5432/taskdesk \
+  pnpm --filter @taskdesk/api exec tsx src/index.ts
+
+# 2. Every day after: run the API against the application role the step above created.
+#    No TASKDESK_MIGRATION_DATABASE_URL here — it must not be set on this process.
+TASKDESK_DATABASE_URL=postgres://taskdesk_app:taskdesk_app@localhost:5432/taskdesk \
+  pnpm --filter @taskdesk/api dev
+```
+
+`deploy/.env.example` (used by the Compose stack, where `scripts/deploy.sh` runs both steps
+for you via the `migrate` service — see compose.yml):
+
+```bash
+TASKDESK_DATABASE_URL=postgres://taskdesk_app:...@localhost:5432/taskdesk
 TASKDESK_ENCRYPTION_KEY=<openssl rand -hex 32>
 TASKDESK_AUTH_SECRET=<openssl rand -hex 32>
 TASKDESK_AGENT_URL=https://ticket.localhost

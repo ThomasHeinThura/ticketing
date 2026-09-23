@@ -22,6 +22,40 @@
 name: taskdesk
 
 services:
+  # One-shot migration/role-setup step (issue #296, S1 — independent Opus 5.5
+  # review of PR #308, BLOCKING). This is the ONLY service that ever sees
+  # TASKDESK_MIGRATION_DATABASE_URL, the owner/superuser credential: it runs
+  # `apps/api/src/index.ts`'s `runMigrationStep()` (migrations, then
+  # `ensureApplicationRole`) and exits. It never binds a port and is never a
+  # long-running process, so the owner credential's exposure window is this
+  # container's lifetime — seconds, not the lifetime of the request-serving
+  # `taskdesk` service. `restart: "no"`: a failed migration must surface as a
+  # failed `docker compose up`, not silently retry forever.
+  migrate:
+    image: ghcr.io/thomasheinthura/taskdesk:${TASKDESK_IMAGE_TAG:-v2.0.0}${TASKDESK_IMAGE_DIGEST:+@}${TASKDESK_IMAGE_DIGEST:-}
+    restart: "no"
+    environment:
+      TASKDESK_ROLE: migrate
+      # The owner/migration credential (issue #296). `POSTGRES_USER` is the
+      # image's init user, which the official postgres image makes a superuser
+      # at cluster init — unavoidable for this one role, and acceptable because
+      # this container never serves a request and exits immediately after.
+      TASKDESK_MIGRATION_DATABASE_URL: postgres://${POSTGRES_USER:-taskdesk}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-taskdesk}
+      # entrypoint.sh requires all five of these unconditionally, regardless of
+      # TASKDESK_ROLE; `runMigrationStep()` itself only uses the migration URL
+      # above, so the application-role value here is present only to satisfy
+      # that validation, never connected to.
+      TASKDESK_DATABASE_URL: postgres://taskdesk_app:${TASKDESK_APP_DB_PASSWORD:?TASKDESK_APP_DB_PASSWORD is required - run scripts/deploy.sh, which generates it}@postgres:5432/${POSTGRES_DB:-taskdesk}
+      TASKDESK_ENCRYPTION_KEY: ${TASKDESK_ENCRYPTION_KEY:?TASKDESK_ENCRYPTION_KEY is required - run scripts/deploy.sh, which generates it}
+      TASKDESK_AUTH_SECRET: ${TASKDESK_AUTH_SECRET:?TASKDESK_AUTH_SECRET is required - run scripts/deploy.sh, which generates it}
+      TASKDESK_AGENT_URL: ${TASKDESK_AGENT_URL:?TASKDESK_AGENT_URL is required}
+      TASKDESK_PORTAL_URL: ${TASKDESK_PORTAL_URL:?TASKDESK_PORTAL_URL is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - taskdesk
+
   taskdesk:
     # `repo:tag` normally; `repo:tag@sha256:…` when TASKDESK_IMAGE_DIGEST is set,
     # in which case the digest is what Docker actually pulls. Promotion and
@@ -32,24 +66,17 @@ services:
     environment:
       # --- the five required bootstrap variables --------------------------
       # `taskdesk_app`: a non-superuser, non-owner role (issue #296) — created and
-      # granted its DML-only privileges at boot by the application itself
-      # (apps/api/src/database/ensure-application-role.ts), run over
-      # TASKDESK_MIGRATION_DATABASE_URL below. It never runs DDL and can never
-      # become a superuser, so a compromised API process cannot disable the
-      # append-only triggers/grants on audit_log/activity.
+      # granted its DML-only privileges by the `migrate` service above, over
+      # TASKDESK_MIGRATION_DATABASE_URL. This service, unlike `migrate`, never
+      # sees that variable at all (S1) — it never runs DDL and can never become
+      # a superuser, so a compromise of this long-running process cannot disable
+      # the append-only triggers/grants on audit_log/activity, and cannot even
+      # reach the credential that could.
       TASKDESK_DATABASE_URL: postgres://taskdesk_app:${TASKDESK_APP_DB_PASSWORD:?TASKDESK_APP_DB_PASSWORD is required - run scripts/deploy.sh, which generates it}@postgres:5432/${POSTGRES_DB:-taskdesk}
       TASKDESK_ENCRYPTION_KEY: ${TASKDESK_ENCRYPTION_KEY:?TASKDESK_ENCRYPTION_KEY is required - run scripts/deploy.sh, which generates it}
       TASKDESK_AUTH_SECRET: ${TASKDESK_AUTH_SECRET:?TASKDESK_AUTH_SECRET is required - run scripts/deploy.sh, which generates it}
       TASKDESK_AGENT_URL: ${TASKDESK_AGENT_URL:?TASKDESK_AGENT_URL is required}
       TASKDESK_PORTAL_URL: ${TASKDESK_PORTAL_URL:?TASKDESK_PORTAL_URL is required}
-      # --- the migration/owner connection (issue #296) ---------------------
-      # Optional in general (falls back to TASKDESK_DATABASE_URL when unset — the
-      # single-URL mode local dev and configuration-reference.md still document),
-      # but always set here: `POSTGRES_USER` is the image's init user, which the
-      # official postgres image makes a superuser at cluster init — unavoidable
-      # for this one role. It runs migrations and owns every table; it is
-      # deliberately never the role TASKDESK_DATABASE_URL above connects as.
-      TASKDESK_MIGRATION_DATABASE_URL: postgres://${POSTGRES_USER:-taskdesk}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-taskdesk}
       # --- optional per-process switches ----------------------------------
       TASKDESK_PORT: ${TASKDESK_PORT:-5173}
       TASKDESK_VALKEY_URL: redis://valkey:6379
@@ -72,6 +99,10 @@ services:
         condition: service_healthy
       valkey:
         condition: service_healthy
+      # issue #296, S1: never starts before the owner-credentialed migrate step has
+      # actually finished successfully — not merely "started".
+      migrate:
+        condition: service_completed_successfully
     networks:
       - taskdesk
     # The image declares its own HEALTHCHECK (liveness, touches no dependency).

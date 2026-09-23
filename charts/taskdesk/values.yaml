@@ -60,6 +60,21 @@ postgresql:
   #   requests:
   #     cpu: 100m
   #     memory: 128Mi
+# Migration/role-setup Job (issue #296, S1) — the only object in this chart that ever
+# carries the owner/migration database credential. Runs as a pre-install/pre-upgrade
+# Helm hook before the taskdesk Deployment is created or updated. See
+# templates/migrate-job.yaml and docs/05-operations/kubernetes.md.
+migrateJob:
+  enabled: true
+  backoffLimit: 2
+  resources: {}
+  # resources:
+  #   limits:
+  #     cpu: 500m
+  #     memory: 512Mi
+  #   requests:
+  #     cpu: 100m
+  #     memory: 128Mi
 # TaskDesk application configuration (combined API + web frontend)
 taskdesk:
   image:

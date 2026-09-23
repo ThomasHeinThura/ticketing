@@ -386,7 +386,15 @@ case "$MODE" in
     [ -n "$CURRENT" ] && printf '    current: %s\n' "$CURRENT"
     verify_signature "$(image_ref)"
     say "pulling"
-    dc pull taskdesk
+    dc pull migrate taskdesk
+    # issue #296: `migrate` and `taskdesk` share an image tag, but a completed
+    # one-shot service is not re-run just because `taskdesk` is targeted — its
+    # `service_completed_successfully` condition is already satisfied by the
+    # PREVIOUS version's run. Naming `migrate` explicitly here is what makes the
+    # new image's migrations (and any grant changes) apply before the new
+    # `taskdesk` container starts.
+    say "running migrations for the new image"
+    dc up -d --wait migrate
     # Plain Compose does not do health-gated replacement: on a single-replica
     # stack `up -d` stops the old container, then starts the new one. Expect a
     # short outage. --wait makes a failed start loud rather than silent.
@@ -406,7 +414,12 @@ case "$MODE" in
       printf 'TASKDESK_IMAGE_DIGEST=%s\n' "$ROLLBACK_DIGEST" >> "$ENV_FILE"
     fi
     set -a; . "$ENV_FILE"; set +a
-    dc pull taskdesk
+    dc pull migrate taskdesk
+    # issue #296: re-running `migrate` against the rollback image is a no-op for
+    # already-applied migrations and the idempotent role/grant step — safe, and
+    # keeps `taskdesk`'s dependency condition genuinely satisfied for this image
+    # rather than reusing a stale success from a different one.
+    dc up -d --wait migrate
     dc up -d --wait taskdesk
     assert_port_unpublished
     probe_api

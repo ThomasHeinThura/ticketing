@@ -18,6 +18,13 @@ const DANGEROUS_PREDEFINED_ROLES = new Set([
   "pg_execute_server_program",
   "pg_signal_backend",
   "pg_database_owner",
+  // S3, independent Opus 5.5 review of PR #308 (PostgreSQL 14+): grant UPDATE/DELETE
+  // (write) or SELECT (read) on literally every table in every schema, bypassing
+  // ordinary GRANTs entirely — reproduced live: membership alone made `DELETE FROM
+  // activity` succeed with no other change, exactly the "undo the append-only
+  // control" case this whole check exists for.
+  "pg_write_all_data",
+  "pg_read_all_data",
 ]);
 
 type ReachableRole = {
@@ -82,6 +89,24 @@ type ReachableRole = {
 export async function assertApplicationRoleIsNotPrivileged(
   appDb: DatabaseInstance,
 ): Promise<void> {
+  // S6, independent Opus 5.5 review of PR #308: every message below names the
+  // connection's own `current_user`, queried directly — not `roles[0]?.rolname`,
+  // which is the most SEVERE reachable role after the `ORDER BY` above, not
+  // necessarily the role actually connected. For a superuser reached only via
+  // membership (not itself `current_user`), the old code printed the wrong name.
+  const currentUserResult = await appDb.execute(
+    sql`SELECT current_user AS name`,
+  );
+  const currentUser = (
+    currentUserResult.rows[0] as { name?: string } | undefined
+  )?.name;
+  if (!currentUser) {
+    throw new Error(
+      "Refusing to start: could not determine the application database " +
+        "connection's own current_user (issue #296).",
+    );
+  }
+
   const reachable = await appDb.execute(
     sql`SELECT
           r.oid::int AS oid,
@@ -125,7 +150,7 @@ export async function assertApplicationRoleIsNotPrivileged(
       if (present) {
         throw new Error(
           "Refusing to start: the application database connection " +
-            `(TASKDESK_DATABASE_URL, connected as "${roles[0]?.rolname}") can act ` +
+            `(TASKDESK_DATABASE_URL, connected as "${currentUser}") can act ` +
             `as role "${role.rolname}" (directly or via membership/SET ROLE), ` +
             `which has ${label}. Every append-only/no-DDL control this project ` +
             "relies on assumes the application connection can never reach a " +
@@ -140,7 +165,7 @@ export async function assertApplicationRoleIsNotPrivileged(
     if (DANGEROUS_PREDEFINED_ROLES.has(role.rolname)) {
       throw new Error(
         "Refusing to start: the application database connection " +
-          `(TASKDESK_DATABASE_URL, connected as "${roles[0]?.rolname}") is a ` +
+          `(TASKDESK_DATABASE_URL, connected as "${currentUser}") is a ` +
           `member of the predefined role "${role.rolname}", which grants a ` +
           "capability no application role should hold (server-side file access, " +
           "arbitrary program execution, or backend termination, depending on the " +
@@ -212,7 +237,7 @@ export async function assertApplicationRoleIsNotPrivileged(
 
       throw new Error(
         "Refusing to start: the application database connection " +
-          `(TASKDESK_DATABASE_URL, connected as "${roles[0]?.rolname}") — or a ` +
+          `(TASKDESK_DATABASE_URL, connected as "${currentUser}") — or a ` +
           "role it can act as via membership/SET ROLE — owns " +
           `${check.label} (e.g. ${sample}). The application role, and every role ` +
           "it can reach, must own nothing: an owner bypasses every GRANT on what " +

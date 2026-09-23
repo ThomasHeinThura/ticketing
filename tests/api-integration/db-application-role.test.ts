@@ -641,6 +641,37 @@ describe("assertApplicationRoleIsNotPrivileged -- structural coverage (independe
     }
   });
 
+  it("throws when the role is a member of pg_write_all_data", async () => {
+    // S3, independent Opus 5.5 review of PR #308: reproduced live before the fix --
+    // membership alone (PostgreSQL 14+) granted UPDATE/DELETE on every table, and
+    // `DELETE FROM activity` succeeded with no other change.
+    const probe = await makeProbeRole("writealldata");
+    await db.execute(sql.raw(`GRANT pg_write_all_data TO ${probe.quoted}`));
+    const { pool, probeDb } = await connectAsProbe(probe.name, probe.password);
+    try {
+      await expect(
+        assertApplicationRoleIsNotPrivileged(probeDb),
+      ).rejects.toThrow(/pg_write_all_data/i);
+    } finally {
+      await pool.end();
+      await dropProbeRole(probe.quoted);
+    }
+  });
+
+  it("throws when the role is a member of pg_read_all_data", async () => {
+    const probe = await makeProbeRole("readalldata");
+    await db.execute(sql.raw(`GRANT pg_read_all_data TO ${probe.quoted}`));
+    const { pool, probeDb } = await connectAsProbe(probe.name, probe.password);
+    try {
+      await expect(
+        assertApplicationRoleIsNotPrivileged(probeDb),
+      ).rejects.toThrow(/pg_read_all_data/i);
+    } finally {
+      await pool.end();
+      await dropProbeRole(probe.quoted);
+    }
+  });
+
   it("passes for a clean role: no elevated membership, no elevated attributes, owns nothing", async () => {
     const probe = await makeProbeRole("clean");
     const { pool, probeDb } = await connectAsProbe(probe.name, probe.password);
@@ -696,5 +727,130 @@ describe("ensureApplicationRole -- concurrent boot does not race (advisory lock)
     await db.execute(
       sql.raw(`DROP ROLE IF EXISTS ${quoteIdentifier(roleName)}`),
     );
+  });
+});
+
+/**
+ * S2, independent Opus 5.5 review of PR #308 (BLOCKING): `ensureApplicationRole` used to
+ * embed the plaintext password directly in `CREATE ROLE`/`ALTER ROLE ... PASSWORD '<pw>'`.
+ * Reproduced live: an owner without `CREATEROLE` (the realistic shape of a BYO or
+ * Helm-external `migration.enabled` owner) made the statement fail, and the plaintext
+ * password reached the API log (twice: `prepareDatabaseStartup`, `startServer`'s error
+ * handler) and the Postgres server log's `STATEMENT:` line.
+ *
+ * `computeScramSha256Verifier` (`apps/api/src/database/scram-sha-256.ts`) replaces the
+ * plaintext with a pre-computed SCRAM-SHA-256 verifier, which Postgres accepts as-is; this
+ * suite proves the app role can still authenticate with the real plaintext password
+ * afterwards, and that a `CREATEROLE`-less owner's failure carries neither the password
+ * nor the verifier in the thrown error (including its `.cause` chain).
+ */
+describe("SCRAM verifier (S2, independent Opus 5.5 review of PR #308)", () => {
+  it("the app role authenticates with the plaintext password after being created from a verifier", async () => {
+    const roleName = `taskdesk_app_scram_${randomSuffix()}`;
+    const password = randomHex64();
+    const originalDatabaseUrl = process.env.TASKDESK_DATABASE_URL;
+    if (!originalDatabaseUrl) {
+      throw new Error("TASKDESK_DATABASE_URL must be set for this test");
+    }
+
+    const url = new URL(originalDatabaseUrl);
+    url.username = roleName;
+    url.password = password;
+    process.env.TASKDESK_DATABASE_URL = url.toString();
+    try {
+      await ensureApplicationRole(db);
+    } finally {
+      process.env.TASKDESK_DATABASE_URL = originalDatabaseUrl;
+    }
+
+    const client = new Client({ connectionString: url.toString() });
+    await client.connect();
+    try {
+      const result = await client.query("SELECT current_user AS name");
+      expect(result.rows[0]?.name).toBe(roleName);
+    } finally {
+      await client.end();
+      await db
+        .execute(sql.raw(`DROP OWNED BY ${quoteIdentifier(roleName)}`))
+        .catch(() => undefined);
+      await db.execute(
+        sql.raw(`DROP ROLE IF EXISTS ${quoteIdentifier(roleName)}`),
+      );
+    }
+  });
+
+  it("an owner without CREATEROLE fails without leaking the password or the verifier", async () => {
+    const weakOwnerName = `weak_owner_${randomSuffix()}`;
+    const weakOwnerPassword = randomHex64();
+    await db.execute(
+      sql.raw(
+        `CREATE ROLE ${quoteIdentifier(weakOwnerName)} LOGIN PASSWORD ${quoteLiteral(weakOwnerPassword)} NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`,
+      ),
+    );
+
+    const baseUrl = process.env.TASKDESK_DATABASE_URL;
+    if (!baseUrl) {
+      throw new Error("TASKDESK_DATABASE_URL must be set for this test");
+    }
+    const weakOwnerUrl = new URL(baseUrl);
+    weakOwnerUrl.username = weakOwnerName;
+    weakOwnerUrl.password = weakOwnerPassword;
+
+    const weakOwnerPool = new Pool({
+      connectionString: weakOwnerUrl.toString(),
+    });
+    const weakOwnerDb = drizzle(weakOwnerPool, { schema });
+
+    const targetRoleName = `taskdesk_app_shouldfail_${randomSuffix()}`;
+    const targetPassword = `S3cretLeakMarker_${randomSuffix()}`;
+    const targetUrl = new URL(baseUrl);
+    targetUrl.username = targetRoleName;
+    targetUrl.password = targetPassword;
+
+    const originalDatabaseUrl = process.env.TASKDESK_DATABASE_URL;
+    process.env.TASKDESK_DATABASE_URL = targetUrl.toString();
+
+    let thrown: unknown;
+    try {
+      await ensureApplicationRole(weakOwnerDb);
+    } catch (error) {
+      thrown = error;
+    } finally {
+      process.env.TASKDESK_DATABASE_URL = originalDatabaseUrl;
+      await weakOwnerPool.end();
+    }
+
+    try {
+      expect(thrown).toBeInstanceOf(Error);
+
+      // Walk the FULL cause chain -- the leak this regression test guards against is
+      // the plaintext password (or the verifier, an equally sensitive authenticator)
+      // appearing ANYWHERE in what gets logged, and `console.error(error)` in
+      // index.ts prints every level of `.cause` too.
+      const messages: string[] = [];
+      let current: unknown = thrown;
+      while (current instanceof Error) {
+        messages.push(current.message);
+        current = current.cause;
+      }
+      const fullText = messages.join("\n");
+
+      // The actual secrets: the plaintext password value, and anything shaped like a
+      // SCRAM verifier (the literal scheme name, which only ever appears as part of
+      // one). Deliberately NOT asserting the word "password" is absent -- that word
+      // alone is not a secret, and this function's own sanitized message legitimately
+      // uses it to explain what was withheld.
+      expect(fullText).not.toContain(targetPassword);
+      expect(fullText).not.toMatch(/SCRAM-SHA-256/);
+    } finally {
+      // Clean up regardless of whether the assertions above passed -- roles are
+      // cluster-wide, not scoped to this test database, so a failed assertion here
+      // must not leak `weakOwnerName` past this test. The target role was never
+      // created (CREATE ROLE failed before it could exist), so only the weak owner
+      // needs dropping.
+      await db.execute(
+        sql.raw(`DROP ROLE IF EXISTS ${quoteIdentifier(weakOwnerName)}`),
+      );
+    }
   });
 });

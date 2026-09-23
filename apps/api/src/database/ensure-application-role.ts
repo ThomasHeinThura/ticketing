@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { APPEND_ONLY_TABLES } from "./append-only-tables";
 import type { DatabaseInstance } from "./index";
 import { resolveDatabaseConfig } from "./resolve-database-url";
+import { computeScramSha256Verifier } from "./scram-sha-256";
 
 /**
  * Advisory-lock namespace for this file's `CREATE ROLE`/grant sequence (issue #296,
@@ -110,7 +111,15 @@ export async function ensureApplicationRole(
   }
 
   const quotedRole = quoteIdentifier(roleName);
-  const quotedPassword = quoteLiteral(password);
+  // S2 (independent Opus 5.5 review of PR #308): never send the plaintext password —
+  // a pre-computed SCRAM-SHA-256 verifier is what Postgres accepts here, and what it
+  // would compute from the plaintext internally anyway. Sending the verifier means
+  // the plaintext never appears in the SQL text, so it is absent from both the
+  // Postgres server log's `STATEMENT:` line (logged by default on error, and on
+  // every statement under `log_statement = 'ddl'`/`'all'` or pgaudit) and this
+  // function's own thrown errors. A fresh salt every boot is fine: Postgres only
+  // needs A verifier that the plaintext password satisfies, not a stable one.
+  const quotedVerifier = quoteLiteral(computeScramSha256Verifier(password));
   const ownerRole = quoteIdentifier(ownerRoleName);
 
   console.log(`🔄 Ensuring application database role "${roleName}"...`);
@@ -135,19 +144,21 @@ export async function ensureApplicationRole(
       // `CREATE ROLE`; spelled out here so the intent — this role can never become a
       // superuser by inheriting a default that later changes — is readable without
       // knowing Postgres's defaults.
-      await tx.execute(
-        sql.raw(
-          `CREATE ROLE ${quotedRole} LOGIN PASSWORD ${quotedPassword} NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`,
-        ),
+      await runRoleStatement(
+        tx,
+        `CREATE ROLE ${quotedRole} LOGIN PASSWORD ${quotedVerifier} NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`,
+        "create",
+        roleName,
       );
     } else {
       // Re-applied every boot so a rotated TASKDESK_DATABASE_URL password takes effect,
       // and so a role that was ever manually altered to be a superuser is forced back —
       // this line is as much an enforcement of the invariant as it is a convenience.
-      await tx.execute(
-        sql.raw(
-          `ALTER ROLE ${quotedRole} WITH LOGIN PASSWORD ${quotedPassword} NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`,
-        ),
+      await runRoleStatement(
+        tx,
+        `ALTER ROLE ${quotedRole} WITH LOGIN PASSWORD ${quotedVerifier} NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`,
+        "alter",
+        roleName,
       );
     }
 
@@ -217,6 +228,42 @@ export async function ensureApplicationRole(
   });
 
   console.log(`✅ Application database role "${roleName}" is ready`);
+}
+
+/**
+ * Runs a `CREATE ROLE`/`ALTER ROLE ... PASSWORD <verifier>` statement, and on failure
+ * rethrows a message that names the role and the underlying Postgres error but never
+ * the query text — S2's other half. `sql.raw(...)`'s own SQL string (which embeds
+ * `quotedVerifier`) never appears in a thrown `Error`'s `.message` this way, even
+ * though drizzle's own `DrizzleQueryError` wrapper embeds exactly that in ITS
+ * `.message` ("Failed query: CREATE ROLE ... PASSWORD 'SCRAM-SHA-256$...'"). Walking
+ * to the deepest `.cause` reaches the raw `pg` driver error, whose own `.message` is
+ * only Postgres's error text (e.g. "permission denied to create role") — Postgres's
+ * wire protocol never echoes the submitted statement back to the client; only the
+ * server's own log does that (`STATEMENT:`, controlled by `log_min_error_statement`),
+ * which sending a verifier instead of a plaintext password already keeps free of the
+ * password (see `computeScramSha256Verifier`'s doc comment).
+ */
+async function runRoleStatement(
+  tx: Pick<DatabaseInstance, "execute">,
+  statement: string,
+  action: "create" | "alter",
+  roleName: string,
+): Promise<void> {
+  try {
+    await tx.execute(sql.raw(statement));
+  } catch (error) {
+    let deepest: unknown = error;
+    while (deepest instanceof Error && deepest.cause) {
+      deepest = deepest.cause;
+    }
+    const reason = deepest instanceof Error ? deepest.message : String(deepest);
+    throw new Error(
+      `Failed to ${action} application role "${roleName}": ${reason} (issue #296 — ` +
+        "the failing statement's text is withheld here; it carries no plaintext " +
+        "password, but does carry the role's SCRAM verifier).",
+    );
+  }
 }
 
 function extractPassword(connectionString: string): string {

@@ -136,13 +136,28 @@ using the privileges checked when the constraint was created, not the deleting s
 grants on the referencing table — verified live: a role granted only `SELECT, INSERT` on the
 child table still received the `SET NULL` when the parent row was deleted.
 
-**Mechanism (issue #296):** not a grant hand-written into each table's own generated
+**`activity` has no trigger yet, and its grant only covers direct DML (S4, independent Opus
+5.5 review of PR #308).** `activity.work_item_id` is `ON DELETE CASCADE` to `work_item`
+(migration `0066`), and `taskdesk_app` holds ordinary `DELETE` on `work_item` and `project`
+(neither is append-only). **Decided behaviour, not a regression, not revoked:** deleting a
+work item, or a project or workspace whose deletion cascades to its work items, removes that
+work item's `activity` rows as a side effect of the cascade — the table owner runs it, with
+no privilege check against `activity` itself, exactly the same mechanism that lets `AU-7`'s
+tombstone through above. The `SELECT, INSERT`-only grant on `activity` stops a direct
+`UPDATE`/`DELETE`/`TRUNCATE` issued against `activity`; it was never a claim that `activity`
+rows are immortal once their parent work item is gone. Reproduced live: a scratch parent/child
+pair with the same grant shape (child `SELECT, INSERT` only) denied a direct `DELETE` on the
+child and allowed `DELETE` on the parent to remove every child row.
+
+**Mechanism (issue #296).** Not a grant hand-written into each table's own generated
 migration, as this section once proposed. That approach could not carry `taskdesk_app`'s
 password (deployment-specific, rotatable) and could not stay correct once a table's
 append-only status changes without a further migration. Instead `ensureApplicationRole`
-(`apps/api/src/database/ensure-application-role.ts`) runs as the **migration/owner role**
-(`TASKDESK_MIGRATION_DATABASE_URL`), once per boot, immediately after Drizzle's `migrate()`:
-it creates/repairs `taskdesk_app` (never a superuser, never a table owner), then re-derives
+(`apps/api/src/database/ensure-application-role.ts`) runs as the **migration/owner role**,
+in the separate, one-shot **migrate step** (`TASKDESK_ROLE=migrate`; see "Two processes,
+never one credential in both" below) immediately after Drizzle's `migrate()`: it
+creates/repairs `taskdesk_app` (never a superuser, never a table owner — enforced further by
+`assertApplicationRoleIsNotPrivileged` in the separate serving process), then re-derives
 every table's grant from `APPEND_ONLY_TABLES`
 (`apps/api/src/database/append-only-tables.ts`) — `SELECT, INSERT` for a table named there,
 `SELECT, INSERT, UPDATE, DELETE` for every other ordinary table — and sets
@@ -150,6 +165,21 @@ every table's grant from `APPEND_ONLY_TABLES`
 automatically. `activity` gets the same grant restriction as `audit_log`; it does not yet
 have `audit_log`'s trigger pair (tracked separately — "gets the same trigger-based treatment
 the next time it is touched").
+
+**Two processes, never one credential in both (issue #296, S1, independent Opus 5.5 review of
+PR #308).** The migrate step above and the API's own serving boot used to be one function in
+one long-running process, which meant that process had to be started with
+`TASKDESK_MIGRATION_DATABASE_URL` — the owner/superuser credential — in its environment for
+its whole life, reachable by any process-level compromise regardless of what the code did
+with the connection afterwards. They are now two separate entry points, selected the same way
+`TASKDESK_ROLE=web`/`jobs` already are
+(`docs/05-operations/container-image.md`): `TASKDESK_ROLE=migrate` runs migrations and
+`ensureApplicationRole` against the owner connection and exits; the ordinary serving process
+(`web`/`jobs`/`all`) never receives that variable at all, and refuses to start if it ever
+does. In compose this is a one-shot `migrate` service the `taskdesk` service `depends_on`
+(`service_completed_successfully`); in Helm it is a hook Job. See
+[configuration-reference.md](../05-operations/configuration-reference.md) for the exact
+variables and the local-development path.
 
 The retention purge running as a separate `taskdesk_maint` role from the `audit-purge` job's
 own connection is unbuilt scope, tracked on the audit-log work, not issue #296.
