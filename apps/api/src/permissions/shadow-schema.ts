@@ -85,12 +85,13 @@ export const policyShadowTallyTable = pgTable(
       sql`${table.outcome} IN ('agree', 'legacy_allow_policy_deny', 'legacy_deny_policy_allow', 'unevaluated', 'evaluator_error')`,
     ),
     check("policy_shadow_tally_count_positive", sql`${table.count} > 0`),
-    unique("policy_shadow_tally_bucket_unique").on(
-      table.day,
-      table.routeKey,
-      table.outcome,
-      table.reasonCode,
-    ),
+    // `.nullsNotDistinct()` — the SQL migration declares `UNIQUE NULLS NOT DISTINCT`
+    // (0068_policy_shadow_tables.sql); without this the Drizzle-side declaration would
+    // describe an ordinary UNIQUE (NULLs distinct), disagreeing with the real constraint
+    // the database actually enforces. Ordinary review of PR #323.
+    unique("policy_shadow_tally_bucket_unique")
+      .on(table.day, table.routeKey, table.outcome, table.reasonCode)
+      .nullsNotDistinct(),
   ],
 );
 
