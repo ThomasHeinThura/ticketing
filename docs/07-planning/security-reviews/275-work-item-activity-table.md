@@ -473,3 +473,29 @@ placed newest-first above the entry it extends.
 - I did not re-run PG16 or PG17, because the migration is unchanged since the round I did.
 - I did not run the full suite.
 - No push, comment or merge.
+
+---
+
+# Base-merge confirmation (8c67cf2)
+
+**Reviewer:** Opus 5.5, fresh independent context. Did not author, direct, or remediate this change.
+
+**Reviewed head:** `8c67cf234e25a4e9f2a123db3189d69839c7b304`
+
+**Reviewed SHA:** `8c67cf234e25a4e9f2a123db3189d69839c7b304` (confirmed via `gh pr view 275 --json headRefOid`; `origin/main` is an ancestor).
+**Date:** 2026-09-23
+
+**Verdict: CLEAR (unchanged from the closing round at `2cf9852`).** `8c67cf2` is a plain base
+merge. The parents are `1e3bfe4` (this note, committed) and `4a65439` (#278).
+
+- `git log 1e3bfe4..8c67cf2` shows only `4a65439` (#278) and the merge commit.
+- `git diff 1e3bfe4 8c67cf2` is identical, ignoring `index` lines, to #278's own patch
+  (`git diff 4a65439^ 4a65439`). The resolution added nothing and dropped nothing. It
+  touches exactly `plugin-architecture.md`, `accessibility.md`, `design-system.md`,
+  `ux-quality-gates.md`, `configuration-reference.md`, `decision-log.md` and
+  `reviews/2026-09-05/features-governance-design.md`.
+- Nothing changed under `apps/`, `packages/`, `tests/` or `apps/api/drizzle/`.
+- `decision-log.md`: the merge deletes 0 lines and only adds #278's entry ("Dependency
+  picks: Recharts…"), placed newest-first. This branch's "Activity addendum" and "Work-item
+  activity gets its own `activity` table" entries are present and unedited.
+- No push, comment or merge.
