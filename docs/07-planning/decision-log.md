@@ -19,11 +19,18 @@ Newest first.
 
 ### 2026-09-23 · `audit_log` is append-only by trigger, not by grant — this deployment has exactly one Postgres role
 
-**Decision:** `audit_log` is made append-only by a `BEFORE UPDATE OR DELETE` trigger
-(`audit_log_append_only` / `audit_log_reject_mutation()`, migration `0067`). The trigger
-raises on every mutation except AU-7's `organisation_id`-to-NULL tombstone. This replaces
+**Decision:** `audit_log` is made append-only by two triggers in migration `0067`:
+- `audit_log_append_only` / `audit_log_reject_mutation()`, a `BEFORE UPDATE OR DELETE`
+  row trigger. It raises on every row mutation except AU-7's `organisation_id`-to-NULL
+  tombstone.
+- `audit_log_append_only_truncate` / `audit_log_reject_truncate()`, a `BEFORE TRUNCATE`
+  statement trigger. Row triggers never fire on `TRUNCATE`, so without it the owning role
+  could empty the table. PR #291's ordinary review reproduced that live.
+
+The integration-test reset truncates every table. It turns triggers off for that one
+transaction only (`SET LOCAL session_replication_role = replica`), in test code only. This replaces
 the `taskdesk_app` / `taskdesk_maint` role split that AU-3 and `migrations.md` describe.
-`REVOKE UPDATE, DELETE … FROM PUBLIC` stays as defence in depth for a future
+`REVOKE UPDATE, DELETE, TRUNCATE … FROM PUBLIC` stays as defence in depth for a future
 lesser-privileged role, but against the table owner today it does nothing. `activity`
 gets the same treatment the next time it is touched. AU-3, AU-15 and `migrations.md`'s
 "Append-only tables" section are corrected in the same change as this entry (PR #291).
