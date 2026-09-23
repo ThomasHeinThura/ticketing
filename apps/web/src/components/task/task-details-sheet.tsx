@@ -1,15 +1,15 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Button } from "@taskdesk/ui";
-import { Maximize2, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
+  Button,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@taskdesk/ui";
+import { Maximize2, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetTask from "@/hooks/queries/task/use-get-task";
 import TaskDeleteButton from "./task-delete-button";

@@ -1,7 +1,6 @@
-import { Label } from "@taskdesk/ui";
+import { Label, Switch } from "@taskdesk/ui";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { useId } from "react";
-import { Switch } from "@/components/ui/switch";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
 export function ThemeToggleDropdown() {

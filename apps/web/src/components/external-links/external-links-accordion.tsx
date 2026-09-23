@@ -1,4 +1,9 @@
-import { Button } from "@taskdesk/ui";
+import {
+  Button,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@taskdesk/ui";
 import {
   ChevronDown,
   ChevronRight,
@@ -9,11 +14,6 @@ import {
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GithubIcon } from "@/components/icons/github-icon";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import type { ExternalLink } from "@/types/external-link";
 
 interface ExternalLinksAccordionProps {

@@ -1,10 +1,9 @@
 "use client";
 
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
-import { Input } from "@taskdesk/ui";
+import { Input, ScrollArea } from "@taskdesk/ui";
 import { ChevronsUpDownIcon, XIcon } from "lucide-react";
 import * as React from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/cn";
 import { i18n } from "@/lib/i18n";
 

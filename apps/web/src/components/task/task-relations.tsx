@@ -1,5 +1,10 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Button } from "@taskdesk/ui";
+import {
+  Button,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@taskdesk/ui";
 import {
   ChevronDown,
   ChevronRight,
@@ -11,11 +16,6 @@ import {
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   Command,
   CommandCollection,

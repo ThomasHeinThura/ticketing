@@ -1,11 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronRight } from "lucide-react";
-import { useTranslation } from "react-i18next";
 import {
   Collapsible,
   CollapsiblePanel,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+} from "@taskdesk/ui";
+import { ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   SidebarGroup,
   SidebarGroupContent,
