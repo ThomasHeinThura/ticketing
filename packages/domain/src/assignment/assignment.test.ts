@@ -229,7 +229,7 @@ describe("decideConcurrentSelfAssign", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Planning — AS-3, AS-16, AS-17, AS-18, "already assigned to you."
+// Planning — AS-3, AS-16, AS-17, AS-18, and the already-assigned-to-you no-op.
 // ---------------------------------------------------------------------------
 
 describe("planAssignment", () => {
@@ -291,24 +291,24 @@ describe("planAssignment", () => {
       },
     },
     {
-      name: "reassign where the actor is the previous holder — only the new assignee is notified",
+      name: "reassign where the actor is the previous holder — not a self pick-up, so no confirmation; only the new assignee is notified",
       current: ALICE,
       next: BOB,
       actor: ALICE,
       expected: {
         action: "assign",
-        requiresConfirmation: true,
+        requiresConfirmation: false,
         notify: [BOB],
       },
     },
     {
-      name: "reassign by a third party — both previous holder and new assignee are notified",
+      name: "reassign by a third party — not a self pick-up (actor is neither holder), so no confirmation; both previous holder and new assignee are notified",
       current: ALICE,
       next: BOB,
       actor: CAROL,
       expected: {
         action: "assign",
-        requiresConfirmation: true,
+        requiresConfirmation: false,
         notify: [ALICE, BOB],
       },
     },
@@ -348,10 +348,15 @@ describe("planAssignment", () => {
 
   // Mutation check 4 (of the "at least three" required — see also the eligibility and
   // concurrency guards above, and resolveAssigneeDisplayStatus's below): flip
-  // `requiresConfirmation`'s condition from `currentAssigneeId !== newAssigneeId` to
-  // always `true`. A fresh assign (no previous holder) must NOT require confirmation.
+  // `requiresConfirmation`'s condition to drop the `newAssigneeId === actorId` (self
+  // pick-up) test. A reassignment by someone who is neither holder must NOT require
+  // confirmation — only a self pick-up does (AS-3).
   it("mutation guard: a fresh assign with no previous holder never requires confirmation", () => {
     expect(planAssignment(null, BOB, ALICE).requiresConfirmation).toBe(false);
+  });
+
+  it("mutation guard: a reassignment where the actor is not the new assignee never requires confirmation", () => {
+    expect(planAssignment(ALICE, BOB, CAROL).requiresConfirmation).toBe(false);
   });
 });
 
@@ -363,56 +368,52 @@ describe("resolveAssigneeDisplayStatus", () => {
   const active: AssigneeDisplayFacts = {
     active: true,
     onProject: true,
-    accountDeleted: false,
   };
+
+  // Table-driven over the full 2×2 `active`/`onProject` matrix (four cases): exactly
+  // three possible statuses exist now that AS-8 rules out a "former member"/tombstoned
+  // fourth one ("People are never hard-deleted... 'Departed' means deactivated, never
+  // gone").
+  const cases: Array<{
+    name: string;
+    active: boolean;
+    onProject: boolean;
+    expected: ReturnType<typeof resolveAssigneeDisplayStatus>;
+  }> = [
+    {
+      name: "active and on the project",
+      active: true,
+      onProject: true,
+      expected: "active",
+    },
+    {
+      name: "AS-8: inactive but still on the project — retained and shown inactive",
+      active: false,
+      onProject: true,
+      expected: "inactive",
+    },
+    {
+      name: "edge case: removed from the project (still active) — shown as no longer on this project",
+      active: true,
+      onProject: false,
+      expected: "not_on_project",
+    },
+    {
+      name: "precedence: removed from the project AND inactive — not_on_project wins",
+      active: false,
+      onProject: false,
+      expected: "not_on_project",
+    },
+  ];
+
+  it.each(cases)("$name", ({ active: isActive, onProject, expected }) => {
+    expect(
+      resolveAssigneeDisplayStatus(ALICE, { active: isActive, onProject }),
+    ).toBe(expected);
+  });
 
   it("no assignee at all", () => {
     expect(resolveAssigneeDisplayStatus(null, active)).toBeNull();
-  });
-
-  it("active assignee on the project", () => {
-    expect(resolveAssigneeDisplayStatus(ALICE, active)).toBe("active");
-  });
-
-  it("AS-8: inactive assignee is retained and shown inactive", () => {
-    expect(
-      resolveAssigneeDisplayStatus(ALICE, { ...active, active: false }),
-    ).toBe("inactive");
-  });
-
-  it("edge case: removed from the project, shown as no longer on this project", () => {
-    expect(
-      resolveAssigneeDisplayStatus(ALICE, { ...active, onProject: false }),
-    ).toBe("not_on_project");
-  });
-
-  it("edge case: account deleted tombstones to former member", () => {
-    expect(
-      resolveAssigneeDisplayStatus(ALICE, {
-        ...active,
-        accountDeleted: true,
-      }),
-    ).toBe("former_member");
-  });
-
-  it("precedence: a deleted account wins even if it was also removed from the project and inactive", () => {
-    expect(
-      resolveAssigneeDisplayStatus(ALICE, {
-        active: false,
-        onProject: false,
-        accountDeleted: true,
-      }),
-    ).toBe("former_member");
-  });
-
-  it("precedence: project removal wins over plain inactivity", () => {
-    expect(
-      resolveAssigneeDisplayStatus(ALICE, {
-        active: false,
-        onProject: false,
-        accountDeleted: false,
-      }),
-    ).toBe("not_on_project");
   });
 
   it("is deterministic", () => {
@@ -421,14 +422,15 @@ describe("resolveAssigneeDisplayStatus", () => {
     );
   });
 
-  // Mutation check 5: flip the accountDeleted precedence check to come after onProject.
-  it("mutation guard: accountDeleted must be checked before onProject", () => {
+  // Mutation check 5: swap the precedence order (check `!active` before `!onProject`).
+  // With this fact combination, the wrong order would return "inactive" instead of
+  // "not_on_project".
+  it("mutation guard: not_on_project must be checked before inactive", () => {
     const result = resolveAssigneeDisplayStatus(ALICE, {
-      active: true,
+      active: false,
       onProject: false,
-      accountDeleted: true,
     });
-    expect(result).toBe("former_member");
+    expect(result).toBe("not_on_project");
   });
 });
 
