@@ -74,6 +74,7 @@ function tokenize(source) {
     "typeof",
     "void",
     "delete",
+    "new",
   ]);
   const expressionPrefixPunctuation = new Set([
     "=",
@@ -82,6 +83,8 @@ function tokenize(source) {
     ":",
     ",",
     "=>",
+    "+",
+    "-",
     "!",
     "~",
   ]);
