@@ -456,7 +456,7 @@ Quotas ship with **real defaults** (storage 20 GB, portal users 500, webhooks 10
 | Dependency audit | CI | Every PR |
 | Container scan, SBOM, signing | CI | Every release |
 | Service-key clamp, owner-team reach, webhook delivery reach, OIDC PKCE/`state`/`nonce`, MCP injection | `tests/permissions/`, `tests/api-integration/auth/`, `tests/mcp/` | Every PR |
-| SCIM/Entra acceptance tests 01–17 ([identity-provisioning.md](../03-features/identity-provisioning.md#testing)) — against a **real Entra test tenant** before the P3 identity gate | `tests/api-integration/identity/` | Every PR (mock IdP); P3 gate (real tenant) |
+| SCIM/Entra acceptance tests 01–25 ([identity-provisioning.md](../03-features/identity-provisioning.md#testing)) — against a **real Entra test tenant** before the P3 identity gate | `tests/api-integration/identity/` | Every PR (mock IdP); P3 gate (real tenant) |
 | Pending-action suite ([pending-actions.md](pending-actions.md#testing)) — 202-not-performed, no self-approval from API/MCP/impersonation, target/payload binding, single use, expiry, re-authorisation, step-up | `tests/api-integration/pending-actions/`, `tests/e2e/security/` | Every PR |
 | Session-only routes refuse API and MCP keys | `tests/permissions/session-only.test.ts` | Every PR |
 
