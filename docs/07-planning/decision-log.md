@@ -52,7 +52,7 @@ If any of these is missing, the PR does not merge. It waits, and the PR says wha
 
 **Why:** Thomas's instruction on 2026-09-23. Claude's spend limit was being reached repeatedly mid-lane, and it is better spent on the Opus-tier review that nothing else on the project can do.
 
-**Decided by:** Thomas, 2026-09-23, in session. The orchestrating Claude session recorded it.
+**Decided by:** Thomas, 2026-09-23, in session. The orchestrating Claude session recorded it. Thomas then separately confirmed that the three agents do the **ordinary independent reviews** as well as the implementation, reviewing each other's PRs. He answered that one explicit question after PR #336's first review asked for it, choosing it over keeping ordinary reviews on a fresh Claude Sonnet context. Opus 5.5 stays the security reviewer.
 
 ### 2026-09-23 · P1's UI path: new v2 work-item screens on the new API, then retire kaneo's task stack
 
