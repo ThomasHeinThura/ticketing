@@ -28,8 +28,11 @@ function makeItem(overrides: Record<string, unknown> = {}) {
     title: "Fix the thing",
     description: null,
     stateId: "state_1",
+    stateName: "Backlog",
+    stateCategory: "backlog",
     priority: "high",
     assigneeId: null,
+    assigneeName: null,
     requesterId: null,
     parentId: null,
     position: "1.0000000000",
@@ -45,6 +48,16 @@ function makeItem(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function makeEnvelope(
+  data: unknown[],
+  page: { nextCursor: string | null; hasMore: boolean } = {
+    nextCursor: null,
+    hasMore: false,
+  },
+) {
+  return { data, page, meta: { total: data.length } };
+}
+
 describe("getWorkItems", () => {
   beforeEach(() => {
     mocks.get.mockReset();
@@ -55,16 +68,17 @@ describe("getWorkItems", () => {
     const goodB = makeItem({ id: "wi_2", key: "PROJ-2", number: 2 });
     mocks.get.mockResolvedValue({
       ok: true,
-      json: async () => [goodA, goodB],
+      json: async () => makeEnvelope([goodA, goodB]),
     });
 
-    const result = await getWorkItems("proj_1");
+    const result = await getWorkItems("proj_1", "key", "asc");
 
     expect(result.hasPartialFailure).toBe(false);
     expect(result.items).toHaveLength(2);
     expect(result.items[0]?.unavailableFields).toEqual([]);
     expect(result.items[1]?.unavailableFields).toEqual([]);
     expect(result.items[0]?.title).toBe("Fix the thing");
+    expect(result.hasMore).toBe(false);
   });
 
   it("returns hasPartialFailure: true when one row is bad, keeping the good rows intact", async () => {
@@ -77,10 +91,10 @@ describe("getWorkItems", () => {
     });
     mocks.get.mockResolvedValue({
       ok: true,
-      json: async () => [good, bad],
+      json: async () => makeEnvelope([good, bad]),
     });
 
-    const result = await getWorkItems("proj_1");
+    const result = await getWorkItems("proj_1", "key", "asc");
 
     expect(result.hasPartialFailure).toBe(true);
     expect(result.items).toHaveLength(2);
@@ -93,8 +107,24 @@ describe("getWorkItems", () => {
   it("throws on a non-ok response rather than reporting a partial failure", async () => {
     mocks.get.mockResolvedValue({ ok: false, status: 500 });
 
-    await expect(getWorkItems("proj_1")).rejects.toThrow(
+    await expect(getWorkItems("proj_1", "key", "asc")).rejects.toThrow(
       "Failed to fetch work items",
     );
+  });
+
+  it("forwards sort/dir as query params, and reports page.hasMore from the envelope (#310)", async () => {
+    mocks.get.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        makeEnvelope([makeItem()], { nextCursor: "abc", hasMore: true }),
+    });
+
+    const result = await getWorkItems("proj_1", "priority", "desc");
+
+    expect(mocks.get).toHaveBeenCalledWith({
+      param: { projectId: "proj_1" },
+      query: { sort: "priority", dir: "desc" },
+    });
+    expect(result.hasMore).toBe(true);
   });
 });

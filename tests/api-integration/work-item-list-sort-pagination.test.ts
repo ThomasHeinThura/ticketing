@@ -604,4 +604,56 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
     ]);
     expect((response.body as ListBody).meta.total).toBe(1);
   });
+
+  it("visibility is unchanged: a cursor minted in project A cannot be replayed against project B to leak A's rows", async () => {
+    // The cursor's own keyset condition (`workItemCursorCondition`) carries no project
+    // or workspace scoping of its own -- it is only ever ANDed onto the route's
+    // existing `(projectId, workspaceId)` filter (`list-work-items.ts`'s
+    // `buildFilterConditions`/`pageConditions`). This test proves that composition
+    // holds for a REAL cross-project replay, not just by reading the source: a cursor
+    // minted while listing project A, then sent on a request addressed to project B,
+    // must return only B's own rows (or none), and never resurface A's.
+    const { creator, project: projectA, type: typeA } = await setupProject();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const { project: projectB } = await createProjectFixture({
+      workspaceId: creator.workspace.id,
+    });
+    const typeB = await makeWorkItemType(creator.workspace.id);
+    await makeState(creator.workspace.id, projectB.id);
+
+    // Two items in A so paging with limit=1 actually yields a next cursor.
+    await createItem(app, projectA.id, typeA.id, "A1");
+    await createItem(app, projectA.id, typeA.id, "A2");
+    const b1 = await createItem(app, projectB.id, typeB.id, "B1");
+    const b2 = await createItem(app, projectB.id, typeB.id, "B2");
+    const bIds = new Set([b1.id, b2.id]);
+
+    // Mint a real cursor by paging project A with limit=1.
+    const firstPageOfA = await list(
+      app,
+      projectA.id,
+      "sort=key&dir=asc&limit=1",
+    );
+    expect(firstPageOfA.status).toBe(200);
+    const realCursorFromA = (firstPageOfA.body as ListBody).page
+      .nextCursor as string;
+    expect(realCursorFromA).not.toBeNull();
+
+    const replayedAgainstB = await list(
+      app,
+      projectB.id,
+      `sort=key&dir=asc&limit=200&cursor=${encodeURIComponent(realCursorFromA)}`,
+    );
+
+    expect(replayedAgainstB.status).toBe(200);
+    const body = replayedAgainstB.body as ListBody;
+    // Every id returned belongs to project B's own items -- project A's item(s),
+    // including the one the cursor was minted from, must never appear.
+    for (const item of body.data) {
+      expect(bIds.has(item.id)).toBe(true);
+    }
+    expect(body.meta.total).toBe(2); // project B's own total, unaffected by A's rows
+  });
 });
