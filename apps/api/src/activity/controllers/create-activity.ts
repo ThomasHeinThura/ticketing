@@ -1,5 +1,5 @@
 import db from "../../database";
-import { activityTable } from "../../database/schema";
+import { taskActivityTable } from "../../database/schema";
 
 async function createActivity(
   taskId: string,
@@ -9,7 +9,7 @@ async function createActivity(
   eventData?: Record<string, unknown> | null,
 ) {
   const [activity] = await db
-    .insert(activityTable)
+    .insert(taskActivityTable)
     .values({
       taskId,
       type,

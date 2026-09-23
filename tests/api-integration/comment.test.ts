@@ -83,11 +83,11 @@ describe("API integration: task comments", () => {
 
     const storedComments = await db
       .select()
-      .from(schema.activityTable)
+      .from(schema.taskActivityTable)
       .where(
         and(
-          eq(schema.activityTable.taskId, task.id),
-          eq(schema.activityTable.type, "comment"),
+          eq(schema.taskActivityTable.taskId, task.id),
+          eq(schema.taskActivityTable.type, "comment"),
         ),
       );
     expect(storedComments).toHaveLength(2);
@@ -137,8 +137,8 @@ describe("API integration: task comments", () => {
     const row = requireRow(
       await db
         .select()
-        .from(schema.activityTable)
-        .where(eq(schema.activityTable.taskId, task.id)),
+        .from(schema.taskActivityTable)
+        .where(eq(schema.taskActivityTable.taskId, task.id)),
       "row",
     );
     expect(row.externalUserName).toBe("Sam");
@@ -178,8 +178,8 @@ describe("API integration: task comments", () => {
     const row = requireRow(
       await db
         .select()
-        .from(schema.activityTable)
-        .where(eq(schema.activityTable.taskId, task.id)),
+        .from(schema.taskActivityTable)
+        .where(eq(schema.taskActivityTable.taskId, task.id)),
       "row",
     );
     expect(row.externalUserName).toBeNull();

@@ -64,11 +64,11 @@ describe("API integration: task title activity", () => {
       }),
       db
         .select()
-        .from(schema.activityTable)
+        .from(schema.taskActivityTable)
         .where(
           and(
-            eq(schema.activityTable.taskId, task.id),
-            eq(schema.activityTable.type, "title_changed"),
+            eq(schema.taskActivityTable.taskId, task.id),
+            eq(schema.taskActivityTable.type, "title_changed"),
           ),
         ),
     ]);
@@ -98,8 +98,8 @@ describe("API integration: task title activity", () => {
     expect(result.title).toBe(task.title);
     const activities = await db
       .select()
-      .from(schema.activityTable)
-      .where(eq(schema.activityTable.taskId, task.id));
+      .from(schema.taskActivityTable)
+      .where(eq(schema.taskActivityTable.taskId, task.id));
     expect(activities).toHaveLength(0);
   });
 
@@ -119,8 +119,8 @@ describe("API integration: task title activity", () => {
     });
     const activities = await db
       .select()
-      .from(schema.activityTable)
-      .where(eq(schema.activityTable.taskId, task.id));
+      .from(schema.taskActivityTable)
+      .where(eq(schema.taskActivityTable.taskId, task.id));
 
     expect(persistedTask?.title).toBe("Original title");
     expect(activities).toHaveLength(0);

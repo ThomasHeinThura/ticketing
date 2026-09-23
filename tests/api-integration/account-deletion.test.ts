@@ -187,7 +187,7 @@ describe("API integration: account deletion", () => {
 
     const activity = requireRow(
       await db
-        .insert(schema.activityTable)
+        .insert(schema.taskActivityTable)
         .values({
           taskId: task.id,
           userId: guest.id,
@@ -218,8 +218,8 @@ describe("API integration: account deletion", () => {
     const remainingActivity = requireRow(
       await db
         .select()
-        .from(schema.activityTable)
-        .where(eq(schema.activityTable.id, activity.id)),
+        .from(schema.taskActivityTable)
+        .where(eq(schema.taskActivityTable.id, activity.id)),
       "remainingActivity",
     );
 

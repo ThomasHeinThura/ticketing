@@ -463,6 +463,13 @@
 			"when": 1790094377323,
 			"tag": "0065_project_slug_claim",
 			"breakpoints": true
+		},
+		{
+			"idx": 66,
+			"version": "7",
+			"when": 1790180000000,
+			"tag": "0066_work_item_activity_table",
+			"breakpoints": true
 		}
 	]
 }

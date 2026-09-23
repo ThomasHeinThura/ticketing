@@ -43,25 +43,6 @@
 
 ## 5. `comments-and-activity.md` — P1
 
-**Verdict: not-ready** (the visibility model is excellent; the activity-visibility rule that protects it is left to the implementer's judgement, and three referenced entities have no schema)
-
-`CA-3` (filter internal comments server-side in the portal router, "never in the client, never by a CSS class") and `CA-4` (visibility immutable after posting) are exactly right and align with `api-design.md`'s separate `/api/portal/*` router and rbac.md's customer rules. The named test `portal-never-returns-internal.test.ts` is the best test in the corpus.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| High | `CA-7` "Activity rows have visibility too. State changes are **usually** public; assignee changes are internal, because customers do not see staff names." "Usually" is not testable, and this is the rule that decides whether rbac.md's "Customers may never see staff names on internal activity" holds. An implementer must invent the field→visibility mapping — and a wrong default leaks staff identity to customers. | Replace with an exhaustive table: every `activity.verb`/`field` the system writes, mapped to `public` or `internal`, with `internal` as the default for anything unlisted. Make the fallback explicit ("an unmapped verb is internal") so adding a field later fails closed. |
-| High | `CA-17` "Editing is allowed for 15 minutes by the author, after which the comment shows 'edited' with a **hover-revealed history**." The `comment` table has `edited_at` and nothing else — there is no comment-version table, so previous bodies are not retained and the history cannot be rendered. The rule is also ambiguous: is editing *forbidden* after 15 minutes, or merely marked? | Decide and state: editing is refused after 15 minutes except with `comment:update_any`; and add a `comment_version (comment_id, number, body, edited_by, created_at)` table to the data model, or drop the history affordance. |
-| High | `CA-19`/`CA-20` canned responses reference a workspace-level snippet entity with placeholder substitution. **No such table exists** in the data model, no permissions row governs creating them, and no API route is listed. | Add a `canned_response (workspace_id, name, body jsonb, ...)` table, a capability (or reuse `workspace:manage_settings`), and CRUD routes with policies — or move canned responses to a later phase and delete `CA-19`/`CA-20`. |
-| Medium | `CA-2` "The default is configurable **per project**" — no column exists on `project` for default comment visibility, and `settings-hierarchy.md` is P4 while this spec is P1. | Add `project.default_comment_visibility` to the data model, with the recommended `internal` default stated as the seed value. |
-| Medium | **No `## Open questions` section, no `## Data` section, no `## Out of scope`.** The README rule is that Open questions "must be empty before implementation starts"; an absent section cannot be confirmed empty. | Add the three sections; Data should name `comment`, `activity`, `attachment` and the new tables above. |
-| Medium | `PATCH /api/comments/{id} → "author within window, or comment:update_any"` and `DELETE /api/comments/{id} → "author, or comment:delete_any"` are not policy declarations in rbac.md's `{ capability, scope }` form, so the route-coverage CI test has nothing to bind to. The permissions table compounds this by guarding *editing* with `comment:create`. | Express as a capability plus a documented ownership predicate, e.g. `{ capability: 'comment:update_own', scope: 'work_item' }` with `comment:update_any` as the override — and add `comment:update_own`/`comment:delete_own` to rbac.md, which currently has only the `_any` forms. |
-| Medium | `CA-16` "Drafts persist per work item per user, surviving a closed tab" — no storage mechanism named and no table exists. Same missing per-user store as `views.md`. | State `localStorage` (and therefore per-device), or add the table. |
-| Medium | Edge case "Comment on a deleted work item → Deleted with it" collides with `WI-21` (deletion is soft for 30 days). If comments are removed at soft-delete, a restore within the window returns an empty conversation. | Say comments are hidden at soft-delete and removed at purge. |
-| Low | `CA-10` "Activity is never edited or deleted" versus `WI-21` "purged with its comments, activity and attachments" after 30 days. Reconcilable (archive ≠ delete ≠ purge) but the reader has to do that work. | Add a clause to `CA-10`: "…except when the parent work item is purged at the end of the soft-delete window." |
-| Low | `CA-11` lists Tiptap marks including tables and images, but no maximum document size or node-count limit is given for a `jsonb` body. | State a size cap, consistent with the 422 validation contract. |
-
----
-
 ## 6. `attachments.md` — P1
 
 **Verdict: not-ready** (one cross-spec behavioural contradiction, plus the upload state machine has no columns to run on)
