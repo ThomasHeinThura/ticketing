@@ -88,9 +88,9 @@ but its runtime integration is still open. **#9: 47 of ~61 primitives now live i
 `packages/ui`, and 14 remain.** Those are mostly blocked on i18n (breadcrumb, pagination),
 Radix `Slot` (form, timeline), an app wrapper (avatar, #286-style), the `input-otp` npm
 dependency, and Sentry (the error-* files). **#23 (P1):** create/read/list and field update
-are merged, and wiring activity plus events into them is PR #292, in review. **P2:** the
-approvals and assignment rules exist as pure functions (#287/#289), with no HTTP wiring yet.
-`audit_log` (#37) is PR #291, in review.
+are merged; wiring activity and events into them, and `audit_log` (#37), are in flight (see
+the re-verify block below). **P2:** the approvals and assignment rules exist as pure
+functions (#287/#289), with no HTTP wiring yet.
 
 **Merged this third pass (2026-09-23):**
 - **#275** — the work-item `activity` table, with kaneo's table renamed `task_activity`
