@@ -629,7 +629,7 @@ the first day.
 | Deleting a workspace, organisation, project, API key, webhook or identity connection — **typed exact name/key + step-up**, through a pending action | `DELETE /api/workspaces/{id}`, `DELETE /api/instance/organisations/{id}`, `DELETE /api/projects/{projectId}`, `DELETE /api/me/api-keys/{id}`, `DELETE /api/workspaces/{id}/api-keys/{id}`, `DELETE /api/webhooks/{id}`, `DELETE /api/instance/identity-connections/{id}`, `DELETE /api/instance/plugins/{id}` for `auth.*` ([pending-actions.md](pending-actions.md)) |
 | Hard purge | `POST /api/instance/purge` (`PA-13`) |
 | Starting an impersonation session | `POST /api/instance/users/{id}/impersonate` |
-| Rotating the encryption key | `POST /api/instance/rotate-encryption-key` (operator-staged — see [runbook](../05-operations/runbook.md)) |
+| Rotating the encryption key — the key itself is operator-staged via environment variables; this is the re-encryption step | `POST /api/instance/plugins/rotate-secrets` (starts `secrets-rekey` — see [runbook](../05-operations/runbook.md)) |
 | Exporting instance data — audit CSV, configuration export, full export | `POST /api/instance/audit/export`, `GET /api/instance/config-export`, `POST /api/instance/export` |
 | Rotating a webhook secret | `POST /api/webhooks/{id}/rotate-secret` |
 | Creating a webhook, or changing an existing webhook's `url` — a standing outbound data channel carrying every event in the owner's reach to an arbitrary endpoint, indefinitely | `POST /api/webhooks`, and `PATCH /api/webhooks/{id}` when the body changes `url` ([webhooks-and-api-keys.md](../03-features/webhooks-and-api-keys.md) `WH-14`) |
