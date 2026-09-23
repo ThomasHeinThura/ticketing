@@ -2,6 +2,15 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable, workItemTable } from "../../database/schema";
+import { publishEvent } from "../../events";
+import {
+  type ActivityActorType,
+  diffWorkItemFieldChanges,
+  type NewActivityInput,
+  recordWorkItemActivity,
+  resolveVisibility,
+  type WorkItemFieldSnapshot,
+} from "../activity";
 
 export type UpdateWorkItemInput = {
   title?: string;
@@ -34,29 +43,72 @@ export class WorkItemVersionConflictError extends Error {
  * reach.ts` already resolved this key to a row's `workspaceId` before this runs, the same
  * middleware `get-work-item.ts` relies on).
  *
- * Implements `WI-7` (optimistic concurrency) and `WI-8` (title/description/priority/dates
- * editable by anyone with `work_item:update`). Label and custom-field editing (also named
- * in WI-8), state changes (`WI-9`) and assignment (`WI-10`) are explicitly NOT here -- see
- * `schema.ts`'s own comment on `updateWorkItemBody` and this PR's body for why.
+ * Implements `WI-7` (optimistic concurrency), `WI-8` (title/description/priority/dates
+ * editable by anyone with `work_item:update`) and, as of issue #23's third slice, `WI-6`
+ * (every field change writes an `activity` row with the old and new value). Label and
+ * custom-field editing (also named in WI-8), state changes (`WI-9`) and assignment
+ * (`WI-10`) are explicitly NOT here -- see `schema.ts`'s own comment on
+ * `updateWorkItemBody` and this PR's body for why.
  *
- * `WI-7`'s compare-and-swap is the `WHERE ... AND version = $assertedVersion` clause ON
- * the `UPDATE` itself -- a single atomic statement, not a separate SELECT-then-UPDATE
- * (which would race: two concurrent callers could each read version N, each pass an
- * application-level check, and both write). Postgres's own row-level locking during the
- * `UPDATE` serialises concurrent attempts against the same row, so exactly one concurrent
- * writer asserting the same starting version can ever match this WHERE clause and commit;
- * every other one gets zero rows back and is answered with a 409 built from the row's
- * true current state.
+ * TRANSACTION DESIGN, and why it changed from the previous single-statement CAS.
+ * `WI-6` needs the row's PRE-update values to build `activity.old_value`, and the
+ * `UPDATE ... WHERE version = $assertedVersion` clause alone only ever returns the NEW
+ * row. Two ways to get the old values without breaking the CAS guarantee (no lost
+ * update, no phantom old value) were considered:
  *
- * A zero-row result is ambiguous on its own (wrong version, or the row no longer exists --
- * e.g. deleted in the moment between the reach-check middleware and this transaction), so
- * the current row is re-loaded, scoped by the SAME `key`+`workspaceId` pair the CAS itself
- * used, to distinguish the two and to report the real current version in the 409 body.
+ * 1. `UPDATE ... RETURNING` plus an "old row" CTE (`WITH old AS (SELECT ... FOR UPDATE)
+ *    UPDATE ... FROM old ...`) -- one round trip, but the CTE's `SELECT` still needs its
+ *    own `FOR UPDATE` to be race-free, so it buys nothing over (2) except reducing this
+ *    from two statements to one, at the cost of a hand-written CTE Drizzle cannot type
+ *    the way it types `.update()`/`.select()`.
+ * 2. `SELECT ... FOR UPDATE` to lock and read the current row, THEN the same
+ *    `UPDATE ... WHERE version = $assertedVersion` as before -- two statements, still one
+ *    transaction, still Drizzle's typed query builder throughout.
+ *
+ * This picks (2). The row lock the `FOR UPDATE` select takes is what keeps it race-free:
+ * once it returns, no OTHER transaction can commit a change to this row until this one
+ * commits or rolls back (Postgres blocks a concurrent `UPDATE`/`SELECT ... FOR UPDATE` on
+ * the same row until the lock holder finishes), so the values it reads are guaranteed to
+ * be the row's true state immediately before this transaction's own `UPDATE` -- exactly
+ * what `old_value` must be. A plain (unlocked) `SELECT` here would NOT be race-free: a
+ * concurrent writer could commit a change between that `SELECT` and this `UPDATE`, and if
+ * the version it left behind happened to equal `assertedVersion` again is impossible
+ * (version only ever increases), but the more realistic failure is subtler -- the
+ * unlocked `SELECT` could read a stale version while a concurrent commit has already
+ * moved the row to a version this `UPDATE`'s `WHERE` then matches, recording the WRONG
+ * predecessor values. Locking first closes that.
+ *
+ * The soft-deleted-project guard is unchanged in effect, kept in TWO places on purpose
+ * (closing the same race #204/T3 closed for the previous design): checked once right
+ * after the lock (so a project already soft-deleted by lock time is a clean 404, not a
+ * spurious version conflict), and again in the final `UPDATE`'s own `WHERE` via the same
+ * `projectNotDeleted` EXISTS clause as before (so a project soft-deleted in the narrow
+ * window between the lock and this transaction's own `UPDATE` -- by a concurrent
+ * transaction that does not touch `work_item` and so is not blocked by this row lock --
+ * still fails the write, not silently succeeds). The `version` equality is ALSO kept on
+ * the final `UPDATE`'s `WHERE`, redundant with the lock but cheap defence in depth and
+ * exactly the same clause the previous design relied on alone.
+ *
+ * `WI-6`'s rows are written in the SAME transaction as the field update -- if the
+ * activity insert fails, the whole update rolls back (`recordWorkItemActivity` is
+ * awaited before the transaction returns, and any error it throws propagates out of
+ * `db.transaction`'s callback, which Drizzle rolls back on).
+ *
+ * `work_item.updated` (`docs/01-architecture/events.md` ~52) is published AFTER this
+ * transaction commits -- same after-commit placement as every other `publishEvent`
+ * caller (`create-task.ts`, `create-comment.ts`) -- and ONLY when `activityRows` is
+ * non-empty, i.e. at least one field actually changed. A 404, a `WorkItemVersionConflictError`
+ * (409) and an all-unchanged PATCH all leave `db.transaction`'s callback returning
+ * before reaching the event, or return an empty `activityRows`, so none of them ever
+ * publish. Its `changes` payload is built from the SAME `activityRows` the `activity`
+ * table rows come from -- one source of truth for "what changed", not a second diff.
  */
 export async function updateWorkItem(
   key: string,
   workspaceId: string,
   assertedVersion: number,
+  actorId: string,
+  actorType: ActivityActorType,
   input: UpdateWorkItemInput,
 ) {
   const values: Partial<typeof workItemTable.$inferInsert> = {};
@@ -66,56 +118,147 @@ export async function updateWorkItem(
   if (input.startDate !== undefined) values.startDate = input.startDate;
   if (input.dueDate !== undefined) values.dueDate = input.dueDate;
 
-  // #202 / PR #204's freeze invariant, closing the reach-check-to-UPDATE race: the
-  // `requireWorkItemReach` middleware already refuses a soft-deleted project's work item
-  // (404), but that check and this write are two separate statements -- the project could
-  // be soft-deleted in between. The same `project.deleted_at IS NULL` condition is applied
-  // directly to the CAS itself (as an `EXISTS`, since `UPDATE ... WHERE` cannot join) so a
-  // project deleted in that window can never have its work items written to, and to the
-  // re-read below so a zero-row CAS result reports 404, not a confusing 409, when the
-  // project (not the version) is why it didn't match.
+  // #202 / PR #204's freeze invariant -- see this function's own doc comment above for
+  // why it is applied in two places now instead of one.
   const projectNotDeleted = sql`EXISTS (SELECT 1 FROM ${projectTable} WHERE ${projectTable.id} = ${workItemTable.projectId} AND ${projectTable.deletedAt} IS NULL)`;
 
-  return db.transaction(async (tx) => {
+  const { updated, activityRows } = await db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select()
+      .from(workItemTable)
+      .where(
+        and(
+          eq(workItemTable.key, key),
+          eq(workItemTable.workspaceId, workspaceId),
+        ),
+      )
+      .for("update");
+
+    if (!locked) {
+      // Genuinely gone -- deleted, or moved out of this workspace -- since the
+      // reach-check middleware ran. 404, matching that middleware's own "not there"
+      // outcome for this route.
+      throw new HTTPException(404, { message: "Work item not found" });
+    }
+
+    const [projectAlive] = await tx
+      .select({ id: projectTable.id })
+      .from(projectTable)
+      .where(
+        and(
+          eq(projectTable.id, locked.projectId),
+          isNull(projectTable.deletedAt),
+        ),
+      );
+
+    if (!projectAlive) {
+      // Its project was soft-deleted since the reach-check middleware ran (or is
+      // already soft-deleted and the middleware raced) -- 404, not a version conflict.
+      throw new HTTPException(404, { message: "Work item not found" });
+    }
+
+    if (locked.version !== assertedVersion) {
+      throw new WorkItemVersionConflictError(assertedVersion, locked.version);
+    }
+
     const [updated] = await tx
       .update(workItemTable)
       .set({ ...values, version: sql`${workItemTable.version} + 1` })
       .where(
         and(
-          eq(workItemTable.key, key),
-          eq(workItemTable.workspaceId, workspaceId),
+          eq(workItemTable.id, locked.id),
           eq(workItemTable.version, assertedVersion),
           projectNotDeleted,
         ),
       )
       .returning();
 
-    if (updated) {
-      return updated;
-    }
-
-    const [current] = await tx
-      .select({ version: workItemTable.version })
-      .from(workItemTable)
-      .innerJoin(projectTable, eq(workItemTable.projectId, projectTable.id))
-      .where(
-        and(
-          eq(workItemTable.key, key),
-          eq(workItemTable.workspaceId, workspaceId),
-          isNull(projectTable.deletedAt),
-        ),
-      );
-
-    if (!current) {
-      // Genuinely gone -- deleted, moved out of this workspace, or its project was
-      // soft-deleted -- since the reach-check middleware ran. A race, not a version
-      // mismatch. 404, matching that middleware's own "not there" outcome for this route
-      // rather than a confusing 409.
+    if (!updated) {
+      // The version matched moments ago under the row lock, and the row itself is not
+      // gone (we are updating by `id`, not re-resolving `key`), so the only remaining
+      // reason the `WHERE` can fail to match is `projectNotDeleted` -- the project was
+      // soft-deleted in the window between the lock above and this statement, by a
+      // concurrent transaction that does not touch `work_item` and so was never blocked
+      // by the lock. Same outcome as the "already soft-deleted" case: 404.
       throw new HTTPException(404, { message: "Work item not found" });
     }
 
-    throw new WorkItemVersionConflictError(assertedVersion, current.version);
+    // WI-6/CA-6: one `updated` row per changed field named in `DIFFABLE_FIELDS`, built
+    // from ONLY the fields this PATCH actually supplied (matching the partial-update
+    // semantics already applied to `values` above) -- an unsupplied field is "not part
+    // of this update", not a change to/from `undefined`.
+    const before: WorkItemFieldSnapshot = {};
+    const after: WorkItemFieldSnapshot = {};
+    if (input.title !== undefined) {
+      before.title = locked.title;
+      after.title = updated.title;
+    }
+    if (input.description !== undefined) {
+      before.description = locked.description;
+      after.description = updated.description;
+    }
+    if (input.priority !== undefined) {
+      before.priority = locked.priority;
+      after.priority = updated.priority;
+    }
+    if (input.dueDate !== undefined) {
+      before.dueDate = locked.dueDate;
+      after.dueDate = updated.dueDate;
+    }
+    if (input.startDate !== undefined) {
+      before.startDate = locked.startDate;
+      after.startDate = updated.startDate;
+    }
+
+    const activityRows = diffWorkItemFieldChanges(before, after, {
+      workspaceId: updated.workspaceId,
+      workItemId: updated.id,
+      actorId,
+      actorType,
+    });
+
+    if (activityRows.length > 0) {
+      await recordWorkItemActivity(tx, activityRows);
+    }
+
+    return { updated, activityRows };
   });
+
+  // `changes: [{ field, from, to }]` per `events.md`'s declared `work_item.updated`
+  // payload -- built from the same `activityRows` used for the `activity` table write
+  // above (all `verb: "updated"` here; this route never touches `stateId`, so no
+  // `transitioned` row can appear in it). Nothing internal beyond field names/values
+  // already destined for the (possibly internal) `activity` row is added here.
+  if (activityRows.length > 0) {
+    // `events.md`'s `work_item.updated` row (updated for this PR, mirroring
+    // `work_item.commented`'s `NO-19`): each entry carries the SAME `visibility`
+    // `resolveVisibility` gives the `activity` row for that `(verb, field)` pair --
+    // one allowlist, not a second one invented for events. A customer or webhook
+    // consumer must drop an `internal` entry.
+    const changes = activityRows
+      .filter(
+        (row: NewActivityInput): row is NewActivityInput & { field: string } =>
+          row.verb === "updated" && typeof row.field === "string",
+      )
+      .map((row) => ({
+        field: row.field,
+        from: row.oldValue,
+        to: row.newValue,
+        visibility: resolveVisibility(row),
+      }));
+
+    await publishEvent("work_item.updated", {
+      workItemId: updated.id,
+      key: updated.key,
+      workspaceId: updated.workspaceId,
+      projectId: updated.projectId,
+      changes,
+      actorId,
+      actorType,
+    });
+  }
+
+  return updated;
 }
 
 export default updateWorkItem;
