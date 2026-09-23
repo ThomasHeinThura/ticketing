@@ -6,16 +6,16 @@ import { HTTPException } from "hono/http-exception";
  *
  * **Why this file exists instead of a policy declaration alone.** `packages/permissions`
  * already models a `sessionOnly` policy flag (`policy.ts`) and an evaluator that refuses a
- * non-session credential with `403 session_required` (`evaluator.ts`) -- but nothing in
- * `apps/api/src/index.ts` imports `policyRegistry` or `evaluatePolicy` today
- * (`apps/api/src/policy-registry.ts`'s own docstring, confirmed by
- * `grep -rn "policy-registry" apps/api/src` returning only this file's own definition).
- * Wiring the registry into the live request path is runtime authorization integration and is
- * issue #8's, not this lane's -- this lane may not redesign the registry's types or evaluator.
- * Declaring `sessionOnly: true` in a `policy.ts` file alone would therefore be **inert
- * metadata**: true on paper, unread by anything that runs. This module is the small, additive
- * piece of enforcement that makes the same restriction real in the runtime that ships on this
- * branch, using the context variables the current runtime actually has
+ * non-session credential with `403 session_required` (`evaluator.ts`) -- but as of #8 Slice 0,
+ * `apps/api/src/index.ts` only imports `policyRegistry` to construct it at boot (so an invalid
+ * registry fails module initialisation); no middleware yet calls `evaluatePolicy` on the
+ * request path. Wiring per-request evaluation into the live request path is the remaining
+ * runtime authorization integration and is issue #8's, not this lane's -- this lane may not
+ * redesign the registry's types or evaluator. Declaring `sessionOnly: true` in a `policy.ts`
+ * file alone would therefore still be **inert metadata**: true on paper, unread by anything
+ * that runs a request through it. This module is the small, additive piece of enforcement
+ * that makes the same restriction real in the runtime that ships on this branch, using the
+ * context variables the current runtime actually has
  * (`apps/api/src/utils/authenticate-api-request.ts`), not the future `ResolvedIdentity` shape.
  *
  * **What "session-only" preserves.** The four routes this middleware guards are native

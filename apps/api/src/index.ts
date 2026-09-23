@@ -33,6 +33,7 @@ import notificationPreferences from "./notification-preferences";
 import oauth from "./oauth";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
 import { initializePlugins } from "./plugins";
+import { policyRegistry } from "./policy-registry";
 import project from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
@@ -1003,6 +1004,8 @@ export async function runStartupTasks() {
   // After Drizzle migrations: apikey table must exist so we can align columns
   // with Better Auth (reference_id + nullable user_id).
   await migrateApiKeyReferenceId();
+
+  console.log(`🔐 ${policyRegistry.entries.length} policies loaded`);
 
   await migrateNotificationPreferencesSchema();
   await migrateColumns();
