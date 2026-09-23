@@ -5,6 +5,7 @@ import db, { schema } from "../../database";
 import { publishEvent } from "../../events";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { ensureInternalOrganisation } from "../../utils/seed-internal-organisation";
+import { seedWorkspaceDefaults } from "../../utils/seed-workspace-defaults";
 import {
   nextAvailableSlug,
   randomSlugSuffix,
@@ -186,6 +187,12 @@ async function createWorkspace(input: CreateWorkspaceInput) {
           userId: input.ownerId,
           createdAt: now,
         });
+
+        // Issue #309 (`work-items.md` § "Default types", `PR-17`): the default
+        // `work_item_type` and `state_template` rows, in the SAME transaction as the
+        // workspace -- without them, `POST /api/projects/{projectId}/work-items` has
+        // no type and no default state to create against on a fresh instance.
+        await seedWorkspaceDefaults(workspace.id, tx);
 
         // (7)+(8) the CREATING session selects the new workspace and team.
         // Preserved through S4–S7 by explicit decision (retrofit plan §2.5,
