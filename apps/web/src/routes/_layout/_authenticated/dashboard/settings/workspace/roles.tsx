@@ -10,6 +10,7 @@ import {
   Input,
   Label,
   Separator,
+  Switch,
 } from "@taskdesk/ui";
 import { Plus, Shield, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -30,7 +31,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Switch } from "@/components/ui/switch";
 import useCreateWorkspaceRole from "@/hooks/mutations/workspace/use-create-workspace-role";
 import useDeleteWorkspaceRole from "@/hooks/mutations/workspace/use-delete-workspace-role";
 import useUpdateWorkspaceRole from "@/hooks/mutations/workspace/use-update-workspace-role";

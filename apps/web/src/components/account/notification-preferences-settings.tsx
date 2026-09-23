@@ -1,8 +1,16 @@
-import { Button, Input, Label, Separator } from "@taskdesk/ui";
+import {
+  Button,
+  Checkbox,
+  Input,
+  Label,
+  Radio,
+  RadioGroup,
+  Separator,
+  Switch,
+} from "@taskdesk/ui";
 import { CheckCircle, Trash2 } from "lucide-react";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   NumberField,
   NumberFieldDecrement,
@@ -10,7 +18,6 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from "@/components/ui/number-field";
-import { Radio, RadioGroup } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -18,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import {
   useDeleteNotificationWorkspaceRule,
   useUpdateNotificationPreferences,

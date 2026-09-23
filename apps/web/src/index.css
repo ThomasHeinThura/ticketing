@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Tailwind v4 does not scan workspace packages on its own: without this, classes used only
+   in packages/ui primitives are never generated (found by #274's browser check). */
+@source "../../../packages/ui/src";
 @import "@taskdesk/ui/styles/tokens.css";
 @import "@taskdesk/ui/styles/theme.css";
 @import "@taskdesk/ui/styles/motion.css";

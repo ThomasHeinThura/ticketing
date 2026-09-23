@@ -17,6 +17,34 @@ Newest first.
 
 ---
 
+### 2026-09-23 · #9's primitive batches cite `ui-extraction-plan.md`; `design-system.md`'s findings close in parallel
+
+**Decision:** pull requests that only *relocate* existing primitives into `packages/ui`
+(issue #9's batches, starting with PR #274) cite `docs/02-design/ui-extraction-plan.md`
+and issue #9 in their `**Spec:**` field, not `docs/02-design/design-system.md`. At the
+same time, a spec-only lane closes `design-system.md`'s six open 2026-09-05 review
+findings. Once they're closed, later batches cite `design-system.md` again.
+
+**Why:** `check:reviews` (do-not 15) blocked PR #274 because its Spec field named
+`design-system.md`, which still has six open findings. None of them concerns moving an
+existing primitive: they cover a chart library, a dashboard grid, bounds on branding CSS
+overrides, the icon vocabulary, the visual-snapshot tool, and a timesheet grid. A
+relocation PR implements the extraction plan and builds nothing those findings govern.
+Editing a Spec field to get past a gate is exactly the pattern `CLAUDE.md` warns about,
+so this was put to Thomas, not decided by the session.
+
+**Scope limit:** this covers relocation only. A pull request that adds or changes a
+primitive's design, or builds anything the six findings name, still cites
+`design-system.md` and is blocked until they close.
+
+**Alternatives:** close the findings first and keep #274 waiting (rejected — about a
+day's delay for findings unrelated to the change); re-cite only, without closing the
+findings (rejected — it would leave the precedent open-ended).
+
+**Decided by:** Thomas, 2026-09-23 (chose "both").
+
+---
+
 ### 2026-09-23 · Activity addendum: `ON DELETE CASCADE`, and Postgres 16 stays supported
 
 **Decision:** extends the entry immediately below. Two details it left open, both found by

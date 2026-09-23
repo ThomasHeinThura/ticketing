@@ -2,12 +2,20 @@
 
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
-import { Button, Input, Separator, Skeleton } from "@taskdesk/ui";
+import {
+  Button,
+  Input,
+  ScrollArea,
+  Separator,
+  Skeleton,
+  Tooltip,
+  TooltipPopup,
+  TooltipTrigger,
+} from "@taskdesk/ui";
 import { cva, type VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sheet,
   SheetDescription,
@@ -15,7 +23,6 @@ import {
   SheetPopup,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/cn";
 
