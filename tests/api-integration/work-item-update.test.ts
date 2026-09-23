@@ -295,6 +295,210 @@ describe("API integration: work item update (#23 second slice)", () => {
     expect(response.status).toBe(400);
   });
 
+  it("S1 (independent Opus security review of PR #271, BLOCKING): PATCH 404s once its project is soft-deleted, and the row is unchanged", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Frozen by project deletion",
+      priority: "low",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: new Date(), purgeAfter: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+
+    const response = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { title: "Should not be written", priority: "urgent" },
+      createdBody.version,
+    );
+    expect(response.status).toBe(404);
+    const body = await response.text();
+    expect(body).toBe("Work item not found");
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, createdBody.key));
+    expect(row?.title).toBe("Frozen by project deletion");
+    expect(row?.priority).toBe("low");
+    expect(row?.version).toBe(1);
+  });
+
+  it("S1: a project soft-deleted AFTER the reach check passes still blocks the CAS write and the version re-read, not just the middleware", async () => {
+    // Closes the reach-check-to-UPDATE race the review flagged: even if
+    // `requireWorkItemReach` somehow let a request through (e.g. a delete landing in the
+    // gap between that middleware and the transaction), the CAS itself and its
+    // zero-row-result re-read both re-check `project.deleted_at IS NULL` independently.
+    // This test soft-deletes the project between two updates made with the SAME
+    // `updateWorkItem` call graph as the route (through the real HTTP route, since that
+    // is the only externally observable behaviour) to prove the second write is refused
+    // once the project is gone, not merely raced.
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "First edit allowed",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+
+    const first = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { title: "Edited while project was alive" },
+      createdBody.version,
+    );
+    expect(first.status).toBe(200);
+    const firstBody = (await first.json()) as { version: number };
+
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: new Date(), purgeAfter: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+
+    const second = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { title: "Should not land" },
+      firstBody.version,
+    );
+    expect(second.status).toBe(404);
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, createdBody.key));
+    expect(row?.title).toBe("Edited while project was alive");
+  });
+
+  it("S3 (independent Opus security review of PR #271): out-of-range startDate/dueDate are a 400, not a 500, and true/0 are not silently accepted as epoch", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Date-guarded item",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+
+    const badDates: unknown[] = [
+      "+010000-01-01T00:00:00.000Z", // year > 9999
+      "-010000-01-01T00:00:00.000Z", // extended negative year
+      8640000000000000, // Date.MAX (ms), a number, not a string
+      -8640000000000000, // Date.MIN (ms)
+      true,
+      0,
+    ];
+
+    for (const startDate of badDates) {
+      const response = await updateWorkItemRequest(
+        app,
+        createdBody.key,
+        { startDate },
+        createdBody.version,
+      );
+      expect(response.status).toBe(400);
+    }
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, createdBody.key));
+    expect(row?.startDate).toBeNull();
+    expect(row?.version).toBe(1);
+  });
+
+  it("S3: a valid ISO date-time string still updates startDate/dueDate", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Valid date",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+
+    const response = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { startDate: "2026-03-01T00:00:00.000Z" },
+      createdBody.version,
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { startDate: string };
+    expect(new Date(body.startDate).toISOString()).toBe(
+      "2026-03-01T00:00:00.000Z",
+    );
+  });
+
+  it("S4 (independent Opus security review of PR #271, partial): a NUL byte in title or description is a 400, not a 500", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "NUL-guarded item",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+
+    const titleWithNul = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { title: "a\u0000b" },
+      createdBody.version,
+    );
+    expect(titleWithNul.status).toBe(400);
+
+    const descriptionValueWithNul = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { description: { t: "a\u0000b" } },
+      createdBody.version,
+    );
+    expect(descriptionValueWithNul.status).toBe(400);
+
+    const descriptionKeyWithNul = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { description: { "a\u0000": 1 } },
+      createdBody.version,
+    );
+    expect(descriptionKeyWithNul.status).toBe(400);
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, createdBody.key));
+    expect(row?.title).toBe("NUL-guarded item");
+    expect(row?.version).toBe(1);
+  });
+
   it("WI-7: a stale If-Match returns 409 with both the asserted and current versions", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);

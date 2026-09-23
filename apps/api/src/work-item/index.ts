@@ -130,6 +130,10 @@ const listWorkItemsRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing work_item:read permission",
     ),
+    // #202 / PR #204's freeze invariant (independent Opus security review of PR #271,
+    // S2): a soft-deleted project's work-item list now 404s, matching every other
+    // project-scoped route's convention for a soft-deleted subject.
+    404: errorResponse("Project not found"),
   },
 });
 

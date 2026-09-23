@@ -1,7 +1,7 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { workItemTable } from "../../database/schema";
+import { projectTable, workItemTable } from "../../database/schema";
 
 export type UpdateWorkItemInput = {
   title?: string;
@@ -66,6 +66,16 @@ export async function updateWorkItem(
   if (input.startDate !== undefined) values.startDate = input.startDate;
   if (input.dueDate !== undefined) values.dueDate = input.dueDate;
 
+  // #202 / PR #204's freeze invariant, closing the reach-check-to-UPDATE race: the
+  // `requireWorkItemReach` middleware already refuses a soft-deleted project's work item
+  // (404), but that check and this write are two separate statements -- the project could
+  // be soft-deleted in between. The same `project.deleted_at IS NULL` condition is applied
+  // directly to the CAS itself (as an `EXISTS`, since `UPDATE ... WHERE` cannot join) so a
+  // project deleted in that window can never have its work items written to, and to the
+  // re-read below so a zero-row CAS result reports 404, not a confusing 409, when the
+  // project (not the version) is why it didn't match.
+  const projectNotDeleted = sql`EXISTS (SELECT 1 FROM ${projectTable} WHERE ${projectTable.id} = ${workItemTable.projectId} AND ${projectTable.deletedAt} IS NULL)`;
+
   return db.transaction(async (tx) => {
     const [updated] = await tx
       .update(workItemTable)
@@ -75,6 +85,7 @@ export async function updateWorkItem(
           eq(workItemTable.key, key),
           eq(workItemTable.workspaceId, workspaceId),
           eq(workItemTable.version, assertedVersion),
+          projectNotDeleted,
         ),
       )
       .returning();
@@ -86,17 +97,20 @@ export async function updateWorkItem(
     const [current] = await tx
       .select({ version: workItemTable.version })
       .from(workItemTable)
+      .innerJoin(projectTable, eq(workItemTable.projectId, projectTable.id))
       .where(
         and(
           eq(workItemTable.key, key),
           eq(workItemTable.workspaceId, workspaceId),
+          isNull(projectTable.deletedAt),
         ),
       );
 
     if (!current) {
-      // Genuinely gone (or moved out of this workspace) since the reach-check middleware
-      // ran -- a race, not a version mismatch. 404, matching that middleware's own
-      // "not there" outcome for this route rather than a confusing 409.
+      // Genuinely gone -- deleted, moved out of this workspace, or its project was
+      // soft-deleted -- since the reach-check middleware ran. A race, not a version
+      // mismatch. 404, matching that middleware's own "not there" outcome for this route
+      // rather than a confusing 409.
       throw new HTTPException(404, { message: "Work item not found" });
     }
 

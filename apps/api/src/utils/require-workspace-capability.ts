@@ -99,6 +99,26 @@ export function requireWorkspaceCapability(capability: Capability) {
  * reimplemented, so a field-level gate and the route-level gate can never independently
  * drift out of agreement -- the exact failure this module's own file comment documents for
  * `transferWorkspaceOwnership`'s in-transaction re-check.
+ *
+ * TWO CONTRACT NOTES FOR ANY FUTURE CALLER (S6, independent Opus security review of PR
+ * #271 -- safe today, but a trap for a caller that doesn't hold both):
+ *
+ * 1. `workspaceId` MUST be a server-resolved id, read from a row a reach/access
+ *    middleware already loaded (e.g. `c.get("workspaceId")` as `requireWorkItemReach`
+ *    sets it) -- **never** taken from request input (a body field, a query parameter, a
+ *    header). This function only checks whether the caller holds `capability` IN the
+ *    workspace it is given; it cannot tell whether that workspace is the one the caller's
+ *    write will actually land in. A future field-level call that trusted a body- or
+ *    query-supplied `workspaceId` would check authority in workspace A and let the
+ *    handler write workspace B -- a confused-deputy gap this function cannot detect on
+ *    its own.
+ * 2. This function, like the middleware above, resolves ONLY the caller's
+ *    `workspace_member.role` -- it never reads `c.get("apiKey")` or an API key's own
+ *    `permissions` scoping (contrast `requireWorkspacePermission`,
+ *    `require-workspace-permission.ts`). Latent today (nothing in this codebase sets
+ *    `apikey.permissions` yet), but once scoped API keys land, a request authenticated by
+ *    a narrowly-scoped key will pass this check on the strength of the human member's
+ *    role alone, ignoring the key's own narrower scope.
  */
 export async function assertCallerHasCapability(
   workspaceId: string,
