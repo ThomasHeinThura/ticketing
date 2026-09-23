@@ -33,6 +33,9 @@ import notificationPreferences from "./notification-preferences";
 import oauth from "./oauth";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
 import { initializePlugins } from "./plugins";
+// Importing this constructs and validates the registry at module load, so an invalid policy
+// refuses boot (#8 Slice 0). Keep the import even if its one use below moves: without a use,
+// the bundler drops it and the check silently stops running.
 import { policyRegistry } from "./policy-registry";
 import project from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";

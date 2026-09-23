@@ -23,7 +23,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
  * here from `packages/permissions/src` would be a different class object across that module
  * boundary and `instanceof` would spuriously fail even on a passing case.
  */
-describe("production boot: invalid policy registry", () => {
+// Each case cold-imports the whole `index.ts` module graph inside the test body; that takes
+// ~2–4 s locally and crossed vitest's 5 s default in CI (run 35841705251), so the default
+// timeout is not a meaningful bound here.
+const COLD_IMPORT_TIMEOUT_MS = 30_000;
+
+describe("production boot: invalid policy registry", {
+  timeout: COLD_IMPORT_TIMEOUT_MS,
+}, () => {
   afterEach(() => {
     vi.doUnmock("../../apps/api/src/work-item/policy");
     vi.resetModules();
