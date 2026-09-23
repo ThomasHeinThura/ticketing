@@ -603,3 +603,77 @@ The residuals are documented, owned, and not this PR's to close:
 - the `audit-purge` empty-table restart.
 
 The `NaN`/`Date` coercion is a NON-BLOCKING fidelity note.
+
+---
+
+## Delta (a3b879b)
+
+**Reviewer:** Opus 5.5, the same context as above.
+
+**Reviewed head:** `a3b879b7dc17a8f86b24a1d59674f9ef02cbd559`
+
+I confirmed the head with `gh pr view 291 --json headRefOid`. The delta is
+`git diff 903bd51 a3b879b`: the gitleaks false-positive suppression.
+
+### Checks
+
+- **Scope.** The delta touches exactly three files:
+  - `.gitleaksignore` (new);
+  - `docs/07-planning/decision-log.md` (+25 lines, one new entry);
+  - `tests/api-integration/audit-log.test.ts`.
+
+  In the test file, only two string literals change, at lines 188 and 545, from
+  `"sk_live_abc123"` to `"fake-api-key-for-test"`. No test logic, name or assertion changes.
+
+  `audit-log.test.ts` ran on the private database `pr291_opus_test`. **49 of 49 tests
+  passed.** The database was dropped afterwards.
+
+- **`.gitleaksignore`.** It holds three comment lines and exactly two entries. Each entry is
+  a full `commit-sha:file:rule-id:line` fingerprint, which is the only form gitleaks'
+  `.gitleaksignore` supports. A fingerprint matches one finding, at one line, in one commit.
+  There is no path, glob, rule-wide or allowlist entry, and the repo has no `.gitleaks.toml`
+  that could widen it.
+
+  Both fingerprints point at real lines:
+  - `git show dc63e85:…:188` is the `sk_live_abc123` fixture;
+  - `git show 4f20080:…:545` is the same fixture.
+
+  Other commits in the range also contain the string. In git mode gitleaks reports only the
+  commit that *adds* a line, so these two fingerprints are the complete set.
+
+- **Live gitleaks run.** I ran `ghcr.io/gitleaks/gitleaks:v8.24.3` in `git` mode on a
+  throwaway clone. The clone was deleted afterwards.
+
+  | Run | Result |
+  | --- | --- |
+  | `--no-merges --first-parent 63b011d^..a3b879b` | no leaks found |
+  | Same range, merges included | no leaks found |
+  | `.gitleaksignore` removed | exactly the 2 findings, with fingerprints byte-identical to the file's entries |
+  | Canary commit adding `sk_live_abc123` again, plus an AWS-style key, in **the same file**, ignore file present | both flagged (`generic-api-key`, `aws-access-token`) |
+
+  The ignore file cannot blind the scanner to anything else, including a later secret in
+  this same file.
+
+- **S6 is still exercised.** `assertNoObviousSecret` refuses the write whenever
+  `isSecretShapedKey(key)` matches and the value is not `null`. The decision depends on the
+  key name, `apiKey`, which matches the `api`+`key` pair, and never on the value.
+
+  Both tests still assert the `looks like a secret value` rejection, and both pass with the
+  fake value. The new value also no longer matches gitleaks' `generic-api-key` pattern at
+  the head. The live run confirms this.
+
+- **Decision log.** The new entry correctly records:
+  - the rule;
+  - the file, both commits and both lines;
+  - that suppression is by exact fingerprint only;
+  - why fixing only the head cannot clear a scan over the whole PR history;
+  - the rejected alternatives: a fresh PR, and path- or rule-wide ignores.
+
+  It attributes the decision to **Thomas**, via `AskUserQuestion`, on 2026-09-23. The
+  2026-09-17 CodeQL alert #2 precedent it cites exists in the log. It is accurate.
+
+### Verdict (a3b879b)
+
+**CLEAR.** The suppression is minimal and exact, the fixture change keeps S6's coverage, and
+nothing else changed. Every earlier finding verdict stands: S1 to S7 and the nit are all
+CLOSED.
