@@ -361,3 +361,202 @@ A delta review after the fix needs to check only:
 - S1's scope construction, and its tests;
 - S2, if it is included;
 - that the shadow path still never writes a context key or response.
+
+---
+
+## Delta review — fix round `5d26f79`
+
+**Reviewer:** Opus 5.5, fresh independent context. Did not author, direct, or remediate this fix round.
+**Reviewed head:** `5d26f79ba32b31dfe5f28a14af99ebc453371aab`
+**Commits since the note (`c697d35`):** one, `5d26f79 Cline (shadow fix round) fix(permissions): resolve #323 Opus findings S1-S7`.
+Its parent is `c697d35`, and there is no `main` merge in between.
+
+**Delta verdict: CHANGES NEEDED.**
+
+- **S1 is fixed.**
+- **S2, S3, S4 and S6 are fixed**, with small residuals listed below.
+- **S5 is bounded and fast.** But it brings in one new blocking defect, D1: dropped
+  evaluations are filed under a fake router group, so a saturated router looks clean in the
+  per-router summary.
+- **Separately, S9 is now live.** #322 has merged, `main` holds
+  `0068_workspace_role_is_system.sql`, and this PR is `CONFLICTING`.
+
+### Scope of the fix round
+
+- **Code:** only `apps/api/src/permissions/shadow-evaluation.ts`, `shadow-middleware.ts` and
+  `shadow-store.ts`.
+- **Tests:** `tests/api/permissions/shadow-evaluation.test.ts` and
+  `tests/api-integration/permissions-shadow-mode.test.ts`.
+- **Docs outside the shadow files:** `docs/01-architecture/data-model.md` (the `trace_id` note),
+  `docs/05-operations/runbook.md` (the S4/S7 rules and the check query), and
+  **`docs/07-planning/decision-log.md`** (the "Coverage in this slice" paragraph was rewritten
+  in place). See D3.
+- **Nothing else:** no change to `index.ts`, `workspace-access-middleware.ts`,
+  `require-work-item-reach.ts`, the migration or `packages/**`.
+- **Still write-free:** a search of the three shadow files for `c.set`, `c.res =`, `c.header(`
+  and `c.status(` found nothing. The new synchronous work after `await next()` can't throw:
+  `attributedRouteKey` (a `find`, plus `normaliseRouteKey` inside a `try`) and the counter/queue
+  bookkeeping. Evaluation is still fired off without being awaited.
+
+### Suites at `5d26f79`
+
+These ran on a private database, `pr323_opus_delta_test`, which was dropped afterwards.
+
+- Unit: **55 files, 438 tests, all passed.**
+- Integration: **80 files, 1092 tests, all passed.**
+- `test:permissions`: **10 files, 80 tests, all passed.**
+- `node --test 'scripts/ci/**/*.test.mjs'`: **495 tests, 88 suites, all passed.**
+
+### Delta probes
+
+These used a throwaway, uncommitted file, `tests/api-integration/zz-opus-delta-323.test.ts`,
+with the real `createApp()`, shadow on, and real Postgres.
+
+- **S1, over HTTP.**
+  - **Allowed requests agree.** A workspace admin and an ordinary member each called
+    `GET /api/project?workspaceId=<own>` and `GET /api/label/workspace/<own>`. Every call
+    returned 200, and every tally was `agree` (count 2 per route).
+  - **The instance-admin bypass is still recorded, with the right reason.** An instance admin
+    who isn't a member got 200 on both routes. Both were recorded `legacy_allow_policy_deny`
+    with `reason_code = forbidden` and `policy_code = forbidden`. That is a real capability
+    denial, distinct from the new artifact code `scope_source_unavailable`.
+  - **Fixed.**
+- **S2.** I enumerated all 102 handlers registered below the guard. With the new rule (the
+  first matched entry that isn't `ALL`), **0** are attributed to the wrong route.
+  - Over HTTP, `PUT /api/project/reorder`, `GET /api/invitation/pending` and `GET /api/ws/user`
+    each landed on their own key.
+  - A path that matches no route (`/api/definitely-not-a-route`) is now not tallied at all.
+    Before, it was tallied as `ALL /api/*`. That's acceptable, because no router owns it.
+  - No `ALL`-method handler that isn't a wildcard exists below the guard, so no real route
+    goes uncounted.
+  - **Fixed.**
+- **S3.**
+  - **Absent header:** a server-generated UUID was stored (36 characters).
+  - **Well-formed header:** `forged-trace.1` was stored as sent.
+  - **Oversized or malformed header:** replaced by a generated UUID. The unit tests cover this,
+    and so does the `{1,128}` pattern.
+  - **Bounded: fixed.** It is still forgeable within that format. The code comment says so, but
+    the new `data-model.md` text says the opposite. See D2.
+- **S4.** The runbook now says that a bucket whose tally is higher than its event count
+  "cannot be declared clean", and it adds a check query for this. **Fixed.**
+- **S5, burst on `GET /api/workspace/{id}`, pool `max: 10`.**
+
+  | N / concurrency | shadow | wall | p50 | p99 | peak pool waiters | dropped |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | 3000 / 300 | off | 1.47 s | 121 ms | 213 ms | 586 | — |
+  | 3000 / 300 | on | 1.42 s | 122 ms | 150 ms | 596 | 2800 |
+  | 8000 / 2000 | off | 3.66 s | 791 ms | 912 ms | 3984 | — |
+  | 8000 / 2000 | on | 3.90 s | 852 ms | 970 ms | 3998 | 7848 |
+
+  - **Latency is back to the shadow-off level.** Before this round it was 594 ms / 672 ms and
+    4.3 s / 8.3 s.
+  - **Everything is counted.** The tally sums to exactly N, and the queue drains in about
+    160 ms.
+  - **Bounded: fixed.** But see D1.
+- **S6.** The prune now loops over batches until it drains (capped at 200k rows), and it sets
+  the day-guard only after it succeeds. **Fixed.** See D4 for residuals.
+
+### Delta findings
+
+#### D1 — BLOCKING — saturation drops are filed under `router_group = 'shadow-control'`, so a saturated router looks clean in the per-router summary
+
+`shadow-store.ts:209` hard-codes `routerGroup: "shadow-control"` for `shadow_saturated` rows,
+although the route key is known.
+
+In the burst above, the tally for the workspace router
+(`apps/api/src/workspace/policy.ts`) showed **only** `agree` (200, and then 152), while
+**2,800 and then 7,848** of that router's requests were never evaluated. Those sat in a
+separate `shadow-control` group.
+
+The runbook's per-router summary and coverage queries both group by `router_group`. The
+summary is what a cut-over PR cites. So on the evidence it is told to cite, a router where 93–98% of
+requests were dropped reads as clean and exercised. That is exactly the falsely-clean router
+this mechanism exists to prevent.
+
+The new cap-check query happens to list the bucket, keyed by route, but nothing ties that
+result back to the router's verdict.
+
+**Fix:**
+
+- write the drop row with the same group the evaluated rows use:
+  `routerGroupFor(policyRegistry.get(routeKey)?.source)`, called from the middleware and passed
+  in;
+- add an assertion to the existing S5 integration test that the `shadow_saturated` row's
+  `router_group` equals the route's registry source;
+- optionally, have the runbook call `shadow_saturated` out as an unexplainable reason: a router
+  with any such rows in the window is not clean.
+
+#### D2 — NON-BLOCKING — the `trace_id` text in `data-model.md` is inaccurate
+
+The table row now says the trace id is "generated server-side; never copied from an untrusted
+request header". The code *does* copy a header that matches `^[A-Za-z0-9._-]{1,128}$`, and
+the probe stored `forged-trace.1` as sent.
+
+The code's own comment is correct ("untrusted even when it passes"). Make the data-model row
+say the same.
+
+#### D3 — NON-BLOCKING, for the orchestrator — `decision-log.md` was edited by the fix-round lane
+
+The decision log is orchestrator-owned. The commit rewrites the entry's "Coverage in this
+slice" paragraph in place. The commit message says it was "adopted from the parallel
+orchestration context". The entry isn't on `main` yet, so this isn't an append-only violation
+against `main`. But the orchestrator must confirm it owns the text.
+
+The corrected paragraph now matches S1 (`RequestScope` for request-sourced policies), but two
+points in it are still wrong:
+
+- It says a denied request whose scope was not exposed becomes
+  `unevaluated: scope_source_unavailable`. That code is only the shadow-artifact fallback. An
+  unexposed scope is `row_scope_unavailable`.
+- It doesn't mention the new `shadow_saturated` reason.
+
+#### D4 — NON-BLOCKING — the prune has no in-progress guard and no retry backoff
+
+The day-guard is now set only after success (`shadow-store.ts:110`), which is what S6 asked
+for. This creates two new problems:
+
+- **Concurrent prunes.** The first evaluations of each UTC day, up to the 8 in flight, each run
+  their own prune loop at the same time.
+- **Retries on every evaluation.** A persistent prune failure retries on every single
+  evaluation, adding 2 failing DELETEs each time.
+
+The S5 limit keeps both away from the pool, so there is no risk to legacy requests. **Fix:**
+add an in-progress flag and a retry backoff (for example, at most once per hour after a
+failure).
+
+#### D5 — NON-BLOCKING, pre-existing, noted for the per-router soak — delegated routes where the handler denies itself
+
+`GET /api/ws/user` without an upgrade header was recorded `legacy_deny_policy_allow`, the
+dangerous class by name.
+
+- A `delegated` policy always allows, while the handler's own authentication answer was a
+  denial status.
+- The old attribution produced the same result under `GET /api/ws/{projectId}`, so this isn't
+  a regression.
+- It fails safe, because the router isn't clean.
+- But it puts noise into the one class that must stay meaningful.
+
+For #324: compare `delegated` routes as `unevaluated: delegated_to_handler` rather than
+filing them as a disagreement.
+
+#### S9 — now required, not conditional
+
+**#322 has merged.** `main` (`33ce9ec`) now holds `0068_workspace_role_is_system` with
+`when: 1790200000000`, and #323 is `CONFLICTING`. This PR is the one that must renumber:
+
+1. rename its migration to `0069_policy_shadow_tables.sql`;
+2. set its journal entry to `idx: 69`, with a `when` **strictly greater than 1790200000000**. If
+   `when` isn't raised, every database already migrated through #322 silently skips the tables;
+3. rebuild `meta/0069_snapshot.json` from `main`'s `0068` snapshot, with that snapshot's `id` as
+   `prevId`;
+4. prove it applies on a database already at `main`'s `0068`.
+
+The merge and renumber change the head. **So the final gate is a further delta review, limited
+to the migration and journal and the merge's conflict resolution, plus D1.**
+
+### Items from the original review not addressed, and not required for merge
+
+- **S7:** the trigger. The runbook now carries the "paste the summary at decision time" rule,
+  which covers the procedural half.
+- **S8:** tracked for #324.
+- **S10:** informational.
