@@ -296,3 +296,111 @@ S2 must be closed before any router moves from shadow to enforcement. S3, S4, S5
 provisioning gap must be closed before Slice 2 relies on the loader for those inputs. A follow-up
 SHA that changes only S1's guard and adds its tests needs a narrow delta re-check, not a full
 re-review.
+
+## Delta re-check (fix round: S1, S4, S5, S6, S7)
+
+**Reviewer:** Opus 5.5, same fresh independent context as above. Did not author, direct or remediate the delta.
+**Reviewed head:** `a93fe091b448dffd48ad2b2133a5861ecd763bbf`
+(confirmed via `gh pr view 315 --json headRefOid`)
+
+**Commits since `14e8fcc`.**
+- `cc68b93` is this note.
+- `e13b0a1` is the fix. It touches only `resolve-identity.ts` and the PR's own two test files.
+- `a93fe09` is a merge with parents `e13b0a1` and `31eed7b`, and `31eed7b` is on `origin/main`.
+  `git diff-tree --cc a93fe09` prints no hunks, so no conflict was resolved. `git diff e13b0a1
+  a93fe09` on the PR's five files (the three code/test files, `apps/api/vitest.config.ts` and this
+  note) is empty, so the merge brought in #306, #313 and #311 without touching any PR file.
+
+**What changed in `resolve-identity.ts`.**
+- **S1.** `isBuiltInWorkspaceRoleKey` now requires `BUILT_IN_ROLES[value].scope === "workspace"`.
+- **S6, ban.** `banned` is read from `user` and refused first. The only earlier checks are the
+  missing-person and inactive-person refusals.
+- **S4.** A key credential is refused when `apiKey` is absent, when `enabled === false`, or when
+  `ownerUserId !== userId`.
+- **S6, customer.** A customer on a key credential is refused. A customer whose organisation has
+  `active` false, `deleted_at` set or `portal_access` false is refused. These organisation
+  columns come from a third join in query 1.
+- **S5.** Query 3 inner-joins `team` for `workspace_id`. `teamIds` keeps only teams whose
+  workspace still has a raw `workspace_member` row for the person.
+
+**Suites at this head.** Private DBs `pr315_delta_test` and `pr315_delta_probe_test`, both dropped
+afterwards.
+- API unit: **53 files, 392 tests, all passed.**
+- Integration: **76 files, 1050 tests, all passed.**
+- `test:permissions`: **10 files, 80 tests, all passed.**
+- `node --test 'scripts/ci/**/*.test.mjs'`: **495 tests, 88 suites, all passed.**
+
+**Probes.** I used a throwaway file, `tests/api-integration/resolve-identity.opusprobe.ts`, run through a
+throwaway config so no committed suite collects it. Neither was committed. Every result below
+was observed.
+- **D1: S1 over real HTTP.** A workspace owner creates `instance_admin` and `customer` roles
+  (200) and assigns each to a member (200). `resolveIdentity` now returns `authority: []` and
+  `memberships: []` for that workspace. `can()` is false for every capability at instance scope
+  and at workspace scope. **S1 is closed.**
+- **D2: ban ordering.** A user with `user.role = "admin"` resolves with the `instance_admin`
+  grant and reach `all`. Once `banned` is set, the result is **`null`** for `session`,
+  `mcp_key` (owner matched) and `impersonation`. It stays `null` when `ban_expires` is in the
+  past. With `banned = null` the identity comes back. **A banned instance admin gets no
+  `instance:*` grant.**
+- **D3: S4.** Each of these returns `null`:
+  - `api_key` or `mcp_key` with no `apiKey` fact;
+  - an `ownerUserId` belonging to another user;
+  - an empty-string `ownerUserId`;
+  - `enabled: false`.
+
+  A matched, enabled key resolves with `keyCapabilities: []`. A `session` credential carrying a
+  stray disabled or mismatched key fact still resolves as a session, with `keyCapabilities`
+  absent. That is correct: the key checks are gated on `isKeyCredential`, and the evaluator
+  ignores key data for non-key credentials only when it is absent.
+- **D4: S5 over real HTTP.** A member is in team `t1` (workspace `w1`, role `member`) and team
+  `t2` (workspace `w2`, custom role). Before leaving, `teamIds` is `[t1, t2]`. After
+  `POST /api/workspace/{w1}/leave` (200), `teamIds` is `[t2]`. `t2` is kept because a real
+  `workspace_member` row still exists and a custom role is still membership, and teams grant
+  reach only. **S5 is closed.**
+- **D5: S6, including over-refusal.**
+
+  | Organisation state | Customer | Staff |
+  | --- | --- | --- |
+  | Healthy | resolves (`customer` grant) | resolves |
+  | `portal_access = false` | `null` | resolves |
+  | `active = false` | `null` | resolves |
+  | `deleted_at` set | `null` | resolves |
+  | The real internal organisation with `portal_access = false` and `active = false` | — | resolves |
+
+  A customer on `api_key` with a matched owner returns `null`. A customer under `impersonation`
+  resolves, which God Mode needs. **No staff identity is over-refused.**
+- **D6: query count.** An owner of two workspaces triggers exactly **3** `select` calls
+  through an instrumented executor.
+
+**S6 against the spec.**
+- The organisation gates apply only on the customer branch. That matches
+  multi-tenancy.md § Portal access (`organisation.portal_access`) and god-mode.md § Organisation
+  suspended, and neither document defines a suspended staff organisation.
+- Refusing a customer on a key credential is consistent with three things:
+  - `api_key:manage` is not among `CUSTOMER_CAPABILITIES`;
+  - no portal route creates a key;
+  - auth-and-identity.md's customer-connection row: "may never create … keys".
+- Refusing a banned user has no explicit rbac.md clause. It follows better-auth's own ban
+  semantics, applied to the API-key path, which `verifyApiKey` never checked. No spec-defined
+  legitimate identity is refused.
+
+**Residual notes. All NON-BLOCKING; none is a regression.**
+- **R1.** A ban whose `ban_expires` is past still refuses. better-auth clears the flag only when
+  a new session is created (the admin plugin's session-create hook), so a user whose ban has
+  expired but who uses only an API key stays refused until they next sign in. This fails
+  closed. It is worth one line in Slice 2's "Not done", or a `banExpires` check.
+- **R2.** `webhooks-and-api-keys.md` `AK-7` says a **service** key keeps working after its
+  creator is deactivated. The adapter's rules only fit personal keys: owner `person.active`,
+  `ownerUserId === userId`, and ban. No service-key table exists yet. When one lands, these
+  rules must be revisited for that kind rather than inherited.
+- **R3.** `ResolveIdentityInput.apiKey` is still optional in the type (`resolve-identity.ts:468-474`).
+  The runtime refusal (D3) closes the security gap. A discriminated union would move the
+  mistake to compile time, and that is optional.
+- S2 (#318) and S3 (#319) are unchanged and remain preconditions for moving from shadow to
+  enforcement and for flipping the `seesAll` literal. S8 to S10 are unchanged and deferred to
+  Slice 2 as stated.
+
+**Verdict at `a93fe091b448dffd48ad2b2133a5861ecd763bbf`: CLEAR.** S1, the only blocking finding,
+is fixed, and I verified the fix over real HTTP. The S4, S5 and S6 fixes hold under adversarial
+probes and do not over-refuse staff. The `main` merge touched no PR file. The commit that adds
+this section changes only this file.
