@@ -5,9 +5,19 @@ const { state } = vi.hoisted(() => ({
   state: { lookedUpIds: [] as string[], handlerReached: false },
 }));
 
+// Keyed by id, not by resource type: every `workspaceAccess.*` "lookup" source runs the
+// same shape of `select().from().innerJoin(...).where(eq(<table>.id, id)).limit(1)` query
+// (see the mock below), so one id -> workspaceId map serves every resource (task, label,
+// time entry, activity/comment, column, workflow rule) the 8 helpers under test resolve.
 const WORKSPACE_BY_TASK: Record<string, string> = {
   "task-in-my-workspace": "workspace-mine",
   "task-in-other-workspace": "workspace-theirs",
+  "label-in-my-workspace": "workspace-mine",
+  "time-entry-in-my-workspace": "workspace-mine",
+  "activity-in-my-workspace": "workspace-mine",
+  "comment-in-my-workspace": "workspace-mine",
+  "column-in-my-workspace": "workspace-mine",
+  "workflow-rule-in-my-workspace": "workspace-mine",
 };
 
 vi.mock("../../../apps/api/src/database", async () => {
@@ -84,8 +94,9 @@ function post(query: string, body: Record<string, unknown>) {
 }
 
 // `fromTask` is one of the 8 `[{ type: "lookup" }, { type: "query", key:
-// "workspaceId" }]`-shaped helpers -- a NUL-bearing path-param id must never fall
-// through to the `?workspaceId=` source that follows it in the same list.
+// "workspaceId" }]`-shaped helpers (issue #256 has since removed the second, `query`
+// source from all 8 -- this app still exercises the NUL check on the single remaining
+// `lookup` source).
 function buildTaskApp() {
   return new Hono<{ Variables: { userId: string } }>()
     .use("*", async (c, next) => {
@@ -95,6 +106,24 @@ function buildTaskApp() {
     .get("/task/:id", workspaceAccess.fromTask(), async (c) => {
       state.handlerReached = true;
       return c.json({ actedOn: c.req.param("id") });
+    });
+}
+
+// Generic app builder for the "nonexistent row + ?workspaceId=<mine> is 404, handler
+// never reached" case, parameterised over which of the 8 helpers is under test and the
+// path-param key its default `idKey` reads.
+function buildLookupApp(
+  middleware: ReturnType<typeof workspaceAccess.fromTask>,
+  idKey: string,
+) {
+  return new Hono<{ Variables: { userId: string } }>()
+    .use("*", async (c, next) => {
+      c.set("userId", "user-1");
+      return next();
+    })
+    .get(`/:${idKey}`, middleware, async (c) => {
+      state.handlerReached = true;
+      return c.json({ actedOn: c.req.param(idKey) });
     });
 }
 
@@ -139,16 +168,46 @@ describe("workspaceAccess lookup sources", () => {
     expect(state.lookedUpIds).toEqual([]);
   });
 
-  it("a well-formed lookup id still falls through to ?workspaceId= exactly as before, once it's genuinely absent", async () => {
+  it("issue #256: a well-formed lookup id that resolves to no row is a clean 404, never a fall-through to ?workspaceId=", async () => {
     const res = await buildTaskApp().request(
       "/task/task-does-not-exist?workspaceId=workspace-mine",
     );
 
-    // The id resolves to no row (a real "absent" case, not a NUL byte), so this
-    // still legitimately falls through to the query fallback and succeeds against
-    // the caller's own workspace -- proving the NUL fix didn't remove the
-    // fallback for the case it's actually meant for.
-    expect(res.status).toBe(200);
-    expect(state.handlerReached).toBe(true);
+    // Pins current (fixed) behaviour: the id resolves to no row (a real "absent"
+    // case, not a NUL byte). Before #256 this fell through to the caller-supplied
+    // `?workspaceId=` and reached the handler against that workspace -- exactly the
+    // defect #256 reports. Now it 404s directly from the middleware, and the query
+    // parameter is never consulted at all.
+    expect(res.status).toBe(404);
+    expect(state.handlerReached).toBe(false);
+  });
+
+  // One test per #256 helper: a nonexistent row id, plus a caller-supplied
+  // `?workspaceId=` naming the caller's OWN real workspace (the strongest case for the
+  // fallback -- it isn't even a foreign workspace), still 404s without reaching the
+  // handler. Mutation-checked: restoring the removed `{ type: "query", key:
+  // "workspaceId" }` source to any one of these factories makes its own case here fail
+  // (200, handler reached) while leaving the others green.
+  describe("issue #256: no eight helpers fall back to ?workspaceId= on a failed lookup", () => {
+    it.each([
+      ["fromTask", () => workspaceAccess.fromTask(), "id"],
+      ["fromTaskId", () => workspaceAccess.fromTaskId(), "taskId"],
+      ["fromLabel", () => workspaceAccess.fromLabel(), "id"],
+      ["fromTimeEntry", () => workspaceAccess.fromTimeEntry(), "id"],
+      ["fromActivity", () => workspaceAccess.fromActivity(), "id"],
+      ["fromComment", () => workspaceAccess.fromComment(), "id"],
+      ["fromColumn", () => workspaceAccess.fromColumn(), "id"],
+      ["fromWorkflowRule", () => workspaceAccess.fromWorkflowRule(), "id"],
+    ] as const)(
+      "%s: nonexistent id + ?workspaceId=<mine> is 404, handler not reached",
+      async (_name, factory, idKey) => {
+        const res = await buildLookupApp(factory(), idKey).request(
+          "/does-not-exist?workspaceId=workspace-mine",
+        );
+
+        expect(res.status).toBe(404);
+        expect(state.handlerReached).toBe(false);
+      },
+    );
   });
 });

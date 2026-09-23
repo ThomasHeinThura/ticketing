@@ -3,6 +3,7 @@ import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { taskTable } from "../../database/schema";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { requireWorkspacePermission } from "../../utils/require-workspace-permission";
 
 type BulkTaskOperation =
@@ -80,6 +81,11 @@ export async function requireBulkTaskEntitlement(c: Context, next: Next) {
 
 export async function requireTaskAssigneePermission(c: Context, next: Next) {
   const id = c.req.param("id");
+  // #281 sweep: this id reaches a raw `eq(taskTable.id, ...)` query below,
+  // unvalidated -- a NUL byte would otherwise 500 instead of a clean 400.
+  if (id) {
+    rejectNulByte(id, "Task id");
+  }
   const { userId } = await readJsonBody(c);
   const nextAssignee = typeof userId === "string" ? userId : null;
 

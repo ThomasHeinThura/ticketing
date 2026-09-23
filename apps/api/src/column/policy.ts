@@ -76,7 +76,7 @@ export const columnPolicies = {
   },
 
   // Update one column's own fields (name/icon/color/isFinal). `workspaceAccess.fromColumn("id")`
-  // resolves the column's own project (and 400s if the column doesn't exist), then
+  // resolves the column's own project (and 404s if the column doesn't exist -- #256), then
   // `requireWorkspacePermission({ project: ["update"] })` runs.
   "PUT /api/column/{id}": {
     capability: "project:update",

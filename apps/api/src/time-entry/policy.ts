@@ -56,14 +56,15 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * (`apps/api/src/utils/workspace-access-middleware.ts`) resolve the workspace id by looking up
  * the addressed `time_entry`/`task` row and joining through to its owning `project`, in the
  * same query, before comparing against the caller's memberships — never by trusting a
- * request-supplied id as the primary path. (Both middlewares fall back to an optional
- * `?workspaceId=` query parameter *only* when the row lookup itself finds nothing — i.e. only
- * for an id that does not exist. That fallback path is shared, pre-existing
- * `workspace-access-middleware.ts` behaviour, not specific to this router, and does not widen
- * real data exposure here: every one of these controllers re-queries strictly by the same
- * addressed id afterwards, so a fabricated `workspaceId` on a nonexistent id yields an empty
- * result, never another tenant's row. Recorded here rather than silently relied on; worth a
- * dedicated look at `workspace-access-middleware.ts` itself outside this lane's scope.)
+ * request-supplied id as the primary path. (Both middlewares used to fall back to an optional
+ * `?workspaceId=` query parameter when the row lookup itself found nothing — i.e. only for an
+ * id that did not exist. That was shared, pre-existing `workspace-access-middleware.ts`
+ * behaviour, not specific to this router, and never widened real data exposure here: every one
+ * of these controllers re-queries strictly by the same addressed id afterwards, so a
+ * fabricated `workspaceId` on a nonexistent id could only yield an empty result, never another
+ * tenant's row. Issue #256 has since removed that fallback from all 8 `[lookup, query]`-shaped
+ * helpers, this pair included: a nonexistent id now 404s directly from the middleware, before
+ * any authority decision runs, rather than falling through to a caller-supplied workspace.)
  *
  * **`reach: "required"` on all four**, `POST /api/time-entry` included: although the route
  * creates a new row, it addresses an *existing* task (`taskId` in the request body, resolved

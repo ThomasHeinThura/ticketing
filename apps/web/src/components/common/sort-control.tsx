@@ -1,5 +1,3 @@
-import { ArrowDownAZ, ArrowUpAZ } from "lucide-react";
-import { useTranslation } from "react-i18next";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,7 +6,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/menu";
+} from "@taskdesk/ui";
+import { ArrowDownAZ, ArrowUpAZ } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { SortConfig, SortDirection, SortField } from "@/lib/sort-tasks";
 
 type SortControlProps = {

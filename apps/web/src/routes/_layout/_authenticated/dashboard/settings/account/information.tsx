@@ -1,14 +1,6 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Button, Input, Label, Separator } from "@taskdesk/ui";
-import { Loader2, Pencil, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
-import { useTranslation } from "react-i18next";
-import { z } from "zod";
-import PageTitle from "@/components/page-title";
-import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -17,7 +9,22 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
+  Label,
+  Separator,
+} from "@taskdesk/ui";
+import { Loader2, Pencil, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import { z } from "zod";
+import PageTitle from "@/components/page-title";
+import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Form,
@@ -27,12 +34,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/menu";
 import useDeleteAccount, {
   SESSION_TOO_OLD,
 } from "@/hooks/mutations/use-delete-account";

@@ -1,14 +1,14 @@
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import SettingsSidebar, {
-  SettingsSidebarProvider,
-} from "@/components/SettingsSidebar";
 import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@taskdesk/ui";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import SettingsSidebar, {
+  SettingsSidebarProvider,
+} from "@/components/SettingsSidebar";
 import { Sheet } from "@/components/ui/sheet";
 
 vi.mock("@tanstack/react-router", () => ({

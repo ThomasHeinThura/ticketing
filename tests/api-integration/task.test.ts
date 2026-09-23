@@ -476,4 +476,21 @@ describe("API integration: task creation", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("issue #256: GET /api/task/{id} for a nonexistent task with ?workspaceId=<the caller's own workspace> is 404, not a fall-through 200", async () => {
+    // Before #256, a well-formed but nonexistent task id fell through to the
+    // caller-supplied `?workspaceId=` (naming the caller's OWN real workspace, the
+    // strongest case for the fallback) and PASSED `workspaceAccess.fromTask()` against
+    // it, reaching `getTaskRoute`'s handler. Now the middleware itself 404s, before any
+    // handler runs, closing the existence-oracle gap the fallback created.
+    const member = await createWorkspaceMember();
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/task/task-does-not-exist?workspaceId=${member.workspace.id}`,
+    );
+
+    expect(response.status).toBe(404);
+  });
 });
