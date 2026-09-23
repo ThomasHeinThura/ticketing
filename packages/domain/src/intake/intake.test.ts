@@ -9,6 +9,11 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  duplicateSuggestions,
+  renderUnmappedIntoDescription,
+  similarityScore,
+} from "./duplicate.js";
+import {
   catalogueFor,
   isFieldVisible,
   isRequestTypeVisible,
@@ -544,5 +549,129 @@ describe("catalogue visibility — no row ⇒ not visible and not submittable", 
     expect(result.map((t) => t.key)).toEqual(["vpn", "printer"]); // Access < Hardware, then position
     // Another org sees only what its own rows grant.
     expect(catalogueFor("org_z", types, rows)).toEqual([]);
+  });
+});
+
+// --- IQ-8 description rendering --------------------------------------------------
+
+describe("renderUnmappedIntoDescription (IQ-8)", () => {
+  it("renders unmapped, answered fields under the heading; skips mapped, file, and empty", () => {
+    const schema: FormSchema = {
+      fields: [
+        { key: "summary", type: "text", label: "Summary" }, // unmapped → renders
+        {
+          key: "impact",
+          type: "select",
+          label: "Impact",
+          options: ["Everyone"],
+          mapsTo: { field: "priority" }, // mapped → skipped
+        },
+        { key: "photos", type: "file", label: "Photos" }, // file → IQ-9 handles it
+        { key: "notes", type: "textarea", label: "Notes" }, // unanswered → skipped
+        { key: "urgent", type: "checkbox", label: "Urgent" }, // boolean renders Yes/No
+      ],
+    };
+    const fragment = renderUnmappedIntoDescription(schema, {
+      summary: "Printer jammed in Ward 3",
+      impact: "Everyone",
+      urgent: true,
+    });
+    expect(fragment).toContain("## Additional details");
+    expect(fragment).toContain("- **Summary:** Printer jammed in Ward 3");
+    expect(fragment).toContain("- **Urgent:** Yes");
+    expect(fragment).not.toContain("Impact"); // mapsTo → lives in priority column
+    expect(fragment).not.toContain("Photos"); // attachments are IQ-9's path
+    expect(fragment).not.toContain("Notes"); // unanswered
+  });
+
+  it("returns an empty string when nothing is unmapped (no empty heading)", () => {
+    const schema: FormSchema = {
+      fields: [
+        {
+          key: "impact",
+          type: "select",
+          label: "Impact",
+          options: ["x"],
+          mapsTo: { field: "priority" },
+        },
+      ],
+    };
+    expect(renderUnmappedIntoDescription(schema, { impact: "x" })).toBe("");
+  });
+
+  it("renders arrays as comma-joined lists", () => {
+    const schema: FormSchema = {
+      fields: [{ key: "areas", type: "select", label: "Areas" }],
+    };
+    const fragment = renderUnmappedIntoDescription(schema, {
+      areas: ["Ward 3", "Reception"],
+    });
+    expect(fragment).toContain("- **Areas:** Ward 3, Reception");
+  });
+});
+
+// --- IQ-18 duplicate similarity ----------------------------------------------------
+
+describe("duplicate similarity scoring (IQ-18)", () => {
+  it("an identical text scores 1; disjoint texts score far below any threshold", () => {
+    expect(
+      similarityScore("printer jammed ward 3", "Printer Jammed — Ward 3!"),
+    ).toBe(1);
+    // Not exactly 0: unrelated English strings still share incidental bigrams
+    // (space+letter pairs) — the point is it lands nowhere near a suggestion threshold.
+    expect(
+      similarityScore("vpn password reset", "billing invoice address"),
+    ).toBeLessThan(0.2);
+    expect(similarityScore("", "anything")).toBe(0);
+  });
+
+  it("is word-order-insensitive and typo-tolerant (bigram Dice)", () => {
+    const base = similarityScore("reset vpn password", "reset vpn password");
+    const typo = similarityScore(
+      "reset vpn password",
+      "reset vpn passwrod", // transposition
+    );
+    expect(typo).toBeGreaterThan(0.5);
+    expect(typo).toBeLessThan(base);
+  });
+
+  it("ranks a near-duplicate above an unrelated candidate and honours the threshold", () => {
+    const suggestions = duplicateSuggestions(
+      "VPN password reset for new laptop",
+      [
+        {
+          id: "wi_1",
+          title: "VPN password reset for new laptop",
+          description: "cannot connect",
+        },
+        { id: "wi_2", title: "VPN password reset", description: "" },
+        {
+          id: "wi_3",
+          title: "Invoice address change",
+          description: "Q4 billing",
+        },
+      ],
+      0.3,
+    );
+    const ids = suggestions.map((s) => s.id);
+    expect(ids).toContain("wi_1");
+    expect(ids).toContain("wi_2");
+    expect(ids).not.toContain("wi_3"); // below threshold → not suggested
+    expect(suggestions[0].id).toBe("wi_1"); // best first
+    expect(suggestions[0].score).toBeGreaterThanOrEqual(
+      suggestions[1]?.score ?? 0,
+    );
+  });
+
+  it("ties keep input order (deterministic)", () => {
+    const suggestions = duplicateSuggestions(
+      "same text here",
+      [
+        { id: "a", title: "same text here" },
+        { id: "b", title: "same text here" },
+      ],
+      0.5,
+    );
+    expect(suggestions.map((s) => s.id)).toEqual(["a", "b"]);
   });
 });
