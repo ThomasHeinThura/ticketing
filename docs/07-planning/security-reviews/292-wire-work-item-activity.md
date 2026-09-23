@@ -136,3 +136,29 @@ on the webhook-delivery or portal issue, not in this PR.
 visibility leak through the rows or through any existing subscriber. Tenant scoping and the
 permission and ordering invariants from #261, #271, #277 and #285 are preserved, and so are atomicity
 and after-commit event ordering. S1 through S3 are follow-ups.
+
+## Delta (953b8e8)
+
+**Reviewer:** Opus 5.5, same fresh context as above; did not author `953b8e8`.
+**Reviewed head:** `953b8e88849fd736e961d8b9bee7f43758a99958`
+
+`git diff 6b29818 953b8e8` touches exactly two files: this note (`8793cee`, byte-identical to the note
+written at `6b29818`) and `scripts/ci/probes/check-events.test.mjs`. The latter is one assertion,
+`/24 published event key/` to `/26 published event key/`, plus a three-line comment. No lockfile or
+`package.json` change.
+
+- **26 is exact.** `node scripts/ci/check-events.mjs` at `953b8e8` reports "26 published event key(s)
+  across 277 source file(s)". At `721957f` (the merge base, `origin/main`) it reports 24. The
+  `publishEvent("…")` key sets of the two trees differ by exactly `work_item.created` and
+  `work_item.updated`, and both are registered in `events.md`.
+- **The guard still bites.** I mutated `check-events.mjs:606` in two ways and restored it after each:
+  (A) dropping the two new emitter files, so the checker reports 24; (B) scanning only
+  `database/schema.ts`, so the checker itself exits green with "0 published event key(s)". Under both
+  mutants the shipped-tree test fails (pass 0 / fail 1), and unmutated it passes. An empty file list
+  is already refused by the checker itself ("No source files found").
+- **No other count moved.** A grep of `scripts/ci/**` for numeric count pins finds only this one.
+  `node --test 'scripts/ci/**/*.test.mjs'` with `node_modules` installed: **495 tests / 88 suites,
+  495 pass, 0 fail**, 0 cancelled or skipped.
+
+**Delta verdict: CLEAR.** The delta changes no gate semantics, and the earlier verdict (CLEAR WITH
+FINDINGS, with S1–S3 non-blocking) carries forward unchanged to `953b8e8`.
