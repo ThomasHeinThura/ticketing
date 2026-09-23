@@ -6,6 +6,7 @@ import {
   projectTable,
 } from "../../database/schema";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
+import { seedProjectStates } from "../../utils/seed-project-states";
 
 export const DEFAULT_PROJECT_COLUMNS = [
   { name: "To Do", slug: "to-do", position: 0, isFinal: false },
@@ -117,6 +118,11 @@ async function createProjectRow(
           isFinal: col.isFinal,
         });
       }
+
+      // Issue #309 (`projects-and-engagements.md` `PR-17`): seed this project's
+      // concrete `state` rows from the workspace's default `state_template`s, in the
+      // SAME transaction as the project itself.
+      await seedProjectStates(createdProject.id, workspaceId, tx);
     }
 
     return createdProject;
