@@ -1,7 +1,23 @@
 import { DEFAULT_ROLE_NAMES } from "@taskdesk/permissions";
 import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
+  Menu,
+  MenuItem,
+  MenuPopup,
+  MenuTrigger,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Table,
   TableBody,
   TableCell,
@@ -33,24 +49,7 @@ import type {
   WorkspaceUserInvitation,
 } from "@/types/workspace-user";
 import { useAuth } from "../providers/auth-provider/hooks/use-auth";
-import {
-  AlertDialog,
-  AlertDialogClose,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "../ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
 
 type Props = {
   workspaceId: string;

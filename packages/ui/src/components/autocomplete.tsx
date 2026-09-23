@@ -1,9 +1,10 @@
 "use client";
 
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
-import { Input, ScrollArea } from "@taskdesk/ui";
 import { ChevronsUpDownIcon, XIcon } from "lucide-react";
-import { cn } from "@/lib/cn";
+import { cn } from "../lib/cn";
+import { Input } from "./input";
+import { ScrollArea } from "./scroll-area";
 
 const Autocomplete = AutocompletePrimitive.Root;
 

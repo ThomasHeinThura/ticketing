@@ -56,10 +56,10 @@ export const labelPolicies = {
   // addresses no single label -- so `scopeSource: "row"`, the same "row id read from a
   // different table than the policy's own scope name" shape `invitation/policy.ts` already
   // documents for `DELETE /api/invitation/{id}` (workspace id read from the invitation's row).
-  // `fromTaskId`'s second source (a `?workspaceId=` query fallback) only activates when the
-  // primary task lookup finds nothing, at which point the route 404s before any authority
-  // decision is reached -- so the query fallback never actually supplies the scope id for a
-  // request that gets this far.
+  // `fromTaskId` used to fall back to a `?workspaceId=` query parameter when the primary task
+  // lookup found nothing; issue #256 removed that fallback from all 8 `[lookup, query]`-shaped
+  // helpers, so a nonexistent task now 404s directly from the middleware, before any authority
+  // decision is reached.
   "GET /api/label/task/{taskId}": {
     capability: "workspace:read",
     scope: "workspace",

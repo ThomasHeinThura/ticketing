@@ -1,5 +1,19 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
-import { Button, Input } from "@taskdesk/ui";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@taskdesk/ui";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -7,14 +21,6 @@ import { z } from "zod";
 import useCreateApiKey from "@/hooks/mutations/api-key/use-create-api-key";
 import { toast } from "@/lib/toast";
 import type { CreateApiKeyResponse } from "@/types/api-key";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
 import {
   Form,
   FormControl,
@@ -24,13 +30,6 @@ import {
   FormLabel,
   FormMessage,
 } from "../ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
 
 const EXPIRATION_SECONDS = {
   "1d": 86400,
@@ -147,7 +146,10 @@ export function CreateApiKeyDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg p-0 gap-0">
+      <DialogContent
+        className="sm:max-w-lg p-0 gap-0"
+        closeLabel={t("common:actions.close")}
+      >
         <DialogHeader className="px-6 py-5 border-b border-border">
           <DialogTitle>{t("settings:apiKey.createDialog.title")}</DialogTitle>
           <DialogDescription>

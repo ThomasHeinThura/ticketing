@@ -1,8 +1,4 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronDown } from "lucide-react";
-import * as React from "react";
-import { useTranslation } from "react-i18next";
-import NotificationDropdown from "@/components/notification/notification-dropdown";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +8,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-} from "@/components/ui/menu";
+} from "@taskdesk/ui";
+import { ChevronDown } from "lucide-react";
+import * as React from "react";
+import { useTranslation } from "react-i18next";
+import NotificationDropdown from "@/components/notification/notification-dropdown";
 import {
   SidebarMenu,
   SidebarMenuButton,

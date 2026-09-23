@@ -23,6 +23,38 @@
 // generic design-system primitive. The remaining ~24 primitives (including the two that
 // still use Radix's `Slot` — form.tsx, timeline.tsx — and every other overlay/portal-based
 // primitive) move in a later slice.
+//
+// Batch 4 (issue #9): seven more leaf primitives from the overlay/menu family —
+// alert-dialog, autocomplete, command, context-menu, menu, menubar, select. All Base UI
+// based, with no live Radix usage. `menubar` composes the now-moved `menu`
+// (package-internal `./menu` import); `command` composes the now-moved `autocomplete`
+// (package-internal `./autocomplete` import) and its own copy's `Input`/`ScrollArea`
+// imports were repointed from `@taskdesk/ui` (which would have been circular from inside
+// the package) to the package-internal `./input`/`./scroll-area`. `dialog`, `sheet` and
+// `combobox` were considered and dropped: all three read `i18n` from `@/lib/i18n` for a
+// close-button `aria-label`, which `packages/ui` does not depend on and this
+// relocation-only batch may not add. `input-otp` was considered and dropped: it depends
+// on the `input-otp` npm package, which is a dependency of `apps/web` but not of
+// `packages/ui` — adding it would mean touching `packages/ui/package.json`, out of scope
+// for a relocation-only batch. The remaining ~17 primitives (including `avatar.tsx` and
+// `error-boundary.tsx`, still un-de-Sentry'd; `form.tsx`/`timeline.tsx`, still on Radix
+// `Slot`; `breadcrumb.tsx`/`pagination.tsx`, still on `react-i18next`/`i18n`; `dialog.tsx`,
+// `sheet.tsx`, `combobox.tsx`, blocked on the same `i18n` dependency; `input-otp.tsx`,
+// blocked on the `input-otp` package dependency; and `loading-skeleton.tsx`, an
+// app-specific shell mock, not a generic primitive) move in a later slice.
+//
+// Batch 5 (issue #286, found by #284's alignment check): `dialog`, `sheet` and `combobox`
+// move in, unblocked by dropping the `@/lib/i18n` read in favour of a caller-supplied
+// label prop — the same pattern `toggle`/`kbd`/`switch` already use. `DialogPopup` and
+// `SheetPopup` take a required `closeLabel` (required only when `showCloseButton` is not
+// explicitly `false`, enforced by a discriminated union); the close-button aria-label
+// they used to read from `common:actions.close` is now that prop, so every caller passes
+// `t("common:actions.close")` and the rendered accessible name is unchanged. `combobox`'s
+// single `common:actions.remove` string labelled two different controls, so it becomes
+// two props: `ComboboxInput` takes `clearLabel` (required only when `showClear` is
+// `true`) and `ComboboxChip` takes `removeLabel` (always required — a chip always renders
+// its own remove control). `input-otp` remains blocked on the npm dependency (separate
+// issue).
 
 export {
   Accordion,
@@ -37,6 +69,40 @@ export {
   AlertDescription,
   AlertTitle,
 } from "./components/alert";
+export {
+  AlertDialog,
+  AlertDialogBackdrop,
+  AlertDialogBackdrop as AlertDialogOverlay,
+  AlertDialogClose,
+  AlertDialogCreateHandle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPopup,
+  AlertDialogPopup as AlertDialogContent,
+  AlertDialogPortal,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  AlertDialogViewport,
+} from "./components/alert-dialog";
+export {
+  Autocomplete,
+  AutocompleteClear,
+  AutocompleteCollection,
+  AutocompleteEmpty,
+  AutocompleteGroup,
+  AutocompleteGroupLabel,
+  AutocompleteInput,
+  AutocompleteItem,
+  AutocompleteList,
+  AutocompletePopup,
+  AutocompleteRow,
+  AutocompleteSeparator,
+  AutocompleteStatus,
+  AutocompleteTrigger,
+  AutocompleteValue,
+  useAutocompleteFilter,
+} from "./components/autocomplete";
 export { Badge, badgeVariants } from "./components/badge";
 export { Button, type ButtonProps, buttonVariants } from "./components/button";
 export {
@@ -63,6 +129,79 @@ export {
   CollapsiblePanel,
   CollapsibleTrigger,
 } from "./components/collapsible";
+export {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxClear,
+  ComboboxCollection,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxGroupLabel,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxPopup,
+  ComboboxRow,
+  ComboboxSeparator,
+  ComboboxStatus,
+  ComboboxTrigger,
+  ComboboxValue,
+  useComboboxFilter,
+} from "./components/combobox";
+export {
+  Command,
+  CommandCollection,
+  CommandCreateHandle,
+  CommandDialog,
+  CommandDialogPopup,
+  CommandDialogTrigger,
+  CommandEmpty,
+  CommandFooter,
+  CommandGroup,
+  CommandGroupLabel,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandPanel,
+  CommandSeparator,
+  CommandShortcut,
+} from "./components/command";
+export {
+  ContextMenu,
+  ContextMenuCheckboxItem,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuPortal,
+  ContextMenuRadioGroup,
+  ContextMenuRadioItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "./components/context-menu";
+export {
+  Dialog,
+  DialogBackdrop,
+  DialogBackdrop as DialogOverlay,
+  DialogClose,
+  DialogCreateHandle,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPanel,
+  DialogPopup,
+  DialogPopup as DialogContent,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+  DialogViewport,
+} from "./components/dialog";
 export {
   Empty,
   EmptyContent,
@@ -109,6 +248,58 @@ export {
 export { Kbd, KbdGroup, KbdSequence } from "./components/kbd";
 export { Label } from "./components/label";
 export {
+  Menu,
+  Menu as DropdownMenu,
+  MenuCheckboxItem,
+  MenuCheckboxItem as DropdownMenuCheckboxItem,
+  MenuCreateHandle,
+  MenuCreateHandle as DropdownMenuCreateHandle,
+  MenuGroup,
+  MenuGroup as DropdownMenuGroup,
+  MenuGroupLabel,
+  MenuGroupLabel as DropdownMenuLabel,
+  MenuItem,
+  MenuItem as DropdownMenuItem,
+  MenuPopup,
+  MenuPopup as DropdownMenuContent,
+  MenuPortal,
+  MenuPortal as DropdownMenuPortal,
+  MenuRadioGroup,
+  MenuRadioGroup as DropdownMenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItem as DropdownMenuRadioItem,
+  MenuSeparator,
+  MenuSeparator as DropdownMenuSeparator,
+  MenuShortcut,
+  MenuShortcut as DropdownMenuShortcut,
+  MenuSub,
+  MenuSub as DropdownMenuSub,
+  MenuSubPopup,
+  MenuSubPopup as DropdownMenuSubContent,
+  MenuSubTrigger,
+  MenuSubTrigger as DropdownMenuSubTrigger,
+  MenuTrigger,
+  MenuTrigger as DropdownMenuTrigger,
+} from "./components/menu";
+export {
+  Menubar,
+  MenubarCheckboxItem,
+  MenubarContent,
+  MenubarGroup,
+  MenubarItem,
+  MenubarLabel,
+  MenubarMenu,
+  MenubarPortal,
+  MenubarRadioGroup,
+  MenubarRadioItem,
+  MenubarSeparator,
+  MenubarShortcut,
+  MenubarSub,
+  MenubarSubContent,
+  MenubarSubTrigger,
+  MenubarTrigger,
+} from "./components/menubar";
+export {
   Meter,
   MeterIndicator,
   MeterLabel,
@@ -154,7 +345,35 @@ export {
   RadioGroupItem,
 } from "./components/radio-group";
 export { ScrollArea, ScrollBar } from "./components/scroll-area";
+export {
+  Select,
+  SelectButton,
+  SelectGroup,
+  SelectGroupLabel,
+  SelectItem,
+  SelectPopup,
+  SelectPopup as SelectContent,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+  selectTriggerVariants,
+} from "./components/select";
 export { Separator } from "./components/separator";
+export {
+  Sheet,
+  SheetBackdrop,
+  SheetBackdrop as SheetOverlay,
+  SheetClose,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetPanel,
+  SheetPopup,
+  SheetPopup as SheetContent,
+  SheetPortal,
+  SheetTitle,
+  SheetTrigger,
+} from "./components/sheet";
 export { Skeleton } from "./components/skeleton";
 export { Slider, SliderValue } from "./components/slider";
 export { Spinner } from "./components/spinner";

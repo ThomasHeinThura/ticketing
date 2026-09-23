@@ -8,7 +8,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-vi.mock("@/components/ui/context-menu", () => ({
+vi.mock("@taskdesk/ui", () => ({
   ContextMenuContent: ({
     children,
   }: {

@@ -1,7 +1,3 @@
-import { Button } from "@taskdesk/ui";
-import { Trash2 } from "lucide-react";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -11,7 +7,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  Button,
+} from "@taskdesk/ui";
+import { Trash2 } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";

@@ -1,13 +1,14 @@
-import { Input, KbdSequence } from "@taskdesk/ui";
-import { useEffect, useMemo, useState } from "react";
-import { Trans, useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+  Input,
+  KbdSequence,
+} from "@taskdesk/ui";
+import { useEffect, useMemo, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { shortcuts } from "@/constants/shortcuts";
 
 type ShortcutItem = {
@@ -167,7 +168,10 @@ export function KeyboardShortcutsHelp() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="px-4 max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent
+        className="px-4 max-w-2xl max-h-[80vh] overflow-hidden flex flex-col"
+        closeLabel={t("common:actions.close")}
+      >
         <DialogHeader>
           <DialogTitle>{t("navigation:keyboardShortcuts.title")}</DialogTitle>
           <DialogDescription>
