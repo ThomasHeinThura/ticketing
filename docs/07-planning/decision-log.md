@@ -5,19 +5,20 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
-### 2026-09-23 · Require the domain coverage job in `protect-main` (#10)
+### 2026-09-23 · Require coverage and full-stage smoke contexts in `protect-main` (#10)
 
-**Decision:** The active `protect-main` ruleset now requires the exact `domain coverage (90%)`
-status context. The CI job already enforced the documented threshold, but a failing result
-did not block merges while its context was absent from branch protection.
+**Decision:** The active `protect-main` ruleset now requires the exact `domain coverage (90%)`,
+`integration - Postgres 18`, and `e2e - protected-route redirect` status contexts. These jobs
+already ran in CI, but failing results did not block merges while their contexts were absent
+from branch protection.
 
 **Why:** A quality gate is effective only when the merge control requires it. The ruleset
 was updated without removing or changing any existing required context; its live state was
 verified after the update. Opus review remains required for the security/control-plane
 changes on the candidate before merge.
 
-**Alternatives:** Leave coverage as an informational check. Rejected because it would allow
-merging code below the documented domain-coverage threshold.
+**Alternatives:** Leave these as informational checks. Rejected because merge could proceed
+despite failed coverage, database integration, or browser-smoke gates.
 
 **Decided by:** The orchestrating session, 2026-09-23, under Thomas's instruction to continue
 P0 and take the recommended option.

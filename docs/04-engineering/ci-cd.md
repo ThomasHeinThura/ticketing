@@ -32,7 +32,9 @@ Every gate whose failure must block merging is also listed by its exact check co
 the active `protect-main` ruleset. Adding a new standalone job here is not sufficient by
 itself: update the ruleset to require its context and verify the live rule after the change.
 As of 2026-09-23, `domain coverage (90%)` is required alongside the contexts listed in the
-repository's active ruleset.
+repository's active ruleset. The full-stage `integration - Postgres 18` and
+`e2e - protected-route redirect` contexts are also required; do not infer that a workflow
+configured to run before merge is enforced unless its exact context appears in the ruleset.
 
 ```
 ┌─ Setup ──────────────────────────────────────────┐
