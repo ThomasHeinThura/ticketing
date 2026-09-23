@@ -17,6 +17,35 @@ Newest first.
 
 ---
 
+### 2026-09-23 · #8 Slice 2's shadow mode: an env switch, two Postgres evidence tables, read-only row-scope exposure
+
+**Decision:** The shadow-mode policy middleware (#8 Slice 2) is built from three parts.
+
+- **Switch.** `TASKDESK_POLICY_SHADOW` is `off` (the default) or `on`. When it is off, the middleware is a no-op with zero queries. UAT runs with it on. This is an interim bridge, in the same pattern as `TASKDESK_STORAGE_DRIVER`, until the `*_feature_flag` tables in `plugin-architecture.md` exist.
+- **Evidence.** Two tables, registered in `data-model.md`:
+  - `policy_shadow_tally` holds per-day counts per `(route_key, outcome, reason_code)`, agreements included. Every request that reaches a router while shadow is on is counted.
+  - `policy_shadow_event` holds non-agreeing outcomes, with the addendum's attributable fields. It stores ids only, never bodies, headers or secrets, and is capped at 50 rows per `(day, route_key, outcome, reason_code)`.
+  - Writes happen after the response and can never change it.
+  - Retention is 30 days. The writer prunes old rows itself, because no jobs runner exists yet (`apps/api/src/jobs/` is absent). The pruning moves to a job when the runner lands.
+- **Row scope.** The existing middleware (`workspace-access-middleware.ts`, `require-work-item-reach.ts`) exposes the ids it has already loaded through read-only `c.set(...)`, with no new query and no behaviour change. A route that still has no evidence is logged as `unevaluated`, with a reason code, never skipped.
+
+**Why:** The #8 addendum requires evidence that is "queryable for at least the whole soak window, not only in container stdout". `observability.md` sends application logs to stdout, kept for "whatever the collector keeps", and the deployment has no queryable log store. So a small Postgres store is the only option that meets the requirement. A per-day tally keeps coverage and summary counts cheap. A capped event list keeps the attributable detail bounded. Without read-only row-scope exposure, almost every project-scoped or work-item-scoped route would be `unevaluated`, and the 7-day soak would prove nothing.
+
+**Alternatives:**
+- Structured stdout logging only. Rejected: it fails the addendum's retention rule.
+- Reusing `audit_log`. Rejected: it has the wrong shape, being hash-chained, append-only, 12-month retention, and "who changed what".
+- Building the `*_feature_flag` tables first. Rejected for now: that is a P4 governance piece of its own, and it would block #8 on unrelated work.
+
+**Coverage in this slice:** these are fully evaluated: `public`/`delegated` routes, and
+`capability` policies scoped to a workspace. The rest are recorded as `unevaluated`, each with a
+specific reason code. That covers project/work-item capability policies without reach facts,
+other scopes, `self` and `portal` policies, and requests with no resolved identity. This is
+fail-safe, because a router with any `unevaluated` requests is not clean and cannot cut over.
+Widening coverage is follow-up work (Slice 2b). Because the shadow evaluation runs after the
+response, 2b may load the missing reach facts with extra reads without adding request latency.
+
+**Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation. There was one option that meets the recorded requirement. The Slice 2 lane surfaced the gaps.
+
 ### 2026-09-23 · P1's UI path: new v2 work-item screens on the new API, then retire kaneo's task stack
 
 **Supersedes (in part):** the mechanism in the 2026-09-16 entry "#23's `task` → `work_item`
