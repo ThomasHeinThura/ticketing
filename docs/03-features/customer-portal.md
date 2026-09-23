@@ -297,6 +297,12 @@ in your head — which is the point of not reusing the agent handlers.
 Security E2E — these are the tests that would have caught v1's defects:
 
 - `portal-cross-tenant.spec.ts` — customer A cannot reach customer B's request by URL
+- `portal-visibility-scope.spec.ts` — a colleague in the **same** customer organisation
+  cannot reach a request or submission whose `customer_visibility` is `private` and who is
+  not the requester or an explicitly added participant (`CP-16`, [data-model.md](../01-architecture/data-model.md)
+  `work_item.customer_visibility` / `submission.customer_visibility`) — the boundary
+  `portal-cross-tenant.spec.ts` does not cover, since that test is about organisation, not
+  participant-list, scope
 - `portal-no-internal-comments.spec.ts` — internal comments absent from every response
 - `portal-cannot-deescalate.spec.ts`
 - `portal-cannot-self-approve.spec.ts`
