@@ -75,3 +75,22 @@ test("environment detector ignores comments and quoted text", () => {
     [],
   );
 });
+
+test("environment detector skips regular-expression bodies but keeps division expressions", () => {
+  assert.deepEqual(findEnvReads("/process.env.SECRET/.test(value);"), []);
+  assert.deepEqual(
+    findEnvReads("const rate = value / process.env.RATE;").map(
+      ({ name }) => name,
+    ),
+    ["RATE"],
+  );
+});
+
+test("environment detector resolves aliased node:process imports to their real member", () => {
+  assert.deepEqual(
+    findEnvReads(
+      'import { env as runtimeEnv } from "node:process"; const port = runtimeEnv.TASKDESK_PORT;',
+    ).map(({ kind, name }) => ({ kind, name })),
+    [{ kind: "named", name: "TASKDESK_PORT" }],
+  );
+});

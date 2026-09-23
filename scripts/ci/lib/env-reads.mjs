@@ -27,6 +27,48 @@ function tokenize(source) {
   const tokens = [];
   const add = (value, type, start, end) =>
     tokens.push({ value, type, start, end });
+  const regexPrefixKeywords = new Set([
+    "await",
+    "case",
+    "delete",
+    "else",
+    "in",
+    "instanceof",
+    "return",
+    "throw",
+    "typeof",
+    "void",
+    "yield",
+  ]);
+  const regexPrefixPunctuation = new Set([
+    "(",
+    "[",
+    "{",
+    "=",
+    ":",
+    ",",
+    ";",
+    "!",
+    "?",
+    "?.",
+    "=>",
+    "&&",
+    "||",
+    "??",
+    "+",
+    "-",
+    "*",
+    "%",
+    "&",
+    "|",
+    "^",
+    "<",
+    ">",
+  ]);
+  const canStartRegex = (previous) =>
+    !previous ||
+    regexPrefixKeywords.has(previous.value) ||
+    regexPrefixPunctuation.has(previous.value);
   const scan = (from, inTemplateExpression = false) => {
     let index = from;
     let braceDepth = 0;
@@ -44,6 +86,25 @@ function tokenize(source) {
       if (source.startsWith("/*", index)) {
         const end = source.indexOf("*/", index + 2);
         index = end < 0 ? source.length : end + 2;
+        continue;
+      }
+      if (char === "/" && canStartRegex(tokens.at(-1))) {
+        index += 1;
+        let inCharacterClass = false;
+        while (index < source.length && source[index] !== "\n") {
+          if (source[index] === "\\") {
+            index += 2;
+            continue;
+          }
+          if (source[index] === "[") inCharacterClass = true;
+          else if (source[index] === "]") inCharacterClass = false;
+          else if (source[index] === "/" && !inCharacterClass) {
+            index += 1;
+            while (/[A-Za-z]/.test(source[index] ?? "")) index += 1;
+            break;
+          }
+          index += 1;
+        }
         continue;
       }
       if (inTemplateExpression && char === "}") {
@@ -120,16 +181,18 @@ function tokenize(source) {
 function collectTokenAliases(tokens) {
   const processAliases = new Set();
   const envAliases = new Set();
+  const envAliasDeclarations = new Set();
   for (let i = 0; i < tokens.length; i += 1) {
     if (tokens[i].value === "import" && tokens[i + 1]?.value === "{") {
       let close = i + 2;
       while (close < tokens.length && tokens[close].value !== "}") close += 1;
       if (tokens[close + 2]?.value === "node:process") {
         for (let j = i + 2; j < close; j += 1) {
-          if (tokens[j].value === "env")
-            envAliases.add(
-              tokens[j + 2]?.value === "as" ? tokens[j + 3]?.value : "env",
-            );
+          if (tokens[j].value === "env") {
+            const alias = tokens[j + 1]?.value === "as" ? tokens[j + 2] : null;
+            envAliases.add(alias?.value ?? "env");
+            if (alias) envAliasDeclarations.add(j + 2);
+          }
         }
       }
     }
@@ -141,7 +204,7 @@ function collectTokenAliases(tokens) {
       processAliases.add(tokens[i].value);
     }
   }
-  return { processAliases, envAliases };
+  return { processAliases, envAliases, envAliasDeclarations };
 }
 
 function parseEnvObject(tokens, index, processAliases, envAliases) {
@@ -235,7 +298,8 @@ function parseEnvObject(tokens, index, processAliases, envAliases) {
  */
 export function findEnvReads(source) {
   const tokens = tokenize(source);
-  const { processAliases, envAliases } = collectTokenAliases(tokens);
+  const { processAliases, envAliases, envAliasDeclarations } =
+    collectTokenAliases(tokens);
   const reads = [];
   const lines = source.split("\n");
   const addRead = (token, object, kind, name = null) => {
@@ -250,6 +314,7 @@ export function findEnvReads(source) {
   };
   const seen = new Set();
   for (let i = 0; i < tokens.length; i += 1) {
+    if (envAliasDeclarations.has(i)) continue;
     if (
       tokens[i].value === "process" &&
       tokens[i - 1]?.value === "=" &&
