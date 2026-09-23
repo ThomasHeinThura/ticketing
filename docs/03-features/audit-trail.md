@@ -70,10 +70,15 @@ it.
   keys changed, never what they changed to.
 - `AU-3` Append-only. No API can update or delete a row. Enforced two ways: no endpoint
   exists to do either, and — the deeper control, surviving even a compromised or buggy API
-  process — **the application's own database role holds no `UPDATE`/`DELETE` grant on
-  `audit_log`** ([data-model.md](../01-architecture/data-model.md) §11's own words: "the
-  application role has no `UPDATE`/`DELETE`"). Only a separate maintenance role, used
-  solely by `audit-purge`, may delete rows, and only the oldest-past-retention range.
+  process — a `BEFORE UPDATE OR DELETE` trigger (`audit_log_append_only` /
+  `audit_log_reject_mutation()`, migration `0067`) raises on every mutation attempt,
+  with one carve-out: `AU-7`'s `organisation_id`-to-NULL tombstone, which Postgres
+  implements as an `UPDATE` against this same table. A trigger is enforced against every
+  role, including the table's owner, unlike a grant — this deployment provisions exactly
+  one Postgres role, which owns `audit_log` and so keeps full DML whatever is revoked from
+  it (decision log, 2026-09-23, "`audit_log` is append-only by trigger, not by grant").
+  `audit-purge`, run as a separate maintenance role, is the only thing that deletes rows,
+  and only the oldest-past-retention range.
 - `AU-4` An impersonated action records **both** identities.
 - `AU-5` System actions are attributed to the job or automation, never to a person.
 - `AU-6` Retention purge deletes rows past the configured age and writes its own audit row
@@ -135,8 +140,10 @@ Borrowed from OpenProject's journal design.
   even with many replicas; the first row chains from the zero hash, and `audit-purge` writes
   an `audit_chain_anchor` row that `audit-verify` starts from. `audit-verify` (on demand,
   and at every restore drill) walks the chain, so alteration by a database-level actor is
-  detectable even though the application role holds no `UPDATE`/`DELETE` on the table
-  ([data-model.md](../01-architecture/data-model.md) §11).
+  detectable even though `audit_log_append_only`'s trigger (`AU-3`) already refuses an
+  ordinary `UPDATE`/`DELETE` — the residual risk this catches is a privileged actor
+  disabling or bypassing that trigger (decision log, 2026-09-23, "`audit_log` is
+  append-only by trigger, not by grant").
 
 ## Audit action catalogue
 
