@@ -87,9 +87,9 @@ functions).
 but its runtime integration is still open. **#9: 47 of ~61 primitives now live in
 `packages/ui`, and 14 remain.** Those are mostly blocked on i18n (breadcrumb, pagination),
 Radix `Slot` (form, timeline), an app wrapper (avatar, #286-style), the `input-otp` npm
-dependency, and Sentry (the error-* files). **#23 (P1):** create/read/list and field update
-are merged; wiring activity and events into them, and `audit_log` (#37), are in flight (see
-the re-verify block below). **P2:** the approvals and assignment rules exist as pure
+dependency, and Sentry (the error-* files). **#23 (P1):** create/read/list, field update, and the WI-6
+activity-and-events wiring (#292) are merged. Delete, bulk, rank, hierarchy and watchers
+remain; `audit_log` (#37) is in flight (see the re-verify block below). **P2:** the approvals and assignment rules exist as pure
 functions (#287/#289), with no HTTP wiring yet.
 
 **Merged this third pass (2026-09-23):**
