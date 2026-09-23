@@ -470,6 +470,13 @@
 			"when": 1790180000000,
 			"tag": "0066_work_item_activity_table",
 			"breakpoints": true
+		},
+		{
+			"idx": 67,
+			"version": "7",
+			"when": 1790190000000,
+			"tag": "0067_audit_log_table",
+			"breakpoints": true
 		}
 	]
 }

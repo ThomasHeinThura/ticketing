@@ -8,6 +8,9 @@
 			"@taskdesk/permissions": [
 				"../../packages/permissions/src/index.ts"
 			],
+			"@taskdesk/domain": [
+				"../../packages/domain/src/index.ts"
+			],
 			"vitest": [
 				"./node_modules/vitest"
 			],

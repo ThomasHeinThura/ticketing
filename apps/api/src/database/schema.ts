@@ -2261,6 +2261,142 @@ export const watcherTable = pgTable(
   ],
 );
 
+// `audit_log` -- data-model.md S11's row, and its own section "The audit hash chain"
+// (issue #37, first slice: table + writer only, no routes/UI, nothing wired into a
+// mutation yet). `AU-3`: "Append-only. No API can update or delete a row ... the
+// application's own database role holds no UPDATE/DELETE grant on audit_log." That
+// grant-based mechanism is NOT expressible in this deployment shape today (disclosed
+// in this PR's body, not silently worked around): `compose.yml`/`charts/taskdesk`/
+// `deploy/` provision exactly ONE Postgres role (`taskdesk`, `TASKDESK_DATABASE_URL`'s
+// user) -- the same role both runs `drizzle-kit migrate` (so it owns every table,
+// including this one) and is what the running API process connects as. A Postgres table
+// owner always retains full DML privileges on its own table regardless of any REVOKE --
+// only `ALTER TABLE ... OWNER TO` a *different*, lesser-privileged role would make a
+// grant-based restriction real, and that would require provisioning a second DB role in
+// `compose.yml`/the Helm chart/`deploy/` (the `taskdesk_app`/`taskdesk_maint` split
+// `docs/04-engineering/migrations.md`'s "Append-only tables" section describes) -- out
+// of scope for a schema-and-writer slice; tracked as a real gap, not assumed away. The
+// migration still issues `REVOKE UPDATE, DELETE ... FROM PUBLIC` as harmless
+// defense-in-depth for any future lesser-privileged role, but that REVOKE is NOT what
+// makes this table append-only today.
+//
+// The actual, load-bearing mechanism here is a `BEFORE UPDATE OR DELETE` trigger
+// (`audit_log_append_only`, migration 0067) that raises for every UPDATE/DELETE except
+// ONE carve-out -- enforced at the database level regardless of which role issues the
+// statement (short of a superuser disabling triggers, the same residual risk `AU-15`'s
+// hash chain exists to detect after the fact via `audit-verify`), so it survives a
+// compromised or buggy API process exactly the way `AU-3`'s own stated rationale asks
+// for, just via a different mechanism than the doc's literal words describe.
+//
+// The one carve-out: `organisation_id`'s own `ON DELETE SET NULL` FK action below is
+// itself implemented by Postgres as an UPDATE against THIS table -- confirmed live,
+// deleting a referenced `organisation` row raised straight through this trigger before
+// the carve-out existed. The trigger function allows exactly that one shape (only
+// `organisation_id` changing, only non-null -> NULL, every other column identical to
+// OLD) and rejects everything else, including reassigning `organisation_id` to a
+// different non-null value. See the trigger function's own comment in migration 0067.
+//
+// `organisation_id` is `ON DELETE SET NULL` -- `AU-7`'s tombstone, mirroring
+// `data-model.md` S11's own words for this exact column. `workspace_id` carries
+// deliberately NO foreign key: S11 is silent on its referential action (only
+// `organisation_id` is called out), and inventing an undocumented CASCADE or SET NULL
+// here would be a guess `AGENTS.md` do-not 17 forbids -- a plain, unconstrained column
+// keeps every audit row intact regardless of a workspace's later lifecycle, consistent
+// with the whole point of this table (survive the deletion of what it describes).
+// Flagged in this PR's body as a genuine spec gap for a `data-model.md` clarification,
+// not resolved by this schema alone.
+//
+// `actor_id`/`api_key_id`/`impersonator_id`/`entity_id` carry NO foreign key, on
+// purpose: they reference heterogeneous tables depending on `actor_type`/`entity_type`,
+// and per the "Actor deleted" edge case ("Rows retain the id and a tombstoned display
+// name"), an audit row must keep working after the entity it names is hard-deleted --
+// a hard FK would force a NULL/CASCADE the moment that happened, which is exactly the
+// failure this table exists to not have.
+//
+// `created_at` is `timestamptz`, matching data-model.md S11's "microsecond-precision
+// UTC ISO-8601" hash input requirement -- but note that a plain `SELECT created_at`
+// through `node-postgres`'s default type parser loses that precision (a JS `Date` is
+// millisecond-resolution only). `apps/api/src/audit/audit-writer.ts` never reads this
+// column through drizzle's ORM read path for hashing purposes; it always reads it back
+// via `to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')` in the
+// same statement, in both the insert and `verifyAuditChain`'s walk, so both call sites
+// agree on the exact same microsecond-precision string every time.
+//
+// `prev_hash`/`row_hash` are CHECK-constrained to exactly 64 lowercase hex characters --
+// the same shape `packages/domain/src/audit/audit.ts`'s `PREV_HASH_PATTERN` already
+// enforces at the pure-function layer; the DB-level CHECK is redundant-but-cheap
+// defense-in-depth against a row ever entering the table any other way.
+export const auditLogTable = pgTable(
+  "audit_log",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    actorId: text("actor_id"),
+    actorType: text("actor_type").notNull(),
+    apiKeyId: text("api_key_id"),
+    impersonatorId: text("impersonator_id"),
+    actorIp: text("actor_ip"),
+    userAgent: text("user_agent"),
+    traceId: text("trace_id"),
+    workspaceId: text("workspace_id"),
+    organisationId: text("organisation_id").references(
+      () => organisationTable.id,
+      { onDelete: "set null", onUpdate: "cascade" },
+    ),
+    action: text("action").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+    before: jsonb("before"),
+    after: jsonb("after"),
+    createdAt: timestamp("created_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+    prevHash: text("prev_hash").notNull(),
+    rowHash: text("row_hash").notNull(),
+    // NOT part of data-model.md S11's column list, and NOT a hash input (row_hash's
+    // recipe is a closed, exact list that does not name it) -- a genuine gap this
+    // implementation revealed and is disclosed here, the same way migration 0066 added
+    // `activity.seq` for an analogous reason (decision log 2026-09-16,
+    // "reconstructAt's same-instant tie-break needs a real ordering signal this schema
+    // does not yet have"). The writer serialises every insert with
+    // `pg_advisory_xact_lock(AUDIT_CHAIN_LOCK_KEY)` and then must find "the current
+    // head" to read its `row_hash` as this insert's `prev_hash` -- `created_at` alone
+    // cannot do that reliably: two serialized inserts can still read an identical
+    // `now()` microsecond value (Postgres timestamps have finite, not infinite,
+    // resolution), which would make "the newest row by created_at" ambiguous between
+    // them. `seq` is a `GENERATED ALWAYS AS IDENTITY` column assigned in true insertion
+    // order -- since the advisory lock guarantees only one INSERT is ever in flight at a
+    // time, "the row with the highest seq" is always unambiguous. Never returned in any
+    // API response, never referenced by a foreign key, never a primary key -- purely an
+    // internal chain-head-finding aid. Flagged in this PR's body as a `data-model.md`
+    // correction, not silently added.
+    seq: bigint("seq", { mode: "bigint" }).generatedAlwaysAsIdentity(),
+  },
+  (table) => [
+    // "## Indexing": create index on audit_log (entity_type, entity_id, created_at
+    // desc); create index on audit_log (workspace_id, created_at desc).
+    index("audit_log_entity_type_entity_id_created_at_idx").on(
+      table.entityType,
+      table.entityId,
+      table.createdAt.desc(),
+    ),
+    index("audit_log_workspace_id_created_at_idx").on(
+      table.workspaceId,
+      table.createdAt.desc(),
+    ),
+    check(
+      "audit_log_prev_hash_shape",
+      sql`${table.prevHash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check("audit_log_row_hash_shape", sql`${table.rowHash} ~ '^[0-9a-f]{64}$'`),
+    unique("audit_log_seq_unique").on(table.seq),
+  ],
+);
+
 // Auth-schema compatible aliases in schema.ts
 export const user = userTable;
 export const session = sessionTable;
