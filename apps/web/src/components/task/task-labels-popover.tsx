@@ -1,13 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Input } from "@taskdesk/ui";
+import { Input, Popover, PopoverContent, PopoverTrigger } from "@taskdesk/ui";
 import { Check, Plus, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import useAttachLabelToTask from "@/hooks/mutations/label/use-attach-label-to-task";
 import useCreateLabel from "@/hooks/mutations/label/use-create-label";
 import useDetachLabelFromTask from "@/hooks/mutations/label/use-detach-label-from-task";

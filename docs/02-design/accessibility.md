@@ -56,6 +56,12 @@ is itself keyboard-navigable.
 `Space` to lift, arrows to move, `Space` to drop, `Escape` to cancel — with live-region
 announcements at each step. Verify it works; it is easy to break with custom sensors.
 
+**Dashboard-grid drag and resize must have a keyboard path too**, and react-grid-layout
+does not provide one out of the box — see
+[`design-system.md`'s `dashboard-grid` entry](design-system.md#what-we-add-for-taskdesk)
+for the stated interaction (focus, `Enter` to enter move-or-resize mode, arrows to move,
+`Shift`+arrows to resize, `Enter` to confirm, `Escape` to cancel).
+
 ## Screen readers
 
 Tested with VoiceOver (Safari, macOS) and NVDA (Firefox, Windows) at each stage review.

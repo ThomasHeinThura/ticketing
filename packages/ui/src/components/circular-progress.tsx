@@ -5,7 +5,7 @@ type CircularProgressProps = {
   strokeWidth?: number;
 };
 
-export default function CircularProgress({
+export function CircularProgress({
   completed,
   total,
   size = 16,

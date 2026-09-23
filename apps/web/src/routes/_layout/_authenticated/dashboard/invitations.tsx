@@ -1,20 +1,22 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Badge, Button, Separator } from "@taskdesk/ui";
-import { CheckCircle, Loader2, Mail, X } from "lucide-react";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import Layout from "@/components/common/layout";
-import PageTitle from "@/components/page-title";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
+  Badge,
+  Button,
+  Separator,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@taskdesk/ui";
+import { CheckCircle, Loader2, Mail, X } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import Layout from "@/components/common/layout";
+import PageTitle from "@/components/page-title";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import useAcceptInvitation from "@/hooks/mutations/workspace-user/use-accept-invitation";
 import useRejectInvitation from "@/hooks/mutations/workspace-user/use-reject-invitation";
