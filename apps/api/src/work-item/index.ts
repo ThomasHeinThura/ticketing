@@ -1,4 +1,5 @@
 import {
+  type ApiKey,
   apiRouter,
   type BaseVariables,
   createRoute,
@@ -10,6 +11,7 @@ import {
   requireWorkspaceCapability,
 } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import type { ActivityActorType } from "./activity";
 import createWorkItem from "./controllers/create-work-item";
 import getWorkItemByKey from "./controllers/get-work-item";
 import listWorkItems from "./controllers/list-work-items";
@@ -71,6 +73,38 @@ import {
  * exactly the same "declared target, different live mechanism" shape
  * `workspace/policy.ts`'s own file comment documents for its own routes.
  */
+
+/**
+ * WI-6/CA-9's actor for the create/update write paths -- reused by both route
+ * handlers below so the two never drift. `data-model.md`'s Conventions: "`actor_type`
+ * accompanies every `actor_id`: `person | automation | system | api_key`" -- this route
+ * only ever sees a person or an API key (never `automation`/`system`, which are
+ * background-job/automation-engine actors with no HTTP request to authenticate).
+ *
+ * `c.get("apiKey")` is set by `authenticate-api-request.ts` only when the request
+ * authenticated via an API key (Bearer token or `x-api-key`), never for a cookie
+ * session -- its presence is exactly the api_key/person distinction.
+ *
+ * The actor ID is the KEY'S OWNER, not the key's own id, even when `actorType` is
+ * `api_key` -- unchanged from what `c.get("userId")` already carries for both cases,
+ * since `authenticate-api-request.ts` sets `userId` to `key.userId` for an
+ * API-key-authenticated request. This mirrors `data-model.md`'s own `audit_log` row
+ * (~365): `actor_id`, `actor_type`, `api_key_id` null, ... -- `api_key_id` is a
+ * SEPARATE column from `actor_id`, which is why an api-key action still records a
+ * real actor identity (the owner) in `actor_id` rather than the key's id. `activity`
+ * has no parallel `api_key_id` column (`data-model.md` ~222), so which specific key
+ * acted is not recorded there -- only that a key (vs. a person) did, and by whom it is
+ * owned.
+ */
+function resolveActor(
+  userId: string,
+  apiKey: ApiKey | undefined,
+): { actorId: string; actorType: ActivityActorType } {
+  return {
+    actorId: userId,
+    actorType: apiKey ? "api_key" : "person",
+  };
+}
 
 const createWorkItemRoute = createRoute({
   method: "post",
@@ -203,6 +237,10 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
     const { projectId } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
     const { typeId, title, description, priority } = c.req.valid("json");
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
     const created = await createWorkItem({
       projectId,
       workspaceId,
@@ -210,6 +248,8 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
       title,
       description,
       priority,
+      actorId,
+      actorType,
     });
     return c.json(created, 200);
   })
@@ -247,14 +287,26 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
       );
     }
 
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+
     try {
-      const updated = await updateWorkItem(key, workspaceId, assertedVersion, {
-        title,
-        description,
-        priority,
-        startDate,
-        dueDate,
-      });
+      const updated = await updateWorkItem(
+        key,
+        workspaceId,
+        assertedVersion,
+        actorId,
+        actorType,
+        {
+          title,
+          description,
+          priority,
+          startDate,
+          dueDate,
+        },
+      );
       return c.json(updated, 200);
     } catch (error) {
       if (error instanceof WorkItemVersionConflictError) {

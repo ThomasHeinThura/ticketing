@@ -1,7 +1,8 @@
 /**
  * `PATCH /api/work-items/{key}` (`docs/03-features/work-items.md`, `WI-7`/`WI-8`) --
- * #23's second slice. WI-6 (activity logging) is out of scope -- see this PR's body --
- * and this file asserts nothing about `activity` rows.
+ * #23's second slice. `WI-6` (activity logging) was out of scope for that slice; it is
+ * wired in by #23's third slice and covered separately by
+ * `work-item-activity-wiring.test.ts`, not by this file.
  */
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
@@ -423,6 +424,8 @@ describe("API integration: work item update (#23 second slice)", () => {
         createdBody.key,
         creator.workspace.id,
         createdBody.version,
+        creator.user.id,
+        "person",
         { title: "Should not land (current version)" },
       );
     } catch (error) {
@@ -440,6 +443,8 @@ describe("API integration: work item update (#23 second slice)", () => {
         createdBody.key,
         creator.workspace.id,
         createdBody.version + 1,
+        creator.user.id,
+        "person",
         { title: "Should not land (stale version)" },
       );
     } catch (error) {

@@ -173,16 +173,16 @@ export function resolveVisibility(input: NewActivityInput): ActivityVisibility {
  * `db` directly, even though the type does not forbid it (the same trade-off
  * `claimWorkItemNumber` accepts).
  *
- * NOT wired into any work-item create/update controller yet -- issue #23's second slice
- * (PR #271) owns that call site and lands separately, per this PR's own scope. Returns
- * the inserted rows (including each one's server-assigned `id`) for a caller that wants
- * to reference them (e.g. `comment.activity_id`) -- deliberately EXCLUDING `seq`
- * (S6, PR #275's mandatory Opus 5.5 review): the decision log's own exception to
- * "surrogate ids are never sequential" rests entirely on `seq` never appearing in an API
- * response, so this writer must not be the leak that breaks that premise. Select an
- * explicit column list rather than `.returning()` (which would include every column,
- * `seq` included) precisely so a future column added to the table does not silently
- * reopen this gap.
+ * Wired into `create-work-item.ts` and `update-work-item.ts` (issue #23's third slice) --
+ * both call sites pass the transaction handle they are already inside, never the bare
+ * `db` client. Returns the inserted rows (including each one's server-assigned `id`) for
+ * a caller that wants to reference them (e.g. `comment.activity_id`) -- deliberately
+ * EXCLUDING `seq` (S6, PR #275's mandatory Opus 5.5 review): the decision log's own
+ * exception to "surrogate ids are never sequential" rests entirely on `seq` never
+ * appearing in an API response, so this writer must not be the leak that breaks that
+ * premise. Select an explicit column list rather than `.returning()` (which would
+ * include every column, `seq` included) precisely so a future column added to the table
+ * does not silently reopen this gap.
  *
  * A CALLER OBLIGATION this function cannot enforce for you: visibility is decided PER
  * ROW, not per field inside a row's own `payload`/`old_value`/`new_value`. A `created`
@@ -251,6 +251,7 @@ export type WorkItemFieldSnapshot = {
   description?: unknown;
   priority?: string | null;
   dueDate?: Date | string | null;
+  startDate?: Date | string | null;
   assigneeId?: string | null;
   stateId?: string;
 };
@@ -270,6 +271,11 @@ const DIFFABLE_FIELDS: ReadonlyArray<{
   { key: "description", field: "description" },
   { key: "priority", field: "priority" },
   { key: "dueDate", field: "due_date" },
+  // `start_date` is NOT one of CA-7's four named public `updated` fields (`priority`,
+  // `due_date`, `title`, `description`) -- checked against CA-7's table directly, not
+  // assumed -- so it resolves `internal` by the table's own fail-closed default ("an
+  // unmapped verb or field is internal"), the same way `assignee` does below.
+  { key: "startDate", field: "start_date" },
   { key: "assigneeId", field: "assignee" },
 ];
 
