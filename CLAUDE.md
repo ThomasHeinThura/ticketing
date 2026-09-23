@@ -111,7 +111,7 @@ A merge is not a stopping point.
 ## Model tiers
 
 > **Since 2026-09-23 this section is partly superseded by the decision log.** Read that first.
-> - Implementation, and the ordinary review, on the P0/P1/P2 lanes are done by three non-Claude agents that Thomas runs: GPT-6 Luna (Codex), DeepSeek 4.1 Flash (Copilot) and mimo-v2.26 Flash (Cline). They review each other: the reviewer must be a different agent from the author, and the reviewer's model and the reviewed SHA are recorded.
+> - Implementation, and the ordinary review, on the P0/P1/P2 lanes are done by three non-Claude agents that Thomas runs: GPT-6 Luna, DeepSeek 4.1 Flash (through GitHub Copilot) and mimo-v2.26 Flash (through Cline). They review each other: the reviewer must be a different agent from the author, and the reviewer's model and the reviewed SHA are recorded.
 > - The Claude session does **only** the final Opus 5.5 security review, in a fresh context, plus the merge.
 > - Until 2026-09-30, a fresh Claude Sonnet context does the ordinary review, because the agents have no capacity (#345).
 > - **The Opus 5.5 security review is never replaced by a lower tier.** If Opus is unavailable, the PR waits.
