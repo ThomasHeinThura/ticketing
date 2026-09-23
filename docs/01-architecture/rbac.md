@@ -420,7 +420,7 @@ type OwnerBranch = { predicate: OwnerPredicate; capability: Capability; withinMi
 type SelfTargetBranch = { predicate: BodyPredicate; capability: Capability };
 type OwnerPredicate = 'row.person_id === identity.personId' | 'row.created_by === identity.personId' | 'row.requester_id === identity.personId';
 type BodyPredicate = 'body.assigneeId === identity.personId';
-type PortalPredicate = 'own_request' | 'own_organisation' | 'addressed_approval' | 'own_submission';
+type PortalPredicate = 'own_request' | 'own_organisation' | 'addressed_approval' | 'own_submission' | 'self';
 ```
 
 Three fields in that block were tightened while the registry was built (#7, #21), because the
@@ -466,7 +466,10 @@ document contradicted itself in each place:
 - **Kind 3** replaces every `(portal session)`: the session must be `portal = customer`,
   the host must be the portal origin, and the predicate scopes the query — `own_request`
   (requester or participant; colleagues per `customer_visibility`), `own_organisation`
-  (catalogue, KB, projects), `addressed_approval`, `own_submission`.
+  (catalogue, KB, projects), `addressed_approval`, `own_submission`, `self` (the caller's
+  own person row — `GET /api/portal/me`, `PATCH /api/portal/account`; the portal-scoped
+  counterpart of kind 2's `(self)`, needed because kind 2 is defined for `/api/me/*` on the
+  agent origin only).
 - **Kind 4** requires a `reason`, so "public" is a deliberate, reviewable act.
 - **Kind 5** exists because the route-coverage test enumerates **Hono's router**
   (`app.routes`), not the OpenAPI document — the OpenAPI document does not know about
