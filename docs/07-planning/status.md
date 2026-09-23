@@ -76,6 +76,11 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
+
+**Sixth pass, 2026-09-23. `main` at `33ce9ec` (PR #322 merged).** P0 Foundation remains open; this session's #323 migration-alignment candidate is at `c9d4f43`, based on `33ce9ec`. It keeps #322's applied migration `0068_workspace_role_is_system` at index 68 and moves #8 Slice 2's shadow-table migration to `0069_policy_shadow_tables` at index 69, with the snapshot chained from #322's snapshot. `drizzle-kit check`, vocabulary check, permissions (80 tests), OpenAPI (106 operations), lint, typecheck, and the 81-file/1,117-test API integration suite passed. The full unit run had one unrelated SSRF test timeout; that test passed 4/4 in isolation. Fresh exact-head ordinary review and Opus security delta review remain required; no P0 gate is claimed closed. #8 still lacks enforcement and complete shadow coverage; #324 and other prerequisite lanes remain open. Re-verify live PR/issue state before dispatch.
+
+**Session log, 2026-09-23:** Audited the supplied P0 status report against live GitHub and repository state. Confirmed #322 had merged and the #323 migration-number collision was real; the report's #308 migration warning was false. Rebased #323 by merging current `main`, renumbered only the unmerged shadow migration, and validated migration order on Testcontainers PG18. Current candidate SHA above; review status remains pending.
+
 **Fifth pass, 2026-09-23. `main` at `b126c51`.** Merged since the fourth pass:
 - **#306**, the first v2 screen: the work-item list at `/agent/projects/{key}/work`. Sort and
   direction are held in the URL, and it has all five G6 states, including Partial (rows with
