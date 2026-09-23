@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import { rejectNulByte } from "./reject-nul-byte";
 
 /**
  * Resolves `workspaceId` into the context FROM an invitation id path
@@ -29,6 +30,9 @@ export function requireInvitationWorkspaceAccess(idParam = "id") {
         message: "Invitation id is required",
       });
     }
+    // #281 sweep: this id reaches a raw `eq(invitationTable.id, ...)` query below,
+    // unvalidated -- a NUL byte would otherwise 500 instead of a clean 400.
+    rejectNulByte(invitationId, "Invitation id");
 
     const [row] = await db
       .select({ workspaceId: schema.invitationTable.workspaceId })

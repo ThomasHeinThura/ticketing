@@ -52,6 +52,7 @@ import { migrateNotificationPreferencesSchema } from "./utils/migrate-notificati
 import { migrateSessionColumn } from "./utils/migrate-session-column";
 import { migrateWorkspaceUserEmail } from "./utils/migrate-workspace-user-email";
 import { normalizeApiServerUrl } from "./utils/openapi-spec";
+import { rejectNulByte } from "./utils/reject-nul-byte";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { validateWorkspaceAccess } from "./utils/validate-workspace-access";
@@ -372,6 +373,10 @@ export function createApp(options: { staticRoot?: string } = {}) {
 
   const invitationPublicApi = api.get("/invitation/public/:id", async (c) => {
     const { id } = c.req.param();
+    // #281 sweep: this id reaches a raw `eq(invitationTable.id, ...)` query inside
+    // `getInvitationDetails`, unvalidated -- a NUL byte would otherwise 500 instead
+    // of a clean 400.
+    rejectNulByte(id, "Invitation id");
     const result = await getInvitationDetails(id);
     return c.json(result);
   });
@@ -728,6 +733,9 @@ export function createApp(options: { staticRoot?: string } = {}) {
     }),
     async (c) => {
       const { id } = c.req.param();
+      // #281 sweep: this id reaches a raw `eq(assetTable.id, ...)` query below,
+      // unvalidated -- a NUL byte would otherwise 500 instead of a clean 400.
+      rejectNulByte(id, "Asset id");
       const [asset] = await db
         .select({
           id: schema.assetTable.id,
@@ -882,6 +890,9 @@ export function createApp(options: { staticRoot?: string } = {}) {
       const userId = c.get("userId");
 
       if (projectId) {
+        // #281 sweep: this id reaches a raw `eq(projectTable.id, ...)` query below,
+        // unvalidated -- a NUL byte would otherwise 500 instead of a clean 400.
+        rejectNulByte(projectId, "Project id");
         const [project] = await db
           .select({ workspaceId: schema.projectTable.workspaceId })
           .from(schema.projectTable)

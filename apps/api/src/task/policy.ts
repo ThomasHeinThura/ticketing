@@ -60,19 +60,17 @@ import type { PolicyMap } from "@taskdesk/permissions";
  *   /api/project/{id}`.
  * - `PATCH /bulk` addresses neither one project nor one task — see its own entry below.
  *
- * **`workspaceAccess.fromTask()`'s query-param fallback, and why it does not change any
- * classification below.** `fromTask`'s source list is `[{lookup: task}, {query:
- * "workspaceId"}]` (`apps/api/src/utils/workspace-access-middleware.ts`): if the path's task
- * id does not resolve to a real row, the middleware falls through to an ATTACKER-SUPPLIED
- * `?workspaceId=` query param and validates membership against THAT instead. This is
- * `lookupWorkspaceId`'s own documented risk (issue #6) for a DB error; here it is the
- * ordinary "task does not exist" case, which is not a DB error and is not caught by that
- * fix. It stays benign for every route in this file because each one's own controller does
- * its own authoritative task lookup afterward and 404s independently of which workspace the
- * middleware validated against — a caller can never turn this into access to a task that
- * DOES exist and that isn't theirs, only into a slightly-differently-shaped 404/403 for a
- * task that does not exist. Flagged here for the record, not silently smoothed over; not
- * re-litigated per route below.
+ * **`workspaceAccess.fromTask()` no longer has a query-param fallback (issue #256).**
+ * `fromTask`'s source list used to be `[{lookup: task}, {query: "workspaceId"}]`
+ * (`apps/api/src/utils/workspace-access-middleware.ts`): if the path's task id did not
+ * resolve to a real row, the middleware fell through to an ATTACKER-SUPPLIED
+ * `?workspaceId=` query param and validated membership against THAT instead. #256 removed
+ * that second source from all 8 `[lookup, query]`-shaped helpers, `fromTask` included — a
+ * nonexistent task id now 404s directly from the middleware itself (`"Task not found"`),
+ * before any authority decision runs, never falling through to a caller-supplied
+ * workspace. This was never exploitable here (every controller in this file does its own
+ * authoritative task lookup afterward and 404s independently), but it is closed at the
+ * source now rather than merely relied upon to stay benign.
  *
  * **No `work_item:*` capability is in `AUTHORITY_GRANTING`** (`packages/permissions/src/
  * elevated.ts`), so no route in this file declares `elevated`/`elevationExemptionReason` —
