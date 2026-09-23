@@ -1,5 +1,5 @@
 -- Decision log 2026-09-23, "Work-item activity gets its own `activity` table; kaneo's
--- becomes `task_activity`". Two things happen in this migration:
+-- becomes `task_activity`". Three things happen in this migration:
 --
 --   1. Kaneo's original `activity` table (task/comment journal, keyed on `task_id`) is
 --      renamed to `task_activity`, together with its indexes and unique constraint.
@@ -7,16 +7,26 @@
 --      working. Its foreign keys need no ALTER: Postgres tracks a referencing constraint
 --      by the referenced table's OID, not its name, so `asset.activity_id`'s existing FK
 --      (and every other) simply continues to point at the renamed table.
---   2. The new work-item `activity` table (data-model.md S4; CA-6/CA-7) is created under
---      the now-free name `activity`.
+--   2. `work_item` gains `UNIQUE (workspace_id, id)` (`work_item_workspace_id_id_unique`)
+--      -- it previously carried only `UNIQUE (project_id, id)`
+--      (`work_item_project_id_id_unique`); #192/#191 composite-scoped `type_id`/
+--      `state_id`/`parent_id` against `project_id` and `work_item_type.workspace_id`,
+--      never against a `work_item (workspace_id, id)` target, so this is the first FK to
+--      need one. Named following the `work_item_type_workspace_id_id_unique` precedent.
+--   3. The new work-item `activity` table (data-model.md S4; CA-6/CA-7) is created under
+--      the now-free name `activity`, with `(workspace_id, work_item_id)` composite-FK'd
+--      to `work_item (workspace_id, id)` -- the decision log's detail 1 -- targeting the
+--      unique index from step 2. `ON UPDATE NO ACTION` (never `CASCADE`), per #191's O1
+--      finding: this FK's referenced columns include the mutable `work_item.workspace_id`.
+--      `ON DELETE RESTRICT`: activity is kept forever as the journal; work items are
+--      soft-deleted, never hard-deleted.
+--
+-- The composite FK constraint name (`activity_workspace_id_work_item_id_work_item_
+-- workspace_id_id_fk`) is exactly 63 bytes -- checked against issue #241 (a sibling
+-- composite FK's name silently truncated at 64 bytes) -- so it is NOT truncated.
 --
 -- See `apps/api/src/database/schema.ts`'s comments on `taskActivityTable` and
--- `activityTable` for the full design, including the one judgment call/gap this
--- migration does NOT close: `activity.work_item_id` is a plain single-column FK to
--- `work_item.id`, not the composite `(workspace_id, work_item_id) -> work_item
--- (workspace_id, id)` FK the decision log's detail 1 asks for, because `work_item` does
--- not yet carry the `UNIQUE (workspace_id, id)` target index that FK needs. Flagged in
--- this PR's "Not done" section rather than added here, per this task's own instructions.
+-- `activityTable` for the full design.
 
 ALTER TABLE "activity" RENAME TO "task_activity";--> statement-breakpoint
 ALTER INDEX "activity_task_id_idx" RENAME TO "task_activity_task_id_idx";--> statement-breakpoint
@@ -30,6 +40,7 @@ ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_user_id_user_id_fk" TO "
 -- against this migration going forward. No behaviour change: same columns, same ON
 -- DELETE/UPDATE actions.
 ALTER TABLE "asset" RENAME CONSTRAINT "asset_activity_id_activity_id_fk" TO "asset_activity_id_task_activity_id_fk";--> statement-breakpoint
+ALTER TABLE "work_item" ADD CONSTRAINT "work_item_workspace_id_id_unique" UNIQUE("workspace_id","id");--> statement-breakpoint
 CREATE TABLE "activity" (
 	"id" text PRIMARY KEY NOT NULL,
 	"workspace_id" text NOT NULL,
@@ -49,6 +60,6 @@ CREATE TABLE "activity" (
 	CONSTRAINT "activity_visibility_allowed" CHECK ("activity"."visibility" in ('public', 'internal'))
 );
 --> statement-breakpoint
-ALTER TABLE "activity" ADD CONSTRAINT "activity_work_item_id_work_item_id_fk" FOREIGN KEY ("work_item_id") REFERENCES "public"."work_item"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activity" ADD CONSTRAINT "activity_workspace_id_work_item_id_work_item_workspace_id_id_fk" FOREIGN KEY ("workspace_id","work_item_id") REFERENCES "public"."work_item"("workspace_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "activity_work_item_id_created_at_idx" ON "activity" USING btree ("work_item_id","created_at" DESC NULLS LAST,"seq" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "activity_workspaceId_idx" ON "activity" USING btree ("workspace_id");

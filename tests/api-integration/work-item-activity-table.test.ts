@@ -2,8 +2,8 @@
  * Migration 0066 / decision log 2026-09-23 ("Work-item activity gets its own `activity`
  * table; kaneo's becomes `task_activity`"). Real PostgreSQL 18 inserts against the new
  * `activity` table and its writer (`apps/api/src/work-item/activity.ts`) -- not mocks --
- * because every assertion here is a DB-level constraint (a composite/plain FK, a CHECK,
- * an identity column) or the writer's own transactional atomicity, and a
+ * because every assertion here is a DB-level constraint (the composite tenant-scoping
+ * FK, a CHECK, an identity column) or the writer's own transactional atomicity, and a
  * happy-path-only test would pass with any of them reverted.
  *
  * Legacy `task_activity` (formerly `activity`) keeping its own routes working is covered
@@ -158,8 +158,8 @@ async function makeWorkItemFixture() {
   return { workspace, project, type, stateTemplate, state, workItem };
 }
 
-describe("activity.work_item_id -- FK to work_item.id", () => {
-  it("accepts a work_item_id that exists", async () => {
+describe("activity -- composite FK (workspace_id, work_item_id) -> work_item (workspace_id, id)", () => {
+  it("accepts a (workspace_id, work_item_id) pair that matches a real work item", async () => {
     const fixture = await makeWorkItemFixture();
     const [row] = await recordWorkItemActivity(db, [
       {
@@ -173,18 +173,34 @@ describe("activity.work_item_id -- FK to work_item.id", () => {
     expect(row?.workItemId).toBe(fixture.workItem.id);
   });
 
-  it("rejects a work_item_id that does not exist (or belongs to a different workspace than claimed)", async () => {
+  it("rejects a work_item_id that does not exist at all", async () => {
+    const fixture = await makeWorkItemFixture();
+    await expect(
+      recordWorkItemActivity(db, [
+        {
+          workspaceId: fixture.workspace.id,
+          workItemId: randomUUID(),
+          actorId: null,
+          actorType: "system",
+          verb: "created",
+        },
+      ]),
+    ).rejects.toThrow();
+  });
+
+  // Decision log 2026-09-23, detail 1: this is the whole point of the composite FK over
+  // a plain single-column one -- a `work_item_id` that IS real, but paired with a
+  // `workspace_id` that is NOT that work item's own, must still be refused by the
+  // database itself, not just by application code.
+  it("rejects a real work_item_id paired with a workspace_id that is NOT that work item's own", async () => {
     const fixture = await makeWorkItemFixture();
     const otherWorkspace = await makeWorkspace();
-    // A work_item_id that simply does not exist -- the FK this migration DOES enforce
-    // (single-column `work_item_id -> work_item.id`; see this PR's "Not done" section
-    // for why it is not the composite `(workspace_id, work_item_id)` FK the decision log
-    // asks for).
+
     await expect(
       recordWorkItemActivity(db, [
         {
           workspaceId: otherWorkspace.id,
-          workItemId: randomUUID(),
+          workItemId: fixture.workItem.id,
           actorId: null,
           actorType: "system",
           verb: "created",
@@ -193,7 +209,8 @@ describe("activity.work_item_id -- FK to work_item.id", () => {
     ).rejects.toThrow();
 
     // Sanity: the real work item, with its OWN workspace, still succeeds -- proves the
-    // rejection above is the FK, not some unrelated NOT NULL/type error.
+    // rejection above is the composite FK's workspace/work-item mismatch, not some
+    // unrelated NOT NULL/type error.
     await expect(
       recordWorkItemActivity(db, [
         {

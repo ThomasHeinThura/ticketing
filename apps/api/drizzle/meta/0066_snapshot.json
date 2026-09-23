@@ -4854,6 +4854,11 @@
 					"name": "work_item_project_id_id_unique",
 					"nullsNotDistinct": false,
 					"columns": ["project_id", "id"]
+				},
+				"work_item_workspace_id_id_unique": {
+					"name": "work_item_workspace_id_id_unique",
+					"nullsNotDistinct": false,
+					"columns": ["workspace_id", "id"]
 				}
 			},
 			"policies": {},
@@ -5596,12 +5601,12 @@
 				}
 			},
 			"foreignKeys": {
-				"activity_work_item_id_work_item_id_fk": {
-					"name": "activity_work_item_id_work_item_id_fk",
+				"activity_workspace_id_work_item_id_work_item_workspace_id_id_fk": {
+					"name": "activity_workspace_id_work_item_id_work_item_workspace_id_id_fk",
 					"tableFrom": "activity",
 					"tableTo": "work_item",
-					"columnsFrom": ["work_item_id"],
-					"columnsTo": ["id"],
+					"columnsFrom": ["workspace_id", "work_item_id"],
+					"columnsTo": ["workspace_id", "id"],
 					"onDelete": "restrict",
 					"onUpdate": "no action"
 				}

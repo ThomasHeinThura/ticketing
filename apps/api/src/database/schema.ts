@@ -651,81 +651,6 @@ export const taskActivityTable = pgTable(
   ],
 );
 
-// The work-item journal (data-model.md S4 `activity` row; decision log 2026-09-23
-// "Work-item activity gets its own `activity` table; kaneo's becomes `task_activity`").
-// Every field change on a work item writes a row here (CA-6); it is never edited or
-// deleted (CA-10), including when the work item is archived.
-export const activityTable = pgTable(
-  "activity",
-  {
-    id: text("id")
-      .$defaultFn(() => createId())
-      .primaryKey(),
-    // #192-style tenant attribution (decision log 2026-09-23, detail 1): denormalised
-    // from the work item's own `workspace_id` at insert, NOT NULL, and anchored below by
-    // a composite FK to `work_item (workspace_id, id)` -- the same shape #192 gave
-    // `work_item.workspace_id` itself, for the same reason (RLS/purge reach filtering
-    // without a join).
-    //
-    // JUDGMENT CALL / GAP, flagged per this task's own instructions rather than worked
-    // around silently: `work_item` does not yet carry a `UNIQUE (workspace_id, id)`
-    // index (only `UNIQUE (project_id, id)` -- `work_item_project_id_id_unique` --
-    // exists today; #192/#191 composite-scoped `type_id`/`state_id`/`parent_id` against
-    // `project_id` and `work_item_type.workspace_id`, never against a `work_item
-    // (workspace_id, id)` target). Without that target index, Postgres cannot accept a
-    // composite FK referencing it. Adding that index to `work_item` is a change to a
-    // table another lane owns (PR #271) and, per the #192 addendum precedent (decision
-    // log 2026-09-22), is exactly the class of schema addition that needs its own
-    // sign-off rather than a second lane inventing it under a different PR. So this
-    // column is NOT NULL and indexed (below), but the FK below anchors only
-    // `work_item_id -> work_item.id` (single column) until that index exists elsewhere;
-    // see this PR's "Not done" section.
-    workspaceId: text("workspace_id").notNull(),
-    workItemId: text("work_item_id")
-      .notNull()
-      .references(() => workItemTable.id, {
-        onDelete: "restrict",
-        onUpdate: "no action",
-      }),
-    actorId: text("actor_id"),
-    // data-model.md Conventions: "`actor_type` accompanies every `actor_id`: `person |
-    // automation | system | api_key`" (events.md).
-    actorType: text("actor_type").notNull(),
-    verb: text("verb").notNull(),
-    field: text("field"),
-    oldValue: jsonb("old_value"),
-    newValue: jsonb("new_value"),
-    payload: jsonb("payload"),
-    // CA-7: "An unmapped verb or field is `internal` -- adding a field later fails
-    // closed." Default matches that fail-closed rule exactly.
-    visibility: text("visibility").notNull().default("internal"),
-    // Nullable; no FK. data-model.md S4 names this column `null` with no target table,
-    // and `workflow_version` (S6) is not part of this PR's scope -- see "Not done".
-    workflowVersionId: text("workflow_version_id"),
-    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-    // Decision log 2026-09-23, detail 2: an internal tie-break for rows sharing one
-    // `created_at`, never a reference, never in an API response, never a primary key --
-    // the named exception to "surrogate ids are never sequential" (Conventions).
-    seq: bigint("seq", { mode: "bigint" }).generatedAlwaysAsIdentity(),
-  },
-  (table) => [
-    // "## Indexing": create index on activity (work_item_id, created_at desc); `seq`
-    // added as an explicit tiebreak for rows sharing one `created_at` (decision log
-    // 2026-09-23, detail 2).
-    index("activity_work_item_id_created_at_idx").on(
-      table.workItemId,
-      table.createdAt.desc(),
-      table.seq.desc(),
-    ),
-    index("activity_workspaceId_idx").on(table.workspaceId),
-    unique("activity_seq_unique").on(table.seq),
-    check(
-      "activity_visibility_allowed",
-      sql`${table.visibility} in ('public', 'internal')`,
-    ),
-  ],
-);
-
 export const assetTable = pgTable(
   "asset",
   {
@@ -1964,6 +1889,12 @@ export const workItemTable = pgTable(
     // `project_workspace_id_id_unique` (PR #179's `user_notification_workspace_project`
     // precedent).
     unique("work_item_project_id_id_unique").on(table.projectId, table.id),
+    // Decision log 2026-09-23 ("Work-item activity gets its own `activity` table") --
+    // composite-FK target for `activity.work_item_id` below, same `(scope_id, id)`
+    // technique as `work_item_type_workspace_id_id_unique` above. `id` alone is already
+    // a PK/unique, but Postgres requires an explicit unique constraint on the EXACT
+    // column tuple a composite FK targets.
+    unique("work_item_workspace_id_id_unique").on(table.workspaceId, table.id),
     // #186 S2 -- pins `state_id` to a `state` row that shares THIS item's own
     // `project_id`, closing the cross-project state leakage the Opus review proved
     // live (a plain single-column FK on `state_id` cannot see `work_item.project_id`
@@ -2121,6 +2052,95 @@ export const workItemTable = pgTable(
     // and the assignment. Either way the first assignment is 1. The rendered key is
     // `{project.key}-{number}`, which must never be `...-0` or `...--1`.
     check("work_item_number_positive", sql`${table.number} > 0`),
+  ],
+);
+
+// The work-item journal (data-model.md S4 `activity` row; decision log 2026-09-23
+// "Work-item activity gets its own `activity` table; kaneo's becomes `task_activity`").
+// Every field change on a work item writes a row here (CA-6); it is never edited or
+// deleted (CA-10), including when the work item is archived. Defined after
+// `workItemTable` (not near `taskActivityTable` above, where it was drafted originally)
+// because its composite FK below references `workItemTable.workspaceId`/`.id` directly,
+// which requires that `const` to already be initialised at this point in module
+// evaluation order -- the same reason `workItemTable` itself sits after `projectTable`,
+// `workItemTypeTable` and `stateTable`, which its own composite FKs reference.
+export const activityTable = pgTable(
+  "activity",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    // #192-style tenant attribution (decision log 2026-09-23, detail 1): denormalised
+    // from the work item's own `workspace_id` at insert, NOT NULL, and anchored below by
+    // a composite FK to `work_item (workspace_id, id)` -- the same shape #192 gave
+    // `work_item.workspace_id` itself, for the same reason (RLS/purge reach filtering
+    // without a join, and now also a DB-level guarantee that this column can never
+    // diverge from the work item's own `workspace_id`).
+    //
+    // `work_item_workspace_id_id_unique` (added on `workItemTable` above, in this same
+    // migration, following the `work_item_type_workspace_id_id_unique` precedent) is the
+    // composite FK's target -- `work_item` previously carried no `UNIQUE (workspace_id,
+    // id)`, only `UNIQUE (project_id, id)` (`work_item_project_id_id_unique`); #192/#191
+    // composite-scoped `type_id`/`state_id`/`parent_id` against `project_id` and
+    // `work_item_type.workspace_id`, never against a `work_item (workspace_id, id)`
+    // target, so this is the first FK to need it.
+    workspaceId: text("workspace_id").notNull(),
+    workItemId: text("work_item_id").notNull(),
+    actorId: text("actor_id"),
+    // data-model.md Conventions: "`actor_type` accompanies every `actor_id`: `person |
+    // automation | system | api_key`" (events.md).
+    actorType: text("actor_type").notNull(),
+    verb: text("verb").notNull(),
+    field: text("field"),
+    oldValue: jsonb("old_value"),
+    newValue: jsonb("new_value"),
+    payload: jsonb("payload"),
+    // CA-7: "An unmapped verb or field is `internal` -- adding a field later fails
+    // closed." Default matches that fail-closed rule exactly.
+    visibility: text("visibility").notNull().default("internal"),
+    // Nullable; no FK. data-model.md S4 names this column `null` with no target table,
+    // and `workflow_version` (S6) is not part of this PR's scope -- see "Not done".
+    workflowVersionId: text("workflow_version_id"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    // Decision log 2026-09-23, detail 2: an internal tie-break for rows sharing one
+    // `created_at`, never a reference, never in an API response, never a primary key --
+    // the named exception to "surrogate ids are never sequential" (Conventions).
+    seq: bigint("seq", { mode: "bigint" }).generatedAlwaysAsIdentity(),
+  },
+  (table) => [
+    // "## Indexing": create index on activity (work_item_id, created_at desc); `seq`
+    // added as an explicit tiebreak for rows sharing one `created_at` (decision log
+    // 2026-09-23, detail 2).
+    index("activity_work_item_id_created_at_idx").on(
+      table.workItemId,
+      table.createdAt.desc(),
+      table.seq.desc(),
+    ),
+    index("activity_workspaceId_idx").on(table.workspaceId),
+    unique("activity_seq_unique").on(table.seq),
+    check(
+      "activity_visibility_allowed",
+      sql`${table.visibility} in ('public', 'internal')`,
+    ),
+    // Decision log 2026-09-23, detail 1: pins `work_item_id` to a `work_item` row that
+    // shares THIS row's own `workspace_id` -- closes the cross-tenant gap a plain
+    // single-column FK on `work_item_id` cannot see. Same `(scope_id, id)` composite-FK
+    // technique #192/#186 S2 use elsewhere (`work_item.state_id`/`type_id`/`parent_id`).
+    // `onUpdate("no action")`, never `"cascade"`, per #191's O1 finding: this FK's
+    // referenced column set includes the mutable `work_item.workspace_id`, so
+    // `"cascade"` here could silently move an activity row (and, transitively, the
+    // illusion of its work item) across a tenant boundary if that column were ever
+    // updated elsewhere. `onDelete("restrict")`: activity is kept forever as the journal
+    // (data-model.md S4's own text) -- work items are soft-deleted (`deleted_at`), never
+    // hard-deleted, so this should never actually fire, but `restrict` states that
+    // intent directly rather than leaving a hard-delete path to silently cascade the
+    // journal away.
+    foreignKey({
+      columns: [table.workspaceId, table.workItemId],
+      foreignColumns: [workItemTable.workspaceId, workItemTable.id],
+    })
+      .onDelete("restrict")
+      .onUpdate("no action"),
   ],
 );
 
