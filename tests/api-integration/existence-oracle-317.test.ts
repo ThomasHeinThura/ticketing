@@ -107,7 +107,7 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
       Connection: "Upgrade",
       Upgrade: "websocket",
       "Sec-WebSocket-Version": "13",
-      "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
+      "Sec-WebSocket-Key": Buffer.from("the sample nonce").toString("base64"),
     };
 
     const foreign = await app.request(`/api/ws/${project.id}`, { headers });
