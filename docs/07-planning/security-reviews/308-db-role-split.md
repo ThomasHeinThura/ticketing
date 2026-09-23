@@ -460,3 +460,206 @@ cleaned up by its own `afterAll`, and none remains.
 
 I did not touch `pr308-delta2-localpg` or the role `pr308_weakowner`. Both exist on the host but
 are not mine.
+
+---
+
+## Second delta review at `13ebb0f`
+
+**Reviewer:** Opus 5.5, the same independent context as above. I did not author, direct or
+remediate any of this.
+**Reviewed head:** `13ebb0f5d900bded6f68bcec053894cb78eab1c2`
+**Reviewed SHA:** `13ebb0f5d900bded6f68bcec053894cb78eab1c2`. I confirmed it with
+`gh pr view 308 --json headRefOid`, and `git merge-base --is-ancestor origin/main 13ebb0f` holds.
+
+Commits since `b2a72f8`:
+- `9f92a2b`: the D1–D4 fixes.
+- `5d43ccb`: a `main` merge, bringing in #321's backfill.
+- `8174863`: the CI Helm step.
+- `d0e594f`: decision-log text.
+- `13ebb0f`: the GitGuardian defuse.
+
+I ran the probes at `d0e594f`. Then I re-ran the suites and both mutation checks at `13ebb0f`,
+whose only change is a YAML comment and a test-local constant.
+
+**Date:** 2026-09-23
+
+### Second delta verdict
+
+**CLEAR WITH FINDINGS.**
+- D1 and D2 are fixed. D1 is fixed and verified end to end. D2 is fixed by moving migrate into
+  an initContainer, which I reasoned about but could not run: there is no `kind`, `k3d` or
+  `kubectl` on the host.
+- D3 and D4 are corrected in the docs.
+- `13ebb0f` removes no real secret, rotates nothing, and adds no ignore entry.
+- The remaining findings (E1–E3) are non-blocking.
+
+### `13ebb0f` (GitGuardian defuse), reviewed adversarially
+
+- The commit is exactly two lines:
+  - a sample URI in a `values.yaml` comment is reworded;
+  - the test-local fixture prefix `S3cretLeakMarker_` becomes `EnsureRoleProbeValue_`.
+- The value is `${prefix}${randomSuffix()}`, generated per run. The leak assertion reads the
+  variable (`expect(fullText).not.toContain(targetPassword)`), so it is unchanged in strength.
+- Neither value was ever a real credential, and nothing needed rotating.
+- The PR diff against `main` does not touch `.gitleaksignore` or any `.gitguardian*` file.
+  `.gitleaksignore` was last changed by #291. **There is no suppression, broad or narrow.**
+- GitGuardian scans history, so the two historical incidents may still need resolving as false
+  positives in its dashboard, as the commit message says.
+- This note itself mentions the literal `S3cretLeakMarker` in the first review above. It is
+  prose, not a `password=` assignment, but it could trip the same detector.
+
+### What I ran
+
+1. **Suites.**
+   - Full integration: 82 files, 1115 tests, all passed, at both `d0e594f` and `13ebb0f`.
+   - `db-application-role`: 29/29.
+   - `boot-orchestration`: 3/3.
+   - `boot-orchestration-success`: 1/1.
+   - `backfill-workspace-project-defaults`: 11/11.
+   - API unit: 56 files, 421 tests, all passed.
+   - `scripts/ci`: 495/495.
+   - `helm lint`: clean.
+
+   I used private DB `pr308_opus_delta2_test`.
+2. **D1: a real `scripts/deploy.sh` run.** I copied `compose.yml`, `deploy/` and
+   `scripts/deploy.sh` into a scratch directory, and changed that copy only:
+   - project `pr308opusd2`, network `pr308opusd2-net`;
+   - the prod overlay's external `proxy` network became a local `pr308opusd2-proxy`, with no
+     Traefik;
+   - images came from a throwaway local registry on `127.0.0.1:55497`, carrying two variants
+     with different digests.
+
+   Results:
+   - `production --no-verify` brought the stack up.
+   - `upgrade --no-verify` to the second variant exited **0**: migrate ran, the API was
+     replaced and was healthy.
+   - `rollback sha256:<first digest> --no-verify` exited **0**.
+   - A **genuinely failing migrate** (a wrong `POSTGRES_PASSWORD` in `.env`, so the owner login
+     fails) made `upgrade` exit **1** at the migrate step. The `taskdesk` container was left
+     untouched, with the same container ID and image, and was still serving. The wrong password
+     never appeared in the output.
+   - Note that `up -d --wait taskdesk` also re-runs `migrate` as its dependency after an image
+     change. That is a harmless, idempotent second run.
+3. **Two pre-existing `deploy.sh` defects, found while running it.** Neither was introduced by
+   this PR.
+   - `assert_port_unpublished` (`scripts/deploy.sh:277`): on Compose v5.5.1,
+     `docker compose port taskdesk 5173` exits **0** and prints `invalid IP:0` for an unpublished
+     port. `production` therefore died with a false "port is PUBLISHED" error. I patched my
+     scratch copy only, to test for `:[1-9]` in the output.
+   - The "Roll back with:" hint prints the full `repo@sha256:…` RepoDigest, but `rollback`
+     accepts only `sha256:…`.
+
+   Both are worth a small follow-up.
+4. **D2, Helm.** I rendered seven cases: bundled inline, bundled `existingSecret`, external with
+   `migration.enabled: false`, external plus migration inline, external plus migration
+   `existingSecret`, `migrate.enabled: false`, and `replicaCount=3`. With comments stripped:
+   - The owner URL, the owner password and the owner Secret name/key appear **only** in the
+     `migrate` initContainer's `env`, plus the bundled Postgres Deployment, which is where they
+     belong.
+   - The `taskdesk` container has none of them.
+   - There is no `envFrom` from the chart (`extraEnvFrom` is operator-supplied, and the backstop
+     refuses if it carries the URL).
+   - The main container has no `volumeMounts`, and no Secret volume exists.
+   - There is no `downwardAPI`, `fieldRef` or `shareProcessNamespace`.
+5. **The Pod-level threat.**
+   - Containers in one Pod have separate PID namespaces by default, and nothing sets
+     `shareProcessNamespace`. So the serving process cannot read the init container's
+     `/proc/*/environ`.
+   - The two containers share no volume, and a `secretKeyRef` is resolved by the kubelet into
+     that container's env only. The runtime isolation is therefore equivalent to the hook Job.
+   - It is weaker in one respect. With inline values the owner password now sits in the
+     Deployment, ReplicaSet and Pod specs for the release's whole life, not just while a Job
+     exists. It is readable by anyone with `get pods`, and by the Pod's own ServiceAccount token
+     if the cluster ever grants it that. The chart creates no Role or RoleBinding, and does not
+     set `automountServiceAccountToken: false`.
+   - This is not a regression against the #296 threat model, because Helm's release Secret
+     already holds every inline value.
+   - With `existingSecret`, only the Secret's name and key are in the spec. See E2.
+6. **Concurrent replicas.** `ensureApplicationRole` is serialized by
+   `pg_advisory_xact_lock(4011)`. Drizzle's `migrate()` and the four hand-written fixups take
+   **no** lock. Neither did `main`'s boot path, where every replica ran `migrate()` inline
+   (`origin/main:apps/api/src/index.ts` has no advisory lock). So this is pre-existing, and I
+   judge it survivable:
+   - A concurrent DDL migration makes one runner fail on duplicate-object errors, and that init
+     container restarts and succeeds.
+   - A DML-only migration could, however, apply twice.
+
+   `values.yaml:69-70` says migrations are "idempotent under their own advisory lock". That is
+   not true for `migrate()`. See E1.
+7. **Mutation checks, at `13ebb0f`.**
+   - **(A)** Commenting out `assertNoMigrationUrlInApiProcess()` in `runApiBootTasks` turns
+     `boot-orchestration.test.ts` red (1 failed, 2 passed). The test really exercises the
+     backstop. Restored.
+   - **(B)** I narrowed `ensureApplicationRole` to grant only `SELECT` on `work_item_type`. I
+     confirmed it took effect: `has_table_privilege(…,'work_item_type','INSERT')` returned
+     false. Even so, `boot-orchestration-success.test.ts` **still passed**. The test asserts
+     only that some log line matches `/backfill/i`, and the backfill's summary line is printed
+     even when every workspace failed. `processed` counts candidates, not successes. See E3.
+     Restored.
+8. **The #321 backfill, for real, in the compose stack.**
+   - As the owner, I inserted a legacy workspace with no defaults, then restarted `taskdesk`.
+   - The log showed `✅ Backfill (#316) summary: workspaces -- 1 processed (1 seeded default
+     types, 1 seeded default templates, 0 failed)`, and the workspace now has 9
+     `work_item_type` and 5 `state_template` rows.
+   - `pg_stat_activity` shows the API connected only as `taskdesk_app`.
+   - Every `/proc/*/environ` in the `taskdesk` container has 0 `MIGRATION` hits.
+
+   So the backfill's DML succeeds under the app role's grants, and its advisory lock
+   (`pg_advisory_xact_lock(1524, …)`) needs no extra privilege.
+9. **Docs.** I checked the decision log's wording at `d0e594f` against the chart and the runs
+   above, and it matches:
+   - there is a migrate initContainer on the `taskdesk` Pod;
+   - the external-database case with `migration.enabled: false` fails closed, either because the
+     initContainer succeeds and the API then refuses, or because the initContainer fails;
+   - `deploy.sh` runs `dc run --rm migrate` first.
+
+   `charts/taskdesk/README.md:125` says the same thing. The rendered `ext_single` case confirms
+   that the initContainer receives the app URL as its migration URL.
+   - One case the prose does not list: a pre-migrated external database whose role neither owns
+     the tables nor has DDL rights. There the initContainer succeeds as a no-op, and the API boots
+     legitimately as a non-owner. That is safe, not a gap.
+
+### Findings (second delta)
+
+#### E1 — NON-BLOCKING: the chart comment overclaims migration locking
+
+- **Where:** `charts/taskdesk/values.yaml:69-70`, and the comment in the `deployment.yaml`
+  initContainer.
+- **What:** only the role/grant step is locked. Concurrent `migrate()` runs are unserialized,
+  exactly as they were on `main`.
+- **Fix:** correct the comment, or better, wrap `runMigrationStep`'s whole DDL sequence in a
+  session-level `pg_advisory_lock`. That also covers the Compose `migrate` service.
+
+#### E2 — NON-BLOCKING: harden the Pod's view of the owner credential
+
+- Set `automountServiceAccountToken: false` on the `taskdesk` Pod, since the API does not talk
+  to the Kubernetes API.
+- Recommend `postgresql.auth.existingSecret` or `external.migration.existingSecret` in
+  production. The chart README already calls it the recommended path.
+- This is equivalent to the hook Job at runtime (probe 5). It only narrows the exposure through
+  the Kubernetes API.
+
+#### E3 — NON-BLOCKING: the boot success test does not prove the backfill's DML worked
+
+- **Where:** `tests/api-integration/boot-orchestration-success.test.ts:183`
+  (`/backfill/i`).
+- **What:** it passes with INSERT denied (mutation B).
+- **Fix:** assert that the seeded legacy workspace has its `work_item_type`/`state_template`
+  rows after `runApiBootTasks()`, or that the summary line reports `0 failed`. The behaviour
+  itself is correct (probe 8). Only the test is weak.
+
+### Second delta cleanup
+
+These are dropped or removed:
+- `pr308_opus_delta2_test`;
+- the scratch deploy copy and its generated `.env`;
+- compose project `pr308opusd2` (`down -v --remove-orphans`), with its containers, volumes,
+  `pr308opusd2-net` and `pr308opusd2-proxy`;
+- the local registry container `pr308opusd2-registry` and the `registry:2` image;
+- the images `127.0.0.1:55497/taskdesk:tag-a`/`tag-b` and
+  `ghcr.io/thomasheinthura/taskdesk:pr308opus-d2`;
+- the mutation and probe files. Both mutations were reverted with `git checkout`.
+
+`postgres:18-alpine` and `valkey/valkey:9-alpine` are left in place, because other stacks on the
+host may use them. The only roles I created, `taskdesk_app_opusd2mut` and the test suites'
+`taskdesk_app_*` roles, are dropped.
