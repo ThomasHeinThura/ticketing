@@ -17,6 +17,35 @@ Newest first.
 
 ---
 
+### 2026-09-23 · The default Opus reviewer is now Opus 5.5
+
+**Decision:** the required final independent security / critical review runs on **Claude
+Opus 5.5** by default, replacing Opus 5. Review records written from now on (the PR's
+`## Security review` `**Model:**` line and the committed note under
+`docs/07-planning/security-reviews/`) name the version actually used — `Opus 5.5` — rather
+than a bare `Opus` or the old `Opus 5`.
+
+**What does not change:** the tier itself. It is still Opus, still a fresh context that did
+not author, direct or remediate the change, still never downgraded to Sonnet when capacity
+is short (the candidate waits instead). Ordinary review and the alignment check stay on
+Sonnet. The CI template check matches `^Opus`, so `Opus 5.5` already passes it — no gate
+change. Older review notes that say `Opus 5` are historical records and are not rewritten.
+
+**How it is dispatched:** the `Agent` tool's `model` parameter takes a tier (`opus`), not a
+version string. `opus` resolves to the current Opus build, which on 2026-09-23 is Opus 5.5
+(`claude-opus-5-5`). If a later build replaces it, this entry is superseded by a new one
+rather than edited.
+
+**Why:** Thomas's instruction, 2026-09-23. Opus 5.5 is the current Opus build and costs
+less than Opus 5, so the same review tier is cheaper to run.
+
+**Alternatives:** keep pinning reviews to Opus 5 (rejected — the tier param cannot pin a
+superseded build, and there is no reason to prefer it).
+
+**Decided by:** Thomas, 2026-09-23.
+
+---
+
 ### 2026-09-22 · F1 addendum: `project.slug`'s claim must be permanent, not live-scoped
 
 **Decision:** extends the "F1: `project.slug` becomes globally unique" entry immediately
