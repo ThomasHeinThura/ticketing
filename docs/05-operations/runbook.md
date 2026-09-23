@@ -244,7 +244,7 @@ order by router_group, outcome, total desc;
 must either be fixed or have its `reason_code` explained in the cut-over PR. Every cut-over PR
 must also **paste the summary output as it stood at decision time**, so the evidence a
 decision cited cannot change underneath it once the tables keep receiving writes (the Opus
-review of #323, S7).
+review of #323, S7). **`shadow_saturated` is named as never explainable row-by-row**: a router with any such row in the window is not clean, because it means part of that router's traffic was never evaluated at all (the Opus delta of #323, D1).
 
 An event cap can omit details after 50 matching events in a bucket. A non-agree tally bucket
 whose count exceeds its event-row count is therefore not explained row by row and cannot be

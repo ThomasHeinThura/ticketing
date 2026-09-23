@@ -517,6 +517,14 @@ describe("#323 Opus S5 — saturated evaluations are dropped AND counted", () =>
       expect(dropTallies.every((row) => row.outcome === "unevaluated")).toBe(
         true,
       );
+      // D1 (Opus delta): the drop row files under the route's REAL registry source,
+      // never a fake group — otherwise this saturated router reads clean in the
+      // per-router summary the cut-over PR cites.
+      expect(
+        dropTallies.every(
+          (row) => row.routerGroup === "apps/api/src/label/policy.ts",
+        ),
+      ).toBe(true);
     } finally {
       middleware.setShadowLimitsForTests({});
     }

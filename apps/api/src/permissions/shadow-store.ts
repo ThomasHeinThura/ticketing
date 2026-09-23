@@ -68,12 +68,22 @@ let lastPruneDay: string | null = null;
  * should move onto once one exists.
  */
 const PRUNE_TOTAL_CAP = 200_000;
+// D4 (Opus delta): an in-progress flag stops the first evaluations of each UTC day from
+// running up to 8 prune loops concurrently, and an hourly retry backoff stops a persistently
+// failing prune from re-attempting two DELETEs on EVERY evaluation.
+let pruneInProgress = false;
+let pruneRetryAfterMs = 0;
 
 async function pruneIfDue(now: Date): Promise<void> {
   const today = utcDateString(now);
-  if (lastPruneDay === today) {
+  if (
+    lastPruneDay === today ||
+    pruneInProgress ||
+    now.getTime() < pruneRetryAfterMs
+  ) {
     return;
   }
+  pruneInProgress = true;
 
   const cutoffDay = new Date(now.getTime() - RETENTION_DAYS * 86_400_000);
   const cutoffDayString = utcDateString(cutoffDay);
@@ -108,9 +118,14 @@ async function pruneIfDue(now: Date): Promise<void> {
       }
     }
     lastPruneDay = today; // only after the whole prune succeeded (S6).
+    pruneRetryAfterMs = 0;
   } catch (error) {
     console.error("policy shadow: prune failed", error);
-    // Guard stays unset so the next record retries within this same UTC day.
+    // D4: leave the day-guard unset (retry same day) but back off one hour so a
+    // persistent failure does not fire two failing DELETEs on every evaluation.
+    pruneRetryAfterMs = now.getTime() + 3_600_000;
+  } finally {
+    pruneInProgress = false;
   }
 }
 
@@ -197,6 +212,9 @@ export async function recordShadowOutcome(record: ShadowRecord): Promise<void> {
  */
 export async function recordShadowDrops(
   routeKey: string,
+  // D1 (Opus delta): the route's REAL registry source — never a fake group, or a
+  // saturated router reads as clean in the per-router summary the cut-over cites.
+  routerGroup: string,
   count: number,
 ): Promise<void> {
   try {
@@ -206,7 +224,7 @@ export async function recordShadowDrops(
         id: createId(),
         day: utcDateString(),
         routeKey,
-        routerGroup: "shadow-control",
+        routerGroup,
         outcome: "unevaluated",
         reasonCode: "shadow_saturated",
         count,
@@ -232,7 +250,9 @@ export async function recordShadowDrops(
   }
 }
 
-/** Test-only: lets `resetTestDatabase()`-style suites re-arm the once-per-day prune guard. */
+/** Test-only: re-arms the prune guard, in-progress flag and retry backoff between suites. */
 export function resetShadowPruneGuardForTests(): void {
   lastPruneDay = null;
+  pruneInProgress = false;
+  pruneRetryAfterMs = 0;
 }

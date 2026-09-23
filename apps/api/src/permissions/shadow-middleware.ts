@@ -318,7 +318,13 @@ let shadowInflight = 0;
 let shadowPending = 0;
 let shadowDrops = 0;
 const shadowQueue: Array<() => Promise<void>> = [];
-const shadowDropCounts = new Map<string, number>();
+// D1 (Opus delta): entries carry the route's REAL router group — drops must file under
+// the same group the evaluated rows use, or a saturated router reads as clean in the
+// per-router summary the cut-over PR cites.
+const shadowDropCounts = new Map<
+  string,
+  { readonly routerGroup: string; count: number }
+>();
 let shadowFlushTimer: ReturnType<typeof setInterval> | null = null;
 
 /** Test hook: shrink the concurrency limits to force saturation deterministically. */
@@ -369,14 +375,19 @@ async function flushShadowDrops(): Promise<void> {
   }
   const entries = [...shadowDropCounts.entries()];
   shadowDropCounts.clear();
-  for (const [routeKey, count] of entries) {
-    await recordShadowDrops(routeKey, count);
+  for (const [routeKey, value] of entries) {
+    await recordShadowDrops(routeKey, value.routerGroup, value.count);
   }
 }
 
-function noteShadowDrop(routeKey: string): void {
+function noteShadowDrop(routeKey: string, routerGroup: string): void {
   shadowDrops += 1;
-  shadowDropCounts.set(routeKey, (shadowDropCounts.get(routeKey) ?? 0) + 1);
+  const existing = shadowDropCounts.get(routeKey);
+  if (existing === undefined) {
+    shadowDropCounts.set(routeKey, { routerGroup, count: 1 });
+  } else {
+    existing.count += 1;
+  }
   ensureDropFlush();
 }
 
@@ -463,7 +474,11 @@ export async function runNextWithPolicyShadow(
     return;
   }
   // Both bounded queues full: drop this evaluation and count it per route key, flushed as
-  // `unevaluated: shadow_saturated` — the router stays not-clean rather than evidence
-  // vanishing (#323 Opus S5).
-  noteShadowDrop(routeKey);
+  // `unevaluated: shadow_saturated` UNDER THIS ROUTE'S OWN ROUTER GROUP (D1) — the router
+  // stays not-clean in the per-router summary rather than evidence vanishing or hiding
+  // in a fake group (#323 Opus S5, delta D1).
+  noteShadowDrop(
+    routeKey,
+    routerGroupFor(policyRegistry.get(routeKey)?.source),
+  );
 }
