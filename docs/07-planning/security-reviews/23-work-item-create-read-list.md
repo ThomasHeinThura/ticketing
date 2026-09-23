@@ -1310,3 +1310,20 @@ already confirmed earlier this session to reproduce identically on plain `main`,
 to any commit on this branch).
 
 **Reviewed head:** `890c9a6a2b84640de8d09752b403a56333edf6fd`
+
+---
+
+## Post-review: `project_slug_claim` registered in `data-model.md` — orchestrating session, self-verified, 2026-09-23
+
+The mechanical `check:vocabulary` gate (a required `protect-main` status check) correctly
+refused this PR: `project_slug_claim`, a new table this branch introduces, must be named in
+`docs/01-architecture/data-model.md` in the same change (`AGENTS.md` do-not 11) — not
+deferred to issue #268 as this PR's own "Not done" section had assumed. Added one row,
+modeled directly on `work_item_key_claim`'s existing entry in the same document, describing
+the same permanent-claim, no-FK design already reviewed above. No code changed; `pnpm
+check:vocabulary` now passes (54 table declarations, all registered). Re-ran `pnpm
+typecheck`, `pnpm biome check .`, and `pnpm test:permissions` (80/80) against the result —
+unaffected, as expected for a docs-only addition.
+
+**Reviewed head:** `cbf3b48` (the `data-model.md` commit above; this note's own commit is
+note-only and needs no further citation, per this check's own stated rule).
