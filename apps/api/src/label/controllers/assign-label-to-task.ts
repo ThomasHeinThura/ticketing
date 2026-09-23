@@ -8,10 +8,16 @@ import {
   taskTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
 
 type LabelRow = typeof labelTableType.$inferSelect;
 
 async function assignLabelToTask(id: string, taskId: string, userId: string) {
+  // #290 S4 sweep: `taskId` is a body field on `attachLabelToTaskRoute`, not covered
+  // by `workspaceAccess.fromLabel()` (which only guards `id`) -- a NUL byte here
+  // reached `eq(taskTable.id, taskId)` unvalidated and 500'd.
+  rejectNulByte(taskId, "Task id");
+
   const label = await db.query.labelTable.findFirst({
     where: (label, { eq }) => eq(label.id, id),
   });

@@ -2,6 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import { rejectNulByte } from "./reject-nul-byte";
 import { validateWorkspaceAccess } from "./validate-workspace-access";
 
 // T4 (independent Opus security review of PR #271, delta round): a NUL byte in an id
@@ -27,12 +28,14 @@ import { validateWorkspaceAccess } from "./validate-workspace-access";
 // entirely for the 8 helpers above, so this particular fall-through no longer exists --
 // the NUL check stays, unconditionally, because it is still the right answer for every
 // other source shape.)
-function hasNulByte(value: string): boolean {
-  return value.includes("\u0000");
-}
-
-const NUL_BYTE_MESSAGE =
-  "Workspace/resource id must not contain a NUL (\\u0000) byte";
+//
+// Issue #288: this used to be a second, hand-rolled NUL check (`hasNulByte` plus an
+// inline 400 and its own message) living alongside `utils/reject-nul-byte.ts`'s
+// `rejectNulByte` -- two implementations of the same rule, with different wording, and
+// the drift risk that comes with that. Consolidated onto the one shared helper; the
+// label below reproduces this file's original wording so no caller-visible message
+// changes.
+const NUL_BYTE_LABEL = "Workspace/resource id";
 
 // Issue #256: a failed row lookup for these resources is a genuinely missing resource,
 // not a malformed request -- so it answers with the same 404 the resource's own
@@ -40,8 +43,20 @@ const NUL_BYTE_MESSAGE =
 // (`get-label.ts`, `update-time-entry.ts`, `delete-workflow-rule.ts`, etc. all 404 with
 // exactly this wording). `"project"` is deliberately absent: `fromProject` has always
 // answered the generic 400 for an unknown id (`workflow-rule/index.ts`'s own route
-// comments document this, and #202's tests depend on it), and #256 does not touch it --
-// only the 8 `[lookup, query]`-shaped helpers below ever resolve one of these 7 resources.
+// comments document this, and #202's tests depend on it) -- see #290's own handling of
+// `"project"` below, which keeps that 400 rather than switching it to this 404.
+//
+// Issue #290: this is now ALSO the answer when the row exists but resolves to a
+// workspace the caller cannot reach -- previously that case fell through to the generic
+// post-loop `validateWorkspaceAccess` call and came back as 403 "You don't have access
+// to this workspace", which let any authenticated caller distinguish "this id doesn't
+// exist" (404) from "this id belongs to someone else" (403) -- an existence oracle
+// across every tenant, for every resource these 7 cover. `docs/01-architecture/
+// api-design.md`'s 404 row requires exactly this to be indistinguishable ("not found or
+// out of reach"), and #261's F2 fixed the identical class for `require-work-item-reach.ts`.
+// The two cases now share not just the same status but the same message, and 403 stays
+// reserved for what `requireWorkspaceCapability` answers next: reachable workspace,
+// missing capability.
 const RESOURCE_NOT_FOUND_MESSAGE: Record<
   | "task"
   | "label"
@@ -109,26 +124,36 @@ export function workspaceAccessMiddleware(
     }
 
     let workspaceId: string | null = null;
+    // #290: set once a `lookup`/`lookupMany` source has already run
+    // `validateWorkspaceAccess` itself (to translate an out-of-reach 403 into the
+    // resource's own "not found" answer, below) -- skips the redundant generic check
+    // at the end of the function for that request.
+    let accessChecked = false;
+
+    // Read once, ahead of the loop: `lookup`/`lookupMany` sources need it to check
+    // reach as soon as they resolve a row, not only after the loop ends.
+    const apiKey = c.get("apiKey");
+    const apiKeyId = apiKey?.id;
 
     for (const source of config.sources) {
       if (source.type === "query") {
         const raw = c.req.query(source.key) || null;
-        if (raw && hasNulByte(raw)) {
-          throw new HTTPException(400, { message: NUL_BYTE_MESSAGE });
+        if (raw) {
+          rejectNulByte(raw, NUL_BYTE_LABEL);
         }
         workspaceId = raw;
       } else if (source.type === "body") {
         const body = await readJsonObjectBody(c);
         const bodyValue = body[source.key];
         const raw = typeof bodyValue === "string" ? bodyValue : null;
-        if (raw && hasNulByte(raw)) {
-          throw new HTTPException(400, { message: NUL_BYTE_MESSAGE });
+        if (raw) {
+          rejectNulByte(raw, NUL_BYTE_LABEL);
         }
         workspaceId = raw;
       } else if (source.type === "param") {
         const raw = c.req.param(source.key) || null;
-        if (raw && hasNulByte(raw)) {
-          throw new HTTPException(400, { message: NUL_BYTE_MESSAGE });
+        if (raw) {
+          rejectNulByte(raw, NUL_BYTE_LABEL);
         }
         workspaceId = raw;
       } else if (source.type === "lookup") {
@@ -140,28 +165,52 @@ export function workspaceAccessMiddleware(
         // caller authorize against one resource (`?taskId=<mine>`) while the
         // handler acted on another (`{"taskId": "<someone else's>"}`).
         const id = c.req.param(source.idKey) || idFromBody;
-        if (id && hasNulByte(id)) {
+        if (id) {
           // NEVER treat this as absent -- that would fall through to this
           // helper's own `{ type: "query", key: "workspaceId" }` source next,
           // which is exactly issue #256's caller-supplied-fallback class (see
-          // the file comment above `hasNulByte`).
-          throw new HTTPException(400, { message: NUL_BYTE_MESSAGE });
-        }
-        if (id) {
+          // the file comment above `NUL_BYTE_LABEL`).
+          rejectNulByte(id, NUL_BYTE_LABEL);
           workspaceId = await lookupWorkspaceId(source.resource, id);
-          if (!workspaceId && source.resource !== "project") {
-            // #256: the row genuinely doesn't exist -- no more falling through to a
-            // caller-supplied `?workspaceId=` to keep going. Answered as a clean 404,
-            // matching what these resources' own controllers already say when they hit
-            // this same "no such row" condition (`get-label.ts`, `update-time-entry.ts`,
-            // `delete-workflow-rule.ts`, ...), so a nonexistent id is indistinguishable
-            // from one that belongs to someone else -- no existence oracle. `"project"`
-            // is excluded because `fromProject` is not one of #256's 8 helpers and its
-            // generic-400-on-unknown-id behaviour is unchanged (see the comment on
-            // `RESOURCE_NOT_FOUND_MESSAGE` above).
-            throw new HTTPException(404, {
-              message: RESOURCE_NOT_FOUND_MESSAGE[source.resource],
-            });
+          if (!workspaceId) {
+            if (source.resource !== "project") {
+              // #256: the row genuinely doesn't exist -- no more falling through to a
+              // caller-supplied `?workspaceId=` to keep going. Answered as a clean 404,
+              // matching what these resources' own controllers already say when they
+              // hit this same "no such row" condition (`get-label.ts`,
+              // `update-time-entry.ts`, `delete-workflow-rule.ts`, ...) -- and, per
+              // #290 below, also matching what an out-of-reach row for the same
+              // resource now answers.
+              throw new HTTPException(404, {
+                message: RESOURCE_NOT_FOUND_MESSAGE[source.resource],
+              });
+            }
+            // "project": `fromProject` has always answered the generic 400 below for
+            // an unknown id (#202's tests depend on it) -- `workspaceId` stays `null`
+            // and falls through to that same post-loop throw.
+          } else {
+            // #290: the row exists. Check reach RIGHT HERE, before the generic
+            // post-loop `validateWorkspaceAccess` call, so an out-of-reach workspace
+            // gets the exact same answer as a nonexistent row -- never the 403 that
+            // call would otherwise produce, which let a caller distinguish the two.
+            try {
+              await validateWorkspaceAccess(userId, workspaceId, apiKeyId);
+              accessChecked = true;
+            } catch (error) {
+              if (!(error instanceof HTTPException) || error.status !== 403) {
+                throw error;
+              }
+              if (source.resource === "project") {
+                // Match `fromProject`'s own nonexistent-id answer exactly (#202) --
+                // reset to `null` and let the identical post-loop 400 fire, rather
+                // than declaring a new 404 for this one helper.
+                workspaceId = null;
+              } else {
+                throw new HTTPException(404, {
+                  message: RESOURCE_NOT_FOUND_MESSAGE[source.resource],
+                });
+              }
+            }
           }
         }
       } else if (source.type === "lookupMany") {
@@ -171,8 +220,8 @@ export function workspaceAccessMiddleware(
           const taskIds = ids.filter(
             (id): id is string => typeof id === "string",
           );
-          if (taskIds.some(hasNulByte)) {
-            throw new HTTPException(400, { message: NUL_BYTE_MESSAGE });
+          for (const taskId of taskIds) {
+            rejectNulByte(taskId, NUL_BYTE_LABEL);
           }
           if (taskIds.length > 0) {
             const tasks = await db
@@ -195,6 +244,20 @@ export function workspaceAccessMiddleware(
               });
             }
             workspaceId = workspaceIds[0] ?? null;
+            if (workspaceId) {
+              // #290: same treatment as the single-resource `lookup` branch above --
+              // a resolved-but-out-of-reach workspace answers exactly like "no tasks
+              // found", not a 403 that would let a caller tell the two apart.
+              try {
+                await validateWorkspaceAccess(userId, workspaceId, apiKeyId);
+                accessChecked = true;
+              } catch (error) {
+                if (!(error instanceof HTTPException) || error.status !== 403) {
+                  throw error;
+                }
+                throw new HTTPException(404, { message: "No tasks found" });
+              }
+            }
           }
         }
       }
@@ -210,10 +273,9 @@ export function workspaceAccessMiddleware(
       });
     }
 
-    const apiKey = c.get("apiKey");
-    const apiKeyId = apiKey?.id;
-
-    await validateWorkspaceAccess(userId, workspaceId, apiKeyId);
+    if (!accessChecked) {
+      await validateWorkspaceAccess(userId, workspaceId, apiKeyId);
+    }
 
     c.set("workspaceId", workspaceId);
 

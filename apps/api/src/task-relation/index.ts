@@ -58,6 +58,10 @@ async function scopeToSourceTask(c: Context, next: Next) {
   if (!sourceTaskId) {
     throw new HTTPException(400, { message: "sourceTaskId is required" });
   }
+  // #290 S4 sweep: this reaches `workspaceIdOfTask`'s raw `eq(taskTable.id, ...)`
+  // query below, unvalidated -- a NUL byte would otherwise 500 instead of a clean
+  // 400, the same class #281 fixed for path/query ids.
+  rejectNulByte(sourceTaskId, "Task id");
 
   const workspaceId = await workspaceIdOfTask(sourceTaskId);
   if (!workspaceId) {
@@ -112,10 +116,10 @@ const getTaskRelationsRoute = createRoute({
       "Task relations with the linked task summaries",
       taskRelationWithTasksListSchema,
     ),
-    400: errorResponse(
-      "Unknown task, or its workspace could not be determined",
-    ),
-    403: errorResponse("No access to the task's workspace"),
+    // #290: a task that doesn't exist and a task in a workspace the caller can't
+    // reach both answer this same 404 now, via `workspaceAccess.fromTaskId()`.
+    400: errorResponse("taskId must not contain a NUL (\\u0000) byte"),
+    404: errorResponse("Task not found"),
   },
 });
 

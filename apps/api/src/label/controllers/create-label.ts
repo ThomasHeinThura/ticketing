@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { labelTable, projectTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
 
 async function createLabel(
   name: string,
@@ -12,6 +13,11 @@ async function createLabel(
   userId: string,
 ) {
   if (taskId) {
+    // #290 S4 sweep: `taskId` is a body field, not covered by any
+    // `workspaceAccess.*` lookup (`createLabelRoute` scopes from `workspaceId`, not
+    // `taskId`) -- a NUL byte here reached `eq(taskTable.id, taskId)` unvalidated and
+    // 500'd, the same class #281 fixed for path/query ids.
+    rejectNulByte(taskId, "Task id");
     const [task] = await db
       .select({
         id: taskTable.id,

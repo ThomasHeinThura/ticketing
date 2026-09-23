@@ -8,6 +8,7 @@ import {
   taskTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { claimTaskNumber } from "./claim-task-numbers";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -99,6 +100,12 @@ async function moveTask({
       message: "Task not found",
     });
   }
+
+  // #290 S4 sweep: `destinationProjectId` is a body field, not covered by
+  // `workspaceAccess.fromTask()` (which only guards `taskId`) -- a NUL byte here
+  // reached a raw `eq(projectTable.id, destinationProjectId)`-shaped query below
+  // unvalidated and 500'd, the same class #281 fixed for path/query ids.
+  rejectNulByte(destinationProjectId, "Destination project id");
 
   if (isSameProjectMove(existingTask.projectId, destinationProjectId)) {
     throw new HTTPException(400, {

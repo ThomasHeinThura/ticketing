@@ -210,7 +210,7 @@ describe("API integration: workspace RBAC enforcement", () => {
       },
     );
 
-    it("returns 403 when the user has no row in workspace_member for the workspace", async () => {
+    it("issue #290: returns the same 400 an unknown project gets when the user has no row in workspace_member for the workspace, not a distinguishing 403", async () => {
       const member = await createWorkspaceMember({ role: "admin" });
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
@@ -234,11 +234,18 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { app } = createApp();
 
       const response = await postCreateTask(app, project.id);
-      // workspaceAccess.fromProject runs first and rejects with its own message
-      expect(response.status).toBe(403);
+      // Before #290, `workspaceAccess.fromProject` answered 403 here ("reachable
+      // resource, wrong tenant") but 400 for an outright unknown project id -- letting
+      // a caller tell the two apart. It now answers this exactly like the unknown-id
+      // case (#202's own precedent for this helper: a project lookup failure is a 400,
+      // not a 404), never a 403.
+      expect(response.status).toBe(400);
+      await expect(response.text()).resolves.toBe(
+        "Workspace ID could not be determined",
+      );
     });
 
-    it("does not authorize a project through a conflicting workspaceId query", async () => {
+    it("issue #290: does not distinguish a project reached through a conflicting workspaceId query from an unknown one", async () => {
       const attacker = await createWorkspaceMember({ role: "admin" });
       const victim = await createWorkspaceMember({ role: "admin" });
       const { project } = await createProjectFixture({
@@ -262,7 +269,12 @@ describe("API integration: workspace RBAC enforcement", () => {
         },
       );
 
-      expect(response.status).toBe(403);
+      // `?workspaceId=` was never consulted for a `lookup` source (that's #256); #290
+      // additionally means the resolved-but-out-of-reach project doesn't leak a 403.
+      expect(response.status).toBe(400);
+      await expect(response.text()).resolves.toBe(
+        "Workspace ID could not be determined",
+      );
     });
   });
 
@@ -375,6 +387,42 @@ describe("API integration: workspace RBAC enforcement", () => {
       expect(persistedTasks.every((task) => task.priority === "medium")).toBe(
         true,
       );
+    });
+
+    it("issue #290: bulk-updating tasks entirely in a workspace the caller can't reach gets the same 404 as a nonexistent task id, not a distinguishing 403", async () => {
+      const member = await createWorkspaceMember({ role: "member" });
+      const foreign = await createWorkspaceMember({ role: "admin" });
+      const { project: foreignProject, columns: foreignColumns } =
+        await createProjectFixture({ workspaceId: foreign.workspace.id });
+      const foreignTask = await seedTask(
+        foreignProject.id,
+        foreignColumns.todo.id,
+      );
+
+      mockAuthenticatedSession(member.user);
+      const { app } = createApp();
+
+      const response = await app.request("/api/task/bulk", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          taskIds: [foreignTask.id],
+          operation: "updatePriority",
+          value: "high",
+        }),
+      });
+
+      // Before #290, `workspaceAccess.fromTasks()` resolved the (single, real)
+      // workspace these ids share and then let the generic `validateWorkspaceAccess`
+      // call answer 403 -- distinguishable from the 404 an unresolvable/empty
+      // `taskIds` set gets. It now answers both identically.
+      expect(response.status).toBe(404);
+      await expect(response.text()).resolves.toBe("No tasks found");
+
+      const persistedTask = await db.query.taskTable.findFirst({
+        where: eq(schema.taskTable.id, foreignTask.id),
+      });
+      expect(persistedTask).toMatchObject({ priority: "medium" });
     });
 
     it("blocks a member from deleting a task in bulk", async () => {

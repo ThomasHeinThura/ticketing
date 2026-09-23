@@ -126,7 +126,7 @@ describe("API integration: task creation", () => {
     });
   });
 
-  it("rejects task creation for users outside the project workspace", async () => {
+  it("issue #290: rejects task creation for users outside the project workspace with the same 400 an unknown project id gets, not a 403 that leaks the project's existence", async () => {
     const member = await createWorkspaceMember();
     const outsiderId = `user-${randomUUID()}`;
     const { project } = await createProjectFixture({
@@ -162,9 +162,13 @@ describe("API integration: task creation", () => {
       }),
     });
 
-    expect(response.status).toBe(403);
+    // Before #290, an existing-but-out-of-reach project answered 403 here, while an
+    // outright unknown project id answered 400 -- a caller could tell the two apart.
+    // `workspaceAccess.fromProject` now gives this the identical 400 body a nonexistent
+    // project id gets (#202's own precedent for this helper), never the 403.
+    expect(response.status).toBe(400);
     await expect(response.text()).resolves.toBe(
-      "You don't have access to this workspace",
+      "Workspace ID could not be determined",
     );
 
     const persistedTask = await db.query.taskTable.findFirst({
@@ -482,7 +486,11 @@ describe("API integration: task creation", () => {
     // caller-supplied `?workspaceId=` (naming the caller's OWN real workspace, the
     // strongest case for the fallback) and PASSED `workspaceAccess.fromTask()` against
     // it, reaching `getTaskRoute`'s handler. Now the middleware itself 404s, before any
-    // handler runs, closing the existence-oracle gap the fallback created.
+    // handler runs. This closes the query-fallback gap #256 reports; it does NOT by
+    // itself close the existence oracle -- until #290, an *other-tenant* task still
+    // answered 403 here, distinguishable from this 404. #290's fix in
+    // `workspace-access-middleware.ts` makes those two cases byte-identical; see
+    // `tests/api/utils/workspace-access-middleware.test.ts` for the helper-level proof.
     const member = await createWorkspaceMember();
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
