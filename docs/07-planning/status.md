@@ -6,13 +6,13 @@ PR #355 passed its browser job and Postgres integration job at exact head
 passed. A new domain coverage gate is now implemented on that candidate: `pnpm
 test:coverage` enforces 90% statements, lines, and functions for `packages/domain`, with
 branch coverage reported but not thresholded. The local run passed 470 tests at 97.61%
-statements, 97.66% lines, 98.50% functions, and 95.15% branches. The contract gate now
-combines drift checking, Redocly lint with a shrink-only baseline of the 16 inherited
-findings, and pinned/SHA-verified oasdiff breaking-change comparison against `origin/main`;
-its local check passes. The fast manifest passed 18 enabled checks after clearing generated
-browser/build artifacts that had contaminated local checks. Exact-head review and CI are
-pending for these additions. The Opus security review remains mandatory and pending; neither
-#10 nor P0 is claimed complete.
+statements, 97.66% lines, 98.50% functions, and 95.15% branches. The contract gate combines
+drift checking, Redocly lint findings compared to immutable `origin/main` (16 currently
+remain), and a SHA-verified pinned oasdiff breaking-change comparison. The fast manifest
+passed 18 enabled checks after clearing generated browser/build artifacts that had
+contaminated local checks. The first CI run found a bad Git fetch flag and a candidate-owned
+lint baseline; both are being corrected. Exact-head review and CI are pending. Opus remains
+mandatory and pending; neither #10 nor P0 is claimed complete.
 
 > ## ⚠ How to read this file
 >

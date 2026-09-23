@@ -8,15 +8,15 @@ Newest first.
 ### 2026-09-23 · OpenAPI contract tools and inherited-lint ratchet
 
 **Decision:** Add `@redocly/cli` 2.54.2 as an exact development dependency; run Redocly's
-recommended rules with a shrink-only baseline for the 16 findings already present in the
-generated API contract. Pin `oasdiff` 1.32.1 and verify its Linux x64 release archive with
-the published SHA-256 before use; fail on `WARN`-level breaking changes against `origin/main`.
+recommended rules and compare findings to those generated from the immutable `origin/main`
+API contract. Pin `oasdiff` 1.32.1 and verify its Linux x64 release archive with the
+published SHA-256 on every run; fail on `WARN`-level breaking changes against `origin/main`.
 
 **Why:** P0 #10 and this document already require OpenAPI lint and breaking-change detection.
 The inherited spec has five identical-path errors, six ambiguous-path warnings, four missing
-4xx-response warnings, and one missing license warning. Recording those exact finding keys
-allows existing contract issues to be tracked without letting new ones enter unnoticed; the
-baseline can only shrink. The official oasdiff release publishes the binary outside npm, so
+4xx-response warnings, and one missing license warning. Comparing to the base branch allows
+existing contract issues to be tracked without letting new ones enter unnoticed; the
+candidate cannot widen the baseline. The official oasdiff release publishes the binary outside npm, so
 the check pins and verifies the upstream artifact rather than adding an unverified package.
 
 **Alternatives:** Leave the contract check drift-only; disable inherited lint rules; use an

@@ -75,10 +75,10 @@ stages below.
 
 `pnpm test:contract` regenerates and checks the committed OpenAPI document, runs Redocly's
 recommended lint rules, then runs `oasdiff breaking --fail-on WARN` against `origin/main`.
-Redocly currently reports 16 inherited findings in the generated contract; the committed
-baseline is shrink-only, so each finding may be removed and any new lint finding fails.
-The oasdiff release is pinned and its Linux x64 archive is SHA-256 verified by the local
-runner script. Fetch `origin/main` before running the command locally.
+Redocly currently reports 16 inherited findings in the generated contract; lint findings
+are compared to the immutable `origin/main` contract, so each may be removed and any new
+finding fails. The oasdiff release is pinned and its Linux x64 archive is SHA-256 verified
+on every run. Fetch `origin/main` before running the command locally.
 
 **`pnpm test:permissions` must run before `apps/web` is built, against a router that cannot
 see a built `apps/web/dist` (#165).** The Fast stage's ordering above already guarantees this
