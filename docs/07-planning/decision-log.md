@@ -17,6 +17,41 @@ Newest first.
 
 ---
 
+### 2026-09-23 · #8 runtime policy enforcement: shadow until clean, then strict; rename `task:*` first; no permanent exceptions
+
+**Decision:** three rules govern how issue #8's declarative policy registry becomes the
+enforcing authorization path. The slicing plan is posted on issue #8.
+1. **Shadow first, then enforce only when clean.** A request-path middleware first runs in
+   shadow mode: it evaluates every request against the registry and logs any disagreement
+   with today's hand-written checks, without ever blocking. A router group switches to
+   enforcing only after **zero unexplained disagreements for about 7 days on UAT**. From
+   then on it **denies** any request the registry denies. There is no fail-open window
+   after cut-over. The hand-written checks keep running alongside until the router's own
+   later removal slice.
+2. **The `task` router switches last, after a rename.** Its routes are gated today by
+   legacy `task:*` statements, while `task/policy.ts` declares `work_item:*` capabilities.
+   Seeded roles are re-keyed from `task:*` to `work_item:*` (issue #7's scope) **before**
+   that router cuts over. No translation shim.
+3. **No permanent exceptions.** Every route must resolve to one of the five policy kinds.
+   The enforcement middleware carries no "known exception" list. `GET /api/invitation/{id}`
+   (#254) gets a real fix before its router cuts over.
+
+**Why:** a registry that is declared but not enforced is the exact gap #8 exists to close,
+and a fail-open window would keep that gap open. Flipping only when clean avoids a false-deny
+outage from a classification mismatch; the plan found real ones, including `task:*` versus
+`work_item:*` and read routes with no capability check today. A shim and an exception list
+would each add security logic that is temporary or precedent-setting.
+
+**Alternatives:** a fixed two-week soak, then enforce regardless (faster, but it could deny
+legitimate traffic while a known mismatch is open). Log-and-allow after cut-over (safe for
+availability, but it reopens the declared-versus-enforced gap). A translation shim for
+`task`. A reviewed permanent exception list.
+
+**Decided by:** Thomas, via `AskUserQuestion`, 2026-09-23, choosing the recommended option
+on all three.
+
+---
+
 ### 2026-09-23 · gitleaks false positive on `audit_log` secret-refusal test fixtures — dismissed by exact fingerprint
 
 **Decision:** two gitleaks `generic-api-key` findings are added to a new root `.gitleaksignore`.
