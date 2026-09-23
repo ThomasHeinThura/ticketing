@@ -4,16 +4,19 @@ import {
   supportedLocales,
 } from "@i18n/resources";
 import { createFileRoute } from "@tanstack/react-router";
-import { Button, Label, Separator, Switch } from "@taskdesk/ui";
-import { RotateCcw } from "lucide-react";
-import { useTranslation } from "react-i18next";
 import {
+  Button,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+  Separator,
+  Switch,
+} from "@taskdesk/ui";
+import { RotateCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useLocale } from "@/hooks/use-locale";
 import {
   isWeekStartDay,

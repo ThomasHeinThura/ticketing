@@ -316,4 +316,19 @@ describe("API integration: labels", () => {
       expect(featureTaskCopy).toBeDefined();
     });
   });
+
+  it("issue #256: GET /api/label/{id} for a nonexistent label with ?workspaceId=<the caller's own workspace> is 404, not a fall-through 200", async () => {
+    const member = await createWorkspaceMember();
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    // Before #256, a nonexistent label id fell through to this caller-supplied
+    // `?workspaceId=` and reached the handler, which then found no label to return.
+    // Now `workspaceAccess.fromLabel()` 404s directly, before the handler runs.
+    const response = await app.request(
+      `/api/label/label-does-not-exist?workspaceId=${member.workspace.id}`,
+    );
+
+    expect(response.status).toBe(404);
+  });
 });

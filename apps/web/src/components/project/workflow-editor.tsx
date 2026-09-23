@@ -1,11 +1,11 @@
-import { useTranslation } from "react-i18next";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@taskdesk/ui";
+import { useTranslation } from "react-i18next";
 import { useUpsertWorkflowRule } from "@/hooks/mutations/workflow-rule/use-upsert-workflow-rule";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import { useGetWorkflowRules } from "@/hooks/queries/workflow-rule/use-get-workflow-rules";

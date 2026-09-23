@@ -1,4 +1,11 @@
 import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   Frame,
@@ -17,15 +24,6 @@ import useDeleteApiKey from "@/hooks/mutations/api-key/use-delete-api-key";
 import { cn } from "@/lib/cn";
 import { toast } from "@/lib/toast";
 import type { ApiKey } from "@/types/api-key";
-import {
-  AlertDialog,
-  AlertDialogClose,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "../ui/alert-dialog";
 
 type ApiKeyTableProps = {
   apiKeys: ApiKey[];

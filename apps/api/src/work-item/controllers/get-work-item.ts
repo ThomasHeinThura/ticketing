@@ -6,7 +6,8 @@ import { workItemTable } from "../../database/schema";
 /**
  * `GET /api/work-items/{key}` (`work_item:read`, plus reach on the project --
  * `work-items.md` § Permissions). `workspaceId` is the value the route's own middleware
- * (`workspaceAccess.fromWorkItemKey()`) already resolved by looking this same key up --
+ * (`requireWorkItemReach()`, `../require-work-item-reach.ts`) already resolved by looking
+ * this same key up --
  * re-checked here, the same "controller re-loads the row itself" pattern
  * `workspace/policy.ts` documents for `GET /api/workspace/{id}`, rather than trusting the
  * middleware's lookup as the only read.

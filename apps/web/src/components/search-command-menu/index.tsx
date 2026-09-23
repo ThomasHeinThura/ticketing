@@ -1,16 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
 import {
-  FileText,
-  FolderKanban,
-  Hash,
-  MessageSquare,
-  Search,
-  Users,
-  Zap,
-} from "lucide-react";
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
-import {
   Command,
   CommandCollection,
   CommandDialog,
@@ -23,7 +12,18 @@ import {
   CommandList,
   CommandPanel,
   CommandSeparator,
-} from "@/components/ui/command";
+} from "@taskdesk/ui";
+import {
+  FileText,
+  FolderKanban,
+  Hash,
+  MessageSquare,
+  Search,
+  Users,
+  Zap,
+} from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { shortcuts } from "@/constants/shortcuts";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";

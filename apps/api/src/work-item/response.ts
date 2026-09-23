@@ -27,6 +27,8 @@ export const workItemSchema = z
     customerVisibility: z
       .string()
       .openapi({ description: "One of: private, organisation." }),
+    startDate: nullableResponseTimestamp,
+    dueDate: nullableResponseTimestamp,
     archivedAt: nullableResponseTimestamp,
     deletedAt: nullableResponseTimestamp,
     version: z.number(),

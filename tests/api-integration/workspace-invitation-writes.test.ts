@@ -793,4 +793,16 @@ describe("S6a cancel (DELETE /api/invitation/{id})", () => {
     const canceled = await cancelInvitationNative(app, caller.cookie, "nope");
     expect(canceled.status).toBe(404);
   });
+
+  it("#281 sweep: a NUL byte in the invitation id is a clean 400, not a 500 (requireInvitationWorkspaceAccess reads the raw param before any workspaceAccess.* middleware runs)", async () => {
+    const { app } = createApp();
+    const caller = await signUpUser(app);
+
+    const response = await app.request(
+      `/api/invitation/${encodeURIComponent("\u0000x")}`,
+      { method: "DELETE", headers: { cookie: caller.cookie } },
+    );
+
+    expect(response.status).toBe(400);
+  });
 });

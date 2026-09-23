@@ -1,5 +1,13 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
-import { Button, Input } from "@taskdesk/ui";
+import {
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@taskdesk/ui";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -24,13 +32,6 @@ import {
   FormLabel,
   FormMessage,
 } from "../ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
 
 const EXPIRATION_SECONDS = {
   "1d": 86400,

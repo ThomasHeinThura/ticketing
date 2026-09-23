@@ -10,6 +10,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { rejectNulByte } from "../utils/reject-nul-byte";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
@@ -72,6 +73,11 @@ async function scopeToRelation(c: Context, next: Next) {
   const userId = requireUserId(c);
 
   const id = c.req.param("id");
+  // #281 sweep: this id reaches a raw `eq(taskRelationTable.id, ...)` query below,
+  // unvalidated -- a NUL byte would otherwise 500 instead of a clean 400.
+  if (id) {
+    rejectNulByte(id, "Task relation id");
+  }
   const [rel] = await db
     .select({ sourceTaskId: taskRelationTable.sourceTaskId })
     .from(taskRelationTable)

@@ -5,17 +5,15 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@taskdesk/ui";
-import { ArrowRightLeft } from "lucide-react";
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { useTranslation } from "react-i18next";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@taskdesk/ui";
+import { ArrowRightLeft } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useTranslation } from "react-i18next";
 import { useMoveTask } from "@/hooks/mutations/task/use-move-task";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
