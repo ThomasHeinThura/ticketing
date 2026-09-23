@@ -76,6 +76,32 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
+**Fourth pass, 2026-09-23. `main` at `c7b6946`.** Merged since the third pass:
+- **#302**, #8 Slice 0. The policy registry is now imported on the production boot path.
+  An invalid registry (a duplicate route key, or a missing required field) makes the built
+  `dist/index.js` exit before migrations or `serve()`. Opus 5.5 verified that against the
+  real entrypoint. The review found no security defect. One flaky boot-test timeout was
+  fixed and attested.
+- **#303**, **#304**, **#301**: the customer-portal, request-type, intake-queue,
+  god-mode and settings-hierarchy specs, cleared of their 2026-09-05 review findings.
+
+**In flight at this pass** (re-verify in GitHub):
+- #306, the first v2 screen (the work-item list). Both reviews approved it. It is blocked
+  only on #311, which clears `screen-inventory.md`/`ux-quality-gates.md` of their review
+  findings (do-not 15).
+- #307, #290's uniform 404. Its review found a mixed-id existence oracle in
+  `fromTasks`/bulk update, and the fix is in progress.
+- #308, #296's DB role split. The API connects as a non-owner, non-superuser role, and
+  append-only is enforced by grant first and trigger second (decision log). Once merged it
+  **needs a UAT redeploy with a new secret, which Thomas must authorize.**
+- #8 Slice 1 (`resolveIdentity`).
+- #309.
+
+**New UAT blocker: #309.** On a fresh instance no work item can be created, because
+workspace and project creation do not seed the default state templates, types and project
+states that `PR-17` and `work-items.md` require. #310 tracks the list API's missing sort,
+pagination and name resolution.
+
 **Last updated:** 2026-09-23, third pass that day. Eleven more PRs have merged since the
 second pass: #275 (the work-item `activity` table), #277 (input hardening), #278/#282/#283
 (design-system, comments-and-activity, approvals and assignment specs cleared of review
@@ -130,8 +156,8 @@ for #8's runtime integration.
 
 **The principal P0 blocker, stated plainly:** #8's **runtime** integration. The declarative
 policy registry is built and every route is classified, but **no request is evaluated
-against it**: nothing on the request path calls an evaluator, and an invalid registry does
-not fail at boot. Routes are still authorized today, by hand-written per-route middleware
+against it**: nothing on the request path calls an evaluator. Since #302, an invalid registry does
+fail at boot. Routes are still authorized today, by hand-written per-route middleware
 (`requireWorkspaceCapability`, `requireWorkItemReach`, …). So they aren't unprotected. But
 the registry is not yet the single source of truth, and every open checkbox in #8's runtime
 section is still unticked. That, and #296 below, come before any UAT claim that "the gates
