@@ -1278,3 +1278,35 @@ above precisely enough to rebuild it.
   sharded deployment, where "instance-wide" stops being a single database. Out of scope for
   P0–P4 and not implied by anything in this branch, but the namespace is now permanent, so
   it is the kind of assumption worth naming once rather than rediscovering.
+
+**Reviewed head:** `d6e551a4ba0b67ded08b8dd5ddf78afa26a860d5` (this round's own docs-only
+commit, on top of the `eed9218` fix commit reviewed above).
+
+---
+
+## Post-review: decision-log correction, then main-sync — orchestrating session, self-verified, 2026-09-23
+
+E4 above (this PR's decision-log addendum overstating "the only construction" as absolute)
+was fixed on a separate small PR (#265), through its own two-round review cycle (round 1
+CHANGES NEEDED — caught that the first draft also self-authorized a choice the
+delta-confirmation review said was Thomas's to make, and fabricated an alternative the
+review never named; round 2, after correction, APPROVE). Thomas was asked directly and
+picked the built option over the two real alternatives. #265 merged to `main` as `d94f46a`.
+
+This branch was then synced with the resulting `main` (`git merge`, not rebase — no
+instruction in this review bars self-verification for a sync). `git show 890c9a6 --stat`
+confirms the merge's actual diff against its first parent is exactly one file,
+`docs/07-planning/decision-log.md`, 51 insertions — the corrected entry from #265, already
+independently reviewed twice on that PR, zero overlap with anything this review examined
+(this file, and every path under `apps/api/src/work-item/`, `apps/api/drizzle/`, `apps/api/
+src/project/`). PR #262's earlier `compose.yml` fix was already in `main` before this
+branch's prior sync and is untouched here.
+
+Re-ran the full suite directly against the merged tree: `pnpm typecheck` (8/8), `pnpm
+check:openapi` (clean, 105 operations), `pnpm test:permissions` (80/80), `pnpm biome check .`
+(70 pre-existing warnings, 0 errors), `pnpm test:integration` (620-621/621 across
+independent runs — the sole intermittent failure is `health.test.ts`'s readiness probe,
+already confirmed earlier this session to reproduce identically on plain `main`, unrelated
+to any commit on this branch).
+
+**Reviewed head:** `890c9a6a2b84640de8d09752b403a56333edf6fd`
