@@ -1,5 +1,27 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+## 2026-09-23 · P0 continuation snapshot
+
+The P0 Foundation lane is still open. PR #335 is the Storybook 10 compatibility slice for
+#9, currently at `0a0aa9ea872b977ef6eeff80d2d5b8f2c9c2ff89`; ordinary review and the local
+checks are complete, but the PR-template gate rejects its historical Opus note because that
+reviewed SHA is not an ancestor of the refreshed branch. A fresh Opus review is required. PR
+#341 is the dependent error-boundary slice, currently at `742ab6330e6a4bed906866499a4b2cbb6b1dec27`;
+its ordinary review and browser/axe checks are complete, and its stacked Storybook dependency
+change keeps it in security-review scope. It also awaits Opus.
+
+Opus capacity is unavailable in this session: `claude auth status` reports `loggedIn: false`,
+and no callable Opus reviewer is exposed. Do not substitute GPT-6 for the required final Opus
+review or merge either candidate. Unblock these reviews when an independently authenticated
+Opus 5.5 context is available (or Thomas provides that context). Continue dependency-safe P0
+work meanwhile. Other open P0 work includes #8 runtime integration and the #317, #319, #324,
+#342, #10 and #11 lanes; verify each issue and PR live before dispatch.
+
+The #341 screenshots, axe-core 4.13.0 results (zero WCAG 2.1 A/AA violations in both stories),
+keyboard Retry check and exact-head independent ordinary PASS were added during this
+continuation. No P0 stage-completion claim is made.
+
+
 > ## ⚠ How to read this file
 >
 > **Snapshot taken:** 2026-09-22 — a thirteenth pass, same day as the eleventh and twelfth.
