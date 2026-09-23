@@ -1,6 +1,9 @@
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import {
+  markShadowLegacyAuthorizationUnknown,
+  setShadowLegacyAuthorization,
+} from "../permissions/shadow-context";
 
 /**
  * Session-only enforcement, applied at request time.
@@ -51,6 +54,7 @@ import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
  */
 export function requireSessionOnly() {
   return async (c: Context, next: Next) => {
+    markShadowLegacyAuthorizationUnknown(c);
     if (c.get("apiKey")) {
       setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, {

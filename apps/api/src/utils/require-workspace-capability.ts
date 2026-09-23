@@ -8,7 +8,10 @@ import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
-import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import {
+  markShadowLegacyAuthorizationUnknown,
+  setShadowLegacyAuthorization,
+} from "../permissions/shadow-context";
 import {
   isGenuineBuiltInRoleGrant,
   isUnambiguousMembership,
@@ -77,6 +80,7 @@ type DbOrTx = Pick<typeof db, "select">;
  */
 export function requireWorkspaceCapability(capability: Capability) {
   return async (c: Context, next: Next) => {
+    markShadowLegacyAuthorizationUnknown(c);
     const workspaceId = c.get("workspaceId");
     const userId = c.get("userId");
     if (!workspaceId || !userId) {

@@ -2,7 +2,10 @@ import { type BuiltInRoleName, builtInRoles } from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import {
+  markShadowLegacyAuthorizationUnknown,
+  setShadowLegacyAuthorization,
+} from "../permissions/shadow-context";
 import { isInstanceAdmin } from "./is-instance-admin";
 import {
   type MembershipRoleResolution,
@@ -247,6 +250,7 @@ export async function resolveCallerWorkspaceStatements(
 
 export function requireWorkspacePermission(permissions: PermissionMap) {
   return async (c: Context, next: Next) => {
+    markShadowLegacyAuthorizationUnknown(c);
     if (!c.get("workspaceId")) {
       throw new HTTPException(500, {
         message: "workspaceId not set in context",

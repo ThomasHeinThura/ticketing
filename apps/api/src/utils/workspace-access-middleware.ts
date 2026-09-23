@@ -2,7 +2,10 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
-import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import {
+  markShadowLegacyAuthorizationUnknown,
+  setShadowLegacyAuthorization,
+} from "../permissions/shadow-context";
 import { rejectNulByte } from "./reject-nul-byte";
 import { validateWorkspaceAccess } from "./validate-workspace-access";
 
@@ -124,6 +127,7 @@ export function workspaceAccessMiddleware(
   config: WorkspaceAccessMiddlewareConfig,
 ) {
   return async (c: Context, next: Next) => {
+    markShadowLegacyAuthorizationUnknown(c);
     const userId = c.get("userId");
 
     if (!userId) {

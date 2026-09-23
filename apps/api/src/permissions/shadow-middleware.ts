@@ -470,8 +470,18 @@ export async function runNextWithPolicyShadow(
   const authorization = c.get("legacyAuthorization") as
     | ShadowLegacyAuthorization
     | undefined;
+  // A later route/controller layer can still reject a request after an earlier
+  // authorization middleware passed. Status never decides allow/deny here, but a
+  // 401/403 contradicts a surviving `allowed` marker, so downgrade that incomplete
+  // evidence instead of recording a false authorization result. Known post-gate
+  // decisions (for example bulk workspace membership) overwrite the marker directly.
+  const markerConflictsWithResponse =
+    (authorization === "allowed" && (status === 401 || status === 403)) ||
+    (authorization === "denied" && status >= 200 && status < 400);
   const legacy: LegacyOutcome =
-    authorization === undefined
+    authorization === undefined ||
+    authorization === "unknown" ||
+    markerConflictsWithResponse
       ? { known: false }
       : { known: true, allowed: authorization === "allowed", status };
 
