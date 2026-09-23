@@ -322,12 +322,19 @@ jobs:
         # session reach the agent application (ADR 0004). Passing the same value twice here
         # would render fine and quietly stop testing that rule.
         #
+        # taskdesk.env.database.appPassword (issue #296): the bundled-PostgreSQL default
+        # now also requires the application role's own password, separate from
+        # postgresql.auth.password (the migration/owner credential) -- without it the
+        # chart correctly refuses to render, which would make this step red for the same
+        # reason the values above are here at all.
+        #
         # The secrets are throwaway 64-character strings that exist only inside this step.
         # They are not credentials: nothing they could unlock is created.
         run: |
           helm template taskdesk charts/taskdesk \
             --set taskdesk.env.authSecret="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')" \
             --set taskdesk.env.encryptionKey="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')" \
+            --set taskdesk.env.database.appPassword="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')" \
             --set taskdesk.env.clientUrl=https://agent.ci.invalid \
             --set taskdesk.env.portalUrl=https://portal.ci.invalid \
             > /dev/null
