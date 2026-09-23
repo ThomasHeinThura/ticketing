@@ -42,6 +42,19 @@
 // `sheet.tsx`, `combobox.tsx`, blocked on the same `i18n` dependency; `input-otp.tsx`,
 // blocked on the `input-otp` package dependency; and `loading-skeleton.tsx`, an
 // app-specific shell mock, not a generic primitive) move in a later slice.
+//
+// Batch 5 (issue #286, found by #284's alignment check): `dialog`, `sheet` and `combobox`
+// move in, unblocked by dropping the `@/lib/i18n` read in favour of a caller-supplied
+// label prop — the same pattern `toggle`/`kbd`/`switch` already use. `DialogPopup` and
+// `SheetPopup` take a required `closeLabel` (required only when `showCloseButton` is not
+// explicitly `false`, enforced by a discriminated union); the close-button aria-label
+// they used to read from `common:actions.close` is now that prop, so every caller passes
+// `t("common:actions.close")` and the rendered accessible name is unchanged. `combobox`'s
+// single `common:actions.remove` string labelled two different controls, so it becomes
+// two props: `ComboboxInput` takes `clearLabel` (required only when `showClear` is
+// `true`) and `ComboboxChip` takes `removeLabel` (always required — a chip always renders
+// its own remove control). `input-otp` remains blocked on the npm dependency (separate
+// issue).
 
 export {
   Accordion,
@@ -117,6 +130,27 @@ export {
   CollapsibleTrigger,
 } from "./components/collapsible";
 export {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxClear,
+  ComboboxCollection,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxGroupLabel,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxPopup,
+  ComboboxRow,
+  ComboboxSeparator,
+  ComboboxStatus,
+  ComboboxTrigger,
+  ComboboxValue,
+  useComboboxFilter,
+} from "./components/combobox";
+export {
   Command,
   CommandCollection,
   CommandCreateHandle,
@@ -151,6 +185,23 @@ export {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "./components/context-menu";
+export {
+  Dialog,
+  DialogBackdrop,
+  DialogBackdrop as DialogOverlay,
+  DialogClose,
+  DialogCreateHandle,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPanel,
+  DialogPopup,
+  DialogPopup as DialogContent,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+  DialogViewport,
+} from "./components/dialog";
 export {
   Empty,
   EmptyContent,
@@ -308,6 +359,21 @@ export {
   selectTriggerVariants,
 } from "./components/select";
 export { Separator } from "./components/separator";
+export {
+  Sheet,
+  SheetBackdrop,
+  SheetBackdrop as SheetOverlay,
+  SheetClose,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetPanel,
+  SheetPopup,
+  SheetPopup as SheetContent,
+  SheetPortal,
+  SheetTitle,
+  SheetTrigger,
+} from "./components/sheet";
 export { Skeleton } from "./components/skeleton";
 export { Slider, SliderValue } from "./components/slider";
 export { Spinner } from "./components/spinner";

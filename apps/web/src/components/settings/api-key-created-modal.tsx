@@ -1,16 +1,19 @@
-import { Alert, AlertDescription, AlertTitle, Button } from "@taskdesk/ui";
-import { Check, Copy } from "lucide-react";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { toast } from "@/lib/toast";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../ui/dialog";
+} from "@taskdesk/ui";
+import { Check, Copy } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { toast } from "@/lib/toast";
 
 type ApiKeyCreatedModalProps = {
   apiKey: string;
@@ -36,7 +39,10 @@ export function ApiKeyCreatedModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-[446px]">
+      <DialogContent
+        className="max-w-[446px]"
+        closeLabel={t("common:actions.close")}
+      >
         <DialogHeader>
           <DialogTitle>{t("settings:apiKey.createdModal.title")}</DialogTitle>
           <DialogDescription>

@@ -1,10 +1,10 @@
 "use client";
 
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
-import { Button, ScrollArea } from "@taskdesk/ui";
 import { XIcon } from "lucide-react";
-import { cn } from "@/lib/cn";
-import { i18n } from "@/lib/i18n";
+import { cn } from "../lib/cn";
+import { Button } from "./button";
+import { ScrollArea } from "./scroll-area";
 
 const Sheet = SheetPrimitive.Root;
 
@@ -56,18 +56,32 @@ function SheetViewport({
   );
 }
 
+type SheetPopupOwnProps =
+  | {
+      showCloseButton?: true;
+      side?: "right" | "left" | "top" | "bottom";
+      variant?: "default" | "inset";
+      /** Accessible name for the close button. Required whenever the close button renders. */
+      closeLabel: string;
+    }
+  | {
+      showCloseButton: false;
+      side?: "right" | "left" | "top" | "bottom";
+      variant?: "default" | "inset";
+      closeLabel?: string;
+    };
+
+type SheetPopupProps = SheetPrimitive.Popup.Props & SheetPopupOwnProps;
+
 function SheetPopup({
   className,
   children,
   showCloseButton = true,
   side = "right",
   variant = "default",
+  closeLabel,
   ...props
-}: SheetPrimitive.Popup.Props & {
-  showCloseButton?: boolean;
-  side?: "right" | "left" | "top" | "bottom";
-  variant?: "default" | "inset";
-}) {
+}: SheetPopupProps) {
   return (
     <SheetPortal>
       <SheetBackdrop />
@@ -93,7 +107,7 @@ function SheetPopup({
           {children}
           {showCloseButton && (
             <SheetPrimitive.Close
-              aria-label={i18n.t("common:actions.close")}
+              aria-label={closeLabel}
               className="absolute end-2 top-2"
               render={<Button size="icon" variant="ghost" />}
             >

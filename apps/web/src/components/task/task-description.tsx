@@ -1,5 +1,7 @@
 import {
   Button,
+  Dialog,
+  DialogPopup,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
@@ -59,7 +61,6 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { bundledLanguages, type Highlighter } from "shiki";
-import { Dialog, DialogPopup } from "@/components/ui/dialog";
 import { useUpdateTaskDescription } from "@/hooks/mutations/task/use-update-task-description";
 import useGetTask from "@/hooks/queries/task/use-get-task";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";

@@ -1,5 +1,7 @@
 import {
   Button,
+  Dialog,
+  DialogPopup,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
@@ -58,7 +60,6 @@ import {
 import { TaskItemWithCheckbox } from "@/components/task/extensions/task-item-with-checkbox";
 import { TaskDeskIssueLink } from "@/components/task/extensions/taskdesk-issue-link";
 import { TaskDeskMention } from "@/components/task/extensions/taskdesk-mention";
-import { Dialog, DialogPopup } from "@/components/ui/dialog";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { cn } from "@/lib/cn";

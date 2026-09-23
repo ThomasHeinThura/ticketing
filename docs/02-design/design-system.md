@@ -148,6 +148,24 @@ widget shape the way `dashboard-grid` (see below) is.
 
 The build fails if an exported component has no story.
 
+## Caller-supplied labels
+
+`packages/ui` has no `i18n` dependency (rule 1's "know nothing about the domain" — a
+translation catalogue is an app concern), so a primitive that renders its own control —
+a close button, a clear button, a chip's remove button — cannot read a translation key
+for that control's accessible name itself. It takes the name as a required string prop
+instead, the same pattern `toggle`, `kbd` and `switch` already use for `aria-label`. The
+caller, which has `react-i18next` in scope, passes `t("…")` for it, so the rendered
+accessible name is whatever the app's translation catalogue says — unchanged from when
+the primitive read it directly. Name the prop after what it labels (`closeLabel` for a
+close control, `removeLabel` for a remove control); when a single primitive renders more
+than one such control, give each one its own prop rather than reusing one name across
+controls that do different things. Make the prop required at the type level so a missing
+label is a build-time error, not a silent blank `aria-label` — a discriminated union on
+the prop that controls whether the labelled element renders at all (e.g.
+`showCloseButton`) narrows that requirement to exactly when the control is actually
+rendered.
+
 ## Composition rules
 
 ```

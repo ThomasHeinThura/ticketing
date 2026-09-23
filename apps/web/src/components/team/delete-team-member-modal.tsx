@@ -1,10 +1,16 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@taskdesk/ui";
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogPopup,
+  DialogTitle,
+} from "@taskdesk/ui";
 import { Trash2, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import useDeleteWorkspaceUser from "@/hooks/mutations/workspace-user/use-delete-workspace-user";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { Dialog, DialogClose, DialogPopup, DialogTitle } from "../ui/dialog";
 
 function DeleteTeamMemberModal({
   userId,
@@ -15,6 +21,7 @@ function DeleteTeamMemberModal({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
   const workspaceId = workspace?.id ?? "";
   const { mutateAsync: deleteWorkspaceUser } = useDeleteWorkspaceUser();
@@ -38,7 +45,10 @@ function DeleteTeamMemberModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogPopup className="w-full max-w-md">
+      <DialogPopup
+        className="w-full max-w-md"
+        closeLabel={t("common:actions.close")}
+      >
         <div className="bg-card rounded-lg shadow-xl">
           <div className="flex items-center justify-between p-4 border-b border-border">
             <DialogTitle className="text-lg font-semibold text-foreground">

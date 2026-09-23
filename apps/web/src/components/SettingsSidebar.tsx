@@ -1,5 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Button } from "@taskdesk/ui";
+import {
+  Button,
+  Sheet,
+  SheetDescription,
+  SheetHeader,
+  SheetPopup,
+  SheetTitle,
+} from "@taskdesk/ui";
 import { ChevronLeft } from "lucide-react";
 import {
   createContext,
@@ -9,13 +16,6 @@ import {
   useMemo,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Sheet,
-  SheetDescription,
-  SheetHeader,
-  SheetPopup,
-  SheetTitle,
-} from "@/components/ui/sheet";
 
 type SettingsSidebarContextValue = {
   workspaceId?: string;
@@ -70,6 +70,7 @@ export default function SettingsSidebar({
         <SheetPopup
           side="left"
           className="w-64 bg-sidebar p-0 text-sidebar-foreground md:hidden"
+          closeLabel={t("common:actions.close")}
         >
           <SheetHeader className="sr-only">
             <SheetTitle>{t("common:sidebar.title")}</SheetTitle>
