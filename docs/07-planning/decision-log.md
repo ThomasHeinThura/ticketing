@@ -17,6 +17,38 @@ Newest first.
 
 ---
 
+### 2026-09-23 · P1's UI path: new v2 work-item screens on the new API, then retire kaneo's task stack
+
+**Decision:** P1's work-item journey is built as **new v2 screens**: list, board, detail
+page and side pane, and the create dialog, per `docs/02-design/screen-inventory.md`. They sit
+on the new `/api/work-items` API (#261/#271/#292) and use `packages/ui` primitives only.
+kaneo's existing task screens and `/api/task` keep working until the new screens reach
+parity. Then any UAT data in `task` is moved into `work_item` once, and the task stack is
+retired: routes, screens, `task_activity`, and the `task`/`column` tables. Its
+`inherited-uncovered` entries retire with it, coordinated with #8.
+
+**Why:** the new backend (the `work_item` table, the API, WI-6 activity and events) was
+built beside kaneo's `task` table, not by renaming it. As of 2026-09-23 the web app uses
+`/api/task` in 69 files and `/api/work-items` in none, so none of the P1 backend work is
+visible in the UI yet. Building v2 screens matches the specified screen inventory and design
+system (AGENTS.md rule 1). Keeping the old screens alive until parity means there is never a
+period with no working task UI. This settles the "`task` → `work_item` strategy" that
+`docs/07-planning/lane-prep/p1-core.md` §0/§9 recorded as undecided: it is a parallel model
+with a one-time data move at retirement, not an in-place rename. The 2026-09-16 "one-shot
+migration" entry's condition, no live deployment yet, still has to be re-checked when the
+data move is written.
+
+**Alternatives:** migrate `task` data into `work_item` now and repoint the existing kaneo
+screens. That gives the fastest visible journey, but comments, labels, time entries,
+relations and attachments all key off `task_id`, so it is a large cutover, and it keeps
+kaneo's screens rather than v2's. Or finish the backend first and do the UI later: the
+cleanest backend, but nothing new is visible, which is the Oct 3 risk that two external
+status reviews flagged.
+
+**Decided by:** Thomas, via `AskUserQuestion`, 2026-09-23. He chose the recommended option.
+
+---
+
 ### 2026-09-23 · gitleaks false positive on `audit_log` secret-refusal test fixtures — dismissed by exact fingerprint
 
 **Decision:** two gitleaks `generic-api-key` findings are added to a new root `.gitleaksignore`.
