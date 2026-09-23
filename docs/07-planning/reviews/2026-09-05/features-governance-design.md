@@ -317,39 +317,6 @@ specification to a repository outside this one.
 ---
 
 ## 12. `design-system.md`
-
-**Verdict: ready-with-fixes, three findings closed, three genuinely still open.** Three of
-the six original findings were spec-text gaps with no new dependency and no product call,
-and are closed by this pass:
-
-- **Branding-override bound** — `design-system.md`'s Theming section, `plugin-architecture.md`'s
-  Branding section and `configuration-reference.md`'s Branding section now name the same
-  fixed, five-variable set (`--brand-accent`, `--brand-logo-light`, `--brand-logo-dark`,
-  `--brand-login-background`, `--brand-favicon`), state that the write path rejects
-  anything outside it, and that the submitted accent colour is checked for WCAG AA
-  contrast (the same standard `G3` applies to committed tokens) before save.
-- **Icon vocabulary** — `design-system.md`'s Icons section now states that a stored icon
-  column (`project.icon`, `work_item_type.icon`, `request_type.icon`) holds a lucide icon
-  name drawn from a checked-in allowlist generated from the installed `lucide-react`
-  version, that the picker only offers allowlisted names, and that an unknown stored name
-  (a downgraded package, an upstream rename) renders a documented fallback icon
-  (`circle-help`) rather than a gap.
-- **Timesheet grid** — `design-system.md`'s TaskDesk-additions section now states the
-  timesheet composes `data-table` with an editable-cell variant rather than adding a
-  thirteenth `grid-editor` primitive, and `time-and-cost.md`'s Screens section
-  cross-references it. No new primitive, no new dependency.
-
-**Still open — each needs a new dependency or a real product/tool choice this review
-cannot make, and none is picked here** (`AGENTS.md` do-not 4, do-not 17):
-
-| Severity | Issue | Status |
-| --- | --- | --- |
-| high | **No charting library and no chart primitive**, in a product with a whole reporting tier built on charts (`reports-and-dashboards.md`'s bar/line/table/single-number chart type, `RP-11`'s accessible table equivalent, `RP-2`'s bucketed distributions). | **Awaiting Thomas: dependency choice.** Options with licence/maintenance/bundle-size/React-19/accessibility comparison delivered to Thomas directly, outside this document, per `CLAUDE.md`'s do-not-4 process. |
-| high | **No dashboard grid primitive** for `RP-15`'s "widgets are resizable and draggable, and layout persists". `@dnd-kit/*` is already a dependency (used for board drag, per `accessibility.md`) but solves reordering, not resize-and-persist layout — a materially different problem. | **Awaiting Thomas: dependency choice.** Options delivered the same way. |
-| low | "Chromatic-style visual snapshots run against Storybook in CI" names no tool for `G8`. | **Awaiting Thomas: dependency choice** — already tracked as an open decision in `status.md` ("Visual-regression tool for gate G8"); `ux-quality-gates.md#g8--visual-regression` already states G8 is a human gate until it is chosen. Options delivered alongside the other two for a single combined decision. |
-
----
-
 ## 13. `design-tokens.md`
 
 **Verdict: not-ready.** Structurally this is the right document — two layers, semantic-only

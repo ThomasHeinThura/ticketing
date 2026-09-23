@@ -15,6 +15,8 @@
 | Typography | Geist Variable / Geist Mono Variable |
 | Motion | Framer Motion, tokenised |
 | Catalogue | Storybook 10 |
+| Charting | Recharts (Thomas, 2026-09-23 — see [decision log](../07-planning/decision-log.md)) |
+| Dashboard layout | react-grid-layout (Thomas, 2026-09-23 — see [decision log](../07-planning/decision-log.md)) |
 
 ## Package layout
 
@@ -97,6 +99,28 @@ and they must look as though they shipped with the system.
 | `duration-input` | Hours and minutes, storing integer minutes |
 | `calendar-window-editor` | Weekday coverage windows for a service calendar |
 | `form-builder` | Drag-to-arrange request type form designer |
+| `chart` | Wraps Recharts. `bar` / `line` / `number` variants for `reports-and-dashboards.md`'s three chart types |
+| `chart-table` | The accessible table equivalent `RP-11` requires, rendered alongside every `chart` instance |
+| `dashboard-grid` | Wraps react-grid-layout. Resizable, draggable dashboard widgets whose layout persists (`RP-15`) |
+
+**`chart`'s contract:** series colours are drawn only from a fixed token ramp
+(`--chart-series-1` … `--chart-series-n` in `tokens.css`), never a colour Recharts or a
+caller picks freely — this is what lets `G3` check chart contrast the same way it checks
+every other token. `chart` never renders alone: every instance renders its `chart-table`
+alongside it (visually hidden by default, reachable by keyboard, per `RP-11`), not as an
+optional companion a screen may skip. A screen that renders a `chart` without its
+`chart-table` fails `G4`.
+
+**`dashboard-grid`'s keyboard path**, stated the way
+[`accessibility.md`](accessibility.md#keyboard) states dnd-kit's
+for board drag, because react-grid-layout's own drag/resize handles
+(`react-draggable`/`react-resizable`) are mouse- and touch-first with no keyboard
+equivalent of their own: focus a widget's drag handle, `Enter` to enter move-or-resize
+mode, arrow keys to move the widget by one grid cell, `Shift`+arrow keys to resize it by
+one grid cell, `Enter` to confirm the new position and persist it, `Escape` to cancel and
+restore the prior position — with live-region announcements at each step, the same shape
+as the board-drag path. Without this, `dashboard-grid` lands in the Known-exceptions
+table by default, which `RP-15` does not allow for a P4-governed feature.
 
 `time-and-cost.md`'s timesheet ("a week grid, person by day, with inline entry, keyboard
 navigation between cells") is not a thirteenth new primitive. It composes the existing

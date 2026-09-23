@@ -83,10 +83,14 @@ Approving a diff is an explicit action in the pull request, which puts intention
 change in front of a reviewer and catches unintentional change immediately rather than
 three weeks later.
 
-**Tool: pending Thomas's decision** ([status.md](../07-planning/status.md) → Open decisions)
-between Playwright `toHaveScreenshot` with in-repo baselines and Chromatic. Until it is
-chosen, G8 is a **human** gate — the reviewer compares the Storybook build by eye — and
-"Chromatic-style" in older text meant only the approval workflow, never a dependency.
+**Tool: Playwright `toHaveScreenshot`, with in-repo baselines** (Thomas, 2026-09-23 — see
+[decision log](../07-planning/decision-log.md)). Baselines live alongside the Storybook
+stories and key-screen tests they cover, committed to the repository (not an external
+service) — `packages/ui/src/**/*.stories.tsx`'s baselines beside each story, key-screen
+baselines beside the E2E spec that exercises them — so a diff is reviewable in the same
+pull request that changed the pixels, with no separate account or service dependency.
+"Chromatic-style" in older text meant only the approval workflow, never the Chromatic
+dependency itself.
 
 ### G9 · Reduced motion
 
