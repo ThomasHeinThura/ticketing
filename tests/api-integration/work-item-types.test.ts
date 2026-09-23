@@ -45,9 +45,13 @@ async function makeType(
   );
 }
 
-/** Adds a second user to an EXISTING workspace with the given built-in role. Only
- * `workspace_member.role` is written -- `requireWorkspaceCapability` (the mechanism this
- * route enforces with) reads that column alone. */
+/** Adds a second user to an EXISTING workspace with the given built-in role.
+ *
+ * Since issue #318 (security), `requireWorkspaceCapability` grants a built-in's
+ * capabilities ONLY when a genuine seeded `workspace_role` row (`is_system = true`)
+ * backs the name in that workspace -- so this helper seeds one too, matching what
+ * `seed-default-workspace-roles.ts`/`create-workspace.ts` guarantee for a real
+ * workspace (`"owner"` is the one exception: it never gets a row, plan R5). */
 async function addWorkspaceMember(workspaceId: string, role: string) {
   const userId = `user-${randomUUID()}`;
   const user = requireRow(
@@ -68,6 +72,59 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     userId: user.id,
     role,
     joinedAt: new Date(),
+  });
+
+  if (role !== "owner") {
+    const now = new Date();
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId,
+      role,
+      permission: JSON.stringify({}),
+      isSystem: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  return user;
+}
+
+/** `addWorkspaceMember` with NO genuine `workspace_role` row -- issue #318 (security):
+ * what a custom, administrator-created role that merely SHARES a built-in's name looks
+ * like. The name must grant nothing. */
+async function addWorkspaceMemberWithoutGenuineRow(
+  workspaceId: string,
+  role: string,
+) {
+  const userId = `user-${randomUUID()}`;
+  const user = requireRow(
+    await db
+      .insert(schema.userTable)
+      .values({
+        id: userId,
+        email: `${userId}@example.com`,
+        emailVerified: true,
+        name: "Integration Test User",
+      })
+      .returning(),
+    "addWorkspaceMemberWithoutGenuineRow: user",
+  );
+
+  await db.insert(schema.workspaceUserTable).values({
+    workspaceId,
+    userId: user.id,
+    role,
+    joinedAt: new Date(),
+  });
+
+  const now = new Date();
+  await db.insert(schema.workspaceRoleTable).values({
+    workspaceId,
+    role,
+    permission: JSON.stringify({}),
+    isSystem: false,
+    createdAt: now,
+    updatedAt: now,
   });
 
   return user;
@@ -136,6 +193,23 @@ describe("API integration: work-item types list (#23 create dialog)", () => {
       `/api/workspace/${seed.workspace.id}/work-item-types`,
     );
     expect(response.status).toBe(200);
+  });
+
+  it("issue #318: a custom role merely NAMED like a built-in (no genuine row) gets 403", async () => {
+    const seed = await createWorkspaceMember({ role: "member" });
+    await makeType(seed.workspace.id, { key: "task", name: "Task" });
+
+    const impostor = await addWorkspaceMemberWithoutGenuineRow(
+      seed.workspace.id,
+      "viewer",
+    );
+    mockAuthenticatedSession(impostor);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/workspace/${seed.workspace.id}/work-item-types`,
+    );
+    expect(response.status).toBe(403);
   });
 
   it("a caller whose workspace role lacks workspace:read (customer) is refused with 403", async () => {
