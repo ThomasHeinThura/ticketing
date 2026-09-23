@@ -20,6 +20,7 @@ import {
   taskTable,
   userTable,
 } from "../../database/schema";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
 
 type GetTasksOptions = {
   assigneeId?: string;
@@ -93,6 +94,10 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
   }
 
   if (options.assigneeId) {
+    // S5 (Opus review of PR #307, delta round): reaches the `eq(taskTable.userId,
+    // ...)` filter below unvalidated -- a NUL byte would otherwise 500 instead of
+    // a clean 400.
+    rejectNulByte(options.assigneeId, "assigneeId");
     conditions.push(eq(taskTable.userId, options.assigneeId));
   }
 

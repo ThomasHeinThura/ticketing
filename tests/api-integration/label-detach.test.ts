@@ -603,4 +603,62 @@ describe("API integration: label detach/attach", () => {
       expect(data.userId).toBe(member.user.id);
     }
   });
+
+  it("issue #307 S2: attaching a label to a task in another workspace answers exactly like a nonexistent task id", async () => {
+    const member = await createWorkspaceMember();
+    const foreign = await createWorkspaceMember({ role: "admin" });
+    const { project: foreignProject } = await createProjectFixture({
+      workspaceId: foreign.workspace.id,
+    });
+    const foreignTask = await seedTask(foreign.user.id, foreignProject.id);
+
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const createResponse = await app.request("/api/label", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: "Cross-tenant",
+        color: "#3b82f6",
+        workspaceId: member.workspace.id,
+      }),
+    });
+    expect(createResponse.status).toBe(200);
+    const label = (await createResponse.json()) as { id: string };
+
+    const withForeign = await app.request(`/api/label/${label.id}/task`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ taskId: foreignTask.id }),
+    });
+    const withNonexistent = await app.request(`/api/label/${label.id}/task`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ taskId: "nonexistent-task-id" }),
+    });
+
+    // Before the #307 delta round, a foreign taskId resolved and then 400'd
+    // "must belong to the same workspace" -- distinguishable from the 404 a
+    // nonexistent taskId already gave. `assign-label-to-task.ts` now scopes the
+    // task lookup itself to the label's own workspace, so both are this 404.
+    const [foreignBody, nonexistentBody] = await Promise.all([
+      withForeign.text(),
+      withNonexistent.text(),
+    ]);
+    expect(withForeign.status).toBe(withNonexistent.status);
+    expect(withForeign.status).toBe(404);
+    expect(foreignBody).toBe(nonexistentBody);
+    expect(foreignBody).toBe("Task not found");
+
+    const stillUnattached = await db.query.labelTable.findFirst({
+      where: eq(schema.labelTable.id, label.id),
+    });
+    expect(stillUnattached?.taskId).toBeNull();
+
+    const foreignTaskUntouched = await db.query.labelTable.findFirst({
+      where: eq(schema.labelTable.taskId, foreignTask.id),
+    });
+    expect(foreignTaskUntouched).toBeUndefined();
+  });
 });

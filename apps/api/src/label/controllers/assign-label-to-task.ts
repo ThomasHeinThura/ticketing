@@ -8,10 +8,16 @@ import {
   taskTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
 
 type LabelRow = typeof labelTableType.$inferSelect;
 
 async function assignLabelToTask(id: string, taskId: string, userId: string) {
+  // #290 S4 sweep: `taskId` is a body field on `attachLabelToTaskRoute`, not covered
+  // by `workspaceAccess.fromLabel()` (which only guards `id`) -- a NUL byte here
+  // reached `eq(taskTable.id, taskId)` unvalidated and 500'd.
+  rejectNulByte(taskId, "Task id");
+
   const label = await db.query.labelTable.findFirst({
     where: (label, { eq }) => eq(label.id, id),
   });
@@ -22,6 +28,22 @@ async function assignLabelToTask(id: string, taskId: string, userId: string) {
     });
   }
 
+  // `workspaceAccess.fromLabel()` (this route's own middleware) already resolved
+  // and reach-checked this label's workspace before this controller ever ran --
+  // `lookupWorkspaceId` treats a null `workspaceId` column the same as "row
+  // doesn't exist" (`|| null`), so reaching here means it is a real string.
+  if (!label.workspaceId) {
+    throw new HTTPException(404, {
+      message: "Label not found",
+    });
+  }
+
+  // S2 (Opus review of PR #307, delta round): scoped to the label's own
+  // (already reach-checked) workspace in the query itself, so a `taskId`
+  // belonging to ANOTHER workspace is indistinguishable from a nonexistent one --
+  // both now 404 `Task not found` here, instead of a nonexistent id 404ing while
+  // a foreign id resolved and then 400'd "must belong to the same workspace",
+  // which is the #290/#285 existence-oracle class applied to task ids.
   const [task] = await db
     .select({
       id: taskTable.id,
@@ -30,18 +52,17 @@ async function assignLabelToTask(id: string, taskId: string, userId: string) {
     })
     .from(taskTable)
     .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(eq(taskTable.id, taskId))
+    .where(
+      and(
+        eq(taskTable.id, taskId),
+        eq(projectTable.workspaceId, label.workspaceId),
+      ),
+    )
     .limit(1);
 
   if (!task) {
     throw new HTTPException(404, {
       message: "Task not found",
-    });
-  }
-
-  if (label.workspaceId && label.workspaceId !== task.workspaceId) {
-    throw new HTTPException(400, {
-      message: "Label and task must belong to the same workspace",
     });
   }
 

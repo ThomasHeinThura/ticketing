@@ -58,13 +58,29 @@ async function scopeToSourceTask(c: Context, next: Next) {
   if (!sourceTaskId) {
     throw new HTTPException(400, { message: "sourceTaskId is required" });
   }
+  // #290 S4 sweep: this reaches `workspaceIdOfTask`'s raw `eq(taskTable.id, ...)`
+  // query below, unvalidated -- a NUL byte would otherwise 500 instead of a clean
+  // 400, the same class #281 fixed for path/query ids.
+  rejectNulByte(sourceTaskId, "Task id");
 
   const workspaceId = await workspaceIdOfTask(sourceTaskId);
   if (!workspaceId) {
     throw new HTTPException(404, { message: "Source task not found" });
   }
 
-  await validateWorkspaceAccess(userId, workspaceId);
+  // #290 follow-up: a source task that exists but is in a workspace the caller
+  // can't reach used to leak a bare 403 here, distinguishable from the 404 just
+  // above for a genuinely nonexistent task -- the same existence-oracle class
+  // #290 closed for every `workspaceAccess.from*` helper. Caught and re-thrown as
+  // the identical "not found" answer, so the two are indistinguishable again.
+  try {
+    await validateWorkspaceAccess(userId, workspaceId);
+  } catch (error) {
+    if (error instanceof HTTPException && error.status === 403) {
+      throw new HTTPException(404, { message: "Source task not found" });
+    }
+    throw error;
+  }
   c.set("workspaceId", workspaceId);
   return next();
 }
@@ -92,7 +108,19 @@ async function scopeToRelation(c: Context, next: Next) {
     throw new HTTPException(404, { message: "Task not found" });
   }
 
-  await validateWorkspaceAccess(userId, workspaceId);
+  // #290 follow-up: same class as `scopeToSourceTask` above -- a relation whose
+  // source task is in a workspace the caller can't reach used to leak a bare 403,
+  // distinguishable from the 404 a nonexistent relation id gets. Re-thrown as the
+  // same 404 this route already gives for "no such relation", since the relation
+  // id in the path is the identifier a caller would otherwise be able to probe.
+  try {
+    await validateWorkspaceAccess(userId, workspaceId);
+  } catch (error) {
+    if (error instanceof HTTPException && error.status === 403) {
+      throw new HTTPException(404, { message: "Task relation not found" });
+    }
+    throw error;
+  }
   c.set("workspaceId", workspaceId);
   return next();
 }
@@ -112,10 +140,10 @@ const getTaskRelationsRoute = createRoute({
       "Task relations with the linked task summaries",
       taskRelationWithTasksListSchema,
     ),
-    400: errorResponse(
-      "Unknown task, or its workspace could not be determined",
-    ),
-    403: errorResponse("No access to the task's workspace"),
+    // #290: a task that doesn't exist and a task in a workspace the caller can't
+    // reach both answer this same 404 now, via `workspaceAccess.fromTaskId()`.
+    400: errorResponse("taskId must not contain a NUL (\\u0000) byte"),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -140,9 +168,9 @@ const createTaskRelationRoute = createRoute({
   responses: {
     200: jsonResponse("The created relation", taskRelationSchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse(
-      "No workspace access, or missing task:update permission",
-    ),
+    403: errorResponse("Missing task:update permission"),
+    // #290 follow-up: an unreachable source task now answers this same 404 as a
+    // nonexistent one, via `scopeToSourceTask`.
     404: errorResponse("Source or target task not found"),
     409: errorResponse("This relation already exists"),
   },
@@ -162,9 +190,9 @@ const deleteTaskRelationRoute = createRoute({
   request: { params: taskRelationParam },
   responses: {
     200: jsonResponse("The deleted relation", taskRelationSchema),
-    403: errorResponse(
-      "No workspace access, or missing task:update permission",
-    ),
+    403: errorResponse("Missing task:update permission"),
+    // #290 follow-up: an unreachable relation/source task now answers this same 404
+    // as a nonexistent one, via `scopeToRelation`.
     404: errorResponse("Task relation not found, or its source task is gone"),
   },
 });

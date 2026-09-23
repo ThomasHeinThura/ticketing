@@ -1,5 +1,7 @@
 import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { rejectNulByte } from "../../../apps/api/src/utils/reject-nul-byte";
 
 const { state } = vi.hoisted(() => ({
   state: { lookedUpIds: [] as string[], handlerReached: false },
@@ -13,11 +15,19 @@ const WORKSPACE_BY_TASK: Record<string, string> = {
   "task-in-my-workspace": "workspace-mine",
   "task-in-other-workspace": "workspace-theirs",
   "label-in-my-workspace": "workspace-mine",
+  "label-in-other-workspace": "workspace-theirs",
   "time-entry-in-my-workspace": "workspace-mine",
+  "time-entry-in-other-workspace": "workspace-theirs",
   "activity-in-my-workspace": "workspace-mine",
+  "activity-in-other-workspace": "workspace-theirs",
   "comment-in-my-workspace": "workspace-mine",
+  "comment-in-other-workspace": "workspace-theirs",
   "column-in-my-workspace": "workspace-mine",
+  "column-in-other-workspace": "workspace-theirs",
   "workflow-rule-in-my-workspace": "workspace-mine",
+  "workflow-rule-in-other-workspace": "workspace-theirs",
+  "project-in-my-workspace": "workspace-mine",
+  "project-in-other-workspace": "workspace-theirs",
 };
 
 vi.mock("../../../apps/api/src/database", async () => {
@@ -140,10 +150,16 @@ describe("workspaceAccess lookup sources", () => {
     expect(state.lookedUpIds).toEqual(["task-in-my-workspace"]);
   });
 
-  it("rejects a body id in a workspace the caller cannot access", async () => {
+  it("issue #290: a body id in a workspace the caller cannot access gets the same 404 a nonexistent id gets, not a distinguishing 403", async () => {
     const res = await post("", { taskId: "task-in-other-workspace" });
 
-    expect(res.status).toBe(403);
+    // Before #290, this fell through to the generic post-loop
+    // `validateWorkspaceAccess` call and answered 403 -- distinguishable from the 404
+    // a nonexistent task id gets (see the "issue #256" describe block below). Reach is
+    // now checked as soon as the row resolves, inside the `lookup` branch itself, and
+    // an out-of-reach 403 is rethrown as this resource's own "not found" answer.
+    expect(res.status).toBe(404);
+    expect(await res.text()).toBe("Task not found");
     expect(state.lookedUpIds).toEqual(["task-in-other-workspace"]);
   });
 
@@ -153,7 +169,7 @@ describe("workspaceAccess lookup sources", () => {
     });
 
     expect(state.lookedUpIds).toEqual(["task-in-other-workspace"]);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   it("T4 follow-up (ordinary review of the #271 delta-round PR): a NUL byte in the lookup id is an immediate 400, never a fall-through to the caller-supplied ?workspaceId=, and never reaches the handler", async () => {
@@ -209,5 +225,150 @@ describe("workspaceAccess lookup sources", () => {
         expect(state.handlerReached).toBe(false);
       },
     );
+  });
+
+  // Issue #290: for every one of the 8 `[lookup]`-shaped helpers, a row that exists
+  // but resolves to a workspace the caller can't reach must answer BYTE-IDENTICALLY to
+  // a row that doesn't exist at all -- same status, same body -- so the two are never
+  // distinguishable from the outside. Before this fix, the nonexistent case above
+  // already 404s from the `lookup` branch itself, but the other-tenant case fell
+  // through to the generic post-loop `validateWorkspaceAccess` call and answered 403.
+  describe("issue #290: an other-tenant row answers exactly like a nonexistent one", () => {
+    it.each([
+      ["fromTask", () => workspaceAccess.fromTask(), "id", "task"],
+      ["fromTaskId", () => workspaceAccess.fromTaskId(), "taskId", "task"],
+      ["fromLabel", () => workspaceAccess.fromLabel(), "id", "label"],
+      [
+        "fromTimeEntry",
+        () => workspaceAccess.fromTimeEntry(),
+        "id",
+        "time-entry",
+      ],
+      ["fromActivity", () => workspaceAccess.fromActivity(), "id", "activity"],
+      ["fromComment", () => workspaceAccess.fromComment(), "id", "comment"],
+      ["fromColumn", () => workspaceAccess.fromColumn(), "id", "column"],
+      [
+        "fromWorkflowRule",
+        () => workspaceAccess.fromWorkflowRule(),
+        "id",
+        "workflow-rule",
+      ],
+    ] as const)(
+      "%s: nonexistent id and other-tenant id return the same status and body",
+      async (_name, factory, idKey, seedPrefix) => {
+        const nonexistentRes = await buildLookupApp(factory(), idKey).request(
+          "/does-not-exist?workspaceId=workspace-mine",
+        );
+        const otherTenantRes = await buildLookupApp(factory(), idKey).request(
+          `/${seedPrefix}-in-other-workspace?workspaceId=workspace-mine`,
+        );
+
+        expect(otherTenantRes.status).toBe(nonexistentRes.status);
+        expect(otherTenantRes.status).toBe(404);
+        expect(await otherTenantRes.text()).toBe(await nonexistentRes.text());
+        expect(state.handlerReached).toBe(false);
+      },
+    );
+  });
+
+  // Issue #285's S1: the tests above pin the generic 404 throw, but not the removal of
+  // the `{ type: "query", key: "workspaceId" }` source itself -- restoring that source
+  // to any one of the 8 factories left every case above green, because an id is always
+  // present in those cases. This covers the one case that depends on the source-list
+  // removal alone: no id anywhere (no path param, no body field), plus a
+  // `?workspaceId=` naming the caller's own real workspace. Mutation-checked: adding
+  // `{ type: "query", key: "workspaceId" }` back to any one factory turns its own case
+  // here into a 200 with the handler reached, while leaving the other seven green.
+  describe("issue #285 S1: no id at all + ?workspaceId=<mine> is still 400, not a fall-through", () => {
+    it.each([
+      ["fromTask", () => workspaceAccess.fromTask(), "id"],
+      ["fromTaskId", () => workspaceAccess.fromTaskId(), "taskId"],
+      ["fromLabel", () => workspaceAccess.fromLabel(), "id"],
+      ["fromTimeEntry", () => workspaceAccess.fromTimeEntry(), "id"],
+      ["fromActivity", () => workspaceAccess.fromActivity(), "id"],
+      ["fromComment", () => workspaceAccess.fromComment(), "id"],
+      ["fromColumn", () => workspaceAccess.fromColumn(), "id"],
+      ["fromWorkflowRule", () => workspaceAccess.fromWorkflowRule(), "id"],
+    ] as const)(
+      "%s: no id + ?workspaceId=<mine> is 400, handler not reached",
+      async (_name, factory, _idKey) => {
+        // No path param at all -- the route below never declares a dynamic segment --
+        // and no JSON body, so the `lookup` source's id resolves to `null` on both the
+        // param and the body reads.
+        const app = new Hono<{ Variables: { userId: string } }>()
+          .use("*", async (c, next) => {
+            c.set("userId", "user-1");
+            return next();
+          })
+          .post("/no-id", factory(), async (c) => {
+            state.handlerReached = true;
+            return c.json({ ok: true });
+          });
+
+        const res = await app.request("/no-id?workspaceId=workspace-mine", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        });
+
+        expect(res.status).toBe(400);
+        expect(state.handlerReached).toBe(false);
+        expect(state.lookedUpIds).toEqual([]);
+      },
+    );
+  });
+
+  // Issue #290's own note on `fromProject`: it has always answered a generic 400 for
+  // an unknown project id (#202), never the 404 the other 7 resources get. The fix
+  // keeps that precedent -- an out-of-reach project matches the SAME 400 an unknown
+  // one gets, not a new 404.
+  describe("issue #290: fromProject keeps its own 400-on-unknown, applied identically to an other-tenant project", () => {
+    it("nonexistent project id is 400", async () => {
+      const res = await buildLookupApp(
+        workspaceAccess.fromProject(),
+        "id",
+      ).request("/does-not-exist?workspaceId=workspace-mine");
+
+      expect(res.status).toBe(400);
+      expect(await res.text()).toBe("Workspace ID could not be determined");
+    });
+
+    it("other-tenant project id gets the identical 400, not a distinguishing 403", async () => {
+      const res = await buildLookupApp(
+        workspaceAccess.fromProject(),
+        "id",
+      ).request("/project-in-other-workspace?workspaceId=workspace-mine");
+
+      expect(res.status).toBe(400);
+      expect(await res.text()).toBe("Workspace ID could not be determined");
+      expect(state.handlerReached).toBe(false);
+    });
+  });
+
+  // Issue #288: the middleware used to carry its own hand-rolled NUL check
+  // (`hasNulByte` plus an inline 400) instead of calling the one shared
+  // `rejectNulByte` helper every other NUL-checking call site in the codebase uses --
+  // two implementations of the same rule, with different wording. This proves the
+  // middleware's NUL rejection and a direct call to the shared helper, with the same
+  // label, produce the byte-identical body -- i.e. the middleware really does call
+  // through to `rejectNulByte` now, not a parallel copy of it.
+  it("issue #288: the middleware's NUL rejection is byte-identical to calling the shared rejectNulByte helper directly", async () => {
+    const res = await buildTaskApp().request(
+      `/task/${encodeURIComponent("\u0000x")}?workspaceId=workspace-mine`,
+    );
+    expect(res.status).toBe(400);
+    const middlewareBody = await res.text();
+
+    let directMessage = "";
+    try {
+      rejectNulByte("\u0000x", "Workspace/resource id");
+    } catch (error) {
+      directMessage =
+        error instanceof HTTPException
+          ? error.message
+          : "not-an-http-exception";
+    }
+
+    expect(middlewareBody).toBe(directMessage);
   });
 });
