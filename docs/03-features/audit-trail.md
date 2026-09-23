@@ -68,15 +68,19 @@ it.
   before, after, trace id, timestamp.
 - `AU-2` **Secret values are never recorded.** A plugin configuration change records which
   keys changed, never what they changed to.
-- `AU-3` Append-only. No API can update or delete a row. Enforced two ways: no endpoint
-  exists to do either, and — the deeper control, surviving even a compromised or buggy API
-  process — a `BEFORE UPDATE OR DELETE` trigger (`audit_log_append_only` /
-  `audit_log_reject_mutation()`, migration `0067`) raises on every mutation attempt,
-  with one carve-out: `AU-7`'s `organisation_id`-to-NULL tombstone, which Postgres
-  implements as an `UPDATE` against this same table. A trigger is enforced against every
-  role, including the table's owner, unlike a grant — this deployment provisions exactly
-  one Postgres role, which owns `audit_log` and so keeps full DML whatever is revoked from
-  it (decision log, 2026-09-23, "`audit_log` is append-only by trigger, not by grant").
+- `AU-3` Append-only. No API can update, delete or truncate a row. Enforced two ways: no
+  endpoint exists to do any of the three, and — the deeper control, surviving even a
+  compromised or buggy API process — two triggers: `audit_log_append_only` (`BEFORE
+  UPDATE OR DELETE ... FOR EACH ROW` / `audit_log_reject_mutation()`, migration `0067`)
+  raises on every UPDATE/DELETE attempt, with one carve-out: `AU-7`'s
+  `organisation_id`-to-NULL tombstone, which Postgres implements as an `UPDATE` against
+  this same table; and `audit_log_append_only_truncate` (`BEFORE TRUNCATE ... FOR EACH
+  STATEMENT` / `audit_log_reject_truncate()`, migration `0067`) raises unconditionally,
+  because a row-level trigger never fires for `TRUNCATE` at all. Both are enforced
+  against every role, including the table's owner, unlike a grant — this deployment
+  provisions exactly one Postgres role, which owns `audit_log` and so keeps full DML
+  whatever is revoked from it (decision log, 2026-09-23, "`audit_log` is append-only by
+  trigger, not by grant").
   `audit-purge`, run as a separate maintenance role, is the only thing that deletes rows,
   and only the oldest-past-retention range.
 - `AU-4` An impersonated action records **both** identities.

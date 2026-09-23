@@ -245,6 +245,22 @@ describe("audit_log append-only trigger", () => {
       /append-only/i,
     );
   });
+
+  it("refuses a TRUNCATE, and the rows survive", async () => {
+    await appendAuditLog(db, baseInput());
+    await appendAuditLog(db, baseInput());
+    await appendAuditLog(db, baseInput());
+
+    await expectRejectionMatching(
+      db.execute(sql`TRUNCATE audit_log`),
+      /append-only/i,
+    );
+
+    const countResult = await db.execute<{ count: string }>(
+      sql`SELECT count(*)::text AS count FROM audit_log`,
+    );
+    expect(countResult.rows[0]?.count).toBe("3");
+  });
 });
 
 describe("concurrent appendAuditLog calls stay linear", () => {

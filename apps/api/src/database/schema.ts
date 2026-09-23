@@ -2276,17 +2276,22 @@ export const watcherTable = pgTable(
 // `compose.yml`/the Helm chart/`deploy/` (the `taskdesk_app`/`taskdesk_maint` split
 // `docs/04-engineering/migrations.md`'s "Append-only tables" section describes) -- out
 // of scope for a schema-and-writer slice; tracked as a real gap, not assumed away. The
-// migration still issues `REVOKE UPDATE, DELETE ... FROM PUBLIC` as harmless
+// migration still issues `REVOKE UPDATE, DELETE, TRUNCATE ... FROM PUBLIC` as harmless
 // defense-in-depth for any future lesser-privileged role, but that REVOKE is NOT what
 // makes this table append-only today.
 //
-// The actual, load-bearing mechanism here is a `BEFORE UPDATE OR DELETE` trigger
-// (`audit_log_append_only`, migration 0067) that raises for every UPDATE/DELETE except
-// ONE carve-out -- enforced at the database level regardless of which role issues the
-// statement (short of a superuser disabling triggers, the same residual risk `AU-15`'s
-// hash chain exists to detect after the fact via `audit-verify`), so it survives a
-// compromised or buggy API process exactly the way `AU-3`'s own stated rationale asks
-// for, just via a different mechanism than the doc's literal words describe.
+// The actual, load-bearing mechanism here is two triggers (migration 0067):
+// `audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR EACH ROW`) that raises for
+// every UPDATE/DELETE except ONE carve-out, and `audit_log_append_only_truncate`
+// (`BEFORE TRUNCATE ... FOR EACH STATEMENT`) that unconditionally raises for TRUNCATE --
+// a SEPARATE trigger because a row-level trigger never fires for TRUNCATE at all
+// (confirmed live: TRUNCATE emptied the table with zero rows firing the row-level
+// trigger, no error). Both are enforced at the database level regardless of which role
+// issues the statement (short of a superuser disabling triggers, the same residual risk
+// `AU-15`'s hash chain exists to detect after the fact via `audit-verify`), so together
+// they survive a compromised or buggy API process exactly the way `AU-3`'s own stated
+// rationale asks for, just via a different mechanism than the doc's literal words
+// describe.
 //
 // The one carve-out: `organisation_id`'s own `ON DELETE SET NULL` FK action below is
 // itself implemented by Postgres as an UPDATE against THIS table -- confirmed live,

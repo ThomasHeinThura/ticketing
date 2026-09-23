@@ -112,9 +112,13 @@ BY tgname;` against the migrated schema before shipping either trigger.
 
 ## Append-only tables
 
-`audit_log` is append-only by absence of an endpoint and by a `BEFORE UPDATE OR DELETE`
-trigger (`audit_log_append_only` / `audit_log_reject_mutation()`, migration `0067`), which
-raises on every mutation attempt except `AU-7`'s `organisation_id`-to-NULL tombstone. The
+`audit_log` is append-only by absence of an endpoint and by two triggers, migration `0067`:
+`audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR EACH ROW` /
+`audit_log_reject_mutation()`), which raises on every UPDATE/DELETE attempt except `AU-7`'s
+`organisation_id`-to-NULL tombstone; and `audit_log_append_only_truncate` (`BEFORE TRUNCATE
+... FOR EACH STATEMENT` / `audit_log_reject_truncate()`), which raises unconditionally,
+because a row-level trigger never fires for `TRUNCATE` at all (verified live: without it, a
+`TRUNCATE audit_log` emptied the table with no error). The
 `taskdesk_app`/`taskdesk_maint` role split this section used to describe — a lesser-privileged
 app role with `INSERT, SELECT` and no `UPDATE, DELETE`, and a separate maintenance role for
 `audit-purge` — is **not implemented**: `compose.yml`, `charts/taskdesk/**` and `deploy/**`

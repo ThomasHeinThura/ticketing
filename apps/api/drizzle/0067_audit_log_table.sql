@@ -110,4 +110,31 @@ $$;--> statement-breakpoint
 CREATE TRIGGER audit_log_append_only
   BEFORE UPDATE OR DELETE ON "audit_log"
   FOR EACH ROW
-  EXECUTE FUNCTION audit_log_reject_mutation();
+  EXECUTE FUNCTION audit_log_reject_mutation();--> statement-breakpoint
+-- TRUNCATE closes the same hole a plain DELETE would, and `BEFORE UPDATE OR DELETE ...
+-- FOR EACH ROW` above does NOT cover it: a `FOR EACH ROW` trigger never fires for
+-- `TRUNCATE` at all (confirmed live -- three rows inserted, then `TRUNCATE audit_log`,
+-- then zero rows, no error, the row-level trigger never ran), and the single owning
+-- role in this deployment shape (see header comment) holds `TRUNCATE` privilege on its
+-- own table regardless of any `REVOKE`, the same reasoning that makes the REVOKE below
+-- defense-in-depth rather than the real control. `TRUNCATE` has no per-row concept
+-- (no `OLD`/`NEW`, and AU-7's tombstone carve-out above is meaningless against it --
+-- there is no row left to carve an exception for), so this is a SEPARATE function and a
+-- SEPARATE `FOR EACH STATEMENT` trigger, not a branch added to
+-- `audit_log_reject_mutation()` above.
+CREATE FUNCTION audit_log_reject_truncate() RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE EXCEPTION 'audit_log is append-only: TRUNCATE is not permitted';
+END;
+$$;--> statement-breakpoint
+-- Defense-in-depth only -- see the header comment. A no-op against the table OWNER (the
+-- only role that exists in this deployment shape today), real the moment a second,
+-- lesser-privileged role is ever provisioned and used to connect the API. Same wording
+-- as the `UPDATE, DELETE` revoke above, for the same reason.
+REVOKE TRUNCATE ON "audit_log" FROM PUBLIC;--> statement-breakpoint
+CREATE TRIGGER audit_log_append_only_truncate
+  BEFORE TRUNCATE ON "audit_log"
+  FOR EACH STATEMENT
+  EXECUTE FUNCTION audit_log_reject_truncate();
