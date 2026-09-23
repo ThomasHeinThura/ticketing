@@ -1,7 +1,7 @@
 "use client";
 
 import { Menubar as MenubarPrimitive } from "@base-ui/react/menubar";
-
+import { cn } from "../lib/cn";
 import {
   Menu,
   MenuCheckboxItem,
@@ -18,8 +18,7 @@ import {
   MenuSubPopup,
   MenuSubTrigger,
   MenuTrigger,
-} from "@/components/ui/menu";
-import { cn } from "@/lib/cn";
+} from "./menu";
 
 function Menubar({ className, ...props }: MenubarPrimitive.Props) {
   return (

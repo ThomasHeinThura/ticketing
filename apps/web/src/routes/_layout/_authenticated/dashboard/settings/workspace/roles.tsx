@@ -5,6 +5,13 @@ import {
   AccordionItem,
   AccordionPanel,
   AccordionTrigger,
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Empty,
   EmptyDescription,
@@ -20,15 +27,6 @@ import { Plus, Shield, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import {
-  AlertDialog,
-  AlertDialogClose,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import useCreateWorkspaceRole from "@/hooks/mutations/workspace/use-create-workspace-role";
 import useDeleteWorkspaceRole from "@/hooks/mutations/workspace/use-delete-workspace-role";
 import useUpdateWorkspaceRole from "@/hooks/mutations/workspace/use-update-workspace-role";
