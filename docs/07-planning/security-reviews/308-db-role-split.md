@@ -728,3 +728,17 @@ Everything from the `13ebb0f` delta still stands, and so do its non-blocking E1â
 
 I removed the probe DB, the probe role (`taskdesk_app_opusd3`) and its objects, the probe file,
 and the worktree. I did not start any container or image.
+
+---
+
+## Merge attestation at `b816d66` (clean main merge bringing in #336)
+
+**Reviewed head:** `b816d666b90e3aa89f6460d3d9118e018fb24afb`
+
+The merge's parents are `15b61cb` (this PR) and `99a528c` (#336). `git diff-tree --cc` is empty,
+so no conflict was resolved. The diff against `15b61cb` is one 40-line addition to
+`docs/07-planning/decision-log.md`: #336's "Three non-Claude implementation agents take the
+P0/P1/P2 lanesâ€¦" entry. It removes nothing, and no other file changes. Every #308 file is
+therefore identical to `15b61cb`.
+
+**Verdict: CLEAR.** The bd32e36 attestation carries over unchanged, and no test rerun was needed.
