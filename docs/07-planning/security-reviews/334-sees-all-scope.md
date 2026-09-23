@@ -2,6 +2,7 @@
 
 **Reviewer:** Opus 5.5, fresh independent context. Did not author, direct, or remediate this change.
 **Reviewed head:** `96fc97085afdc99c75d8ba52ffa9b605435aa5fc`
+**Delta re-checked head:** `941bc3955b008df6aa751303bb09a4739d7b6658` (docs-only follow-up; see § Delta re-check)
 **Pull request:** #334 (`fix/319-scoped-reach`)
 **Closes finding:** #315 Opus review S3 (`315-resolve-identity.md`), issue #319
 **Date:** 2026-09-23
@@ -205,3 +206,27 @@ The change does what #319 and #315 S3 asked:
 The adversarial probes and the mutation checks confirm this. S1–S5 are non-blocking. G1 and G2
 are merge gates for the orchestrator, outside this security verdict. This review does not
 clear them.
+
+## Delta re-check at `941bc3955b008df6aa751303bb09a4739d7b6658`
+
+`941bc39` ("docs: defer webhook reach wording to its review lane") was pushed onto the
+branch during this review. Its parent is `96fc970`.
+
+- `git diff 96fc970 941bc39` touches only `docs/03-features/webhooks-and-api-keys.md`. It
+  restores that file byte-for-byte to its `origin/main` (`dd067e2`) content.
+  `git diff 96fc970 941bc39 -- packages apps tests scripts` is empty. So every code probe,
+  suite result and mutation above applies unchanged to `941bc39`.
+- **S1 is withdrawn at `941bc39`.** `WH-15` again requires `instance:admin` to create a
+  webhook owned by a sees_all identity, and again lists it in the security-posture panel.
+  That is the stricter of the two texts, so no relaxation remains.
+- The restored `WH-14` and `WH-15` wording, that a sees_all owner "receives everything",
+  now disagrees with `rbac.md` step 2 as this PR amends it. `rbac.md` is the higher source.
+  Once webhook delivery exists, it will go through `reaches()` and be workspace-scoped, so the
+  gap is in the spec wording only, and it errs on the strict side. This is NON-BLOCKING, and
+  it belongs to the webhook spec's own review lane, as the commit says.
+- G2 should clear once `webhooks-and-api-keys.md` is also removed from the body's
+  `**Spec:**` field. At the time of writing, the body still names it. That is the orchestrator's
+  body edit.
+
+**Verdict at `941bc39`: CLEAR WITH FINDINGS.** S2–S4 are non-blocking, and S5 is for #323.
+G1 and G2 remain the orchestrator's merge gates.
