@@ -517,6 +517,11 @@ export const workItemTableRelations = relations(
     children: many(workItemTable, { relationName: "workItemParent" }),
     keyAliases: many(workItemKeyAliasTable),
     watchers: many(watcherTable),
+    // NON-BLOCKING, PR #275's mandatory Opus 5.5 review (S6): this relational-query
+    // helper yields every column of `activityTable`, `seq` included -- unlike
+    // `recordWorkItemActivity`'s own explicit `.returning()` list, which deliberately
+    // excludes it. #27's read/serializer must drop `seq` itself before this data reaches
+    // any API response.
     activities: many(activityTable),
   }),
 );

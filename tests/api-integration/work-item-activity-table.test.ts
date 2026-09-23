@@ -494,21 +494,139 @@ describe("recordWorkItemActivity -- CA-7 visibility resolution", () => {
   });
 });
 
-// S2 (BLOCKING), PR #275's mandatory Opus 5.5 review: `resolveVisibility` used to
-// consult `CA7_PUBLIC_FIELDS` whenever `field` was set, regardless of `verb` -- so a
-// verb that merely happened to carry a field NAME matching a real public field (e.g. a
-// custom-field verb, or an unrelated verb like `deleted`/`watcher.added`) resolved to
-// `public` on the strength of that name alone. The fix: the field lookup applies ONLY
-// when `verb === "updated"`; any other verb goes through `CA7_PUBLIC_VERBS` (or falls
-// back to `internal`), field or not. These are the exact three reproduction cases from
-// the review's own table, plus the one case that must still resolve `public`.
-describe("resolveVisibility -- S2: the public-field lookup is gated on verb === 'updated'", () => {
+// D1 (BLOCKING regression at 635fd29), PR #275's mandatory Opus 5.5 delta-confirmation
+// review: the S2 fix's own last line -- `return CA7_PUBLIC_VERBS.has(input.verb) ?
+// "public" : "internal"` -- ignored `field` for every verb except `updated`, so a PUBLIC
+// verb with an INTERNAL field (e.g. `{verb: "created", field: "assignee"}`) resolved
+// `public`. Per AGENTS.md's "stop patching and change altitude" (this is the third round
+// finding the same class of fault -- fail-open, ad-hoc branching -- in this one
+// function): this test is EXHAUSTIVE and TABLE-DRIVEN over the full `(verb, field)`
+// cross product CA-7 names, and computes its own expected result INDEPENDENTLY of
+// `activity.ts`'s internals -- it never imports `PUBLIC_PAIRS` or
+// `CONDITIONAL_PUBLIC_PAIRS`, only `resolveVisibility` itself, so a future change that
+// adds a public pair to the allowlist without a matching update HERE fails this test,
+// rather than passing vacuously because both sides agree by construction.
+describe("resolveVisibility -- D1: exhaustive (verb, field) cross product, computed independently of the allowlist", () => {
+  // CA-7's own vocabulary (`docs/03-features/comments-and-activity.md`), transcribed a
+  // SECOND time, independently of `activity.ts`'s allowlist -- see `resolveVisibility`'s
+  // own comment for the verbatim CA-7 quote both this list and that allowlist are
+  // checked against.
+  const VERBS_NAMED_BY_CA7 = [
+    "created",
+    "transitioned",
+    "reopened",
+    "resolved",
+    "escalated",
+    "attachment.added",
+    "updated",
+  ];
+  const FIELDS_NAMED_BY_CA7 = [
+    "priority",
+    "due_date",
+    "title",
+    "description",
+    "assignee",
+    "watcher",
+    "label",
+    "custom_field",
+    "estimate",
+    "cycle",
+    "module",
+    "relation",
+    "parent",
+    "time_entry",
+    "sla_pause",
+  ];
+  // A few verbs/fields CA-7 does NOT name at all, plus case/space variants of ones it
+  // does -- every one of these must resolve `internal` (CA-7: "an unmapped verb or field
+  // is `internal`"; a case/space variant is a DIFFERENT string, hence also unmapped).
+  const UNKNOWN_VERBS = [
+    "deleted",
+    "watcher.added",
+    "custom_field.updated",
+    "Created",
+    "UPDATED",
+    " updated",
+  ];
+  const UNKNOWN_FIELDS = [
+    "unknown_field",
+    "Priority",
+    "priority ",
+    " title",
+    "Assignee",
+  ];
+
+  /**
+   * CA-7's UNCONDITIONAL rule, re-derived independently here (never calling into
+   * `activity.ts`): a bare named verb with NO field is public; `updated` with one of the
+   * four named public fields is public; everything else is internal for this
+   * derivation -- `attachment.added` is deliberately excluded here even with a null
+   * field, because CA-7 makes it CONDITIONAL, not unconditional (its own conditional
+   * override path is exercised separately, in the describe below).
+   */
+  function expectedUnconditionalVisibility(
+    verb: string,
+    field: string | null,
+  ): "public" | "internal" {
+    const BARE_PUBLIC_VERBS = [
+      "created",
+      "transitioned",
+      "reopened",
+      "resolved",
+      "escalated",
+    ];
+    const PUBLIC_UPDATED_FIELDS = [
+      "priority",
+      "due_date",
+      "title",
+      "description",
+    ];
+    if (field === null) {
+      return BARE_PUBLIC_VERBS.includes(verb) ? "public" : "internal";
+    }
+    return verb === "updated" && PUBLIC_UPDATED_FIELDS.includes(field)
+      ? "public"
+      : "internal";
+  }
+
+  const allVerbs = [...VERBS_NAMED_BY_CA7, ...UNKNOWN_VERBS];
+  const allFieldsIncludingNull: Array<string | null> = [
+    null,
+    ...FIELDS_NAMED_BY_CA7,
+    ...UNKNOWN_FIELDS,
+  ];
+
+  const cases = allVerbs.flatMap((verb) =>
+    allFieldsIncludingNull.map((field) => ({ verb, field })),
+  );
+
+  it.each(cases)(
+    "resolves { verb: $verb, field: $field } to exactly what CA-7 says, no more and no less",
+    ({ verb, field }) => {
+      const expected = expectedUnconditionalVisibility(verb, field);
+      expect(
+        resolveVisibility({
+          workspaceId: "ws-1",
+          workItemId: "wi-1",
+          actorId: null,
+          actorType: "system",
+          verb,
+          field: field ?? undefined,
+        }),
+      ).toBe(expected);
+    },
+  );
+
+  // Opus's own four D1 reproduction inputs, named explicitly rather than left to be
+  // found only inside the cross product above -- each was `public` at 635fd29 and must
+  // be `internal`.
   it.each([
-    { verb: "custom_field.updated", field: "priority" },
-    { verb: "deleted", field: "description" },
-    { verb: "watcher.added", field: "title" },
+    { verb: "created", field: "assignee" },
+    { verb: "escalated", field: "assignee" },
+    { verb: "resolved", field: "custom_field" },
+    { verb: "transitioned", field: "watcher" },
   ])(
-    "resolves { verb: $verb, field: $field } to internal, not public",
+    "D1's own reproduction case { verb: $verb, field: $field } resolves internal",
     ({ verb, field }) => {
       expect(
         resolveVisibility({
@@ -522,8 +640,29 @@ describe("resolveVisibility -- S2: the public-field lookup is gated on verb === 
       ).toBe("internal");
     },
   );
+});
 
-  it("still resolves { verb: 'updated', field: 'priority' } to public", () => {
+// D2/D3 (NON-BLOCKING, same delta-confirmation review), the override half of the same
+// model: "internal" may always be requested. "public" may be requested only when the
+// pair is already public (D2 -- a no-op, no longer throws) or is one of the two
+// CONDITIONAL pairs CA-7 itself names (D3 -- tightened from the previous round's
+// verb-only/field-only check, which also wrongly accepted `{attachment.added, assignee}`
+// and `{deleted, custom_field}`). Anything else asking for `public` still throws.
+describe("resolveVisibility -- override: D2 (no-op public is accepted) and D3 (conditional allowlist tightened)", () => {
+  it("D2: visibility: 'public' on an already-public bare verb is a no-op, not a throw", () => {
+    expect(
+      resolveVisibility({
+        workspaceId: "ws-1",
+        workItemId: "wi-1",
+        actorId: null,
+        actorType: "system",
+        verb: "created",
+        visibility: "public",
+      }),
+    ).toBe("public");
+  });
+
+  it("D2: visibility: 'public' on an already-public updated/field pair is a no-op, not a throw", () => {
     expect(
       resolveVisibility({
         workspaceId: "ws-1",
@@ -532,49 +671,40 @@ describe("resolveVisibility -- S2: the public-field lookup is gated on verb === 
         actorType: "system",
         verb: "updated",
         field: "priority",
+        visibility: "public",
       }),
     ).toBe("public");
   });
-});
 
-// S3 (NON-BLOCKING, fixed anyway), same review: a caller-supplied `visibility: "public"`
-// used to be honoured unconditionally, which let ANY row force itself public --
-// including `{verb: "updated", field: "assignee"}`, an internal field by CA-7's own
-// table. Decision made here (documented on `resolveVisibility`'s own doc comment too):
-// "internal" may always be requested; "public" may be requested ONLY for the two rows
-// CA-7 itself makes conditional on data this module can't see (`attachment.added`, the
-// field `custom_field`) -- anything else asking for `public` THROWS, rather than being
-// silently downgraded, so a caller's wrong assumption that its row is public surfaces
-// immediately instead of quietly resolving to a value the caller never checked.
-describe("resolveVisibility -- S3: a caller-supplied visibility is not an unconditional override", () => {
-  it("throws when a normally-internal row asks for visibility: 'public'", () => {
+  it("D3: attachment.added WITH a field no longer qualifies for the conditional override", () => {
     expect(() =>
       resolveVisibility({
         workspaceId: "ws-1",
         workItemId: "wi-1",
         actorId: null,
         actorType: "person",
-        verb: "updated",
+        verb: "attachment.added",
         field: "assignee",
         visibility: "public",
       }),
     ).toThrow(/not allowed/);
   });
 
-  it("throws even when the underlying verb is itself normally public (visibility is not a no-op override)", () => {
+  it("D3: a non-'updated' verb carrying field 'custom_field' no longer qualifies for the conditional override", () => {
     expect(() =>
       resolveVisibility({
         workspaceId: "ws-1",
         workItemId: "wi-1",
         actorId: null,
-        actorType: "system",
-        verb: "watcher.added",
+        actorType: "person",
+        verb: "deleted",
+        field: "custom_field",
         visibility: "public",
       }),
     ).toThrow(/not allowed/);
   });
 
-  it("honours visibility: 'public' for the attachment.added conditional case", () => {
+  it("attachment.added with NO field still qualifies for the conditional override", () => {
     expect(
       resolveVisibility({
         workspaceId: "ws-1",
@@ -587,7 +717,7 @@ describe("resolveVisibility -- S3: a caller-supplied visibility is not an uncond
     ).toBe("public");
   });
 
-  it("honours visibility: 'public' for the custom_field conditional case", () => {
+  it("updated/custom_field still qualifies for the conditional override", () => {
     expect(
       resolveVisibility({
         workspaceId: "ws-1",
@@ -601,7 +731,21 @@ describe("resolveVisibility -- S3: a caller-supplied visibility is not an uncond
     ).toBe("public");
   });
 
-  it("always honours visibility: 'internal', regardless of verb/field", () => {
+  it("throws for a genuine escalation attempt (an internal pair asking for public)", () => {
+    expect(() =>
+      resolveVisibility({
+        workspaceId: "ws-1",
+        workItemId: "wi-1",
+        actorId: null,
+        actorType: "person",
+        verb: "updated",
+        field: "assignee",
+        visibility: "public",
+      }),
+    ).toThrow(/not allowed/);
+  });
+
+  it("visibility: 'internal' is always honoured, regardless of verb/field", () => {
     expect(
       resolveVisibility({
         workspaceId: "ws-1",

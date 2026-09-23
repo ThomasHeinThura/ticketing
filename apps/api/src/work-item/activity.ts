@@ -19,13 +19,16 @@ export type ActivityVisibility = "public" | "internal";
  * When present, `visibility` is NOT an unconditional override — CA-7 says visibility is
  * "decided by this table and nothing else", so a caller cannot simply assert `public`.
  * `"internal"` is always honoured (a caller downgrading itself is always safe).
- * `"public"` is honoured ONLY for the two rows CA-7 makes conditional on data this module
- * cannot see by itself — `attachment.added` (public only for a customer-visible
- * attachment) and the field `custom_field` (internal unless that field is
- * `customer_visible`) — and `resolveVisibility` THROWS for any other attempt to force
- * `public` (found by PR #275's mandatory Opus 5.5 security review, S3: silently
- * downgrading instead would hide a caller's wrong assumption that its row is public when
- * it privately is not, which is the more dangerous failure mode of the two here).
+ * `"public"` is honoured when the `(verb, field)` pair is already public under CA-7's own
+ * table (a no-op — D2), or when it is one of the two rows CA-7 makes CONDITIONAL on data
+ * this module cannot see by itself — `attachment.added` with no field (public only for a
+ * customer-visible attachment) and `updated`/`custom_field` (internal unless that field
+ * is `customer_visible`). `resolveVisibility` THROWS for any other attempt to force
+ * `public` — a genuine escalation, not a no-op (found by PR #275's mandatory Opus 5.5
+ * security review, S3: silently downgrading instead would hide a caller's wrong
+ * assumption that its row is public when it privately is not, which is the more
+ * dangerous failure mode of the two here). See `resolveVisibility`'s own doc comment for
+ * the full allowlists.
  */
 export type NewActivityInput = {
   workspaceId: string;
@@ -41,77 +44,124 @@ export type NewActivityInput = {
   visibility?: ActivityVisibility;
 };
 
-// CA-7: verbs that are public REGARDLESS of `field` (there is no field on these rows).
-const CA7_PUBLIC_VERBS: ReadonlySet<string> = new Set([
-  "created",
-  "transitioned",
-  "reopened",
-  "resolved",
-  "escalated",
-]);
+// D1 (BLOCKING regression at 635fd29), PR #275's mandatory Opus 5.5 delta-confirmation
+// review: the previous shape branched on `verb`/`field` with `if`s, and its very last
+// line -- `return CA7_PUBLIC_VERBS.has(input.verb) ? "public" : "internal"` -- ignored
+// `field` for every verb except `updated`. So a public VERB with an internal FIELD (e.g.
+// `{verb: "created", field: "assignee"}`) resolved `public`, the mirror image of S2's
+// original bug (a field name deciding regardless of verb). Per AGENTS.md's "stop patching
+// and change altitude": this is the third round finding the same class of fault
+// (fail-open, ad-hoc branching) in this one function, so the fix here changes the
+// logic's SHAPE, not one more special case. There is now exactly one frozen, exhaustive
+// allowlist of `(verb, field)` pairs that are public; every pair not in it is `internal`,
+// full stop -- no `if` chain over `verb` or `field` anywhere below, and no plain-object
+// property lookup (a `Set`/`Map` keyed on an explicit composite string, so
+// `"__proto__"`/`"constructor"`/`"toString"` as a verb or field are ordinary member
+// checks, not prototype-chain hazards).
+//
+// Quoting CA-7 verbatim (`docs/03-features/comments-and-activity.md`) as the source of
+// truth this allowlist is transcribed from:
+//
+//   "`CA-7` Activity rows have visibility too, decided by this table and nothing else.
+//   An unmapped verb or field is `internal` -- adding a field later fails closed.
+//
+//   | Verb / field | Visibility |
+//   | `created`, `transitioned` (state change), `priority`, `due_date`, `title`,
+//   `description`, `attachment.added` (customer-visible attachment), `reopened`,
+//   `resolved`, `escalated` | `public` |
+//   | `assignee`, `watcher`, `label`, `custom_field` (unless the field is
+//   `customer_visible`), `estimate`, `cycle`, `module`, `relation`, `parent`,
+//   `time_entry`, `sla_pause`, `attachment.added` (internal attachment), everything
+//   else | `internal` |"
+//
+// CA-6 resolves a plain field edit's verb: "A plain field edit is recorded as verb
+// `updated` with `field` set to the field name ... and its visibility resolves by that
+// field name, per CA-7's table". So CA-7's public row splits into exactly two SHAPES of
+// pair, both enumerated here in full, and nothing else is public:
+//   - a named VERB with no field at all (`field: null`): `created`, `transitioned`,
+//     `reopened`, `resolved`, `escalated`;
+//   - the `updated` verb with one of the four named public FIELDS: `priority`,
+//     `due_date`, `title`, `description`.
+// `attachment.added` is deliberately NOT in this set -- CA-7 makes it public only for a
+// CUSTOMER-VISIBLE attachment, data this allowlist cannot see; it lives in the separate
+// conditional-override allowlist below instead, exactly as CA-7's own parenthetical says.
 
-// CA-7: field names that are public when the verb is a plain field change (verb
-// `updated`, `field` set to the field name -- CA-7's table is keyed "Verb / field" and
-// resolves a field edit by field name; `events.md` ~135 resolves `work_item.field_changed`
-// to `work_item.updated` the same way -- see `diffWorkItemFieldChanges` below).
-const CA7_PUBLIC_FIELDS: ReadonlySet<string> = new Set([
-  "priority",
-  "due_date",
-  "title",
-  "description",
-]);
-
-// CA-7's two rows whose visibility depends on data this module cannot see by itself --
-// the only two an explicit `visibility: "public"` override may legitimately claim (S3).
-function isConditionalPublicOverrideAllowed(input: NewActivityInput): boolean {
-  return input.verb === "attachment.added" || input.field === "custom_field";
+/** Composite key for a `(verb, field)` pair -- `\u0000` cannot appear in either a verb or
+ * a field name written by this codebase, so it is an unambiguous separator (no verb or
+ * field is ever confused with a different verb/field pair that happens to concatenate to
+ * the same string). */
+function pairKey(verb: string, field: string | null | undefined): string {
+  return `${verb}\u0000${field ?? ""}`;
 }
+
+// The frozen, exhaustive set of pairs CA-7 makes public UNCONDITIONALLY. Every pair not
+// in this set is internal -- there is no fallback branch that decides otherwise.
+const PUBLIC_PAIRS: ReadonlySet<string> = new Set([
+  pairKey("created", null),
+  pairKey("transitioned", null),
+  pairKey("reopened", null),
+  pairKey("resolved", null),
+  pairKey("escalated", null),
+  pairKey("updated", "priority"),
+  pairKey("updated", "due_date"),
+  pairKey("updated", "title"),
+  pairKey("updated", "description"),
+]);
+
+// The frozen, exhaustive set of pairs CA-7 makes CONDITIONALLY public -- public only when
+// data this module cannot see on its own says so (a customer-visible attachment; a
+// custom field marked `customer_visible`). These are the ONLY pairs a caller-supplied
+// `visibility: "public"` override may claim beyond the unconditional set above (D3,
+// tightened from the previous round's wider `verb === "attachment.added" || field ===
+// "custom_field"` check, which also accepted `{attachment.added, assignee}` and
+// `{deleted, custom_field}`).
+const CONDITIONAL_PUBLIC_PAIRS: ReadonlySet<string> = new Set([
+  pairKey("attachment.added", null),
+  pairKey("updated", "custom_field"),
+]);
 
 /**
  * CA-7: "Activity rows have visibility too, decided by this table and nothing else. An
  * unmapped verb or field is `internal` -- adding a field later fails closed."
  *
- * Resolution order:
+ * Resolution, entirely by set membership on the single `(verb, field)` pair key:
  * 1. `input.visibility === "internal"` is always honoured -- downgrading to internal is
  *    always safe.
- * 2. `input.visibility === "public"` is honoured ONLY for the two CA-7 conditional rows
- *    (`isConditionalPublicOverrideAllowed`); any other attempt to force `public` THROWS
- *    (S3 -- see `NewActivityInput`'s own doc comment for why a throw, not a silent
- *    downgrade).
- * 3. Otherwise, visibility is derived from `verb`/`field` alone. `CA7_PUBLIC_FIELDS` is
- *    consulted ONLY when `verb === "updated"` (S2, PR #275's mandatory Opus 5.5 review:
- *    the previous form checked `field` first regardless of `verb`, so
- *    `{verb: "custom_field.updated", field: "priority"}` resolved to `public` on the
- *    strength of a field name that happened to collide with a real public field, even
- *    though the actual verb is not `updated` at all). For any other verb, only
- *    `CA7_PUBLIC_VERBS` decides, `field` or not; an unmapped verb (or field, under
- *    `updated`) is `internal`, by construction (the `default: "internal"` on the column
- *    itself, `schema.ts`, is the same fail-closed backstop for any writer that bypasses
- *    this function entirely, e.g. a future raw-SQL migration or import path).
+ * 2. `input.visibility === "public"` is honoured when the pair is ALREADY in
+ *    `PUBLIC_PAIRS` (D2 -- a no-op override on a row CA-7 already makes public is not an
+ *    escalation, so it no longer throws) or is in `CONDITIONAL_PUBLIC_PAIRS` (the two
+ *    rows CA-7 makes conditional on data this module cannot see). Any other attempt to
+ *    force `public` THROWS -- a genuine escalation attempt is still a programmer error
+ *    (S3): silently downgrading instead would hide a caller's wrong assumption that its
+ *    row is public when CA-7 says it privately is not.
+ * 3. Otherwise, `public` if and only if the pair is in `PUBLIC_PAIRS`; every other pair,
+ *    including any verb or field this table does not name, is `internal`, by
+ *    construction (the `default: "internal"` on the column itself, `schema.ts`, is the
+ *    same fail-closed backstop for any writer that bypasses this function entirely, e.g.
+ *    a future raw-SQL migration or import path).
  */
 export function resolveVisibility(input: NewActivityInput): ActivityVisibility {
+  const key = pairKey(input.verb, input.field);
+  const isPublicPair = PUBLIC_PAIRS.has(key);
+
   if (input.visibility === "internal") {
     return "internal";
   }
   if (input.visibility === "public") {
-    if (!isConditionalPublicOverrideAllowed(input)) {
-      const fieldSuffix = input.field
-        ? ` / field ${JSON.stringify(input.field)}`
-        : "";
-      throw new Error(
-        `resolveVisibility: visibility: "public" is not allowed for verb ${JSON.stringify(input.verb)}${fieldSuffix} -- ` +
-          'CA-7 decides visibility for every row itself; a caller may only force "public" ' +
-          'for "attachment.added" or the "custom_field" field, and may always force "internal".',
-      );
+    if (isPublicPair || CONDITIONAL_PUBLIC_PAIRS.has(key)) {
+      return "public";
     }
-    return "public";
+    const fieldSuffix = input.field
+      ? ` / field ${JSON.stringify(input.field)}`
+      : "";
+    throw new Error(
+      `resolveVisibility: visibility: "public" is not allowed for verb ${JSON.stringify(input.verb)}${fieldSuffix} -- ` +
+        'CA-7 decides visibility for every row itself; a caller may only force "public" ' +
+        'for "attachment.added" (no field) or the "updated"/"custom_field" pair, and may ' +
+        'always force "internal".',
+    );
   }
-  if (input.verb === "updated") {
-    return input.field && CA7_PUBLIC_FIELDS.has(input.field)
-      ? "public"
-      : "internal";
-  }
-  return CA7_PUBLIC_VERBS.has(input.verb) ? "public" : "internal";
+  return isPublicPair ? "public" : "internal";
 }
 
 /**
@@ -136,7 +186,7 @@ export function resolveVisibility(input: NewActivityInput): ActivityVisibility {
  *
  * A CALLER OBLIGATION this function cannot enforce for you: visibility is decided PER
  * ROW, not per field inside a row's own `payload`/`old_value`/`new_value`. A `created`
- * row is `public` (`CA7_PUBLIC_VERBS`), so its `payload` must never carry a full
+ * row is `public` (`PUBLIC_PAIRS` has `(created, null)`), so its `payload` must never carry a full
  * work-item snapshot (assignee, requester, or anything else CA-7 marks `internal`) --
  * that data belongs on a SEPARATE `internal` row (e.g. `verb: "updated", field:
  * "assignee"`), never folded into the public `created` row's own payload. This applies to
@@ -192,7 +242,7 @@ export async function recordWorkItemActivity(
  * and named for the specific fields CA-7 actually assigns a visibility to, plus
  * `assigneeId` as a representative `internal` field (CA-7: "assignee ... internal") --
  * not an exhaustive mirror of every `work_item` column. Extend this (and, if a new field
- * needs its own visibility rule, `CA7_PUBLIC_FIELDS`) as later slices need more of them;
+ * needs its own visibility rule, `PUBLIC_PAIRS`/`CONDITIONAL_PUBLIC_PAIRS`) as later slices need more of them;
  * CA-7's own fail-closed default means a field this map does not yet cover simply isn't
  * diffed here rather than silently mis-classified.
  */
