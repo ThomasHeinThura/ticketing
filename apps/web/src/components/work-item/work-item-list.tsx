@@ -63,6 +63,7 @@ function priorityLabel(t: ReturnType<typeof useTranslation>["t"]) {
 }
 
 const FIELD_LABEL_KEYS: Record<WorkItemField, string> = {
+  key: "workItems:list.columnKey",
   title: "workItems:list.columnTitle",
   priority: "workItems:list.columnPriority",
   dueDate: "workItems:list.columnDueDate",
@@ -110,6 +111,11 @@ function UnavailableField({
  * table says some items couldn't be fully loaded. This never falls back to the error
  * state: the request succeeded, so `isError` stays false regardless of row-level
  * validation failures.
+ *
+ * `key` is one of the validated fields: every row link below navigates using `item.key`,
+ * so an invalid key renders as "Unavailable" with no link in BOTH the Key cell and the
+ * Title cell (Title's own link uses the same key), rather than trusting it and producing
+ * a broken or misleading navigation target.
  */
 function WorkItemList({
   workItems,
@@ -224,17 +230,26 @@ function WorkItemList({
           {workItems.map((item) => (
             <TableRow key={item.id}>
               <TableCell>
-                <Link
-                  to={routes.workItemDetail.path}
-                  params={{ key: item.key }}
-                  className="font-medium text-primary underline-offset-2 hover:underline"
-                >
-                  {item.key}
-                </Link>
+                {item.unavailableFields.includes("key") ? (
+                  <UnavailableField field="key" t={t} />
+                ) : (
+                  <Link
+                    to={routes.workItemDetail.path}
+                    params={{ key: item.key }}
+                    className="font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    {item.key}
+                  </Link>
+                )}
               </TableCell>
               <TableCell className="max-w-xs truncate whitespace-nowrap">
                 {item.unavailableFields.includes("title") ? (
                   <UnavailableField field="title" t={t} />
+                ) : item.unavailableFields.includes("key") ? (
+                  // The key this row's link would navigate to is unavailable -- render
+                  // the (valid) title as plain text rather than a link to nowhere
+                  // trustworthy.
+                  <span title={item.title}>{item.title}</span>
                 ) : (
                   <Link
                     to={routes.workItemDetail.path}

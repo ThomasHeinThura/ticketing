@@ -39,12 +39,30 @@ const VALID_PRIORITIES: ReadonlySet<string> = new Set([
  * displays fails validation at this fetcher/type boundary. Each affected row still
  * renders with its valid fields; only the invalid ones are marked unavailable, rather
  * than the whole request being treated as failed.
+ *
+ * `key` is also validated, not just trusted: every row link (`work-item-list.tsx`)
+ * navigates using `item.key`, so an invalid key must not silently produce a broken or
+ * misleading link. The API's own documented shape (`apps/api/src/work-item/index.ts`,
+ * `claim-work-item-number.ts`'s `WI-2`) is `{project.slug}-{number}`, so a row's key is
+ * checked against that shape AND cross-checked against that same row's own `number`
+ * field -- a key whose trailing number doesn't match `row.number` is exactly as
+ * untrustworthy as one with no trailing number at all.
  */
-export type WorkItemField = "title" | "priority" | "dueDate";
+export type WorkItemField = "key" | "title" | "priority" | "dueDate";
 
 export type WorkItemRow = WorkItem & {
   unavailableFields: WorkItemField[];
 };
+
+const KEY_SHAPE = /^(.+)-(\d+)$/;
+
+function hasValidKey(key: unknown, number: unknown): key is string {
+  if (typeof key !== "string") return false;
+  const match = KEY_SHAPE.exec(key);
+  if (!match) return false;
+  if (typeof number !== "number" || !Number.isFinite(number)) return false;
+  return Number(match[2]) === number;
+}
 
 function hasValidTitle(title: unknown): title is string {
   return typeof title === "string" && title.trim().length > 0;
@@ -72,6 +90,9 @@ function hasValidDueDate(dueDate: unknown): dueDate is string | null {
 export function parseWorkItemRow(raw: WorkItem): WorkItemRow {
   const unavailableFields: WorkItemField[] = [];
 
+  const validKey = hasValidKey(raw.key, raw.number);
+  if (!validKey) unavailableFields.push("key");
+
   const validTitle = hasValidTitle(raw.title);
   if (!validTitle) unavailableFields.push("title");
 
@@ -83,6 +104,7 @@ export function parseWorkItemRow(raw: WorkItem): WorkItemRow {
 
   return {
     ...raw,
+    key: validKey ? raw.key : "",
     title: validTitle ? raw.title : "",
     priority: validPriority ? raw.priority : null,
     dueDate: validDueDate ? raw.dueDate : null,

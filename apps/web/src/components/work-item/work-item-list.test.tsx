@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { WorkItemField } from "@/types/work-item";
 import WorkItemList from "./work-item-list";
 
 afterEach(() => {
@@ -53,7 +54,7 @@ const workItem = {
   version: 1,
   createdAt: "2026-09-01T00:00:00.000Z",
   updatedAt: "2026-09-01T00:00:00.000Z",
-  unavailableFields: [] as Array<"title" | "priority" | "dueDate">,
+  unavailableFields: [] as WorkItemField[],
 };
 
 describe("WorkItemList", () => {
@@ -130,9 +131,7 @@ describe("WorkItemList", () => {
       title: "",
       priority: "not-a-real-priority",
       dueDate: "not-a-real-date",
-      unavailableFields: ["title", "priority", "dueDate"] as Array<
-        "title" | "priority" | "dueDate"
-      >,
+      unavailableFields: ["title", "priority", "dueDate"] as WorkItemField[],
     };
 
     render(
@@ -165,6 +164,38 @@ describe("WorkItemList", () => {
       screen.queryByTestId("work-item-list-error"),
     ).not.toBeInTheDocument();
     expect(screen.getByTestId("work-item-list-populated")).toBeInTheDocument();
+  });
+
+  it("renders an invalid key as unavailable text with no link, and does not link the title either", () => {
+    const badKeyItem = {
+      ...workItem,
+      id: "wi_3",
+      key: "not-a-real-key",
+      unavailableFields: ["key"] as WorkItemField[],
+    };
+
+    render(
+      <WorkItemList
+        {...baseProps}
+        // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
+        workItems={[badKeyItem] as any}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    // The raw (untrustworthy) key is never rendered or used as a link target.
+    expect(screen.queryByText("not-a-real-key")).not.toBeInTheDocument();
+    expect(screen.getByText("workItems:list.unavailable")).toBeInTheDocument();
+
+    // The valid title still renders, but as plain text, not a link (it would otherwise
+    // link using the same bad key).
+    const title = screen.getByText("Fix the thing");
+    expect(title.closest("a")).toBeNull();
+
+    // No link renders anywhere in this row -- both the Key and Title cells would
+    // otherwise navigate using the same invalid key.
+    expect(screen.queryAllByRole("link")).toHaveLength(0);
   });
 
   it("calls onSortChange with the toggled direction when a header is clicked twice", () => {
