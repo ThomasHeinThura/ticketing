@@ -663,3 +663,68 @@ These are dropped or removed:
 `postgres:18-alpine` and `valkey/valkey:9-alpine` are left in place, because other stacks on the
 host may use them. The only roles I created, `taskdesk_app_opusd2mut` and the test suites'
 `taskdesk_app_*` roles, are dropped.
+
+---
+
+## Merge attestation at `bd32e36` (main merge bringing in #322)
+
+**Reviewer:** Opus 5.5, the same independent context as above.
+**Reviewed head:** `bd32e3639a13ba3d35775c190dc615b4a30cf495`
+**Reviewed SHA:** `bd32e3639a13ba3d35775c190dc615b4a30cf495`. I confirmed it with
+`gh pr view 308 --json headRefOid`. Its parents are `a2d2525` (this PR) and `33ce9ec` (`main`,
+with #322), and it is current with `main`.
+**Date:** 2026-09-23
+
+### Verdict
+
+**CLEAR.** The merge changes none of this PR's code, and #322's changes work under #308's grants.
+Everything from the `13ebb0f` delta still stands, and so do its non-blocking E1–E3.
+
+### What I checked
+
+1. **The resolution.**
+   - `git diff-tree --cc bd32e36` has exactly one hunk, in `docs/07-planning/decision-log.md`.
+     It keeps #318's entry first and #296's second.
+   - `data-model.md` appears in the combined name list only because both sides touched it. It
+     merged cleanly, with no hunk.
+   - Both entries are **byte-identical** to their sources: #318's 17-line entry against
+     `33ce9ec`, and #296's 109-line entry against `a2d2525`, compared with `cmp`.
+   - The merge removes no decision-log line, either against `main` or against the PR.
+2. **The PR's code is unchanged.** I took every non-doc file in the PR's net diff against
+   `main`: 29 files, including `apps/api/src/database/*`, `index.ts`, the chart, `compose.yml`,
+   `deploy/**`, `scripts/deploy.sh` and the tests. `git diff a2d2525 bd32e36 -- <those files>`
+   is **empty**.
+3. **#322 against #308's grants.**
+   - Migration `0068` is a single `ALTER TABLE workspace_role ADD COLUMN is_system` plus a
+     name-based `UPDATE`. It adds no table, sequence, function or trigger, so the migrate step's
+     grant loop needs nothing new. Table-level grants cover the new column automatically.
+   - A live probe on a private DB, as a fresh app role created by `runMigrationStep`:
+     - `has_table_privilege(app,'workspace_role','UPDATE')` and `'INSERT'` are both true, and so
+       is `has_column_privilege(app,'workspace_role','is_system','UPDATE')`.
+     - `seedDefaultWorkspaceRoles()`, running in the API boot on the app pool, created the three
+       default rows with `is_system = true` for a new workspace.
+     - After I set `admin.is_system = false` as the owner, a second run self-healed it back to
+       `true`.
+     - `pg_stat_activity` showed only the app role connected.
+   - `require-workspace-capability.ts` and `resolve-identity.ts` only read `is_system`, and the
+     app role has SELECT.
+   - One observation, not a finding: the app role can also write `is_system` directly, as it can
+     `workspace_member.role`. Role integrity is an application-level control, not a database
+     boundary this PR claims. So a SQL-level compromise of the app could still self-grant within
+     TaskDesk, exactly as before.
+4. **Runs at this head.** I used private DB `pr308_opus_delta3_test`, and dropped it afterwards.
+
+| Test | Result |
+| --- | --- |
+| `db-application-role` | 29/29 |
+| `boot-orchestration` | 3/3 |
+| `boot-orchestration-success` | 1/1 |
+| `backfill-workspace-project-defaults` | 11/11 |
+| `workspace-role-writes` | 42/42 |
+| `workspace-role-is-system-backfill-migration` | 1/1 |
+| Full integration | 83 files, 1140 tests, all passed |
+
+### Cleanup
+
+I removed the probe DB, the probe role (`taskdesk_app_opusd3`) and its objects, the probe file,
+and the worktree. I did not start any container or image.
