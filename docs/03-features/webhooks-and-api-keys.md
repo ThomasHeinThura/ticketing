@@ -81,9 +81,9 @@ does with a webhook is build a link back.
 - `WH-14` **A webhook delivers only events within its owner's reach.** A workspace webhook
   is stamped with the creator's identity; at delivery time the event's entity is checked
   against that identity's reach, and an out-of-reach event is skipped (recorded as
-  `skipped_out_of_reach`, not failed). A webhook whose owner has `sees_all` or
-  `instance:admin` therefore receives everything; a manager's webhook receives their
-  projects. When the owner leaves, the webhook is **paused** and must be re-owned by
+  `skipped_out_of_reach`, not failed). A webhook whose owner has `sees_all` receives all events in the workspace(s) whose
+  membership grants it; only `instance:admin` has instance-wide reach. A manager's webhook
+  receives their projects. When the owner leaves, the webhook is **paused** and must be re-owned by
   someone with `webhook:manage` — it does not silently inherit anyone's reach. The same
   rule applies to the automation action "Call a webhook" ([automations.md](automations.md)),
   which runs as the rule's `effective_role_id`. `webhook-delivery-reach.test.ts`: a manager
@@ -97,8 +97,9 @@ does with a webhook is build a link back.
   installs one without a second factor. `POST /api/webhooks` and `url`-changing
   `PATCH /api/webhooks/{id}` are on the single elevated list in
   [rbac.md](../01-architecture/rbac.md#elevated-and-audited-actions--the-single-list). A
-  webhook owned by an identity with `sees_all` or `instance:admin` receives everything and
-  therefore requires `instance:admin` to create, and is listed in the security-posture panel.
+  webhook owned by an identity with workspace-scoped `sees_all` can deliver all events in
+  that granting workspace. Instance-wide delivery remains limited to `instance:admin`, which
+  is required to create that webhook and is listed in the security-posture panel.
 
 ### SSRF protection
 

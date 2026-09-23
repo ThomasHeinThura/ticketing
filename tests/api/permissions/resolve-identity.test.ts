@@ -352,7 +352,7 @@ describe("resolveIdentityFromFacts — S1 (BLOCKING, PR #315 review): reserved b
 });
 
 describe("resolveIdentityFromFacts — sees_all", () => {
-  it("grants reach 'all' when any membership carries sees_all, even with no other role", () => {
+  it("scopes sees_all reach to the workspace membership that grants it", () => {
     const identity = resolveIdentityFromFacts(
       facts({
         workspaceMemberships: [
@@ -362,21 +362,28 @@ describe("resolveIdentityFromFacts — sees_all", () => {
             seesAll: true,
             isSystemRole: true,
           },
+          {
+            workspaceId: "ws-2",
+            role: "viewer",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
 
-    expect(identity?.reach).toEqual({ kind: "all" });
+    expect(identity?.reach).toEqual({
+      kind: "membership_with_workspaces",
+      workspaceIds: ["ws-1"],
+    });
     // sees_all is reach only -- it must not appear as, or imply, any extra authority.
-    expect(identity?.authority).toEqual([
-      {
-        roleKey: "viewer",
-        scope: "workspace",
-        scopeId: "ws-1",
-        rank: BUILT_IN_ROLES.viewer.rank,
-        capabilities: BUILT_IN_ROLES.viewer.capabilities,
-      },
+    expect(identity?.authority.map((grant) => grant.scopeId)).toEqual([
+      "ws-1",
+      "ws-2",
     ]);
+    expect(
+      identity?.authority.every((grant) => grant.roleKey === "viewer"),
+    ).toBe(true);
   });
 
   it("does not grant reach 'all' when no membership carries sees_all", () => {
