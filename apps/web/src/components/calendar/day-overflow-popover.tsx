@@ -1,10 +1,6 @@
+import { Popover, PopoverContent, PopoverTrigger } from "@taskdesk/ui";
 import { type JSX, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { formatDate, formatDateShort } from "@/lib/format";
 import type { CalendarTask } from "./calendar-task-bar";
 

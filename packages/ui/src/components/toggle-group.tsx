@@ -2,14 +2,11 @@
 
 import type { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
 import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group";
-import {
-  Separator,
-  Toggle as ToggleComponent,
-  type toggleVariants,
-} from "@taskdesk/ui";
 import type { VariantProps } from "class-variance-authority";
 import * as React from "react";
-import { cn } from "@/lib/cn";
+import { cn } from "../lib/cn";
+import { Separator } from "./separator";
+import { Toggle as ToggleComponent, type toggleVariants } from "./toggle";
 
 const ToggleGroupContext = React.createContext<
   VariantProps<typeof toggleVariants>
@@ -53,7 +50,7 @@ function ToggleGroup({
   );
 }
 
-function Toggle({
+function ToggleGroupItem({
   className,
   children,
   variant,
@@ -98,4 +95,4 @@ function ToggleGroupSeparator({
   );
 }
 
-export { Toggle, Toggle as ToggleGroupItem, ToggleGroup, ToggleGroupSeparator };
+export { ToggleGroup, ToggleGroupItem, ToggleGroupSeparator };

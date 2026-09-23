@@ -3,7 +3,7 @@
 import { PreviewCard as PreviewCardPrimitive } from "@base-ui/react/preview-card";
 import * as React from "react";
 
-import { cn } from "@/lib/cn";
+import { cn } from "../lib/cn";
 
 function PreviewCard({
   closeDelay,
