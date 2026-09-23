@@ -398,7 +398,7 @@ describe("API integration: work item assignment (#30, assignment.md)", () => {
   });
 
   it("AS-3: an unconditional assign onto an already-assigned item is a 409 carrying the current assignee", async () => {
-    const { creator, workspace, project, type } = await setupProject();
+    const { creator, project, type } = await setupProject();
     const first = await addPersonOnRoster({
       projectId: project.id,
     });
@@ -434,7 +434,7 @@ describe("API integration: work item assignment (#30, assignment.md)", () => {
   });
 
   it("AS-3: a targeted reassign succeeds only while the expected holder still holds it", async () => {
-    const { creator, workspace, project, type } = await setupProject();
+    const { creator, project, type } = await setupProject();
     const first = await addPersonOnRoster({
       projectId: project.id,
     });
@@ -473,7 +473,7 @@ describe("API integration: work item assignment (#30, assignment.md)", () => {
   });
 
   it("assigning the current holder again is an idempotent no-op: 200, no event, no activity row", async () => {
-    const { creator, workspace, project, type } = await setupProject();
+    const { creator, project, type } = await setupProject();
     const holder = await addPersonOnRoster({
       projectId: project.id,
     });
