@@ -17,6 +17,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { subscribeToEvent } from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
 import * as activityModule from "../../apps/api/src/work-item/activity";
 import { mockAuthenticatedSession } from "./helpers/auth";
@@ -25,6 +26,27 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+
+type RecordedEvent = { type: string; data: unknown };
+const recordedEvents: RecordedEvent[] = [];
+let eventSubscribersInitialized = false;
+
+/**
+ * Subscribes to the REAL event bus (`subscribeToEvent`), exactly the way
+ * `workspace-write-create-contract.test.ts` does -- rather than mocking
+ * `publishEvent`, which would characterize the stand-in instead of the real thing.
+ * Subscribed once for the whole file; `recordedEvents` is cleared per test.
+ */
+function initEventSubscribers() {
+  if (eventSubscribersInitialized) return;
+  eventSubscribersInitialized = true;
+  subscribeToEvent("work_item.created", async (data) => {
+    recordedEvents.push({ type: "work_item.created", data });
+  });
+  subscribeToEvent("work_item.updated", async (data) => {
+    recordedEvents.push({ type: "work_item.updated", data });
+  });
+}
 
 async function makeWorkItemType(workspaceId: string) {
   const now = new Date();
@@ -125,6 +147,8 @@ async function activityRowsFor(workItemId: string) {
 describe("API integration: work-item activity wiring (#23 third slice, WI-6)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
+    recordedEvents.length = 0;
+    initEventSubscribers();
   });
 
   it("create writes exactly one `created` row with the correct actor and workspace", async () => {
@@ -152,6 +176,21 @@ describe("API integration: work-item activity wiring (#23 third slice, WI-6)", (
     expect(rows[0]?.payload).toEqual({
       key: created.key,
       title: "Wired create",
+    });
+
+    // `docs/01-architecture/events.md` ~51: `work_item.created`'s payload beyond
+    // key + url is `typeId`, `stateId`, `requesterId`, `source`.
+    const createdEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.created",
+    );
+    expect(createdEvents).toHaveLength(1);
+    expect(createdEvents[0]?.data).toMatchObject({
+      workItemId: created.id,
+      key: created.key,
+      workspaceId: creator.workspace.id,
+      typeId: type.id,
+      requesterId: null,
+      source: "agent",
     });
   });
 
@@ -197,6 +236,37 @@ describe("API integration: work-item activity wiring (#23 third slice, WI-6)", (
       "2026-02-01T00:00:00.000Z",
     );
     expect(dueDateRow?.visibility).toBe("public");
+
+    // `docs/01-architecture/events.md` ~52: `work_item.updated`'s payload beyond
+    // key + url is `changes: [{ field, from, to }]`. One `created` event from the
+    // insert above, plus exactly one `updated` event from this PATCH (not one per
+    // field -- one event per call, carrying every changed field).
+    const createdEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.created",
+    );
+    expect(createdEvents).toHaveLength(1);
+    const updatedEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.updated",
+    );
+    expect(updatedEvents).toHaveLength(1);
+    const updatedData = updatedEvents[0]?.data as {
+      workItemId: string;
+      changes: Array<{ field: string; from: unknown; to: unknown }>;
+    };
+    expect(updatedData.workItemId).toBe(createdBody.id);
+    expect(updatedData.changes).toHaveLength(2);
+    const priorityChange = updatedData.changes.find(
+      (c) => c.field === "priority",
+    );
+    expect(priorityChange).toEqual({
+      field: "priority",
+      from: "low",
+      to: "high",
+    });
+    const dueDateChange = updatedData.changes.find(
+      (c) => c.field === "due_date",
+    );
+    expect(dueDateChange?.field).toBe("due_date");
   });
 
   it("a startDate change writes an internal row (start_date is not one of CA-7's public `updated` fields)", async () => {
@@ -258,6 +328,12 @@ describe("API integration: work-item activity wiring (#23 third slice, WI-6)", (
 
     const afterRows = await activityRowsFor(createdBody.id);
     expect(afterRows).toHaveLength(1);
+
+    // No field actually changed -- no `work_item.updated` event either.
+    const updatedEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.updated",
+    );
+    expect(updatedEvents).toHaveLength(0);
   });
 
   it("a stale If-Match (409) writes zero rows and leaves the version unchanged", async () => {
@@ -292,6 +368,11 @@ describe("API integration: work-item activity wiring (#23 third slice, WI-6)", (
       .where(eq(schema.workItemTable.id, createdBody.id));
     expect(row?.version).toBe(1);
     expect(row?.title).toBe("Stale If-Match");
+
+    const updatedEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.updated",
+    );
+    expect(updatedEvents).toHaveLength(0);
   });
 
   it("a soft-deleted project (404) writes zero rows", async () => {
@@ -324,6 +405,11 @@ describe("API integration: work-item activity wiring (#23 third slice, WI-6)", (
 
     const rows = await activityRowsFor(createdBody.id);
     expect(rows).toHaveLength(1); // the `created` row only
+
+    const updatedEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.updated",
+    );
+    expect(updatedEvents).toHaveLength(0);
   });
 
   it("a forced failure of the activity insert rolls back the field update", async () => {
@@ -374,6 +460,13 @@ describe("API integration: work-item activity wiring (#23 third slice, WI-6)", (
     const rows = await activityRowsFor(createdBody.id);
     expect(rows).toHaveLength(1); // the original `created` row only -- nothing else committed
     void caught;
+
+    // The transaction never committed, so `work_item.updated` (published only after
+    // commit) was never reached either.
+    const updatedEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.updated",
+    );
+    expect(updatedEvents).toHaveLength(0);
   });
 
   it("cross-workspace check: activity rows always carry the work item's own workspace_id", async () => {
@@ -426,5 +519,54 @@ describe("API integration: work-item activity wiring (#23 third slice, WI-6)", (
         ),
       );
     expect(crossRows).toHaveLength(0);
+  });
+
+  it("work_item.updated is published strictly AFTER the field update commits, not before", async () => {
+    // Proves the after-commit ordering directly, not just by code inspection: the
+    // event handler below re-reads the row through the shared `db` client (a
+    // DIFFERENT logical read than the one inside the update's own transaction). If
+    // the event were published from inside the transaction (before commit), this
+    // read would still see the OLD title, since an uncommitted write in one
+    // transaction is invisible to a plain read issued outside it.
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Before commit",
+    });
+    const createdBody = (await created.json()) as {
+      id: string;
+      key: string;
+      version: number;
+    };
+
+    let resolveSeen: (title: string | null) => void;
+    const titleSeenAtEventTime = new Promise<string | null>((resolve) => {
+      resolveSeen = resolve;
+    });
+    subscribeToEvent("work_item.updated", async () => {
+      const [row] = await db
+        .select({ title: schema.workItemTable.title })
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.id, createdBody.id));
+      resolveSeen(row?.title ?? null);
+    });
+
+    const response = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { title: "After commit" },
+      createdBody.version,
+    );
+    expect(response.status).toBe(200);
+
+    // Awaits the handler's own async DB read rather than asserting immediately --
+    // `publishEvent`'s `EVENTS.emit` does not wait for an async listener to finish,
+    // so a synchronous assertion right after the request would race the handler's
+    // query, not the thing this test is actually checking (that the row is COMMITTED
+    // by the time the handler's read runs, not merely that the handler was invoked).
+    await expect(titleSeenAtEventTime).resolves.toBe("After commit");
   });
 });

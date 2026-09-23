@@ -2,9 +2,11 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable, workItemTable } from "../../database/schema";
+import { publishEvent } from "../../events";
 import {
   type ActivityActorType,
   diffWorkItemFieldChanges,
+  type NewActivityInput,
   recordWorkItemActivity,
   type WorkItemFieldSnapshot,
 } from "../activity";
@@ -90,6 +92,15 @@ export class WorkItemVersionConflictError extends Error {
  * activity insert fails, the whole update rolls back (`recordWorkItemActivity` is
  * awaited before the transaction returns, and any error it throws propagates out of
  * `db.transaction`'s callback, which Drizzle rolls back on).
+ *
+ * `work_item.updated` (`docs/01-architecture/events.md` ~52) is published AFTER this
+ * transaction commits -- same after-commit placement as every other `publishEvent`
+ * caller (`create-task.ts`, `create-comment.ts`) -- and ONLY when `activityRows` is
+ * non-empty, i.e. at least one field actually changed. A 404, a `WorkItemVersionConflictError`
+ * (409) and an all-unchanged PATCH all leave `db.transaction`'s callback returning
+ * before reaching the event, or return an empty `activityRows`, so none of them ever
+ * publish. Its `changes` payload is built from the SAME `activityRows` the `activity`
+ * table rows come from -- one source of truth for "what changed", not a second diff.
  */
 export async function updateWorkItem(
   key: string,
@@ -110,7 +121,7 @@ export async function updateWorkItem(
   // why it is applied in two places now instead of one.
   const projectNotDeleted = sql`EXISTS (SELECT 1 FROM ${projectTable} WHERE ${projectTable.id} = ${workItemTable.projectId} AND ${projectTable.deletedAt} IS NULL)`;
 
-  return db.transaction(async (tx) => {
+  const { updated, activityRows } = await db.transaction(async (tx) => {
     const [locked] = await tx
       .select()
       .from(workItemTable)
@@ -209,8 +220,38 @@ export async function updateWorkItem(
       await recordWorkItemActivity(tx, activityRows);
     }
 
-    return updated;
+    return { updated, activityRows };
   });
+
+  // `changes: [{ field, from, to }]` per `events.md`'s declared `work_item.updated`
+  // payload -- built from the same `activityRows` used for the `activity` table write
+  // above (all `verb: "updated"` here; this route never touches `stateId`, so no
+  // `transitioned` row can appear in it). Nothing internal beyond field names/values
+  // already destined for the (possibly internal) `activity` row is added here.
+  if (activityRows.length > 0) {
+    const changes = activityRows
+      .filter(
+        (row: NewActivityInput): row is NewActivityInput & { field: string } =>
+          row.verb === "updated" && typeof row.field === "string",
+      )
+      .map((row) => ({
+        field: row.field,
+        from: row.oldValue,
+        to: row.newValue,
+      }));
+
+    await publishEvent("work_item.updated", {
+      workItemId: updated.id,
+      key: updated.key,
+      workspaceId: updated.workspaceId,
+      projectId: updated.projectId,
+      changes,
+      actorId,
+      actorType,
+    });
+  }
+
+  return updated;
 }
 
 export default updateWorkItem;
