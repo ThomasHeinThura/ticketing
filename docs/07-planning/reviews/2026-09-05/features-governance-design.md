@@ -255,7 +255,7 @@ specification to a repository outside this one.
 | medium | **The design specification is an unpinned sibling working copy.** "The reference is in the workspace at `../kaneo`… When you are unsure how something should look or behave, **open kaneo and look**." It is present on this machine (`/Users/heinthura/Documents/Workfolder/Development/kaneo`, with `plans/001`–`007`), but it is not vendored, not submoduled, not pinned to a commit, and not available to CI or to an agent working from a fresh clone. `H1` ("Open kaneo. Open this.") is a merge gate that depends on it. | Vendor the reference: add kaneo as a git submodule or `git subtree` at a pinned SHA, or extract the load-bearing parts (the `plans/` motion specs, the token values) into `docs/02-design/` so this repository is self-contained. Record the pinned SHA in `ADR 0001`. |
 | medium | Principle 9 points at "kaneo's motion specs in `plans/001-motion-tokens-and-easing.md` **and the related documents**" — an unenumerated set. `motion.md` does enumerate seven, so the principles doc is the looser of the two. | Replace with a link to `motion.md`, which owns the list. |
 | low | Principle 2's colour table and `design-tokens.md`'s status tokens are two vocabularies for one thing: "Blue / accent — primary action, current selection" has no token (`--color-info` is "neutral informational", `--color-primary` is the action); "Amber — at-risk SLA, warnings, pending approval" maps to `--color-warning`. | Add the token name to each row of principle 2's table so the mapping is explicit. |
-| low | Principle 4 ("Filters, tabs, lenses, selected records, open panels — all URL state") is stated as absolute but `G5` only checks route *registration*, not URL-encoded view state — see §18. | Cross-reference the gate's actual coverage, or strengthen the gate. |
+| low | Principle 4 ("Filters, tabs, lenses, selected records, open panels — all URL state") is stated as absolute; `G5` used to check only route *registration*, not URL-encoded view state. | **Closed** — `G5` in `ux-quality-gates.md` now also requires a round-trip assertion per list surface (`RP-8`, `SV-19`). |
 
 ---
 
@@ -328,90 +328,7 @@ table with a documented alternative for each. Three cross-document conflicts.
 | medium | "Text resizes with browser font settings — `rem` units, **no `px` font sizes**" contradicts `design-tokens.md`'s px type scale (§13). | Same fix — convert `--text-*` to `rem`. |
 | medium | "Automated in `check-tokens.mjs` over **every declared pair**" — the same undefined input as `G3` (§13). This document is where the contract for a "declared pair" should be stated, since it owns the contrast requirement. | Define the manifest format here and point `check-tokens.mjs` at it. |
 | low | The Known exceptions table names "**Gantt**"; the screen inventory and `information-architecture.md` call the same surface "**Timeline**" (`…?layout=timeline`), while the feature flag is `feature.gantt`. Three names for one thing. | Pick one (the flag suggests `gantt`; the UI says `timeline`) and note the alias once. |
-| low | No mention of RTL or of locale-driven layout, though `instance_setting.default_locale` exists, ADR 0012 scopes overrides *per locale*, and God Mode offers a default locale — and **no document in the repository specifies the i18n layer** ADR 0012 says it builds on. | Either state that P4 ships LTR locales only and RTL is a later phase, or add an i18n architecture note. Flagged again in §18. |
-
----
-
-## 17. `screen-inventory.md`
-
-**Verdict: not-ready.** As a register it is well-formed — route, phase, status per row, and
-three good rules. But its own arithmetic is wrong, it is missing roughly twenty screens the
-audited specs require, and it contains a P4 screen for a feature that **has no spec at
-all**.
-
-### Coverage: screens the audited specs require that have no row
-
-| Spec | Missing screen |
-| --- | --- |
-| `settings-hierarchy.md` | `Workspace — danger zone`, `Project — labels`, `Project — SLA` |
-| `custom-fields.md` | Custom field editor, Section manager |
-| `notifications.md` | Per-workspace notification rules; God Mode outbox / dead-letter; portal notification preferences |
-| `automations.md` | `Workspace — automations` |
-| `webhooks-and-api-keys.md` | Webhook editor, Webhook delivery history |
-| `time-and-cost.md` | `Project — budget`, `Workspace — rates`, `Workspace — time activities`, `Workspace — cost types` |
-| `reports-and-dashboards.md` | Dashboard editor |
-| `mcp-server.md` | `God Mode — MCP usage` |
-| `god-mode.md` / `configuration-reference.md` | Observability, config export |
-
-### Coverage: rows with no owning spec
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| high | **`Workspace — teams` is a P4 screen with no feature spec.** `docs/03-features/` has no `teams.md`, yet `team` and `team_member` are in the data model, `SV-17` gives team leads edit rights on team views, `saved_view.shared_with_team_id` is the sharing mechanism, `automations.md` sends notifications "to a person, **a team** or a channel", `reports-and-dashboards.md`'s Capacity report reads `team.capacity_days_per_week`, and `rbac.md`'s reach resolution step 5 is "**Team membership** where the team owns the project" — a reach rule with no document defining how a team comes to own a project. An implementer would invent the entire teams model, including a reach path. | Write `docs/03-features/teams.md` before P4, covering team CRUD, membership, capacity, team-owns-project (the reach rule), and team leads (`SV-17`). Add it to the README's Governance table. |
-| medium | `Workspace — terminology` (P4) has a row, is listed in `settings-hierarchy.md`'s table, and is required by ADR 0012 — but **no document states its behaviour, its capability, or its routes**. `god-mode.md` covers only the instance level. | Own it in `god-mode.md` (both levels, since the term-key enum and preview are the same) or in a new terminology section of `settings-hierarchy.md`; either way add numbered rules and routes. |
-| low | `Profile — appearance` (P1) owns theme, density and default layouts — the preference `design-principles.md` principle 8 and gate `H5` both depend on — with no feature spec. | Fold into a short section of `settings-hierarchy.md`'s Profile table with the storable keys named. |
-
-### The register itself
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| medium | **The Counts table does not match the rows.** Stated: P0 4, P1 27, P2 15, P3 20, P4 18, P5 23, P6 2, total **109**. Actual: P0 **6**, P1 **28**, P2 **16**, P3 **19**, P4 **20**, P5 23, P6 2, total **114**. Every phase but P5 and P6 is wrong, and the document is cited as "the answer to 'what is left?'" and as input to phase planning. | Regenerate the counts, and add a CI check that recomputes them from the rows so they cannot drift again — the same discipline the rest of the corpus applies to route policies. |
-| medium | **The register's first rule contradicts its own contents.** "A screen is not on this list until it is in `lib/routes.ts`" — but `Command palette` (overlay), `Error boundary` (—), `Create work item` (dialog), `Bulk edit` (overlay), `Relations editor` (section), `Approvals panel` (section) and six more have no route. `G5` fails on "a route rendered by the router that is not declared in `lib/routes.ts`", so these rows are outside both the rule and the gate. | Add a `kind` column (`route` / `overlay` / `section` / `dialog`) and restate the rule as "every row of kind `route` is in `lib/routes.ts`". Exclude other kinds from `G5` explicitly. |
-| low | Several routes are abbreviated with a leading ellipsis (`…/appearance`, `…?layout=list`) whose base is inferred from the preceding row. Machine-checking the inventory against `lib/routes.ts` requires expanding these by hand. | Write routes in full, or define the ellipsis convention formally so a script can expand it. |
-
----
-
-## 18. `ux-quality-gates.md`
-
-**Verdict: ready-with-fixes.** The strongest governance idea in the repository — "a pull
-request that fails any gate does not merge", plus a waiver process that explicitly forbids
-an AI agent from self-approving. Assessed against the question asked: **are the 13 gates
-each mechanically checkable as written?**
-
-### Gate-by-gate
-
-| Gate | Mechanically checkable as written? |
-| --- | --- |
-| `G1` No bespoke primitives | **Yes.** A JSX lint rule on five element names, with a comment escape hatch. |
-| `G2` Tokens only | **Partly.** Catches hex/`rgb()`/`hsl()`/`oklch()` and *arbitrary* Tailwind values — but not the density violation the token doc names (`py-3`, a standard-scale utility). See §13. |
-| `G3` Contrast | **No.** "Any **declared** foreground/background pair" — no pair manifest exists and no token has a value. The script has no input. See §13. |
-| `G4` Accessibility | **Yes.** axe critical/serious over E2E screens and Storybook stories; tools named in `accessibility.md`. |
-| `G5` Every screen has a URL | **Partly.** Route registration and round-trip are checkable; the *principle* it enforces ("filters, tabs, lenses, selected records, open panels — all URL state", and `RP-8`) is not checked at all. |
-| `G6` Four states | **No, as written.** The title says four states; the fail condition names **three** ("empty, loading and error"), silently dropping `partial` from `design-principles.md` principle 7. And "'Meaningful' excludes a bare 'No results' or an unstyled error" is a human judgement inside an automated gate. |
-| `G7` Storybook coverage | **Yes.** Exported component without a story — a trivially scriptable check. |
-| `G8` Visual regression | **No.** No tool named ("Chromatic-style" in `design-system.md`), and "any **key screen** snapshot" leaves the set of key screens undefined. |
-| `G9` Reduced motion | **Yes** as a suite-passes check — but see §15: the reduced-motion CSS is invalid, so the suite would pass while reduced motion does nothing. The gate needs to assert the computed duration. |
-| `G10` Keyboard reachability | **Yes.** Eight core journeys are enumerated; each is a Playwright keyboard-only test. The best-specified gate. |
-| `G11` Performance budgets | **Partly.** Nine budgets with real numbers, but no measurement harness, no throttling profile, no target screens for LCP/INP/CLS, and "any board drag frame — 60 fps, no dropped frames" has no stated method. See §15. |
-| `G12` Portal bundle purity | **Yes.** Module-graph assertion on two named directories. Precise and valuable. |
-| `G13` No layout shift on data arrival | **Partly.** CLS < 0.1 is measurable, but the "during the transition from skeleton to content" window is not defined, and it duplicates `G11`'s CLS budget with a different scope. |
-
-**Six of thirteen** (`G1`, `G4`, `G7`, `G9`, `G10`, `G12`) are checkable exactly as written.
-`G3`, `G6` and `G8` cannot be implemented at all without additional decisions.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| high | **`G3` cannot run** — no declared-pair manifest, no token values (§13). It is listed as an automated merge gate that would fail open or fail the build permanently. | Ship the values and the pair manifest with the gate. |
-| high | **`G6` contradicts itself and the principle it enforces**: heading and principle 7 say four states (empty, loading, error, **partial**); the fail condition names three. `partial` is the hardest of the four and the one most likely to be skipped. | Either add `partial` to the fail condition and define how the E2E suite mocks it, or amend principle 7 to three states and say why partial is not gated. |
-| high | **The terminology overlay has no gate**, though ADR 0012 rests its whole "exhaustively tested" claim on one: "a snapshot test can assert every screen re-renders correctly under a worst-case override (very long strings, a plural that looks nothing like the singular)". That test is promised in an ADR and appears in no gate, no testing document and no spec. | Add `G14 · Terminology overlay`: the visual-regression suite runs a second pass under a worst-case override fixture, and the accessible name still matches the visible label (§16). |
-| high | **No document specifies the i18n layer** that ADR 0012 declares it builds on ("rendered through the existing i18n layer as an override on top of the built-in translation"), and no gate covers locale rendering. There is no library choice, no message format, no pluralisation strategy, no locale list, no RTL position — while `instance_setting.default_locale`, `person.locale` and `terminology_override.locale` all exist in the data model. | Write a short `docs/01-architecture/i18n.md` (library, message format, pluralisation, locale list, RTL stance, how an override is layered) before ADR 0012 is implemented. It is a prerequisite for God Mode → General → Terminology. |
-| medium | **`G8` names no tool and no key-screen list**, so it cannot be implemented or reviewed. | Name the tool, list the key screens (or derive them from the inventory's `route`-kind rows), and say where baselines are stored and how a diff is approved. |
-| medium | **`G11` has numbers but no harness.** Which page is measured for LCP? Under what CPU/network throttling? How is "route transition < 300 ms" instrumented? How is a dropped frame detected in headless CI? | Add a measurement appendix: tool per metric, throttling profile, target route per metric, sample count, and the flake policy for the frame assertion. |
-| medium | **`G2` does not enforce density tokens** (§13), leaving `design-tokens.md`'s stated failure mode to `H5`, a human gate — in a document whose premise is "a person under deadline is not a reliable gate". | Extend `check-tokens.mjs` per §13. |
-| medium | **`G5` does not check the thing principle 4 is about.** Route registration is necessary but not sufficient; `RP-8` ("the full filter state is in the URL") and `SV-19` ("every view has a URL that fully encodes it") are the substance, and nothing gates them. | Add to `G5`: for each list surface, an E2E assertion that applying a filter changes the URL and that reloading the URL restores the filter — a round-trip test on view state, not only on routes. |
-| medium | **`H6`'s 375 px is laxer than `accessibility.md`'s 320 px commitment** (§16), and mobile is a human gate rather than an automated viewport project despite the portal being described as phone-first for customers. | Change to 320 px and add an automated 320 px Playwright project for the portal's core journeys. |
-| low | `G13` overlaps `G11`'s CLS budget with an undefined measurement window. | Fold `G13` into `G11` as a scoped CLS assertion, or define the window (from skeleton mount to content paint). |
-| low | The gate list is 13 automated + 6 human + 6 phase, and `screen-inventory.md`'s rule says "a screen is not ✅ until it passes **every** UX quality gate" — which, read literally, blocks every screen on `P3` (keyboard-only day) and `P4` (fresh-eyes test), which are phase-level, not per-screen. | Reword the inventory rule to "every automated gate (`G1`–`G13`) plus the human gates at review". |
+| low | No mention of RTL or of locale-driven layout, though `instance_setting.default_locale` exists, ADR 0012 scopes overrides *per locale*, and God Mode offers a default locale, and previously no document in the repository specified the i18n layer ADR 0012 says it builds on. | **Closed** — `docs/01-architecture/i18n.md` now specifies the layer (library, message format, pluralisation, locale list) and states RTL is not in P0–P4. |
 
 ---
 
