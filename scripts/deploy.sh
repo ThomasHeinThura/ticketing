@@ -143,6 +143,12 @@ command -v openssl >/dev/null 2>&1 || die "openssl is needed to generate secrets
 generate_if_empty TASKDESK_ENCRYPTION_KEY
 generate_if_empty TASKDESK_AUTH_SECRET
 generate_if_empty POSTGRES_PASSWORD
+# The application role's password (issue #296) — a separate secret from
+# POSTGRES_PASSWORD, which now belongs only to the migration/owner connection.
+# The application itself creates the role and sets this password at boot
+# (apps/api/src/database/ensure-application-role.ts); this script only has to
+# make sure a value exists for compose to put in TASKDESK_DATABASE_URL.
+generate_if_empty TASKDESK_APP_DB_PASSWORD
 
 # shellcheck disable=SC1090
 set -a; . "$ENV_FILE"; set +a
@@ -380,7 +386,28 @@ case "$MODE" in
     [ -n "$CURRENT" ] && printf '    current: %s\n' "$CURRENT"
     verify_signature "$(image_ref)"
     say "pulling"
-    dc pull taskdesk
+    dc pull migrate taskdesk
+    # issue #296: `migrate` and `taskdesk` share an image tag, but a completed
+    # one-shot service is not re-run just because `taskdesk` is targeted — its
+    # `service_completed_successfully` condition is already satisfied by the
+    # PREVIOUS version's run. Naming `migrate` explicitly here is what makes the
+    # new image's migrations (and any grant changes) apply before the new
+    # `taskdesk` container starts.
+    say "running migrations for the new image"
+    # issue #296, D1 (independent Opus 5.5 delta review of PR #308, BLOCKING):
+    # `dc up -d --wait migrate` aimed at a one-shot service returned exit 1 even
+    # when migrate succeeded (Compose v5.5.1, reproduced 3 times) — `--wait`'s own
+    # exit code does not reliably reflect a `service_completed_successfully`
+    # dependency's actual result the way a direct `run` does. Under `set -Eeuo
+    # pipefail` that silently aborted BOTH `upgrade` and `rollback` right after
+    # applying the new schema, leaving the OLD `taskdesk` container (still
+    # connected as the owner, on a first upgrade from a pre-split version)
+    # serving against it. `dc run --rm migrate` runs the one-shot container in
+    # the foreground and exits with ITS real exit code — 0 only if migration and
+    # the role/grant bootstrap actually succeeded — and `--rm` removes the
+    # container afterward so a later `dc run --rm migrate` is never blocked by a
+    # stale one of the same name.
+    dc run --rm migrate
     # Plain Compose does not do health-gated replacement: on a single-replica
     # stack `up -d` stops the old container, then starts the new one. Expect a
     # short outage. --wait makes a failed start loud rather than silent.
@@ -400,7 +427,15 @@ case "$MODE" in
       printf 'TASKDESK_IMAGE_DIGEST=%s\n' "$ROLLBACK_DIGEST" >> "$ENV_FILE"
     fi
     set -a; . "$ENV_FILE"; set +a
-    dc pull taskdesk
+    dc pull migrate taskdesk
+    # issue #296: re-running `migrate` against the rollback image is a no-op for
+    # already-applied migrations and the idempotent role/grant step — safe, and
+    # keeps `taskdesk`'s dependency condition genuinely satisfied for this image
+    # rather than reusing a stale success from a different one.
+    # D1 (see the `upgrade` case above for the full explanation): `dc run --rm`,
+    # not `dc up -d --wait`, so a real migrate failure actually aborts this
+    # script instead of silently succeeding.
+    dc run --rm migrate
     dc up -d --wait taskdesk
     assert_port_unpublished
     probe_api
