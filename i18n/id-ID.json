@@ -2153,5 +2153,36 @@
 		"branding": {
 			"poweredBy": "Didukung oleh"
 		}
+	},
+	"workItems": {
+		"detail": {
+			"notBuiltYet": "The full work item page is not built yet."
+		},
+		"list": {
+			"columnAssignee": "Assignee",
+			"columnDueDate": "Due date",
+			"columnKey": "Key",
+			"columnPriority": "Priority",
+			"columnState": "State",
+			"columnTitle": "Title",
+			"emptyDescription": "This project has no work items yet.",
+			"emptyTitle": "No work items yet",
+			"errorDescription": "Something went wrong while loading this project's work items.",
+			"errorTitle": "Couldn't load work items",
+			"heading": "Work items",
+			"loading": "Loading work items…",
+			"noDueDate": "No due date",
+			"noPriority": "No priority",
+			"pageTitle": "Work items",
+			"pageTitleWithProject": "Work items · {{project}}",
+			"priority": {
+				"high": "High",
+				"low": "Low",
+				"medium": "Medium",
+				"urgent": "Urgent"
+			},
+			"retry": "Retry",
+			"unassigned": "Unassigned"
+		}
 	}
 }

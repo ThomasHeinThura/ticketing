@@ -2160,5 +2160,36 @@
 		"branding": {
 			"poweredBy": "Powered by"
 		}
+	},
+	"workItems": {
+		"list": {
+			"pageTitle": "Work items",
+			"pageTitleWithProject": "Work items · {{project}}",
+			"heading": "Work items",
+			"columnKey": "Key",
+			"columnTitle": "Title",
+			"columnPriority": "Priority",
+			"columnDueDate": "Due date",
+			"columnState": "State",
+			"columnAssignee": "Assignee",
+			"noDueDate": "No due date",
+			"noPriority": "No priority",
+			"unassigned": "Unassigned",
+			"priority": {
+				"urgent": "Urgent",
+				"high": "High",
+				"medium": "Medium",
+				"low": "Low"
+			},
+			"loading": "Loading work items…",
+			"emptyTitle": "No work items yet",
+			"emptyDescription": "This project has no work items yet.",
+			"errorTitle": "Couldn't load work items",
+			"errorDescription": "Something went wrong while loading this project's work items.",
+			"retry": "Retry"
+		},
+		"detail": {
+			"notBuiltYet": "The full work item page is not built yet."
+		}
 	}
 }
