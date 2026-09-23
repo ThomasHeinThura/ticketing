@@ -76,42 +76,88 @@ export function requireWorkspaceCapability(capability: Capability) {
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
 
-    // Fail-closed against duplicate `workspace_member` rows for this pair
-    // (`workspace_member` has no unique constraint on
-    // `(workspace_id, user_id)` -- `workspaceMemberRoles`'s doc comment):
-    // the capability is granted only when EVERY row for the pair grants it,
-    // never when an arbitrary one does. `roles.length === 0` is checked
-    // explicitly rather than relying on `.every()` alone -- `[].every(...)`
-    // is vacuously `true` in JS, which would silently grant a non-member
-    // every capability.
-    const roles = await workspaceMemberRoles(db, workspaceId, userId);
-
-    // ONE predicate, shared with `transferWorkspaceOwnership`'s own
-    // in-transaction check, so the two cannot reduce the same rows
-    // differently. They used to: this gate reduced with `.every(...)` while
-    // the controller reduced with `length !== 1`, so for `["owner", "owner"]`
-    // the gate GRANTED and the controller REFUSED. Fail-closed, and therefore
-    // not an escalation -- but it locked the only owner out of the transfer
-    // route while nobody else held the capability, making ownership unmovable
-    // without database surgery. Found by the independent security review of
-    // pull request #77.
-    //
-    // `isUnambiguousMembership` subsumes the old `roles.length === 0` guard
-    // (which existed because `[].every(...)` is vacuously `true` in JS and
-    // would have granted a non-member every capability) and additionally
-    // denies the duplicated-row case instead of reasoning about it. Refusing
-    // to answer when the membership state is corrupt is the fail-closed
-    // reading, and issue #88's `UNIQUE (workspace_id, user_id)` constraint
-    // makes that case unreachable once it lands.
-    if (
-      !isUnambiguousMembership(roles) ||
-      !builtInRoleHasCapability(roles[0], capability)
-    ) {
-      throw new HTTPException(403, { message: "Insufficient permissions" });
-    }
+    await assertCallerHasCapability(workspaceId, userId, capability);
 
     return next();
   };
+}
+
+/**
+ * The non-middleware twin of `requireWorkspaceCapability`, for a FIELD-level check that can
+ * only run after the request body has been parsed (route `middleware` runs before Hono's
+ * request validators -- `apiRouter`'s own comment in `../openapi.ts` -- so a check that needs
+ * `c.req.valid("json")` cannot live in the `middleware` array at all).
+ *
+ * `PATCH /api/work-items/{key}` is the first caller: the route's declared policy capability
+ * (`work_item:update`) is necessary but not sufficient when the body sets `priority` --
+ * `docs/01-architecture/rbac.md` scopes that field to `work_item:set_priority` specifically
+ * -- so the handler calls this directly, after body validation, instead of a second
+ * `middleware` entry.
+ *
+ * Deliberately the SAME resolution as the middleware above (`workspaceMemberRoles` +
+ * `isUnambiguousMembership` + `builtInRoleHasCapability`), factored out rather than
+ * reimplemented, so a field-level gate and the route-level gate can never independently
+ * drift out of agreement -- the exact failure this module's own file comment documents for
+ * `transferWorkspaceOwnership`'s in-transaction re-check.
+ *
+ * TWO CONTRACT NOTES FOR ANY FUTURE CALLER (S6, independent Opus security review of PR
+ * #271 -- safe today, but a trap for a caller that doesn't hold both):
+ *
+ * 1. `workspaceId` MUST be a server-resolved id, read from a row a reach/access
+ *    middleware already loaded (e.g. `c.get("workspaceId")` as `requireWorkItemReach`
+ *    sets it) -- **never** taken from request input (a body field, a query parameter, a
+ *    header). This function only checks whether the caller holds `capability` IN the
+ *    workspace it is given; it cannot tell whether that workspace is the one the caller's
+ *    write will actually land in. A future field-level call that trusted a body- or
+ *    query-supplied `workspaceId` would check authority in workspace A and let the
+ *    handler write workspace B -- a confused-deputy gap this function cannot detect on
+ *    its own.
+ * 2. This function, like the middleware above, resolves ONLY the caller's
+ *    `workspace_member.role` -- it never reads `c.get("apiKey")` or an API key's own
+ *    `permissions` scoping (contrast `requireWorkspacePermission`,
+ *    `require-workspace-permission.ts`). Latent today (nothing in this codebase sets
+ *    `apikey.permissions` yet), but once scoped API keys land, a request authenticated by
+ *    a narrowly-scoped key will pass this check on the strength of the human member's
+ *    role alone, ignoring the key's own narrower scope.
+ */
+export async function assertCallerHasCapability(
+  workspaceId: string,
+  userId: string,
+  capability: Capability,
+): Promise<void> {
+  // Fail-closed against duplicate `workspace_member` rows for this pair
+  // (`workspace_member` has no unique constraint on
+  // `(workspace_id, user_id)` -- `workspaceMemberRoles`'s doc comment):
+  // the capability is granted only when EVERY row for the pair grants it,
+  // never when an arbitrary one does. `roles.length === 0` is checked
+  // explicitly rather than relying on `.every()` alone -- `[].every(...)`
+  // is vacuously `true` in JS, which would silently grant a non-member
+  // every capability.
+  const roles = await workspaceMemberRoles(db, workspaceId, userId);
+
+  // ONE predicate, shared with `transferWorkspaceOwnership`'s own
+  // in-transaction check, so the two cannot reduce the same rows
+  // differently. They used to: this gate reduced with `.every(...)` while
+  // the controller reduced with `length !== 1`, so for `["owner", "owner"]`
+  // the gate GRANTED and the controller REFUSED. Fail-closed, and therefore
+  // not an escalation -- but it locked the only owner out of the transfer
+  // route while nobody else held the capability, making ownership unmovable
+  // without database surgery. Found by the independent security review of
+  // pull request #77.
+  //
+  // `isUnambiguousMembership` subsumes the old `roles.length === 0` guard
+  // (which existed because `[].every(...)` is vacuously `true` in JS and
+  // would have granted a non-member every capability) and additionally
+  // denies the duplicated-row case instead of reasoning about it. Refusing
+  // to answer when the membership state is corrupt is the fail-closed
+  // reading, and issue #88's `UNIQUE (workspace_id, user_id)` constraint
+  // makes that case unreachable once it lands.
+  if (
+    !isUnambiguousMembership(roles) ||
+    !builtInRoleHasCapability(roles[0], capability)
+  ) {
+    throw new HTTPException(403, { message: "Insufficient permissions" });
+  }
 }
 
 /**
