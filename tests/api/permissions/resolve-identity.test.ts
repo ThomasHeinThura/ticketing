@@ -65,7 +65,9 @@ describe("resolveIdentityFromFacts — a member with each built-in workspace rol
     it(`resolves ${role}'s membership and authority`, () => {
       const identity = resolveIdentityFromFacts(
         facts({
-          workspaceMemberships: [{ workspaceId: "ws-1", role, seesAll: false }],
+          workspaceMemberships: [
+            { workspaceId: "ws-1", role, seesAll: false, isSystemRole: true },
+          ],
         }),
       );
 
@@ -103,8 +105,18 @@ describe("resolveIdentityFromFacts — a multi-workspace user", () => {
     const identity = resolveIdentityFromFacts(
       facts({
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "admin", seesAll: false },
-          { workspaceId: "ws-2", role: "viewer", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "admin",
+            seesAll: false,
+            isSystemRole: true,
+          },
+          {
+            workspaceId: "ws-2",
+            role: "viewer",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -123,9 +135,24 @@ describe("resolveIdentityFromFacts — a multi-workspace user", () => {
     const identity = resolveIdentityFromFacts(
       facts({
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "admin", seesAll: false },
-          { workspaceId: "ws-1", role: "viewer", seesAll: false },
-          { workspaceId: "ws-2", role: "member", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "admin",
+            seesAll: false,
+            isSystemRole: true,
+          },
+          {
+            workspaceId: "ws-1",
+            role: "viewer",
+            seesAll: false,
+            isSystemRole: true,
+          },
+          {
+            workspaceId: "ws-2",
+            role: "member",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -137,8 +164,18 @@ describe("resolveIdentityFromFacts — a multi-workspace user", () => {
     const identity = resolveIdentityFromFacts(
       facts({
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "owner,admin", seesAll: false },
-          { workspaceId: "ws-2", role: "member", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "owner,admin",
+            seesAll: false,
+            isSystemRole: true,
+          },
+          {
+            workspaceId: "ws-2",
+            role: "member",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -150,7 +187,12 @@ describe("resolveIdentityFromFacts — a multi-workspace user", () => {
     const identity = resolveIdentityFromFacts(
       facts({
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "custom-triage-lead", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "custom-triage-lead",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -160,12 +202,120 @@ describe("resolveIdentityFromFacts — a multi-workspace user", () => {
   });
 });
 
+describe("resolveIdentityFromFacts — issue #318 (security), S2: a custom row that shares a built-in name is not genuine", () => {
+  const nonOwnerBuiltInRoles = [
+    "admin",
+    "manager",
+    "lead",
+    "member",
+    "viewer",
+  ] as const;
+
+  for (const role of nonOwnerBuiltInRoles) {
+    it(`grants no authority for '${role}' when the row is not backed by a genuine seeded workspace_role (is_system) row`, () => {
+      const identity = resolveIdentityFromFacts(
+        facts({
+          workspaceMemberships: [
+            { workspaceId: "ws-1", role, seesAll: false, isSystemRole: false },
+          ],
+        }),
+      );
+
+      // Same treatment as an unrecognised custom role name (KNOWN GAP 2): the whole
+      // workspace is skipped, not merely stripped of authority -- so a custom row cannot
+      // borrow a built-in's name and still show up as a membership.
+      expect(identity?.memberships).toEqual([]);
+      expect(identity?.authority).toEqual([]);
+    });
+  }
+
+  it("'owner' is always genuine -- it never has a workspace_role row to check, and is reserved from custom creation", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        workspaceMemberships: [
+          {
+            workspaceId: "ws-1",
+            role: "owner",
+            seesAll: false,
+            isSystemRole: false,
+          },
+        ],
+      }),
+    );
+
+    expect(identity?.authority).toEqual([
+      {
+        roleKey: "owner",
+        scope: "workspace",
+        scopeId: "ws-1",
+        rank: BUILT_IN_ROLES.owner.rank,
+        capabilities: BUILT_IN_ROLES.owner.capabilities,
+      },
+    ]);
+  });
+
+  it("grants full manager authority only when the row IS backed by a genuine is_system row -- the repro's negative control", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        workspaceMemberships: [
+          {
+            workspaceId: "ws-1",
+            role: "manager",
+            seesAll: false,
+            isSystemRole: true,
+          },
+        ],
+      }),
+    );
+
+    expect(identity?.authority).toEqual([
+      {
+        roleKey: "manager",
+        scope: "workspace",
+        scopeId: "ws-1",
+        rank: BUILT_IN_ROLES.manager.rank,
+        capabilities: BUILT_IN_ROLES.manager.capabilities,
+      },
+    ]);
+  });
+
+  it("one workspace's non-genuine row does not affect another workspace's genuine grant", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        workspaceMemberships: [
+          {
+            workspaceId: "ws-escalation",
+            role: "manager",
+            seesAll: false,
+            isSystemRole: false,
+          },
+          {
+            workspaceId: "ws-genuine",
+            role: "admin",
+            seesAll: false,
+            isSystemRole: true,
+          },
+        ],
+      }),
+    );
+
+    expect(identity?.authority.map((grant) => grant.scopeId)).toEqual([
+      "ws-genuine",
+    ]);
+  });
+});
+
 describe("resolveIdentityFromFacts — S1 (BLOCKING, PR #315 review): reserved built-in names as a workspace role", () => {
   it("skips a workspace whose stored role is 'instance_admin' -- no instance grant is minted", () => {
     const identity = resolveIdentityFromFacts(
       facts({
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "instance_admin", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "instance_admin",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -182,7 +332,12 @@ describe("resolveIdentityFromFacts — S1 (BLOCKING, PR #315 review): reserved b
     const identity = resolveIdentityFromFacts(
       facts({
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "customer", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "customer",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -201,7 +356,12 @@ describe("resolveIdentityFromFacts — sees_all", () => {
     const identity = resolveIdentityFromFacts(
       facts({
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "viewer", seesAll: true },
+          {
+            workspaceId: "ws-1",
+            role: "viewer",
+            seesAll: true,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -223,7 +383,12 @@ describe("resolveIdentityFromFacts — sees_all", () => {
     const identity = resolveIdentityFromFacts(
       facts({
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "admin", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "admin",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -263,7 +428,12 @@ describe("resolveIdentityFromFacts — API-key clamping", () => {
           capabilities: ["work_item:read"],
         },
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "admin", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "admin",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -299,7 +469,12 @@ describe("resolveIdentityFromFacts — API-key clamping", () => {
         credential: "api_key",
         apiKey: { enabled: true, ownerUserId: "user-1" },
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "owner", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "owner",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -351,7 +526,12 @@ describe("resolveIdentityFromFacts — an API key on a revoked or disabled owner
         credential: "api_key",
         apiKey: { enabled: false, ownerUserId: "user-1" },
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "owner", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "owner",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -367,7 +547,12 @@ describe("resolveIdentityFromFacts — S4 (PR #315 review): the key fact is requ
         credential: "api_key",
         apiKey: undefined,
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "owner", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "owner",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -390,7 +575,12 @@ describe("resolveIdentityFromFacts — S4 (PR #315 review): the key fact is requ
         credential: "api_key",
         apiKey: { enabled: true, ownerUserId: "user-DIFFERENT" },
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "owner", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "owner",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -428,7 +618,12 @@ describe("resolveIdentityFromFacts — a portal (customer) session", () => {
       facts({
         person: CUSTOMER_PERSON,
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "owner", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "owner",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -537,7 +732,12 @@ describe("resolveIdentityFromFacts — S6 (PR #315 review): a banned user", () =
       facts({
         banned: true,
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "owner", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "owner",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
       }),
     );
@@ -565,7 +765,12 @@ describe("resolveIdentityFromFacts — a deactivated member", () => {
       facts({
         person: { ...STAFF_PERSON, active: false },
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "owner", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "owner",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
         isInstanceAdmin: true,
       }),
@@ -580,7 +785,12 @@ describe("resolveIdentityFromFacts — S5 (PR #315 review): teamIds tied to curr
     const identity = resolveIdentityFromFacts(
       facts({
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "member", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "member",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
         teamMemberships: [{ teamId: "team-1", workspaceId: "ws-1" }],
       }),
@@ -608,7 +818,12 @@ describe("resolveIdentityFromFacts — S5 (PR #315 review): teamIds tied to curr
         // The role value is malformed, so no grant is minted for ws-1 -- but the
         // workspace_member ROW still exists, so the person is still a current member.
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "owner,admin", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "owner,admin",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
         teamMemberships: [{ teamId: "team-1", workspaceId: "ws-1" }],
       }),
@@ -622,8 +837,18 @@ describe("resolveIdentityFromFacts — S5 (PR #315 review): teamIds tied to curr
     const identity = resolveIdentityFromFacts(
       facts({
         workspaceMemberships: [
-          { workspaceId: "ws-1", role: "member", seesAll: false },
-          { workspaceId: "ws-2", role: "member", seesAll: false },
+          {
+            workspaceId: "ws-1",
+            role: "member",
+            seesAll: false,
+            isSystemRole: true,
+          },
+          {
+            workspaceId: "ws-2",
+            role: "member",
+            seesAll: false,
+            isSystemRole: true,
+          },
         ],
         teamMemberships: [
           { teamId: "team-1", workspaceId: "ws-1" },
