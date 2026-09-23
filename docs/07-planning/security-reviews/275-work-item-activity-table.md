@@ -499,3 +499,48 @@ merge. The parents are `1e3bfe4` (this note, committed) and `4a65439` (#278).
   picks: Recharts…"), placed newest-first. This branch's "Activity addendum" and "Work-item
   activity gets its own `activity` table" entries are present and unedited.
 - No push, comment or merge.
+
+---
+
+# Base-merge confirmation (65964bb)
+
+**Reviewer:** Opus 5.5, fresh independent context. Did not author, direct, or remediate this change.
+
+**Reviewed head:** `65964bb8ec47088935f4363d30a3407b21c2e335`
+
+**Reviewed SHA:** `65964bb8ec47088935f4363d30a3407b21c2e335` (confirmed via `gh pr view 275 --json headRefOid`; `origin/main` = `992534b` is an ancestor).
+**Date:** 2026-09-23
+
+**Verdict: CLEAR (unchanged from the closing round at `2cf9852`).**
+
+**What came in.** `git log bc04a1f..65964bb` shows only #280 (`36af235`), #277 (`d5837ec`),
+#282 (`992534b`) and the merge commit. The parents are `bc04a1f` and `992534b`. I recomputed
+the merge with `git merge-tree --write-tree bc04a1f 992534b`. It is conflict-free and gives
+tree `4172cf0…`, identical to `65964bb^{tree}`, so there are no manual resolution edits.
+`git diff origin/main 65964bb` is exactly this PR's own 26-file surface. No dependency or
+lockfile changed.
+
+**Interaction with this PR's surface — none adverse.**
+- #277 touches `workspace-access-middleware.ts`, `require-work-item-reach.ts` and
+  `work-item/schema.ts`. It adds a NUL-byte 400 guard on every id *source* in the loop (query,
+  body, param, lookup, taskIds) before `lookupWorkspaceId` runs. It does not touch
+  `lookupWorkspaceId`'s `case "activity"`/`"comment"` bodies. At this head those still read
+  `schema.taskActivityTable` (lines 251-282), so `fromActivity`/`fromComment` still resolve the
+  legacy table, now with the NUL guard in front. No file under `database/`, `drizzle/` or
+  `work-item/activity.ts` is changed by the merge, and nothing outside `activity.ts` imports the
+  writer or the resolver.
+- #282 (`comments-and-activity.md`): the CA-6 text is identical and CA-7's table is unchanged,
+  so it is consistent with `PUBLIC_PAIRS`/`CONDITIONAL_PUBLIC_PAIRS`. CA-10 now reads "except
+  when the parent work item is purged at the end of the soft-delete window, or its workspace is
+  hard-deleted (the tenant deletion cascade — decision log 2026-09-23, 'Activity addendum')".
+  That is exactly the `ON DELETE CASCADE` behaviour. The new CA-11 cap (256 KiB / 10,000 nodes
+  on `comment.body`) is a comment-composition rule, and this PR neither enforces nor conflicts
+  with it; it belongs to #27. The new "Data" section's `activity` bullet omits `workspace_id`
+  and `seq`, but it defers to `data-model.md` §4, which has both. Info only.
+  "Activity for a field the viewer cannot see — suppressed entirely" is a read-side rule for #27.
+
+**Verification at `65964bb`** (private DB `pr275_opus3_test` on td-lane-pg, PG18, dropped afterwards):
+- Full integration suite: **71 files, 955 tests passed**, exit 0.
+- `pnpm typecheck` (`tsconfig.json`, `tsconfig.permissions.json`, `tsconfig.tests.json`): exit 0.
+- `drizzle-kit generate`: "No schema changes, nothing to migrate". Working tree clean afterwards (zero diff).
+- No push, comment or merge.
