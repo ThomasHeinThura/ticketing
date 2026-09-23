@@ -114,12 +114,25 @@ functions (#287/#289), with no HTTP wiring yet.
   (`design-system.md` "Caller-supplied labels"). Its focus-return tests were rewritten
   because the old ones passed even when focus return was broken.
 
+**Also merged, after this pass was drafted:** **#292**, the WI-6 wiring. Work-item
+create and update now write `activity` rows and emit `work_item.created`/`updated` after
+commit. It took three Sonnet reviews and Opus 5.5, CLEAR WITH FINDINGS; the follow-ups are
+#298.
+
 **In flight at this snapshot** (re-verify in GitHub):
-- **#291** (`audit_log`): a trigger-based append-only control, recorded in the decision
-  log. Review found TRUNCATE bypassed it, then two false-tamper bugs; all fixed. Opus 5.5
-  delta-confirmation is pending.
-- **#292** (WI-6 activity plus `work_item.*` events): three Sonnet reviews done. Opus 5.5 is
-  pending.
+- **#291** (`audit_log`): a trigger-based append-only control. Reviews found a TRUNCATE
+  bypass and three false-tamper bugs, all fixed. The hashed value is now normalised once,
+  then hashed and stored. A gitleaks false positive on a test fixture was dismissed by exact
+  fingerprint; Thomas decided that (decision log).
+
+**The principal P0 blocker, stated plainly:** #8's **runtime** integration. The declarative
+policy registry is built and every route is classified, but **no request is evaluated
+against it**: nothing on the request path calls an evaluator, and an invalid registry does
+not fail at boot. Routes are still authorized today, by hand-written per-route middleware
+(`requireWorkspaceCapability`, `requireWorkItemReach`, …). So they aren't unprotected. But
+the registry is not yet the single source of truth, and every open checkbox in #8's runtime
+section is still unticked. That, and #296 below, come before any UAT claim that "the gates
+are enforced".
 
 **New issue that matters for UAT:** **#296**. The API connects to Postgres as the table
 owner, which the official image makes a **superuser**, in both compose and Helm. Every
