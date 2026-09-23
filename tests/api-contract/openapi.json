@@ -2611,6 +2611,27 @@
           "updatedAt"
         ]
       },
+      "WorkItemVersionConflict": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "assertedVersion": {
+            "type": "number",
+            "description": "The version sent in If-Match."
+          },
+          "currentVersion": {
+            "type": "number",
+            "description": "The work item's actual current version."
+          }
+        },
+        "required": [
+          "message",
+          "assertedVersion",
+          "currentVersion"
+        ]
+      },
       "UserAvatar": {
         "type": "object",
         "properties": {
@@ -10205,6 +10226,133 @@
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateWorkItem",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Update work item",
+        "description": "Partially update a work item's title, description, priority, startDate or dueDate (`WI-8`). Requires `If-Match` with the work item's current version (`WI-7`); a mismatch returns 409 with both versions. Label/custom-field editing, state transitions and assignment are not part of this route -- see their own mechanisms.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"?\\d+\"?$"
+            },
+            "required": true,
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "description": {},
+                  "priority": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high",
+                      "urgent",
+                      null
+                    ]
+                  },
+                  "startDate": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date-time"
+                  },
+                  "dueDate": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date-time"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated work item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or a malformed If-Match header",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version mismatch: the work item has changed since If-Match was read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemVersionConflict"
                 }
               }
             }

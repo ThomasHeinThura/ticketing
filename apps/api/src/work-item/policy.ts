@@ -71,4 +71,15 @@ export const workItemPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+
+  // Update a work item's fields (`WI-7`/`WI-8`). Same reach shape as the read route above
+  // -- `requireWorkItemReach()` resolves the row by key before the handler runs, and the
+  // controller (`update-work-item.ts`) re-scopes its own write by the SAME key+workspaceId
+  // pair -- `scopeSource: "row"`.
+  "PATCH /api/work-items/{key}": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
 } as const satisfies PolicyMap;

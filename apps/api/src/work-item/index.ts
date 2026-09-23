@@ -10,9 +10,22 @@ import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createWorkItem from "./controllers/create-work-item";
 import getWorkItemByKey from "./controllers/get-work-item";
 import listWorkItems from "./controllers/list-work-items";
+import updateWorkItem, {
+  WorkItemVersionConflictError,
+} from "./controllers/update-work-item";
 import { requireWorkItemReach } from "./require-work-item-reach";
-import { workItemListSchema, workItemSchema } from "./response";
-import { createWorkItemBody, projectIdParam, workItemKeyParam } from "./schema";
+import {
+  workItemListSchema,
+  workItemSchema,
+  workItemVersionConflictSchema,
+} from "./response";
+import {
+  createWorkItemBody,
+  ifMatchHeader,
+  projectIdParam,
+  updateWorkItemBody,
+  workItemKeyParam,
+} from "./schema";
 
 /**
  * #23's first slice: minimal create + read + list for `work_item`
@@ -138,6 +151,43 @@ const getWorkItemRoute = createRoute({
   },
 });
 
+const updateWorkItemRoute = createRoute({
+  method: "patch",
+  operationId: "updateWorkItem",
+  path: "/work-items/{key}",
+  tags: ["Work items"],
+  summary: "Update work item",
+  description:
+    "Partially update a work item's title, description, priority, startDate or dueDate " +
+    "(`WI-8`). Requires `If-Match` with the work item's current version (`WI-7`); a " +
+    "mismatch returns 409 with both versions. Label/custom-field editing, state " +
+    "transitions and assignment are not part of this route -- see their own mechanisms.",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: {
+    params: workItemKeyParam,
+    headers: ifMatchHeader,
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateWorkItemBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The updated work item", workItemSchema),
+    400: errorResponse("Invalid body, or a malformed If-Match header"),
+    403: errorResponse(
+      "No workspace access, or missing work_item:update permission",
+    ),
+    404: errorResponse("Work item not found"),
+    409: jsonResponse(
+      "Version mismatch: the work item has changed since If-Match was read",
+      workItemVersionConflictSchema,
+    ),
+  },
+});
+
 const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(createWorkItemRoute, async (c) => {
     const { projectId } = c.req.valid("param");
@@ -164,6 +214,37 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
     const workspaceId = c.get("workspaceId");
     const item = await getWorkItemByKey(key, workspaceId);
     return c.json(item, 200);
+  })
+  .openapi(updateWorkItemRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const assertedVersion = Number(ifMatch.replaceAll('"', ""));
+    const { title, description, priority, startDate, dueDate } =
+      c.req.valid("json");
+
+    try {
+      const updated = await updateWorkItem(key, workspaceId, assertedVersion, {
+        title,
+        description,
+        priority,
+        startDate,
+        dueDate,
+      });
+      return c.json(updated, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
   });
 
 export default workItem;

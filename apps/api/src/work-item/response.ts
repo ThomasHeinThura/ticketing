@@ -36,3 +36,20 @@ export const workItemSchema = z
   .openapi("WorkItem");
 
 export const workItemListSchema = z.array(workItemSchema);
+
+// `WI-7`: a version mismatch on `PATCH /api/work-items/{key}` returns 409 with BOTH
+// versions ("the caller's asserted version and the current server version") so the UI can
+// offer a resolution -- structured JSON, not the plain-text `errorResponse()` shape every
+// other error in this codebase uses, because there is genuinely structured data here for
+// the client to act on, not just a message to display.
+export const workItemVersionConflictSchema = z
+  .object({
+    message: z.string(),
+    assertedVersion: z
+      .number()
+      .openapi({ description: "The version sent in If-Match." }),
+    currentVersion: z
+      .number()
+      .openapi({ description: "The work item's actual current version." }),
+  })
+  .openapi("WorkItemVersionConflict");
