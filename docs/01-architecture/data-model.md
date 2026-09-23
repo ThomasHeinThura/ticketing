@@ -14,7 +14,13 @@ Schema lives in `apps/api/src/database/schema.ts`.
 - Primary keys are CUID2 text. Primary keys and surrogate ids are **never** sequential.
   The two human-facing counters are deliberate exceptions and neither is a primary key:
   `work_item.number` (per project, rendered `{project.key}-{number}`) and
-  `submission.number` (per instance, rendered `SUB-n`).
+  `submission.number` (per instance, rendered `SUB-n`). A third, narrower exception
+  (decision log 2026-09-23, "Work-item activity gets its own `activity` table"):
+  `activity.seq`, a `bigint generated always as identity` used only as an internal
+  tiebreak for rows sharing one `created_at`. It is never a reference, never leaves the
+  database, and is never in an API response — unlike the two counters above, which are
+  both user-facing identifiers — so it does not carry the enumerability risk this rule
+  exists to close. The primary key stays a CUID2 regardless.
 - `created_at` / `updated_at` on every table, `timestamptz`, UTC. **One exception:**
   `job_lease` is a lock, not data — it carries neither, and the acquire's
   `on conflict do update` sets neither.
@@ -212,7 +218,8 @@ no cycles; projects have dates and a backlog.
 | `comment` | `work_item_id`, `author_id`, `actor_type`, `body jsonb`, `visibility` (`public`\|`internal`), `activity_id` null (links a transition note to its transition), `edited_at`, `deleted_at` null, `deleted_by` null — the tombstone `CA-18` renders ("Comment deleted by Jane, 2 March"): the row, its author and its position survive, the body is not rendered, and the row is purged with the 30-day soft-delete sweep. **v** |
 | `comment_version` | `comment_id`, `number`, `body jsonb`, `edited_by`, `created_at` — the edit history `CA-17` renders |
 | `canned_response` | `workspace_id`, `name`, `body jsonb`, `visibility_default`, `created_by` |
-| `activity` | `work_item_id`, `actor_id`, `actor_type`, `verb`, `field`, `old_value`, `new_value`, `payload jsonb`, `visibility` (`public`\|`internal` — the verb→visibility table in [comments-and-activity.md](../03-features/comments-and-activity.md); unmapped verbs are `internal`), `workflow_version_id` null, `created_at` |
+| `activity` | The work-item journal (decision log 2026-09-23, "Work-item activity gets its own `activity` table; kaneo's becomes `task_activity`" — migration 0066). `workspace_id` **not null** (denormalised at insert, same #192 shape as `work_item.workspace_id`, for the same RLS/purge reach-filtering reason). `work_item_id`, `actor_id`, `actor_type`, `verb`, `field`, `old_value`, `new_value`, `payload jsonb`, `visibility` (`public`\|`internal` — the verb→visibility table in [comments-and-activity.md](../03-features/comments-and-activity.md); unmapped verbs are `internal`), `workflow_version_id` null, `created_at`, `seq bigint generated always as identity` (unique — an internal same-instant tiebreak only, never a reference, never in an API response; the Conventions section's named exception to "surrogate ids are never sequential"). **Known gap, flagged rather than closed silently:** `work_item_id` is presently a plain FK to `work_item.id`, not the composite `(workspace_id, work_item_id) → work_item (workspace_id, id)` FK the decision log calls for — `work_item` does not yet carry a `UNIQUE (workspace_id, id)` index for that FK to target. Close this once that index exists |
+| `task_activity` | Kaneo's original, unmodified activity/comment table, renamed off the `activity` name in the same migration that introduced the table above. Still keyed on `task_id`, not `work_item_id`; still backs every legacy task/comment route. Not part of the work-item journal, and not documented further here — it is inherited-and-frozen, not part of this data model's own design |
 | `attachment` | `workspace_id` **not null**, `organisation_id` null (null = internal) — both denormalised at insert, because the object-key template ([storage-and-attachments.md](storage-and-attachments.md)) is built from the workspace, the per-organisation storage quota sums on the organisation, and `attachment-gc` needs both to honour an open `legal_hold`; a `submission_id` row reaches its workspace only through a two-hop join, which is why these are stored rather than derived. `work_item_id` \| `comment_id` \| `submission_id` (`CHECK` exactly one), `object_key`, `filename`, `mime_type`, `size`, `state` (`pending`\|`ready`\|`deleted`), `customer_visible`, `uploaded_by`, `deleted_at`. Partial index on `state = 'pending'` for the hourly cleanup |
 
 **`activity` is the journal.** Every field change writes a row with old and new value.
@@ -435,7 +442,8 @@ create index on work_item (due_date) where resolved_at is null;
 create unique index on work_item (project_id, number);
 create unique index on project (key);
 create index on work_item using gin (title gin_trgm_ops);           -- typo tolerance, duplicate suggestions
-create index on activity (work_item_id, created_at desc);
+create index on activity (work_item_id, created_at desc, seq desc);  -- seq: same-instant tiebreak
+create index on activity (workspace_id);                             -- reach filtering, #192's shape
 create index on comment (work_item_id, created_at);
 create index on membership (person_id, scope, scope_id);
 create index on custom_field_value (entity_type, entity_id);

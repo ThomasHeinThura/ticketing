@@ -20,6 +20,7 @@ import {
   sessionTable,
   stateTable,
   stateTemplateTable,
+  taskActivityTable,
   taskRelationTable,
   taskReminderSentTable,
   taskTable,
@@ -49,7 +50,7 @@ export const userTableRelations = relations(userTable, ({ many, one }) => ({
   workspaceMemberships: many(workspaceUserTable),
   assignedTasks: many(taskTable),
   timeEntries: many(timeEntryTable),
-  activities: many(activityTable),
+  activities: many(taskActivityTable),
   comments: many(commentTable),
   assets: many(assetTable),
   notifications: many(notificationTable),
@@ -170,7 +171,7 @@ export const taskTableRelations = relations(taskTable, ({ one, many }) => ({
     references: [columnTable.id],
   }),
   timeEntries: many(timeEntryTable),
-  activities: many(activityTable),
+  activities: many(taskActivityTable),
   comments: many(commentTable),
   assets: many(assetTable),
   labels: many(labelTable),
@@ -191,16 +192,19 @@ export const timeEntryTableRelations = relations(timeEntryTable, ({ one }) => ({
   }),
 }));
 
-export const activityTableRelations = relations(activityTable, ({ one }) => ({
-  task: one(taskTable, {
-    fields: [activityTable.taskId],
-    references: [taskTable.id],
+export const taskActivityTableRelations = relations(
+  taskActivityTable,
+  ({ one }) => ({
+    task: one(taskTable, {
+      fields: [taskActivityTable.taskId],
+      references: [taskTable.id],
+    }),
+    user: one(userTable, {
+      fields: [taskActivityTable.userId],
+      references: [userTable.id],
+    }),
   }),
-  user: one(userTable, {
-    fields: [activityTable.userId],
-    references: [userTable.id],
-  }),
-}));
+);
 
 export const assetTableRelations = relations(assetTable, ({ one }) => ({
   workspace: one(workspaceTable, {
@@ -215,9 +219,9 @@ export const assetTableRelations = relations(assetTable, ({ one }) => ({
     fields: [assetTable.taskId],
     references: [taskTable.id],
   }),
-  activity: one(activityTable, {
+  activity: one(taskActivityTable, {
     fields: [assetTable.activityId],
-    references: [activityTable.id],
+    references: [taskActivityTable.id],
   }),
   creator: one(userTable, {
     fields: [assetTable.createdBy],
@@ -513,8 +517,22 @@ export const workItemTableRelations = relations(
     children: many(workItemTable, { relationName: "workItemParent" }),
     keyAliases: many(workItemKeyAliasTable),
     watchers: many(watcherTable),
+    activities: many(activityTable),
   }),
 );
+
+// The work-item journal (decision log 2026-09-23, "Work-item activity gets its own
+// `activity` table"). `workItem` here is the plain, single-column FK the migration
+// actually created (`work_item_id -> work_item.id`) -- see `schema.ts`'s comment on
+// `activityTable.workItemId` for why this is not yet the composite
+// `(workspace_id, work_item_id) -> work_item (workspace_id, id)` FK the decision log
+// asks for.
+export const activityTableRelations = relations(activityTable, ({ one }) => ({
+  workItem: one(workItemTable, {
+    fields: [activityTable.workItemId],
+    references: [workItemTable.id],
+  }),
+}));
 
 export const workItemKeyAliasTableRelations = relations(
   workItemKeyAliasTable,

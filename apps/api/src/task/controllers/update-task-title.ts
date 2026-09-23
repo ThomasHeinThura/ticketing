@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { activityTable, taskTable } from "../../database/schema";
+import { taskActivityTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
 
@@ -47,7 +47,7 @@ async function updateTaskTitle({
       });
     }
 
-    await tx.insert(activityTable).values({
+    await tx.insert(taskActivityTable).values({
       taskId: task.id,
       type: "title_changed",
       userId: currentUserId,

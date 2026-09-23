@@ -4,7 +4,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * Activity route policies (issue #8, `activity` lane).
  *
  * `activity` and `comment` (`apps/api/src/comment/policy.ts`) are two routers over the same
- * `activityTable` — a comment is an activity row with `type: "comment"` — and three of these
+ * `taskActivityTable` — a comment is an activity row with `type: "comment"` — and three of these
  * five routes are literal duplicates of `comment`'s routes, sharing the same controller
  * functions. Read that file's header first; this one only restates what differs. Mounted at
  * `apps/api/src/index.ts:785`, below the app-wide auth guard (line 755) — H2 does not
@@ -46,7 +46,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * against `updateCommentRoute`/`deleteCommentRoute` here (middleware:
  * `[workspaceAccess.fromActivity("activityId")]` — **no `requireWorkspacePermission` at all**).
  * Both pairs call the identical `apps/api/src/activity/controllers/update-comment.ts` /
- * `delete-comment.ts`, whose `WHERE activityTable.userId = caller` still restricts either path
+ * `delete-comment.ts`, whose `WHERE taskActivityTable.userId = caller` still restricts either path
  * to the comment's own author — so no route here lets a caller touch someone else's comment —
  * but on THIS path, any workspace member can edit or delete **their own** comment without
  * holding `task:update`, where the `/api/comment/{id}` path additionally demands it. This is a

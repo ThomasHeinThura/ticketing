@@ -199,16 +199,16 @@ async function lookupWorkspaceId(
           .select({
             workspaceId: schema.projectTable.workspaceId,
           })
-          .from(schema.activityTable)
+          .from(schema.taskActivityTable)
           .innerJoin(
             schema.taskTable,
-            eq(schema.activityTable.taskId, schema.taskTable.id),
+            eq(schema.taskActivityTable.taskId, schema.taskTable.id),
           )
           .innerJoin(
             schema.projectTable,
             eq(schema.taskTable.projectId, schema.projectTable.id),
           )
-          .where(eq(schema.activityTable.id, id))
+          .where(eq(schema.taskActivityTable.id, id))
           .limit(1);
         return activity?.workspaceId || null;
       }
@@ -218,10 +218,10 @@ async function lookupWorkspaceId(
           .select({
             workspaceId: schema.projectTable.workspaceId,
           })
-          .from(schema.activityTable)
+          .from(schema.taskActivityTable)
           .innerJoin(
             schema.taskTable,
-            eq(schema.activityTable.taskId, schema.taskTable.id),
+            eq(schema.taskActivityTable.taskId, schema.taskTable.id),
           )
           .innerJoin(
             schema.projectTable,
@@ -229,8 +229,8 @@ async function lookupWorkspaceId(
           )
           .where(
             and(
-              eq(schema.activityTable.id, id),
-              eq(schema.activityTable.type, "comment"),
+              eq(schema.taskActivityTable.id, id),
+              eq(schema.taskActivityTable.type, "comment"),
             ),
           )
           .limit(1);

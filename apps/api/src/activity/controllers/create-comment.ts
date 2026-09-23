@@ -2,8 +2,8 @@ import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
-  activityTable,
   projectTable,
+  taskActivityTable,
   taskTable,
   userTable,
 } from "../../database/schema";
@@ -18,7 +18,7 @@ async function createComment(
   external?: { userName: string; source: string },
 ) {
   const [activity] = await db
-    .insert(activityTable)
+    .insert(taskActivityTable)
     .values({
       taskId,
       type: "comment",

@@ -10,7 +10,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  *
  * **Containment chain, read from the actual middleware, not assumed from the path.**
  * `apps/api/src/utils/workspace-access-middleware.ts`'s `fromTaskId`/`fromComment` sources run
- * a genuine DB lookup — `activityTable`/`taskTable` joined to `projectTable` — to resolve the
+ * a genuine DB lookup — `taskActivityTable`/`taskTable` joined to `projectTable` — to resolve the
  * task's (or comment's) own `workspaceId` before the handler runs. That lookup is a **row
  * read**, the same reasoning `workspace/policy.ts` uses for `PATCH /api/workspace/{id}`, so
  * `scopeSource: "row"` throughout this file, not `"request"` — the workspace containment is
@@ -42,7 +42,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * **Ownership on update/delete is enforced structurally, not by a declared `orOwner` branch.**
  * `update-comment.ts`/`delete-comment.ts` (`apps/api/src/activity/controllers/*`, re-exported
  * by this router's own controllers) restrict their `WHERE` clause to
- * `activityTable.userId = <caller>` unconditionally — there is no role, including `manager`
+ * `taskActivityTable.userId = <caller>` unconditionally — there is no role, including `manager`
  * (who holds `comment:update_any`/`comment:delete_any` in rbac.md's target table), that can
  * reach another user's comment through this route. That is narrower than an `orOwner` fallback
  * (which models "capability X, OR capability Y plus this predicate") — here ownership is an

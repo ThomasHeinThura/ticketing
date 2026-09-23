@@ -1,23 +1,23 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { activityTable, taskTable } from "../../database/schema";
+import { taskActivityTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
 
 async function updateComment(userId: string, id: string, content: string) {
   const [existing] = await db
     .select({
-      id: activityTable.id,
-      content: activityTable.content,
-      taskId: activityTable.taskId,
+      id: taskActivityTable.id,
+      content: taskActivityTable.content,
+      taskId: taskActivityTable.taskId,
     })
-    .from(activityTable)
+    .from(taskActivityTable)
     .where(
       and(
-        eq(activityTable.id, id),
-        eq(activityTable.userId, userId),
-        eq(activityTable.type, "comment"),
+        eq(taskActivityTable.id, id),
+        eq(taskActivityTable.userId, userId),
+        eq(taskActivityTable.type, "comment"),
       ),
     )
     .limit(1);
@@ -29,13 +29,13 @@ async function updateComment(userId: string, id: string, content: string) {
   }
 
   const [updated] = await db
-    .update(activityTable)
+    .update(taskActivityTable)
     .set({ content })
     .where(
       and(
-        eq(activityTable.id, id),
-        eq(activityTable.userId, userId),
-        eq(activityTable.type, "comment"),
+        eq(taskActivityTable.id, id),
+        eq(taskActivityTable.userId, userId),
+        eq(taskActivityTable.type, "comment"),
       ),
     )
     .returning();
