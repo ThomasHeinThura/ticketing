@@ -82,6 +82,15 @@ function hasValidDueDate(dueDate: unknown): dueDate is string | null {
   return typeof dueDate === "string" && !Number.isNaN(Date.parse(dueDate));
 }
 
+// `startDate` shares `dueDate`'s nullable-date shape; `createdAt`/`updatedAt` are
+// non-null. All three are rendered with `Intl.DateTimeFormat`, which throws `RangeError`
+// on an unparseable value -- so a malformed response must degrade to this screen's
+// partial state rather than crashing the whole page render (found by this PR's own
+// ordinary review).
+function hasValidTimestamp(value: unknown): value is string {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+}
+
 /**
  * Validates one raw row from `GET /api/projects/{projectId}/work-items` against the
  * fields this screen actually displays, marking any that fail as unavailable rather
@@ -115,8 +124,10 @@ export function parseWorkItemRow(raw: WorkItem): WorkItemRow {
 /**
  * The wire shape of `GET /api/work-items/{key}` -- the same shape as a list row plus the
  * display fields the detail route resolves server-side
- * (`apps/api/src/work-item/controllers/get-work-item.ts`, same names/semantics as the
- * list route's resolution): `stateName`, `stateCategory` and `assigneeName`.
+ * (`apps/api/src/work-item/controllers/get-work-item.ts`): `stateName`, `stateCategory`
+ * and `assigneeName`. The names and null semantics mirror PR #320's list-route
+ * resolution, which was unmerged when this was written: same join, same `assigneeName`
+ * gating, and the two must stay identical on `main` once both have landed.
  * `assigneeName` is null when the item is unassigned, when the assignee is a placeholder
  * person with no linked user, or when the assignee's user is not a member of this work
  * item's workspace -- in every case the raw `assigneeId` is still present, so this
@@ -132,7 +143,10 @@ export type WorkItemDetailField =
   | "title"
   | "priority"
   | "dueDate"
-  | "stateName";
+  | "startDate"
+  | "stateName"
+  | "createdAt"
+  | "updatedAt";
 
 export type WorkItemDetailRow = WorkItemDetail & {
   unavailableFields: WorkItemDetailField[];
@@ -145,7 +159,9 @@ export type WorkItemDetailRow = WorkItemDetail & {
  * why this validation exists rather than trusting `InferResponseType`). `stateName`
  * joins the list's four fields for the same reason they are checked there: the header
  * renders it, and a blank state name would otherwise render as an indistinct empty
- * badge rather than a visible "Unavailable".
+ * badge rather than a visible "Unavailable". `startDate`, `createdAt` and `updatedAt`
+ * are validated because the details section renders each with `Intl.DateTimeFormat`,
+ * which throws on an unparseable value (`hasValidTimestamp`'s own comment).
  */
 export function parseWorkItemDetailRow(raw: WorkItemDetail): WorkItemDetailRow {
   const unavailableFields: WorkItemDetailField[] = [];
@@ -162,9 +178,18 @@ export function parseWorkItemDetailRow(raw: WorkItemDetail): WorkItemDetailRow {
   const validDueDate = hasValidDueDate(raw.dueDate);
   if (!validDueDate) unavailableFields.push("dueDate");
 
+  const validStartDate = hasValidDueDate(raw.startDate);
+  if (!validStartDate) unavailableFields.push("startDate");
+
   const validStateName =
     typeof raw.stateName === "string" && raw.stateName.trim().length > 0;
   if (!validStateName) unavailableFields.push("stateName");
+
+  const validCreatedAt = hasValidTimestamp(raw.createdAt);
+  if (!validCreatedAt) unavailableFields.push("createdAt");
+
+  const validUpdatedAt = hasValidTimestamp(raw.updatedAt);
+  if (!validUpdatedAt) unavailableFields.push("updatedAt");
 
   return {
     ...raw,
@@ -172,6 +197,7 @@ export function parseWorkItemDetailRow(raw: WorkItemDetail): WorkItemDetailRow {
     title: validTitle ? raw.title : "",
     priority: validPriority ? raw.priority : null,
     dueDate: validDueDate ? raw.dueDate : null,
+    startDate: validStartDate ? raw.startDate : null,
     unavailableFields,
   };
 }
@@ -191,6 +217,19 @@ export type DescriptionContent =
   | { kind: "text"; text: string }
   | { kind: "unsupported" };
 
+/**
+ * Text nodes (and hard breaks) continue the current line; anything else is treated as a
+ * block, which starts a new one. Without this distinction, a paragraph containing any
+ * mark (bold, italic, a link -- ProseMirror splits those into separate `text` children)
+ * would put each inline run on its own line: `["Fix the ", "login", " bug now"]`
+ * becoming three lines. Found by this PR's own ordinary review.
+ */
+function isInlineNode(value: unknown): boolean {
+  if (value === null || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.text === "string" || record.type === "hardBreak";
+}
+
 function collectDocumentText(node: unknown, out: string[]): boolean {
   if (node === null || node === undefined) return true;
   if (typeof node !== "object") return false;
@@ -208,10 +247,11 @@ function collectDocumentText(node: unknown, out: string[]): boolean {
   }
   if (!Array.isArray(content)) return false;
 
-  for (const child of content) {
+  for (let index = 0; index < content.length; index += 1) {
+    const child = content[index];
+    // Block separation: a block child starts on its own line; inline runs do not.
+    if (index > 0 && !isInlineNode(child)) out.push("\n");
     if (!collectDocumentText(child, out)) return false;
-    // Block separation -- a paragraph ends where the next one begins.
-    out.push("\n");
   }
   return true;
 }

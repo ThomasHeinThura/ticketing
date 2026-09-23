@@ -189,4 +189,29 @@ describe("WorkItemDetail", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Still shown")).toBeInTheDocument();
   });
+
+  it("marks an unparseable start date unavailable in the details instead of crashing", () => {
+    render(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          startDate: "not-a-date",
+          unavailableFields: ["startDate"],
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByTestId("work-item-detail-partial-notice"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /workItems:detail.detailsHeading/,
+      }),
+    );
+    expect(
+      screen.getByText("workItems:detail.unavailable"),
+    ).toBeInTheDocument();
+  });
 });

@@ -45,7 +45,10 @@ const FIELD_LABEL_KEYS: Record<WorkItemDetailField, string> = {
   title: "workItems:detail.titleLabel",
   priority: "workItems:detail.priorityLabel",
   dueDate: "workItems:detail.dueDateLabel",
+  startDate: "workItems:detail.startDateLabel",
   stateName: "workItems:detail.stateLabel",
+  createdAt: "workItems:detail.createdLabel",
+  updatedAt: "workItems:detail.updatedLabel",
 };
 
 /** Renders a field marked unavailable by `parseWorkItemDetailRow` -- a visible
@@ -287,18 +290,34 @@ function WorkItemDetail({
               {t("workItems:detail.startDateLabel")}
             </dt>
             <dd>
-              {item.startDate
-                ? formatDateMedium(item.startDate)
-                : t("workItems:detail.noStartDate")}
+              {item.unavailableFields.includes("startDate") ? (
+                <UnavailableField field="startDate" t={t} />
+              ) : item.startDate ? (
+                formatDateMedium(item.startDate)
+              ) : (
+                t("workItems:detail.noStartDate")
+              )}
             </dd>
             <dt className="text-muted-foreground">
               {t("workItems:detail.createdLabel")}
             </dt>
-            <dd>{formatDateTime(item.createdAt)}</dd>
+            <dd>
+              {item.unavailableFields.includes("createdAt") ? (
+                <UnavailableField field="createdAt" t={t} />
+              ) : (
+                formatDateTime(item.createdAt)
+              )}
+            </dd>
             <dt className="text-muted-foreground">
               {t("workItems:detail.updatedLabel")}
             </dt>
-            <dd>{formatDateTime(item.updatedAt)}</dd>
+            <dd>
+              {item.unavailableFields.includes("updatedAt") ? (
+                <UnavailableField field="updatedAt" t={t} />
+              ) : (
+                formatDateTime(item.updatedAt)
+              )}
+            </dd>
           </dl>
         </CollapsiblePanel>
       </Collapsible>

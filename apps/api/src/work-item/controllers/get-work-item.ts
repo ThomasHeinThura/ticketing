@@ -26,10 +26,11 @@ import {
  * foreign key. There is no state-lookup or user-lookup endpoint in this codebase for a
  * client to resolve either itself.
  *
- * The resolved fields use the same names and the same null semantics as the list route's
- * resolution (`controllers/list-work-items.ts`) ON PURPOSE: a row's state/assignee must
- * not read differently depending on whether it was opened from the list or by URL. If
- * either resolution changes, both change.
+ * The resolved fields use the same names and the same null semantics as PR #320's
+ * list-route resolution (unmerged when this was written; identical join, identical
+ * `assigneeName` gating) ON PURPOSE: once both are on `main`, a row's state/assignee
+ * must not read differently depending on whether it was opened from the list or by URL --
+ * if either resolution changes, both change.
  *
  * Bounded: exactly one query, every lookup JOINed -- nothing here scales with anything
  * but the single row.

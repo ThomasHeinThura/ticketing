@@ -2234,7 +2234,6 @@
 	"workItems": {
 		"detail": {
 			"loading": "Loading work item…",
-			"notFoundTitle": "Work item not found",
 			"notFoundDescription": "This work item doesn't exist, or you don't have access to it.",
 			"errorTitle": "Couldn't load this work item",
 			"errorDescription": "Something went wrong while loading this work item.",

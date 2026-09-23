@@ -206,6 +206,19 @@ describe("parseWorkItemDetailRow", () => {
     expect(row.unavailableFields).toEqual([]);
     expect(row.assigneeName).toBeNull();
   });
+
+  it("flags an unparseable startDate and normalises it to null", () => {
+    const row = parseWorkItemDetailRow(makeDetail({ startDate: "not-a-date" }));
+    expect(row.unavailableFields).toEqual(["startDate"]);
+    expect(row.startDate).toBeNull();
+  });
+
+  it("flags unparseable createdAt/updatedAt", () => {
+    const row = parseWorkItemDetailRow(
+      makeDetail({ createdAt: "nope", updatedAt: "" }),
+    );
+    expect(row.unavailableFields).toEqual(["createdAt", "updatedAt"]);
+  });
 });
 
 describe("extractDescription", () => {
@@ -243,7 +256,66 @@ describe("extractDescription", () => {
 
     expect(extractDescription(doc)).toEqual({
       kind: "text",
-      text: "First paragraph\n\nSecond paragraph",
+      text: "First paragraph\nSecond paragraph",
+    });
+  });
+
+  it("keeps inline runs on one line: a marked-up sentence must not split per run", () => {
+    // ProseMirror splits a paragraph into one `text` child per mark, so a bolded word
+    // in the middle makes three children. Found by this PR's own ordinary review.
+    const doc = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Fix the " },
+            { type: "text", text: "login", marks: [{ type: "bold" }] },
+            { type: "text", text: " bug now" },
+          ],
+        },
+      ],
+    };
+
+    expect(extractDescription(doc)).toEqual({
+      kind: "text",
+      text: "Fix the login bug now",
+    });
+  });
+
+  it("separates block children (list items) with a single line break", () => {
+    const doc = {
+      type: "doc",
+      content: [
+        {
+          type: "bulletList",
+          content: [
+            {
+              type: "listItem",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "First item" }],
+                },
+              ],
+            },
+            {
+              type: "listItem",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Second item" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(extractDescription(doc)).toEqual({
+      kind: "text",
+      text: "First item\nSecond item",
     });
   });
 
