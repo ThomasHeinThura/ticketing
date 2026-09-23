@@ -7,6 +7,7 @@ import {
   taskTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
 
 async function createTaskRelation({
   sourceTaskId,
@@ -21,6 +22,12 @@ async function createTaskRelation({
   userId: string;
   workspaceId: string;
 }) {
+  // #285's S4 finding: `targetTaskId` reaches the `eq(taskTable.id, targetTaskId)`
+  // query below unvalidated -- `sourceTaskId` is already checked by
+  // `scopeToSourceTask` (task-relation/index.ts) before this controller runs, but
+  // this is the one field that middleware never sees.
+  rejectNulByte(targetTaskId, "Task id");
+
   if (sourceTaskId === targetTaskId) {
     throw new HTTPException(400, {
       message: "Cannot create a relation between a task and itself",

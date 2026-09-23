@@ -8,6 +8,7 @@ import {
   taskTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { claimTaskNumber } from "./claim-task-numbers";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -100,41 +101,54 @@ async function moveTask({
     });
   }
 
+  // #290 S4 sweep: `destinationProjectId` is a body field, not covered by
+  // `workspaceAccess.fromTask()` (which only guards `taskId`) -- a NUL byte here
+  // reached a raw `eq(projectTable.id, destinationProjectId)`-shaped query below
+  // unvalidated and 500'd, the same class #281 fixed for path/query ids.
+  rejectNulByte(destinationProjectId, "Destination project id");
+
   if (isSameProjectMove(existingTask.projectId, destinationProjectId)) {
     throw new HTTPException(400, {
       message: "Task is already in that project",
     });
   }
 
-  // #202: both ends are checked. #187's `deleted_at` window (PR-16) means a
+  // #202: the source is checked. #187's `deleted_at` window (PR-16) means a
   // soft-deleted project is gone for ordinary use, so it can neither be a move's
   // source nor its destination -- otherwise this route would be a way to pull a
   // task *out* of a deleted project (and back in) during the recovery window.
-  // Either lookup coming back empty falls through to the same 404 below.
-  const [sourceProject, destinationProject] = await Promise.all([
-    db.query.projectTable.findFirst({
-      where: and(
-        eq(projectTable.id, existingTask.projectId),
-        isNull(projectTable.deletedAt),
-      ),
-    }),
-    db.query.projectTable.findFirst({
-      where: and(
-        eq(projectTable.id, destinationProjectId),
-        isNull(projectTable.deletedAt),
-      ),
-    }),
-  ]);
+  const sourceProject = await db.query.projectTable.findFirst({
+    where: and(
+      eq(projectTable.id, existingTask.projectId),
+      isNull(projectTable.deletedAt),
+    ),
+  });
 
-  if (!sourceProject || !destinationProject) {
+  if (!sourceProject) {
     throw new HTTPException(404, {
       message: "Project not found",
     });
   }
 
-  if (sourceProject.workspaceId !== destinationProject.workspaceId) {
-    throw new HTTPException(400, {
-      message: "Tasks can only be moved within the same workspace",
+  // S2 (Opus review of PR #307, delta round): scoped to the source project's own
+  // (already reach-checked, via `workspaceAccess.fromTask()` on `taskId`)
+  // workspace in the query itself, so a `destinationProjectId` belonging to
+  // ANOTHER workspace is indistinguishable from a nonexistent one -- both now 404
+  // `Project not found` here, instead of a nonexistent id 404ing while a foreign
+  // id resolved and then 400'd "can only be moved within the same workspace",
+  // which is the #290/#285 existence-oracle class applied to project ids. The
+  // soft-delete freeze applies to the destination too, same as before.
+  const destinationProject = await db.query.projectTable.findFirst({
+    where: and(
+      eq(projectTable.id, destinationProjectId),
+      eq(projectTable.workspaceId, sourceProject.workspaceId),
+      isNull(projectTable.deletedAt),
+    ),
+  });
+
+  if (!destinationProject) {
+    throw new HTTPException(404, {
+      message: "Project not found",
     });
   }
 

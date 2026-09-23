@@ -31,14 +31,17 @@ const getColumnsRoute = createRoute({
   request: { params: projectIdParam },
   responses: {
     200: jsonResponse("List of columns ordered by position", columnListSchema),
+    // #290: an out-of-reach project now gets this identical 400 too, not the 403
+    // `workspaceAccess.fromProject` used to answer for it (#202's own precedent for
+    // this helper: an unresolvable project is 400, not 404).
     400: errorResponse(
       "Unknown project, or its workspace could not be determined",
     ),
-    403: errorResponse("No access to the project's workspace"),
     // #202: newly reachable. This route answered 200 with an empty board for a
-    // soft-deleted project until #202; it now answers 404. A *nonexistent* project
-    // has always answered 400 -- `workspaceAccess.fromProject` fails before the
-    // handler runs -- so 404 on this route means "soft-deleted", not "unknown".
+    // soft-deleted project until #202; it now answers 404. A *nonexistent or
+    // out-of-reach* project answers the 400 above instead --
+    // `workspaceAccess.fromProject` fails before the handler runs -- so 404 on this
+    // route means "soft-deleted", not "unknown"/"unreachable".
     404: errorResponse("Project not found"),
   },
 });
@@ -64,10 +67,8 @@ const createColumnRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created column", columnSchema),
-    400: errorResponse("Invalid body, or unknown project"),
-    403: errorResponse(
-      "No workspace access, or missing project:update permission",
-    ),
+    400: errorResponse("Invalid body, or unknown/unreachable project"),
+    403: errorResponse("Missing project:update permission"),
     // #202: `create-column.ts` rejects a soft-deleted project via
     // `getProjectWorkspaceId`, the same helper `getColumns`/`reorderColumns` use --
     // missed by this PR's own sweep, same reasoning as those two routes' 404.
@@ -97,10 +98,10 @@ const reorderColumnsRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The reordered columns", columnListSchema),
-    400: errorResponse("A column does not belong to this project"),
-    403: errorResponse(
-      "No workspace access, or missing project:update permission",
+    400: errorResponse(
+      "A column does not belong to this project, or the project id is unknown/unreachable",
     ),
+    403: errorResponse("Missing project:update permission"),
     // #202: newly reachable -- a soft-deleted project's board is frozen.
     404: errorResponse("Project not found"),
   },
@@ -127,10 +128,8 @@ const updateColumnRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The updated column", columnSchema),
-    400: errorResponse("Invalid body, or unknown column"),
-    403: errorResponse(
-      "No workspace access, or missing project:update permission",
-    ),
+    400: errorResponse("Invalid body"),
+    403: errorResponse("Missing project:update permission"),
     404: errorResponse("Column not found"),
   },
 });
@@ -150,12 +149,8 @@ const deleteColumnRoute = createRoute({
   request: { params: columnParam },
   responses: {
     200: jsonResponse("The deleted column", columnSchema),
-    400: errorResponse(
-      "Unknown column, or its workspace could not be determined",
-    ),
-    403: errorResponse(
-      "No workspace access, or missing project:update permission",
-    ),
+    400: errorResponse("id must not contain a NUL (\\u0000) byte"),
+    403: errorResponse("Missing project:update permission"),
     404: errorResponse("Column not found"),
     409: errorResponse("The column still contains tasks"),
   },

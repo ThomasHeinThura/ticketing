@@ -31,10 +31,10 @@ const getTaskCommentsRoute = createRoute({
   request: { params: taskIdParam },
   responses: {
     200: jsonResponse("List of comments for the task", commentListSchema),
-    400: errorResponse(
-      "Unknown task, or its workspace could not be determined",
-    ),
-    403: errorResponse("No access to the task's workspace"),
+    // #290: a task that doesn't exist and a task in a workspace the caller can't
+    // reach both answer this same 404 now, via `workspaceAccess.fromTaskId()`.
+    400: errorResponse("taskId must not contain a NUL (\\u0000) byte"),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -59,10 +59,9 @@ const createTaskCommentRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created comment", activitySchema),
-    400: errorResponse("Invalid body, or unknown task"),
-    403: errorResponse(
-      "No workspace access, or missing task:update permission",
-    ),
+    400: errorResponse("Invalid body"),
+    403: errorResponse("Missing task:update permission"),
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -86,7 +85,7 @@ const updateTaskCommentRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The updated comment", activitySchema),
-    400: errorResponse("Invalid body, or unknown comment"),
+    400: errorResponse("Invalid body"),
     403: errorResponse("Not the author, or missing task:update permission"),
     404: errorResponse("Comment not found"),
   },
@@ -106,9 +105,7 @@ const deleteTaskCommentRoute = createRoute({
   request: { params: commentParam },
   responses: {
     200: jsonResponse("The deleted comment", activitySchema),
-    400: errorResponse(
-      "Unknown comment, or its workspace could not be determined",
-    ),
+    400: errorResponse("id must not contain a NUL (\\u0000) byte"),
     403: errorResponse("Not the author, or missing task:update permission"),
     404: errorResponse("Comment not found"),
   },
