@@ -2,6 +2,13 @@
  * Exhaustive unit tests for the PURE half of `resolveIdentity` — issue #8, Slice 1.
  * No database: every case constructs `IdentityFacts` directly. The loader (the I/O half)
  * has its own integration test, `tests/api-integration/resolve-identity.test.ts`.
+ *
+ * Includes the fixes from the Opus 5.5 security review of PR #315
+ * (`docs/07-planning/security-reviews/315-resolve-identity.md`): S1 (BLOCKING —
+ * `instance_admin`/`customer` accepted as a workspace role), S4 (a key credential with no
+ * key fact, or a key fact belonging to someone else), S5 (`teamIds` not tied to current
+ * membership), S6 (banned users, a suspended customer organisation, a customer holding a
+ * key).
  */
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { describe, expect, it } from "vitest";
@@ -16,6 +23,9 @@ const STAFF_PERSON: PersonFact = {
   organisationId: "org-internal",
   side: "staff",
   active: true,
+  organisationActive: true,
+  organisationPortalAccess: true,
+  organisationDeleted: false,
 };
 
 const CUSTOMER_PERSON: PersonFact = {
@@ -23,15 +33,19 @@ const CUSTOMER_PERSON: PersonFact = {
   organisationId: "org-acme",
   side: "customer",
   active: true,
+  organisationActive: true,
+  organisationPortalAccess: true,
+  organisationDeleted: false,
 };
 
 function facts(overrides: Partial<IdentityFacts> = {}): IdentityFacts {
   return {
     userId: "user-1",
     person: STAFF_PERSON,
+    banned: false,
     isInstanceAdmin: false,
     workspaceMemberships: [],
-    teamIds: [],
+    teamMemberships: [],
     credential: "session",
     ...overrides,
   };
@@ -146,6 +160,42 @@ describe("resolveIdentityFromFacts — a multi-workspace user", () => {
   });
 });
 
+describe("resolveIdentityFromFacts — S1 (BLOCKING, PR #315 review): reserved built-in names as a workspace role", () => {
+  it("skips a workspace whose stored role is 'instance_admin' -- no instance grant is minted", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        workspaceMemberships: [
+          { workspaceId: "ws-1", role: "instance_admin", seesAll: false },
+        ],
+      }),
+    );
+
+    expect(identity?.memberships).toEqual([]);
+    expect(identity?.authority).toEqual([]);
+    expect(
+      identity?.authority.some((grant) => grant.roleKey === "instance_admin"),
+    ).toBe(false);
+    expect(identity?.reach).toEqual({ kind: "membership" });
+  });
+
+  it("skips a workspace whose stored role is 'customer' -- a staff identity never gets the customer grant", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        workspaceMemberships: [
+          { workspaceId: "ws-1", role: "customer", seesAll: false },
+        ],
+      }),
+    );
+
+    expect(identity?.side).toBe("staff");
+    expect(identity?.memberships).toEqual([]);
+    expect(identity?.authority).toEqual([]);
+    expect(
+      identity?.authority.some((grant) => grant.roleKey === "customer"),
+    ).toBe(false);
+  });
+});
+
 describe("resolveIdentityFromFacts — sees_all", () => {
   it("grants reach 'all' when any membership carries sees_all, even with no other role", () => {
     const identity = resolveIdentityFromFacts(
@@ -207,7 +257,11 @@ describe("resolveIdentityFromFacts — API-key clamping", () => {
     const identity = resolveIdentityFromFacts(
       facts({
         credential: "api_key",
-        apiKey: { enabled: true, capabilities: ["work_item:read"] },
+        apiKey: {
+          enabled: true,
+          ownerUserId: "user-1",
+          capabilities: ["work_item:read"],
+        },
         workspaceMemberships: [
           { workspaceId: "ws-1", role: "admin", seesAll: false },
         ],
@@ -227,7 +281,11 @@ describe("resolveIdentityFromFacts — API-key clamping", () => {
     const identity = resolveIdentityFromFacts(
       facts({
         credential: "mcp_key",
-        apiKey: { enabled: true, capabilities: ["work_item:read"] },
+        apiKey: {
+          enabled: true,
+          ownerUserId: "user-1",
+          capabilities: ["work_item:read"],
+        },
       }),
     );
 
@@ -239,7 +297,7 @@ describe("resolveIdentityFromFacts — API-key clamping", () => {
     const identity = resolveIdentityFromFacts(
       facts({
         credential: "api_key",
-        apiKey: { enabled: true },
+        apiKey: { enabled: true, ownerUserId: "user-1" },
         workspaceMemberships: [
           { workspaceId: "ws-1", role: "owner", seesAll: false },
         ],
@@ -254,7 +312,10 @@ describe("resolveIdentityFromFacts — API-key clamping", () => {
     // This is the exact invariant `identity.ts` and `can()` depend on. Widening the
     // implementation to `apiKey?.capabilities` (dropping the `?? []`) must fail this test.
     const identity = resolveIdentityFromFacts(
-      facts({ credential: "api_key", apiKey: { enabled: true } }),
+      facts({
+        credential: "api_key",
+        apiKey: { enabled: true, ownerUserId: "user-1" },
+      }),
     );
     expect(identity?.keyCapabilities).toBeDefined();
   });
@@ -277,7 +338,7 @@ describe("resolveIdentityFromFacts — an API key on a revoked or disabled owner
       facts({
         credential: "api_key",
         person: { ...STAFF_PERSON, active: false },
-        apiKey: { enabled: true },
+        apiKey: { enabled: true, ownerUserId: "user-1" },
       }),
     );
 
@@ -288,7 +349,46 @@ describe("resolveIdentityFromFacts — an API key on a revoked or disabled owner
     const identity = resolveIdentityFromFacts(
       facts({
         credential: "api_key",
-        apiKey: { enabled: false },
+        apiKey: { enabled: false, ownerUserId: "user-1" },
+        workspaceMemberships: [
+          { workspaceId: "ws-1", role: "owner", seesAll: false },
+        ],
+      }),
+    );
+
+    expect(identity).toBeNull();
+  });
+});
+
+describe("resolveIdentityFromFacts — S4 (PR #315 review): the key fact is required and must be the caller's own", () => {
+  it("refuses a key credential with no apiKey fact at all, rather than resolving inert-looking identity", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        credential: "api_key",
+        apiKey: undefined,
+        workspaceMemberships: [
+          { workspaceId: "ws-1", role: "owner", seesAll: false },
+        ],
+      }),
+    );
+
+    expect(identity).toBeNull();
+  });
+
+  it("refuses an mcp_key credential with no apiKey fact, the same as api_key", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({ credential: "mcp_key", apiKey: undefined }),
+    );
+
+    expect(identity).toBeNull();
+  });
+
+  it("refuses when the apiKey fact's ownerUserId does not match the resolved userId", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        userId: "user-1",
+        credential: "api_key",
+        apiKey: { enabled: true, ownerUserId: "user-DIFFERENT" },
         workspaceMemberships: [
           { workspaceId: "ws-1", role: "owner", seesAll: false },
         ],
@@ -359,6 +459,99 @@ describe("resolveIdentityFromFacts — a portal (customer) session", () => {
   });
 });
 
+describe("resolveIdentityFromFacts — S6 (PR #315 review): a customer holding a key", () => {
+  it("refuses a customer identity presenting an api_key credential", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        person: CUSTOMER_PERSON,
+        credential: "api_key",
+        apiKey: { enabled: true, ownerUserId: "user-1" },
+      }),
+    );
+
+    expect(identity).toBeNull();
+  });
+
+  it("refuses a customer identity presenting an mcp_key credential", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        person: CUSTOMER_PERSON,
+        credential: "mcp_key",
+        apiKey: { enabled: true, ownerUserId: "user-1" },
+      }),
+    );
+
+    expect(identity).toBeNull();
+  });
+});
+
+describe("resolveIdentityFromFacts — S6 (PR #315 review): a suspended customer organisation", () => {
+  it("refuses when the organisation is inactive", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        person: { ...CUSTOMER_PERSON, organisationActive: false },
+      }),
+    );
+    expect(identity).toBeNull();
+  });
+
+  it("refuses when the organisation is soft-deleted", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        person: { ...CUSTOMER_PERSON, organisationDeleted: true },
+      }),
+    );
+    expect(identity).toBeNull();
+  });
+
+  it("refuses when the organisation has portal access disabled", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        person: { ...CUSTOMER_PERSON, organisationPortalAccess: false },
+      }),
+    );
+    expect(identity).toBeNull();
+  });
+
+  it("does not apply the organisation gate to a staff identity", () => {
+    // Staff live in the internal organisation, which this codebase never suspends -- but
+    // the gate itself must be scoped to the customer branch, not accidentally universal.
+    const identity = resolveIdentityFromFacts(
+      facts({
+        person: {
+          ...STAFF_PERSON,
+          organisationActive: false,
+          organisationDeleted: true,
+          organisationPortalAccess: false,
+        },
+      }),
+    );
+    expect(identity).not.toBeNull();
+    expect(identity?.side).toBe("staff");
+  });
+});
+
+describe("resolveIdentityFromFacts — S6 (PR #315 review): a banned user", () => {
+  it("refuses a banned staff user, even with real memberships and roles", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        banned: true,
+        workspaceMemberships: [
+          { workspaceId: "ws-1", role: "owner", seesAll: false },
+        ],
+      }),
+    );
+    expect(identity).toBeNull();
+  });
+
+  it("refuses a banned customer user", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({ person: CUSTOMER_PERSON, banned: true }),
+    );
+    expect(identity).toBeNull();
+  });
+});
+
 describe("resolveIdentityFromFacts — anonymous", () => {
   it("resolves to null: no person row means no identity, not a low-authority one", () => {
     const identity = resolveIdentityFromFacts(facts({ person: null }));
@@ -379,5 +572,66 @@ describe("resolveIdentityFromFacts — a deactivated member", () => {
     );
 
     expect(identity).toBeNull();
+  });
+});
+
+describe("resolveIdentityFromFacts — S5 (PR #315 review): teamIds tied to current membership", () => {
+  it("includes a team whose workspace the person is a current member of", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        workspaceMemberships: [
+          { workspaceId: "ws-1", role: "member", seesAll: false },
+        ],
+        teamMemberships: [{ teamId: "team-1", workspaceId: "ws-1" }],
+      }),
+    );
+
+    expect(identity?.teamIds).toEqual(["team-1"]);
+  });
+
+  it("excludes a team whose workspace the person is no longer a member of", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        // No workspace_member row for ws-1 at all -- e.g. left the workspace, which
+        // deletes workspace_member rows but not team_member rows (probe 8 of the review).
+        workspaceMemberships: [],
+        teamMemberships: [{ teamId: "team-1", workspaceId: "ws-1" }],
+      }),
+    );
+
+    expect(identity?.teamIds).toEqual([]);
+  });
+
+  it("keeps a team from a workspace with a malformed/ambiguous role row -- membership existence, not role validity, gates it", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        // The role value is malformed, so no grant is minted for ws-1 -- but the
+        // workspace_member ROW still exists, so the person is still a current member.
+        workspaceMemberships: [
+          { workspaceId: "ws-1", role: "owner,admin", seesAll: false },
+        ],
+        teamMemberships: [{ teamId: "team-1", workspaceId: "ws-1" }],
+      }),
+    );
+
+    expect(identity?.authority).toEqual([]);
+    expect(identity?.teamIds).toEqual(["team-1"]);
+  });
+
+  it("deduplicates a team reachable through more than one workspace membership row", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        workspaceMemberships: [
+          { workspaceId: "ws-1", role: "member", seesAll: false },
+          { workspaceId: "ws-2", role: "member", seesAll: false },
+        ],
+        teamMemberships: [
+          { teamId: "team-1", workspaceId: "ws-1" },
+          { teamId: "team-1", workspaceId: "ws-2" },
+        ],
+      }),
+    );
+
+    expect(identity?.teamIds).toEqual(["team-1"]);
   });
 });

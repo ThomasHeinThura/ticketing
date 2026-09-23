@@ -38,21 +38,39 @@
  *  - `person.active === false` (a deactivated member, including a deactivated API-key
  *    owner, since a personal key is resolved against its owner's *current* identity per
  *    rbac.md § MCP) → `null`, for the same reason.
- *  - The credential is a key kind and the key row itself is disabled → `null`.
+ *  - `user.banned` → `null`, unconditionally, staff or customer (S6 below).
+ *  - The credential is a key kind and either the key row itself is disabled, or no
+ *    `apiKey` fact was supplied at all → `null` (S4 below).
+ *  - A key credential whose `apiKey.ownerUserId` disagrees with the resolved `userId` →
+ *    `null` — the caller passed two facts about two different people (S4 below).
  *  - A `workspace_member` pair with zero, more than one, or a malformed
  *    (`membershipRoleProblem`) role value → that workspace is skipped entirely, not
  *    guessed at. This reuses `resolveMembershipRoleFrom`, the exact function
  *    `assertCallerHasCapability` already uses, so the two can never disagree.
- *  - A `workspace_member.role` value that isn't a recognised `BUILT_IN_ROLES` key (a
- *    custom, editable role) is skipped — Slice 1 has no capability source for custom
- *    roles yet; `require-workspace-capability.ts`'s own doc comment names this identical
- *    gap for the same reason ("nowhere yet a custom, editable role could acquire it").
+ *  - A `workspace_member.role` value that isn't a recognised, WORKSPACE-scope
+ *    `BUILT_IN_ROLES` key is skipped — either a custom, editable role (Slice 1 has no
+ *    capability source for these yet; `require-workspace-capability.ts`'s own doc comment
+ *    names this identical gap) or a built-in name whose scope isn't `"workspace"`
+ *    (`instance_admin`, `customer` — S1 below).
  *  - `side === "customer"` → every `workspace_member` row for that user is ignored, full
  *    stop, however it got there. A customer's only grant is the built-in `customer` role.
  *    This is what makes "a portal session must never gain agent roles" true by
  *    construction rather than by remembering to check it somewhere.
+ *  - A customer identity presenting a key credential → `null` (S6 below).
+ *  - A customer whose organisation is inactive, soft-deleted, or has portal access
+ *    disabled → `null` (S6 below).
+ *  - A team whose workspace the person no longer has a `workspace_member` row in is
+ *    excluded from `teamIds` (S5 below).
  *  - No persisted API-key capability subset exists yet (see the KNOWN GAP below) →
  *    `keyCapabilities: []`, never `undefined` and never the owner's full RBAC.
+ *
+ * SECURITY REVIEW FIXES (Opus 5.5, PR #315, `docs/07-planning/security-reviews/315-resolve-identity.md`,
+ * committed `cc68b93`). S1 was BLOCKING; S4, S5 and S6 were fixed in this same pass because
+ * they were narrow, in-file, and cheaper to close now than to re-open this file for later.
+ * S2 (custom roles minting a built-in name — issue #8's separate scope, see #318), S3 (the
+ * `sees_all` shared-contract question), S7 (this comment block's own then-inaccurate
+ * anonymous-plugin claim — fixed in the PR body, not repeated here), S8, S9 and S10 are
+ * NOT addressed here; see the security-review note and the PR body for their disposition.
  *
  * KNOWN GAPS AGAINST THE SPEC — found while building this, not guessed around. Per this
  * slice's own instructions: spec wins, and each is listed in the PR body too.
@@ -138,18 +156,41 @@ export type WorkspaceMembershipFact = {
   readonly seesAll: boolean;
 };
 
-/** The `person` row for this user, or `null` when none exists. */
+/**
+ * The `person` row for this user, or `null` when none exists. The three `organisation*`
+ * fields are read alongside `person` in the loader's first query (S6): they gate a
+ * *customer* identity only — an inactive, soft-deleted or portal-access-disabled
+ * organisation must not resolve a customer to a live identity
+ * (multi-tenancy.md:156 `organisation.portal_access`; god-mode.md:408 "Organisation
+ * suspended … every session … invalidated"). Staff persons live in the internal
+ * organisation, which this codebase never suspends, soft-deletes or disables portal access
+ * for — but the fields are still read unconditionally, so the gate is one `if` in the
+ * mapper rather than a second, side-conditional query.
+ */
 export type PersonFact = {
   readonly personId: string;
   readonly organisationId: string;
   readonly side: Side;
   readonly active: boolean;
+  readonly organisationActive: boolean;
+  readonly organisationPortalAccess: boolean;
+  readonly organisationDeleted: boolean;
 };
 
-/** The facts an API-key-credentialed request supplies, loaded by the caller. */
+/**
+ * The facts an API-key-credentialed request supplies, loaded by the caller.
+ *
+ * `ownerUserId` is required (S4, Opus review of PR #315): the caller supplies `userId` and
+ * `apiKey` as two independent values, and without an owner id on the key fact itself the
+ * mapper has no way to check they agree — a caller bug that mismatched them would silently
+ * resolve the WRONG person's identity under the key's clamp. `resolveIdentityFromFacts`
+ * refuses whenever `ownerUserId !== userId`.
+ */
 export type ApiKeyFact = {
   /** `apikey.enabled`. `false` (or a revoked/disabled owner, via `person.active`) → `null`. */
   readonly enabled: boolean;
+  /** `apikey.userId` (or `.referenceId`) — the id the key row itself claims to belong to. */
+  readonly ownerUserId: string;
   /**
    * The persisted capability subset, when one exists. Always absent from the real loader
    * today (KNOWN GAP 1) — present here so the mapper's clamping-and-passthrough behaviour
@@ -158,15 +199,30 @@ export type ApiKeyFact = {
   readonly capabilities?: readonly string[];
 };
 
+/** One `team_member` row for this user, with the team's own `workspace_id` (S5). */
+export type TeamMembershipFact = {
+  readonly teamId: string;
+  readonly workspaceId: string;
+};
+
 /** Every fact `resolveIdentityFromFacts` needs, already loaded — no I/O inside the mapper. */
 export type IdentityFacts = {
   readonly userId: string;
   readonly person: PersonFact | null;
+  /** `user.banned` (S6) — refused unconditionally, staff or customer. */
+  readonly banned: boolean;
   /** `user.role === "admin"` — today's only instance-admin bit. See KNOWN GAP 4. */
   readonly isInstanceAdmin: boolean;
   /** Every `workspace_member` row for this user, across every workspace — no per-row I/O. */
   readonly workspaceMemberships: readonly WorkspaceMembershipFact[];
-  readonly teamIds: readonly string[];
+  /**
+   * Every `team_member` row for this user, with each team's `workspace_id`. Filtered down
+   * to `teamIds` in the mapper, keeping only teams whose workspace the person currently has
+   * a `workspace_member` row in (S5) — `remove-workspace-member.ts`/`leave-workspace.ts`
+   * delete only `workspace_member`, so an unfiltered join would keep a removed member's old
+   * team indefinitely.
+   */
+  readonly teamMemberships: readonly TeamMembershipFact[];
   readonly credential: CredentialKind;
   /** Present only when `credential` is a key kind (`isKeyCredential`). */
   readonly apiKey?: ApiKeyFact;
@@ -187,8 +243,31 @@ function groupByWorkspace(
   return grouped;
 }
 
-function isBuiltInRoleKey(value: string): value is BuiltInRoleKey {
-  return Object.hasOwn(BUILT_IN_ROLES, value);
+/**
+ * Is `value` a `BUILT_IN_ROLES` key that a `workspace_member.role` string may honestly name?
+ *
+ * **Not** `Object.hasOwn(BUILT_IN_ROLES, value)` alone — that also accepts `instance_admin`
+ * (`scope: "instance"`) and `customer` (`scope: "organisation"`). Both compile: nothing in
+ * `BuiltInRoleKey` restricts which scope a key belongs to. Opus security review of PR #315,
+ * finding S1: a workspace owner can create a `workspace_role`/`workspace_member.role` row
+ * literally named `"instance_admin"` or `"customer"` (`create-workspace-role.ts` reserves
+ * only `"owner"`), and this function used to accept it — producing an `instance_admin`
+ * `RoleGrant` with a non-null `scopeId` (violating `identity.ts`'s own "`null` for an
+ * instance-scope role" invariant) or a `customer` grant on a **staff** identity (violating
+ * "a customer is never staff"). Today's evaluator happens to neutralise both
+ * (`grantAppliesTo` requires `scopeId === null` for an instance grant), so this was not
+ * exploitable — but this is the one place allowed to construct a `ResolvedIdentity`, and
+ * every future consumer (Slice 2's shadow diff, a rank comparison, a `roleKey ===
+ * "instance_admin"` check) trusts its output directly, not through `grantAppliesTo`.
+ *
+ * `BUILT_IN_ROLES[value].scope === "workspace"` is exactly the fix the review named: a
+ * `workspace_member.role` can only ever honestly grant a workspace-scope built-in.
+ */
+function isBuiltInWorkspaceRoleKey(value: string): value is BuiltInRoleKey {
+  return (
+    Object.hasOwn(BUILT_IN_ROLES, value) &&
+    BUILT_IN_ROLES[value as BuiltInRoleKey].scope === "workspace"
+  );
 }
 
 /** `keyCapabilities` for a key-credentialed identity — never `undefined`, never a guess. */
@@ -218,14 +297,56 @@ export function resolveIdentityFromFacts(
     return null;
   }
 
-  // The key itself (not its owner) is disabled.
-  if (isKeyCredential(facts.credential) && facts.apiKey?.enabled === false) {
+  // S6 (Opus review of PR #315): a banned user is refused unconditionally, staff or
+  // customer. better-auth's own ban enforcement is session-only and the API-key path
+  // (`verifyApiKey`) does not check it at all — this is the one place that resolves
+  // identity for BOTH paths, so it is the one place that can refuse for both.
+  if (facts.banned) {
     return null;
+  }
+
+  if (isKeyCredential(facts.credential)) {
+    // S4: a key credential with no `apiKey` fact at all used to resolve to a non-null
+    // identity with `keyCapabilities: []` — inert for a capability policy, but NOT inert
+    // for a `self`/`portal` policy, which never consults `keyCapabilities`
+    // (`evaluator.ts`). Absence of the fact is refused outright, the same as an explicit
+    // `enabled: false`.
+    if (facts.apiKey === undefined || facts.apiKey.enabled === false) {
+      return null;
+    }
+    // S4: the caller supplies `userId` and `apiKey` as two independently-passed values;
+    // without this check a caller bug that mismatched them would resolve the WRONG
+    // person's identity, clamped by a key that was never theirs.
+    if (facts.apiKey.ownerUserId !== facts.userId) {
+      return null;
+    }
   }
 
   const keyCapabilities = keyCapabilitiesFor(facts);
 
   if (person.side === "customer") {
+    // S6: no document in the corpus grants a customer `api_key:manage` (absent from
+    // `CUSTOMER_CAPABILITIES`, roles.ts) or names a portal route that creates a key, so
+    // there is no spec basis for a customer identity to carry one — refused, fail-closed,
+    // rather than assumed harmless because `keyCapabilities` would clamp it to nothing:
+    // clamping only affects a CAPABILITY policy, and a `self`/`portal` policy never
+    // consults it (same class of gap as S4, probed by the reviewer on a `kind-3` policy).
+    if (isKeyCredential(facts.credential)) {
+      return null;
+    }
+    // S6: multi-tenancy.md:156 (`organisation.portal_access`) and god-mode.md:408
+    // ("Organisation suspended … every session … invalidated") both expect an inactive,
+    // soft-deleted or portal-access-disabled organisation to cut a customer's access.
+    // Staff never hit this (the internal organisation is never suspended), so the gate is
+    // scoped to the customer branch rather than checked for every identity.
+    if (
+      !person.organisationActive ||
+      person.organisationDeleted ||
+      !person.organisationPortalAccess
+    ) {
+      return null;
+    }
+
     // A customer's grant is never sourced from `workspace_member` — being `side ===
     // "customer"` IS the grant (KNOWN GAP 5). Any `workspace_member` row for this user,
     // however it got there, is ignored: a portal session must never gain agent roles.
@@ -265,9 +386,11 @@ export function resolveIdentityFromFacts(
       // than guess. Matches `assertCallerHasCapability`'s exact resolution.
       continue;
     }
-    if (!isBuiltInRoleKey(resolution.role)) {
-      // A custom, editable role name. Slice 1 has no capability source for these yet —
-      // same gap `require-workspace-capability.ts`'s own doc comment names.
+    if (!isBuiltInWorkspaceRoleKey(resolution.role)) {
+      // Either a custom, editable role name (Slice 1 has no capability source for these
+      // yet — same gap `require-workspace-capability.ts`'s own doc comment names), or a
+      // built-in name that exists but is not workspace-scope (`instance_admin`,
+      // `customer`) — see `isBuiltInWorkspaceRoleKey`'s doc comment, S1.
       continue;
     }
     const builtIn = BUILT_IN_ROLES[resolution.role];
@@ -302,6 +425,25 @@ export function resolveIdentityFromFacts(
       ? { kind: "all" }
       : { kind: "membership" };
 
+  // S5: keep only teams whose workspace this person currently has a `workspace_member`
+  // row in. `remove-workspace-member.ts`/`leave-workspace.ts` delete only `workspace_member`
+  // rows, never `team_member`, so an unfiltered `teamMemberships` join would keep a removed
+  // member's old team's reach indefinitely (rbac.md § MCP: "membership removal … take[s]
+  // effect on the next call"). Filtered against the RAW membership rows (every workspace a
+  // `workspace_member` row exists for), not just the ones that resolved to a valid grant
+  // above — a malformed or ambiguous role value is a data-quality problem with the ROLE,
+  // not evidence that the person stopped being a member of the workspace.
+  const memberWorkspaceIds = new Set(
+    facts.workspaceMemberships.map((row) => row.workspaceId),
+  );
+  const teamIds = [
+    ...new Set(
+      facts.teamMemberships
+        .filter((team) => memberWorkspaceIds.has(team.workspaceId))
+        .map((team) => team.teamId),
+    ),
+  ];
+
   return {
     userId: facts.userId,
     personId: person.personId,
@@ -310,7 +452,7 @@ export function resolveIdentityFromFacts(
     portal: "agent",
     credential: facts.credential,
     memberships,
-    teamIds: facts.teamIds,
+    teamIds,
     reach,
     authority,
     keyCapabilities,
@@ -336,9 +478,11 @@ export type ResolveIdentityInput = {
  * queries — never one per membership. Three queries regardless of how many workspaces or
  * teams the user belongs to:
  *
- *   1. `user` left-joined to `person` (role + person facts in one round trip);
+ *   1. `user` left-joined to `person` left-joined to `organisation` (role, ban status,
+ *      person facts and the customer-gating organisation facts, all in one round trip);
  *   2. every `workspace_member` row for this user;
- *   3. every `team_member` row for this user.
+ *   3. every `team_member` row for this user, inner-joined to `team` for its `workspace_id`
+ *      (S5) — still one query, not a second round trip.
  */
 export async function resolveIdentity(
   input: ResolveIdentityInput,
@@ -351,25 +495,37 @@ export async function resolveIdentity(
       side: schema.personTable.side,
       active: schema.personTable.active,
       instanceRole: schema.userTable.role,
+      banned: schema.userTable.banned,
+      organisationActive: schema.organisationTable.active,
+      organisationPortalAccess: schema.organisationTable.portalAccess,
+      organisationDeletedAt: schema.organisationTable.deletedAt,
     })
     .from(schema.userTable)
     .leftJoin(
       schema.personTable,
       eq(schema.personTable.userId, schema.userTable.id),
     )
+    .leftJoin(
+      schema.organisationTable,
+      eq(schema.organisationTable.id, schema.personTable.organisationId),
+    )
     .where(eq(schema.userTable.id, input.userId))
     .limit(1);
 
   // A `leftJoin` types every joined-table column as nullable regardless of that table's own
   // NOT NULL constraints (drizzle cannot know the join matched from the column types alone),
-  // so `organisationId`/`active` are checked here too, even though `person` itself never
-  // stores a null in either. All four must be present together or not at all -- they are
-  // the same row.
+  // so every person/organisation field is checked here too, even though the underlying rows
+  // never store a null in most of them. All of `person` and `organisation` must be present
+  // together or not at all -- `person.organisation_id` is a NOT NULL FK, so if `person`
+  // exists its `organisation` row does too; a null here after `personId` is non-null would
+  // be a genuine data fault, refused the same as a missing person.
   if (
     row === undefined ||
     row.personId === null ||
     row.organisationId === null ||
-    row.active === null
+    row.active === null ||
+    row.organisationActive === null ||
+    row.organisationPortalAccess === null
   ) {
     return null;
   }
@@ -387,6 +543,9 @@ export async function resolveIdentity(
     organisationId: row.organisationId,
     side,
     active: row.active,
+    organisationActive: row.organisationActive,
+    organisationPortalAccess: row.organisationPortalAccess,
+    organisationDeleted: row.organisationDeletedAt !== null,
   };
 
   const memberRows = await executor
@@ -398,13 +557,21 @@ export async function resolveIdentity(
     .where(eq(schema.workspaceUserTable.userId, input.userId));
 
   const teamRows = await executor
-    .select({ teamId: schema.teamMemberTable.teamId })
+    .select({
+      teamId: schema.teamMemberTable.teamId,
+      workspaceId: schema.teamTable.workspaceId,
+    })
     .from(schema.teamMemberTable)
+    .innerJoin(
+      schema.teamTable,
+      eq(schema.teamTable.id, schema.teamMemberTable.teamId),
+    )
     .where(eq(schema.teamMemberTable.userId, input.userId));
 
   return resolveIdentityFromFacts({
     userId: input.userId,
     person,
+    banned: row.banned === true,
     isInstanceAdmin: row.instanceRole === "admin",
     workspaceMemberships: memberRows.map((member) => ({
       workspaceId: member.workspaceId,
@@ -412,7 +579,10 @@ export async function resolveIdentity(
       // KNOWN GAP 3: no populated `sees_all` source for workspace-scope memberships yet.
       seesAll: false,
     })),
-    teamIds: [...new Set(teamRows.map((team) => team.teamId))],
+    teamMemberships: teamRows.map((team) => ({
+      teamId: team.teamId,
+      workspaceId: team.workspaceId,
+    })),
     credential: input.credential,
     apiKey: input.apiKey,
   });

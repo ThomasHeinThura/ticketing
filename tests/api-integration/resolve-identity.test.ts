@@ -3,6 +3,13 @@
  * mapper's exhaustive case coverage lives in `tests/api/permissions/resolve-identity.test.ts`;
  * this file only proves the loader reads the real schema correctly and stays within a
  * bounded, fixed query count regardless of how many rows a person has.
+ *
+ * Includes the loader-level cases from the Opus 5.5 security review of PR #315
+ * (`docs/07-planning/security-reviews/315-resolve-identity.md`): S1 (a workspace role row
+ * literally named `instance_admin`/`customer`, created over the real schema, not just a
+ * fixture), S4 (a key credential missing its `apiKey` fact, or one whose `ownerUserId`
+ * mismatches), S5 (a team row surviving `leave-workspace`'s `workspace_member` delete), S6
+ * (a banned user, a suspended customer organisation).
  */
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
@@ -188,7 +195,7 @@ describe("resolveIdentity (loader) — API-key clamping", () => {
     const identity = await resolveIdentity({
       userId: user.id,
       credential: "api_key",
-      apiKey: { enabled: true },
+      apiKey: { enabled: true, ownerUserId: user.id },
     });
 
     expect(identity?.keyCapabilities).toEqual([]);
@@ -205,7 +212,7 @@ describe("resolveIdentity (loader) — API-key clamping", () => {
     const identity = await resolveIdentity({
       userId: user.id,
       credential: "api_key",
-      apiKey: { enabled: true },
+      apiKey: { enabled: true, ownerUserId: user.id },
     });
 
     expect(identity).toBeNull();
@@ -218,7 +225,35 @@ describe("resolveIdentity (loader) — API-key clamping", () => {
     const identity = await resolveIdentity({
       userId: user.id,
       credential: "api_key",
-      apiKey: { enabled: false },
+      apiKey: { enabled: false, ownerUserId: user.id },
+    });
+
+    expect(identity).toBeNull();
+  });
+});
+
+describe("resolveIdentity (loader) — S4 (PR #315 review): the key fact is required and must be the caller's own", () => {
+  it("refuses a key credential with no apiKey fact supplied", async () => {
+    const { user } = await createWorkspaceMember({ role: "owner" });
+    await backfillStaffPersons();
+
+    const identity = await resolveIdentity({
+      userId: user.id,
+      credential: "api_key",
+    });
+
+    expect(identity).toBeNull();
+  });
+
+  it("refuses when the apiKey fact's ownerUserId names a different real user", async () => {
+    const { user } = await createWorkspaceMember({ role: "owner" });
+    const { user: otherUser } = await createWorkspaceMember({ role: "owner" });
+    await backfillStaffPersons();
+
+    const identity = await resolveIdentity({
+      userId: user.id,
+      credential: "api_key",
+      apiKey: { enabled: true, ownerUserId: otherUser.id },
     });
 
     expect(identity).toBeNull();
@@ -348,5 +383,187 @@ describe("resolveIdentity (loader) — teams", () => {
     });
 
     expect(identity?.teamIds).toEqual([teamId]);
+  });
+});
+
+describe("resolveIdentity (loader) — S5 (PR #315 review): a team surviving leave-workspace", () => {
+  it("excludes a team once the workspace_member row is deleted, even though team_member remains", async () => {
+    const { user, workspace } = await createWorkspaceMember({ role: "lead" });
+    await backfillStaffPersons();
+
+    const teamId = `team-${randomUUID()}`;
+    await db.insert(schema.teamTable).values({
+      id: teamId,
+      name: "Team A",
+      workspaceId: workspace.id,
+      createdAt: new Date(),
+    });
+    await db.insert(schema.teamMemberTable).values({
+      id: `tm-${randomUUID()}`,
+      teamId,
+      userId: user.id,
+      createdAt: new Date(),
+    });
+
+    // Simulate leave-workspace.ts / remove-workspace-member.ts: only workspace_member is
+    // deleted, team_member is untouched (probe 8 of the security review).
+    await db
+      .delete(schema.workspaceUserTable)
+      .where(eq(schema.workspaceUserTable.userId, user.id));
+
+    const identity = await resolveIdentity({
+      userId: user.id,
+      credential: "session",
+    });
+
+    expect(identity?.teamIds).toEqual([]);
+  });
+});
+
+describe("resolveIdentity (loader) — S1 (BLOCKING, PR #315 review): reserved built-in names as a real workspace_member.role row", () => {
+  it("skips a workspace_member row whose role is literally 'instance_admin'", async () => {
+    const { user } = await createWorkspaceMember({
+      role: "instance_admin",
+      seedDefaultRoleRow: false,
+    });
+    await backfillStaffPersons();
+
+    const identity = await resolveIdentity({
+      userId: user.id,
+      credential: "session",
+    });
+
+    expect(identity?.memberships).toEqual([]);
+    expect(identity?.authority).toEqual([]);
+  });
+
+  it("skips a workspace_member row whose role is literally 'customer'", async () => {
+    const { user } = await createWorkspaceMember({
+      role: "customer",
+      seedDefaultRoleRow: false,
+    });
+    await backfillStaffPersons();
+
+    const identity = await resolveIdentity({
+      userId: user.id,
+      credential: "session",
+    });
+
+    expect(identity?.side).toBe("staff");
+    expect(identity?.memberships).toEqual([]);
+    expect(identity?.authority).toEqual([]);
+  });
+});
+
+describe("resolveIdentity (loader) — S6 (PR #315 review): a banned user", () => {
+  it("resolves to null for a banned staff user with a real workspace role", async () => {
+    const { user } = await createWorkspaceMember({ role: "owner" });
+    await backfillStaffPersons();
+    await db
+      .update(schema.userTable)
+      .set({ banned: true })
+      .where(eq(schema.userTable.id, user.id));
+
+    const identity = await resolveIdentity({
+      userId: user.id,
+      credential: "session",
+    });
+
+    expect(identity).toBeNull();
+  });
+});
+
+describe("resolveIdentity (loader) — S6 (PR #315 review): a suspended customer organisation", () => {
+  it("resolves to null when the customer's organisation is inactive", async () => {
+    const userId = `user-${randomUUID()}`;
+    await db.insert(schema.userTable).values({
+      id: userId,
+      email: `${randomUUID()}@example.com`,
+      emailVerified: true,
+      name: "Customer Person",
+    });
+    const organisation = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `customer-org-${randomUUID()}`,
+        name: "Suspended Customer Org",
+        isInternal: false,
+        active: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    const org = organisation[0];
+    if (!org) throw new Error("failed to insert customer organisation");
+    await db.insert(schema.personTable).values({
+      userId,
+      organisationId: org.id,
+      side: "customer",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const identity = await resolveIdentity({
+      userId,
+      credential: "session",
+    });
+
+    expect(identity).toBeNull();
+  });
+
+  it("resolves to null when the customer's organisation has portal access disabled", async () => {
+    const userId = `user-${randomUUID()}`;
+    await db.insert(schema.userTable).values({
+      id: userId,
+      email: `${randomUUID()}@example.com`,
+      emailVerified: true,
+      name: "Customer Person",
+    });
+    const organisation = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `customer-org-${randomUUID()}`,
+        name: "No Portal Access Org",
+        isInternal: false,
+        portalAccess: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    const org = organisation[0];
+    if (!org) throw new Error("failed to insert customer organisation");
+    await db.insert(schema.personTable).values({
+      userId,
+      organisationId: org.id,
+      side: "customer",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const identity = await resolveIdentity({
+      userId,
+      credential: "session",
+    });
+
+    expect(identity).toBeNull();
+  });
+
+  it("refuses a customer identity presenting an api_key credential", async () => {
+    const userId = `user-${randomUUID()}`;
+    await db.insert(schema.userTable).values({
+      id: userId,
+      email: `${randomUUID()}@example.com`,
+      emailVerified: true,
+      name: "Customer Person",
+    });
+    await insertCustomerPerson(userId);
+
+    const identity = await resolveIdentity({
+      userId,
+      credential: "api_key",
+      apiKey: { enabled: true, ownerUserId: userId },
+    });
+
+    expect(identity).toBeNull();
   });
 });
