@@ -20,6 +20,7 @@ import {
   sessionTable,
   stateTable,
   stateTemplateTable,
+  taskActivityTable,
   taskRelationTable,
   taskReminderSentTable,
   taskTable,
@@ -49,7 +50,7 @@ export const userTableRelations = relations(userTable, ({ many, one }) => ({
   workspaceMemberships: many(workspaceUserTable),
   assignedTasks: many(taskTable),
   timeEntries: many(timeEntryTable),
-  activities: many(activityTable),
+  activities: many(taskActivityTable),
   comments: many(commentTable),
   assets: many(assetTable),
   notifications: many(notificationTable),
@@ -170,7 +171,7 @@ export const taskTableRelations = relations(taskTable, ({ one, many }) => ({
     references: [columnTable.id],
   }),
   timeEntries: many(timeEntryTable),
-  activities: many(activityTable),
+  activities: many(taskActivityTable),
   comments: many(commentTable),
   assets: many(assetTable),
   labels: many(labelTable),
@@ -191,16 +192,19 @@ export const timeEntryTableRelations = relations(timeEntryTable, ({ one }) => ({
   }),
 }));
 
-export const activityTableRelations = relations(activityTable, ({ one }) => ({
-  task: one(taskTable, {
-    fields: [activityTable.taskId],
-    references: [taskTable.id],
+export const taskActivityTableRelations = relations(
+  taskActivityTable,
+  ({ one }) => ({
+    task: one(taskTable, {
+      fields: [taskActivityTable.taskId],
+      references: [taskTable.id],
+    }),
+    user: one(userTable, {
+      fields: [taskActivityTable.userId],
+      references: [userTable.id],
+    }),
   }),
-  user: one(userTable, {
-    fields: [activityTable.userId],
-    references: [userTable.id],
-  }),
-}));
+);
 
 export const assetTableRelations = relations(assetTable, ({ one }) => ({
   workspace: one(workspaceTable, {
@@ -215,9 +219,9 @@ export const assetTableRelations = relations(assetTable, ({ one }) => ({
     fields: [assetTable.taskId],
     references: [taskTable.id],
   }),
-  activity: one(activityTable, {
+  activity: one(taskActivityTable, {
     fields: [assetTable.activityId],
-    references: [activityTable.id],
+    references: [taskActivityTable.id],
   }),
   creator: one(userTable, {
     fields: [assetTable.createdBy],
@@ -513,8 +517,29 @@ export const workItemTableRelations = relations(
     children: many(workItemTable, { relationName: "workItemParent" }),
     keyAliases: many(workItemKeyAliasTable),
     watchers: many(watcherTable),
+    // NON-BLOCKING, PR #275's mandatory Opus 5.5 review (S6): this relational-query
+    // helper yields every column of `activityTable`, `seq` included -- unlike
+    // `recordWorkItemActivity`'s own explicit `.returning()` list, which deliberately
+    // excludes it. #27's read/serializer must drop `seq` itself before this data reaches
+    // any API response.
+    activities: many(activityTable),
   }),
 );
+
+// The work-item journal (decision log 2026-09-23, "Work-item activity gets its own
+// `activity` table"). `workItem` here is query-API sugar over the composite FK the
+// migration actually created: `(workspace_id, work_item_id) -> work_item (workspace_id,
+// id)`, the decision log's detail 1 -- see `schema.ts`'s comment on
+// `activityTable.workItemId` for the full design. Drizzle's relational-query helper only
+// takes a single join condition, so this still resolves the join on `work_item_id ->
+// work_item.id` alone; the composite FK is what actually enforces tenant scoping at the
+// database level, not this relation.
+export const activityTableRelations = relations(activityTable, ({ one }) => ({
+  workItem: one(workItemTable, {
+    fields: [activityTable.workItemId],
+    references: [workItemTable.id],
+  }),
+}));
 
 export const workItemKeyAliasTableRelations = relations(
   workItemKeyAliasTable,

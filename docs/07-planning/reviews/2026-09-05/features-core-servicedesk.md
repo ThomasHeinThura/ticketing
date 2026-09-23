@@ -43,25 +43,6 @@
 
 ## 5. `comments-and-activity.md` — P1
 
-**Verdict: not-ready** (the visibility model is excellent; the activity-visibility rule that protects it is left to the implementer's judgement, and three referenced entities have no schema)
-
-`CA-3` (filter internal comments server-side in the portal router, "never in the client, never by a CSS class") and `CA-4` (visibility immutable after posting) are exactly right and align with `api-design.md`'s separate `/api/portal/*` router and rbac.md's customer rules. The named test `portal-never-returns-internal.test.ts` is the best test in the corpus.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| High | `CA-7` "Activity rows have visibility too. State changes are **usually** public; assignee changes are internal, because customers do not see staff names." "Usually" is not testable, and this is the rule that decides whether rbac.md's "Customers may never see staff names on internal activity" holds. An implementer must invent the field→visibility mapping — and a wrong default leaks staff identity to customers. | Replace with an exhaustive table: every `activity.verb`/`field` the system writes, mapped to `public` or `internal`, with `internal` as the default for anything unlisted. Make the fallback explicit ("an unmapped verb is internal") so adding a field later fails closed. |
-| High | `CA-17` "Editing is allowed for 15 minutes by the author, after which the comment shows 'edited' with a **hover-revealed history**." The `comment` table has `edited_at` and nothing else — there is no comment-version table, so previous bodies are not retained and the history cannot be rendered. The rule is also ambiguous: is editing *forbidden* after 15 minutes, or merely marked? | Decide and state: editing is refused after 15 minutes except with `comment:update_any`; and add a `comment_version (comment_id, number, body, edited_by, created_at)` table to the data model, or drop the history affordance. |
-| High | `CA-19`/`CA-20` canned responses reference a workspace-level snippet entity with placeholder substitution. **No such table exists** in the data model, no permissions row governs creating them, and no API route is listed. | Add a `canned_response (workspace_id, name, body jsonb, ...)` table, a capability (or reuse `workspace:manage_settings`), and CRUD routes with policies — or move canned responses to a later phase and delete `CA-19`/`CA-20`. |
-| Medium | `CA-2` "The default is configurable **per project**" — no column exists on `project` for default comment visibility, and `settings-hierarchy.md` is P4 while this spec is P1. | Add `project.default_comment_visibility` to the data model, with the recommended `internal` default stated as the seed value. |
-| Medium | **No `## Open questions` section, no `## Data` section, no `## Out of scope`.** The README rule is that Open questions "must be empty before implementation starts"; an absent section cannot be confirmed empty. | Add the three sections; Data should name `comment`, `activity`, `attachment` and the new tables above. |
-| Medium | `PATCH /api/comments/{id} → "author within window, or comment:update_any"` and `DELETE /api/comments/{id} → "author, or comment:delete_any"` are not policy declarations in rbac.md's `{ capability, scope }` form, so the route-coverage CI test has nothing to bind to. The permissions table compounds this by guarding *editing* with `comment:create`. | Express as a capability plus a documented ownership predicate, e.g. `{ capability: 'comment:update_own', scope: 'work_item' }` with `comment:update_any` as the override — and add `comment:update_own`/`comment:delete_own` to rbac.md, which currently has only the `_any` forms. |
-| Medium | `CA-16` "Drafts persist per work item per user, surviving a closed tab" — no storage mechanism named and no table exists. Same missing per-user store as `views.md`. | State `localStorage` (and therefore per-device), or add the table. |
-| Medium | Edge case "Comment on a deleted work item → Deleted with it" collides with `WI-21` (deletion is soft for 30 days). If comments are removed at soft-delete, a restore within the window returns an empty conversation. | Say comments are hidden at soft-delete and removed at purge. |
-| Low | `CA-10` "Activity is never edited or deleted" versus `WI-21` "purged with its comments, activity and attachments" after 30 days. Reconcilable (archive ≠ delete ≠ purge) but the reader has to do that work. | Add a clause to `CA-10`: "…except when the parent work item is purged at the end of the soft-delete window." |
-| Low | `CA-11` lists Tiptap marks including tables and images, but no maximum document size or node-count limit is given for a `jsonb` body. | State a size cap, consistent with the 422 validation contract. |
-
----
-
 ## 6. `attachments.md` — P1
 
 **Verdict: not-ready** (one cross-spec behavioural contradiction, plus the upload state machine has no columns to run on)
@@ -100,26 +81,6 @@ The search half is strong: `SV-3` (scoped to reach, out-of-reach records simply 
 | Medium | **No `## Open questions`, `## Data`, `## Screens` or `## Out of scope` sections.** | Add them. |
 | Low | `SV-22`/`SV-23` queue counts "cached for 30 seconds" — cache location unspecified (Valkey is optional per `api-design.md`'s rate-limit note). | State the cache and the behaviour when Valkey is absent. |
 | Low | `SV-10` gates a Meilisearch plugin on Postgres being "measured to be insufficient" but names no threshold, while `SV-5` gives a hard 100 ms budget. | Tie them together: the plugin is considered when the `SV-5` budget is missed at a stated corpus size. |
-
----
-
-## 8. `assignment.md` — P1
-
-**Verdict: ready-with-fixes** (the best-formed spec in the group — full template, Open questions empty, a genuinely good test plan)
-
-`AS-6` (compare by person id, not display name), `AS-8`/`AS-9` (never silently unassign) and `AS-5` (assignable list is the project roster, filtered server-side — "the client never filters this itself") are precise and testable. `AS-15` explicitly rules round-robin out of scope, which is exactly what an "Out of scope" section is for.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| High | `AS-13` "A workflow transition may set or clear the assignee" requires **transition effects**, and `workflow_transition` has no column for them — it has `note_policy`, `note_visibility`, `requires_approval`, `requires_cab` and `guard` jsonb, all of which are gates, not actions. The same missing mechanism is implied by `sla.md`'s pause-on-transition and `workflows.md`. An implementer must invent an effects schema. | Add `workflow_transition.effects jsonb` to the data model with a documented, whitelisted effect vocabulary (`set_assignee`, `clear_assignee`, `pause_sla`, `resume_sla`, `set_field`), and have `workflows.md` own the vocabulary so `assignment.md` and `sla.md` both cite it. |
-| High | `AS-1` "A **manager or lead** may assign work to anyone on the project roster" and `AS-2` "A **member** may assign work to themselves" state authority in terms of role names, which rbac.md lists verbatim as an anti-pattern (`// ✗ role name check in a handler`). The permissions table below correctly uses capabilities, so the two halves of the spec disagree about what is being enforced. Worse, **no document states which capabilities each built-in role holds**, so an implementer cannot derive the seed roles or rbac.md's "permission matrix test" fixture from anything. | Reword `AS-1`/`AS-2` in capability terms (`work_item:assign` for others; `work_item:update` for self). Separately — and this is corpus-wide — add a role × capability matrix to rbac.md as the source for both the seed data and the fixture. |
-| Medium | `AS-12` "A **request type** may set a default assignee, overriding the project's" — `request_type` has no default-assignee column in the data model (`project.default_assignee_id` does exist, so `AS-11` is fine). | Add `request_type.default_assignee_id` to the data model, or delete `AS-12`. |
-| Medium | Edge case "Assignee's account deleted → Assignment **tombstoned to 'Former member'**. History preserved." The data model requires every FK to declare an explicit `ON DELETE`; `SET NULL` loses the tombstone and `CASCADE` is catastrophic. The spec does not say how the identity survives deletion, and `person.active` (soft deactivation) is a different thing from deletion. | State that people are never hard-deleted (`person.active = false` only), and that `work_item.assignee_id` is `ON DELETE RESTRICT` — or define a tombstone mechanism. |
-| Medium | Edge case "Two people self-assign simultaneously → **Optimistic concurrency**; the second is told who won", but assignment is a `POST` action route, and `api-design.md` scopes `If-Match`/`version` to `PATCH`. How an action route participates in optimistic concurrency is undefined. | Either accept an optional `If-Match` on the assign action, or specify a conditional update (`WHERE assignee_id IS NULL`) returning 409 with the winner. |
-| Medium | `POST /api/work-items/bulk/assign → "per-item capability"` — same non-policy as `work-items.md`'s bulk route; the route-coverage test rejects it. | Declare the route's own policy plus a per-item re-check rule. |
-| Low | `AS-16`–`AS-18` describe three notification behaviours but name no event kinds, so `notifications.md` and `notification_preference.event_kind` have nothing to bind to. | Name them (`work_item.assigned`, `work_item.unassigned`). |
-| Low | `AS-10` "A report lists work assigned to inactive people" — no route, no screen, no capability; reporting is P5. | Either mark it P5 and cross-reference `reports-and-dashboards.md`, or make it a saved view with a stated definition. |
-| Low | The `person-picker` shows "current open work count" — "open" again is not one of the five `state.group` values (ADR 0011). | Define as `state.group not in ('completed','cancelled')`. |
 
 ---
 
@@ -189,25 +150,6 @@ This is otherwise one of the better specs — `IQ-16a` (withdrawal is refused th
 | Medium | `IQ-1` says a submission may be created "by an **API client**", but no non-portal creation route or capability exists in the API list. | Add the route and its capability, or delete the clause. |
 | Low | Four portal routes carry "(portal session)" instead of a policy — same recurring defect. | As §13. |
 | Low | `IQ-11` "keeping the same URL" after conversion needs the portal to resolve `SUB-n` to a work item; `submission.work_item_id` supports it, but the redirect behaviour after a *declined* or *withdrawn* submission is unstated. | Add the two remaining cases to the edge-case table. |
-
----
-
-## 15. `approvals.md` — P2
-
-**Verdict: ready-with-fixes** (one of the two best specs in the group; the gap is that the *gate* has no identity)
-
-The "v1 defects being prevented" table with a named test per defect — `customer-cannot-request-cab.spec.ts`, `requester-cannot-self-approve.spec.ts`, `approver-email-not-leaked.spec.ts` — is exactly what the README asks for and the only place in the corpus where tests are genuinely *named*. `AP-8` (nobody approves their own request, enforced in the domain layer independent of capabilities) matches rbac.md's customer rule precisely. Data matches the `approval` table field-for-field.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| High | `AP-15` "a transition with `requires_approval` is blocked until **a matching** approval is `approved`", plus `AP-5` "Multiple approvals may be pending on one work item. The gate is satisfied by the policy set on the transition: **any** approver, or **all** approvers." Neither "matching" nor the any/all policy has any storage: `approval` has no link to a transition or gate, and `workflow_transition` has only the booleans `requires_approval`/`requires_cab` — no approval-policy column. With two pending approvals raised for different reasons, an implementer cannot determine which satisfies which gate, and the likely guess (any approved approval of the right `kind`) lets an unrelated approval open a change gate. | Add `workflow_transition.approval_policy ('any'\|'all')` and `approval.transition_id` (or a `gate_key`), and state that only approvals raised against that gate count. Add a test with two concurrent approvals of the same `kind`. |
-| Medium | `AP-13` "A reminder is sent to the approver at 50% and 90% of the window" — `approval` has no column recording which reminders were sent, so `reminder-scan` (every 15 min) will re-send on every pass. | Add `reminder_50_sent_at` / `reminder_90_sent_at`, or a generic `approval_reminder` row per send. |
-| Medium | Permissions: "Decide a CAB approval → `approval:decide_cab` — Must be a **CAB member**", with CAB membership deferred to `service-management.md`. If that spec does not define CAB membership as a queryable set, this rule is unenforceable (see §18 — it does not). | Define CAB membership concretely (recommended: a `team` flagged as the CAB, so `team_member` answers the question) and cross-reference it from both specs. |
-| Medium | "Request a CAB approval — Staff only, **change-type items only**" identifies a work item type by its meaning, not by a flag, in a system where types are workspace-editable rows. Same defect as `WF-14`. | Key it off a `work_item_type.is_change` boolean, added alongside the existing `is_epic`. |
-| Medium | `GET /api/my/approvals → "(self)"` and `GET /api/portal/approvals → "(self, portal router)"` are not policies under rbac.md's coverage test. | Give both a capability plus a documented self-scoping predicate. |
-| Low | Edge case "Work item deleted with a pending approval → The approval is deleted with it" collides with the 30-day soft delete (`WI-21`); a restore would return an item whose gate history has vanished. | Align with the soft-delete decision from §1. |
-| Low | Nothing says what happens to a pending approval when the gating transition is edited or removed in a new workflow version (`WF-6`/`WF-7`). | Add an edge case. |
-| Low | `AP-4` "Expiry defaults to 7 days, configurable per request, capped at 90 days" — where the 7-day default is configured (instance? workspace? per request type?) is unstated. | Name the setting scope. |
 
 ---
 

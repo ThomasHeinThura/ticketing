@@ -33,8 +33,10 @@ was one of v1's bugs — a customer account could request an internal CAB approv
 ## Data
 
 `approval` — the authoritative column list is [data-model.md §7](../01-architecture/data-model.md)
-(`state`, `transition_id`, the reminder timestamps and the rest); this document does not
-repeat it.
+(`state`, `transition_id`, `reminder_50_sent_at`, `reminder_90_sent_at` and the rest); this
+document does not repeat it. `workflow_transition.approval_policy` (`any`\|`all`,
+[data-model.md](../01-architecture/data-model.md)) is what `AP-5` reads to decide the gate;
+[workflows.md](workflows.md) owns the transition side of that column.
 
 ## Behaviour
 
@@ -42,13 +44,20 @@ repeat it.
 
 - `AP-1` A customer approval may be requested by staff with `approval:request`, on a work
   item within their reach.
-- `AP-2` A CAB approval may be requested **only by staff**. A customer-side account
+- `AP-2` A CAB approval may be requested **only by staff**, and only on a work item whose
+  `work_item_type.is_change` is true ([data-model.md](../01-architecture/data-model.md) —
+  the same flag `WF-14` uses, never matched by type name). A customer-side account
   attempting it is refused. *(This was a real v1 defect.)*
 - `AP-3` The approver must be a person with reach on the work item. Approvers outside
   reach are not offered and are refused if submitted.
-- `AP-4` Expiry defaults to 7 days, configurable per request, capped at 90 days.
+- `AP-4` Expiry defaults to 7 days (`instance_setting.approval_default_expiry_days`,
+  [data-model.md](../01-architecture/data-model.md) — instance-wide, not per-workspace or
+  per-request-type), configurable per request, capped at 90 days.
 - `AP-5` Multiple approvals may be pending on one work item. The gate is satisfied by the
-  policy set on the transition: **any** approver, or **all** approvers.
+  policy set on the transition (`workflow_transition.approval_policy`): **any** approver,
+  or **all** approvers. Only approvals whose `transition_id` names *that* transition count
+  toward it — an approval raised against a different transition, even the same `kind`, on
+  the same work item never satisfies this gate.
 - `AP-6` The requester may withdraw a pending approval. It becomes `withdrawn` (emitting `approval.withdrawn`), not
   deleted.
 
@@ -67,12 +76,15 @@ repeat it.
 
 - `AP-12` `reminder-scan` expires approvals past `expires_at`, setting status `expired`.
 - `AP-13` A reminder is sent to the approver at 50% and 90% of the window.
+  `reminder_50_sent_at` / `reminder_90_sent_at` record which have already fired, so
+  `reminder-scan`'s 15-minute cadence never re-sends one ([background-jobs.md](../01-architecture/background-jobs.md)).
 - `AP-14` An expired approval does not satisfy a gate. A new one must be requested.
 
 **Gating**
 
 - `AP-15` A workflow transition with `requires_approval` is blocked until a matching
-  approval is `approved`.
+  approval is `approved` — "matching" means `approval.transition_id` equals this
+  transition's id, per `AP-5`.
 - `AP-16` `requires_cab` behaves identically but only accepts `kind = cab`.
 - `AP-17` The blocked transition reports why: "Waiting on approval from Jane Smith,
   requested 2 days ago, expires in 5 days."
@@ -103,11 +115,13 @@ Recorded explicitly, because they are easy to reintroduce.
 | Action | Capability | Extra |
 | --- | --- | --- |
 | Request a customer approval | `approval:request` | Staff only |
-| Request a CAB approval | `approval:request` | Staff only, change-type items only |
+| Request a CAB approval | `approval:request_cab` | Staff only, `work_item_type.is_change` only |
 | Decide | `approval:decide` | Must be the named approver, and not the requester |
-| Decide a CAB approval | `approval:decide_cab` | Must be a CAB member |
+| Decide a CAB approval | `approval:decide_cab` | Must also be a `team_member` of the `team` flagged `is_cab` (`team.is_cab`, [data-model.md](../01-architecture/data-model.md)) — capability and membership are both required, not either alone |
 | Withdraw | `approval:request` | Requester, or instance admin (audited) |
 | See approvals on an item | `work_item:read` | Customers see only approvals addressed to them or that they raised |
+| List my approvals | `{ authenticated: true, self: true }` | `GET /api/me/approvals` — [rbac.md](../01-architecture/rbac.md) policy kind 2, own rows only |
+| List portal approvals | `{ portal: 'customer', predicate: 'addressed_approval' }` | `GET /api/portal/approvals` — [rbac.md](../01-architecture/rbac.md) policy kind 3, scoped to approvals addressed to the caller |
 
 ## Screens
 
@@ -122,11 +136,11 @@ not have to learn the product first.
 
 ```
 GET    /api/work-items/{key}/approvals        work_item:read
-POST   /api/work-items/{key}/approvals        approval:request
+POST   /api/work-items/{key}/approvals        approval:request  (approval:request_cab for kind = cab)
 POST   /api/approvals/{id}/decide             approval:decide
 POST   /api/approvals/{id}/withdraw           approval:request
-GET    /api/me/approvals                      (self)
-GET    /api/portal/approvals                  (self, portal router)
+GET    /api/me/approvals                      { authenticated: true, self: true }              — rbac.md kind 2
+GET    /api/portal/approvals                  { portal: 'customer', predicate: 'addressed_approval' } — rbac.md kind 3
 POST   /api/portal/approvals/{id}/decide      approval:decide
 ```
 
@@ -136,20 +150,25 @@ POST   /api/portal/approvals/{id}/decide      approval:decide
 | --- | --- |
 | Approver leaves the organisation | The approval stays pending and is flagged. It must be withdrawn and re-requested |
 | Approver loses reach on the work item | Same as above — flagged, not silently voided |
-| Work item deleted with a pending approval | The approval is deleted with it. Audited |
+| Work item soft-deleted with a pending approval | Hidden along with the work item, not deleted; both reappear together if the work item is restored within its 30-day soft-delete window. Removed only at purge, at the end of that window ([work-items.md](work-items.md) `WI-21`) |
 | Two approvals, "all" policy, one rejected | The gate stays blocked. The rejection is visible |
 | Approval requested on an already-completed item | Allowed. Some processes approve after the fact |
 | Expiry set in the past | Rejected at 422 |
 | Approver is also the requester | Rejected at 422 with a clear message |
+| The gating transition is edited or removed in a new workflow version while an approval against it is still pending | The approval itself is untouched — `approved`/`rejected`/`pending` is a fact about a decision, not about the workflow. But per `WF-6`/`WF-7`, a published version is immutable and in-flight items simply follow the new active version from that point: if the new version no longer offers a transition whose id matches the approval's `transition_id`, nothing can ever attempt that exact transition again, so the approval can no longer satisfy any gate. It is not force-closed — it sits `pending` until it expires (`AP-12`) or is withdrawn. This is a workflow-editing hazard to call out in the workflow editor, not a defect in approvals |
 
 ## Out of scope
 
-- CAB membership definition → [service-management.md](service-management.md)
+- Which team is the CAB, and its roster management UI → [service-management.md](service-management.md);
+  the membership *rule* itself (`team.is_cab` + `team_member`) is defined above, in
+  Permissions, not deferred there
 - Which transitions require approval → [workflows.md](workflows.md)
 
 ## Testing
 
-Unit: self-approval rejected; expiry arithmetic; any-versus-all gate satisfaction.
+Unit: self-approval rejected; expiry arithmetic; any-versus-all gate satisfaction; two
+concurrent approvals of the same `kind` on the same work item, raised against different
+transitions, where only the one matching `transition_id` satisfies its own gate.
 
 Integration: a customer session requesting a CAB approval is refused; approval responses
 never contain an email address; only the named approver may decide.
