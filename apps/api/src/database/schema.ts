@@ -282,6 +282,19 @@ export const workspaceRoleTable = pgTable(
       }),
     role: text("role").notNull(),
     permission: text("permission").notNull(),
+    // Issue #318 (security). `true` only for the rows `seed-default-workspace-roles.ts`'s
+    // backfill and `create-workspace.ts`'s creation-time seed insert for the three default
+    // role names (`viewer`/`member`/`admin`) — the only rows this codebase's own code ever
+    // marks genuine. Every row `create-workspace-role.ts` inserts for an administrator's
+    // custom role is `false` (the column default), including one that happens to share a
+    // `BUILT_IN_ROLES` name such as `manager` or `lead` — before this column existed,
+    // `require-workspace-capability.ts` and `resolve-identity.ts` granted the FULL built-in
+    // capability set to any `workspace_member.role` string that merely matched a
+    // `BUILT_IN_ROLES` key, with no way to tell a genuine seeded row from a custom one
+    // (Opus review of PR #315, S2). `owner` is the one built-in name that never gets a row
+    // at all (retrofit plan R5) — both resolvers special-case it rather than querying this
+    // column. See `docs/01-architecture/rbac.md` § "Built-in roles and their capabilities".
+    isSystem: boolean("is_system").notNull().default(false),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" })
       .defaultNow()

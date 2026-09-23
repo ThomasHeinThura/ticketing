@@ -16,6 +16,7 @@
  * on an unassigned seeded role and is refused on an assigned one -- are asserted here instead,
  * against `/api/workspace/{id}/roles`.
  */
+import { BUILT_IN_ROLE_KEYS } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CAPABILITY_CHECKS } from "../../apps/api/src/capabilities/capability-checks";
@@ -216,6 +217,94 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
     expect(response.status).toBe(400);
     expect(await roleRows(workspaceId, "owner")).toHaveLength(0);
     expect(await roleRows(workspaceId, "Owner")).toHaveLength(0);
+  });
+
+  describe("issue #318 (security): every BUILT_IN_ROLES key is reserved, not just 'owner'", () => {
+    // Opus review of PR #315, S2: only "owner" was reserved before this fix, so a holder
+    // of `ac:create` could mint a role literally named `manager`, `lead`, `admin`,
+    // `member`, `viewer`, `customer` or `instance_admin` and (once assigned)
+    // `require-workspace-capability.ts` granted that built-in's FULL capability set by
+    // name alone, regardless of the row's own declared `permission`.
+    const nonOwnerReservedNames = BUILT_IN_ROLE_KEYS.filter(
+      (key) => key !== "owner",
+    );
+
+    for (const reserved of nonOwnerReservedNames) {
+      // `admin`/`member`/`viewer` are DEFAULT_ROLE_NAMEs: `createWorkspace` already seeds
+      // a genuine row for them at workspace-creation time, so "no row" is the wrong
+      // assertion for those three -- the right one is "no ADDITIONAL row", i.e. the count
+      // this request could have inserted into stays at zero. `manager`/`lead`/`customer`/
+      // `instance_admin` have no seeded row at all, so both checks coincide at 0 for them.
+      it(`rejects "${reserved}", inserting no row`, async () => {
+        const { app } = createApp();
+        const owner = await signUpUser(app);
+        const workspaceId = await createWorkspace(
+          app,
+          owner.cookie,
+          `Reserved-${reserved}`,
+        );
+        const before = await roleRows(workspaceId, reserved);
+
+        const response = await createWorkspaceRoleNative(
+          app,
+          owner.cookie,
+          workspaceId,
+          { role: reserved, permission: { task: ["read"] } },
+        );
+        expect(response.status).toBe(400);
+        expect(await roleRows(workspaceId, reserved)).toHaveLength(
+          before.length,
+        );
+      });
+
+      it(`rejects "${reserved}" case- and whitespace-normalised, the same as "owner" is`, async () => {
+        const { app } = createApp();
+        const owner = await signUpUser(app);
+        const workspaceId = await createWorkspace(
+          app,
+          owner.cookie,
+          `ReservedCase-${reserved}`,
+        );
+        const before = await roleRows(workspaceId, reserved);
+
+        const response = await createWorkspaceRoleNative(
+          app,
+          owner.cookie,
+          workspaceId,
+          {
+            role: `  ${reserved.toUpperCase()}  `,
+            permission: { task: ["read"] },
+          },
+        );
+        expect(response.status).toBe(400);
+        expect(await roleRows(workspaceId, reserved)).toHaveLength(
+          before.length,
+        );
+      });
+    }
+
+    it("a row that already exists for 'admin'/'member'/'viewer' (the workspace-creation seed) is genuinely that built-in, and every reserved name is still refused when NO row exists (manager/lead/customer/instance_admin)", async () => {
+      const { app } = createApp();
+      const owner = await signUpUser(app);
+      const workspaceId = await createWorkspace(app, owner.cookie, "Sanity");
+
+      for (const seeded of ["admin", "member", "viewer"] as const) {
+        const rows = await roleRows(workspaceId, seeded);
+        expect(rows, seeded).toHaveLength(1);
+        expect(rows[0]?.isSystem, seeded).toBe(true);
+      }
+      for (const neverSeeded of [
+        "manager",
+        "lead",
+        "customer",
+        "instance_admin",
+      ] as const) {
+        expect(
+          await roleRows(workspaceId, neverSeeded),
+          neverSeeded,
+        ).toHaveLength(0);
+      }
+    });
   });
 
   it("rejects a whitespace-only name, inserting no row — found adversarially by review", async () => {

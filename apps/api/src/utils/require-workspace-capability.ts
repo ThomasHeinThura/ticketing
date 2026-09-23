@@ -4,13 +4,18 @@ import {
   type Capability,
   expandCapabilities,
 } from "@taskdesk/permissions";
+import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db from "../database";
+import db, { schema } from "../database";
 import {
+  isGenuineBuiltInRoleGrant,
   isUnambiguousMembership,
   workspaceMemberRoles,
 } from "./workspace-member-roles";
+
+/** Anything `db` or `db.transaction`'s callback argument can run a `select` through. */
+type DbOrTx = Pick<typeof db, "select">;
 
 /**
  * Require the caller's OWN, freshly-read workspace role to hold `capability` — evaluated
@@ -64,9 +69,10 @@ import {
  * `pg_advisory_xact_lock` still runs afterwards, unchanged in its OWN role, as the
  * concurrency-safety check that makes two simultaneous transfers from the same owner mutually
  * exclusive (see that file and `workspace-membership-writes-negative.test.ts`'s concurrent
- * probe). Both checks now call `builtInRoleHasCapability` — the same pure function, reading
- * the same `BUILT_IN_ROLES` data — so they can never independently drift out of agreement the
- * way the declared policy and the old hardcoded check did.
+ * probe). Both checks now call `builtInRoleHasCapability` — the same function, reading the
+ * same `BUILT_IN_ROLES` data and (issue #318) the same `workspace_role.is_system` genuine-row
+ * check — so they can never independently drift out of agreement the way the declared policy
+ * and the old hardcoded check did.
  */
 export function requireWorkspaceCapability(capability: Capability) {
   return async (c: Context, next: Next) => {
@@ -154,7 +160,7 @@ export async function assertCallerHasCapability(
   // makes that case unreachable once it lands.
   if (
     !isUnambiguousMembership(roles) ||
-    !builtInRoleHasCapability(roles[0], capability)
+    !(await builtInRoleHasCapability(workspaceId, roles[0], capability))
   ) {
     throw new HTTPException(403, { message: "Insufficient permissions" });
   }
@@ -171,10 +177,12 @@ export async function assertCallerHasCapability(
  * own slug) holds no built-in capability here and returns `false`: fail-closed, never a
  * silent "unknown means allow".
  */
-export function builtInRoleHasCapability(
+export async function builtInRoleHasCapability(
+  workspaceId: string,
   role: string | null | undefined,
   capability: Capability,
-): boolean {
+  executor: DbOrTx = db,
+): Promise<boolean> {
   // `Object.hasOwn`, not `role in BUILT_IN_ROLES` -- `in` also matches
   // `Object.prototype` members, so role values like `"toString"`,
   // `"constructor"`, `"hasOwnProperty"`, `"valueOf"` and `"__proto__"` would
@@ -193,5 +201,50 @@ export function builtInRoleHasCapability(
   // a hypothetical future route.
   if (!role || !Object.hasOwn(BUILT_IN_ROLES, role)) return false;
   const key = role as BuiltInRoleKey;
-  return expandCapabilities(BUILT_IN_ROLES[key].capabilities).has(capability);
+  if (!expandCapabilities(BUILT_IN_ROLES[key].capabilities).has(capability)) {
+    // Cheap and DB-free: most (role, capability) pairs fail here, so the genuine-row
+    // check below only ever runs for a pair that would otherwise be granted.
+    return false;
+  }
+  return isGenuineBuiltInRoleAssignment(executor, workspaceId, key);
+}
+
+/**
+ * Is `role` -- a `BUILT_IN_ROLES` key that `workspaceId`'s `workspace_member.role` column
+ * names -- backed by a GENUINE seeded row, rather than a custom row that merely shares the
+ * name? Issue #318 (security), Opus review of PR #315, finding S2: before this function
+ * existed, `builtInRoleHasCapability` granted a built-in's full capability set to any
+ * `workspace_member.role` string equal to a `BUILT_IN_ROLES` key, with no way to tell a
+ * genuine seeded row (`seed-default-workspace-roles.ts`, `create-workspace.ts`) from a
+ * custom row `create-workspace-role.ts` had inserted for a name it did not yet reserve --
+ * for example a holder of only `ac:create` + `member:update` minting a role literally named
+ * `"manager"` and self-assigning it, then reading as a built-in manager with all 57 of that
+ * role's capabilities.
+ *
+ * This function's own job is only the I/O: read `workspace_role.is_system` for
+ * `(workspaceId, role)`, then hand the answer to `isGenuineBuiltInRoleGrant`
+ * (`workspace-member-roles.ts`) -- the exact same predicate `resolve-identity.ts`'s pure
+ * mapper calls, so the two can never independently drift out of agreement. `UNIQUE
+ * (workspace_id, role)` (migration 0051) means at most one row can ever match, so the
+ * `.limit(1)` below is a presence check, not a most-recent-wins one.
+ */
+async function isGenuineBuiltInRoleAssignment(
+  executor: DbOrTx,
+  workspaceId: string,
+  role: BuiltInRoleKey,
+): Promise<boolean> {
+  if (role === "owner") return true;
+
+  const [row] = await executor
+    .select({ isSystem: schema.workspaceRoleTable.isSystem })
+    .from(schema.workspaceRoleTable)
+    .where(
+      and(
+        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
+        eq(schema.workspaceRoleTable.role, role),
+      ),
+    )
+    .limit(1);
+
+  return isGenuineBuiltInRoleGrant(role, row?.isSystem === true);
 }

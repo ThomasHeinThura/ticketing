@@ -71,9 +71,16 @@ async function makeDefaultState(workspaceId: string, projectId: string) {
   return state;
 }
 
-/** Adds a second user to an EXISTING workspace with the given built-in role. Only
- * `workspace_member.role` is written -- `requireWorkspaceCapability` (the mechanism these
- * routes actually enforce with) reads that column alone, never `workspace_role`. */
+/**
+ * Adds a second user to an EXISTING workspace with the given built-in role.
+ *
+ * Until issue #318 (security), `requireWorkspaceCapability` read `workspace_member.role`
+ * alone, never `workspace_role` -- so this helper only had to write the membership row. It
+ * now also grants that built-in's capabilities ONLY when a genuine seeded `workspace_role`
+ * row (`is_system = true`) backs the name (`"owner"` is the one exception -- it never gets
+ * a row at all, retrofit plan R5), so this helper seeds one too, matching what
+ * `seed-default-workspace-roles.ts`/`create-workspace.ts` guarantee for a real workspace.
+ */
 async function addWorkspaceMember(workspaceId: string, role: string) {
   const userId = `user-${randomUUID()}`;
   const [user] = await db
@@ -86,6 +93,51 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     })
     .returning();
   if (!user) throw new Error("addWorkspaceMember: user insert returned no row");
+
+  await db.insert(schema.workspaceUserTable).values({
+    workspaceId,
+    userId: user.id,
+    role,
+    joinedAt: new Date(),
+  });
+
+  if (role !== "owner") {
+    const now = new Date();
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId,
+      role,
+      permission: JSON.stringify({}),
+      isSystem: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  return user;
+}
+
+/** The same as `addWorkspaceMember`, but deliberately WITHOUT a genuine `workspace_role`
+ * row -- issue #318 (security): what a custom, administrator-created role that merely
+ * shares a built-in's name looks like. */
+async function addWorkspaceMemberWithoutGenuineRow(
+  workspaceId: string,
+  role: string,
+) {
+  const userId = `user-${randomUUID()}`;
+  const [user] = await db
+    .insert(schema.userTable)
+    .values({
+      id: userId,
+      email: `${userId}@example.com`,
+      emailVerified: true,
+      name: "Integration Test User",
+    })
+    .returning();
+  if (!user) {
+    throw new Error(
+      "addWorkspaceMemberWithoutGenuineRow: user insert returned no row",
+    );
+  }
 
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
@@ -397,6 +449,152 @@ describe("API integration: work item create/read/list (#23)", () => {
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.projectId, project.id));
     expect(rows).toHaveLength(0);
+  });
+
+  describe("issue #318 (security): a custom row sharing a built-in name grants none of that built-in's capabilities", () => {
+    // The repro from the issue and the Opus review of PR #315 (S2): a holder of only
+    // `ac:create` + `member:update` creates a role literally named "manager" with only
+    // `task:read` declared, self-assigns it, and used to read as a built-in manager with
+    // all 57 of that role's capabilities -- `work_item:create` among them. Reproduced here
+    // at the `workspace_member.role` layer `requireWorkspaceCapability` actually reads,
+    // which is what `addWorkspaceMemberWithoutGenuineRow` models: a row that names a
+    // `BUILT_IN_ROLES` key but has no accompanying `workspace_role` row at all.
+    //
+    // Only `manager` and `lead` are exercised here (both hold `work_item:create`,
+    // `admin`/`member`/`viewer` do not need this case at all: `createWorkspace` seeds a
+    // GENUINE row for those three at workspace-creation time, so every real workspace
+    // already has a genuine one to collide with -- `create-workspace-role.ts`'s existing
+    // "name already taken" check refused them even before this issue, and
+    // `workspace-role-writes.test.ts`'s reserved-name tests cover create directly.
+    // `customer`/`instance_admin` are excluded from CAPABILITY escalation here because
+    // neither built-in holds `work_item:create` at all (`customer` is portal-only,
+    // `instance_admin` holds only `instance:*`) -- they are still reserved at creation
+    // (`workspace-role-writes.test.ts`) and `resolve-identity.ts`'s own S1 tests cover
+    // their scope-mismatch handling.
+    const neverSeededBuiltInRoles = ["manager", "lead"] as const;
+
+    for (const role of neverSeededBuiltInRoles) {
+      it(`a "${role}"-named row with no genuine workspace_role row is refused work_item:create (403), and nothing is written`, async () => {
+        const { project, type } = await setupProjectWithDefaultState();
+        const workspaceId = (
+          await db.query.projectTable.findFirst({
+            where: eq(schema.projectTable.id, project.id),
+          })
+        )?.workspaceId as string;
+        const escalated = await addWorkspaceMemberWithoutGenuineRow(
+          workspaceId,
+          role,
+        );
+        mockAuthenticatedSession(escalated);
+        const { app } = createApp();
+
+        const response = await createWorkItemRequest(app, project.id, {
+          typeId: type.id,
+          title: `Should not be created via a fake "${role}" row`,
+        });
+        expect(response.status).toBe(403);
+
+        const rows = await db
+          .select()
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.projectId, project.id));
+        expect(rows).toHaveLength(0);
+      });
+    }
+
+    it("the negative control: a GENUINE 'manager' row (a real workspace_role row with is_system = true) DOES get work_item:create -- proves the refusal above is about genuineness, not the name", async () => {
+      const { project, type } = await setupProjectWithDefaultState();
+      const workspaceId = (
+        await db.query.projectTable.findFirst({
+          where: eq(schema.projectTable.id, project.id),
+        })
+      )?.workspaceId as string;
+      // `addWorkspaceMember` (unlike the `...WithoutGenuineRow` variant above) seeds a
+      // genuine `is_system = true` row for the name it's given.
+      const genuineManager = await addWorkspaceMember(workspaceId, "manager");
+      mockAuthenticatedSession(genuineManager);
+      const { app } = createApp();
+
+      const response = await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "A real manager may create this",
+      });
+      expect(response.status).toBe(200);
+    });
+
+    it("a custom role's OWN declared legacy permission is irrelevant to this gate either way -- work_item:create is refused for a 'manager'-named row holding only task:read, genuine or not", async () => {
+      const { project, type } = await setupProjectWithDefaultState();
+      const workspaceId = (
+        await db.query.projectTable.findFirst({
+          where: eq(schema.projectTable.id, project.id),
+        })
+      )?.workspaceId as string;
+      const escalated = await addWorkspaceMemberWithoutGenuineRow(
+        workspaceId,
+        "manager",
+      );
+      // The attacker's own custom row, exactly as the issue's repro describes it: a real
+      // `workspace_role` row named "manager" whose DECLARED permission is only
+      // `task:read` -- but it is a CUSTOM row (`is_system` defaults to `false`), so it
+      // does not make the membership row above genuine.
+      await db.insert(schema.workspaceRoleTable).values({
+        workspaceId,
+        role: "manager",
+        permission: JSON.stringify({ task: ["read"] }),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      mockAuthenticatedSession(escalated);
+      const { app } = createApp();
+
+      const response = await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Should still be refused",
+      });
+      expect(response.status).toBe(403);
+    });
+  });
+
+  describe("issue #320 (security), S4: 'customer'/'instance_admin' as a literal workspace_member.role string", () => {
+    // Opus review of #320, finding S4 (pre-existing on `main`): a `workspace_member` row
+    // whose `role` is literally `"customer"` used to pass the legacy read at
+    // `require-workspace-capability.ts:194` (`Object.hasOwn(BUILT_IN_ROLES, role)`, with no
+    // scope check at all -- unlike `resolve-identity.ts`'s `isBuiltInWorkspaceRoleKey`,
+    // which already refused `customer`/`instance_admin` by `scope !== "workspace"`) and got
+    // 200 on a work-item read, although the permission matrix says a customer gets 403 and
+    // `customer` is "off the ladder ... never a workspace role" (rbac.md). This issue's
+    // genuine-row requirement closes it from a different angle than a scope check would:
+    // `customer` (organisation-scope) and `instance_admin` (instance-scope) are BOTH never
+    // seeded a `workspace_role` row in any workspace (`seed-default-workspace-roles.ts`
+    // only ever inserts `viewer`/`member`/`admin`), so neither can ever be `is_system`, so
+    // `isGenuineBuiltInRoleGrant` denies both unconditionally -- the same mechanism that
+    // closes `manager`/`lead`.
+    function listWorkItemsRequest(
+      app: ReturnType<typeof createApp>["app"],
+      projectId: string,
+    ) {
+      return app.request(`/api/projects/${projectId}/work-items`);
+    }
+
+    for (const reservedRole of ["customer", "instance_admin"] as const) {
+      it(`a workspace_member row literally named "${reservedRole}" gets no work_item:read capability, and 403s on the real route`, async () => {
+        const { project } = await setupProjectWithDefaultState();
+        const workspaceId = (
+          await db.query.projectTable.findFirst({
+            where: eq(schema.projectTable.id, project.id),
+          })
+        )?.workspaceId as string;
+        const asReservedRole = await addWorkspaceMemberWithoutGenuineRow(
+          workspaceId,
+          reservedRole,
+        );
+        mockAuthenticatedSession(asReservedRole);
+        const { app } = createApp();
+
+        const response = await listWorkItemsRequest(app, project.id);
+        expect(response.status, reservedRole).toBe(403);
+      });
+    }
   });
 
   it("issue #290: a caller with no workspace membership at all gets the same 400 an unknown project id gets, not a distinguishing 403", async () => {
