@@ -317,24 +317,6 @@ specification to a repository outside this one.
 ---
 
 ## 12. `design-system.md`
-
-**Verdict: ready-with-fixes.** The primitive inventory is concrete and complete for the
-core product, the twelve TaskDesk additions map cleanly onto the features that need them
-(`capability-matrix` → `RL-1`, `plugin-config-form` → `GM-5`, `sla-badge` → the SLA
-tokens), and the composition rules are lintable. Two features audited above have no
-primitive and no library.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| high | **No charting library and no chart primitive, in a product with a whole reporting tier built on charts.** Foundations names Tailwind, Radix, cva, lucide, Framer Motion and Storybook — nothing that draws a chart. `reports-and-dashboards.md` requires "a chart type (bar, line, table, single number)", `RP-11` requires an accessible table equivalent per chart, and `RP-2` requires bucketed distributions. An implementer picks Recharts, visx, Chart.js or D3 unilaterally, and `G2` (tokens only) and `G3` (contrast) then apply to a library whose colour API nobody chose. | Name the library in Foundations, add `chart` (with `bar`/`line`/`number` variants) and `chart-table` to the TaskDesk primitives table, and state that series colours come from a fixed token ramp so `G3` can check them. |
-| high | **No dashboard grid primitive** for `RP-15`'s "widgets are resizable and draggable, and layout persists". dnd-kit is named in `accessibility.md` for board drag but not in Foundations, and a resizable grid is a different problem from a kanban board. | Add `dashboard-grid` to the primitives table, name the library, and state its keyboard path (as `accessibility.md` does for board drag) — otherwise it lands in the Known exceptions table by default. |
-| medium | **"Instance branding overrides a small set of variables" contradicts `plugin-architecture.md` and `configuration-reference.md`, both of which offer "custom CSS variable **overrides**" with no stated bound.** An arbitrary admin-supplied CSS variable set is a styling-injection surface, and it defeats `G3` — the CI contrast check runs over the committed tokens, not over what an administrator types at runtime. | Bound it: enumerate the overridable variables (accent, logo, login background, favicon), reject anything else server-side, and run the same contrast check on the submitted accent before saving — surfacing a warning rather than accepting an unreadable theme. |
-| medium | **The `icon` columns have no vocabulary.** `project.icon`, `work_item_type.icon`, `request_type.icon` are data; "Icons — `lucide-react`, and nothing else. Never an inline SVG… never an emoji as an icon" is the rule; but nothing says the stored value is a lucide icon name, nor what happens when a stored name is not in the installed lucide version — which is exactly the v1 failure this section cites ("buttons with empty icon paths"). | State that icon columns store a lucide icon name from a checked-in allowlist, that the picker only offers allowlisted names, and that an unknown name renders a documented fallback rather than nothing. |
-| low | "**Chromatic-style** visual snapshots run against Storybook in CI" names no tool, and `G8` depends on it. | Name it (Chromatic, Playwright component snapshots, Loki) and say where baselines live. |
-| low | The primitives list has no editable week-grid for `time-and-cost.md`'s timesheet ("a week grid, person by day, with inline entry, keyboard navigation between cells"), which is a materially different component from `data-table`. | Either add `grid-editor` or state that the timesheet composes `data-table` with an editable-cell variant. |
-
----
-
 ## 13. `design-tokens.md`
 
 **Verdict: not-ready.** Structurally this is the right document — two layers, semantic-only

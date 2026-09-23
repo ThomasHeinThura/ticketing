@@ -270,7 +270,14 @@ with an instance `locked` flag short-circuiting the chain, over the three tables
 ## Branding
 
 Also runtime, also God Mode: product name, logo (light/dark), favicon, accent colour,
-login background, support email, footer links, custom CSS variables override.
+login background, support email, footer links.
+
+Of these, logo, favicon, login background and accent colour are also CSS variable
+overrides applied at render time — a fixed, named set
+([`design-system.md`'s Theming section](../02-design/design-system.md#theming)), not an
+open-ended "override any variable" surface. `/api/public/branding`'s write path rejects
+any key outside that set, and the submitted accent colour is checked for WCAG AA contrast
+before save, the same as `design-system.md` describes.
 
 Stored in `instance_branding`, served through `/api/public/branding` — unauthenticated,
 because the login page needs it.
