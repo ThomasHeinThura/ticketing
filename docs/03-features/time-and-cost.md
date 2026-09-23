@@ -91,9 +91,7 @@ system that models time as money cannot express unbilled effort.
 
 **Timesheet** — a week grid, person by day, with inline entry, keyboard navigation between
 cells, and a running total. This is the screen people use daily, and it must be fast to
-fill in. A form-per-entry design guarantees nobody logs time. Built by composing
-`packages/ui`'s `data-table` with an editable-cell variant, not a dedicated grid
-primitive — see [`design-system.md`](../02-design/design-system.md#what-we-add-for-taskdesk).
+fill in. A form-per-entry design guarantees nobody logs time.
 
 **Work item time section** — entries on this item, the total, and a quick-add.
 
