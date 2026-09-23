@@ -39,11 +39,11 @@ export type WorkItemsResult = {
  * `{ data, page, meta }` (`docs/01-architecture/api-design.md`'s cursor-pagination
  * envelope), and `sort`/`dir` are real query parameters the server applies -- this
  * fetcher forwards the caller's `sort`/`dir` (`lib/routes.ts`'s URL state) instead of
- * sorting the page client-side (`lib/sort-work-items.ts`, now removed: nothing else in
- * this codebase called it once this fetcher stopped needing it). Only the first page
- * is requested -- no `cursor` is sent, and none of the server's later pages are
- * fetched -- since this screen has no "load more"/paging UI yet; see `WorkItemsResult`
- * .`hasMore`'s own comment.
+ * sorting the page client-side (the old client-side sort helper is deleted; nothing
+ * else in this codebase called it once this fetcher stopped needing it). Only the
+ * first page is requested -- no `cursor` is sent, and none of the server's later pages
+ * are fetched -- since this screen has no "load more"/paging UI yet; see
+ * `WorkItemsResult`.`hasMore`'s own comment.
  *
  * Each row is validated at this boundary (`parseWorkItemRow`) since `InferResponseType`
  * is a compile-time assertion only, not a runtime check -- see that function's own
