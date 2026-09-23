@@ -57,11 +57,13 @@ stages below.
 │ no-inherited-routes  removals stay removed       │
 ├─ Test ───────────────────────────────────────────┤
 │ pnpm test                unit + component        │
-│ pnpm test:coverage       90 % on packages/domain │
+│ pnpm test:coverage       90 % statements, lines,  │
+│                          functions on domain     │
 │ pnpm test:permissions    route coverage (Hono    │
 │                          router), role × route   │
 │                          matrix ×2, custom roles │
-│ pnpm test:contract       Redocly lint + oasdiff  │
+│ pnpm test:contract       OpenAPI lint, drift,    │
+│                          and breaking changes   │
 │ pnpm test:mcp            tool → route parity     │
 ├─ Build ──────────────────────────────────────────┤
 │ pnpm build               all apps and packages   │
@@ -70,6 +72,13 @@ stages below.
 │ helm lint + helm template   charts/taskdesk      │
 └──────────────────────────────────────────────────┘
 ```
+
+`pnpm test:contract` regenerates and checks the committed OpenAPI document, runs Redocly's
+recommended lint rules, then runs `oasdiff breaking --fail-on WARN` against `origin/main`.
+Redocly currently reports 16 inherited findings in the generated contract; the committed
+baseline is shrink-only, so each finding may be removed and any new lint finding fails.
+The oasdiff release is pinned and its Linux x64 archive is SHA-256 verified by the local
+runner script. Fetch `origin/main` before running the command locally.
 
 **`pnpm test:permissions` must run before `apps/web` is built, against a router that cannot
 see a built `apps/web/dist` (#165).** The Fast stage's ordering above already guarantees this

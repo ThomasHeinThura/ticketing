@@ -1,5 +1,19 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+**2026-09-23 continuation (P0 #10):** The Playwright protected-route redirect smoke on
+PR #355 passed its browser job and Postgres integration job at exact head
+`ac588fa34fa35f9d963c76fb9acb493097a3ba72`; an independent GPT-6 Luna ordinary review
+passed. A new domain coverage gate is now implemented on that candidate: `pnpm
+test:coverage` enforces 90% statements, lines, and functions for `packages/domain`, with
+branch coverage reported but not thresholded. The local run passed 470 tests at 97.61%
+statements, 97.66% lines, 98.50% functions, and 95.15% branches. The contract gate now
+combines drift checking, Redocly lint with a shrink-only baseline of the 16 inherited
+findings, and pinned/SHA-verified oasdiff breaking-change comparison against `origin/main`;
+its local check passes. The fast manifest passed 18 enabled checks after clearing generated
+browser/build artifacts that had contaminated local checks. Exact-head review and CI are
+pending for these additions. The Opus security review remains mandatory and pending; neither
+#10 nor P0 is claimed complete.
+
 > ## ⚠ How to read this file
 >
 > **Snapshot taken:** 2026-09-22 — a thirteenth pass, same day as the eleventh and twelfth.

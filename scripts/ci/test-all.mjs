@@ -167,8 +167,8 @@ const manifest = [
   {
     gate: "pnpm test:coverage",
     stage: "fast",
-    run: null,
-    why: "the threshold ci-cd.md states is '90 % on packages/domain', and packages/domain does not exist yet (P2).",
+    run: ["pnpm", "test:coverage"],
+    note: "packages/domain enforces 90% statement, line, and function coverage; branch coverage is reported but is not a threshold.",
   },
   {
     gate: "pnpm test:permissions",
@@ -181,8 +181,7 @@ const manifest = [
   {
     gate: "pnpm test:contract",
     stage: "fast",
-    run: ["pnpm", "check:openapi"],
-    note: "partial. The drift half is restored (check:openapi regenerates the document and fails on an uncommitted change). Redocly lint and `oasdiff breaking` need two dev dependencies that are not installed, and adding them is a lockfile change.",
+    run: ["pnpm", "test:contract"],
   },
   {
     gate: "pnpm test:mcp",

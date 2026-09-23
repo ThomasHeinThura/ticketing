@@ -5,6 +5,42 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-23 · OpenAPI contract tools and inherited-lint ratchet
+
+**Decision:** Add `@redocly/cli` 2.54.2 as an exact development dependency; run Redocly's
+recommended rules with a shrink-only baseline for the 16 findings already present in the
+generated API contract. Pin `oasdiff` 1.32.1 and verify its Linux x64 release archive with
+the published SHA-256 before use; fail on `WARN`-level breaking changes against `origin/main`.
+
+**Why:** P0 #10 and this document already require OpenAPI lint and breaking-change detection.
+The inherited spec has five identical-path errors, six ambiguous-path warnings, four missing
+4xx-response warnings, and one missing license warning. Recording those exact finding keys
+allows existing contract issues to be tracked without letting new ones enter unnoticed; the
+baseline can only shrink. The official oasdiff release publishes the binary outside npm, so
+the check pins and verifies the upstream artifact rather than adding an unverified package.
+
+**Alternatives:** Leave the contract check drift-only; disable inherited lint rules; use an
+unpinned network installer. Rejected: these either leave the documented gate incomplete,
+hide all future findings in those categories, or do not verify the downloaded tool.
+
+**Decided by:** Thomas, 2026-09-23 (selected recommended option).
+
+### 2026-09-23 · Domain coverage gate thresholds
+
+**Decision:** Enforce minimum 90% statements, lines, and functions for `packages/domain`;
+report branch coverage but do not threshold it.
+
+**Why:** The existing CI/CD contract says 90% coverage for the domain package, and current
+coverage is above 90% for these three dimensions. Branch coverage is useful diagnostic
+information, but applying the same threshold would silently redefine the documented gate
+and make the existing measurement fail at 88.77%.
+
+**Alternatives:** Apply 90% to branches too, or leave the threshold unspecified. Rejected:
+the former exceeds the existing contract without a stated reason; the latter would leave
+the documented gate unenforced.
+
+**Decided by:** Thomas, 2026-09-23 (selected recommended option).
+
 ### 2026-09-23 · Current-model ordinary-review fallback when Sonnet is unavailable; Opus remains mandatory
 
 **Supersedes (narrowly):** the reviewer-provider clause in the 2026-09-23 temporary fallback (#345), only when a fresh Claude Sonnet context is unavailable.
