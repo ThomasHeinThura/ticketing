@@ -112,3 +112,32 @@ never listens, no migrations run. Nothing catches the throw. No secrets leak. Mo
 does not weaken any middleware. The tests are hygienic and faithful. A follow-up SHA that only
 adds a timeout to S1's test needs a fresh exact-head confirmation of this note, not a full
 re-review.
+
+## Delta re-check (S1 fix)
+
+**Reviewer:** Opus 5.5, same fresh independent context as above. Did not author the delta.
+**Reviewed head:** `54f8fd10adc63d9c257b35a74618b92f902e4150`
+(confirmed via `gh pr view 302 --json headRefOid`; delta `git diff f12139f 54f8fd1` = `6acc2bd`, this note unchanged, and `54f8fd1`)
+
+**What changed.**
+- `tests/api/boot-policy-registry.test.ts`: `COLD_IMPORT_TIMEOUT_MS = 30_000`, applied as
+  `describe(name, { timeout }, fn)`. Assertions, mocks and `afterEach` cleanup are unchanged.
+- `apps/api/src/index.ts`: a three-line comment above the `policyRegistry` import (S2). No code
+  change.
+
+**Probes.**
+- API unit suite at this head: **52 files, 349 tests, all passed**.
+- I checked that the describe-level option is actually honoured by vitest 4.1.11: I set the
+  constant temporarily to `1` and both boot tests failed with `Test timed out in 1ms`, then
+  restored it. So the 30 s bound applies to both cases. It is not ignored.
+- I rebuilt `dist/index.js` with the real `build` script: `createPolicyRegistry(POLICY_SOURCES)`
+  is still present (1 occurrence). The `index.ts` delta contains only `//` lines. I did not
+  re-run the boot-refusal probe, because the shipped code is the same as the code I probed at
+  f12139f.
+
+**Disposition.** S1 is resolved: the timeout is no longer at the edge. S2 is addressed by the
+comment. S3 is unchanged and informational. CI at this head was still pending when I checked;
+the merge gate still requires "unit + component" to go green there.
+
+**Verdict at `54f8fd10adc63d9c257b35a74618b92f902e4150`: CLEAR.**
+The commit that adds this section changes only this file.
