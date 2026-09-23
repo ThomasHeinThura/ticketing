@@ -42,11 +42,14 @@ Sonnet-tier work means implementation, fix rounds and ordinary reviews. The Clau
 
 A waived gate still needs Thomas. The Claude session merges only after verifying each gate itself, never on another agent's report of green. An agent never approves its own work, whatever its vendor.
 
-**How independence is verified.** This is enforced at merge time by the Claude session, because it is the one that merges. The session checks these on every candidate:
-- The PR's `## Implemented by` names the authoring agent and model. Its `## Reviewed by` names a **different** agent and model, with the exact SHA it reviewed. The commit authors are also checked with `git log --format='%an'`.
-- The same agent or tool is never both author and ordinary reviewer. If a fix round is authored by the reviewing agent, that agent cannot then clear it.
-- The ordinary review's verdict and findings are recorded on the PR, in the body or in a comment, before merge.
-- For security-scope PRs, the Opus 5.5 review is always a fresh Claude context commissioned by this session. It is never one of the three lane agents.
+**How independence is verified, stated honestly.** Independence rests on the PR's own attestation. The Claude session checks that attestation at merge; it is not a cryptographic guarantee. Before every merge, the session checks:
+- `## Implemented by` names the authoring agent and model.
+- `## Reviewed by` names a **different** agent and model, gives the exact SHA it reviewed, and has its verdict recorded on the PR.
+- The same agent or tool is never both author and ordinary reviewer, and a reviewing agent can't clear a fix round it wrote itself.
+- For security-scope PRs, the Opus 5.5 review is always a fresh Claude context commissioned by this session, never one of the three lane agents.
+- The commit authors (`git log --format='%an <%ae>' main..HEAD`) are spot-checked against `## Implemented by`.
+
+**Commit identity rule, from 2026-09-23.** Each lane agent commits under its own distinct git author identity that names the tool, as Cline already does (`Cline (…) <agent@taskdesk.local>`). No lane agent may commit as `Claude Code <noreply@anthropic.com>`, which is this session's identity. PR #336's review found that several agent-authored PRs (#326, #331–#335) were committed under that identity. Where that has already happened, the PR's `## Implemented by` must name the real authoring agent, and the mismatch is noted on the PR before merge. A PR whose attestation and commits can't be reconciled does not merge.
 
 If any of these is missing, the PR does not merge. It waits, and the PR says what is missing.
 
