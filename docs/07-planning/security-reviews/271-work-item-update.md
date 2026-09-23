@@ -1,6 +1,7 @@
 # Security review — #23 work-item update (`PATCH /api/work-items/{key}`, second slice)
 
 **Reviewer:** Opus 5.5, fresh independent context. Did not author, direct, or remediate this change.
+**Reviewed head:** `c80d1948c1e843819953fa375c61fb79084c6b42`
 **Reviewed SHA:** `c80d1948c1e843819953fa375c61fb79084c6b42`
 **Branch:** `feat/23-work-item-update`
 **Pull request:** #271
@@ -246,6 +247,7 @@ existing caller is identical.
 
 **Reviewer:** Opus 5.5, fresh independent context. Did not author, direct, or remediate this change
 (same reviewer as the round above; the fix round was written by another context).
+**Reviewed head:** `c142f3c6441ab004b959e86ea90055fcebd9fceb`
 **Reviewed SHA:** `c142f3c6441ab004b959e86ea90055fcebd9fceb` (confirmed via `gh pr view 271 --json headRefOid`).
 **Delta reviewed:** `git diff c80d194 c142f3c`. `c7eb9fe` only adds the round-1 note, and it is
 byte-identical to my copy. `c142f3c` touches `require-work-item-reach.ts`,
@@ -416,3 +418,30 @@ reaches anything outside the work-item router.
   reasoned about it from READ COMMITTED semantics and the absence of any shared row lock, and
   proved the guard with a sequential direct call.
 - Did not push, comment on the PR, or commit this note.
+
+---
+
+# Base-merge confirmation (ea13112)
+
+**Reviewer:** Opus 5.5, fresh independent context. Did not author, direct, or remediate this change.
+**Reviewed head:** `ea1311294a21a7c9bfeddd9fd7f1d8a0e6fbbd23`
+**Date:** 2026-09-23
+
+This head is `main` merged into the branch after the delta round. It was confirmed as the PR head
+via `gh pr view 271 --json headRefOid`. What I checked:
+
+- `git log --oneline c142f3c..ea13112` shows exactly four commits: `a6c48c4` (this note), `5199bfd`
+  (#272, decision log), `3ae58dd` (#273, decision log) and the merge commit `ea13112`
+  (parents `a6c48c4`, `3ae58dd`).
+- `git diff --stat c142f3c ea13112` shows exactly three files: `docs/04-engineering/agent-workflow.md`
+  (1 line), `docs/07-planning/decision-log.md` (+112) and this note (+177).
+- `git diff --stat c142f3c ea13112 -- . ':!docs'` is empty, so there is **no change to code,
+  tests, the OpenAPI contract, the permission matrix, or dependency files**.
+- `git diff 3ae58dd ea13112` on the two merged docs is empty. They are byte-identical to `main`,
+  with no conflict-resolution edits. The `agent-workflow.md` change is one table cell recording
+  the Opus 5.5 default.
+- This note at `ea13112` is byte-identical to my delta-round copy.
+
+The security analysis of the two rounds above therefore carries over to this head unchanged.
+**Verdict at `ea13112`: CLEAR WITH FINDINGS**, the same as the delta round, with T1–T4
+non-blocking.
