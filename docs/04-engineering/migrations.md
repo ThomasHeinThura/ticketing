@@ -177,9 +177,13 @@ with the connection afterwards. They are now two separate entry points, selected
 `ensureApplicationRole` against the owner connection and exits; the ordinary serving process
 (`web`/`jobs`/`all`) never receives that variable at all, and refuses to start if it ever
 does. In compose this is a one-shot `migrate` service the `taskdesk` service `depends_on`
-(`service_completed_successfully`); in Helm it is a hook Job. See
-[configuration-reference.md](../05-operations/configuration-reference.md) for the exact
-variables and the local-development path.
+(`service_completed_successfully`); in Helm it is an initContainer on the `taskdesk`
+Deployment's own Pod (a `pre-install` hook Job was tried first, and removed — it ran
+before the chart's own ServiceAccount and bundled Postgres existed, so a fresh
+`helm install` timed out; an initContainer has no such ordering problem, since Kubernetes
+itself guarantees every initContainer completes before that Pod's own containers start).
+See [configuration-reference.md](../05-operations/configuration-reference.md) for the
+exact variables and the local-development path.
 
 The retention purge running as a separate `taskdesk_maint` role from the `audit-purge` job's
 own connection is unbuilt scope, tracked on the audit-log work, not issue #296.

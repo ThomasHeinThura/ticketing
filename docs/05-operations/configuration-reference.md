@@ -266,7 +266,16 @@ into a real deployment's `.env` by accident. The documented path mirrors what Co
 Helm actually do: run the migration step once (against the local Postgres superuser), then
 run the API against a separate, ordinary role.
 
+Both steps below need `TASKDESK_AUTH_SECRET` and `TASKDESK_ENCRYPTION_KEY` — the API fails
+closed on either being unset, `TASKDESK_ROLE=migrate` included, since it is the same
+`src/index.ts` entry point and both requirements are checked before the role branch. On a
+fresh clone with no `.env` yet, generate a value for each once
+(`openssl rand -hex 32`) and reuse it across both steps:
+
 ```bash
+export TASKDESK_AUTH_SECRET=$(openssl rand -hex 32)
+export TASKDESK_ENCRYPTION_KEY=$(openssl rand -hex 32)
+
 # 1. One-time (or after a schema change): run migrations and create/repair the local
 #    application role, against the local Postgres superuser.
 TASKDESK_ROLE=migrate \
@@ -279,6 +288,11 @@ TASKDESK_DATABASE_URL=postgres://taskdesk_app:taskdesk_app@localhost:5432/taskde
 TASKDESK_DATABASE_URL=postgres://taskdesk_app:taskdesk_app@localhost:5432/taskdesk \
   pnpm --filter @taskdesk/api dev
 ```
+
+(Already have a `deploy/.env` from following [one-line-install.md](one-line-install.md) or an
+earlier session? Copy its `TASKDESK_AUTH_SECRET`/`TASKDESK_ENCRYPTION_KEY` values instead of
+generating new ones — generating fresh ones invalidates every existing session and
+previously-encrypted secret.)
 
 `deploy/.env.example` (used by the Compose stack, where `scripts/deploy.sh` runs both steps
 for you via the `migrate` service — see compose.yml):

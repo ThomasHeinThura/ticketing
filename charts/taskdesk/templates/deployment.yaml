@@ -38,6 +38,73 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       enableServiceLinks: {{ default false .Values.enableServiceLinks }}
+      {{- if .Values.migrate.enabled }}
+      # Issue #296, D2 (independent Opus 5.5 delta review of PR #308, BLOCKING): a
+      # `pre-install` Helm hook Job runs before ANY other chart resource exists — the
+      # ServiceAccount it used, and (for bundled Postgres) the database it needed to
+      # reach, were both still being created, so a fresh `helm install` timed out
+      # waiting on it. An initContainer has no such problem: the kubelet guarantees
+      # every initContainer in a Pod completes, in order, before any of that Pod's own
+      # containers start — Kubernetes's own ordering, not a Helm hook's, so there is no
+      # "runs before the chart exists" case to reason about. `waitForDatabase`'s own
+      # retry loop (apps/api/src/database/wait-for-database.ts, ~30s) still covers a
+      # bundled Postgres Pod that is merely still starting.
+      #
+      # Multiple replicas each run this on their own Pod's startup — safe: migrations
+      # and `ensureApplicationRole` are idempotent, and `ensureApplicationRole`'s own
+      # `pg_advisory_xact_lock` (apps/api/src/database/ensure-application-role.ts)
+      # serializes concurrent role/grant bootstraps so two replicas starting at once
+      # cannot race `CREATE ROLE`.
+      initContainers:
+        - name: migrate
+          securityContext:
+            {{- toYaml .Values.taskdesk.securityContext | nindent 12 }}
+          image: "{{ .Values.taskdesk.image.repository }}:{{ .Values.taskdesk.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.taskdesk.image.pullPolicy }}
+          env:
+            - name: TASKDESK_ROLE
+              value: migrate
+            - name: NODE_ENV
+              value: {{ .Values.taskdesk.env.nodeEnv | default "production" | quote }}
+            - name: TASKDESK_AGENT_URL
+              value: "{{ .Values.taskdesk.env.clientUrl }}"
+            - name: TASKDESK_PORTAL_URL
+              value: "{{ .Values.taskdesk.env.portalUrl }}"
+            - name: TASKDESK_ENCRYPTION_KEY
+              {{- if .Values.taskdesk.env.encryptionKeyExistingSecret.enabled }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.taskdesk.env.encryptionKeyExistingSecret.name }}
+                  key: {{ .Values.taskdesk.env.encryptionKeyExistingSecret.key }}
+              {{- else }}
+              value: {{ .Values.taskdesk.env.encryptionKey | quote }}
+              {{- end }}
+            - name: TASKDESK_AUTH_SECRET
+              {{- if .Values.taskdesk.env.existingSecret.enabled }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.taskdesk.env.existingSecret.name }}
+                  key: {{ .Values.taskdesk.env.existingSecret.key }}
+              {{- else }}
+              value: {{ .Values.taskdesk.env.authSecret | quote }}
+              {{- end }}
+            # deploy/entrypoint.sh requires TASKDESK_DATABASE_URL unconditionally,
+            # regardless of TASKDESK_ROLE; runMigrationStep() itself never connects
+            # with it, only with TASKDESK_MIGRATION_DATABASE_URL below.
+            {{- include "taskdesk.applicationDatabaseUrlEnv" . | nindent 12 }}
+            # The owner/migration credential (issue #296, D2): set ONLY here, on the
+            # initContainer — never on the `taskdesk` container below. When an
+            # operator sets `postgresql.auth.existingSecret` (bundled) or
+            # `taskdesk.env.database.external.migration.existingSecret` (external),
+            # this helper reads the password `valueFrom` that Secret's own key, as
+            # D2 asks for. Left unset, it is an inline value in this Pod spec instead
+            # — the same default this chart already uses for `taskdesk.env.authSecret`
+            # /`encryptionKey`/`appPassword`, not a new pattern introduced here; an
+            # `existingSecret` is the documented, recommended production path.
+            {{- include "taskdesk.migrationDatabaseUrlEnv" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.migrate.resources | nindent 12 }}
+      {{- end }}
       containers:
         - name: taskdesk
           securityContext:
@@ -100,16 +167,18 @@ spec:
             # taskdesk.env.database comments for the split's rationale.
             #
             # TASKDESK_MIGRATION_DATABASE_URL — the owner/superuser credential — is
-            # DELIBERATELY ABSENT from this Deployment (S1, independent Opus 5.5
+            # DELIBERATELY ABSENT from this container (S1, independent Opus 5.5
             # review of PR #308, BLOCKING): a long-running pod carrying that
             # credential in its own environment for its whole life is reachable by
             # any process-level compromise regardless of what the code does with
-            # it. `templates/migrate-job.yaml` is the only place it is ever set —
-            # a one-shot pre-install/pre-upgrade hook Job whose pod exits (and,
-            # per its TTL, is cleaned up) right after migrations and the role/
-            # grant bootstrap finish. The API's own `runApiBootTasks()` refuses to
-            # start if it ever finds this variable in its own environment anyway
-            # — a structural backstop, not just a chart convention.
+            # it. The `migrate` initContainer above (D2, the delta review — a
+            # `pre-install` hook Job was tried first and removed: it ran before the
+            # chart's own ServiceAccount and bundled Postgres existed, so a fresh
+            # `helm install` timed out) is the only place it is ever set; that
+            # initContainer runs to completion and exits before THIS container ever
+            # starts. `runApiBootTasks()` also refuses to start if it ever finds
+            # this variable in its own environment anyway — a structural backstop,
+            # not just a chart convention.
             {{- include "taskdesk.applicationDatabaseUrlEnv" . | nindent 12 }}
             - name: DISABLE_REGISTRATION
               value: {{ .Values.taskdesk.env.disableRegistration | quote }}

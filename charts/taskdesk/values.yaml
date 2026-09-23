@@ -60,13 +60,17 @@ postgresql:
   #   requests:
   #     cpu: 100m
   #     memory: 128Mi
-# Migration/role-setup Job (issue #296, S1) — the only object in this chart that ever
-# carries the owner/migration database credential. Runs as a pre-install/pre-upgrade
-# Helm hook before the taskdesk Deployment is created or updated. See
-# templates/migrate-job.yaml and docs/05-operations/kubernetes.md.
-migrateJob:
+# Migration/role-setup initContainer (issue #296, D2 — independent Opus 5.5 delta
+# review of PR #308) — the only place in this chart the owner/migration database
+# credential is ever set. Runs on the taskdesk Deployment's own Pod, before its
+# `taskdesk` container starts (Kubernetes's own initContainer ordering, not a Helm
+# hook — a `pre-install` hook Job was tried first and removed: it ran before the
+# ServiceAccount and the bundled Postgres existed, so a fresh `helm install` timed
+# out). Safe with multiple replicas: migrations and the role/grant bootstrap are
+# idempotent under their own advisory lock. See templates/deployment.yaml and
+# docs/05-operations/kubernetes.md.
+migrate:
   enabled: true
-  backoffLimit: 2
   resources: {}
   # resources:
   #   limits:

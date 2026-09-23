@@ -394,7 +394,20 @@ case "$MODE" in
     # new image's migrations (and any grant changes) apply before the new
     # `taskdesk` container starts.
     say "running migrations for the new image"
-    dc up -d --wait migrate
+    # issue #296, D1 (independent Opus 5.5 delta review of PR #308, BLOCKING):
+    # `dc up -d --wait migrate` aimed at a one-shot service returned exit 1 even
+    # when migrate succeeded (Compose v5.5.1, reproduced 3 times) — `--wait`'s own
+    # exit code does not reliably reflect a `service_completed_successfully`
+    # dependency's actual result the way a direct `run` does. Under `set -Eeuo
+    # pipefail` that silently aborted BOTH `upgrade` and `rollback` right after
+    # applying the new schema, leaving the OLD `taskdesk` container (still
+    # connected as the owner, on a first upgrade from a pre-split version)
+    # serving against it. `dc run --rm migrate` runs the one-shot container in
+    # the foreground and exits with ITS real exit code — 0 only if migration and
+    # the role/grant bootstrap actually succeeded — and `--rm` removes the
+    # container afterward so a later `dc run --rm migrate` is never blocked by a
+    # stale one of the same name.
+    dc run --rm migrate
     # Plain Compose does not do health-gated replacement: on a single-replica
     # stack `up -d` stops the old container, then starts the new one. Expect a
     # short outage. --wait makes a failed start loud rather than silent.
@@ -419,7 +432,10 @@ case "$MODE" in
     # already-applied migrations and the idempotent role/grant step — safe, and
     # keeps `taskdesk`'s dependency condition genuinely satisfied for this image
     # rather than reusing a stale success from a different one.
-    dc up -d --wait migrate
+    # D1 (see the `upgrade` case above for the full explanation): `dc run --rm`,
+    # not `dc up -d --wait`, so a real migrate failure actually aborts this
+    # script instead of silently succeeding.
+    dc run --rm migrate
     dc up -d --wait taskdesk
     assert_port_unpublished
     probe_api

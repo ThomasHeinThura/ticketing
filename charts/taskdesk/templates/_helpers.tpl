@@ -148,16 +148,22 @@ copy of this branching is what keeps the two from silently drifting apart.
 
 {{/*
 Env entries needed to build TASKDESK_MIGRATION_DATABASE_URL, the MIGRATION/OWNER role
-(issue #296). Used ONLY by the migrate Job (templates/migrate-job.yaml) -- S1 (the
-independent Opus 5.5 review of PR #308) requires the API Deployment never receive this
-variable at all, so it must never be `include`d from deployment.yaml.
+(issue #296). Used ONLY by the `migrate` initContainer (templates/deployment.yaml) -- S1
+(the independent Opus 5.5 review of PR #308) requires the `taskdesk` container never
+receive this variable at all, so it must never be `include`d anywhere else.
 
 External database, `migration.enabled: false`: no separate owner credential exists, so
 this falls back to the SAME url the application role uses -- the Helm equivalent of the
-application's own single-URL fallback (configuration-reference.md). It either works (if
-that external role happens to already have DDL rights) or the migrate Job fails loudly
-with Postgres's own permission-denied error, which blocks `helm install`/`upgrade` via
-the hook Job's own success gate -- a clear failure at install time, not a silent one.
+application's own single-URL fallback (configuration-reference.md). Two outcomes, per D4
+(the independent Opus 5.5 delta review of PR #308, which corrected the earlier version of
+this comment): with the chart's own documented external-database setup SQL
+(`ALTER SCHEMA public OWNER TO taskdesk_user`), that role already has DDL rights, so the
+initContainer SUCCEEDS -- and the `taskdesk` container then refuses to boot on its own
+ownership check, because the one role both migrated and is trying to serve requests. If
+that role instead lacks DDL rights, the initContainer itself fails with Postgres's own
+permission-denied error, and the Pod never reaches the `taskdesk` container at all. Either
+way this fails closed, and `kubectl describe pod`/`kubectl logs -c migrate` shows exactly
+which of the two happened -- never a silent success as the owner.
 */}}
 {{- define "taskdesk.migrationDatabaseUrlEnv" -}}
 {{- if and (not .Values.taskdesk.env.database.external.enabled) .Values.postgresql.auth.existingSecret }}

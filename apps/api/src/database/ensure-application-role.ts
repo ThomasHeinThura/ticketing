@@ -101,11 +101,18 @@ export async function ensureApplicationRole(
   // problem if that shared role turns out to be unsafe — a loud startup failure, not a
   // silent mutation of a role other things depend on.
   if (isSingleUrlMode) {
+    // D4, independent Opus 5.5 delta review of PR #308: this branch is reached
+    // whenever the two roles resolve to the SAME name — whether because
+    // TASKDESK_MIGRATION_DATABASE_URL is genuinely unset (the documented
+    // single-URL fallback) or because it happens to be set to a value that names
+    // the identical role. The earlier message here said "is unset", which was
+    // simply wrong in the second case (reproduced live) — it now states the one
+    // fact that is actually true in both: the two roles are the same.
     console.log(
       `🛈 Application role "${roleName}" is the same as the migration/owner role ` +
-        "(TASKDESK_MIGRATION_DATABASE_URL is unset — single-URL mode); skipping role " +
-        "creation. assertApplicationRoleIsNotPrivileged will refuse to start if this " +
-        "is not safe.",
+        "(both connections resolve to the same role); skipping role creation. " +
+        "assertApplicationRoleIsNotPrivileged will refuse to start if this is not " +
+        "safe.",
     );
     return;
   }
