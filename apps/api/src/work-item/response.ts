@@ -39,6 +39,23 @@ export const workItemSchema = z
 
 export const workItemListSchema = z.array(workItemSchema);
 
+// The detail route (`GET /api/work-items/{key}`) resolves the same display fields the
+// list route resolves (`controllers/get-work-item.ts`'s own comment has the why), so the
+// detail page renders a human-readable state and assignee instead of raw ids. Same field
+// names and null semantics as the list route's resolution ON PURPOSE -- if either
+// changes, both change, or a row's state/assignee would read differently depending on
+// how it was opened.
+export const workItemDetailSchema = workItemSchema
+  .extend({
+    stateName: z.string(),
+    stateCategory: z.string().openapi({
+      description:
+        "state_template.group: one of backlog, unstarted, started, completed, cancelled.",
+    }),
+    assigneeName: z.string().nullable(),
+  })
+  .openapi("WorkItemDetail");
+
 // `WI-7`: a version mismatch on `PATCH /api/work-items/{key}` returns 409 with BOTH
 // versions ("the caller's asserted version and the current server version") so the UI can
 // offer a resolution -- structured JSON, not the plain-text `errorResponse()` shape every

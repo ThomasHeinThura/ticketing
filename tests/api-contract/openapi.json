@@ -2627,6 +2627,36 @@
           "updatedAt"
         ]
       },
+      "WorkItemDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WorkItem"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "stateName": {
+                "type": "string"
+              },
+              "stateCategory": {
+                "type": "string",
+                "description": "state_template.group: one of backlog, unstarted, started, completed, cancelled."
+              },
+              "assigneeName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "stateName",
+              "stateCategory",
+              "assigneeName"
+            ]
+          }
+        ]
+      },
       "WorkItemVersionConflict": {
         "type": "object",
         "properties": {
@@ -10208,7 +10238,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkItem"
+                  "$ref": "#/components/schemas/WorkItemDetail"
                 }
               }
             }
