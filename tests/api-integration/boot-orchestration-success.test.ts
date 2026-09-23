@@ -38,6 +38,8 @@ describe("boot orchestration (issue #296, S1) — runApiBootTasks succeeds as th
   let roleName: string | undefined;
   let originalDatabaseUrl: string | undefined;
   let originalMigrationUrl: string | undefined;
+  let seededWorkspaceId: string | undefined;
+  let seededOrganisationId: string | undefined;
 
   afterEach(async () => {
     shutdownScheduler();
@@ -56,14 +58,31 @@ describe("boot orchestration (issue #296, S1) — runApiBootTasks succeeds as th
 
     // Cleanup uses a RAW connection to the known owner URL -- never the cached `db`
     // singleton, which by now is the application role and lacks DROP ROLE privilege.
-    if (roleName && originalDatabaseUrl) {
+    if (originalDatabaseUrl) {
       const owner = new Client({ connectionString: originalDatabaseUrl });
       await owner.connect();
       try {
-        await owner
-          .query(`DROP OWNED BY ${quoteIdentifier(roleName)}`)
-          .catch(() => undefined);
-        await owner.query(`DROP ROLE IF EXISTS ${quoteIdentifier(roleName)}`);
+        // Workspace delete cascades to whatever the backfill seeded under it
+        // (work_item_type/state_template); the organisation has nothing else
+        // referencing it once that is gone.
+        if (seededWorkspaceId) {
+          await owner
+            .query("DELETE FROM workspace WHERE id = $1", [seededWorkspaceId])
+            .catch(() => undefined);
+        }
+        if (seededOrganisationId) {
+          await owner
+            .query("DELETE FROM organisation WHERE id = $1", [
+              seededOrganisationId,
+            ])
+            .catch(() => undefined);
+        }
+        if (roleName) {
+          await owner
+            .query(`DROP OWNED BY ${quoteIdentifier(roleName)}`)
+            .catch(() => undefined);
+          await owner.query(`DROP ROLE IF EXISTS ${quoteIdentifier(roleName)}`);
+        }
       } finally {
         await owner.end();
       }
@@ -91,20 +110,65 @@ describe("boot orchestration (issue #296, S1) — runApiBootTasks succeeds as th
     process.env.TASKDESK_DATABASE_URL = appUrl.toString();
     await runMigrationStep();
 
+    // Seed one "legacy" workspace -- created directly, the way every workspace in the
+    // database was created before #309/#313 taught create-workspace.ts to seed its
+    // defaults in the same transaction -- so #321's backfill (folded into
+    // runApiBootTasks right after seedInternalOrganisationAndStaffPersons) has real work
+    // to do and logs its summary line. A RAW pg `Client` against the owner URL does the
+    // insert, deliberately, not the drizzle `db`/`getDatabase()` singleton this test is
+    // built around never touching before runApiBootTasks does.
+    //
+    // `organisation.is_internal` has its own partial unique index (at most one row may
+    // carry it), and this database is shared with other test files against the same
+    // Postgres instance -- an earlier file's own boot may already have created the one
+    // internal organisation. So: reuse it if it exists, insert a fresh one (own cleanup
+    // tracked) only if it does not. Either way, `ensureInternalOrganisation` (called
+    // from inside runApiBootTasks, before the backfill) is a get-or-create keyed on
+    // `is_internal`, so it adopts whichever row is here rather than racing a second one.
+    const legacyWorkspaceId = `ws_${randomSuffix()}`;
+    seededWorkspaceId = legacyWorkspaceId;
+    const seedClient = new Client({ connectionString: originalDatabaseUrl });
+    await seedClient.connect();
+    try {
+      const { rows: existingInternal } = await seedClient.query(
+        "SELECT id FROM organisation WHERE is_internal = true LIMIT 1",
+      );
+      let internalOrganisationId: string;
+      if (existingInternal.length > 0) {
+        internalOrganisationId = existingInternal[0].id as string;
+      } else {
+        internalOrganisationId = `org_${randomSuffix()}`;
+        seededOrganisationId = internalOrganisationId;
+        await seedClient.query(
+          "INSERT INTO organisation (id, key, name, is_internal) VALUES ($1, $2, 'Internal', true)",
+          [internalOrganisationId, `internal-${randomSuffix()}`],
+        );
+      }
+      await seedClient.query(
+        "INSERT INTO workspace (id, organisation_id, name, slug, created_at) VALUES ($1, $2, 'Legacy workspace', $3, now())",
+        [legacyWorkspaceId, internalOrganisationId, `legacy-${randomSuffix()}`],
+      );
+    } finally {
+      await seedClient.end();
+    }
+
     // Step 2: the app role now exists. Drop the migration URL so this matches a real
     // serving process's environment, then call runApiBootTasks -- the FIRST thing in
     // this file, and therefore in this module graph, to ever call `getDatabase()`. It
     // caches the app pool as this role, for the rest of this call (and this file).
     delete process.env.TASKDESK_MIGRATION_DATABASE_URL;
 
+    // `mockRestore()` both restores the original implementation AND clears
+    // `.mock.calls` -- read the captured calls BEFORE restoring, not after.
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    let logged: string[];
     try {
       await expect(runApiBootTasks()).resolves.toBeUndefined();
+      logged = logSpy.mock.calls.map((call) => String(call[0]));
     } finally {
       logSpy.mockRestore();
     }
 
-    const logged = logSpy.mock.calls.map((call) => String(call[0]));
     expect(logged.some((line) => /🔐 \d+ policies loaded/.test(line))).toBe(
       true,
     );
