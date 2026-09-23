@@ -39,6 +39,57 @@ export const workItemSchema = z
 
 export const workItemListSchema = z.array(workItemSchema);
 
+// #310: the list route additionally resolves state and assignee names server-side, so
+// the client never has to make a second round trip (or ship raw ids) to render a row.
+// Flat `stateName`/`stateCategory`/`assigneeName` fields alongside the existing
+// `stateId`/`assigneeId`, the same "extend with a resolved display field, keep the raw
+// id too" shape `task/response.ts`'s `taskWithAssigneeSchema` already uses for tasks.
+//
+// `stateCategory` is `state_template.group` (`data-model.md` §3: `backlog | unstarted
+// | started | completed | cancelled`) -- "category" is issue #310's own word for this
+// concept; `group` is the one name `data-model.md`/`rbac.md` actually define, so this
+// field is that value under #310's requested name, not a second, competing vocabulary
+// term.
+//
+// `assigneeName` resolves through `work_item.assignee_id -> person.id -> person.user_id
+// -> user.name` (`person` itself carries no name column). It is `null` whenever
+// `assigneeId` is `null` (unassigned), OR when the assignee is a placeholder person
+// with no linked `user` row (`person.is_placeholder`, `person.user_id is null`) --
+// there is no display name to resolve in that case; the row still reports its real
+// `assigneeId` so the caller can tell "assigned, name unknown" apart from
+// "unassigned".
+export const workItemListItemSchema = workItemSchema
+  .extend({
+    stateName: z.string(),
+    stateCategory: z.string().openapi({
+      description:
+        "state_template.group: one of backlog, unstarted, started, completed, cancelled.",
+    }),
+    assigneeName: z.string().nullable(),
+  })
+  .openapi("WorkItemListItem");
+
+export const workItemPageSchema = z
+  .object({
+    nextCursor: z.string().nullable(),
+    hasMore: z.boolean(),
+  })
+  .openapi("WorkItemPage");
+
+// `api-design.md`'s collection envelope (`{ data, page, meta }`). `meta.total` is an
+// exact count in this implementation (one extra `count(*)` query over the same
+// filters, not a per-row cost) -- `api-design.md` allows it to be documented as an
+// estimate for a large set, but nothing here requires degrading it to one, and an
+// exact count is strictly more useful while the row counts this route serves stay in
+// a normal service-desk range.
+export const workItemListResponseSchema = z
+  .object({
+    data: z.array(workItemListItemSchema),
+    page: workItemPageSchema,
+    meta: z.object({ total: z.number() }),
+  })
+  .openapi("WorkItemListResponse");
+
 // `WI-7`: a version mismatch on `PATCH /api/work-items/{key}` returns 409 with BOTH
 // versions ("the caller's asserted version and the current server version") so the UI can
 // offer a resolution -- structured JSON, not the plain-text `errorResponse()` shape every

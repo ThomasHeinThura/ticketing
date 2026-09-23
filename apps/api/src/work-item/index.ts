@@ -20,13 +20,14 @@ import updateWorkItem, {
 } from "./controllers/update-work-item";
 import { requireWorkItemReach } from "./require-work-item-reach";
 import {
-  workItemListSchema,
+  workItemListResponseSchema,
   workItemSchema,
   workItemVersionConflictSchema,
 } from "./response";
 import {
   createWorkItemBody,
   ifMatchHeader,
+  listWorkItemsQuery,
   projectIdParam,
   updateWorkItemBody,
   workItemKeyParam,
@@ -152,15 +153,26 @@ const listWorkItemsRoute = createRoute({
   tags: ["Work items"],
   summary: "List work items",
   description:
-    "List a project's work items, oldest first by number. Archived and deleted items " +
-    "are excluded. Not paginated in this first slice.",
+    "List a project's work items with server-side sort, cursor pagination and " +
+    "filters (`docs/01-architecture/api-design.md`'s collection convention; " +
+    "`sort`/`dir` match #306's own URL param names: `key | title | priority | " +
+    "dueDate`, `asc | desc`, default `key`/`asc`). Archived and deleted items are " +
+    "excluded by default. Each row also carries the resolved `stateName`, " +
+    "`stateCategory` and `assigneeName` (#310) alongside the raw ids.",
   middleware: [
     workspaceAccess.fromProject("projectId"),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
-  request: { params: projectIdParam },
+  request: { params: projectIdParam, query: listWorkItemsQuery },
   responses: {
-    200: jsonResponse("The project's work items", workItemListSchema),
+    200: jsonResponse(
+      "A page of the project's work items",
+      workItemListResponseSchema,
+    ),
+    400: errorResponse(
+      "Invalid query parameter (unknown sort field, out-of-range limit, malformed " +
+        "cursor, NUL byte, etc.)",
+    ),
     403: errorResponse(
       "No workspace access, or missing work_item:read permission",
     ),
@@ -256,8 +268,14 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(listWorkItemsRoute, async (c) => {
     const { projectId } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const items = await listWorkItems(projectId, workspaceId);
-    return c.json(items, 200);
+    const query = c.req.valid("query");
+    const result = await listWorkItems(
+      projectId,
+      workspaceId,
+      c.get("userId"),
+      query,
+    );
+    return c.json(result, 200);
   })
   .openapi(getWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");
