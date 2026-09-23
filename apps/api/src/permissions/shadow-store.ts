@@ -56,48 +56,61 @@ export function utcDateString(now: Date = new Date()): string {
 let lastPruneDay: string | null = null;
 
 /**
- * Prunes rows older than 30 days from both tables, at most once per UTC day per process.
- * There is no job runner yet (`apps/api/src/jobs/` does not exist, and
- * `docs/01-architecture/background-jobs.md`'s closed list has nothing to add this to) — see
- * that document and `docs/04-engineering/migrations.md` for the real mechanism this should
- * move onto once one exists. Bounded per call (`PRUNE_BATCH_SIZE`), so a very large backlog
- * prunes over several days' worth of calls rather than one long-running DELETE.
+ * #323 Opus S6: the old guard was set BEFORE the deletes, so one failed prune was not
+ * retried until the next UTC day; and a single bounded pass (5,000/table) could never keep
+ * up with a day's worst-case bucket growth, so the backlog grew for good. Now: loop
+ * bounded batches until a pass deletes fewer than `PRUNE_BATCH_SIZE` rows (per table),
+ * with a total ceiling so one prune still cannot run away; and set the day-guard only
+ * AFTER a fully successful prune — a failure logs and leaves the guard unset, so the next
+ * `recordShadowOutcome` retries within the same day. There is no job runner yet
+ * (`apps/api/src/jobs/` does not exist, and `docs/01-architecture/background-jobs.md`'s
+ * closed list has nothing to add this to) — see that document for the real mechanism this
+ * should move onto once one exists.
  */
+const PRUNE_TOTAL_CAP = 200_000;
+
 async function pruneIfDue(now: Date): Promise<void> {
   const today = utcDateString(now);
   if (lastPruneDay === today) {
     return;
   }
-  lastPruneDay = today;
 
   const cutoffDay = new Date(now.getTime() - RETENTION_DAYS * 86_400_000);
   const cutoffDayString = utcDateString(cutoffDay);
   const cutoffTimestamp = new Date(now.getTime() - RETENTION_DAYS * 86_400_000);
 
   try {
-    await db.execute(sql`
-      DELETE FROM ${policyShadowTallyTable}
-      WHERE ctid IN (
-        SELECT ctid FROM ${policyShadowTallyTable}
-        WHERE ${policyShadowTallyTable.day} < ${cutoffDayString}
-        LIMIT ${PRUNE_BATCH_SIZE}
-      )
-    `);
+    let totalDeleted = 0;
+    for (;;) {
+      const tallyResult = await db.execute(sql`
+        DELETE FROM ${policyShadowTallyTable}
+        WHERE ctid IN (
+          SELECT ctid FROM ${policyShadowTallyTable}
+          WHERE ${policyShadowTallyTable.day} < ${cutoffDayString}
+          LIMIT ${PRUNE_BATCH_SIZE}
+        )
+      `);
+      const eventResult = await db.execute(sql`
+        DELETE FROM ${policyShadowEventTable}
+        WHERE ctid IN (
+          SELECT ctid FROM ${policyShadowEventTable}
+          WHERE ${policyShadowEventTable.createdAt} < ${cutoffTimestamp}
+          LIMIT ${PRUNE_BATCH_SIZE}
+        )
+      `);
+      const tallyDeleted = Number(tallyResult.rowCount ?? 0);
+      const eventDeleted = Number(eventResult.rowCount ?? 0);
+      totalDeleted += tallyDeleted + eventDeleted;
+      const drained =
+        tallyDeleted < PRUNE_BATCH_SIZE && eventDeleted < PRUNE_BATCH_SIZE;
+      if (drained || totalDeleted >= PRUNE_TOTAL_CAP) {
+        break;
+      }
+    }
+    lastPruneDay = today; // only after the whole prune succeeded (S6).
   } catch (error) {
-    console.error("policy shadow: tally prune failed", error);
-  }
-
-  try {
-    await db.execute(sql`
-      DELETE FROM ${policyShadowEventTable}
-      WHERE ctid IN (
-        SELECT ctid FROM ${policyShadowEventTable}
-        WHERE ${policyShadowEventTable.createdAt} < ${cutoffTimestamp}
-        LIMIT ${PRUNE_BATCH_SIZE}
-      )
-    `);
-  } catch (error) {
-    console.error("policy shadow: event prune failed", error);
+    console.error("policy shadow: prune failed", error);
+    // Guard stays unset so the next record retries within this same UTC day.
   }
 }
 
@@ -174,6 +187,49 @@ export async function recordShadowOutcome(record: ShadowRecord): Promise<void> {
   }
 
   await pruneIfDue(new Date());
+}
+
+/**
+ * Persists accumulated saturation drops as one tally row per route key — outcome
+ * `unevaluated`, reason `shadow_saturated`, `count + n` (#323 Opus S5). Deliberately
+ * tally-only: drops are a coverage fact, not attributable events, so no event row and no
+ * `resolveIdentity` run — the write itself must stay one cheap upsert.
+ */
+export async function recordShadowDrops(
+  routeKey: string,
+  count: number,
+): Promise<void> {
+  try {
+    await db
+      .insert(policyShadowTallyTable)
+      .values({
+        id: createId(),
+        day: utcDateString(),
+        routeKey,
+        routerGroup: "shadow-control",
+        outcome: "unevaluated",
+        reasonCode: "shadow_saturated",
+        count,
+        lastSeenAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [
+          policyShadowTallyTable.day,
+          policyShadowTallyTable.routeKey,
+          policyShadowTallyTable.outcome,
+          policyShadowTallyTable.reasonCode,
+        ],
+        set: {
+          count: sql`${policyShadowTallyTable.count} + ${count}`,
+          lastSeenAt: new Date(),
+        },
+      });
+  } catch (error) {
+    console.error("policy shadow: drop-count write failed", error, {
+      routeKey,
+      count,
+    });
+  }
 }
 
 /** Test-only: lets `resetTestDatabase()`-style suites re-arm the once-per-day prune guard. */

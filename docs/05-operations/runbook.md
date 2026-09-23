@@ -241,7 +241,30 @@ order by router_group, outcome, total desc;
 
 **"Clean" means zero *unexplained* disagreements** — every `legacy_allow_policy_deny`,
 `legacy_deny_policy_allow`, `unevaluated` and `evaluator_error` row above for a router group
-must either be fixed or have its `reason_code` explained in the cut-over PR.
+must either be fixed or have its `reason_code` explained in the cut-over PR. Every cut-over PR
+must also **paste the summary output as it stood at decision time**, so the evidence a
+decision cited cannot change underneath it once the tables keep receiving writes (the Opus
+review of #323, S7).
+
+An event cap can omit details after 50 matching events in a bucket. A non-agree tally bucket
+whose count exceeds its event-row count is therefore not explained row by row and cannot be
+declared clean. Check for such buckets before reviewing the event details:
+
+```sql
+select t.day, t.route_key, t.outcome, t.reason_code,
+       t.count as tally_count, count(e.id) as event_count
+from policy_shadow_tally t
+left join policy_shadow_event e
+  on e.day = t.day
+ and e.route_key = t.route_key
+ and e.outcome = t.outcome
+ and e.reason_code is not distinct from t.reason_code
+where t.day >= (current_date - interval '7 days')
+  and t.outcome <> 'agree'
+group by t.day, t.route_key, t.outcome, t.reason_code, t.count
+having t.count > count(e.id)
+order by t.day, t.route_key, t.outcome;
+```
 
 **Latest disagreements for one router**, to see exactly what tripped:
 

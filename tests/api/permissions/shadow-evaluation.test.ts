@@ -9,7 +9,7 @@
  * `legacy_allow_policy_deny` (issue #8's own required example).
  */
 import type { RegistryEntry, ResolvedIdentity } from "@taskdesk/permissions";
-import { BUILT_IN_ROLES } from "@taskdesk/permissions";
+import { BUILT_IN_ROLES, evaluatePolicy } from "@taskdesk/permissions";
 import { describe, expect, it } from "vitest";
 import {
   buildShadowPolicySide,
@@ -17,6 +17,7 @@ import {
   isLegacyDenialStatus,
   type LegacyOutcome,
 } from "../../../apps/api/src/permissions/shadow-evaluation";
+import { normaliseTraceId } from "../../../apps/api/src/permissions/shadow-middleware";
 
 const CAPABILITY_ENTRY: RegistryEntry = {
   routeKey: "GET /api/work-items/{key}",
@@ -394,5 +395,110 @@ describe("compareShadowOutcome — the addendum's five categories", () => {
       outcome: "evaluator_error",
       reasonCode: "evaluator_threw",
     });
+  });
+});
+
+describe("#323 Opus S1 — scope provenance branches on the policy's scopeSource", () => {
+  const REQUEST_SOURCED: RegistryEntry = {
+    routeKey: "GET /api/label/workspace/{workspaceId}",
+    kind: "capability",
+    source: "apps/api/src/label/policy.ts",
+    policy: {
+      capability: "work_item:read",
+      scope: "workspace",
+      scopeSource: "request",
+      reach: "required",
+    },
+  };
+
+  it("a request-sourced workspace policy evaluates without scope_source_mismatch, and agrees for a member", () => {
+    const result = buildShadowPolicySide({
+      entry: REQUEST_SOURCED,
+      identity: identity(),
+      workspaceId: "ws_1",
+    });
+    if (typeof result === "string") {
+      throw new Error(`expected a context, got ${result}`);
+    }
+    const decision = evaluatePolicy(result.entry.policy, result.context);
+    const code = decision.allowed ? null : decision.code;
+    // The OLD bug: workspaceScopeFromRow branded a request value, the evaluator
+    // refused at the source check, and every allowed request was filed as a false
+    // `legacy_allow_policy_deny` with NO capability comparison ever running.
+    expect(code).not.toBe("scope_source_mismatch");
+    expect(code).not.toBe("scope_mismatch");
+    expect(decision.allowed).toBe(true);
+
+    // …and the comparison lands on `agree`, not on a disagreement bucket.
+    const comparison = compareShadowOutcome({
+      routeKey: REQUEST_SOURCED.routeKey,
+      routerGroup: "label",
+      policyKind: "capability",
+      policyCapability: "work_item:read",
+      identityKind: "session",
+      workspaceId: "ws_1",
+      traceId: "t-1",
+      legacy: ALLOWED,
+      policy: { evaluated: true, errored: false, decision },
+    });
+    expect(comparison).toEqual({ outcome: "agree", reasonCode: null });
+  });
+
+  it("a row-sourced workspace policy still builds a row-branded scope", () => {
+    const result = buildShadowPolicySide({
+      entry: CAPABILITY_ENTRY,
+      identity: identity(),
+      workspaceId: "ws_1",
+    });
+    if (typeof result === "string") {
+      throw new Error(`expected a context, got ${result}`);
+    }
+    const decision = evaluatePolicy(result.entry.policy, result.context);
+    const code = decision.allowed ? null : decision.code;
+    expect(code).not.toBe("scope_source_mismatch");
+    expect(code).not.toBe("scope_mismatch");
+  });
+
+  it("a scope-source artifact decision is unevaluated, NEVER filed as a disagreement", () => {
+    for (const code of ["scope_source_mismatch", "scope_mismatch"] as const) {
+      const comparison = compareShadowOutcome({
+        routeKey: REQUEST_SOURCED.routeKey,
+        routerGroup: "label",
+        policyKind: "capability",
+        policyCapability: "work_item:read",
+        identityKind: "session",
+        workspaceId: "ws_1",
+        traceId: "t-1",
+        legacy: ALLOWED,
+        policy: {
+          evaluated: true,
+          errored: false,
+          decision: { allowed: false, status: 403, code, reason: "Forbidden" },
+        },
+      });
+      expect(comparison).toEqual({
+        outcome: "unevaluated",
+        reasonCode: "scope_source_unavailable",
+      });
+    }
+  });
+});
+
+describe("#323 Opus S3 — normaliseTraceId", () => {
+  it("accepts a well-formed caller header", () => {
+    expect(normaliseTraceId("abc-123_XYZ.9")).toBe("abc-123_XYZ.9");
+  });
+
+  it("rejects an unbounded or malformed header and generates a server id instead", () => {
+    const tooLong = "a".repeat(8_007);
+    const generatedLong = normaliseTraceId(tooLong);
+    expect(generatedLong).not.toBe(tooLong);
+    expect(generatedLong).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
+    const generatedSpaces = normaliseTraceId("not valid: here!");
+    expect(generatedSpaces).toMatch(/^[0-9a-f]{8}-/);
+    const generatedAbsent = normaliseTraceId(undefined);
+    expect(generatedAbsent).toMatch(/^[0-9a-f]{8}-/);
   });
 });

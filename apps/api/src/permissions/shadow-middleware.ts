@@ -60,7 +60,11 @@ import {
   type LegacyOutcome,
   type ShadowPolicySide,
 } from "./shadow-evaluation";
-import { recordShadowOutcome, utcDateString } from "./shadow-store";
+import {
+  recordShadowDrops,
+  recordShadowOutcome,
+  utcDateString,
+} from "./shadow-store";
 
 /** `c.get("apiKey")`'s shape, as `authenticate-api-request.ts` sets it. */
 type ApiKeyContextValue =
@@ -128,28 +132,60 @@ async function writeErrorRecord(args: {
   });
 }
 
+/**
+ * The route Hono actually dispatched, as a registry key — never a middleware entry.
+ *
+ * #323 Opus S2: `matchedRoutes.at(-1)` (the old answer) assumed the last match is the
+ * route that ran, but when a literal route and a parameter route both match a path, Hono
+ * dispatches the FIRST such match while `at(-1)` returns the LAST — `PUT /api/project/
+ * reorder`, `GET /api/invitation/pending` and `GET /api/ws/user` were all attributed to
+ * another route's bucket, and their own keys never got a tally row (readable as "no
+ * traffic" rather than "never measured").
+ *
+ * Selection: the FIRST matched entry whose method is not `ALL` (Hono records middleware —
+ * the guard, compress — as `method: "ALL"`, and route-level middleware share their route's
+ * path/method, so the first non-`ALL` entry carries the dispatched route's path). This is
+ * the fix's final form after live probing on all three problem routes: `c.req.routePath`
+ * was tried as the primary signal and REJECTED — for `GET /api/ws/user` it reported
+ * `/api/ws/:projectId` (the param form) while `matchedRoutes` listed `GET /api/ws/user`
+ * first, and Opus's own probe established Hono dispatches the first match. Instrumented
+ * evidence, not theory: `matchedRoutes` for these three paths all put the literal before
+ * the parameter.
+ */
+function attributedRouteKey(c: Context): string | null {
+  const matched = c.req.matchedRoutes.find((r) => r.method !== "ALL");
+  if (!matched) {
+    return null;
+  }
+  try {
+    return normaliseRouteKey(`${c.req.method} ${matched.path}`);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * #323 Opus S3: the `x-request-id` header is caller-controlled and unbounded (an 8,007-
+ * character probe value landed verbatim) and correlates with nothing server-side, so it
+ * cannot serve as attribution the addendum treats it as. Accept the header only when it
+ * matches `^[A-Za-z0-9._-]{1,128}$`; otherwise (including when absent) generate a
+ * server-side id. **The trace id is untrusted even when it passes** — a well-formed forged
+ * value still passes — it identifies a request within this evidence store and joins no
+ * server log.
+ */
+export function normaliseTraceId(header: string | undefined): string {
+  if (header !== undefined && /^[A-Za-z0-9._-]{1,128}$/.test(header)) {
+    return header;
+  }
+  return crypto.randomUUID();
+}
+
 async function runShadowEvaluation(
   c: Context,
   legacy: LegacyOutcome,
+  routeKey: string,
 ): Promise<void> {
-  // The DEEPEST matched entry, not `c.req.routePath` (whose backing `routeIndex` freezes at
-  // whichever middleware last threw, e.g. the auth guard on a 401 — see this file's own
-  // header comment). `matchedRoutes` is registration-order, and this codebase always
-  // registers global wildcards before feature routers/routes, so the last entry is the real
-  // terminal match in every case this middleware is mounted for.
-  const matched = c.req.matchedRoutes.at(-1);
-  if (!matched) {
-    return;
-  }
-
-  let routeKey: string;
-  try {
-    routeKey = normaliseRouteKey(`${c.req.method} ${matched.path}`);
-  } catch {
-    return;
-  }
-
-  const traceId = c.req.header("x-request-id") ?? null;
+  const traceId = normaliseTraceId(c.req.header("x-request-id"));
   const entry = policyRegistry.get(routeKey);
   const policy = policyFactsFor(entry);
   const routerGroup = routerGroupFor(entry?.source);
@@ -259,6 +295,107 @@ async function runShadowEvaluation(
 }
 
 /**
+ * #323 Opus S5: shadow work (3 identity queries + tally upsert + event insert per
+ * disagreement) shares the 10-connection pool with legacy queries, previously unbounded —
+ * a 2,000-request burst pushed legacy p50 from 131 ms to 594 ms and left ~1,990 pool
+ * waiters queued. These limits bound it: at most `maxInflight` evaluations run
+ * concurrently, at most `maxPending` more wait in queue, and anything beyond that is
+ * DROPPED and COUNTED — persisted as `unevaluated: shadow_saturated` so a saturated router
+ * stays not-clean (coverage stays honest) instead of silently losing evidence. The flush
+ * timer is `.unref()`'d so it never holds a process (or test run) open. Test hooks below
+ * shrink the limits the way `resetShadowPruneGuardForTests` re-arms the prune.
+ */
+const SHADOW_LIMITS = { maxInflight: 8, maxPending: 128 } as const;
+const SHADOW_DROP_FLUSH_MS = 5_000;
+
+type ShadowLimits = {
+  maxInflight: number;
+  maxPending: number;
+};
+
+let shadowLimits: ShadowLimits = { ...SHADOW_LIMITS };
+let shadowInflight = 0;
+let shadowPending = 0;
+let shadowDrops = 0;
+const shadowQueue: Array<() => Promise<void>> = [];
+const shadowDropCounts = new Map<string, number>();
+let shadowFlushTimer: ReturnType<typeof setInterval> | null = null;
+
+/** Test hook: shrink the concurrency limits to force saturation deterministically. */
+export function setShadowLimitsForTests(limits: Partial<ShadowLimits>): void {
+  shadowLimits = { ...SHADOW_LIMITS, ...limits };
+}
+
+/** Test hook: flush accumulated drops immediately (the 5s timer is too slow for tests). */
+export async function flushShadowDropsForTests(): Promise<void> {
+  await flushShadowDrops();
+}
+
+/** Test hook: current queue depths + dropped-evaluation count. */
+export function shadowConcurrencySnapshot(): {
+  inflight: number;
+  pending: number;
+  dropped: number;
+} {
+  return {
+    inflight: shadowInflight,
+    pending: shadowPending,
+    dropped: shadowDrops,
+  };
+}
+
+function ensureDropFlush(): void {
+  if (shadowFlushTimer === null) {
+    shadowFlushTimer = setInterval(() => {
+      void flushShadowDrops();
+    }, SHADOW_DROP_FLUSH_MS);
+    shadowFlushTimer.unref?.();
+  }
+}
+
+/** Flushes accumulated drops into one tally row per route key (`shadow_saturated`). */
+async function flushShadowDrops(): Promise<void> {
+  if (shadowDropCounts.size === 0) {
+    if (
+      shadowInflight === 0 &&
+      shadowPending === 0 &&
+      shadowQueue.length === 0 &&
+      shadowFlushTimer !== null
+    ) {
+      clearInterval(shadowFlushTimer);
+      shadowFlushTimer = null;
+    }
+    return;
+  }
+  const entries = [...shadowDropCounts.entries()];
+  shadowDropCounts.clear();
+  for (const [routeKey, count] of entries) {
+    await recordShadowDrops(routeKey, count);
+  }
+}
+
+function noteShadowDrop(routeKey: string): void {
+  shadowDrops += 1;
+  shadowDropCounts.set(routeKey, (shadowDropCounts.get(routeKey) ?? 0) + 1);
+  ensureDropFlush();
+}
+
+function pumpShadowQueue(): void {
+  while (shadowInflight < shadowLimits.maxInflight && shadowQueue.length > 0) {
+    const task = shadowQueue.shift();
+    if (!task) {
+      break;
+    }
+    shadowPending -= 1;
+    shadowInflight += 1;
+    void task().finally(() => {
+      shadowInflight -= 1;
+      pumpShadowQueue();
+    });
+  }
+}
+
+/**
  * Wraps the existing `next()` call **inside** `apps/api/src/index.ts`'s one existing
  * `api.use("*", ...)` auth guard — it is not a second `.use()` registration.
  *
@@ -297,11 +434,36 @@ export async function runNextWithPolicyShadow(
     status,
   };
 
-  // Fire-and-forget, deliberately: the response has already been produced by the time we
-  // get here (`await next()` has resolved), so nothing below can change it. Errors are
-  // caught inside `runShadowEvaluation`/`recordShadowOutcome` themselves; this catch is
-  // defence in depth against a bug in the wiring above those, not the expected path.
-  void runShadowEvaluation(c, legacy).catch((error) => {
-    console.error("policy shadow: evaluation failed", error);
-  });
+  const routeKey = attributedRouteKey(c);
+  if (routeKey === null) {
+    return;
+  }
+
+  // Fire-and-forget inside an S5-bounded slot, deliberately: the response has already been
+  // produced by the time we get here (`await next()` has resolved), so nothing below can
+  // change it. Errors are caught inside `runShadowEvaluation`/`recordShadowOutcome`
+  // themselves; the outer catch is defence in depth against a bug in the wiring above
+  // those, not the expected path.
+  const task = () =>
+    runShadowEvaluation(c, legacy, routeKey).catch((error) => {
+      console.error("policy shadow: evaluation failed", error);
+    });
+
+  if (shadowInflight < shadowLimits.maxInflight) {
+    shadowInflight += 1;
+    void task().finally(() => {
+      shadowInflight -= 1;
+      pumpShadowQueue();
+    });
+    return;
+  }
+  if (shadowPending < shadowLimits.maxPending) {
+    shadowPending += 1;
+    shadowQueue.push(task);
+    return;
+  }
+  // Both bounded queues full: drop this evaluation and count it per route key, flushed as
+  // `unevaluated: shadow_saturated` — the router stays not-clean rather than evidence
+  // vanishing (#323 Opus S5).
+  noteShadowDrop(routeKey);
 }

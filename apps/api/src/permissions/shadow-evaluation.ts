@@ -24,9 +24,12 @@ import {
   NO_SINGLE_RESOURCE,
   type PolicyContext,
   type PolicyDecision,
+  projectScopeFromRequest,
   projectScopeFromRow,
   type ResolvedScope,
+  workItemScopeFromRequest,
   workItemScopeFromRow,
+  workspaceScopeFromRequest,
   workspaceScopeFromRow,
 } from "@taskdesk/permissions";
 import type { ShadowOutcome } from "./shadow-schema";
@@ -58,6 +61,13 @@ export const UNEVALUATED_REASON_CODES = [
   "portal_predicate_unavailable",
   "legacy_outcome_unknown",
   "reach_unavailable",
+  /**
+   * The shadow's OWN construction produced a scope whose provenance the policy does not
+   * declare (`scope_mismatch`/`scope_source_mismatch` from the evaluator) — a Slice 2
+   * artifact, never a disagreement, so it is filed `unevaluated` rather than counted
+   * against either side (#323 Opus S1).
+   */
+  "scope_source_unavailable",
 ] as const;
 
 export type UnevaluatedReasonCode = (typeof UNEVALUATED_REASON_CODES)[number];
@@ -169,30 +179,45 @@ export function buildShadowPolicySide(args: {
     return "row_scope_unavailable";
   }
 
-  // Capability policy: needs a ResolvedScope of the exact kind/source the policy declares.
-  // Slice 2 can only build the kinds whose row is already exposed on context by the two
-  // files this slice may touch (`workspace-access-middleware.ts`,
-  // `require-work-item-reach.ts`) — `workspace` from `c.get("workspaceId")` everywhere those
-  // run, and `project`/`work_item` only on the specific routes that also expose
-  // `c.get("projectId")`/`c.get("workItemId")`. `organisation`/`instance`-scope policies, and
-  // any `project`/`work_item`-scope policy on a route those two files don't cover, have no
-  // row on context at all today.
+  // Capability policy: needs a ResolvedScope of the exact kind AND provenance the policy
+  // declares. The provenance branch is #323 Opus S1's blocking fix: 16 registry entries
+  // declare `scope: "workspace", scopeSource: "request"` (capabilities, members, roles,
+  // invitations, labels, search, project list/create/reorder) — their workspace id comes
+  // from `fromQuery`/`fromBody`/`fromParam`, already membership-checked by
+  // `validateWorkspaceAccess`, but it is NOT a loaded row. Labeling it `row` made the
+  // evaluator refuse at the source check (`scope_source_mismatch`) before ever looking at
+  // the capability, and every allowed request on those routes was then filed as a false
+  // `legacy_allow_policy_deny` — no capability comparison ran at all. `request`-sourced
+  // values get the request-branded constructor; `row`-sourced values (the only kind this
+  // slice may see for project/work_item scopes, from `workspace-access-middleware.ts`'s
+  // lookup and `require-work-item-reach.ts`) get the row-branded one. Longer term (#324),
+  // `workspace-access-middleware.ts` should expose WHICH source kind produced
+  // `workspaceId` so a `row` policy is only ever evaluated against a real row.
   let scope: ResolvedScope;
   if (policy.scope === "workspace") {
     if (workspaceId === null || workspaceId === "") {
       return "row_scope_unavailable";
     }
-    scope = workspaceScopeFromRow({ workspaceId });
+    scope =
+      policy.scopeSource === "request"
+        ? workspaceScopeFromRequest({ workspaceId })
+        : workspaceScopeFromRow({ workspaceId });
   } else if (policy.scope === "project") {
     if (!projectId || !workspaceId) {
       return "row_scope_unavailable";
     }
-    scope = projectScopeFromRow({ projectId, workspaceId });
+    scope =
+      policy.scopeSource === "request"
+        ? projectScopeFromRequest({ projectId, workspaceId })
+        : projectScopeFromRow({ projectId, workspaceId });
   } else if (policy.scope === "work_item") {
     if (!workItemId || !projectId || !workspaceId) {
       return "row_scope_unavailable";
     }
-    scope = workItemScopeFromRow({ workItemId, projectId, workspaceId });
+    scope =
+      policy.scopeSource === "request"
+        ? workItemScopeFromRequest({ workItemId, projectId, workspaceId })
+        : workItemScopeFromRow({ workItemId, projectId, workspaceId });
   } else {
     return "row_scope_unavailable";
   }
@@ -269,6 +294,23 @@ export function compareShadowOutcome(
 
   if (!input.legacy.known) {
     return { outcome: "unevaluated", reasonCode: "legacy_outcome_unknown" };
+  }
+
+  // #323 Opus S1 (defence in depth): `scope_mismatch`/`scope_source_mismatch` mean the
+  // SHADOW built a scope whose kind/provenance the policy does not declare — a Slice 2
+  // construction artifact, never a legacy-vs-policy disagreement. Filing one as
+  // `legacy_allow_policy_deny` would put a real disagreement and a shadow bug in the same
+  // bucket, and "zero unexplained disagreements" could then wave the real one through.
+  // `buildShadowPolicySide` no longer produces this shape (it branches on scopeSource),
+  // so reaching this line is a bug — disclosed as `unevaluated`, not counted either way.
+  if (input.policy.evaluated && input.policy.decision.allowed === false) {
+    const artifactCode = input.policy.decision.code;
+    if (
+      artifactCode === "scope_mismatch" ||
+      artifactCode === "scope_source_mismatch"
+    ) {
+      return { outcome: "unevaluated", reasonCode: "scope_source_unavailable" };
+    }
   }
 
   const legacyAllowed = input.legacy.allowed;

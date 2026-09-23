@@ -28,7 +28,10 @@ import {
 } from "../../apps/api/src/permissions/shadow-schema";
 import { seedInternalOrganisationAndStaffPersons } from "../../apps/api/src/utils/seed-internal-organisation";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember } from "./helpers/fixtures";
+import {
+  createProjectFixture,
+  createWorkspaceMember,
+} from "./helpers/fixtures";
 
 /**
  * `resolveIdentity` requires a `person` row (#315 S7 — the real backfill runs once, at
@@ -134,6 +137,7 @@ afterEach(async () => {
 });
 
 const UPDATE_LABEL_ROUTE_KEY = "PUT /api/label/{id}";
+const LIST_PROJECTS_ROUTE_KEY = "GET /api/project";
 
 async function createLabelFixture(
   fresh: FreshApp,
@@ -216,6 +220,34 @@ describe("byte-identical responses with shadow on and off", () => {
     expect(onBody.name).toEqual(offBody.name);
     expect(onBody.color).toEqual(offBody.color);
     expect(onBody.taskId).toEqual(offBody.taskId);
+  });
+});
+
+describe("request-sourced scope is evaluated with request provenance", () => {
+  it("records agreement for a workspace member listing projects", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(member.user);
+
+    const response = await fresh.app.request(
+      `/api/project?workspaceId=${member.workspace.id}`,
+    );
+    expect(response.status).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const tallies = await shadowTalliesFor(LIST_PROJECTS_ROUTE_KEY);
+    expect(tallies.find((row) => row.outcome === "agree")?.count).toBe(1);
+    expect(
+      tallies.some(
+        (row) =>
+          row.outcome === "legacy_allow_policy_deny" &&
+          row.reasonCode === "scope_source_mismatch",
+      ),
+    ).toBe(false);
   });
 });
 
@@ -328,5 +360,165 @@ describe("an evaluator exception never affects the response", () => {
     expect(events.at(-1)?.reasonCode).toBe("evaluator_threw");
 
     vi.doUnmock("@taskdesk/permissions");
+  });
+});
+
+const LABEL_WORKSPACE_ROUTE_KEY = "GET /api/label/workspace/{workspaceId}";
+const PROJECT_REORDER_ROUTE_KEY = "PUT /api/project/reorder";
+const PROJECT_UPDATE_ROUTE_KEY = "PUT /api/project/{id}";
+const INVITATION_PENDING_ROUTE_KEY = "GET /api/invitation/pending";
+const INVITATION_BY_ID_ROUTE_KEY = "GET /api/invitation/{id}";
+const WS_USER_ROUTE_KEY = "GET /api/ws/user";
+const WS_PROJECT_ROUTE_KEY = "GET /api/ws/{projectId}";
+
+describe("#323 Opus S1 — a request-sourced workspace route fully evaluates to agree", () => {
+  it("an allowed member on GET /api/label/workspace/{workspaceId} records agree, never legacy_allow_policy_deny", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(member.user);
+
+    const response = await fresh.app.request(
+      `/api/label/workspace/${member.workspace.id}`,
+    );
+    expect(response.status).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // THE S1 BUG, as its inverse: before the fix every allowed request on this route
+    // was filed `legacy_allow_policy_deny` (the row/request source mismatch refused
+    // the capability comparison). Now it must be a real `agree`…
+    const agreeTallies = (
+      await shadowTalliesFor(LABEL_WORKSPACE_ROUTE_KEY)
+    ).filter((row) => row.outcome === "agree");
+    expect(
+      agreeTallies.reduce((sum, row) => sum + row.count, 0),
+    ).toBeGreaterThanOrEqual(1);
+    // …and the false-disagreement bucket must stay empty.
+    const disagreeTallies = (
+      await shadowTalliesFor(LABEL_WORKSPACE_ROUTE_KEY)
+    ).filter((row) => row.outcome === "legacy_allow_policy_deny");
+    expect(disagreeTallies).toEqual([]);
+  });
+});
+
+describe("#323 Opus S2 — evidence is attributed to the route that actually ran", () => {
+  it("PUT /api/project/reorder attributes to ITS OWN key, not to PUT /api/project/{id}", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const owner = await createWorkspaceMember({ role: "owner" });
+    await backfillPersons();
+    fresh.mockUser(owner.user);
+    const fixture = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+
+    // `workspaceAccess.fromQuery()` — the workspace id rides the query string, the same
+    // shape the registry declares for this route (`scopeSource: "request"`).
+    const response = await fresh.app.request(
+      `/api/project/reorder?workspaceId=${owner.workspace.id}`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          projects: [{ id: fixture.project.id, position: 0 }],
+        }),
+      },
+    );
+    expect(response.status).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const ownBucket = await shadowTalliesFor(PROJECT_REORDER_ROUTE_KEY);
+    expect(ownBucket.length).toBeGreaterThanOrEqual(1);
+    // The old `at(-1)` answer put reorder traffic in {id}'s bucket; {id} must be untouched.
+    expect(await shadowTalliesFor(PROJECT_UPDATE_ROUTE_KEY)).toEqual([]);
+  });
+
+  it("GET /api/invitation/pending attributes to ITS OWN key, not to GET /api/invitation/{id}", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(member.user);
+
+    const response = await fresh.app.request("/api/invitation/pending");
+    expect(response.status).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(
+      (await shadowTalliesFor(INVITATION_PENDING_ROUTE_KEY)).length,
+    ).toBeGreaterThanOrEqual(1);
+    // Before the fix this unregistered sibling bucket absorbed pending traffic as
+    // `no_policy_registered` (readable as "that route has no traffic" rather than "never measured").
+    expect(await shadowTalliesFor(INVITATION_BY_ID_ROUTE_KEY)).toEqual([]);
+  });
+
+  it("GET /api/ws/user attributes to ITS OWN key, not to GET /api/ws/{projectId}", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(member.user);
+
+    // No websocket upgrade headers: the handler's own non-upgrade response is fine —
+    // this test is about WHERE the evidence lands, not what the socket does.
+    const response = await fresh.app.request("/api/ws/user");
+    void response;
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(
+      (await shadowTalliesFor(WS_USER_ROUTE_KEY)).length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(await shadowTalliesFor(WS_PROJECT_ROUTE_KEY)).toEqual([]);
+  });
+});
+
+describe("#323 Opus S5 — saturated evaluations are dropped AND counted", () => {
+  it("with both bounded queues full, the request is unaffected and the drop is flushed as unevaluated: shadow_saturated", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const middleware = await import(
+      "../../apps/api/src/permissions/shadow-middleware"
+    );
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(member.user);
+
+    middleware.setShadowLimitsForTests({ maxInflight: 0, maxPending: 0 });
+    try {
+      const response = await fresh.app.request(
+        `/api/label/workspace/${member.workspace.id}`,
+      );
+      // The response is untouched — shadow saturation can never change it.
+      expect(response.status).toBe(200);
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      expect(
+        middleware.shadowConcurrencySnapshot().dropped,
+      ).toBeGreaterThanOrEqual(1);
+
+      await middleware.flushShadowDropsForTests();
+      const dropTallies = (
+        await shadowTalliesFor(LABEL_WORKSPACE_ROUTE_KEY)
+      ).filter((row) => row.reasonCode === "shadow_saturated");
+      expect(
+        dropTallies.reduce((sum, row) => sum + row.count, 0),
+      ).toBeGreaterThanOrEqual(1);
+      // Unevaluated means the router is NOT clean — coverage stays honest when saturated.
+      expect(dropTallies.every((row) => row.outcome === "unevaluated")).toBe(
+        true,
+      );
+    } finally {
+      middleware.setShadowLimitsForTests({});
+    }
   });
 });

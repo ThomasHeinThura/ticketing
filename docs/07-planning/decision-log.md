@@ -36,10 +36,13 @@ Newest first.
 - Reusing `audit_log`. Rejected: it has the wrong shape, being hash-chained, append-only, 12-month retention, and "who changed what".
 - Building the `*_feature_flag` tables first. Rejected for now: that is a P4 governance piece of its own, and it would block #8 on unrelated work.
 
-**Coverage in this slice:** these are fully evaluated: `public`/`delegated` routes, and
-`capability` policies scoped to a workspace. The rest are recorded as `unevaluated`, each with a
-specific reason code. That covers project/work-item capability policies without reach facts,
-other scopes, `self` and `portal` policies, and requests with no resolved identity. This is
+**Coverage in this slice:** `public`/`delegated` routes are fully evaluated. Workspace
+`capability` policies are evaluated when the legacy middleware exposes the target workspace;
+request-sourced policies use `RequestScope`, while row-sourced policies use `RowScope`. A
+denied request whose scope was not exposed is `unevaluated: scope_source_unavailable` or
+`row_scope_unavailable`, never a fabricated disagreement. Project/work-item capability
+policies without reach facts, other scopes, `self` and `portal` policies, and requests with no
+resolved identity are also recorded as `unevaluated`, each with a specific reason code. This is
 fail-safe, because a router with any `unevaluated` requests is not clean and cannot cut over.
 Widening coverage is follow-up work (Slice 2b). Because the shadow evaluation runs after the
 response, 2b may load the missing reach facts with extra reads without adding request latency.
