@@ -16,17 +16,15 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * `scopeSource: "row"` throughout this file, not `"request"` — the workspace containment is
  * verified against the database, never trusted from the path alone.
  *
- * **Two of the four sources (`fromTaskId`, `fromComment`) fall back to a client-supplied
- * `?workspaceId=` query parameter when the row lookup returns null** (task/comment not found)
- * — see `workspaceAccessMiddleware`'s `sources` array order in that file. This is pre-existing,
+ * **`fromTaskId` and `fromComment` used to fall back to a client-supplied `?workspaceId=`
+ * query parameter when the row lookup returned null** (task/comment not found) — see
+ * `workspaceAccessMiddleware`'s `sources` array order in that file. That was pre-existing,
  * inherited behaviour, identical across every other `workspaceAccess.from*` consumer in this
- * codebase (label, timeEntry, column, workflowRule), not something introduced or fixable by a
- * policy declaration — recorded here for the security review rather than silently relied upon.
- * It cannot widen a comment/task an attacker does not already have a valid id for into "found";
- * it can only let a caller who supplies a *nonexistent* id additionally claim any workspace
- * they are themselves a member of, which is what the row-lookup-failure path already reduces
- * to (a 400/404 either way once the handler re-validates the id) — worth a second look, not
- * blocking this classification.
+ * codebase (label, timeEntry, column, workflowRule). Issue #256 removed the fallback from all
+ * 8 `[lookup, query]`-shaped helpers, this pair included: a nonexistent task/comment id now
+ * 404s directly from the middleware, before any authority decision is reached, never falling
+ * through to a caller-supplied workspace. It was never exploitable here (every controller in
+ * this router does its own authoritative lookup afterward), but it is closed at the source now.
  *
  * **Target capability vocabulary is `comment:*` (`docs/01-architecture/rbac.md` § Comments,
  * scope `work_item`); the RUNTIME check is `requireWorkspacePermission({ task: ["update"] })`
