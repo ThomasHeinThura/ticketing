@@ -739,7 +739,7 @@ a row that looks old.
 **P0 #10 continuation — 2026-09-23:** The 2026-09-23 decision log selected Playwright
 screenshots for G8. A narrow first browser test now exercises the existing logged-out
 protected-route redirect and preserved return URL in a real browser; it is wired as a
-non-required CI smoke and into `pnpm test:all`. This is not the full authenticated
+required CI smoke and into `pnpm test:all`. This is not the full authenticated
 agent/portal journey suite and does not close #10. The remaining browser security,
 reduced-motion, mobile, axe, visual-baseline, and performance-budget gates still need their
 fixtures or agreed scope/thresholds. The candidate is on `fix/10-playwright-smoke`; run its

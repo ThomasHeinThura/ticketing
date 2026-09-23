@@ -125,8 +125,8 @@ The current Playwright suite is a real-browser smoke for the already-specified l
 protected-route redirect and its preserved destination. The `security`, `reduced-motion`,
 and `mobile-320` project commands above document future suites; none are enabled yet. The
 current smoke does not yet satisfy authenticated agent/portal journeys; these still need
-deterministic application fixtures and acceptance flows. The smoke is not a required
-branch-protection status check.
+deterministic application fixtures and acceptance flows. The narrow
+`e2e - protected-route redirect` smoke is a required branch-protection status check.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
