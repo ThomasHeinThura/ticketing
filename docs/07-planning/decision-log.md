@@ -40,12 +40,17 @@ below:
 2. **Same-instant ordering (closes the question left open by the 2026-09-16
    `reconstructAt` entry).** `activity` gets an internal `seq bigint GENERATED ALWAYS AS
    IDENTITY` column used only as the tie-break for rows sharing one `created_at`. This is a
-   narrow, named exception to `data-model.md`'s "surrogate ids are never sequential": that
-   rule is about identifiers used as references, which could be guessed or enumerated;
-   `seq` is never a reference, never leaves the database, and is never in an API response.
-   The primary key stays a CUID2. The alternative — inferring order from Postgres
-   transaction internals — was rejected: commit order is not visible to readers, and
-   `xmin` wraps around.
+   narrow, named exception to `data-model.md`'s "surrogate ids are never sequential". That
+   rule states no rationale of its own. The argument for the exception is made here, as the
+   2026-09-16 entry required: the risk in a sequential id is that it can be guessed or
+   enumerated when used as a reference, and `seq` is never a reference, never leaves the
+   database, and is never in an API response. The primary key stays a CUID2. `seq` gives a
+   **stable, deterministic** tie-break, not true chronology: identity values are assigned at
+   insert, not at commit, so two concurrent transactions can commit out of `seq` order. That
+   is acceptable, because rows sharing one `created_at` are concurrent by definition and have
+   no truer order to preserve. The alternative — inferring order from Postgres transaction
+   internals — was rejected: commit order is not visible to readers, and `xmin` wraps
+   around.
 3. **`audit_log` is not part of this.** It is issue #37's table and lands separately.
    Until it does, work-item mutations disclose the missing `audit_log` row in their PR's
    `Not done` rather than inventing a stand-in.
