@@ -228,11 +228,14 @@ function CreateWorkItemDialog({
                 </Button>
               </FieldDescription>
             )}
-            {!isLoadingTypes && !isTypesError && (types?.length ?? 0) === 0 && (
-              <FieldDescription>
-                {t("workItems:create.noTypes")}
-              </FieldDescription>
-            )}
+            {!isLoadingTypes &&
+              !isTypesError &&
+              types !== undefined &&
+              types.length === 0 && (
+                <FieldDescription>
+                  {t("workItems:create.noTypes")}
+                </FieldDescription>
+              )}
           </Field>
 
           <Field>

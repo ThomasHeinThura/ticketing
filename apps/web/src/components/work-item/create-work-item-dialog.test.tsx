@@ -257,6 +257,26 @@ describe("CreateWorkItemDialog", () => {
     expect(mocks.refetchTypes).toHaveBeenCalledTimes(1);
   });
 
+  it("disables the type select and shows the loading placeholder while types load", () => {
+    mocks.typesState = {
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      refetch: mocks.refetchTypes,
+    };
+    renderDialog();
+
+    const typeTrigger = screen.getByTestId("create-work-item-type-trigger");
+    expect(typeTrigger).toHaveAttribute("data-disabled");
+    expect(typeTrigger).toHaveTextContent("workItems:create.typesLoading");
+    expect(
+      screen.getByRole("button", { name: "workItems:create.submit" }),
+    ).toBeDisabled();
+    expect(
+      screen.queryByText("workItems:create.noTypes"),
+    ).not.toBeInTheDocument();
+  });
+
   it("says so when the workspace has no types at all", () => {
     mocks.typesState = {
       data: [],
@@ -267,5 +287,19 @@ describe("CreateWorkItemDialog", () => {
     renderDialog();
 
     expect(screen.getByText("workItems:create.noTypes")).toBeInTheDocument();
+  });
+
+  it("does not claim the workspace has no types when the query never produced a list", () => {
+    mocks.typesState = {
+      data: undefined,
+      isLoading: false,
+      isError: false,
+      refetch: mocks.refetchTypes,
+    };
+    renderDialog();
+
+    expect(
+      screen.queryByText("workItems:create.noTypes"),
+    ).not.toBeInTheDocument();
   });
 });
