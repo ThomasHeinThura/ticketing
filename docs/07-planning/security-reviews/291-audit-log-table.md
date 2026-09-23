@@ -1,0 +1,282 @@
+# Security review — `audit_log` tamper-evidence table and writer (migration 0067, issue #37 slice 1)
+
+**Reviewer:** Opus 5.5, fresh independent context. Did not author, direct, or remediate this change.
+**Reviewed head:** `ce11fe03370afbe2774152fb1b5ab1d6687f50eb`
+**Reviewed SHA:** `ce11fe03370afbe2774152fb1b5ab1d6687f50eb` (confirmed via `gh pr view 291 --json headRefOid`)
+**Pull request:** #291
+**Date:** 2026-09-23
+
+## Surfaces examined
+
+- `apps/api/drizzle/0067_audit_log_table.sql`, `meta/_journal.json`, `meta/0067_snapshot.json`
+- `apps/api/src/audit/{audit-writer.ts,verify-audit-chain.ts,actions.ts,lock.ts}`
+- `packages/domain/src/audit/{audit.ts,types.ts}` (`canonicalRowHash`, `canonicalJson`) — unchanged, but load-bearing
+- `apps/api/src/database/schema.ts` (`auditLogTable`)
+- `tests/api-integration/helpers/database.ts` (`resetTestDatabase`), `tests/api-integration/audit-log.test.ts`
+- `apps/api/package.json`, `pnpm-lock.yaml`, `vitest.integration.config.ts`, `tsconfig.tests.json`
+- Every `pg_advisory_*` call site in `apps/`, `packages/`, `scripts/`
+- `compose.yml`, `charts/taskdesk/templates/postgresql-deployment.yaml`, `deploy/.env.example` (role shape)
+- Docs: `audit-trail.md` AU-2/AU-3/AU-15, `data-model.md` §11 + "The audit hash chain", `migrations.md` "Append-only tables", decision log 2026-09-23
+
+## What I probed
+
+Full integration suite on a private database (`pr291_opus_test`, td-lane-pg, Postgres 18.6):
+**73 files, 978 tests, all passed** at this head. Then a throwaway probe file
+(`tests/api-integration/zz-opus-probe.test.ts`, deleted afterwards, not committed) against
+the same database, exercising the real `appendAuditLog` / `verifyAuditChain` and raw SQL:
+
+1. **Trigger bypasses (raw SQL, as the owning role).** `UPDATE … SET organisation_id = NULL,
+   after = …` / `action = (SELECT …)` / `created_at = DEFAULT` → all raise.
+   `SET organisation_id = '<other>'` → raises. `UPDATE … SET seq = DEFAULT` → raises.
+   `INSERT … ON CONFLICT (id) DO UPDATE` → raises (row trigger fires on the conflict update).
+   `INSERT … OVERRIDING SYSTEM VALUE (seq = 1)` → rejected by `audit_log_seq_unique`.
+   `WITH d AS (DELETE …)` and `MERGE … WHEN MATCHED THEN DELETE` → raise. `TRUNCATE` → raises
+   (covered by the PR's own test). The table has no view, rule, partition or generated
+   column other than the identity `seq`. `COPY FROM` can only insert, which is the
+   forged-insert limit `data-model.md` already states. **The carve-out holds against every
+   combined-rewrite form I tried.**
+2. **DDL-level bypasses (owner privilege).** `CREATE RULE … ON INSERT TO audit_log DO INSTEAD
+   NOTHING` succeeds, and so do `SET session_replication_role = replica` and (by
+   definition) `ALTER TABLE … DISABLE TRIGGER` / `DROP TRIGGER`. None of these is reachable
+   from application code: I grepped `apps/`, `packages/`, `scripts/`, `deploy/`, `charts/`
+   and `compose*.yml`. The only `session_replication_role` use is the test helper, plus a
+   comment in `0056`. There is no `DISABLE TRIGGER`, no `CREATE RULE` and no dynamic DDL
+   against `audit_log`. All of this is owner-tier residual risk. See S5 for whether the docs
+   describe it honestly.
+3. **Chain integrity.** I ran the three cases below. There is no advisory-key collision.
+   `4010` is used only in its one-argument (bigint) form. Every other one-argument key is
+   different (`2026`). Every two-argument `(int4,int4)` key sits in a separate lock-tag
+   space.
+   - Caller transaction rolled back after `appendAuditLog`: no fork.
+   - Nested savepoint rolled back while the outer transaction commits: no fork.
+   - `REPEATABLE READ` caller: **forks** (S3).
+4. **Hash/canonical form.** Every §11 field is in the input. Excluded: `id`, `seq` and
+   `organisation_id`. Of these, only `organisation_id` is security-relevant; see S4. I round-
+   tripped these values through write→jsonb→verify, and all verified:
+   - `-0` (stored as `0`, consistent);
+   - `1e21`;
+   - `5e-324`;
+   - NFD `e\u0301` (jsonb does not normalise, so it is consistent);
+   - own-key `__proto__`;
+   - nested `[]`.
+
+   These fail closed: `\u0000`, a lone surrogate, and an `undefined` member. **Top-level
+   string values do not round-trip (S2).** I found no collision between two distinct
+   object/array payloads. Key order is sorted, jsonb de-duplication is irrelevant because JS
+   objects cannot carry duplicate keys, and numbers are the same double on both sides.
+5. **Secrets (AU-2).** I tried eleven payloads (S6).
+6. **Test helper.** `SET LOCAL session_replication_role = replica` is scoped to one
+   transaction in `resetTestDatabase`, and nothing in production imports it. Correct. It
+   needs a superuser, which the test database has.
+
+## Findings
+
+### S1 — BLOCKING — `verifyAuditChain` reports a break on every legitimate `seq` gap, so one rolled-back audit write permanently blinds `audit-verify`
+
+`apps/api/src/audit/verify-audit-chain.ts:95-107` treats any non-contiguous `seq` as
+`sequence_gap`. `seq` is `GENERATED ALWAYS AS IDENTITY` (`0067_audit_log_table.sql:47`), and
+identity values are non-transactional. Any `appendAuditLog` whose enclosing transaction or
+savepoint rolls back therefore consumes a value and leaves a hole. This happens under
+AU-14's own design, where the caller decides whether a later failure aborts the mutation.
+The chain itself is intact, because the rolled-back row never existed.
+
+Reproduction:
+
+```ts
+await appendAuditLog(db, base());
+await db.transaction(async (tx) => { await appendAuditLog(tx, base()); throw new Error(); }).catch(() => {});
+await appendAuditLog(db, base());
+await verifyAuditChain(db);
+// seqs 1,3 -> { ok: false, reason: "sequence_gap", expectedPrevHash === actualPrevHash }
+```
+
+A rolled-back savepoint inside a committed outer transaction gives the same result (seqs 1,3).
+
+Why this matters for security, not only as a false alarm:
+
+- `verifyAuditChain` returns at the **first** break.
+- The table is append-only, so the offending row can never be repaired.
+- After the first ordinary rollback, every later run reports the same benign break at the
+  same row. Any **real** tampering later in the chain is never reported.
+- An actor who can make a mutation fail after its audit write, which is routine, can do this
+  on purpose.
+
+The deleted-row case the check claims to cover is already caught by the `prev_hash`
+pointer. The PR's own "detects a deleted middle row" test passes on `prev_hash_mismatch`
+alone.
+
+**Fix:** drop the `seq`-contiguity check. Order by `seq` and rely on `prev_hash`. Add a
+regression test that rolls back one append and still expects `ok: true`.
+
+### S2 — BLOCKING — a top-level JSON string in `before`/`after` is stored as something other than what was hashed, poisoning the chain on an untampered row
+
+`apps/api/src/audit/audit-writer.ts:269` binds `${before}::jsonb, ${after}::jsonb` as raw
+driver parameters. `node-postgres` JSON-encodes only objects. It sends a JS **string**
+verbatim as text, which Postgres then *parses* as JSON. Drizzle's `sql` template expands a JS
+**array** into a `($1, $2)` row list. The hash, by contrast, is computed over
+`canonicalJson(value)`, where a string is a JSON *string*. `JsonValue` (and so
+`AppendAuditLogInput.before/after`) explicitly admits both.
+
+Reproduction: write `appendAuditLog(db, base({ after: X }))` with each value of `X`, then
+run `verifyAuditChain`.
+
+| `after` | stored | result |
+| --- | --- | --- |
+| `"123"` | jsonb number `123` | `row_hash_mismatch` |
+| `"null"` | jsonb `null` | `row_hash_mismatch` |
+| `'{"a":1}'` | jsonb object `{"a":1}` | `row_hash_mismatch` |
+| `"hello"` | none | throws (invalid json) |
+| `[]` | none | throws (syntax error at ")") |
+| `[1,2]` | none | throws (cannot cast record to jsonb) |
+
+Only the object, number and boolean top-level shapes round-trip.
+
+The three mismatches write an untampered row that `audit-verify` flags forever. The table
+is append-only, so it cannot be repaired, and with S1's first-break semantics it masks every
+later real break. If a future caller records a user-controlled scalar, say a title, as
+`after`, a user can poison the chain at will. The stored value also misrepresents what was
+recorded: the string `'{"role":"admin"}'` lands as an object. The array cases fail closed,
+but they reject a shape the type promises.
+
+**Fix:** bind `JSON.stringify(value)` (or `null`) explicitly, i.e.
+`${before === null ? null : JSON.stringify(before)}::jsonb`. Add a regression test per
+top-level shape (string, numeric-looking string, `"null"`, array, empty array) that
+asserts `verifyAuditChain(...).ok`.
+
+### S3 — NON-BLOCKING — a `REPEATABLE READ`/`SERIALIZABLE` caller forks the chain silently
+
+`audit-writer.ts:199-211` reads the head after taking the lock. Under READ COMMITTED each
+statement takes a fresh snapshot, so this is correct. Inside a caller transaction whose
+snapshot predates the previous holder's commit, the head read is stale.
+
+Reproduction:
+1. T1 appends and holds the lock.
+2. T2 (`isolationLevel: "repeatable read"`) runs one `SELECT`, then calls `appendAuditLog`.
+3. T2 blocks on the lock.
+4. T1 commits.
+5. T2 proceeds, and both commit.
+
+Result: seqs 2 and 3 both have `prev_hash = 322ee7cc…`, and `verifyAuditChain` →
+`prev_hash_mismatch` at seq 3.
+
+Nothing in the codebase uses RR/SERIALIZABLE today (`project/controllers/delete-project.ts:18`
+says so), so this is latent. **Recommended fix, structural and cheap:** add
+`UNIQUE (prev_hash)` to `audit_log`, which turns any fork into a hard insert failure. The
+chain is strictly linear, and an anchor-after-purge does not change that. Alternatively, or
+as well, assert `current_setting('transaction_isolation') = 'read committed'` inside the
+writer.
+
+### S4 — NON-BLOCKING — the AU-7 carve-out admits a *direct* `UPDATE … SET organisation_id = NULL` on a living organisation's rows, and that column is not hashed
+
+`0067_audit_log_table.sql:73-98` allows any UPDATE whose only change is `organisation_id` →
+NULL. It cannot tell the FK's `ON DELETE SET NULL` apart from an ordinary statement. The
+migration comment (lines 66-68) claims "EXACTLY that one system-generated update".
+
+Reproduction (probe P6):
+1. Create organisation `org-p6` and append a row with `organisationId: 'org-p6'`.
+2. Run `UPDATE audit_log SET organisation_id = NULL` while `org-p6` still exists → succeeds.
+3. `verifyAuditChain` → `ok: true`, because `organisation_id` is excluded from the hash by
+   design.
+
+Rows can be detached from a live organisation's scoped audit view (AU-10/AU-11 reach),
+undetectably. This needs arbitrary SQL as the owner, which is the same tier as S5, so it is
+not blocking. **Hardening:** in the carve-out branch, also require
+`NOT EXISTS (SELECT 1 FROM organisation WHERE id = OLD.organisation_id)`. The referenced row
+is already gone when the RI action fires. Update the comment to match.
+
+Related, and harmless: `ON UPDATE CASCADE` on the same FK (line 53) means any change to
+`organisation.id` now raises through the "never reassigned" branch once audit rows exist.
+It fails closed, but it is worth a sentence in the comment.
+
+### S5 — NON-BLOCKING (docs must be corrected) — AU-3 / AU-15 / the decision log overstate what the trigger and the chain protect against
+
+- **AU-3 is overstated.** It still says the trigger is "the deeper control, surviving even a
+  compromised … API process" (`docs/03-features/audit-trail.md`, AU-3). The API connects as
+  the table's **owner**. `compose.yml:67-71` and `charts/taskdesk/templates/postgresql-deployment.yaml:25-35`
+  both run the official `postgres` image with `POSTGRES_USER`, which that image creates as a
+  **superuser**. A compromised API process can therefore run any of these:
+  - `ALTER TABLE audit_log DISABLE TRIGGER ALL`;
+  - `DROP TRIGGER`;
+  - `SET session_replication_role = replica`;
+  - `CREATE RULE … ON INSERT … DO INSTEAD NOTHING`, which silently suppresses all future
+    audit writes (verified live).
+
+  The trigger survives a *buggy* API process, not a *compromised* one.
+- **AU-15 and the decision log overstate the chain.** Both say AU-15's chain "already
+  exist[s] to catch exactly that after the fact". The chain is an unkeyed SHA-256 with no
+  head anchored outside the database. An actor who can disable the trigger can alter row *k*
+  and recompute rows *k…n*, or delete the newest rows. `audit-verify` will report `ok`
+  either way.
+- **`data-model.md`'s "known limit" is incomplete.** The new paragraph names only the
+  forged-insert case. Alter-and-recompute and tail-truncation are the same limit and are not
+  named.
+
+The docs must say plainly that, in this single-superuser-role deployment:
+- the trigger stops accidental and buggy writes;
+- the chain detects naive edits;
+- neither stops or reveals a privileged actor, until the role split lands and a chain head
+  is anchored externally (for example periodically exported, or signed with a key the DB
+  role does not hold).
+
+This is a correction to the wording of risk the decision already accepts, not a request to
+reopen the decision.
+
+### S6 — NON-BLOCKING — the AU-2 secret backstop is both bypassable and prone to false positives that will break legitimate audit rows
+
+`audit-writer.ts:92-134`. The PR itself documents that it is a heuristic. The probe (P4)
+shows how it behaves:
+
+- **Correctly refused:** `{password: "hunter2"}`.
+- **Written (bypasses):**
+  - `{password: ["hunter2"]}`, because array members are never checked against the parent
+    key;
+  - `{token: 123456}`, a numeric OTP;
+  - `{credentials: {value: "s3cr3t"}}`;
+  - `{pwd: …}`;
+  - `{passphrase: …}`.
+- **Refused (false positives):**
+  - `{apiKeyId: "key_123"}`;
+  - `{secretRotatedAt: "…"}`;
+  - `{tokenExpiresAt: "…"}`.
+
+The false positives are the natural `after` shapes for the catalogue's own `api_key.created`
+and `webhook.secret_rotated` actions (`actions.ts:69-73`). Once wiring lands, under AU-14's
+"mutation still succeeds" rule, those audit rows would be dropped.
+
+Before wiring, change the rule so that:
+- a matching key with **any** non-null value, including an array or a number, is refused,
+  and nested matching keys are covered too;
+- `*Id`, `*At` and `*Count` suffixes are exempt.
+
+Or, better, give each call site an explicit per-action allowlist of `after` keys, since
+AU-2's real contract is "record which keys changed".
+
+(An oversized payload that contains a secret is replaced wholesale by the truncation marker
+before the check, so nothing leaks. That is fine.)
+
+### Nit (no finding number)
+
+`appendAuditLog`'s doc comment (`audit-writer.ts:155`) says "inside the caller's own
+transaction -- never opens its own". Line 199 opens a real transaction when given the root
+`db`, and does so deliberately, per its own later comment. Fix the first comment.
+
+## Verdict
+
+**CHANGES NEEDED — two BLOCKING findings (S1, S2).**
+
+The append-only enforcement itself is sound against every DML route I could find, the
+carve-out cannot be abused to rewrite hashed columns, the chain does not fork under the
+READ COMMITTED isolation the codebase uses, and the canonical form round-trips every
+object-shaped edge case. What blocks is the verifier and the writer disagreeing with the
+database about what an intact chain looks like:
+
+- S1: a legitimate rollback reads as tampering.
+- S2: a top-level string payload is stored as something other than what was hashed.
+
+Both permanently break `audit-verify` on an append-only table that cannot be repaired, and
+because the verifier stops at the first break, both hide any real tampering after it. Both
+fixes are a few lines, each with a regression test. S3–S6 should be addressed or tracked.
+S5 is a docs correction and should land with this PR.
+
+Test evidence at this head: integration suite 73 files / 978 tests passed on `pr291_opus_test`.
+The database was dropped afterwards.
