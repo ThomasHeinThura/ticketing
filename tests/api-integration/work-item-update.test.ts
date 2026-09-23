@@ -5,9 +5,11 @@
  */
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
+import { HTTPException } from "hono/http-exception";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import updateWorkItem from "../../apps/api/src/work-item/controllers/update-work-item";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -385,6 +387,75 @@ describe("API integration: work item update (#23 second slice)", () => {
     expect(row?.title).toBe("Edited while project was alive");
   });
 
+  it("T3 (independent Opus security review of PR #271, delta round): updateWorkItem itself refuses a soft-deleted project's row, not only requireWorkItemReach", async () => {
+    // The S1 tests above both go through the real HTTP route, so `requireWorkItemReach`
+    // (which independently checks `project.deleted_at IS NULL`) answers 404 before the
+    // transaction ever runs -- neither one exercises `update-work-item.ts`'s own
+    // `projectNotDeleted` EXISTS guard on the CAS `WHERE` clause. This test calls
+    // `updateWorkItem` directly, the same probe the Opus delta round used, skipping the
+    // reach middleware entirely (as a genuine race between the middleware's check and the
+    // transaction would). Removing `projectNotDeleted` from `update-work-item.ts`'s CAS
+    // `WHERE` makes this test fail while every HTTP-level S1 test still passes -- proven
+    // by mutation testing, reported in this PR's body, not left as an assertion here.
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "CAS-guarded directly",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: new Date(), purgeAfter: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+
+    // Current asserted version: the CAS's own EXISTS guard must refuse this, not the
+    // version comparison (which would otherwise match and let the write through).
+    let currentVersionError: unknown;
+    try {
+      await updateWorkItem(
+        createdBody.key,
+        creator.workspace.id,
+        createdBody.version,
+        { title: "Should not land (current version)" },
+      );
+    } catch (error) {
+      currentVersionError = error;
+    }
+    expect(currentVersionError).toBeInstanceOf(HTTPException);
+    expect((currentVersionError as HTTPException).status).toBe(404);
+
+    // Stale asserted version: pins the zero-row re-read's own `isNull(projectTable.
+    // deletedAt)` condition too -- it must also answer 404 (the project is gone), never a
+    // confusing 409 (which would imply the row is merely at a different version).
+    let staleVersionError: unknown;
+    try {
+      await updateWorkItem(
+        createdBody.key,
+        creator.workspace.id,
+        createdBody.version + 1,
+        { title: "Should not land (stale version)" },
+      );
+    } catch (error) {
+      staleVersionError = error;
+    }
+    expect(staleVersionError).toBeInstanceOf(HTTPException);
+    expect((staleVersionError as HTTPException).status).toBe(404);
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, createdBody.key));
+    expect(row?.title).toBe("CAS-guarded directly");
+    expect(row?.version).toBe(1);
+  });
+
   it("S3 (independent Opus security review of PR #271): out-of-range startDate/dueDate are a 400, not a 500, and true/0 are not silently accepted as epoch", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);
@@ -450,6 +521,99 @@ describe("API integration: work item update (#23 second slice)", () => {
     const body = (await response.json()) as { startDate: string };
     expect(new Date(body.startDate).toISOString()).toBe(
       "2026-03-01T00:00:00.000Z",
+    );
+  });
+
+  it("T1 (independent Opus security review of PR #271, delta round): year-0000/offset-boundary dates are a 400, not a 500", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "T1-guarded item",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+
+    const badDates = [
+      "0000-01-01T00:00:00Z", // no year 0 in Postgres
+      "0001-01-01T00:00:00+14:00", // UTC instant lands in year 0
+      "9999-12-31T23:59:59-14:00", // UTC instant lands in year 10000
+      "9999-12-31T23:59:59.999-23:59", // same, largest legal offset
+      "1899-12-31T23:59:59Z", // just below the new 1900 floor
+      "2026-02-31T00:00:00Z", // impossible calendar date -- must not roll over to March 3
+    ];
+
+    for (const startDate of badDates) {
+      const response = await updateWorkItemRequest(
+        app,
+        createdBody.key,
+        { startDate },
+        createdBody.version,
+      );
+      expect(response.status, `expected 400 for ${startDate}`).toBe(400);
+    }
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, createdBody.key));
+    expect(row?.startDate).toBeNull();
+    expect(row?.version).toBe(1);
+  });
+
+  it("T2 (independent Opus security review of PR #271, delta round): the 1900/9999 UTC boundaries are accepted and read back identically", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Boundary dates",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+
+    const response = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      {
+        startDate: "1900-01-01T00:00:00Z",
+        dueDate: "9999-12-31T23:59:59Z",
+      },
+      createdBody.version,
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      startDate: string;
+      dueDate: string;
+    };
+    expect(new Date(body.startDate).toISOString()).toBe(
+      "1900-01-01T00:00:00.000Z",
+    );
+    expect(new Date(body.dueDate).toISOString()).toBe(
+      "9999-12-31T23:59:59.000Z",
+    );
+
+    // Read back on a LATER GET -- not just the PATCH's own response -- to prove the
+    // two-digit-year read quirk (T2) genuinely cannot bite once the floor is 1900: the
+    // read path isn't touched by this fix, only the input boundary is.
+    const getResponse = await app.request(`/api/work-items/${createdBody.key}`);
+    expect(getResponse.status).toBe(200);
+    const getBody = (await getResponse.json()) as {
+      startDate: string;
+      dueDate: string;
+    };
+    expect(new Date(getBody.startDate).toISOString()).toBe(
+      "1900-01-01T00:00:00.000Z",
+    );
+    expect(new Date(getBody.dueDate).toISOString()).toBe(
+      "9999-12-31T23:59:59.000Z",
     );
   });
 

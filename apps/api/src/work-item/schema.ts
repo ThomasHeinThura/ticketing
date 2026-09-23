@@ -42,16 +42,38 @@ const workItemDescription = z
 // and priority-escalation rules are all separate, later slices (see this PR's own body /
 // the work-item.md "Out of scope" section for what #23's FIRST slice deliberately excludes).
 export const createWorkItemBody = z.object({
-  // `WI-1`: every work item has exactly one type, required on create.
-  typeId: z.string().min(1),
+  // `WI-1`: every work item has exactly one type, required on create. T4 (independent
+  // Opus security review of PR #271, delta round): a NUL in `typeId` reached
+  // `createWorkItem`'s type lookup and 500'd, the same class S4 already closed for
+  // `title`/`description` -- same fix, same message.
+  typeId: z
+    .string()
+    .min(1)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
   title: workItemTitle,
   description: workItemDescription.optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
 });
 
-export const projectIdParam = z.object({ projectId: z.string() });
+// T4 (independent Opus security review of PR #271, delta round): a NUL in `projectId` or
+// `key` reaches a raw `c.req.param()` read in this route's reach middleware
+// (`require-work-item-reach.ts`, `workspaceAccess.fromProject` in the shared
+// `workspace-access-middleware.ts`) BEFORE this schema ever validates -- `apiRouter`
+// registers `middleware` ahead of the request validators (see `openapi.ts`'s own comment),
+// so the actual 500/503 fix lives there, not here. These refines are still declared on the
+// param schema for defence-in-depth and so the OpenAPI contract states the real
+// constraint; they cannot substitute for the middleware-side fix.
+export const projectIdParam = z.object({
+  projectId: z
+    .string()
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
+});
 
-export const workItemKeyParam = z.object({ key: z.string() });
+export const workItemKeyParam = z.object({
+  key: z
+    .string()
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
+});
 
 // `PATCH /api/work-items/{key}` -- `WI-7`/`WI-8`. Every field OPTIONAL: this is a genuine
 // partial update (only the fields supplied are changed), matching this codebase's own
@@ -79,14 +101,70 @@ export const workItemKeyParam = z.object({ key: z.string() });
 // own `.refine` above closes for `If-Match`. Restricting to a plain, 4-digit-year ISO-8601
 // string (never a bare number, never `true`/`false`, never the extended year format)
 // closes it at the validation boundary: only what a caller could reasonably mean as a date
-// is accepted, and everything else is a 400. `work_item.start_date`/`due_date` are
-// Postgres `timestamp`, whose actual range (4713 BC - 294276 AD) is far wider than the
-// 1-9999 window enforced here -- narrower on purpose, since nothing in `work-items.md`
-// calls for a date outside a normal calendar year, and it is the same bound `If-Match`'s
-// own fix uses (reject anything the domain has no real use for, rather than anything
-// short of the database's own limit).
+// is accepted, and everything else is a 400.
+//
+// T1/T2 (independent Opus security review of PR #271, delta round): the 1-9999 window
+// below is enforced on the PARSED UTC INSTANT, not on the year as literally written --
+// round 2 still 500'd on `0000-01-01T00:00:00Z` (no year 0 in Postgres) and on any offset
+// that pushes the written year outside 1-9999 once converted to UTC
+// (`0001-01-01T00:00:00+14:00` lands in year 0 UTC; `9999-12-31T23:59:59-14:00` lands in
+// year 10000 UTC, serialised as `+010000-...`, which Postgres rejects). Checking
+// `new Date(value).getTime()` against a millisecond bound (computed via `Date.UTC`, so it
+// is the same instant Postgres will store) closes all of those in one comparison instead
+// of a second string-shaped check.
+//
+// The lower bound is 1900-01-01T00:00:00Z UTC, not 0001, per T2: years 0001-0099 round-
+// trip through Postgres correctly (`0049-06-01 00:00:00` is exactly what's stored), but
+// come back WRONG on every read -- drizzle's `timestamp` (mode `date`) mapper turns that
+// string back into a JS `Date` through V8's non-ISO parser, which treats two-digit-style
+// years as 1950-2049 (`0049` -> `2049`, `0050` -> `1950`). That is a pre-existing
+// driver/parser quirk affecting every `timestamp` column, not something this validator can
+// fix on the read side -- but this PR is what first makes years 1-99 reachable on a
+// user-writable field, so a caller that sends one gets back a silently different date. A
+// service desk has no real use for a date before 1900, so raising the floor there removes
+// the quirk's entire input range at the boundary instead of patching the read path.
+// `work_item.start_date`/`due_date` are Postgres `timestamp`, whose actual range
+// (4713 BC - 294276 AD) is far wider than 1900-9999 -- narrower on purpose, since nothing
+// in `work-items.md` calls for a date outside a normal calendar year.
 const ISO_DATE_TIME_PATTERN =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/;
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/;
+
+// 1900-01-01T00:00:00.000Z .. 9999-12-31T23:59:59.999Z, as millisecond instants.
+const MIN_WORK_ITEM_INSTANT_MS = Date.UTC(1900, 0, 1, 0, 0, 0, 0);
+const MAX_WORK_ITEM_INSTANT_MS = Date.UTC(9999, 11, 31, 23, 59, 59, 999);
+
+// Independent Opus security review of PR #271, delta round, "not a finding" note (also
+// closed here since it is the same class): `new Date("2026-02-31T00:00:00Z")` does not
+// throw or return `NaN` --
+// JS `Date` parsing normalises an out-of-range calendar component (day 31 in a
+// 28/29/30-day month, hour 24, a nonexistent leap second) into the NEXT valid date-time
+// rather than rejecting it, which is how that string was silently stored as
+// `2026-03-03`. Rebuilding the instant from the LITERAL written components (never the
+// offset -- calendar validity is about the wall-clock digits as written, not the instant
+// they resolve to) and checking every field round-trips exactly catches that rollover
+// before it ever reaches the database.
+function isRealCalendarDateTime(match: RegExpMatchArray): boolean {
+  const [, y, mo, d, h, mi, s, frac] = match;
+  const year = Number(y);
+  const month = Number(mo);
+  const day = Number(d);
+  const hour = Number(h);
+  const minute = Number(mi);
+  const second = Number(s);
+  const millis = frac ? Number(frac.slice(1, 4).padEnd(3, "0")) : 0;
+
+  const rebuilt = new Date(
+    Date.UTC(year, month - 1, day, hour, minute, second, millis),
+  );
+  return (
+    rebuilt.getUTCFullYear() === year &&
+    rebuilt.getUTCMonth() === month - 1 &&
+    rebuilt.getUTCDate() === day &&
+    rebuilt.getUTCHours() === hour &&
+    rebuilt.getUTCMinutes() === minute &&
+    rebuilt.getUTCSeconds() === second
+  );
+}
 
 const workItemDateTime = z
   .string()
@@ -97,6 +175,26 @@ const workItemDateTime = z
   .refine((value) => !Number.isNaN(new Date(value).getTime()), {
     message: "must be a valid date-time",
   })
+  .refine(
+    (value) => {
+      const match = value.match(ISO_DATE_TIME_PATTERN);
+      return match !== null && isRealCalendarDateTime(match);
+    },
+    {
+      message:
+        "must be a real calendar date-time -- no rollover (e.g. February 31, hour 24)",
+    },
+  )
+  .refine(
+    (value) => {
+      const ms = new Date(value).getTime();
+      return ms >= MIN_WORK_ITEM_INSTANT_MS && ms <= MAX_WORK_ITEM_INSTANT_MS;
+    },
+    {
+      message:
+        "must be between 1900-01-01T00:00:00.000Z and 9999-12-31T23:59:59.999Z, as a UTC instant",
+    },
+  )
   .transform((value) => new Date(value));
 
 export const updateWorkItemBody = z

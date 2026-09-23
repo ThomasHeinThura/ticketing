@@ -456,4 +456,24 @@ describe("API integration: task creation", () => {
     });
     expect(persistedTask).toBeUndefined();
   });
+
+  it("T4 follow-up (ordinary review of #277, the #271 delta-round PR): a NUL byte in GET /api/task/{id} is a 400, not a fall-through to ?workspaceId= and a later 500", async () => {
+    // `GET /api/task/{id}` is one of the 8 real routes gated by a `[{ type: "lookup" },
+    // { type: "query", key: "workspaceId" }]`-shaped `workspaceAccess` helper
+    // (`workspaceAccess.fromTask()`, `task/index.ts`'s `getTaskRoute`). Before this fix, a
+    // NUL-bearing `id` was treated as ABSENT, which let the loop fall through to the
+    // caller's own `?workspaceId=` and pass the middleware against a real workspace the
+    // caller genuinely belongs to -- issue #256's fallback class -- only to 500 once the
+    // handler tried to look the NUL id up itself. This proves the real route, not just the
+    // middleware in isolation, refuses it up front.
+    const member = await createWorkspaceMember();
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/task/${encodeURIComponent("\u0000x")}?workspaceId=${member.workspace.id}`,
+    );
+
+    expect(response.status).toBe(400);
+  });
 });
