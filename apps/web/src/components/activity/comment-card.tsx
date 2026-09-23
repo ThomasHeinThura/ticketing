@@ -1,6 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Button,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -13,11 +16,6 @@ import CommentEditor from "@/components/activity/comment-editor";
 import { GithubIcon } from "@/components/icons/github-icon";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/preview-card";
 import useDeleteComment from "@/hooks/mutations/comment/use-delete-comment";
 import useUpdateComment from "@/hooks/mutations/comment/use-update-comment";
 import { formatDateTime, formatRelativeTime } from "@/lib/format";

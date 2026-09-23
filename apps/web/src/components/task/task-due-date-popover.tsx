@@ -1,13 +1,8 @@
-import { Button } from "@taskdesk/ui";
+import { Button, Popover, PopoverContent, PopoverTrigger } from "@taskdesk/ui";
 import { X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { useUpdateTaskDueDate } from "@/hooks/mutations/task/use-update-task-due-date";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";

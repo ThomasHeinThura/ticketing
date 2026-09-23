@@ -3,6 +3,11 @@ import {
   Checkbox,
   Input,
   Label,
+  NumberField,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
   Radio,
   RadioGroup,
   Separator,
@@ -11,13 +16,6 @@ import {
 import { CheckCircle, Trash2 } from "lucide-react";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import {
-  NumberField,
-  NumberFieldDecrement,
-  NumberFieldGroup,
-  NumberFieldIncrement,
-  NumberFieldInput,
-} from "@/components/ui/number-field";
 import {
   Select,
   SelectContent,

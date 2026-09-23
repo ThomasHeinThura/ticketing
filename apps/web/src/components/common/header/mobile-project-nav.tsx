@@ -1,4 +1,4 @@
-import { Button } from "@taskdesk/ui";
+import { Button, Popover, PopoverContent, PopoverTrigger } from "@taskdesk/ui";
 import {
   CalendarDays,
   CalendarRange,
@@ -8,11 +8,6 @@ import {
   SquareKanban,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import icons from "@/constants/project-icons";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { cn } from "@/lib/cn";

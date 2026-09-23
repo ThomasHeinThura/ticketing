@@ -1,5 +1,12 @@
 import { useLocation } from "@tanstack/react-router";
-import { Badge, Button, Input } from "@taskdesk/ui";
+import {
+  Badge,
+  Button,
+  Input,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@taskdesk/ui";
 import { produce } from "immer";
 import {
   CalendarIcon,
@@ -39,11 +46,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import useCreateLabel from "@/hooks/mutations/label/use-create-label";
 import useCreateTask from "@/hooks/mutations/task/use-create-task";
 import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";

@@ -1,4 +1,12 @@
-import { Button } from "@taskdesk/ui";
+import {
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Toolbar,
+  ToolbarGroup,
+  ToolbarSeparator,
+} from "@taskdesk/ui";
 import {
   Archive,
   ArrowUpToLine,
@@ -39,11 +47,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/menu";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { useBulkOperations } from "@/hooks/mutations/task/use-bulk-operations";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -57,7 +60,6 @@ import { getPriorityIcon } from "@/lib/priority";
 import { toast } from "@/lib/toast";
 import useBacklogBulkSelectionStore from "@/store/backlog-bulk-selection";
 import useProjectStore from "@/store/project";
-import { Toolbar, ToolbarGroup, ToolbarSeparator } from "../ui/toolbar";
 
 type BacklogActionItem = {
   value: string;

@@ -1,4 +1,12 @@
-import { Button } from "@taskdesk/ui";
+import {
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Toolbar,
+  ToolbarGroup,
+  ToolbarSeparator,
+} from "@taskdesk/ui";
 import {
   Archive,
   ArrowDownToLine,
@@ -32,11 +40,6 @@ import {
   CommandPanel,
   CommandSeparator,
 } from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { useBulkOperations } from "@/hooks/mutations/task/use-bulk-operations";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -50,7 +53,6 @@ import { getPriorityIcon } from "@/lib/priority";
 import { toast } from "@/lib/toast";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
-import { Toolbar, ToolbarGroup, ToolbarSeparator } from "../ui/toolbar";
 
 type BulkActionItem = {
   value: string;

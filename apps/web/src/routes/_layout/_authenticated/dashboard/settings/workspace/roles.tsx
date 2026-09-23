@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DEFAULT_ROLE_NAMES, statement } from "@taskdesk/permissions";
 import {
+  Accordion,
+  AccordionItem,
+  AccordionPanel,
+  AccordionTrigger,
   Button,
   Empty,
   EmptyDescription,
@@ -16,12 +20,6 @@ import { Plus, Shield, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import {
-  Accordion,
-  AccordionItem,
-  AccordionPanel,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import {
   AlertDialog,
   AlertDialogClose,
