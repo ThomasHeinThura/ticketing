@@ -8,6 +8,7 @@ import {
   diffWorkItemFieldChanges,
   type NewActivityInput,
   recordWorkItemActivity,
+  resolveVisibility,
   type WorkItemFieldSnapshot,
 } from "../activity";
 
@@ -229,6 +230,11 @@ export async function updateWorkItem(
   // `transitioned` row can appear in it). Nothing internal beyond field names/values
   // already destined for the (possibly internal) `activity` row is added here.
   if (activityRows.length > 0) {
+    // `events.md`'s `work_item.updated` row (updated for this PR, mirroring
+    // `work_item.commented`'s `NO-19`): each entry carries the SAME `visibility`
+    // `resolveVisibility` gives the `activity` row for that `(verb, field)` pair --
+    // one allowlist, not a second one invented for events. A customer or webhook
+    // consumer must drop an `internal` entry.
     const changes = activityRows
       .filter(
         (row: NewActivityInput): row is NewActivityInput & { field: string } =>
@@ -238,6 +244,7 @@ export async function updateWorkItem(
         field: row.field,
         from: row.oldValue,
         to: row.newValue,
+        visibility: resolveVisibility(row),
       }));
 
     await publishEvent("work_item.updated", {

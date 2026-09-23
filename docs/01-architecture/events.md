@@ -49,7 +49,7 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 | Key | Emitted when | A | W | N | Payload, beyond key + url |
 | --- | --- | :-: | :-: | :-: | --- |
 | `work_item.created` | A work item is created, including from intake acceptance | ✅ | ✅ | — | `typeId`, `stateId`, `requesterId`, `source: portal\|agent\|api\|automation\|import` |
-| `work_item.updated` | Any field other than state or assignee changes | ✅ | ✅ | — | `changes: [{ field, from, to }]`. Automations expose this as "a named field changed" — a **condition on `changes[].field`**, not a separate event |
+| `work_item.updated` | Any field other than state or assignee changes | ✅ | ✅ | — | `changes: [{ field, from, to, visibility: public\|internal }]`. Automations expose this as "a named field changed" — a **condition on `changes[].field`**, not a separate event. A customer or webhook consumer must drop an `internal` entry, the same way `work_item.commented`'s `visibility` works — `NO-19` |
 | `work_item.transitioned` | State changes through the lifecycle engine | ✅ | ✅ | ✅ | `fromStateId`, `toStateId`, `workflowVersion`, `note?` |
 | `work_item.assigned` | Assignee set or changed | ✅ | ✅ | ✅ | `assigneeId`, `previousAssigneeId` (null when newly assigned) |
 | `work_item.unassigned` | Assignee cleared | — | ✅ | ✅ | `previousAssigneeId` |

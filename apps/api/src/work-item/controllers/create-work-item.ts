@@ -186,6 +186,10 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // the staff-facing create path, not a customer-portal intake flow, which does not
   // exist yet -- flagged as a judgment call in this PR's body, since `events.md`'s
   // `source` enum has no "this is the only creation surface today" case.
+  // `visibility: "public"` is fixed, not derived per-request: `resolveVisibility`'s
+  // `PUBLIC_PAIRS` has `(created, null)` unconditionally (`activity.ts`), so a
+  // `work_item.created` event -- one per row, always verb `created`, no field -- is
+  // always public, the same way its `activity` row always is.
   await publishEvent("work_item.created", {
     workItemId: created.id,
     key: created.key,
@@ -195,6 +199,7 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     stateId: created.stateId,
     requesterId: created.requesterId,
     source: "agent",
+    visibility: "public",
     actorId,
     actorType,
   });

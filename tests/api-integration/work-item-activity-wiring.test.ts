@@ -13,7 +13,7 @@
  * fields are exactly `priority`, `due_date`, `title`, `description` -- `start_date` is
  * not one of them, so it resolves `internal` by CA-7's own fail-closed default).
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -112,10 +112,11 @@ function createWorkItemRequest(
   app: ReturnType<typeof createApp>["app"],
   projectId: string,
   body: Record<string, unknown>,
+  extraHeaders: Record<string, string> = {},
 ) {
   return app.request(`/api/projects/${projectId}/work-items`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...extraHeaders },
     body: JSON.stringify(body),
   });
 }
@@ -125,15 +126,47 @@ function updateWorkItemRequest(
   key: string,
   body: Record<string, unknown>,
   ifMatch: string | number,
+  extraHeaders: Record<string, string> = {},
 ) {
   return app.request(`/api/work-items/${key}`, {
     method: "PATCH",
     headers: {
       "content-type": "application/json",
       "if-match": `"${ifMatch}"`,
+      ...extraHeaders,
     },
     body: JSON.stringify(body),
   });
+}
+
+function hashApiKeyForTest(key: string): string {
+  return createHash("sha256")
+    .update(key)
+    .digest()
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+/**
+ * Same idiom as `api-key-bearer.test.ts`: a real row in `apikey`, resolved by
+ * `authenticate-api-request.ts`'s own `verifyApiKey` -- not a mock of authentication.
+ */
+async function createApiKeyFor(userId: string): Promise<string> {
+  const rawKey = `taskdesk_test_${randomUUID()}`;
+  const now = new Date();
+  await db.insert(schema.apikeyTable).values({
+    referenceId: userId,
+    userId,
+    key: hashApiKeyForTest(rawKey),
+    name: "work-item activity wiring test key",
+    start: rawKey.slice(0, 12),
+    prefix: "taskdesk",
+    createdAt: now,
+    updatedAt: now,
+  });
+  return rawKey;
 }
 
 async function activityRowsFor(workItemId: string) {
@@ -262,6 +295,7 @@ describe("API integration: work-item activity wiring (#23 third slice, WI-6)", (
       field: "priority",
       from: "low",
       to: "high",
+      visibility: "public",
     });
     const dueDateChange = updatedData.changes.find(
       (c) => c.field === "due_date",
@@ -568,5 +602,143 @@ describe("API integration: work-item activity wiring (#23 third slice, WI-6)", (
     // query, not the thing this test is actually checking (that the row is COMMITTED
     // by the time the handler's read runs, not merely that the handler was invoked).
     await expect(titleSeenAtEventTime).resolves.toBe("After commit");
+  });
+
+  it("an API-key-authenticated create records actor_type api_key and the key owner's id, in both the activity row and the event", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    const rawKey = await createApiKeyFor(creator.user.id);
+    const { app } = createApp();
+
+    const response = await createWorkItemRequest(
+      app,
+      project.id,
+      { typeId: type.id, title: "Created via API key" },
+      { Authorization: `Bearer ${rawKey}` },
+    );
+    expect(response.status).toBe(200);
+    const created = (await response.json()) as { id: string; key: string };
+
+    const rows = await activityRowsFor(created.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.actorType).toBe("api_key");
+    // The actor id is the KEY'S OWNER, not the key's own id -- `data-model.md`'s
+    // `audit_log` row keeps a SEPARATE `api_key_id` column alongside `actor_id`
+    // precisely because `actor_id` is the underlying identity, not the credential.
+    expect(rows[0]?.actorId).toBe(creator.user.id);
+
+    const createdEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.created",
+    );
+    expect(createdEvents).toHaveLength(1);
+    const eventData = createdEvents[0]?.data as {
+      actorId: string;
+      actorType: string;
+    };
+    expect(eventData.actorType).toBe("api_key");
+    expect(eventData.actorId).toBe(creator.user.id);
+  });
+
+  it("an API-key-authenticated update records actor_type api_key and the key owner's id, in both the activity row and the event", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Will be updated via API key",
+      priority: "low",
+    });
+    const createdBody = (await created.json()) as {
+      id: string;
+      key: string;
+      version: number;
+    };
+
+    const rawKey = await createApiKeyFor(creator.user.id);
+    const response = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { priority: "high" },
+      createdBody.version,
+      { Authorization: `Bearer ${rawKey}` },
+    );
+    expect(response.status).toBe(200);
+
+    const rows = await activityRowsFor(createdBody.id);
+    const updateRow = rows.find((row) => row.verb === "updated");
+    expect(updateRow).toBeDefined();
+    expect(updateRow?.actorType).toBe("api_key");
+    expect(updateRow?.actorId).toBe(creator.user.id);
+
+    const updatedEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.updated",
+    );
+    expect(updatedEvents).toHaveLength(1);
+    const eventData = updatedEvents[0]?.data as {
+      actorId: string;
+      actorType: string;
+    };
+    expect(eventData.actorType).toBe("api_key");
+    expect(eventData.actorId).toBe(creator.user.id);
+  });
+
+  it("visibility in work_item.updated's changes[]: a priority change is public, a startDate change is internal", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Visibility check",
+      priority: "low",
+    });
+    const createdBody = (await created.json()) as {
+      id: string;
+      key: string;
+      version: number;
+    };
+
+    const response = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { priority: "high", startDate: "2026-01-01T00:00:00.000Z" },
+      createdBody.version,
+    );
+    expect(response.status).toBe(200);
+
+    const updatedEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.updated",
+    );
+    expect(updatedEvents).toHaveLength(1);
+    const eventData = updatedEvents[0]?.data as {
+      changes: Array<{ field: string; visibility: string }>;
+    };
+    const priorityChange = eventData.changes.find(
+      (c) => c.field === "priority",
+    );
+    expect(priorityChange?.visibility).toBe("public");
+    const startDateChange = eventData.changes.find(
+      (c) => c.field === "start_date",
+    );
+    expect(startDateChange?.visibility).toBe("internal");
+  });
+
+  it("work_item.created carries a top-level visibility of public", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const response = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Top-level visibility",
+    });
+    expect(response.status).toBe(200);
+
+    const createdEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.created",
+    );
+    expect(createdEvents).toHaveLength(1);
+    const eventData = createdEvents[0]?.data as { visibility: string };
+    expect(eventData.visibility).toBe("public");
   });
 });
