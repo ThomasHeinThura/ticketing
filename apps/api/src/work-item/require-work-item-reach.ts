@@ -51,6 +51,18 @@ export function requireWorkItemReach(idKey = "key") {
     if (!key) {
       throw new HTTPException(400, { message: "Missing work item key" });
     }
+    // T4 (independent Opus security review of PR #271, delta round): a NUL byte in `key`
+    // reached the `eq(schema.workItemTable.key, key)` lookup below unvalidated -- Postgres
+    // `text` rejects a NUL outright, so this used to throw an unhandled error and 500
+    // before `workItemKeyParam`'s own schema (`schema.ts`) ever gets a chance to run: this
+    // middleware is registered ahead of the request validators (`openapi.ts`'s own
+    // comment), and reads the raw, unvalidated param for exactly that reason. Answered as
+    // 400, the same as the adjacent "missing key" check above, since a NUL-bearing key is
+    // a malformed request, not a missing resource -- consistent with this route already
+    // treating an empty key as 400, not 404.
+    if (key.includes("\u0000")) {
+      throw new HTTPException(400, { message: "Invalid work item key" });
+    }
 
     // #202 / PR #204's freeze invariant: a soft-deleted project's rows are frozen for
     // its 30-day recovery window, answered as 404 everywhere the subject resolves to a

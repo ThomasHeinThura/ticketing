@@ -4,6 +4,21 @@ import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import { validateWorkspaceAccess } from "./validate-workspace-access";
 
+// T4 (independent Opus security review of PR #271, delta round): a NUL byte in an id
+// pulled from a path param (e.g. `GET /api/projects/%00/work-items`, `fromProject`'s
+// `idKey`) reached `lookupWorkspaceId`'s query unvalidated, threw, and was caught by that
+// function's own fail-closed `catch` as a masked 503 ("Could not verify workspace
+// access") -- Postgres `text`/`uuid` columns reject a NUL outright, and no legitimate id
+// this codebase issues (cuid2, `{slug}-{number}`) ever contains one. Treating a
+// NUL-bearing id as simply ABSENT (never handed to `lookupWorkspaceId`, never assigned to
+// `workspaceId`) reuses the existing, already-tested "workspace id could not be
+// determined" 400 path below instead of adding a new failure mode -- and, as a side
+// effect, closes this for every other `workspaceAccess.from*` caller in this file, not
+// only `fromProject`, since none of them has a legitimate use for a NUL-bearing id either.
+function hasNulByte(value: string): boolean {
+  return value.includes("\u0000");
+}
+
 type WorkspaceIdSource =
   | { type: "query"; key: string }
   | { type: "body"; key: string }
@@ -60,8 +75,12 @@ export function workspaceAccessMiddleware(
         const body = await readJsonObjectBody(c);
         const bodyValue = body[source.key];
         workspaceId = typeof bodyValue === "string" ? bodyValue : null;
+        if (workspaceId && hasNulByte(workspaceId)) {
+          workspaceId = null;
+        }
       } else if (source.type === "param") {
-        workspaceId = c.req.param(source.key) || null;
+        const raw = c.req.param(source.key) || null;
+        workspaceId = raw && !hasNulByte(raw) ? raw : null;
       } else if (source.type === "lookup") {
         const body = await readJsonObjectBody(c);
         const bodyId = body[source.idKey];
@@ -71,7 +90,7 @@ export function workspaceAccessMiddleware(
         // caller authorize against one resource (`?taskId=<mine>`) while the
         // handler acted on another (`{"taskId": "<someone else's>"}`).
         const id = c.req.param(source.idKey) || idFromBody;
-        if (id) {
+        if (id && !hasNulByte(id)) {
           workspaceId = await lookupWorkspaceId(source.resource, id);
         }
       } else if (source.type === "lookupMany") {
@@ -79,7 +98,7 @@ export function workspaceAccessMiddleware(
         const ids = body[source.idKey];
         if (Array.isArray(ids)) {
           const taskIds = ids.filter(
-            (id): id is string => typeof id === "string",
+            (id): id is string => typeof id === "string" && !hasNulByte(id),
           );
           if (taskIds.length > 0) {
             const tasks = await db

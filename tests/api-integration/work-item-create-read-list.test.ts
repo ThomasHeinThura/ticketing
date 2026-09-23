@@ -329,6 +329,52 @@ describe("API integration: work item create/read/list (#23)", () => {
     expect(rows).toHaveLength(0);
   });
 
+  it("T4 (independent Opus security review of PR #271, delta round): a NUL byte in typeId is a 400 on create, not a 500", async () => {
+    const { creator, project } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const response = await createWorkItemRequest(app, project.id, {
+      typeId: "a\u0000b",
+      title: "NUL typeId",
+    });
+    expect(response.status).toBe(400);
+
+    const rows = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.projectId, project.id));
+    expect(rows).toHaveLength(0);
+  });
+
+  it("T4 (independent Opus security review of PR #271, delta round): a NUL byte in the {projectId} path param is a 400, not a 503, on create and list", async () => {
+    const { creator, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const createResponse = await createWorkItemRequest(app, "a\u0000b", {
+      typeId: type.id,
+      title: "NUL projectId",
+    });
+    expect(createResponse.status).toBe(400);
+
+    const listResponse = await app.request(
+      `/api/projects/${encodeURIComponent("a\u0000b")}/work-items`,
+    );
+    expect(listResponse.status).toBe(400);
+  });
+
+  it("T4 (independent Opus security review of PR #271, delta round): a NUL byte in the {key} path param is a 400, not a 500, on GET", async () => {
+    const { creator } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/work-items/${encodeURIComponent("a\u0000b")}`,
+    );
+    expect(response.status).toBe(400);
+  });
+
   it("permissions: a caller without work_item:create on the project is refused (403)", async () => {
     const { project, type } = await setupProjectWithDefaultState();
     const workspaceId = (
