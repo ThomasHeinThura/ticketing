@@ -30,7 +30,7 @@ Newest first.
 The integration-test reset truncates every table. It turns triggers off for that one
 transaction only (`SET LOCAL session_replication_role = replica`), in test code only. This replaces
 the `taskdesk_app` / `taskdesk_maint` role split that AU-3 and `migrations.md` describe.
-`REVOKE UPDATE, DELETE, TRUNCATE … FROM PUBLIC` stays as defence in depth for a future
+`UNIQUE (prev_hash)` turns any chain fork into a failed insert. `REVOKE UPDATE, DELETE, TRUNCATE … FROM PUBLIC` stays as defence in depth for a future
 lesser-privileged role, but against the table owner today it does nothing. `activity`
 gets the same treatment the next time it is touched. AU-3, AU-15 and `migrations.md`'s
 "Append-only tables" section are corrected in the same change as this entry (PR #291).
@@ -39,10 +39,18 @@ gets the same treatment the next time it is touched. AU-3, AU-15 and `migrations
 **Why:** `compose.yml`, `charts/taskdesk/**` and `deploy/**` provision exactly one Postgres
 role. That role owns every table it migrates, so it keeps full DML whatever is revoked. The
 two-role split was specified but never implemented anywhere. PR #291's alignment check
-verified this against each deployment file. A trigger is enforced against every role,
-including the owner. The risk that remains is a privileged actor running
-`ALTER TABLE … DISABLE TRIGGER`. AU-15's hash chain and `audit-verify` already exist to
-catch exactly that after the fact.
+verified this against each deployment file. A trigger stops application bugs and every role that doesn't own the table.
+
+**What it does not stop.** This was found by #291's Opus review (S5), and it corrects an
+earlier draft of this entry, which overclaimed. In both compose and Helm the API connects as
+the table owner, and the official postgres image makes that role a **superuser**. So a
+compromised API process can still `ALTER TABLE … DISABLE TRIGGER`, or add a rule that
+silently drops audit inserts. AU-15's hash chain does **not** catch that after the fact: the
+hash has no key, and no head is anchored outside the database, so the same actor can
+recompute the rows that follow or delete the newest ones. This residual risk stays open
+until two separate pieces of work land:
+- the app role stops being the superuser owner (#296);
+- an external chain anchor (`audit_chain_anchor` / `audit-purge`) or a keyed hash is added.
 
 **Alternatives:** implement the real two-role split now: a lesser-privileged app role owns
 nothing, and migrations run as a separate role. Rejected for this slice. It is deployment
