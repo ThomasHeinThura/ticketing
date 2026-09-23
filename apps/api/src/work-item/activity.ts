@@ -44,8 +44,10 @@ const CA7_PUBLIC_VERBS: ReadonlySet<string> = new Set([
   "escalated",
 ]);
 
-// CA-7: field names that are public when the verb is a plain field change (this writer's
-// own `field_changed` verb -- see `diffWorkItemFieldChanges` below).
+// CA-7: field names that are public when the verb is a plain field change (verb
+// `updated`, `field` set to the field name -- CA-7's table is keyed "Verb / field" and
+// resolves a field edit by field name; `events.md` ~135 resolves `work_item.field_changed`
+// to `work_item.updated` the same way -- see `diffWorkItemFieldChanges` below).
 const CA7_PUBLIC_FIELDS: ReadonlySet<string> = new Set([
   "priority",
   "due_date",
@@ -175,10 +177,12 @@ function valuesDiffer(a: unknown, b: unknown): boolean {
  * builds `after` from only the fields its own request actually touched, the same way a
  * `PATCH` only sets what it received (PR #271's `update-work-item.ts`).
  *
- * JUDGMENT CALL: `field_changed` is this module's own name for the generic per-field
- * verb -- CA-6/CA-7 name the *fields* (`priority`, `due_date`, ...) and the *named*
- * verbs (`created`, `transitioned`, ...) but never name the verb a plain field edit
- * itself carries. Flagged here and in this PR's body rather than guessed silently.
+ * The verb for a plain field edit is `updated`, with `field` set to the field name --
+ * decided (not this module's own invention): CA-7's table is keyed "Verb / field" and
+ * resolves a field edit's visibility by field name, and `docs/01-architecture/events.md`
+ * ~135 already resolves the automation-picker label `work_item.field_changed` to the
+ * real event key `work_item.updated` the same way. This writer's `verb: "updated"` rows
+ * are that same generic-field-edit shape, not a new vocabulary item.
  */
 export function diffWorkItemFieldChanges(
   before: WorkItemFieldSnapshot,
@@ -198,7 +202,7 @@ export function diffWorkItemFieldChanges(
     }
     rows.push({
       ...context,
-      verb: "field_changed",
+      verb: "updated",
       field,
       oldValue,
       newValue,

@@ -2,11 +2,24 @@
 -- becomes `task_activity`". Three things happen in this migration:
 --
 --   1. Kaneo's original `activity` table (task/comment journal, keyed on `task_id`) is
---      renamed to `task_activity`, together with its indexes and unique constraint.
---      Only names change -- data, columns and every legacy task/comment route keep
---      working. Its foreign keys need no ALTER: Postgres tracks a referencing constraint
---      by the referenced table's OID, not its name, so `asset.activity_id`'s existing FK
---      (and every other) simply continues to point at the renamed table.
+--      renamed to `task_activity`, together with EVERY remaining `activity_`-named
+--      catalog object on it: its two indexes, its unique constraint, its two foreign
+--      keys, its primary key (`activity_pkey`), and -- Postgres 18 catalogues these
+--      too -- each column's `NOT NULL` constraint (`activity_id_not_null`,
+--      `activity_task_id_not_null`, `activity_type_not_null`,
+--      `activity_created_at_not_null`, `activity_updated_at_not_null`). `ALTER TABLE ...
+--      RENAME TO` only renames the table itself; every constraint/index name is an
+--      independent catalog string that survives untouched unless renamed explicitly, so
+--      leaving any of these unrenamed would collide with the new `activity` table's own
+--      auto-named objects below (Postgres resolves the collision by appending `1`,
+--      `activity_pkey1` etc., which is a silent landmine, not a working migration).
+--      Confirmed exhaustive by querying `pg_constraint`/`pg_indexes` for `activity`
+--      against a database migrated to this migration's own parent head (main, before
+--      this PR) -- not guessed. Only names change here -- data, columns and every legacy
+--      task/comment route keep working. Its foreign keys need no ALTER beyond the
+--      rename above: Postgres tracks a referencing constraint by the referenced table's
+--      OID, not its name, so `asset.activity_id`'s existing FK (and every other) simply
+--      continues to point at the renamed table.
 --   2. `work_item` gains `UNIQUE (workspace_id, id)` (`work_item_workspace_id_id_unique`)
 --      -- it previously carried only `UNIQUE (project_id, id)`
 --      (`work_item_project_id_id_unique`); #192/#191 composite-scoped `type_id`/
@@ -34,6 +47,12 @@ ALTER INDEX "activity_userId_idx" RENAME TO "task_activity_userId_idx";--> state
 ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_task_external_source_external_url_unique" TO "task_activity_task_external_source_external_url_unique";--> statement-breakpoint
 ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_task_id_task_id_fk" TO "task_activity_task_id_task_id_fk";--> statement-breakpoint
 ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_user_id_user_id_fk" TO "task_activity_user_id_user_id_fk";--> statement-breakpoint
+ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_pkey" TO "task_activity_pkey";--> statement-breakpoint
+ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_id_not_null" TO "task_activity_id_not_null";--> statement-breakpoint
+ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_task_id_not_null" TO "task_activity_task_id_not_null";--> statement-breakpoint
+ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_type_not_null" TO "task_activity_type_not_null";--> statement-breakpoint
+ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_created_at_not_null" TO "task_activity_created_at_not_null";--> statement-breakpoint
+ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_updated_at_not_null" TO "task_activity_updated_at_not_null";--> statement-breakpoint
 -- drizzle's own FK-naming convention embeds the referenced table's name
 -- (`<table>_<column>_<refTable>_<refColumn>_fk`), so `asset`'s existing FK to this
 -- renamed table is renamed too, to keep `drizzle-kit generate` computing a clean diff

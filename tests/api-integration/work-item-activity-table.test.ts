@@ -158,6 +158,46 @@ async function makeWorkItemFixture() {
   return { workspace, project, type, stateTemplate, state, workItem };
 }
 
+// Migration 0066's rename step: `ALTER TABLE "activity" RENAME TO "task_activity"` only
+// renames the table itself -- every constraint and index name is an independent catalog
+// string that survives untouched unless renamed explicitly. Left unrenamed, any of them
+// collides with the new `activity` table's own auto-named objects below (e.g. the new
+// table's primary key would want the name `activity_pkey`, which the OLD table's
+// still-attached primary key already holds, so Postgres silently falls back to
+// `activity_pkey1` for the new one -- a working-looking migration with a landmine name).
+// This describe asserts the migration actually renamed every one of them, not just the
+// ones an earlier draft of it happened to think of (a prior round of this migration
+// missed the primary key and the per-column `NOT NULL` constraints Postgres 18
+// catalogues, found only by querying `pg_constraint` against a database migrated to this
+// migration's own parent head).
+describe("migration 0066 -- no activity_-named catalog object survives on task_activity", () => {
+  it("no constraint or index on task_activity starts with activity_", async () => {
+    const constraintRows = await db.execute(sql`
+      select conname from pg_constraint
+      where conrelid = 'task_activity'::regclass
+        and conname like 'activity\\_%'
+    `);
+    expect(constraintRows.rows).toHaveLength(0);
+
+    const indexRows = await db.execute(sql`
+      select indexname from pg_indexes
+      where tablename = 'task_activity'
+        and indexname like 'activity\\_%'
+    `);
+    expect(indexRows.rows).toHaveLength(0);
+  });
+
+  it("the new activity table's own primary key is exactly activity_pkey (no _1 collision suffix)", async () => {
+    const pkeyRows = await db.execute(sql`
+      select conname from pg_constraint
+      where conrelid = 'activity'::regclass
+        and contype = 'p'
+    `);
+    expect(pkeyRows.rows).toHaveLength(1);
+    expect(pkeyRows.rows[0]).toMatchObject({ conname: "activity_pkey" });
+  });
+});
+
 describe("activity -- composite FK (workspace_id, work_item_id) -> work_item (workspace_id, id)", () => {
   it("accepts a (workspace_id, work_item_id) pair that matches a real work item", async () => {
     const fixture = await makeWorkItemFixture();
@@ -284,7 +324,7 @@ describe("recordWorkItemActivity -- CA-7 visibility resolution", () => {
         workItemId: fixture.workItem.id,
         actorId: null,
         actorType: "person",
-        verb: "field_changed",
+        verb: "updated",
         field: "priority",
         oldValue: "low",
         newValue: "high",
@@ -301,7 +341,7 @@ describe("recordWorkItemActivity -- CA-7 visibility resolution", () => {
         workItemId: fixture.workItem.id,
         actorId: null,
         actorType: "person",
-        verb: "field_changed",
+        verb: "updated",
         field: "assignee",
         oldValue: null,
         newValue: "person-1",
@@ -349,7 +389,7 @@ describe("activity.seq -- monotonic tiebreak within one transaction", () => {
         workItemId: fixture.workItem.id,
         actorId: null,
         actorType: "system",
-        verb: "field_changed",
+        verb: "updated",
         field: "title",
         oldValue: "A work item",
         newValue: "A renamed work item",
@@ -359,7 +399,7 @@ describe("activity.seq -- monotonic tiebreak within one transaction", () => {
         workItemId: fixture.workItem.id,
         actorId: null,
         actorType: "system",
-        verb: "field_changed",
+        verb: "updated",
         field: "priority",
         oldValue: null,
         newValue: "low",
@@ -440,12 +480,12 @@ describe("diffWorkItemFieldChanges", () => {
     expect(rows).toHaveLength(2);
     const byField = new Map(rows.map((r) => [r.field, r]));
     expect(byField.get("title")).toMatchObject({
-      verb: "field_changed",
+      verb: "updated",
       oldValue: "Old title",
       newValue: "New title",
     });
     expect(byField.get("assignee")).toMatchObject({
-      verb: "field_changed",
+      verb: "updated",
       oldValue: null,
       newValue: "person-2",
     });

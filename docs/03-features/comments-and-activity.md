@@ -42,6 +42,11 @@ security-sensitive field in the product.
 
 - `CA-6` Every field change writes an `activity` row with the field, old value and new
   value. This is the journal, and it is what makes point-in-time reconstruction possible.
+  A plain field edit is recorded as verb `updated` with `field` set to the field name —
+  matching [`events.md`](../01-architecture/events.md)'s own resolution of the
+  automation-picker label `work_item.field_changed` to the real event key
+  `work_item.updated` — and its visibility resolves by that field name, per `CA-7`'s table
+  below.
 - `CA-7` Activity rows have visibility too, decided by this table and nothing else. **An
   unmapped verb or field is `internal`** — adding a field later fails closed.
 

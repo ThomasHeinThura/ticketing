@@ -522,11 +522,13 @@ export const workItemTableRelations = relations(
 );
 
 // The work-item journal (decision log 2026-09-23, "Work-item activity gets its own
-// `activity` table"). `workItem` here is the plain, single-column FK the migration
-// actually created (`work_item_id -> work_item.id`) -- see `schema.ts`'s comment on
-// `activityTable.workItemId` for why this is not yet the composite
-// `(workspace_id, work_item_id) -> work_item (workspace_id, id)` FK the decision log
-// asks for.
+// `activity` table"). `workItem` here is query-API sugar over the composite FK the
+// migration actually created: `(workspace_id, work_item_id) -> work_item (workspace_id,
+// id)`, the decision log's detail 1 -- see `schema.ts`'s comment on
+// `activityTable.workItemId` for the full design. Drizzle's relational-query helper only
+// takes a single join condition, so this still resolves the join on `work_item_id ->
+// work_item.id` alone; the composite FK is what actually enforces tenant scoping at the
+// database level, not this relation.
 export const activityTableRelations = relations(activityTable, ({ one }) => ({
   workItem: one(workItemTable, {
     fields: [activityTable.workItemId],
