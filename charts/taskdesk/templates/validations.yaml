@@ -21,6 +21,9 @@ secret and the plugin encryption key on upgrade.
 {{- if and (not .Values.taskdesk.env.encryptionKeyExistingSecret.enabled) (or (not .Values.taskdesk.env.encryptionKey) (lt (len (.Values.taskdesk.env.encryptionKey | toString)) 32)) -}}
 {{- fail "\ntaskdesk.env.encryptionKey is required and must be at least 32 characters.\n  Generate one:  openssl rand -hex 32\n  Or reference an existing Secret: taskdesk.env.encryptionKeyExistingSecret.{enabled,name,key}\nLose it and every configured integration must be reconfigured, so back it up." -}}
 {{- end -}}
+{{- if and (not .Values.taskdesk.env.database.external.enabled) (not .Values.taskdesk.env.database.appExistingSecret.enabled) (not .Values.taskdesk.env.database.appPassword) -}}
+{{- fail "\ntaskdesk.env.database.appPassword is required when using the bundled PostgreSQL.\n  Or reference an existing Secret: taskdesk.env.database.appExistingSecret.{enabled,name,key}\nThis is the APPLICATION role's password (issue #296) -- a non-superuser role that owns no\ntable, separate from postgresql.auth.password, which now belongs only to the\nmigration/owner connection." -}}
+{{- end -}}
 {{- if not .Values.taskdesk.env.clientUrl -}}
 {{- fail "\ntaskdesk.env.clientUrl is required: the public agent origin, e.g. https://ticket.example.com" -}}
 {{- end -}}
