@@ -29,7 +29,10 @@ quality.
 
 ## Data
 
-`request_type`, `request_type_version`. The form schema is JSONB.
+`request_type`, `request_type_version`, `organisation_request_type` (the per-organisation
+catalogue — **no row ⇒ not visible and not submittable**, [data-model.md](../01-architecture/data-model.md)),
+`deflection_event` (P5, owned by [knowledge-base.md](knowledge-base.md); see Deflection
+below). The form schema is JSONB.
 
 ```jsonc
 {
@@ -42,10 +45,18 @@ quality.
       "options": ["Just me", "My team", "Everyone"], "required": true,
       "mapsTo": { "field": "priority",
                   "map": { "Just me": "low", "My team": "medium", "Everyone": "high" } } },
+    { "key": "asset_details", "type": "text", "label": "Which asset?",
+      "showIf": { "field_key": "impact", "op": "eq", "value": "Just me" } },
     { "key": "attachments", "type": "file", "label": "Photos", "multiple": true }
   ]
 }
 ```
+
+`showIf` reuses `custom_field.visibility_condition`'s exact shape
+(`{ field_key, op: eq|neq|in|is_set, value }` — [data-model.md](../01-architecture/data-model.md))
+rather than inventing a second conditional vocabulary for request-type forms. Both the
+publish validator and the portal renderer evaluate it against the same field-key namespace
+as the form itself.
 
 ## Behaviour
 
@@ -58,47 +69,73 @@ quality.
 - `RT-4` `mapsTo` may translate values, as in the impact-to-priority example. This is how
   you avoid asking customers to choose a priority, which they always get wrong.
 - `RT-5` Fields support conditional visibility: show this field only when that field has
-  this value.
+  this value. See the `showIf` example in Data above.
 - `RT-6` Publishing creates an immutable version. Submissions record which version they
   used, so a form change never makes an old submission uninterpretable.
 
 **Catalogue**
 
-- `RT-7` A request type is visible in the portal only if `customer_visible` and its group
-  is enabled for the customer's organisation.
+- `RT-7` A request type is visible in the portal only if `customer_visible` and an
+  `organisation_request_type (organisation_id, request_type_id)` row exists linking it to
+  the customer's organisation — [data-model.md](../01-architecture/data-model.md). This is
+  the per-organisation catalogue: the mapping table, not `request_type.group` (a plain
+  display heading, not a visibility control).
 - `RT-8` Per-organisation catalogues are a subset — one customer sees eight request types,
-  another sees three.
+  another sees three. `RT-8a` **No `organisation_request_type` row for a given organisation
+  and request type ⇒ that request type is invisible in that organisation's catalogue and
+  unsubmittable, even by a crafted request naming its key directly.** Deny is the default;
+  nothing is visible until explicitly assigned. Catalogue assignment is managed from God
+  Mode: `PUT /api/instance/organisations/{id}/catalogue` (`instance:admin` —
+  [god-mode.md](god-mode.md)), not from this spec's own API — an instance administrator
+  assigns catalogues to organisations, the same way portal access and quotas are assigned.
 - `RT-9` Ordering within a group is manual. Groups are ordered manually.
-- `RT-10` The catalogue is searchable, and searching also matches knowledge base articles
-  — see below.
+- `RT-10` The catalogue is searchable. Searching also matches knowledge base articles, but
+  that half is **P5-gated behind `feature.knowledge_base`** — [knowledge-base.md](knowledge-base.md)
+  — since KB does not exist until P5; the request-type catalogue search itself is P2.
 
 **Deflection**
 
+This whole section is **P5-gated behind `feature.knowledge_base`** — it has no effect
+until [knowledge-base.md](knowledge-base.md) ships, since there are no articles to offer
+before then. Deflection storage (`deflection_event`) and the routes that record a
+candidate and an abandonment are owned by `knowledge-base.md` (`KB-10`), not duplicated
+here, to avoid two specs each defining the same write path differently.
+
 - `RT-11` As a customer types a summary, matching published KB articles are offered:
-  "This might help: *Resetting your VPN password*".
-- `RT-12` Opening an article records a deflection candidate. If the customer then abandons
-  the form, it counts as a deflection in reporting.
+  "This might help: *Resetting your VPN password*". Suggestions come from
+  `GET /api/portal/kb/deflection?q=…` (see API below).
+- `RT-12` Opening an article records a deflection candidate in `deflection_event`
+  (`person_id`, `request_type_id`, `kb_article_id`, `query`, `abandoned_at` null —
+  [data-model.md](../01-architecture/data-model.md)). If the customer then abandons the
+  form, `knowledge-base.md`'s recording route sets `abandoned_at`, and it counts as a
+  deflection in reporting.
 - `RT-13` Deflection is never coercive. There is no "are you sure you still want to raise
   this?" step. It offers help and gets out of the way.
 
 **Submission**
 
 - `RT-14` Submitting creates a `submission` with reference `SUB-n`, not a work item.
-  Triage turns it into one. See [intake queue](intake-queue.md).
-- `RT-15` A request type may be marked **auto-accept**, in which case a work item is
-  created immediately and the submission is closed. Used for well-understood, high-volume
-  requests.
+  `n` comes from an instance-wide counter (`submission.number` — never reused, never a
+  primary key — [data-model.md](../01-architecture/data-model.md)), the same convention as
+  `work_item.number`. Triage turns it into one. See [intake queue](intake-queue.md) `IQ-2`.
+- `RT-15` A request type may be marked **auto-accept** (`request_type.auto_accept boolean` —
+  [data-model.md](../01-architecture/data-model.md)), in which case a work item is created
+  immediately and the submission is closed. Used for well-understood, high-volume requests.
 - `RT-16` Drafts are persisted per request type per version, so a half-completed form
-  survives a closed tab. Cleared on successful submission.
+  survives a closed tab — stored in `localStorage`, and therefore per device: a draft
+  started on one device is not visible on another. Same mechanism as
+  [comments-and-activity.md](comments-and-activity.md) `CA-16`. Cleared on successful
+  submission.
 
 ## Permissions
 
 | Action | Capability |
 | --- | --- |
-| See the catalogue | Portal session, plus organisation visibility |
-| Submit | Portal session |
-| Create, edit, publish a request type | `request_type:manage` |
-| Assign a catalogue to an organisation | `request_type:manage` |
+| List/read request types (staff) | `request_type:read` |
+| See the catalogue (portal) | `{ portal: 'customer', predicate: 'own_organisation' }` — [rbac.md](../01-architecture/rbac.md) kind 3 |
+| Submit | `{ portal: 'customer', predicate: 'own_organisation' }` |
+| Create, edit, publish, unpublish, delete a request type | `request_type:manage` |
+| Assign a catalogue to an organisation | `instance:admin` — via God Mode, not this spec's API ([god-mode.md](god-mode.md)) |
 
 ## Screens
 
@@ -114,15 +151,20 @@ exactly what a customer will see, or they will author something unusable.
 ## API
 
 ```
-GET    /api/request-types                        request_type:manage
+GET    /api/request-types                        request_type:read
 POST   /api/request-types                        request_type:manage
 PATCH  /api/request-types/{id}                   request_type:manage
 POST   /api/request-types/{id}/publish           request_type:manage
-GET    /api/portal/catalogue                     (portal session)
-GET    /api/portal/catalogue/{key}               (portal session)
-POST   /api/portal/submissions                   (portal session)
-GET    /api/portal/deflection?q=…                (portal session)
+POST   /api/request-types/{id}/unpublish         request_type:manage
+DELETE /api/request-types/{id}                   request_type:manage   (refused unless already unpublished — see edge cases)
+GET    /api/portal/catalogue                     { portal: 'customer', predicate: 'own_organisation' } — rbac.md kind 3
+GET    /api/portal/catalogue/{key}               { portal: 'customer', predicate: 'own_organisation' }
+POST   /api/portal/submissions                   { portal: 'customer', predicate: 'own_organisation' }
+GET    /api/portal/kb/deflection?q=…             { portal: 'customer', predicate: 'own_organisation' } — P5, owned by knowledge-base.md (KB-10/KB-12)
 ```
+
+Per-organisation catalogue assignment is a God Mode action, not a route on this router:
+`PUT /api/instance/organisations/{id}/catalogue` (`instance:admin` — [god-mode.md](god-mode.md)).
 
 ## Edge cases
 
@@ -147,7 +189,10 @@ GET    /api/portal/deflection?q=…                (portal session)
 Unit: form schema validation; conditional visibility evaluation; `mapsTo` translation.
 
 Integration: a submission against version 1 renders correctly after version 2 is
-published; a non-visible request type cannot be submitted even with a crafted request.
+published; `RT-8a` a request type with no `organisation_request_type` row for the caller's
+organisation is absent from `GET /api/portal/catalogue` **and** refused (not merely
+hidden) by `POST /api/portal/submissions` when submitted directly by key, bypassing the
+catalogue UI entirely.
 
 E2E: browse catalogue, see deflection suggestions, complete a conditional form, submit,
 see the reference; draft survives reload.
