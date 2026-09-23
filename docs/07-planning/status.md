@@ -76,7 +76,7 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-23, third pass that day. Fourteen more PRs have merged since the
+**Last updated:** 2026-09-23, third pass that day. Eleven more PRs have merged since the
 second pass: #275 (the work-item `activity` table), #277 (input hardening), #278/#282/#283
 (design-system, comments-and-activity, approvals and assignment specs cleared of review
 findings), #280/#284/#293 (three #9 primitive batches), #285 (the `?workspaceId=`
@@ -1463,7 +1463,7 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
-### 2026-09-23 (third pass) · 14 more PRs merged; spec gates honoured, not routed around; an outage recovered cleanly
+### 2026-09-23 (third pass) · 11 more PRs merged; spec gates honoured, not routed around; an outage recovered cleanly
 
 This pass shows the gates working as designed. `check:reviews` blocked #274 and #275
 because specs they depended on still had stale open review findings. Each time, the answer
