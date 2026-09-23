@@ -17,6 +17,83 @@ Newest first.
 
 ---
 
+### 2026-09-23 · P1's UI path: new v2 work-item screens on the new API, then retire kaneo's task stack
+
+**Supersedes (in part):** the mechanism in the 2026-09-16 entry "#23's `task` → `work_item`
+migration is one-shot, not the two-phase live-cutover dance". That entry decided an
+**in-place rename** of kaneo's `task` table. In practice #261 built `work_item` as a
+**separate new table** beside `task` (`schema.ts`: `work_item` "references nothing in kaneo's
+original `taskTable`/`columnTable`"), and nothing recorded that change at the time. This
+entry records it and adopts it. The 2026-09-16 entry is not rewritten. Its **condition**
+still governs the eventual data move: it may be one-shot only if no live deployment runs the
+pre-move schema, and that must be re-checked when the move is written.
+
+**Decision:** P1's work-item journey is built as **new v2 screens**: list, board, detail
+page and side pane, and the create dialog, per `docs/02-design/screen-inventory.md`. They sit
+on the new `/api/work-items` API (#261/#271/#292) and use `packages/ui` primitives only.
+kaneo's existing task screens and `/api/task` keep working until the new screens reach
+parity. Then any UAT data in `task` is moved into `work_item` once, and the task stack is
+retired: routes, screens, `task_activity`, and the `task`/`column` tables. Its
+`inherited-uncovered` entries retire with it, coordinated with #8.
+
+**Why:** the new backend (the `work_item` table, the API, WI-6 activity and events) was
+built beside kaneo's `task` table, not by renaming it. As of 2026-09-23 the web app uses
+`/api/task` in 69 files and `/api/work-items` in none, so none of the P1 backend work is
+visible in the UI yet. Building v2 screens matches the specified screen inventory and design
+system (AGENTS.md rule 1). Keeping the old screens alive until parity means there is never a
+period with no working task UI. `docs/07-planning/lane-prep/p1-core.md` §0/§9 recorded only the migration *mechanics* as
+undecided: a one-shot rename or a two-phase cut-over. This entry answers the wider question
+that mechanics depended on. Because a parallel `work_item` model now exists, it keeps the
+parallel model and does a one-time data move at retirement, instead of an in-place rename. The 2026-09-16 "one-shot
+migration" entry's condition, no live deployment yet, still has to be re-checked when the
+data move is written.
+
+**Alternatives:** migrate `task` data into `work_item` now and repoint the existing kaneo
+screens. That gives the fastest visible journey, but comments, labels, time entries,
+relations and attachments all key off `task_id`, so it is a large cutover, and it keeps
+kaneo's screens rather than v2's. Or finish the backend first and do the UI later: the
+cleanest backend, but nothing new is visible, which is the Oct 3 risk that two external
+status reviews flagged.
+
+**Decided by:** Thomas, via `AskUserQuestion`, 2026-09-23. He chose the recommended option.
+
+---
+
+### 2026-09-23 · #8 runtime policy enforcement: shadow until clean, then strict; rename `task:*` first; no permanent exceptions
+
+**Decision:** three rules govern how issue #8's declarative policy registry becomes the
+enforcing authorization path. The slicing plan is posted on issue #8.
+1. **Shadow first, then enforce only when clean.** A request-path middleware first runs in
+   shadow mode: it evaluates every request against the registry and logs any disagreement
+   with today's hand-written checks, without ever blocking. A router group switches to
+   enforcing only after **zero unexplained disagreements for about 7 days on UAT**. From
+   then on it **denies** any request the registry denies. There is no fail-open window
+   after cut-over. The hand-written checks keep running alongside until the router's own
+   later removal slice.
+2. **The `task` router switches last, after a rename.** Its routes are gated today by
+   legacy `task:*` statements, while `task/policy.ts` declares `work_item:*` capabilities.
+   Seeded roles are re-keyed from `task:*` to `work_item:*` (issue #7's scope) **before**
+   that router cuts over. No translation shim.
+3. **No permanent exceptions.** Every route must resolve to one of the five policy kinds.
+   The enforcement middleware carries no "known exception" list. `GET /api/invitation/{id}`
+   (#254) gets a real fix before its router cuts over.
+
+**Why:** a registry that is declared but not enforced is the exact gap #8 exists to close,
+and a fail-open window would keep that gap open. Flipping only when clean avoids a false-deny
+outage from a classification mismatch; the plan found real ones, including `task:*` versus
+`work_item:*` and read routes with no capability check today. A shim and an exception list
+would each add security logic that is temporary or precedent-setting.
+
+**Alternatives:** a fixed two-week soak, then enforce regardless (faster, but it could deny
+legitimate traffic while a known mismatch is open). Log-and-allow after cut-over (safe for
+availability, but it reopens the declared-versus-enforced gap). A translation shim for
+`task`. A reviewed permanent exception list.
+
+**Decided by:** Thomas, via `AskUserQuestion`, 2026-09-23, choosing the recommended option
+on all three.
+
+---
+
 ### 2026-09-23 · gitleaks false positive on `audit_log` secret-refusal test fixtures — dismissed by exact fingerprint
 
 **Decision:** two gitleaks `generic-api-key` findings are added to a new root `.gitleaksignore`.
