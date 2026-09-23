@@ -263,19 +263,14 @@ export const POLICY_SOURCES = [
  * module's own validation is not deferred to the first request that happens to hit a bad
  * route.
  *
- * **Status, corrected 2026-09-06 (#21).** ADR 0010 §1 describes the target as "the route
- * factory refuses at module load to construct a route with no policy entry — so the failure
- * is at boot, not at request time." No such factory reads `policyRegistry` today: the only
- * importer of this module is `tests/permissions/api-app.ts` (`grep -rn "policy-registry"`
- * confirms it), and `apps/api/src/index.ts` builds every route without ever loading this file.
- * So "at module load" above is true only for whoever imports this module — the permissions
- * test suite, today — not for the running API process, which never imports it and therefore
- * enforces nothing from it at its own boot. What #21 actually delivers is the policy
- * machinery itself: the five policy kinds, registry validation, and the coverage/matrix
- * contract `tests/permissions/route-coverage.test.ts` and `matrix.test.ts` enforce in CI.
- * Wiring `policyRegistry` into the real request-handling path — so a route missing a policy
- * fails the running server's own boot, not just a CI job reading it from the outside — is
- * runtime authorization integration, not yet done, and owned by issue #8.
+ * **Status, updated 2026-09-23 (#8 Slice 0).** `apps/api/src/index.ts` now imports
+ * `policyRegistry` at module scope and reads it in `runStartupTasks()` (logging the loaded
+ * policy count), so constructing this module is on the production boot path, not only the
+ * permissions test suite's. An invalid entry among `POLICY_SOURCES` now throws
+ * `PolicyRegistryError` before the real server ever calls `listen()`, per ADR 0010 §1. What
+ * this slice does not yet do: no request is evaluated against a policy, and no middleware
+ * consults `policyRegistry` on the request path — that is the remaining runtime-authorization
+ * work tracked on issue #8.
  */
 export const policyRegistry: PolicyRegistry =
   createPolicyRegistry(POLICY_SOURCES);

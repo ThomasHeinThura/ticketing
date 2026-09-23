@@ -122,6 +122,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 | Request type editor / form builder | `/agent/settings/request-types/{id}` | route | P2 | ⬜ |
 | Workspace — custom fields (incl. sections) | `/agent/settings/custom-fields` | route | P4 | ⬜ |
 | Custom field editor | `/agent/settings/custom-fields/{id}` | route | P4 | ⬜ |
+| Section manager (reorder sections, move fields between them — [custom-fields.md](../03-features/custom-fields.md)) | — | section | P4 | ⬜ |
 | Workspace — labels | `/agent/settings/labels` | route | P1 | ⬜ |
 | Workspace — canned responses | `/agent/settings/canned-responses` | route | P1 | ⬜ |
 | Workspace — estimates | `/agent/settings/estimates` | route | P5 | ⬜ |
@@ -202,10 +203,10 @@ build if it drifts.
 | P1 Core work | 33 |
 | P2 Service desk | 18 |
 | P3 Portal & identity | 21 |
-| P4 Governance | 28 |
+| P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **136** |
+| **Total** | **137** |
 
 For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see
