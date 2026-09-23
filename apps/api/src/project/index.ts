@@ -1,3 +1,4 @@
+import { HTTPException } from "hono/http-exception";
 import {
   apiRouter,
   type BaseVariables,
@@ -9,7 +10,9 @@ import {
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import archiveProjectCtrl from "./controllers/archive-project";
-import createProjectCtrl from "./controllers/create-project";
+import createProjectCtrl, {
+  ProjectSlugTakenError,
+} from "./controllers/create-project";
 import deleteProjectCtrl from "./controllers/delete-project";
 import getProjectCtrl from "./controllers/get-project";
 import getProjectsCtrl from "./controllers/get-projects";
@@ -67,6 +70,7 @@ const createProjectRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:create permission",
     ),
+    409: errorResponse("That project slug is already taken"),
   },
 });
 
@@ -147,6 +151,7 @@ const updateProjectRoute = createRoute({
     404: errorResponse(
       "Project doesn't exist or doesn't belong to the specified workspace",
     ),
+    409: errorResponse("That project slug is already taken"),
   },
 });
 
@@ -244,8 +249,17 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(createProjectRoute, async (c) => {
     const { name, icon, slug } = c.req.valid("json");
     const workspaceId = c.get("workspaceId");
-    const newProject = await createProjectCtrl(workspaceId, name, icon, slug);
-    return c.json(newProject, 200);
+    try {
+      const newProject = await createProjectCtrl(workspaceId, name, icon, slug);
+      return c.json(newProject, 200);
+    } catch (error) {
+      if (error instanceof ProjectSlugTakenError) {
+        throw new HTTPException(409, {
+          message: "That project slug is already taken",
+        });
+      }
+      throw error;
+    }
   })
   .openapi(getProjectRoute, async (c) => {
     const { id } = c.req.valid("param");
@@ -263,15 +277,24 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
     const { id } = c.req.valid("param");
     const { name, icon, slug, description } = c.req.valid("json");
     const workspaceId = c.get("workspaceId");
-    const updatedProject = await updateProjectCtrl(
-      id,
-      name,
-      icon,
-      slug,
-      description,
-      workspaceId,
-    );
-    return c.json(updatedProject, 200);
+    try {
+      const updatedProject = await updateProjectCtrl(
+        id,
+        name,
+        icon,
+        slug,
+        description,
+        workspaceId,
+      );
+      return c.json(updatedProject, 200);
+    } catch (error) {
+      if (error instanceof ProjectSlugTakenError) {
+        throw new HTTPException(409, {
+          message: "That project slug is already taken",
+        });
+      }
+      throw error;
+    }
   })
   .openapi(deleteProjectRoute, async (c) => {
     const { id } = c.req.valid("param");

@@ -449,6 +449,20 @@
 			"when": 1790079736742,
 			"tag": "0063_drop_redundant_workspace_role_index",
 			"breakpoints": true
+		},
+		{
+			"idx": 64,
+			"version": "7",
+			"when": 1790091139849,
+			"tag": "0064_project_slug_unique",
+			"breakpoints": true
+		},
+		{
+			"idx": 65,
+			"version": "7",
+			"when": 1790094377323,
+			"tag": "0065_project_slug_claim",
+			"breakpoints": true
 		}
 	]
 }

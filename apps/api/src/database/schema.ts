@@ -309,6 +309,19 @@ export const projectTable = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    // #261's mandatory Opus security review, F1 (decision log 2026-09-22 "#261's
+    // mandatory Opus review F1: `project.slug` becomes globally unique"): this column
+    // carries a real, instance-wide unique constraint (`project_slug_unique` below,
+    // migration 0064), not merely a per-`(workspace_id, id)` one. Before that migration
+    // this column had NO uniqueness of any kind, DB- or application-level, even though
+    // `work_item.key` (`{project.slug}-{number}`) already assumed a globally unique slug
+    // and carries its own global unique index on that assumption (`work_item.key`'s own
+    // comment) -- two different workspaces could slug a project identically and
+    // permanently collide on their first work-item key, reproduced live by the review.
+    // `apps/api/src/project/schema.ts`'s `createProjectBody`/`updateProjectBody` reject a
+    // duplicate slug with a clean 409 at the application layer too (see
+    // `ProjectSlugTakenError` in `create-project.ts`) -- the DB constraint here is the
+    // backstop, not the only gate.
     slug: text("slug").notNull(),
     icon: text("icon").default("Layout"),
     name: text("name").notNull(),
@@ -329,12 +342,60 @@ export const projectTable = pgTable(
   },
   (table) => [
     unique("project_workspace_id_id_unique").on(table.workspaceId, table.id),
+    // #261 F1: instance-wide, not scoped to workspace -- see the `slug` column's own
+    // comment above for why. Migration 0064 resolves any pre-existing collision by
+    // deterministically suffixing the later-created duplicate(s) before adding this.
+    unique("project_slug_unique").on(table.slug),
     index("project_workspaceId_position_idx").on(
       table.workspaceId,
       table.position,
     ),
   ],
 );
+
+// #261 F1's Opus delta-confirmation review (D1, 2026-09-22): `project_slug_unique` above
+// only constrains the set of slugs held by rows CURRENTLY in `project`. `work_item.key`
+// (`{project.slug}-{number}`) is generated from `project.slug` but claimed permanently in
+// `work_item_key_claim`, which -- by explicit, deliberate design (that table's own comment)
+// -- NEVER releases a claim, even after the work item or its project is gone. So a slug
+// that is merely unique among LIVE rows can still be freed (by renaming the project that
+// holds it, or by hard-deleting its workspace, which cascades the project away with no FK
+// stopping it) and handed to an unrelated later tenant, who then collides on a key range
+// the first slug-holder already burned -- the exact cross-tenant permanent DoS D1
+// reproduced twice, by both release paths, against the fix that added only the
+// live-uniqueness constraint.
+//
+// THE FIX: a permanent claim registry for `project.slug`, mirroring `work_item_key_claim`'s
+// own lifetime semantics EXACTLY -- once a slug is claimed here, by ANY project, it is
+// claimed forever, independent of whether that project is later renamed away from it,
+// soft-deleted, or hard-deleted via its workspace. This makes the generator namespace
+// (`project.slug`) exactly as durable as the namespace it feeds (`work_item_key_claim.key`),
+// closing both release paths with one mechanism -- neither depends on any row's current
+// state.
+//
+// `project_id` here is deliberately NOT a foreign key, for the identical reason
+// `work_item_key_claim.work_item_id` is not one (see that table's own comment): a real FK
+// to `project.id` would need `ON DELETE CASCADE` (which would silently free the slug the
+// instant its project is hard-deleted -- exactly what this table exists to prevent) or
+// `ON DELETE RESTRICT` (which would make a workspace's cascade-delete of its own projects
+// fail outright, a behaviour change to a P0-deliberate hard-delete path this migration does
+// not own). So: no FK. `project_id` is populated once at claim time and is not load-bearing
+// after that -- the uniqueness guarantee is `slug`'s PRIMARY KEY, not this column.
+//
+// POPULATED AT THE APPLICATION LAYER, not by a trigger (unlike `work_item_key_claim`,
+// which needs one because `work_item` has no single, small set of writers). `project` has
+// exactly two: `create-project.ts` (claims the new slug in the same transaction as the
+// project insert) and `update-project.ts` (claims the NEW slug on rename, in the same
+// transaction as the update -- the OLD slug is never released, by design: see this table's
+// own "claimed forever" rule above). Both check this table before writing, for a clean 409
+// (`ProjectSlugTakenError`) rather than a raw constraint violation; the PRIMARY KEY here is
+// the backstop for the race between that check and the write, same idiom as
+// `project_slug_unique` itself.
+export const projectSlugClaimTable = pgTable("project_slug_claim", {
+  slug: text("slug").primaryKey(),
+  projectId: text("project_id").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+});
 
 export const columnTable = pgTable(
   "column",
@@ -1603,15 +1664,20 @@ export const workItemTable = pgTable(
     // deleted while items of that type still exist.
     typeId: text("type_id").notNull(),
     number: integer("number").notNull(),
-    // Stored once at insert from `{project.key}-{number}`, never regenerated for the
+    // Stored once at insert from `{project.slug}-{number}`, never regenerated for the
     // same project (data-model.md §4). A cross-project move re-keys the item -- the old
     // value moves to `work_item_key_alias` -- so `key` DOES change over the item's
     // lifetime under that one condition, which is exactly why a global unique index is
     // needed here (not stated as its own line in data-model.md's "## Indexing" list,
-    // which only names `(project_id, number)` -- but `project.key` is already unique per
-    // instance and `number` is unique per project, so `key` composes to a globally
-    // unique value; the alias mechanism depends on that holding at every instant).
-    // Judgment call, flagged in the PR body.
+    // which only names `(project_id, number)` -- and `project.slug` IS genuinely unique
+    // per instance, via `project_slug_unique` (`projectTable`'s own extra config,
+    // migration 0064), and `number` is unique per project, so `key` composes to a
+    // globally unique value; the alias mechanism depends on that holding at every
+    // instant). Until migration 0064, this comment claimed `project.slug` was "already
+    // unique per instance" when nothing enforced that -- #261's mandatory Opus security
+    // review (F1) found the resulting collision live and reproducible; see the `slug`
+    // column's own comment on `projectTable` above for the fix. Judgment call, flagged
+    // in the PR body.
     //
     // #191 O2: also composite-FK'd to `work_item_key_claim(key, work_item_id)` below (see
     // that table's own comment for the full design) -- every value this column ever holds

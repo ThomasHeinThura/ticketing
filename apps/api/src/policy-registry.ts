@@ -49,6 +49,7 @@ import { taskPolicies } from "./task/policy";
 import { taskRelationPolicies } from "./task-relation/policy";
 import { timeEntryPolicies } from "./time-entry/policy";
 import { userPolicies } from "./user/policy";
+import { workItemPolicies } from "./work-item/policy";
 import { workflowRulePolicies } from "./workflow-rule/policy";
 import { workspacePolicies } from "./workspace/policy";
 
@@ -219,6 +220,7 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/project/policy.ts", policies: projectPolicies },
   { name: "apps/api/src/workspace/policy.ts", policies: workspacePolicies },
   { name: "apps/api/src/invitation/policy.ts", policies: invitationPolicies },
+  { name: "apps/api/src/work-item/policy.ts", policies: workItemPolicies },
   { name: "apps/api/src/time-entry/policy.ts", policies: timeEntryPolicies },
   {
     name: "apps/api/src/capabilities/policy.ts",
