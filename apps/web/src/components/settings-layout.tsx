@@ -1,5 +1,13 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Button, KbdSequence, Separator } from "@taskdesk/ui";
+import {
+  Button,
+  KbdSequence,
+  Separator,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@taskdesk/ui";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,12 +20,6 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { shortcuts } from "@/constants/shortcuts";
 import { cn } from "@/lib/cn";
 

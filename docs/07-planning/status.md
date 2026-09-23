@@ -76,16 +76,55 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-23 (#11's local-deploy blocker fixed and merged as PR #262; #23's
-first work-item slice — create/read/list — merged as PR #261 after a genuine four-round
-review chain that found and closed a real cross-tenant permanent-DoS bug; two decision-log
-entries recording the architecture calls that chain required, PR #263 and #265, both merged)
+**Last updated:** 2026-09-23, later the same day (#23's second slice, `PATCH` with
+optimistic concurrency, merged as PR #271 after two Opus 5.5 rounds; #9's second primitive
+batch merged as PR #274 after its browser check found and fixed a real rendering defect; the
+default Opus reviewer is now Opus 5.5, PR #272; the work-item activity-table decision and a
+standing delegation recorded, PR #273)
 **Current stage:** P0 · Foundation, continuing into P1–P7 parallel — **Throttle 1 OPEN
 (unchanged); P0 concrete-defect backlog fully clear. #8's classification pass is done (PR
 #259, merged); its separate runtime-integration obligation remains open, so #8 itself stays
-open. #9's Radix-tracking half of gate G1 is done, the primitive-migration half remains.
-#23's first slice (P1) is merged — later slices (update/delete/bulk/rank/hierarchy/
-watchers) remain open.**
+open. #9: 27 of ~61 primitives now live in `packages/ui` (batch 2 merged as #274); 34
+remain. #23 (P1): create/read/list (#261) and field update (#271) are merged. Delete, bulk,
+rank, hierarchy, watchers, and wiring activity rows into create/update remain open.**
+
+**Merged this pass (2026-09-23, after the entry below):**
+- **PR #271** — `PATCH /api/work-items/{key}` (WI-7/WI-8). A required `If-Match`
+  compare-and-swap; priority additionally needs `work_item:set_priority` (found by the
+  alignment check: `rbac.md` keeps priority out of `work_item:update`; WI-8's prose
+  corrected). The Opus 5.5 round-1 review found **S1 (blocking)**: work items in a
+  **soft-deleted project could still be edited**, breaking #202's freeze. It was fixed in the
+  reach check, the UPDATE, and the re-read, which also closed the same pre-existing gap on
+  single-item GET and the list. The delta round was CLEAR WITH FINDINGS. Its non-blocking
+  T1–T4 (date-range edges, a weak race test, NUL in path params) are in follow-up **PR #277**.
+  S5 (archived/deleted items editable once delete lands) is filed as #276.
+- **PR #274** — nine more primitives into `packages/ui`. **Its browser check caught a
+  defect every test missed:** Tailwind v4 never scanned `packages/ui`, so classes used only
+  there were never generated, and `Switch` rendered as a 2×2px dot. It was fixed by an
+  `@source` line in `apps/web/src/index.css`, which also protects batch 1, and the fix was
+  re-measured in a real browser. How browser checks run on this host, since there is no
+  system browser and the Chrome bridge is unreachable from lanes: Playwright's cached
+  Chromium (`~/.cache/ms-playwright/chromium-1243`), driven by the playwright package in
+  `../ticketing.v1/node_modules`, from a script outside the repo.
+- **PR #272 / #273** — decision log: Opus 5.5 is the default reviewer; work-item
+  `activity` becomes its own table, with kaneo's renamed `task_activity`; a **standing
+  delegation**: take the recommended option, and ask Thomas only on a real trade-off; and
+  #271's `If-Match` and 409 calls.
+
+**In flight at this snapshot** (re-verify in GitHub): **#275** (the new `activity` table
+and the legacy rename) — Opus 5.5 found the `ON DELETE RESTRICT` blocker (workspaces would
+have become undeletable; now CASCADE, with a recorded decision-log addendum) and, across
+three rounds, recurring fail-open visibility mapping; it is being restructured into an
+exhaustive allowlist. **#277** (T1–T4 hardening; it touches `utils/workspace-access-middleware.ts`,
+so it needs Opus). A spec-only lane is closing `design-system.md`'s six review findings
+(Thomas, 2026-09-23: #9 relocation batches cite `ui-extraction-plan.md` meanwhile — the
+decision log records this, on #274). The chart library, dashboard grid, and snapshot tool are
+Thomas's picks. #9 batch 3 is in progress.
+
+**Process facts learned this pass (durable):** bring a PR current with `main` *before*
+its final Opus pass. The template gate binds the note to `**Reviewed head:** <40-char sha>`
+lines and rejects any later commit outside `docs/07-planning/security-reviews/`, including a
+base merge. Also, deferred checklist items keep their own text followed by `— n/a: reason`.
 
 **PR #262 (#11, local-deploy `PGDATA` fix) merged.** `docker build` succeeded on `main` but
 `scripts/deploy.sh local` never actually came up — `postgres:18-alpine` unconditionally
@@ -1379,6 +1418,21 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-23 · #271 and #274 merged; Opus 5.5 default; activity-table decision; three blockers caught before merge
+
+Three separate reviews each caught something that would have shipped:
+- the alignment check found priority gated by the wrong capability (#271);
+- Opus 5.5 found edits allowed on soft-deleted projects (#271) and undeletable workspaces
+  from `ON DELETE RESTRICT` (#275);
+- a real-browser check found `packages/ui` styles silently missing (#274).
+
+Unit and integration suites were green in every case. The `resolveVisibility` mapping in
+#275 hit the same fail-open class three rounds running, so per AGENTS.md "stop patching and
+change altitude" it is being rebuilt as a data allowlist of exact `(verb, field)` pairs,
+with an independently computed exhaustive test, rather than patched a fourth time. Thomas
+decided the activity-table shape and #274's spec-citation path. Everything else was decided
+under the new standing delegation and recorded in the decision log.
 
 ### 2026-09-22 · #18 merged after three Opus security-review rounds; all four eleventh-pass P0 defects now closed
 

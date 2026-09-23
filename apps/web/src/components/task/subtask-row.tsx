@@ -1,8 +1,8 @@
+import { Checkbox } from "@taskdesk/ui";
 import { motion, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import TaskCardContextMenuContent from "@/components/kanban-board/task-card-context-menu/task-card-context-menu-content";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { getColumnIcon } from "@/lib/column";
 import { getInitials } from "@/lib/get-initials";
