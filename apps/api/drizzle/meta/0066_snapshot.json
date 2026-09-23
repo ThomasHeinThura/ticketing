@@ -5607,7 +5607,7 @@
 					"tableTo": "work_item",
 					"columnsFrom": ["workspace_id", "work_item_id"],
 					"columnsTo": ["workspace_id", "id"],
-					"onDelete": "restrict",
+					"onDelete": "cascade",
 					"onUpdate": "no action"
 				}
 			},

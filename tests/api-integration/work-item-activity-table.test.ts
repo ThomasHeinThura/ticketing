@@ -16,12 +16,16 @@ import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { deleteAccountData } from "../../apps/api/src/user/controllers/delete-account-data";
 import {
+  type DiffActivityContext,
   diffWorkItemFieldChanges,
   recordWorkItemActivity,
+  resolveVisibility,
 } from "../../apps/api/src/work-item/activity";
+import deleteWorkspace from "../../apps/api/src/workspace/controllers/delete-workspace";
 import { resetTestDatabase } from "./helpers/database";
-import { requireRow } from "./helpers/fixtures";
+import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 
 beforeEach(async () => {
   await resetTestDatabase();
@@ -130,12 +134,16 @@ async function makeState(projectId: string, stateTemplateId: string) {
   );
 }
 
-/** A project plus every workspace-scoped row a work item needs, and one work item. */
-async function makeWorkItemFixture() {
-  const workspace = await makeWorkspace();
-  const project = await makeProject(workspace.id);
-  const type = await makeWorkItemType(workspace.id);
-  const stateTemplate = await makeStateTemplate(workspace.id);
+/**
+ * Every workspace-scoped row a work item needs, and one work item, inside an EXISTING
+ * workspace -- factored out so S1's delete tests can reuse it against a workspace built
+ * by the real `createWorkspaceMember` fixture (owner membership and all), not just the
+ * bare workspace `makeWorkspace` inserts directly.
+ */
+async function makeWorkItemInWorkspace(workspaceId: string) {
+  const project = await makeProject(workspaceId);
+  const type = await makeWorkItemType(workspaceId);
+  const stateTemplate = await makeStateTemplate(workspaceId);
   const state = await makeState(project.id, stateTemplate.id);
   const now = new Date();
   const workItem = requireRow(
@@ -143,7 +151,7 @@ async function makeWorkItemFixture() {
       .insert(schema.workItemTable)
       .values({
         projectId: project.id,
-        workspaceId: workspace.id,
+        workspaceId,
         typeId: type.id,
         stateId: state.id,
         number: 1,
@@ -155,7 +163,14 @@ async function makeWorkItemFixture() {
       .returning(),
     "makeWorkItem",
   );
-  return { workspace, project, type, stateTemplate, state, workItem };
+  return { project, type, stateTemplate, state, workItem };
+}
+
+/** A project plus every workspace-scoped row a work item needs, and one work item. */
+async function makeWorkItemFixture() {
+  const workspace = await makeWorkspace();
+  const rest = await makeWorkItemInWorkspace(workspace.id);
+  return { workspace, ...rest };
 }
 
 // Migration 0066's rename step: `ALTER TABLE "activity" RENAME TO "task_activity"` only
@@ -265,6 +280,112 @@ describe("activity -- composite FK (workspace_id, work_item_id) -> work_item (wo
   });
 });
 
+// S1 (BLOCKING), PR #275's mandatory Opus 5.5 review: the composite FK used to be
+// `ON DELETE RESTRICT`, on the false premise that work items are never hard-deleted.
+// They ARE, by cascade, on every real tenant-deletion path -- so a single activity row
+// made the workspace/account that owns it permanently undeletable. Fixed to
+// `ON DELETE CASCADE` (decision log 2026-09-23, "Activity addendum"). These tests run
+// through the REAL controllers (`deleteWorkspace`, `deleteAccountData`), not raw SQL --
+// exactly what the review's own reproduction did, and what would still fail if `RESTRICT`
+// were still in place.
+describe("activity -- ON DELETE CASCADE (S1): real tenant-deletion paths succeed with activity rows present", () => {
+  it("deleteWorkspace() succeeds on a workspace with work items that have activity rows, and removes those rows", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const { workItem } = await makeWorkItemInWorkspace(owner.workspace.id);
+    await recordWorkItemActivity(db, [
+      {
+        workspaceId: owner.workspace.id,
+        workItemId: workItem.id,
+        actorId: null,
+        actorType: "system",
+        verb: "created",
+      },
+    ]);
+
+    const deleted = await deleteWorkspace(owner.workspace.id, randomUUID());
+    expect(deleted?.id).toBe(owner.workspace.id);
+
+    const remainingWorkspaces = await db
+      .select()
+      .from(schema.workspaceTable)
+      .where(eq(schema.workspaceTable.id, owner.workspace.id));
+    expect(remainingWorkspaces).toHaveLength(0);
+
+    const remainingActivity = await db
+      .select()
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, workItem.id));
+    expect(remainingActivity).toHaveLength(0);
+  });
+
+  it("deleteAccountData() succeeds for a sole owner whose workspace has work items with activity rows", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const { workItem } = await makeWorkItemInWorkspace(owner.workspace.id);
+    await recordWorkItemActivity(db, [
+      {
+        workspaceId: owner.workspace.id,
+        workItemId: workItem.id,
+        actorId: null,
+        actorType: "system",
+        verb: "created",
+      },
+    ]);
+
+    await expect(deleteAccountData(owner.user.id)).resolves.not.toThrow();
+
+    const remainingWorkspaces = await db
+      .select()
+      .from(schema.workspaceTable)
+      .where(eq(schema.workspaceTable.id, owner.workspace.id));
+    expect(remainingWorkspaces).toHaveLength(0);
+
+    const remainingActivity = await db
+      .select()
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, workItem.id));
+    expect(remainingActivity).toHaveLength(0);
+  });
+
+  it("activity in a DIFFERENT workspace is untouched by deleting the first one", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const { workItem } = await makeWorkItemInWorkspace(owner.workspace.id);
+    await recordWorkItemActivity(db, [
+      {
+        workspaceId: owner.workspace.id,
+        workItemId: workItem.id,
+        actorId: null,
+        actorType: "system",
+        verb: "created",
+      },
+    ]);
+
+    const otherFixture = await makeWorkItemFixture();
+    await recordWorkItemActivity(db, [
+      {
+        workspaceId: otherFixture.workspace.id,
+        workItemId: otherFixture.workItem.id,
+        actorId: null,
+        actorType: "system",
+        verb: "created",
+      },
+    ]);
+
+    await deleteWorkspace(owner.workspace.id, randomUUID());
+
+    const untouchedActivity = await db
+      .select()
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, otherFixture.workItem.id));
+    expect(untouchedActivity).toHaveLength(1);
+
+    const untouchedWorkItem = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, otherFixture.workItem.id));
+    expect(untouchedWorkItem).toHaveLength(1);
+  });
+});
+
 describe("activity.visibility -- CHECK constraint, CA-7's fail-closed default", () => {
   it("accepts 'public' and 'internal'", async () => {
     const fixture = await makeWorkItemFixture();
@@ -357,7 +478,7 @@ describe("recordWorkItemActivity -- CA-7 visibility resolution", () => {
     expect(rows.every((r) => r.visibility === "internal")).toBe(true);
   });
 
-  it("an explicit visibility always wins over the CA-7 default resolution", async () => {
+  it("an explicit visibility: 'internal' always wins over the CA-7 default resolution", async () => {
     const fixture = await makeWorkItemFixture();
     const [row] = await recordWorkItemActivity(db, [
       {
@@ -373,10 +494,138 @@ describe("recordWorkItemActivity -- CA-7 visibility resolution", () => {
   });
 });
 
+// S2 (BLOCKING), PR #275's mandatory Opus 5.5 review: `resolveVisibility` used to
+// consult `CA7_PUBLIC_FIELDS` whenever `field` was set, regardless of `verb` -- so a
+// verb that merely happened to carry a field NAME matching a real public field (e.g. a
+// custom-field verb, or an unrelated verb like `deleted`/`watcher.added`) resolved to
+// `public` on the strength of that name alone. The fix: the field lookup applies ONLY
+// when `verb === "updated"`; any other verb goes through `CA7_PUBLIC_VERBS` (or falls
+// back to `internal`), field or not. These are the exact three reproduction cases from
+// the review's own table, plus the one case that must still resolve `public`.
+describe("resolveVisibility -- S2: the public-field lookup is gated on verb === 'updated'", () => {
+  it.each([
+    { verb: "custom_field.updated", field: "priority" },
+    { verb: "deleted", field: "description" },
+    { verb: "watcher.added", field: "title" },
+  ])(
+    "resolves { verb: $verb, field: $field } to internal, not public",
+    ({ verb, field }) => {
+      expect(
+        resolveVisibility({
+          workspaceId: "ws-1",
+          workItemId: "wi-1",
+          actorId: null,
+          actorType: "system",
+          verb,
+          field,
+        }),
+      ).toBe("internal");
+    },
+  );
+
+  it("still resolves { verb: 'updated', field: 'priority' } to public", () => {
+    expect(
+      resolveVisibility({
+        workspaceId: "ws-1",
+        workItemId: "wi-1",
+        actorId: null,
+        actorType: "system",
+        verb: "updated",
+        field: "priority",
+      }),
+    ).toBe("public");
+  });
+});
+
+// S3 (NON-BLOCKING, fixed anyway), same review: a caller-supplied `visibility: "public"`
+// used to be honoured unconditionally, which let ANY row force itself public --
+// including `{verb: "updated", field: "assignee"}`, an internal field by CA-7's own
+// table. Decision made here (documented on `resolveVisibility`'s own doc comment too):
+// "internal" may always be requested; "public" may be requested ONLY for the two rows
+// CA-7 itself makes conditional on data this module can't see (`attachment.added`, the
+// field `custom_field`) -- anything else asking for `public` THROWS, rather than being
+// silently downgraded, so a caller's wrong assumption that its row is public surfaces
+// immediately instead of quietly resolving to a value the caller never checked.
+describe("resolveVisibility -- S3: a caller-supplied visibility is not an unconditional override", () => {
+  it("throws when a normally-internal row asks for visibility: 'public'", () => {
+    expect(() =>
+      resolveVisibility({
+        workspaceId: "ws-1",
+        workItemId: "wi-1",
+        actorId: null,
+        actorType: "person",
+        verb: "updated",
+        field: "assignee",
+        visibility: "public",
+      }),
+    ).toThrow(/not allowed/);
+  });
+
+  it("throws even when the underlying verb is itself normally public (visibility is not a no-op override)", () => {
+    expect(() =>
+      resolveVisibility({
+        workspaceId: "ws-1",
+        workItemId: "wi-1",
+        actorId: null,
+        actorType: "system",
+        verb: "watcher.added",
+        visibility: "public",
+      }),
+    ).toThrow(/not allowed/);
+  });
+
+  it("honours visibility: 'public' for the attachment.added conditional case", () => {
+    expect(
+      resolveVisibility({
+        workspaceId: "ws-1",
+        workItemId: "wi-1",
+        actorId: null,
+        actorType: "person",
+        verb: "attachment.added",
+        visibility: "public",
+      }),
+    ).toBe("public");
+  });
+
+  it("honours visibility: 'public' for the custom_field conditional case", () => {
+    expect(
+      resolveVisibility({
+        workspaceId: "ws-1",
+        workItemId: "wi-1",
+        actorId: null,
+        actorType: "person",
+        verb: "updated",
+        field: "custom_field",
+        visibility: "public",
+      }),
+    ).toBe("public");
+  });
+
+  it("always honours visibility: 'internal', regardless of verb/field", () => {
+    expect(
+      resolveVisibility({
+        workspaceId: "ws-1",
+        workItemId: "wi-1",
+        actorId: null,
+        actorType: "system",
+        verb: "attachment.added",
+        visibility: "internal",
+      }),
+    ).toBe("internal");
+  });
+});
+
 describe("activity.seq -- monotonic tiebreak within one transaction", () => {
   it("assigns strictly increasing seq values, in insert order, for rows sharing one created_at", async () => {
     const fixture = await makeWorkItemFixture();
-    const rows = await recordWorkItemActivity(db, [
+    // Queried straight from the table with `db.select`, deliberately NOT via
+    // `recordWorkItemActivity`'s own return value -- S6 (PR #275's mandatory Opus 5.5
+    // review) made the writer's `.returning()` list stop including `seq`, on purpose, so
+    // this test would fail to compile against it if it tried (see that finding's own
+    // regression check, in the "no seq in the returned shape" describe below). `seq`
+    // still exists and is still monotonic in the TABLE; only the writer's return value
+    // excludes it.
+    await recordWorkItemActivity(db, [
       {
         workspaceId: fixture.workspace.id,
         workItemId: fixture.workItem.id,
@@ -405,7 +654,17 @@ describe("activity.seq -- monotonic tiebreak within one transaction", () => {
         newValue: "low",
       },
     ]);
-    const seqs = rows.map((r) => BigInt(r.seq));
+
+    const persisted = await db
+      .select({
+        seq: schema.activityTable.seq,
+        createdAt: schema.activityTable.createdAt,
+      })
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, fixture.workItem.id))
+      .orderBy(schema.activityTable.seq);
+
+    const seqs = persisted.map((r) => BigInt(r.seq));
     expect(seqs).toHaveLength(3);
     const [first, second, third] = seqs;
     if (first === undefined || second === undefined || third === undefined) {
@@ -413,6 +672,30 @@ describe("activity.seq -- monotonic tiebreak within one transaction", () => {
     }
     expect(second > first).toBe(true);
     expect(third > second).toBe(true);
+  });
+});
+
+describe("recordWorkItemActivity -- S6: never returns seq", () => {
+  it("the returned row shape has no seq property at runtime", async () => {
+    const fixture = await makeWorkItemFixture();
+    const [row] = await recordWorkItemActivity(db, [
+      {
+        workspaceId: fixture.workspace.id,
+        workItemId: fixture.workItem.id,
+        actorId: null,
+        actorType: "system",
+        verb: "created",
+      },
+    ]);
+    expect(row).toBeDefined();
+    expect(row).not.toHaveProperty("seq");
+    // Type-level half of the same regression: `recordWorkItemActivity`'s return type has
+    // no `seq` field at all, so `row?.seq` below is a compile error, not merely
+    // `undefined` at runtime -- proven by `pnpm typecheck` failing on this exact line
+    // when S6 is reverted (`Property 'seq' does not exist on type '{ id: string; ... }'`).
+    // Left commented out because a *type* regression test that must not compile cannot
+    // also be a runtime assertion the suite runs:
+    // const _typeCheck: undefined = row?.seq;
   });
 });
 
@@ -514,5 +797,34 @@ describe("diffWorkItemFieldChanges", () => {
     );
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ field: "priority" });
+  });
+
+  // S4 (NON-BLOCKING, fixed anyway), PR #275's mandatory Opus 5.5 review: rows used to
+  // be built with `...context`, so any EXTRA property a wider object happened to carry
+  // (here, a stray `visibility`) flowed straight into every emitted row and then S3's
+  // override handling would honour it. `DiffActivityContext`'s own type only declares
+  // four fields, but TypeScript's excess-property check is an object-LITERAL-only
+  // feature -- assigning to a typed variable first, as this test does, bypasses it, the
+  // same way a value built by spreading a loaded row or a request body would in real
+  // code. Only explicit field-by-field construction (this PR's actual fix) closes it.
+  it("a stray extra property on the context object (e.g. visibility) does not leak into the emitted rows (S4)", () => {
+    const widerContext: DiffActivityContext & { visibility: "public" } = {
+      ...context,
+      visibility: "public",
+    };
+    const rows = diffWorkItemFieldChanges(
+      { assigneeId: null },
+      { assigneeId: "person-2" },
+      widerContext,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).not.toHaveProperty("visibility");
+    // Sanity: with no `visibility` forwarded, CA-7's own table resolves this row --
+    // `assignee` is internal -- rather than the stray `public` the spread used to leak.
+    const [row] = rows;
+    if (!row) {
+      throw new Error("expected exactly one row");
+    }
+    expect(resolveVisibility(row)).toBe("internal");
   });
 });

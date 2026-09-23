@@ -14,12 +14,18 @@ export type ActivityVisibility = "public" | "internal";
  * the ones the writer itself supplies (`id`, `createdAt`, `seq`).
  *
  * `visibility` is optional: when omitted, `resolveVisibility` below derives it from
- * `verb`/`field` per CA-7's table (`docs/03-features/comments-and-activity.md`). Pass it
- * explicitly only for a verb CA-7 marks as conditional on data this module cannot see —
- * today, `attachment.added` (public only for a customer-visible attachment) and
- * `custom_field` (internal unless the field itself is `customer_visible`). Omitting
- * `visibility` for either of those two resolves to `internal`, CA-7's own stated
- * fail-closed default for anything this table cannot otherwise resolve.
+ * `verb`/`field` per CA-7's table (`docs/03-features/comments-and-activity.md`).
+ *
+ * When present, `visibility` is NOT an unconditional override — CA-7 says visibility is
+ * "decided by this table and nothing else", so a caller cannot simply assert `public`.
+ * `"internal"` is always honoured (a caller downgrading itself is always safe).
+ * `"public"` is honoured ONLY for the two rows CA-7 makes conditional on data this module
+ * cannot see by itself — `attachment.added` (public only for a customer-visible
+ * attachment) and the field `custom_field` (internal unless that field is
+ * `customer_visible`) — and `resolveVisibility` THROWS for any other attempt to force
+ * `public` (found by PR #275's mandatory Opus 5.5 security review, S3: silently
+ * downgrading instead would hide a caller's wrong assumption that its row is public when
+ * it privately is not, which is the more dangerous failure mode of the two here).
  */
 export type NewActivityInput = {
   workspaceId: string;
@@ -55,23 +61,55 @@ const CA7_PUBLIC_FIELDS: ReadonlySet<string> = new Set([
   "description",
 ]);
 
+// CA-7's two rows whose visibility depends on data this module cannot see by itself --
+// the only two an explicit `visibility: "public"` override may legitimately claim (S3).
+function isConditionalPublicOverrideAllowed(input: NewActivityInput): boolean {
+  return input.verb === "attachment.added" || input.field === "custom_field";
+}
+
 /**
  * CA-7: "Activity rows have visibility too, decided by this table and nothing else. An
  * unmapped verb or field is `internal` -- adding a field later fails closed."
  *
- * An explicit `input.visibility` always wins (the two conditional CA-7 rows this module
- * cannot resolve on its own). Otherwise: a known public verb, or a known public field on
- * a plain field-change row, is `public`; everything else -- including any verb or field
- * this table does not name -- is `internal`, by construction (the `default: "internal"`
- * on the column itself, `schema.ts`, is the same fail-closed backstop for any writer that
- * bypasses this function entirely, e.g. a future raw-SQL migration or import path).
+ * Resolution order:
+ * 1. `input.visibility === "internal"` is always honoured -- downgrading to internal is
+ *    always safe.
+ * 2. `input.visibility === "public"` is honoured ONLY for the two CA-7 conditional rows
+ *    (`isConditionalPublicOverrideAllowed`); any other attempt to force `public` THROWS
+ *    (S3 -- see `NewActivityInput`'s own doc comment for why a throw, not a silent
+ *    downgrade).
+ * 3. Otherwise, visibility is derived from `verb`/`field` alone. `CA7_PUBLIC_FIELDS` is
+ *    consulted ONLY when `verb === "updated"` (S2, PR #275's mandatory Opus 5.5 review:
+ *    the previous form checked `field` first regardless of `verb`, so
+ *    `{verb: "custom_field.updated", field: "priority"}` resolved to `public` on the
+ *    strength of a field name that happened to collide with a real public field, even
+ *    though the actual verb is not `updated` at all). For any other verb, only
+ *    `CA7_PUBLIC_VERBS` decides, `field` or not; an unmapped verb (or field, under
+ *    `updated`) is `internal`, by construction (the `default: "internal"` on the column
+ *    itself, `schema.ts`, is the same fail-closed backstop for any writer that bypasses
+ *    this function entirely, e.g. a future raw-SQL migration or import path).
  */
 export function resolveVisibility(input: NewActivityInput): ActivityVisibility {
-  if (input.visibility) {
-    return input.visibility;
+  if (input.visibility === "internal") {
+    return "internal";
   }
-  if (input.field) {
-    return CA7_PUBLIC_FIELDS.has(input.field) ? "public" : "internal";
+  if (input.visibility === "public") {
+    if (!isConditionalPublicOverrideAllowed(input)) {
+      const fieldSuffix = input.field
+        ? ` / field ${JSON.stringify(input.field)}`
+        : "";
+      throw new Error(
+        `resolveVisibility: visibility: "public" is not allowed for verb ${JSON.stringify(input.verb)}${fieldSuffix} -- ` +
+          'CA-7 decides visibility for every row itself; a caller may only force "public" ' +
+          'for "attachment.added" or the "custom_field" field, and may always force "internal".',
+      );
+    }
+    return "public";
+  }
+  if (input.verb === "updated") {
+    return input.field && CA7_PUBLIC_FIELDS.has(input.field)
+      ? "public"
+      : "internal";
   }
   return CA7_PUBLIC_VERBS.has(input.verb) ? "public" : "internal";
 }
@@ -87,8 +125,22 @@ export function resolveVisibility(input: NewActivityInput): ActivityVisibility {
  *
  * NOT wired into any work-item create/update controller yet -- issue #23's second slice
  * (PR #271) owns that call site and lands separately, per this PR's own scope. Returns
- * the inserted rows (including each one's server-assigned `id`/`seq`) for a caller that
- * wants to reference them (e.g. `comment.activity_id`).
+ * the inserted rows (including each one's server-assigned `id`) for a caller that wants
+ * to reference them (e.g. `comment.activity_id`) -- deliberately EXCLUDING `seq`
+ * (S6, PR #275's mandatory Opus 5.5 review): the decision log's own exception to
+ * "surrogate ids are never sequential" rests entirely on `seq` never appearing in an API
+ * response, so this writer must not be the leak that breaks that premise. Select an
+ * explicit column list rather than `.returning()` (which would include every column,
+ * `seq` included) precisely so a future column added to the table does not silently
+ * reopen this gap.
+ *
+ * A CALLER OBLIGATION this function cannot enforce for you: visibility is decided PER
+ * ROW, not per field inside a row's own `payload`/`old_value`/`new_value`. A `created`
+ * row is `public` (`CA7_PUBLIC_VERBS`), so its `payload` must never carry a full
+ * work-item snapshot (assignee, requester, or anything else CA-7 marks `internal`) --
+ * that data belongs on a SEPARATE `internal` row (e.g. `verb: "updated", field:
+ * "assignee"`), never folded into the public `created` row's own payload. This applies to
+ * #271's create/update write paths and #27's portal read/projection alike.
  */
 export async function recordWorkItemActivity(
   dbOrTx: DbOrTx,
@@ -117,7 +169,22 @@ export async function recordWorkItemActivity(
         createdAt: now,
       })),
     )
-    .returning();
+    .returning({
+      id: activityTable.id,
+      workspaceId: activityTable.workspaceId,
+      workItemId: activityTable.workItemId,
+      actorId: activityTable.actorId,
+      actorType: activityTable.actorType,
+      verb: activityTable.verb,
+      field: activityTable.field,
+      oldValue: activityTable.oldValue,
+      newValue: activityTable.newValue,
+      payload: activityTable.payload,
+      visibility: activityTable.visibility,
+      workflowVersionId: activityTable.workflowVersionId,
+      createdAt: activityTable.createdAt,
+      // `seq` is deliberately NOT listed -- see this function's own doc comment.
+    });
 }
 
 /**
@@ -200,8 +267,20 @@ export function diffWorkItemFieldChanges(
     if (!valuesDiffer(oldValue, newValue)) {
       continue;
     }
+    // S4, PR #275's mandatory Opus 5.5 review: built from the four NAMED context fields
+    // explicitly, never `...context` -- a spread would carry any EXTRA property a wider
+    // object happens to have (e.g. a `visibility` picked up from a loaded row or request
+    // object) into every emitted row, and `resolveVisibility`'s override handling would
+    // then have to defend against it a second time. `DiffActivityContext`'s own type only
+    // declares these four, but excess-property checking is an object-LITERAL-only
+    // TypeScript feature, so a caller passing a wider object here would not be a type
+    // error -- explicit construction is what actually closes the gap, the type alone does
+    // not.
     rows.push({
-      ...context,
+      workspaceId: context.workspaceId,
+      workItemId: context.workItemId,
+      actorId: context.actorId,
+      actorType: context.actorType,
       verb: "updated",
       field,
       oldValue,
@@ -215,7 +294,10 @@ export function diffWorkItemFieldChanges(
     after.stateId !== before.stateId
   ) {
     rows.push({
-      ...context,
+      workspaceId: context.workspaceId,
+      workItemId: context.workItemId,
+      actorId: context.actorId,
+      actorType: context.actorType,
       verb: "transitioned",
       oldValue: before.stateId ?? null,
       newValue: after.stateId ?? null,

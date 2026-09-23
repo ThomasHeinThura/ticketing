@@ -2122,24 +2122,38 @@ export const activityTable = pgTable(
       "activity_visibility_allowed",
       sql`${table.visibility} in ('public', 'internal')`,
     ),
-    // Decision log 2026-09-23, detail 1: pins `work_item_id` to a `work_item` row that
-    // shares THIS row's own `workspace_id` -- closes the cross-tenant gap a plain
-    // single-column FK on `work_item_id` cannot see. Same `(scope_id, id)` composite-FK
-    // technique #192/#186 S2 use elsewhere (`work_item.state_id`/`type_id`/`parent_id`).
-    // `onUpdate("no action")`, never `"cascade"`, per #191's O1 finding: this FK's
-    // referenced column set includes the mutable `work_item.workspace_id`, so
-    // `"cascade"` here could silently move an activity row (and, transitively, the
-    // illusion of its work item) across a tenant boundary if that column were ever
-    // updated elsewhere. `onDelete("restrict")`: activity is kept forever as the journal
-    // (data-model.md S4's own text) -- work items are soft-deleted (`deleted_at`), never
-    // hard-deleted, so this should never actually fire, but `restrict` states that
-    // intent directly rather than leaving a hard-delete path to silently cascade the
-    // journal away.
+    // Decision log 2026-09-23, "Activity addendum: ON DELETE CASCADE, and Postgres 16
+    // stays supported" (S1 of PR #275's mandatory Opus 5.5 security review,
+    // `docs/07-planning/security-reviews/275-work-item-activity-table.md`). Pins
+    // `work_item_id` to a `work_item` row that shares THIS row's own `workspace_id` --
+    // closes the cross-tenant gap a plain single-column FK on `work_item_id` cannot see.
+    // Same `(scope_id, id)` composite-FK technique #192/#186 S2 use elsewhere
+    // (`work_item.state_id`/`type_id`/`parent_id`). `onUpdate("no action")`, never
+    // `"cascade"`, per #191's O1 finding: this FK's referenced column set includes the
+    // mutable `work_item.workspace_id`, so `"cascade"` on UPDATE here could silently
+    // move an activity row across a tenant boundary if that column were ever updated
+    // elsewhere.
+    //
+    // `onDelete("cascade")` -- CHANGED from `"restrict"` in this PR's first round, which
+    // reasoned "work items are soft-deleted, never hard-deleted, so this should never
+    // actually fire." That premise was false, proven live by the Opus review: work items
+    // ARE hard-deleted today, by cascade, on every existing tenant-deletion path --
+    // `delete-workspace.ts` (workspace delete -> project -> work_item), sole-owner
+    // `delete-account-data.ts` (same cascade), and #198's future purge of an
+    // expired-hold project. With `RESTRICT`, a single activity row made every one of
+    // those deletes fail outright (reproduced live: `update or delete on table
+    // "work_item" violates ... RESTRICT`), which means any workspace that had ever had a
+    // work item could never be deleted again once #271 starts writing rows. `CASCADE`
+    // fixes that: deleting a work item's tenant deletes its journal with it.
+    // `data-model.md` S4's "activity is the journal, retained forever" means it has no
+    // TIME-based purge of its own -- it does not mean the journal outlives the hard
+    // deletion of the tenant it belongs to. Legal hold (#198) is the mechanism that stops
+    // a deletion outright when data must be kept; this FK is not that mechanism.
     foreignKey({
       columns: [table.workspaceId, table.workItemId],
       foreignColumns: [workItemTable.workspaceId, workItemTable.id],
     })
-      .onDelete("restrict")
+      .onDelete("cascade")
       .onUpdate("no action"),
   ],
 );

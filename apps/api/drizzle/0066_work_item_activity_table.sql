@@ -31,8 +31,13 @@
 --      to `work_item (workspace_id, id)` -- the decision log's detail 1 -- targeting the
 --      unique index from step 2. `ON UPDATE NO ACTION` (never `CASCADE`), per #191's O1
 --      finding: this FK's referenced columns include the mutable `work_item.workspace_id`.
---      `ON DELETE RESTRICT`: activity is kept forever as the journal; work items are
---      soft-deleted, never hard-deleted.
+--      `ON DELETE CASCADE` -- decision log 2026-09-23 "Activity addendum: ON DELETE
+--      CASCADE, and Postgres 16 stays supported" (S1 of PR #275's mandatory Opus 5.5
+--      review): work items ARE hard-deleted today, by cascade, on every existing
+--      tenant-deletion path (`delete-workspace.ts`, sole-owner `delete-account-data.ts`,
+--      #198's future purge), so `RESTRICT` made any workspace that had ever had a work
+--      item permanently undeletable the moment a single activity row existed. See
+--      `schema.ts`'s comment on this FK for the full reasoning.
 --
 -- The composite FK constraint name (`activity_workspace_id_work_item_id_work_item_
 -- workspace_id_id_fk`) is exactly 63 bytes -- checked against issue #241 (a sibling
@@ -48,11 +53,50 @@ ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_task_external_source_ext
 ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_task_id_task_id_fk" TO "task_activity_task_id_task_id_fk";--> statement-breakpoint
 ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_user_id_user_id_fk" TO "task_activity_user_id_user_id_fk";--> statement-breakpoint
 ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_pkey" TO "task_activity_pkey";--> statement-breakpoint
-ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_id_not_null" TO "task_activity_id_not_null";--> statement-breakpoint
-ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_task_id_not_null" TO "task_activity_task_id_not_null";--> statement-breakpoint
-ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_type_not_null" TO "task_activity_type_not_null";--> statement-breakpoint
-ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_created_at_not_null" TO "task_activity_created_at_not_null";--> statement-breakpoint
-ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_updated_at_not_null" TO "task_activity_updated_at_not_null";--> statement-breakpoint
+-- S5 of PR #275's mandatory Opus 5.5 review, decision log 2026-09-23 "Activity addendum
+-- ... and Postgres 16 stays supported": Postgres 18 is the only version that catalogues
+-- a column's `NOT NULL` constraint by name (`pg_constraint.contype = 'n'`) -- on 16 and
+-- 17 these five constraints do not exist as named catalog objects at all, and an
+-- unconditional `RENAME CONSTRAINT` against a name that does not exist raises
+-- `constraint "..." for table "task_activity" does not exist`, failing this migration
+-- (and every migration after it, in the same transaction) outright on any Postgres below
+-- 18 -- reproduced live against throwaway `postgres:16-alpine`/`postgres:17-alpine`
+-- containers. Guarding each rename with a `pg_constraint` existence check makes this
+-- migration a no-op for these five statements on 16/17 (nothing to rename) and identical
+-- to the unconditional form on 18 (the constraint exists, the `IF` is true, it renames).
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = '"task_activity"'::regclass AND conname = 'activity_id_not_null'
+  ) THEN
+    ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_id_not_null" TO "task_activity_id_not_null";
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = '"task_activity"'::regclass AND conname = 'activity_task_id_not_null'
+  ) THEN
+    ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_task_id_not_null" TO "task_activity_task_id_not_null";
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = '"task_activity"'::regclass AND conname = 'activity_type_not_null'
+  ) THEN
+    ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_type_not_null" TO "task_activity_type_not_null";
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = '"task_activity"'::regclass AND conname = 'activity_created_at_not_null'
+  ) THEN
+    ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_created_at_not_null" TO "task_activity_created_at_not_null";
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = '"task_activity"'::regclass AND conname = 'activity_updated_at_not_null'
+  ) THEN
+    ALTER TABLE "task_activity" RENAME CONSTRAINT "activity_updated_at_not_null" TO "task_activity_updated_at_not_null";
+  END IF;
+END $$;--> statement-breakpoint
 -- drizzle's own FK-naming convention embeds the referenced table's name
 -- (`<table>_<column>_<refTable>_<refColumn>_fk`), so `asset`'s existing FK to this
 -- renamed table is renamed too, to keep `drizzle-kit generate` computing a clean diff
@@ -79,6 +123,6 @@ CREATE TABLE "activity" (
 	CONSTRAINT "activity_visibility_allowed" CHECK ("activity"."visibility" in ('public', 'internal'))
 );
 --> statement-breakpoint
-ALTER TABLE "activity" ADD CONSTRAINT "activity_workspace_id_work_item_id_work_item_workspace_id_id_fk" FOREIGN KEY ("workspace_id","work_item_id") REFERENCES "public"."work_item"("workspace_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activity" ADD CONSTRAINT "activity_workspace_id_work_item_id_work_item_workspace_id_id_fk" FOREIGN KEY ("workspace_id","work_item_id") REFERENCES "public"."work_item"("workspace_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "activity_work_item_id_created_at_idx" ON "activity" USING btree ("work_item_id","created_at" DESC NULLS LAST,"seq" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "activity_workspaceId_idx" ON "activity" USING btree ("workspace_id");
