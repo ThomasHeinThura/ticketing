@@ -711,6 +711,17 @@ actually depends on, never by "P0 isn't finished yet." It carries live PR/issue 
 rather than kept permanently accurate; re-check `gh pr list`/`gh issue list` before trusting
 a row that looks old.
 
+**P0 #10 continuation — 2026-09-23:** The 2026-09-23 decision log selected Playwright
+screenshots for G8. A narrow first browser test now exercises the existing logged-out
+protected-route redirect and preserved return URL in a real browser; it is wired as a
+non-required CI smoke and into `pnpm test:all`. This is not the full authenticated
+agent/portal journey suite and does not close #10. The remaining browser security,
+reduced-motion, mobile, axe, visual-baseline, and performance-budget gates still need their
+fixtures or agreed scope/thresholds. The candidate is on `fix/10-playwright-smoke`; run its
+browser test with `pnpm --filter @taskdesk/web test:e2e` and review the exact branch SHA
+before treating it as merged or complete.
+
+
 **States:** `CRITICAL_NOW` (directly advances the current bottleneck) ·
 `NEXT_DEPENDENCY` (becomes critical the moment the current blocker clears) ·
 `SAFE_PARALLEL` (real work, genuinely independent of the blocked security/architecture

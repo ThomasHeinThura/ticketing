@@ -93,15 +93,23 @@ label), target under 45 minutes, sharded four ways:**
 │                          lifecycle/, migrations  │
 │                          from empty, anonymiser  │
 ├─ Browser ────────────────────────────────────────┤
-│ pnpm test:e2e            agent + portal          │
-│ pnpm test:e2e --project=security                 │
-│ pnpm test:e2e --project=reduced-motion   G9      │
-│ pnpm test:e2e --project=mobile-320       H6      │
+│ pnpm test:e2e            protected-route redirect│
+│                          browser smoke today;    │
+│ pnpm test:e2e --project=security                │
+│ pnpm test:e2e --project=reduced-motion   G9     │
+│ pnpm test:e2e --project=mobile-320       H6     │
 │ pnpm test:a11y           G4 — axe                │
 │ pnpm test:visual         G8 — snapshots          │
 │ pnpm test:perf           G11 — budgets           │
 └──────────────────────────────────────────────────┘
 ```
+
+The current Playwright suite is a real-browser smoke for the already-specified logged-out
+protected-route redirect and its preserved destination. The `security`, `reduced-motion`,
+and `mobile-320` project commands above document future suites; none are enabled yet. The
+current smoke does not yet satisfy authenticated agent/portal journeys; these still need
+deterministic application fixtures and acceptance flows. The smoke is not a required
+branch-protection status check.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.

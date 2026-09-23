@@ -3,13 +3,11 @@
 # docs/04-engineering/ci-cd.md: "Full — required before merge, runs on the merge queue (or
 # on the `ready-for-review` label), target under 45 minutes, sharded four ways."
 #
-# Most of this block cannot run yet. There is no Playwright suite, no deployable
-# application to point one at (#11), no packages/ui (#9), and the visual-regression tool for
-# G8 is still an open decision in docs/07-planning/status.md. Those jobs are written out
-# below and disabled with `if: false`, so the shape is reviewable and the reason is next to
-# it — but they are **not** to be added to the protect-main ruleset as required checks. A
-# skipped job is not a passing gate, and treating it as one is how a suite goes green over
-# nothing.
+# The E2E job currently runs a browser-level logged-out redirect smoke. The full
+# agent/portal journey suite still needs deterministic browser fixtures and acceptance flows.
+# A11y and performance need scope/budgets; visual baselines need a deterministic screen
+# fixture. Do not treat the remaining `if: false` jobs as passing gates or make their skipped
+# statuses required.
 
 name: CI - full
 
@@ -65,19 +63,23 @@ jobs:
         run: pnpm test:integration
 
   e2e:
-    name: NOT ENABLED - e2e (agent + portal)
-    if: false
-    # Blocked by: no Playwright suite, and no deployable application to run it against
-    # (#11). ci-cd.md also lists the security, reduced-motion (G9) and mobile-320 (H6)
-    # projects; they arrive with the suite, as `pnpm test:e2e --project=…`.
+    name: e2e - protected-route redirect
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - run: exit 1
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: Build the web app and workspace dependencies
+        run: pnpm build
+      - name: Install Chromium
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Run browser smoke
+        run: pnpm --filter @taskdesk/web test:e2e
 
   a11y:
     name: NOT ENABLED - a11y (G4, axe)
     if: false
-    # Blocked by: no Playwright suite and no screens to run axe against.
+    # Blocked by: an agreed browser accessibility scope and axe dependency are not yet present.
     runs-on: ubuntu-latest
     steps:
       - run: exit 1
@@ -85,9 +87,7 @@ jobs:
   visual:
     name: NOT ENABLED - visual regression (G8)
     if: false
-    # Blocked by: no Playwright suite, and the tool is undecided — Playwright
-    # toHaveScreenshot with in-repo baselines, or Chromatic (docs/07-planning/status.md
-    # § Open decisions).
+    # Blocked by: deterministic browser data/screen fixtures and screenshot acceptance scope.
     runs-on: ubuntu-latest
     steps:
       - run: exit 1
@@ -95,7 +95,7 @@ jobs:
   performance:
     name: NOT ENABLED - performance budgets (G11)
     if: false
-    # Blocked by: no Playwright suite, and no budgets written down anywhere.
+    # Blocked by: browser performance metrics and budgets are not specified.
     runs-on: ubuntu-latest
     steps:
       - run: exit 1

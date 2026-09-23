@@ -218,26 +218,26 @@ const manifest = [
   {
     gate: "pnpm test:e2e",
     stage: "full",
-    run: null,
-    why: "there is no Playwright suite and no deployable application to point one at (#11).",
+    run: ["pnpm", "--filter", "@taskdesk/web", "test:e2e"],
+    note: "currently a browser-level smoke for the specified logged-out protected-route redirect and return target; full agent/portal journeys still need deterministic fixtures and acceptance flows.",
   },
   {
     gate: "pnpm test:e2e --project=security",
     stage: "full",
     run: null,
-    why: "no Playwright suite yet.",
+    why: "the browser security project has no scoped acceptance flows or fixtures yet.",
   },
   {
     gate: "pnpm test:e2e --project=reduced-motion",
     stage: "full",
     run: null,
-    why: "no Playwright suite yet (G9).",
+    why: "the reduced-motion browser project still needs its acceptance flows and fixtures (G9).",
   },
   {
     gate: "pnpm test:e2e --project=mobile-320",
     stage: "full",
     run: null,
-    why: "no Playwright suite yet (H6).",
+    why: "the mobile-320 browser project still needs its acceptance flows and fixtures (H6).",
   },
   {
     gate: "pnpm test:a11y",
@@ -249,7 +249,7 @@ const manifest = [
     gate: "pnpm test:visual",
     stage: "full",
     run: null,
-    why: "no Playwright suite, and the visual-regression tool for G8 is still an open decision in docs/07-planning/status.md.",
+    why: "Playwright screenshots are selected for G8, but deterministic screen/data fixtures and snapshot acceptance scope are not yet defined.",
   },
   {
     gate: "pnpm test:perf",
