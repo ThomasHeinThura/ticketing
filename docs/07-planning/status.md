@@ -1,14 +1,15 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
-**2026-09-23 continuation (P0 #10):**
-The fetch, mutable-baseline, and oasdiff-binary review findings from the prior head were
-fixed. Contract, coverage, browser-smoke, Postgres integration, fast checks, and other
-required CI contexts pass on this head. The first fresh ordinary review confirms those three
-remediations. The PR-template check remains red until all ordinary reviews and the required
-Opus review note are complete. The live `protect-main` ruleset now requires `domain coverage
-(90%)`, `integration - Postgres 18`, and `e2e - protected-route redirect`; every pre-existing
-required context was preserved. #10 and P0 are not claimed
-complete, and no merge is authorized before the final Opus review and all exact-head gates.
+**2026-09-23 continuation (P0 #10):** The fetch, mutable-baseline, and oasdiff-binary review
+findings were fixed on PR #355. At exact head `de70342e23fef6a8130696304908cf1e41ab800b`,
+the coverage and browser-smoke contexts passed, while Postgres integration and several fast
+checks were still running; the previous review also found that an earlier status sentence
+prematurely reported them all as passing and it was corrected here. The PR-template check
+still requires completed ordinary reviews and a committed Opus review note. The live
+`protect-main` ruleset requires `domain coverage (90%)`, `integration - Postgres 18`, and
+`e2e - protected-route redirect`; every pre-existing required context was preserved. #10 and
+P0 are not claimed complete, and no merge is authorized before final Opus review and all
+exact-head gates.
 
 **2026-09-23 continuation (P0 #10):** The Playwright protected-route redirect smoke on
 PR #355 passed its browser job and Postgres integration job at exact head
