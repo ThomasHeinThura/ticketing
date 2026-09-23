@@ -41,6 +41,10 @@ import notificationPreferences from "./notification-preferences";
 import oauth from "./oauth";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
 import { initializePlugins } from "./plugins";
+// Importing this constructs and validates the registry at module load, so an invalid policy
+// refuses boot (#8 Slice 0). Keep the import even if its one use below moves: without a use,
+// the bundler drops it and the check silently stops running.
+import { policyRegistry } from "./policy-registry";
 import project from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
@@ -1040,6 +1044,8 @@ export async function runStartupTasks() {
   // to assert the invariant every append-only/no-DDL control on this connection
   // depends on: it must not be a superuser, and it must not own a table.
   await assertApplicationRoleIsNotPrivileged(getDatabase());
+
+  console.log(`🔐 ${policyRegistry.entries.length} policies loaded`);
 
   await migrateColumns();
   await seedDefaultWorkspaceRoles();
