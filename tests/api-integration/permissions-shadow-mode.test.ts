@@ -481,6 +481,47 @@ describe("#324 — denied param workspace scope is checked against a verified ro
   });
 });
 
+describe("#324 — controller-level leave denial replaces an earlier allowed marker", () => {
+  it("records the controller's membership recheck as a real denial", {
+    timeout: 60_000,
+  }, async () => {
+    vi.doMock(
+      "../../apps/api/src/workspace/controllers/leave-workspace",
+      async () => {
+        const { NotAMemberError } = await import(
+          "../../apps/api/src/workspace/controllers/workspace-membership-errors"
+        );
+        return {
+          default: async () => {
+            throw new NotAMemberError();
+          },
+        };
+      },
+    );
+    try {
+      const fresh = await createAppWithShadow("on");
+      const member = await createWorkspaceMember();
+      await backfillPersons();
+      fresh.mockUser(member.user);
+
+      const response = await fresh.app.request(
+        `/api/workspace/${member.workspace.id}/leave`,
+        { method: "POST" },
+      );
+      expect(response.status).toBe(404);
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const events = await shadowEventsFor(
+        "POST /api/workspace/{workspaceId}/leave",
+        "legacy_deny_policy_allow",
+      );
+      expect(events).toHaveLength(1);
+    } finally {
+      vi.doUnmock("../../apps/api/src/workspace/controllers/leave-workspace");
+    }
+  });
+});
+
 describe("#323 Opus S2 — evidence is attributed to the route that actually ran", () => {
   it("PUT /api/project/reorder attributes to ITS OWN key, not to PUT /api/project/{id}", {
     timeout: 60_000,

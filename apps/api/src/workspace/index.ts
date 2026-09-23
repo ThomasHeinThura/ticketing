@@ -928,18 +928,24 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
     }
   })
   .openapi(leaveWorkspaceRoute, async (c) => {
+    markShadowLegacyAuthorizationUnknown(c);
     try {
       const left = await leaveWorkspaceCtrl(
         c.get("workspaceId"),
         c.get("userId"),
         requireSessionId(c),
       );
+      setShadowLegacyAuthorization(c, "allowed");
       return c.json(left, 200);
     } catch (error) {
       if (error instanceof NotAMemberError) {
+        setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(404, { message: error.message });
       }
       if (error instanceof LastOwnerCannotLeaveError) {
+        // Membership was confirmed; this is a last-owner business constraint, not
+        // an authorization denial.
+        setShadowLegacyAuthorization(c, "allowed");
         throw new HTTPException(400, { message: error.message });
       }
       throw error;
