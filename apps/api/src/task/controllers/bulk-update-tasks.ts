@@ -7,7 +7,6 @@ import {
   projectTable,
   taskTable,
   userTable,
-  workspaceUserTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { assertAssignableUser } from "../../utils/assert-assignable-user";
@@ -30,12 +29,26 @@ async function bulkUpdateTasks({
   operation,
   value,
   userId,
+  workspaceId,
 }: {
   taskIds: string[];
   operation: BulkOperation;
   value?: string | null;
   userId: string;
+  workspaceId: string;
 }) {
+  // #290 follow-up (mixed-id oracle): this used to resolve tasks across ANY
+  // workspace the ids happened to belong to, then group by workspace and check
+  // membership itself -- repeating (and re-triggering) the exact bug
+  // `workspace-access-middleware.ts`'s `fromTasks()` was fixed for: `[myTask,
+  // foreignTask]` 400'd "must belong to the same workspace" (revealing the foreign
+  // task exists), while `[myTask, nonexistentId]` silently 200'd with only the real
+  // task acted on. `fromTasks()` has already resolved and reach-checked a single
+  // workspace before this controller ever runs (`c.get("workspaceId")`, set by the
+  // middleware) -- filtering to it here, in the same query, means a task id that
+  // is either nonexistent OR in a workspace the caller can't reach is silently
+  // absent from `tasks`, exactly the same as before: no second resolution, no second
+  // membership check, and no way for the two cases to answer differently.
   const tasks = await db
     .select({
       id: taskTable.id,
@@ -52,44 +65,17 @@ async function bulkUpdateTasks({
     // operation skips them exactly as if their ids had not been sent -- and if
     // every requested id is under a deleted project, `tasks.length === 0` below
     // reports the same 404 a genuinely unknown id already gets.
-    .where(and(inArray(taskTable.id, taskIds), isNull(projectTable.deletedAt)));
+    .where(
+      and(
+        inArray(taskTable.id, taskIds),
+        eq(projectTable.workspaceId, workspaceId),
+        isNull(projectTable.deletedAt),
+      ),
+    );
 
   if (tasks.length === 0) {
     throw new HTTPException(404, {
       message: "No tasks found",
-    });
-  }
-
-  const workspaceIds = [...new Set(tasks.map((t) => t.workspaceId))];
-
-  if (workspaceIds.length > 1) {
-    throw new HTTPException(400, {
-      message: "All tasks must belong to the same workspace",
-    });
-  }
-
-  const workspaceId = workspaceIds[0];
-
-  if (!workspaceId) {
-    throw new HTTPException(400, {
-      message: "Could not determine workspace",
-    });
-  }
-
-  const [membership] = await db
-    .select({ id: workspaceUserTable.id })
-    .from(workspaceUserTable)
-    .where(
-      and(
-        eq(workspaceUserTable.userId, userId),
-        eq(workspaceUserTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
-
-  if (!membership) {
-    throw new HTTPException(403, {
-      message: "You don't have access to this workspace",
     });
   }
 

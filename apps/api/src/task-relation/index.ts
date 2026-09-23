@@ -68,7 +68,19 @@ async function scopeToSourceTask(c: Context, next: Next) {
     throw new HTTPException(404, { message: "Source task not found" });
   }
 
-  await validateWorkspaceAccess(userId, workspaceId);
+  // #290 follow-up: a source task that exists but is in a workspace the caller
+  // can't reach used to leak a bare 403 here, distinguishable from the 404 just
+  // above for a genuinely nonexistent task -- the same existence-oracle class
+  // #290 closed for every `workspaceAccess.from*` helper. Caught and re-thrown as
+  // the identical "not found" answer, so the two are indistinguishable again.
+  try {
+    await validateWorkspaceAccess(userId, workspaceId);
+  } catch (error) {
+    if (error instanceof HTTPException && error.status === 403) {
+      throw new HTTPException(404, { message: "Source task not found" });
+    }
+    throw error;
+  }
   c.set("workspaceId", workspaceId);
   return next();
 }
@@ -96,7 +108,19 @@ async function scopeToRelation(c: Context, next: Next) {
     throw new HTTPException(404, { message: "Task not found" });
   }
 
-  await validateWorkspaceAccess(userId, workspaceId);
+  // #290 follow-up: same class as `scopeToSourceTask` above -- a relation whose
+  // source task is in a workspace the caller can't reach used to leak a bare 403,
+  // distinguishable from the 404 a nonexistent relation id gets. Re-thrown as the
+  // same 404 this route already gives for "no such relation", since the relation
+  // id in the path is the identifier a caller would otherwise be able to probe.
+  try {
+    await validateWorkspaceAccess(userId, workspaceId);
+  } catch (error) {
+    if (error instanceof HTTPException && error.status === 403) {
+      throw new HTTPException(404, { message: "Task relation not found" });
+    }
+    throw error;
+  }
   c.set("workspaceId", workspaceId);
   return next();
 }
@@ -144,9 +168,9 @@ const createTaskRelationRoute = createRoute({
   responses: {
     200: jsonResponse("The created relation", taskRelationSchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse(
-      "No workspace access, or missing task:update permission",
-    ),
+    403: errorResponse("Missing task:update permission"),
+    // #290 follow-up: an unreachable source task now answers this same 404 as a
+    // nonexistent one, via `scopeToSourceTask`.
     404: errorResponse("Source or target task not found"),
     409: errorResponse("This relation already exists"),
   },
@@ -166,9 +190,9 @@ const deleteTaskRelationRoute = createRoute({
   request: { params: taskRelationParam },
   responses: {
     200: jsonResponse("The deleted relation", taskRelationSchema),
-    403: errorResponse(
-      "No workspace access, or missing task:update permission",
-    ),
+    403: errorResponse("Missing task:update permission"),
+    // #290 follow-up: an unreachable relation/source task now answers this same 404
+    // as a nonexistent one, via `scopeToRelation`.
     404: errorResponse("Task relation not found, or its source task is gone"),
   },
 });

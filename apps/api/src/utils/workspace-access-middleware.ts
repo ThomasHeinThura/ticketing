@@ -232,32 +232,56 @@ export function workspaceAccessMiddleware(
                 eq(schema.taskTable.projectId, schema.projectTable.id),
               )
               .where(inArray(schema.taskTable.id, taskIds));
-            const workspaceIds = [
+            const distinctWorkspaceIds = [
               ...new Set(tasks.map((task) => task.workspaceId)),
             ];
-            if (workspaceIds.length === 0) {
-              throw new HTTPException(404, { message: "No tasks found" });
-            }
-            if (workspaceIds.length > 1) {
-              throw new HTTPException(400, {
-                message: "All tasks must belong to the same workspace",
-              });
-            }
-            workspaceId = workspaceIds[0] ?? null;
-            if (workspaceId) {
-              // #290: same treatment as the single-resource `lookup` branch above --
-              // a resolved-but-out-of-reach workspace answers exactly like "no tasks
-              // found", not a 403 that would let a caller tell the two apart.
+
+            // #290 follow-up (mixed-id oracle): grouping every RESOLVED id by
+            // workspace, before checking reach, let `[myTask, foreignTask]` and
+            // `[myTask, nonexistentId]` answer differently -- the former 400'd
+            // ("must belong to the same workspace", because the foreign task's real
+            // workspace was in the set), the latter 200'd with only the real task
+            // updated. That told a caller a foreign id exists. Reach is now checked
+            // per DISTINCT workspace (never per id -- at most a handful of extra
+            // queries, not one per task id) and an unreachable workspace's tasks are
+            // dropped from consideration entirely, exactly as if their ids had never
+            // resolved to a row at all.
+            const reachableWorkspaceIds: string[] = [];
+            for (const candidateWorkspaceId of distinctWorkspaceIds) {
               try {
-                await validateWorkspaceAccess(userId, workspaceId, apiKeyId);
-                accessChecked = true;
+                await validateWorkspaceAccess(
+                  userId,
+                  candidateWorkspaceId,
+                  apiKeyId,
+                );
+                reachableWorkspaceIds.push(candidateWorkspaceId);
               } catch (error) {
                 if (!(error instanceof HTTPException) || error.status !== 403) {
                   throw error;
                 }
-                throw new HTTPException(404, { message: "No tasks found" });
+                // Out of reach -- silently dropped, not surfaced as a 403 or
+                // folded into the "too many workspaces" 400 below.
               }
             }
+
+            if (reachableWorkspaceIds.length === 0) {
+              // Covers both "no id resolved to a row" and "every resolved row is in
+              // a workspace the caller can't reach" -- byte-identical, on purpose.
+              throw new HTTPException(404, { message: "No tasks found" });
+            }
+            if (reachableWorkspaceIds.length > 1) {
+              // A genuine multi-workspace request the caller can actually reach
+              // (e.g. an admin/service key spanning workspaces) keeps this 400 --
+              // only an UNREACHABLE workspace's tasks are dropped above, not every
+              // workspace beyond the first.
+              throw new HTTPException(400, {
+                message: "All tasks must belong to the same workspace",
+              });
+            }
+            workspaceId = reachableWorkspaceIds[0] ?? null;
+            // Already validated above -- every entry in reachableWorkspaceIds passed
+            // validateWorkspaceAccess.
+            accessChecked = true;
           }
         }
       }

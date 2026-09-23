@@ -553,6 +553,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
       operation,
       value,
       userId,
+      workspaceId: c.get("workspaceId"),
     });
 
     return c.json(result, 200);

@@ -7915,7 +7915,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7980,7 +7980,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing task:update permission",
+            "description": "Missing task:update permission",
             "content": {
               "text/plain": {
                 "schema": {
