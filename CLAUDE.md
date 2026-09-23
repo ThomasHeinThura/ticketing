@@ -111,12 +111,12 @@ A merge is not a stopping point.
 ## Model tiers
 
 > **Since 2026-09-23 this section is partly superseded by the decision log.** Read that first.
-> - Implementation, and the ordinary review, on the P0/P1/P2 lanes are done by three non-Claude agents that Thomas runs: GPT-6 Luna, DeepSeek 4.1 Flash (through GitHub Copilot) and mimo-v2.26 Flash (through Cline). They review each other: the reviewer must be a different agent from the author, and the reviewer's model and the reviewed SHA are recorded.
-> - The Claude session does **only** the final Opus 5.5 security review, in a fresh context, plus the merge.
-> - Until 2026-09-30, a fresh Claude Sonnet context does the ordinary review, because the agents have no capacity (#345).
+> - Implementation on the P0/P1/P2 lanes is done by three non-Claude agents that Thomas runs: GPT-6 Luna, DeepSeek 4.1 Flash (through GitHub Copilot) and mimo-v2.26 Flash (through Cline). The intended ordinary-review path is for those agents to review each other: reviewer distinct from author, with model and exact reviewed SHA recorded.
+> - Until 2026-09-30, #345 temporarily assigns ordinary review to a fresh independent context. If the Claude Sonnet route is unavailable, Thomas has authorized the orchestrating session to use a fresh current-model context instead; record its actual model and exact SHA. This is an ordinary review only and does not satisfy the Opus gate.
+> - The orchestrating session commissions the final Opus 5.5 security review in a fresh independent context and handles merge only after every gate passes.
 > - **The Opus 5.5 security review is never replaced by a lower tier.** If Opus is unavailable, the PR waits.
 >
-> See the 2026-09-23 entries "Three non-Claude implementation agents take the P0/P1/P2 lanes…" (#336) and "Until the lane agents' review capacity returns…" (#345). The text below describes the tiers **within Claude's own subagents**, and the gates are unchanged.
+> See the 2026-09-23 entries "Three non-Claude implementation agents take the P0/P1/P2 lanes…" (#336), "Until the lane agents' review capacity returns…" (#345), and the current-model fallback below. The text below describes the tiers **within Claude's own subagents**, and the gates are unchanged.
 
 Every subagent's model is set **explicitly** at spawn time — never inherited from the
 session. Within this session's own `Agent` tool, two model families are used: **Claude Sonnet** and **Claude
