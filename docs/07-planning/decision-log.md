@@ -17,10 +17,10 @@ Newest first.
 
 ---
 
-### 2026-09-23 · P3 ordinary reviews may use fresh GPT-6 contexts when Sonnet is unavailable
+### 2026-09-23 · P3 ordinary reviews use two fresh current-model contexts by Thomas's explicit direction
 
 **Decision:** For the P3 identity/portal candidate, use two fresh, independent GPT-6 reviewer
-contexts in place of Sonnet ordinary reviewers when Sonnet capacity is unavailable. Record
+contexts in place of Sonnet ordinary reviewers for this candidate. Record
 the substitution in the pull request and keep the required independent Opus security review
 as a separate final gate; this decision does not authorize merge without Opus.
 
@@ -65,6 +65,24 @@ distinguishes same-connection and cross-connection conflicts to the caller.
 
 **Decided by:** Thomas, 2026-09-23.
 
+### 2026-09-23 · Until the lane agents' review capacity returns (2026-09-30), a fresh Claude Sonnet context does the ordinary independent review
+
+**Supersedes (temporarily):** the 2026-09-23 entry "Three non-Claude implementation agents take the P0/P1/P2 lanes…". That entry says the lane agents review each other. The agents have reported no ordinary-review capacity until 2026-09-30T15:27Z.
+
+**Decision:** Until the agents' capacity returns, the orchestrating Claude session commissions a **fresh Claude Sonnet context** as the ordinary independent reviewer for lane-agent PRs. Claude Sonnet was the project's ordinary-review tier before 2026-09-23, so this is not a downgrade. It stays independent, because no Claude context authored these PRs. Every other rule in that entry is unchanged:
+- the reviewer's model and the exact SHA it reviewed are recorded;
+- the attestation is spot-checked against the commit authors;
+- an Opus 5.5 review is required for security scope;
+- the exact head must be green;
+- no waiver is allowed without Thomas.
+
+From 2026-09-30 the agents review each other again. Thomas later explicitly directed that P3 PR #346 use two fresh GPT-6 contexts for its ordinary reviews; that candidate-specific direction is recorded above and does not replace the required Opus 5.5 security review.
+
+**Why:** Otherwise every lane PR stalls for a week. The capacity rule forbids downgrading or fabricating a review, and this does neither.
+
+**Decided by:** the orchestrating session, 2026-09-23. Thomas expressed no preference when asked, so the recommended option applies under the standing delegation.
+
+
 ### 2026-09-23 · Built-in role names are reserved; a built-in grant needs a genuine seeded row (`workspace_role.is_system`); existing data is reported, not rewritten (#318)
 
 **Decision:** Every `BUILT_IN_ROLES` key is reserved as a custom workspace role name. It is normalised the same way as the existing `owner` check and gets the same refusal. The legacy check (`require-workspace-capability.ts`) and the adapter (`resolve-identity.ts`) grant a built-in role's capabilities only to `owner`, or to a `workspace_role` row with `is_system = true`, through one shared predicate (`isGenuineBuiltInRoleGrant`). Migration `0068` adds `is_system` and **backfills `true` for every existing `viewer`/`member`/`admin` row**. `seedDefaultWorkspaceRoles()` repeats that repair on every boot. Without the backfill, every existing admin, member and viewer would have lost their built-in capabilities on deploy. PR #322's ordinary review found this; CI had missed it because it always migrates an empty database.
@@ -81,6 +99,115 @@ distinguishes same-connection and cross-connection conflicts to the caller.
 - Backfilling nothing. Rejected, because it strips every existing admin's capabilities.
 
 **Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation. The runtime fix makes option A sufficient.
+
+### 2026-09-23 · The API connects as a non-owner, non-superuser role; append-only is enforced by grant first, trigger second (#296)
+
+**Supersedes (in part):** the 2026-09-23 entry "`audit_log` is append-only by trigger, not
+by grant — this deployment has exactly one Postgres role". Its premise, one role, stops
+being true with PR #308. The triggers from `0067` stay as a second layer. They are not
+removed.
+
+**Decision:** Every shipped deployment (`compose.yml`, `charts/taskdesk/**`, `deploy/**`)
+uses two Postgres roles:
+- **Migration/owner role.** `TASKDESK_MIGRATION_DATABASE_URL` connects as the role that
+  owns every table. It is used **only by a separate one-shot migrate process**
+  (`TASKDESK_ROLE=migrate`): a compose `migrate` service, or a `migrate` initContainer on
+  the Helm `taskdesk` Pod. Kubernetes finishes an initContainer before the Pod's own containers
+  start. That replaced a pre-install hook Job, which timed out on a fresh install because it ran
+  before the chart's ServiceAccount and bundled Postgres existed (Opus delta D2). The process runs the migrations and the grant step, then exits. **The
+  long-running API and jobs processes never receive this URL.** The API refuses to start if
+  it is present in its environment (`assertNoMigrationUrlInApiProcess`), because closing a
+  connection pool does not remove a credential from the process environment
+  (`/proc/self/environ`). This was found by PR #308's Opus review, S1.
+- **Application role.** `TASKDESK_DATABASE_URL` connects as `taskdesk_app`. It is not a
+  superuser, it owns nothing, and it has DML only. On `audit_log` and `activity` it has
+  `INSERT` and `SELECT` only, with no `UPDATE`, `DELETE` or `TRUNCATE`.
+
+Grants are applied by the migrate process (`ensureApplicationRole`), which runs as the owner right
+after `migrate()`. They are not applied by a migration file. The app role's password is sent as a
+pre-computed **SCRAM-SHA-256 verifier**, never as plaintext, and errors from that step carry no
+query text. Without this, a failed or DDL-logged `CREATE ROLE … PASSWORD` would write the password
+to the API and server logs (Opus S2). It does `REVOKE ALL`, then precise `GRANT`s,
+plus `ALTER DEFAULT PRIVILEGES`, so it is idempotent. It re-derives the grants from the
+live table list and `APPEND_ONLY_TABLES` on every migrate run. The API process then **refuses to start**
+(`assertApplicationRoleIsNotPrivileged`) if the connected application role, or any role it can reach,
+does any of the following. "Reach" means through membership or `SET ROLE`, checked transitively with
+`pg_has_role(…, 'MEMBER')`. The refusal conditions are:
+- it is a superuser;
+- it can create roles, bypass row-level security, or start replication;
+- it is a member of `pg_write_server_files`, `pg_read_server_files`,
+  `pg_execute_server_program`, `pg_signal_backend`, `pg_database_owner`,
+  `pg_write_all_data` or `pg_read_all_data`;
+- it owns anything in `pg_class`, `pg_proc`, `pg_namespace` or `pg_type`.
+
+The role create-and-grant step runs under a transaction-scoped advisory lock, so two
+replicas booting at once cannot race. Two things are deliberately **not** refused, because neither can defeat the
+append-only or no-DDL controls this check exists for (PR #308's review):
+- membership in `pg_monitor`, which can read other sessions' statistics and settings but has
+  no data or DDL rights;
+- ownership of large objects, which the app role can create for itself. Reaching the
+  filesystem from a large object needs `pg_read_server_files` or `pg_write_server_files`,
+  and those are already refused.
+
+There is **no single-URL mode for the API**. If the API is connected as the table owner, the
+privilege check refuses to boot, whatever the environment. Local development uses the same
+two steps: run `TASKDESK_ROLE=migrate` once with the owner URL, then serve against the app role.
+This is documented in `configuration-reference.md`. For a Helm external database with
+`migration.enabled: false`, one role both migrates and serves, and **the Pod fails closed** in
+one of two ways:
+- if that role can run DDL (the chart's documented setup SQL makes it the schema owner), the
+  initContainer succeeds and the `taskdesk` container then refuses to boot on its own privilege
+  check;
+- if it cannot run DDL, the initContainer itself fails.
+
+In neither case does the API serve as the owner. `charts/taskdesk/README.md` documents this.
+
+**`activity` rows are removed by cascade, and that is decided behaviour** (Opus S4). They
+disappear when their work item is hard-deleted, or when a project or workspace delete cascades
+to them through migration `0066`'s `ON DELETE CASCADE`. `taskdesk_app` still cannot `UPDATE`,
+`DELETE` or `TRUNCATE` `activity` directly. `DELETE` is deliberately **not** revoked on
+`work_item`/`project`, per the 2026-09-23 activity addendum's CASCADE decision. So a compromised
+API process can erase `activity` history only by deleting the work item, project or workspace it
+belongs to. `audit_log` has no such cascade (`workspace_id` has no foreign key), and it records
+the deletion itself.
+
+**Why:** The earlier entry recorded a residual risk. The API ran as the superuser table
+owner, so a compromised API process could `ALTER TABLE … DISABLE TRIGGER` or `TRUNCATE`
+and defeat the audit trail. This closes the first of the two items that entry said must
+land. A grant is the control Postgres actually enforces against a non-owner.
+
+The grant step runs in the migrate process rather than as a journal migration, for two reasons:
+- a journal migration runs once and can't carry a deployment-specific, rotatable password;
+- a future append-only table then gets its restriction automatically, not by someone
+  remembering to add it.
+
+**What it still does not stop:** the owner role is still the postgres image's init user,
+and so still a superuser at cluster init. Anyone holding
+`TASKDESK_MIGRATION_DATABASE_URL`'s credentials can do anything, so that credential must
+stay operator-only. The second item from the earlier entry is **still open**: a chain
+anchor outside this database, or a keyed hash. There is no `taskdesk_maint`/`audit-purge`
+role yet, because that job doesn't exist yet.
+
+**Alternatives:**
+- Grants in a Drizzle migration. Rejected: it can't carry the password, and it runs once.
+- Keep the single role and rely on triggers. Rejected: the superuser owner can disable them.
+- A dedicated non-superuser owner role separate from the image init user. Deferred: it is
+  more provisioning work for BYO Postgres, and it doesn't change what the API process can
+  do.
+- Keep migrations in the API process and narrow every claim to SQL-level compromise only.
+  Rejected: it leaves the superuser credential inside the process that serves requests, and
+  it would have needed Thomas's recorded risk acceptance.
+
+**Operational consequence:** existing deployments need the new
+`TASKDESK_APP_DB_PASSWORD` (compose) or `taskdesk.env.database.app*` values (Helm), and a
+redeploy. The redeploy now runs the migrate step before the API:
+- `scripts/deploy.sh`'s `upgrade`/`rollback` run `dc run --rm migrate` explicitly first
+  (`up --wait` on a one-shot service exits non-zero even on success, Opus delta D1);
+- Helm runs it as the initContainer on every rollout. The UAT redeploy needs Thomas's authorization. It is not implied by this entry.
+
+**Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation.
+There was one clearly recommended option, the two-role split that AU-3 and `migrations.md`
+already specified. Mechanism by PR #308's lane. Recorded before #308 merges.
 
 ### 2026-09-23 · P1's UI path: new v2 work-item screens on the new API, then retire kaneo's task stack
 

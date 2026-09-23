@@ -36,7 +36,11 @@ export type BackfillSummary = {
  * already cover every workspace/project created from here on; this covers everything
  * created before that landed -- including UAT's existing database, which has neither.
  *
- * Runs once per boot, from `runStartupTasks()`, AFTER Drizzle migrations. Boot step, not a
+ * Runs once per boot, from `runApiBootTasks()` (issue #296 split `runStartupTasks()` into a
+ * one-shot `runMigrationStep()` and this API-boot function; this call belongs here, never
+ * in `runMigrationStep()`, because it is ordinary app-role DML under its own advisory
+ * lock, not DDL, and the migration process has already exited by the time this runs),
+ * AFTER Drizzle migrations. Boot step, not a
  * migration: the acceptance criteria for #316 require reusing "exactly #313's seed data
  * and functions, with no second copy" (`DEFAULT_WORK_ITEM_TYPES`, `DEFAULT_STATE_TEMPLATES`
  * and the `seedDefaultWorkItemTypes`/`seedDefaultStateTemplates`/`seedProjectStates`
