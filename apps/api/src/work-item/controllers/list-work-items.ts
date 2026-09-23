@@ -6,6 +6,7 @@ import {
   stateTemplateTable,
   userTable,
   workItemTable,
+  workspaceUserTable,
 } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
 import {
@@ -168,6 +169,10 @@ export async function listWorkItems(
       stateName: stateTemplateTable.name,
       stateCategory: stateTemplateTable.group,
       assigneeName: userTable.name,
+      // #320 security review, S3: signals whether the assignee's own user is
+      // actually a member of THIS work item's workspace -- see the join comment
+      // below for why this gates `assigneeName` rather than the join itself.
+      assigneeIsWorkspaceMember: workspaceUserTable.id,
     })
     .from(workItemTable)
     // `work_item.state_id` is `NOT NULL` and `state.state_template_id` is `NOT NULL`
@@ -183,6 +188,28 @@ export async function listWorkItems(
     // `assigneeName: null`, rather than being silently dropped.
     .leftJoin(personTable, eq(workItemTable.assigneeId, personTable.id))
     .leftJoin(userTable, eq(personTable.userId, userTable.id))
+    // #320 security review, S3: `work_item.assignee_id -> person.id` is a plain,
+    // UNSCOPED foreign key (`schema.ts:1713`), unlike `state_id`/`type_id`/
+    // `parent_id`, which are all composite-FK'd to the same workspace/project this
+    // work item belongs to. Nothing in this codebase writes `assignee_id` today
+    // (WI-10 assignment is unbuilt), so this is latent, not live -- but the review
+    // proved live, with a direct SQL write, that a person in a completely different
+    // organisation/workspace resolves and prints their real name here if that FK is
+    // ever pointed there by a future write path. Rather than trust that every future
+    // writer of `assignee_id` gets the roster check right, this route scopes the
+    // NAME DISCLOSURE itself: `assigneeName` is only ever the resolved name when the
+    // assignee's own user actually holds a `workspace_member` row in the SAME
+    // workspace as this work item. A LEFT JOIN (not an inner join or a WHERE) so a
+    // foreign assignment still returns the row -- with `assigneeName: null`, the
+    // same shape an unresolvable name already has -- rather than hiding the work
+    // item itself.
+    .leftJoin(
+      workspaceUserTable,
+      and(
+        eq(workspaceUserTable.userId, personTable.userId),
+        eq(workspaceUserTable.workspaceId, workItemTable.workspaceId),
+      ),
+    )
     .where(and(...pageConditions))
     .orderBy(...workItemOrderBy(sortField, dir))
     .limit(limit + 1);
@@ -202,8 +229,8 @@ export async function listWorkItems(
       ? encodeWorkItemCursor({
           sort: sortField,
           dir,
-          v: primaryValueForCursor(sortField, lastRow.workItem, dir),
           id: lastRow.workItem.id,
+          ...primaryValueForCursor(sortField, lastRow.workItem, dir),
         })
       : null;
 
@@ -212,7 +239,10 @@ export async function listWorkItems(
       ...row.workItem,
       stateName: row.stateName,
       stateCategory: row.stateCategory,
-      assigneeName: row.assigneeName ?? null,
+      // Only ever the resolved name when the assignee is a member of THIS
+      // workspace -- see the `workspaceUserTable` join's own comment above (#320
+      // security review, S3).
+      assigneeName: row.assigneeIsWorkspaceMember ? row.assigneeName : null,
     })),
     page: { nextCursor, hasMore },
     meta: { total },

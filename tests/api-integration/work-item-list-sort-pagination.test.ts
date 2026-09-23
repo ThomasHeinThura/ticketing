@@ -167,6 +167,52 @@ async function list(
   return { status, body };
 }
 
+/**
+ * Walks the FULL cursor-pagination sequence one item at a time (`limit=1`),
+ * following `nextCursor` until `hasMore` is false. This is #320's own S1 regression
+ * shape: a real cursor bug (the mismatched `dueDate` sentinel) made this walk loop
+ * FOREVER, returning the same row on every page -- so this throws rather than
+ * hanging the suite if the walk doesn't terminate within `maxSteps`.
+ */
+async function walkCursor(
+  app: ReturnType<typeof createApp>["app"],
+  projectId: string,
+  sort: string,
+  dir: string,
+  maxSteps: number,
+): Promise<string[]> {
+  const ids: string[] = [];
+  let cursor: string | null = null;
+  let hasMore = true;
+  let steps = 0;
+  while (hasMore) {
+    steps += 1;
+    if (steps > maxSteps) {
+      throw new Error(
+        `walkCursor did not terminate within ${maxSteps} steps (sort=${sort}&dir=${dir}); ids so far: ${JSON.stringify(ids)}`,
+      );
+    }
+    const query = `sort=${sort}&dir=${dir}&limit=1${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
+    const page = await list(app, projectId, query);
+    expect(page.status).toBe(200);
+    const body = page.body as ListBody;
+    expect(body.data).toHaveLength(1);
+    const item = body.data[0];
+    if (item) ids.push(item.id);
+    cursor = body.page.nextCursor;
+    hasMore = body.page.hasMore;
+  }
+  return ids;
+}
+
+/** Base64url-encodes raw JSON TEXT directly (not `JSON.stringify` of a JS value,
+ * which would silently turn `Infinity`/`NaN` into `null`) -- for crafting a forged
+ * cursor exactly the way an attacker's raw bytes could, including numeric literals
+ * that only overflow to `Infinity`/`NaN` once parsed (`1e400`, `-1e400`). */
+function rawCursor(json: string): string {
+  return Buffer.from(json, "utf8").toString("base64url");
+}
+
 describe("API integration: work item list sort/pagination/filters (#310)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
@@ -663,5 +709,332 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
       expect(bIds.has(item.id)).toBe(true);
     }
     expect(body.meta.total).toBe(2); // project B's own total, unaffected by A's rows
+  });
+
+  describe("#320 security review S1: full cursor walk, no duplicates/gaps/infinite loop", () => {
+    it("walks dueDate asc/desc over null rows, ties, and both accepted-range boundaries", async () => {
+      const { creator, project, type } = await setupProject();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+
+      const minBound = await createItem(app, project.id, type.id, "MinBound");
+      await setDueDate(
+        app,
+        minBound.key,
+        minBound.version,
+        "1900-01-01T00:00:00.000Z",
+      );
+      const maxBound = await createItem(app, project.id, type.id, "MaxBound");
+      await setDueDate(
+        app,
+        maxBound.key,
+        maxBound.version,
+        "9999-12-31T23:59:59.999Z",
+      );
+      const mid = await createItem(app, project.id, type.id, "Mid");
+      await setDueDate(app, mid.key, mid.version, "2026-01-01T00:00:00.000Z");
+      const tieA = await createItem(app, project.id, type.id, "TieA");
+      await setDueDate(app, tieA.key, tieA.version, "2026-06-01T00:00:00.000Z");
+      const tieB = await createItem(app, project.id, type.id, "TieB");
+      await setDueDate(app, tieB.key, tieB.version, "2026-06-01T00:00:00.000Z");
+      // Three null-due rows -- S1's own live reproduction used exactly this shape
+      // (more than `limit`) to prove the walk looped forever.
+      const null1 = await createItem(app, project.id, type.id, "Null1");
+      const null2 = await createItem(app, project.id, type.id, "Null2");
+      const null3 = await createItem(app, project.id, type.id, "Null3");
+
+      const allIds = new Set(
+        [minBound, maxBound, mid, tieA, tieB, null1, null2, null3].map(
+          (i) => i.id,
+        ),
+      );
+      const nullIds = new Set([null1.id, null2.id, null3.id]);
+
+      const ascWalk = await walkCursor(app, project.id, "dueDate", "asc", 20);
+      expect(ascWalk).toHaveLength(8);
+      expect(new Set(ascWalk).size).toBe(8); // no duplicates
+      expect(new Set(ascWalk)).toEqual(allIds); // no gaps
+      // Null-due rows always sort last, and the walk actually reaches them (S1's
+      // own bug made it loop within the null bucket forever, never reaching the
+      // real-date rows on the other side -- here the null bucket is already last,
+      // so the failure mode was "never terminates inside it").
+      expect(new Set(ascWalk.slice(-3))).toEqual(nullIds);
+      expect(ascWalk[0]).toBe(minBound.id);
+      expect(ascWalk[4]).toBe(maxBound.id);
+
+      const descWalk = await walkCursor(app, project.id, "dueDate", "desc", 20);
+      expect(descWalk).toHaveLength(8);
+      expect(new Set(descWalk).size).toBe(8);
+      expect(new Set(descWalk)).toEqual(allIds);
+      // Nulls sort last in BOTH directions (documented judgment call), and the
+      // null bucket's own internal order is id-ascending regardless of `dir` --
+      // so the last three entries are identical in both walks.
+      expect(descWalk.slice(-3)).toEqual(ascWalk.slice(-3));
+      expect(descWalk[0]).toBe(maxBound.id);
+      expect(descWalk[4]).toBe(minBound.id);
+    });
+
+    it("walks priority asc/desc over null rows and a tie", async () => {
+      const { creator, project, type } = await setupProject();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+
+      const urgent = await createItem(
+        app,
+        project.id,
+        type.id,
+        "Urgent",
+        "urgent",
+      );
+      const high = await createItem(app, project.id, type.id, "High", "high");
+      const medA = await createItem(app, project.id, type.id, "MedA", "medium");
+      const medB = await createItem(app, project.id, type.id, "MedB", "medium");
+      const low = await createItem(app, project.id, type.id, "Low", "low");
+      const noPri1 = await createItem(app, project.id, type.id, "NoPri1");
+      const noPri2 = await createItem(app, project.id, type.id, "NoPri2");
+
+      const allIds = new Set(
+        [urgent, high, medA, medB, low, noPri1, noPri2].map((i) => i.id),
+      );
+      const nullIds = new Set([noPri1.id, noPri2.id]);
+
+      const ascWalk = await walkCursor(app, project.id, "priority", "asc", 20);
+      expect(ascWalk).toHaveLength(7);
+      expect(new Set(ascWalk).size).toBe(7);
+      expect(new Set(ascWalk)).toEqual(allIds);
+      expect(new Set(ascWalk.slice(-2))).toEqual(nullIds);
+      expect(ascWalk[0]).toBe(low.id);
+
+      const descWalk = await walkCursor(
+        app,
+        project.id,
+        "priority",
+        "desc",
+        20,
+      );
+      expect(descWalk).toHaveLength(7);
+      expect(new Set(descWalk).size).toBe(7);
+      expect(new Set(descWalk)).toEqual(allIds);
+      expect(new Set(descWalk.slice(-2))).toEqual(nullIds);
+      expect(descWalk[0]).toBe(urgent.id);
+    });
+  });
+
+  describe("#320 security review S2: cursor value validation, per sort field", () => {
+    it("rejects a non-integer/out-of-range v for sort=key with 400, not 500", async () => {
+      const { creator, project } = await setupProject();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+
+      const cases = [
+        `{"sort":"key","dir":"asc","v":"abc","id":"x","isNull":false}`,
+        `{"sort":"key","dir":"asc","v":1.5,"id":"x","isNull":false}`,
+        `{"sort":"key","dir":"asc","v":9999999999,"id":"x","isNull":false}`,
+        // 1e400 overflows to Infinity once JSON.parse computes the float.
+        `{"sort":"key","dir":"asc","v":1e400,"id":"x","isNull":false}`,
+        `{"sort":"key","dir":"asc","v":-1e400,"id":"x","isNull":false}`,
+        `{"sort":"key","dir":"asc","v":123,"id":"x","isNull":true}`,
+      ];
+      for (const json of cases) {
+        const response = await list(
+          app,
+          project.id,
+          `sort=key&dir=asc&cursor=${encodeURIComponent(rawCursor(json))}`,
+        );
+        expect(response.status).toBe(400);
+      }
+    });
+
+    it("rejects an invalid v for sort=priority with 400", async () => {
+      const { creator, project } = await setupProject();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+
+      const cases = [
+        `{"sort":"priority","dir":"asc","v":"high","id":"x","isNull":false}`,
+        `{"sort":"priority","dir":"asc","v":99,"id":"x","isNull":false}`,
+        // -1 is only valid for dir=desc, never dir=asc.
+        `{"sort":"priority","dir":"asc","v":-1,"id":"x","isNull":false}`,
+      ];
+      for (const json of cases) {
+        const response = await list(
+          app,
+          project.id,
+          `sort=priority&dir=asc&cursor=${encodeURIComponent(rawCursor(json))}`,
+        );
+        expect(response.status).toBe(400);
+      }
+    });
+
+    it("rejects an invalid or out-of-range v for sort=dueDate with 400", async () => {
+      const { creator, project } = await setupProject();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+
+      const cases = [
+        `{"sort":"dueDate","dir":"asc","v":"not-a-date","id":"x","isNull":false}`,
+        `{"sort":"dueDate","dir":"asc","v":"NaN","id":"x","isNull":false}`,
+        // Just outside the accepted [1900, 9999] range on each side.
+        `{"sort":"dueDate","dir":"asc","v":"1899-12-31T23:59:59.999Z","id":"x","isNull":false}`,
+        `{"sort":"dueDate","dir":"asc","v":"10000-01-01T00:00:00.000Z","id":"x","isNull":false}`,
+        // isNull=true must carry v=null, never a real value.
+        `{"sort":"dueDate","dir":"asc","v":"2026-01-01T00:00:00.000Z","id":"x","isNull":true}`,
+        // isNull=false must carry a real string, never null.
+        `{"sort":"dueDate","dir":"asc","v":null,"id":"x","isNull":false}`,
+        // A NUL byte inside the decoded value.
+        `{"sort":"dueDate","dir":"asc","v":"2026-01-01T00:00:00.000Z\\u0000","id":"x","isNull":false}`,
+      ];
+      for (const json of cases) {
+        const response = await list(
+          app,
+          project.id,
+          `sort=dueDate&dir=asc&cursor=${encodeURIComponent(rawCursor(json))}`,
+        );
+        expect(response.status).toBe(400);
+      }
+    });
+
+    it("rejects a NUL byte or an over-length id with 400", async () => {
+      const { creator, project } = await setupProject();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+
+      const cases = [
+        `{"sort":"key","dir":"asc","v":1,"id":"a\\u0000b","isNull":false}`,
+        `{"sort":"key","dir":"asc","v":1,"id":"${"x".repeat(65)}","isNull":false}`,
+        `{"sort":"key","dir":"asc","v":1,"id":"","isNull":false}`,
+      ];
+      for (const json of cases) {
+        const response = await list(
+          app,
+          project.id,
+          `sort=key&dir=asc&cursor=${encodeURIComponent(rawCursor(json))}`,
+        );
+        expect(response.status).toBe(400);
+      }
+    });
+
+    it("accepts a well-formed dueDate cursor at exactly the accepted-range boundaries", async () => {
+      const { creator, project, type } = await setupProject();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+      await createItem(app, project.id, type.id, "Item");
+
+      const cases = [
+        `{"sort":"dueDate","dir":"asc","v":"1900-01-01T00:00:00.000Z","id":"x","isNull":false}`,
+        `{"sort":"dueDate","dir":"asc","v":"9999-12-31T23:59:59.999Z","id":"x","isNull":false}`,
+        `{"sort":"dueDate","dir":"asc","v":null,"id":"x","isNull":true}`,
+      ];
+      for (const json of cases) {
+        const response = await list(
+          app,
+          project.id,
+          `sort=dueDate&dir=asc&cursor=${encodeURIComponent(rawCursor(json))}`,
+        );
+        // A well-formed cursor is always a 200, whatever it does or doesn't match --
+        // only malformed/out-of-range shapes are 400.
+        expect(response.status).toBe(200);
+      }
+    });
+  });
+
+  describe("#320 security review S3: assigneeName is scoped to the work item's own workspace", () => {
+    it("resolves assigneeName to null (not the foreign user's real name) when assignee_id points outside the workspace", async () => {
+      const { creator, project, type } = await setupProject();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+
+      const item = await createItem(app, project.id, type.id, "Assigned item");
+
+      // A person in a COMPLETELY different organisation, linked to a real user --
+      // exactly S3's own live reproduction (a direct SQL write, since no live route
+      // writes `work_item.assignee_id` today).
+      const [organisation] = await db
+        .insert(schema.organisationTable)
+        .values({
+          key: `foreign-org-${randomUUID()}`,
+          name: "Foreign Org",
+        })
+        .returning();
+      if (!organisation) throw new Error("organisation insert failed");
+
+      const foreignUserId = randomUUID();
+      await db.insert(schema.userTable).values({
+        id: foreignUserId,
+        name: "Secret Foreign Person",
+        email: `foreign-${randomUUID()}@example.com`,
+        emailVerified: true,
+      });
+      const [foreignPerson] = await db
+        .insert(schema.personTable)
+        .values({
+          userId: foreignUserId,
+          organisationId: organisation.id,
+          side: "agent",
+        })
+        .returning();
+      if (!foreignPerson) throw new Error("person insert failed");
+
+      await db
+        .update(schema.workItemTable)
+        .set({ assigneeId: foreignPerson.id })
+        .where(eq(schema.workItemTable.id, item.id));
+
+      const response = await list(app, project.id, "limit=200");
+      expect(response.status).toBe(200);
+      const body = response.body as ListBody;
+      const row = body.data.find((r) => r.id === item.id);
+      expect(row).toBeDefined();
+      expect(row?.assigneeId).toBe(foreignPerson.id); // the raw id is still honest
+      expect(row?.assigneeName).toBeNull(); // but the name never resolves
+      // The real, secret name must never appear anywhere in the response body.
+      expect(JSON.stringify(body)).not.toContain("Secret Foreign Person");
+    });
+
+    it("resolves assigneeName normally when the assignee IS a member of this workspace", async () => {
+      const { creator, project, type } = await setupProject();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+
+      const item = await createItem(app, project.id, type.id, "Assigned item");
+
+      const memberUserId = randomUUID();
+      await db.insert(schema.userTable).values({
+        id: memberUserId,
+        name: "Real Teammate",
+        email: `teammate-${randomUUID()}@example.com`,
+        emailVerified: true,
+      });
+      await db.insert(schema.workspaceUserTable).values({
+        workspaceId: creator.workspace.id,
+        userId: memberUserId,
+        role: "member",
+        joinedAt: new Date(),
+      });
+      const [organisation] = await db
+        .insert(schema.organisationTable)
+        .values({ key: `org-${randomUUID()}`, name: "Org" })
+        .returning();
+      if (!organisation) throw new Error("organisation insert failed");
+      const [memberPerson] = await db
+        .insert(schema.personTable)
+        .values({
+          userId: memberUserId,
+          organisationId: organisation.id,
+          side: "agent",
+        })
+        .returning();
+      if (!memberPerson) throw new Error("person insert failed");
+      await db
+        .update(schema.workItemTable)
+        .set({ assigneeId: memberPerson.id })
+        .where(eq(schema.workItemTable.id, item.id));
+
+      const response = await list(app, project.id, "limit=200");
+      expect(response.status).toBe(200);
+      const body = response.body as ListBody;
+      const row = body.data.find((r) => r.id === item.id);
+      expect(row?.assigneeName).toBe("Real Teammate");
+    });
   });
 });

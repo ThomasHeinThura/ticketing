@@ -1,5 +1,9 @@
 import { z } from "../openapi";
 import {
+  MAX_WORK_ITEM_INSTANT_MS,
+  MIN_WORK_ITEM_INSTANT_MS,
+} from "./date-bounds";
+import {
   DEFAULT_WORK_ITEM_LIST_LIMIT,
   MAX_WORK_ITEM_LIST_LIMIT,
   WORK_ITEM_SORT_DIRECTIONS,
@@ -135,9 +139,12 @@ export const workItemKeyParam = z.object({
 const ISO_DATE_TIME_PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/;
 
-// 1900-01-01T00:00:00.000Z .. 9999-12-31T23:59:59.999Z, as millisecond instants.
-const MIN_WORK_ITEM_INSTANT_MS = Date.UTC(1900, 0, 1, 0, 0, 0, 0);
-const MAX_WORK_ITEM_INSTANT_MS = Date.UTC(9999, 11, 31, 23, 59, 59, 999);
+// `MIN_/MAX_WORK_ITEM_INSTANT_MS` now live in `./date-bounds.ts` (#320 security
+// review, S1/S2) -- both this schema's own write-side validation and
+// `list-query.ts`'s cursor-decode validation need the identical bound, and a plain
+// `schema.ts` re-export of them would create an import cycle with `list-query.ts`
+// (which this file already imports from, for `WORK_ITEM_SORT_FIELDS`/
+// `WORK_ITEM_SORT_DIRECTIONS`). See that file's own comment for the full incident.
 
 // Independent Opus security review of PR #271, delta round, "not a finding" note (also
 // closed here since it is the same class): `new Date("2026-02-31T00:00:00Z")` does not
