@@ -4,7 +4,7 @@
 // batch C1) — checkbox, collapsible, radio-group, scroll-area, slider, switch, tabs,
 // toggle, tooltip. All Base UI based, with no live Radix usage. `avatar` was
 // considered for this batch and dropped: its `AvatarImage` couples to
-// `apps/web`'s `resolveAvatarSrc`, which reads `import.meta.env.VITE_API_URL` — an
+// `apps/web`'s `resolveAvatarSrc`, which reads the web app's API base URL from its build env — an
 // app-bootstrap concern that does not belong in a dependency-free design-system
 // package, and every real call site passes an unresolved `/api/...` path, so moving it
 // as-is would either leak env-reading into `packages/ui` or require repointing ~20
