@@ -46,6 +46,9 @@ cleanest backend, but nothing new is visible, which is the Oct 3 risk that two e
 status reviews flagged.
 
 **Decided by:** Thomas, via `AskUserQuestion`, 2026-09-23. He chose the recommended option.
+
+---
+
 ### 2026-09-23 · #8 runtime policy enforcement: shadow until clean, then strict; rename `task:*` first; no permanent exceptions
 
 **Decision:** three rules govern how issue #8's declarative policy registry becomes the
