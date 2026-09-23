@@ -17,6 +17,54 @@ Newest first.
 
 ---
 
+### 2026-09-23 · P3 ordinary reviews may use fresh GPT-6 contexts when Sonnet is unavailable
+
+**Decision:** For the P3 identity/portal candidate, use two fresh, independent GPT-6 reviewer
+contexts in place of Sonnet ordinary reviewers when Sonnet capacity is unavailable. Record
+the substitution in the pull request and keep the required independent Opus security review
+as a separate final gate; this decision does not authorize merge without Opus.
+
+**Why:** The implementation can be reviewed by available independent contexts without
+holding ordinary review idle, while preserving the security review's required model tier.
+
+**Alternatives:** Wait for Sonnet before ordinary review. Deferred by Thomas's explicit
+instruction for this candidate only. Treat GPT-6 as Opus or waive the security review.
+Rejected: Opus remains mandatory and cannot be replaced by this decision.
+
+**Decided by:** Thomas, 2026-09-23.
+
+### 2026-09-23 · P3 identity gate covers all 25 named acceptance tests
+
+**Decision:** Before the P3 identity gate closes, all 25 acceptance tests named in
+`identity-provisioning.md` must pass against a real Microsoft Entra test tenant. Update
+phase, release, security evidence, and issue #39 gate wording from 17 to 25.
+
+**Why:** The feature spec now contains 25 named acceptance tests, including the OIDC
+configuration, session-revocation and Entra-quirk regressions added after the original
+17-test gate was written. Gating only the original subset would leave named, security
+relevant behaviour unproven against the provider P3 is intended to support.
+
+**Alternatives:** Keep the old 17-test subset. Rejected because it is not the complete
+acceptance suite in the authoritative feature spec.
+
+**Decided by:** Thomas, 2026-09-23.
+
+### 2026-09-23 · SCIM duplicate conflicts share one external 409 response
+
+**Decision:** Same-connection and cross-connection or cross-organisation SCIM identity
+conflicts return an identical generic `409` response with no existing resource id or
+conflict class. The provisioning event may retain the internal distinction.
+
+**Why:** Returning an existing id for a same-connection duplicate while omitting it for a
+cross-connection conflict reveals whether an identity exists inside another tenant boundary.
+The IdP can reconcile through its own next list/filter request; it does not need another
+identity's id in the create response.
+
+**Alternatives:** Keep IP-32's existing resource id in the detail. Rejected because it
+distinguishes same-connection and cross-connection conflicts to the caller.
+
+**Decided by:** Thomas, 2026-09-23.
+
 ### 2026-09-23 · Built-in role names are reserved; a built-in grant needs a genuine seeded row (`workspace_role.is_system`); existing data is reported, not rewritten (#318)
 
 **Decision:** Every `BUILT_IN_ROLES` key is reserved as a custom workspace role name. It is normalised the same way as the existing `owner` check and gets the same refusal. The legacy check (`require-workspace-capability.ts`) and the adapter (`resolve-identity.ts`) grant a built-in role's capabilities only to `owner`, or to a `workspace_role` row with `is_system = true`, through one shared predicate (`isGenuineBuiltInRoleGrant`). Migration `0068` adds `is_system` and **backfills `true` for every existing `viewer`/`member`/`admin` row**. `seedDefaultWorkspaceRoles()` repeats that repair on every boot. Without the backfill, every existing admin, member and viewer would have lost their built-in capabilities on deploy. PR #322's ordinary review found this; CI had missed it because it always migrates an empty database.

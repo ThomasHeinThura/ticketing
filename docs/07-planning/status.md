@@ -745,10 +745,18 @@ each true independently of the plugin's removal.
 ### SAFE_PARALLEL — real work, independent of the P0 security decisions above
 
 - Pure `packages/domain` modules (P2 SLA / workflow / approvals logic — no I/O, exhaustive tests)
+- Pure P3 identity rules (Entra claims, connection validation, SCIM mapping and provisioning decisions — no route or persistence)
 - `packages/ui` primitives, Storybook, a11y
 - CI/tooling LOW findings (e.g. #93, #95, #98, #102, #106)
 - The four UAT/deployability gaps below — genuinely unblocked by the retrofit
 - Docs reconciliation not touching live security/architecture state
+
+**P3 lane started 2026-09-23:** branch `feat/p3-identity-portal` contains the first pure
+identity-domain slice. It adds no route and no persistence; those remain behind the P2
+portal dependencies and the six identity tables' implementation. The two P3 completion
+issues remain #38 (portal) and #39 (identity). Per Thomas's 2026-09-23 decision, #39's
+real-Entra stage gate is all 25 named acceptance tests, not the original 17. Do not claim
+either issue complete from this domain-only slice.
 
 ### UAT/deployability lane — first-class, per Thomas 2026-09-15
 
@@ -1335,6 +1343,17 @@ releases three blocked things at once: #192's cross-tenant gap, the RLS prototyp
 project purge. It also needs a **new** `UNIQUE (workspace_id, id)` on `work_item_type`, which
 does not exist today.
 
+### P3 identity candidate — independent review capacity and real-tenant gate
+
+The P3 identity domain candidate on `feat/p3-identity-portal` is implemented and locally
+verified, but it has not received the required independent review. Two fresh Sonnet ordinary
+reviews and a full Opus security review are still required; those model tiers are unavailable
+in this session, so the candidate must wait for those reviewers and cannot merge. The full
+P3 identity gate also remains open until all 25 named acceptance tests pass against a real
+Microsoft Entra test tenant. A domain-only unit suite does not satisfy that provider gate.
+Thomas or a session with the required reviewer capacity unblocks the reviews; an operator
+with a real Entra test tenant unblocks the provider gate.
+
 ### Opus security reviews — capacity, not permission
 
 **#214 and #215 are in security-review scope and their Opus passes have not happened.**
@@ -1541,6 +1560,26 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-23 · P3 identity lane opened; 25-test real-Entra gate made explicit
+
+Started `feat/p3-identity-portal` with a route-free pure domain slice for Entra claim
+normalization, connection validation, SCIM parsing/patching, role-mapping clamps,
+provisioning decisions, CP-1/CP-2/CP-16 customer-resource reach, and indistinguishable
+generic SCIM duplicate-conflict responses. The `packages/domain` suite passes (482 tests),
+its typecheck and build pass, and Biome passes for the touched package files. The shell has
+no Node executable; these checks ran directly under Bun against the installed tool entrypoints.
+API route-policy coverage and the permission matrix pass (80 tests). A fresh Docker image
+built and answered `/api/public/health/ready` and `/live` against isolated Postgres and
+Valkey containers; no existing host stack was used.
+
+Thomas confirmed the P3 identity gate is all 25 named acceptance tests against a real Entra
+tenant. Updated the phase, release, security evidence, and issue #39 wording and recorded the
+decision. Thomas also chose a shared generic 409 response for same- and cross-connection
+SCIM conflicts; IP-18/IP-32 now hide resource ids while provisioning events preserve the
+internal distinction. This is a domain-only implementation slice: identity persistence,
+routes, portal screens, real-tenant tests, and both P3 completion issues remain open. No
+independent Sonnet/Opus review has run on this head.
 
 ### 2026-09-23 (third pass) · 11 more PRs merged; spec gates honoured, not routed around; an outage recovered cleanly
 

@@ -216,10 +216,11 @@ protocol code; only the credential check reuses the platform.
   case or JSON type.
 - `IP-32` **A same-connection duplicate is not something to retry.** Entra's provisioning
   agent retries on 5xx and on timeouts, so `POST /Users` is re-delivered. A create whose
-  `externalId` or `userName` already exists **on the same connection** returns `409` with
-  `scimType: "uniqueness"` and the existing resource's `id` in the detail, so the agent
-  reconciles instead of stalling or duplicating. `IP-18`'s `409` answers a different
-  question — a match on *another* connection or organisation — and is unchanged.
+  `externalId` or `userName` already exists **on the same connection** returns the generic
+  `409` with `scimType: "uniqueness"` and no resource id. The response body and status are
+  identical to IP-18's cross-connection or cross-organisation conflict; only the internal
+  provisioning event records which conflict occurred. The agent can reconcile with its
+  next list/filter request without receiving another identity's resource id.
 
 ### Linking and identity
 
@@ -228,6 +229,8 @@ protocol code; only the credential check reuses the platform.
   session on A and an explicit, audited confirmation. The SCIM path is stricter still: a
   SCIM `POST /Users` whose `userName`/email matches an existing person of a *different*
   connection or organisation is refused `409` and logged — it does not adopt the record.
+  Its external response has the same status and body as an IP-32 same-connection duplicate;
+  no matching resource id or conflict class is exposed to the caller.
 - `IP-19` Within one connection, SCIM create followed by first OIDC login links by
   `subject` (Entra `oid`) and `externalId`; the email snapshot is updated, not matched.
 - `IP-30` **Claiming a placeholder person.** An import may leave a `person` with
@@ -363,7 +366,7 @@ listed in [testing-strategy.md](../04-engineering/testing-strategy.md).
 04-scim-token-cannot-touch-other-organisation.test.ts
 05-no-user-controlled-tenant-selection.test.ts
 06-customer-connection-cannot-create-staff-or-authority.test.ts
-07-scim-create-scoped-person.test.ts
+07-scim-create-scoped-person.test.ts — same- and cross-connection conflicts return the same generic 409
 08-scim-filter-username-externalid-listresponse.test.ts
 09-scim-patch-cannot-alter-tenant-reach-authority.test.ts
 10-scim-deactivate-revokes-sessions-and-keys-preserves-history.test.ts
@@ -384,7 +387,8 @@ listed in [testing-strategy.md](../04-engineering/testing-strategy.md).
 25-session-revocation-immediate.test.ts
 ```
 
-**Twenty-five acceptance tests.** Eight were added when `IP-26`…`IP-32` and the placeholder
+**All 25 acceptance tests are P3 gate criteria and must pass against a real Microsoft Entra
+test tenant.** Eight were added when `IP-26`…`IP-32` and the placeholder
 rule were written: 18 asserts `IP-30` (an SSO login never claims a placeholder), 19 the
 `ServiceProviderConfig` / `ResourceTypes` / `Schemas` documents Entra reads first, 20
 `startIndex`/`count` pagination, 21 `401` on an absent or garbage bearer token (test 14
