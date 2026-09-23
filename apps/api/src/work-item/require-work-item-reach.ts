@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
@@ -52,10 +52,29 @@ export function requireWorkItemReach(idKey = "key") {
       throw new HTTPException(400, { message: "Missing work item key" });
     }
 
+    // #202 / PR #204's freeze invariant: a soft-deleted project's rows are frozen for
+    // its 30-day recovery window, answered as 404 everywhere the subject resolves to a
+    // project (`task/index.ts`'s upload-URL guard, `getProjectWorkspaceId`'s doc comment
+    // in `utils/assert-assignable-user.ts`, and this route's own sibling,
+    // `create-work-item.ts`'s `isNull(projectTable.deletedAt)` filter). `work_item`
+    // belongs to exactly one project, so the inner join + `isNull` filter is applied
+    // directly here (as `task/index.ts`'s own upload-URL guard does, rather than through
+    // `getProjectWorkspaceId`, which takes a project id, not a work-item key) -- a
+    // soft-deleted project's work item now 404s exactly like a nonexistent key, never
+    // distinguishing the two from the outside, consistent with F2 above.
     const [workItem] = await db
       .select({ workspaceId: schema.workItemTable.workspaceId })
       .from(schema.workItemTable)
-      .where(eq(schema.workItemTable.key, key))
+      .innerJoin(
+        schema.projectTable,
+        eq(schema.workItemTable.projectId, schema.projectTable.id),
+      )
+      .where(
+        and(
+          eq(schema.workItemTable.key, key),
+          isNull(schema.projectTable.deletedAt),
+        ),
+      )
       .limit(1);
 
     if (!workItem) {

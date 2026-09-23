@@ -5,14 +5,30 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
-import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
+import {
+  assertCallerHasCapability,
+  requireWorkspaceCapability,
+} from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createWorkItem from "./controllers/create-work-item";
 import getWorkItemByKey from "./controllers/get-work-item";
 import listWorkItems from "./controllers/list-work-items";
+import updateWorkItem, {
+  WorkItemVersionConflictError,
+} from "./controllers/update-work-item";
 import { requireWorkItemReach } from "./require-work-item-reach";
-import { workItemListSchema, workItemSchema } from "./response";
-import { createWorkItemBody, projectIdParam, workItemKeyParam } from "./schema";
+import {
+  workItemListSchema,
+  workItemSchema,
+  workItemVersionConflictSchema,
+} from "./response";
+import {
+  createWorkItemBody,
+  ifMatchHeader,
+  projectIdParam,
+  updateWorkItemBody,
+  workItemKeyParam,
+} from "./schema";
 
 /**
  * #23's first slice: minimal create + read + list for `work_item`
@@ -114,6 +130,10 @@ const listWorkItemsRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing work_item:read permission",
     ),
+    // #202 / PR #204's freeze invariant (independent Opus security review of PR #271,
+    // S2): a soft-deleted project's work-item list now 404s, matching every other
+    // project-scoped route's convention for a soft-deleted subject.
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -135,6 +155,46 @@ const getWorkItemRoute = createRoute({
       "No workspace access, or missing work_item:read permission",
     ),
     404: errorResponse("Work item not found"),
+  },
+});
+
+const updateWorkItemRoute = createRoute({
+  method: "patch",
+  operationId: "updateWorkItem",
+  path: "/work-items/{key}",
+  tags: ["Work items"],
+  summary: "Update work item",
+  description:
+    "Partially update a work item's title, description, priority, startDate or dueDate " +
+    "(`WI-8`). Requires `If-Match` with the work item's current version (`WI-7`); a " +
+    "mismatch returns 409 with both versions. Label/custom-field editing, state " +
+    "transitions and assignment are not part of this route -- see their own mechanisms. " +
+    "Changing `priority` additionally requires `work_item:set_priority` " +
+    "(`docs/01-architecture/rbac.md`) -- `work_item:update` alone is not enough.",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: {
+    params: workItemKeyParam,
+    headers: ifMatchHeader,
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateWorkItemBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The updated work item", workItemSchema),
+    400: errorResponse("Invalid body, or a malformed If-Match header"),
+    403: errorResponse(
+      "No workspace access, missing work_item:update permission, or (when the body " +
+        "sets priority) missing work_item:set_priority",
+    ),
+    404: errorResponse("Work item not found"),
+    409: jsonResponse(
+      "Version mismatch: the work item has changed since If-Match was read",
+      workItemVersionConflictSchema,
+    ),
   },
 });
 
@@ -164,6 +224,51 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
     const workspaceId = c.get("workspaceId");
     const item = await getWorkItemByKey(key, workspaceId);
     return c.json(item, 200);
+  })
+  .openapi(updateWorkItemRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const assertedVersion = Number(ifMatch.replaceAll('"', ""));
+    const { title, description, priority, startDate, dueDate } =
+      c.req.valid("json");
+
+    // Field-level authority, on top of the route's `work_item:update` gate above: rbac.md
+    // scopes `priority` specifically to `work_item:set_priority`, not `work_item:update` --
+    // see `assertCallerHasCapability`'s own doc comment for why this cannot be a second
+    // `middleware` entry (the body isn't parsed yet when `middleware` runs). Runs BEFORE
+    // `updateWorkItem` so a caller who fails it writes nothing -- no partial update of the
+    // other fields.
+    if (priority !== undefined) {
+      await assertCallerHasCapability(
+        workspaceId,
+        c.get("userId"),
+        "work_item:set_priority",
+      );
+    }
+
+    try {
+      const updated = await updateWorkItem(key, workspaceId, assertedVersion, {
+        title,
+        description,
+        priority,
+        startDate,
+        dueDate,
+      });
+      return c.json(updated, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
   });
 
 export default workItem;
