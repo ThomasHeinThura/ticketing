@@ -302,4 +302,24 @@ describe("CreateWorkItemDialog", () => {
       screen.queryByText("workItems:create.noTypes"),
     ).not.toBeInTheDocument();
   });
+
+  it("renders a type name containing markup as literal text, never as an element", async () => {
+    const maliciousName = "<img src=x onerror=alert(1)>";
+    mocks.typesState = {
+      data: [{ id: "type-1", key: "xss", name: maliciousName }],
+      isLoading: false,
+      isError: false,
+      refetch: mocks.refetchTypes,
+    };
+    renderDialog();
+
+    fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
+    pickOption(await screen.findByRole("option", { name: maliciousName }));
+
+    const dialog = screen.getByTestId("create-work-item-dialog");
+    expect(dialog.querySelector("img")).toBeNull();
+    expect(
+      screen.getByTestId("create-work-item-type-trigger"),
+    ).toHaveTextContent(maliciousName);
+  });
 });
