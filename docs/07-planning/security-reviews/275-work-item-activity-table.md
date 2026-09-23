@@ -247,3 +247,138 @@ log accepts.
 - I did not review `meta/0066_snapshot.json` line by line (the OpenAPI/drizzle drift checks were
   still pending in CI when I checked).
 - No push, comment or merge.
+
+---
+
+# Delta-confirmation round (635fd29)
+
+**Reviewer:** Opus 5.5, fresh independent context. Did not author, direct, or remediate this change.
+
+**Reviewed head:** `635fd29afda1621b02d81501fc76240204b3fea3`
+
+**Reviewed SHA:** `635fd29afda1621b02d81501fc76240204b3fea3` (confirmed via `gh pr view 275 --json headRefOid`; `origin/main` is an ancestor).
+**Delta reviewed:** `git diff 9bdcfb4 635fd29` — `7ff59e1` (this note, byte-identical to my copy),
+`2c43724` (decision-log addendum), `635fd29` (fix round).
+**Date:** 2026-09-23
+
+## Verdict
+
+**CHANGES NEEDED — one new BLOCKING finding (D1), a regression introduced by the S2 fix.**
+S1, S3, S4, S5 and S6 are closed. S2's reported inputs are closed, but the rewrite opened
+the mirror-image fail-open: a public *verb* now makes a row public whatever its `field` is,
+including an internal field. At `9bdcfb4` I recorded `{verb: "created", field: "assignee"}` as
+`internal`; at `635fd29` it is `public`.
+
+| # | Round-1 finding | Verdict at 635fd29 |
+| --- | --- | --- |
+| S1 | RESTRICT breaks tenant deletion | **Closed** |
+| S2 | field-first fail-open | **Closed for the reported inputs; regression D1 below** |
+| S3 | caller can force `public` | **Closed** (D2 and D3 are narrow notes) |
+| S4 | `...context` spread | **Closed** |
+| S5 | PG16/17 migration failure | **Closed** |
+| S6 | `seq` in `.returning()` | **Closed** |
+| D1 | **new, BLOCKING** | public verb + internal field → `public` |
+| D2 | new, NON-BLOCKING | `visibility: "public"` on an already-public row throws |
+| D3 | new, NON-BLOCKING | the conditional-override allow-check is wider than CA-7's two rows |
+
+## D1 — Public verb plus internal field resolves `public` (BLOCKING, regression)
+
+**Where:** `apps/api/src/work-item/activity.ts`, the last line of `resolveVisibility`:
+`return CA7_PUBLIC_VERBS.has(input.verb) ? "public" : "internal";`. For any verb other than
+`updated`, `field` is now ignored.
+
+**Reproduction (live, head `635fd29`, `resolveVisibility` called directly):**
+
+| Input | 9bdcfb4 | 635fd29 | CA-7 |
+| --- | --- | --- | --- |
+| `{verb: "created", field: "assignee"}` | internal | **public** | internal (`assignee`) |
+| `{verb: "escalated", field: "assignee"}` | internal | **public** | internal |
+| `{verb: "resolved", field: "custom_field"}` | internal | **public** | internal unless `customer_visible` |
+| `{verb: "transitioned", field: "watcher"}` | internal | **public** | internal |
+
+An escalation that also reassigns, or a resolve that records a resolution custom field, are
+realistic shapes for #271, #27 and SLA work to write. CA-7's "customers never see staff names
+as assignees" is exactly what this row shape would break. The new test suite asserts the S2
+inputs but no public-verb-plus-internal-field case, which is why 672/672 stays green.
+
+**What would close it:** treat `CA7_PUBLIC_VERBS` as public only when `field` is null or
+absent, and make every other `(verb, field)` combination outside `updated` internal. Add the
+four rows above as regression cases.
+
+## D2 — Asserting `public` on a row CA-7 already makes public throws (NON-BLOCKING)
+
+`{verb: "updated", field: "priority", visibility: "public"}` and `{verb: "created", visibility: "public"}`
+both throw. This is fail-loud, not a leak. The throw happens before the insert and inside the
+caller's transaction, so the caller's mutation rolls back and the request returns 500. That
+only happens if a caller passes a value CA-7 agrees with. Nothing calls this today. No
+existing caller has a 500 path, since the writer is not wired into any route. **Recommend:**
+honour `public` when the derived visibility is already `public`, and throw only when the
+override would *raise* visibility. Also never pass a request-body value into `visibility`.
+
+## D3 — The allow-check is wider than CA-7's two conditional rows (NON-BLOCKING)
+
+`isConditionalPublicOverrideAllowed` is `verb === "attachment.added" || field === "custom_field"`.
+So `{verb: "attachment.added", field: "assignee", visibility: "public"}` → `public`, and
+`{verb: "deleted", field: "custom_field", visibility: "public"}` → `public`. **Recommend:**
+`(verb === "attachment.added" && !field) || (verb === "updated" && field === "custom_field")`.
+
+## S1 — closed
+
+- Migration line 126 and `schema.ts` now use `ON DELETE cascade ON UPDATE no action`. The
+  PG18 catalog shows `confdeltype = c`, `confupdtype = a`, and the snapshot matches.
+- **Is every work-item hard delete a genuine tenant deletion?** I re-enumerated every
+  `.delete(` and raw `DELETE FROM`/`TRUNCATE` in `apps/api/src` at this head. The only
+  deletes reaching `work_item` are `delete-workspace.ts:37` and `delete-account-data.ts:75`.
+  Both delete a whole workspace, cascading through project to work_item to activity. Nothing
+  deletes `work_item` or `project` directly. `delete-project.ts` is an `UPDATE` setting
+  `deleted_at`/`purge_after`, so soft delete never hard-deletes and never touches activity.
+  `organisation` → `workspace` is `RESTRICT`, so no organisation delete cascades. The only
+  future path is #198's purge, which is a genuine hard deletion of an expired project, and
+  the addendum names it.
+- The new tests go through the real `deleteWorkspace()` and `deleteAccountData()`, and prove
+  another workspace's activity survives. They pass here.
+- Note, not a finding: neither tenant-delete path checks `legal_hold` today. The addendum
+  says legal hold "is the mechanism that stops a deletion". That is true of the design, not
+  yet of the code. It is pre-existing and applies to work items themselves, not only to
+  activity, so it belongs to #198.
+
+## S5 — closed
+
+The `DO $$ … $$` block is a single statement between breakpoints. Drizzle sends it as one
+query, and it runs inside the migrator's single transaction (a `DO` block cannot commit), so
+it is still all-or-nothing. `'"task_activity"'::regclass` resolves correctly, since the table
+was renamed earlier in the same migration. Every `conname` literal matches the PG18 names, and
+every `ALTER` identifier is double-quoted. On PG18 (`pr275_opus_test`), 0 `activity%`-named
+constraints remain on `task_activity`. I re-ran it myself on a throwaway `postgres:16-alpine`:
+the migrator applies all 67 migrations, with no error. A later pg_upgrade from 16 to 18 would
+generate names from the table's current name (`task_activity_*_not_null`), so there is no
+collision.
+
+## S3, S4, S6 — closed
+
+- S3: `{verb: "updated", field: "assignee", visibility: "public"}` throws. An unknown value
+  such as `"PUBLIC"` falls through to derivation (internal), and the CHECK remains the backstop.
+- S4: both `rows.push` sites build the four named fields. The test with a wider context has
+  no `visibility` on the emitted row.
+- S6: `.returning({...})` lists explicit columns without `seq`, and the runtime test asserts
+  its absence. The relational `workItem.activities` helper still yields `seq`, so #27's
+  serializer must drop it. The caller obligation on payload snapshots is documented.
+
+## Decision-log addendum (2c43724) — consistent
+
+It is append-only, newest-first, names what it extends, and matches the code. It keeps
+"Postgres 18 as hard minimum" as a separate decision, as it should. The `data-model.md` row is
+updated in the same change.
+
+## Verification run (this round)
+
+- On `pr275_opus_test` (td-lane-pg, PG18): `work-item-activity-table`, `account-deletion`,
+  `comment` and `task-title-activity` plus a throwaway resolver probe — 5 files, 51 tests passed.
+- A throwaway PG16 container ran the migrator from empty (67 applied), then was removed.
+- Probe files were deleted, and the DB was dropped.
+
+## What I did not do (this round)
+
+- I did not re-run the full 672-test suite; I ran the affected suites only.
+- I did not re-run PG17. The block is version-agnostic, and PG16 covers the same branch.
+- No push, comment or merge.
