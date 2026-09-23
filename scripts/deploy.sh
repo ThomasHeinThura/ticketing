@@ -233,6 +233,7 @@ image_ref() {
 
 verify_signature() {
   local ref="$1"
+  local tag="${TASKDESK_IMAGE_TAG:-v2.0.0}"
   if [ "$VERIFY" -eq 0 ]; then
     warn "SIGNATURE VERIFICATION SKIPPED (--no-verify). You are pulling an image"
     warn "whose provenance has not been checked. This is the fallback for a host"
@@ -247,6 +248,7 @@ verify_signature() {
   cosign verify \
     --certificate-oidc-issuer "$COSIGN_ISSUER" \
     --certificate-identity "$COSIGN_IDENTITY" \
+    --annotations "tag=${tag}" \
     "$ref" >/dev/null \
     || die "signature verification FAILED for $ref — not pulling. Nothing has changed."
   ok "signature verified"

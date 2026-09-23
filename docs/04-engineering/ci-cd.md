@@ -7,8 +7,8 @@ pipelines.
 
 | Pipeline | Trigger | Does |
 | --- | --- | --- |
-| **Build** | Every pull request and push to `main` | Verify pull requests; on `main`, build and scan the edge image, then sign and publish its digest |
-| **Release** | Manual dispatch from `main` | Build and scan a versioned candidate for a selected `main` SHA, then sign and publish its digest |
+| **Build** | Every pull request and push to `main` | CI verifies pull requests; the `release.yml` main-push run builds, scans, signs and publishes the `edge` and SHA images |
+| **Release** | Manual dispatch from `main` | The same `release.yml` builds and scans a versioned candidate for the selected `main` SHA, then signs and publishes it |
 | **Promote** | Manual | Move a tested digest from UAT to production |
 
 The build and release pipelines **never deploy** and **never hold production secrets**.
@@ -486,8 +486,10 @@ image** ([security-model.md](../01-architecture/security-model.md#threat-model))
   dispatch only from `main`; pull requests never sign or publish, and fork PRs run with no
   secrets. A manual release names a source SHA already reachable from `main`.
 - Third-party actions are pinned by **commit SHA**, not tag; Renovate updates them.
-- `scripts/deploy.sh` and the installer verify the cosign signature against the **exact
-  workflow identity** — repository, workflow file and ref — not just the OIDC issuer.
+- `scripts/deploy.sh` verifies both the expected tag annotation and the cosign signature
+  against the **exact workflow identity** — repository, workflow file and ref — not just
+  the OIDC issuer. It resolves a mutable tag once, verifies that immutable digest, then
+  passes that same digest to Compose.
 - gitleaks runs on every push (above); a hit fails the fast stage.
 
 ## Branching

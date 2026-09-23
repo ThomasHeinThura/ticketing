@@ -193,6 +193,34 @@ migrations are two-phase, and why the pre-upgrade backup is mandatory.
 
 ---
 
+## Verify a published image
+
+Resolve the release tag to a digest first, then check both the cosign signature and the
+GitHub build-provenance attestation for that immutable digest. Replace the example digest
+with the value printed by `docker buildx imagetools inspect`.
+
+```bash
+IMAGE_TAG='v2.0.0' # use edge for the UAT edge channel
+SOURCE_SHA='<40-hex-main-commit>'
+IMAGE_REF='ghcr.io/thomasheinthura/taskdesk@sha256:<64-hex-digest>'
+cosign verify \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  --certificate-identity 'https://github.com/ThomasHeinThura/ticketing/.github/workflows/release.yml@refs/heads/main' \
+  --annotations "tag=${IMAGE_TAG}" \
+  --annotations "source_sha=${SOURCE_SHA}" \
+  "$IMAGE_REF"
+gh attestation verify "oci://${IMAGE_REF}" \
+  --repo ThomasHeinThura/ticketing \
+  --signer-workflow ThomasHeinThura/ticketing/.github/workflows/release.yml \
+  --source-digest "$SOURCE_SHA" \
+  --source-ref refs/heads/main
+```
+
+Both commands must succeed before promoting a digest. The attestation check also requires
+GitHub CLI authentication with read access to the repository.
+
+---
+
 ## Incident procedure
 
 1. **Contain** — revoke sessions, disable the affected plugin or account, take it offline

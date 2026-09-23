@@ -22,7 +22,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: taskdesk-release
+  group: ${{ github.event_name == 'push' && 'taskdesk-edge' || format('taskdesk-release-{0}', inputs.version) }}
   cancel-in-progress: false
 
 jobs:
@@ -77,8 +77,8 @@ jobs:
           set -Eeuo pipefail
 
           source_sha="${INPUT_SOURCE_SHA:-$GITHUB_SHA}"
-          if [[ ! "$source_sha" =~ ^[0-9a-fA-F]{40}$ ]]; then
-            echo "::error::source_sha must be a full 40-character commit SHA"
+          if [[ ! "$source_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::source_sha must be exactly 40 lowercase hexadecimal characters"
             exit 1
           fi
 
@@ -89,6 +89,10 @@ jobs:
             exit 1
           fi
           source_sha="$(git rev-parse --verify "${source_sha}^{commit}")"
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::source_sha did not resolve to a lowercase full SHA"
+            exit 1
+          }
           git checkout --detach "$source_sha"
 
           image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${IMAGE_NAME}"
@@ -252,11 +256,20 @@ jobs:
         with:
           cosign-release: v3.0.5
 
-      - name: Sign the scanned multi-architecture image digest
+      - name: Sign each published tag with its tag identity
         env:
           IMAGE: ${{ needs.build-scan.outputs.image }}
           DIGEST: ${{ needs.build-scan.outputs.digest }}
-        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+          SOURCE_SHA: ${{ needs.build-scan.outputs.source_sha }}
+          PUBLISH_TAGS: ${{ needs.build-scan.outputs.publish_tags }}
+        run: |
+          set -Eeuo pipefail
+          for tag in $PUBLISH_TAGS; do
+            cosign sign --yes \
+              --annotations "tag=${tag}" \
+              --annotations "source_sha=${SOURCE_SHA}" \
+              "${IMAGE}@${DIGEST}"
+          done
 
       - name: Publish signed build provenance for the image digest
         uses: actions/attest@c32b4b8b198b65d0bd9d63490e847ff7b53989d4 # v4.0.0
@@ -275,16 +288,28 @@ jobs:
         env:
           IMAGE: ${{ needs.build-scan.outputs.image }}
           DIGEST: ${{ needs.build-scan.outputs.digest }}
+          SOURCE_SHA: ${{ needs.build-scan.outputs.source_sha }}
           PUBLISH_TAGS: ${{ needs.build-scan.outputs.publish_tags }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
+          current_main_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
           for tag in $PUBLISH_TAGS; do
-            if [[ "$tag" == v* ]]; then
-              if inspect_error="$(docker buildx imagetools inspect "${IMAGE}:${tag}" 2>&1)"; then
-                echo "::error::container image tag ${tag} already exists; release versions are immutable"
+            if [[ "$tag" == "edge" && "$SOURCE_SHA" != "$current_main_sha" ]]; then
+              echo "Skipping stale edge update for ${SOURCE_SHA}; main is now ${current_main_sha}"
+              continue
+            fi
+            if [[ "$tag" == v* || "$tag" == sha-* ]]; then
+              if inspect_output="$(docker buildx imagetools inspect "${IMAGE}:${tag}" 2>&1)"; then
+                existing_digest="$(sed -n 's/^Digest: //p' <<< "$inspect_output" | head -n 1)"
+                if [[ "$existing_digest" == "$DIGEST" ]]; then
+                  echo "${tag} already points at ${DIGEST}; leaving the immutable tag unchanged"
+                  continue
+                fi
+                echo "::error::immutable image tag ${tag} already points at ${existing_digest}, not ${DIGEST}"
                 exit 1
-              elif ! grep -Eqi 'not found|manifest unknown|404' <<< "$inspect_error"; then
-                echo "::error::could not establish whether container image tag ${tag} is unused: ${inspect_error}"
+              elif ! grep -Eqi 'not found|manifest unknown|404' <<< "$inspect_output"; then
+                echo "::error::could not establish whether image tag ${tag} is unused: ${inspect_output}"
                 exit 1
               fi
             fi
@@ -295,12 +320,18 @@ jobs:
         env:
           IMAGE: ${{ needs.build-scan.outputs.image }}
           DIGEST: ${{ needs.build-scan.outputs.digest }}
+          SOURCE_SHA: ${{ needs.build-scan.outputs.source_sha }}
+          PUBLISH_TAGS: ${{ needs.build-scan.outputs.publish_tags }}
         run: |
           set -Eeuo pipefail
-          cosign verify \
-            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-            --certificate-identity https://github.com/ThomasHeinThura/ticketing/.github/workflows/release.yml@refs/heads/main \
-            "${IMAGE}@${DIGEST}" >/dev/null
+          for tag in $PUBLISH_TAGS; do
+            cosign verify \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              --certificate-identity https://github.com/ThomasHeinThura/ticketing/.github/workflows/release.yml@refs/heads/main \
+              --annotations "tag=${tag}" \
+              --annotations "source_sha=${SOURCE_SHA}" \
+              "${IMAGE}@${DIGEST}" >/dev/null
+          done
 
       - name: Download SBOMs for the GitHub release
         if: needs.build-scan.outputs.is_release == 'true'
