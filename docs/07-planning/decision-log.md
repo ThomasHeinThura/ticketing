@@ -5,6 +5,58 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+## Format
+
+```markdown
+### YYYY-MM-DD · Short title
+**Decision:** what we are doing
+**Why:** the reasoning
+**Alternatives:** what was rejected, briefly
+**Decided by:** who
+```
+
+---
+
+### 2026-09-23 · Three non-Claude implementation agents take the P0/P1/P2 lanes; the Claude session does Opus 5.5 security review and merge only
+
+**Supersedes (in part):**
+- `CLAUDE.md`'s "Model tiers" statement that non-Claude specialist agents for coding "did not work out and are not part of this project's process";
+- the earlier entry recording that the DeepSeek/GLM-routed implementation agents were dropped (line ~1187).
+
+Neither older text is rewritten.
+
+**Decision:** From 2026-09-23, implementation and Sonnet-tier work on the P0, P1 and P2 lanes is done by three agents that Thomas runs:
+- GPT-6 Luna;
+- DeepSeek 4.1 Flash, through GitHub Copilot;
+- mimo-v2.26 Flash, through Cline.
+
+Sonnet-tier work means implementation, fix rounds and ordinary reviews. The Claude Code session's role narrows to two things:
+- the **final independent Opus 5.5 security review** of every security-scope PR (`docs/04-engineering/ci-cd.md`'s path list), run in a fresh context separate from the author;
+- **merging** fully-green candidates through the protected flow, under the 2026-09-15 delegated merge authority.
+
+**The gates are unchanged.** Every PR still needs all of the following on its exact head:
+- an **independent ordinary review**, meaning a different agent or context from the author, with its actual model identity recorded in `## Reviewed by`;
+- the Opus 5.5 security review, where the change is in security scope;
+- every required check green;
+- no waived gate.
+
+A waived gate still needs Thomas. The Claude session merges only after verifying each gate itself, never on another agent's report of green. An agent never approves its own work, whatever its vendor.
+
+**How independence is verified, stated honestly.** Independence rests on the PR's own attestation. The Claude session checks that attestation at merge; it is not a cryptographic guarantee. Before every merge, the session checks:
+- `## Implemented by` names the authoring agent and model.
+- `## Reviewed by` names a **different** agent and model, gives the exact SHA it reviewed, and has its verdict recorded on the PR.
+- The same agent or tool is never both author and ordinary reviewer, and a reviewing agent can't clear a fix round it wrote itself.
+- For security-scope PRs, the Opus 5.5 review is always a fresh Claude context commissioned by this session, never one of the three lane agents.
+- The commit authors (`git log --format='%an <%ae>' main..HEAD`) are spot-checked against `## Implemented by`.
+
+**Commit identity rule, from 2026-09-23.** Each lane agent commits under its own distinct git author identity that names the tool, as Cline already does (`Cline (…) <agent@taskdesk.local>`). No lane agent may commit as `Claude Code <noreply@anthropic.com>`, which is this session's identity. PR #336's review found that several agent-authored PRs (#326, #331–#335) were committed under that identity. Where that has already happened, the PR's `## Implemented by` must name the real authoring agent, and the mismatch is noted on the PR before merge. A PR whose attestation and commits can't be reconciled does not merge.
+
+If any of these is missing, the PR does not merge. It waits, and the PR says what is missing.
+
+**Why:** Thomas's instruction on 2026-09-23. Claude's spend limit was being reached repeatedly mid-lane, and it is better spent on the Opus-tier review that nothing else on the project can do.
+
+**Decided by:** Thomas, 2026-09-23, in session. The orchestrating Claude session recorded it. Thomas then separately confirmed that the three agents do the **ordinary independent reviews** as well as the implementation, reviewing each other's PRs. He answered that one explicit question after PR #336's first review asked for it, choosing it over keeping ordinary reviews on a fresh Claude Sonnet context. Opus 5.5 stays the security reviewer.
+
 ### 2026-09-23 · Sequence #8 shadow-mode tables after #322's migration
 
 **Decision:** Preserve #322's `0068_workspace_role_is_system` migration and its snapshot
@@ -25,18 +77,6 @@ hand-written table contract.
 
 **Decided by:** Codex GPT-6, 2026-09-23, under the user's direction to continue the P0
 gates and the repository's standing migration rules.
-
-## Format
-
-```markdown
-### YYYY-MM-DD · Short title
-**Decision:** what we are doing
-**Why:** the reasoning
-**Alternatives:** what was rejected, briefly
-**Decided by:** who
-```
-
----
 
 ### 2026-09-23 · #8 Slice 2's shadow mode: an env switch, two Postgres evidence tables, read-only row-scope exposure
 
@@ -60,8 +100,11 @@ gates and the repository's standing migration rules.
 **Coverage in this slice:** `public`/`delegated` routes are fully evaluated. Workspace
 `capability` policies are evaluated when the legacy middleware exposes the target workspace;
 request-sourced policies use `RequestScope`, while row-sourced policies use `RowScope`. A
-denied request whose scope was not exposed is `unevaluated: scope_source_unavailable` or
-`row_scope_unavailable`, never a fabricated disagreement. Project/work-item capability
+denied request whose scope was not exposed is `unevaluated: row_scope_unavailable`;
+`scope_source_unavailable` is reserved for the shadow's own construction artifacts
+(`scope_mismatch`/`scope_source_mismatch`), never a fabricated disagreement. Evaluations
+dropped under saturation are recorded as `unevaluated: shadow_saturated` under the
+affected route's own router group, so a saturated router reads as not-clean. Project/work-item capability
 policies without reach facts, other scopes, `self` and `portal` policies, and requests with no
 resolved identity are also recorded as `unevaluated`, each with a specific reason code. This is
 fail-safe, because a router with any `unevaluated` requests is not clean and cannot cut over.
