@@ -22,10 +22,16 @@ function ExampleCrash(): never {
 const meta = {
   title: "Primitives/ErrorBoundary",
   component: ErrorBoundary,
-  args: { fallback: DemoFallback, children: <ExampleCrash /> },
+  args: { fallback: DemoFallback },
 } satisfies Meta<typeof ErrorBoundary>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const CaughtError: Story = {};
+export const Default: Story = {
+  args: { children: <p>Content renders normally until a child throws.</p> },
+};
+
+export const CaughtError: Story = {
+  args: { children: <ExampleCrash /> },
+};
