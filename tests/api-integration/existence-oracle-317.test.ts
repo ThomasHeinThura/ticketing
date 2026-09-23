@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { getDatabasePool, schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -17,6 +18,45 @@ function responseShape(response: Response) {
       a.localeCompare(b),
     ),
   };
+}
+
+function hashApiKeyForTest(key: string): string {
+  return createHash("sha256")
+    .update(key)
+    .digest()
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function queryText(query: unknown): string {
+  if (typeof query === "string") return query;
+  if (
+    typeof query === "object" &&
+    query !== null &&
+    "text" in query &&
+    typeof query.text === "string"
+  ) {
+    return query.text;
+  }
+  return "";
+}
+
+async function createApiKeyFor(userId: string): Promise<string> {
+  const rawKey = `taskdesk_test_${randomUUID()}`;
+  const now = new Date();
+  await db.insert(schema.apikeyTable).values({
+    referenceId: userId,
+    userId,
+    key: hashApiKeyForTest(rawKey),
+    name: "existence oracle S4 test",
+    start: rawKey.slice(0, 12),
+    prefix: "taskdesk",
+    createdAt: now,
+    updatedAt: now,
+  });
+  return rawKey;
 }
 
 async function compareResponses(foreign: Response, missing: Response) {
@@ -143,6 +183,104 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     console.info(
       `P0 #317 S4 PG18 integration p50: foreign=${foreignP50.toFixed(2)}ms, missing=${missingP50.toFixed(2)}ms; both used ${foreignQueries} SQL round trip.`,
     );
+  });
+
+  it("P0 S4: API-key reach is folded into the same foreign and missing lookup", async () => {
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const foreignLabel = requireRow(
+      await db
+        .insert(schema.labelTable)
+        .values({
+          name: "Private API-key label",
+          color: "#123456",
+          workspaceId: owner.workspace.id,
+        })
+        .returning(),
+      "foreign API-key label",
+    );
+    const rawKey = await createApiKeyFor(caller.user.id);
+    const { app } = createApp();
+    const querySpy = vi.spyOn(getDatabasePool(), "query");
+    const headers = { "x-api-key": rawKey };
+
+    const foreign = await app.request(`/api/label/${foreignLabel.id}`, {
+      headers,
+    });
+    const foreignLookupCalls = querySpy.mock.calls.filter(([query]) => {
+      return queryText(query).toLowerCase().includes('from "label"');
+    });
+    querySpy.mockClear();
+    const missing = await app.request("/api/label/missing-api-key-label-s4", {
+      headers,
+    });
+    const missingLookupCalls = querySpy.mock.calls.filter(([query]) => {
+      return queryText(query).toLowerCase().includes('from "label"');
+    });
+
+    await compareResponses(foreign, missing);
+    expect(foreign.status).toBe(404);
+    expect(foreignLookupCalls).toHaveLength(1);
+    expect(missingLookupCalls).toHaveLength(1);
+    expect(queryText(foreignLookupCalls[0]?.[0])).toContain('"apikey"');
+    expect(queryText(foreignLookupCalls[0]?.[0])).toContain(
+      '"workspace_member"',
+    );
+  });
+
+  it("P0 S4: bulk task reach is folded into each foreign and missing lookup", async () => {
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const foreignTask = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Private bulk task",
+          status: "to-do",
+          columnId: columns.todo.id,
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "foreign bulk task",
+    );
+    mockAuthenticatedSession(caller.user);
+    const { app } = createApp();
+    const querySpy = vi.spyOn(getDatabasePool(), "query");
+
+    const request = (taskId: string) =>
+      app.request("/api/task/bulk", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          taskIds: [taskId],
+          operation: "updatePriority",
+          value: "high",
+        }),
+      });
+
+    const foreign = await request(foreignTask.id);
+    const foreignLookups = querySpy.mock.calls.filter(([query]) =>
+      queryText(query).toLowerCase().includes('from "task"'),
+    );
+    const foreignQuery = foreignLookups[0]?.[0];
+    querySpy.mockClear();
+    const missing = await request(`missing-${randomUUID()}`);
+    const missingLookups = querySpy.mock.calls.filter(([query]) =>
+      queryText(query).toLowerCase().includes('from "task"'),
+    );
+
+    await compareResponses(foreign, missing);
+    expect(foreign.status).toBe(404);
+    expect(await foreign.text()).toBe("No tasks found");
+    expect(foreignLookups).toHaveLength(1);
+    expect(missingLookups).toHaveLength(1);
+    expect(queryText(foreignQuery)).toContain('"workspace_member"');
+    expect(queryText(foreignQuery)).toContain("EXISTS");
   });
 
   it("websocket: an authenticated caller receives the unknown-project response for a foreign project", async () => {
