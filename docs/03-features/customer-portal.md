@@ -62,7 +62,7 @@ Modelled on Jira Service Management, which has the right instincts here.
 | Comment publicly | See or write internal comments |
 | Attach files | See staff-internal attachments |
 | Re-rank **their own** backlog | Re-rank anyone else's |
-| **Escalate** priority (medium → urgent) | **De-escalate** priority |
+| **Escalate** priority — any strictly increasing change | **De-escalate** — any decrease is refused with 403 |
 | Approve requests addressed to them | Approve a request they raised |
 | Read published articles for their organisation | See any other organisation, ever |
 | Rate a resolution | See SLA policy internals — only their own due time |
@@ -94,24 +94,20 @@ misconfigured away through the role editor.
   changes the portal too, with no separate configuration.
 - `CP-6` SLA is shown as a due time and a plain-language state — "Response due by 2pm
   today" — never as a percentage or a policy name.
-- `CP-7` Escalating priority writes an activity entry and notifies the team.
-  De-escalation is not offered and is refused by the API.
-- `CP-8` Reopening a resolved request is allowed within a configurable window (default
-  14 days) and resumes the SLA clock rather than restarting it.
+- `CP-7` Any strictly increasing priority change is permitted; any decrease is refused with
+  403 (`portal-cannot-deescalate.spec.ts`). Escalating priority writes an activity entry and
+  notifies the team. De-escalation is not offered by the UI and is refused by the API
+  regardless.
+- `CP-8` Reopening a resolved request is allowed within `instance_setting.reopen_window_days`
+  (default 14 days) and resumes the SLA clock rather than restarting it, executed as a
+  system actor through the workflow's `is_reopen` transition (`WF-21`,
+  [workflows.md](workflows.md)) — one mechanism shared with the reopen-on-upload case in
+  `attachments.md`.
 - `CP-9` A satisfaction rating is offered on resolution — a simple scale plus an optional
-  comment — once per request, and it can be changed within the reopen window.
+  comment — once per request, and it can be changed within
+  `instance_setting.reopen_window_days`.
 - `CP-10` A submission's durable page keeps the same URL after it becomes a work item, so
   a bookmarked link never breaks and the customer never learns that a conversion happened.
-- `CP-15` A customer may **withdraw their own submission** at any point before it is
-  triaged — raised in error, no longer needed, or superseded by another request. Withdrawal
-  is a submission status (`withdrawn`), not a deletion: it remains visible in "My requests"
-  for their own reference, and a triager sees why it is no longer in the queue. Once a
-  submission is accepted into a work item, withdrawal is no longer offered — the customer's
-  own recourse from that point on is `CP-7` (escalate) or a public comment, the same as any
-  other in-flight request. This is the complete self-service lifecycle a customer holds
-  over their own request: raise it (`request-types-and-catalogue.md`), withdraw it before
-  it is picked up, comment on it, escalate its priority, approve what is addressed to them,
-  reopen it within the window, and rate the resolution.
 
 ## Onboarding
 
@@ -149,6 +145,22 @@ misconfigured away through the role editor.
   [identity-provisioning.md](identity-provisioning.md) `IP-29`; the agent login page is the
   opposite case and may list its providers
   ([auth-and-identity.md](../01-architecture/auth-and-identity.md#per-portal-binding)).
+- `CP-15` A customer may **withdraw their own submission** at any point before it is
+  triaged — raised in error, no longer needed, or superseded by another request. Withdrawal
+  is a submission status (`withdrawn`), not a deletion: it remains visible in "My requests"
+  for their own reference, and a triager sees why it is no longer in the queue. Once a
+  submission is accepted into a work item, withdrawal is no longer offered — the customer's
+  own recourse from that point on is `CP-7` (escalate) or a public comment, the same as any
+  other in-flight request. This is the complete self-service lifecycle a customer holds
+  over their own request: raise it (`request-types-and-catalogue.md`), withdraw it before
+  it is picked up, comment on it, escalate its priority, approve what is addressed to them,
+  reopen it within the window, and rate the resolution. *(Numbered `CP-15` for citation
+  stability — `events.md`, `decision-log.md` and `status.md` already cite it by that number
+  — and placed here, last, rather than renumbered: the 2026-09-05 review flagged the
+  original mid-`CP-1`…`CP-10` placement as a citation hazard because it read as if inserted
+  into the sequence unannounced; appending it after the highest-numbered rule makes it
+  legible as exactly that — a later addition — without invalidating every existing
+  citation.)*
 
 ## Permissions
 
@@ -161,6 +173,40 @@ one organisation's people without deactivating the organisation itself). That me
 created by invitation
 (`CP-11`), JIT provisioning or SCIM (`CP-17`). The customer role is off the main rank
 ladder — see [RBAC](../01-architecture/rbac.md).
+
+One row per portal action, each a [RBAC](../01-architecture/rbac.md) policy kind 3
+(`{ portal: 'customer', predicate }`):
+
+| Action | Predicate | Route |
+| --- | --- | --- |
+| View own profile | `self` | `GET /api/portal/me` |
+| Update own name and job title | `self` | `PATCH /api/portal/account` |
+| View home dashboard | `own_organisation` | `GET /api/portal/home` |
+| List own organisation's requests | `own_organisation` | `GET /api/portal/requests` |
+| View one request | `own_request` | `GET /api/portal/requests/{ref}` |
+| Comment on a request | `own_request` | `POST /api/portal/requests/{ref}/comments` |
+| Presign an attachment upload | `own_request` | `POST /api/portal/requests/{ref}/attachments/presign` |
+| Escalate priority (`CP-7`) | `own_request` | `POST /api/portal/requests/{ref}/escalate` |
+| Reopen a resolved request (`CP-8`, `WF-21`) | `own_request` | `POST /api/portal/requests/{ref}/reopen` |
+| Rate a resolution (`CP-9`) | `own_request` | `POST /api/portal/requests/{ref}/rate` |
+| Add a participant — requester only | `own_request` | `POST /api/portal/requests/{ref}/participants` |
+| Re-rank own backlog | `own_organisation` | `POST /api/portal/requests/rank` |
+| Browse the catalogue | `own_organisation` | `GET /api/portal/catalogue` |
+| Submit a new request | `own_organisation` | `POST /api/portal/submissions` |
+| View a submission | `own_submission` | `GET /api/portal/submissions/{ref}` |
+| Message on a submission | `own_submission` | `POST /api/portal/submissions/{ref}/messages` |
+| Withdraw a submission (`CP-15`) — requester only | `own_submission` | `POST /api/portal/submissions/{ref}/withdraw` |
+| List approvals addressed to them | `addressed_approval` | `GET /api/portal/approvals` |
+| Decide an approval | `addressed_approval` | `POST /api/portal/approvals/{id}/decide` |
+| View projects | `own_organisation` | `GET /api/portal/projects` |
+| View one project | `own_organisation` | `GET /api/portal/projects/{key}` |
+| Browse the knowledge base — **P5** | `own_organisation` | `GET /api/portal/kb` |
+| Read one article — **P5** | `own_organisation` | `GET /api/portal/kb/{id}` |
+| Deflection search while raising a request — **P5** | `own_organisation` | `GET /api/portal/kb/deflection?q=` |
+
+`self` is the caller's own person row — the portal-scoped counterpart of policy kind 2's
+`(self)` used on `/api/me/*`, added to `PortalPredicate` in
+[rbac.md](../01-architecture/rbac.md) for exactly these two routes.
 
 ## API
 
@@ -238,7 +284,7 @@ in your head — which is the point of not reusing the agent handlers.
 | Portal disabled by feature flag | The origin returns a maintenance page, not a broken app |
 | Customer has no requests and no catalogue | Home shows an explanatory empty state with the support email |
 | Attachment marked staff-internal | Absent from the portal response entirely. Not hidden client-side |
-| Customer replies to a closed request | Reopens it if within the window; otherwise creates a linked new request |
+| Customer replies to a closed request | Reopens it if within the window; otherwise creates a linked new request, using the original's request type |
 | Customer withdraws a submission already being triaged | Refused with a clear message once a triager has started acting on it — see [intake queue](intake-queue.md) |
 
 ## Out of scope
@@ -251,6 +297,12 @@ in your head — which is the point of not reusing the agent handlers.
 Security E2E — these are the tests that would have caught v1's defects:
 
 - `portal-cross-tenant.spec.ts` — customer A cannot reach customer B's request by URL
+- `portal-visibility-scope.spec.ts` — a colleague in the **same** customer organisation
+  cannot reach a request or submission whose `customer_visibility` is `private` and who is
+  not the requester or an explicitly added participant (`CP-16`, [data-model.md](../01-architecture/data-model.md)
+  `work_item.customer_visibility` / `submission.customer_visibility`) — the boundary
+  `portal-cross-tenant.spec.ts` does not cover, since that test is about organisation, not
+  participant-list, scope
 - `portal-no-internal-comments.spec.ts` — internal comments absent from every response
 - `portal-cannot-deescalate.spec.ts`
 - `portal-cannot-self-approve.spec.ts`
