@@ -215,6 +215,56 @@ God Mode and should be recorded as one.
 
 ---
 
+## Policy shadow summary
+
+Issue #8, Slice 2's request-path shadow middleware records every request it evaluates to
+`policy_shadow_tally` and, for a disagreement, `policy_shadow_event`
+([data-model.md § Policy shadow evidence](../01-architecture/data-model.md#policy-shadow-evidence-issue-8-slice-2)).
+This is the per-router summary a cut-over PR cites as its "about 7 clean days" evidence —
+run against the deployment's own database, not exposed as an HTTP endpoint.
+
+**Per-router summary for the last 7 days** (agree / disagree / unevaluated counts, by
+router group and outcome):
+
+```sql
+select
+  router_group,
+  outcome,
+  reason_code,
+  sum(count) as total,
+  max(last_seen_at) as last_seen_at
+from policy_shadow_tally
+where day >= (current_date - interval '7 days')
+group by router_group, outcome, reason_code
+order by router_group, outcome, total desc;
+```
+
+**"Clean" means zero *unexplained* disagreements** — every `legacy_allow_policy_deny`,
+`legacy_deny_policy_allow`, `unevaluated` and `evaluator_error` row above for a router group
+must either be fixed or have its `reason_code` explained in the cut-over PR.
+
+**Latest disagreements for one router**, to see exactly what tripped:
+
+```sql
+select route_key, outcome, reason_code, legacy_status, policy_status, policy_code,
+       identity_kind, workspace_id, trace_id, created_at
+from policy_shadow_event
+where router_group = :router_group
+order by created_at desc
+limit 50;
+```
+
+**Coverage check** — a router with zero rows in the last 7 days was never actually
+exercised, which the addendum treats the same as "not clean":
+
+```sql
+select router_group, sum(count) as requests_evaluated
+from policy_shadow_tally
+where day >= (current_date - interval '7 days')
+group by router_group
+order by requests_evaluated asc;
+```
+
 ## Useful commands
 
 ```bash

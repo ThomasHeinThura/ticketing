@@ -32,6 +32,9 @@ import notification from "./notification";
 import notificationPreferences from "./notification-preferences";
 import oauth from "./oauth";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
+// Issue #8, Slice 2: shadow-mode request-path policy comparison, off by default. See the
+// call site below and that file's own header comment for the full design.
+import { runNextWithPolicyShadow } from "./permissions/shadow-middleware";
 import { initializePlugins } from "./plugins";
 // Importing this constructs and validates the registry at module load, so an invalid policy
 // refuses boot (#8 Slice 0). Keep the import even if its one use below moves: without a use,
@@ -696,7 +699,17 @@ export function createApp(options: { staticRoot?: string } = {}) {
       const windowId = c.req.header("X-TaskDesk-Window-Id");
       const userId = c.get("userId");
       const initiatorId = windowId ? `${userId}:${windowId}` : userId;
-      return await eventContext.run({ initiatorId }, next);
+      // Issue #8, Slice 2: `runNextWithPolicyShadow` wraps this SAME `next` in place of
+      // calling it directly — it evaluates the finished response against the declarative
+      // policy registry and logs any disagreement, off by default
+      // (`TASKDESK_POLICY_SHADOW`), never blocking or changing the response. It is called
+      // from inside this existing guard, not registered as a second `api.use("*", ...)`,
+      // specifically so the registration count at this key never changes — see that
+      // function's own doc comment (`apps/api/src/permissions/shadow-middleware.ts`) for
+      // why a second registration is not safe here.
+      return await eventContext.run({ initiatorId }, () =>
+        runNextWithPolicyShadow(c, next),
+      );
     } catch (error) {
       if (!(error instanceof HTTPException)) {
         console.error("API authentication failed:", error);
