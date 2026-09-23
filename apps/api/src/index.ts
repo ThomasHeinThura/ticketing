@@ -917,7 +917,20 @@ export function createApp(options: { staticRoot?: string } = {}) {
           throw new HTTPException(401, { message: "Unauthorized" });
         }
 
-        await validateWorkspaceAccess(userId, project.workspaceId);
+        try {
+          await validateWorkspaceAccess(userId, project.workspaceId);
+        } catch (error) {
+          // Authenticated callers must not distinguish an out-of-reach project
+          // from an unknown project during the WebSocket upgrade request.
+          if (
+            error instanceof HTTPException &&
+            error.status === 403 &&
+            error.message === "You don't have access to this workspace"
+          ) {
+            throw new HTTPException(401, { message: "Unauthorized" });
+          }
+          throw error;
+        }
       }
 
       const windowId = c.req.query("windowId");
