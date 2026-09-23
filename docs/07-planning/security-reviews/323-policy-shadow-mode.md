@@ -302,8 +302,8 @@ legacy 400 denial that the policy allows would be counted as `agree`. That would
 `legacy_deny_policy_allow`, the one dangerous disagreement class.
 
 **Before #324 widens row exposure:** have the legacy middleware record its authorization
-decision explicitly, as a read-only `c.set`, rather than inferring it from the status. I have
-added this to #324's scope here.
+decision explicitly, as a read-only `c.set`, rather than inferring it from the status. I recommend
+adding this to #324's acceptance criteria (I did not edit the issue).
 
 ### S9 — NON-BLOCKING — how to renumber migration `0068`
 
