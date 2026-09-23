@@ -76,14 +76,71 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
 
-**Last updated:** 2026-09-22 (a major P0 push: #8's route-classification pass **merged** as
-PR #259, the single largest remaining P0 security task; #9's Radix-tracking half of G1
-merged; #10's Testcontainers CI slice merged; #134's concurrency fix merged; #23's first
-work-item write-path slice built and reviewed, now unblocked to sync against the new `main`)
+**Last updated:** 2026-09-23 (#11's local-deploy blocker fixed and merged as PR #262; #23's
+first work-item slice — create/read/list — merged as PR #261 after a genuine four-round
+review chain that found and closed a real cross-tenant permanent-DoS bug; two decision-log
+entries recording the architecture calls that chain required, PR #263 and #265, both merged)
 **Current stage:** P0 · Foundation, continuing into P1–P7 parallel — **Throttle 1 OPEN
 (unchanged); P0 concrete-defect backlog fully clear. #8's classification pass is done (PR
 #259, merged); its separate runtime-integration obligation remains open, so #8 itself stays
-open. #9's Radix-tracking half of gate G1 is done, the primitive-migration half remains.**
+open. #9's Radix-tracking half of gate G1 is done, the primitive-migration half remains.
+#23's first slice (P1) is merged — later slices (update/delete/bulk/rank/hierarchy/
+watchers) remain open.**
+
+**PR #262 (#11, local-deploy `PGDATA` fix) merged.** `docker build` succeeded on `main` but
+`scripts/deploy.sh local` never actually came up — `postgres:18-alpine` unconditionally
+refuses to start against the pre-existing flat `/var/lib/postgresql/data` mount once
+anything is present there, a real upstream default-path change (docker-library/postgres
+#1259), not an environment quirk. Added the one missing `PGDATA` line to `compose.yml`.
+Verified end-to-end twice, independently, on the actual committed fix: full stack healthy,
+health endpoints answering through Traefik on all three hostnames (`ticket.`/`portal.`/
+`mail.`), the opt-in `--profile s3` SeaweedFS path too. Ordinary review independently pulled
+the real `postgres:18-alpine` image and read its own entrypoint script rather than trusting
+the PR's claim. **Issue #11's "`scripts/deploy.sh local` brings the stack up" Done-when item
+can now genuinely be checked** — the other two (signed multi-arch image, full runbook incl.
+production/upgrade/rollback) remain untested, out of scope for a local-only pass.
+
+**PR #261 (#23, work-item create/read/list — P1's first slice) merged.** Implements WI-1/2/3
+from `docs/03-features/work-items.md`. Went through the fullest review chain of this
+session: ordinary + alignment (both clear) on the original implementation, then **four**
+mandatory Opus rounds tracing a single security thread to closure:
+- **Round 1 (original):** two blocking findings. **F1** — `work_item.key`
+  (`{project.slug}-{number}`) has a global unique index resting on a false assumption that
+  `project.slug` was already unique; it wasn't, so two workspaces slugging a project
+  identically collided permanently on their first work-item key, exploitable as a targeted
+  attack. **F2** — a 403/404 divergence on the first guessable identifier in the codebase,
+  an enumeration oracle.
+- **Fix round 1:** F2 closed cleanly. F1's first fix (a bare `UNIQUE` constraint on live
+  `project.slug`) was **not actually sufficient**.
+- **Round 2 (delta-confirmation):** found **D1** — `work_item_key_claim` never releases a
+  key claim, by deliberate design, so a slug freed by a project rename or a workspace
+  hard-delete could still be reclaimed by an unrelated tenant, who then inherits an
+  already-poisoned key range. Thomas decided the fix's shape directly (decision log): a
+  permanent `project_slug_claim` registry mirroring `work_item_key_claim`'s own lifetime.
+- **A real process mistake, caught and corrected**: the first attempt at that fix was built
+  without actually asking Thomas, even though the review's own text said this was his call —
+  an independent ordinary review caught the self-authorization and a fabricated alternative
+  in the decision-log entry justifying it; both corrected, Thomas asked directly and picked
+  the built option over the two real alternatives.
+- **Round 3 (closing delta-confirmation):** **CLEAR WITH FINDINGS (non-blocking)** —
+  independently re-attempted both exploits from scratch, enumerated every writer of
+  `project`/`project_slug_claim` to rule out a third release path, tested orphaned-claim
+  griefing (a forced mid-transaction failure — confirmed the whole transaction, claim
+  included, rolls back together), and independently re-verified the migration's backfill
+  against six adversarial project states. Five findings: one (`project_slug_claim` missing
+  from `data-model.md`) turned out to be **mechanically blocking**, not deferrable — the
+  required `check:vocabulary` gate correctly refused a new table with no `data-model.md`
+  entry (`AGENTS.md` do-not 11) — fixed directly on the branch. Three genuine non-blocking
+  follow-ups filed: #266 (no operator release path for a squatted slug), #267 (a stale
+  schema.ts comment), #269 (a fragile substring match in error handling). #268 (the
+  data-model.md gap) closed once fixed.
+**All three findings (F1, F2, D1) are closed and independently verified.** Two decision-log
+entries record the architecture calls this chain required — PR #263 (global slug
+uniqueness) and PR #265 (permanence requirement, corrected once for the process mistake
+above, then re-reviewed clean).
+
+**#23 itself remains open** — this is P1's first slice only. Update, delete, bulk
+operations, ranking, hierarchy, and watchers are later slices, not started.
 
 **PR #259 (#8, route-authorization classification) — merged, `main` at `71a06dc`.**
 Classifies every previously-unclassified inherited route (baseline shrank from 80 entries to
