@@ -17,6 +17,35 @@ Newest first.
 
 ---
 
+### 2026-09-23 · Three non-Claude implementation agents take the P0/P1/P2 lanes; the Claude session does Opus 5.5 security review and merge only
+
+**Supersedes (in part):**
+- `CLAUDE.md`'s "Model tiers" statement that non-Claude specialist agents for coding "did not work out and are not part of this project's process";
+- the earlier entry recording that the DeepSeek/GLM-routed implementation agents were dropped (line ~1187).
+
+Neither older text is rewritten.
+
+**Decision:** From 2026-09-23, implementation and Sonnet-tier work on the P0, P1 and P2 lanes is done by three agents that Thomas runs:
+- GPT-6 Luna;
+- DeepSeek 4.1 Flash, through GitHub Copilot;
+- mimo-v2.26 Flash, through Cline.
+
+Sonnet-tier work means implementation, fix rounds and ordinary reviews. The Claude Code session's role narrows to two things:
+- the **final independent Opus 5.5 security review** of every security-scope PR (`docs/04-engineering/ci-cd.md`'s path list), run in a fresh context separate from the author;
+- **merging** fully-green candidates through the protected flow, under the 2026-09-15 delegated merge authority.
+
+**The gates are unchanged.** Every PR still needs all of the following on its exact head:
+- an **independent ordinary review**, meaning a different agent or context from the author, with its actual model identity recorded in `## Reviewed by`;
+- the Opus 5.5 security review, where the change is in security scope;
+- every required check green;
+- no waived gate.
+
+A waived gate still needs Thomas. The Claude session merges only after verifying each gate itself, never on another agent's report of green. An agent never approves its own work, whatever its vendor.
+
+**Why:** Thomas's instruction on 2026-09-23. Claude's spend limit was being reached repeatedly mid-lane, and it is better spent on the Opus-tier review that nothing else on the project can do.
+
+**Decided by:** Thomas, 2026-09-23, in session. The orchestrating Claude session recorded it.
+
 ### 2026-09-23 · P1's UI path: new v2 work-item screens on the new API, then retire kaneo's task stack
 
 **Supersedes (in part):** the mechanism in the 2026-09-16 entry "#23's `task` → `work_item`
