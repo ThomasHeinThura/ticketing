@@ -217,3 +217,28 @@ into the previously reviewed head `38f6fd45fa87f04c84ba6dae7dc88c421719cc7e`.
   which reported this file STALE for want of this note. That is expected.
 
 **Verdict at `a7ae7112ebc17a9bb4052d5477b834de48e0a0f3`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #323 merged
+
+**Reviewed head:** `f0c1c0896eecd22f9e0a591f2328a0c1c6f3a2e0`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `9d5deb92a81791598140007fe8e108d1a352855c` (#323, request-path policy shadow mode and
+migration `0069`) into the previously attested head `0ed70e1f14313396137020a12dce845b98a8132e`. Main's tree at `9d5deb9` is
+identical to #323's attested tree `eb94330`. `776999d..9d5deb9` is that one merge.
+
+- **Parents:** exactly (`0ed70e1f14313396137020a12dce845b98a8132e`, `9d5deb9`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution.
+- **PR change unchanged:** every added and removed line is identical. Only the hunk offsets
+  in `decision-log.md` differ. The file auto-merged, and the order is still `## Format`,
+  main's entries, then the Storybook entry.
+- **Interaction with #323:** none. #323 touched no `pnpm-lock.yaml`, `package.json`,
+  `packages/ui` or CI file. `pnpm install --frozen-lockfile --offline` exits 0 at `f0c1c08`,
+  and the tree stays clean.
+- **CI at the merge head:** the only failure was `pull request template + security review`,
+  which reported this file STALE for want of this note. That is expected, and this note is what
+  clears it. `integration - Postgres 18` was still in progress when this was written, and merging
+  needs it green.
+  `unit + component` was also still in progress.
+
+**Verdict at `f0c1c0896eecd22f9e0a591f2328a0c1c6f3a2e0`: CLEAR.**
