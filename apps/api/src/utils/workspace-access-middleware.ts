@@ -2,6 +2,10 @@ import { and, eq, inArray, type SQLWrapper, sql } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import {
+  markShadowLegacyAuthorizationUnknown,
+  setShadowLegacyAuthorization,
+} from "../permissions/shadow-context";
 import { rejectNulByte } from "./reject-nul-byte";
 import { validateWorkspaceAccess } from "./validate-workspace-access";
 
@@ -103,6 +107,12 @@ type WorkspaceAccessMiddlewareConfig = {
   sources: WorkspaceIdSource[];
 };
 
+type WorkspaceRowScope = {
+  workspaceId: string;
+  projectId?: string;
+  workItemId?: string;
+};
+
 async function readJsonObjectBody(
   c: Context,
 ): Promise<Record<string, unknown>> {
@@ -117,6 +127,7 @@ export function workspaceAccessMiddleware(
   config: WorkspaceAccessMiddlewareConfig,
 ) {
   return async (c: Context, next: Next) => {
+    markShadowLegacyAuthorizationUnknown(c);
     const userId = c.get("userId");
 
     if (!userId) {
@@ -135,6 +146,8 @@ export function workspaceAccessMiddleware(
     // shadow middleware's `RowScope` construction (project-scope capability policies);
     // never read by any legacy authorization check. `null` for every other source shape.
     let shadowProjectId: string | null = null;
+    let shadowWorkItemId: string | null = null;
+    let shadowWorkspaceIdSource: "request" | "row" | null = null;
 
     // Read once, ahead of the loop: `lookup`/`lookupMany` sources need it to check
     // reach as soon as they resolve a row, not only after the loop ends.
@@ -148,6 +161,11 @@ export function workspaceAccessMiddleware(
           rejectNulByte(raw, NUL_BYTE_LABEL);
         }
         workspaceId = raw;
+        if (raw) {
+          shadowWorkspaceIdSource = "request";
+          c.set("workspaceId", raw);
+          c.set("workspaceIdSource", "request");
+        }
       } else if (source.type === "body") {
         const body = await readJsonObjectBody(c);
         const bodyValue = body[source.key];
@@ -156,12 +174,22 @@ export function workspaceAccessMiddleware(
           rejectNulByte(raw, NUL_BYTE_LABEL);
         }
         workspaceId = raw;
+        if (raw) {
+          shadowWorkspaceIdSource = "request";
+          c.set("workspaceId", raw);
+          c.set("workspaceIdSource", "request");
+        }
       } else if (source.type === "param") {
         const raw = c.req.param(source.key) || null;
         if (raw) {
           rejectNulByte(raw, NUL_BYTE_LABEL);
         }
         workspaceId = raw;
+        if (raw) {
+          shadowWorkspaceIdSource = "request";
+          c.set("workspaceId", raw);
+          c.set("workspaceIdSource", "request");
+        }
       } else if (source.type === "lookup") {
         const body = await readJsonObjectBody(c);
         const bodyId = body[source.idKey];
@@ -177,12 +205,21 @@ export function workspaceAccessMiddleware(
           // which is exactly issue #256's caller-supplied-fallback class (see
           // the file comment above `NUL_BYTE_LABEL`).
           rejectNulByte(id, NUL_BYTE_LABEL);
-          workspaceId = await lookupWorkspaceId(
+          if (source.resource === "project") c.set("projectIdFromRequest", id);
+          const resolved = await lookupWorkspaceId(
             source.resource,
             id,
             userId,
             apiKeyId,
           );
+          workspaceId = resolved?.workspaceId ?? null;
+          if (resolved) {
+            shadowWorkspaceIdSource = "row";
+            c.set("workspaceId", workspaceId);
+            c.set("workspaceIdSource", "row");
+            shadowProjectId = resolved.projectId ?? null;
+            shadowWorkItemId = resolved.workItemId ?? null;
+          }
           if (!workspaceId) {
             if (source.resource !== "project") {
               // #256: the row genuinely doesn't exist -- no more falling through to a
@@ -204,9 +241,9 @@ export function workspaceAccessMiddleware(
             // project id as read-only shadow-policy evidence; it is never used by the
             // legacy authorization path.
             accessChecked = true;
-            if (source.resource === "project") {
-              shadowProjectId = id;
-            }
+            setShadowLegacyAuthorization(c, "allowed");
+            if (source.resource === "project") shadowProjectId = id;
+            if (source.resource === "task") shadowWorkItemId = id;
           }
         }
       } else if (source.type === "lookupMany") {
@@ -259,6 +296,9 @@ export function workspaceAccessMiddleware(
             workspaceId = distinctWorkspaceIds[0] ?? null;
             // The lookup SQL already checked caller reach and API-key validity.
             accessChecked = true;
+            shadowWorkspaceIdSource = "row";
+            shadowWorkItemId =
+              taskIds.length === 1 ? (taskIds[0] ?? null) : null;
           }
         }
       }
@@ -275,15 +315,26 @@ export function workspaceAccessMiddleware(
     }
 
     if (!accessChecked) {
-      await validateWorkspaceAccess(userId, workspaceId, apiKeyId);
+      try {
+        await validateWorkspaceAccess(userId, workspaceId, apiKeyId);
+        setShadowLegacyAuthorization(c, "allowed");
+      } catch (error) {
+        if (error instanceof HTTPException && error.status === 403) {
+          setShadowLegacyAuthorization(c, "denied");
+        }
+        throw error;
+      }
     }
 
     c.set("workspaceId", workspaceId);
+    if (shadowWorkspaceIdSource)
+      c.set("workspaceIdSource", shadowWorkspaceIdSource);
     if (shadowProjectId) {
       // Issue #8, Slice 2 only -- see the declaration above. Read by
       // `apps/api/src/permissions/shadow-middleware.ts` alone.
       c.set("projectId", shadowProjectId);
     }
+    if (shadowWorkItemId) c.set("workItemId", shadowWorkItemId);
 
     return next();
   };
@@ -341,12 +392,15 @@ async function lookupWorkspaceId(
   id: string,
   userId: string,
   apiKeyId?: string,
-): Promise<string | null> {
+): Promise<WorkspaceRowScope | null> {
   try {
     switch (resource) {
       case "project": {
         const [project] = await db
-          .select({ workspaceId: schema.projectTable.workspaceId })
+          .select({
+            workspaceId: schema.projectTable.workspaceId,
+            projectId: schema.projectTable.id,
+          })
           .from(schema.projectTable)
           .where(
             and(
@@ -359,13 +413,17 @@ async function lookupWorkspaceId(
             ),
           )
           .limit(1);
-        return project?.workspaceId || null;
+        return project?.workspaceId
+          ? { workspaceId: project.workspaceId, projectId: project.projectId }
+          : null;
       }
 
       case "task": {
         const [task] = await db
           .select({
             workspaceId: schema.projectTable.workspaceId,
+            projectId: schema.taskTable.projectId,
+            workItemId: schema.taskTable.id,
           })
           .from(schema.taskTable)
           .innerJoin(
@@ -383,7 +441,13 @@ async function lookupWorkspaceId(
             ),
           )
           .limit(1);
-        return task?.workspaceId || null;
+        return task?.workspaceId
+          ? {
+              workspaceId: task.workspaceId,
+              projectId: task.projectId,
+              workItemId: task.workItemId,
+            }
+          : null;
       }
 
       case "label": {
@@ -401,13 +465,15 @@ async function lookupWorkspaceId(
             ),
           )
           .limit(1);
-        return label?.workspaceId || null;
+        return label?.workspaceId ? { workspaceId: label.workspaceId } : null;
       }
 
       case "timeEntry": {
         const [timeEntry] = await db
           .select({
             workspaceId: schema.projectTable.workspaceId,
+            projectId: schema.taskTable.projectId,
+            workItemId: schema.taskTable.id,
           })
           .from(schema.timeEntryTable)
           .innerJoin(
@@ -429,13 +495,21 @@ async function lookupWorkspaceId(
             ),
           )
           .limit(1);
-        return timeEntry?.workspaceId || null;
+        return timeEntry?.workspaceId
+          ? {
+              workspaceId: timeEntry.workspaceId,
+              projectId: timeEntry.projectId,
+              workItemId: timeEntry.workItemId,
+            }
+          : null;
       }
 
       case "activity": {
         const [activity] = await db
           .select({
             workspaceId: schema.projectTable.workspaceId,
+            projectId: schema.taskTable.projectId,
+            workItemId: schema.taskTable.id,
           })
           .from(schema.taskActivityTable)
           .innerJoin(
@@ -457,13 +531,21 @@ async function lookupWorkspaceId(
             ),
           )
           .limit(1);
-        return activity?.workspaceId || null;
+        return activity?.workspaceId
+          ? {
+              workspaceId: activity.workspaceId,
+              projectId: activity.projectId,
+              workItemId: activity.workItemId,
+            }
+          : null;
       }
 
       case "comment": {
         const [comment] = await db
           .select({
             workspaceId: schema.projectTable.workspaceId,
+            projectId: schema.taskTable.projectId,
+            workItemId: schema.taskTable.id,
           })
           .from(schema.taskActivityTable)
           .innerJoin(
@@ -486,13 +568,20 @@ async function lookupWorkspaceId(
             ),
           )
           .limit(1);
-        return comment?.workspaceId || null;
+        return comment?.workspaceId
+          ? {
+              workspaceId: comment.workspaceId,
+              projectId: comment.projectId,
+              workItemId: comment.workItemId,
+            }
+          : null;
       }
 
       case "column": {
         const [column] = await db
           .select({
             workspaceId: schema.projectTable.workspaceId,
+            projectId: schema.columnTable.projectId,
           })
           .from(schema.columnTable)
           .innerJoin(
@@ -510,13 +599,16 @@ async function lookupWorkspaceId(
             ),
           )
           .limit(1);
-        return column?.workspaceId || null;
+        return column?.workspaceId
+          ? { workspaceId: column.workspaceId, projectId: column.projectId }
+          : null;
       }
 
       case "workflowRule": {
         const [workflowRule] = await db
           .select({
             workspaceId: schema.projectTable.workspaceId,
+            projectId: schema.workflowRuleTable.projectId,
           })
           .from(schema.workflowRuleTable)
           .innerJoin(
@@ -534,7 +626,12 @@ async function lookupWorkspaceId(
             ),
           )
           .limit(1);
-        return workflowRule?.workspaceId || null;
+        return workflowRule?.workspaceId
+          ? {
+              workspaceId: workflowRule.workspaceId,
+              projectId: workflowRule.projectId,
+            }
+          : null;
       }
 
       default:
