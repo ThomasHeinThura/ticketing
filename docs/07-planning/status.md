@@ -8,8 +8,10 @@ backstop now suppresses comment-contained reads only outside an open JSX element
 detector suite passes 32/32, the complete CI checker suite previously passed 533/533, and
 `pnpm check:env` scans 981 files with 29 attributable reads. The previous head's Postgres
 integration was still pending and its PR template remains blocked on exact-head Opus review.
-These follow-up changes are uncommitted and need another exact-head ordinary review, then Opus
-review. No merge or issue completion is claimed.
+The exact-head ordinary review of `e5bd611` still finds a valid JSX-string case that can close
+the heuristic tag stack and suppress a following read. Per the review-round policy, further
+same-class patching waits for Opus assessment; the required Claude CLI is currently unauthenticated.
+The candidate remains unmergeable and no issue completion is claimed.
 
 
 **2026-09-24 orchestrator snapshot — `main` at `663c0cb`.** Merged today, each with every
