@@ -208,6 +208,61 @@ If any of these is missing, the PR does not merge. It waits, and the PR says wha
 
 **Decided by:** Thomas, 2026-09-23, in session. The orchestrating Claude session recorded it. Thomas then separately confirmed that the three agents do the **ordinary independent reviews** as well as the implementation, reviewing each other's PRs. He answered that one explicit question after PR #336's first review asked for it, choosing it over keeping ordinary reviews on a fresh Claude Sonnet context. Opus 5.5 stays the security reviewer.
 
+### 2026-09-23 · Sequence #8 shadow-mode tables after #322's migration
+
+**Decision:** Preserve #322's `0068_workspace_role_is_system` migration and its snapshot
+as index 68. Move #8 Slice 2's hand-written shadow-evidence migration to
+`0069_policy_shadow_tables`, append index 69, and chain its snapshot to the new 0068
+snapshot. Keep the shadow-table Drizzle declarations outside `database/schema.ts`, as the
+original #323 decision specifies; update their migration references.
+
+**Why:** #322 merged first, so its existing migration and deployed ordering stay intact. The
+unmerged #323 candidate collided with it on both numeric prefix and journal index. Giving
+the shadow tables the next forward-only slot removes the collision without rewriting either
+migration's contents or folding the shadow tables into #308's shared schema lane.
+
+**Alternatives:** Rewrite or renumber #322's migration — rejected because it is already on
+`main`. Fold the shadow tables into the canonical database schema — rejected because that
+would change the recorded lane boundary and generate a different migration than #323's
+hand-written table contract.
+
+**Decided by:** the orchestrating session, 2026-09-23. It adopted the #323 lane's migration-sequencing fix, which #323's Opus S9 required. This is an implementation sequencing detail, not an owner decision.
+
+### 2026-09-23 · #8 Slice 2's shadow mode: an env switch, two Postgres evidence tables, read-only row-scope exposure
+
+**Decision:** The shadow-mode policy middleware (#8 Slice 2) is built from three parts.
+
+- **Switch.** `TASKDESK_POLICY_SHADOW` is `off` (the default) or `on`. When it is off, the middleware is a no-op with zero queries. UAT runs with it on. This is an interim bridge, in the same pattern as `TASKDESK_STORAGE_DRIVER`, until the `*_feature_flag` tables in `plugin-architecture.md` exist.
+- **Evidence.** Two tables, registered in `data-model.md`:
+  - `policy_shadow_tally` holds per-day counts per `(route_key, outcome, reason_code)`, agreements included. Every request that reaches a router while shadow is on is counted.
+  - `policy_shadow_event` holds non-agreeing outcomes, with the addendum's attributable fields. It stores ids only, never bodies, headers or secrets, and is capped at 50 rows per `(day, route_key, outcome, reason_code)`.
+  - Writes happen after the response and can never change it.
+  - Retention is 30 days. The writer prunes old rows itself, because no jobs runner exists yet (`apps/api/src/jobs/` is absent). The pruning moves to a job when the runner lands.
+- **Row scope.** The existing middleware (`workspace-access-middleware.ts`, `require-work-item-reach.ts`) exposes the ids it has already loaded through read-only `c.set(...)`, with no new query and no behaviour change. A route that still has no evidence is logged as `unevaluated`, with a reason code, never skipped.
+
+**Why:** The #8 addendum requires evidence that is "queryable for at least the whole soak window, not only in container stdout". `observability.md` sends application logs to stdout, kept for "whatever the collector keeps", and the deployment has no queryable log store. So a small Postgres store is the only option that meets the requirement. A per-day tally keeps coverage and summary counts cheap. A capped event list keeps the attributable detail bounded. Without read-only row-scope exposure, almost every project-scoped or work-item-scoped route would be `unevaluated`, and the 7-day soak would prove nothing.
+
+**Alternatives:**
+- Structured stdout logging only. Rejected: it fails the addendum's retention rule.
+- Reusing `audit_log`. Rejected: it has the wrong shape, being hash-chained, append-only, 12-month retention, and "who changed what".
+- Building the `*_feature_flag` tables first. Rejected for now: that is a P4 governance piece of its own, and it would block #8 on unrelated work.
+
+**Coverage in this slice:** `public`/`delegated` routes are fully evaluated. Workspace
+`capability` policies are evaluated when the legacy middleware exposes the target workspace;
+request-sourced policies use `RequestScope`, while row-sourced policies use `RowScope`. A
+denied request whose scope was not exposed is `unevaluated: row_scope_unavailable`;
+`scope_source_unavailable` is reserved for the shadow's own construction artifacts
+(`scope_mismatch`/`scope_source_mismatch`), never a fabricated disagreement. Evaluations
+dropped under saturation are recorded as `unevaluated: shadow_saturated` under the
+affected route's own router group, so a saturated router reads as not-clean. Project/work-item capability
+policies without reach facts, other scopes, `self` and `portal` policies, and requests with no
+resolved identity are also recorded as `unevaluated`, each with a specific reason code. This is
+fail-safe, because a router with any `unevaluated` requests is not clean and cannot cut over.
+Widening coverage is follow-up work (Slice 2b). Because the shadow evaluation runs after the
+response, 2b may load the missing reach facts with extra reads without adding request latency.
+
+**Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation. There was one option that meets the recorded requirement. The Slice 2 lane surfaced the gaps.
+
 ### 2026-09-23 · Built-in role names are reserved; a built-in grant needs a genuine seeded row (`workspace_role.is_system`); existing data is reported, not rewritten (#318)
 
 **Decision:** Every `BUILT_IN_ROLES` key is reserved as a custom workspace role name. It is normalised the same way as the existing `owner` check and gets the same refusal. The legacy check (`require-workspace-capability.ts`) and the adapter (`resolve-identity.ts`) grant a built-in role's capabilities only to `owner`, or to a `workspace_role` row with `is_system = true`, through one shared predicate (`isGenuineBuiltInRoleGrant`). Migration `0068` adds `is_system` and **backfills `true` for every existing `viewer`/`member`/`admin` row**. `seedDefaultWorkspaceRoles()` repeats that repair on every boot. Without the backfill, every existing admin, member and viewer would have lost their built-in capabilities on deploy. PR #322's ordinary review found this; CI had missed it because it always migrates an empty database.
