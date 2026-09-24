@@ -262,3 +262,34 @@ the PR. Binding the contexts to GitHub Actions would close it.
   the checker's green result.
 - I did not verify Thomas's 2026-09-24 or 2026-09-23 "Decided by" claims. S1 asks the
   orchestrator to do that.
+
+---
+
+## Delta review — `9b98046..fa660cd`
+
+**Reviewed head:** `fa660cd38f29fbbd7ad1aee2f6f8d1f851fb741f`
+
+**Verdict: CLEAR (docs-only delta). S5 is closed. S1 is closed on the orchestrator's attestation. S2 is still open.**
+
+- **Scope:** `9b98046` is an ancestor of `fa660cd`. `git diff --name-only 9b98046 fa660cd`
+  lists only `docs/07-planning/decision-log.md`. It is one commit (`fa660cd`, authored
+  `Claude Code <noreply@anthropic.com>`, the orchestrating session). No code, workflow,
+  lockfile or config changed, so every code-level result above still holds.
+- **S5, first correction.** The `#10` ruleset entry now says that only
+  `integration - Postgres 18` ran in CI before, and that the two other contexts are "first
+  defined by PR #355". That is accurate: the `integration` job exists on `main`'s
+  `ci-full.yml`, and `coverage` and `e2e` do not.
+- **S5, second correction.** The coverage-thresholds entry now gives branches as 95.15 % at
+  #355's head. That matches this review's measured 95.15 %, and it drops the stale 88.77 %
+  rationale. A NON-BLOCKING wording nit: the edited sentence now reads "…would silently
+  redefine the documented gate which would change what the documented gate means", which
+  repeats itself. The meaning is correct.
+- **Untouched.** The S1 entry (lines 8–23) is not changed by this delta.
+- **S1.** The orchestrating session reports that Thomas confirmed in session that he made
+  the GPT-6 Luna entry, and that Opus remains required. This review records that attestation.
+  It cannot verify it independently.
+- **S2 is not addressed by this delta.** It still needs one of two things before merge:
+  - a recorded full-range ordinary review of `2f913b6..e308243`, by a tool that authored none
+    of that range; or
+  - the orchestrator's explicit reconciliation of that review against the S1 decision, plus
+    a corrected `## Implemented by`, which must name `Codex (GPT-6)`.
