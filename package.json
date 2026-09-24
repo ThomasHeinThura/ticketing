@@ -14,6 +14,7 @@
     "test": "turbo test",
     "test:coverage": "pnpm --filter @taskdesk/domain test:coverage",
     "test:contract": "node ./scripts/ci/test-contract.mjs",
+    "test:e2e": "pnpm --filter @taskdesk/web test:e2e",
     "test:integration": "turbo test:integration",
     "test:permissions": "turbo test:permissions",
     "typecheck": "turbo typecheck",

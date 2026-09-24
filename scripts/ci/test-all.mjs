@@ -217,7 +217,7 @@ const manifest = [
   {
     gate: "pnpm test:e2e",
     stage: "full",
-    run: ["pnpm", "--filter", "@taskdesk/web", "test:e2e"],
+    run: ["pnpm", "test:e2e"],
     note: "currently a browser-level smoke for the specified logged-out protected-route redirect and return target; full agent/portal journeys still need deterministic fixtures and acceptance flows.",
   },
   {
