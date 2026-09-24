@@ -49,21 +49,27 @@ test("workspace package names are read from the package segment only", () => {
   assert.equal(workspaceNameForSpecifier("./local"), null);
 });
 
-test("source scanner finds static, dynamic, require, and type-only edges", () => {
+test("source scanner finds module edges across JavaScript syntax", () => {
   assert.deepEqual(
     sourceImports(
       [
         'import { Button } from "@taskdesk/ui";',
         'export type { AppType } from "@taskdesk/api";',
         'void import("./lazy.js");',
+        "void import(`node:fs`);",
+        "void import(`node:${" + "runtimeName" + "}`);",
         'const legacy = require("./legacy.cjs");',
+        "const computed = require(`dns/promises`);",
       ].join("\n"),
     ),
     [
       { specifier: "@taskdesk/ui", line: 1, typeOnly: false },
       { specifier: "@taskdesk/api", line: 2, typeOnly: true },
       { specifier: "./lazy.js", line: 3, typeOnly: false },
-      { specifier: "./legacy.cjs", line: 4, typeOnly: false },
+      { specifier: "node:fs", line: 4, typeOnly: false },
+      { specifier: "<non-static module specifier>", line: 5, typeOnly: false },
+      { specifier: "./legacy.cjs", line: 6, typeOnly: false },
+      { specifier: "dns/promises", line: 7, typeOnly: false },
     ],
   );
 });

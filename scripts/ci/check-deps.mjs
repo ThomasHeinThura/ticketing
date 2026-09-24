@@ -10,6 +10,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import {
+  createScanner,
+  LanguageVariant,
+  SyntaxKind,
+} from "typescript/unstable/ast";
 import { finish, repoRoot, violation, walk } from "./lib/repo.mjs";
 
 const NAME = "check:deps";
@@ -37,8 +42,7 @@ const SOURCE_EXTENSIONS = [
   ".mjs",
   ".cjs",
 ];
-const IMPORT_SPECIFIER =
-  /\b(?:from\s+|import\s*\(\s*|import\s+|require\s*\(\s*)["']([^"']+)["']/g;
+const DYNAMIC_SPECIFIER = "<non-static module specifier>";
 
 function isWithin(parent, child) {
   const relative = path.relative(parent, child);
@@ -156,16 +160,141 @@ function findCycles(graph) {
 
 function sourceImports(source) {
   const imports = [];
-  for (const match of source.matchAll(IMPORT_SPECIFIER)) {
-    const before = source.slice(0, match.index);
-    const line = source.slice(0, match.index).split("\n").length;
-    const declaration = [...before.matchAll(/\b(?:import|export)\b/g)].at(-1);
-    const beginsRuntimeCall = /^(?:import|require)\s*\(/.test(match[0]);
-    const typeOnly =
-      !beginsRuntimeCall &&
-      declaration !== undefined &&
-      /^(?:import|export)\s+type\b/.test(before.slice(declaration.index));
-    imports.push({ specifier: match[1], line, typeOnly });
+  const scanner = createScanner(
+    true,
+    LanguageVariant.Standard,
+    source,
+    0,
+    source.length,
+  );
+  const tokens = [];
+  const templateBraceDepths = [];
+  for (let scanned = 0; scanned <= source.length + 1; scanned += 1) {
+    let kind = scanner.scan();
+    if (kind === SyntaxKind.CloseBraceToken && templateBraceDepths.length > 0) {
+      const depth = templateBraceDepths.at(-1) - 1;
+      templateBraceDepths[templateBraceDepths.length - 1] = depth;
+      if (depth === 0) {
+        kind = scanner.reScanTemplateToken(false);
+        if (kind === SyntaxKind.TemplateTail) templateBraceDepths.pop();
+        else if (kind === SyntaxKind.TemplateMiddle)
+          templateBraceDepths[templateBraceDepths.length - 1] = 1;
+      }
+    } else if (
+      kind === SyntaxKind.OpenBraceToken &&
+      templateBraceDepths.length > 0
+    ) {
+      templateBraceDepths[templateBraceDepths.length - 1] += 1;
+    } else if (
+      kind === SyntaxKind.TemplateHead ||
+      kind === SyntaxKind.TemplateMiddle
+    ) {
+      templateBraceDepths.push(1);
+    }
+    if (kind === SyntaxKind.EndOfFile) break;
+    tokens.push({
+      kind,
+      value: scanner.getTokenValue(),
+      text: scanner.getTokenText(),
+      start: scanner.getTokenStart(),
+    });
+    if (scanned === source.length + 1) {
+      imports.push({ specifier: DYNAMIC_SPECIFIER, line: 1, typeOnly: false });
+      break;
+    }
+  }
+
+  const lineAt = (position) => source.slice(0, position).split("\n").length;
+  const addLiteral = (token, typeOnly = false) =>
+    imports.push({
+      specifier: token.value,
+      line: lineAt(token.start),
+      typeOnly,
+    });
+  const isString = (token) =>
+    token?.kind === SyntaxKind.StringLiteral ||
+    token?.kind === SyntaxKind.NoSubstitutionTemplateLiteral;
+  const keyword = (token, name) =>
+    token?.kind ===
+      SyntaxKind[`${name[0].toUpperCase()}${name.slice(1)}Keyword`] ||
+    (token?.kind === SyntaxKind.Identifier && token.text === name);
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    const next = tokens[index + 1];
+    if (keyword(token, "import") || keyword(token, "require")) {
+      const call = next?.kind === SyntaxKind.OpenParenToken;
+      if (call) {
+        const argument = tokens[index + 2];
+        if (isString(argument)) addLiteral(argument);
+        else
+          imports.push({
+            specifier: DYNAMIC_SPECIFIER,
+            line: lineAt(token.start),
+            typeOnly: false,
+          });
+        continue;
+      }
+      if (keyword(token, "require")) continue;
+      if (isString(next)) {
+        addLiteral(next);
+        continue;
+      }
+      const typeOnly = keyword(next, "type");
+      for (let cursor = index + 1; cursor < tokens.length; cursor += 1) {
+        if (tokens[cursor].kind === SyntaxKind.SemicolonToken) break;
+        if (keyword(tokens[cursor], "from")) {
+          const specifier = tokens[cursor + 1];
+          if (isString(specifier)) addLiteral(specifier, typeOnly);
+          else
+            imports.push({
+              specifier: DYNAMIC_SPECIFIER,
+              line: lineAt(token.start),
+              typeOnly,
+            });
+          break;
+        }
+        if (
+          cursor > index + 1 &&
+          lineAt(tokens[cursor].start) > lineAt(tokens[cursor - 1].start) &&
+          [SyntaxKind.ImportKeyword, SyntaxKind.ExportKeyword].includes(
+            tokens[cursor].kind,
+          )
+        )
+          break;
+      }
+      continue;
+    }
+    if (keyword(token, "export")) {
+      const typeOnly = keyword(next, "type");
+      const binding = typeOnly ? tokens[index + 2] : next;
+      if (
+        binding?.kind !== SyntaxKind.OpenBraceToken &&
+        binding?.kind !== SyntaxKind.AsteriskToken
+      )
+        continue;
+      for (let cursor = index + 1; cursor < tokens.length; cursor += 1) {
+        if (tokens[cursor].kind === SyntaxKind.SemicolonToken) break;
+        if (keyword(tokens[cursor], "from")) {
+          const specifier = tokens[cursor + 1];
+          if (isString(specifier)) addLiteral(specifier, typeOnly);
+          else
+            imports.push({
+              specifier: DYNAMIC_SPECIFIER,
+              line: lineAt(token.start),
+              typeOnly,
+            });
+          break;
+        }
+        if (
+          lineAt(tokens[cursor].start) > lineAt(tokens[cursor - 1].start) &&
+          [SyntaxKind.ImportKeyword, SyntaxKind.ExportKeyword].includes(
+            tokens[cursor].kind,
+          )
+        )
+          break;
+      }
+    }
   }
   return imports;
 }
