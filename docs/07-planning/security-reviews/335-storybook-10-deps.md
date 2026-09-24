@@ -185,3 +185,35 @@ The ordinary review is recorded, subject to S7. Required CI on this head was gre
 `pull request template + security review`, which should re-run after this note lands and the
 PR body's Opus checkbox and note link are updated. No waived gate is cited. The Opus security
 gate is closed by this section for `0a0aa9ea872b977ef6eeff80d2d5b8f2c9c2ff89`.
+
+## Merge-head attestation (Opus 5.5)
+
+**Reviewed head:** `a7ae7112ebc17a9bb4052d5477b834de48e0a0f3`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `776999db0eedea45110817cb8cf64c586963626e` (#355, domain coverage and Playwright e2e smoke CI jobs)
+into the previously reviewed head `38f6fd45fa87f04c84ba6dae7dc88c421719cc7e`.
+
+- **Parents:** exactly (`38f6fd45fa87f04c84ba6dae7dc88c421719cc7e`, `776999d`).
+- **Not a clean merge:** `docs/07-planning/decision-log.md` was hand-resolved.
+  `git show --remerge-diff a7ae711` shows only the three conflict markers removed and one blank
+  line added. Taking the non-blank lines as a multiset, the merged file equals main's file plus
+  the PR's delta over base `7bebaf6`, with nothing missing and nothing extra. No entry from
+  either side is lost, and no content is added. The order is: the `## Format` block, then
+  main's newer entries, then the PR's Storybook entry.
+- **PR change unchanged:** outside `decision-log.md` and `pnpm-lock.yaml`,
+  `git diff 7bebaf6 38f6fd4` and `git diff 776999d a7ae711` are byte-identical. That covers
+  the loopback-bind fix from `0a0aa9e`. `38f6fd4` is note-only over the reviewed code head
+  `0a0aa9e`.
+- **`pnpm-lock.yaml`** auto-merged. Measured as added and removed lines, the merge against
+  main equals the PR's own lockfile delta. The merge against the PR equals main's delta:
+  38 inserted lines, #355's Playwright entries. There are no other changes.
+- **Commands at `a7ae711`:** `pnpm install --frozen-lockfile --offline` exits 0, and the
+  worktree stays clean. `pnpm audit --audit-level=high` exits 0 with "No known
+  vulnerabilities found". `pnpm --filter @taskdesk/ui build-storybook` exits 0 (Vite 8.2.1).
+  The only warning is the known chunk-size warning.
+- **CI at `a7ae711`:** `integration - Postgres 18` was still in progress when this was written.
+  Every other required context was green except `pull request template + security review`,
+  which reported this file STALE for want of this note. That is expected.
+
+**Verdict at `a7ae7112ebc17a9bb4052d5477b834de48e0a0f3`: CLEAR.**
