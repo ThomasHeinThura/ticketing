@@ -7,6 +7,7 @@ import {
   parseScimUser,
   scimConflictResponse,
   validateIdentityConnection,
+  validateScimPutExternalId,
 } from "./identity.js";
 import { canReachCustomerPortalResource } from "./portal.js";
 import type {
@@ -106,6 +107,16 @@ describe("P3 identity core", () => {
         connection(),
       ),
     ).toEqual({ ok: false, reason: "unverified_address" });
+    expect(
+      normaliseEntraClaims(
+        claims({
+          email: `${"a".repeat(200_000)}!@example.com`,
+          preferred_username: "invalid",
+          upn: "invalid",
+        }),
+        connection(),
+      ),
+    ).toMatchObject({ ok: false, reason: "no_usable_address" });
   });
 
   it("IP-28: accepts group object ids and ignores overage claims without a Graph lookup", () => {
@@ -179,6 +190,11 @@ describe("P3 identity core", () => {
     expect(
       validateIdentityConnection(connection({ maxRoleRank: Number.NaN })),
     ).toMatchObject({ ok: false, errors: ["invalid_role_rank"] });
+    expect(
+      validateIdentityConnection(
+        connection({ tenantId: "9188040d-6c67-4c5b-b112-36a304b66dad" }),
+      ),
+    ).toMatchObject({ ok: false, errors: ["invalid_tenant_id"] });
     expect(
       validateIdentityConnection(connection({ defaultRoleIsCustomer: true })),
     ).toMatchObject({ ok: false, errors: ["staff_role_required"] });
@@ -279,6 +295,28 @@ describe("P3 identity core", () => {
     expect(
       applyScimPatchOps({}, [{ op: "replace", path: "unknown", value: "x" }]),
     ).toEqual({ ok: false, reason: "invalid_patch" });
+    expect(
+      applyScimPatchOps({ externalId: "immutable" }, [
+        { op: "replace", value: { externalId: "rewritten", title: "Support" } },
+      ]),
+    ).toEqual({ ok: false, reason: "forbidden_attribute" });
+    expect(
+      applyScimPatchOps({}, [
+        {
+          op: "replace",
+          path: `  ${" ".repeat(100_000)}active  `,
+          value: true,
+        },
+      ]),
+    ).toMatchObject({ ok: true, value: { active: true } });
+    expect(validateScimPutExternalId("stable", "stable")).toEqual({
+      ok: true,
+      value: true,
+    });
+    expect(validateScimPutExternalId("stable", "changed")).toEqual({
+      ok: false,
+      reason: "invalid_resource",
+    });
   });
 
   it("IP-20/IP-21: maps only existing in-scope roles within the connection's rank ceiling", () => {
@@ -336,6 +374,37 @@ describe("P3 identity core", () => {
         grantsSeesAll: false,
       },
     ]);
+    const malformed = [
+      { ...mappings[0], externalGroupId: "nan-rank", roleRank: Number.NaN },
+      {
+        ...mappings[0],
+        externalGroupId: "undefined-rank",
+        roleRank: undefined,
+      },
+      {
+        ...mappings[0],
+        externalGroupId: "null-authority",
+        grantsSeesAll: null,
+      },
+      {
+        ...mappings[0],
+        externalGroupId: "missing-authority",
+        grantsInstanceAdmin: undefined,
+      },
+    ] as unknown as IdentityRoleMapping[];
+    expect(
+      mapExternalGroupsToRoles(
+        malformed.map(({ externalGroupId }) => externalGroupId),
+        malformed,
+        { portalScope: "agent", maxRoleRank: 3 },
+      ),
+    ).toEqual([]);
+    expect(
+      mapExternalGroupsToRoles(["allowed"], mappings.slice(0, 1), {
+        portalScope: "agent",
+        maxRoleRank: Number.NaN,
+      }),
+    ).toEqual([]);
   });
 
   it("IP-15/IP-16/IP-30: deprovisions fully, never restores roles, and claims only locally verified placeholders", () => {

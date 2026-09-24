@@ -16,7 +16,6 @@ import type {
   VerifiedEntraClaims,
 } from "./types.js";
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 const SCIM_CORE_USER_SCHEMA = "urn:ietf:params:scim:schemas:core:2.0:User";
 const SCIM_ENTERPRISE_USER_SCHEMA =
   "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User";
@@ -28,7 +27,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function normaliseEmail(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const address = value.trim().toLowerCase();
-  return EMAIL_PATTERN.test(address) ? address : undefined;
+  // Keep validation linear in the input size; avoid backtracking regexes on
+  // attacker-controlled identity claims.
+  if (address.length === 0 || address.length > 254) return undefined;
+  let at = -1;
+  for (let index = 0; index < address.length; index += 1) {
+    const code = address.charCodeAt(index);
+    if (code <= 0x20 || code >= 0x7f) return undefined;
+    if (address[index] === "@") {
+      if (at !== -1) return undefined;
+      at = index;
+    }
+  }
+  if (at <= 0 || at === address.length - 1) return undefined;
+  const domain = address.slice(at + 1);
+  const dot = domain.indexOf(".");
+  return dot > 0 && dot < domain.length - 1 ? address : undefined;
 }
 
 function isGroupOverage(claims: VerifiedEntraClaims): boolean {
@@ -126,7 +140,8 @@ export function validateIdentityConnection(
   if (
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(
       draft.tenantId,
-    )
+    ) ||
+    draft.tenantId.toLowerCase() === "9188040d-6c67-4c5b-b112-36a304b66dad"
   )
     errors.push("invalid_tenant_id");
   if (
@@ -319,6 +334,18 @@ export function parseScimUser(
   return parseScimUserFields(input, true);
 }
 
+/** Rejects attempts to change a stored SCIM externalId during PUT replacement. */
+export function validateScimPutExternalId(
+  existingExternalId: string | undefined,
+  incomingExternalId: string | undefined,
+): ScimResult<true> {
+  return existingExternalId !== undefined &&
+    incomingExternalId !== undefined &&
+    existingExternalId !== incomingExternalId
+    ? { ok: false, reason: "invalid_resource" }
+    : { ok: true, value: true };
+}
+
 export function scimConflictResponse(
   _conflictClass: ScimConflictClass,
 ): ScimConflictResponse {
@@ -348,7 +375,7 @@ export function applyScimPatchOps(
   for (const operation of operations) {
     const op = normalisePatchOp(operation.op);
     if (op === undefined) return { ok: false, reason: "invalid_patch" };
-    const path = operation.path?.replace(/^\s*|\s*$/gu, "").toLowerCase();
+    const path = operation.path?.trim().toLowerCase();
     if (path === undefined || path === "active") {
       if (
         path === undefined &&
@@ -359,7 +386,7 @@ export function applyScimPatchOps(
       }
       if (path === undefined && isRecord(operation.value)) {
         for (const key of Object.keys(operation.value)) {
-          if (isForbiddenScimKey(key))
+          if (isForbiddenScimKey(key) || key.toLowerCase() === "externalid")
             return { ok: false, reason: "forbidden_attribute" };
         }
         const parsed = parseScimUserFields(operation.value, false);
@@ -420,17 +447,32 @@ export function mapExternalGroupsToRoles(
     mappings.map((mapping) => [mapping.externalGroupId, mapping]),
   );
   const roles = new Map<string, AllowedRole>();
+  if (
+    connection.portalScope !== "agent" &&
+    connection.portalScope !== "customer"
+  )
+    return [];
+  if (
+    connection.portalScope === "agent" &&
+    (!Number.isSafeInteger(connection.maxRoleRank) ||
+      (connection.maxRoleRank ?? -1) < 0)
+  )
+    return [];
   for (const groupId of new Set(externalGroupIds)) {
     const mapping = mappingByGroup.get(groupId);
     if (
       mapping === undefined ||
+      !Number.isSafeInteger(mapping.roleRank) ||
+      mapping.roleRank < 0 ||
+      (mapping.roleScope !== "agent" && mapping.roleScope !== "customer") ||
+      typeof mapping.roleIsCustomer !== "boolean" ||
+      mapping.grantsInstanceAdmin !== false ||
+      mapping.grantsSeesAll !== false ||
       mapping.roleScope !== connection.portalScope ||
       (connection.portalScope === "agent" &&
         (connection.maxRoleRank === null ||
           mapping.roleRank > connection.maxRoleRank)) ||
-      mapping.roleIsCustomer !== (connection.portalScope === "customer") ||
-      mapping.grantsInstanceAdmin ||
-      mapping.grantsSeesAll
+      mapping.roleIsCustomer !== (connection.portalScope === "customer")
     )
       continue;
     roles.set(mapping.roleId, {
