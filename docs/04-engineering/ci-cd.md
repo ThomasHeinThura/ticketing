@@ -146,6 +146,7 @@ apps/api/src/**/index.ts             any new route file (a new *.ts exporting a 
 apps/api/src/**/controllers/**       apps/api/drizzle/*.sql
 apps/api/src/policy-registry.ts      apps/api/src/database/**
 packages/mcp/src/auth/**             scripts/deploy.sh
+packages/domain/src/identity/**      apps/api/src/permissions/**
 
 apps/api/src/middleware/**           (path does not exist yet)
 apps/api/src/webhooks/**             (path does not exist yet, P4)
