@@ -272,3 +272,54 @@ The rule that landed with #336 on `main` says: "The same agent or tool is never 
 The body says commits made after #336 landed "will use the session's own identity". But `f9b9c3d`, `e31a075` and `11478fe` were all made after `99a528c` (#336) was on the branch, and all three are still authored `Claude Code <noreply@anthropic.com>`. That is the identity #336's rule says no lane agent may use.
 
 The rule allows such a mismatch only if it is noted on the PR, and it's only partly noted: the body's own forward-looking claim is contradicted by the log. The body needs a correction so that attestation and commits reconcile. This is a record fix, and nothing in the code depends on it.
+
+## Merge-head attestation (Opus 5.5)
+
+**Reviewed head:** `de9c5d1b5604d42d91d68cf24b87574f80b1a09c`
+
+This is a fresh Opus 5.5 context, 2026-09-24, with `main` at
+`8f545c3c1ae8ee3d5ac9b22d830ff52ab1fce918`. The last Opus delta was at code head `11478fe`,
+recorded in note `8acbd60`, which changed only this file.
+
+**Commits from `8acbd60` to `de9c5d1` that are not on `main`:** all three are merges, and
+there is no non-merge code commit.
+- `c610abc`: merge of `main@c4e1810` into `11478fe`
+- `01f24b1`: merge of the remote branch, joining `c610abc` and `8acbd60`
+- `de9c5d1`: merge of `main@8f545c3`
+
+`git show --remerge-diff` is empty for all three, so none needed a manual resolution. The
+PR's own added and removed lines are identical between `git diff 99a528c 8acbd60` and
+`git diff 8f545c3 de9c5d1`; only the hunk offsets in `docs/03-features/work-items.md`
+differ. That is the one overlapping file, touched by #338, and it auto-merged.
+
+**Interaction with what `main` gained** (#308, #323, #334, #338, #354 and docs changes):
+- The new route `GET /api/workspace/{workspaceId}/work-item-types` uses
+  `workspaceAccess.fromParam` and `requireWorkspaceCapability("workspace:read")`.
+  - At the merged head, `fromParam` still resolves the id from the path, then runs
+    `validateWorkspaceAccess`. On a 403 it records the shadow legacy decision (#323/#354
+    markers) and rethrows the 403. That matches the route's declared 400/403 responses and
+    its `matrix.fixture.json` entry.
+  - The controller is a single select scoped by `workspaceId`.
+- The existing create and read routes keep `requireWorkItemReach`, which #354 extended with
+  shadow markers only. Its legacy decision is unchanged.
+
+**Tests at `de9c5d1`** (packages built first; private DB `opus_p1_test`, dropped afterwards):
+
+| Suite | Result |
+| --- | --- |
+| `@taskdesk/permissions` | 13 files / 261 tests pass |
+| `apps/api test:permissions` | 10 / 80 pass |
+| `apps/api test:unit` | 58 / 488 pass |
+| Integration: `work-item-*` (9 files, including `work-item-types`), `existence-oracle-317`, `permissions-shadow-mode` | 11 files / 472 tests pass |
+| `pnpm --filter @taskdesk/web test -- <5 changed test files>` (vitest ran the whole web suite) | 67 files / 297 tests pass |
+
+**CI at `de9c5d1`:**
+- `pull request template + security review` failed on the STALE binding. That is expected,
+  and this note clears it.
+- GitGuardian (not required) re-reports incident 37541345, `charts/taskdesk/values.yaml:245`
+  `passwordKey: postgres_uri`, via the main-merge commit `c610abc`. That line is from #308,
+  and this PR does not touch `charts/`. It is a key name, so it is a false positive.
+- Every other context was green.
+
+**Verdict at `de9c5d1b5604d42d91d68cf24b87574f80b1a09c`: CLEAR.** The earlier findings carry
+over unchanged.
