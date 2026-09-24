@@ -76,6 +76,8 @@ const MUST_REQUIRE_REVIEW = [
   "apps/api/src/scim/users.ts",
   "apps/api/src/webhooks/outbound.ts",
   "packages/permissions/src/evaluator.ts",
+  "packages/domain/src/identity/claim-mapping.ts",
+  "apps/api/src/permissions/shadow-middleware.ts",
 ];
 
 /** Paths that must NOT drag in the requirement, or it becomes routine and ignored. */
@@ -130,6 +132,8 @@ describe("security-review paths — F15 scope", () => {
       "apps/api/src/storage/**",
       "packages/permissions/**",
       "packages/plugins-contracts/**",
+      "packages/domain/src/identity/**",
+      "apps/api/src/permissions/**",
     ]) {
       assert.ok(
         globs.includes(glob),
