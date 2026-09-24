@@ -1,3 +1,4 @@
+import { CLOSED_STATE_GROUPS } from "@taskdesk/domain";
 import { and, count, eq, isNotNull, isNull, notInArray } from "drizzle-orm";
 import db from "../../database";
 import {
@@ -111,7 +112,10 @@ export async function listAssignablePeople({
         isNotNull(workItemTable.assigneeId),
         isNull(workItemTable.archivedAt),
         isNull(workItemTable.deletedAt),
-        notInArray(stateTemplateTable.group, ["completed", "cancelled"]),
+        // The closed-group vocabulary's single source (`isClosedGroup`'s own set): the
+        // SQL cannot call the pure predicate, so it names the same list -- never a
+        // second, drifting idea of "closed".
+        notInArray(stateTemplateTable.group, [...CLOSED_STATE_GROUPS]),
       ),
     )
     .groupBy(workItemTable.assigneeId);
