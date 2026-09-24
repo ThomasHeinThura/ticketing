@@ -85,7 +85,8 @@ function workspaceNameForSpecifier(specifier) {
 }
 
 function packageNameForSpecifier(specifier) {
-  if (specifier.startsWith("node:") || specifier.startsWith(".")) return null;
+  if (specifier.startsWith(".")) return null;
+  if (specifier.startsWith("node:")) return specifier;
   return specifier.startsWith("@")
     ? specifier.split("/").slice(0, 2).join("/")
     : specifier.split("/")[0];
@@ -244,6 +245,16 @@ export async function analyzeDependencies(root = repoRoot) {
         );
       }
     }
+    if (name === "@taskdesk/domain") {
+      for (const dependency of Object.keys(manifest.dependencies ?? {})) {
+        violations.push(
+          violation(
+            `${name}/package.json`,
+            `runtime dependency "${dependency}" is outside the domain package's explicit pure-runtime allowlist`,
+          ),
+        );
+      }
+    }
     if (name === "@taskdesk/ui") {
       for (const dependency of Object.keys(manifest.dependencies ?? {})) {
         if (!UI_RUNTIME_IMPORTS.has(dependency)) {
@@ -343,11 +354,9 @@ export async function analyzeDependencies(root = repoRoot) {
       if (
         owner.name === "@taskdesk/domain" &&
         !isTestSource(relativeFile) &&
-        ((imported.specifier.startsWith("node:") &&
-          !DOMAIN_ALLOWED_NODE_BUILTINS.has(imported.specifier)) ||
-          /^(fs(?:\/|$)|path(?:\/|$)|hono(?:\/|$)|drizzle-orm(?:\/|$)|pg(?:\/|$))/.test(
-            imported.specifier,
-          ))
+        !/\.config\.[^.]+$/.test(relativeFile) &&
+        !imported.specifier.startsWith(".") &&
+        !DOMAIN_ALLOWED_NODE_BUILTINS.has(imported.specifier)
       ) {
         violations.push(
           violation(

@@ -136,7 +136,9 @@ test("documented boundaries reject app imports, impure leaves, I/O and UI depend
 
   const web = await packageAt("apps/web", "@taskdesk/web");
   const api = await packageAt("apps/api", "@taskdesk/api");
-  const domain = await packageAt("packages/domain", "@taskdesk/domain");
+  const domain = await packageAt("packages/domain", "@taskdesk/domain", {
+    dependencies: { "dns/promises": "^1.0.0" },
+  });
   const permissions = await packageAt(
     "packages/permissions",
     "@taskdesk/permissions",
@@ -158,7 +160,7 @@ test("documented boundaries reject app imports, impure leaves, I/O and UI depend
   );
   await writeFile(
     path.join(domain, "src/network.ts"),
-    'import { lookup } from "node:dns";\n',
+    'import { lookup } from "node:dns";\nimport { resolve } from "dns/promises";\n',
   );
   await writeFile(
     path.join(permissions, "src/domain.ts"),
@@ -168,13 +170,18 @@ test("documented boundaries reject app imports, impure leaves, I/O and UI depend
     path.join(contracts, "src/permissions.ts"),
     'import type { Rule } from "@taskdesk/permissions";\n',
   );
-  await writeFile(path.join(ui, "src/server.ts"), 'import "hono";\n');
+  await writeFile(
+    path.join(ui, "src/server.ts"),
+    'import "hono";\nimport "node:fs";\n',
+  );
   await writeFile(path.join(api, "src/index.ts"), "export {};\n");
 
   const { violations } = await analyzeDependencies(root);
   const messages = violations.join("\n");
   assert.match(messages, /apps\/web\/src\/api\.ts.*imports.*apps\/\*/s);
   assert.match(messages, /packages\/domain\/src\/network\.ts.*node:dns/s);
+  assert.match(messages, /packages\/domain\/src\/network\.ts.*dns\/promises/s);
+  assert.match(messages, /@taskdesk\/domain\/package\.json.*dns\/promises/s);
   assert.match(messages, /@taskdesk\/permissions.*pure-leaf boundary/s);
   assert.match(messages, /packages\/permissions\/src\/domain\.ts.*pure leaf/s);
   assert.match(
@@ -183,4 +190,5 @@ test("documented boundaries reject app imports, impure leaves, I/O and UI depend
   );
   assert.match(messages, /@taskdesk\/ui\/package\.json.*hono/s);
   assert.match(messages, /packages\/ui\/src\/server\.ts.*hono/s);
+  assert.match(messages, /packages\/ui\/src\/server\.ts.*node:fs/s);
 });
