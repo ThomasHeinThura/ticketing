@@ -88,40 +88,39 @@ test("environment detector ignores nested properties named like runtime globals"
     [],
   );
   assert.deepEqual(
+    findEnvReads("const argv = process.argv; use(argv[0]);"),
+    [],
+  );
+  assert.deepEqual(
     findEnvReads('import { env } from "node:process"; use(options.env.SAFE);'),
     [],
   );
 });
 
-test("environment detector ignores comments and quoted text", () => {
+test("environment detector ignores comments but fails closed on quoted text", () => {
+  const reads = findEnvReads(
+    '// process.env.NOPE\nconst text = "process.env.NOPE";',
+  );
   assert.deepEqual(
-    findEnvReads('// process.env.NOPE\nconst text = "process.env.NOPE";'),
-    [],
+    reads.map(({ kind, name, line }) => ({ kind, name, line })),
+    [{ kind: "alias", name: null, line: 2 }],
   );
 });
 
 test("environment detector skips regular-expression bodies but keeps division expressions", () => {
-  assert.deepEqual(findEnvReads("/process.env.SECRET/.test(value);"), []);
-  assert.deepEqual(
-    findEnvReads("if (ok) /process.env.SECRET/.test(value);"),
-    [],
-  );
-  assert.deepEqual(
-    findEnvReads("do /process.env.SECRET/.test(value); while (false);"),
-    [],
-  );
-  assert.deepEqual(
-    findEnvReads("if (ok) {} /process.env.SECRET/.test(value);"),
-    [],
-  );
-  assert.deepEqual(
-    findEnvReads("function check() {} /process.env.SECRET/.test(value);"),
-    [],
-  );
-  assert.deepEqual(
-    findEnvReads("class Check {} /process.env.SECRET/.test(value);"),
-    [],
-  );
+  for (const source of [
+    "/process.env.SECRET/.test(value);",
+    "if (ok) /process.env.SECRET/.test(value);",
+    "do /process.env.SECRET/.test(value); while (false);",
+    "if (ok) {} /process.env.SECRET/.test(value);",
+    "function check() {} /process.env.SECRET/.test(value);",
+    "class Check {} /process.env.SECRET/.test(value);",
+  ]) {
+    assert.deepEqual(
+      findEnvReads(source).map(({ kind }) => kind),
+      ["alias"],
+    );
+  }
   assert.deepEqual(
     findEnvReads("const ratio = function() {} / process.env.RATE;").map(
       ({ name }) => name,
@@ -160,6 +159,93 @@ test("environment detector skips regular-expression bodies but keeps division ex
     ),
     ["RATE"],
   );
+});
+
+test("environment detector fails closed on TSX, postfix division, and eval text", () => {
+  for (const source of [
+    "export function Footer() { return <p>Don't have an account? <a href={import.meta.env.VITE_SIGNUP_URL}>Sign up</a></p>; }",
+    "const markup = </x><b>{process.env.TASKDESK_PORT}</b>;",
+    "let i = 0; i++ / process.env.TASKDESK_PORT;",
+    'eval("process.env.TASKDESK_PORT");',
+  ]) {
+    assert.ok(findEnvReads(source).length > 0, source);
+  }
+});
+
+test("environment detector bounds malformed quoted strings to one line", () => {
+  const reads = findEnvReads(
+    "const text = 'unterminated\nprocess.env.TASKDESK_PORT;",
+  );
+  assert.deepEqual(
+    reads.map(({ kind, name, line }) => ({ kind, name, line })),
+    [{ kind: "named", name: "TASKDESK_PORT", line: 2 }],
+  );
+});
+
+test("TypeScript assertions on process.env stay unattributable", () => {
+  for (const operator of ["as", "satisfies"]) {
+    const reads = findEnvReads(
+      `const env = process.env ${operator} Record<string, string>;`,
+    );
+    assert.deepEqual(
+      reads.map(({ kind, name }) => ({ kind, name })),
+      [{ kind: "alias", name: null }],
+    );
+  }
+});
+
+test("environment detector recognizes static process module and access variants", () => {
+  const cases = [
+    ['import { env } from "process"; use(env.TASKDESK_PORT);', "TASKDESK_PORT"],
+    [
+      'const value = require("node:process").env.TASKDESK_PORT;',
+      "TASKDESK_PORT",
+    ],
+    [
+      'import proc from "node:process"; use(proc.env.TASKDESK_PORT);',
+      "TASKDESK_PORT",
+    ],
+    [
+      'import * as proc from "node:process"; use(proc.env.TASKDESK_PORT);',
+      "TASKDESK_PORT",
+    ],
+    [
+      "const p = globalThis.process; use(p.env.TASKDESK_PORT);",
+      "TASKDESK_PORT",
+    ],
+    [
+      "const { env } = globalThis.process; use(env.TASKDESK_PORT);",
+      "TASKDESK_PORT",
+    ],
+    [
+      'const { env } = require("node:process"); use(env.TASKDESK_PORT);',
+      "TASKDESK_PORT",
+    ],
+    [
+      'const { env } = await import("node:process"); use(env.TASKDESK_PORT);',
+      "TASKDESK_PORT",
+    ],
+    [
+      'const proc = await import("node:process"); use(proc.env.TASKDESK_PORT);',
+      "TASKDESK_PORT",
+    ],
+    ["use(process[`env`].TASKDESK_PORT);", "TASKDESK_PORT"],
+    ['use(process["e" + "nv"].TASKDESK_PORT);', "TASKDESK_PORT"],
+    ["const key = `env`; use(process[key].TASKDESK_PORT);", "TASKDESK_PORT"],
+    ["use(globalThis[`process`].env.TASKDESK_PORT);", "TASKDESK_PORT"],
+    [
+      'use(Object.getOwnPropertyDescriptor(process, "env").value.TASKDESK_PORT);',
+      "TASKDESK_PORT",
+    ],
+    ["use((process).env.TASKDESK_PORT);", "TASKDESK_PORT"],
+    ["use(process!.env.TASKDESK_PORT);", "TASKDESK_PORT"],
+  ];
+  for (const [source, name] of cases) {
+    assert.ok(
+      findEnvReads(source).some((read) => read.name === name),
+      `expected static environment access to be detected: ${source}`,
+    );
+  }
 });
 
 test("environment detector ignores plain node:process import declarations", () => {

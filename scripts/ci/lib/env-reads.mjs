@@ -25,6 +25,7 @@ export const viteBuiltIns = new Set([
 
 function tokenize(source) {
   const tokens = [];
+  const comments = [];
   const add = (value, type, start, end) =>
     tokens.push({ value, type, start, end });
   const regexPrefixKeywords = new Set([
@@ -193,13 +194,17 @@ function tokenize(source) {
         continue;
       }
       if (source.startsWith("//", index)) {
+        const start = index;
         const end = source.indexOf("\n", index + 2);
         index = end < 0 ? source.length : end + 1;
+        comments.push({ start, end: index });
         continue;
       }
       if (source.startsWith("/*", index)) {
+        const start = index;
         const end = source.indexOf("*/", index + 2);
         index = end < 0 ? source.length : end + 2;
+        comments.push({ start, end: index });
         continue;
       }
       if (char === "/" && canStartRegex(tokens.at(-1))) {
@@ -238,7 +243,12 @@ function tokenize(source) {
         const quote = char;
         const start = index++;
         let value = "";
-        while (index < source.length && source[index] !== quote) {
+        while (
+          index < source.length &&
+          source[index] !== quote &&
+          source[index] !== "\n" &&
+          source[index] !== "\r"
+        ) {
           if (source[index] === "\\" && index + 1 < source.length) {
             value += source[index + 1];
             index += 2;
@@ -251,9 +261,12 @@ function tokenize(source) {
         continue;
       }
       if (char === "`") {
-        index += 1;
+        const start = index++;
+        let value = "";
+        let hasInterpolation = false;
         while (index < source.length) {
           if (source[index] === "\\") {
+            value += source[index + 1] ?? "";
             index += 2;
             continue;
           }
@@ -262,11 +275,14 @@ function tokenize(source) {
             break;
           }
           if (source.startsWith("${", index)) {
+            hasInterpolation = true;
             index = scan(index + 2, true);
             continue;
           }
+          value += source[index];
           index += 1;
         }
+        if (!hasInterpolation) add(value, "string", start, index);
         continue;
       }
       if (/[A-Za-z_$]/.test(char)) {
@@ -289,7 +305,7 @@ function tokenize(source) {
     return index;
   };
   scan(0);
-  return tokens;
+  return { tokens, comments };
 }
 
 function collectTokenAliases(tokens) {
@@ -297,25 +313,105 @@ function collectTokenAliases(tokens) {
   const envAliases = new Set();
   const envAliasDeclarations = new Set();
   for (let i = 0; i < tokens.length; i += 1) {
-    if (tokens[i].value === "import" && tokens[i + 1]?.value === "{") {
-      let close = i + 2;
-      while (close < tokens.length && tokens[close].value !== "}") close += 1;
-      if (tokens[close + 2]?.value === "node:process") {
-        for (let j = i + 2; j < close; j += 1) {
-          if (tokens[j].value === "env") {
-            const alias = tokens[j + 1]?.value === "as" ? tokens[j + 2] : null;
+    if (tokens[i].value === "import" && tokens[i + 1]?.value !== "(") {
+      let from = i + 1;
+      while (from < tokens.length && tokens[from].value !== "from") {
+        if (tokens[from].value === ";") break;
+        from += 1;
+      }
+      const moduleName = tokens[from + 1]?.value;
+      if (
+        tokens[from]?.value === "from" &&
+        ["process", "node:process"].includes(moduleName)
+      ) {
+        const clause = tokens.slice(i + 1, from);
+        if (clause[0]?.type === "id") processAliases.add(clause[0].value);
+        const namespace = clause.findIndex((token) => token.value === "*");
+        if (namespace >= 0 && clause[namespace + 1]?.value === "as") {
+          processAliases.add(clause[namespace + 2]?.value);
+        }
+        const open = clause.findIndex((token) => token.value === "{");
+        let close = open < 0 ? -1 : open + 1;
+        while (
+          close >= 0 &&
+          close < clause.length &&
+          clause[close].value !== "}"
+        ) {
+          close += 1;
+        }
+        for (let j = open + 1; open >= 0 && j < close; j += 1) {
+          if (clause[j].value === "env") {
+            const alias = clause[j + 1]?.value === "as" ? clause[j + 2] : null;
             envAliases.add(alias?.value ?? "env");
-            envAliasDeclarations.add(alias ? j + 2 : j);
+            envAliasDeclarations.add(i + 1 + (alias ? j + 2 : j));
           }
+        }
+      }
+    }
+    const dynamicProcessImport =
+      tokens[i].value === "import" &&
+      tokens[i + 1]?.value === "(" &&
+      ["process", "node:process"].includes(tokens[i + 2]?.value) &&
+      tokens[i + 3]?.value === ")";
+    if (
+      dynamicProcessImport &&
+      tokens[i - 1]?.value === "await" &&
+      tokens[i - 2]?.value === "=" &&
+      tokens[i - 3]?.type === "id"
+    ) {
+      processAliases.add(tokens[i - 3].value);
+    }
+    if (
+      dynamicProcessImport &&
+      tokens[i - 2]?.value === "=" &&
+      tokens[i - 3]?.value === "}"
+    ) {
+      let open = i - 4;
+      while (open >= 0 && tokens[open].value !== "{") open -= 1;
+      for (let j = open + 1; open >= 0 && j < i - 3; j += 1) {
+        if (tokens[j].value === "env") {
+          const alias =
+            tokens[j + 1]?.value === ":" ? tokens[j + 2] : tokens[j];
+          envAliases.add(alias.value);
+          envAliasDeclarations.add(alias === tokens[j] ? j : j + 2);
         }
       }
     }
     if (
       tokens[i].type === "id" &&
       tokens[i + 1]?.value === "=" &&
-      tokens[i + 2]?.value === "process"
+      (tokens[i + 2]?.value === "process" ||
+        ((tokens[i + 2]?.value === "globalThis" ||
+          tokens[i + 2]?.value === "global") &&
+          tokens[i + 3]?.value === "." &&
+          tokens[i + 4]?.value === "process"))
     ) {
       processAliases.add(tokens[i].value);
+    }
+    const destructuredFromProcess =
+      (tokens[i].value === "process" &&
+        ((tokens[i - 1]?.value === "=" && tokens[i - 2]?.value === "}") ||
+          (tokens[i - 1]?.value === "." &&
+            ["global", "globalThis"].includes(tokens[i - 2]?.value) &&
+            tokens[i - 3]?.value === "=" &&
+            tokens[i - 4]?.value === "}"))) ||
+      (tokens[i].value === "require" &&
+        tokens[i + 1]?.value === "(" &&
+        ["process", "node:process"].includes(tokens[i + 2]?.value) &&
+        tokens[i + 3]?.value === ")" &&
+        tokens[i - 1]?.value === "=" &&
+        tokens[i - 2]?.value === "}");
+    if (destructuredFromProcess) {
+      let open = i - 1;
+      while (open >= 0 && tokens[open].value !== "{") open -= 1;
+      for (let j = open + 1; open >= 0 && j < i - 1; j += 1) {
+        if (tokens[j].value === "env") {
+          const alias =
+            tokens[j + 1]?.value === ":" ? tokens[j + 2] : tokens[j];
+          envAliases.add(alias.value);
+          envAliasDeclarations.add(alias === tokens[j] ? j : j + 2);
+        }
+      }
     }
   }
   return { processAliases, envAliases, envAliasDeclarations };
@@ -332,26 +428,52 @@ function parseEnvObject(tokens, index, processAliases, envAliases) {
   const rootIdentifier = isRootIdentifier(tokens, index);
   const processName =
     rootIdentifier && (value === "process" || processAliases.has(value));
-  const globalProcess =
-    rootIdentifier &&
+  const dottedGlobalProcess =
     (value === "global" || value === "globalThis") &&
     tokens[index + 1]?.value === "." &&
     tokens[index + 2]?.value === "process";
+  const computedGlobalProcess =
+    (value === "global" || value === "globalThis") &&
+    tokens[index + 1]?.value === "[" &&
+    tokens[index + 2]?.value === "process" &&
+    tokens[index + 3]?.value === "]";
+  const globalProcess =
+    rootIdentifier && (dottedGlobalProcess || computedGlobalProcess);
   let processIndex = index;
-  if (globalProcess) processIndex = index + 2;
+  if (dottedGlobalProcess) processIndex = index + 2;
+  if (computedGlobalProcess) processIndex = index + 2;
   if (processName || globalProcess) {
-    const dot = tokens[processIndex + 1]?.value;
+    let accessIndex = processIndex + 1;
+    if (computedGlobalProcess) accessIndex = index + 4;
+    if (tokens[accessIndex]?.value === "!") accessIndex += 1;
+    if (tokens[index - 1]?.value === "(" && tokens[index + 1]?.value === ")") {
+      accessIndex = index + 2;
+    }
+    const dot = tokens[accessIndex]?.value;
     if (
       (dot === "." || dot === "?.") &&
-      tokens[processIndex + 2]?.value === "env"
+      tokens[accessIndex + 1]?.value === "env"
     )
-      return { object: "process.env", end: processIndex + 2 };
+      return { object: "process.env", end: accessIndex + 1 };
     if (
       dot === "[" &&
-      tokens[processIndex + 2]?.value === "env" &&
-      tokens[processIndex + 3]?.value === "]"
+      tokens[accessIndex + 1]?.value === "env" &&
+      tokens[accessIndex + 2]?.value === "]"
     )
-      return { object: "process.env", end: processIndex + 3 };
+      return { object: "process.env", end: accessIndex + 2 };
+    if (dot === "[") {
+      const member = tokens[accessIndex + 1];
+      const close = tokens.findIndex(
+        (token, tokenIndex) =>
+          tokenIndex > accessIndex + 1 && token.value === "]",
+      );
+      const simpleNonEnvLiteral =
+        member?.type === "string" && close === accessIndex + 2;
+      const numericIndex = /^\d+$/.test(member?.value ?? "");
+      if (!simpleNonEnvLiteral && !numericIndex && close >= 0) {
+        return { object: "process.env", end: close };
+      }
+    }
     return null;
   }
   if (
@@ -398,12 +520,31 @@ function parseEnvObject(tokens, index, processAliases, envAliases) {
     rootIdentifier &&
     value === "require" &&
     tokens[index + 1]?.value === "(" &&
-    tokens[index + 2]?.value === "process" &&
+    ["process", "node:process"].includes(tokens[index + 2]?.value) &&
     tokens[index + 3]?.value === ")" &&
     tokens[index + 4]?.value === "." &&
     tokens[index + 5]?.value === "env"
   ) {
     return { object: "process.env", end: index + 5 };
+  }
+  if (
+    rootIdentifier &&
+    value === "Object" &&
+    tokens[index + 1]?.value === "." &&
+    tokens[index + 2]?.value === "getOwnPropertyDescriptor" &&
+    tokens[index + 3]?.value === "(" &&
+    (tokens[index + 4]?.value === "process" ||
+      processAliases.has(tokens[index + 4]?.value)) &&
+    tokens[index + 5]?.value === "," &&
+    tokens[index + 6]?.value === "env" &&
+    tokens[index + 7]?.value === ")"
+  ) {
+    const valueProperty =
+      tokens[index + 8]?.value === "." && tokens[index + 9]?.value === "value";
+    return {
+      object: "process.env",
+      end: valueProperty ? index + 9 : index + 7,
+    };
   }
   if (rootIdentifier && envAliases.has(value))
     return { object: "process.env", end: index };
@@ -424,12 +565,14 @@ function parseEnvObject(tokens, index, processAliases, envAliases) {
  * @returns {EnvRead[]}
  */
 export function findEnvReads(source) {
-  const tokens = tokenize(source);
+  const { tokens, comments } = tokenize(source);
   const { processAliases, envAliases, envAliasDeclarations } =
     collectTokenAliases(tokens);
   const reads = [];
+  const tokenAccountedStarts = new Set();
   const lines = source.split("\n");
   const addRead = (token, object, kind, name = null) => {
+    tokenAccountedStarts.add(token.start);
     const line = source.slice(0, token.start).split("\n").length;
     reads.push({
       object,
@@ -444,8 +587,11 @@ export function findEnvReads(source) {
     if (envAliasDeclarations.has(i)) continue;
     if (
       tokens[i].value === "process" &&
-      tokens[i - 1]?.value === "=" &&
-      tokens[i - 2]?.value === "}"
+      ((tokens[i - 1]?.value === "=" && tokens[i - 2]?.value === "}") ||
+        (tokens[i - 1]?.value === "." &&
+          ["global", "globalThis"].includes(tokens[i - 2]?.value) &&
+          tokens[i - 3]?.value === "=" &&
+          tokens[i - 4]?.value === "}"))
     ) {
       let open = i - 3;
       while (open >= 0 && tokens[open].value !== "{") open -= 1;
@@ -474,9 +620,6 @@ export function findEnvReads(source) {
         kind = "named";
         name = member.value;
       } else kind = "computed";
-    } else if (tokens[parsed.end]?.value === "env" && next?.type === "id") {
-      kind = "named";
-      name = next.value;
     }
 
     // Destructuring the whole process.env object resolves the requested keys individually.
@@ -505,6 +648,54 @@ export function findEnvReads(source) {
     if (seen.has(id)) continue;
     seen.add(id);
     addRead(token, parsed.object, kind, name);
+  }
+
+  // The tokenizer is intentionally small, not a TypeScript/JSX parser. In a syntax
+  // position it cannot prove is a comment, a raw environment-object spelling that did
+  // not produce a token-level read must fail closed. This backstop also keeps strings,
+  // regex literals, and JSX text from hiding a read after a lexer misclassification.
+  // Only spans the tokenizer positively identified as comments are exempt.
+  const rawAccess =
+    /(?<![\w$.])(?:(?:globalThis|global)\s*\.\s*)?process\s*(?:\.\s*env|\?\.\s*env)|(?<![\w$.])import\s*\.\s*meta\s*(?:\.\s*env|\?\.\s*env)/g;
+  rawAccess.lastIndex = 0;
+  let commentIndex = 0;
+  for (
+    let match = rawAccess.exec(source);
+    match !== null;
+    match = rawAccess.exec(source)
+  ) {
+    const start = match.index;
+    while (
+      commentIndex < comments.length &&
+      comments[commentIndex].end <= start
+    ) {
+      commentIndex += 1;
+    }
+    const comment = comments[commentIndex];
+    if (comment && comment.start <= start && start < comment.end) continue;
+
+    // `globalThis.process.env`'s token-level read begins at `globalThis`, while this
+    // spelling's backstop match begins at `process`; the preceding dot prevents a
+    // second raw match for that case. All other ordinary spellings begin at the same
+    // source offset as their parsed token.
+    const tokenStart = source.startsWith("globalThis", start)
+      ? start
+      : source.startsWith("global.", start)
+        ? start
+        : start;
+    if (tokenAccountedStarts.has(tokenStart)) continue;
+
+    const object = /\bimport\s*\./.test(match[0])
+      ? "import.meta.env"
+      : "process.env";
+    const line = source.slice(0, start).split("\n").length;
+    reads.push({
+      object,
+      kind: "alias",
+      name: null,
+      line,
+      snippet: (lines[line - 1] ?? "").trim(),
+    });
   }
   return reads;
 }
