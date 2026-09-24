@@ -1566,8 +1566,10 @@ the addressed project ID's provenance separately from the workspace ID, retained
 explicitly unevaluated `reach_unavailable` result where project reach facts do not exist,
 and added a permissive shadow-policy denied-param integration probe. Focused checks on the
 updated working tree: API typecheck, 31 shadow evaluator unit tests, 15 shadow-mode
-Testcontainers integration tests, Biome, and `git diff --check` pass. The new full SHA and
-fresh exact-head reviews are pending. The #324 per-router before/after deployed-traffic
+Testcontainers integration tests, Biome, Docker image build, isolated Compose migration and
+boot, liveness/readiness probes, and `git diff --check` pass. Three fresh independent
+ordinary reviews passed the source/test remediation; a lightweight review of the final
+comment-only clarification is pending. The #324 per-router before/after deployed-traffic
 coverage report is still unavailable; no synthetic result is represented as deployed
 evidence, so that acceptance item remains open.
 
