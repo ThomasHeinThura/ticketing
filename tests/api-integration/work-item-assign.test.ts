@@ -178,6 +178,34 @@ async function addPersonOnRoster({
   return person;
 }
 
+/** Seeds a `membership` roster row for an EXISTING person onto a given project --
+ * how a person becomes "on the roster" of a project they are not already on. */
+async function rosterPersonOnProject(personId: string, projectId: string) {
+  const now = new Date();
+  const role = requireRow(
+    await db
+      .insert(schema.roleTable)
+      .values({
+        scope: "project",
+        key: `role-${randomUUID()}`,
+        name: "Project Member",
+        rank: 1,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning(),
+    "rosterPersonOnProject: role",
+  );
+  await db.insert(schema.membershipTable).values({
+    personId,
+    scope: "project",
+    scopeId: projectId,
+    roleId: role.id,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
 async function setupProject() {
   const { user: creator, workspace } = await createWorkspaceMember({
     role: "admin",
@@ -566,6 +594,98 @@ describe("API integration: work item assignment (#30, assignment.md)", () => {
       assigneeId: "bad\u0000id",
     });
     expect(response.status).toBe(400);
+  });
+
+  it("AS-5: a person rostered on a project in ANOTHER workspace is refused, byte-identically to a nonexistent id (the roster's tenant scope)", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const lead = await addWorkspaceMember(workspace.id, "lead");
+
+    // Roster them, but onto a project in a DIFFERENT workspace.
+    const other = await createWorkspaceMember({ role: "admin" });
+    const { project: otherProject } = await createProjectFixture({
+      workspaceId: other.workspace.id,
+    });
+    const target = await addPersonOnRoster({ projectId: project.id });
+    await db
+      .delete(schema.membershipTable)
+      .where(eq(schema.membershipTable.personId, target.id));
+    await rosterPersonOnProject(target.id, otherProject.id);
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    mockAuthenticatedSession(lead);
+    const foreign = await assignRequest(app, key, { assigneeId: target.id });
+    const nonexistent = await assignRequest(app, key, {
+      assigneeId: "person-does-not-exist",
+    });
+
+    expect(foreign.status).toBe(400);
+    expect(nonexistent.status).toBe(400);
+    // #290's rule: a foreign id and a nonexistent id get the SAME answer -- no oracle.
+    expect(await foreign.text()).toBe(await nonexistent.text());
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    expect(row?.assigneeId).toBeNull();
+  });
+
+  it("AS-5: rostered on a SECOND project of the same workspace is still not this project's roster", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const lead = await addWorkspaceMember(workspace.id, "lead");
+    const { project: siblingProject } = await createProjectFixture({
+      workspaceId: workspace.id,
+    });
+    const target = await addPersonOnRoster({ projectId: project.id });
+    await db
+      .delete(schema.membershipTable)
+      .where(eq(schema.membershipTable.personId, target.id));
+    await rosterPersonOnProject(target.id, siblingProject.id);
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    mockAuthenticatedSession(lead);
+    const response = await assignRequest(app, key, { assigneeId: target.id });
+    expect(response.status).toBe(400);
+    expect(await response.text()).toContain("roster");
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    expect(row?.assigneeId).toBeNull();
+  });
+
+  it("a redundant re-assign of a since-deactivated holder is the domain planner's no-op (200), not a 400", async () => {
+    const { creator, project, type } = await setupProject();
+    const holder = await addPersonOnRoster({ projectId: project.id });
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    expect(
+      (await assignRequest(app, key, { assigneeId: holder.id })).status,
+    ).toBe(200);
+
+    // The holder is deactivated AFTER holding the item (AS-8's retention case).
+    await db
+      .update(schema.personTable)
+      .set({ active: false })
+      .where(eq(schema.personTable.id, holder.id));
+    publishEventMock.mockReset();
+
+    // `planAssignment` treats new === current as a no-op before eligibility (its order,
+    // #287) -- adopted per the Opus review's S5. No new assignment is being made, so the
+    // stored one is simply re-affirmed; nothing is written and nothing is emitted.
+    const response = await assignRequest(app, key, { assigneeId: holder.id });
+    expect(response.status).toBe(200);
+    expect(publishEventMock).not.toHaveBeenCalled();
   });
 
   it("activity visibility for an assignment change follows the shared (verb, field) allowlist", async () => {

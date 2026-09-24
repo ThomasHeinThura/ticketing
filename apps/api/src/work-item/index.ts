@@ -418,6 +418,7 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
         workspaceId,
         actorId,
         actorType,
+        callerPerson?.id ?? null,
         { assigneeId, expectedCurrentAssigneeId },
       );
       return c.json(assigned, 200);

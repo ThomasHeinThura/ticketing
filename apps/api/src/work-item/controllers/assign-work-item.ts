@@ -1,3 +1,4 @@
+import { evaluateAssigneeEligibility, planAssignment } from "@taskdesk/domain";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
@@ -81,6 +82,7 @@ export async function assignWorkItem(
   workspaceId: string,
   actorId: string,
   actorType: ActivityActorType,
+  actorPersonId: string | null,
   input: AssignWorkItemInput,
 ): Promise<AssignedWorkItem> {
   const item = await db.query.workItemTable.findFirst({
@@ -111,31 +113,39 @@ export async function assignWorkItem(
     )
     .limit(1);
 
-  // AS-5 applies to EVERY assignment, including a redundant re-assign of the current
-  // holder: a deactivated holder is reported (400) rather than silently re-affirmed.
-  // `AS-8`'s retention is about DISPLAY of an assignment that already exists; it is not a
-  // licence to make a new one to an inactive person.
-  if (!roster) {
-    throw new HTTPException(400, {
-      message:
-        "That person is not on this project's roster -- add them to the project first",
-    });
-  }
-  if (!roster.active) {
-    throw new HTTPException(400, {
-      message: "That person is deactivated and cannot be assigned work",
-    });
-  }
-
-  // Idempotent no-op: assigning the current holder changes nothing and emits nothing.
-  // A "reassign" to the person already holding the item is not a reassignment.
-  if (item.assigneeId === input.assigneeId) {
+  // The no-op decision comes FIRST, from `packages/domain`'s `planAssignment` (#287) --
+  // the single source for "assigning the current holder is not a reassignment". The Opus
+  // review's S5 flagged the earlier inline copy: two sources for one rule. Adopting the
+  // domain planner's order also settles the ordinary review's F4: a redundant re-assign
+  // of a holder who has since been deactivated returns 200 and re-affirms the STORED
+  // assignment (`AS-8`'s retention), because no new assignment is being made.
+  const plan = planAssignment(
+    item.assigneeId,
+    input.assigneeId,
+    actorPersonId ?? "",
+  );
+  if (plan.action === "noop") {
     return {
       key: item.key,
       assigneeId: input.assigneeId,
       previousAssigneeId: item.assigneeId,
       version: item.version,
     };
+  }
+
+  // `AS-5`, from the domain rule itself (`evaluateAssigneeEligibility`, #287): on the
+  // project roster, and active. One source, one reason.
+  const eligibility = evaluateAssigneeEligibility({
+    onRoster: roster !== undefined,
+    active: roster?.active ?? false,
+  });
+  if (!eligibility.eligible) {
+    throw new HTTPException(400, {
+      message:
+        eligibility.reason === "not_on_roster"
+          ? "That person is not on this project's roster -- add them to the project first"
+          : "That person is deactivated and cannot be assigned work",
+    });
   }
 
   const previousAssigneeId = item.assigneeId;
