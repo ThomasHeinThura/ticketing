@@ -1593,6 +1593,14 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
+### 2026-09-24 · P0 integration continuation — release TLS test and current review gates
+
+Main now contains #355 (merge `776999d`) and #323 (current main `9d5deb9`). Opus 5.5 reviewed #355's exact pre-merge code head `575d363a68b841f6d486794315e252ca03a90373` with CLEAR WITH FINDINGS; its follow-up findings S9/S10 are being hardened in draft PR #357. #357 exact head `18cbc121bdd956b1e416acfde3e4bb82e9c6511e` has an independent GPT-6 Luna ordinary review CLEAR; its CI is still running and the mandatory fresh exact-head Opus review is pending.
+
+#331 was refreshed onto current main at candidate head `81d2899fda625bccde94bf523512b37983edbbfc`. An independent GPT-6 Luna integration-delta review is CLEAR; the local TLS helper remains unchanged from the separately reviewed `e19b75c`. Exact-head CI found one failing backup-preservation test (505/506 CI script tests passed); a focused run in a reviewer context passed 11/11, while this host's `node` command is a Bun shim that cannot run `node:test`. The exact-head final Opus review is required and pending. No release was triggered.
+
+#338 is refreshed onto main at `a1f494fcfa6339a8cedcf941abfab33d7a515d49`. Its merge resolution preserves the SQL reach predicate and carries project id only as #323 shadow evidence. The targeted Postgres suite passed 7/7 locally; independent GPT-6 Luna integration review is CLEAR and a second reviewer is pending. Exact-head Opus review remains mandatory. #331, #338 and #357 are not claimed complete or merge-ready; continue other runnable P0 work while these reviews/checks finish.
+
 ### 2026-09-24 · P0 #11 local deployment and runbook validation
 
 On PR #331's clean lane, `scripts/deploy.sh local` completed using the locally built
