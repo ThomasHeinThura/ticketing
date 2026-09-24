@@ -30,7 +30,9 @@ refuses the Entra personal-account tenant. Regression tests cover these cases. D
 (483), domain typecheck, all 9 workspace typechecks, lint, route-policy/permission coverage
 (80), and the Docker image build pass. The full workspace unit run remains red on the unrelated
 MCP `register.test.ts` import error (`z.enum` undefined); the updated 483-test domain suite
-passes. PR #346 is still a draft. The required Opus delta review cannot run because the local
+passes. The built image also migrated a fresh isolated Postgres 18 database, became healthy
+under the restricted API role, and returned `{"status":"ok"}` from readiness and liveness.
+PR #346 is still a draft. The required Opus delta review cannot run because the local
 Claude client reports `loggedIn: false`; no lower-tier review is substituted. All 25 real-Entra
 acceptance tests and the two P3 completion issues (#38 portal, #39 identity) remain open.
 
