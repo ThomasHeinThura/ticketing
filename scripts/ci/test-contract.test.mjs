@@ -66,8 +66,42 @@ test("a different diagnostic at the same rule and pointer is new", () => {
 });
 
 test("Redocly report parsing ignores status text printed after its JSON", () => {
-  const report = { totals: { errors: 0 }, problems: [] };
+  const report = {
+    totals: { errors: 0, warnings: 0, ignored: 0 },
+    problems: [],
+  };
   const output = `validating spec.json...\n${JSON.stringify(report, null, 2)}\n\n✔ Validation successful.\n`;
 
   assert.deepEqual(parseRedoclyReport(output), report);
+});
+
+test("Redocly report parsing rejects multiple report objects", () => {
+  const report = {
+    totals: { errors: 0, warnings: 0, ignored: 0 },
+    problems: [],
+  };
+  const serialized = JSON.stringify(report, null, 2);
+  assert.throws(
+    () => parseRedoclyReport(`${serialized}\n${serialized}`),
+    /multiple JSON reports/,
+  );
+});
+
+test("Redocly report parsing rejects a report without a problems array", () => {
+  const report = { totals: { errors: 0, warnings: 0, ignored: 0 } };
+  assert.throws(
+    () => parseRedoclyReport(JSON.stringify(report, null, 2)),
+    /missing totals or problems/,
+  );
+});
+
+test("Redocly report parsing rejects counts that do not match problems", () => {
+  const report = {
+    totals: { errors: 1, warnings: 0, ignored: 0 },
+    problems: [],
+  };
+  assert.throws(
+    () => parseRedoclyReport(JSON.stringify(report, null, 2)),
+    /totals do not match its problems/,
+  );
 });
