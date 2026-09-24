@@ -202,3 +202,68 @@ should be tracked, jointly with #320.
 - The web page renders only text and has no cross-key or cross-user cache path.
 - S1–S4 are non-blocking. The gate items listed above must be resolved before the orchestrator
   merges.
+
+## Merge-head attestation (Opus 5.5)
+
+**Reviewed head:** `177f465c69cff695a8cc3f91b082b5c50df76cdb`
+
+This is a fresh Opus 5.5 context, 2026-09-24, with `main` at
+`8f545c3c1ae8ee3d5ac9b22d830ff52ab1fce918`. The last Opus review was CLEAR WITH FINDINGS at
+`66ac828`.
+
+**Commits from `66ac828` to `177f465` that are not on `main`:**
+- `a948b32`: this note only.
+- `177f465`: merge of `main@8f545c3`. `git show --remerge-diff` is empty, so no manual
+  resolution.
+
+There is no non-merge code commit. `git diff dd067e2 a948b32` and `git diff 8f545c3 177f465`
+are byte-identical (same sha256), and no file overlaps with `main`.
+
+**#338 existence-oracle check:** `GET /api/work-items/{key}` still answers identically for
+a foreign key and a missing one.
+- `requireWorkItemReach` 404s a missing or soft-deleted key with "Work item not found".
+- It catches any 403 from `validateWorkspaceAccess` and rethrows the same
+  `HTTPException(404, "Work item not found")`. That is broader than #338's message-specific
+  catch, so it is at least as uniform.
+- The controller's own re-check throws the same 404.
+- A temporary integration probe, not committed, compared three cases from a stranger's
+  session: an existing foreign key, `{slug}-999999` and `nosuchslug-1`. Status,
+  `content-type`, the set of header names and the body were all equal. 1 / 1 passed.
+- Timing still differs by one `validateWorkspaceAccess` query. That is the known #317 timing
+  residue S1, already open, and it is not new here.
+
+**Other interaction:** #354 added shadow markers to `requireWorkItemReach` only; the legacy
+decision is unchanged. The `assigneeName` workspace-member gating is unaffected by #334 and
+#322.
+
+**Tests at `177f465`** (packages built first; private DB `opus_p1_test`, dropped afterwards):
+
+| Suite | Result |
+| --- | --- |
+| `@taskdesk/permissions` | 13 files / 261 tests pass |
+| `apps/api test:permissions` | 10 / 80 pass |
+| `apps/api test:unit` | 58 / 488 pass |
+| Integration: `work-item-*` (9 files, including `work-item-detail`), `existence-oracle-317`, `permissions-shadow-mode` | 11 files / 470 tests pass |
+| `pnpm --filter @taskdesk/web test -- <3 changed test files>` (vitest ran the whole web suite) | 64 files / 306 tests pass |
+
+**CI at `177f465`: a required check fails on a real interaction with #355.**
+`contract - OpenAPI drift` fails. #355 added the `oasdiff breaking --fail-on WARN` step
+after this PR's last review; at `66ac828` the context passed without that step.
+- The PR changes the 200 schema of `GET /work-items/{key}` from `WorkItem` to
+  `WorkItemDetail`, which is `allOf: [WorkItem, {stateName, stateCategory, assigneeName}]`.
+- oasdiff compares `allOf` branches one at a time. It reports
+  `response-required-property-removed` WARNs for every `WorkItem` field (`stateId`,
+  `title`, `typeId`, `updatedAt`, `version`, `workspaceId`, …).
+- Nothing is actually removed: the change is additive. But the required gate fails, so this
+  head is **not merge-ready**.
+- The fix belongs to the lane. Either emit a flattened schema, not the `allOf` from
+  `.extend()` on a registered schema, or change the gate. A gate change is under
+  `scripts/ci/**` and needs its own review. Either way it is a new commit and needs a
+  delta review.
+
+Other CI: `pull request template + security review` failed on the STALE binding, which is
+expected and cleared by this note. GitGuardian (not required) re-reports incident 37541345,
+the `values.yaml` key-name false positive from #308, via this merge commit.
+
+**Verdict at `177f465c69cff695a8cc3f91b082b5c50df76cdb`: security CLEAR, not merge-ready**
+until `contract - OpenAPI drift` is green. The earlier findings carry over unchanged.
