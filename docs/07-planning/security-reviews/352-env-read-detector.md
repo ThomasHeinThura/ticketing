@@ -180,3 +180,168 @@ An AST parser (#342 suggests one) would also close this, but it isn't required i
 - **What works.** Every #342 shape is caught and tested. The tests pass mutation checks, there is no ReDoS, and on today's tree the gate is at parity with `main`, minus one comment false positive.
 - **What blocks.** F1: the new lexer fails open on ordinary TSX and on postfix-increment division, so reads that `main`'s `check:env` catches become invisible. This PR is meant to close bypasses, and it opens a broader one. Fixing F1 (a) to (c) is required.
 - **After the fix.** A delta Opus pass on the new head is needed. F2 and F3 should be fixed or tracked. The gate items above (review attestation, a decision-log entry for the self-review allowance, commit-identity reconciliation, and the template problems) must be resolved before merge regardless.
+
+---
+
+# Delta security review at `e3dd45b` (after the F1 remediation `139d595`)
+
+**Reviewer:** Opus 5.5, a fresh, independent context commissioned by the orchestrating session. I did not author, direct or remediate this change. An earlier attempt at this delta review stopped partway when its login expired; this pass redid all of it from the start.
+**Reviewed head:** `e3dd45b09f629f0971f5d0a5862a77db89374204`
+**Checked with:** `git fetch origin pull/352/head`, `gh pr view 352 --json headRefOid` and `git ls-remote` before I started and again before pushing. `origin/main` was `c4e18107fd7ed019ef6cf00edd8fec82b1703c89`, which is an ancestor of the head.
+**Date:** 2026-09-24
+
+## What changed since `c797fc9`
+
+- `139d595` is the only code commit. It touches `scripts/ci/lib/env-reads.mjs` and `env-reads-342.test.mjs`. It adds a raw-regex backstop: any `process.env` / `process?.env` / `globalThis.process.env` / `import.meta.env` spelling that did not produce a token-level read is reported as `alias`, unless it sits inside a span the tokenizer identified as a comment. It also ends quoted strings at a newline and adds TSX, postfix, eval and variant tests.
+- `git diff 139d595 HEAD -- scripts/` is empty, so the detector did not change after the fix.
+- The merges `be226e2`, `b610f26`, `e1cfec5`, `e87f95a` and `e3dd45b` have an empty `git show --remerge-diff`, so none of them needed a manual conflict resolution. `git diff origin/main HEAD` touches only the PR's four files: the detector, its test, this note and `status.md`.
+
+## Tests and counts (in my worktree at the reviewed head)
+
+- `node --test scripts/ci/lib/env-reads-342.test.mjs`: **23/23 pass.**
+- `pnpm test:ci-scripts`: **525 tests, 88 suites, 525 pass, 0 fail.**
+- `pnpm check:env`: **exit 0.** It scanned 980 files and reports "29 environment read(s), every one attributable". 52 inherited deviations are baselined, and 1 stale baseline name is a note.
+- **On the current tree, the result matches `main`.** I ran `check:env --report` with this head's detector and with `origin/main`'s detector swapped in, then restored it. The only difference is the known JSDoc false positive at `apps/api/src/utils/require-auth-secret.ts:5`, which this head drops.
+
+## 1. Is F1 closed? Every earlier case, rerun
+
+| Earlier F1 input | `e3dd45b` | `main` |
+| --- | --- | --- |
+| TSX `Don't have an account? <a href={import.meta.env.VITE_SIGNUP_URL}>` … `process.env.STRIPE_SECRET_KEY` … `// We're done` | line 4 `alias` + line 8 named | named, named |
+| `<span>Port</span><b>{process.env.TASKDESK_PORT}</b>` | `alias` | named |
+| `i++ / 2; process.env.X / 1` (also `i--`) | `alias` | named |
+| `foo<Bar>/x; process.env.X` | `alias` | named |
+| `eval("process.env.X")`, `new Function("return process.env.X")` | `alias` | named |
+| `'abc` unterminated, then `process.env.X` on the next line | named `X` | named `X` |
+
+**Every earlier F1 case is now reported.** Where the tokenizer loses track, the read comes out as `alias` rather than named. `alias` is unattributable, so it fails the gate, which is fail-closed. F1(b) holds: strings end at a newline. F1(c) holds: there are regression tests. F1(a) is only partly met, because a span the lexer wrongly thinks is a comment is still exempt. That is finding D1.
+
+## 2. New findings
+
+### D1 — BLOCKING. A false "comment" in JSX hides reads that `main` catches. This gap predates `139d595`.
+
+The backstop exempts every span the tokenizer recorded as a comment. But the tokenizer records `//` and `/*` inside **JSX text**, and inside code that a mis-lexed quote has exposed, as real comments. So a read after them is hidden from both the token pass and the backstop. `main` does not strip comments, so it catches all of these. I found the same misses at `c797fc9`, so the earlier pass missed this and `139d595` did not introduce it.
+
+Each case below was confirmed end to end. I wrote the synthetic file shown, ran `pnpm check:env` (**exit 0, "29 … every one attributable"**), and removed the file. A control file with a bare `process.env.STRIPE_SECRET_KEY` exits 1.
+
+- `apps/web/src/zz-opus-probe.tsx`: `export const Docs = () => <p>See https://example.com/docs {process.env.STRIPE_SECRET_KEY}</p>;`
+  - The `//` in the URL opens a "comment" that runs to the end of the line.
+- `apps/web/src/zz-opus-probe.tsx`:
+  ```tsx
+  export const Glob = () => <code>apps/*</code>;
+  export const k = process.env.STRIPE_SECRET_KEY;
+  /** end */
+  export const z = 1;
+  ```
+  - The `/*` in JSX text opens a "comment" that runs across lines, up to the next `*/` anywhere in the file, such as the end of the next JSDoc block. Every read in between is hidden.
+- `apps/web/src/zz-opus-probe.tsx`: `export const A = () => <p>Don't</p>; export const u = 'https://x.com' + process.env.STRIPE_SECRET_KEY;`
+  - The apostrophe in `Don't` flips which quotes the lexer treats as strings. The real string's `//` then counts as code, and so opens a "comment".
+- In the harness only: `<p>Press ` to open</p>;` followed by `` `https://x.com`; process.env.X `` on the next line.
+  - The stray backtick in JSX text causes the same flip across lines.
+
+These are ordinary React shapes, not adversarial ones: URLs in JSX text, and globs or paths in `<code>`. They are the same class as F1, because a lexer misclassification makes the gate fail open where `main` did not.
+
+**Suggested fix (smallest):** the backstop must not exempt any comment span. It should report every raw match. On today's tree, the only extra report would be the `require-auth-secret.ts:5` JSDoc line. It resolves to an approved name, and `main` already reports it, so this costs nothing new. A narrower option: exempt a comment only when its `//` or `/*` is the first non-whitespace text on its line. Either way, add the four inputs above as tests.
+
+### D2 — BLOCKING. Rest destructuring from `process.env` is reported as a named read of the rest binding (a regression from `main`)
+
+`const { ...rest } = process.env` is reported as `named: "rest"`; `main` reports `alias`. When the binding is given an approved name, the gate passes while the code copies the whole environment:
+
+- `apps/api/src/zz-opus-probe.ts`: `export const { ...TASKDESK_AUTH_SECRET } = process.env;`
+  - `pnpm check:env` gives **exit 0, "30 … every one attributable"**. With `main`'s detector, the same line is `alias`, which is unattributable and fails.
+- `const { DATABASE_URL, ...all } = process.env` is reported as named `DATABASE_URL` + named `all`, when it should be named + `alias`.
+- Cause: the destructuring loop in `findEnvReads` (`env-reads.mjs` about lines 626–645) treats every `id` token in the pattern as a key. It does not check for a preceding `...`.
+- Fix: a `...` inside the pattern makes the whole pattern `alias`.
+- This is also the #332 E3 coverage ask ("rest … destructuring keys staying `alias`"), which is still unpinned. Add a test.
+
+### D3 — NON-BLOCKING, should be tracked (continues F2). Static `process` shapes still fail open, on both heads
+
+The commit title says "fail closed on alternate environment reads". The backstop regex only matches `process` directly followed by `.env` / `?.env`, and it skips any `process` that follows a `.`. So these static, resolvable shapes are still missed by both `e3dd45b` and `main`.
+
+Confirmed end to end in `apps/web/src/zz-opus-probe.tsx` with `STRIPE_SECRET_KEY`: `pnpm check:env` exits 0 for each.
+
+- `(process as any).env.X`
+  - This is the most ordinary one, a common TypeScript idiom.
+- `globalThis?.process.env.X`
+- `const p = (process); p.env.X`
+- `process.env.X`
+  - A unicode escape in an identifier. `process.env` and `\u{65}` are missed too.
+- `window.process.env.X`
+
+Confirmed in the harness only:
+
+- `(<any>process).env.X`
+- `const g = globalThis; g.process.env.X`
+- `const p = globalThis['process']; p.env.X`
+- `const { process: { env } } = globalThis`
+- `Reflect.get(globalThis, 'process').env.X`
+- `const p = require('process'); p.env.X`
+- `import('node:process').then((m) => m.env.X)`
+- `const m = import.meta; m.env.X` and `const { env } = import.meta`
+- `process?.['env'].X`
+- `with (process) { env.X }`
+- `f(process)`
+
+`main` misses all of these too, so none is a regression, and none appears in `apps/` or `packages/` today.
+
+**Suggested direction:** report as `alias` any root `process` token, and any `process` reached from `globalThis`/`global` by any path, that is not consumed as a recognised non-env member access (`process.argv`, `.exit` and similar). Also report any file containing an identifier escape `\u` outside strings. Record this on #342 or a follow-up issue. The file header ("every occurrence of the environment object is classified") and the status wording still overstate coverage.
+
+### D4 — INFORMATIONAL
+
+- **Dynamic code.** `eval('process' + '.env.X')` and `new Function('return pro' + 'cess.env.X')` are missed by both heads. They cannot be resolved statically. Treating any `eval` or `new Function` as `alias` would close it cheaply.
+- **Other runtimes.** `Bun.env.X` and `Deno.env.get('X')` are not detected. Neither is a runtime target of this repository.
+- **Accepted false positives.** These are stricter than `main`, which is the fail-closed direction. None of them fires on today's tree.
+  - A string `'process.env.X'` is now `alias` (on `main`, named `X`).
+  - `const { X } = process.env` without a trailing `;` is now `alias`. Biome's default adds semicolons.
+  - `function f({ X } = process.env)` is now `alias`.
+  - `process[k].NAME`, with any non-literal `k`, is treated as a read of `process.env.NAME`.
+- **Dead code.** `tokenStart` at `env-reads.mjs:681-685` is a three-way ternary whose branches all equal `start`. It has no effect.
+- **Earlier findings.** F3 (`as` / `satisfies`) is fixed and tested: both now give `alias`. F4 is unchanged and harmless.
+
+## 3. Merges from `main`, and #355 / #356
+
+- **Merges.** All five merge commits are clean (empty remerge diff), and the PR's four-file diff against `origin/main` is intact.
+- **#355** (Playwright smoke, merged as `776999d`) added `apps/web/e2e/**` and CI jobs. `check:env` still runs in `ci-fast.yml` (lines 137–138), and so does `test:ci-scripts` (lines 199–218). Both are green at this head. #355 does not touch `env-reads*`.
+- **#356** (scope widening, merged as `3a45fc5`) changed only `ci-cd.md`, `decision-log.md` and its note.
+- **Scope.** The detector's file is in security-review scope, through `scripts/ci/**` (`ci-cd.md` line 157).
+
+## 4. `status.md` (orchestrator-owned; reported only)
+
+The PR's new top entry (`8cc9d6e`) is **mostly accurate**:
+
+- The candidate SHA, "23/23", "29 attributable reads" and "525/525" match my runs.
+- It corrects the earlier false "previously missed read" claim, which is good.
+
+Four inaccuracies:
+
+- It says `pnpm test:ci-scripts` "could not run". That was true only of the author's Bun-shimmed environment. With real Node it runs: 525/88/0.
+- It says the backstop covers "process-import/alias … and TypeScript assertion cases". That is broader than the truth. `process.env as T` is covered; `(process as any).env` and several alias shapes are not (D3).
+- "Outside tokenizer-confirmed comments" is the wording that hides D1: the tokenizer's comments are not confirmed in JSX.
+- The entry is inserted **above** the `# Status` H1 title, as is an earlier entry, so the file no longer starts with its heading.
+
+## 5. Required CI and gates at `e3dd45b` (for the orchestrator; not part of the code verdict)
+
+- **CI.** `gh pr view 352 --json statusCheckRollup` shows every required check green except **`pull request template + security review` = FAILURE**. The three `NOT ENABLED` jobs are skipped.
+- **Template checker.** Run locally against the current body, `check-pr-template.mjs` reports:
+  - the reviewed-head binding needs a delta review of `c797fc9..e3dd45b`. This section supplies that once the body cites it.
+  - there are 2 independent-review checkboxes where exactly one is allowed.
+  - both Opus items are unticked.
+- **Ordinary review.** `## Reviewed by` cites a GPT-6 Luna "integration delta review … for the #338 merge" at `e3dd45b`. It does not clearly say that an ordinary review covered the code in `139d595`.
+  - `139d595` is authored by `Codex GPT-6 <codex-gpt6@taskdesk.local>`, a third commit identity alongside `Codex (GPT-6 Luna)` and `Claude Code`.
+  - The earlier author/reviewer-independence and attribution items (F5 and the gates list above) still apply.
+- **GitHub reviews.** There are none (`reviews: []`).
+- **Waivers.** None are cited.
+
+## Verdict
+
+**CHANGES NEEDED at `e3dd45b09f629f0971f5d0a5862a77db89374204`.**
+
+- **F1 as reported is closed.** Every earlier input is now caught, fail-closed, and tested. The merges are clean, the counts match, and the gate matches `main` on today's tree.
+- **Two regressions from `main` remain.** Each lets an ordinary-looking read pass `check:env`:
+  - **D1:** JSX text containing `//`, `/*`, an apostrophe or a backtick produces false "comments" that the backstop exempts.
+  - **D2:** `const { ...APPROVED_NAME } = process.env` is attributed to an approved name.
+- **Both fixes are small:**
+  - D1: stop exempting comment spans, or exempt only line-leading comments.
+  - D2: a rest element makes the pattern `alias`.
+  - Each needs a regression test using the inputs above.
+- **After the fix,** a delta Opus pass on the new head is required. D3 should be tracked on #342 or a follow-up issue, even though it does not block this PR.
