@@ -1569,9 +1569,13 @@ updated working tree: API typecheck, 31 shadow evaluator unit tests, 15 shadow-m
 Testcontainers integration tests, Biome, Docker image build, isolated Compose migration and
 boot, liveness/readiness probes, and `git diff --check` pass. Three fresh independent
 ordinary reviews passed the source/test remediation; a lightweight review of the final
-comment-only clarification is pending. The #324 per-router before/after deployed-traffic
+comment-only clarification also passed. The #324 per-router before/after deployed-traffic
 coverage report is still unavailable; no synthetic result is represented as deployed
-evidence, so that acceptance item remains open.
+evidence, so that acceptance item remains open. The workflow checks have not refreshed on
+the current stacked-PR head; the previous head's CI was green apart from its pending Opus
+gate. The current GitGuardian check flags the non-secret Helm key name `migration-password`
+in the stacked DB-role change, and the GitHub Advanced Security action failed because its
+requested model is unsupported; neither has been suppressed or represented as passing.
 
 On #10 / PR #355, the documented root `pnpm test:e2e` command was missing from `package.json`.
 Added the root alias and aligned CI and the `test-all` manifest to call it. The protected
