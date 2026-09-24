@@ -391,3 +391,112 @@ should be stated in the entry itself.
 3. **Control-plane edits.** The lane edited `docs/07-planning/status.md`, which is
    orchestrator-owned. Those edits include entries about #323 and #334 that fall outside
    this PR's scope. The decision-log edit is covered by the S2 confirmation.
+
+---
+
+## Delta review 2 (Opus 5.5) at `b3a3e3a`
+
+**Reviewed heads:** `da7912aab5f03ea9482aa347068bfdf0b861bb11` (commissioned), then the final
+head. The PR head moved during this review. `da7912a` was reviewed in full first; then
+`b3a3e3a` was pushed, changing only `docs/07-planning/status.md` (+5/−3, prose).
+
+**Reviewed head:** `b3a3e3a5cfeaba86da6bf1ee9c248c94688fed36`
+
+**Verdict (security gate): CLEAR WITH FINDINGS.** Nothing blocks. The S1/S3 invariants still
+hold. This clearance covers these heads and no others: any later commit outside
+`docs/07-planning/security-reviews/` voids it. No waiver was sought or used. The merge gates
+recorded in the previous delta section are still for the orchestrator to verify; this
+section does not re-clear them.
+
+**Independence.** This was a fresh Opus 5.5 context in a new detached worktree. It authored,
+directed and remediated nothing. Its only write is this section.
+
+### What changed since `7fa9188`
+
+`7fa9188` is an ancestor (no rewrite this time). There are five commits, all authored
+`Codex GPT-6 Luna <codex-gpt-6@taskdesk.local>`, a distinct lane identity:
+
+- `a5441a6`
+- `b1e4db7`
+- `48a0272`
+- `da7912a`
+- `b3a3e3a`
+
+`git diff 7fa9188 b3a3e3a -- .github compose.yml` is **empty**. In `scripts/deploy.sh`, only
+the local-mode certificate block changed (l.172–188). The rest of the delta is
+documentation: `observability.md`, `security-model.md`, `configuration-reference.md`,
+`deployment.md`, `runbook.md`, `decision-log.md` (+18) and `status.md`.
+
+### 1. Local certificate generation and renewal (`scripts/deploy.sh:172–188`)
+
+| Check | Result |
+| --- | --- |
+| Scope | Runs only in `MODE=local`. `production`/`upgrade`/`rollback` never touch `$CERT_DIR` (`deploy/local/certs`, which is gitignored). |
+| What "stale" means | `local_certificate_covers_routes` checks `openssl x509 -checkhost` for `ticket.`, `portal.`, `mail.` and `files.${DOMAIN}`. A missing key, a missing cert, or any host not covered triggers regeneration. I checked this empirically with OpenSSL 3.5.5. The previous wildcard-only certificate (`DNS:*.localhost,DNS:localhost`) **fails** `-checkhost ticket.localhost`, because OpenSSL will not match a wildcard directly under a single-label name. So existing installs regenerate once. The new certificate names each host explicitly, passes all four checks, and is therefore stable on later runs. |
+| Key permissions | OpenSSL 3.5.5 writes `-keyout` as mode **600** (measured, umask 022), and the script then runs `chmod 0600`. The key is never echoed: openssl output goes to `/dev/null`, and nothing prints the key path contents. PASS |
+| Command injection | `DOMAIN` (from the operator's `.env`, defaulting to `localhost`) is double-quoted in every argv position (`-subj`, `-addext`, `-checkhost`). No shell evaluation. PASS. See D6 for the value-level caveat. |
+| Race / symlink | The paths sit inside the operator's own checkout. An attacker would need write access to the repository directory. That is not a new trust boundary, and the behaviour is unchanged from `main`. No finding. |
+| Operator cert overwritten | A hand-placed cert that covers all four hosts is kept. One that is missing any host is **silently replaced**, key included (D7). |
+
+### 2. Diagnostics
+
+- `deploy.sh` gains no new output beyond the unchanged `say` line naming `*.${DOMAIN}`.
+- The runbook's new diagnostic commands print no secret, connection string or env value:
+  - `dc stats --no-stream`;
+  - `pg_stat_activity` grouped by `state`;
+  - `notification` counts by `type`;
+  - `dc logs --since=1h | grep -Ei 'outbox|notification'`.
+  All `psql` calls authenticate through the container's own user and DB variables, with no
+  password on the command line.
+- The removed commands had exported `METRICS_TOKEN` and `$ADMIN_SESSION_COOKIE` into shell
+  history. Removing them reduces exposure.
+- The claims that `/metrics`, port 9464 and `/api/instance/health/deep` are "not currently
+  served" are **verified**: `grep` over `apps/api/src` finds no such route or listener.
+- The runbook attestation checks now pin `--source-ref refs/heads/main` and compare
+  `imageDigest`. **D5 is closed.**
+
+### 3. Earlier invariants
+
+- **S1 holds.** `release.yml` is byte-identical to `7fa9188`: split `build-scan` /
+  `sign-publish`, digest-pinned images, `persist-credentials: false`, step-scoped `GH_TOKEN`.
+- **S3 holds.** `resolve_and_verify_image`, the `--annotations tag=` verification and
+  `compose.yml`'s `repo:tag@digest` rendering are all unchanged.
+
+### New NON-BLOCKING findings
+
+- **D6: `DOMAIN` is not validated before use in X.509 fields.** `deploy.sh:172–187`.
+  - A `DOMAIN` containing `,` adds extra `subjectAltName` entries, including `IP:` or
+    arbitrary `DNS:` entries. One containing `/` adds subject RDNs.
+  - Only the operator controls `.env`, so this is self-inflicted rather than exploitable.
+  - Suggested fix: reject anything outside `^[A-Za-z0-9.-]+$`, the same way
+    `TASKDESK_HSTS_PRELOAD` is validated.
+- **D7: renewal can replace an operator-supplied local cert without keeping a copy.**
+  - Suggested fix: move the old `local.crt`/`local.key` to `*.bak` (or refuse and ask),
+    and print that it happened.
+- **D8 (pre-existing, not introduced here): the generated certificate is a CA.**
+  - `openssl req -x509` applies the default `v3_ca` profile. I measured
+    `basicConstraints: critical, CA:TRUE` on the generated cert.
+  - The script tells the operator to trust `local.crt`. A trusted CA whose key lives in the
+    checkout can mint a certificate for *any* hostname that browser accepts.
+  - Suggested fix: add `-addext basicConstraints=critical,CA:FALSE`,
+    `-addext keyUsage=critical,digitalSignature,keyEncipherment` and
+    `-addext extendedKeyUsage=serverAuth`.
+  - Expiry is also not checked (no `-checkend`). A certificate past 825 days is not
+    renewed automatically.
+
+### Governance note for the orchestrator (not a security finding)
+
+`a5441a6` adds a decision-log entry, "2026-09-24 · P0 ordinary reviews use fresh GPT-6
+contexts while Claude is unavailable", ending "**Decided by:** Thomas, 2026-09-24". The lane
+agent wrote it into an orchestrator-owned surface, and it governs the ordinary-review gate
+for this very PR. This is the same class as S2. The orchestrator must confirm Thomas made
+this decision before relying on it. The lane also edited `status.md` again.
+
+### Tooling at the final head
+
+| Tool | Result |
+| --- | --- |
+| `bash -n scripts/deploy.sh` | OK |
+| shellcheck 0.11.0 | Three warnings, all pre-existing and outside the delta: SC1090 ×2 (`. "$ENV_FILE"`) and SC2034 (l.328). None in the changed block. |
+| `pnpm test:all --list` (the CI-matches-ci-cd.md job) | Exit 0 |
+| `node --test scripts/ci/*.test.mjs scripts/ci/lib/*.test.mjs scripts/ci/probes/*.test.mjs` | 495 of 495 pass |
