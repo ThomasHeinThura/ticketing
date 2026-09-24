@@ -278,6 +278,79 @@ God Mode and should be recorded as one.
 
 ---
 
+## Policy shadow summary
+
+Issue #8, Slice 2's request-path shadow middleware records every request it evaluates to
+`policy_shadow_tally` and, for a disagreement, `policy_shadow_event`
+([data-model.md § Policy shadow evidence](../01-architecture/data-model.md#policy-shadow-evidence-issue-8-slice-2)).
+This is the per-router summary a cut-over PR cites as its "about 7 clean days" evidence —
+run against the deployment's own database, not exposed as an HTTP endpoint.
+
+**Per-router summary for the last 7 days** (agree / disagree / unevaluated counts, by
+router group and outcome):
+
+```sql
+select
+  router_group,
+  outcome,
+  reason_code,
+  sum(count) as total,
+  max(last_seen_at) as last_seen_at
+from policy_shadow_tally
+where day >= (current_date - interval '7 days')
+group by router_group, outcome, reason_code
+order by router_group, outcome, total desc;
+```
+
+**"Clean" means zero *unexplained* disagreements** — every `legacy_allow_policy_deny`,
+`legacy_deny_policy_allow`, `unevaluated` and `evaluator_error` row above for a router group
+must either be fixed or have its `reason_code` explained in the cut-over PR. Every cut-over PR
+must also **paste the summary output as it stood at decision time**, so the evidence a
+decision cited cannot change underneath it once the tables keep receiving writes (the Opus
+review of #323, S7). **`shadow_saturated` is named as never explainable row-by-row**: a router with any such row in the window is not clean, because it means part of that router's traffic was never evaluated at all (the Opus delta of #323, D1).
+
+An event cap can omit details after 50 matching events in a bucket. A non-agree tally bucket
+whose count exceeds its event-row count is therefore not explained row by row and cannot be
+declared clean. Check for such buckets before reviewing the event details:
+
+```sql
+select t.day, t.route_key, t.outcome, t.reason_code,
+       t.count as tally_count, count(e.id) as event_count
+from policy_shadow_tally t
+left join policy_shadow_event e
+  on e.day = t.day
+ and e.route_key = t.route_key
+ and e.outcome = t.outcome
+ and e.reason_code is not distinct from t.reason_code
+where t.day >= (current_date - interval '7 days')
+  and t.outcome <> 'agree'
+group by t.day, t.route_key, t.outcome, t.reason_code, t.count
+having t.count > count(e.id)
+order by t.day, t.route_key, t.outcome;
+```
+
+**Latest disagreements for one router**, to see exactly what tripped:
+
+```sql
+select route_key, outcome, reason_code, legacy_status, policy_status, policy_code,
+       identity_kind, workspace_id, trace_id, created_at
+from policy_shadow_event
+where router_group = :router_group
+order by created_at desc
+limit 50;
+```
+
+**Coverage check** — a router with zero rows in the last 7 days was never actually
+exercised, which the addendum treats the same as "not clean":
+
+```sql
+select router_group, sum(count) as requests_evaluated
+from policy_shadow_tally
+where day >= (current_date - interval '7 days')
+group by router_group
+order by requests_evaluated asc;
+```
+
 ## Useful commands
 
 ```bash

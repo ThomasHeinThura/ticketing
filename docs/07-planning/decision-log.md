@@ -5,23 +5,81 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
-### 2026-09-24 · P0 ordinary reviews use fresh GPT-6 contexts while Claude is unavailable
+### 2026-09-24 · GPT-6 Luna replaces Sonnet for ordinary reviews on active P0 lanes
 
-**Decision:** For the remaining P0 lanes, use two fresh independent GPT-6 contexts for
-ordinary reviews in place of Claude Sonnet while Sonnet capacity is unavailable. Use three
-for broad or high-coupling changes. Record the model, independence and exact reviewed SHA in
-each PR. This temporary substitution does not change review counts, merge gates, or the
-mandatory final independent Opus 5.5 security review for security-scope work.
+**Decision:** For the currently active P0 work, use fresh independent GPT-6 Luna contexts
+for Sonnet-tier implementation and ordinary reviews when the Sonnet provider is at its
+usage limit. This substitution does not change review counts, independence requirements,
+or the exact-head rule. Every security-scope candidate still requires its separate final
+Opus 5.5 review before merge.
 
-**Why:** Thomas explicitly directed the P0 work to continue with the available current
-model after Claude exhausted its limit. Independent review remains possible while Sonnet is
-unavailable; the final Opus checkpoint remains unchanged.
+**Why:** Thomas authorized continued P0 work with the available GPT-6 Luna agent while
+Claude/Sonnet capacity is exhausted; implementation and ordinary review should keep moving
+without representing GPT-6 as Opus.
 
-**Alternatives:** Hold all P0 ordinary reviews until Sonnet capacity returns; treat GPT-6 as
-Opus or waive the security review. Rejected by Thomas's instruction and the unchanged
-security gate.
+**Alternatives:** Stop all P0 implementation until Sonnet capacity returns; treat GPT-6 as
+Opus or waive the Opus gate. Rejected: implementation and ordinary review may proceed, but
+Opus remains mandatory for security-scope work.
 
-**Decided by:** Thomas, 2026-09-24.
+**Decided by:** Thomas, 2026-09-24, in session.
+
+### 2026-09-23 · Require coverage and full-stage smoke contexts in `protect-main` (#10)
+
+**Decision:** The active `protect-main` ruleset now requires the exact `domain coverage (90%)`,
+`integration - Postgres 18`, and `e2e - protected-route redirect` status contexts.
+`integration - Postgres 18` already ran in CI without blocking merges. The other two jobs are
+**first defined by PR #355**. Until #355 merges, no PR can produce those two contexts, so the
+ruleset blocks every merge. #355 must merge first. (Corrected by the orchestrating session
+from #355's Opus review, S5.)
+
+**Why:** A quality gate is effective only when the merge control requires it. The ruleset
+was updated without removing or changing any existing required context; its live state was
+verified after the update. Opus review remains required for the security/control-plane
+changes on the candidate before merge.
+
+**Alternatives:** Leave these as informational checks. Rejected because merge could proceed
+despite failed coverage, database integration, or browser-smoke gates.
+
+**Decided by:** The orchestrating session, 2026-09-23, under Thomas's instruction to continue
+P0 and take the recommended option.
+
+### 2026-09-23 · OpenAPI contract tools and inherited-lint ratchet
+
+**Decision:** Add `@redocly/cli` 2.54.2 as an exact development dependency; run Redocly's
+recommended rules and compare findings to those generated from the immutable `origin/main`
+API contract. Pin `oasdiff` 1.32.1 and verify its Linux x64 release archive with the
+published SHA-256 on every run; fail on `WARN`-level breaking changes against `origin/main`.
+
+**Why:** P0 #10 and this document already require OpenAPI lint and breaking-change detection.
+The inherited spec has five identical-path errors, six ambiguous-path warnings, four missing
+4xx-response warnings, and one missing license warning. Comparing to the base branch allows
+existing contract issues to be tracked without letting new ones enter unnoticed; the
+candidate cannot widen the baseline. The official oasdiff release publishes the binary outside npm, so
+the check pins and verifies the upstream artifact rather than adding an unverified package.
+
+**Alternatives:** Leave the contract check drift-only; disable inherited lint rules; use an
+unpinned network installer. Rejected: these either leave the documented gate incomplete,
+hide all future findings in those categories, or do not verify the downloaded tool.
+
+**Decided by:** Thomas, 2026-09-23 (selected recommended option).
+
+### 2026-09-23 · Domain coverage gate thresholds
+
+**Decision:** Enforce minimum 90% statements, lines, and functions for `packages/domain`;
+report branch coverage but do not threshold it.
+
+**Why:** The existing CI/CD contract says 90% coverage for the domain package, and current
+coverage is above 90% for these three dimensions. Branch coverage is useful diagnostic
+information, but applying the same threshold would silently redefine the documented gate
+which would change what the documented gate means. (An earlier draft of this entry cited
+88.77% branch coverage. At #355's head, branch coverage is 95.15%, so branches are reported
+but not given a threshold, deliberately and not because the branch number fails.)
+
+**Alternatives:** Apply 90% to branches too, or leave the threshold unspecified. Rejected:
+the former exceeds the existing contract without a stated reason; the latter would leave
+the documented gate unenforced.
+
+**Decided by:** Thomas, 2026-09-23 (selected recommended option).
 
 ### 2026-09-23 · Current-model ordinary-review fallback when Sonnet is unavailable; Opus remains mandatory
 
@@ -125,6 +183,61 @@ If any of these is missing, the PR does not merge. It waits, and the PR says wha
 **Why:** Thomas's instruction on 2026-09-23. Claude's spend limit was being reached repeatedly mid-lane, and it is better spent on the Opus-tier review that nothing else on the project can do.
 
 **Decided by:** Thomas, 2026-09-23, in session. The orchestrating Claude session recorded it. Thomas then separately confirmed that the three agents do the **ordinary independent reviews** as well as the implementation, reviewing each other's PRs. He answered that one explicit question after PR #336's first review asked for it, choosing it over keeping ordinary reviews on a fresh Claude Sonnet context. Opus 5.5 stays the security reviewer.
+
+### 2026-09-23 · Sequence #8 shadow-mode tables after #322's migration
+
+**Decision:** Preserve #322's `0068_workspace_role_is_system` migration and its snapshot
+as index 68. Move #8 Slice 2's hand-written shadow-evidence migration to
+`0069_policy_shadow_tables`, append index 69, and chain its snapshot to the new 0068
+snapshot. Keep the shadow-table Drizzle declarations outside `database/schema.ts`, as the
+original #323 decision specifies; update their migration references.
+
+**Why:** #322 merged first, so its existing migration and deployed ordering stay intact. The
+unmerged #323 candidate collided with it on both numeric prefix and journal index. Giving
+the shadow tables the next forward-only slot removes the collision without rewriting either
+migration's contents or folding the shadow tables into #308's shared schema lane.
+
+**Alternatives:** Rewrite or renumber #322's migration — rejected because it is already on
+`main`. Fold the shadow tables into the canonical database schema — rejected because that
+would change the recorded lane boundary and generate a different migration than #323's
+hand-written table contract.
+
+**Decided by:** the orchestrating session, 2026-09-23. It adopted the #323 lane's migration-sequencing fix, which #323's Opus S9 required. This is an implementation sequencing detail, not an owner decision.
+
+### 2026-09-23 · #8 Slice 2's shadow mode: an env switch, two Postgres evidence tables, read-only row-scope exposure
+
+**Decision:** The shadow-mode policy middleware (#8 Slice 2) is built from three parts.
+
+- **Switch.** `TASKDESK_POLICY_SHADOW` is `off` (the default) or `on`. When it is off, the middleware is a no-op with zero queries. UAT runs with it on. This is an interim bridge, in the same pattern as `TASKDESK_STORAGE_DRIVER`, until the `*_feature_flag` tables in `plugin-architecture.md` exist.
+- **Evidence.** Two tables, registered in `data-model.md`:
+  - `policy_shadow_tally` holds per-day counts per `(route_key, outcome, reason_code)`, agreements included. Every request that reaches a router while shadow is on is counted.
+  - `policy_shadow_event` holds non-agreeing outcomes, with the addendum's attributable fields. It stores ids only, never bodies, headers or secrets, and is capped at 50 rows per `(day, route_key, outcome, reason_code)`.
+  - Writes happen after the response and can never change it.
+  - Retention is 30 days. The writer prunes old rows itself, because no jobs runner exists yet (`apps/api/src/jobs/` is absent). The pruning moves to a job when the runner lands.
+- **Row scope.** The existing middleware (`workspace-access-middleware.ts`, `require-work-item-reach.ts`) exposes the ids it has already loaded through read-only `c.set(...)`, with no new query and no behaviour change. A route that still has no evidence is logged as `unevaluated`, with a reason code, never skipped.
+
+**Why:** The #8 addendum requires evidence that is "queryable for at least the whole soak window, not only in container stdout". `observability.md` sends application logs to stdout, kept for "whatever the collector keeps", and the deployment has no queryable log store. So a small Postgres store is the only option that meets the requirement. A per-day tally keeps coverage and summary counts cheap. A capped event list keeps the attributable detail bounded. Without read-only row-scope exposure, almost every project-scoped or work-item-scoped route would be `unevaluated`, and the 7-day soak would prove nothing.
+
+**Alternatives:**
+- Structured stdout logging only. Rejected: it fails the addendum's retention rule.
+- Reusing `audit_log`. Rejected: it has the wrong shape, being hash-chained, append-only, 12-month retention, and "who changed what".
+- Building the `*_feature_flag` tables first. Rejected for now: that is a P4 governance piece of its own, and it would block #8 on unrelated work.
+
+**Coverage in this slice:** `public`/`delegated` routes are fully evaluated. Workspace
+`capability` policies are evaluated when the legacy middleware exposes the target workspace;
+request-sourced policies use `RequestScope`, while row-sourced policies use `RowScope`. A
+denied request whose scope was not exposed is `unevaluated: row_scope_unavailable`;
+`scope_source_unavailable` is reserved for the shadow's own construction artifacts
+(`scope_mismatch`/`scope_source_mismatch`), never a fabricated disagreement. Evaluations
+dropped under saturation are recorded as `unevaluated: shadow_saturated` under the
+affected route's own router group, so a saturated router reads as not-clean. Project/work-item capability
+policies without reach facts, other scopes, `self` and `portal` policies, and requests with no
+resolved identity are also recorded as `unevaluated`, each with a specific reason code. This is
+fail-safe, because a router with any `unevaluated` requests is not clean and cannot cut over.
+Widening coverage is follow-up work (Slice 2b). Because the shadow evaluation runs after the
+response, 2b may load the missing reach facts with extra reads without adding request latency.
+
+**Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation. There was one option that meets the recorded requirement. The Slice 2 lane surfaced the gaps.
 
 ### 2026-09-23 · Built-in role names are reserved; a built-in grant needs a genuine seeded row (`workspace_role.is_system`); existing data is reported, not rewritten (#318)
 
