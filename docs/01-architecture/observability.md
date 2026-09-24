@@ -129,26 +129,27 @@ Sampling: 100% of errors, 100% of requests slower than 1 s, 1% of the rest.
 | --- | --- | --- |
 | `/api/public/health/live` | The process is running | Container liveness. Anonymous |
 | `/api/public/health/ready` | Database reachable, migrations applied | Load balancer readiness. Anonymous |
-| `/api/instance/health/deep` | Also checks Valkey, storage, SMTP, each plugin, backups | God Mode dashboard, monitoring. **`instance:admin` only** (the metrics token does not grant it) — it enumerates every dependency, which is reconnaissance if anonymous |
+| `/api/instance/health/deep` | Planned dependency and plugin diagnostics; not currently served |
 
 `live` never touches a dependency — a liveness probe that fails when Postgres blips will
 restart a healthy container and make an outage worse.
 
-## Errors
+## Errors (planned)
 
-Sentry, configured in God Mode rather than only by environment variable, with:
+The intended error reporting uses Sentry, configured in God Mode rather than only by
+environment variable, with:
 
 - Release tagged to the build's git SHA, so a regression points at a commit.
 - `traceId` attached, linking to logs and traces.
 - PII scrubbed before send.
 - The user's organisation as a tag, so "is this one customer or everyone?" is one click.
 
-Frontend errors are captured too, with source maps uploaded at build time and **not**
-served publicly.
+**Current status:** the application does not include Sentry reporting or frontend source-map
+upload. These are planned behaviors.
 
-## Frontend performance
+## Frontend performance (planned)
 
-Real user monitoring for Core Web Vitals, reported to the API and aggregated:
+The target is real user monitoring for Core Web Vitals, reported to the API and aggregated:
 
 | Metric | Budget |
 | --- | --- |
@@ -158,13 +159,14 @@ Real user monitoring for Core Web Vitals, reported to the API and aggregated:
 | Board render, 200 items | < 500 ms |
 | Route transition | < 300 ms |
 
-These are also asserted in CI against a seeded dataset, so a regression fails a pull
-request rather than being discovered by a user. See
+**Current status:** the app does not report these measurements, and the performance-budget
+CI job is not enabled. These target budgets are not current CI gates. See
 [UX quality gates](../02-design/ux-quality-gates.md).
 
-## Dashboards
+## Dashboards (planned)
 
-Shipped as Grafana JSON in `deploy/observability/dashboards/`:
+The following are target Grafana dashboard panels. No dashboard JSON is currently shipped;
+the panels depend on instrumentation that is also planned.
 
 1. **Service health** — request rate, error rate, latency percentiles, saturation.
 2. **Business** — open work items, SLA states, intake depth, pending approvals.
@@ -172,10 +174,11 @@ Shipped as Grafana JSON in `deploy/observability/dashboards/`:
 4. **Database** — pool, slow queries, table sizes, index hit ratio.
 5. **Frontend** — Web Vitals by route.
 
-## Alerts
+## Alerts (planned)
 
-Starting set. Every alert must be actionable; anything that fires and is routinely
-ignored gets deleted rather than muted.
+These are candidate conditions for a future monitoring setup. TaskDesk does not currently
+ship or activate these alerts. Every alert must be actionable; anything that fires and is
+routinely ignored gets deleted rather than muted.
 
 | Alert | Condition | Severity |
 | --- | --- | --- |

@@ -21,9 +21,9 @@ until the endpoint is implemented and verified.
 ## Triage
 
 1. **Is it up?** `curl https://ticket.<domain>/api/public/health/ready`
-2. **Is it everything or one thing?** `/api/instance/health/deep` lists each dependency and requires an `instance:admin` session.
+2. **Is it everything or one thing?** Check `dc ps`, TaskDesk logs and the database query below. The deep dependency endpoint is planned but not currently served.
 3. **What changed?** Last deploy, last configuration change (God Mode → Audit)
-4. **Who is affected?** One organisation or all — Sentry tags by organisation
+4. **Who is affected?** Compare which workspaces and users report the issue; Sentry reporting is not currently implemented.
 5. **Communicate before investigating.** A five-word status message buys an hour of quiet
 
 ---
@@ -283,7 +283,6 @@ God Mode and should be recorded as one.
 ```bash
 dc logs -f taskdesk
 dc exec postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-taskdesk}"
-curl -s -b "$ADMIN_SESSION_COOKIE" "https://ticket.${DOMAIN}/api/instance/health/deep" | jq   # instance:admin session
 docker stats
 df -h && du -sh /var/lib/docker/volumes/*
 ```
