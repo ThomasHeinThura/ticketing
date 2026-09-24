@@ -104,7 +104,10 @@ packages/ui            ──► (react, Base UI, tailwind only — Radix only p
 - `packages/ui` may not import from `apps/*` or from any feature package. It knows
   nothing about work items.
 - `apps/web` may not import from `apps/api` except through `packages/libs` types.
-- Nothing imports `apps/*`.
+- `packages/libs` may import from `apps/api` only through top-level `import type` or
+  `export type` declarations. Inline named `type` specifiers are treated as runtime edges
+  by the boundary checker.
+- No other package imports `apps/*`.
 
 A `turbo` task plus a dependency-cruiser check enforces this in CI.
 

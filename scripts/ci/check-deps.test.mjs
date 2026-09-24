@@ -57,6 +57,8 @@ test("source scanner finds module edges across JavaScript syntax", () => {
         'export type { AppType } from "@taskdesk/api";',
         'import { type AppType } from "@taskdesk/api";',
         'export { type AppType } from "@taskdesk/api";',
+        'import type from "@taskdesk/api";',
+        'import type AppType from "@taskdesk/api";',
         'import { type } from "@taskdesk/api";',
         'export { type as Type } from "@taskdesk/api";',
         'void import("./lazy.js");',
@@ -71,17 +73,19 @@ test("source scanner finds module edges across JavaScript syntax", () => {
     [
       { specifier: "@taskdesk/ui", line: 1, typeOnly: false },
       { specifier: "@taskdesk/api", line: 2, typeOnly: true },
-      { specifier: "@taskdesk/api", line: 3, typeOnly: true },
-      { specifier: "@taskdesk/api", line: 4, typeOnly: true },
+      { specifier: "@taskdesk/api", line: 3, typeOnly: false },
+      { specifier: "@taskdesk/api", line: 4, typeOnly: false },
       { specifier: "@taskdesk/api", line: 5, typeOnly: false },
-      { specifier: "@taskdesk/api", line: 6, typeOnly: false },
-      { specifier: "./lazy.js", line: 7, typeOnly: false },
-      { specifier: "<non-static module specifier>", line: 8, typeOnly: false },
-      { specifier: "node:fs", line: 9, typeOnly: false },
+      { specifier: "@taskdesk/api", line: 6, typeOnly: true },
+      { specifier: "@taskdesk/api", line: 7, typeOnly: false },
+      { specifier: "@taskdesk/api", line: 8, typeOnly: false },
+      { specifier: "./lazy.js", line: 9, typeOnly: false },
       { specifier: "<non-static module specifier>", line: 10, typeOnly: false },
-      { specifier: "./legacy.cjs", line: 11, typeOnly: false },
+      { specifier: "node:fs", line: 11, typeOnly: false },
       { specifier: "<non-static module specifier>", line: 12, typeOnly: false },
-      { specifier: "dns/promises", line: 13, typeOnly: false },
+      { specifier: "./legacy.cjs", line: 13, typeOnly: false },
+      { specifier: "<non-static module specifier>", line: 14, typeOnly: false },
+      { specifier: "dns/promises", line: 15, typeOnly: false },
     ],
   );
 });
@@ -113,6 +117,10 @@ test("workspace analyzer permits libs' type contract and rejects forbidden app i
     'import type { AppType } from "@taskdesk/api";\n',
   );
   await writeFile(
+    path.join(libs, "src/runtime.ts"),
+    'import type from "@taskdesk/api";\n',
+  );
+  await writeFile(
     path.join(web, "src/client.ts"),
     'import type { AppType } from "@taskdesk/api";\n',
   );
@@ -131,6 +139,7 @@ test("workspace analyzer permits libs' type contract and rejects forbidden app i
     messages,
     /apps\/web\/src\/client\.ts.*directly from apps\/api/s,
   );
+  assert.match(messages, /packages\/libs\/src\/runtime\.ts.*from apps\/\*\*/s);
   assert.match(messages, /packages\/ui\/src\/index\.ts.*from apps\/\*\*/s);
   assert.match(messages, /packages\/domain\/src\/index\.ts.*from apps\/\*\*/s);
   assert.doesNotMatch(messages, /packages\/libs\/src\/client\.ts/);

@@ -222,28 +222,6 @@ function sourceImports(source) {
     token?.kind ===
       SyntaxKind[`${name[0].toUpperCase()}${name.slice(1)}Keyword`] ||
     (token?.kind === SyntaxKind.Identifier && token.text === name);
-  const bindingsAreTypeOnly = (start) => {
-    if (tokens[start]?.kind !== SyntaxKind.OpenBraceToken) return false;
-    let atBinding = true;
-    let bindingCount = 0;
-    for (let cursor = start + 1; cursor < tokens.length; cursor += 1) {
-      if (tokens[cursor].kind === SyntaxKind.CloseBraceToken)
-        return bindingCount > 0;
-      if (tokens[cursor].kind === SyntaxKind.CommaToken) {
-        atBinding = true;
-      } else if (atBinding) {
-        if (
-          !keyword(tokens[cursor], "type") ||
-          tokens[cursor + 1]?.kind !== SyntaxKind.Identifier
-        )
-          return false;
-        bindingCount += 1;
-        atBinding = false;
-      }
-    }
-    return false;
-  };
-
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
     const next = tokens[index + 1];
@@ -270,13 +248,14 @@ function sourceImports(source) {
         addLiteral(next);
         continue;
       }
-      const typeOnly = keyword(next, "type");
+      const typeOnly =
+        keyword(next, "type") &&
+        tokens[index + 2]?.kind !== SyntaxKind.FromKeyword;
       for (let cursor = index + 1; cursor < tokens.length; cursor += 1) {
         if (tokens[cursor].kind === SyntaxKind.SemicolonToken) break;
         if (keyword(tokens[cursor], "from")) {
           const specifier = tokens[cursor + 1];
-          if (isString(specifier))
-            addLiteral(specifier, typeOnly || bindingsAreTypeOnly(index + 1));
+          if (isString(specifier)) addLiteral(specifier, typeOnly);
           else
             imports.push({
               specifier: DYNAMIC_SPECIFIER,
@@ -297,7 +276,10 @@ function sourceImports(source) {
       continue;
     }
     if (keyword(token, "export")) {
-      const typeOnly = keyword(next, "type");
+      const typeOnly =
+        keyword(next, "type") &&
+        (tokens[index + 2]?.kind === SyntaxKind.OpenBraceToken ||
+          tokens[index + 2]?.kind === SyntaxKind.AsteriskToken);
       const binding = typeOnly ? tokens[index + 2] : next;
       if (
         binding?.kind !== SyntaxKind.OpenBraceToken &&
@@ -308,12 +290,7 @@ function sourceImports(source) {
         if (tokens[cursor].kind === SyntaxKind.SemicolonToken) break;
         if (keyword(tokens[cursor], "from")) {
           const specifier = tokens[cursor + 1];
-          if (isString(specifier))
-            addLiteral(
-              specifier,
-              typeOnly ||
-                bindingsAreTypeOnly(binding === next ? index + 1 : index + 2),
-            );
+          if (isString(specifier)) addLiteral(specifier, typeOnly);
           else
             imports.push({
               specifier: DYNAMIC_SPECIFIER,

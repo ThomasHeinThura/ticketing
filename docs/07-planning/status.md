@@ -1630,6 +1630,15 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
+### 2026-09-24 · P0 #10 dependency-boundary gate
+
+PR #361 implements and enables the workspace dependency checker. Review rounds found
+boundary gaps in source parsing; the scanner now rejects non-static module paths and the
+package-boundary doc requires explicit `import type`/`export type` for the `packages/libs`
+API type seam. The checker passes across 9 workspace packages/apps and 981 source files;
+focused tests pass 5/5 and the full CI-script suite passes 513/513. Independent review and the required Opus
+security review remain gates; no merge or P0 completion is claimed.
+
 ### 2026-09-24 · P0 continuation — reviewer substitution recorded; shadow-scope findings fixed
 
 Thomas authorized current GPT-6 Luna contexts for Sonnet-tier implementation and ordinary
