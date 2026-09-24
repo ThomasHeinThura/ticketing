@@ -328,7 +328,14 @@ function nonDueDateCursorCondition(
   // Writing the OR-expansion directly, with an explicit `id > cursor.id` tie-break
   // regardless of `dir`, is what actually matches the order `workItemOrderBy`
   // produces.
-  return sql`(${primary} ${op} ${cursor.v}) or (${primary} = ${cursor.v} and ${workItemTable.id} > ${cursor.id})`;
+  // Top-level wrapping parens are load-bearing: this expression is combined with
+  // `filterConditions` via drizzle's `and(...)` in `controllers/list-work-items.ts`,
+  // and `and()` does NOT parenthesise raw `sql` children -- without the outer
+  // `(...)`, the leading `or` here would escape the surrounding `AND`, and a page
+  // request would silently drop the project/workspace scope filters (#320 security
+  // review, D0, reproduced live: any authenticated caller's `nextCursor` returned
+  // rows from every workspace).
+  return sql`((${primary} ${op} ${cursor.v}) or (${primary} = ${cursor.v} and ${workItemTable.id} > ${cursor.id}))`;
 }
 
 /**
@@ -363,7 +370,11 @@ function dueDateCursorCondition(
   // Same reasoning as `nonDueDateCursorCondition` above: no row-value tuple compare
   // (it would apply `dir`'s operator to the `id` tie-break too, which must always be
   // ascending) -- the OR-expansion, with an explicit `id > cursor.id` tie-break.
-  return sql`(${isNullExpr} = 1) or (${isNullExpr} = 0 and ((${workItemTable.dueDate} ${op} ${cursorDate}) or (${workItemTable.dueDate} = ${cursorDate} and ${workItemTable.id} > ${cursor.id})))`;
+  // Outer parens are load-bearing here too -- see `nonDueDateCursorCondition`'s
+  // comment: drizzle's `and()` does not parenthesise raw `sql` children, so an
+  // unwrapped leading `or` would escape the surrounding project/workspace scope
+  // `AND` in `controllers/list-work-items.ts` (#320 security review, D0).
+  return sql`((${isNullExpr} = 1) or (${isNullExpr} = 0 and ((${workItemTable.dueDate} ${op} ${cursorDate}) or (${workItemTable.dueDate} = ${cursorDate} and ${workItemTable.id} > ${cursor.id}))))`;
 }
 
 /** The keyset `WHERE` continuation clause -- this is what makes the walk gapless and

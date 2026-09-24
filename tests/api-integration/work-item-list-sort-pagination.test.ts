@@ -1037,4 +1037,201 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
       expect(row?.assigneeName).toBe("Real Teammate");
     });
   });
+
+  describe("#320 security review D0: cursor OR-clause scope escape (BLOCKING)", () => {
+    /**
+     * `nonDueDateCursorCondition`/`dueDateCursorCondition` (`list-query.ts`) each
+     * returned a bare `(A) or (B)` `SQL` fragment. `listWorkItems` (`controllers/
+     * list-work-items.ts`) pushes that fragment into `pageConditions` alongside the
+     * project/workspace scope and archived/deleted exclusion, then combines all of
+     * them with drizzle's `and(...)`. drizzle's `and()` does NOT parenthesise raw
+     * `sql` children -- it just joins them with literal ` and `/` or ` text -- so the
+     * emitted SQL was effectively:
+     *
+     *   ... AND archived_at IS NULL AND deleted_at IS NULL AND (A) or (B)
+     *
+     * which Postgres parses as `(... AND (A)) OR (B)`, not `... AND ((A) OR (B))`.
+     * Any normal `nextCursor` request (`B`, the "equal to the boundary value, id
+     * greater" tie-break branch) evaluated with NO project/workspace/archived/deleted
+     * scoping at all -- an authenticated member of any workspace could walk another
+     * workspace's project (including archived/deleted rows) just by requesting a
+     * second page.
+     *
+     * This test reproduces that live: an attacker walks their OWN project across
+     * every sort field and both directions with `limit=1` (forcing a real
+     * `nextCursor` on every step), and a completely unrelated victim workspace holds
+     * rows designed to catch the specific failure shapes above -- a null-due item (the
+     * escaped null-bucket branch), a `number` that collides with one of the
+     * attacker's own items (the escaped equality-tie-break branch), plus an archived
+     * and a soft-deleted item (the escaped `archivedAt`/`deletedAt` exclusion, which
+     * sat in the SAME broken `and(...)` chain).
+     */
+    it("a normal nextCursor walk, on every sort field and direction, never crosses into another workspace's project -- including its archived and deleted rows", async () => {
+      const attacker = await setupProject();
+      mockAuthenticatedSession(attacker.creator.user);
+      const { app } = createApp();
+
+      // Attacker's own items: enough variety (mixed priority, some null, mixed
+      // titles/due dates) that every sort field/direction actually produces
+      // multiple pages at limit=1, and that the walk exercises both the "real
+      // value" and "null bucket" branches of the cursor condition on the
+      // attacker's OWN data too.
+      const a1 = await createItem(
+        app,
+        attacker.project.id,
+        attacker.type.id,
+        "Alpha",
+        "urgent",
+      );
+      const a2 = await createItem(
+        app,
+        attacker.project.id,
+        attacker.type.id,
+        "Beta",
+        "high",
+      );
+      const a3 = await createItem(
+        app,
+        attacker.project.id,
+        attacker.type.id,
+        "Gamma",
+        "low",
+      );
+      const a4 = await createItem(
+        app,
+        attacker.project.id,
+        attacker.type.id,
+        "Delta",
+      );
+      const a5 = await createItem(
+        app,
+        attacker.project.id,
+        attacker.type.id,
+        "Epsilon",
+        "medium",
+      );
+      await setDueDate(app, a1.key, a1.version, "2026-10-01T00:00:00.000Z");
+      await setDueDate(app, a2.key, a2.version, "2026-11-01T00:00:00.000Z");
+      // a3, a4, a5 keep a null due date -- attacker's own null bucket.
+
+      const attackerIds = new Set([a1, a2, a3, a4, a5].map((i) => i.id));
+      // Every attacker item is #1-5 in its own project, so `a1.number === 1`,
+      // exactly the victim's own first item's number below -- the equality-tie-break
+      // branch of `nonDueDateCursorCondition`/`dueDateCursorCondition` (the one
+      // whose escape actually leaks) is only reachable on a REAL match, so this
+      // collision is what makes that branch fire for real rather than only the
+      // `>`/`<` branch.
+      expect(a1.number).toBe(1);
+
+      // A completely unrelated victim workspace/project -- different creator,
+      // different workspace, never granted any access to the attacker. Items are
+      // created under the VICTIM's own session (a real cross-workspace caller would
+      // never be able to create these), then the session switches back to the
+      // attacker before any list/walk call below.
+      const victim = await setupProject();
+      mockAuthenticatedSession(victim.creator.user);
+      const v1 = await createItem(
+        app,
+        victim.project.id,
+        victim.type.id,
+        "VictimSecretNullDue",
+      ); // v1.number === 1, colliding with a1.number -- and keeps a null due date.
+      expect(v1.number).toBe(1);
+      const v2 = await createItem(
+        app,
+        victim.project.id,
+        victim.type.id,
+        "VictimSecretArchived",
+        "urgent",
+      );
+      const v3 = await createItem(
+        app,
+        victim.project.id,
+        victim.type.id,
+        "VictimSecretDeleted",
+        "urgent",
+      );
+      await db
+        .update(schema.workItemTable)
+        .set({ archivedAt: new Date() })
+        .where(eq(schema.workItemTable.id, v2.id));
+      await db
+        .update(schema.workItemTable)
+        .set({ deletedAt: new Date() })
+        .where(eq(schema.workItemTable.id, v3.id));
+
+      const victimIds = new Set([v1.id, v2.id, v3.id]);
+      const victimTitles = [
+        "VictimSecretNullDue",
+        "VictimSecretArchived",
+        "VictimSecretDeleted",
+      ];
+
+      // Back to the attacker's own session for every list/walk call below.
+      mockAuthenticatedSession(attacker.creator.user);
+
+      for (const sort of ["key", "title", "priority", "dueDate"] as const) {
+        for (const dir of ["asc", "desc"] as const) {
+          const walked = await walkCursor(
+            app,
+            attacker.project.id,
+            sort,
+            dir,
+            20,
+          );
+
+          // The walk must be exactly the attacker's own 5 items -- complete, no
+          // gaps, no duplicates.
+          expect(walked).toHaveLength(5);
+          expect(new Set(walked).size).toBe(5);
+          expect(new Set(walked)).toEqual(attackerIds);
+
+          // No victim id ever surfaces.
+          for (const id of walked) {
+            expect(victimIds.has(id)).toBe(false);
+          }
+        }
+      }
+
+      // Belt and suspenders on the title check the task asked for directly: fetch
+      // every page of the attacker's own project across every sort/dir and assert
+      // the raw response body text never contains a victim title or id -- not just
+      // the parsed `id` field, in case a title leaked through some other field.
+      for (const sort of ["key", "title", "priority", "dueDate"] as const) {
+        for (const dir of ["asc", "desc"] as const) {
+          let cursor: string | null = null;
+          let hasMore = true;
+          let steps = 0;
+          while (hasMore) {
+            steps += 1;
+            if (steps > 20) throw new Error("did not terminate");
+            const query = `sort=${sort}&dir=${dir}&limit=1${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
+            const response = await list(app, attacker.project.id, query);
+            expect(response.status).toBe(200);
+            const raw = JSON.stringify(response.body);
+            for (const title of victimTitles) {
+              expect(raw).not.toContain(title);
+            }
+            for (const id of victimIds) {
+              expect(raw).not.toContain(id);
+            }
+            const body = response.body as ListBody;
+            cursor = body.page.nextCursor;
+            hasMore = body.page.hasMore;
+          }
+        }
+      }
+
+      // And the victim's own project, listed by the victim, still only ever shows
+      // its own (non-archived, non-deleted) row -- proving the fix didn't just hide
+      // the leak from the attacker's query shape while still corrupting the
+      // victim's own scope.
+      mockAuthenticatedSession(victim.creator.user);
+      const victimOwnList = await list(app, victim.project.id, "limit=200");
+      expect(victimOwnList.status).toBe(200);
+      const victimBody = victimOwnList.body as ListBody;
+      expect(victimBody.data.map((i) => i.id)).toEqual([v1.id]);
+      expect(victimBody.meta.total).toBe(1);
+    });
+  });
 });
