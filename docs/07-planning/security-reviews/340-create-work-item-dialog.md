@@ -181,3 +181,94 @@ At `7294ace`, as of this review:
 - S2: the type-existence oracle in `create-work-item.ts`
 - S4: the priority-on-create capability
 - The PR's own "Not done" item: the list's State column renders raw ids
+
+---
+
+## Delta review — `7294ace` → `11478fe` (2026-09-24)
+
+**Reviewer:** Opus 5.5, a fresh independent context, commissioned by the orchestrating session. It did not author, direct or remediate any delta commit.
+**Reviewed head:** `11478fec9b8ed635d4a3d3fef0f3e6c0837901f6`
+**Delta commits:**
+- `0bf85da`: web, the empty-types message gate plus tests
+- `098e6ba`: merge of `main` at `99a528c`
+- `f9b9c3d`: the S1 fixture fix
+- `e31a075`: merge of my note commit `1789a18`
+- `11478fe`: the S3 tests
+
+All five are authored `Claude Code <noreply@anthropic.com>`.
+**Private DB:** `pr340_opus_d_test` on td-lane-pg, dropped afterwards.
+
+### Delta verdict
+
+**CLEAR WITH FINDINGS.**
+- S1 and S3 are resolved, and each fix is pinned by a test that goes red when mutated.
+- The security-scope code is byte-identical to the head I reviewed.
+- Both merges are clean.
+- No new security finding.
+- S2 and S4 remain non-blocking. They are filed as #347 and #348 (both open).
+- Two gate and attestation items for the merging session follow (G1 and G2). They are not code findings, and deciding them isn't this review's call.
+
+### 1. S1: resolved
+
+- `f9b9c3d` makes `addWorkspaceMember` (`tests/api-integration/work-item-types.test.ts`) insert a `workspace_role` row with `isSystem: true` for every role except `owner`. That matches `seed-default-workspace-roles.ts`, where owner never gets a row.
+- The viewer assertion is unchanged: `toBe(200)`.
+- It also adds a negative control: a member whose role is merely *named* `viewer`, backed by an `isSystem: false` row, gets **403**.
+- The `customer` case now also carries a genuine row, so its 403 comes from the missing capability rather than a missing row. That makes the test stronger, not weaker.
+- **Mutations:**
+  - Helper `isSystem: true → false`: the viewer test goes red.
+  - Negative control `isSystem: false → true`: the impostor test goes red.
+  - Both were reverted, and `git status` was clean.
+- **Against current `main`:** `origin/main` is at `7bebaf6`, 4 commits past the branch's merged `99a528c` (#308, #345, #350, #351). None of them touches a file this PR changes. I merged `7bebaf6` into the head in a scratch worktree:
+  - `work-item-types.test.ts` + `work-item-create-read-list.test.ts`: **32/32**
+  - `test:permissions`: **80/80**
+
+### 2. S3: resolved
+
+- **Cache key:** `use-get-work-item-types.test.tsx` renders the real hook, backed by a real `QueryClient`, for `ws-a` and then `ws-b`. It asserts the cache holds exactly `[["work-item-types","ws-a"],["work-item-types","ws-b"]]`. **Mutation:** dropping `workspaceId` from the key turns *"keys the cache per workspace…"* red.
+- **Markup as text:** the new dialog case selects a type named `<img src=x onerror=alert(1)>`. It asserts the dialog contains no `img` element and that the trigger's text content is the literal string. **Mutation:** rendering `type.name` through `dangerouslySetInnerHTML` turns *"renders a type name containing markup as literal text…"* red.
+- Both mutations were reverted, and `git status` was clean.
+- `0bf85da`'s one production change only tightens the empty-message condition to `types !== undefined && types.length === 0`. It isn't security-relevant.
+
+### 3. The merges
+
+- **`098e6ba`** (merge of `99a528c`): `git merge-tree --write-tree 0bf85da 99a528c` reproduces its tree exactly (`f5c4b69b…`), so it carries no hand edits.
+- **`e31a075`** (merge of `1789a18`): `git merge-tree --write-tree f9b9c3d 1789a18` reproduces its tree exactly (`49155928…`). Its only change against its first parent is the addition of this note file (+183 lines).
+- **Security-scope code:** `git diff 7294ace 11478fe -- apps/api/src/work-item` is empty. The PR's own API, policy, matrix and contract diff against the merge base (`99a528c`) is the same 7 files and 249 lines I reviewed. Everything else in `7294ace..11478fe` is `main`'s own content (#322/#318, #336), plus the test and web changes above.
+
+### 4. What `e31a075` did to this note
+
+**Nothing beyond carrying it in.** It is a true two-parent merge of my commit `1789a18`, and `git diff 1789a18 11478fe -- docs/07-planning/security-reviews/340-create-work-item-dialog.md` is empty. The note was byte-identical at `11478fe` before this section was appended.
+
+Everything above the rule is still accurate *as a record of `7294ace`*. The status it recorded has since moved:
+- S1 and S3 are fixed.
+- S2 and S4 are filed.
+- S5 is corrected in the body.
+- The base is now `99a528c`.
+- #336 has merged.
+- Ordinary reviews are now recorded.
+
+### 5. Suites at `11478fe`
+
+| Suite | Result |
+| --- | --- |
+| API integration | 81 files, **1113/1113** |
+| API unit | 55 files, **441/441** |
+| `test:permissions` (no `apps/web/dist` present) | 10 files, **80/80** |
+| Web | 67 files, **297/297** |
+| `check:openapi` | matches (107 operations) |
+| `node --test 'scripts/ci/**/*.test.mjs'` | 495 tests, 88 suites, 0 fail |
+| `check-pr-template.mjs --body` (current body) | red only for the reason this section clears: no Opus `**Reviewed head:**` line for `11478fe`, and the independent-review box is unticked pending it |
+
+### G1: Is the ordinary review independent by *tool*? (gate question for the merging session)
+
+- `## Implemented by`: **DeepSeek V4.1 Flash (GitHub Copilot)**.
+- The ordinary review and its delta: **GitHub Copilot (DeepSeek V4 Pro)**.
+- The alignment check: **GitHub Copilot (GPT 5.6 Sol)**.
+
+The rule that landed with #336 on `main` says: "The same agent or tool is never both author and ordinary reviewer." #345 and #351 relax *which model* may review, but #351 says it "does not change reviewer independence". On the attestations as written, author and reviewer share the GitHub Copilot tool, with different models in fresh contexts. Whether that satisfies "agent or tool" is for the merging session to decide against the decision log, or for Thomas. This review doesn't clear or waive it.
+
+### G2: The commit-identity note in the body is inaccurate
+
+The body says commits made after #336 landed "will use the session's own identity". But `f9b9c3d`, `e31a075` and `11478fe` were all made after `99a528c` (#336) was on the branch, and all three are still authored `Claude Code <noreply@anthropic.com>`. That is the identity #336's rule says no lane agent may use.
+
+The rule allows such a mismatch only if it is noted on the PR, and it's only partly noted: the body's own forward-looking claim is contradicted by the log. The body needs a correction so that attestation and commits reconcile. This is a record fix, and nothing in the code depends on it.
