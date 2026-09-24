@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { getDatabasePool, schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -11,10 +11,10 @@ import {
   requireRow,
 } from "./helpers/fixtures";
 
-function responseShape(response: Response) {
+async function responseShape(response: Response) {
   return {
     status: response.status,
-    body: response.clone().text(),
+    body: await response.clone().text(),
     headers: [...response.headers.entries()].sort(([a], [b]) =>
       a.localeCompare(b),
     ),
@@ -61,15 +61,11 @@ async function createApiKeyFor(userId: string): Promise<string> {
 }
 
 async function compareResponses(foreign: Response, missing: Response) {
-  expect(await responseShape(foreign).body).toBe(
-    await responseShape(missing).body,
-  );
-  expect(foreign.status).toBe(missing.status);
-  expect(
-    [...foreign.headers.entries()].sort(([a], [b]) => a.localeCompare(b)),
-  ).toEqual(
-    [...missing.headers.entries()].sort(([a], [b]) => a.localeCompare(b)),
-  );
+  const [foreignShape, missingShape] = await Promise.all([
+    responseShape(foreign),
+    responseShape(missing),
+  ]);
+  expect(foreignShape).toEqual(missingShape);
 }
 
 async function foreignAssetFixture() {
@@ -357,6 +353,22 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     await compareResponses(foreignLabelResponse, missingLabelResponse);
     expect(foreignLabelResponse.status).toBe(404);
 
+    const foreignLabelDelete = await app.request(
+      `/api/label/${foreignLabel.id}`,
+      { method: "DELETE" },
+    );
+    const missingLabelDelete = await app.request(
+      "/api/label/missing-caller-owned-predicate",
+      { method: "DELETE" },
+    );
+    await compareResponses(foreignLabelDelete, missingLabelDelete);
+    expect(foreignLabelDelete.status).toBe(404);
+    expect(
+      await db.query.labelTable.findFirst({
+        where: eq(schema.labelTable.id, foreignLabel.id),
+      }),
+    ).toBeDefined();
+
     expect((await app.request(`/api/task/${ownTask.id}`)).status).toBe(200);
     const foreignTaskResponse = await app.request(
       `/api/task/${foreignTask.id}`,
@@ -367,17 +379,42 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     await compareResponses(foreignTaskResponse, missingTaskResponse);
     expect(foreignTaskResponse.status).toBe(404);
 
-    // `lookupMany` uses the same `inArray AND reach` shape. A mixed bulk write
-    // may update the caller's row, but must never mutate the foreign row.
-    const bulk = await app.request("/api/task/bulk", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        taskIds: [ownTask.id, foreignTask.id],
-        operation: "updatePriority",
-        value: "high",
-      }),
-    });
+    // `lookupMany` must filter by both the submitted IDs and reach. Comparing
+    // foreign-only with missing-only while caller-owned rows exist catches the
+    // prior SQL-precedence regression; a mixed write also verifies no foreign
+    // row is mutated.
+    const querySpy = vi.spyOn(getDatabasePool(), "query");
+    const bulkUpdate = (taskIds: string[]) =>
+      app.request("/api/task/bulk", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          taskIds,
+          operation: "updatePriority",
+          value: "high",
+        }),
+      });
+    const foreignOnly = await bulkUpdate([foreignTask.id]);
+    const foreignLookup = querySpy.mock.calls
+      .map(([query]) => queryText(query).toLowerCase())
+      .find((query) => query.includes('from "task"') && query.includes(" in "));
+    querySpy.mockClear();
+    const missingOnly = await bulkUpdate([`missing-${randomUUID()}`]);
+    const missingLookup = querySpy.mock.calls
+      .map(([query]) => queryText(query).toLowerCase())
+      .find((query) => query.includes('from "task"') && query.includes(" in "));
+
+    await compareResponses(foreignOnly, missingOnly);
+    expect(foreignOnly.status).toBe(404);
+    expect(await foreignOnly.text()).toBe("No tasks found");
+    expect(foreignLookup).toMatch(
+      /\bid\b[\s\S]*\bin\s*\([^)]*\)\s+and\s+\(\s*exists/i,
+    );
+    expect(missingLookup).toMatch(
+      /\bid\b[\s\S]*\bin\s*\([^)]*\)\s+and\s+\(\s*exists/i,
+    );
+
+    const bulk = await bulkUpdate([ownTask.id, foreignTask.id]);
     expect(bulk.status).toBe(200);
     const persistedTasks = await db
       .select({ id: schema.taskTable.id, priority: schema.taskTable.priority })
