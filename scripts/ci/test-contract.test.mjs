@@ -2,13 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { unapprovedProblems } from "./test-contract.mjs";
 
-const baseline = [["error", "no-identical-paths", "#/paths/~1task~1{id}"]];
 const problem = (severity, ruleId, pointer) => ({
   severity,
   ruleId,
   location: [{ pointer }],
   message: "lint message",
 });
+const baseline = [
+  problem("error", "no-identical-paths", "#/paths/~1task~1{id}"),
+];
 
 test("the Redocly baseline accepts known inherited findings", () => {
   assert.deepEqual(
@@ -45,4 +47,20 @@ test("diagnostics cannot be hidden by downgrading severity", () => {
     ).length,
     1,
   );
+});
+
+test("a different diagnostic at the same rule and pointer is new", () => {
+  const inherited = problem(
+    "error",
+    "no-identical-paths",
+    "#/paths/~1task~1{id}",
+  );
+  const replacement = {
+    ...inherited,
+    message: "different contract problem at the same location",
+  };
+
+  assert.deepEqual(unapprovedProblems([replacement], [inherited]), [
+    replacement,
+  ]);
 });

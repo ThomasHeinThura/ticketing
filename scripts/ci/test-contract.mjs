@@ -12,6 +12,7 @@ const root = path.resolve(
 );
 const contract = "tests/api-contract/openapi.json";
 const version = "1.32.1";
+const redoclyConfig = "scripts/ci/redocly.yaml";
 const archiveName = `oasdiff_${version}_linux_amd64.tar.gz`;
 const archiveSha256 =
   "7c8939fc49b75ee11fec66a5b83b37a2fca6aee109fed85013b1ba2ac2a1ee7f";
@@ -21,13 +22,14 @@ export function diagnosticKey(problem) {
     problem.severity,
     problem.ruleId,
     problem.location?.[0]?.pointer ?? "",
+    problem.message ?? "",
   ]);
 }
 
 export function unapprovedProblems(problems, baselineProblems) {
   const available = new Map();
-  for (const tuple of baselineProblems) {
-    const key = JSON.stringify(tuple);
+  for (const problem of baselineProblems) {
+    const key = diagnosticKey(problem);
     available.set(key, (available.get(key) ?? 0) + 1);
   }
 
@@ -79,6 +81,8 @@ function redoclyReport(specPath, label) {
     "exec",
     "redocly",
     "lint",
+    "--config",
+    redoclyConfig,
     "--format=json",
     specPath,
   ]);
@@ -115,11 +119,7 @@ async function redoclyLint(baseSpec) {
 
   const unexpected = unapprovedProblems(
     current.problems ?? [],
-    baseline.problems?.map((problem) => [
-      problem.severity,
-      problem.ruleId,
-      problem.location?.[0]?.pointer ?? "",
-    ]) ?? [],
+    baseline.problems ?? [],
   );
   if (unexpected.length > 0) {
     process.stderr.write(

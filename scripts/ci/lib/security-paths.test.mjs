@@ -42,6 +42,10 @@ const MUST_REQUIRE_REVIEW = [
   "scripts/ci/lib/diff.mjs",
   "scripts/ci/lib/security-paths.mjs",
   "scripts/ci/env-baseline.json",
+  "scripts/ci/redocly.yaml",
+  "packages/domain/vitest.config.ts",
+  "apps/web/playwright.config.ts",
+  "apps/web/e2e/auth-redirect.spec.ts",
   "turbo.json",
   // the authoritative document that defines the list
   "docs/04-engineering/ci-cd.md",
