@@ -259,3 +259,137 @@ Two private DBs on td-lane-pg, both dropped afterwards: `pr320_opus_delta_test` 
 - S1, S2 and S3 are otherwise correctly fixed.
 - D1–D4 are non-blocking. D1 and D3 can go in the same fix-up.
 - After the fix, a narrow delta pass is needed on `list-query.ts` and its test, with the rendered SQL checked.
+
+## Re-review after D0 fix (Opus 5.5)
+
+**Reviewer:** Opus 5.5, a fresh, independent context. I did not author, direct or remediate the fix, and I am not the ordinary reviewer. This pass follows decision-log PR #366: every clearance is redone at the new head.
+**Reviewed head:** `2403374b80b8b0bd3518d60ece1740715d509ef2`
+**Date:** 2026-09-24
+
+### Head verification
+
+- `git fetch origin pull/320/head` → `2403374b80b8b0bd3518d60ece1740715d509ef2`. `origin/feat/310-work-item-list-api` is the same SHA.
+- First-parent chain since the delta review:
+  - `d6c0243`, the delta note;
+  - `ace3a85`, a merge of `origin/main` at `3c31081`;
+  - `92d8989`, the D0 fix and its test;
+  - `2403374`, the regenerated `openapi.json`.
+- The only change to `list-query.ts` since `b6e3454` is `92d8989`'s outer parentheses and comments.
+
+### What I probed
+
+One private DB, `op320_test` on td-lane-pg, dropped afterwards. My scratch probe (`tests/api-integration/zz-opus-320b.test.ts`) ran over real HTTP through `createApp()`. It is not committed.
+
+**1. D0: the code fix is correct and complete.**
+- Both cursor functions now return one parenthesised term:
+  - `nonDueDateCursorCondition` → `((primary op v) or (primary = v and id > cid))`;
+  - `dueDateCursorCondition`, real-date branch → `((isNull = 1) or (isNull = 0 and ((due op d) or (due = d and id > cid))))`;
+  - its null-bucket branch → `(isNull = 1 and id > cid)`.
+- `primary` is a column or a `CASE … END`, so it is atomic. The parentheses balance.
+- I grepped every `sql` fragment in `list-query.ts` and `controllers/list-work-items.ts`. The only other raw fragments are:
+  - `sql\`false\`` for `assignee=me`;
+  - `count(*)::int`;
+  - the ORDER BY terms;
+  - the `CASE` expressions.
+- No other raw `or` sits inside `and()`. There is no free-text search filter. The state, priority, `due_before` and assignee filters are all drizzle `inArray`/`lt`/`eq`/`isNull`.
+- **The original live repro, rerun.** Victim workspace V holds:
+  - an item due 2027-06-01;
+  - an item due 1900-01-01;
+  - a null-due item;
+  - number collisions with the attacker's items;
+  - an archived item and a deleted item.
+
+  Attacker workspace A holds three items (one dated, one with a null priority) and one archived item of its own. For each of the 4 sorts × 2 directions, the attacker fetched `limit=1` and followed `nextCursor` unchanged with `limit=50`, then did a full `limit=1` walk.
+  - Every page contained only the attacker's own live rows. The string `VICTIM` never appeared in any body.
+  - Every walk returned exactly the attacker's 3 live items, with no duplicates.
+- **Forged cursors.** I sent 116 forged cursors across both directions:
+  - `key`: `v` ∈ {−2³¹, 0, 1, 2, 3, 2³¹−1}, × `id` ∈ {`"0"`, `"~~~~"`, a victim id};
+  - `title`: `"\u0001"`, `"A"`, `"VICTIM"`, 500×`"￿"`;
+  - `priority`: every rank from −1 to 6;
+  - `dueDate`: `isNull: true` with `id` ∈ {`"0"`, `"~"`, the victim's null-due id}, and `isNull: false` with `v` ∈ {1900-01-01, 2026-10-01, 2027-06-01, 9999-12-31T23:59:59.999Z};
+  - mismatched `isNull`/`v` pairs, and SQL-injection strings in `v` and `id`.
+
+  Results:
+  - 92 returned 200, and **every row belonged to the attacker's own project**, never archived or deleted.
+  - 24 returned 400: the out-of-domain priority ranks, mismatched `isNull`, string `v` for `key`, and 500×`￿`.
+  - None returned 500. None leaked.
+- **Negative control.** With `list-query.ts` reverted to `92d8989^`, the same probe fails with `VICTIM` in the body.
+
+**2. The regression test is only half real. See D5.**
+- If both functions are reverted to unparenthesised, `#320 security review D0: cursor OR-clause scope escape (BLOCKING)` goes **red**: "expected … length of 5 but got 8". I restored the file afterwards.
+- If only `nonDueDateCursorCondition` is reverted, the test goes **red**.
+- If only `dueDateCursorCondition` is reverted, the test stays **green: 8 of 8 runs**. My probe goes red on the same revert.
+
+**3. The merge `ace3a85` is correct.**
+- `git show --remerge-diff ace3a85` shows conflict resolutions only.
+- `response.ts` keeps both sides: #310's `workItemListItemSchema`/`workItemPageSchema`/`workItemListResponseSchema`, and main's `workItemTypeSchema`/`workItemTypeListSchema`.
+- All 18 locale files have a byte-identical resolution (same hunk hash). Each keeps both the PR's `list.assigneeInactive` and main's `create.*` block.
+- For `response.ts` and `de-DE.json`: diff(merge-base → PR parent) equals diff(main parent → merge), and diff(merge-base → main) equals diff(PR parent → merge). Nothing was dropped from either side.
+- Every `i18n/*.json` file parses.
+- `openapi.json` was regenerated in `2403374`, and `check:openapi` matches (107 operations).
+
+**4. D1–D4 are unchanged and still non-blocking.**
+- D1: `Date.parse` is still the only date validation.
+- D2: the `workspace_member` LEFT JOIN is still present.
+- D3: there is still no leading range bound.
+- D4: there is still no millisecond truncation.
+- `92d8989` changed none of them, and it added no new surface.
+
+**5. Contract gate (`oasdiff` 1.32.1, the pinned binary, SHA-256 verified).**
+- Against the merged base `3c31081`, `oasdiff breaking --fail-on WARN` gives exactly one error:
+  ```
+  1 changes: 1 error, 0 warning, 0 info
+  error	[response-body-type-changed] at tests/api-contract/openapi.json
+  	in API GET /projects/{projectId}/work-items
+  		the response's body `type` changed from `array<object>` to `object` for status `200`
+  ```
+- **It masks nothing.** Once the body type changes, `oasdiff` stops comparing the item schema, so I compared it directly. The old array `items` and the new `data.items`:
+  - no property was removed or changed, and no previously required property became optional;
+  - three required properties were added: `stateName`, `stateCategory` and `assigneeName`;
+  - `page`/`meta` were added.
+- Every other path, and every other method on this path, is byte-identical. The GET's response codes (200/400/401/403/404) are unchanged.
+- In `components`, the only change is three **added** schemas (`WorkItemListResponse`, `WorkItemListItem`, `WorkItemPage`). The top-level document is otherwise identical.
+- `oasdiff changelog` lists the same one error plus 12 infos: 8 new optional query parameters, 3 added required response properties, and `api-version-not-bumped`.
+- **Against current `origin/main` (`c0bd99d`), `pnpm test:contract` gives 2 errors.** The second is `api-path-removed-without-deprecation GET /projects/{projectId}/assignable`. It appears only because #362 merged to main after this branch's last main merge. It is not a change this PR makes. See **CI** below.
+
+**6. Suites at this head.** All green:
+- Integration (`work-item-list-sort-pagination`, `work-item-create-read-list`, `existence-oracle-317`, `permissions-shadow-mode`): **4 files, 82 tests**.
+- API unit: **58 files, 488 tests**.
+- `test:permissions`: **10 files, 80 tests**.
+- `check:openapi`: pass, 107 operations.
+
+**CI at `2403374`.**
+- CodeQL and both Analyze jobs passed.
+- **The main CI workflow has not run.** GitHub reports the PR as `CONFLICTING` with `origin/main` (#362 landed at `c0bd99d`), and there are no build or test checks for this SHA.
+- **GitGuardian failed** with "Generic Password" in `charts/taskdesk/values.yaml:245` at commit `ace3a85`. That line is `passwordKey: postgres_uri`, a Secret key *name* with no value. It came from main's `db27fd5` (#308) through the merge. The PR did not introduce it, and it is a false positive, but the check is red and has to be resolved or marked in GitGuardian.
+
+### Findings
+
+**D0 — CLOSED in code.** Verified live for every sort and direction, and with 116 forged cursors.
+
+**D5 — BLOCKING (test only). The D0 regression test does not guard `dueDateCursorCondition`.**
+- In the unparenthesised form `scope AND (isNull = 1) OR (isNull = 0 AND (…))`, the branch that escapes the scope is the **real-date** branch. The null-bucket branch stays scoped.
+- The test's victim workspace has **no dated item**. Its only non-archived victim item is null-due, and the archived and deleted ones are null-due too. So the escaped branch never matches a victim row.
+- The test comment says the null-due item exercises "the escaped null-bucket branch". That is backwards.
+- Proven above: with only the `dueDate` parentheses removed, the test stays green in 8 of 8 runs.
+- Half of a BLOCKING cross-tenant fix therefore has no regression guard. The next refactor of `dueDateCursorCondition` could reopen the leak silently.
+- **Fix:**
+  - Add at least one live victim item dated **after** every attacker date, e.g. `2027-06-01`, which catches `asc`. Add one dated **before** every attacker date, e.g. `1900-01-01`, which catches `desc`. Ideally also give the archived and deleted victim rows due dates.
+  - Correct the comment.
+  - Prove red by reverting **only** `dueDateCursorCondition`'s outer parentheses, and record that in the commit.
+
+**D1–D4 — unchanged, NON-BLOCKING,** as recorded in the delta review.
+
+**Process, not a code finding.** The branch must merge `origin/main` again (#362), regenerate `openapi.json`, and get a green CI run. GitGuardian's false positive on main's `values.yaml` must be cleared. Each of these changes the SHA, so this clearance has to be redone at that head.
+
+### Verdict
+
+**CHANGES NEEDED** at `2403374b80b8b0bd3518d60ece1740715d509ef2`, for **D5** (test only).
+- **The D0 leak itself is fixed**: the code at this head does not leak across tenants through any real or forged cursor I could build.
+- The merge resolution is correct.
+- The contract break is exactly #310's intentional envelope and masks nothing.
+- The next pass can be narrow:
+  - the D5 test change, proven red against a `dueDate`-only revert;
+  - the main merge, checked with `--remerge-diff`;
+  - `oasdiff` against the new base;
+  - a green CI run at the exact head.
