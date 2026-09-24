@@ -164,10 +164,26 @@ describe("local TLS certificate generation", () => {
         path.join(oldDir, "old.crt"),
         path.join(certDir, "local.crt"),
       );
-      await copyFile(
-        path.join(oldDir, "old.key"),
-        path.join(certDir, "local.key"),
+      // Make the old material invalid through an independent, deterministic
+      // condition as well as its non-matching hostname. The backup invariant is
+      // about preserving whatever local TLS files an operator already has; it
+      // must not depend on a platform's hostname-check behavior for this fixture.
+      const unrelatedKeyPath = path.join(oldDir, "unrelated.key");
+      const unrelatedKey = spawnSync(
+        "openssl",
+        [
+          "genpkey",
+          "-algorithm",
+          "RSA",
+          "-pkeyopt",
+          "rsa_keygen_bits:2048",
+          "-out",
+          unrelatedKeyPath,
+        ],
+        { encoding: "utf8", stdio: "ignore" },
       );
+      assert.equal(unrelatedKey.status, 0);
+      await copyFile(unrelatedKeyPath, path.join(certDir, "local.key"));
       const originalCert = await readFile(path.join(certDir, "local.crt"));
       const originalKey = await readFile(path.join(certDir, "local.key"));
 
