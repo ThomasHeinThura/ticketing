@@ -107,3 +107,81 @@ did not build the Docker image (the `proddeps` exclusion was established by read
 COPY list and the `check:dockerfile-deps` gate); did not independently audit `origin/main` (the
 head audit is clean, so no delta can be worse); did not verify whether Thomas authorized the
 pin (S2).
+
+---
+
+## Delta review — after the rebase onto `main` (2026-09-24)
+
+**Reviewed head:** `0a0aa9ea872b977ef6eeff80d2d5b8f2c9c2ff89`
+
+**Merge base with `main`:** `7bebaf61c50d2a65255e459827c88c1d30230340`, which is current
+`origin/main`. The branch is no longer behind.
+
+**Verdict: CLEAR.** The dependency surface is byte-identical to what was cleared at `aaab19d`.
+S4 is fixed and I checked it at runtime. S1 is corrected. The S2 placement and Alternatives
+fixes are in. Nothing new is in security scope. The remaining items below are gate and
+attribution items for the orchestrator. None is a supply-chain defect. This section binds to
+the head above only. Any later commit outside `docs/07-planning/security-reviews/` voids it.
+
+**Independence.** Same Opus 5.5 reviewer context as the first pass. It authored, directed and
+remediated none of `96fa296` or `0a0aa9e`. S4's remedy was only a recommendation in the first
+pass; the lane wrote the fix.
+
+### Commits since the reviewed `aaab19d`
+
+`git range-diff dd067e2..e5c48d4 7bebaf6..0a0aa9e`:
+
+| Old | New | Change |
+| --- | --- | --- |
+| `aaab19d` | `96fa296` (author `Claude Code <noreply@anthropic.com>`) | Rebased re-land. The range-diff differs **only** in `decision-log.md`: the hunk context moved, and `**Decided by:**` changed from "Thomas authorized the recommended Storybook dependency option…" to "Storybook 10 is already selected by `tech-stack.md`; the pin and compatibility result were recorded by the implementing agent" |
+| `e5c48d4` | `4f1cd88` | `=` identical (this note) |
+| — | `0a0aa9e` (author `Codex GPT-6 <agent@taskdesk.local>`) | `packages/ui/package.json`: `storybook dev -p 6006` → `storybook dev -p 6006 --host 127.0.0.1`. `decision-log.md`: the entry moves below `## Format` |
+
+### Probes
+
+| Probe | Evidence |
+| --- | --- |
+| **Dependency set unchanged** | `cmp` of `pnpm-lock.yaml` at `aaab19d` against head: **byte-identical**. `git diff aaab19d 0a0aa9e` touches no `pnpm-workspace.yaml`, `.npmrc` or `Dockerfile`. In `packages/ui/package.json` the only change is the one script line; the three pinned devDependencies are unchanged. `main` moved `dd067e2`→`7bebaf6` without touching the lockfile. Its one manifest edit (`apps/api` gained a `tsx` script in #322) adds no dependency. The 102-package delta, the registry hashes and the install-script scan from the first pass therefore carry over unchanged |
+| **Install** | `pnpm install --frozen-lockfile` → "Lockfile is up to date"; the ignored-build-scripts list is unchanged (no new package) |
+| **Audit** | `pnpm audit` → no known vulnerabilities. `pnpm audit --prod` → no known vulnerabilities. `--audit-level=high` exit 0 |
+| **Gates** | `check:dockerfile-deps` → 9 manifests match. `check:overrides` → 36, one source |
+| **S4 — loopback bind, at runtime** | `storybook dev --help` lists `-h, --host <string>`. I started `pnpm storybook --ci --no-open` at head. `ss -ltn` showed exactly `LISTEN 127.0.0.1:6006` (not `0.0.0.0`/`*`). `curl http://127.0.0.1:6006/` → `200`. The host's own interface address `10.0.14.33:6006` → **connection refused**. The server was stopped afterwards and 6006 was free again |
+| **S1 — PR body** | `[x] No dependency added` is gone. It is replaced by `[x] Added dependencies are development-only, selected in docs/01-architecture/tech-stack.md, documented in the decision log, and audit-clean`, which is true per the first pass |
+| **S2 — decision-log entry** | The entry now sits after `## Format` (`## Format` at line 8, entry at line 28), below the newer #351 entry and above #345's, newest first. It has an `**Alternatives:**` line. It no longer claims authority it cannot show. To place it, `0a0aa9e` also moved `## Format` above #351's entry, which had landed above `## Format` on `main`. No entry text changed; only placement. I verified that by diffing against `origin/main` |
+| **Template gate** | `check-pr-template.mjs --body` at `0a0aa9e`, before this section existed, reported 2 problems. First, the note's only declared head (`aaab19d`) is not an ancestor after the rebase. Second, the Opus checkbox is unticked. This section declares an ancestor head, which is meant to clear the first. The second needs the PR body updated |
+
+### Findings (delta)
+
+- **S1 — CLOSED.** Checklist corrected.
+- **S2 — CLOSED for placement and Alternatives; one LOW residual.** The coordinator relays that
+  Thomas confirmed the Storybook 10.6.0 dev-only dependency to the orchestrating session. The
+  orchestrator's PR comment of 2026-09-23T16:51Z asked for a "Confirmed by Thomas to the
+  orchestrating session, 2026-09-23" line. The entry's `**Decided by:**` does not contain it,
+  so the decision log still does not record Thomas's approval of the pin. I cannot verify the
+  confirmation myself; it reached me second-hand. AGENTS.md do-not 4 ("add a dependency
+  without asking") and the rule that a decision governing live behavior must be in the
+  decision log before dependent code merges both point the same way: the orchestrator should
+  add that line (it owns the file) before merge. This is not a security defect. The entry as
+  written is truthful.
+- **S3 — OPEN (attribution, LOW).** `96fa296` is still authored `Claude Code
+  <noreply@anthropic.com>`. The PR body now discloses the mismatch rather than rewriting
+  history. Whether disclosure satisfies the 2026-09-23 attribution rule (#336, now on `main`)
+  is the orchestrator's call.
+- **S4 — CLOSED.** Verified at runtime, above.
+- **S5 — CLOSED.** Rebased; the merge base is current `main`.
+- **S7 — NEW, MEDIUM (ordinary-review independence; a gate item, not a code defect).** The PR
+  records the ordinary review as a "fresh independent GPT-6/Codex context". `0a0aa9e` is
+  authored `Codex GPT-6`, and the original implementation is attributed to a Codex agent. The
+  2026-09-23 #345 entry says the lane agents have no ordinary-review capacity until
+  2026-09-30, and that until then a fresh Claude Sonnet context does the ordinary review. The
+  #351 entry allows a current-model fallback **commissioned by the orchestrating session**.
+  Before merge the orchestrator must confirm that it commissioned this GPT-6 review under #351
+  and that the reviewer is independent of the author. If not, a fresh Sonnet (or #351
+  fallback) ordinary review is still owed. I did not assess the ordinary review's content.
+
+### Gate status at `0a0aa9e`
+
+The ordinary review is recorded, subject to S7. Required CI on this head was green except
+`pull request template + security review`, which should re-run after this note lands and the
+PR body's Opus checkbox and note link are updated. No waived gate is cited. The Opus security
+gate is closed by this section for `0a0aa9ea872b977ef6eeff80d2d5b8f2c9c2ff89`.
