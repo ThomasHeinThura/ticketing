@@ -2208,6 +2208,32 @@
 			"unassigned": "Unassigned",
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable"
+		},
+		"create": {
+			"cancel": "Cancel",
+			"description": "Create a new work item in this project.",
+			"descriptionPlaceholder": "Add any details (optional)",
+			"errorForbidden": "You don't have permission to create work items in this project.",
+			"errorGeneric": "Something went wrong while creating the work item.",
+			"errorInvalid": "Check the fields and try again.",
+			"errorTitle": "Couldn't create the work item",
+			"fieldDescription": "Description",
+			"fieldPriority": "Priority",
+			"fieldTitle": "Title",
+			"fieldType": "Type",
+			"noTypes": "This workspace has no work item types configured.",
+			"priorityNone": "No priority",
+			"submit": "Create",
+			"submitting": "Creating…",
+			"success": "Work item created",
+			"title": "Create work item",
+			"titlePlaceholder": "What needs to be done?",
+			"trigger": "Create work item",
+			"typePlaceholder": "Choose a type",
+			"typesError": "Couldn't load work item types.",
+			"typesLoading": "Loading types…",
+			"typesRetry": "Retry",
+			"close": "Close"
 		}
 	}
 }
