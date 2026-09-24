@@ -202,4 +202,57 @@ describe("local TLS certificate generation", () => {
       await rm(temp, { recursive: true, force: true });
     }
   });
+
+  it("renews a valid certificate when its private key no longer matches", async () => {
+    const temp = await mkdtemp(
+      path.join(os.tmpdir(), "taskdesk-local-cert-mismatch-"),
+    );
+    const certDir = path.join(temp, "certs");
+    try {
+      const first = runHelper(certDir, "dev.example.test");
+      assert.equal(first.status, 0, first.stderr);
+
+      const mismatchedKey = path.join(temp, "mismatched.key");
+      const generated = spawnSync(
+        "openssl",
+        [
+          "genpkey",
+          "-algorithm",
+          "RSA",
+          "-pkeyopt",
+          "rsa_keygen_bits:2048",
+          "-out",
+          mismatchedKey,
+        ],
+        { encoding: "utf8", stdio: "ignore" },
+      );
+      assert.equal(generated.status, 0);
+      await copyFile(mismatchedKey, path.join(certDir, "local.key"));
+      const oldKey = await readFile(path.join(certDir, "local.key"));
+
+      const renewed = runHelper(certDir, "dev.example.test");
+      assert.equal(renewed.status, 0, renewed.stderr);
+      assert.equal(
+        spawnSync(
+          "bash",
+          [
+            "-euc",
+            `. "${helper}"; local_certificate_key_matches "$CERT_DIR/local.crt" "$CERT_DIR/local.key"`,
+          ],
+          { env: { ...process.env, CERT_DIR: certDir } },
+        ).status,
+        0,
+      );
+
+      const entries = await readdir(certDir);
+      const backupName = entries.find((entry) => entry.startsWith("replaced-"));
+      assert.ok(backupName, "mismatched TLS material should be preserved");
+      assert.deepEqual(
+        await readFile(path.join(certDir, backupName, "local.key")),
+        oldKey,
+      );
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
 });

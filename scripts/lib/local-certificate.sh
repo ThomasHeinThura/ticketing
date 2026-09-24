@@ -24,14 +24,28 @@ validate_local_certificate_domain() {
 
 local_certificate_covers_routes() {
   local certificate="$1"
-  local domain="$2"
+  local private_key="$2"
+  local domain="$3"
   local hostname
 
   [ -f "$certificate" ] || return 1
+  local_certificate_key_matches "$certificate" "$private_key" || return 1
   openssl x509 -in "$certificate" -noout -checkend 2592000 >/dev/null 2>&1 || return 1
   for hostname in "ticket.${domain}" "portal.${domain}" "mail.${domain}" "files.${domain}"; do
     openssl x509 -in "$certificate" -noout -checkhost "$hostname" >/dev/null 2>&1 || return 1
   done
+}
+
+local_certificate_key_matches() {
+  local certificate="$1"
+  local private_key="$2"
+  local certificate_public_key
+  local private_public_key
+
+  [ -f "$certificate" ] && [ -f "$private_key" ] || return 1
+  certificate_public_key="$(openssl x509 -in "$certificate" -pubkey -noout 2>/dev/null)" || return 1
+  private_public_key="$(openssl pkey -in "$private_key" -pubout 2>/dev/null)" || return 1
+  [ "$certificate_public_key" = "$private_public_key" ]
 }
 
 prepare_local_certificate() {
@@ -43,7 +57,7 @@ prepare_local_certificate() {
   local key_path="$cert_dir/local.key"
 
   validate_local_certificate_domain "$domain" || return 1
-  if [ -f "$key_path" ] && local_certificate_covers_routes "$cert_path" "$domain"; then
+  if local_certificate_covers_routes "$cert_path" "$key_path" "$domain"; then
     return 0
   fi
 

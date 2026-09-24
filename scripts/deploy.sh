@@ -173,7 +173,7 @@ if [ "$MODE" = "local" ]; then
   DOMAIN="${DOMAIN:-localhost}"
   # shellcheck source=scripts/lib/local-certificate.sh
   . "$REPO_ROOT/scripts/lib/local-certificate.sh"
-  if [ ! -f "$CERT_DIR/local.key" ] || ! local_certificate_covers_routes "$CERT_DIR/local.crt" "$DOMAIN"; then
+  if ! local_certificate_covers_routes "$CERT_DIR/local.crt" "$CERT_DIR/local.key" "$DOMAIN"; then
     say "generating a self-signed certificate for *.${DOMAIN}"
   fi
   prepare_local_certificate "$CERT_DIR" "$DOMAIN"
