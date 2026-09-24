@@ -657,3 +657,145 @@ All three are docs-only. They touch `status.md` alone. I found these inaccuracie
 2. Merge the current `main`.
 3. Get a fresh Opus delta review of both.
 4. Get all required checks green at that exact head.
+
+## Delta review 4 (Opus 5.5) at `15b6783`
+
+**Reviewed head:** `15b67834181b4a97e1b06fc22cd9307e5b70b400`
+
+Previous Opus-attested head: `a67b5e311f5dd0453b981f9cc6dac704f7239672` (delta 3, note at `2df670e`).
+
+**Verdict (security gate): CHANGES NEEDED.** F1 is **not fixed**. `15b6783` changed only
+the test. It did not change `scripts/lib/local-certificate.sh`. The test now gives the old
+certificate a mismatched private key, so the key check forces renewal before the hostname
+check ever runs. The test goes green on OpenSSL 3.0 because it no longer exercises the
+broken check, not because the check works. No waiver was sought or used.
+
+**Independence.** This was a fresh Opus 5.5 context in a detached worktree. It authored,
+directed and remediated nothing. Its only write is this section.
+
+### Commits in `2df670e..15b6783`
+
+| Commit | Content | Result |
+| --- | --- | --- |
+| `ecb5b63`, `3a45fc5`, `f22f010`, `c4e1810` | from `main` (#334, #356, #335, #338), each reviewed on its own PR | not re-reviewed here |
+| `b335bb9` | merge of `main` at `f22f010` | **conflict** in `decision-log.md`, resolved by keeping both entries, text-identical. See F2 for the placement. |
+| `837de04` | reorders `decision-log.md` | pure move. The unpaired-line check of its diff is empty, so it changes, drops and adds no decision text. See F2. |
+| `cb4e3c0` | merge of `main` at `c4e1810` | clean. `--remerge-diff` is empty. |
+| `15b6783` | `local-certificate.test.mjs` only | see F1 |
+
+- **The PR's own changes are intact.** For every file in `origin/main...HEAD`, the PR's
+  changed lines at `15b6783` are the same as at `2df670e`. The only exceptions are
+  `decision-log.md` (F2) and the test file (`15b6783`).
+- **Nothing else changed.** `scripts/lib/`, `scripts/deploy.sh`, `release.yml`,
+  `compose.yml` and `deploy/` are byte-unchanged since `2df670e`.
+- **The scope list is right.** `ci-cd.md` has both main's #356 globs
+  (`packages/domain/src/identity/**`, `apps/api/src/permissions/**`) and this PR's
+  `scripts/lib/**`. The PR's `ci-cd.md` diff against `main` still adds only `scripts/lib/**`
+  to that block.
+
+### F1: STILL BLOCKING. The route-hostname check trusts `-checkhost`'s exit code
+
+- **Where.** `local-certificate.sh:35` is unchanged:
+  `openssl x509 -in "$certificate" -noout -checkhost "$hostname" >/dev/null 2>&1 || return 1`.
+- **Reproduced with a simulation.** I put an `openssl` wrapper first on `PATH`. It runs the
+  real binary (3.5.5) for `x509 … -checkhost`, keeping its "does NOT match" output, and
+  then exits 0, like OpenSSL 3.0. Everything else is passed through.
+
+| Run | Real 3.5.5 | Simulated 3.0 |
+| --- | --- | --- |
+| Helper, on a matching key+cert for `wrong.example.test`, `DOMAIN=dev.example.test` | renewed; the new SAN covers all four routes | **not renewed**. It keeps `DNS:wrong.example.test` and returns 0. |
+| `local-certificate.test.mjs` at `15b6783` | 4/4 pass | **4/4 pass** (F1 hidden) |
+| `local-certificate.test.mjs` at `15b6783^` | 4/4 pass | **3/4**: the backup test fails, as it did in CI |
+
+- **Does the test change weaken the guard? Yes.**
+  - The backup test was the only one whose sole renewal trigger was a hostname mismatch.
+  - `local_certificate_covers_routes` checks the key match (line 32) before any hostname
+    (line 35). With an unrelated key, it returns at line 32.
+  - So the suite has **no test in which only the hostname is wrong**.
+  - The backup invariant is still covered by the key-mismatch fixture. It is now duplicated
+    by the test that "renews a valid certificate when its private key no longer matches".
+  - The new comment says the fixture "must not depend on a platform's hostname-check
+    behavior". That behaviour is exactly what the helper promises, and what
+    `traefik-and-domains.md` and the runbook describe.
+- **A second, weaker instance.** The first test (lines 53–65) checks route coverage by
+  asserting `-checkhost`'s exit status is 0. On OpenSSL 3.0 that assertion always passes.
+  It proves nothing there. It is not a false negative for the current generator, whose SAN
+  is fixed.
+- **Effect.** This is unchanged from delta 3. On Ubuntu 24.04's OpenSSL, a local cert that
+  does not cover `ticket/portal/mail/files.${DOMAIN}` is never renewed. Examples are the
+  old wildcard-only cert and a cert for a previous `DOMAIN`. It is a local self-signed
+  cert, so this is not an authority bypass. But the documented renewal does not happen, and
+  green CI now hides that.
+- **Required fix.**
+  1. Check the output, not the exit code. For example:
+     `out="$(openssl x509 -in "$certificate" -noout -checkhost "$hostname" 2>/dev/null)" || return 1; [[ "$out" == *" does match certificate"* ]] || return 1`.
+     - Capturing into a variable avoids the `grep -q` pipe, which under `pipefail` can
+       SIGPIPE `openssl`.
+     - I checked the output-matching shape under both the real and the simulated binary.
+       It renews the wrong-host pair once, and the second run is idempotent.
+  2. Add a regression test in which **only** the hostname is wrong: a matching key, a
+     valid date and a wrong SAN. Assert renewal plus backup. Keeping the new
+     unrelated-key backup fixture is fine, but it does not replace that test.
+  3. Preferably, change the first test's route assertion to match the output as well.
+  4. It would also help to have a CI-reachable check that fails on 3.0 semantics, such as
+     the `PATH` wrapper above as a test fixture. Then a later OpenSSL on the runner can't
+     silently turn the regression test into a no-op again.
+
+### F2: LOW, docs. `837de04` put the #356 decision above `## Format`
+
+- `837de04` moves "2026-09-24 · The security-review scope adds…" to line 9. That is
+  between "Newest first." and the `## Format` heading, which is the file's preamble. Every
+  other entry comes after `## Format` (line 25).
+- It also leaves a double blank line.
+- The text is byte-identical, so no decision is changed.
+- On `main` the entry was out of date order, below several 2026-09-23 entries. The intent
+  to restore newest-first is fine.
+- **Fix.** Place it directly after the `## Format` block, above "2026-09-24 · GPT-6 Luna
+  replaces Sonnet…". Or drop the reorder from this PR, and fix `main`'s ordering in its own
+  docs change. Either way, the PR's footprint on `main`'s decision entries should end up as
+  nothing more than adding "Manual release tags…".
+
+### Carried forward, still open (helper unchanged)
+
+- **N1.** `mkdir -p "$cert_dir"` follows the umask. Use 0700.
+- **N2.** `openssl pkey` has no `-passin pass:`.
+- **N3.** `replaced-*` directories pile up.
+
+All three are non-blocking, as in delta 3.
+
+### `status.md` (accuracy only; orchestrator-owned)
+
+- **The candidate head is stale.** The newest entry says the candidate head is `81d2899`.
+  The head is `15b6783`.
+- **The CI failure is still explained as a host problem.** The entry still says "a focused
+  run … passed 11/11" and that the host's `node` "is a Bun shim". That failure was F1.
+- **The entry does not record delta 3's CHANGES NEEDED, or that `15b6783` made the test
+  green without changing the helper.**
+- **An old claim still stands.** "All 499 CI-script tests pass" at `e19b75c` was local-only.
+  It is uncorrected (see delta 3).
+
+### Tooling at this head
+
+| Check | Result |
+| --- | --- |
+| `bash -n scripts/deploy.sh`, `bash -n scripts/lib/local-certificate.sh` | OK |
+| `node --test scripts/ci/lib/local-certificate.test.mjs` | 4/4 pass with OpenSSL 3.5.5. Under the simulated 3.0 also 4/4, which is F1 hidden. |
+| `pnpm test:ci-scripts` | 506 tests, 89 suites: 506 pass, 0 fail. This was after `pnpm install --frozen-lockfile`. Without `node_modules`, the three typecheck-coverage tests fail for lack of `tsc`, which is environmental. |
+| shellcheck | not run (not installed) |
+
+### CI at `15b6783`
+
+| Check | State |
+| --- | --- |
+| **pull request template + security review** | **failure**, for two reasons. This note was stale (`a67b5e3` plus 8 commits). The PR body's checklist names `b335bb91db1b11e3fb6efa691102ddfb6c31828a` as the exact head, which it no longer is. |
+| **gate checkers + red probes** | success, 506/506, including the backup test. **It is green only because of the F1 masking.** |
+| every other required check | success |
+| a11y, visual regression, performance budgets | SKIPPED (NOT ENABLED) |
+
+### Must happen before merge
+
+1. Fix F1 in `local-certificate.sh`, with a hostname-only regression test.
+2. Fix or drop the F2 reorder.
+3. Correct the PR body's exact-head line.
+4. Get a fresh Opus delta review of the new head.
+5. Get every required check green at that exact head.
