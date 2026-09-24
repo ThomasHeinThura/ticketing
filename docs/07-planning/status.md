@@ -42,10 +42,11 @@ mandatory and pending; neither #10 nor P0 is claimed complete.
 
 > ## ⚠ How to read this file
 >
-> **Snapshot taken:** 2026-09-23 — refreshed after the seventh P0 continuation pass below.
+> **Snapshot taken:** 2026-09-22 — a thirteenth pass, same day as the eleventh and twelfth.
 **All four concrete P0 defects the eleventh pass found (#18, #146, #17, #97) are now fixed,
 reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
-> **`main` at that moment:** `21c6a71` (PR #350 — Claude model-tier and lane-agent workflow update).
+> **`main` at that moment:** `9c2a16c` (PR #227 — issue #18's setup-token flow, the last of
+> the four same-day P0 fixes to land, after three Opus security-review rounds).
 > Kaneo's `task`/`column` tables and routes remain fully untouched and still live.
 > **Stage:** P0 · Foundation — **Throttle 1 is OPEN; P0 itself is NOT finished (see #8/#9
 > below), but the eleventh-pass concrete-defect backlog is fully clear.** Throttle 1 remains
@@ -114,15 +115,6 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > What this file IS good for: the stage and throttle state, which issues are blocked and
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
-
-
-**Seventh pass, 2026-09-23. `main` at `21c6a71` (PR #350 merged).** P0 Foundation remains open. #317's timing-oracle candidate incorporates the DB-role split and latest main. Its PostgreSQL 18 integration suite passed 84 files / 1,146 tests; focused oracle, API-key reach and bulk reach cases passed, each foreign/missing lookup using one reach-filtered SQL query. The initial API-key test attempt failed only in its SQL-spy assertion (it assumed a string argument/uppercase SQL); the spy was corrected to handle pg query-config objects and normalized SQL, then both focused API-key and bulk cases passed. The full integration suite passed after those corrections. A fresh ordinary review found no blocking code defect; its evidence gap was closed with API-key and bulk tests, and a separate delta reviewer cleared the added test/status changes. The final main merge after those checks only changes `CLAUDE.md`; an exact-head doc-delta check remains pending for #317. #323 keeps #322's applied migration `0068_workspace_role_is_system` at index 68 and moves #8 Slice 2's shadow-table migration to `0069_policy_shadow_tables` at index 69, with the snapshot chained from #322's snapshot. Its focused PostgreSQL 18 shadow integration test passed 10/10; lint, typecheck, permissions (80), route-policy, OpenAPI (106 operations), review-spec, vocabulary (59), env and full unit retry passed. Two fresh ordinary reviews and two doc-delta reviews found no blocking #323 issue; the stale snapshot-lineage comment was fixed and reviewed. The final main merge only changes `CLAUDE.md`; a fresh exact-head doc-delta review passed. Both candidates still require independent Opus security review before merge. No P0 gate is claimed closed; #8 still lacks complete route enforcement and coverage, and #324 plus other prerequisite lanes remain open. Re-verify live PR/issue state before dispatch.
-
-**Session log, 2026-09-23:** Integrated #323 with `main` through `5ada9c5`, including the Cline D1-D4 remediation round, and validated the migration alignment plus focused shadow integration. The full unit suite first exposed one unrelated timeout, then passed in a complete retry. The #317 candidate has passed its broad integration and focused timing checks and now includes current main. Fresh exact-head ordinary review and mandatory Opus final reviews have not happened; neither candidate may merge before them.
-
-**#317 S4 coverage follow-up, 2026-09-23:** A fresh ordinary review found the S4 integration test exercised only session authentication. Added API-key and bulk tests that compare foreign/missing responses and confirm their single SQL lookup includes the reach predicates; focused cases passed. The initial full integration attempt reported 1 failure / 1,144 passes because the new spy assumed a string SQL argument and uppercase SQL text; the spy was fixed to handle pg query-config objects and case-normalized matching. The full integration rerun passed 84 files / 1,146 tests. A review delta initially raised two blockers based on the wrong lookup flow, then retracted them after inspecting the exact source and confirming the focused tests. The invitation-cancel path remains explicitly outside this candidate: invitation IDs are already publicly queryable, so its 403/404 difference does not reveal a confidential identifier; record this low-impact residual in the PR. Opus final review is still mandatory.
-
-**Session log, 2026-09-23:** Audited the supplied P0 status report against live GitHub and repository state. Confirmed #322 had merged and the #323 migration-number collision was real; the report's #308 migration warning was false. Rebased #323 by merging current `main`, renumbered only the unmerged shadow migration, and validated migration order on Testcontainers PG18. Current candidate SHA above; review status remains pending.
 
 **Fifth pass, 2026-09-23. `main` at `b126c51`.** Merged since the fourth pass:
 - **#306**, the first v2 screen: the work-item list at `/agent/projects/{key}/work`. Sort and
@@ -1600,19 +1592,6 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
-
-### 2026-09-24 · P0 #317 existence-oracle regression-test remediation
-
-On PR #338, independent ordinary review found that the prior fix-round test did not
-protect `lookupMany` from an ungrouped reach `OR` and did not exercise direct foreign-label
-deletion. Commit `e6e962b627300c410479019b19743d04b64bf5a1` adds foreign-only versus
-missing-only `lookupMany` checks with caller-owned tasks present, asserts the ID and reach
-predicates remain grouped, compares resolved status/body/headers, and verifies foreign-label
-deletion leaves the row intact. The targeted Postgres integration file passes 7/7. Removing
-the reach predicate's outer parentheses was tested as an M3 mutation and makes the suite fail.
-Two fresh independent ordinary delta reviewers cleared this test-only change. The Opus note
-still needs a current reachable-head review: its historical hashes are not objects in this
-branch, and no review claim was substituted for that missing evidence.
 
 ### 2026-09-23 (third pass) · 11 more PRs merged; spec gates honoured, not routed around; an outage recovered cleanly
 
