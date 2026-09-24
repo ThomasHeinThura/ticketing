@@ -162,13 +162,14 @@ function sourceImports(source) {
   const imports = [];
   const scanner = createScanner(
     true,
-    LanguageVariant.Standard,
+    LanguageVariant.JSX,
     source,
     0,
     source.length,
   );
   const tokens = [];
   const templateBraceDepths = [];
+  let previousTokenStart = -1;
   for (let scanned = 0; scanned <= source.length + 1; scanned += 1) {
     let kind = scanner.scan();
     if (kind === SyntaxKind.CloseBraceToken && templateBraceDepths.length > 0) {
@@ -192,11 +193,14 @@ function sourceImports(source) {
       templateBraceDepths.push(1);
     }
     if (kind === SyntaxKind.EndOfFile) break;
+    const tokenStart = scanner.getTokenStart();
+    if (tokenStart === previousTokenStart) break;
+    previousTokenStart = tokenStart;
     tokens.push({
       kind,
       value: scanner.getTokenValue(),
       text: scanner.getTokenText(),
-      start: scanner.getTokenStart(),
+      start: tokenStart,
     });
     if (scanned === source.length + 1) {
       imports.push({ specifier: DYNAMIC_SPECIFIER, line: 1, typeOnly: false });
@@ -218,6 +222,20 @@ function sourceImports(source) {
     token?.kind ===
       SyntaxKind[`${name[0].toUpperCase()}${name.slice(1)}Keyword`] ||
     (token?.kind === SyntaxKind.Identifier && token.text === name);
+  const bindingsAreTypeOnly = (start) => {
+    if (tokens[start]?.kind !== SyntaxKind.OpenBraceToken) return false;
+    let atBinding = true;
+    for (let cursor = start + 1; cursor < tokens.length; cursor += 1) {
+      if (tokens[cursor].kind === SyntaxKind.CloseBraceToken) return true;
+      if (tokens[cursor].kind === SyntaxKind.CommaToken) {
+        atBinding = true;
+      } else if (atBinding) {
+        if (!keyword(tokens[cursor], "type")) return false;
+        atBinding = false;
+      }
+    }
+    return false;
+  };
 
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
@@ -245,7 +263,8 @@ function sourceImports(source) {
         if (tokens[cursor].kind === SyntaxKind.SemicolonToken) break;
         if (keyword(tokens[cursor], "from")) {
           const specifier = tokens[cursor + 1];
-          if (isString(specifier)) addLiteral(specifier, typeOnly);
+          if (isString(specifier))
+            addLiteral(specifier, typeOnly || bindingsAreTypeOnly(index + 1));
           else
             imports.push({
               specifier: DYNAMIC_SPECIFIER,
@@ -277,7 +296,12 @@ function sourceImports(source) {
         if (tokens[cursor].kind === SyntaxKind.SemicolonToken) break;
         if (keyword(tokens[cursor], "from")) {
           const specifier = tokens[cursor + 1];
-          if (isString(specifier)) addLiteral(specifier, typeOnly);
+          if (isString(specifier))
+            addLiteral(
+              specifier,
+              typeOnly ||
+                bindingsAreTypeOnly(binding === next ? index + 1 : index + 2),
+            );
           else
             imports.push({
               specifier: DYNAMIC_SPECIFIER,
@@ -407,6 +431,15 @@ export async function analyzeDependencies(root = repoRoot) {
     const relativeFile = path.relative(root, file).split(path.sep).join("/");
 
     for (const imported of imports) {
+      if (imported.specifier === DYNAMIC_SPECIFIER) {
+        violations.push(
+          violation(
+            relativeFile,
+            `line ${imported.line} uses a non-static module specifier; package boundaries cannot be proven`,
+          ),
+        );
+        continue;
+      }
       const targetPath = resolveWorkspaceTarget(
         imported.specifier,
         file,

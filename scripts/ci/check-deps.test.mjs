@@ -55,6 +55,8 @@ test("source scanner finds module edges across JavaScript syntax", () => {
       [
         'import { Button } from "@taskdesk/ui";',
         'export type { AppType } from "@taskdesk/api";',
+        'import { type AppType } from "@taskdesk/api";',
+        'export { type AppType } from "@taskdesk/api";',
         'void import("./lazy.js");',
         "void import(`node:fs`);",
         "void import(`node:${" + "runtimeName" + "}`);",
@@ -65,11 +67,13 @@ test("source scanner finds module edges across JavaScript syntax", () => {
     [
       { specifier: "@taskdesk/ui", line: 1, typeOnly: false },
       { specifier: "@taskdesk/api", line: 2, typeOnly: true },
-      { specifier: "./lazy.js", line: 3, typeOnly: false },
-      { specifier: "node:fs", line: 4, typeOnly: false },
-      { specifier: "<non-static module specifier>", line: 5, typeOnly: false },
-      { specifier: "./legacy.cjs", line: 6, typeOnly: false },
-      { specifier: "dns/promises", line: 7, typeOnly: false },
+      { specifier: "@taskdesk/api", line: 3, typeOnly: true },
+      { specifier: "@taskdesk/api", line: 4, typeOnly: true },
+      { specifier: "./lazy.js", line: 5, typeOnly: false },
+      { specifier: "node:fs", line: 6, typeOnly: false },
+      { specifier: "<non-static module specifier>", line: 7, typeOnly: false },
+      { specifier: "./legacy.cjs", line: 8, typeOnly: false },
+      { specifier: "dns/promises", line: 9, typeOnly: false },
     ],
   );
 });
@@ -178,7 +182,7 @@ test("documented boundaries reject app imports, impure leaves, I/O and UI depend
   );
   await writeFile(
     path.join(ui, "src/server.ts"),
-    'import "hono";\nimport "node:fs";\n',
+    'import "hono";\nimport "node:fs";\nvoid import(modulePath);\n',
   );
   await writeFile(path.join(api, "src/index.ts"), "export {};\n");
 
@@ -197,4 +201,8 @@ test("documented boundaries reject app imports, impure leaves, I/O and UI depend
   assert.match(messages, /@taskdesk\/ui\/package\.json.*hono/s);
   assert.match(messages, /packages\/ui\/src\/server\.ts.*hono/s);
   assert.match(messages, /packages\/ui\/src\/server\.ts.*node:fs/s);
+  assert.match(
+    messages,
+    /packages\/ui\/src\/server\.ts.*non-static module specifier/s,
+  );
 });
