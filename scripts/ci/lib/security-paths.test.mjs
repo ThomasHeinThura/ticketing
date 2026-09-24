@@ -49,6 +49,7 @@ const MUST_REQUIRE_REVIEW = [
   "packages/email/vitest.config.ts",
   "packages/libs/vitest.config.ts",
   "packages/mcp/vitest.config.ts",
+  "packages/permissions/vitest.config.ts",
   "packages/ui/vitest.config.ts",
   "apps/web/playwright.config.ts",
   "apps/web/e2e/auth-redirect.spec.ts",
