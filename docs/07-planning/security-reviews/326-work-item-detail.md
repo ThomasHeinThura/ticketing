@@ -267,3 +267,88 @@ the `values.yaml` key-name false positive from #308, via this merge commit.
 
 **Verdict at `177f465c69cff695a8cc3f91b082b5c50df76cdb`: security CLEAR, not merge-ready**
 until `contract - OpenAPI drift` is green. The earlier findings carry over unchanged.
+
+## Re-review after fix (Opus 5.5)
+
+**Reviewed head:** `5f9155cc325067ce03e417374c490f552b0517a4`
+
+This is a fresh Opus 5.5 context, 2026-09-24, with `main` at
+`c0bd99d6f781405b7e0426bfe24a2a8ee360b31b`. The last Opus pass was the merge-head attestation
+at `177f465`, which was security CLEAR but not merge-ready because `contract - OpenAPI drift`
+failed.
+
+**Commits from `4524e48` to `5f9155c`:**
+- `77dcfaf`: merge of `main` (#340, #341). The conflicts were in `response.ts` and
+  `openapi.json`. I checked the resolution with `git show --remerge-diff`. It is where the
+  flattening actually happens: the `WorkItem` fields move into an unregistered
+  `workItemShape`, and `workItemSchema = workItemShape.openapi("WorkItem")`.
+  `workItemDetailSchema` now `.extend()`s `workItemShape` instead of the registered schema.
+  The field list and every modifier are unchanged; only the indentation moves. #341's
+  `workItemTypeSchema` block is kept whole.
+- `6edfd99`: this is not a code change. It only regenerates `tests/api-contract/openapi.json`.
+  The commit message describes the change that `77dcfaf` made.
+- `5f9155c`: merge of `main` (#362). `--remerge-diff` shows one import-union conflict in
+  `work-item/index.ts`, resolved by keeping both `assignablePeopleSchema` and
+  `workItemDetailSchema`. Nothing else was resolved by hand.
+
+**Runtime shape.** Nothing changed on the security side of this PR.
+- `git diff 177f465 5f9155c` over `get-work-item.ts`, `require-work-item-reach.ts`,
+  `work-item/policy.ts` (apart from #341's own new entry), `permissions/`, and the web detail
+  files shows no change from this PR.
+- The response schema is documentation for the output. The handler returns
+  `c.json(getWorkItemByKey(...))`, and the flattening does not affect it.
+- In the generated spec, `WorkItemDetail` is now a flat object with no `allOf`. Its
+  properties are `WorkItem`'s 22, each byte-identical, plus `stateName`, `stateCategory` and
+  `assigneeName`, all required. `WorkItem` is byte-identical to `main`'s.
+- No new field is emitted. S3 still stands: the body is the whole row, as before.
+
+**`assigneeName` scoping.** Unchanged. The name resolves only through the LEFT JOIN on
+`workspace_member(user_id = person.user_id, workspace_id = work_item.workspace_id)`. Without
+that join it returns `null`. The integration test "scopes assigneeName to the work item's own
+workspace" passes at this head.
+
+**#338 existence oracle.** Still intact. I re-ran the temporary probe; it was not committed.
+From a stranger's session I requested an existing foreign key, `{slug}-999999` and
+`nosuchslug-1`. All three returned 404 with the same `content-type`, the same set of header
+names and the same body. 1 / 1 passed.
+
+**Reach and policy.** The route's middleware is still `[requireWorkItemReach(),
+requireWorkspaceCapability("work_item:read")]`. The policy entry is still
+`work_item:read / work_item / row / required`. The shadow markers in
+`requireWorkItemReach` are unchanged: `unknown` on a missing row, `denied` on a reach
+failure, `allowed` otherwise.
+
+**Tests at `5f9155c`.** I built the packages first and used a private DB, `op326_test`, which I
+dropped afterwards.
+
+| Suite | Result |
+| --- | --- |
+| `pnpm test:contract` | pass. Redocly has 16 findings, the same 16 as `origin/main`. oasdiff: "no breaking API changes against origin/main" |
+| `pnpm check:openapi` | pass: 108 operations |
+| `@taskdesk/permissions` | 13 files / 261 tests pass |
+| `apps/api test:permissions` | 10 / 80 pass |
+| `apps/api test:unit` | 58 / 488 pass |
+| Full integration suite | 88 files / 1182 tests pass |
+| Web: `work-item-detail`, `get-work-item` fetcher, `types/work-item` | 3 files / 45 tests pass |
+
+**CI at `5f9155c`.**
+- Green: every required check except one, including `contract - OpenAPI drift`, which is now
+  SUCCESS.
+- `pull request template + security review`: FAILURE, on four PR-body problems:
+  1. The `## Security review` section's **Model:** does not name Opus.
+  2. The section does not link this note.
+  3. The body has two independent-review checkboxes.
+  4. The "Backend change" Opus box is unticked.
+
+  These problems are in the PR body, which the orchestrator owns. Problems 1, 2 and 4 are
+  closed by this note. Problem 3 is the same item recorded in the Gates section above.
+- GitGuardian (not required): the known #308 `values.yaml` false positive.
+
+**Findings.** None new. S1–S4 carry over unchanged.
+
+**Verdict at `5f9155cc325067ce03e417374c490f552b0517a4`: CLEAR WITH FINDINGS (S1–S4,
+non-blocking).** The contract-drift blocker from the `177f465` attestation is resolved. The
+merge is still gated on the PR-body template items and on the unresolved items in the Gates
+section: the reviewer model record and the reconciliation of `## Implemented by` with the
+commit authors. This note commits only itself, so it moves the head. Any later code or `main`
+merge needs a fresh exact-head check.
