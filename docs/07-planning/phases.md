@@ -116,7 +116,7 @@ happens; building on top of them is easy.
   `external_identity` / `scim_group_mapping` / `scim_group_member` / `provisioning_event`
   tables, the
   agent/customer portal boundary for identity connections, the OIDC and SCIM security
-  rules, and the 17 SCIM/Entra acceptance tests and fixtures
+  rules, and the 25 SCIM/Entra acceptance tests and fixtures
   ([identity-provisioning.md](../03-features/identity-provisioning.md)); the
   `pending_action` model and route family ([pending-actions.md](../01-architecture/pending-actions.md)).
   **No production SCIM endpoint is built in P0.**
@@ -242,7 +242,7 @@ this is v1's domain logic reimplemented in TypeScript.
 **Done when:** a real customer raises, tracks and approves a request without emailing
 anyone; a customer organisation's people sign in with their own Entra and land only in
 their organisation; Entra deactivating a person ends their access within a minute; and
-**the 17 SCIM/Entra acceptance tests pass against a real Microsoft Entra test tenant** —
+**all 25 named SCIM/Entra acceptance tests pass against a real Microsoft Entra test tenant** —
 the identity gate does not close on a mock alone.
 
 ---

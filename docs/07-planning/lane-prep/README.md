@@ -91,3 +91,27 @@ taxonomy — which is why PR #69 shipped service calendars before the throttle o
 same reasoning extends to further pure `packages/domain` modules and to `packages/ui`
 primitives. It does **not** extend to anything route-shaped, and no plan here should be read
 as licence for that.
+
+## P3 reconciliation · 2026-09-23
+
+The P3 plan above is a historical artifact. These current facts supersede its claims that
+Throttles are closed, that the organisation/person/membership schema has no owner, and that
+`PortalPredicate` lacks `self`:
+
+- Throttle 1 is open (see `status.md` and the retrofit ledger).
+- `organisation`, `person`, and `membership` were implemented in migration `0052`.
+- `PortalPredicate` includes `self`; the P3 customer-portal spec now names its CP-16
+  visibility test.
+- The six identity/SCIM tables, identity routes, portal routes, and P3 UI are not yet
+  implemented. P3's request/catalogue/approval dependencies remain in the active P2 lane.
+- The current P3 implementation lane is `feat/p3-identity-portal`. Its first slice contains
+  only pure `packages/domain` rules; it does not satisfy issue #38 or #39.
+- Thomas confirmed that the real Entra identity gate requires all 25 tests listed in
+  `identity-provisioning.md`; `phases.md`, `release-plan.md`, `security-model.md`, and issue
+  #39 now carry that count.
+
+Thomas resolved the plan's same-connection versus cross-connection SCIM `409` finding:
+both paths return the same generic response without a resource id, while the internal
+provisioning event retains the distinction. `IP-18`/`IP-32` and the existing SCIM create
+acceptance test carry the change; it does not add a twenty-sixth acceptance test. Re-check
+GitHub before using any issue or branch state from the historical plan.
