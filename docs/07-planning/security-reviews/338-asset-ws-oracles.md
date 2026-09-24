@@ -461,3 +461,42 @@ Both are PR-body items for the orchestrator. The a11y, visual-regression and per
 - I did not run `scripts/ci` tests, lint, or `check:openapi` locally. CI's `gate checkers + red probes`, `static` and `contract - OpenAPI drift` are green at this head.
 - I did not review #323's shadow machinery itself, beyond its interaction with this PR. It has its own reviews.
 - I did not edit the PR body, approve on GitHub, or merge.
+
+## Merge-head attestation (`7c3ea29`)
+
+**Reviewer:** Opus 5.5, the same independent context as the final review above. Did not author, direct, or remediate this change.
+**Reviewed head:** `7c3ea29ae231fdfe4a8667053c9ca4e4fddaf888`
+
+**Verdict: CLEAR.** No PR code changed since `a1f494f`. Nothing `main` brought in touches the oracle predicates. The E2 status.md edits are gone and E3's branch update is done.
+
+- **Parents.**
+  - `7c3ea29`'s parent is `8afcf7e`.
+  - `8afcf7e`'s parents are `0009cc5`, the final-review note head above, and `f22f0100cb3d5a1ab3ff6dbc0c20b4e298fd488c`, which is `origin/main` and the new merge base.
+  - `git merge-tree --write-tree 0009cc5 f22f010` gives tree `0d2374d`, which is exactly `8afcf7e`'s tree. The merge is clean and carries no hand edits.
+- **`7c3ea29`** touches only `docs/07-planning/status.md`, and the result is byte-identical to `f22f010`'s. That removes E2's stale lane entries, and the PR no longer changes `status.md`.
+- **The PR's own diff is unchanged.**
+  - For every PR path except this note, the changed lines of `git diff f22f010 HEAD` equal those of `git diff 9d5deb9 a1f494f`.
+  - The blobs are identical at `a1f494f` and `HEAD` for `index.ts`, `authorize-asset-access.ts`, `workspace-access-middleware.ts`, `validate-workspace-access.ts`, and the three test files.
+- **#334** (`sees_all` scoped to granting workspaces) has no effect on the oracle predicates.
+  - It changes `resolve-identity.ts`, `packages/permissions` (`evaluator.ts`, `identity.ts`) and their tests. Reach gains a `membership_with_workspaces` kind in place of the old global `all` for `sees_all`.
+  - The oracle predicates never read that model. `reachableWorkspacePredicate` and `validateWorkspaceAccess` are raw SQL over `user.role = 'admin'` OR a `workspace_member` row. The asset and ws routes use `validateWorkspaceAccess`.
+  - `resolveIdentity`'s only request-path caller is `shadow-middleware.ts:203`, which is observe-only. The change also narrows reach, and the loader still always resolves `seesAll: false`.
+- **#356** is docs only (`ci-cd.md`, the decision log, its own note). It adds `apps/api/src/permissions/**` and the identity paths to security-review scope. This PR changes none of those paths, and its changed paths already had a security review.
+- **#335** changes `packages/ui` Storybook only. It is not on any request path.
+- **Suites at `7c3ea29`**, PG 18, private DB `opus338b_test`:
+
+  | Suite | Files | Tests |
+  | --- | --- | --- |
+  | PR unit files | 2 | 36 pass |
+  | PR integration file | 1 | 7 pass |
+  | Full unit | 58 | 476 pass |
+  | `test:permissions` | 10 | 80 pass |
+  | Full integration | 85 | 1157 pass |
+  | API `tsc --noEmit` | — | clean |
+
+- **One flaky integration failure.** The first full integration run had 1 failure out of 1157: `workspace-rbac.test.ts` "instance admin bypass > does not bypass for users with no role set". It then passed:
+  - 3 times out of 3 running that file alone (49/49 each time);
+  - on a complete rerun of the full suite (1157/1157).
+
+  I did not capture the first run's error message. The test's code path (`fromProject` lookup, then the capability check) is byte-identical to `a1f494f`, where the full suite passed. I am treating it as an environmental flake on a shared host, not a defect.
+- **Not done:** I did not repeat the mutation checks, because the code and tests are identical to `a1f494f`, where they ran. I did not edit the PR body, approve, or merge.
