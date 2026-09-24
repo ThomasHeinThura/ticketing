@@ -13,6 +13,20 @@ import process from "node:process";
 import { finish, repoRoot, violation, walk } from "./lib/repo.mjs";
 
 const NAME = "check:deps";
+const PURE_LEAF_PACKAGES = new Set([
+  "@taskdesk/domain",
+  "@taskdesk/permissions",
+  "@taskdesk/plugins-contracts",
+]);
+const DOMAIN_ALLOWED_NODE_BUILTINS = new Set(["node:crypto"]);
+const UI_RUNTIME_IMPORTS = new Set([
+  "@base-ui/react",
+  "class-variance-authority",
+  "clsx",
+  "lucide-react",
+  "react",
+  "tailwind-merge",
+]);
 const SOURCE_EXTENSIONS = [
   ".ts",
   ".tsx",
@@ -68,6 +82,19 @@ async function listWorkspaceManifests(root) {
 function workspaceNameForSpecifier(specifier) {
   if (!specifier.startsWith("@taskdesk/")) return null;
   return specifier.split("/").slice(0, 2).join("/");
+}
+
+function packageNameForSpecifier(specifier) {
+  if (specifier.startsWith("node:") || specifier.startsWith(".")) return null;
+  return specifier.startsWith("@")
+    ? specifier.split("/").slice(0, 2).join("/")
+    : specifier.split("/")[0];
+}
+
+function isTestSource(relativeFile) {
+  return /(?:^|\/)(?:__tests__\/|tests?\/|[^/]+\.(?:test|spec)\.[^.]+$)/.test(
+    relativeFile,
+  );
 }
 
 function runtimeWorkspaceEdges(manifests) {
@@ -206,6 +233,31 @@ export async function analyzeDependencies(root = repoRoot) {
     );
   }
 
+  for (const { name, manifest } of manifests) {
+    if (PURE_LEAF_PACKAGES.has(name)) {
+      for (const dependency of graph.get(name) ?? []) {
+        violations.push(
+          violation(
+            name,
+            `runtime workspace dependency "${dependency}" breaks the documented pure-leaf boundary`,
+          ),
+        );
+      }
+    }
+    if (name === "@taskdesk/ui") {
+      for (const dependency of Object.keys(manifest.dependencies ?? {})) {
+        if (!UI_RUNTIME_IMPORTS.has(dependency)) {
+          violations.push(
+            violation(
+              `${name}/package.json`,
+              `runtime dependency "${dependency}" is outside the documented design-system boundary`,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   const files = await listSourceFiles(root);
   for (const file of files) {
     const owner = ownerForFile(file, manifests);
@@ -225,10 +277,13 @@ export async function analyzeDependencies(root = repoRoot) {
       const targetEntry = targetWorkspace
         ? manifestByName.get(targetWorkspace)
         : null;
-      const packageOwner = isWithin(path.join(root, "packages"), owner.path);
-      const pointsToApi =
-        (targetEntry && isWithin(path.join(root, "apps"), targetEntry.path)) ||
-        (targetPath && isWithin(path.join(root, "apps"), targetPath));
+      const pointsToApp =
+        (targetEntry &&
+          isWithin(path.join(root, "apps"), targetEntry.path) &&
+          targetEntry.name !== owner.name) ||
+        (targetPath &&
+          isWithin(path.join(root, "apps"), targetPath) &&
+          !isWithin(owner.path, targetPath));
       const pointsOutOfUi =
         owner.name === "@taskdesk/ui" &&
         targetPath &&
@@ -242,11 +297,11 @@ export async function analyzeDependencies(root = repoRoot) {
         imported.typeOnly &&
         targetWorkspace === "@taskdesk/api";
 
-      if (pointsToApi && packageOwner && !isLibsTypeContract) {
+      if (pointsToApp && !isLibsTypeContract) {
         violations.push(
           violation(
             relativeFile,
-            `line ${imported.line} imports "${imported.specifier}" from apps/**; workspace packages must not depend on application code (docs/01-architecture/monorepo-layout.md#package-boundaries)`,
+            `line ${imported.line} imports "${imported.specifier}" from apps/**; application imports are forbidden except the typed @taskdesk/libs contract (docs/01-architecture/monorepo-layout.md#package-boundaries)`,
           ),
         );
       }
@@ -277,19 +332,22 @@ export async function analyzeDependencies(root = repoRoot) {
           ),
         );
       }
-      if (owner.name === "@taskdesk/domain" && targetWorkspace) {
+      if (PURE_LEAF_PACKAGES.has(owner.name) && targetWorkspace) {
         violations.push(
           violation(
             relativeFile,
-            `line ${imported.line} imports workspace package "${imported.specifier}"; packages/domain is a pure leaf package`,
+            `line ${imported.line} imports workspace package "${imported.specifier}"; ${owner.name} is a documented pure leaf package`,
           ),
         );
       }
       if (
         owner.name === "@taskdesk/domain" &&
-        /^(node:(?:fs|net|http|https|child_process|worker_threads)|fs$|fs\/|path$|path\/|hono(?:\/|$)|drizzle-orm(?:\/|$)|pg(?:\/|$))/.test(
-          imported.specifier,
-        )
+        !isTestSource(relativeFile) &&
+        ((imported.specifier.startsWith("node:") &&
+          !DOMAIN_ALLOWED_NODE_BUILTINS.has(imported.specifier)) ||
+          /^(fs(?:\/|$)|path(?:\/|$)|hono(?:\/|$)|drizzle-orm(?:\/|$)|pg(?:\/|$))/.test(
+            imported.specifier,
+          ))
       ) {
         violations.push(
           violation(
@@ -297,6 +355,23 @@ export async function analyzeDependencies(root = repoRoot) {
             `line ${imported.line} imports I/O or server module "${imported.specifier}"; packages/domain is pure and has no I/O`,
           ),
         );
+      }
+      if (
+        owner.name === "@taskdesk/ui" &&
+        !isTestSource(relativeFile) &&
+        !relativeFile.includes("/.storybook/") &&
+        !/\.config\.[^.]+$/.test(relativeFile) &&
+        !/\.stories\.[^.]+$/.test(relativeFile)
+      ) {
+        const importedPackage = packageNameForSpecifier(imported.specifier);
+        if (importedPackage && !UI_RUNTIME_IMPORTS.has(importedPackage)) {
+          violations.push(
+            violation(
+              relativeFile,
+              `line ${imported.line} imports runtime dependency "${importedPackage}" outside the documented packages/ui boundary (React, Base UI, and design-system utilities)`,
+            ),
+          );
+        }
       }
     }
   }

@@ -117,3 +117,70 @@ test("workspace analyzer permits libs' type contract and rejects forbidden app i
   assert.match(messages, /packages\/domain\/src\/index\.ts.*from apps\/\*\*/s);
   assert.doesNotMatch(messages, /packages\/libs\/src\/client\.ts/);
 });
+
+test("documented boundaries reject app imports, impure leaves, I/O and UI dependencies", async (t) => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), "taskdesk-deps-boundaries-"),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  async function packageAt(relative, name, manifest = {}) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name, ...manifest }),
+    );
+    return directory;
+  }
+
+  const web = await packageAt("apps/web", "@taskdesk/web");
+  const api = await packageAt("apps/api", "@taskdesk/api");
+  const domain = await packageAt("packages/domain", "@taskdesk/domain");
+  const permissions = await packageAt(
+    "packages/permissions",
+    "@taskdesk/permissions",
+    {
+      dependencies: { "@taskdesk/domain": "workspace:*" },
+    },
+  );
+  const contracts = await packageAt(
+    "packages/plugins-contracts",
+    "@taskdesk/plugins-contracts",
+  );
+  const ui = await packageAt("packages/ui", "@taskdesk/ui", {
+    dependencies: { hono: "^4.0.0" },
+  });
+
+  await writeFile(
+    path.join(web, "src/api.ts"),
+    'import { handler } from "../../../apps/api/src/handler";\n',
+  );
+  await writeFile(
+    path.join(domain, "src/network.ts"),
+    'import { lookup } from "node:dns";\n',
+  );
+  await writeFile(
+    path.join(permissions, "src/domain.ts"),
+    'import type { Rule } from "@taskdesk/domain";\n',
+  );
+  await writeFile(
+    path.join(contracts, "src/permissions.ts"),
+    'import type { Rule } from "@taskdesk/permissions";\n',
+  );
+  await writeFile(path.join(ui, "src/server.ts"), 'import "hono";\n');
+  await writeFile(path.join(api, "src/index.ts"), "export {};\n");
+
+  const { violations } = await analyzeDependencies(root);
+  const messages = violations.join("\n");
+  assert.match(messages, /apps\/web\/src\/api\.ts.*imports.*apps\/\*/s);
+  assert.match(messages, /packages\/domain\/src\/network\.ts.*node:dns/s);
+  assert.match(messages, /@taskdesk\/permissions.*pure-leaf boundary/s);
+  assert.match(messages, /packages\/permissions\/src\/domain\.ts.*pure leaf/s);
+  assert.match(
+    messages,
+    /packages\/plugins-contracts\/src\/permissions\.ts.*pure leaf/s,
+  );
+  assert.match(messages, /@taskdesk\/ui\/package\.json.*hono/s);
+  assert.match(messages, /packages\/ui\/src\/server\.ts.*hono/s);
+});
