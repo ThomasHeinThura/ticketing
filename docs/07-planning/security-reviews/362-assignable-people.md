@@ -197,3 +197,21 @@ reviewed head `bd2388c`) and `9060512` (`main` with #340 merged).
 | `check:openapi` | matches (108 operations) |
 | `check:route-policy` | exit 0 |
 | `apps/api` `tsc --noEmit` | clean |
+
+## Merge-head attestation (Opus 5.5) — after #341 merged
+
+**Reviewed head:** `6a40d054b8b0f7576709981386d1f59762c25bd5`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `3c310815ba1a8fb85b56668be6032f177cef4825` (#341, the error-boundary primitive in
+`packages/ui` and `apps/web`, plus `biome.json`) into the previously attested head `fa99223`.
+`9060512..3c31081` is that one merge.
+
+- **Parents:** exactly (`fa99223`, `3c31081`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main` since
+  `fa99223`, and there is no non-merge code commit.
+- **PR change unchanged:** `git diff 9060512 fa99223` and `git diff 3c31081 6a40d05` are byte-identical (same sha256), and no file overlaps.
+- **Interaction with #341:** none. #341 touches only UI, web, `biome.json` and docs; this PR touches the API work-item routes, `packages/domain` workflow, the contract and tests.
+- **Tests at `6a40d05`:** `apps/api test:unit` passes 58 files / 488 tests (packages built first).
+
+**Verdict at `6a40d054b8b0f7576709981386d1f59762c25bd5`: CLEAR.**
