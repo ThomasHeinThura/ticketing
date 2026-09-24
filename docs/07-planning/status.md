@@ -1,23 +1,16 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
-**2026-09-24 orchestrator snapshot — `main` at `c4e1810`.** Earlier today #355 (`776999d`,
-Playwright smoke + domain coverage + integration gates), #323 (`9d5deb9`, request-path policy
-shadow mode), #334 (`ecb5b63`, `sees_all` scoped to granting workspaces), #356 (`3a45fc5`,
-security scope widened to identity and API permissions), and #335 (`f22f010`, Storybook 10.6.0)
-were merged. PR #338 then merged as `c4e1810`, closing the #317 asset/websocket existence-oracle
-fix. `protect-main` requires **15** checks with strict up-to-date branches, so every merge can
-make remaining candidates BEHIND and requires reviews/checks to bind to the refreshed exact SHA.
-
-**P0 continuation at this snapshot:** #354 carries #8 Slice 2b shadow-coverage work and is based
-on current `main`; three fresh ordinary reviews cleared exact head `78dba72`, while Opus 5.5
-security review remains pending. #331 carries the chosen-SHA signed-release work; it was just
-refreshed onto `c4e1810`, with ordinary review and Opus review pending. #352 carries the #342
-environment-read detector and has just been refreshed onto `c4e1810`; exact-head review and Opus
-review remain pending. #357 carries the #10 Redocly/gate-scope follow-up and has just been
-refreshed onto `c4e1810`; it remains under review. None of these is merge-ready until its own
-exact-head required checks and reviews clear. #8 still has the per-router deployed-traffic
-coverage report outstanding; #9 remains broader than the merged Storybook 10 compatibility
-spike. These are point-in-time notes; use GitHub for current live state.
+**2026-09-24 orchestrator snapshot — `main` at `c4e1810`.** Merged today, each with every
+required check green on the exact head and an Opus 5.5 attestation of that head:
+#355 (`776999d`, Playwright smoke + domain coverage + integration gates), #323 (`9d5deb9`,
+request-path policy shadow mode), #334 (`ecb5b63`, `sees_all` scoped to granting workspaces),
+#356 (`3a45fc5`, security scope widened to identity and API permissions), #335 (`f22f010`,
+Storybook 10.6.0), #338 (`c4e1810`, asset/websocket existence oracles masked; the #317 timing
+residue S1 stays open). `protect-main` now requires **15** checks with strict up-to-date
+branches, so each merge makes every other candidate BEHIND; a clean merge from `main` then needs
+a fresh Opus merge-head attestation before the review-note binding passes again. Open P0 items
+still outstanding: #8's per-router deployed-traffic coverage report, and #9 beyond the merged
+Storybook 10 spike. Per-PR state is not kept here — use `gh pr list`.
 
 **2026-09-24 continuation (P0 #10):** Three independent GPT-6 review contexts passed the
 then-current PR #355 head `d74eadbcaa271567bdde5d931532f7558aa744c8`. Their follow-up checks
