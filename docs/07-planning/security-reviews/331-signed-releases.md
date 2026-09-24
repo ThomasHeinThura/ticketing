@@ -957,3 +957,27 @@ the STALE binding. That is expected, and this note clears it.
 
 **Verdict at `4413cef3ac8200071864b89d484904eeb3ac8ba5`: CLEAR.** Delta 5's findings carry
 over unchanged.
+
+## Merge-head attestation (Opus 5.5) — after #340 merged
+
+**Reviewed head:** `9d5d31df3b66cf8708c22cc4466ce2e25032dffb`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `9060512c887bc74006d09768c333e5312e32e53e` (#340, the create-work-item dialog) into
+the previously reviewed head `480addd`. `8f545c3..9060512` is that one merge.
+
+- **Parents:** exactly (`480addd`, `9060512`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main` since
+  `480addd`, and there is no non-merge code commit.
+- **PR change unchanged:** `git diff 8f545c3 480addd` and `git diff 9060512 9d5d31d` are
+  byte-identical (same sha256). No file overlaps with #340.
+- **Interaction with #340:** none. #340 touches only API work-item routes, web components,
+  i18n, the OpenAPI contract and tests. It touches no workflow, `scripts/ci`, deploy, chart
+  or release file.
+- **Tests at `9d5d31d`:** `pnpm test:ci-scripts` passes 513 / 513. The worktree stays clean
+  after `pnpm install --frozen-lockfile --offline`.
+- **CI at `9d5d31d` when this was written:** `pull request template + security review`
+  failed on the STALE binding. That is expected, and this note clears it. Most other contexts
+  were queued or in progress.
+
+**Verdict at `9d5d31df3b66cf8708c22cc4466ce2e25032dffb`: CLEAR.**
