@@ -225,12 +225,19 @@ function sourceImports(source) {
   const bindingsAreTypeOnly = (start) => {
     if (tokens[start]?.kind !== SyntaxKind.OpenBraceToken) return false;
     let atBinding = true;
+    let bindingCount = 0;
     for (let cursor = start + 1; cursor < tokens.length; cursor += 1) {
-      if (tokens[cursor].kind === SyntaxKind.CloseBraceToken) return true;
+      if (tokens[cursor].kind === SyntaxKind.CloseBraceToken)
+        return bindingCount > 0;
       if (tokens[cursor].kind === SyntaxKind.CommaToken) {
         atBinding = true;
       } else if (atBinding) {
-        if (!keyword(tokens[cursor], "type")) return false;
+        if (
+          !keyword(tokens[cursor], "type") ||
+          tokens[cursor + 1]?.kind !== SyntaxKind.Identifier
+        )
+          return false;
+        bindingCount += 1;
         atBinding = false;
       }
     }
@@ -244,7 +251,12 @@ function sourceImports(source) {
       const call = next?.kind === SyntaxKind.OpenParenToken;
       if (call) {
         const argument = tokens[index + 2];
-        if (isString(argument)) addLiteral(argument);
+        const afterArgument = tokens[index + 3];
+        const completeFirstArgument =
+          afterArgument?.kind === SyntaxKind.CloseParenToken ||
+          (keyword(token, "import") &&
+            afterArgument?.kind === SyntaxKind.CommaToken);
+        if (isString(argument) && completeFirstArgument) addLiteral(argument);
         else
           imports.push({
             specifier: DYNAMIC_SPECIFIER,
