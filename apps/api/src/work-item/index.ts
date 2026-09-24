@@ -23,6 +23,7 @@ import type { ActivityActorType } from "./activity";
 import createWorkItem from "./controllers/create-work-item";
 import getWorkItemByKey from "./controllers/get-work-item";
 import listAssignablePeople from "./controllers/list-assignable-people";
+import listWorkItemTypes from "./controllers/list-work-item-types";
 import listWorkItems from "./controllers/list-work-items";
 import updateWorkItem, {
   WorkItemVersionConflictError,
@@ -32,6 +33,7 @@ import {
   assignablePeopleSchema,
   workItemListSchema,
   workItemSchema,
+  workItemTypeListSchema,
   workItemVersionConflictSchema,
 } from "./response";
 import {
@@ -40,6 +42,7 @@ import {
   projectIdParam,
   updateWorkItemBody,
   workItemKeyParam,
+  workspaceIdParam,
 } from "./schema";
 
 /**
@@ -206,6 +209,36 @@ const getWorkItemRoute = createRoute({
   },
 });
 
+// The workspace's type catalogue, for the create dialog's Type picker (`WI-1`). The
+// first workspace-scoped route in this module; `workspaceAccess.fromParam` loads the
+// workspace by the path's own id and verifies membership before the capability check,
+// the same helper shape the member/invitation reads in `workspace/index.ts` use.
+const listWorkItemTypesRoute = createRoute({
+  method: "get",
+  operationId: "listWorkItemTypes",
+  path: "/workspace/{workspaceId}/work-item-types",
+  tags: ["Work items"],
+  summary: "List the workspace's work-item types",
+  description:
+    "The workspace's configured `work_item_type` rows -- what a create dialog's Type " +
+    "picker reads. Workspace-scoped: every project in a workspace shares the catalogue.",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:read"),
+  ] as const,
+  request: { params: workspaceIdParam },
+  responses: {
+    200: jsonResponse(
+      "The workspace's work-item types",
+      workItemTypeListSchema,
+    ),
+    400: errorResponse("Workspace ID could not be determined"),
+    403: errorResponse(
+      "No access to the workspace, or missing workspace:read permission",
+    ),
+  },
+});
+
 const updateWorkItemRoute = createRoute({
   method: "patch",
   operationId: "updateWorkItem",
@@ -307,6 +340,11 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
     const workspaceId = c.get("workspaceId");
     const item = await getWorkItemByKey(key, workspaceId);
     return c.json(item, 200);
+  })
+  .openapi(listWorkItemTypesRoute, async (c) => {
+    const { workspaceId } = c.req.valid("param");
+    const types = await listWorkItemTypes(workspaceId);
+    return c.json(types, 200);
   })
   .openapi(updateWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");
