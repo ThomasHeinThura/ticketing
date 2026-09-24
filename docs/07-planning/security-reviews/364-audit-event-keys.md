@@ -136,3 +136,31 @@ fields (`reason`, `note`, `error`, `lastError`).
 merging. F1 is a cheap hardening step for a follow-up. F2 and F4 are instructions for
 reviewing the wiring PRs. The merge still needs every required CI check green at this head,
 and those checks were not complete when this review ran.
+
+## Merge-head attestation (Opus 5.5) — after #340 merged
+
+**Reviewed head:** `929055b28a04df32c3b01c773f11a6cc8377d875`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `9060512c887bc74006d09768c333e5312e32e53e` (#340, the create-work-item dialog) into
+the previously reviewed head `b7c70a4`. `8f545c3..9060512` is that one merge.
+
+- **Parents:** exactly (`b7c70a4`, `9060512`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main` since
+  `b7c70a4`, and there is no non-merge code commit.
+- **PR change unchanged:** `git diff 8f545c3 b7c70a4` and `git diff 9060512 929055b` are
+  byte-identical (same sha256). No file overlaps with #340.
+- `b7c70a4` is note-only over the reviewed code head `cc94b0e`.
+- **Interaction with #340:** #340's API change is one read-only route,
+  `GET /api/workspace/{workspaceId}/work-item-types`, plus a policy entry and schemas. It
+  emits no event and writes no audit row. It adds no key that could conflict with
+  `events/event-keys.ts`'s `EVENT_KEYS` or `audit/actions.ts`. The existing `work_item.*`
+  keys, such as `work_item.created`, are unchanged by #340.
+- **Tests at `929055b`** (packages built first; private DB `o_att_test`, dropped afterwards):
+  - `apps/api test:unit` passes 59 files / 490 tests, including `tests/api/events/event-keys.test.ts`.
+  - `tests/api-integration/audit-log.test.ts` passes 1 / 50.
+- **CI at `929055b` when this was written:** `pull request template + security review`
+  failed on the STALE binding. That is expected, and this note clears it. Other contexts were
+  queued or in progress.
+
+**Verdict at `929055b28a04df32c3b01c773f11a6cc8377d875`: CLEAR.**
