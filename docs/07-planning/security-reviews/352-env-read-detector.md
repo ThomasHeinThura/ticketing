@@ -345,3 +345,111 @@ Four inaccuracies:
   - D2: a rest element makes the pattern `alias`.
   - Each needs a regression test using the inputs above.
 - **After the fix,** a delta Opus pass on the new head is required. D3 should be tracked on #342 or a follow-up issue, even though it does not block this PR.
+
+# Closing review (Opus 5.5)
+
+**Reviewer:** Opus 5.5, a fresh, independent context commissioned by the orchestrating session. I did not author, direct or remediate this change.
+**Reviewed head:** `1f79c1e51661ae47e1cce504fb593332f3334cca`
+**Checked with:** `gh pr view 352 --json headRefOid` before starting and `git ls-remote` before pushing. `origin/main` was `8f545c3c1ae8ee3d5ac9b22d830ff52ab1fce918`, an ancestor of the head.
+**Date:** 2026-09-24
+
+## What changed since `e3dd45b`
+
+- `d95debf` and `e5bd611` change the detector. A rest element (`...`) in a destructuring pattern now makes the read `alias` (D2). The backstop now exempts a comment span only when its `//` or `/*` is the first non-blank text on its line **and** a regex-based tag stack (`hasOpenJsxElementBefore`) says no JSX element is open at that point (D1).
+- `1f79c1e` is docs only (`status.md`). The other changes in `e3dd45b..HEAD` are merges from `main`.
+
+## Tests and counts (my worktree, real Node 24)
+
+- `node --test scripts/ci/lib/env-reads-342.test.mjs scripts/ci/lib/env-reads.test.mjs`: **32/32 pass.**
+- `pnpm test:ci-scripts`: **534 tests, 88 suites, 534 pass, 0 fail.** Without `node_modules` linked, 3 `typecheck-coverage` tests fail on a missing `tsc`. That is my environment, not the PR.
+- `pnpm check:env`: **exit 0**, 981 files scanned, "29 environment read(s), every one attributable", 52 baselined deviations, 1 stale baseline name.
+- **On today's tree the result matches `main`.** `main`'s detector swapped in gives 30 reads, also exit 0. The one difference is the known JSDoc line `apps/api/src/utils/require-auth-secret.ts:5`, which this head drops.
+- **CI:** every required check is green except `pull request template + security review` = FAILURE. It is waiting for this review. `reviews: []`.
+
+## D1 and D2 rerun, end to end
+
+I wrote each input to `apps/web/src/zz-opus-probe.tsx`, ran `node ./scripts/ci/check-env.mjs` (the body of `pnpm check:env`), then deleted the file. The worktree was clean afterwards. The control, a bare `process.env.STRIPE_SECRET_KEY`, exits 1.
+
+| Input (from the `e3dd45b` note) | exit at `1f79c1e` |
+| --- | --- |
+| D1a: `<p>See https://example.com/docs {process.env.STRIPE_SECRET_KEY}</p>` | 1 (`alias`) |
+| D1b: `<code>apps/*</code>`, then a read, then `/** end */` | 1 |
+| D1c: `<p>Don't</p>; … 'https://x.com' + process.env.STRIPE_SECRET_KEY` | 1 |
+| D1d: ``<p>Press ` to open</p>``, then a template and a read on the next line | 1 |
+| D2a: `export const { ...TASKDESK_AUTH_SECRET } = process.env;` | 1 (`alias`) |
+| D2b: `const { TASKDESK_AUTH_SECRET, ...all } = process.env;` (harness) | `alias` |
+
+**D1 as reported and D2 are closed.**
+
+## Hostile-input comparison, this head vs `main`
+
+`FLAG` means the gate fails: an `alias` or `computed` read, or a named read that is not approved. `pass` means the gate is green. `STRIPE_SECRET_KEY` is unapproved; `TASKDESK_AUTH_SECRET` is approved. **E2E** means I also confirmed it end to end: `check:env` exits 0 on this head, and exits 1 with `main`'s `env-reads.mjs` swapped in and then restored.
+
+| # | Input | `1f79c1e` | `main` |
+| --- | --- | --- | --- |
+| D1a–d, D2a–b | The inputs above | FLAG | FLAG |
+| A1 | `<a href="https://x.com" title={process.env.X} />` | FLAG | FLAG |
+| A2 | ``<a title="`" data-k={process.env.X} />`` | FLAG | FLAG |
+| A3 | `<a title="Don't" data-k={…} />` | FLAG | FLAG |
+| A4 | `<a title="{" data-k={…} />` | FLAG | FLAG |
+| A5 | `<p>a > b {process.env.X}</p>` | FLAG | FLAG |
+| A6 | Nested template in a JSX expression: ``{`a ${`b ${process.env.X}`}`}`` | FLAG | FLAG |
+| A7 | The same, with `//` inside the inner template | FLAG | FLAG |
+| K3 | `const { "STRIPE_SECRET_KEY": TASKDESK_AUTH_SECRET } = process.env` | FLAG | FLAG |
+| K4 | `const { STRIPE_SECRET_KEY: TASKDESK_AUTH_SECRET } = process.env` | FLAG | FLAG |
+| **N1** | Fragment `<>`, then a line starting `// docs {process.env.X}`, then `</>`. **E2E.** | **pass** | FLAG |
+| **N2** | `<div hidden={a < b}>`, then a line starting `// docs {…}`, then `</div>` | **pass** | FLAG |
+| **N3** | `<p>{"</p>"}`, then a line starting `// docs {…}`, then `</p>`. This is the lane's reported case. **E2E.** | **pass** | FLAG |
+| **N4** | `<>` + a line starting `/* glob` + `</>`, a read on a later line, then `/** end */` | **pass** | FLAG |
+| **N5** | ``<p>Press ` to open</p>``, then a real template whose second line starts with `/*`, then a read, then `/** end */`. **E2E.** | **pass** | FLAG |
+| **N6** | ``<p>`</p>``, then a real template whose second line is `// ${process.env.X}` | **pass** | FLAG |
+| **K1** | `export const { STRIPE_SECRET_KEY: { TASKDESK_AUTH_SECRET: x } } = process.env;`. **E2E.** | **pass** (named `TASKDESK_AUTH_SECRET`) | FLAG (named `STRIPE_SECRET_KEY`) |
+| **K2** | `const TASKDESK_AUTH_SECRET = "STRIPE_SECRET_KEY"; const { [TASKDESK_AUTH_SECRET]: v } = process.env;`. **E2E.** | **pass** (named `TASKDESK_AUTH_SECRET`) | FLAG (`alias`) |
+| C3/C4 | A real `// process.env.X` line comment, or a real JSDoc | pass | FLAG |
+
+C3/C4 are the intended false-positive reduction. They matter only because the exemption behind them is what the N-rows exploit.
+
+## Findings
+
+### E1: BLOCKING. A line-leading "comment" that the tokenizer invents still hides reads that `main` catches (N1–N6)
+
+The exemption now trusts a comment only when it is line-leading and the tag stack is empty. Neither test proves the span is a comment:
+
+- **The tag stack is a regex over raw text.** It does not see fragments (`<>` … `</>`). It drops an opening tag whose attributes contain `<` (N2). It pops on a closing tag written inside a string or an expression (N3).
+- **A stray backtick in JSX text flips template state across lines** (N5, N6). Code that is really template content then looks like line-leading code to the tokenizer.
+
+`main` exempts nothing, so it catches every row. This is the fourth round in the same class: tokenizer misclassification plus a trusted exemption. Another heuristic will not close it.
+
+### E2: BLOCKING. Nested and computed destructuring keys are attributed to an approved name (K1, K2)
+
+The destructuring loop in `findEnvReads` walks back to the **nearest** `{`, not the matching one. It then treats every `id` not preceded by `:` as a key.
+
+- **K1:** the nested pattern makes the loop read the inner key and drop the outer, real key.
+- **K2:** the computed key `[NAME]` is read as the literal key `NAME`.
+
+Both let a read of an unapproved variable pass under an approved name. `main` catches both: it matches braces by depth and rejects any part that does not start with an identifier. D2 was the same defect, and this is a wider instance of it.
+
+### Carried forward (not re-litigated)
+
+- D3 (static `process` shapes such as `(process as any).env`) and D4 are missed on both heads, so they are not regressions. They still need tracking on #342 or a follow-up issue.
+
+## Structural recommendation
+
+Stop classifying comments, and make "no weaker than `main`" hold by construction, not by argument:
+
+1. **The backstop exempts nothing.** Delete the comment exemption and `hasOpenJsxElementBefore`. Every raw match not accounted for by a token-level read at the same offset is reported. On today's tree the only new report is the `require-auth-secret.ts:5` JSDoc. Either reword that comment, or classify backstop hits with `main`'s `NAMED` / `BRACKET_LITERAL` lookahead so the hit resolves to the approved `TASKDESK_AUTH_SECRET`. I checked the first half by hand: with the exemption disabled, rows N1–N6 all become FLAG.
+2. **Destructuring accepts only a flat pattern.** Every element must be `ID` or `ID: ID`. Anything else is `alias`: `...`, `[`, a nested `{`/`[`, a string key, or a default. I checked this by hand too: K1–K3 become `alias`, D2a–b stay `alias`, and K4 stays named.
+3. **Optional belt and braces:** report the union of this head's reads and `main`'s `findEnvReads` reads. The gate is then a strict superset of `main` by construction. Both pass today's tree.
+
+**Tests to add:** the rows N1–N6, K1 and K2 as regression tests.
+
+## Verdict
+
+**CHANGES NEEDED at `1f79c1e51661ae47e1cce504fb593332f3334cca`.**
+
+- **Closed:** D1 as reported and D2. The counts are green, and the gate matches `main` on today's tree.
+- **Regressions from `main` on hostile inputs:** eight of them, each confirmed. The five marked E2E were confirmed end to end on both detectors.
+  - **E1 (N1–N6):** an invented line-leading comment hides a read.
+  - **E2 (K1, K2):** a nested or computed destructuring key is attributed to an approved name.
+- **Why this is not acceptable as a tracked follow-up:** the head is not a superset of `main`.
+- **Fix:** both fixes are small and structural (items 1 and 2 above), and they end the same-class patch rounds. After the fix, a delta Opus pass on the new head is still required.
