@@ -12,6 +12,7 @@
  * (a banned user, a suspended customer organisation).
  */
 import { randomUUID } from "node:crypto";
+import { defaultRolePayloads } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -129,6 +130,18 @@ describe("resolveIdentity (loader) — a multi-workspace user, and bounded query
         role: "member",
         joinedAt: new Date(),
       });
+      // Issue #318 (security): a genuine seeded row, mirroring what
+      // `seed-default-workspace-roles.ts`/`create-workspace.ts` guarantee for real
+      // workspaces -- without it this membership would no longer resolve to authority
+      // (it would read as a custom row that merely shares the `member` name).
+      await db.insert(schema.workspaceRoleTable).values({
+        workspaceId,
+        role: "member",
+        permission: JSON.stringify(defaultRolePayloads.member),
+        isSystem: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
       extraWorkspaceIds.push(workspaceId);
     }
     await backfillStaffPersons();
@@ -154,10 +167,12 @@ describe("resolveIdentity (loader) — a multi-workspace user, and bounded query
       identity?.memberships.map((membership) => membership.scopeId).sort(),
     ).toEqual([firstWorkspace.id, ...extraWorkspaceIds].sort());
 
-    // Exactly 3 queries: person+role, workspace_member (all rows), team_member (all rows) --
-    // fixed regardless of the 5 memberships above. Re-run with only 1 membership below and
-    // assert the SAME count, which is what actually proves "no N+1" rather than merely "a
-    // small number this time."
+    // Exactly 4 queries: person+role, workspace_member (all rows), the issue #318
+    // genuine-built-in-row check (`workspace_role` where `is_system` for every workspace
+    // query 2 found, one `IN (...)`), and team_member (all rows) -- fixed regardless of
+    // the 5 memberships above. Re-run with only 1 membership below and assert the SAME
+    // count, which is what actually proves "no N+1" rather than merely "a small number
+    // this time."
     const fiveMembershipQueryCount = selectCalls;
 
     const { user: soloUser } = await createWorkspaceMember({ role: "owner" });
@@ -168,7 +183,7 @@ describe("resolveIdentity (loader) — a multi-workspace user, and bounded query
       countingExecutor,
     );
     expect(selectCalls).toBe(fiveMembershipQueryCount);
-    expect(selectCalls).toBe(3);
+    expect(selectCalls).toBe(4);
   });
 });
 

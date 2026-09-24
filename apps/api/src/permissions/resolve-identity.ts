@@ -93,10 +93,8 @@
  *     table (`data-model.md` §2, P1 identity schema) has the real `sees_all` column, but
  *     nothing writes a `membership` row for a workspace membership yet — `workspace_member`
  *     (the table that actually has rows) has no such column at all. The loader therefore
- *     always resolves `seesAll: false`. The pure mapper still fully implements and
- *     unit-tests the `seesAll → reach: { kind: "all" }` rule (rbac.md § Reach, step 2), fed
- *     directly rather than through the loader, so the day a write path exists this file
- *     needs no change — only the loader's `seesAll: false` literal becomes a real read.
+ *     always resolves `seesAll: false`. The pure mapper scopes any future sees_all grant to
+ *     the workspace whose membership carries it; it never becomes global reach.
  *  4. **Instance-admin, as modelled here, is narrower than two existing bypasses.**
  *     `docs/01-architecture/rbac.md` § Reach step 1 says `instance:admin` grants *reach*
  *     only; `BUILT_IN_ROLES.instance_admin` (`packages/permissions/src/roles.ts`) holds only
@@ -136,9 +134,12 @@ import {
   type RoleGrant,
   type Side,
 } from "@taskdesk/permissions";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import db, { schema } from "../database";
-import { resolveMembershipRoleFrom } from "../utils/workspace-member-roles";
+import {
+  isGenuineBuiltInRoleGrant,
+  resolveMembershipRoleFrom,
+} from "../utils/workspace-member-roles";
 
 /* ------------------------------------------------------------------ *
  * The pure mapper
@@ -154,6 +155,22 @@ export type WorkspaceMembershipFact = {
    * testable without a database.
    */
   readonly seesAll: boolean;
+  /**
+   * Issue #318 (security), Opus review of PR #315 finding S2. Does a GENUINE seeded
+   * `workspace_role` row (`is_system = true`) back this row's `role` name, in this
+   * workspace? Read by the loader from `workspace_role.is_system`
+   * (`seed-default-workspace-roles.ts`/`create-workspace.ts` set it `true`;
+   * `create-workspace-role.ts` never does). Always `false` from the real loader for
+   * `"owner"`, which never gets a `workspace_role` row at all (retrofit plan R5) —
+   * `isGenuineBuiltInRoleGrant` (`workspace-member-roles.ts`, shared with
+   * `require-workspace-capability.ts`) special-cases `"owner"` rather than trusting this
+   * field for it, the same split `require-workspace-capability.ts`'s
+   * `isGenuineBuiltInRoleAssignment` uses. Without this field (or before it existed), a
+   * custom role an administrator named e.g. `"manager"` read as indistinguishable from a
+   * genuine built-in manager here, the same gap `require-workspace-capability.ts`'s own
+   * doc comment named for the legacy capability check.
+   */
+  readonly isSystemRole: boolean;
 };
 
 /**
@@ -393,6 +410,24 @@ export function resolveIdentityFromFacts(
       // `customer`) — see `isBuiltInWorkspaceRoleKey`'s doc comment, S1.
       continue;
     }
+    // `resolution.ok` came from `resolveMembershipRoleFrom(rows.map(...))`, whose
+    // `isUnambiguousMembership` check means `rows` has EXACTLY one element here — the same
+    // explicit-undefined-check idiom `resolveMembershipRoleFrom` itself uses under
+    // `noUncheckedIndexedAccess`, kept explicit rather than asserted away.
+    const membershipRow = rows[0];
+    if (membershipRow === undefined) {
+      continue;
+    }
+    if (
+      !isGenuineBuiltInRoleGrant(resolution.role, membershipRow.isSystemRole)
+    ) {
+      // Issue #318 (security), S2: `role` names a real `BUILT_IN_ROLES` key, but this row
+      // is not backed by a genuine seeded `workspace_role` row — a custom role that took a
+      // built-in's name before `create-workspace-role.ts` reserved every key. Treated the
+      // same as an unrecognised custom role name above: skipped, not granted the built-in's
+      // capabilities.
+      continue;
+    }
     const builtIn = BUILT_IN_ROLES[resolution.role];
     const seesAll = rows.some((row) => row.seesAll);
     memberships.push({
@@ -419,10 +454,20 @@ export function resolveIdentityFromFacts(
     });
   }
 
-  const seesAllAnywhere = memberships.some((membership) => membership.seesAll);
-  const reach: Reach =
-    facts.isInstanceAdmin || seesAllAnywhere
-      ? { kind: "all" }
+  const seesAllWorkspaceIds = [
+    ...new Set(
+      memberships
+        .filter((membership) => membership.seesAll)
+        .map((membership) => membership.scopeId),
+    ),
+  ];
+  const reach: Reach = facts.isInstanceAdmin
+    ? { kind: "all" }
+    : seesAllWorkspaceIds.length > 0
+      ? {
+          kind: "membership_with_workspaces",
+          workspaceIds: seesAllWorkspaceIds,
+        }
       : { kind: "membership" };
 
   // S5: keep only teams whose workspace this person currently has a `workspace_member`
@@ -475,13 +520,19 @@ export type ResolveIdentityInput = {
 
 /**
  * Loads exactly what `resolveIdentityFromFacts` needs, in a bounded, fixed number of
- * queries — never one per membership. Three queries regardless of how many workspaces or
- * teams the user belongs to:
+ * queries — never one per membership. Four queries regardless of how many workspaces or
+ * teams the user belongs to (issue #318 added the fourth; the loader ran three of these
+ * before it):
  *
  *   1. `user` left-joined to `person` left-joined to `organisation` (role, ban status,
  *      person facts and the customer-gating organisation facts, all in one round trip);
  *   2. every `workspace_member` row for this user;
- *   3. every `team_member` row for this user, inner-joined to `team` for its `workspace_id`
+ *   3. issue #318 (security), S2: every `workspace_role` row with `is_system = true` in any
+ *      workspace query 2 returned — one `IN (...)` query over the distinct workspace ids,
+ *      not one per membership — so the mapper can tell a genuine seeded built-in role row
+ *      from a custom row that merely shares its name. Skipped (no query at all) when query
+ *      2 found no memberships;
+ *   4. every `team_member` row for this user, inner-joined to `team` for its `workspace_id`
  *      (S5) — still one query, not a second round trip.
  */
 export async function resolveIdentity(
@@ -556,6 +607,37 @@ export async function resolveIdentity(
     .from(schema.workspaceUserTable)
     .where(eq(schema.workspaceUserTable.userId, input.userId));
 
+  // Issue #318 (security), S2. A 4th bounded query (still fixed regardless of how many
+  // memberships this person has — never one per membership): which of THIS person's
+  // `workspace_member.role` values are backed by a genuine seeded `workspace_role` row
+  // (`is_system = true`) in the SAME workspace, so `isGenuineBuiltInRoleGrant` can refuse a
+  // custom row that merely shares a built-in's name. Skipped entirely when the person has
+  // no memberships at all — the common case for a brand-new user.
+  const memberWorkspaceIds = [
+    ...new Set(memberRows.map((member) => member.workspaceId)),
+  ];
+  const systemRoleRows =
+    memberWorkspaceIds.length === 0
+      ? []
+      : await executor
+          .select({
+            workspaceId: schema.workspaceRoleTable.workspaceId,
+            role: schema.workspaceRoleTable.role,
+          })
+          .from(schema.workspaceRoleTable)
+          .where(
+            and(
+              inArray(
+                schema.workspaceRoleTable.workspaceId,
+                memberWorkspaceIds,
+              ),
+              eq(schema.workspaceRoleTable.isSystem, true),
+            ),
+          );
+  const systemRoleKeys = new Set(
+    systemRoleRows.map((row) => `${row.workspaceId}\u0000${row.role}`),
+  );
+
   const teamRows = await executor
     .select({
       teamId: schema.teamMemberTable.teamId,
@@ -578,6 +660,9 @@ export async function resolveIdentity(
       role: member.role,
       // KNOWN GAP 3: no populated `sees_all` source for workspace-scope memberships yet.
       seesAll: false,
+      isSystemRole: systemRoleKeys.has(
+        `${member.workspaceId}\u0000${member.role}`,
+      ),
     })),
     teamMemberships: teamRows.map((team) => ({
       teamId: team.teamId,

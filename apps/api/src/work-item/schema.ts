@@ -85,6 +85,12 @@ export const workItemKeyParam = z.object({
     .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
 });
 
+export const workspaceIdParam = z.object({
+  workspaceId: z
+    .string()
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
+});
+
 // `PATCH /api/work-items/{key}` -- `WI-7`/`WI-8`. Every field OPTIONAL: this is a genuine
 // partial update (only the fields supplied are changed), matching this codebase's own
 // canonical-route convention for a PATCH body -- `workspace/schema.ts`'s

@@ -15,6 +15,15 @@
 # scheduler in-process. This script therefore owns step 1 and the handover, and
 # fails fast rather than letting the process start with a missing secret.
 #
+# TASKDESK_ROLE=migrate (issue #296, S1) is a fifth value, alongside all/web/jobs,
+# selecting a different entry point entirely: apps/api/src/index.ts's
+# runMigrationStep() runs migrations and the database role/grant bootstrap against
+# TASKDESK_MIGRATION_DATABASE_URL (the owner credential) and exits — it never binds
+# a port and never touches the application connection. This is what keeps the owner
+# credential out of the long-running web/jobs/all process's environment entirely:
+# compose's one-shot `migrate` service and Helm's migrate Job are the only places
+# that variable is ever set.
+#
 # It never prints a secret's value, only its name.
 
 set -eu
@@ -65,8 +74,8 @@ fi
   || fail "TASKDESK_ENCRYPTION_KEY is shorter than 32 characters. Generate one with: openssl rand -hex 32"
 
 case "${TASKDESK_ROLE:-all}" in
-  all|web|jobs) ;;
-  *) fail "TASKDESK_ROLE must be one of: all, web, jobs (got '${TASKDESK_ROLE}')" ;;
+  all|web|jobs|migrate) ;;
+  *) fail "TASKDESK_ROLE must be one of: all, web, jobs, migrate (got '${TASKDESK_ROLE}')" ;;
 esac
 
 # exec, so SIGTERM reaches node and its graceful shutdown runs.

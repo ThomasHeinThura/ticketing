@@ -90,6 +90,26 @@ export const workItemListResponseSchema = z
   })
   .openapi("WorkItemListResponse");
 
+// `GET /api/workspace/{workspaceId}/work-item-types` — the workspace's type catalogue,
+// as the create dialog's Type picker reads it (`WI-1`: one required type on create, no
+// default to fall back to). Narrower than the row on purpose: see the controller's own
+// comment for what is excluded and why.
+export const workItemTypeSchema = z
+  .object({
+    id: z.string(),
+    key: z.string(),
+    name: z.string(),
+    icon: z.string().nullable(),
+    category: z.string().openapi({
+      description: "One of: service, delivery (work-items.md § Default types).",
+    }),
+    isEpic: z.boolean(),
+    isChange: z.boolean(),
+  })
+  .openapi("WorkItemType");
+
+export const workItemTypeListSchema = z.array(workItemTypeSchema);
+
 // `WI-7`: a version mismatch on `PATCH /api/work-items/{key}` returns 409 with BOTH
 // versions ("the caller's asserted version and the current server version") so the UI can
 // offer a resolution -- structured JSON, not the plain-text `errorResponse()` shape every

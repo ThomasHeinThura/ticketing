@@ -32,6 +32,7 @@ import { isDisposableEmail } from "./utils/is-disposable-email";
 import { isLocalSignInPath } from "./utils/is-local-sign-in-path";
 import { resolveAuthSecret } from "./utils/require-auth-secret";
 import { TRUSTED_CLIENT_IP_HEADER } from "./utils/resolve-client-ip";
+import { ensureStaffPersonForUser } from "./utils/seed-internal-organisation";
 
 config();
 
@@ -472,7 +473,7 @@ export const auth = betterAuth({
             });
           }
         },
-        after: async (user) => {
+        after: async (user, context) => {
           // The anonymous() plugin creates ephemeral users for guest
           // access; never promote one to instance admin even if no
           // real admin exists yet. `isAnonymous` is contributed by the
@@ -551,6 +552,15 @@ export const auth = betterAuth({
                 });
             }
           });
+
+          // #315 S7 / #324: boot seeding alone misses local users who register
+          // after startup. The current local password-signup path creates ordinary
+          // internal staff identities. Do not infer a staff identity for OAuth
+          // callbacks: their portal and organisation must come from a configured
+          // identity connection, which owns that provisioning decision.
+          if (context?.path === "/sign-up/email") {
+            await ensureStaffPersonForUser(user.id);
+          }
         },
       },
     },
