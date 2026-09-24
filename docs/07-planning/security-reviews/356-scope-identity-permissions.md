@@ -190,3 +190,35 @@ identical to #323's attested tree `eb94330`. `776999d..9d5deb9` is that one merg
 
 **Verdict at `1eed6fa4d592c25a18c391ecaf687752e04e5fc1`: CLEAR.** The ordering note above
 still stands and remains non-blocking.
+
+## Merge-head attestation (Opus 5.5) — after #334 merged
+
+**Reviewed head:** `bf95869e916fb9dc975088081ab23a2194ba4095`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `ecb5b63dcdf9e17aa706999e1a5c4c7e7ecf2075` (#334, sees_all scoped to the granting
+workspace) into the previously attested head `76b982e9ba3bce524f811867e7afce0204cb8bb5`. Main's tree at `ecb5b63` is identical to
+#334's attested tree `57d7194`. `9d5deb9..ecb5b63` is that one merge.
+
+- **Parents:** exactly (`76b982e9ba3bce524f811867e7afce0204cb8bb5`, `ecb5b63`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution.
+- **PR change unchanged:** `git diff 9d5deb9 76b982e` and `git diff ecb5b63 bf95869` are
+  byte-identical (same sha256). No file overlaps with #334.
+- **Interaction with #334:** at `bf95869`, `readSecurityReviewPaths()` returns 35 globs,
+  including `packages/permissions/**`, `packages/domain/src/identity/**` and
+  `apps/api/src/permissions/**`.
+  - #334's source files match: `apps/api/src/permissions/resolve-identity.ts` matches the new
+    row `apps/api/src/permissions/**`. `packages/permissions/src/{evaluator,identity}.ts`
+    match `packages/permissions/**`.
+  - #323's `apps/api/src/permissions/shadow-evaluation.ts` also matches the new row.
+  - A near-miss path, `apps/api/src/permissionsX/a.ts`, does not match, so the glob does not
+    over-match.
+  - #334's `tests/**` and `rbac.md` are outside the scope list, as they were before this PR.
+    That is unchanged by #356.
+- **Tests at `bf95869`:** `pnpm test:ci-scripts` passes 502 / 502.
+- **CI at `bf95869` when this was written:** the only failure was `pull request template +
+  security review`, which reported this file STALE for want of this note. That is expected.
+  Integration, unit, build, the gate checkers and CodeQL analysis were still running. Merging
+  needs them green.
+
+**Verdict at `bf95869e916fb9dc975088081ab23a2194ba4095`: CLEAR.**
