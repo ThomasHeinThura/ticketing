@@ -799,3 +799,134 @@ All three are non-blocking, as in delta 3.
 3. Correct the PR body's exact-head line.
 4. Get a fresh Opus delta review of the new head.
 5. Get every required check green at that exact head.
+
+## Delta review 5 (Opus 5.5) at `b8921c5`
+
+**Reviewed head:** `b8921c5845e4885451d2b184c78e0999492e8c61`
+
+Previous Opus-attested head: `15b67834181b4a97e1b06fc22cd9307e5b70b400` (delta 4, note at `d14e6dd`).
+
+**Verdict (security gate): CLEAR WITH FINDINGS.** F1 and F2 are fixed. Nothing blocks.
+The findings left open are non-blocking: N1–N3 carry over, and there is a note for the
+orchestrator about `status.md`. No waiver was sought or used.
+
+**Independence.** This was a fresh Opus 5.5 context in a detached worktree. It authored,
+directed and remediated nothing. Its only write is this section.
+
+### Commits in `d14e6dd..b8921c5`
+
+| Commit | Content | Result |
+| --- | --- | --- |
+| `1731fe4` (#358), `3fde7f6` (#332), `663c0cb` (#354) | from `main`, each reviewed on its own PR | not re-reviewed here |
+| `9aca44b` | merge of `main` at `3fde7f6` | clean. `--remerge-diff` is empty. |
+| `bf4031f` | the F1 fix: `local-certificate.sh` (+3/−1), `local-certificate.test.mjs` (+96), `decision-log.md` (F2) | see below |
+| `b8921c5` | merge of `main` at `663c0cb` | **conflict in `status.md` only.** See the note for the orchestrator. |
+
+- `#363` is still open and not on `main`, so it is not part of this delta.
+- `origin/main` (`663c0cb`) is an ancestor of the head.
+
+### F1: RESOLVED
+
+- **The fix.** `local-certificate.sh:36–37` now captures the `-checkhost` output. It
+  returns 1 if `openssl` fails, and it requires `*" does match certificate"*`. That is the
+  shape delta 4 asked for. There is no pipe, so there is no SIGPIPE risk under `pipefail`.
+  - The hostname cannot inject the match string. It is built from a validated DNS
+    `DOMAIN`, which has no spaces.
+  - "does NOT match certificate" does not contain " does match certificate".
+- **Simulation.** I used an `openssl` wrapper that runs the real 3.5.5 binary for
+  `-checkhost`, then exits 0. The helper ran under `bash -Eeuo pipefail`:
+
+| Case | Real 3.5.5 | Simulated 3.0 |
+| --- | --- | --- |
+| Matching key, valid dates, SAN `wrong.example.test` | renewed. rc=0, one `replaced-*`, and the new SAN covers the routes. | **renewed**, the same as real |
+| The renewed, correct pair, run again | unchanged. No new backup, cert and key byte-identical. | **unchanged**, the same as real |
+
+- **The regression test.** It is new: "renews wrong-host material with a matching key even
+  when checkhost exits zero".
+  - It uses a matching key, a valid date and a wrong SAN, so only the hostname is wrong.
+  - It ships its own shim that forces `-checkhost` to exit 0. So it applies 3.0 behaviour
+    on any runner, which makes it independent of the runner's OpenSSL version.
+  - It asserts renewal, a byte-identical backup of both the cert and the key, and that the
+    new cert covers `ticket.dev.example.test` by output.
+- **The test works both ways.**
+
+| Test file at `b8921c5` against | Real 3.5.5 | Simulated 3.0 |
+| --- | --- | --- |
+| the new helper | 5/5 pass | 5/5 pass |
+| the old helper (`15b6783`) | **4/5**: the new test fails | **4/5**: the new test fails |
+
+- **The first test's route assertion is fixed too.** It now matches ` does match
+  certificate` in the output instead of the exit status.
+- **The script delta is exactly `bf4031f`.** `git diff d14e6dd HEAD` over `scripts/lib`,
+  the test, `deploy.sh` and `release.yml` is the same as `bf4031f`'s diff. `deploy.sh` and
+  `release.yml` are unchanged.
+
+### F2: RESOLVED
+
+- **The placement is fixed.** The #356 entry now sits after `## Format` (line 8). It comes
+  second among the entries, below "2026-09-24 · GPT-6 Luna replaces Sonnet…". `main` now
+  has the same ordering.
+- **No decision text changed.** `bf4031f`'s `decision-log.md` diff pairs up exactly. The
+  only unpaired lines are 13 blank lines. So it changes, drops and adds no decision text.
+- **The PR's footprint on the log is now only its own entry.** The net
+  `decision-log.md` diff against `main` adds just the "2026-09-23 · Manual release tags the
+  selected `main` SHA…" entry.
+
+### Merge integrity
+
+- **Every other PR file is unchanged.** For every file in `origin/main...HEAD` (20
+  files), the PR's changed lines are the same as at `d14e6dd`. The exceptions are the
+  F1/F2 files and `status.md`.
+- **Main's new commits overlap the PR only in `decision-log.md` and `status.md`.** Its
+  code changes are in `apps/api/**`, `tests/**` and `scripts/ci/lib/env-reads.test.mjs`.
+  They do not touch `release.yml`, `deploy.sh`, `scripts/lib/**`, `compose.yml` or
+  `deploy/`. So S1 and S3 still hold.
+- **Scope.** `ci-cd.md` still has `scripts/lib/**` and both #356 globs.
+
+### Note for the orchestrator (governance, not a security finding)
+
+- **The `status.md` conflict resolution in `b8921c5` dropped four of this PR's own
+  session-log entries.** They are "P0 integration continuation — release TLS test…", "P0
+  #11 local deployment and runbook validation", "P0 history refreshes…" and "…#331
+  returned for remediation".
+- **It replaced them with one new entry**, "2026-09-24 · P0 #11 release helper
+  remediation".
+- **None of the dropped entries is on `main`.** The PR's net `status.md` change is now
+  +10 lines.
+- **No decision history is affected.** Delta 3 and 4 had flagged several of those entries
+  as inaccurate.
+- **Some evidence was lost.** The earlier local-boot entry held the only record of the
+  `deploy.sh local` smoke run. If the orchestrator wants that evidence on `main`, it should
+  be restored deliberately.
+- **An unverifiable claim.** The new entry says an "independent exact-delta review is
+  CLEAR". That cannot be checked from the repository.
+
+### Carried forward, still open (non-blocking)
+
+- **N1.** `mkdir -p "$cert_dir"` follows the umask. Use 0700.
+- **N2.** `openssl pkey` has no `-passin pass:`.
+- **N3.** `replaced-*` directories pile up.
+
+### Tooling at this head
+
+| Check | Result |
+| --- | --- |
+| `bash -n scripts/deploy.sh`, `bash -n scripts/lib/local-certificate.sh` | OK |
+| `node --test scripts/ci/lib/local-certificate.test.mjs` | 5/5 pass, both real and simulated 3.0 |
+| `pnpm test:ci-scripts` (after `pnpm install --frozen-lockfile`) | 513 tests, 89 suites: 513 pass, 0 fail |
+| shellcheck | not run (not installed) |
+
+### CI at `b8921c5`
+
+| Check | State |
+| --- | --- |
+| **pull request template + security review** | **failure**, for two reasons. This note was stale, which this section addresses. The PR body's checklist still names `15b67834181b4a97e1b06fc22cd9307e5b70b400` as the exact head, and the orchestrator must correct it. |
+| every other required check, including `gate checkers + red probes` | success |
+| a11y, visual regression, performance budgets | SKIPPED (NOT ENABLED) |
+| mergeable | MERGEABLE |
+
+### Before merge
+
+1. Correct the PR body's exact-head line to `b8921c5845e4885451d2b184c78e0999492e8c61`.
+2. Re-run the template check. It must go green with the note-only commit on top.
+3. If anything other than this note lands after `b8921c5`, another Opus delta is needed.
