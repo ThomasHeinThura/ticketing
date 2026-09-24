@@ -51,6 +51,9 @@ const MUST_REQUIRE_REVIEW = [
   "packages/mcp/vitest.config.ts",
   "packages/permissions/vitest.config.ts",
   "packages/ui/vitest.config.ts",
+  "apps/api/vitest.permissions.config.ts",
+  "apps/api/vitest.integration.config.ts",
+  "tests/api-integration/global-setup.ts",
   "apps/web/playwright.config.ts",
   "apps/web/e2e/auth-redirect.spec.ts",
   "turbo.json",
@@ -71,6 +74,8 @@ const MUST_REQUIRE_REVIEW = [
   "apps/api/src/scim/users.ts",
   "apps/api/src/webhooks/outbound.ts",
   "packages/permissions/src/evaluator.ts",
+  "packages/domain/src/identity/claim-mapping.ts",
+  "apps/api/src/permissions/shadow-middleware.ts",
 ];
 
 /** Paths that must NOT drag in the requirement, or it becomes routine and ignored. */
@@ -114,6 +119,7 @@ describe("security-review paths — F15 scope", () => {
 
   it("keeps every application glob the list carried before F15", async () => {
     const { globs } = await readSecurityReviewPaths();
+    assert.ok(globs.includes("**/vitest*.config.*"));
     for (const glob of [
       "apps/api/src/**/policy.ts",
       "apps/api/src/middleware/**",
@@ -124,6 +130,8 @@ describe("security-review paths — F15 scope", () => {
       "apps/api/src/storage/**",
       "packages/permissions/**",
       "packages/plugins-contracts/**",
+      "packages/domain/src/identity/**",
+      "apps/api/src/permissions/**",
     ]) {
       assert.ok(
         globs.includes(glob),

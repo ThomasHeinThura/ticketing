@@ -47,8 +47,12 @@ export function unapprovedProblems(problems, baselineProblems) {
 }
 
 export function parseRedoclyReport(output) {
-  const start = output.indexOf('{\n  "totals"');
+  const marker = '{\n  "totals"';
+  const start = output.indexOf(marker);
   if (start < 0) return null;
+  if (output.indexOf(marker, start + marker.length) >= 0) {
+    throw new Error("Redocly output contains multiple JSON reports");
+  }
 
   let depth = 0;
   let inString = false;
@@ -66,7 +70,32 @@ export function parseRedoclyReport(output) {
     else if (character === "{") depth += 1;
     else if (character === "}") {
       depth -= 1;
-      if (depth === 0) return JSON.parse(output.slice(start, index + 1));
+      if (depth === 0) {
+        const report = JSON.parse(output.slice(start, index + 1));
+        if (
+          !report ||
+          typeof report !== "object" ||
+          !report.totals ||
+          !Array.isArray(report.problems)
+        ) {
+          throw new Error("Redocly JSON report is missing totals or problems");
+        }
+        const { errors, warnings, ignored } = report.totals;
+        if (
+          !Number.isInteger(errors) ||
+          !Number.isInteger(warnings) ||
+          !Number.isInteger(ignored) ||
+          errors < 0 ||
+          warnings < 0 ||
+          ignored !== 0 ||
+          report.problems.length !== errors + warnings
+        ) {
+          throw new Error(
+            "Redocly JSON report totals do not match its problems",
+          );
+        }
+        return report;
+      }
     }
   }
   throw new Error("Redocly JSON report is incomplete");
@@ -143,10 +172,7 @@ async function redoclyLint(baseSpec) {
   }
   if (!baseline || !current) return false;
 
-  const unexpected = unapprovedProblems(
-    current.problems ?? [],
-    baseline.problems ?? [],
-  );
+  const unexpected = unapprovedProblems(current.problems, baseline.problems);
   if (unexpected.length > 0) {
     process.stderr.write(
       `Redocly lint found ${unexpected.length} new finding(s) beyond the shrink-only baseline:\n`,
@@ -160,8 +186,8 @@ async function redoclyLint(baseSpec) {
     return false;
   }
 
-  const remaining = current.problems?.length ?? 0;
-  const previous = baseline.problems?.length ?? 0;
+  const remaining = current.problems.length;
+  const previous = baseline.problems.length;
   process.stdout.write(
     `Redocly lint: ${remaining} finding(s) remain from origin/main's ${previous}; the baseline is derived from origin/main and can only shrink.\n`,
   );
