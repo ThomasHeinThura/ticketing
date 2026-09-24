@@ -9,6 +9,10 @@ import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import {
+  markShadowLegacyAuthorizationUnknown,
+  setShadowLegacyAuthorization,
+} from "../permissions/shadow-context";
+import {
   isGenuineBuiltInRoleGrant,
   isUnambiguousMembership,
   workspaceMemberRoles,
@@ -76,13 +80,24 @@ type DbOrTx = Pick<typeof db, "select">;
  */
 export function requireWorkspaceCapability(capability: Capability) {
   return async (c: Context, next: Next) => {
+    markShadowLegacyAuthorizationUnknown(c);
     const workspaceId = c.get("workspaceId");
     const userId = c.get("userId");
     if (!workspaceId || !userId) {
+      setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
 
-    await assertCallerHasCapability(workspaceId, userId, capability);
+    try {
+      await assertCallerHasCapability(workspaceId, userId, capability);
+    } catch (error) {
+      if (error instanceof HTTPException && error.status === 403) {
+        setShadowLegacyAuthorization(c, "denied");
+      }
+      throw error;
+    }
+
+    setShadowLegacyAuthorization(c, "allowed");
 
     return next();
   };

@@ -6,6 +6,10 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import {
+  markShadowLegacyAuthorizationUnknown,
+  setShadowLegacyAuthorization,
+} from "../permissions/shadow-context";
 import { checkWorkspaceName } from "../utils/check-workspace-name";
 import { requireInviteAbuseGate } from "../utils/require-invite-abuse-gate";
 import { requireInviteRateLimit } from "../utils/require-invite-rate-limit";
@@ -924,18 +928,24 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
     }
   })
   .openapi(leaveWorkspaceRoute, async (c) => {
+    markShadowLegacyAuthorizationUnknown(c);
     try {
       const left = await leaveWorkspaceCtrl(
         c.get("workspaceId"),
         c.get("userId"),
         requireSessionId(c),
       );
+      setShadowLegacyAuthorization(c, "allowed");
       return c.json(left, 200);
     } catch (error) {
       if (error instanceof NotAMemberError) {
+        setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(404, { message: error.message });
       }
       if (error instanceof LastOwnerCannotLeaveError) {
+        // Membership was confirmed; this is a last-owner business constraint, not
+        // an authorization denial.
+        setShadowLegacyAuthorization(c, "allowed");
         throw new HTTPException(400, { message: error.message });
       }
       throw error;
@@ -943,18 +953,21 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
   })
   .openapi(transferWorkspaceOwnershipRoute, async (c) => {
     const body = c.req.valid("json");
+    markShadowLegacyAuthorizationUnknown(c);
     try {
       const transferred = await transferWorkspaceOwnershipCtrl(
         c.get("workspaceId"),
         c.get("userId"),
         body.newOwnerUserId,
       );
+      setShadowLegacyAuthorization(c, "allowed");
       return c.json(transferred, 200);
     } catch (error) {
       if (error instanceof AlreadyOwnerError) {
         throw new HTTPException(400, { message: error.message });
       }
       if (error instanceof CallerNotOwnerError) {
+        setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(403, { message: error.message });
       }
       if (error instanceof AmbiguousMembershipError) {

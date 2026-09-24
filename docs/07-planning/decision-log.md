@@ -33,6 +33,23 @@ Opus remains mandatory for security-scope work.
 
 **Decided by:** Thomas, 2026-09-24, in session.
 
+
+### 2026-09-24 · The security-review scope adds `packages/domain/src/identity/**` and `apps/api/src/permissions/**`
+
+**Decision:** `docs/04-engineering/ci-cd.md`'s authoritative security-review scope list gains two globs:
+- `packages/domain/src/identity/**`, the P3 identity rules: claim normalisation, SCIM validation and PATCH, role limits and customer reach;
+- `apps/api/src/permissions/**`, which holds `resolveIdentity` (#315) and the #8 shadow-mode middleware (#323).
+
+From now on, any PR touching either path needs the Opus 5.5 security review, enforced by CI.
+
+**Why:**
+- #346's Opus review (S11) found the identity rules outside the scope, although they decide who gets which roles and reach. The same review found a ReDoS and a fail-open role mapping in that code.
+- `apps/api/src/permissions/**` was also outside it. #315 and #323 were only reviewed by Opus because the orchestrating session commissioned it.
+
+This only tightens the gate. It removes nothing.
+
+**Decided by:** the orchestrating session, 2026-09-24, under Thomas's standing delegation. There was one clearly recommended option.
+
 ### 2026-09-23 · Require coverage and full-stage smoke contexts in `protect-main` (#10)
 
 **Decision:** The active `protect-main` ruleset now requires the exact `domain coverage (90%)`,
@@ -101,6 +118,15 @@ the documented gate unenforced.
 
 **Decided by:** Thomas, 2026-09-23, in session.
 
+
+### 2026-09-23 · Provision a local staff person during post-boot password signup
+
+**Decision:** The `/sign-up/email` user-create hook ensures an internal staff `person` row exists before a local password signup completes. It does not assign a person to an OAuth callback; the identity connection must determine portal and organisation when that provisioning path is implemented.
+
+**Why:** The boot seed only covers users present at startup, so later local signups otherwise resolve to `missing_identity` (#315 S7). Treating every external callback as internal staff would invent portal and organisation authority. The route-specific local-signup hook follows the current boot-seed rule while leaving external identity provisioning to its declared connection.
+
+**Decided by:** Thomas, 2026-09-23, by approving #324's signup-or-lazy-resolution acceptance and continuing this implementation.
+
 ### 2026-09-23 · Storybook 10 compatibility spike for `packages/ui`
 
 **Decision:** Pin `storybook` and `@storybook/react-vite` to `10.6.0` in
@@ -123,22 +149,6 @@ package boundary used by primitive stories.
 result were recorded by the implementing agent, 2026-09-23.
 
 ---
-
-### 2026-09-24 · The security-review scope adds `packages/domain/src/identity/**` and `apps/api/src/permissions/**`
-
-**Decision:** `docs/04-engineering/ci-cd.md`'s authoritative security-review scope list gains two globs:
-- `packages/domain/src/identity/**`, the P3 identity rules: claim normalisation, SCIM validation and PATCH, role limits and customer reach;
-- `apps/api/src/permissions/**`, which holds `resolveIdentity` (#315) and the #8 shadow-mode middleware (#323).
-
-From now on, any PR touching either path needs the Opus 5.5 security review, enforced by CI.
-
-**Why:**
-- #346's Opus review (S11) found the identity rules outside the scope, although they decide who gets which roles and reach. The same review found a ReDoS and a fail-open role mapping in that code.
-- `apps/api/src/permissions/**` was also outside it. #315 and #323 were only reviewed by Opus because the orchestrating session commissioned it.
-
-This only tightens the gate. It removes nothing.
-
-**Decided by:** the orchestrating session, 2026-09-24, under Thomas's standing delegation. There was one clearly recommended option.
 
 ### 2026-09-23 · The P3 identity gate covers all 25 named acceptance tests
 
