@@ -312,6 +312,47 @@ describe("reach", () => {
     ).toBe(true);
   });
 
+  it("scopes sees_all to its workspace while preserving ordinary membership reach", () => {
+    const person = identity({
+      memberships: [
+        { scope: "workspace", scopeId: "ws-a", seesAll: true },
+        { scope: "project", scopeId: "prj-b-member", seesAll: false },
+      ],
+      reach: { kind: "membership_with_workspaces", workspaceIds: ["ws-a"] },
+    });
+    const inA = { ...project, workspaceId: "ws-a" };
+    const inB = { ...project, workspaceId: "ws-b" };
+
+    expect(reaches(person, inA)).toBe(true);
+    expect(reaches(person, inB)).toBe(false);
+    expect(reaches(person, { ...inB, organisationId: "org-b-customer" })).toBe(
+      false,
+    );
+    expect(reaches(person, { ...inB, projectId: "prj-b-other" })).toBe(false);
+    expect(reaches(person, { ...inB, projectId: "prj-b-member" })).toBe(true);
+    expect(
+      reaches(person, { ...inB, ancestorProjectIds: ["prj-b-parent"] }),
+    ).toBe(false);
+    expect(
+      reaches(
+        {
+          ...person,
+          memberships: [
+            ...person.memberships,
+            { scope: "project", scopeId: "prj-b-parent", seesAll: false },
+          ],
+        },
+        { ...inB, ancestorProjectIds: ["prj-b-parent"] },
+      ),
+    ).toBe(true);
+    expect(
+      reaches(
+        { ...person, teamIds: ["team-b"] },
+        { ...inB, ownerTeamId: "team-b" },
+      ),
+    ).toBe(true);
+  });
+
   it("3: project membership", () => {
     expect(reaches(identity(), project)).toBe(true);
   });
