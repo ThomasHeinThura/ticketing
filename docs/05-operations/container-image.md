@@ -48,11 +48,26 @@ LABEL org.opencontainers.image.version=$VERSION org.opencontainers.image.revisio
 
 ```
 1. validate the five required environment variables; exit 1 with a clear message if absent
-2. take the migration advisory lock, run migrations, release   (migrations.md)
-3. if TASKDESK_ROLE != jobs: start the HTTP listener (API + both bundles by Host header)
-4. if TASKDESK_ROLE != web:  start the scheduler
-5. readiness true
+2. if TASKDESK_ROLE = migrate: take the migration advisory lock, run migrations,
+   create/repair the application role and its grants, release, exit 0   (migrations.md)
+3. otherwise (TASKDESK_ROLE = web | jobs | all): refuse to start if the owner/migration
+   credential is present in this process's own environment at all; refuse to start if the
+   application connection turns out to be a superuser or owns anything (migrations.md,
+   issue #296)
+4. if TASKDESK_ROLE != jobs: start the HTTP listener (API + both bundles by Host header)
+5. if TASKDESK_ROLE != web:  start the scheduler
+6. readiness true
 ```
+
+Step 2 and step 3 never both run in the same process (issue #296, S1 — independent Opus
+5.5 review of PR #308): migrations and the database role/grant bootstrap run in a
+separate, one-shot `TASKDESK_ROLE=migrate` invocation of this same image — run once
+before the serving process starts, never inside it. In compose that is the `migrate`
+service; in Kubernetes (the Helm chart) it is an initContainer on the same Pod. A
+single-container deployment with no orchestrator support for either shape runs the image
+twice: once with `TASKDESK_ROLE=migrate` and the owner URL, then normally with the
+application URL only — see [configuration-reference.md](configuration-reference.md)'s
+Local development section for the exact two commands.
 
 `HEALTHCHECK` calls `/api/public/health/live` — process up, touches no dependency — so a
 Postgres blip never restarts a healthy container; readiness is the load balancer's concern.

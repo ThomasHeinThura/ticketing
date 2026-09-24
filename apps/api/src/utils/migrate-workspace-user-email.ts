@@ -1,12 +1,18 @@
 import { sql } from "drizzle-orm";
-import db from "../database";
+import defaultDb, { type DatabaseInstance } from "../database";
 
 /**
  * Migration script to handle conversion from user_email to user_id in workspace_member table.
  * This runs before Drizzle migrations to ensure no NULL user_id values exist and prevents
  * column collision errors during migration.
+ *
+ * Runs DDL (`ALTER TABLE`), so `runStartupTasks` passes the migration/owner
+ * connection explicitly (issue #296) — the default parameter is a fallback for any
+ * other caller, not the path startup itself takes.
  */
-export async function migrateWorkspaceUserEmail() {
+export async function migrateWorkspaceUserEmail(
+  db: DatabaseInstance = defaultDb,
+) {
   console.log(
     "🔄 Checking workspace_member table for user_email to user_id migration...",
   );
