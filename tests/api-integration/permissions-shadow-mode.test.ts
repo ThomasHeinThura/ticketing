@@ -18,6 +18,7 @@
  * `tests/api-integration/helpers/auth.ts`) is applied per dynamically-imported instance, not
  * the statically-imported one this file also uses for the "off" baseline.
  */
+import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db from "../../apps/api/src/database";
@@ -119,6 +120,18 @@ async function shadowTalliesFor(
     .select()
     .from(policyShadowTallyTable)
     .where(eq(policyShadowTallyTable.routeKey, routeKey));
+}
+
+async function waitForShadowEvidence<T>(
+  read: () => Promise<T | undefined>,
+): Promise<T> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const value = await read();
+    if (value !== undefined) return value;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error("shadow evidence was not written within 5 seconds");
 }
 
 beforeEach(async () => {
@@ -316,6 +329,58 @@ describe("a known disagreement: the instance-admin bypass (#315 S8)", () => {
     );
     expect(disagreeTally?.count).toBeGreaterThanOrEqual(1);
   });
+
+  it("records a controller-level bulk membership denial after earlier gates allowed", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        userId: member.user.id,
+        title: "Bulk authorization evidence",
+        description: "",
+        status: "to-do",
+        columnId: columns.todo.id,
+        priority: "medium",
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task) throw new Error("task fixture insert returned no row");
+
+    const instanceAdmin = {
+      id: "user-instance-admin-bulk-shadow-test",
+      email: "instance-admin-bulk-shadow-test@example.com",
+      name: "Instance Admin",
+      emailVerified: true,
+      role: "admin",
+    };
+    await fresh.db.insert(fresh.schema.userTable).values(instanceAdmin);
+    await backfillPersons();
+    fresh.mockUser(instanceAdmin);
+
+    const response = await fresh.app.request("/api/task/bulk", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ taskIds: [task.id], operation: "delete" }),
+    });
+    expect(response.status).toBe(403);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const falseAllowEvents = await shadowEventsFor(
+      "PATCH /api/task/bulk",
+      "legacy_allow_policy_deny",
+    );
+    expect(falseAllowEvents).toHaveLength(0);
+    const tallies = await shadowTalliesFor("PATCH /api/task/bulk");
+    expect(tallies.find((row) => row.outcome === "agree")?.count).toBe(1);
+  });
 });
 
 describe("an evaluator exception never affects the response", () => {
@@ -364,6 +429,7 @@ describe("an evaluator exception never affects the response", () => {
 });
 
 const LABEL_WORKSPACE_ROUTE_KEY = "GET /api/label/workspace/{workspaceId}";
+const WORKSPACE_DETAIL_ROUTE_KEY = "GET /api/workspace/{workspaceId}";
 const PROJECT_REORDER_ROUTE_KEY = "PUT /api/project/reorder";
 const PROJECT_UPDATE_ROUTE_KEY = "PUT /api/project/{id}";
 const INVITATION_PENDING_ROUTE_KEY = "GET /api/invitation/pending";
@@ -401,6 +467,189 @@ describe("#323 Opus S1 — a request-sourced workspace route fully evaluates to 
       await shadowTalliesFor(LABEL_WORKSPACE_ROUTE_KEY)
     ).filter((row) => row.outcome === "legacy_allow_policy_deny");
     expect(disagreeTallies).toEqual([]);
+  });
+});
+
+describe("#324 — denied param workspace scope is checked against a verified row", () => {
+  it("records a nonmember's 403 as agree on GET /api/workspace/{workspaceId}", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const owner = await createWorkspaceMember();
+    const other = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(other.user);
+
+    const response = await fresh.app.request(
+      `/api/workspace/${owner.workspace.id}`,
+    );
+    expect(response.status).toBe(403);
+
+    const tallies = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(WORKSPACE_DETAIL_ROUTE_KEY);
+      return rows.some((row) => row.outcome === "agree") ? rows : undefined;
+    });
+    expect(tallies.some((row) => row.outcome === "agree")).toBe(true);
+    expect(
+      tallies.some((row) => row.outcome === "legacy_deny_policy_allow"),
+    ).toBe(false);
+  });
+
+  it("records a deliberately permissive shadow policy against a legacy-denied request", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const owner = await createWorkspaceMember();
+    const other = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(other.user);
+
+    const registry = await import("../../apps/api/src/policy-registry");
+    const originalGet = registry.policyRegistry.get.bind(
+      registry.policyRegistry,
+    );
+    vi.spyOn(registry.policyRegistry, "get").mockImplementation((routeKey) => {
+      const entry = originalGet(routeKey);
+      if (routeKey !== WORKSPACE_DETAIL_ROUTE_KEY || !entry) return entry;
+      return {
+        routeKey: entry.routeKey,
+        kind: "public",
+        source: entry.source,
+        policy: {
+          public: true,
+          reason:
+            "Deliberately permissive shadow fixture for deny-path coverage",
+        },
+      };
+    });
+
+    const response = await fresh.app.request(
+      `/api/workspace/${owner.workspace.id}`,
+    );
+    expect(response.status).toBe(403);
+
+    const disagreements = await waitForShadowEvidence(async () => {
+      const rows = await shadowEventsFor(
+        WORKSPACE_DETAIL_ROUTE_KEY,
+        "legacy_deny_policy_allow",
+      );
+      return rows.length > 0 ? rows : undefined;
+    });
+    expect(disagreements).toHaveLength(1);
+  });
+
+  it("tracks project request-scope separately from row-derived workspace scope", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const owner = await createWorkspaceMember({ role: "owner" });
+    await backfillPersons();
+    fresh.mockUser(owner.user);
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const now = new Date();
+    const [type] = await fresh.db
+      .insert(fresh.schema.workItemTypeTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        key: `shadow-${randomUUID()}`,
+        name: "Shadow test item",
+        category: "delivery",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!type) throw new Error("work item type fixture insert failed");
+    const [template] = await fresh.db
+      .insert(fresh.schema.stateTemplateTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        key: `shadow-state-${randomUUID()}`,
+        name: "Shadow test backlog",
+        group: "backlog",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!template) throw new Error("state template fixture insert failed");
+    await fresh.db.insert(fresh.schema.stateTable).values({
+      projectId: project.id,
+      stateTemplateId: template.id,
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const response = await fresh.app.request(
+      `/api/projects/${project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ typeId: type.id, title: "Shadow scope probe" }),
+      },
+    );
+    expect(response.status).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const tallies = await shadowTalliesFor(
+      "POST /api/projects/{projectId}/work-items",
+    );
+    expect(
+      tallies.some(
+        (row) =>
+          row.outcome === "unevaluated" &&
+          row.reasonCode === "reach_unavailable",
+      ),
+    ).toBe(true);
+    expect(
+      tallies.some(
+        (row) =>
+          row.outcome === "unevaluated" &&
+          row.reasonCode === "scope_source_unavailable",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("#324 — controller-level leave denial replaces an earlier allowed marker", () => {
+  it("records the controller's membership recheck as a real denial", {
+    timeout: 60_000,
+  }, async () => {
+    vi.doMock(
+      "../../apps/api/src/workspace/controllers/leave-workspace",
+      async () => {
+        const { NotAMemberError } = await import(
+          "../../apps/api/src/workspace/controllers/workspace-membership-errors"
+        );
+        return {
+          default: async () => {
+            throw new NotAMemberError();
+          },
+        };
+      },
+    );
+    try {
+      const fresh = await createAppWithShadow("on");
+      const member = await createWorkspaceMember();
+      await backfillPersons();
+      fresh.mockUser(member.user);
+
+      const response = await fresh.app.request(
+        `/api/workspace/${member.workspace.id}/leave`,
+        { method: "POST" },
+      );
+      expect(response.status).toBe(404);
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const events = await shadowEventsFor(
+        "POST /api/workspace/{workspaceId}/leave",
+        "legacy_deny_policy_allow",
+      );
+      expect(events).toHaveLength(1);
+    } finally {
+      vi.doUnmock("../../apps/api/src/workspace/controllers/leave-workspace");
+    }
   });
 });
 
@@ -477,6 +726,14 @@ describe("#323 Opus S2 — evidence is attributed to the route that actually ran
     expect(
       (await shadowTalliesFor(WS_USER_ROUTE_KEY)).length,
     ).toBeGreaterThanOrEqual(1);
+    const delegated = await shadowTalliesFor(WS_USER_ROUTE_KEY);
+    expect(
+      delegated.some(
+        (row) =>
+          row.outcome === "unevaluated" &&
+          row.reasonCode === "delegated_to_handler",
+      ),
+    ).toBe(true);
     expect(await shadowTalliesFor(WS_PROJECT_ROUTE_KEY)).toEqual([]);
   });
 });
