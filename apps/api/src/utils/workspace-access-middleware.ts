@@ -129,6 +129,12 @@ export function workspaceAccessMiddleware(
     // resource's own "not found" answer, below) -- skips the redundant generic check
     // at the end of the function for that request.
     let accessChecked = false;
+    // Issue #8, Slice 2: for a `{ type: "lookup", resource: "project" }` source, `id` IS
+    // the project's own id -- no new query needed, since the row lookup a few lines below
+    // already confirms it resolves to a real, reachable project. Read-only evidence for the
+    // shadow middleware's `RowScope` construction (project-scope capability policies);
+    // never read by any legacy authorization check. `null` for every other source shape.
+    let shadowProjectId: string | null = null;
 
     // Read once, ahead of the loop: `lookup`/`lookupMany` sources need it to check
     // reach as soon as they resolve a row, not only after the loop ends.
@@ -194,8 +200,13 @@ export function workspaceAccessMiddleware(
             // an unknown id (#202's tests depend on it) -- `workspaceId` stays `null`
             // and falls through to that same post-loop throw.
           } else {
-            // Reach and key validity are part of the lookup SQL itself.
+            // Reach and key validity are part of the lookup SQL itself. Preserve the
+            // project id as read-only shadow-policy evidence; it is never used by the
+            // legacy authorization path.
             accessChecked = true;
+            if (source.resource === "project") {
+              shadowProjectId = id;
+            }
           }
         }
       } else if (source.type === "lookupMany") {
@@ -268,6 +279,11 @@ export function workspaceAccessMiddleware(
     }
 
     c.set("workspaceId", workspaceId);
+    if (shadowProjectId) {
+      // Issue #8, Slice 2 only -- see the declaration above. Read by
+      // `apps/api/src/permissions/shadow-middleware.ts` alone.
+      c.set("projectId", shadowProjectId);
+    }
 
     return next();
   };
