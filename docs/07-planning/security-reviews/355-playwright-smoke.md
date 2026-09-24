@@ -293,3 +293,47 @@ the PR. Binding the contexts to GitHub Actions would close it.
     of that range; or
   - the orchestrator's explicit reconciliation of that review against the S1 decision, plus
     a corrected `## Implemented by`, which must name `Codex (GPT-6)`.
+
+---
+
+## Delta review — `887c758..64f938e`
+
+**Reviewed head:** `64f938e52937c2337c03fec51aad05f18c9983eb`
+
+**Verdict: CLEAR.** The delta closes S3 and S4. It has no regression against the review at
+`0f10f04`. S2's status is unchanged by this delta and remains the orchestrator's.
+
+The delta is one commit, `64f938e`, authored `Codex GPT-6 <codex-gpt6@taskdesk.local>`. It
+changes five files:
+
+- `docs/04-engineering/ci-cd.md` (a new scope row)
+- `scripts/ci/lib/security-paths.test.mjs`
+- `scripts/ci/redocly.yaml` (new)
+- `scripts/ci/test-contract.mjs`
+- `scripts/ci/test-contract.test.mjs`
+
+No workflow, lockfile, package manifest or application file changed.
+
+| # | Probe | Result |
+| --- | --- | --- |
+| 1a | Same config for both runs | `redoclyReport` now passes `--config scripts/ci/redocly.yaml` for the `origin/main` baseline and for the candidate alike. The config is `extends: [recommended]`, the same rules as the earlier implicit default. `pnpm test:contract` still reports 16 of `origin/main`'s 16 findings. PASS |
+| 1b | Root-config override closed | I wrote a hostile root `redocly.yaml` (`extends: []`, `rules: {}`). With `--config`, the lint still reported 16 problems, so auto-discovery no longer applies. I removed the file afterwards and the tree was clean. This closes S4's Redocly half. |
+| 1c | Weakening `scripts/ci/redocly.yaml` | A PR could still turn rules off in it. Both runs would then hide the same findings. That file is now in the security scope, so such a PR needs an Opus review. That is the intended control. PASS |
+| 1d | Scope parsing | `readSecurityReviewPaths().globs` contains all four new entries: `packages/domain/vitest.config.ts`, `apps/web/playwright.config.ts`, `apps/web/e2e/**` and `scripts/ci/redocly.yaml`. The existing `.pnpmfile.cjs` entry on the same column still parses. `globToRegExp` matches `apps/web/e2e/auth-redirect.spec.ts` and `apps/web/e2e/nested/x.spec.ts`, and does not match `apps/web/e2e2/x.ts`. PASS |
+| 1e | Telemetry | The config sets `telemetry: off`. The bundle gates sending on `c.resolvedConfig.telemetry !== "off"`, so `--config` now disables it for every contract run. This closes S3 for `test-contract.mjs`; a bare `pnpm exec redocly` without the config still sends. |
+| 2 | Multiset | Both sides now key through the same `diagnosticKey`, which is severity, rule, pointer and message. Counting is unchanged: the baseline increments per key, and each candidate problem consumes one or is reported new. Adding `message` only splits keys, so it can only report more problems, never fewer. Real messages are stable between the temp-path baseline and the repo-path candidate, since 16 of 16 still match. If a Redocly upgrade reworded its messages, every finding would show as new, so the check fails closed. The new test covers a different message at the same rule and pointer. PASS |
+| 3 | Regression | Nothing in the earlier probes 1a–7c is touched. `node --test 'scripts/ci/**/*.test.mjs'` passed 501 tests in 88 suites (was 500), 0 fail. `test-all.mjs --list` exits 0. `pnpm test:contract` passes, including a verified oasdiff download with no breaking changes. PASS |
+
+**Tests:** `node --test scripts/ci/lib/security-paths.test.mjs scripts/ci/test-contract.test.mjs`
+passed 12 tests in 1 suite, 0 fail.
+
+**NON-BLOCKING, residual:** the scope list does not cover sibling config names:
+
+- `packages/domain/vitest.config.mts` or `vite.config.ts`;
+- `apps/web/playwright.config.mts`;
+- root `redocly.yaml`.
+
+Vitest and Playwright are both invoked with an explicit `--config` path that is now in scope,
+and a root `redocly.yaml` is inert under `--config`. A sibling file would therefore be ignored
+unless the invoking `package.json` script changed, and every `package.json` is already in
+scope. No action needed.
