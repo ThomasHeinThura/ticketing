@@ -763,3 +763,35 @@ including a `main` merge, needs this clearance re-confirmed at the new head.
 - **Nothing else changed:** no code, test, migration, or other document.
 
 **Verdict:** CLEAR WITH FINDINGS stands at `7b591a28c797d9e241e08ebbf43061f36cc00a5c`. E1 is resolved; E2 and E3 remain non-blocking.
+
+## Merge-head attestation (Opus 5.5)
+
+**Reviewed head:** `fd695e0ec8761a7cec7ed56b28abfef342796044`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `776999db0eedea45110817cb8cf64c586963626e` (#355, domain coverage and Playwright e2e smoke CI jobs)
+into the previously reviewed head `4f1a27228cdb85ef5e9a3c69f3c9200813e48dad`.
+
+- **Parents:** exactly (`4f1a27228cdb85ef5e9a3c69f3c9200813e48dad`, `776999d`).
+- **Clean merge:** `git show --remerge-diff` is empty, so there was no manual resolution.
+- **PR change unchanged:** `git diff 7bebaf6 4f1a272` against `git diff 776999d fd695e0`
+  differs only in blob indexes and one hunk offset in `decision-log.md`, where the entry moved
+  down by main's new entries. Every added and removed line is byte-identical, and every file
+  outside `decision-log.md` is byte-identical. `4f1a272` is note-only over the reviewed code
+  head `7b591a2`.
+- **Interaction with main:** main gained no `apps/api/drizzle/**` file, so migration `0069`
+  and the journal do not clash. Migrating from empty succeeds, as the integration run below
+  shows. #355's `**/vitest.config.*` and `apps/web/e2e/**` scope additions do not touch this
+  PR's files. The domain coverage job covers `packages/domain`, which this PR does not touch.
+  The only overlapping file is `decision-log.md`, which is newest-first; the PR's entry keeps
+  its place below the `## Format` template, as before the merge.
+- **Tests at `fd695e0`** (packages built first, private DB `opus_attest_test`):
+  `@taskdesk/permissions` passes 13 files / 260 tests. `apps/api test:permissions` passes
+  10 / 80. `apps/api test:unit` passes 58 / 476. The integration test
+  `permissions-shadow-mode.test.ts` passes 1 / 10.
+- **CI at `fd695e0`:** every required context was green except `pull request template +
+  security review`, which reported this file STALE for want of this note. That is expected, and
+  this note is what clears it.
+
+**Verdict at `fd695e0ec8761a7cec7ed56b28abfef342796044`: CLEAR.** The merge introduces no
+new code or interaction. The earlier findings carry over unchanged.
