@@ -981,3 +981,21 @@ the previously reviewed head `480addd`. `8f545c3..9060512` is that one merge.
   were queued or in progress.
 
 **Verdict at `9d5d31df3b66cf8708c22cc4466ce2e25032dffb`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #341 merged
+
+**Reviewed head:** `e76c05776287f75198198e5fa11f14f2d5e3cccb`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `3c310815ba1a8fb85b56668be6032f177cef4825` (#341, the error-boundary primitive in
+`packages/ui` and `apps/web`, plus `biome.json`) into the previously attested head `56baa0f`.
+`9060512..3c31081` is that one merge.
+
+- **Parents:** exactly (`56baa0f`, `3c31081`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main` since
+  `56baa0f`, and there is no non-merge code commit.
+- **PR change unchanged:** the added and removed lines are identical between `git diff 9060512 56baa0f` and `git diff 3c31081 e76c057`. Only the hunk offsets in `status.md` differ; it is the one overlapping file, and it auto-merged.
+- **Interaction with #341:** none. #341 touches only UI, web, `biome.json` and docs; no workflow, `scripts/ci`, deploy or release file.
+- **Tests at `e76c057`:** `pnpm test:ci-scripts` passes 513 / 513.
+
+**Verdict at `e76c05776287f75198198e5fa11f14f2d5e3cccb`: CLEAR.**
