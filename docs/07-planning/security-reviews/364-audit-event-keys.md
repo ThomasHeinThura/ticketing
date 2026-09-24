@@ -164,3 +164,21 @@ the previously reviewed head `b7c70a4`. `8f545c3..9060512` is that one merge.
   queued or in progress.
 
 **Verdict at `929055b28a04df32c3b01c773f11a6cc8377d875`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #341 merged
+
+**Reviewed head:** `f3412ea6d6db8bc72695981570ed6252f7fc9884`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `3c310815ba1a8fb85b56668be6032f177cef4825` (#341, the error-boundary primitive in
+`packages/ui` and `apps/web`, plus `biome.json`) into the previously attested head `b616f5e`.
+`9060512..3c31081` is that one merge.
+
+- **Parents:** exactly (`b616f5e`, `3c31081`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main` since
+  `b616f5e`, and there is no non-merge code commit.
+- **PR change unchanged:** `git diff 9060512 b616f5e` and `git diff 3c31081 f3412ea` are byte-identical (same sha256), and no file overlaps.
+- **Interaction with #341:** none. #341 touches only UI, web, `biome.json` and docs; no audit or event key is emitted or registered.
+- **Tests at `f3412ea`:** `apps/api test:unit` passes 59 files / 490 tests (packages built first).
+
+**Verdict at `f3412ea6d6db8bc72695981570ed6252f7fc9884`: CLEAR.**
