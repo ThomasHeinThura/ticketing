@@ -208,6 +208,9 @@ export function workspaceAccessMiddleware(
           // which is exactly issue #256's caller-supplied-fallback class (see
           // the file comment above `NUL_BYTE_LABEL`).
           rejectNulByte(id, NUL_BYTE_LABEL);
+          if (source.resource === "project") {
+            c.set("projectIdFromRequest", id);
+          }
           const resolved = await lookupWorkspaceScope(source.resource, id);
           workspaceId = resolved?.workspaceId ?? null;
           if (resolved) {
@@ -406,12 +409,15 @@ async function lookupWorkspaceScope(
     switch (resource) {
       case "project": {
         const [project] = await db
-          .select({ workspaceId: schema.projectTable.workspaceId })
+          .select({
+            id: schema.projectTable.id,
+            workspaceId: schema.projectTable.workspaceId,
+          })
           .from(schema.projectTable)
           .where(eq(schema.projectTable.id, id))
           .limit(1);
         return project?.workspaceId
-          ? { workspaceId: project.workspaceId, projectId: id }
+          ? { workspaceId: project.workspaceId, projectId: project.id }
           : null;
       }
 

@@ -581,6 +581,35 @@ describe("#323 Opus S1 — scope provenance branches on the policy's scopeSource
     expect(result).toBe("scope_source_unavailable");
   });
 
+  it("checks project-scope provenance against the project id, not its workspace id", () => {
+    const projectRequestEntry: RegistryEntry = {
+      routeKey: "POST /api/projects/{projectId}/work-items",
+      kind: "capability",
+      source: "apps/api/src/work-item/policy.ts",
+      policy: {
+        capability: "work_item:create",
+        scope: "project",
+        scopeSource: "request",
+        reach: "required",
+      },
+    };
+
+    const result = buildShadowPolicySide({
+      entry: projectRequestEntry,
+      identity: identity(),
+      workspaceId: "ws_1",
+      workspaceIdSource: "row",
+      projectId: "project_1",
+      projectIdFromRequest: "project_1",
+    });
+
+    // Reach facts for project scope remain explicitly unavailable on this slice. Reaching
+    // that reason proves scope provenance was accepted; the prior bug returned
+    // `scope_source_unavailable` by comparing the row-derived workspace id to the
+    // request-sourced project id.
+    expect(result).toBe("reach_unavailable");
+  });
+
   it("a scope-source artifact decision is unevaluated, NEVER filed as a disagreement", () => {
     for (const code of ["scope_source_mismatch", "scope_mismatch"] as const) {
       const comparison = compareShadowOutcome({

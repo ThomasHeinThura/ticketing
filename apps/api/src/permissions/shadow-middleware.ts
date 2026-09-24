@@ -194,6 +194,8 @@ async function runShadowEvaluation(
   let workspaceIdSource =
     (c.get("workspaceIdSource") as "row" | "request" | undefined) ?? null;
   const projectId = (c.get("projectId") as string | undefined) ?? null;
+  const projectIdFromRequest =
+    (c.get("projectIdFromRequest") as string | undefined) ?? null;
   const workItemId = (c.get("workItemId") as string | undefined) ?? null;
   const apiKey = c.get("apiKey") as ApiKeyContextValue;
   const userId = (c.get("userId") as string | undefined) || undefined;
@@ -242,6 +244,7 @@ async function runShadowEvaluation(
       workspaceId,
       workspaceIdSource,
       projectId,
+      projectIdFromRequest,
       workItemId,
     });
   } catch (error) {

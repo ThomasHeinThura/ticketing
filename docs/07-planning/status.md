@@ -1554,6 +1554,33 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
+### 2026-09-24 · P0 continuation — reviewer substitution recorded; shadow-scope findings fixed
+
+Thomas authorized current GPT-6 Luna contexts for Sonnet-tier implementation and ordinary
+review on active P0 work; the final independent Opus 5.5 security review remains mandatory.
+The decision is recorded in the P0 CI lane's decision log; no security review is claimed.
+
+On #324 / PR #354, three independent ordinary reviews of `c611f190` identified two missing
+acceptance-evidence items and a project-scope provenance defect. Fixed the evaluator to track
+the addressed project ID's provenance separately from the workspace ID, retained the
+explicitly unevaluated `reach_unavailable` result where project reach facts do not exist,
+and added a permissive shadow-policy denied-param integration probe. Focused checks on the
+updated working tree: API typecheck, 31 shadow evaluator unit tests, 15 shadow-mode
+Testcontainers integration tests, Biome, and `git diff --check` pass. The new full SHA and
+fresh exact-head reviews are pending. The #324 per-router before/after deployed-traffic
+coverage report is still unavailable; no synthetic result is represented as deployed
+evidence, so that acceptance item remains open.
+
+On #10 / PR #355, the documented root `pnpm test:e2e` command was missing from `package.json`.
+Added the root alias and aligned CI and the `test-all` manifest to call it. The protected
+route smoke passes locally through the documented root command. Commit `0f10f04` is pushed;
+three independent ordinary delta reviews pass. Exact-head CI is being refreshed; the
+mandatory Opus 5.5 review remains pending.
+
+`claude auth status` reports logged out, so Opus capacity is unavailable here. Continue
+other runnable P0 work; keep every security-scope candidate blocked from merge until its
+exact-head Opus review is recorded.
+
 ### 2026-09-23 (third pass) · 11 more PRs merged; spec gates honoured, not routed around; an outage recovered cleanly
 
 This pass shows the gates working as designed. `check:reviews` blocked #274 and #275

@@ -126,9 +126,12 @@ export function buildShadowPolicySide(args: {
   readonly workspaceId: string | null;
   /** Provenance from the middleware that supplied workspaceId; never inferred here. */
   readonly workspaceIdSource: "row" | "request" | null;
-  /** Set only on routes whose existing middleware already resolved a project row (today:
-   *  `workspaceAccess.fromProject`'s lookup source). See `workspace-access-middleware.ts`. */
+  /** Project id read from a resolved project row by existing middleware. */
   readonly projectId?: string | null;
+  /** Project id taken from a route parameter before its lookup. Kept separate from the
+   *  workspace id's provenance: a project can be request-scoped while its workspace is
+   *  derived from the confirmed project row. */
+  readonly projectIdFromRequest?: string | null;
   /** Set only on routes whose existing middleware already resolved a work-item row (today:
    *  `requireWorkItemReach`). See `require-work-item-reach.ts`. */
   readonly workItemId?: string | null;
@@ -141,6 +144,7 @@ export function buildShadowPolicySide(args: {
     workspaceId,
     workspaceIdSource,
     projectId = null,
+    projectIdFromRequest = null,
     workItemId = null,
   } = args;
 
@@ -215,28 +219,41 @@ export function buildShadowPolicySide(args: {
   // `workspace-access-middleware.ts` should expose WHICH source kind produced
   // `workspaceId` so a `row` policy is only ever evaluated against a real row.
   let scope: ResolvedScope;
+  let scopeIdSource: "row" | "request" | "instance" | null = null;
   if (policy.scope === "instance") {
     scope = instanceScope();
+    scopeIdSource = "instance";
   } else if (policy.scope === "workspace") {
     if (workspaceId === null || workspaceId === "") {
       return "row_scope_unavailable";
     }
+    scopeIdSource = workspaceIdSource;
     scope =
       policy.scopeSource === "request"
         ? workspaceScopeFromRequest({ workspaceId })
         : workspaceScopeFromRow({ workspaceId });
   } else if (policy.scope === "project") {
-    if (!projectId || !workspaceId) {
+    const resolvedProjectId =
+      policy.scopeSource === "request" ? projectIdFromRequest : projectId;
+    if (!resolvedProjectId || !workspaceId) {
       return "row_scope_unavailable";
     }
+    scopeIdSource = policy.scopeSource;
     scope =
       policy.scopeSource === "request"
-        ? projectScopeFromRequest({ projectId, workspaceId })
-        : projectScopeFromRow({ projectId, workspaceId });
+        ? projectScopeFromRequest({
+            projectId: resolvedProjectId,
+            workspaceId,
+          })
+        : projectScopeFromRow({
+            projectId: resolvedProjectId,
+            workspaceId,
+          });
   } else if (policy.scope === "work_item") {
     if (!workItemId || !projectId || !workspaceId) {
       return "row_scope_unavailable";
     }
+    scopeIdSource = "row";
     scope =
       policy.scopeSource === "request"
         ? workItemScopeFromRequest({ workItemId, projectId, workspaceId })
@@ -247,7 +264,7 @@ export function buildShadowPolicySide(args: {
 
   if (
     policy.scope !== "instance" &&
-    (workspaceIdSource === null || workspaceIdSource !== policy.scopeSource)
+    (scopeIdSource === null || scopeIdSource !== policy.scopeSource)
   ) {
     return "scope_source_unavailable";
   }

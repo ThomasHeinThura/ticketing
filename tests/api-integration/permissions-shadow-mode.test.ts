@@ -18,6 +18,7 @@
  * `tests/api-integration/helpers/auth.ts`) is applied per dynamically-imported instance, not
  * the statically-imported one this file also uses for the "off" baseline.
  */
+import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db from "../../apps/api/src/database";
@@ -477,6 +478,120 @@ describe("#324 — denied param workspace scope is checked against a verified ro
     expect(tallies.some((row) => row.outcome === "agree")).toBe(true);
     expect(
       tallies.some((row) => row.outcome === "legacy_deny_policy_allow"),
+    ).toBe(false);
+  });
+
+  it("records a deliberately permissive shadow policy against a legacy-denied request", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const owner = await createWorkspaceMember();
+    const other = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(other.user);
+
+    const registry = await import("../../apps/api/src/policy-registry");
+    const originalGet = registry.policyRegistry.get.bind(
+      registry.policyRegistry,
+    );
+    vi.spyOn(registry.policyRegistry, "get").mockImplementation((routeKey) => {
+      const entry = originalGet(routeKey);
+      if (routeKey !== WORKSPACE_DETAIL_ROUTE_KEY || !entry) return entry;
+      return {
+        routeKey: entry.routeKey,
+        kind: "public",
+        source: entry.source,
+        policy: {
+          public: true,
+          reason:
+            "Deliberately permissive shadow fixture for deny-path coverage",
+        },
+      };
+    });
+
+    const response = await fresh.app.request(
+      `/api/workspace/${owner.workspace.id}`,
+    );
+    expect(response.status).toBe(403);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const disagreements = await shadowEventsFor(
+      WORKSPACE_DETAIL_ROUTE_KEY,
+      "legacy_deny_policy_allow",
+    );
+    expect(disagreements).toHaveLength(1);
+  });
+
+  it("tracks project request-scope separately from row-derived workspace scope", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const owner = await createWorkspaceMember({ role: "owner" });
+    await backfillPersons();
+    fresh.mockUser(owner.user);
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const now = new Date();
+    const [type] = await fresh.db
+      .insert(fresh.schema.workItemTypeTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        key: `shadow-${randomUUID()}`,
+        name: "Shadow test item",
+        category: "delivery",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!type) throw new Error("work item type fixture insert failed");
+    const [template] = await fresh.db
+      .insert(fresh.schema.stateTemplateTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        key: `shadow-state-${randomUUID()}`,
+        name: "Shadow test backlog",
+        group: "backlog",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!template) throw new Error("state template fixture insert failed");
+    await fresh.db.insert(fresh.schema.stateTable).values({
+      projectId: project.id,
+      stateTemplateId: template.id,
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const response = await fresh.app.request(
+      `/api/projects/${project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ typeId: type.id, title: "Shadow scope probe" }),
+      },
+    );
+    expect(response.status).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const tallies = await shadowTalliesFor(
+      "POST /api/projects/{projectId}/work-items",
+    );
+    expect(
+      tallies.some(
+        (row) =>
+          row.outcome === "unevaluated" &&
+          row.reasonCode === "reach_unavailable",
+      ),
+    ).toBe(true);
+    expect(
+      tallies.some(
+        (row) =>
+          row.outcome === "unevaluated" &&
+          row.reasonCode === "scope_source_unavailable",
+      ),
     ).toBe(false);
   });
 });
