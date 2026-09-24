@@ -1,5 +1,13 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+**2026-09-24 continuation (P0 #9 / PR #341):** The error-boundary extraction has two
+independent CLEAR ordinary reviews at `f433900`; focused UI tests (61), UI typecheck, and
+Storybook 10 build passed, with required CI green except the Opus-bound PR-template gate.
+Current `main` has advanced to `8f545c3`; PR #341 is being refreshed against it. Exact-head
+review and CI must be refreshed after integration. Opus remains required before merge; no P0
+completion is claimed.
+
+
 **2026-09-24 orchestrator snapshot — `main` at `663c0cb`.** Merged today, each with every
 required check green on the exact head and an Opus 5.5 attestation of that head:
 #355 (`776999d`, Playwright smoke + domain coverage + integration gates), #323 (`9d5deb9`,
