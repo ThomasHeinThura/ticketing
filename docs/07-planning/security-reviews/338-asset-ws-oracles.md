@@ -335,3 +335,129 @@ Cover at least one direct-table lookup (`label`), one joined lookup (`task` or `
 - I did not re-run M1 and M2 at `b92ebdc`. The middleware is byte-identical to `691f735`, and M3, the key one, I did re-run at `b92ebdc`.
 - I did not review the `main`-side content brought in by the merges (#308, #322, #336, #345, #350) beyond confirming the merges are clean. Those have their own reviews.
 - I did not modify code, approve on GitHub, or merge.
+
+## Final review at the merged head (`a1f494f`)
+
+**Reviewer:** Opus 5.5, fresh independent context. Did not author, direct, or remediate this change.
+**Reviewed head:** `a1f494fcfa6339a8cedcf941abfab33d7a515d49`
+**Scope:** the whole PR diff against its merge base `9d5deb92a81791598140007fe8e108d1a352855c` (`main` after #323), not just the delta. That matters because the branch was rebuilt: none of the heads attested above (`5917678…`, `691f735…`, `b92ebdc…`, `7904007…`) are ancestors of this head, so none of them binds this code.
+**New since the `691f735` delta:** `c76a0ba` and `e6e962b` (test only, `existence-oracle-317.test.ts`), `51c4551` (`status.md` only), and `a1f494f`, a merge of `origin/main` at `9d5deb9` (#355, #323).
+**Scratch:** worktree `wt-338-opus`, DB `opus338_test`. Both deleted afterwards.
+
+### Verdict
+
+**CLEAR WITH FINDINGS.** D1 is closed. Nothing blocks merge from the security side. The findings below are non-blocking, and two of them are for the orchestrator (E2, E3).
+
+| # | Severity | Summary |
+| --- | --- | --- |
+| D1 | **CLOSED** | The new S4 test goes red when the reach `OR` loses its grouping, on each of the three legs taken separately: direct (`label`), joined (`task`), and `lookupMany`. |
+| E1 | NON-BLOCKING | The `lookupMany` leg is caught only by a regex on the rendered SQL. The behavioural assertions cannot catch it, because the bulk controller re-filters by workspace. |
+| E2 | NON-BLOCKING (process) | `51c4551` edits orchestrator-owned `status.md`. It landed at 02:42Z, after Thomas's 01:10Z PR comment asking for every `status.md` change on this branch to be reverted. Parts of it are stale. |
+| E3 | NON-BLOCKING (merge mechanics) | The head is `BEHIND` `main` by #334 and #356. `git merge-tree` is clean, and neither touches this PR's surfaces. But any branch update after this note adds a non-review commit, which unbinds this attestation. |
+| S1–S4, D2, D3, D5 | NON-BLOCKING, carried | Unchanged from the reviews above. The code they describe is byte-identical here. S1, the asset/ws timing residue, is still a #317 open item. The PR does not claim to close #317. |
+
+### 1. Code at this head is what was reviewed before
+
+- **Byte-identical to `7904007`:** `authorize-asset-access.ts`, `validate-workspace-access.ts`, and both unit test files. The PR's `index.ts` WebSocket hunk is also unchanged. `git diff 7904007 HEAD -- apps/api/src/index.ts` contains only `main`'s changes.
+- **`workspace-access-middleware.ts`** differs from `7904007` only by the #323 lines described in section 3.
+- **I re-read the full PR diff anyway**, rather than relying on equivalence.
+  - Every `lookup` case, all 8, and `lookupMany` put `reachableWorkspacePredicate` inside the same `and(...)` as the id match.
+  - Its admin-or-member `OR` is wrapped in the template's own parentheses.
+  - The API-key `OR` (`reference_id`/`user_id`) sits inside its own parenthesised `AND ( … )`.
+  - The query, body and param sources still go through the unchanged post-loop `validateWorkspaceAccess`, which uses Drizzle's `or()`. Drizzle's `or()` does parenthesise.
+- **No ungrouped `OR` was found** in any changed query.
+
+### 2. Oracle surface (check 1)
+
+- **Middleware lookups.** "Missing" and "out of reach" are the same null row from one query. They share the same `RESOURCE_NOT_FOUND_MESSAGE` 404, `project`'s 400, or `No tasks found`. No extra query runs on either branch.
+- **Assets.** Both cases give `404 Asset not found`. The route sits below the app-wide `authenticateApiRequest` guard (`index.ts:708`), so an unauthenticated or bogus-credential caller gets `401` before the asset row is read. That is identical for foreign and missing ids. I checked this because the handler reads the row before `authorizeAssetAccess`.
+- **WebSocket.** `authenticateApiRequest` runs first, then an unknown project and a foreign project both give `401 Unauthorized` before upgrade.
+- **Timing.** The asset and ws routes still run 1 query for a missing id and 3 or more for a foreign one. That is S1, unchanged.
+- **Shadow mode (#323).** `runShadowEvaluation` reads `workspaceId`/`projectId` from context after `next()`. On both the foreign path and the missing path, the middleware throws before either is set. The shadow side therefore sees the same nulls, and it never changes the response.
+- **Result:** no new oracle.
+
+### 3. The merge (check 4): not clean, resolved correctly
+
+- **Not clean.** `git merge-tree --write-tree 51c4551 9d5deb9` reports a **CONFLICT in `workspace-access-middleware.ts`**, so `a1f494f` carries a hand resolution. `index.ts` and `status.md` auto-merged.
+- **What #323 did.** On `main`, #323 set `shadowProjectId = id` inside the old post-lookup `validateWorkspaceAccess` success branch. That branch no longer exists here.
+- **The resolution** sets `shadowProjectId` in the branch where the reach-filtered lookup returned a row (`accessChecked = true`). That is the same condition: a real, reachable project. It then does `c.set("projectId", …)` after `c.set("workspaceId", …)`, exactly as `main` does.
+- **Consumers of `projectId`.** The only reader is `shadow-middleware.ts:193`. `require-work-item-reach.ts:118` is a separate writer from `main`. No legacy authorization path reads it.
+- **The PR's own changes are intact.** `git diff 9d5deb9 HEAD -- apps packages scripts` touches only the PR's three source files.
+- **#334** (`sees_all` scoped to granting workspaces) is **not in this head**; it is on `main` after the merge base. It changes `packages/permissions` and `resolve-identity.ts` only. It does not touch `validate-workspace-access.ts` or the middleware, so the folded predicate and `validateWorkspaceAccess` stay equivalent. `git merge-tree HEAD origin/main` (`3a45fc5`) is clean.
+- **Migration 0069** is `main`'s, arrives unchanged, and the PR does not touch it.
+
+### 4. Mutation checks (check 2)
+
+In my worktree, each mutation was reverted before the next, and `git diff --quiet HEAD` passed at the end.
+
+| Mutation | Result | Where it fails |
+| --- | --- | --- |
+| **M3:** remove the reach template's outer parentheses (all lookups) | **red**, 1/7 | first `compareResponses` (label GET): `200` vs `404` |
+| **M-task:** ungrouped predicate on the `task` lookup only | **red**, 1/7 | `compareResponses` at `:379`: `200` vs `404` for the foreign task |
+| **M-many:** ungrouped predicate on `lookupMany` only | **red**, 1/7 | the SQL-shape regex at `:410`. The behavioural comparison at `:407` **passed** (see E1). |
+
+So D1's requirement is met. A caller who owns rows of the same kind is present; a direct, a joined and a bulk lookup are each pinned; a foreign `DELETE` leaves the row intact; and M3 goes red.
+
+### 5. Suites (check 3), at `a1f494f`, PG 18 `td-lane-pg`, private DB
+
+| Suite | Files | Tests |
+| --- | --- | --- |
+| PR unit files (`authorize-asset-access`, `workspace-access-middleware`) | 2 | 36 pass |
+| PR integration file (`existence-oracle-317`) | 1 | 7 pass |
+| Full unit (`vitest.config.ts`) | 58 | 476 pass |
+| `test:permissions` | 10 | 80 pass |
+| Full integration | 85 | 1157 pass |
+| API `tsc --noEmit` | — | clean |
+
+The first unit and permissions run failed on `Failed to resolve entry for package "@taskdesk/email"`, because the workspace packages were unbuilt in a fresh worktree. After `pnpm --filter "./packages/*" -r build`, everything passed. This was environmental, not a defect.
+
+### 6. CI (check 6)
+
+Every required check is green except **`pull request template + security review`**, which fails on 2 problems:
+- the `## Security review` note link is missing from the PR body;
+- the "Independent Opus security review completed" box is unticked.
+
+Both are PR-body items for the orchestrator. The a11y, visual-regression and performance-budget jobs are `NOT ENABLED` skips, as on every PR. GitGuardian and CodeQL are green.
+
+### E1: The `lookupMany` leg is guarded only by the SQL-shape regex (NON-BLOCKING)
+
+**Where:** `existence-oracle-317.test.ts:407-416`; `bulk-update-tasks.ts:127-128`.
+
+**Failure scenario.** Suppose `lookupMany`'s `where` loses its grouping. It then matches every task in the caller's own workspace, and the middleware passes with `workspaceId = <caller's own>` for a request naming only foreign ids. The bulk controller then re-selects with `inArray(ids) AND project.workspace_id = workspaceId`, finds nothing, and answers `404 No tasks found`: identical to a missing id. That is defence in depth working, and it is why the behavioural comparison stayed green under M-many.
+
+**The risk.** The only thing that fails is the regex `/\bid\b[\s\S]*\bin\s*\([^)]*\)\s+and\s+\(\s*exists/i`.
+- If a Drizzle upgrade re-renders whitespace or parentheses, this goes **red** (fail-safe), and someone may "fix" it by loosening the regex.
+- A future `fromTasks()` consumer that does not re-filter by workspace would then be exposed with no behavioural test.
+
+**Suggested hardening (optional).** Add a second, reachable workspace for the caller, and assert that `[foreign]` still gives 404 rather than 400 "All tasks must belong to the same workspace". Alternatively, add a middleware-level test that asserts `c.get("workspaceId")` is never set for a foreign-only list.
+
+### E2: `status.md` edits on a lane branch (NON-BLOCKING, process: check 5)
+
+- **Docs only.** `git diff 9d5deb9 HEAD -- docs/07-planning/status.md` is +22/-3, and there are no code or config changes in those commits. This file is the orchestrator's; I report and do not judge.
+- **Timing.** `51c4551` was committed at `2026-09-24T02:42Z`, **after** Thomas's PR comment at `01:10Z` asking lanes to revert every `status.md` change on this branch. The earlier lane edits are also still present.
+- **Accurate:**
+  - the new 2026-09-24 session-log entry's M3 claim (I reproduced it);
+  - "7/7 targeted" (matches).
+- **Stale or unverifiable:**
+  - the snapshot header says `main` is at `21c6a71`. It is `3a45fc5`, and the merge base is `9d5deb9`.
+  - the "Seventh pass" paragraph says #323 "still require[s] independent Opus security review before merge". #323 is merged.
+  - "Two fresh independent ordinary delta reviewers cleared this test-only change" is backed only by the PR body's prose. No review comment at `e6e962b` is on the PR.
+  - "historical hashes are not objects in this branch": the commits do exist as objects in the repository. They are just not ancestors of this head. The conclusion is still right: the old attestations do not bind.
+- **Failure scenario if merged as-is:** the next session reads `main` as `21c6a71` and #323 as unreviewed.
+
+**Recommendation:** revert or rewrite these edits in the orchestrator's own commit before merge.
+
+### E3: The head is behind `main`; updating it unbinds this note (NON-BLOCKING, merge mechanics)
+
+- **State:** `mergeStateStatus` is `BEHIND`, and `main` has #334 and #356 on top of `9d5deb9`.
+- **Why it matters:** `security-review-note.mjs` rule 3 marks this note STALE if any non-review-artefact commit lands after `a1f494f`, including a merge of `main`.
+- **Failure scenario:** someone updates the branch after this note, the template gate goes red, and someone is tempted to add the new head by hand without a review. It is also the only point where #334 could interact, and I checked above that it does not.
+- **Recommendation:** either merge from this head if the repository's rules allow a behind branch, or update first and commission an exact-head delta attestation of the merge commit.
+
+### What I did not do
+
+- I did not re-measure timing. The middleware code is identical to the `691f735` delta's, which measured it, and the asset/ws code is identical to the first review's.
+- I did not re-run M1 and M2. Their target code is unchanged.
+- I did not run `scripts/ci` tests, lint, or `check:openapi` locally. CI's `gate checkers + red probes`, `static` and `contract - OpenAPI drift` are green at this head.
+- I did not review #323's shadow machinery itself, beyond its interaction with this PR. It has its own reviews.
+- I did not edit the PR body, approve on GitHub, or merge.
