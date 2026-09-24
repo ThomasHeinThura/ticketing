@@ -290,3 +290,29 @@ four cases, 4/4 green:
 non-blocking and S5 is for #323. The #322 fixture-conflict note in § 4 is resolved as
 recommended. The test that sees_all on a non-genuine row is dropped is still absent from the
 committed suite. It is non-blocking, and the probe above shows the behaviour is correct.
+
+## Merge-head attestation (Opus 5.5)
+
+**Reviewed head:** `60a79fbedadae8b5ebe1c62c96d7d80cef0fbbfd`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `776999db0eedea45110817cb8cf64c586963626e` (#355, domain coverage and Playwright e2e smoke CI jobs)
+into the previously reviewed head `bc138e237f2fa641c9b1e7327afff1799ec4613a`.
+
+- **Parents:** exactly (`bc138e237f2fa641c9b1e7327afff1799ec4613a`, `776999d`).
+- **Clean merge:** `git show --remerge-diff` is empty, so there was no manual resolution.
+- **PR change unchanged:** `git diff 7bebaf6 bc138e2` and `git diff 776999d 60a79fb` are
+  byte-identical (same sha256). No file overlaps with main's changes since the base.
+  `bc138e2` is note-only over the reviewed code head `51af10d`.
+- **Interaction with main:** none. #355 touches CI workflows, e2e, coverage config and the
+  scope list. This PR's `packages/permissions/**` and `apps/api/src/permissions/**` stay in
+  security scope. The domain coverage job covers `packages/domain`, which this PR does not touch.
+- **Tests at `60a79fb`** (packages built first, no DB): `@taskdesk/permissions` passes
+  13 files / 261 tests. `apps/api test:permissions` passes 10 / 80. `apps/api test:unit`
+  passes 57 / 450.
+- **CI at `60a79fb`:** `integration - Postgres 18` was still in progress when this was written.
+  Every other required context was green except `pull request template + security review`,
+  which reported this file STALE for want of this note. That is expected.
+
+**Verdict at `60a79fbedadae8b5ebe1c62c96d7d80cef0fbbfd`: CLEAR.** S2–S4 remain as recorded
+above and non-blocking. Merging still needs the in-progress integration check to finish green.
