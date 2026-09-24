@@ -5,6 +5,16 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+## Format
+
+```markdown
+### YYYY-MM-DD · Short title
+**Decision:** what we are doing
+**Why:** the reasoning
+**Alternatives:** what was rejected, briefly
+**Decided by:** who
+```
+
 ### 2026-09-24 · GPT-6 Luna replaces Sonnet for ordinary reviews on active P0 lanes
 
 **Decision:** For the currently active P0 work, use fresh independent GPT-6 Luna contexts
@@ -91,17 +101,64 @@ the documented gate unenforced.
 
 **Decided by:** Thomas, 2026-09-23, in session.
 
-## Format
+### 2026-09-23 · Storybook 10 compatibility spike for `packages/ui`
 
-```markdown
-### YYYY-MM-DD · Short title
-**Decision:** what we are doing
-**Why:** the reasoning
-**Alternatives:** what was rejected, briefly
-**Decided by:** who
-```
+**Decision:** Pin `storybook` and `@storybook/react-vite` to `10.6.0` in
+`packages/ui`; keep `@tailwindcss/vite` available to the package's Storybook config. The
+representative Button story builds on the current stack: Node `24.20.0`, React `19.2.8`,
+Vite `8.2.1` (Rolldown), and TypeScript `7.0.2`.
+
+**Why:** `pnpm --filter @taskdesk/ui build-storybook` completed successfully. Its output
+reported Vite `8.2.1` and emitted a Rolldown runtime chunk. A TypeScript 7 no-emit check of
+the Storybook config and story passed. The dev server also started; `GET /` returned `200`
+and `/index.json` listed all three Button stories. Storybook's Vite builder needed the
+Tailwind Vite plugin declared directly in `packages/ui` because pnpm does not expose
+`apps/web`'s dependency to that workspace package. Build emitted a non-blocking warning for
+the 1.1 MB preview chunk.
+
+**Alternatives:** A separate app-level Storybook setup would not exercise the design-system
+package boundary used by primitive stories.
+
+**Decided by:** Storybook 10 is already selected by `tech-stack.md`; the pin and compatibility
+result were recorded by the implementing agent, 2026-09-23.
 
 ---
+
+### 2026-09-24 · The security-review scope adds `packages/domain/src/identity/**` and `apps/api/src/permissions/**`
+
+**Decision:** `docs/04-engineering/ci-cd.md`'s authoritative security-review scope list gains two globs:
+- `packages/domain/src/identity/**`, the P3 identity rules: claim normalisation, SCIM validation and PATCH, role limits and customer reach;
+- `apps/api/src/permissions/**`, which holds `resolveIdentity` (#315) and the #8 shadow-mode middleware (#323).
+
+From now on, any PR touching either path needs the Opus 5.5 security review, enforced by CI.
+
+**Why:**
+- #346's Opus review (S11) found the identity rules outside the scope, although they decide who gets which roles and reach. The same review found a ReDoS and a fail-open role mapping in that code.
+- `apps/api/src/permissions/**` was also outside it. #315 and #323 were only reviewed by Opus because the orchestrating session commissioned it.
+
+This only tightens the gate. It removes nothing.
+
+**Decided by:** the orchestrating session, 2026-09-24, under Thomas's standing delegation. There was one clearly recommended option.
+
+### 2026-09-23 · The P3 identity gate covers all 25 named acceptance tests
+
+**Decision:** Before the P3 identity gate closes, all 25 acceptance tests named in `identity-provisioning.md` must pass against a real Microsoft Entra test tenant. The phase, release, security-evidence and issue #39 gate wording changes from 17 tests to 25.
+
+**Why:** The spec now names 25 acceptance tests. The additions include OIDC configuration, session revocation, and regressions for Entra quirks. Gating only the original 17 would leave security-relevant behaviour unproven against the provider P3 is meant to support.
+
+**Alternatives:** Keep the 17-test subset. Rejected, because it is not the complete acceptance suite.
+
+**Decided by:** Thomas, 2026-09-23. A lane agent drafted the entry. Thomas confirmed the decision to the orchestrating session in session on 2026-09-23, and the orchestrator recorded it.
+
+### 2026-09-23 · SCIM duplicate conflicts share one generic external 409
+
+**Decision:** Every SCIM identity conflict returns an identical generic `409`, with no existing-resource id and no conflict class. That covers same-connection conflicts, cross-connection conflicts, and conflicts across organisations. The provisioning event may keep the internal distinction.
+
+**Why:** If a same-connection duplicate returned the existing id and a cross-connection conflict didn't, a caller could tell whether an identity exists inside another tenant boundary. The IdP can reconcile through its own next list or filter request.
+
+**Alternatives:** Keep IP-32's existing-resource id in the detail. Rejected, because it lets the caller tell the two conflict types apart.
+
+**Decided by:** Thomas, 2026-09-23. A lane agent drafted the entry. Thomas confirmed the decision to the orchestrating session in session on 2026-09-23, and the orchestrator recorded it.
 
 ### 2026-09-23 · Until the lane agents' review capacity returns (2026-09-30), a fresh Claude Sonnet context does the ordinary independent review
 
