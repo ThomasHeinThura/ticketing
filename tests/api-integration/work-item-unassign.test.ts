@@ -14,6 +14,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
+import { WorkItemAssigneeConflictError } from "../../apps/api/src/work-item/controllers/assign-work-item";
+import { unassignWorkItem } from "../../apps/api/src/work-item/controllers/unassign-work-item";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -421,6 +423,60 @@ describe("API integration: work item unassignment (#30, assignment.md)", () => {
       const body = (await conflict.json()) as { currentAssigneeId: null };
       expect(body.currentAssigneeId).toBeNull();
     }
+  });
+
+  it("F1: a holder change between the authority decision and the write is refused 409, never cleared (the observed-value pin)", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const first = await addPersonOnRoster({ projectId: project.id });
+    const second = await addPersonOnRoster({ projectId: project.id });
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    await assignRequest(app, key, { assigneeId: second.id });
+    publishEventMock.mockReset();
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+
+    // The handler's authority decision was made against `first`; the row now holds
+    // `second` (as if a reassignment landed after the check). The controller must
+    // refuse on the mismatch -- clearing here would clear the NEW holder's assignment,
+    // which is the exact authority hole the ordinary review of PR #365 demonstrated
+    // with a probe. Called at the controller layer because that is where the pin
+    // lives; the route-level path to the same window is timing-dependent.
+    await expect(
+      unassignWorkItem(key, workspace.id, "user-probe", "person", first.id),
+    ).rejects.toThrow(WorkItemAssigneeConflictError);
+
+    const [after] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    expect(after?.assigneeId).toBe(second.id);
+    expect(
+      (await assigneeActivityRows(row?.id ?? "")).filter(
+        (entry) => entry.newValue === null,
+      ),
+    ).toHaveLength(0);
+    expect(publishEventMock).not.toHaveBeenCalled();
+
+    // The observed value that MATCHES still clears (the pin is not a blanket refusal).
+    const cleared = await unassignWorkItem(
+      key,
+      workspace.id,
+      "user-probe",
+      "person",
+      second.id,
+    );
+    expect(cleared.previousAssigneeId).toBe(second.id);
+    const [final] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    expect(final?.assigneeId).toBeNull();
   });
 
   it("a caller from another workspace cannot reach the item, and an unauthenticated call is 401", async () => {
