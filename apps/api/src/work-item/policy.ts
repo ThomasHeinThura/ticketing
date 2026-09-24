@@ -72,6 +72,21 @@ export const workItemPolicies = {
     reach: "required",
   },
 
+  // List the workspace's work-item types -- the create dialog's Type picker
+  // (`WI-1`; see `./controllers/list-work-item-types.ts`). A workspace-scoped READ:
+  // any member who can read the workspace can read the type catalogue the workspace
+  // itself seeded. Managing types is `workspace:manage_settings` (work-items.md §
+  // Permissions), a different action on a different route. `workspaceAccess.fromParam`
+  // loads the workspace by the path's own id and verifies membership before this
+  // capability check runs -- `scopeSource: "request"`, the same shape the create
+  // policy above uses for a resource named by the request path.
+  "GET /api/workspace/{workspaceId}/work-item-types": {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+
   // Update a work item's fields (`WI-7`/`WI-8`). Same reach shape as the read route above
   // -- `requireWorkItemReach()` resolves the row by key before the handler runs, and the
   // controller (`update-work-item.ts`) re-scopes its own write by the SAME key+workspaceId

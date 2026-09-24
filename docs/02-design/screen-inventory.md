@@ -57,7 +57,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 | --- | --- | --- | --- | :-: |
 | Work item — full page | `/agent/work-items/{key}` | route | P1 | 🟡 |
 | Work item — side pane | `?item={key}` on any list | overlay | P1 | ⬜ |
-| Create work item | — | dialog | P1 | ⬜ |
+| Create work item | — | dialog | P1 | 🟡 |
 | Bulk edit | — | overlay | P1 | ⬜ |
 | Relations editor | — | section | P1 | ⬜ |
 | Approvals panel | — | section | P2 | ⬜ |
