@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, type SQLWrapper, sql } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
@@ -108,9 +108,9 @@ type WorkspaceAccessMiddlewareConfig = {
 };
 
 type WorkspaceRowScope = {
-  readonly workspaceId: string;
-  readonly projectId?: string;
-  readonly workItemId?: string;
+  workspaceId: string;
+  projectId?: string;
+  workItemId?: string;
 };
 
 async function readJsonObjectBody(
@@ -135,10 +135,6 @@ export function workspaceAccessMiddleware(
     }
 
     let workspaceId: string | null = null;
-    // Provenance accompanies the id into shadow evaluation. Request IDs remain
-    // request-sourced even when membership validation succeeds; only IDs obtained
-    // by a resource lookup are row-sourced.
-    let shadowWorkspaceIdSource: "request" | "row" | null = null;
     // #290: set once a `lookup`/`lookupMany` source has already run
     // `validateWorkspaceAccess` itself (to translate an out-of-reach 403 into the
     // resource's own "not found" answer, below) -- skips the redundant generic check
@@ -151,6 +147,7 @@ export function workspaceAccessMiddleware(
     // never read by any legacy authorization check. `null` for every other source shape.
     let shadowProjectId: string | null = null;
     let shadowWorkItemId: string | null = null;
+    let shadowWorkspaceIdSource: "request" | "row" | null = null;
 
     // Read once, ahead of the loop: `lookup`/`lookupMany` sources need it to check
     // reach as soon as they resolve a row, not only after the loop ends.
@@ -208,10 +205,13 @@ export function workspaceAccessMiddleware(
           // which is exactly issue #256's caller-supplied-fallback class (see
           // the file comment above `NUL_BYTE_LABEL`).
           rejectNulByte(id, NUL_BYTE_LABEL);
-          if (source.resource === "project") {
-            c.set("projectIdFromRequest", id);
-          }
-          const resolved = await lookupWorkspaceScope(source.resource, id);
+          if (source.resource === "project") c.set("projectIdFromRequest", id);
+          const resolved = await lookupWorkspaceId(
+            source.resource,
+            id,
+            userId,
+            apiKeyId,
+          );
           workspaceId = resolved?.workspaceId ?? null;
           if (resolved) {
             shadowWorkspaceIdSource = "row";
@@ -219,12 +219,6 @@ export function workspaceAccessMiddleware(
             c.set("workspaceIdSource", "row");
             shadowProjectId = resolved.projectId ?? null;
             shadowWorkItemId = resolved.workItemId ?? null;
-            if (shadowProjectId) {
-              c.set("projectId", shadowProjectId);
-            }
-            if (shadowWorkItemId) {
-              c.set("workItemId", shadowWorkItemId);
-            }
           }
           if (!workspaceId) {
             if (source.resource !== "project") {
@@ -243,30 +237,13 @@ export function workspaceAccessMiddleware(
             // an unknown id (#202's tests depend on it) -- `workspaceId` stays `null`
             // and falls through to that same post-loop throw.
           } else {
-            // #290: the row exists. Check reach RIGHT HERE, before the generic
-            // post-loop `validateWorkspaceAccess` call, so an out-of-reach workspace
-            // gets the exact same answer as a nonexistent row -- never the 403 that
-            // call would otherwise produce, which let a caller distinguish the two.
-            try {
-              await validateWorkspaceAccess(userId, workspaceId, apiKeyId);
-              accessChecked = true;
-              setShadowLegacyAuthorization(c, "allowed");
-            } catch (error) {
-              if (!(error instanceof HTTPException) || error.status !== 403) {
-                throw error;
-              }
-              setShadowLegacyAuthorization(c, "denied");
-              if (source.resource === "project") {
-                // Match `fromProject`'s own nonexistent-id answer exactly (#202) --
-                // reset to `null` and let the identical post-loop 400 fire, rather
-                // than declaring a new 404 for this one helper.
-                workspaceId = null;
-              } else {
-                throw new HTTPException(404, {
-                  message: RESOURCE_NOT_FOUND_MESSAGE[source.resource],
-                });
-              }
-            }
+            // Reach and key validity are part of the lookup SQL itself. Preserve the
+            // project id as read-only shadow-policy evidence; it is never used by the
+            // legacy authorization path.
+            accessChecked = true;
+            setShadowLegacyAuthorization(c, "allowed");
+            if (source.resource === "project") shadowProjectId = id;
+            if (source.resource === "task") shadowWorkItemId = id;
           }
         }
       } else if (source.type === "lookupMany") {
@@ -287,51 +264,27 @@ export function workspaceAccessMiddleware(
                 schema.projectTable,
                 eq(schema.taskTable.projectId, schema.projectTable.id),
               )
-              .where(inArray(schema.taskTable.id, taskIds));
+              .where(
+                and(
+                  inArray(schema.taskTable.id, taskIds),
+                  reachableWorkspacePredicate(
+                    schema.projectTable.workspaceId,
+                    userId,
+                    apiKeyId,
+                  ),
+                ),
+              );
             const distinctWorkspaceIds = [
               ...new Set(tasks.map((task) => task.workspaceId)),
             ];
-
-            // #290 follow-up (mixed-id oracle): grouping every RESOLVED id by
-            // workspace, before checking reach, let `[myTask, foreignTask]` and
-            // `[myTask, nonexistentId]` answer differently -- the former 400'd
-            // ("must belong to the same workspace", because the foreign task's real
-            // workspace was in the set), the latter 200'd with only the real task
-            // updated. That told a caller a foreign id exists. Reach is now checked
-            // per DISTINCT workspace (never per id -- at most a handful of extra
-            // queries, not one per task id) and an unreachable workspace's tasks are
-            // dropped from consideration entirely, exactly as if their ids had never
-            // resolved to a row at all.
-            const reachableWorkspaceIds: string[] = [];
-            for (const candidateWorkspaceId of distinctWorkspaceIds) {
-              try {
-                await validateWorkspaceAccess(
-                  userId,
-                  candidateWorkspaceId,
-                  apiKeyId,
-                );
-                reachableWorkspaceIds.push(candidateWorkspaceId);
-              } catch (error) {
-                if (!(error instanceof HTTPException) || error.status !== 403) {
-                  throw error;
-                }
-                // Out of reach -- silently dropped, not surfaced as a 403 or
-                // folded into the "too many workspaces" 400 below.
-              }
-            }
-
-            if (reachableWorkspaceIds.length === 0) {
-              setShadowLegacyAuthorization(c, "denied");
-            } else {
-              setShadowLegacyAuthorization(c, "allowed");
-            }
-
-            if (reachableWorkspaceIds.length === 0) {
+            // Reach is part of the same lookup SQL, so foreign ids are filtered
+            // before they can affect the workspace count or response.
+            if (distinctWorkspaceIds.length === 0) {
               // Covers both "no id resolved to a row" and "every resolved row is in
               // a workspace the caller can't reach" -- byte-identical, on purpose.
               throw new HTTPException(404, { message: "No tasks found" });
             }
-            if (reachableWorkspaceIds.length > 1) {
+            if (distinctWorkspaceIds.length > 1) {
               // A genuine multi-workspace request the caller can actually reach
               // (e.g. an admin/service key spanning workspaces) keeps this 400 --
               // only an UNREACHABLE workspace's tasks are dropped above, not every
@@ -340,15 +293,12 @@ export function workspaceAccessMiddleware(
                 message: "All tasks must belong to the same workspace",
               });
             }
-            workspaceId = reachableWorkspaceIds[0] ?? null;
-            if (workspaceId) {
-              shadowWorkspaceIdSource = "row";
-              c.set("workspaceId", workspaceId);
-              c.set("workspaceIdSource", "row");
-            }
-            // Already validated above -- every entry in reachableWorkspaceIds passed
-            // validateWorkspaceAccess.
+            workspaceId = distinctWorkspaceIds[0] ?? null;
+            // The lookup SQL already checked caller reach and API-key validity.
             accessChecked = true;
+            shadowWorkspaceIdSource = "row";
+            shadowWorkItemId =
+              taskIds.length === 1 ? (taskIds[0] ?? null) : null;
           }
         }
       }
@@ -377,23 +327,59 @@ export function workspaceAccessMiddleware(
     }
 
     c.set("workspaceId", workspaceId);
-    if (shadowWorkspaceIdSource) {
+    if (shadowWorkspaceIdSource)
       c.set("workspaceIdSource", shadowWorkspaceIdSource);
-    }
     if (shadowProjectId) {
       // Issue #8, Slice 2 only -- see the declaration above. Read by
       // `apps/api/src/permissions/shadow-middleware.ts` alone.
       c.set("projectId", shadowProjectId);
     }
-    if (shadowWorkItemId) {
-      c.set("workItemId", shadowWorkItemId);
-    }
+    if (shadowWorkItemId) c.set("workItemId", shadowWorkItemId);
 
     return next();
   };
 }
 
-async function lookupWorkspaceScope(
+/**
+ * Keep the existence lookup and its reach check in one database round trip.
+ * Returning no row for both a missing and an unreachable resource also keeps
+ * their observable timing and response path aligned.
+ */
+function reachableWorkspacePredicate(
+  workspaceId: SQLWrapper,
+  userId: string,
+  apiKeyId?: string,
+) {
+  const reach = sql`(
+    EXISTS (
+      SELECT 1 FROM ${schema.userTable}
+      WHERE ${schema.userTable.id} = ${userId}
+        AND ${schema.userTable.role} = 'admin'
+    )
+    OR EXISTS (
+      SELECT 1 FROM ${schema.workspaceUserTable}
+      WHERE ${schema.workspaceUserTable.userId} = ${userId}
+        AND ${schema.workspaceUserTable.workspaceId} = ${workspaceId}
+    )
+  )`;
+
+  if (!apiKeyId) return reach;
+
+  return and(
+    reach,
+    sql`EXISTS (
+      SELECT 1 FROM ${schema.apikeyTable}
+      WHERE ${schema.apikeyTable.id} = ${apiKeyId}
+        AND (
+          ${schema.apikeyTable.referenceId} = ${userId}
+          OR ${schema.apikeyTable.userId} = ${userId}
+        )
+        AND ${schema.apikeyTable.enabled} = true
+    )`,
+  );
+}
+
+async function lookupWorkspaceId(
   resource:
     | "project"
     | "task"
@@ -404,36 +390,56 @@ async function lookupWorkspaceScope(
     | "column"
     | "workflowRule",
   id: string,
+  userId: string,
+  apiKeyId?: string,
 ): Promise<WorkspaceRowScope | null> {
   try {
     switch (resource) {
       case "project": {
         const [project] = await db
           .select({
-            id: schema.projectTable.id,
             workspaceId: schema.projectTable.workspaceId,
+            projectId: schema.projectTable.id,
           })
           .from(schema.projectTable)
-          .where(eq(schema.projectTable.id, id))
+          .where(
+            and(
+              eq(schema.projectTable.id, id),
+              reachableWorkspacePredicate(
+                schema.projectTable.workspaceId,
+                userId,
+                apiKeyId,
+              ),
+            ),
+          )
           .limit(1);
         return project?.workspaceId
-          ? { workspaceId: project.workspaceId, projectId: project.id }
+          ? { workspaceId: project.workspaceId, projectId: project.projectId }
           : null;
       }
 
       case "task": {
         const [task] = await db
           .select({
-            workItemId: schema.taskTable.id,
-            projectId: schema.taskTable.projectId,
             workspaceId: schema.projectTable.workspaceId,
+            projectId: schema.taskTable.projectId,
+            workItemId: schema.taskTable.id,
           })
           .from(schema.taskTable)
           .innerJoin(
             schema.projectTable,
             eq(schema.taskTable.projectId, schema.projectTable.id),
           )
-          .where(eq(schema.taskTable.id, id))
+          .where(
+            and(
+              eq(schema.taskTable.id, id),
+              reachableWorkspacePredicate(
+                schema.projectTable.workspaceId,
+                userId,
+                apiKeyId,
+              ),
+            ),
+          )
           .limit(1);
         return task?.workspaceId
           ? {
@@ -448,7 +454,16 @@ async function lookupWorkspaceScope(
         const [label] = await db
           .select({ workspaceId: schema.labelTable.workspaceId })
           .from(schema.labelTable)
-          .where(eq(schema.labelTable.id, id))
+          .where(
+            and(
+              eq(schema.labelTable.id, id),
+              reachableWorkspacePredicate(
+                schema.labelTable.workspaceId,
+                userId,
+                apiKeyId,
+              ),
+            ),
+          )
           .limit(1);
         return label?.workspaceId ? { workspaceId: label.workspaceId } : null;
       }
@@ -456,9 +471,9 @@ async function lookupWorkspaceScope(
       case "timeEntry": {
         const [timeEntry] = await db
           .select({
-            workItemId: schema.taskTable.id,
-            projectId: schema.taskTable.projectId,
             workspaceId: schema.projectTable.workspaceId,
+            projectId: schema.taskTable.projectId,
+            workItemId: schema.taskTable.id,
           })
           .from(schema.timeEntryTable)
           .innerJoin(
@@ -469,7 +484,16 @@ async function lookupWorkspaceScope(
             schema.projectTable,
             eq(schema.taskTable.projectId, schema.projectTable.id),
           )
-          .where(eq(schema.timeEntryTable.id, id))
+          .where(
+            and(
+              eq(schema.timeEntryTable.id, id),
+              reachableWorkspacePredicate(
+                schema.projectTable.workspaceId,
+                userId,
+                apiKeyId,
+              ),
+            ),
+          )
           .limit(1);
         return timeEntry?.workspaceId
           ? {
@@ -483,9 +507,9 @@ async function lookupWorkspaceScope(
       case "activity": {
         const [activity] = await db
           .select({
-            workItemId: schema.taskTable.id,
-            projectId: schema.taskTable.projectId,
             workspaceId: schema.projectTable.workspaceId,
+            projectId: schema.taskTable.projectId,
+            workItemId: schema.taskTable.id,
           })
           .from(schema.taskActivityTable)
           .innerJoin(
@@ -496,7 +520,16 @@ async function lookupWorkspaceScope(
             schema.projectTable,
             eq(schema.taskTable.projectId, schema.projectTable.id),
           )
-          .where(eq(schema.taskActivityTable.id, id))
+          .where(
+            and(
+              eq(schema.taskActivityTable.id, id),
+              reachableWorkspacePredicate(
+                schema.projectTable.workspaceId,
+                userId,
+                apiKeyId,
+              ),
+            ),
+          )
           .limit(1);
         return activity?.workspaceId
           ? {
@@ -510,9 +543,9 @@ async function lookupWorkspaceScope(
       case "comment": {
         const [comment] = await db
           .select({
-            workItemId: schema.taskTable.id,
-            projectId: schema.taskTable.projectId,
             workspaceId: schema.projectTable.workspaceId,
+            projectId: schema.taskTable.projectId,
+            workItemId: schema.taskTable.id,
           })
           .from(schema.taskActivityTable)
           .innerJoin(
@@ -527,6 +560,11 @@ async function lookupWorkspaceScope(
             and(
               eq(schema.taskActivityTable.id, id),
               eq(schema.taskActivityTable.type, "comment"),
+              reachableWorkspacePredicate(
+                schema.projectTable.workspaceId,
+                userId,
+                apiKeyId,
+              ),
             ),
           )
           .limit(1);
@@ -542,15 +580,24 @@ async function lookupWorkspaceScope(
       case "column": {
         const [column] = await db
           .select({
-            projectId: schema.projectTable.id,
             workspaceId: schema.projectTable.workspaceId,
+            projectId: schema.columnTable.projectId,
           })
           .from(schema.columnTable)
           .innerJoin(
             schema.projectTable,
             eq(schema.columnTable.projectId, schema.projectTable.id),
           )
-          .where(eq(schema.columnTable.id, id))
+          .where(
+            and(
+              eq(schema.columnTable.id, id),
+              reachableWorkspacePredicate(
+                schema.projectTable.workspaceId,
+                userId,
+                apiKeyId,
+              ),
+            ),
+          )
           .limit(1);
         return column?.workspaceId
           ? { workspaceId: column.workspaceId, projectId: column.projectId }
@@ -560,15 +607,24 @@ async function lookupWorkspaceScope(
       case "workflowRule": {
         const [workflowRule] = await db
           .select({
-            projectId: schema.projectTable.id,
             workspaceId: schema.projectTable.workspaceId,
+            projectId: schema.workflowRuleTable.projectId,
           })
           .from(schema.workflowRuleTable)
           .innerJoin(
             schema.projectTable,
             eq(schema.workflowRuleTable.projectId, schema.projectTable.id),
           )
-          .where(eq(schema.workflowRuleTable.id, id))
+          .where(
+            and(
+              eq(schema.workflowRuleTable.id, id),
+              reachableWorkspacePredicate(
+                schema.projectTable.workspaceId,
+                userId,
+                apiKeyId,
+              ),
+            ),
+          )
           .limit(1);
         return workflowRule?.workspaceId
           ? {
