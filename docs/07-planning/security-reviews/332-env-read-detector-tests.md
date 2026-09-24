@@ -108,3 +108,71 @@ This verdict covers the security surface only. The PR is **not merge-ready** unt
 - an independent ordinary review by a different agent is recorded;
 - the `## Implemented by` attribution and the commit identity are reconciled;
 - the PR body links this note and ticks the Opus item, turning the template check green on the final head.
+
+---
+
+## Delta review — `c731c26..9b0842f` (2026-09-24)
+
+**Reviewer:** Opus 5.5, fresh independent context commissioned by the orchestrating session. I did not author, direct or remediate this change, and I did not write the earlier pass above.
+**Reviewed head:** `9b0842f4c72a50892557b0e384d6cd1d5e66d90e`
+**Merge base with `origin/main`:** `c4e18107fd7ed019ef6cf00edd8fec82b1703c89` (= `origin/main` at review time). Head checked with `gh pr view 332 --json headRefOid` before starting.
+
+### What changed since the last cleared head
+
+- `058daa0`: the earlier review note. Note-only.
+- `4d33443`: merge of `origin/main` (`c4e1810`) into `c731c26`. `git show --remerge-diff` is empty, so the merge was clean and has no hand resolution.
+- `9b0842f`: merge of the remote branch (`058daa0`) into `4d33443`. `--remerge-diff` is empty, so this merge was clean too.
+- `git diff c731c26 9b0842f -- scripts/ci/lib/env-reads.test.mjs` is empty, so the test file is byte-identical to the one reviewed before.
+- `git diff --stat c4e1810 9b0842f` covers two files: `scripts/ci/lib/env-reads.test.mjs` (+107) and this note. The PR's net change is still **test-only plus this note**. `env-reads.mjs`, `check-env.mjs`, `env-baseline.json` and the workflows are not touched, so no detector or gate code needs a critical review.
+
+### Scope interaction with #356 (`3a45fc5`, arrived through the main merge)
+
+- #356 adds `packages/domain/src/identity/**` and `apps/api/src/permissions/**` to the security-review scope in `ci-cd.md`. `scripts/ci/**` was already in scope.
+- This PR's diff touches neither new path, so #356 adds no new review obligation. It also doesn't narrow any obligation this PR already had.
+
+### Tests pin real behaviour (mutation checks, all reverted and confirmed with `git status`)
+
+| Mutation to `env-reads.mjs` | Result |
+| --- | --- |
+| M1: `BRACKET_LITERAL` match disabled (`process.env["X"]` no longer named) | RED: "attributes direct and literal-bracket environment names" |
+| M2: `destructuredKeys` disabled (`const { A, B } = process.env` becomes alias) | RED: "destructured environment properties are attributed individually" |
+| M3: `BRACKET_COMPUTED` branch disabled (`process.env[key]` becomes alias) | RED: "computed helper…" and "unattributable read fingerprints…" |
+| M4: `.` dropped from the `ACCESS` lookbehind | green. Nothing pins it. This is the same gap as **E1**. See D1. |
+
+### Suites at `9b0842f` (fresh worktree, `pnpm install --frozen-lockfile --offline`)
+
+- `pnpm test:ci-scripts`: **508 tests / 88 suites, 508 pass, 0 fail**. That is 501 at `c731c26` plus the new main-side tests. The first run without `node_modules` had 3 `typecheck-coverage` failures, all from a missing `tsc` binary (ENOENT). They are environmental and went away after the install.
+- `node --test scripts/ci/lib/env-reads.test.mjs`: 6/6.
+- `pnpm check:env`: exit 0, **30 reads, every one attributable**, 980 files scanned, 52 inherited baselined deviations. It also notes one stale baseline name that `--prune` could remove.
+
+### Overlap with #352 (`fix/342-env-reads-syntax`, `e3dd45b09f629f0971f5d0a5862a77db89374204`)
+
+- #352 rewrites `scripts/ci/lib/env-reads.mjs` (+735/−101). It also adds `env-reads-342.test.mjs`, its own note and `status.md` edits. Its files and this PR's files don't overlap.
+- `git merge-tree --write-tree 9b0842f e3dd45b` is clean (exit 0). The three-argument form in the brief isn't valid `--write-tree` syntax. `e3dd45b` already contains `origin/main`, so the pairwise merge is the right check.
+- On the merged tree (#352's detector, both test files): **the 6 #332 tests and #352's tests pass, 29/29**. The full `scripts/ci` suite passes **531/531**. `check:env` is green with 29 attributable reads.
+- **Merge order: #332 first.** It is test-only, and it pins the current detector's contract. Landing it first means #352's rewrite is checked against these pins in #352's own CI, and they already pass. The reverse order also works, but then #352 lands without these baseline pins in CI.
+
+### GitGuardian (not a required check)
+
+- The finding is `charts/taskdesk/values.yaml` line 245, `passwordKey: postgres_uri`, in commit `4d33443`. That commit is the main merge. The line itself came from #308 (`db27fd5`) on `main`.
+- It is the **name of a key** inside an existing Kubernetes Secret (`existingSecret.passwordKey`). It is not a credential. The neighbouring `password: ""` is empty.
+- This PR's net diff doesn't touch the chart. **False positive.** GitGuardian's own triage will surface it against `main`/#308, not against this PR.
+
+### Findings
+
+- **D1 (non-blocking, pre-existing):** mutation M4 survives. Nothing pins the `.`-prefix exclusion or its false-negative shapes, `globalThis.process.env` and `{ ...process.env }`. This is E1 from the earlier pass, and #352 is the natural place to pin it.
+- **D2 (process, not security; merge-blocking per the owner's PR comment):**
+  - `c731c26` is still authored `Claude Code <noreply@anthropic.com>`, while `## Implemented by` says "Codex agent", and the merges are authored `Codex GPT-6`. The attribution-reconciliation condition from the earlier pass is still open.
+  - `## Reviewed by` names **GPT-6 Luna**. If "Codex agent / Codex GPT-6" is the same agent as GPT-6 Luna, the ordinary review isn't from a different agent (2026-09-23, #336). The orchestrator has to confirm these are distinct agents before merge.
+- **D3 (template):** the `pull request template + security review` check fails at `9b0842f` for two reasons:
+  - this note was stale, which this delta section fixes;
+  - the "Independent Opus security review" checklist item is unticked, and `## Security review` still says "Pending". Those are PR-body edits, and the orchestrator has to make them.
+  - The body's checklist counts (501 tests, 25 reads) are also stale. They should read 508 and 30.
+
+### Verdict
+
+**CLEAR WITH FINDINGS at `9b0842f4c72a50892557b0e384d6cd1d5e66d90e`.**
+- No security finding blocks.
+- The delta since `c731c26` is two clean merges and a note. The reviewed test file is unchanged, and no detector or gate code changed.
+- D2 and D3 are merge gates outside the security surface, and they must be closed before merge.
+- This note's commit moves the head. It is a note-only commit on top of the reviewed head, which is the intended shape.
