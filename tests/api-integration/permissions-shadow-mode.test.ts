@@ -122,6 +122,18 @@ async function shadowTalliesFor(
     .where(eq(policyShadowTallyTable.routeKey, routeKey));
 }
 
+async function waitForShadowEvidence<T>(
+  read: () => Promise<T | undefined>,
+): Promise<T> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const value = await read();
+    if (value !== undefined) return value;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error("shadow evidence was not written within 5 seconds");
+}
+
 beforeEach(async () => {
   await resetTestDatabase();
 });
@@ -473,8 +485,10 @@ describe("#324 — denied param workspace scope is checked against a verified ro
     );
     expect(response.status).toBe(403);
 
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const tallies = await shadowTalliesFor(WORKSPACE_DETAIL_ROUTE_KEY);
+    const tallies = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(WORKSPACE_DETAIL_ROUTE_KEY);
+      return rows.some((row) => row.outcome === "agree") ? rows : undefined;
+    });
     expect(tallies.some((row) => row.outcome === "agree")).toBe(true);
     expect(
       tallies.some((row) => row.outcome === "legacy_deny_policy_allow"),
@@ -514,11 +528,13 @@ describe("#324 — denied param workspace scope is checked against a verified ro
     );
     expect(response.status).toBe(403);
 
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const disagreements = await shadowEventsFor(
-      WORKSPACE_DETAIL_ROUTE_KEY,
-      "legacy_deny_policy_allow",
-    );
+    const disagreements = await waitForShadowEvidence(async () => {
+      const rows = await shadowEventsFor(
+        WORKSPACE_DETAIL_ROUTE_KEY,
+        "legacy_deny_policy_allow",
+      );
+      return rows.length > 0 ? rows : undefined;
+    });
     expect(disagreements).toHaveLength(1);
   });
 
