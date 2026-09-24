@@ -2627,6 +2627,84 @@
           "updatedAt"
         ]
       },
+      "WorkItemListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkItemListItem"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/WorkItemPage"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "total"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "page",
+          "meta"
+        ]
+      },
+      "WorkItemListItem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WorkItem"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "stateName": {
+                "type": "string"
+              },
+              "stateCategory": {
+                "type": "string",
+                "description": "state_template.group: one of backlog, unstarted, started, completed, cancelled."
+              },
+              "assigneeName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "stateName",
+              "stateCategory",
+              "assigneeName"
+            ]
+          }
+        ]
+      },
+      "WorkItemPage": {
+        "type": "object",
+        "properties": {
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "nextCursor",
+          "hasMore"
+        ]
+      },
       "WorkItemType": {
         "type": "object",
         "properties": {
@@ -10162,7 +10240,7 @@
           "Work items"
         ],
         "summary": "List work items",
-        "description": "List a project's work items, oldest first by number. Archived and deleted items are excluded. Not paginated in this first slice.",
+        "description": "List a project's work items with server-side sort, cursor pagination and filters (`docs/01-architecture/api-design.md`'s collection convention; `sort`/`dir` match #306's own URL param names: `key | title | priority | dueDate`, `asc | desc`, default `key`/`asc`). Archived and deleted items are excluded by default. Each row also carries the resolved `stateName`, `stateCategory` and `assigneeName` (#310) alongside the raw ids.",
         "parameters": [
           {
             "schema": {
@@ -10171,24 +10249,98 @@
             "required": true,
             "name": "projectId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "state",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "assignee",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "priority",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "due_before",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "key",
+                "title",
+                "priority",
+                "dueDate"
+              ]
+            },
+            "required": false,
+            "name": "sort",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            },
+            "required": false,
+            "name": "dir",
+            "in": "query"
           }
         ],
         "responses": {
           "200": {
-            "description": "The project's work items",
+            "description": "A page of the project's work items",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/WorkItem"
-                  }
+                  "$ref": "#/components/schemas/WorkItemListResponse"
                 }
               }
             }
           },
           "400": {
-            "description": "Unknown project, or its workspace could not be determined",
+            "description": "Unknown project or its workspace could not be determined, or an invalid query parameter (unknown sort field, out-of-range limit, malformed cursor, NUL byte, etc.)",
             "content": {
               "text/plain": {
                 "schema": {
