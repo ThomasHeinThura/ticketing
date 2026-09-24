@@ -345,9 +345,8 @@ export type ProjectReachFacts = {
 /**
  * May this identity see this project (and what hangs off it)?
  *
- * The resolution order in rbac.md § Reach. Steps 1 and 2 — `instance:admin` and an explicit
- * `sees_all` grant — are already resolved into `identity.reach.kind === 'all'` by
- * `resolveIdentity`, which is why this function needs no capability lookup at all.
+ * Instance admin is global; sees_all is scoped to the granting workspace and combined with
+ * ordinary membership-derived reach.
  *
  * A `false` answer is a **404**, never a 403: returning 403 would confirm the record exists.
  */
@@ -366,7 +365,7 @@ export function reaches(
   }
 
   switch (identity.reach.kind) {
-    // 1. instance:admin, or 2. an explicit sees_all grant.
+    // 1. instance:admin.
     case "all":
       return true;
 
@@ -377,7 +376,14 @@ export function reaches(
         identity.reach.ids.includes(project.organisationId)
       );
 
-    case "membership": {
+    case "membership":
+    case "membership_with_workspaces": {
+      if (
+        identity.reach.kind === "membership_with_workspaces" &&
+        identity.reach.workspaceIds.includes(project.workspaceId)
+      ) {
+        return true;
+      }
       // 3. Project membership.
       if (hasMembership(identity.memberships, "project", project.projectId)) {
         return true;
