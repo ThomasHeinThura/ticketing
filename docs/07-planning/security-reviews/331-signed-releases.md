@@ -930,3 +930,30 @@ directed and remediated nothing. Its only write is this section.
 1. Correct the PR body's exact-head line to `b8921c5845e4885451d2b184c78e0999492e8c61`.
 2. Re-run the template check. It must go green with the note-only commit on top.
 3. If anything other than this note lands after `b8921c5`, another Opus delta is needed.
+
+## Merge-head attestation (Opus 5.5)
+
+**Reviewed head:** `4413cef3ac8200071864b89d484904eeb3ac8ba5`
+
+This is a fresh Opus 5.5 context, 2026-09-24, with `main` at
+`8f545c3c1ae8ee3d5ac9b22d830ff52ab1fce918`. Delta 5 was at `b8921c5`, recorded in note
+`c96e92c`, which changed only this file.
+
+**Commits from `c96e92c` to `4413cef`:**
+- `4413cef`: merge of `origin/main`. Its parents are exactly (`c96e92c`, `8f545c3`), and
+  `git show --remerge-diff` is empty.
+- `8f545c3`: #363, `docs/07-planning/status.md` only. It is the one commit `main` gained
+  since `663c0cb`.
+
+There is no non-merge PR commit. The PR's own added and removed lines are identical between
+`git diff 663c0cb c96e92c` and `git diff 8f545c3 4413cef`. Only the hunk offsets in
+`status.md` differ; it is the one overlapping file, and it auto-merged.
+
+**Tests at `4413cef`:** `pnpm test:ci-scripts` passes 513 / 513. The worktree stays clean
+after `pnpm install --frozen-lockfile --offline`.
+
+**CI at `4413cef`:** the only failure was `pull request template + security review`, on
+the STALE binding. That is expected, and this note clears it.
+
+**Verdict at `4413cef3ac8200071864b89d484904eeb3ac8ba5`: CLEAR.** Delta 5's findings carry
+over unchanged.
