@@ -1,3 +1,19 @@
+**2026-09-24 continuation (P0 #342 / issue #10):** PR #352 now contains the Opus F1
+remediation on top of `main@f22f0100cb3d5a1ab3ff6dbc0c20b4e298fd488c` (including
+merged #335). The detector uses a fail-closed raw-read backstop outside tokenizer-confirmed
+comments, bounds malformed quoted strings to a line, and covers the reported TSX, postfix
+operator, eval, process-import/alias, computed access, and TypeScript assertion cases. At
+pre-status candidate `e87f95a8c8999beb9fbf8a771482c6a52c83776b`, focused tests passed 23/23,
+`check:env` passed with 29 attributable reads, Biome and `git diff --check` passed. The CI
+checker suite passed 525/525 with `bun test --timeout=30000 scripts/ci`; the repository's
+`pnpm test:ci-scripts` command could not run because this environment's `node` resolves to
+Bun and does not expand its quoted glob. One default-timeout Bun run was discarded after
+four unrelated typecheck-coverage probes exceeded Bun's 5-second test timeout; the raised
+per-test timeout run passed all probes. A fresh ordinary review is requested on the final
+candidate; Opus 5.5 security review remains mandatory and pending. The prior status claim
+that the detector missed an approved template interpolation was inaccurate: the mainline
+detector already recognized it. This remediation does not claim P0 or #10 complete.
+
 # Status — a POINT-IN-TIME SNAPSHOT
 
 **2026-09-24 continuation (P0 #10):** Three independent GPT-6 review contexts passed the
