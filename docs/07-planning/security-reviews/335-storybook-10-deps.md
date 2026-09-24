@@ -107,3 +107,194 @@ did not build the Docker image (the `proddeps` exclusion was established by read
 COPY list and the `check:dockerfile-deps` gate); did not independently audit `origin/main` (the
 head audit is clean, so no delta can be worse); did not verify whether Thomas authorized the
 pin (S2).
+
+---
+
+## Delta review — after the rebase onto `main` (2026-09-24)
+
+**Reviewed head:** `0a0aa9ea872b977ef6eeff80d2d5b8f2c9c2ff89`
+
+**Merge base with `main`:** `7bebaf61c50d2a65255e459827c88c1d30230340`, which is current
+`origin/main`. The branch is no longer behind.
+
+**Verdict: CLEAR.** The dependency surface is byte-identical to what was cleared at `aaab19d`.
+S4 is fixed and I checked it at runtime. S1 is corrected. The S2 placement and Alternatives
+fixes are in. Nothing new is in security scope. The remaining items below are gate and
+attribution items for the orchestrator. None is a supply-chain defect. This section binds to
+the head above only. Any later commit outside `docs/07-planning/security-reviews/` voids it.
+
+**Independence.** Same Opus 5.5 reviewer context as the first pass. It authored, directed and
+remediated none of `96fa296` or `0a0aa9e`. S4's remedy was only a recommendation in the first
+pass; the lane wrote the fix.
+
+### Commits since the reviewed `aaab19d`
+
+`git range-diff dd067e2..e5c48d4 7bebaf6..0a0aa9e`:
+
+| Old | New | Change |
+| --- | --- | --- |
+| `aaab19d` | `96fa296` (author `Claude Code <noreply@anthropic.com>`) | Rebased re-land. The range-diff differs **only** in `decision-log.md`: the hunk context moved, and `**Decided by:**` changed from "Thomas authorized the recommended Storybook dependency option…" to "Storybook 10 is already selected by `tech-stack.md`; the pin and compatibility result were recorded by the implementing agent" |
+| `e5c48d4` | `4f1cd88` | `=` identical (this note) |
+| — | `0a0aa9e` (author `Codex GPT-6 <agent@taskdesk.local>`) | `packages/ui/package.json`: `storybook dev -p 6006` → `storybook dev -p 6006 --host 127.0.0.1`. `decision-log.md`: the entry moves below `## Format` |
+
+### Probes
+
+| Probe | Evidence |
+| --- | --- |
+| **Dependency set unchanged** | `cmp` of `pnpm-lock.yaml` at `aaab19d` against head: **byte-identical**. `git diff aaab19d 0a0aa9e` touches no `pnpm-workspace.yaml`, `.npmrc` or `Dockerfile`. In `packages/ui/package.json` the only change is the one script line; the three pinned devDependencies are unchanged. `main` moved `dd067e2`→`7bebaf6` without touching the lockfile. Its one manifest edit (`apps/api` gained a `tsx` script in #322) adds no dependency. The 102-package delta, the registry hashes and the install-script scan from the first pass therefore carry over unchanged |
+| **Install** | `pnpm install --frozen-lockfile` → "Lockfile is up to date"; the ignored-build-scripts list is unchanged (no new package) |
+| **Audit** | `pnpm audit` → no known vulnerabilities. `pnpm audit --prod` → no known vulnerabilities. `--audit-level=high` exit 0 |
+| **Gates** | `check:dockerfile-deps` → 9 manifests match. `check:overrides` → 36, one source |
+| **S4 — loopback bind, at runtime** | `storybook dev --help` lists `-h, --host <string>`. I started `pnpm storybook --ci --no-open` at head. `ss -ltn` showed exactly `LISTEN 127.0.0.1:6006` (not `0.0.0.0`/`*`). `curl http://127.0.0.1:6006/` → `200`. The host's own interface address `10.0.14.33:6006` → **connection refused**. The server was stopped afterwards and 6006 was free again |
+| **S1 — PR body** | `[x] No dependency added` is gone. It is replaced by `[x] Added dependencies are development-only, selected in docs/01-architecture/tech-stack.md, documented in the decision log, and audit-clean`, which is true per the first pass |
+| **S2 — decision-log entry** | The entry now sits after `## Format` (`## Format` at line 8, entry at line 28), below the newer #351 entry and above #345's, newest first. It has an `**Alternatives:**` line. It no longer claims authority it cannot show. To place it, `0a0aa9e` also moved `## Format` above #351's entry, which had landed above `## Format` on `main`. No entry text changed; only placement. I verified that by diffing against `origin/main` |
+| **Template gate** | `check-pr-template.mjs --body` at `0a0aa9e`, before this section existed, reported 2 problems. First, the note's only declared head (`aaab19d`) is not an ancestor after the rebase. Second, the Opus checkbox is unticked. This section declares an ancestor head, which is meant to clear the first. The second needs the PR body updated |
+
+### Findings (delta)
+
+- **S1 — CLOSED.** Checklist corrected.
+- **S2 — CLOSED for placement and Alternatives; one LOW residual.** The coordinator relays that
+  Thomas confirmed the Storybook 10.6.0 dev-only dependency to the orchestrating session. The
+  orchestrator's PR comment of 2026-09-23T16:51Z asked for a "Confirmed by Thomas to the
+  orchestrating session, 2026-09-23" line. The entry's `**Decided by:**` does not contain it,
+  so the decision log still does not record Thomas's approval of the pin. I cannot verify the
+  confirmation myself; it reached me second-hand. AGENTS.md do-not 4 ("add a dependency
+  without asking") and the rule that a decision governing live behavior must be in the
+  decision log before dependent code merges both point the same way: the orchestrator should
+  add that line (it owns the file) before merge. This is not a security defect. The entry as
+  written is truthful.
+- **S3 — OPEN (attribution, LOW).** `96fa296` is still authored `Claude Code
+  <noreply@anthropic.com>`. The PR body now discloses the mismatch rather than rewriting
+  history. Whether disclosure satisfies the 2026-09-23 attribution rule (#336, now on `main`)
+  is the orchestrator's call.
+- **S4 — CLOSED.** Verified at runtime, above.
+- **S5 — CLOSED.** Rebased; the merge base is current `main`.
+- **S7 — NEW, MEDIUM (ordinary-review independence; a gate item, not a code defect).** The PR
+  records the ordinary review as a "fresh independent GPT-6/Codex context". `0a0aa9e` is
+  authored `Codex GPT-6`, and the original implementation is attributed to a Codex agent. The
+  2026-09-23 #345 entry says the lane agents have no ordinary-review capacity until
+  2026-09-30, and that until then a fresh Claude Sonnet context does the ordinary review. The
+  #351 entry allows a current-model fallback **commissioned by the orchestrating session**.
+  Before merge the orchestrator must confirm that it commissioned this GPT-6 review under #351
+  and that the reviewer is independent of the author. If not, a fresh Sonnet (or #351
+  fallback) ordinary review is still owed. I did not assess the ordinary review's content.
+
+### Gate status at `0a0aa9e`
+
+The ordinary review is recorded, subject to S7. Required CI on this head was green except
+`pull request template + security review`, which should re-run after this note lands and the
+PR body's Opus checkbox and note link are updated. No waived gate is cited. The Opus security
+gate is closed by this section for `0a0aa9ea872b977ef6eeff80d2d5b8f2c9c2ff89`.
+
+## Merge-head attestation (Opus 5.5)
+
+**Reviewed head:** `a7ae7112ebc17a9bb4052d5477b834de48e0a0f3`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `776999db0eedea45110817cb8cf64c586963626e` (#355, domain coverage and Playwright e2e smoke CI jobs)
+into the previously reviewed head `38f6fd45fa87f04c84ba6dae7dc88c421719cc7e`.
+
+- **Parents:** exactly (`38f6fd45fa87f04c84ba6dae7dc88c421719cc7e`, `776999d`).
+- **Not a clean merge:** `docs/07-planning/decision-log.md` was hand-resolved.
+  `git show --remerge-diff a7ae711` shows only the three conflict markers removed and one blank
+  line added. Taking the non-blank lines as a multiset, the merged file equals main's file plus
+  the PR's delta over base `7bebaf6`, with nothing missing and nothing extra. No entry from
+  either side is lost, and no content is added. The order is: the `## Format` block, then
+  main's newer entries, then the PR's Storybook entry.
+- **PR change unchanged:** outside `decision-log.md` and `pnpm-lock.yaml`,
+  `git diff 7bebaf6 38f6fd4` and `git diff 776999d a7ae711` are byte-identical. That covers
+  the loopback-bind fix from `0a0aa9e`. `38f6fd4` is note-only over the reviewed code head
+  `0a0aa9e`.
+- **`pnpm-lock.yaml`** auto-merged. Measured as added and removed lines, the merge against
+  main equals the PR's own lockfile delta. The merge against the PR equals main's delta:
+  38 inserted lines, #355's Playwright entries. There are no other changes.
+- **Commands at `a7ae711`:** `pnpm install --frozen-lockfile --offline` exits 0, and the
+  worktree stays clean. `pnpm audit --audit-level=high` exits 0 with "No known
+  vulnerabilities found". `pnpm --filter @taskdesk/ui build-storybook` exits 0 (Vite 8.2.1).
+  The only warning is the known chunk-size warning.
+- **CI at `a7ae711`:** `integration - Postgres 18` was still in progress when this was written.
+  Every other required context was green except `pull request template + security review`,
+  which reported this file STALE for want of this note. That is expected.
+
+**Verdict at `a7ae7112ebc17a9bb4052d5477b834de48e0a0f3`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #323 merged
+
+**Reviewed head:** `f0c1c0896eecd22f9e0a591f2328a0c1c6f3a2e0`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `9d5deb92a81791598140007fe8e108d1a352855c` (#323, request-path policy shadow mode and
+migration `0069`) into the previously attested head `0ed70e1f14313396137020a12dce845b98a8132e`. Main's tree at `9d5deb9` is
+identical to #323's attested tree `eb94330`. `776999d..9d5deb9` is that one merge.
+
+- **Parents:** exactly (`0ed70e1f14313396137020a12dce845b98a8132e`, `9d5deb9`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution.
+- **PR change unchanged:** every added and removed line is identical. Only the hunk offsets
+  in `decision-log.md` differ. The file auto-merged, and the order is still `## Format`,
+  main's entries, then the Storybook entry.
+- **Interaction with #323:** none. #323 touched no `pnpm-lock.yaml`, `package.json`,
+  `packages/ui` or CI file. `pnpm install --frozen-lockfile --offline` exits 0 at `f0c1c08`,
+  and the tree stays clean.
+- **CI at the merge head:** the only failure was `pull request template + security review`,
+  which reported this file STALE for want of this note. That is expected, and this note is what
+  clears it. `integration - Postgres 18` was still in progress when this was written, and merging
+  needs it green.
+  `unit + component` was also still in progress.
+
+**Verdict at `f0c1c0896eecd22f9e0a591f2328a0c1c6f3a2e0`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #334 merged
+
+**Reviewed head:** `9464bfd777286e2a94199ea5de9fb67848529677`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `ecb5b63dcdf9e17aa706999e1a5c4c7e7ecf2075` (#334, sees_all scoped to the granting
+workspace) into the previously attested head `ce4638f8a772aeaefedb12107bd639d20e8d9a3f`. Main's tree at `ecb5b63` is identical to
+#334's attested tree `57d7194`. `9d5deb9..ecb5b63` is that one merge.
+
+- **Parents:** exactly (`ce4638f8a772aeaefedb12107bd639d20e8d9a3f`, `ecb5b63`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution.
+- **PR change unchanged:** `git diff 9d5deb9 ce4638f` and `git diff ecb5b63 9464bfd` are
+  byte-identical (same sha256). No file overlaps with #334.
+- **Interaction with #334:** none. #334 changed only
+  `apps/api/src/permissions/resolve-identity.ts`, `packages/permissions/src/{evaluator,evaluator.test,identity}.ts`,
+  two permissions test files, `rbac.md` and its review note. It touched no `pnpm-lock.yaml`,
+  `package.json`, `packages/ui`, Storybook or CI file. `pnpm install --frozen-lockfile
+  --offline` exits 0 at `9464bfd`, and the tree stays clean.
+- **CI at `9464bfd`:** it had only just started when this was written, and most contexts were
+  queued or in progress. Merging needs every required context green, including the
+  `pull request template + security review` re-run this note is for.
+
+**Verdict at `9464bfd777286e2a94199ea5de9fb67848529677`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #356 merged
+
+**Reviewed head:** `952869006ad1488caf4e2e022eb1ec88916e3026`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `3a45fc5d4473acccc53c6e13e01a9b05fe8abb7a` (#356, a docs-only change to the
+`ci-cd.md` scope list and the decision log) into the previously attested head `b3595a0`.
+Main's tree at `3a45fc5` is identical to #356's attested tree `78cb202`, and
+`ecb5b63..3a45fc5` is that one merge.
+
+- **Parents:** exactly (`b3595a0`, `3a45fc5`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution.
+- **PR change unchanged:** the PR's own added and removed lines are identical before and
+  after. Only the hunk offsets in `decision-log.md` differ; it is the only overlapping file
+  and auto-merged.
+- **Decision log:** the Storybook entry, 21 lines from its heading to the next entry, is
+  byte-identical at `b3595a0` and `9528690`. Taking the non-blank lines as a multiset, the
+  merged file equals main plus the PR's delta, with nothing missing and nothing extra. The
+  order is `## Format`, main's newer entries, the Storybook entry, then #356's entries.
+- **Scope:** `parseSecurityReviewPaths` on `ci-cd.md` at `ecb5b63` gives 33 globs, and at
+  `9528690` it gives 35. The two added globs are `packages/domain/src/identity/**` and
+  `apps/api/src/permissions/**`, and none was removed. Every #335 file keeps the same
+  matching globs before and after. `packages/ui/package.json` stays in scope via
+  `**/package.json`, and `pnpm-lock.yaml` stays in scope via `pnpm-lock.yaml`. The Storybook
+  config, story and decision-log files stay out of scope. No file moved into or out of scope.
+- **CI at `9528690` when this was written:** the only failure was `pull request template +
+  security review`, which reported this file STALE for want of this note. That is expected.
+  Integration, e2e, static, unit, the gate checkers and CodeQL analysis were still running.
+  Merging needs every required context green.
+
+**Verdict at `952869006ad1488caf4e2e022eb1ec88916e3026`: CLEAR.**

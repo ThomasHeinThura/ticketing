@@ -17,7 +17,11 @@ import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
-import { seedInternalOrganisationAndStaffPersons } from "../../apps/api/src/utils/seed-internal-organisation";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import {
+  ensureStaffPersonForUser,
+  seedInternalOrganisationAndStaffPersons,
+} from "../../apps/api/src/utils/seed-internal-organisation";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
 
@@ -102,18 +106,12 @@ describe("#1 -- migration 0052 applies cleanly and produces the schema data-mode
     const { app } = createApp();
     const alice = await signUpUser(app);
     const now = new Date();
-
     const [orgInternal] = await db
-      .insert(schema.organisationTable)
-      .values({
-        key: "org-internal-s1",
-        name: "Internal S1",
-        isInternal: true,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
-    if (!orgInternal) throw new Error("expected organisation row");
+      .select()
+      .from(schema.organisationTable)
+      .where(eq(schema.organisationTable.isInternal, true));
+    if (!orgInternal)
+      throw new Error("expected signup to ensure internal organisation");
 
     const [orgCustomer] = await db
       .insert(schema.organisationTable)
@@ -127,6 +125,9 @@ describe("#1 -- migration 0052 applies cleanly and produces the schema data-mode
       .returning();
     if (!orgCustomer) throw new Error("expected organisation row");
 
+    await db
+      .delete(schema.personTable)
+      .where(eq(schema.personTable.userId, alice.user.id));
     await db.insert(schema.personTable).values({
       userId: alice.user.id,
       organisationId: orgInternal.id,
@@ -163,6 +164,13 @@ describe("#1 -- migration 0052 applies cleanly and produces the schema data-mode
     const alice = await signUpUser(app);
     const bob = await signUpUser(app);
     const now = new Date();
+
+    await db
+      .delete(schema.personTable)
+      .where(eq(schema.personTable.userId, alice.user.id));
+    await db
+      .delete(schema.personTable)
+      .where(eq(schema.personTable.userId, bob.user.id));
 
     const [orgA] = await db
       .insert(schema.organisationTable)
@@ -218,6 +226,39 @@ describe("#1 -- migration 0052 applies cleanly and produces the schema data-mode
 });
 
 describe("#2/#3 -- the boot-time seed creates one internal organisation and backfills one staff person per user, idempotently", () => {
+  it("creates the staff person before a post-startup signup completes", async () => {
+    const { app } = createApp();
+    await seedInternalOrganisationAndStaffPersons();
+    const signedUp = await signUpUser(app);
+
+    const [person] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, signedUp.user.id));
+    expect(person).toBeDefined();
+    expect(person?.side).toBe("staff");
+    expect(person?.isPlaceholder).toBe(false);
+    expect(
+      await resolveIdentity({
+        userId: signedUp.user.id,
+        credential: "session",
+      }),
+    ).not.toBeNull();
+  });
+
+  it("keeps identity seeding idempotent for an existing person", async () => {
+    const { app } = createApp();
+    const signedUp = await signUpUser(app);
+    await seedInternalOrganisationAndStaffPersons();
+    await ensureStaffPersonForUser(signedUp.user.id);
+
+    const persons = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, signedUp.user.id));
+    expect(persons).toHaveLength(1);
+  });
+
   it("creates exactly one internal organisation and one person per existing user", async () => {
     const { app } = createApp();
     const alice = await signUpUser(app);
@@ -266,7 +307,7 @@ describe("#2/#3 -- the boot-time seed creates one internal organisation and back
     expect(persons).toHaveLength(2);
   });
 
-  it("backfills a person for a user who signs up BETWEEN two seed runs, without touching persons already seeded", async () => {
+  it("keeps a signup-created person stable across a later boot seed", async () => {
     const { app } = createApp();
     const alice = await signUpUser(app);
 

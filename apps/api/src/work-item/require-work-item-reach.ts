@@ -2,6 +2,10 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import {
+  markShadowLegacyAuthorizationUnknown,
+  setShadowLegacyAuthorization,
+} from "../permissions/shadow-context";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 
 /**
@@ -42,6 +46,7 @@ import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
  */
 export function requireWorkItemReach(idKey = "key") {
   return async (c: Context, next: Next) => {
+    markShadowLegacyAuthorizationUnknown(c);
     const userId = c.get("userId");
     if (!userId) {
       throw new HTTPException(401, { message: "Unauthorized" });
@@ -74,8 +79,17 @@ export function requireWorkItemReach(idKey = "key") {
     // `getProjectWorkspaceId`, which takes a project id, not a work-item key) -- a
     // soft-deleted project's work item now 404s exactly like a nonexistent key, never
     // distinguishing the two from the outside, consistent with F2 above.
+    // Issue #8, Slice 2: `id` and `projectId` are added to this SAME select -- no new
+    // query, no new round trip -- so the shadow middleware's `RowScope` construction can
+    // see a genuine, already-loaded work-item/project scope for this route. Read only by
+    // `apps/api/src/permissions/shadow-middleware.ts`; the legacy check below still reads
+    // `workItem.workspaceId` alone, unchanged.
     const [workItem] = await db
-      .select({ workspaceId: schema.workItemTable.workspaceId })
+      .select({
+        id: schema.workItemTable.id,
+        projectId: schema.workItemTable.projectId,
+        workspaceId: schema.workItemTable.workspaceId,
+      })
       .from(schema.workItemTable)
       .innerJoin(
         schema.projectTable,
@@ -93,18 +107,26 @@ export function requireWorkItemReach(idKey = "key") {
       throw new HTTPException(404, { message: "Work item not found" });
     }
 
+    // Shadow-only facts from this authoritative row. Expose them before reach validation
+    // so a denied request can still be compared against its declared row scope. These
+    // context values do not affect the legacy decision below.
+    c.set("workspaceId", workItem.workspaceId);
+    c.set("workspaceIdSource", "row");
+    c.set("workItemId", workItem.id);
+    c.set("projectId", workItem.projectId);
+
     const apiKey = c.get("apiKey");
     try {
       await validateWorkspaceAccess(userId, workItem.workspaceId, apiKey?.id);
     } catch (error) {
       if (error instanceof HTTPException && error.status === 403) {
+        setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(404, { message: "Work item not found" });
       }
       throw error;
     }
 
-    c.set("workspaceId", workItem.workspaceId);
-
+    setShadowLegacyAuthorization(c, "allowed");
     return next();
   };
 }
