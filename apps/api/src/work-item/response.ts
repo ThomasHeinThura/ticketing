@@ -96,3 +96,18 @@ export const workItemVersionConflictSchema = z
       .openapi({ description: "The work item's actual current version." }),
   })
   .openapi("WorkItemVersionConflict");
+
+// `assignment.md` § API: `GET /api/projects/{id}/assignable` — the person-picker feed.
+// `roleName` is the person's most privileged role on THIS project; `openWorkCount` is
+// their load across projects (`state_template.group` not completed/cancelled). `name` is
+// nullable: a placeholder person (import-created, no user row) has none yet.
+export const assignablePersonSchema = z
+  .object({
+    personId: z.string(),
+    name: z.string().nullable(),
+    roleName: z.string(),
+    openWorkCount: z.number(),
+  })
+  .openapi("AssignablePerson");
+
+export const assignablePeopleSchema = z.array(assignablePersonSchema);
