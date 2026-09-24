@@ -53,10 +53,7 @@ import { CHANGE_RISK_LEVELS } from "./types.js";
 
 export const CLOSED_STATE_GROUPS = ["completed", "cancelled"] as const;
 
-const CLOSED_GROUPS: ReadonlySet<StateGroup> = new Set([
-  "completed",
-  "cancelled",
-]);
+const CLOSED_GROUPS: ReadonlySet<StateGroup> = new Set(CLOSED_STATE_GROUPS);
 
 /**
  * `WF-15`'s own definition of "closed", as reusable code rather than restated prose each

@@ -383,18 +383,29 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
     // genuine-row rule included) -- one source, so this feed cannot disagree with
     // `POST /assign` about what the actor may do.
     const roles = await workspaceMemberRoles(db, workspaceId, userId);
+    const hasUnambiguousRole = isUnambiguousMembership(roles);
     const canAssignAnyone =
-      isUnambiguousMembership(roles) &&
+      hasUnambiguousRole &&
       (await builtInRoleHasCapability(
         workspaceId,
         roles[0],
         "work_item:assign",
+      ));
+    // The self-only tier keys on the CAPABILITY (`work_item:update`), never on "the
+    // caller happens to have a person row" -- PR #362's F2.
+    const canSelfAssign =
+      hasUnambiguousRole &&
+      (await builtInRoleHasCapability(
+        workspaceId,
+        roles[0],
+        "work_item:update",
       ));
 
     const people = await listAssignablePeople({
       projectId,
       callerPersonId: callerPerson?.id ?? null,
       callerCanAssignAnyone: canAssignAnyone,
+      callerCanSelfAssign: canSelfAssign,
     });
     return c.json(people, 200);
   });

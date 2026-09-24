@@ -20,12 +20,15 @@ import {
  * never filters this itself"):
  *
  * - an actor holding `work_item:assign` (AS-1) sees the whole active roster;
- * - anyone else with reach on the project (AS-2) sees exactly one candidate -- themselves
- *   -- because `work_item:update` lets them assign the item to themselves and nobody
- *   else. The screens section: "Where the actor may only assign themselves, the picker
- *   shows a single 'Assign to me' action rather than a disabled list of colleagues";
- * - a caller without either capability (a viewer) sees an empty list, not a tease of
- *   names it could never use.
+ * - an actor holding `work_item:update` but NOT `work_item:assign` (AS-2) sees exactly
+ *   one candidate -- themselves -- because that capability lets them assign the item to
+ *   themselves and nobody else. The screens section: "Where the actor may only assign
+ *   themselves, the picker shows a single 'Assign to me' action rather than a disabled
+ *   list of colleagues";
+ * - anyone else (a viewer: `work_item:read` alone) sees an empty list, not a tease of
+ *   names it could never use. The filter keys on the CAPABILITY, never on "the caller
+ *   happens to have a person row" -- the ordinary review of PR #362 (F2) proved that
+ *   distinction with a rostered viewer who was shown themselves.
  *
  * The roster predicate (`membership(scope = 'project', scope_id = project)` + an active
  * person) is intentionally the SAME shape `assign-work-item.ts` enforces on the write, so
@@ -50,10 +53,12 @@ export async function listAssignablePeople({
   projectId,
   callerPersonId,
   callerCanAssignAnyone,
+  callerCanSelfAssign,
 }: {
   projectId: string;
   callerPersonId: string | null;
   callerCanAssignAnyone: boolean;
+  callerCanSelfAssign: boolean;
 }): Promise<AssignablePerson[]> {
   const rosterRows = await db
     .select({
@@ -74,11 +79,13 @@ export async function listAssignablePeople({
       ),
     );
 
-  // One row per person, carrying their most privileged role on this project (lowest
-  // `rank`): inherited memberships (PR-3/PR-4) can put more than one row behind one
-  // person, and the picker shows a single role.
+  // One row per person, carrying their most privileged role on this project. `rank` is
+  // "higher wins" (roles.ts/rbac.md: "You cannot edit or mint a role whose rank is >=
+  // your own") -- the ordinary review of PR #362 (F1) caught this sorted the wrong way.
+  // Inherited memberships (PR-3/PR-4) can put more than one row behind one person, and
+  // the picker shows a single role: the strongest one.
   const byPerson = new Map<string, { name: string | null; roleName: string }>();
-  for (const row of [...rosterRows].sort((a, b) => a.roleRank - b.roleRank)) {
+  for (const row of [...rosterRows].sort((a, b) => b.roleRank - a.roleRank)) {
     if (!byPerson.has(row.personId)) {
       byPerson.set(row.personId, {
         name: row.name ?? null,
@@ -91,7 +98,7 @@ export async function listAssignablePeople({
     callerPersonId !== null ? byPerson.get(callerPersonId) : undefined;
   const allowed = callerCanAssignAnyone
     ? byPerson
-    : selfEntry !== undefined && callerPersonId !== null
+    : callerCanSelfAssign && selfEntry !== undefined && callerPersonId !== null
       ? new Map([[callerPersonId, selfEntry]])
       : new Map<string, { name: string | null; roleName: string }>();
 

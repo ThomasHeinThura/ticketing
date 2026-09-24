@@ -292,7 +292,7 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
       name: "Ada Lovelace",
       projectId: project.id,
       roleName: "Viewer Role",
-      roleRank: 30,
+      roleRank: 2,
     });
     const betterRole = requireRow(
       await db
@@ -301,7 +301,7 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
           scope: "project",
           key: `role-${randomUUID()}`,
           name: "Project Admin",
-          rank: 2,
+          rank: 30,
           createdAt: new Date(),
           updatedAt: new Date(),
         })
@@ -360,6 +360,27 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
       name: "Ada Lovelace",
       projectId: project.id,
     });
+
+    mockAuthenticatedSession(viewer);
+    const { app } = createApp();
+    const response = await assignableRequest(app, project.id);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([]);
+  });
+
+  it("a viewer who IS on the roster and linked to a user still sees NOTHING (F2: the filter is the capability, not the person row)", async () => {
+    const { workspace, project } = await setup();
+    const viewer = await addWorkspaceMember(workspace.id, "viewer");
+    const viewerPerson = await addNamedPersonOnRoster({
+      name: "Vera Viewer",
+      projectId: project.id,
+    });
+    // Link the person row to the viewer's user -- the exact shape the earlier filter
+    // mistook for "may assign themselves".
+    await db
+      .update(schema.personTable)
+      .set({ userId: viewer.id })
+      .where(eq(schema.personTable.id, viewerPerson.person.id));
 
     mockAuthenticatedSession(viewer);
     const { app } = createApp();
