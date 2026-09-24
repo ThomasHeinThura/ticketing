@@ -93,10 +93,8 @@
  *     table (`data-model.md` §2, P1 identity schema) has the real `sees_all` column, but
  *     nothing writes a `membership` row for a workspace membership yet — `workspace_member`
  *     (the table that actually has rows) has no such column at all. The loader therefore
- *     always resolves `seesAll: false`. The pure mapper still fully implements and
- *     unit-tests the `seesAll → reach: { kind: "all" }` rule (rbac.md § Reach, step 2), fed
- *     directly rather than through the loader, so the day a write path exists this file
- *     needs no change — only the loader's `seesAll: false` literal becomes a real read.
+ *     always resolves `seesAll: false`. The pure mapper scopes any future sees_all grant to
+ *     the workspace whose membership carries it; it never becomes global reach.
  *  4. **Instance-admin, as modelled here, is narrower than two existing bypasses.**
  *     `docs/01-architecture/rbac.md` § Reach step 1 says `instance:admin` grants *reach*
  *     only; `BUILT_IN_ROLES.instance_admin` (`packages/permissions/src/roles.ts`) holds only
@@ -456,10 +454,20 @@ export function resolveIdentityFromFacts(
     });
   }
 
-  const seesAllAnywhere = memberships.some((membership) => membership.seesAll);
-  const reach: Reach =
-    facts.isInstanceAdmin || seesAllAnywhere
-      ? { kind: "all" }
+  const seesAllWorkspaceIds = [
+    ...new Set(
+      memberships
+        .filter((membership) => membership.seesAll)
+        .map((membership) => membership.scopeId),
+    ),
+  ];
+  const reach: Reach = facts.isInstanceAdmin
+    ? { kind: "all" }
+    : seesAllWorkspaceIds.length > 0
+      ? {
+          kind: "membership_with_workspaces",
+          workspaceIds: seesAllWorkspaceIds,
+        }
       : { kind: "membership" };
 
   // S5: keep only teams whose workspace this person currently has a `workspace_member`
