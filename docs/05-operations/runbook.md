@@ -94,13 +94,12 @@ dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-task
 
 ```bash
 dc logs --since=1h taskdesk | grep -Ei 'outbox|notification' || true
-dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-taskdesk}" -c "select state, count(*) as rows, max(attempts) as max_attempts from outbox group by state order by state;"
+dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-taskdesk}" -c "select type, count(*) as notifications from notification where created_at > now() - interval '1 hour' group by type order by type;"
 ```
 
 | Cause | Fix |
 | --- | --- |
-| Pending outbox rows accumulating | Delivery failing. Check TaskDesk logs and God Mode → Notifications → test |
-| Dead outbox rows present | Six attempts failed. Inspect delivery details, fix, redeliver |
+| No recent notification rows or logged send failures | Check the notification preferences and SMTP/ntfy settings; the current delivery path has no persistent outbox or retry queue |
 | SMTP rejecting | Test in God Mode; the real error is shown |
 | Webhook endpoint down | Delivery history shows status codes. Auto-disabled after 24 h |
 | User preference off | Not a fault |
