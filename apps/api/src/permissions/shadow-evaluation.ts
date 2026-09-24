@@ -213,11 +213,12 @@ export function buildShadowPolicySide(args: {
   // evaluator refuse at the source check (`scope_source_mismatch`) before ever looking at
   // the capability, and every allowed request on those routes was then filed as a false
   // `legacy_allow_policy_deny` — no capability comparison ran at all. `request`-sourced
-  // values get the request-branded constructor; `row`-sourced values (the only kind this
-  // slice may see for project/work_item scopes, from `workspace-access-middleware.ts`'s
-  // lookup and `require-work-item-reach.ts`) get the row-branded one. Longer term (#324),
-  // `workspace-access-middleware.ts` should expose WHICH source kind produced
-  // `workspaceId` so a `row` policy is only ever evaluated against a real row.
+  // Workspace, project, and work-item scope IDs each retain their own provenance. A
+  // request-scoped project may coexist with a workspace ID derived from the confirmed
+  // project row; comparing workspaceIdSource to the policy would reject that valid shape.
+  // `workspace-access-middleware.ts` exposes workspace provenance, the project request
+  // ID, and any project row ID separately, while `require-work-item-reach.ts` supplies
+  // row-derived work-item facts.
   let scope: ResolvedScope;
   let scopeIdSource: "row" | "request" | "instance" | null = null;
   if (policy.scope === "instance") {
