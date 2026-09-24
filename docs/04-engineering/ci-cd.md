@@ -101,8 +101,9 @@ like the Docker image's own `build-web` stage below — must keep `apps/web/dist
 router's view, or re-derive this constraint; it is not something `route-coverage.ts`'s
 declaration list can absorb without weakening its strict-count design.
 
-**Full — required before merge, runs on the merge queue (or on the `ready-for-review`
-label), target under 45 minutes, sharded four ways:**
+**Full — required before merge, runs on pull request `opened`, `reopened`, `labeled`,
+`synchronize`, and `ready_for_review` events and on the merge queue, target under 45 minutes,
+sharded four ways:**
 
 ```
 ├─ Integration ────────────────────────────────────┤

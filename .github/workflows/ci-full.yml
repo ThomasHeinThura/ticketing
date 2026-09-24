@@ -1,7 +1,8 @@
 # The full stage of the pull-request pipeline.
 #
-# docs/04-engineering/ci-cd.md: "Full — required before merge, runs on the merge queue (or
-# on the `ready-for-review` label), target under 45 minutes, sharded four ways."
+# docs/04-engineering/ci-cd.md: Full runs on pull request opened/reopened/labeled/
+# synchronize/ready_for_review events and on the merge queue, target under 45 minutes,
+# sharded four ways.
 #
 # The E2E job currently runs a browser-level logged-out redirect smoke. The full
 # agent/portal journey suite still needs deterministic browser fixtures and acceptance flows.

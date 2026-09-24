@@ -58,7 +58,7 @@ const manifest = [
     gate: "pnpm check:tokens",
     stage: "fast",
     run: null,
-    why: "packages/ui does not exist yet (#9). There is no token source to check literal colours and contrast against.",
+    why: "packages/ui and its token CSS now exist, but the check:tokens implementation is not wired yet; literal-colour and contrast enforcement remains unavailable.",
   },
   {
     gate: "pnpm check:ui",
@@ -75,7 +75,7 @@ const manifest = [
     gate: "pnpm check:deps",
     stage: "fast",
     run: null,
-    why: "the boundary matrix in docs/01-architecture/monorepo-layout.md is stated over packages/domain, packages/ui and packages/plugins-contracts, none of which exists yet. A cycle check today would assert almost nothing.",
+    why: "packages/domain and packages/ui now exist, but check:deps is not implemented. The boundary matrix also names packages/plugins-contracts, which is still absent, so a cycle check would not enforce the documented matrix.",
   },
   { gate: "pnpm check:i18n", stage: "fast", run: ["pnpm", "check:i18n"] },
   {

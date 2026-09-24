@@ -1,5 +1,13 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+**2026-09-24 continuation (P0 #10):** Three independent GPT-6 review contexts passed the
+then-current PR #355 head `d74eadbcaa271567bdde5d931532f7558aa744c8`. Their follow-up checks
+confirmed the current-head screenshot artifact is uploaded and identified stale CI schedule
+wording plus two gate-manifest explanations that said existing `packages/ui`/`packages/domain`
+did not exist. The explanations are corrected; `check:tokens` and `check:deps` remain disabled
+because their checkers are not implemented. Exact-head CI passed all completed required jobs;
+Postgres integration was still pending, and Opus review remains mandatory before merge.
+
 **2026-09-23 continuation (P0 #10):** The fetch, mutable-baseline, and oasdiff-binary review
 findings were fixed on PR #355. At exact head `de70342e23fef6a8130696304908cf1e41ab800b`,
 the coverage and browser-smoke contexts passed, while Postgres integration and several fast
