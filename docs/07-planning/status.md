@@ -1636,8 +1636,10 @@ PR #361 implements and enables the workspace dependency checker. Review rounds f
 boundary gaps in source parsing; the scanner now rejects non-static module paths and the
 package-boundary doc requires explicit `import type`/`export type` for the `packages/libs`
 API type seam. The checker passes across 9 workspace packages/apps and 981 source files;
-focused tests pass 5/5 and the full CI-script suite passes 513/513. Independent review and the required Opus
-security review remain gates; no merge or P0 completion is claimed.
+focused tests pass 5/5 and the full CI-script suite passes 513/513. Final scanner review
+found that `import type, { … }` is a runtime import; the classifier now recognizes only
+valid declaration-level type-import forms, and regressions cover this ambiguity. The
+candidate still requires an Opus security review; no merge or P0 completion is claimed.
 
 ### 2026-09-24 · P0 continuation — reviewer substitution recorded; shadow-scope findings fixed
 

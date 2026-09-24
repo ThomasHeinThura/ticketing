@@ -59,6 +59,7 @@ test("source scanner finds module edges across JavaScript syntax", () => {
         'export { type AppType } from "@taskdesk/api";',
         'import type from "@taskdesk/api";',
         'import type AppType from "@taskdesk/api";',
+        'import type, { AppType } from "@taskdesk/api";',
         'import { type } from "@taskdesk/api";',
         'export { type as Type } from "@taskdesk/api";',
         'void import("./lazy.js");',
@@ -79,13 +80,14 @@ test("source scanner finds module edges across JavaScript syntax", () => {
       { specifier: "@taskdesk/api", line: 6, typeOnly: true },
       { specifier: "@taskdesk/api", line: 7, typeOnly: false },
       { specifier: "@taskdesk/api", line: 8, typeOnly: false },
-      { specifier: "./lazy.js", line: 9, typeOnly: false },
-      { specifier: "<non-static module specifier>", line: 10, typeOnly: false },
-      { specifier: "node:fs", line: 11, typeOnly: false },
-      { specifier: "<non-static module specifier>", line: 12, typeOnly: false },
-      { specifier: "./legacy.cjs", line: 13, typeOnly: false },
-      { specifier: "<non-static module specifier>", line: 14, typeOnly: false },
-      { specifier: "dns/promises", line: 15, typeOnly: false },
+      { specifier: "@taskdesk/api", line: 9, typeOnly: false },
+      { specifier: "./lazy.js", line: 10, typeOnly: false },
+      { specifier: "<non-static module specifier>", line: 11, typeOnly: false },
+      { specifier: "node:fs", line: 12, typeOnly: false },
+      { specifier: "<non-static module specifier>", line: 13, typeOnly: false },
+      { specifier: "./legacy.cjs", line: 14, typeOnly: false },
+      { specifier: "<non-static module specifier>", line: 15, typeOnly: false },
+      { specifier: "dns/promises", line: 16, typeOnly: false },
     ],
   );
 });
@@ -118,7 +120,7 @@ test("workspace analyzer permits libs' type contract and rejects forbidden app i
   );
   await writeFile(
     path.join(libs, "src/runtime.ts"),
-    'import type from "@taskdesk/api";\n',
+    'import type from "@taskdesk/api";\nimport type, { AppType } from "@taskdesk/api";\n',
   );
   await writeFile(
     path.join(web, "src/client.ts"),

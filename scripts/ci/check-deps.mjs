@@ -222,6 +222,14 @@ function sourceImports(source) {
     token?.kind ===
       SyntaxKind[`${name[0].toUpperCase()}${name.slice(1)}Keyword`] ||
     (token?.kind === SyntaxKind.Identifier && token.text === name);
+  const isTypeOnlyImportDeclaration = (index) => {
+    if (!keyword(tokens[index + 1], "type")) return false;
+    return [
+      SyntaxKind.OpenBraceToken,
+      SyntaxKind.AsteriskToken,
+      SyntaxKind.Identifier,
+    ].includes(tokens[index + 2]?.kind);
+  };
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
     const next = tokens[index + 1];
@@ -248,9 +256,7 @@ function sourceImports(source) {
         addLiteral(next);
         continue;
       }
-      const typeOnly =
-        keyword(next, "type") &&
-        tokens[index + 2]?.kind !== SyntaxKind.FromKeyword;
+      const typeOnly = isTypeOnlyImportDeclaration(index);
       for (let cursor = index + 1; cursor < tokens.length; cursor += 1) {
         if (tokens[cursor].kind === SyntaxKind.SemicolonToken) break;
         if (keyword(tokens[cursor], "from")) {
