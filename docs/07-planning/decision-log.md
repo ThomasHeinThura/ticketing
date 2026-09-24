@@ -5,23 +5,6 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
-
-### 2026-09-24 · The security-review scope adds `packages/domain/src/identity/**` and `apps/api/src/permissions/**`
-
-**Decision:** `docs/04-engineering/ci-cd.md`'s authoritative security-review scope list gains two globs:
-- `packages/domain/src/identity/**`, the P3 identity rules: claim normalisation, SCIM validation and PATCH, role limits and customer reach;
-- `apps/api/src/permissions/**`, which holds `resolveIdentity` (#315) and the #8 shadow-mode middleware (#323).
-
-From now on, any PR touching either path needs the Opus 5.5 security review, enforced by CI.
-
-**Why:**
-- #346's Opus review (S11) found the identity rules outside the scope, although they decide who gets which roles and reach. The same review found a ReDoS and a fail-open role mapping in that code.
-- `apps/api/src/permissions/**` was also outside it. #315 and #323 were only reviewed by Opus because the orchestrating session commissioned it.
-
-This only tightens the gate. It removes nothing.
-
-**Decided by:** the orchestrating session, 2026-09-24, under Thomas's standing delegation. There was one clearly recommended option.
-
 ## Format
 
 ```markdown
@@ -140,6 +123,22 @@ package boundary used by primitive stories.
 result were recorded by the implementing agent, 2026-09-23.
 
 ---
+
+### 2026-09-24 · The security-review scope adds `packages/domain/src/identity/**` and `apps/api/src/permissions/**`
+
+**Decision:** `docs/04-engineering/ci-cd.md`'s authoritative security-review scope list gains two globs:
+- `packages/domain/src/identity/**`, the P3 identity rules: claim normalisation, SCIM validation and PATCH, role limits and customer reach;
+- `apps/api/src/permissions/**`, which holds `resolveIdentity` (#315) and the #8 shadow-mode middleware (#323).
+
+From now on, any PR touching either path needs the Opus 5.5 security review, enforced by CI.
+
+**Why:**
+- #346's Opus review (S11) found the identity rules outside the scope, although they decide who gets which roles and reach. The same review found a ReDoS and a fail-open role mapping in that code.
+- `apps/api/src/permissions/**` was also outside it. #315 and #323 were only reviewed by Opus because the orchestrating session commissioned it.
+
+This only tightens the gate. It removes nothing.
+
+**Decided by:** the orchestrating session, 2026-09-24, under Thomas's standing delegation. There was one clearly recommended option.
 
 ### 2026-09-23 · The P3 identity gate covers all 25 named acceptance tests
 

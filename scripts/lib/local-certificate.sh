@@ -27,12 +27,14 @@ local_certificate_covers_routes() {
   local private_key="$2"
   local domain="$3"
   local hostname
+  local check_result
 
   [ -f "$certificate" ] || return 1
   local_certificate_key_matches "$certificate" "$private_key" || return 1
   openssl x509 -in "$certificate" -noout -checkend 2592000 >/dev/null 2>&1 || return 1
   for hostname in "ticket.${domain}" "portal.${domain}" "mail.${domain}" "files.${domain}"; do
-    openssl x509 -in "$certificate" -noout -checkhost "$hostname" >/dev/null 2>&1 || return 1
+    check_result="$(openssl x509 -in "$certificate" -noout -checkhost "$hostname" 2>/dev/null)" || return 1
+    [[ "$check_result" == *" does match certificate"* ]] || return 1
   done
 }
 

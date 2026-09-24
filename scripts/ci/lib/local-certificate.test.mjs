@@ -8,6 +8,7 @@ import {
   readFile,
   rm,
   stat,
+  writeFile,
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -20,13 +21,13 @@ const root = path.resolve(
 );
 const helper = path.join(root, "scripts/lib/local-certificate.sh");
 
-function runHelper(certDir, domain) {
+function runHelper(certDir, domain, extraEnv = {}) {
   return spawnSync(
     "bash",
     ["-euc", `. "${helper}"; prepare_local_certificate "$CERT_DIR" "$DOMAIN"`],
     {
       encoding: "utf8",
-      env: { ...process.env, CERT_DIR: certDir, DOMAIN: domain },
+      env: { ...process.env, CERT_DIR: certDir, DOMAIN: domain, ...extraEnv },
     },
   );
 }
@@ -51,16 +52,16 @@ describe("local TLS certificate generation", () => {
       assert.match(certText, /Digital Signature, Key Encipherment/);
       assert.match(certText, /TLS Web Server Authentication/);
       for (const host of ["ticket", "portal", "mail", "files"]) {
-        assert.equal(
-          spawnSync("openssl", [
+        assert.match(
+          openssl([
             "x509",
             "-in",
             certificate,
             "-noout",
             "-checkhost",
             `${host}.dev.example.test`,
-          ]).status,
-          0,
+          ]),
+          / does match certificate/,
         );
       }
       assert.equal(
@@ -214,6 +215,89 @@ describe("local TLS certificate generation", () => {
         ]),
         /CA:FALSE/,
       );
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("renews wrong-host material with a matching key even when checkhost exits zero", async () => {
+    const temp = await mkdtemp(
+      path.join(os.tmpdir(), "taskdesk-local-cert-hostname-only-"),
+    );
+    const certDir = path.join(temp, "certs");
+    const opensslShimDir = path.join(temp, "bin");
+    const realOpenSsl = spawnSync("which", ["openssl"], {
+      encoding: "utf8",
+    }).stdout.trim();
+    try {
+      await mkdir(certDir, { recursive: true });
+      await mkdir(opensslShimDir);
+      assert.notEqual(
+        realOpenSsl,
+        "",
+        "openssl must be available for this integration test",
+      );
+      const generated = spawnSync(
+        realOpenSsl,
+        [
+          "req",
+          "-x509",
+          "-newkey",
+          "rsa:2048",
+          "-nodes",
+          "-days",
+          "825",
+          "-subj",
+          "/CN=wrong.example.test",
+          "-addext",
+          "subjectAltName=DNS:wrong.example.test",
+          "-keyout",
+          path.join(certDir, "local.key"),
+          "-out",
+          path.join(certDir, "local.crt"),
+        ],
+        { encoding: "utf8", stdio: "ignore" },
+      );
+      assert.equal(generated.status, 0);
+
+      const shimPath = path.join(opensslShimDir, "openssl");
+      await writeFile(
+        shimPath,
+        `#!/usr/bin/env bash\n"${realOpenSsl}" "$@"\nstatus=$?\nif [[ " $* " == *" -checkhost "* ]]; then exit 0; fi\nexit "$status"\n`,
+        { mode: 0o755 },
+      );
+
+      const originalCert = await readFile(path.join(certDir, "local.crt"));
+      const originalKey = await readFile(path.join(certDir, "local.key"));
+      const renewed = runHelper(certDir, "dev.example.test", {
+        PATH: `${opensslShimDir}:${process.env.PATH}`,
+      });
+      assert.equal(renewed.status, 0, renewed.stderr);
+
+      const entries = await readdir(certDir);
+      const backupName = entries.find((entry) => entry.startsWith("replaced-"));
+      assert.ok(
+        backupName,
+        "wrong-host TLS material should be preserved before renewal",
+      );
+      assert.deepEqual(
+        await readFile(path.join(certDir, backupName, "local.crt")),
+        originalCert,
+      );
+      assert.deepEqual(
+        await readFile(path.join(certDir, backupName, "local.key")),
+        originalKey,
+      );
+
+      const renewedCertificate = openssl([
+        "x509",
+        "-in",
+        path.join(certDir, "local.crt"),
+        "-noout",
+        "-checkhost",
+        "ticket.dev.example.test",
+      ]);
+      assert.match(renewedCertificate, / does match certificate/);
     } finally {
       await rm(temp, { recursive: true, force: true });
     }
