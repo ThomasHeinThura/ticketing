@@ -1550,6 +1550,19 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
+### 2026-09-24 · P0 #317 existence-oracle regression-test remediation
+
+On PR #338, independent ordinary review found that the prior fix-round test did not
+protect `lookupMany` from an ungrouped reach `OR` and did not exercise direct foreign-label
+deletion. Commit `e6e962b627300c410479019b19743d04b64bf5a1` adds foreign-only versus
+missing-only `lookupMany` checks with caller-owned tasks present, asserts the ID and reach
+predicates remain grouped, compares resolved status/body/headers, and verifies foreign-label
+deletion leaves the row intact. The targeted Postgres integration file passes 7/7. Removing
+the reach predicate's outer parentheses was tested as an M3 mutation and makes the suite fail.
+Two fresh independent ordinary delta reviewers cleared this test-only change. The Opus note
+still needs a current reachable-head review: its historical hashes are not objects in this
+branch, and no review claim was substituted for that missing evidence.
+
 ### 2026-09-23 (third pass) · 11 more PRs merged; spec gates honoured, not routed around; an outage recovered cleanly
 
 This pass shows the gates working as designed. `check:reviews` blocked #274 and #275
