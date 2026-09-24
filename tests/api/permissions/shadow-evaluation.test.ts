@@ -270,6 +270,54 @@ describe("buildShadowPolicySide", () => {
     expect(result.context.inReach).toBe(true);
   });
 
+  it.each([
+    { scope: "project", projectId: "proj_1" },
+    { scope: "work_item", projectId: "proj_1", workItemId: "wi_1" },
+  ] as const)(
+    "recognizes explicit workspace reach for $scope scope",
+    ({ scope, projectId, workItemId }) => {
+      const entry: RegistryEntry = {
+        ...CAPABILITY_ENTRY,
+        policy: {
+          ...CAPABILITY_ENTRY.policy,
+          scope,
+        } as never,
+      };
+      const result = buildShadowPolicySide({
+        entry,
+        identity: identity({
+          reach: { kind: "membership_with_workspaces", workspaceIds: ["ws_1"] },
+        }),
+        workspaceId: "ws_1",
+        workspaceIdSource: "row",
+        projectId,
+        ...(workItemId ? { workItemId } : {}),
+      });
+      if (typeof result === "string") throw new Error("expected a context");
+      expect(result.context.inReach).toBe(true);
+    },
+  );
+
+  it("keeps project reach unavailable when workspace reach does not match", () => {
+    const projectEntry: RegistryEntry = {
+      ...CAPABILITY_ENTRY,
+      policy: { ...CAPABILITY_ENTRY.policy, scope: "project" } as never,
+    };
+    const result = buildShadowPolicySide({
+      entry: projectEntry,
+      identity: identity({
+        reach: {
+          kind: "membership_with_workspaces",
+          workspaceIds: ["ws_other"],
+        },
+      }),
+      workspaceId: "ws_1",
+      workspaceIdSource: "row",
+      projectId: "proj_1",
+    });
+    expect(result).toBe("reach_unavailable");
+  });
+
   it("row_scope_unavailable for a project-scope policy with no projectId on context", () => {
     const projectEntry: RegistryEntry = {
       ...CAPABILITY_ENTRY,

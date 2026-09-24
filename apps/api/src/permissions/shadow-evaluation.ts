@@ -274,9 +274,9 @@ export function buildShadowPolicySide(args: {
   // (`policy_context_incomplete`) rather than guess when it is absent (defect 5). Slice 2
   // can only answer this honestly for `workspace` scope, from data already inside the
   // resolved `identity` (no extra I/O) — see `workspaceInReach` below. `project`/`work_item`
-  // reach needs ancestor-project and team-ownership facts (`reaches()`,
-  // `packages/permissions/src/evaluator.ts`) that no file this slice may touch loads, so
-  // those are disclosed as `reach_unavailable` rather than guessed at.
+  // reach may need ancestor-project and team-ownership facts (`reaches()`) not loaded here.
+  // The explicit workspace IDs on `membership_with_workspaces` are positive evidence;
+  // absence from that list is not negative evidence because other memberships may grant reach.
   const reach = policy.reach;
   const reachExempt =
     typeof reach === "object" &&
@@ -293,6 +293,13 @@ export function buildShadowPolicySide(args: {
       // Instance-wide reach is sufficient for any concrete scope and needs no
       // project hierarchy or team-owner facts. Other non-workspace cases remain
       // unevaluated until their full reach facts can be loaded safely.
+      inReach = true;
+    } else if (
+      (policy.scope === "project" || policy.scope === "work_item") &&
+      identity.reach.kind === "membership_with_workspaces" &&
+      identity.reach.workspaceIds.includes(workspaceId as string)
+    ) {
+      // Mirrors the explicit workspace-reach grant in `reaches()`.
       inReach = true;
     } else {
       return "reach_unavailable";
