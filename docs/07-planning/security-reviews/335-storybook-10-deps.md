@@ -242,3 +242,27 @@ identical to #323's attested tree `eb94330`. `776999d..9d5deb9` is that one merg
   `unit + component` was also still in progress.
 
 **Verdict at `f0c1c0896eecd22f9e0a591f2328a0c1c6f3a2e0`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #334 merged
+
+**Reviewed head:** `9464bfd777286e2a94199ea5de9fb67848529677`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `ecb5b63dcdf9e17aa706999e1a5c4c7e7ecf2075` (#334, sees_all scoped to the granting
+workspace) into the previously attested head `ce4638f8a772aeaefedb12107bd639d20e8d9a3f`. Main's tree at `ecb5b63` is identical to
+#334's attested tree `57d7194`. `9d5deb9..ecb5b63` is that one merge.
+
+- **Parents:** exactly (`ce4638f8a772aeaefedb12107bd639d20e8d9a3f`, `ecb5b63`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution.
+- **PR change unchanged:** `git diff 9d5deb9 ce4638f` and `git diff ecb5b63 9464bfd` are
+  byte-identical (same sha256). No file overlaps with #334.
+- **Interaction with #334:** none. #334 changed only
+  `apps/api/src/permissions/resolve-identity.ts`, `packages/permissions/src/{evaluator,evaluator.test,identity}.ts`,
+  two permissions test files, `rbac.md` and its review note. It touched no `pnpm-lock.yaml`,
+  `package.json`, `packages/ui`, Storybook or CI file. `pnpm install --frozen-lockfile
+  --offline` exits 0 at `9464bfd`, and the tree stays clean.
+- **CI at `9464bfd`:** it had only just started when this was written, and most contexts were
+  queued or in progress. Merging needs every required context green, including the
+  `pull request template + security review` re-run this note is for.
+
+**Verdict at `9464bfd777286e2a94199ea5de9fb67848529677`: CLEAR.**
