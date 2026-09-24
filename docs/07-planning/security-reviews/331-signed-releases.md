@@ -500,3 +500,160 @@ this decision before relying on it. The lane also edited `status.md` again.
 | shellcheck 0.11.0 | Three warnings, all pre-existing and outside the delta: SC1090 ×2 (`. "$ENV_FILE"`) and SC2034 (l.328). None in the changed block. |
 | `pnpm test:all --list` (the CI-matches-ci-cd.md job) | Exit 0 |
 | `node --test scripts/ci/*.test.mjs scripts/ci/lib/*.test.mjs scripts/ci/probes/*.test.mjs` | 495 of 495 pass |
+
+## Delta review 3 (Opus 5.5) at `a67b5e3`
+
+**Reviewed head:** `a67b5e311f5dd0453b981f9cc6dac704f7239672`
+
+Previous Opus-attested head: `b3a3e3a5cfeaba86da6bf1ee9c248c94688fed36` (delta 2, note at `2d4dc2f`).
+
+**Verdict (security gate): CHANGES NEEDED.** No new vulnerability was introduced. D6, D7 and
+D8 are fixed. But the new certificate helper's route-coverage check does not work on the
+OpenSSL that CI runs (F1). The required `gate checkers + red probes` check is red at this
+head because of it. The fix has to touch `scripts/lib/local-certificate.sh`, which is in
+security scope, so a further delta review is needed anyway. No waiver was sought or used.
+
+**Independence.** This was a fresh Opus 5.5 context in a detached worktree. It authored,
+directed and remediated nothing. Its only write is this section.
+
+### Commits in `b3a3e3a..a67b5e3`
+
+The brief listed four commits. There are seven on the branch's first-parent line, plus two
+from `main` that arrived through the merge:
+
+| Commit | Author | Content |
+| --- | --- | --- |
+| `2d4dc2f` | Opus reviewer | the delta-2 note (review-only) |
+| `bd62c4d` | Codex GPT-6 | **not in the brief.** It adds `scripts/lib/local-certificate.sh` and moves the `deploy.sh` cert block into it. It adds `scripts/lib/**` to `ci-cd.md`'s security-scope list, with a matching `security-paths.test.mjs` entry. It also changes the `traefik-and-domains.md` prose and adds three tests. |
+| `2d58080` | Codex GPT-6 | **not in the brief.** It changes `status.md` only. |
+| `e19b75c` | Codex GPT-6 | key/cert public-key match before reuse, plus one test |
+| `e04ea52` | Codex GPT-6 | `status.md` only |
+| `81d2899` | Codex GPT-6 | merge of `origin/main` at `9d5deb9` |
+| `a67b5e3` | Codex GPT-6 | `status.md` only |
+| `776999d`, `9d5deb9` | from `main` | #355 and #323. Each was reviewed on its own PR. They are not re-reviewed here. |
+
+This review covers `bd62c4d` and `2d58080` as well.
+
+### 1. Local certificate helper (`scripts/lib/local-certificate.sh`, `deploy.sh:172–193`)
+
+I probed the helper empirically with OpenSSL 3.5.5 on this host.
+
+| Check | Result |
+| --- | --- |
+| Command injection | `DOMAIN` is always double-quoted in argv. There is no `eval`. `$(touch pwned)` was rejected, and nothing was executed. PASS |
+| **D6** (DOMAIN validation) | **RESOLVED.** `validate_local_certificate_domain` runs before any file is written or any `openssl req`. It enforces `^[A-Za-z0-9.-]+$`, a total length of 253 or less, and 1–63-character LDH labels. Each of `x,IP:1.2.3.4`, `a/CN=evil`, `-oops`, `a..b` and the empty string gives rc=1 and creates no directory. Under `set -Eeuo pipefail`, that return aborts `deploy.sh`. Before validation, the unvalidated value reaches only `-checkhost` argv and the `say` line, which is harmless. |
+| **D7** (backup before replacing) | **RESOLVED.** Existing `local.crt` and `local.key` are copied with `cp -p` into `mktemp -d replaced-XXXXXX` (mode 0700) before the new pair is moved in. The script prints the backup path to stderr. I checked that the backup is byte-identical to an operator key that had a mismatch. A pair that covers the routes, matches, and is valid for more than 30 days is kept untouched (idempotent run: no backup and no rewrite). |
+| **D8** (CA:TRUE) | **RESOLVED.** The measured output is `basicConstraints: critical, CA:FALSE`, `keyUsage: critical, Digital Signature, Key Encipherment` and `extendedKeyUsage: serverAuth`. Expiry is now checked too, with `-checkend 2592000`. |
+| Key permissions | The new key is written inside a 0700 `mktemp -d` directory and `chmod 0600`'d before `mv`. Under `umask 000` it measured 0600. The backup keeps the old key's original mode (for example 0644), but it sits inside a 0700 directory, so no other user can read it. PASS |
+| Fail closed when openssl fails | With an `openssl req` shim that exits 1, the helper prints "Could not generate…", removes its temp directory, returns 1 and leaves the operator's files byte-identical. No backup is made. PASS |
+| Overwrite / deletion | Nothing is deleted except the helper's own temp directory. The originals are replaced only after both a successful generation and a backup. The two `mv`s are not atomic as a pair. An interruption between them leaves a mismatched pair, which e19b75c's key check now detects and repairs on the next run. |
+| e19b75c key-match | It compares `x509 -pubkey` with `pkey -pubout` (SPKI PEM for both), so it works for any key type. An encrypted key fails the check without a TTY and gets renewed, after a backup. See N2. |
+| `bash -n` | OK for `deploy.sh` and `local-certificate.sh`. |
+| shellcheck | **Not run.** It is not installed in this context. |
+| `node --test scripts/ci/lib/local-certificate.test.mjs` | 4 of 4 pass locally with OpenSSL 3.5.5. |
+
+### F1: BLOCKING (a correctness fault in a security-scope file; the required check is red). Route-coverage check is a no-op on OpenSSL 3.0
+
+- **What fails in CI.** At `a67b5e3`, `gate checkers + red probes` fails on
+  `local-certificate.test.mjs:132`, "preserves existing local TLS material before renewing
+  it". The helper returned 0 and created no `replaced-*` directory.
+  - It also fails the same way at `2d58080` (job 107468562198).
+  - So the "all 498/499 CI-script tests pass" claims in `status.md` were local-only. CI has
+    been red on this test since `bd62c4d`.
+- **Cause, inferred rather than reproduced.** No OpenSSL 3.0 binary is available on this
+  host.
+  - In that test, the pair matches and is not near expiry. The only thing that should force
+    renewal is SAN coverage, i.e. `openssl x509 -checkhost`.
+  - The runner is `ubuntu-24.04`, which ships OpenSSL 3.0.x. There, `-checkhost` prints
+    "does NOT match" but exits 0. The newer 3.5.5 exits non-zero, and that is what the
+    delta-2 measurement and local runs used.
+  - The key-mismatch test and the leaf-creation test pass on the runner. That fits:
+    only the host check is ineffective.
+- **Effect.** On the most common LTS OpenSSL, a certificate that does not cover
+  `ticket/portal/mail/files.${DOMAIN}` is kept for good. For example, the old
+  wildcard-only cert, or one issued for a previous `DOMAIN`, is never renewed. This does
+  not weaken security, since it is a local self-signed cert. But the renewal behaviour this
+  PR's documents describe does not happen, and the required check stays red.
+- **Fix.** Don't rely on the exit status. Match the output instead, for example
+  `openssl x509 … -checkhost "$h" | grep -q ' does match certificate'`, or compare the SAN
+  list parsed from `-ext subjectAltName`. Keep the existing test as the regression test,
+  since it already fails on 3.0.
+
+### Non-blocking
+
+- **N1.** Under a permissive umask, `mkdir -p "$cert_dir"` creates `deploy/local/certs`
+  world-writable (0777 measured under `umask 000`). Another local user could then swap in
+  a cert/key between runs.
+  - The key file itself stays 0600.
+  - Suggested fix: `mkdir -p -m 0700` or `chmod 0700 "$cert_dir"`. Traefik reads the
+    directory through a bind mount, so check that the container's user can still read it.
+- **N2.** `openssl pkey -in "$private_key"` on an encrypted key prompts for a passphrase on
+  the TTY during an interactive `deploy.sh local`. Pass `-passin pass:` so the check fails
+  without prompting. That is the right outcome, because Traefik cannot use an encrypted key.
+- **N3.** `replaced-*` directories pile up, each with an old private key. They are
+  gitignored under `deploy/local/certs/` and mounted read-only into Traefik (same trust
+  domain). The documentation could say they are safe to delete.
+
+### 2. Merge `81d2899`
+
+- **It was not a clean merge.** `git merge-tree e04ea52 9d5deb9` conflicts in
+  `docs/04-engineering/ci-cd.md` and `docs/07-planning/decision-log.md`.
+- **`ci-cd.md` was resolved correctly.** The PR's line changes after the merge are the same
+  as before it: `scripts/lib/**` is kept, and main's #355 coverage/e2e edits are kept.
+- **The `decision-log.md` resolution dropped one of the PR's own entries.** The entry
+  "2026-09-24 · P0 ordinary reviews use fresh GPT-6 contexts while Claude is unavailable"
+  was removed. It was the one delta 2 flagged as untraceable, and no remaining document
+  cites it. The "Manual release tags…" entry is kept.
+  - Because it was never on `main`, dropping it rewrites no decision history. But the merge
+    commit does this silently. The orchestrator should confirm it was intended.
+- **Every other PR file is unchanged by the merge.** For every file, the line diff
+  `mb..e04ea52` is identical to `9d5deb9..81d2899`.
+- **Nothing else changed between the merge and the head.** `git diff 9d5deb9 a67b5e3 --
+  .github` is only `release.yml`, and it is byte-identical to `b3a3e3a`. `compose.yml` and
+  `deploy/` are unchanged. The helper, `deploy.sh` and its test are unchanged from `e19b75c`
+  to `a67b5e3`.
+- **Main's new CI jobs don't interact with the release workflow.** `release.yml` triggers on
+  `push: main` / `workflow_dispatch` and depends only on its own `build-scan` job. It does
+  not use `workflow_run`, and it does not read CI job names or statuses. The new
+  `e2e - protected-route redirect` and `domain coverage (90%)` jobs pass at this head. S1
+  and S3 still hold.
+- **The PR is `CONFLICTING` with current `main`** (`3a45fc5`). #356 also widened the
+  security scope to identity and permissions. Another main merge is needed, and it will need
+  its own delta review. Per the memory note, merge main **before** the next Opus pass.
+
+### 3. `status.md` commits (`2d58080`, `e04ea52`, `a67b5e3`)
+
+All three are docs-only. They touch `status.md` alone. I found these inaccuracies:
+
+- **The test-pass claims.** `2d58080` and `e04ea52` say all 498 and 499 CI-script tests
+  pass. CI's `gate checkers + red probes` failed on the certificate backup test at
+  `2d58080`, and it fails again at `a67b5e3`.
+- **The explanation of the CI failure.** `a67b5e3` records the failure but attributes the
+  doubt to the host (a focused run passing 11/11, and the host's `node` being a Bun shim).
+  The failure is real and specific to the OpenSSL version (F1). It is not environmental
+  noise.
+- **"Current main `9d5deb9`".** `a67b5e3` says this, but it was already stale when written.
+  `ecb5b63` (#334) had landed at 02:55Z, eight minutes before `a67b5e3` at 03:03Z.
+- **The merge refresh.** `a67b5e3` says "#331 was refreshed onto current main" but does not
+  mention that the merge dropped a decision-log entry.
+- **The review-coverage claim.** `a67b5e3` calls `e19b75c` "separately reviewed". The
+  ordinary-review claims are not verifiable from the repository. It was not Opus-reviewed
+  until this note.
+
+`status.md` is orchestrator-owned. The lane agent edited it three more times in this delta.
+
+### 4. CI at `a67b5e3` (latest run of each required check)
+
+| Check | State |
+| --- | --- |
+| **gate checkers + red probes** | **failure** (F1) |
+| **pull request template + security review** | **failure**. The Opus exact-head review is pending. This note may satisfy the review-binding part. The checker also lists the merged main commits (`776999d`, `9d5deb9`, `81d2899`) as post-review commits, and this note does not re-review them. |
+| The other 13 required checks: static, unit + component, build, registers, route policy, contract, CI matches ci-cd.md, dependency audit, secret scan, helm, domain coverage, integration, e2e | success |
+| `github-advanced-security` (not required) | failure (exit 1 at line 218). CodeQL itself is success. |
+
+### Must happen before merge
+
+1. Fix F1.
+2. Merge the current `main`.
+3. Get a fresh Opus delta review of both.
+4. Get all required checks green at that exact head.
