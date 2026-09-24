@@ -1,20 +1,29 @@
-**2026-09-24 continuation (P0 #342 / issue #10):** PR #352 now contains the Opus F1
-remediation on top of `main@f22f0100cb3d5a1ab3ff6dbc0c20b4e298fd488c` (including
-merged #335). The detector uses a fail-closed raw-read backstop outside tokenizer-confirmed
-comments, bounds malformed quoted strings to a line, and covers the reported TSX, postfix
-operator, eval, process-import/alias, computed access, and TypeScript assertion cases. At
-pre-status candidate `e87f95a8c8999beb9fbf8a771482c6a52c83776b`, focused tests passed 23/23,
-`check:env` passed with 29 attributable reads, Biome and `git diff --check` passed. The CI
-checker suite passed 525/525 with `bun test --timeout=30000 scripts/ci`; the repository's
-`pnpm test:ci-scripts` command could not run because this environment's `node` resolves to
-Bun and does not expand its quoted glob. One default-timeout Bun run was discarded after
-four unrelated typecheck-coverage probes exceeded Bun's 5-second test timeout; the raised
-per-test timeout run passed all probes. A fresh ordinary review is requested on the final
-candidate; Opus 5.5 security review remains mandatory and pending. The prior status claim
-that the detector missed an approved template interpolation was inaccurate: the mainline
-detector already recognized it. This remediation does not claim P0 or #10 complete.
+**2026-09-24 continuation (P0 #324 / #8 Slice 2b):** The #324 shadow-coverage branch now
+integrates `origin/main@f22f0100cb3d5a1ab3ff6dbc0c20b4e298fd488c`, including #323, #334,
+#335 and #356. The conflict resolution preserves #324's explicit legacy-authorization
+markers and separate workspace/project provenance while retaining the current mainline
+permission reach model and the latest #323 review attestation. After rebuilding the
+workspace permissions package to refresh its ignored `dist` output, API typecheck passed;
+focused permission tests passed 82/82 and the Postgres shadow-mode integration suite passed
+15/15 against isolated `taskdesk_p0_324_test` on the lane Postgres service. The first
+integration attempt used the absent local `localhost:5432` fallback and failed to connect;
+the rerun used the dedicated lane database. The PR is still stacked on the old #323 branch
+and must be retargeted to `main`; fresh ordinary integration review and exact-head Opus
+security review remain pending. No enforcement or P0 completion is claimed.
 
 # Status — a POINT-IN-TIME SNAPSHOT
+
+**2026-09-24 orchestrator snapshot — `main` at `c4e1810`.** Merged today, each with every
+required check green on the exact head and an Opus 5.5 attestation of that head:
+#355 (`776999d`, Playwright smoke + domain coverage + integration gates), #323 (`9d5deb9`,
+request-path policy shadow mode), #334 (`ecb5b63`, `sees_all` scoped to granting workspaces),
+#356 (`3a45fc5`, security scope widened to identity and API permissions), #335 (`f22f010`,
+Storybook 10.6.0), #338 (`c4e1810`, asset/websocket existence oracles masked; the #317 timing
+residue S1 stays open). `protect-main` now requires **15** checks with strict up-to-date
+branches, so each merge makes every other candidate BEHIND; a clean merge from `main` then needs
+a fresh Opus merge-head attestation before the review-note binding passes again. Open P0 items
+still outstanding: #8's per-router deployed-traffic coverage report, and #9 beyond the merged
+Storybook 10 spike. Per-PR state is not kept here — use `gh pr list`.
 
 **2026-09-24 continuation (P0 #10):** Three independent GPT-6 review contexts passed the
 then-current PR #355 head `d74eadbcaa271567bdde5d931532f7558aa744c8`. Their follow-up checks
@@ -131,6 +140,17 @@ reviewed, and merged.** #8 and #9 remain open, large, umbrella items, unchanged.
 > What this file IS good for: the stage and throttle state, which issues are blocked and
 > why, material decisions taken, and the durable repository and deployment facts — the things
 > that do not change when someone pushes a branch.
+
+
+**Session log, 2026-09-23:** Continued #324 Slice 2b after two independent ordinary reviewers found stale authorization evidence. Each new shared authorization decision resets evidence to unknown; bulk-task, ownership-transfer and workspace-leave controllers record their post-middleware outcomes, including leave returning 404 after the transactional membership recheck. Regression coverage exercises the lookup-error case, instance-admin bulk denial and forced controller-level leave denial after middleware allowed. Both fresh independent ordinary delta reviews pass at c4fe592ffc5a99a3516860b64db1937814a93f39 with no blocking findings. Full unit tests passed across 12 tasks (API 484 tests; web 277 tests), permissions passed 10 files / 80 tests, API typecheck passed, focused shadow integration passed 13/13, lint passed 8/8, review/vocabulary checks passed, and git diff --check is clean. A rebuilt Docker image migrated isolated PostgreSQL 18 and booted the serving role; /api/public/health/live returned 200. GitHub fast CI and full PostgreSQL 18 integration passed on PR head fd4adf3af95c83ca410e9f8ca48bdcb7c713cdcb. The PR-template/security gate is the only failing required check; it correctly rejects the missing Opus model, committed review note and completed security-review checklist while Claude authentication is logged out. Mandatory Opus final security review remains pending. #324 remains draft and cannot close: project/work-item reach facts, portal mapping and deployed-traffic coverage evidence are still missing.
+
+**Session log, 2026-09-23:** Continued #324 Slice 2b in a stacked worktree based on #323. The implementation now records workspace-ID provenance, exposes project/task/work-item row facts already selected by `workspaceAccess.from*` and `requireWorkItemReach`, and records explicit legacy authorization decisions at shared workspace authorization middleware instead of deriving them from HTTP status. The shadow evaluator now records delegated routes as `unevaluated: delegated_to_handler`, uses the explicit no-person-parameter sentinel for self policies, supports id-free instance scopes, and verifies row provenance for workspace route IDs with a bounded after-response lookup when necessary. Local password signup creates an internal staff person before signup completes; OAuth callbacks remain unprovisioned until their configured identity connection owns portal/org assignment. Validation on this working tree: focused unit/middleware tests 84/84; shadow-mode Testcontainers integration 11/11; identity-seed Testcontainers integration 16/16; API typecheck; `docker build`; isolated PostgreSQL 18 migration, serving-container boot and `/api/public/health/live` smoke all passed. The existing project schema has workspace linkage but no project-parent or owner-team fields, and the identity loader does not load project memberships; project/work-item negative reach therefore remains explicitly unevaluated rather than guessed. Per-router before/after soak evidence still needs representative deployed traffic. Draft stacked PR #354 is open at `5e3aa590516285c899a7443f46e5d104d3dd842d`; exact-head ordinary reviews are pending. Live `claude auth status` is logged out, so no Opus verdict is available in this environment.
+
+**Seventh pass, 2026-09-23. `main` at `5ada9c5` (PR #345 merged).** P0 Foundation remains open. #317's timing-oracle candidate now incorporates the DB-role split on main; its focused PostgreSQL 18 oracle integration test passed 4/4, and the full API integration suite passed 84 files / 1,144 tests. Its local branch now includes the latest `main`; the ordinary exact-head review must be refreshed before merge. #323 keeps #322's applied migration `0068_workspace_role_is_system` at index 68 and moves #8 Slice 2's shadow-table migration to `0069_policy_shadow_tables` at index 69, with the snapshot chained from #322's snapshot. After the latest main merge, its focused PostgreSQL 18 shadow integration test passed 10/10; lint, typecheck, permissions (80), route-policy, OpenAPI (106 operations), review-spec, vocabulary (59), and env checks passed. An initial full unit run had one unrelated SSRF destination test time out (475/476), but the complete `pnpm test` retry passed across all 12 tasks; the isolated file also passed 4/4. Both candidates still require fresh ordinary review on their final SHA and Opus security review before merge. No P0 gate is claimed closed; #8 still lacks complete route enforcement and coverage, and #324 plus other prerequisite lanes remain open. Re-verify live PR/issue state before dispatch.
+
+**Session log, 2026-09-23:** Integrated #323 with `main` through `5ada9c5`, including the Cline D1-D4 remediation round, and validated the migration alignment plus focused shadow integration. The full unit suite first exposed one unrelated timeout, then passed in a complete retry. The #317 candidate has passed its broad integration and focused timing checks and now includes current main. Fresh exact-head ordinary review and mandatory Opus final reviews have not happened; neither candidate may merge before them.
+
+**Session log, 2026-09-23:** Audited the supplied P0 status report against live GitHub and repository state. Confirmed #322 had merged and the #323 migration-number collision was real; the report's #308 migration warning was false. Rebased #323 by merging current `main`, renumbered only the unmerged shadow migration, and validated migration order on Testcontainers PG18. Current candidate SHA above; review status remains pending.
 
 **Fifth pass, 2026-09-23. `main` at `b126c51`.** Merged since the fourth pass:
 - **#306**, the first v2 screen: the work-item list at `/agent/projects/{key}/work`. Sort and
@@ -858,6 +878,7 @@ authorization per the standing delegation — everything code-side that blocked 
 
 ### BLOCKED
 
+- **Final Opus security review for P0 candidates, including #323 and draft #354:** unavailable in this environment because `claude auth status` reports `loggedIn: false`. Do not merge or substitute the available GPT-6 ordinary-review contexts. Implementation, ordinary review, tests and non-review acceptance work continue while Opus credentials/reviewer access are restored.
 - Standing up a **live** UAT deployment — all four code-side UAT-lane gaps are closed and
   UAT-0 (build + boot + health) is independently verified locally (see the UAT lane below);
   what remains is the actual redeploy to real infrastructure, which needs Thomas's own
@@ -1609,70 +1630,59 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
-### 2026-09-23 (fifth pass) · P0 review and integration lanes advanced
+### 2026-09-24 · P0 #342 environment-read detector refresh
 
-PR #352 / issue #342 is at `d7274002543b6f016a53ad5962181d63617f6921` (detector code at
-`6bbe66e769ffb2371efa427a315075eb25abe677`); it remains open and cannot merge until its
-required independent Opus security review clears. Current-model
-ordinary review found repeated false positives where valid JavaScript regular-expression
-literals followed other statements. After three rounds found the same lexer limitation, the
-detector was changed to recognize lexical statement contexts; further review found function
-and class declaration positions, which are now covered too. Regression cases cover regex
-literals at file start, after a control condition, after `do`, after a block, and after named
-function/class declarations, while a division expression still reports its real environment
-read. Plain and aliased `node:process` imports are tested. Focused tests pass (18/18),
-`pnpm check:env` passes with 28 approved reads, and `pnpm test:ci-scripts` passes (513/513).
-Per review guidance, the same-class syntax-position delta goes to the required Opus adversarial
-pass without another ordinary round; Opus remains pending.
+PR #352 is refreshed onto current `main` (`663c0cb`) after the #324 merge. The integration
+keeps the existing detector and the Opus review record from its previous candidate; that
+review is not an attestation of the new merge head. Re-run detector, repository-scan and
+CI-script checks and obtain a current independent ordinary delta review. Opus security
+review remains mandatory before merge; no P0 or issue #10 completion is claimed.
 
-PR #334 / issue #319 was refreshed with current `main` at
-`fe89dd9b2f60dd5ca6aee5a803bb84178a384b75`; the merge was clean. Permission checks pass
-(80 API permission tests, 261 package tests, and 51 targeted API tests). GitHub checks are
-running; an exact-head ordinary merge-delta review found no code changes, and Opus review
-remains required. PR #338 / issue #317 is refreshed at
-`2c859dfdd1005f00dad5b850af95cfac80510a9d`; targeted integration passed (6/6), route
-coverage/matrix passed (32/32), and its ordinary merge-delta review found no code changes.
-PR #323 / issue #8 Slice 2 is refreshed at `50a05d5072655348973720dc65aa11cf3637e266`;
-permissions (80), shadow unit (26), and Testcontainers integration (10) passed, and its
-ordinary merge-delta review found no code changes. These candidates still need exact-head
-Opus review; #323/#338/#334 GitHub checks are not fully green while review gates are pending.
+### 2026-09-24 · P0 continuation — reviewer substitution recorded; shadow-scope findings fixed
 
-PR #331 / issue #11 hardening is implemented at `3ae13260a895562c133c27ab2babda5ebe3072f3`:
-build/scan and signing/publishing authority are separated, inputs and deployment digests
-are pinned, and `ci-cd.md` now matches the split. Independent current-model ordinary review
-passed at this exact head. GitHub checks are rerunning after the docs delta; Opus remains
-mandatory. No candidate is merged or claimed complete.
+Thomas authorized current GPT-6 Luna contexts for Sonnet-tier implementation and ordinary
+review on active P0 work; the final independent Opus 5.5 security review remains mandatory.
+The decision is recorded in the P0 CI lane's decision log; no security review is claimed.
 
-P0 #323 / issue #8 Slice 2 remains open and #324 depends on it. #337 remains blocked by its
-owning feature-spec review. No P0 foundation gate is claimed closed by this pass.
+On #324 / PR #354, three independent ordinary reviews of `c611f190` identified two missing
+acceptance-evidence items and a project-scope provenance defect. Fixed the evaluator to track
+the addressed project ID's provenance separately from the workspace ID, retained the
+explicitly unevaluated `reach_unavailable` result where project reach facts do not exist,
+and added a permissive shadow-policy denied-param integration probe. On the current source,
+the full typecheck passed (9 tasks); focused tests passed (31 evaluator unit, 15 shadow-mode
+Testcontainers integration); Docker build, isolated Compose migration/boot, liveness/readiness
+probes, Biome, and `git diff --check` passed. The full unit run had one unrelated existing
+notification SSRF test timeout (API 484/485); a focused rerun passed 4/4. Three fresh
+independent ordinary reviews passed the source/test remediation; a lightweight review of the
+comment/status-only delta also passed. The #324 per-router before/after deployed-traffic
+coverage report is unavailable; no synthetic result is represented as deployed evidence, so
+that acceptance item remains open. Pull-request workflow checks have not refreshed on the
+current stacked-PR head; the last completed required fast/full checks passed apart from the
+missing Opus review. On the current candidate, GitGuardian flags the Helm
+`migration.existingSecret.passwordKey` value `postgres_uri` (a Secret key name; the adjacent
+password value is blank and that existing-secret option is disabled), not a credential.
+GitHub Advanced Security fails because its requested model is unsupported. Neither scanner
+result has been suppressed or represented as passing.
 
-### 2026-09-23 (fourth pass) · Review fallback aligned; P0 environment-read bypass under repair
+After this entry was first written, #354's base ref was found to have advanced beyond the
+lane's cached remote-tracking ref. The lane now has a local merge candidate that includes
+the current #323 head (`4f1a272`) and the latest #323 Opus report. The two new denied-param
+integration probes now poll for their own persisted evidence instead of assuming a fixed
+300 ms is sufficient. On this merged tree, the focused evaluator suite passed 31/31, the
+Testcontainers shadow integration file passed 15/15, API typecheck passed, Biome passed
+with the existing environment-variable warnings, and `git diff --check` passed. These
+checks are local evidence only; the merge candidate still needs publication and exact-head
+GitHub CI. The per-router deployed-traffic report and final Opus review remain outstanding.
 
-PR #351 merged as `7bebaf6`. The model-tier guidance now records Thomas's authorization to
-use a fresh, independent current-model context for ordinary reviews while Claude Sonnet is
-unavailable through 2026-09-30. Risk-based review counts and exact-head evidence remain in
-force. Opus 5.5 remains mandatory for security-scope work and unavailable Opus still blocks
-merge.
+On #10 / PR #355, the documented root `pnpm test:e2e` command was missing from `package.json`.
+Added the root alias and aligned CI and the `test-all` manifest to call it. The protected
+route smoke passes locally through the documented root command. Commit `0f10f04` is pushed;
+three independent ordinary delta reviews pass. Exact-head CI is being refreshed; the
+mandatory Opus 5.5 review remains pending.
 
-P0 #342 is in implementation on a local branch from `7bebaf6`; it is not merged or claimed
-done. The `check:env` scanner now tokenizes source so the listed computed, optional, aliased,
-global, `Reflect.get`, `node:process`, CommonJS, `import.meta`, comment-separated and template
-interpolation shapes are recorded. The focused cases pass. The changed scanner also found an
-approved template-interpolation read in `apps/api/src/utils/send-workspace-invitation-email.ts`
-that the old `$`-prefix exclusion missed. All 28 approved reads match the config reference;
-the inherited unapproved-name baseline remains unchanged. Full CI-script tests pass (510/510);
-the mandatory Opus review is outstanding.
-
-PR #323 / issue #8 Slice 2 and PR #338 / issue #317 have their required code and integration
-checks green, but their required `pull request template + security review` checks fail because
-their security-review notes are stale at the current heads. Both need a fresh Opus delta pass;
-neither is merge-ready. GitGuardian also reports a `passwordKey: postgres_uri` placeholder in
-the chart values on those candidates; inspection confirms it is a Secret key name, not a
-credential. The PR check is non-required but remains reported as failing.
-
-Other live P0 work remains open: #8, #9, #10, #11, #317, #319, #324, #337, and #342. #324
-depends on #323. #337 remains blocked by its owning feature-spec review. No stage-completion
-gate is claimed closed by this pass.
+`claude auth status` reports logged out, so Opus capacity is unavailable here. Continue
+other runnable P0 work; keep every security-scope candidate blocked from merge until its
+exact-head Opus review is recorded.
 
 ### 2026-09-23 (third pass) · 11 more PRs merged; spec gates honoured, not routed around; an outage recovered cleanly
 

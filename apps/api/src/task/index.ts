@@ -15,6 +15,10 @@ import {
   jsonResponse,
 } from "../openapi";
 import {
+  markShadowLegacyAuthorizationUnknown,
+  setShadowLegacyAuthorization,
+} from "../permissions/shadow-context";
+import {
   assertTaskImageKeyMatchesContext,
   createTaskImageUploadUrl,
   isImageContentType,
@@ -554,13 +558,23 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
       });
     }
 
-    const result = await bulkUpdateTasks({
-      taskIds,
-      operation,
-      value,
-      userId,
-      workspaceId: c.get("workspaceId"),
-    });
+    markShadowLegacyAuthorizationUnknown(c);
+    let result: Awaited<ReturnType<typeof bulkUpdateTasks>>;
+    try {
+      result = await bulkUpdateTasks({
+        taskIds,
+        operation,
+        value,
+        userId,
+        workspaceId: c.get("workspaceId"),
+      });
+    } catch (error) {
+      if (error instanceof HTTPException && error.status === 403) {
+        setShadowLegacyAuthorization(c, "denied");
+      }
+      throw error;
+    }
+    setShadowLegacyAuthorization(c, "allowed");
 
     return c.json(result, 200);
   })
