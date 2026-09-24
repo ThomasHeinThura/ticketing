@@ -13,8 +13,10 @@ exact-head gates.
 
 The full workflow now includes `opened` and `reopened` pull-request events so these required
 contexts are produced for new and reopened candidates; the workflow reconciliation checks
-that trigger set. After clearing ignored generated web build/test output, the local fast
-manifest passed 18 enabled gates with 0 failures; 8 gates remain explicitly not enabled.
+that trigger set, and a regression probe fails if the full workflow narrows those events
+while retaining `merge_group`. The probe passed 54/54; after clearing ignored generated web
+build/test output, the local fast manifest passed 18 enabled gates with 0 failures and 8
+gates remain explicitly not enabled.
 
 **2026-09-23 continuation (P0 #10):** The Playwright protected-route redirect smoke on
 PR #355 passed its browser job and Postgres integration job at exact head

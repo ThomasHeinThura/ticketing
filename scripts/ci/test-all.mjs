@@ -319,9 +319,9 @@ function aliasSources() {
  * Until now any workflow triggered on `pull_request` could satisfy any gate. So a pull
  * request could delete `pnpm check:overrides` from `ci-fast.yml`, add it to a new
  * `sneaky.yml` of its own, and the reconciliation would be satisfied — the gate "runs on
- * pull requests", just not in the pipeline the ruleset makes required. Worse and quieter:
- * a FAST gate could be satisfied by an occurrence in `ci-full.yml`, which does not run on
- * `opened` at all, so the gate would be enforced later than it claims or not at all.
+ * pull requests", just not in the pipeline the ruleset makes required. A FAST gate could
+ * also be satisfied by an occurrence in `ci-full.yml`, which is not the fast-stage context
+ * the ruleset requires, so that gate would be enforced at the wrong stage or not at all.
  *
  * Stage membership is not invented here: `docs/04-engineering/ci-cd.md` already declares
  * which gates belong to the fast stage and which to the full stage, and this binds each
@@ -361,9 +361,9 @@ const STAGE_AUTHORITY = new Map([
       requirePullRequestTypes: DEFAULT_PULL_REQUEST_TYPES,
       requireTriggers: ["merge_group"],
       why:
-        "Full is required before merge and runs on the merge queue, so merge_group is " +
-        "the trigger that carries the obligation; the narrowed pull_request list is " +
-        "acceptable only because of it.",
+        "Full contexts are required directly on pull requests and again on the merge " +
+        "queue, so both default pull_request events and merge_group must trigger this " +
+        "workflow; a narrowed pull_request.types list leaves required contexts missing.",
     },
   ],
 ]);
@@ -552,7 +552,7 @@ async function reconcile() {
           `authorized workflow ${authority.workflow}. It is proven only in ${elsewhere}. ` +
           "A gate that runs in some other workflow runs outside the pipeline the ruleset " +
           "makes required — and an occurrence in ci-full.yml can never rescue a missing " +
-          "fast-stage one, because ci-full.yml does not run on `opened` at all. " +
+          "fast-stage one, because ci-full.yml is not the authorized workflow for fast gates. " +
           `${authority.why}`,
       );
     }
