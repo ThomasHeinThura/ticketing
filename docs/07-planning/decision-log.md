@@ -20,7 +20,7 @@ Newest first.
 **Supersedes (temporarily, in part):** the 2026-09-23 entry "Three non-Claude implementation agents take the P0/P1/P2 lanes…" (#336), only its assignment of *fix rounds* to the lane agents and its narrowing of the Claude session to Opus review and merge. The narrowing is suspended for the recorded-finding fixes this entry allows, and applies again when this entry ends. Nothing else in #336 or #345 changes, and neither is rewritten. `CLAUDE.md`'s "Model tiers" note is read with this exception.
 
 **Decision:**
-1. On a PR whose lane agent is stopped, the orchestrating Claude session may commission fresh Claude Sonnet subagents to make **small fixes for findings a review has already recorded**.
+1. While **every** lane agent (P0, P1, P2 and P3) is stopped, the orchestrating Claude session may, on a stopped lane's PR, commission fresh Claude Sonnet subagents to make **small fixes for findings a review has already recorded**.
    - **Scope:** no new features, and nothing beyond the recorded finding. A finding that needs a design change, a migration or a new shared contract is not a small fix; it goes back to the lane. One PR at a time. Each fix has a regression test that fails on the unfixed code.
    - **Independence:** a fresh context other than the fixer does the ordinary review of the fix, as #345 and the current-model fallback allow. It records its model and the exact SHA it reviewed. The Opus 5.5 reviewer is a third, separate fresh context. Neither reviewer may be the fixer, and neither may be the orchestrating session.
    - **Re-review:** the fix moves the head, so every earlier clearance on that PR is stale. The PR needs all of its required reviews again at the new head before merge. That includes Opus, even outside security scope.
@@ -32,7 +32,7 @@ Newest first.
 
 **Alternatives:** Keep the orchestrator review-only and leave every PR with findings until the lanes restart. Rejected for small recorded fixes. Waive #353's audit-row item and track it. Rejected by Thomas.
 
-**Scope and end:** this ends for a lane when that lane's agent restarts; a fix already under review may finish its gates. It ends everywhere on 2026-09-30, unless Thomas extends it.
+**Scope and end:** this ends everywhere as soon as **any** lane agent restarts, or on 2026-09-30, whichever comes first, unless Thomas extends it. A fix already under review when it ends may finish its gates.
 
 **Decided by:** Thomas, 2026-09-24, in session ("Yes, small fixes only"; "Wait for #344").
 
