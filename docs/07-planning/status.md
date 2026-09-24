@@ -1565,9 +1565,11 @@ Follow-up review work pins both documented GitHub attestation checks to `refs/he
 and checks the selected-source predicate's image digest against the immutable image
 reference. It also checks existing local certificates for all four route hostnames and
 regenerates stale script-managed certificates, and replaces unavailable metric references
-in the runbook with container, database and log diagnostics. Thomas authorized fresh
-independent GPT-6 contexts for P0 ordinary reviews while Sonnet is unavailable; that
-substitution is recorded in the decision log and does not replace Opus.
+in the runbook with container, database and log diagnostics. The architecture and security
+docs now mark deep health, Sentry, RUM/performance gates, Grafana dashboards and alerts as
+planned where no implementation exists. Thomas authorized fresh independent GPT-6 contexts
+for P0 ordinary reviews while Sonnet is unavailable; that substitution is recorded in the
+decision log and does not replace Opus.
 Opus 5.5 review, live release signing, rollback verification, and the PR's author-attribution
 reconciliation remain open.
 
