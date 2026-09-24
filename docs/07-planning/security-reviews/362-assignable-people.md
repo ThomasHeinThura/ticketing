@@ -155,3 +155,45 @@ not as an arbitrary person row.
 The first unit and permissions runs failed with `Failed to resolve entry for package
 "@taskdesk/email"`. This was the environment, not the change: the fresh worktree had no
 package build. After building `packages/*`, both suites passed in full.
+
+## Merge-head attestation (conflict resolution with #340)
+
+**Reviewed head:** `eeeb0b4d1e1738f3fd6da4e80bb9b110d786f3cd`
+
+**Verdict: CLEAR at this head.** The findings above, L1 to L4, carry over unchanged. The
+merge introduces nothing new.
+
+`eeeb0b4` is a merge commit. Its parents are `a965780` (the note commit on top of the
+reviewed head `bd2388c`) and `9060512` (`main` with #340 merged).
+
+- **The resolution adds nothing beyond the union of both sides.** I compared the added and
+  removed lines of `git diff 9060512 eeeb0b4` with those of `git diff 8f545c3 a965780` (this
+  PR's own change against its original base). They are identical, line for line, across the
+  same nine files.
+- **`git show --remerge-diff eeeb0b4`** touches exactly two files:
+  - `apps/api/src/work-item/index.ts`: removes the conflict markers and keeps both imports,
+    `listAssignablePeople` and `listWorkItemTypes`. Nothing else changes.
+  - `tests/api-contract/openapi.json`: the baseline is regenerated with both
+    `/projects/{projectId}/assignable` and `/workspace/{workspaceId}/work-item-types`.
+    `check:openapi` confirms it matches the code (108 operations).
+- **Both routes register with the right policies.** Both `.openapi(...)` handlers are
+  mounted. `policy.ts` and `matrix.fixture.json` each have exactly one entry per route:
+  - `GET /api/projects/{projectId}/assignable`: `work_item:read`, project scope, `row`.
+  - `GET /api/workspace/{workspaceId}/work-item-types`: `workspace:read`, workspace scope,
+    `request`.
+- **No semantic interaction between #340 and this feed.** #340 adds a workspace-scoped
+  catalogue read (`workspaceAccess.fromParam` plus `workspace:read`) on a different path and
+  a different parameter. It adds `workspaceIdParam` to `schema.ts` and a type-list schema to
+  `response.ts`, plus web-only files. The feed uses none of these. #340 changes no roster,
+  membership, person, state or capability logic, and does not touch `workflow.ts` or
+  `fromProject`.
+
+| Check at `eeeb0b4` (private DB `o362b_test`) | Result |
+| --- | --- |
+| `tests/api-integration/work-item-assignable.test.ts` | 1 file, 8/8 passed |
+| `apps/api` unit | 58 files, 488/488 passed |
+| `packages/domain` unit | 8 files, 470/470 passed |
+| `test:permissions` | 10 files, 80/80 passed (route-coverage 17/17) |
+| `check:openapi` | matches (108 operations) |
+| `check:route-policy` | exit 0 |
+| `apps/api` `tsc --noEmit` | clean |
