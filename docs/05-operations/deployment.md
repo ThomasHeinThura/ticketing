@@ -276,7 +276,7 @@ is terminated differ, and both are infrastructure concerns, never application co
 | --- | --- |
 | `/api/public/health/live` | The process is up. **Touches no dependency**. Anonymous |
 | `/api/public/health/ready` | Database reachable, migrations applied. Anonymous |
-| `/api/instance/health/deep` | Every dependency and plugin checked. Needs an `instance:admin` session — the metrics bearer token does not grant it — it enumerates dependencies ([observability.md](../01-architecture/observability.md)) |
+| `/api/instance/health/deep` | Every dependency and plugin checked. Needs an `instance:admin` session; no metrics bearer-token endpoint is currently served ([observability.md](../01-architecture/observability.md)) |
 
 A liveness probe that fails when Postgres blips will restart a healthy container and turn a
 brief outage into a long one. Hence the separation.

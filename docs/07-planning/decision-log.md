@@ -5,6 +5,24 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-24 · P0 ordinary reviews use fresh GPT-6 contexts while Claude is unavailable
+
+**Decision:** For the remaining P0 lanes, use two fresh independent GPT-6 contexts for
+ordinary reviews in place of Claude Sonnet while Sonnet capacity is unavailable. Use three
+for broad or high-coupling changes. Record the model, independence and exact reviewed SHA in
+each PR. This temporary substitution does not change review counts, merge gates, or the
+mandatory final independent Opus 5.5 security review for security-scope work.
+
+**Why:** Thomas explicitly directed the P0 work to continue with the available current
+model after Claude exhausted its limit. Independent review remains possible while Sonnet is
+unavailable; the final Opus checkpoint remains unchanged.
+
+**Alternatives:** Hold all P0 ordinary reviews until Sonnet capacity returns; treat GPT-6 as
+Opus or waive the security review. Rejected by Thomas's instruction and the unchanged
+security gate.
+
+**Decided by:** Thomas, 2026-09-24.
+
 ### 2026-09-23 · Current-model ordinary-review fallback when Sonnet is unavailable; Opus remains mandatory
 
 **Supersedes (narrowly):** the reviewer-provider clause in the 2026-09-23 temporary fallback (#345), only when a fresh Claude Sonnet context is unavailable.

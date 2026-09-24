@@ -176,7 +176,7 @@ if [ "$MODE" = "local" ]; then
     mkdir -p "$CERT_DIR"
     openssl req -x509 -newkey rsa:2048 -nodes -days 825 \
       -subj "/CN=*.${DOMAIN}" \
-      -addext "subjectAltName=DNS:*.${DOMAIN},DNS:${DOMAIN}" \
+      -addext "subjectAltName=DNS:*.${DOMAIN},DNS:${DOMAIN},DNS:ticket.${DOMAIN},DNS:portal.${DOMAIN},DNS:mail.${DOMAIN},DNS:files.${DOMAIN}" \
       -keyout "$CERT_DIR/local.key" -out "$CERT_DIR/local.crt" >/dev/null 2>&1
     chmod 0600 "$CERT_DIR/local.key"
   fi

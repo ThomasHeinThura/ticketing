@@ -1542,6 +1542,33 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
+### 2026-09-24 · P0 #11 local deployment and runbook validation
+
+On PR #331's clean lane, `scripts/deploy.sh local` completed using the locally built
+candidate image. This host already owns ports 80 and 443, so the temporary test checkout
+mapped Traefik to 28080/28443 and was torn down afterwards. TaskDesk, Postgres, Valkey,
+Traefik and Mailpit reported healthy. `ticket.localhost`, `portal.localhost` and
+`mail.localhost` each returned HTTP 200 through Traefik; the generated local certificate
+verified those three names and `files.localhost` with OpenSSL, and the health route returned
+200 using that certificate. The documented `dc ps`, `dc logs`, container stats, Postgres
+activity query, and `job_lease` query all ran successfully. No selected-SHA release was
+published, and no signature/attestation verification or rollback was attempted.
+
+This exposed two real runbook/configuration mismatches: the local certificate's wildcard
+SAN was rejected for `ticket.localhost`, and the docs described a metrics listener that the
+current API image does not implement. The local cert now names the actual hostnames in its
+SAN; the runbook and observability/security/configuration docs now mark `/metrics` as
+planned and give working container/database/log diagnostics. The full metrics feature
+remains outside this deployment slice. Local host-port testing did not exercise default
+80/443 because this environment reserves those ports; the stack and volumes were removed.
+Follow-up review work also pins both documented GitHub attestation checks to
+`refs/heads/main` and checks the selected-source predicate's image digest against the
+immutable image reference. Thomas authorized fresh independent GPT-6 contexts for P0
+ordinary reviews while Sonnet is unavailable; that substitution is recorded in the
+decision log and does not replace Opus.
+Opus 5.5 review, live release signing, rollback verification, and the PR's author-attribution
+reconciliation remain open.
+
 ### 2026-09-23 (follow-up) · P0 history refreshes and ordinary review deltas
 
 **#323 / issue #8:** PR head `8fe8fdf16db53e7de2d43344f3fcdcee7e89c617` is a linear,

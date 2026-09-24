@@ -391,10 +391,11 @@ is in [data-protection.md](../05-operations/data-protection.md).
   with `instance:admin`. The one endpoint that lists every dependency is the reconnaissance
   surface this threat model names, so it does not live behind a per-route exception under a
   router whose blanket kind is `public`.
-- `/metrics` is bearer-guarded with a constant-time comparison and, where the operator can,
-  bound to a separate listener not exposed by Traefik; its labels are cross-tenant
-  inventory and are treated as sensitive. The metrics bearer token is policy kind 5
-  (`delegated: 'metrics'`) and grants **`/metrics` and nothing else** — it is not an
+- `/metrics` is a planned bearer-guarded surface with a constant-time comparison and, where
+  the operator can, a separate listener not exposed by Traefik. Its labels are cross-tenant
+  inventory and must be treated as sensitive. The current API image does not serve `/metrics`
+  or read a metrics bearer token. When implemented, the token will be policy kind 5
+  (`delegated: 'metrics'`) and will grant **`/metrics` and nothing else** — never an
   alternative credential for `/api/instance/health/deep` or any other route.
 - An **anonymous rate-limit class**, keyed by IP and — for anything that sends mail — by
   target email, covers `/api/public/*`, the non-login `/auth/*` endpoints (magic link, OTP,

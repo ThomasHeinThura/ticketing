@@ -45,16 +45,21 @@ and asserts they do not appear in output.
 Log level is configurable at runtime in God Mode, per module, so debugging production
 does not require a restart.
 
-## Metrics
+## Metrics (planned; not currently implemented)
 
-Prometheus exposition at `/metrics`, guarded by a bearer token configured in God Mode →
-Observability, compared in constant time. Business metrics carry `{project, organisation}`
-labels — a cross-tenant inventory — so the token is treated as a secret and, where the
-operator can, `/metrics` is bound to a separate **internal listener on port 9464** (fixed,
-never published, never an environment variable — the runbook's `curl` targets it) not
-exposed through Traefik. The bearer token grants `/metrics` alone — it does **not** read
-`/api/instance/health/deep`, which is `instance:admin` only (decision log 2026-09-06). Log
-redaction is an **allowlist** — the log line serialises named fields only — because a
+The intended contract is Prometheus exposition at `/metrics`, guarded by a bearer token
+configured in God Mode and compared in constant time. Business metrics carry
+`{project, organisation}` labels — a cross-tenant inventory — so the token must be treated as
+a secret. When implemented, `/metrics` will use a separate **internal listener on port 9464**
+(fixed, never published, never an environment variable) and will not be exposed through
+Traefik. The token will grant `/metrics` alone and will not read
+`/api/instance/health/deep`, which is `instance:admin` only (decision log 2026-09-06).
+
+**Current status:** the API image does not serve `/metrics`, does not start a listener on
+port 9464, and does not read a metrics bearer token. The metric names below are the target
+instrumentation contract, not live endpoints. Until implementation and verification, use
+the container, database and application logs in the [runbook](../05-operations/runbook.md).
+Log redaction is an **allowlist** — the log line serialises named fields only — because a
 denylist of secret patterns cannot catch a field nobody anticipated.
 
 **HTTP**

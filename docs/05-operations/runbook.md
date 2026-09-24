@@ -12,18 +12,16 @@ dc() { docker compose -f compose.yml -f deploy/compose.prod.yml "$@"; }
 For local development, use `dc() { docker compose -f compose.yml -f deploy/compose.local.yml -f deploy/compose.traefik.yml "$@"; }`.
 The first-run `scripts/deploy.sh local` command sets up the local certificate and secrets.
 
-**Before the metrics commands below will work:** `export METRICS_TOKEN=…`, copied from God
-Mode → Observability. It is **not** an environment variable of the container and there is no
-`TASKDESK_METRICS_TOKEN` — the token is runtime configuration like everything else
-([configuration-reference.md](configuration-reference.md)). `/metrics` is served on its own
-listener, port **9464**, which is not routed through Traefik
-([observability.md](../01-architecture/observability.md)); the health endpoints are on the
-application port as usual.
+**Metrics endpoint status:** the architecture describes the intended Prometheus endpoint,
+but the current API image does not start a listener on port `9464` and does not serve
+`/metrics`. The metrics bearer-token setting is not usable yet. Use the container, database,
+and application logs below; do not export a `METRICS_TOKEN` or rely on the metrics commands
+until the endpoint is implemented and verified.
 
 ## Triage
 
 1. **Is it up?** `curl https://ticket.<domain>/api/public/health/ready`
-2. **Is it everything or one thing?** `/api/instance/health/deep` lists each dependency (an `instance:admin` session — the metrics token does not grant it)
+2. **Is it everything or one thing?** `/api/instance/health/deep` lists each dependency and requires an `instance:admin` session.
 3. **What changed?** Last deploy, last configuration change (God Mode → Audit)
 4. **Who is affected?** One organisation or all — Sentry tags by organisation
 5. **Communicate before investigating.** A five-word status message buys an hour of quiet
@@ -66,7 +64,8 @@ self-signed certificate must be trusted by the client).
 ### Slow
 
 ```bash
-dc exec -T taskdesk wget -qO- --header="Authorization: Bearer $METRICS_TOKEN" http://127.0.0.1:9464/metrics | grep -E 'duration|pool|eventloop'
+dc stats --no-stream taskdesk
+dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-taskdesk}" -c "select state, count(*) from pg_stat_activity where datname = current_database() group by state order by state;"
 ```
 
 | Cause | Fix |
@@ -94,7 +93,7 @@ dc exec -T taskdesk wget -qO- --header="Authorization: Bearer $METRICS_TOKEN" ht
 ### Notifications not arriving
 
 ```bash
-dc exec -T taskdesk wget -qO- --header="Authorization: Bearer $METRICS_TOKEN" http://127.0.0.1:9464/metrics | grep outbox
+dc logs --since=1h taskdesk | grep -Ei 'outbox|notification' || true
 ```
 
 | Cause | Fix |
@@ -121,7 +120,6 @@ wrong — the inputs are wrong.
 ### Jobs not running
 
 ```bash
-dc exec -T taskdesk wget -qO- --header="Authorization: Bearer $METRICS_TOKEN" http://127.0.0.1:9464/metrics | grep job_last_success
 dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-taskdesk}" -c "select * from job_lease;"
 ```
 
@@ -217,19 +215,23 @@ cosign verify \
 gh attestation verify "oci://${IMAGE_REF}" \
   --repo ThomasHeinThura/ticketing \
   --signer-workflow ThomasHeinThura/ticketing/.github/workflows/release.yml \
+  --source-ref refs/heads/main \
   --predicate-type 'https://slsa.dev/provenance/v1'
 gh attestation verify "oci://${IMAGE_REF}" \
   --repo ThomasHeinThura/ticketing \
   --signer-workflow ThomasHeinThura/ticketing/.github/workflows/release.yml \
+  --source-ref refs/heads/main \
   --predicate-type 'https://github.com/ThomasHeinThura/ticketing/attestations/release-source/v1' \
   --format json \
   | jq -e --arg repo 'ThomasHeinThura/ticketing' \
       --arg source "$SOURCE_SHA" \
       --arg image 'ghcr.io/thomasheinthura/taskdesk' \
+      --arg digest "${IMAGE_REF##*@}" \
       'any(.[]; .verificationResult.statement.predicate.sourceRepository == $repo and
         .verificationResult.statement.predicate.sourceRef == "refs/heads/main" and
         .verificationResult.statement.predicate.sourceCommit == $source and
-        .verificationResult.statement.predicate.image == $image)'
+        .verificationResult.statement.predicate.image == $image and
+        .verificationResult.statement.predicate.imageDigest == $digest)'
 ```
 
 All three checks (cosign signature, workflow SLSA provenance, and the selected-source
@@ -281,8 +283,7 @@ God Mode and should be recorded as one.
 ```bash
 dc logs -f taskdesk
 dc exec postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-taskdesk}"
-curl -s -b "$ADMIN_SESSION_COOKIE" "https://ticket.${DOMAIN}/api/instance/health/deep" | jq   # instance:admin session; the metrics token does not grant this
-dc exec -T taskdesk wget -qO- --header="Authorization: Bearer $METRICS_TOKEN" http://127.0.0.1:9464/metrics | grep taskdesk_
+curl -s -b "$ADMIN_SESSION_COOKIE" "https://ticket.${DOMAIN}/api/instance/health/deep" | jq   # instance:admin session
 docker stats
 df -h && du -sh /var/lib/docker/volumes/*
 ```
