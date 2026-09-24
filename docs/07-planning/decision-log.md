@@ -5,24 +5,6 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
-### 2026-09-23 · Current-model ordinary-review fallback when Sonnet is unavailable; Opus remains mandatory
-
-**Supersedes (narrowly):** the reviewer-provider clause in the 2026-09-23 temporary fallback (#345), only when a fresh Claude Sonnet context is unavailable.
-
-**Decision:** The orchestrating session may commission a fresh, independent context using the currently available model for ordinary review of lane work. Record the actual model, exact candidate SHA, checked evidence, verdict, and findings. This does not change reviewer independence or the review count required by risk classification. It never substitutes for the final Opus 5.5 review on security-scope work; such a candidate waits for Opus before merge.
-
-**Why:** Claude Sonnet is unavailable in the current session, while P0 work should continue. The user explicitly authorized the current model as the ordinary-review fallback and reaffirmed that Opus remains the final reviewer.
-
-**Decided by:** Thomas, 2026-09-23, in session.
-
-### 2026-09-23 · Provision a local staff person during post-boot password signup
-
-**Decision:** The `/sign-up/email` user-create hook ensures an internal staff `person` row exists before a local password signup completes. It does not assign a person to an OAuth callback; the identity connection must determine portal and organisation when that provisioning path is implemented.
-
-**Why:** The boot seed only covers users present at startup, so later local signups otherwise resolve to `missing_identity` (#315 S7). Treating every external callback as internal staff would invent portal and organisation authority. The route-specific local-signup hook follows the current boot-seed rule while leaving external identity provisioning to its declared connection.
-
-**Decided by:** Thomas, 2026-09-23, by approving #324's signup-or-lazy-resolution acceptance and continuing this implementation.
-
 ## Format
 
 ```markdown
@@ -33,7 +15,160 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-24 · GPT-6 Luna replaces Sonnet for ordinary reviews on active P0 lanes
+
+**Decision:** For the currently active P0 work, use fresh independent GPT-6 Luna contexts
+for Sonnet-tier implementation and ordinary reviews when the Sonnet provider is at its
+usage limit. This substitution does not change review counts, independence requirements,
+or the exact-head rule. Every security-scope candidate still requires its separate final
+Opus 5.5 review before merge.
+
+**Why:** Thomas authorized continued P0 work with the available GPT-6 Luna agent while
+Claude/Sonnet capacity is exhausted; implementation and ordinary review should keep moving
+without representing GPT-6 as Opus.
+
+**Alternatives:** Stop all P0 implementation until Sonnet capacity returns; treat GPT-6 as
+Opus or waive the Opus gate. Rejected: implementation and ordinary review may proceed, but
+Opus remains mandatory for security-scope work.
+
+**Decided by:** Thomas, 2026-09-24, in session.
+
+
+### 2026-09-24 · The security-review scope adds `packages/domain/src/identity/**` and `apps/api/src/permissions/**`
+
+**Decision:** `docs/04-engineering/ci-cd.md`'s authoritative security-review scope list gains two globs:
+- `packages/domain/src/identity/**`, the P3 identity rules: claim normalisation, SCIM validation and PATCH, role limits and customer reach;
+- `apps/api/src/permissions/**`, which holds `resolveIdentity` (#315) and the #8 shadow-mode middleware (#323).
+
+From now on, any PR touching either path needs the Opus 5.5 security review, enforced by CI.
+
+**Why:**
+- #346's Opus review (S11) found the identity rules outside the scope, although they decide who gets which roles and reach. The same review found a ReDoS and a fail-open role mapping in that code.
+- `apps/api/src/permissions/**` was also outside it. #315 and #323 were only reviewed by Opus because the orchestrating session commissioned it.
+
+This only tightens the gate. It removes nothing.
+
+**Decided by:** the orchestrating session, 2026-09-24, under Thomas's standing delegation. There was one clearly recommended option.
+
+### 2026-09-23 · Require coverage and full-stage smoke contexts in `protect-main` (#10)
+
+**Decision:** The active `protect-main` ruleset now requires the exact `domain coverage (90%)`,
+`integration - Postgres 18`, and `e2e - protected-route redirect` status contexts.
+`integration - Postgres 18` already ran in CI without blocking merges. The other two jobs are
+**first defined by PR #355**. Until #355 merges, no PR can produce those two contexts, so the
+ruleset blocks every merge. #355 must merge first. (Corrected by the orchestrating session
+from #355's Opus review, S5.)
+
+**Why:** A quality gate is effective only when the merge control requires it. The ruleset
+was updated without removing or changing any existing required context; its live state was
+verified after the update. Opus review remains required for the security/control-plane
+changes on the candidate before merge.
+
+**Alternatives:** Leave these as informational checks. Rejected because merge could proceed
+despite failed coverage, database integration, or browser-smoke gates.
+
+**Decided by:** The orchestrating session, 2026-09-23, under Thomas's instruction to continue
+P0 and take the recommended option.
+
+### 2026-09-23 · OpenAPI contract tools and inherited-lint ratchet
+
+**Decision:** Add `@redocly/cli` 2.54.2 as an exact development dependency; run Redocly's
+recommended rules and compare findings to those generated from the immutable `origin/main`
+API contract. Pin `oasdiff` 1.32.1 and verify its Linux x64 release archive with the
+published SHA-256 on every run; fail on `WARN`-level breaking changes against `origin/main`.
+
+**Why:** P0 #10 and this document already require OpenAPI lint and breaking-change detection.
+The inherited spec has five identical-path errors, six ambiguous-path warnings, four missing
+4xx-response warnings, and one missing license warning. Comparing to the base branch allows
+existing contract issues to be tracked without letting new ones enter unnoticed; the
+candidate cannot widen the baseline. The official oasdiff release publishes the binary outside npm, so
+the check pins and verifies the upstream artifact rather than adding an unverified package.
+
+**Alternatives:** Leave the contract check drift-only; disable inherited lint rules; use an
+unpinned network installer. Rejected: these either leave the documented gate incomplete,
+hide all future findings in those categories, or do not verify the downloaded tool.
+
+**Decided by:** Thomas, 2026-09-23 (selected recommended option).
+
+### 2026-09-23 · Domain coverage gate thresholds
+
+**Decision:** Enforce minimum 90% statements, lines, and functions for `packages/domain`;
+report branch coverage but do not threshold it.
+
+**Why:** The existing CI/CD contract says 90% coverage for the domain package, and current
+coverage is above 90% for these three dimensions. Branch coverage is useful diagnostic
+information, but applying the same threshold would silently redefine the documented gate
+which would change what the documented gate means. (An earlier draft of this entry cited
+88.77% branch coverage. At #355's head, branch coverage is 95.15%, so branches are reported
+but not given a threshold, deliberately and not because the branch number fails.)
+
+**Alternatives:** Apply 90% to branches too, or leave the threshold unspecified. Rejected:
+the former exceeds the existing contract without a stated reason; the latter would leave
+the documented gate unenforced.
+
+**Decided by:** Thomas, 2026-09-23 (selected recommended option).
+
+### 2026-09-23 · Current-model ordinary-review fallback when Sonnet is unavailable; Opus remains mandatory
+
+**Supersedes (narrowly):** the reviewer-provider clause in the 2026-09-23 temporary fallback (#345), only when a fresh Claude Sonnet context is unavailable.
+
+**Decision:** The orchestrating session may commission a fresh, independent context using the currently available model for ordinary review of lane work. Record the actual model, exact candidate SHA, checked evidence, verdict, and findings. This does not change reviewer independence or the review count required by risk classification. It never substitutes for the final Opus 5.5 review on security-scope work; such a candidate waits for Opus before merge.
+
+**Why:** Claude Sonnet is unavailable in the current session, while P0 work should continue. The user explicitly authorized the current model as the ordinary-review fallback and reaffirmed that Opus remains the final reviewer.
+
+**Decided by:** Thomas, 2026-09-23, in session.
+
+
+### 2026-09-23 · Provision a local staff person during post-boot password signup
+
+**Decision:** The `/sign-up/email` user-create hook ensures an internal staff `person` row exists before a local password signup completes. It does not assign a person to an OAuth callback; the identity connection must determine portal and organisation when that provisioning path is implemented.
+
+**Why:** The boot seed only covers users present at startup, so later local signups otherwise resolve to `missing_identity` (#315 S7). Treating every external callback as internal staff would invent portal and organisation authority. The route-specific local-signup hook follows the current boot-seed rule while leaving external identity provisioning to its declared connection.
+
+**Decided by:** Thomas, 2026-09-23, by approving #324's signup-or-lazy-resolution acceptance and continuing this implementation.
+
+### 2026-09-23 · Storybook 10 compatibility spike for `packages/ui`
+
+**Decision:** Pin `storybook` and `@storybook/react-vite` to `10.6.0` in
+`packages/ui`; keep `@tailwindcss/vite` available to the package's Storybook config. The
+representative Button story builds on the current stack: Node `24.20.0`, React `19.2.8`,
+Vite `8.2.1` (Rolldown), and TypeScript `7.0.2`.
+
+**Why:** `pnpm --filter @taskdesk/ui build-storybook` completed successfully. Its output
+reported Vite `8.2.1` and emitted a Rolldown runtime chunk. A TypeScript 7 no-emit check of
+the Storybook config and story passed. The dev server also started; `GET /` returned `200`
+and `/index.json` listed all three Button stories. Storybook's Vite builder needed the
+Tailwind Vite plugin declared directly in `packages/ui` because pnpm does not expose
+`apps/web`'s dependency to that workspace package. Build emitted a non-blocking warning for
+the 1.1 MB preview chunk.
+
+**Alternatives:** A separate app-level Storybook setup would not exercise the design-system
+package boundary used by primitive stories.
+
+**Decided by:** Storybook 10 is already selected by `tech-stack.md`; the pin and compatibility
+result were recorded by the implementing agent, 2026-09-23.
+
 ---
+
+### 2026-09-23 · The P3 identity gate covers all 25 named acceptance tests
+
+**Decision:** Before the P3 identity gate closes, all 25 acceptance tests named in `identity-provisioning.md` must pass against a real Microsoft Entra test tenant. The phase, release, security-evidence and issue #39 gate wording changes from 17 tests to 25.
+
+**Why:** The spec now names 25 acceptance tests. The additions include OIDC configuration, session revocation, and regressions for Entra quirks. Gating only the original 17 would leave security-relevant behaviour unproven against the provider P3 is meant to support.
+
+**Alternatives:** Keep the 17-test subset. Rejected, because it is not the complete acceptance suite.
+
+**Decided by:** Thomas, 2026-09-23. A lane agent drafted the entry. Thomas confirmed the decision to the orchestrating session in session on 2026-09-23, and the orchestrator recorded it.
+
+### 2026-09-23 · SCIM duplicate conflicts share one generic external 409
+
+**Decision:** Every SCIM identity conflict returns an identical generic `409`, with no existing-resource id and no conflict class. That covers same-connection conflicts, cross-connection conflicts, and conflicts across organisations. The provisioning event may keep the internal distinction.
+
+**Why:** If a same-connection duplicate returned the existing id and a cross-connection conflict didn't, a caller could tell whether an identity exists inside another tenant boundary. The IdP can reconcile through its own next list or filter request.
+
+**Alternatives:** Keep IP-32's existing-resource id in the detail. Rejected, because it lets the caller tell the two conflict types apart.
+
+**Decided by:** Thomas, 2026-09-23. A lane agent drafted the entry. Thomas confirmed the decision to the orchestrating session in session on 2026-09-23, and the orchestrator recorded it.
 
 ### 2026-09-23 · Until the lane agents' review capacity returns (2026-09-30), a fresh Claude Sonnet context does the ordinary independent review
 
