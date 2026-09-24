@@ -41,6 +41,7 @@ const MUST_REQUIRE_REVIEW = [
   "scripts/ci/check-env.mjs",
   "scripts/ci/lib/diff.mjs",
   "scripts/ci/lib/security-paths.mjs",
+  "scripts/lib/local-certificate.sh",
   "scripts/ci/env-baseline.json",
   "turbo.json",
   // the authoritative document that defines the list

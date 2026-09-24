@@ -136,6 +136,7 @@ turbo.json                           pnpm-lock.yaml
 docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
                                      .npmrc
                                      .pnpmfile.cjs
+scripts/lib/**
 ```
 
 **Why the last two lines of the first block were added** (2026-09-09, from an independent
