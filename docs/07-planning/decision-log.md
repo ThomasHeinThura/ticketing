@@ -122,8 +122,7 @@ migration's contents or folding the shadow tables into #308's shared schema lane
 would change the recorded lane boundary and generate a different migration than #323's
 hand-written table contract.
 
-**Decided by:** Codex GPT-6, 2026-09-23, under the user's direction to continue the P0
-gates and the repository's standing migration rules.
+**Decided by:** the orchestrating session, 2026-09-23. It adopted the #323 lane's migration-sequencing fix, which #323's Opus S9 required. This is an implementation sequencing detail, not an owner decision.
 
 ### 2026-09-23 · #8 Slice 2's shadow mode: an env switch, two Postgres evidence tables, read-only row-scope exposure
 
