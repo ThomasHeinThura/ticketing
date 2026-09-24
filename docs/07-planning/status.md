@@ -1,35 +1,22 @@
-**2026-09-24 continuation (P0 #9 / PR #341):** The error-boundary branch is being
-refreshed onto current `main` after #335 merged. Conflict resolution keeps the current-main
-decision log, #335 security-review record and status snapshot; the feature-specific component,
-stories, test and design-system change remain. The refreshed candidate still needs exact-head
-ordinary review, the mandatory Opus review and required checks. The refreshed-head ordinary
-review found that falsy thrown values could blank the subtree; the boundary now normalizes
-every thrown value to an `Error`, with regressions for `undefined`, `null`, `0` and `""`.
-The UI suite passes 61 tests, UI typecheck passes, and the Storybook 10.6.0 build succeeds.
-#9 is not complete.
-
-**2026-09-24 continuation (P0 #324 / #8 Slice 2b):** The #324 shadow-coverage branch now
-integrates `origin/main@f22f0100cb3d5a1ab3ff6dbc0c20b4e298fd488c`, including #323, #334,
-#335 and #356. The conflict resolution preserves #324's explicit legacy-authorization
-markers and separate workspace/project provenance while retaining the current mainline
-permission reach model and the latest #323 review attestation. After rebuilding the
-workspace permissions package to refresh its ignored `dist` output, API typecheck passed;
-focused permission tests passed 82/82 and the Postgres shadow-mode integration suite passed
-15/15 against isolated `taskdesk_p0_324_test` on the lane Postgres service. The first
-integration attempt used the absent local `localhost:5432` fallback and failed to connect;
-the rerun used the dedicated lane database. The PR is still stacked on the old #323 branch
-and must be retargeted to `main`; fresh ordinary integration review and exact-head Opus
-security review remain pending. No enforcement or P0 completion is claimed.
-
 # Status — a POINT-IN-TIME SNAPSHOT
 
-**2026-09-24 orchestrator snapshot — `main` at `c4e1810`.** Merged today, each with every
+**2026-09-24 continuation (P0 #9 / PR #341):** The error-boundary extraction has two
+independent CLEAR ordinary reviews at `f433900`; focused UI tests (61), UI typecheck, and
+Storybook 10 build passed, with required CI green except the Opus-bound PR-template gate.
+Current `main` has advanced to `8f545c3`; PR #341 is being refreshed against it. Exact-head
+review and CI must be refreshed after integration. Opus remains required before merge; no P0
+completion is claimed.
+
+
+**2026-09-24 orchestrator snapshot — `main` at `663c0cb`.** Merged today, each with every
 required check green on the exact head and an Opus 5.5 attestation of that head:
 #355 (`776999d`, Playwright smoke + domain coverage + integration gates), #323 (`9d5deb9`,
 request-path policy shadow mode), #334 (`ecb5b63`, `sees_all` scoped to granting workspaces),
 #356 (`3a45fc5`, security scope widened to identity and API permissions), #335 (`f22f010`,
 Storybook 10.6.0), #338 (`c4e1810`, asset/websocket existence oracles masked; the #317 timing
-residue S1 stays open). `protect-main` now requires **15** checks with strict up-to-date
+residue S1 stays open), #332 (`3fde7f6`, env-read detector regression tests), #354 (`663c0cb`,
+#8 Slice 2b shadow coverage; its S1 — shadow events store an unvalidated caller `workspace_id` on
+denial — must be fixed before shadow mode runs in a shared deployment). `protect-main` now requires **15** checks with strict up-to-date
 branches, so each merge makes every other candidate BEHIND; a clean merge from `main` then needs
 a fresh Opus merge-head attestation before the review-note binding passes again. Open P0 items
 still outstanding: #8's per-router deployed-traffic coverage report, and #9 beyond the merged
