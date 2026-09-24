@@ -1,5 +1,57 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+**2026-09-24 orchestrator snapshot — `main` at `c4e1810`.** Merged today, each with every
+required check green on the exact head and an Opus 5.5 attestation of that head:
+#355 (`776999d`, Playwright smoke + domain coverage + integration gates), #323 (`9d5deb9`,
+request-path policy shadow mode), #334 (`ecb5b63`, `sees_all` scoped to granting workspaces),
+#356 (`3a45fc5`, security scope widened to identity and API permissions), #335 (`f22f010`,
+Storybook 10.6.0), #338 (`c4e1810`, asset/websocket existence oracles masked; the #317 timing
+residue S1 stays open). `protect-main` now requires **15** checks with strict up-to-date
+branches, so each merge makes every other candidate BEHIND; a clean merge from `main` then needs
+a fresh Opus merge-head attestation before the review-note binding passes again. Open P0 items
+still outstanding: #8's per-router deployed-traffic coverage report, and #9 beyond the merged
+Storybook 10 spike. Per-PR state is not kept here — use `gh pr list`.
+
+**2026-09-24 continuation (P0 #10):** Three independent GPT-6 review contexts passed the
+then-current PR #355 head `d74eadbcaa271567bdde5d931532f7558aa744c8`. Their follow-up checks
+confirmed the current-head screenshot artifact is uploaded and identified stale CI schedule
+wording plus two gate-manifest explanations that said existing `packages/ui`/`packages/domain`
+did not exist. The explanations are corrected; `check:tokens` and `check:deps` remain disabled
+because their checkers are not implemented. Exact-head CI passed all completed required jobs;
+Postgres integration was still pending, and Opus review remains mandatory before merge.
+
+**2026-09-23 continuation (P0 #10):** The fetch, mutable-baseline, and oasdiff-binary review
+findings were fixed on PR #355. At exact head `de70342e23fef6a8130696304908cf1e41ab800b`,
+the coverage and browser-smoke contexts passed, while Postgres integration and several fast
+checks were still running; the previous review also found that an earlier status sentence
+prematurely reported them all as passing and it was corrected here. The PR-template check
+still requires completed ordinary reviews and a committed Opus review note. The live
+`protect-main` ruleset requires `domain coverage (90%)`, `integration - Postgres 18`, and
+`e2e - protected-route redirect`; every pre-existing required context was preserved. #10 and
+P0 are not claimed complete, and no merge is authorized before final Opus review and all
+exact-head gates.
+
+The full workflow now includes `opened` and `reopened` pull-request events so these required
+contexts are produced for new and reopened candidates; the workflow reconciliation checks
+that trigger set, and a regression probe fails if the full workflow narrows those events
+while retaining `merge_group`. The probe passed 54/54; after clearing ignored generated web
+build/test output, the local fast manifest passed 18 enabled gates with 0 failures and 8
+gates remain explicitly not enabled.
+
+**2026-09-23 continuation (P0 #10):** The Playwright protected-route redirect smoke on
+PR #355 passed its browser job and Postgres integration job at exact head
+`ac588fa34fa35f9d963c76fb9acb493097a3ba72`; an independent GPT-6 Luna ordinary review
+passed. A new domain coverage gate is now implemented on that candidate: `pnpm
+test:coverage` enforces 90% statements, lines, and functions for `packages/domain`, with
+branch coverage reported but not thresholded. The local run passed 470 tests at 97.61%
+statements, 97.66% lines, 98.50% functions, and 95.15% branches. The contract gate combines
+drift checking, Redocly lint findings compared to immutable `origin/main` (16 currently
+remain), and a SHA-verified pinned oasdiff breaking-change comparison. The fast manifest
+passed 18 enabled checks after clearing generated browser/build artifacts that had
+contaminated local checks. The first CI run found a bad Git fetch flag and a candidate-owned
+lint baseline; both are being corrected. Exact-head review and CI are pending. Opus remains
+mandatory and pending; neither #10 nor P0 is claimed complete.
+
 > ## ⚠ How to read this file
 >
 > **Snapshot taken:** 2026-09-22 — a thirteenth pass, same day as the eleventh and twelfth.
@@ -710,6 +762,17 @@ actually depends on, never by "P0 isn't finished yet." It carries live PR/issue 
 — like the rest of this file, and unlike `AGENTS.md`/`CLAUDE.md` — it is refreshed here
 rather than kept permanently accurate; re-check `gh pr list`/`gh issue list` before trusting
 a row that looks old.
+
+**P0 #10 continuation — 2026-09-23:** The 2026-09-23 decision log selected Playwright
+screenshots for G8. A narrow first browser test now exercises the existing logged-out
+protected-route redirect and preserved return URL in a real browser; it is wired as a
+required CI smoke and into `pnpm test:all`. This is not the full authenticated
+agent/portal journey suite and does not close #10. The remaining browser security,
+reduced-motion, mobile, axe, visual-baseline, and performance-budget gates still need their
+fixtures or agreed scope/thresholds. The candidate is on `fix/10-playwright-smoke`; run its
+browser test with `pnpm --filter @taskdesk/web test:e2e` and review the exact branch SHA
+before treating it as merged or complete.
+
 
 **States:** `CRITICAL_NOW` (directly advances the current bottleneck) ·
 `NEXT_DEPENDENCY` (becomes critical the moment the current blocker clears) ·

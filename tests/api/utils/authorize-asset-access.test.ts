@@ -82,14 +82,14 @@ describe("authorizeAssetAccess", () => {
     expect(status).toBe(401);
   });
 
-  it("rejects an authenticated non-member for a private asset", async () => {
+  it("masks a foreign asset as missing for an authenticated non-member", async () => {
     state.caller = "outsider";
 
     const status = await statusOf(
       authorizeAssetAccess(context, { workspaceId: "workspace-1" }),
     );
 
-    expect(status).toBe(403);
+    expect(status).toBe(404);
   });
 
   it("allows a workspace member to read a private asset", async () => {

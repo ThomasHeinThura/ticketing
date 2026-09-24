@@ -342,15 +342,16 @@ Modelled on Jira Service Management, which got these rules right.
 
 ```ts
 type Reach =
-  | { kind: 'all' }                          // instance admin, or sees_all granted
+  | { kind: 'all' }                          // instance admin
   | { kind: 'organisation'; ids: string[] }  // customers: their org only
-  | { kind: 'membership' };                  // staff: projects they are a member of
+  | { kind: 'membership' }                   // staff: projects they are a member of
+  | { kind: 'membership_with_workspaces'; workspaceIds: string[] }; // membership plus sees_all in these workspaces
 ```
 
 Resolution order for "may this person see project P?":
 
 1. `instance:admin` ⇒ yes.
-2. Explicit `sees_all` grant on their workspace membership ⇒ yes.
+2. Explicit `sees_all` grant on a workspace membership ⇒ yes within that workspace only.
 3. Project membership ⇒ yes.
 4. Membership of an **ancestor** project ⇒ yes (hierarchy inheritance, from OpenProject).
 5. Team membership where the team **owns** the project — `project.owner_team_id` — ⇒ yes.
