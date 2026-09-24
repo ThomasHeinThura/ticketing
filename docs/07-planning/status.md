@@ -1580,6 +1580,16 @@ password value is blank and that existing-secret option is disabled), not a cred
 GitHub Advanced Security fails because its requested model is unsupported. Neither scanner
 result has been suppressed or represented as passing.
 
+After this entry was first written, #354's base ref was found to have advanced beyond the
+lane's cached remote-tracking ref. The lane now has a local merge candidate that includes
+the current #323 head (`4f1a272`) and the latest #323 Opus report. The two new denied-param
+integration probes now poll for their own persisted evidence instead of assuming a fixed
+300 ms is sufficient. On this merged tree, the focused evaluator suite passed 31/31, the
+Testcontainers shadow integration file passed 15/15, API typecheck passed, Biome passed
+with the existing environment-variable warnings, and `git diff --check` passed. These
+checks are local evidence only; the merge candidate still needs publication and exact-head
+GitHub CI. The per-router deployed-traffic report and final Opus review remain outstanding.
+
 On #10 / PR #355, the documented root `pnpm test:e2e` command was missing from `package.json`.
 Added the root alias and aligned CI and the `test-all` manifest to call it. The protected
 route smoke passes locally through the documented root command. Commit `0f10f04` is pushed;
