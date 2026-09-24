@@ -184,3 +184,45 @@ Because #338 folds reach into the lookup SQL, an out-of-reach row is indistingui
 missing one, and the marker stays `unknown`. Denials on every `workspaceAccess.from<Resource>`
 route are therefore `legacy_outcome_unknown`, never compared. This is honest, not misleading.
 But cut-over evidence for those routes covers only the allow side.
+
+## Merge-head attestation (Opus 5.5)
+
+**Reviewed head:** `5a24e8774292d842723c7cd059703a7b36b183b2`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `3fde7f62270f1901e64cc8039285a47c03001599` into the previously attested head `1beda56`.
+`1beda56` is note-only over the reviewed code head `78dba72`. Main gained two changes since
+the old base `c4e1810`:
+- #358: `docs/07-planning/status.md`
+- #332: `scripts/ci/lib/env-reads.test.mjs` and its review note
+
+Neither touches `apps/`, `packages/` or `tests/`.
+
+- **Parents:** exactly (`1beda56`, `3fde7f6`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution.
+- **PR change unchanged:** the PR's own added and removed lines are identical between
+  `git diff c4e1810 1beda56` and `git diff 3fde7f6 5a24e87`. Only the hunk offsets in
+  `status.md` differ; it is the one overlapping file, and it auto-merged.
+- **Interaction:** none with the code. #332 adds tests only. #358 is docs.
+  - **Non-blocking, for the orchestrator:** this PR's `status.md` paragraph sits above the
+    `# Status` heading. It says the PR "is still stacked on the old #323 branch and must be
+    retargeted to `main`", but the PR's base is already `main`. It will be stale once merged.
+    `status.md` is orchestrator-owned.
+- **Tests at `5a24e87`** (packages built first):
+  - `@taskdesk/permissions`: 13 files / 261 tests pass
+  - `apps/api test:permissions`: 10 / 80 pass
+  - `apps/api test:unit`: 58 / 488 pass
+  - `tests/api-integration/permissions-shadow-mode.test.ts`: 1 / 15 pass, on the private DB
+    `opus354c_test`, dropped afterwards
+  - The worktree stays clean after `pnpm install --frozen-lockfile --offline`.
+- **CI at `5a24e87` when this was written:** `pull request template + security review` failed
+  because this file was STALE for want of this note. That is expected.
+  - GitGuardian (not required) re-reports incident 37541345, `charts/taskdesk/values.yaml:245`
+    `passwordKey: postgres_uri`, via the main-merge commit `52d1afc`. That line is from #308,
+    and this PR does not touch `charts/`. It is a key name, not a credential, so it is a
+    false positive.
+  - Integration, e2e, unit, build, the gate checkers and CodeQL analysis were still running.
+    Merging needs every required context green.
+
+**Verdict at `5a24e8774292d842723c7cd059703a7b36b183b2`: CLEAR.** The earlier findings carry
+over unchanged.
