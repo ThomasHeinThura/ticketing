@@ -1561,11 +1561,13 @@ SAN; the runbook and observability/security/configuration docs now mark `/metric
 planned and give working container/database/log diagnostics. The full metrics feature
 remains outside this deployment slice. Local host-port testing did not exercise default
 80/443 because this environment reserves those ports; the stack and volumes were removed.
-Follow-up review work also pins both documented GitHub attestation checks to
-`refs/heads/main` and checks the selected-source predicate's image digest against the
-immutable image reference. Thomas authorized fresh independent GPT-6 contexts for P0
-ordinary reviews while Sonnet is unavailable; that substitution is recorded in the
-decision log and does not replace Opus.
+Follow-up review work pins both documented GitHub attestation checks to `refs/heads/main`
+and checks the selected-source predicate's image digest against the immutable image
+reference. It also checks existing local certificates for all four route hostnames and
+regenerates stale script-managed certificates, and replaces unavailable metric references
+in the runbook with container, database and log diagnostics. Thomas authorized fresh
+independent GPT-6 contexts for P0 ordinary reviews while Sonnet is unavailable; that
+substitution is recorded in the decision log and does not replace Opus.
 Opus 5.5 review, live release signing, rollback verification, and the PR's author-attribution
 reconciliation remain open.
 

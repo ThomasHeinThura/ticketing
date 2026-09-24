@@ -171,7 +171,13 @@ esac
 # ---------------------------------------------------------------------------
 if [ "$MODE" = "local" ]; then
   DOMAIN="${DOMAIN:-localhost}"
-  if [ ! -f "$CERT_DIR/local.crt" ] || [ ! -f "$CERT_DIR/local.key" ]; then
+  local_certificate_covers_routes() {
+    [ -f "$CERT_DIR/local.crt" ] || return 1
+    for hostname in "ticket.${DOMAIN}" "portal.${DOMAIN}" "mail.${DOMAIN}" "files.${DOMAIN}"; do
+      openssl x509 -in "$CERT_DIR/local.crt" -noout -checkhost "$hostname" >/dev/null 2>&1 || return 1
+    done
+  }
+  if [ ! -f "$CERT_DIR/local.key" ] || ! local_certificate_covers_routes; then
     say "generating a self-signed certificate for *.${DOMAIN}"
     mkdir -p "$CERT_DIR"
     openssl req -x509 -newkey rsa:2048 -nodes -days 825 \

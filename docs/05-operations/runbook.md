@@ -70,7 +70,7 @@ dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-task
 
 | Cause | Fix |
 | --- | --- |
-| DB pool exhausted | `db_pool_waiting > 0`. Find the long-running query; consider raising the pool |
+| DB connections high | Inspect the `pg_stat_activity` query above and TaskDesk logs for pool errors; pool waiters are not currently instrumented |
 | Slow query | `pg_stat_statements`; `EXPLAIN ANALYZE`; add an index |
 | Event loop lag | A job is hogging the loop — check which is running and whether it is chunked |
 | Valkey down | Degraded, not broken. Restart it |
@@ -94,12 +94,13 @@ dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-task
 
 ```bash
 dc logs --since=1h taskdesk | grep -Ei 'outbox|notification' || true
+dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-taskdesk}" -c "select state, count(*) as rows, max(attempts) as max_attempts from outbox group by state order by state;"
 ```
 
 | Cause | Fix |
 | --- | --- |
-| `outbox_pending` rising | Delivery failing. God Mode → Notifications → test |
-| `outbox_dead > 0` | Six attempts failed. Inspect the error, fix, redeliver |
+| Pending outbox rows accumulating | Delivery failing. Check TaskDesk logs and God Mode → Notifications → test |
+| Dead outbox rows present | Six attempts failed. Inspect delivery details, fix, redeliver |
 | SMTP rejecting | Test in God Mode; the real error is shown |
 | Webhook endpoint down | Delivery history shows status codes. Auto-disabled after 24 h |
 | User preference off | Not a fault |

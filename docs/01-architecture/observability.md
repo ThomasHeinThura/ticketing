@@ -8,7 +8,7 @@ green tests". Observability is built in from Stage 0, not retrofitted.
 | Signal | Tool | Purpose |
 | --- | --- | --- |
 | **Logs** | Pino → stdout, JSON | What happened |
-| **Metrics** | Prometheus at `/metrics` | How much, how fast, how often |
+| **Metrics** | Planned: Prometheus at `/metrics` | How much, how fast, how often |
 | **Traces** | OpenTelemetry (optional exporter) | Where the time went, across a request |
 
 All three carry the same `traceId`, so an error report from a user can be pivoted to the
