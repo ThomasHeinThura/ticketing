@@ -2,12 +2,14 @@
 
 **2026-09-24 continuation (P0 #10 / #342):** Ordinary review of PR #352 head `ea8d182`
 identified two detector bypasses: JSX comment-like text could hide a later environment read,
-and rest destructuring was misattributed as named access. Both are fixed with regressions;
-the detector suite passes 31/31, the complete CI checker suite passes 533/533, and
+and rest destructuring was misattributed as named access. Rest handling is fixed. A follow-up
+review found that a line-leading `//` in JSX text still fooled comment suppression; the
+backstop now suppresses comment-contained reads only outside an open JSX element. The focused
+detector suite passes 32/32, the complete CI checker suite previously passed 533/533, and
 `pnpm check:env` scans 981 files with 29 attributable reads. The previous head's Postgres
 integration was still pending and its PR template remains blocked on exact-head Opus review.
-The fixes are committed in `d95debf` and need exact-head ordinary and Opus review after this
-mainline refresh. No merge or issue completion is claimed.
+These follow-up changes are uncommitted and need another exact-head ordinary review, then Opus
+review. No merge or issue completion is claimed.
 
 
 **2026-09-24 orchestrator snapshot — `main` at `663c0cb`.** Merged today, each with every

@@ -308,6 +308,26 @@ function tokenize(source) {
   return { tokens, comments };
 }
 
+// The lightweight tokenizer treats JSX text as JavaScript, so it can mistake a
+// line-leading `//` in an open JSX element for a comment. Keep the raw-access
+// backstop conservative there: only comments outside an unclosed JSX element may
+// suppress a raw environment spelling. This affects false-positive suppression
+// only; uncertain input remains visible to the fail-closed backstop.
+function hasOpenJsxElementBefore(source, position) {
+  const prefix = source.slice(0, position);
+  const tags = /<\/?([A-Za-z][\w.-]*)(?:\s[^<>]*?)?\s*(\/?)>/g;
+  const stack = [];
+  for (let match = tags.exec(prefix); match; match = tags.exec(prefix)) {
+    if (match[0].startsWith("</")) {
+      const open = stack.lastIndexOf(match[1]);
+      if (open >= 0) stack.splice(open, 1);
+    } else if (match[2] !== "/") {
+      stack.push(match[1]);
+    }
+  }
+  return stack.length > 0;
+}
+
 function collectTokenAliases(tokens) {
   const processAliases = new Set();
   const envAliases = new Set();
@@ -687,7 +707,11 @@ export function findEnvReads(source) {
     const comment = comments[commentIndex];
     if (comment && comment.start <= start && start < comment.end) {
       const lineStart = source.lastIndexOf("\n", comment.start - 1) + 1;
-      if (!source.slice(lineStart, comment.start).trim()) continue;
+      if (
+        !source.slice(lineStart, comment.start).trim() &&
+        !hasOpenJsxElementBefore(source, comment.start)
+      )
+        continue;
     }
 
     // `globalThis.process.env`'s token-level read begins at `globalThis`, while this

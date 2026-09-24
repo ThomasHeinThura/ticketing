@@ -190,6 +190,16 @@ test("environment detector does not trust JSX text as tokenizer-confirmed commen
   }
 });
 
+test("environment detector does not trust line-leading slash text inside JSX", () => {
+  const reads = findEnvReads(
+    "const X = () => <p>\n // note {process.env.STRIPE_SECRET_KEY}\n</p>;",
+  );
+  assert.deepEqual(
+    reads.map(({ kind, name, line }) => ({ kind, name, line })),
+    [{ kind: "alias", name: null, line: 2 }],
+  );
+});
+
 test("environment detector bounds malformed quoted strings to one line", () => {
   const reads = findEnvReads(
     "const text = 'unterminated\nprocess.env.TASKDESK_PORT;",
