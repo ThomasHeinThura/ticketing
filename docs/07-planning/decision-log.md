@@ -15,6 +15,82 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-24 · GPT-6 Luna replaces Sonnet for ordinary reviews on active P0 lanes
+
+**Decision:** For the currently active P0 work, use fresh independent GPT-6 Luna contexts
+for Sonnet-tier implementation and ordinary reviews when the Sonnet provider is at its
+usage limit. This substitution does not change review counts, independence requirements,
+or the exact-head rule. Every security-scope candidate still requires its separate final
+Opus 5.5 review before merge.
+
+**Why:** Thomas authorized continued P0 work with the available GPT-6 Luna agent while
+Claude/Sonnet capacity is exhausted; implementation and ordinary review should keep moving
+without representing GPT-6 as Opus.
+
+**Alternatives:** Stop all P0 implementation until Sonnet capacity returns; treat GPT-6 as
+Opus or waive the Opus gate. Rejected: implementation and ordinary review may proceed, but
+Opus remains mandatory for security-scope work.
+
+**Decided by:** Thomas, 2026-09-24, in session.
+
+### 2026-09-23 · Require coverage and full-stage smoke contexts in `protect-main` (#10)
+
+**Decision:** The active `protect-main` ruleset now requires the exact `domain coverage (90%)`,
+`integration - Postgres 18`, and `e2e - protected-route redirect` status contexts.
+`integration - Postgres 18` already ran in CI without blocking merges. The other two jobs are
+**first defined by PR #355**. Until #355 merges, no PR can produce those two contexts, so the
+ruleset blocks every merge. #355 must merge first. (Corrected by the orchestrating session
+from #355's Opus review, S5.)
+
+**Why:** A quality gate is effective only when the merge control requires it. The ruleset
+was updated without removing or changing any existing required context; its live state was
+verified after the update. Opus review remains required for the security/control-plane
+changes on the candidate before merge.
+
+**Alternatives:** Leave these as informational checks. Rejected because merge could proceed
+despite failed coverage, database integration, or browser-smoke gates.
+
+**Decided by:** The orchestrating session, 2026-09-23, under Thomas's instruction to continue
+P0 and take the recommended option.
+
+### 2026-09-23 · OpenAPI contract tools and inherited-lint ratchet
+
+**Decision:** Add `@redocly/cli` 2.54.2 as an exact development dependency; run Redocly's
+recommended rules and compare findings to those generated from the immutable `origin/main`
+API contract. Pin `oasdiff` 1.32.1 and verify its Linux x64 release archive with the
+published SHA-256 on every run; fail on `WARN`-level breaking changes against `origin/main`.
+
+**Why:** P0 #10 and this document already require OpenAPI lint and breaking-change detection.
+The inherited spec has five identical-path errors, six ambiguous-path warnings, four missing
+4xx-response warnings, and one missing license warning. Comparing to the base branch allows
+existing contract issues to be tracked without letting new ones enter unnoticed; the
+candidate cannot widen the baseline. The official oasdiff release publishes the binary outside npm, so
+the check pins and verifies the upstream artifact rather than adding an unverified package.
+
+**Alternatives:** Leave the contract check drift-only; disable inherited lint rules; use an
+unpinned network installer. Rejected: these either leave the documented gate incomplete,
+hide all future findings in those categories, or do not verify the downloaded tool.
+
+**Decided by:** Thomas, 2026-09-23 (selected recommended option).
+
+### 2026-09-23 · Domain coverage gate thresholds
+
+**Decision:** Enforce minimum 90% statements, lines, and functions for `packages/domain`;
+report branch coverage but do not threshold it.
+
+**Why:** The existing CI/CD contract says 90% coverage for the domain package, and current
+coverage is above 90% for these three dimensions. Branch coverage is useful diagnostic
+information, but applying the same threshold would silently redefine the documented gate
+which would change what the documented gate means. (An earlier draft of this entry cited
+88.77% branch coverage. At #355's head, branch coverage is 95.15%, so branches are reported
+but not given a threshold, deliberately and not because the branch number fails.)
+
+**Alternatives:** Apply 90% to branches too, or leave the threshold unspecified. Rejected:
+the former exceeds the existing contract without a stated reason; the latter would leave
+the documented gate unenforced.
+
+**Decided by:** Thomas, 2026-09-23 (selected recommended option).
+
 ### 2026-09-23 · Current-model ordinary-review fallback when Sonnet is unavailable; Opus remains mandatory
 
 **Supersedes (narrowly):** the reviewer-provider clause in the 2026-09-23 temporary fallback (#345), only when a fresh Claude Sonnet context is unavailable.
