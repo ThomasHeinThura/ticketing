@@ -4,7 +4,14 @@ import { roleGrantsOwner } from "../../../apps/api/src/utils/workspace-member-ro
 import { CallerNotOwnerError } from "../../../apps/api/src/workspace/controllers/workspace-membership-errors";
 
 const { state } = vi.hoisted(() => ({
-  state: { roleByUser: {} as Record<string, string | undefined> },
+  state: {
+    roleByUser: {} as Record<string, string | undefined>,
+    failMemberQueries: false,
+    // Issue #318 (security): `"workspaceId\u0000role"` -> `is_system`. Read by
+    // `isGenuineBuiltInRoleAssignment`'s `workspace_role` query. Absent from this map
+    // means "no row" (not genuine), exactly like a real, empty query result.
+    systemRoleByWorkspaceRole: {} as Record<string, boolean>,
+  },
 }));
 
 vi.mock("../../../apps/api/src/database", async () => {
@@ -13,6 +20,11 @@ vi.mock("../../../apps/api/src/database", async () => {
   const dialect = new PgDialect();
 
   let boundUserId: string | undefined;
+  let boundWorkspaceRoleKey: string | undefined;
+  // Which table the in-flight `.from(...)` call named -- `where()`'s params mean something
+  // different for `workspace_member` (issue #318 note preserved below) than for
+  // `workspace_role` (`[workspaceId, role]`, no `userId` at all).
+  let boundTable: "member" | "role" | undefined;
 
   // `require-workspace-capability.ts` now reads every row for the pair via
   // `workspaceMemberRoles` (`.select().from().where()`, no `.limit()` call
@@ -20,30 +32,69 @@ vi.mock("../../../apps/api/src/database", async () => {
   // is `.then()` on the chain itself, not a `.limit()` call. `limit` is kept
   // as a harmless passthrough in case any other call site still chains it.
   async function rowsForBoundUser() {
+    if (state.failMemberQueries) {
+      throw new Error("injected membership query failure");
+    }
     if (!boundUserId || !(boundUserId in state.roleByUser)) return [];
     const role = state.roleByUser[boundUserId];
     return role === undefined ? [] : [{ role }];
   }
 
+  // Issue #318 (security): the `workspace_role` twin of `rowsForBoundUser`, for
+  // `isGenuineBuiltInRoleAssignment`'s `.select({ isSystem }).from(workspaceRoleTable)
+  // .where(and(eq(workspaceId,...), eq(role,...))).limit(1)`.
+  async function rowsForBoundWorkspaceRole() {
+    if (
+      !boundWorkspaceRoleKey ||
+      !(boundWorkspaceRoleKey in state.systemRoleByWorkspaceRole)
+    ) {
+      return [];
+    }
+    return [
+      { isSystem: state.systemRoleByWorkspaceRole[boundWorkspaceRoleKey] },
+    ];
+  }
+
   const chain = {
     select: () => chain,
-    from: () => chain,
+    from: (table: unknown) => {
+      boundTable = table === schema.workspaceRoleTable ? "role" : "member";
+      return chain;
+    },
     where: (condition: Parameters<typeof dialect.sqlToQuery>[0]) => {
-      // `and(eq(workspaceId, ...), eq(userId, ...))` binds [workspaceId, userId], in that
-      // order — the exact shape `require-workspace-capability.ts`'s own query builds.
-      const [, userId] = dialect.sqlToQuery(condition).params;
-      boundUserId = typeof userId === "string" ? userId : undefined;
+      const params = dialect.sqlToQuery(condition).params;
+      if (boundTable === "role") {
+        // `and(eq(workspaceId, ...), eq(role, ...))` — both params identify the row.
+        const [workspaceId, role] = params;
+        boundWorkspaceRoleKey =
+          typeof workspaceId === "string" && typeof role === "string"
+            ? `${workspaceId}\u0000${role}`
+            : undefined;
+      } else {
+        // `and(eq(workspaceId, ...), eq(userId, ...))` binds [workspaceId, userId], in
+        // that order — the exact shape `workspaceMemberRoles`'s own query builds.
+        const [, userId] = params;
+        boundUserId = typeof userId === "string" ? userId : undefined;
+      }
       return chain;
     },
     limit: () => chain,
     // This mock stands in for Drizzle's own query builder, which is itself thenable --
     // awaiting `.select()...where()` directly, with no terminal `.limit()`/`.execute()` call,
     // is exactly what real Drizzle supports and what `workspaceMemberRoles` relies on.
+    // The two query shapes this mock stands in for return differently-shaped rows, so
+    // `onFulfilled` is left untyped rather than fighting Drizzle's own overloaded
+    // `.then()` signature for no safety benefit in a test-only mock.
     // biome-ignore lint/suspicious/noThenProperty: intentionally thenable, matching Drizzle
     then: (
-      onFulfilled: (rows: Array<{ role: string }>) => unknown,
+      // biome-ignore lint/suspicious/noExplicitAny: see comment above `then:`
+      onFulfilled: (rows: any) => unknown,
       onRejected?: (error: unknown) => unknown,
-    ) => rowsForBoundUser().then(onFulfilled, onRejected),
+    ) =>
+      (boundTable === "role"
+        ? rowsForBoundWorkspaceRole()
+        : rowsForBoundUser()
+      ).then(onFulfilled, onRejected),
   };
 
   return { default: chain, schema };
@@ -59,7 +110,13 @@ const { requireWorkspaceCapability, builtInRoleHasCapability } = await import(
  * "does this role hold `workspace:transfer_ownership`" everywhere in the codebase.
  */
 describe("builtInRoleHasCapability", () => {
-  it("grants workspace:transfer_ownership to owner, and refuses every other built-in role", () => {
+  beforeEach(() => {
+    state.roleByUser = {};
+    state.failMemberQueries = false;
+    state.systemRoleByWorkspaceRole = {};
+  });
+
+  it("grants workspace:transfer_ownership to owner, and refuses every other built-in role", async () => {
     const roles = [
       "owner",
       "admin",
@@ -71,38 +128,61 @@ describe("builtInRoleHasCapability", () => {
       "instance_admin",
     ] as const;
     for (const role of roles) {
+      // None of these reach the issue #318 genuine-row DB check: `owner` short-circuits to
+      // `true` without querying, and no OTHER built-in holds `workspace:transfer_ownership`
+      // at all, so the capability check itself returns `false` first. No `workspace_role`
+      // fixture is needed for this test to be meaningful.
       expect(
-        builtInRoleHasCapability(role, "workspace:transfer_ownership"),
+        await builtInRoleHasCapability(
+          "ws-1",
+          role,
+          "workspace:transfer_ownership",
+        ),
         role,
       ).toBe(role === "owner");
     }
   });
 
-  it("still grants owner an ordinary, non-authority-granting capability", () => {
+  it("still grants owner an ordinary, non-authority-granting capability", async () => {
     // Sanity check that the function is not secretly hardcoded to the one capability this
     // batch adds — `workspace:read` is held by every workspace-tier role.
-    expect(builtInRoleHasCapability("viewer", "workspace:read")).toBe(true);
+    expect(
+      await builtInRoleHasCapability("ws-1", "owner", "workspace:read"),
+    ).toBe(true);
   });
 
-  it("fails closed for a role string naming no built-in role (a custom role's own slug)", () => {
+  it("fails closed for a role string naming no built-in role (a custom role's own slug)", async () => {
     expect(
-      builtInRoleHasCapability(
+      await builtInRoleHasCapability(
+        "ws-1",
         "acme-custom-lead",
         "workspace:transfer_ownership",
       ),
     ).toBe(false);
   });
 
-  it("fails closed for a missing role", () => {
+  it("fails closed for a missing role", async () => {
     expect(
-      builtInRoleHasCapability(undefined, "workspace:transfer_ownership"),
+      await builtInRoleHasCapability(
+        "ws-1",
+        undefined,
+        "workspace:transfer_ownership",
+      ),
     ).toBe(false);
-    expect(builtInRoleHasCapability(null, "workspace:transfer_ownership")).toBe(
-      false,
-    );
-    expect(builtInRoleHasCapability("", "workspace:transfer_ownership")).toBe(
-      false,
-    );
+    expect(
+      await builtInRoleHasCapability(
+        "ws-1",
+        null,
+        "workspace:transfer_ownership",
+      ),
+    ).toBe(false);
+    expect(
+      await builtInRoleHasCapability(
+        "ws-1",
+        "",
+        "workspace:transfer_ownership",
+      ),
+    ).toBe(false);
   });
 
   /**
@@ -114,7 +194,7 @@ describe("builtInRoleHasCapability", () => {
    * exists; `workspace_role` rows come only from seeding) -- it becomes reachable once the
    * roles CRUD (#40) ships a role-create route that lets a caller choose a role's `key`.
    */
-  it("fails closed, without throwing, for role strings that only match Object.prototype members", () => {
+  it("fails closed, without throwing, for role strings that only match Object.prototype members", async () => {
     for (const role of [
       "constructor",
       "__proto__",
@@ -123,14 +203,120 @@ describe("builtInRoleHasCapability", () => {
       "valueOf",
       "isPrototypeOf",
     ]) {
-      expect(() =>
-        builtInRoleHasCapability(role, "workspace:transfer_ownership"),
-      ).not.toThrow();
+      await expect(
+        builtInRoleHasCapability("ws-1", role, "workspace:transfer_ownership"),
+      ).resolves.not.toThrow();
       expect(
-        builtInRoleHasCapability(role, "workspace:transfer_ownership"),
+        await builtInRoleHasCapability(
+          "ws-1",
+          role,
+          "workspace:transfer_ownership",
+        ),
         role,
       ).toBe(false);
     }
+  });
+});
+
+/**
+ * Issue #318 (security), Opus review of PR #315 finding S2 — the genuine-row check itself
+ * (`isGenuineBuiltInRoleAssignment`, private to `require-workspace-capability.ts`, exercised
+ * here through `builtInRoleHasCapability` since it is the only exported surface). Every case
+ * uses `workspace:read` against `owner`/`admin`/`manager`/`lead`/`member`/`viewer` — the six
+ * workspace-tier roles that hold it (`instance_admin` and `customer` do not, rbac.md § Built-in
+ * roles) — so a `false` result can only come from the genuine-row check, never from the
+ * capability implication.
+ */
+describe("builtInRoleHasCapability — issue #318, the genuine-row check", () => {
+  beforeEach(() => {
+    state.roleByUser = {};
+    state.systemRoleByWorkspaceRole = {};
+  });
+
+  it("'owner' is genuine with no workspace_role row at all -- it is never checked against one", async () => {
+    // No entry in `state.systemRoleByWorkspaceRole` at all -- if the implementation ever
+    // queried the DB for "owner", this would come back "no row" and (wrongly) deny.
+    expect(
+      await builtInRoleHasCapability("ws-1", "owner", "workspace:read"),
+    ).toBe(true);
+  });
+
+  it("a non-owner built-in role is denied when no workspace_role row exists for it", async () => {
+    expect(
+      await builtInRoleHasCapability("ws-1", "manager", "workspace:read"),
+    ).toBe(false);
+  });
+
+  it("a non-owner built-in role is denied when a workspace_role row exists but is_system is false -- a CUSTOM row that merely shares the name (the escalation this issue closes)", async () => {
+    state.systemRoleByWorkspaceRole["ws-1\u0000manager"] = false;
+    expect(
+      await builtInRoleHasCapability("ws-1", "manager", "workspace:read"),
+    ).toBe(false);
+  });
+
+  it("a non-owner built-in role is granted when a GENUINE (is_system = true) workspace_role row exists", async () => {
+    state.systemRoleByWorkspaceRole["ws-1\u0000manager"] = true;
+    expect(
+      await builtInRoleHasCapability("ws-1", "manager", "workspace:read"),
+    ).toBe(true);
+  });
+
+  it("a genuine row in a DIFFERENT workspace does not leak authority into this one", async () => {
+    state.systemRoleByWorkspaceRole["ws-OTHER\u0000manager"] = true;
+    expect(
+      await builtInRoleHasCapability("ws-1", "manager", "workspace:read"),
+    ).toBe(false);
+  });
+
+  it("every non-owner built-in role independently requires its own genuine row", async () => {
+    const nonOwnerRoles = [
+      "admin",
+      "manager",
+      "lead",
+      "member",
+      "viewer",
+    ] as const;
+    for (const role of nonOwnerRoles) {
+      expect(
+        await builtInRoleHasCapability("ws-1", role, "workspace:read"),
+        `${role} without a row`,
+      ).toBe(false);
+      state.systemRoleByWorkspaceRole[`ws-1\u0000${role}`] = true;
+      expect(
+        await builtInRoleHasCapability("ws-1", role, "workspace:read"),
+        `${role} with a genuine row`,
+      ).toBe(true);
+    }
+  });
+
+  it("issue #320 S4: 'customer' can never gain work_item:read through this gate, no matter what workspace_role rows exist -- it is never seeded, so it can never be genuine", async () => {
+    // Unlike `manager`/`admin`/etc, `customer` HOLDS `work_item:read`
+    // (`CUSTOMER_CAPABILITIES`), so this reaches the genuine-row check rather than being
+    // refused by the capability-implication short-circuit alone -- the case #320's review
+    // found reachable through the legacy `Object.hasOwn(BUILT_IN_ROLES, role)` check, which
+    // has no scope filter at all.
+    expect(
+      await builtInRoleHasCapability("ws-1", "customer", "work_item:read"),
+    ).toBe(false);
+
+    // Even a colluding row that SOMEHOW got marked is_system -- e.g. a future bug in
+    // seed-default-workspace-roles.ts -- would not help, because that function only ever
+    // touches `viewer`/`member`/`admin`; this asserts the CURRENT mechanism denies it, and
+    // is here so the seed function's own scope is pinned by a second, independent test.
+    state.systemRoleByWorkspaceRole["ws-1\u0000customer"] = false;
+    expect(
+      await builtInRoleHasCapability("ws-1", "customer", "work_item:read"),
+    ).toBe(false);
+  });
+
+  it("issue #320 S4: 'instance_admin' never gains a workspace capability through this gate -- it holds no workspace-scope capability at all, so the capability check denies it before the genuine-row check even runs", async () => {
+    expect(
+      await builtInRoleHasCapability(
+        "ws-1",
+        "instance_admin",
+        "work_item:read",
+      ),
+    ).toBe(false);
   });
 });
 
@@ -162,6 +348,7 @@ function probe(userId: string, workspaceId = "ws-1") {
 describe("requireWorkspaceCapability", () => {
   beforeEach(() => {
     state.roleByUser = {};
+    state.failMemberQueries = false;
   });
 
   it("lets the owner through", async () => {
@@ -187,6 +374,35 @@ describe("requireWorkspaceCapability", () => {
   it("refuses a caller with no workspace_member row at all", async () => {
     const res = await probe("stranger-with-no-row");
     expect(res.status).toBe(403);
+  });
+
+  it("clears an earlier authorization marker when its own authorization lookup errors", async () => {
+    state.failMemberQueries = true;
+    const app = new Hono<{
+      Variables: {
+        userId: string;
+        workspaceId: string;
+        legacyAuthorization?: string;
+      };
+    }>()
+      .use("*", async (c, next) => {
+        c.set("workspaceId", "ws-1");
+        c.set("userId", "user-1");
+        c.set("legacyAuthorization", "allowed");
+        return next();
+      })
+      .get(
+        "/probe",
+        requireWorkspaceCapability("workspace:transfer_ownership"),
+        (c) => c.json({ ok: true }),
+      )
+      .onError((_error, c) =>
+        c.json({ legacyAuthorization: c.get("legacyAuthorization") }, 500),
+      );
+
+    const response = await app.request("/probe");
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ legacyAuthorization: "unknown" });
   });
 
   /**

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import db from "../database";
+import defaultDb, { type DatabaseInstance } from "../database";
 
 /**
  * Ensures API key schema matches Better Auth expectations:
@@ -8,8 +8,14 @@ import db from "../database";
  * - user_id is nullable (Better Auth inserts reference_id, not user_id)
  *
  * Must run after Drizzle `migrate()` so the `apikey` table exists (see `runStartupTasks`).
+ *
+ * Runs DDL (`ALTER TABLE`, `CREATE INDEX`), so `runStartupTasks` passes the
+ * migration/owner connection explicitly (issue #296) — the default parameter is a
+ * fallback for any other caller, not the path startup itself takes.
  */
-export async function migrateApiKeyReferenceId() {
+export async function migrateApiKeyReferenceId(
+  db: DatabaseInstance = defaultDb,
+) {
   console.log("🔄 Checking apikey table reference_id migration...");
 
   try {

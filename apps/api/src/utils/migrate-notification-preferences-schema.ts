@@ -1,11 +1,17 @@
 import { sql } from "drizzle-orm";
-import db from "../database";
+import defaultDb, { type DatabaseInstance } from "../database";
 
 /**
  * Repairs notification preference tables for instances where migration state
  * drift left the schema partially applied.
+ *
+ * Runs DDL (`CREATE TABLE`, `ALTER TABLE`, `CREATE INDEX`), so `runStartupTasks`
+ * passes the migration/owner connection explicitly (issue #296) — the default
+ * parameter is a fallback for any other caller, not the path startup itself takes.
  */
-export async function migrateNotificationPreferencesSchema() {
+export async function migrateNotificationPreferencesSchema(
+  db: DatabaseInstance = defaultDb,
+) {
   console.log("🔄 Checking notification preference schema...");
 
   try {

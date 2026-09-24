@@ -19,8 +19,17 @@ import capabilities from "./capabilities";
 import column from "./column";
 import comment from "./comment";
 import config from "./config";
-import db, { getDatabase, schema } from "./database";
+import db, {
+  closeMigrationPool,
+  getDatabase,
+  getMigrationDatabase,
+  schema,
+} from "./database";
+import { assertApplicationRoleIsNotPrivileged } from "./database/assert-application-role-is-not-privileged";
+import { assertNoMigrationUrlInApiProcess } from "./database/assert-no-migration-url-in-api-process";
+import { ensureApplicationRole } from "./database/ensure-application-role";
 import { prepareDatabaseStartup } from "./database/prepare-database-startup";
+import { resolveMigrationDatabaseConfig } from "./database/resolve-database-url";
 import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
@@ -33,6 +42,9 @@ import notification from "./notification";
 import notificationPreferences from "./notification-preferences";
 import oauth from "./oauth";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
+// Issue #8, Slice 2: shadow-mode request-path policy comparison, off by default. See the
+// call site below and that file's own header comment for the full design.
+import { runNextWithPolicyShadow } from "./permissions/shadow-middleware";
 import { initializePlugins } from "./plugins";
 // Importing this constructs and validates the registry at module load, so an invalid policy
 // refuses boot (#8 Slice 0). Keep the import even if its one use below moves: without a use,
@@ -698,7 +710,17 @@ export function createApp(options: { staticRoot?: string } = {}) {
       const windowId = c.req.header("X-TaskDesk-Window-Id");
       const userId = c.get("userId");
       const initiatorId = windowId ? `${userId}:${windowId}` : userId;
-      return await eventContext.run({ initiatorId }, next);
+      // Issue #8, Slice 2: `runNextWithPolicyShadow` wraps this SAME `next` in place of
+      // calling it directly — it evaluates the finished response against the declarative
+      // policy registry and logs any disagreement, off by default
+      // (`TASKDESK_POLICY_SHADOW`), never blocking or changing the response. It is called
+      // from inside this existing guard, not registered as a second `api.use("*", ...)`,
+      // specifically so the registration count at this key never changes — see that
+      // function's own doc comment (`apps/api/src/permissions/shadow-middleware.ts`) for
+      // why a second registration is not safe here.
+      return await eventContext.run({ initiatorId }, () =>
+        runNextWithPolicyShadow(c, next),
+      );
     } catch (error) {
       if (!(error instanceof HTTPException)) {
         console.error("API authentication failed:", error);
@@ -912,7 +934,20 @@ export function createApp(options: { staticRoot?: string } = {}) {
           throw new HTTPException(401, { message: "Unauthorized" });
         }
 
-        await validateWorkspaceAccess(userId, project.workspaceId);
+        try {
+          await validateWorkspaceAccess(userId, project.workspaceId);
+        } catch (error) {
+          // Authenticated callers must not distinguish an out-of-reach project
+          // from an unknown project during the WebSocket upgrade request.
+          if (
+            error instanceof HTTPException &&
+            error.status === 403 &&
+            error.message === "You don't have access to this workspace"
+          ) {
+            throw new HTTPException(401, { message: "Unauthorized" });
+          }
+          throw error;
+        }
       }
 
       const windowId = c.req.query("windowId");
@@ -987,36 +1022,108 @@ export function createApp(options: { staticRoot?: string } = {}) {
   };
 }
 
-export async function runStartupTasks() {
+/**
+ * Issue #296, S1 (Opus 5.5 review of PR #308, BLOCKING): this used to be one function,
+ * `runStartupTasks`, that did every DDL step AND every serving-process boot step inside
+ * the one long-running API process — which meant that process had to be *started* with
+ * `TASKDESK_MIGRATION_DATABASE_URL` in its environment, the owner/superuser credential.
+ * `closeMigrationPool()` closed the pool, but the review reproduced live that the URL
+ * itself stays in the process's own environment variables and in `/proc/self/environ`
+ * for that process's whole life — any process-level compromise (RCE, a malicious
+ * dependency, an arbitrary file read) could still connect as the owner and undo every
+ * append-only/no-DDL control this whole issue exists to build.
+ *
+ * The fix, per the review's recommended option: two entry points, run as two genuinely
+ * separate OS processes, so the owner credential is never in the serving process's
+ * environment at all — not "closed", never present.
+ *   - `runMigrationStep()` — everything that needs the owner/migration connection:
+ *     the hand-written pre-migrate fixups, Drizzle's own `migrate()`, and
+ *     `ensureApplicationRole`. Selected by `TASKDESK_ROLE=migrate` (see the
+ *     `isMainModule` block below), following the same env-var-selects-behaviour
+ *     pattern `TASKDESK_ROLE=web`/`jobs` already document
+ *     (`docs/05-operations/container-image.md`) — not a new, parallel mechanism.
+ *   - `runApiBootTasks()` — everything the serving process needs, using ONLY the
+ *     application connection: `assertApplicationRoleIsNotPrivileged`, the policy
+ *     registry log line (#302), the DML-only seed/backfill steps, plugin/scheduler/
+ *     websocket init. It also asserts, first, that its own environment carries no
+ *     migration credential at all (`assertNoMigrationUrlInApiProcess`) — a structural,
+ *     fail-loud backstop in case compose/Helm/an operator's own overlay ever wires the
+ *     owner URL to this process again.
+ *
+ * In compose and Helm, the migrate step is now a separate one-shot service/Job that
+ * alone receives `TASKDESK_MIGRATION_DATABASE_URL`; the API (and jobs) service/
+ * Deployment depends on it completing successfully and never receives that variable.
+ */
+export async function runMigrationStep(): Promise<void> {
   const currentDir = dirname(fileURLToPath(import.meta.url));
 
+  // Every DDL step below runs on the migration/owner connection
+  // (`TASKDESK_MIGRATION_DATABASE_URL`, falling back to `TASKDESK_DATABASE_URL` when
+  // unset — see `resolveMigrationDatabaseConfig`'s own doc comment for what that
+  // fallback means and who it is for), never on the application connection
+  // `getDatabase()` serves requests with — and in the split design this process never
+  // calls `getDatabase()` at all.
+  const migrationDb = getMigrationDatabase();
+
   await prepareDatabaseStartup({
+    resolveConfig: resolveMigrationDatabaseConfig,
     waitForDatabase: async () => {
       await waitForDatabase({
         query: async () => {
-          await getDatabase().execute(sql`SELECT 1`);
+          await migrationDb.execute(sql`SELECT 1`);
         },
       });
     },
     runStartupMigrations: async () => {
-      await migrateWorkspaceUserEmail();
-      await migrateSessionColumn();
+      await migrateWorkspaceUserEmail(migrationDb);
+      await migrateSessionColumn(migrationDb);
 
       console.log("🔄 Migrating database...");
-      await migrate(getDatabase(), {
+      await migrate(migrationDb, {
         migrationsFolder: `${currentDir}/../drizzle`,
       });
       console.log("✅ Database migrated successfully!");
+
+      // After Drizzle migrations: apikey table must exist so we can align columns
+      // with Better Auth (reference_id + nullable user_id).
+      await migrateApiKeyReferenceId(migrationDb);
+      await migrateNotificationPreferencesSchema(migrationDb);
+
+      // Creates/repairs the non-superuser application role and its grants — must
+      // run as the owner, after the schema it grants on exists, and before the
+      // application process ever connects as it for the first time.
+      await ensureApplicationRole(migrationDb);
     },
   });
 
-  // After Drizzle migrations: apikey table must exist so we can align columns
-  // with Better Auth (reference_id + nullable user_id).
-  await migrateApiKeyReferenceId();
+  // This process's whole job is done: close the pool. (The migrate step is one-shot
+  // and exits right after this returns, so the owner URL's exposure window is this
+  // short-lived process's lifetime, not the API's — the actual point of the split.)
+  await closeMigrationPool();
+}
+
+/**
+ * The serving process's own boot sequence — application connection only. See
+ * `runMigrationStep`'s doc comment above for why these are two separate functions,
+ * run from two separate OS processes, rather than two calls in one.
+ */
+export async function runApiBootTasks(): Promise<void> {
+  // S1's structural backstop: fail loudly, before anything else, if this process's
+  // own environment carries the owner/migration credential at all. A correctly
+  // configured compose/Helm deployment never sets it here in the first place; this
+  // is what catches a misconfiguration (a copy-pasted overlay, a hand-edited
+  // Deployment) rather than silently running with it present but merely "unused".
+  assertNoMigrationUrlInApiProcess();
+
+  // First use of the application connection. `runMigrationStep` (a separate process
+  // that has already exited by the time this runs) created/fixed the role this
+  // process authenticates as, so this is also the right moment to assert the
+  // invariant every append-only/no-DDL control on this connection depends on: it
+  // must not be a superuser, and it must not own anything.
+  await assertApplicationRoleIsNotPrivileged(getDatabase());
 
   console.log(`🔐 ${policyRegistry.entries.length} policies loaded`);
 
-  await migrateNotificationPreferencesSchema();
   await migrateColumns();
   await seedDefaultWorkspaceRoles();
   await seedInternalOrganisationAndStaffPersons();
@@ -1063,9 +1170,9 @@ export async function startServer(
   port = DEFAULT_PORT,
 ) {
   try {
-    await runStartupTasks();
+    await runApiBootTasks();
   } catch (error) {
-    console.error("❌ Database migration failed!", error);
+    console.error("❌ API boot failed!", error);
     process.exit(1);
   }
 
@@ -1140,14 +1247,32 @@ const isMainModule =
   import.meta.url === pathToFileURL(entrypoint).href;
 
 if (isMainModule) {
-  const rawPort = process.env.TASKDESK_PORT;
-  const { port, invalid } = resolvePort(rawPort);
-  if (invalid) {
-    console.warn(
-      `⚠ TASKDESK_PORT="${rawPort}" is not a valid port (1-65535) — falling back to ${DEFAULT_PORT}`,
-    );
+  // Issue #296, S1: `TASKDESK_ROLE=migrate` selects the one-shot migration entry
+  // point instead of the serving one — same env-var-selects-behaviour pattern as
+  // the documented `TASKDESK_ROLE=web`/`jobs` (`docs/05-operations/
+  // container-image.md`), not a new mechanism. This process never calls
+  // `startServer()`/`serve()`, so it never binds a port and never touches the
+  // application connection.
+  if (process.env.TASKDESK_ROLE === "migrate") {
+    runMigrationStep()
+      .then(() => {
+        console.log("✅ Migration step complete.");
+        process.exit(0);
+      })
+      .catch((error: unknown) => {
+        console.error("❌ Migration step failed!", error);
+        process.exit(1);
+      });
+  } else {
+    const rawPort = process.env.TASKDESK_PORT;
+    const { port, invalid } = resolvePort(rawPort);
+    if (invalid) {
+      console.warn(
+        `⚠ TASKDESK_PORT="${rawPort}" is not a valid port (1-65535) — falling back to ${DEFAULT_PORT}`,
+      );
+    }
+    void startServer(injectWebSocket, port);
   }
-  void startServer(injectWebSocket, port);
 }
 
 export type AppType =

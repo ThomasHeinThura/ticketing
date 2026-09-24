@@ -44,7 +44,10 @@ import {
   workspaceTableRelations,
   workspaceUserTableRelations,
 } from "./relations";
-import { resolveDatabaseConnectionString } from "./resolve-database-url";
+import {
+  resolveDatabaseConnectionString,
+  resolveMigrationDatabaseConnectionString,
+} from "./resolve-database-url";
 import {
   accountTable,
   activityTable,
@@ -186,7 +189,7 @@ export const schema = {
   workspaceUserTableRelations,
 };
 
-type DatabaseInstance = ReturnType<typeof drizzle<typeof schema>>;
+export type DatabaseInstance = ReturnType<typeof drizzle<typeof schema>>;
 
 let pool: Pool | undefined;
 let dbInstance: DatabaseInstance | undefined;
@@ -227,6 +230,64 @@ export function getDatabase(): DatabaseInstance {
   }
 
   return dbInstance;
+}
+
+// --- migration/owner connection (issue #296) -------------------------------
+//
+// A separate pool, from a separate connection string
+// (`resolveMigrationDatabaseConnectionString`), used only during startup: Drizzle's
+// `migrate()`, the hand-written pre-migrate schema fixups in `runStartupTasks`, and
+// `ensureApplicationRole`'s role/grant bootstrap all run DDL and must run as the
+// role that owns the tables, never as the application role `getDatabase()` serves
+// requests with. Kept apart from `pool`/`dbInstance` above so the two connections
+// can never be silently conflated, and closed (`closeMigrationPool`) once startup
+// finishes — nothing after boot needs it, and holding it open would just be two
+// pools competing for the database's `max_connections`.
+let migrationPool: Pool | undefined;
+let migrationDbInstance: DatabaseInstance | undefined;
+
+export function getMigrationDatabasePool(): Pool {
+  if (!migrationPool) {
+    migrationPool = new Pool({
+      connectionString: resolveMigrationDatabaseConnectionString(),
+      connectionTimeoutMillis: 5_000,
+      idleTimeoutMillis: 30_000,
+      // Startup-only and single-purpose: migrations run one statement at a time,
+      // never concurrently, so this pool never needs more than one connection.
+      max: 1,
+    });
+
+    migrationPool.on("error", (error) => {
+      console.error("Migration database pool: idle client error", error);
+    });
+  }
+
+  return migrationPool;
+}
+
+export function getMigrationDatabase(): DatabaseInstance {
+  if (!migrationDbInstance) {
+    migrationDbInstance = drizzle(getMigrationDatabasePool(), {
+      schema,
+    });
+  }
+
+  return migrationDbInstance;
+}
+
+/**
+ * Ends the migration pool's connection(s). Safe to call even if the pool was never
+ * created (single-URL mode resolves to the same connection string as the app
+ * pool, but still gets its own `Pool` instance here — closing it does not touch
+ * `pool`/`dbInstance` above).
+ */
+export async function closeMigrationPool(): Promise<void> {
+  if (migrationPool) {
+    const toClose = migrationPool;
+    migrationPool = undefined;
+    migrationDbInstance = undefined;
+    await toClose.end();
+  }
 }
 
 const db = new Proxy({} as DatabaseInstance, {

@@ -95,6 +95,96 @@ describe("issue #134 -- seedDefaultWorkspaceRoles concurrent-boot race", () => {
   });
 });
 
+describe("issue #318 (security) -- seedDefaultWorkspaceRoles self-heals is_system on existing rows", () => {
+  // Independent Sonnet review of pull request #322 (head `8f8e9d6`): migration `0068`'s
+  // backfill fixes a deployment that runs it once, but `seedDefaultWorkspaceRoles()` is
+  // the SAME idempotent, every-boot mechanism `concurrent-startup-seed-race.test.ts`'s
+  // first `describe` above already exercises for the "insert what's missing" half -- this
+  // block covers its other half, "repair what's already there but not yet genuine",
+  // which a deployment that somehow ran `0068` before its own `UPDATE` existed depends on.
+  it("flips is_system from false to true on an existing viewer/member/admin row, and leaves its permission JSON untouched", async () => {
+    const { workspace } = await createWorkspaceMember({
+      seedDefaultRoleRow: false,
+    });
+    const now = new Date();
+    const customPermission = JSON.stringify({ task: ["read", "create"] });
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: workspace.id,
+      role: "admin",
+      permission: customPermission,
+      isSystem: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await seedDefaultWorkspaceRoles();
+
+    const [row] = await db
+      .select({
+        isSystem: schema.workspaceRoleTable.isSystem,
+        permission: schema.workspaceRoleTable.permission,
+      })
+      .from(schema.workspaceRoleTable)
+      .where(
+        and(
+          eq(schema.workspaceRoleTable.workspaceId, workspace.id),
+          eq(schema.workspaceRoleTable.role, "admin"),
+        ),
+      );
+
+    expect(row?.isSystem).toBe(true);
+    expect(row?.permission).toBe(customPermission);
+  });
+
+  it("does not touch a custom row named something other than viewer/member/admin", async () => {
+    const { workspace } = await createWorkspaceMember({
+      seedDefaultRoleRow: false,
+    });
+    const now = new Date();
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: workspace.id,
+      role: "acme-support-triage",
+      permission: JSON.stringify({ task: ["read"] }),
+      isSystem: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await seedDefaultWorkspaceRoles();
+
+    const [row] = await db
+      .select({ isSystem: schema.workspaceRoleTable.isSystem })
+      .from(schema.workspaceRoleTable)
+      .where(
+        and(
+          eq(schema.workspaceRoleTable.workspaceId, workspace.id),
+          eq(schema.workspaceRoleTable.role, "acme-support-triage"),
+        ),
+      );
+
+    expect(row?.isSystem).toBe(false);
+  });
+
+  it("is idempotent -- a row already is_system = true is left alone across repeated calls", async () => {
+    const { workspace } = await createWorkspaceMember({ role: "viewer" });
+
+    await seedDefaultWorkspaceRoles();
+    await seedDefaultWorkspaceRoles();
+
+    const [row] = await db
+      .select({ isSystem: schema.workspaceRoleTable.isSystem })
+      .from(schema.workspaceRoleTable)
+      .where(
+        and(
+          eq(schema.workspaceRoleTable.workspaceId, workspace.id),
+          eq(schema.workspaceRoleTable.role, "viewer"),
+        ),
+      );
+
+    expect(row?.isSystem).toBe(true);
+  });
+});
+
 describe("issue #134 -- migrateColumns concurrent-boot race", () => {
   it(`survives ${CONCURRENCY} concurrent calls with exactly the four default columns, no duplicates`, async () => {
     const { workspace } = await createWorkspaceMember();
