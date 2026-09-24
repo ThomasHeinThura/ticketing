@@ -43,9 +43,13 @@ vi.mock("../../../apps/api/src/database", async () => {
   // reaching into the condition object's internals.
   const dialect = new PgDialect();
   let boundId: string | undefined;
+  let selectedFields: string[] = [];
 
   const chain = {
-    select: () => chain,
+    select: (selection: Record<string, unknown>) => {
+      selectedFields = Object.keys(selection);
+      return chain;
+    },
     from: () => chain,
     innerJoin: () => chain,
     where: (condition: Parameters<typeof dialect.sqlToQuery>[0]) => {
@@ -65,9 +69,15 @@ vi.mock("../../../apps/api/src/database", async () => {
       }
       state.lookedUpIds.push(boundId);
       const workspaceId = WORKSPACE_BY_TASK[boundId];
-      // Model the SQL EXISTS reach predicate: the test caller is a member of
-      // workspace-mine only, so foreign rows are filtered by the lookup itself.
-      return workspaceId === "workspace-mine" ? [{ workspaceId }] : [];
+      if (workspaceId !== "workspace-mine") return [];
+      const values: Record<string, string> = {
+        workspaceId,
+        projectId: `project-${boundId}`,
+        workItemId: boundId,
+      };
+      return [
+        Object.fromEntries(selectedFields.map((key) => [key, values[key]])),
+      ];
     },
   };
 
@@ -152,6 +162,108 @@ describe("workspaceAccess lookup sources", () => {
     state.lookedUpIds.length = 0;
     state.lookupPredicates.length = 0;
     state.handlerReached = false;
+  });
+
+  it("keeps an unreachable or missing project indistinguishable to the shadow lane", async () => {
+    const app = new Hono<{
+      Variables: {
+        userId: string;
+        workspaceId?: string;
+        workspaceIdSource?: "row" | "request";
+        legacyAuthorization?: "allowed" | "denied" | "unknown";
+      };
+    }>()
+      .use("*", async (c, next) => {
+        c.set("userId", "user-1");
+        return next();
+      })
+      .get("/project/:id", workspaceAccess.fromProject(), (c) =>
+        c.json({ reached: true }),
+      )
+      .onError((error, c) =>
+        c.json({
+          originalStatus: error instanceof HTTPException ? error.status : 500,
+          workspaceId: c.get("workspaceId"),
+          workspaceIdSource: c.get("workspaceIdSource"),
+          legacyAuthorization: c.get("legacyAuthorization"),
+        }),
+      );
+
+    const response = await app.request("/project/project-in-other-workspace");
+    expect(await response.json()).toEqual({
+      originalStatus: 400,
+      legacyAuthorization: "unknown",
+    });
+  });
+
+  it("keeps an unreachable or missing task indistinguishable to the shadow lane", async () => {
+    const app = new Hono<{
+      Variables: {
+        userId: string;
+        workspaceId?: string;
+        workspaceIdSource?: "row" | "request";
+        projectId?: string;
+        workItemId?: string;
+        legacyAuthorization?: "allowed" | "denied" | "unknown";
+      };
+    }>()
+      .use("*", async (c, next) => {
+        c.set("userId", "user-1");
+        return next();
+      })
+      .get("/task/:id", workspaceAccess.fromTask(), (c) =>
+        c.json({ reached: true }),
+      )
+      .onError((error, c) =>
+        c.json({
+          originalStatus: error instanceof HTTPException ? error.status : 500,
+          workspaceId: c.get("workspaceId"),
+          workspaceIdSource: c.get("workspaceIdSource"),
+          projectId: c.get("projectId"),
+          workItemId: c.get("workItemId"),
+          legacyAuthorization: c.get("legacyAuthorization"),
+        }),
+      );
+
+    const response = await app.request("/task/task-in-other-workspace");
+    expect(await response.json()).toEqual({
+      originalStatus: 404,
+      legacyAuthorization: "unknown",
+    });
+  });
+
+  it("exposes a denied param target as request-sourced evidence", async () => {
+    const app = new Hono<{
+      Variables: {
+        userId: string;
+        workspaceId?: string;
+        workspaceIdSource?: "row" | "request";
+        legacyAuthorization?: "allowed" | "denied";
+      };
+    }>()
+      .use("*", async (c, next) => {
+        c.set("userId", "user-1");
+        return next();
+      })
+      .get("/workspace/:workspaceId", workspaceAccess.fromParam(), (c) =>
+        c.json({ reached: true }),
+      )
+      .onError((error, c) =>
+        c.json({
+          originalStatus: error instanceof HTTPException ? error.status : 500,
+          workspaceId: c.get("workspaceId"),
+          workspaceIdSource: c.get("workspaceIdSource"),
+          legacyAuthorization: c.get("legacyAuthorization"),
+        }),
+      );
+
+    const response = await app.request("/workspace/workspace-theirs");
+    expect(await response.json()).toEqual({
+      originalStatus: 403,
+      workspaceId: "workspace-theirs",
+      workspaceIdSource: "request",
+      legacyAuthorization: "denied",
+    });
   });
 
   it("authorizes against the body id the handler will act on", async () => {
