@@ -15,6 +15,20 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-24 · While every lane is stopped, Claude Sonnet subagents may fix already-identified review findings on stopped PRs; #353 waits for #344
+
+**Decision:**
+1. While the P0, P1, P2 and P3 lane agents are all stopped, the orchestrating Claude session may commission fresh Claude Sonnet subagents to fix **findings a review has already recorded** on a stopped lane's PR. No new features, and no scope beyond the recorded finding. Each fix is one PR at a time, with a regression test that fails on the unfixed code. A separate, fresh Opus 5.5 context that did not author or direct the fix reviews it at the exact head. That reviewer is never the same context as the fixer. Every other gate is unchanged: ordinary review, Opus for security scope, all 15 required checks, and no waivers.
+2. PR #353 (assign a work item) is **not** merged without its audit-log row. It waits for #344 (`audit_log.project_id` and the project-reach read filter), and #365, which is stacked on it, waits too.
+
+**Why:** Thomas, 2026-09-24. All four implementation lanes stopped with review findings open, including #320's blocking cross-tenant cursor leak. Review-only work can't move those PRs. The audit-row requirement is a real gate, so Thomas kept it rather than waiving it.
+
+**Alternatives:** Keep the orchestrator review-only and leave every PR with findings until the lanes restart. Rejected for small recorded fixes. Waive #353's audit-row item and track it. Rejected by Thomas.
+
+**Scope and end:** this ends when a lane agent restarts on that lane. The ordinary-review provider rules in #336 and #345 are unchanged.
+
+**Decided by:** Thomas, 2026-09-24, in session.
+
 ### 2026-09-24 · GPT-6 Luna replaces Sonnet for ordinary reviews on active P0 lanes
 
 **Decision:** For the currently active P0 work, use fresh independent GPT-6 Luna contexts
