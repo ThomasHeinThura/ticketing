@@ -337,3 +337,88 @@ Vitest and Playwright are both invoked with an explicit `--config` path that is 
 and a root `redocly.yaml` is inert under `--config`. A sibling file would therefore be ignored
 unless the invoking `package.json` script changed, and every `package.json` is already in
 scope. No action needed.
+
+---
+
+## Delta review — `9eb24c2..c4fadff`, and `c4fadff..575d363`
+
+**Reviewed head:** `c4fadff97847f361552fe2e5675d8f67753925ce`
+
+**Reviewed head:** `575d363a68b841f6d486794315e252ca03a90373`
+
+**Verdict: CLEAR WITH FINDINGS.** Two findings are NON-BLOCKING: S9 and S10.
+
+**Scope.** I was commissioned for `c4fadff`. When I checked, the branch and the lane worktree
+were already at `575d363`, one commit further. That commit adds one line: the
+`packages/permissions/vitest.config.ts` entry in `security-paths.test.mjs`. I reviewed it too,
+so this section attests both heads.
+
+`c4fadff` is one commit, authored `Codex GPT-6`. It touches:
+
+- `docs/04-engineering/ci-cd.md`, one row: `packages/domain/vitest.config.ts` becomes `**/vitest.config.*`;
+- `scripts/ci/lib/security-paths.test.mjs`, six entries;
+- `scripts/ci/test-contract.mjs`, the new `parseRedoclyReport` and a restructured `redoclyReport`;
+- `scripts/ci/test-contract.test.mjs`, one new test.
+
+| # | Probe | Result |
+| --- | --- | --- |
+| 1a | Normal report, and text after it | I ran real Redocly with `--config scripts/ci/redocly.yaml`. Its stdout ends in the JSON object. The parser returns it, and `pnpm test:contract` still reports 16 of 16 findings, oasdiff verified, no breaking changes. A synthetic report followed by `✔ done` also parses correctly. PASS |
+| 1b | Braces and escapes inside strings | A `message` of `a } { " \" x` parses to the exact object. The string state machine tracks `\` escapes and quotes. Braces before `start` are never read. PASS |
+| 1c | Report truncated mid-way | It throws "Redocly JSON report is incomplete". `redoclyReport` catches that, calls `reportFailure` (which sets `exitCode = 1`) and returns `null`. `redoclyLint` then returns `false`, and `main` returns with the exit code already 1. A dangling `\` at the end also throws. PASS, fails closed |
+| 1d | No marker | It returns `null`. The caller reports "did not produce a Redocly JSON report" and returns `null`, so the check fails closed. The try/return restructure has exactly two exits: the object on success, `null` on every failure. `JSON.parse` errors inside the matcher are caught by the same `catch`. PASS |
+| 1e | A marker earlier in stdout | A malformed earlier `{\n  "totals"` desynchronises the matcher, which throws, so this fails closed. A *well-formed* complete fake report printed before the real one would win (S9). |
+| 1f | Report parses but has no `problems` | `parseRedoclyReport` returns it. `redoclyLint` then treats `current.problems ?? []` as zero findings, which passes. This behaviour dates from `0f10f04`, not this delta (S9). |
+| 2 | `**/vitest.config.*` | `globToRegExp` gives `^(?:.*/)?vitest\.config\.[^/]*$`. It matches `vitest.config.ts`, `.mts` and `.js` at the repo root, `apps/api/vitest.config.ts`, `packages/domain/vitest.config.mts` and `a/b/c/d/vitest.config.cjs`. It does not match `myvitest.config.ts`, `vite.config.ts`, `vitest.workspace.ts`, `vitest.config.d/x.ts` or `apps/vitest.configs.ts`; `vitest.config.ts.bak` matching is a harmless over-match. `readSecurityReviewPaths().globs` contains the new row. All eight tracked `vitest.config.ts` files are in scope. The two tracked `vitest.<name>.config.ts` files are not (S10). |
+| 3 | Tests at `c4fadff` | The two focused files (`node --test scripts/ci/lib/security-paths.test.mjs scripts/ci/test-contract.test.mjs`) pass 13 tests in 1 suite, 0 fail. All of `scripts/ci` (`node --test 'scripts/ci/**/*.test.mjs'`) passes 502 tests in 88 suites, 0 fail. The same counts hold at `575d363`. |
+| 4 | Regression against `0f10f04` and `64f938e` | None. No workflow, lockfile, manifest or application file changed. `--config`, `telemetry: off` and the message-keyed multiset are all unchanged. |
+
+### S9 — NON-BLOCKING — the parser trusts the first well-formed report, and a report with no `problems` array passes
+
+`scripts/ci/test-contract.mjs`, in `parseRedoclyReport` and `redoclyLint` (`current.problems ?? []`).
+
+In practice nothing is exploitable. The text Redocly prints before the JSON is its own fixed
+progress output. A PR that changed Redocly's version, its config or this script would already
+be in security scope.
+
+It is still cheap to fail closed. Suggested hardening:
+
+- require `Array.isArray(report.problems)` for both runs;
+- require `problems.length` to equal `totals.errors + totals.warnings` (plus `ignored`, if counted);
+- reject stdout that contains the marker more than once.
+
+### S10 — NON-BLOCKING — two gate configs still escape the scope row
+
+`**/vitest.config.*` does not match these two files:
+
+- `apps/api/vitest.permissions.config.ts`. It drives `test:permissions`, the required
+  "route policy coverage + permission matrix" gate and the Throttle 1 boundary.
+- `apps/api/vitest.integration.config.ts`. It drives the required
+  "integration - Postgres 18" gate.
+
+It also misses `tests/api-integration/global-setup.ts`, which that config loads. A PR outside
+security scope could narrow `include` or `setupFiles` in either config and keep both checks
+green. Vitest fails on zero files, but not on fewer files.
+
+This gap already exists on `main`, so it is not a regression. The commit message's claim to
+"pin all test gate configurations" overstates what it did.
+
+**Follow-up:** change the row to `**/vitest*.config.*`, which matches both files, and add both
+paths to `MUST_REQUIRE_REVIEW`.
+
+### Governance — status of the earlier findings in the PR record (body read at head `575d363`)
+
+| Finding | Status | What is missing |
+| --- | --- | --- |
+| S1 (GPT-6 Luna self-review entry) | **Resolved.** | Nothing. The orchestrator attested Thomas's confirmation (`fa660cd` note). The body's `## Security review` repeats that the orchestrator verified the instruction directly. |
+| S2 (ordinary-review coverage and attribution) | **Partly resolved.** | Resolved: `## Implemented by` now names every identity (Claude Code ×8, Codex (GPT-6) ×4, Codex GPT-6 Luna ×2, Codex GPT-6 ×3, Opus reviewer ×2), and three GPT-6 Luna contexts record a full-range review at `64f938e`. **Still missing:** (a) the third reviewer's exact-head delta verdict at `575d363`, which the body itself says is pending and whose checklist box is unticked; (b) a sentence stating whether the eight `Claude Code <noreply@anthropic.com>` commits came from the orchestrating session or from a lane running under that identity, as the 2026-09-23 identity rule requires. "Began in the prior Claude lane" does not say which. |
+| S3 (Redocly telemetry) | Resolved at `64f938e`. | Nothing. |
+| S4 (gate configs outside scope) | Resolved for the gates this PR adds. | Nothing for this PR. The residual gap is S10. |
+| S5 (decision-log factual errors) | Resolved at `fa660cd`. | Nothing. |
+| S6–S8 | Informational, accepted. | Nothing. |
+
+**Record accuracy:** the body says the `0f10f04` report "returned CHANGES NEEDED". It returned
+**CLEAR WITH FINDINGS**, with S1 and S2 as gate or governance blockers. Two checklist items are
+also unticked: the full `test:ci-scripts` suite and `test:contract`. This review ran the
+full suite on `575d363` (502/502) and `test:contract` on `c4fadff` (exit 0). The only file
+changed between those two heads is a test. Whoever ticks the boxes should cite a current-head
+run.
