@@ -197,3 +197,149 @@ The core design is sound:
 - pure, deterministic functions.
 
 After the fixes, a delta Opus pass on the new head is enough. The independence and attribution gates above must be resolved separately before merge.
+
+---
+
+## Delta review (Opus 5.5) at 61cf175
+
+**Reviewer:** Opus 5.5, a fresh independent context commissioned by the orchestrating session. It did not author, direct or fix this change.
+**Reviewed head:** `61cf175df8e1c9b685d2403b201372bf1c24e728`
+**Previous review:** `a9cffc263c73c4ad6b1371fb95c93b61f0cb1e52`
+**Fix under review:** `1eabb43`, "fix(identity): close domain review findings"
+**Date:** 2026-09-24
+
+**How the head was confirmed.** `git fetch origin pull/346/head` and `gh pr view 346 --json headRefOid` both return `61cf175`.
+
+**Scope of the delta.** `git diff --stat a9cffc2 61cf175 -- packages/domain/src/identity/` shows only `identity.ts` (+58/-8) and `identity.test.ts` (+69). `git log a9cffc2..61cf175 -- packages/domain/src/identity/` lists only `1eabb43`. So the two `main` merges (`b3c88de`, `577aa22`) and the status-only commits did not touch the identity code.
+
+**Probes.** They ran in a scratch test file that was deleted afterwards, and `git status` was clean.
+
+### Closure of the blocking findings
+
+**S1 (ReDoS): CLOSED.**
+- **Every regex left in `identity.ts`:**
+  - the tenant GUID check at `:141`, which is anchored and uses fixed counts;
+  - `/\/(common|organizations)(\/|$)/iu` at `:160`, which has no nested quantifier and no overlapping alternation;
+  - `/[_.-]/gu` at `:202`, a single character class.
+- All three are linear. `EMAIL_PATTERN` is gone. The PATCH path now uses `String.prototype.trim()`. `normaliseEmail` is now a single loop with a length cap of 254.
+- **Timings in Node 24.20.0.**
+
+  | Input | Before (the removed regex) | After (at head) |
+  | --- | --- | --- |
+  | email `"!@!." + "!.".repeat(50_000) + "@"` | 5,592 ms | 0 ms |
+  | email `"a@" + ".".repeat(50_000) + "@"` | 2,555 ms | 0 ms |
+  | PATCH path `"x" + " ".repeat(50_000) + "x"` | 2,054 ms | 0 ms |
+  | email `"a@".repeat(200_000)` | — | 0 ms |
+  | PATCH paths of 200k `/` or 200k `.` | — | 2 ms or less |
+  | an issuer made of 200k `/` characters | — | 0 ms |
+  | a SCIM key of 600k `_-.` characters | — | 6 ms |
+
+- `CodeQL` is green at the head.
+
+**S2 (`externalId` through PATCH): CLOSED.** At the head, `applyScimPatchOps({externalId: "ext-1", userName: "u"}, [op])` gives:
+
+| PATCH operation | Result |
+| --- | --- |
+| no path, value `{externalId}`, with op `replace`, `add`, `remove` or `Replace` | `forbidden_attribute` |
+| no path, value `{ExternalId}` or `{EXTERNALID}` | `forbidden_attribute` |
+| no path, value `{schemas: [core], externalId}` | `forbidden_attribute` |
+| JSON with duplicate keys, `{"externalId":"X","externalId":"Y"}` (the last key wins, and it is still refused) | `forbidden_attribute` |
+| no path, value `{"urn:ietf:params:scim:schemas:core:2.0:User:externalId": "X"}` | `invalid_resource` |
+| no path, value `{"__proto__": {externalId}}` | `invalid_resource` |
+| no path, value `{name: {externalId}}` | `invalid_resource` |
+| no path, the enterprise-extension key holding `{externalId}` | `ok`, **no-op**. The extension object is ignored and the stored `externalId` is unchanged. |
+| `path` of `externalId`, `ExternalId`, `" externalId "` or `urn:…:User:externalId`, with add, replace or remove | `invalid_patch` |
+| `path: "active"` with an object value | `invalid_patch` |
+
+- `validateScimPutExternalId` behaves as follows:
+
+  | Stored | Incoming | Result |
+  | --- | --- | --- |
+  | `"a"` | `"b"` | refused |
+  | `"a"` | `"A"` | refused (case-exact, which is correct for `externalId`) |
+  | `"a"` | absent | `ok` (see D5) |
+  | absent | `"b"` | `ok` |
+
+**S3 (role mapping fails open): CLOSED.** With agent `maxRoleRank: 3`, each of these mapping variants yields `[]`:
+
+| Field | Values tried |
+| --- | --- |
+| `roleRank` | `NaN`, `undefined`, `null`, `Infinity`, `-1`, `1.5`, `"2"`, `100` (above the ceiling) |
+| `grantsInstanceAdmin` | `undefined`, `null`, `true` |
+| `grantsSeesAll` | `undefined`, `"false"` |
+| `roleIsCustomer` | `undefined` |
+| `roleScope` | `"Agent"` |
+
+- **Bad connections also yield `[]`:** `maxRoleRank` of `null`, `NaN`, `undefined` or `-1`, and `portalScope` of `"Agent"` or `"__proto__"`.
+- **Empty inputs:** an empty group list or an empty mapping list yields `[]`.
+- **Group ids that are prototype keys:** `__proto__`, `constructor` and `toString` with no mapping yield `[]`. The code uses a `Map`, so no prototype lookup happens. A mapping that is literally keyed `__proto__` resolves only to its own valid role.
+- **Duplicate mappings for one group:** the last one wins. A valid mapping followed by a malformed one gives `[]`, which fails closed. A rank-99 mapping followed by a valid one gives only the valid role.
+- The domain has no role-name dimension, so "unknown role name" is out of scope here. Role existence is the persistence layer's concern (see D3).
+- A result above the ceiling, or an authority flag other than exactly `false`, is never returned.
+
+**Consumer-tenant guard (the former S5): CLOSED, with notes.**
+- The check is an exact comparison after `toLowerCase()` (`identity.ts:144`). The lowercase and uppercase forms of `9188040d-6c67-4c5b-b112-36a304b66dad` are both refused as `invalid_tenant_id`. With a leading space, the GUID regex refuses it.
+- Issuer forms:
+  - `/consumers/v2.0` is refused as `tenant_issuer_required`, because it cannot equal `https://login.microsoftonline.com/<tenantId>/v2.0`;
+  - `/common` and `/COMMON` are refused as `multi_tenant_issuer_forbidden`;
+  - a real tenant paired with the consumer issuer is refused as `tenant_issuer_required`.
+- Only that one GUID is blocked, so no legitimate organisation tenant can be caught. The probe `…36a304b66dae`, which differs in the last digit, is accepted.
+- The `consumers` issuer is refused under a different error code from `common` and `organizations`. That is cosmetic.
+
+### New findings in the delta
+
+**D1 — BLOCKING (a gate, not a security hole). The domain suite is red at the head, because of the new consumer-tenant assertion.**
+- `identity.test.ts:193-197` calls `connection({tenantId: "9188040d-…"})`. That fixture keeps the default tenant's issuer, so the result is `errors: ["invalid_tenant_id", "tenant_issuer_required"]`.
+- `toMatchObject` compares arrays by length, so the test fails.
+- `pnpm --filter @taskdesk/domain test` at the head gives **9 files, 482 tests: 481 passed, 1 failed.** The required CI checks `unit + component` and `domain coverage (90%)` are both **FAILURE** on `61cf175`.
+- The guard itself works (see above). The assertion is what is wrong.
+- **Fix:** pass `issuer: "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0"` in that fixture, and keep the exact `["invalid_tenant_id"]` expectation.
+- **Knock-on effect:** the failing assertion aborts the test early, so the `staff_role_required` assertion after it never runs. That is part of why coverage is low. Coverage with the failure: all files have 89.13% branches, which is under the 90% gate. `identity.ts` has 80.13% branches and 83.09% lines.
+
+**D2 — NON-BLOCKING. The S1 regression tests would not catch a return of the regexes.**
+- The committed inputs are `"a".repeat(200_000) + "!@example.com"` and the path `"  " + " ".repeat(100_000) + "active  "`. Run against the *removed* code, both finish in 0 ms.
+- The email input is refused only by the new length cap.
+- The spaces sit at the start of the path, which `^\s*` consumes in one pass.
+- **Suggested inputs:**
+  - the path `"x" + " ".repeat(50_000) + "x"`, which took 2 s under the old code, with a time bound (for example `< 200 ms`) or a check on the returned reason;
+  - an explicit test of the 254-character cap.
+
+**D3 — NON-BLOCKING, handoff to persistence. `roleId` is not validated.**
+- A mapping with `roleId: undefined` or `roleId: ""` passes and is returned, with a valid rank and flags.
+- It cannot raise authority, because rank and flags are still checked. It will, however, become an insert with a null or empty foreign key.
+- **Fix:** require `typeof roleId === "string" && roleId.length > 0`, which follows the same fail-closed rule as S3.
+
+**D4 — NON-BLOCKING.** `mapExternalGroupsToRoles(["g"], [null], conn)` throws `TypeError` while building `mappingByGroup` (`identity.ts:445-447`). This is the same class as S8: it surfaces as a 5xx, not as a grant. Skip non-record entries instead.
+
+**D5 — NON-BLOCKING, handoff to the SCIM PUT route.**
+- `validateScimPutExternalId("stored", undefined)` returns `ok`.
+- The route must treat an absent `externalId` on PUT as "keep the stored value", not as "clear it". Otherwise a PUT without the attribute unbinds the identity key, and the next PUT could set a new one.
+- The route must also call the function at all, because nothing forces it to.
+- Either document the "absent means keep" contract on the function, or return the value to persist.
+
+**D6 — NON-BLOCKING. What remains of S6 after the new email check.**
+- The loop now refuses non-ASCII input, so zero-width, full-width and Cyrillic look-alikes are refused. That is an improvement.
+- The Kelvin sign is the gap. `toLowerCase()` runs **before** the ASCII check, so `"Kelvin@x.com"` normalises to `kelvin@x.com` and is accepted, and two different claim strings still produce the same address.
+- The domain check looks only at the first dot, so `a@b..` and `a@b.c.` are accepted.
+- **Fix:** run the ASCII check before `toLowerCase()`.
+
+**D7 — NON-BLOCKING. Tenant-id case.**
+- A connection saved with an uppercase GUID, together with its matching uppercase issuer, validates `ok`.
+- Entra sends `tid` and `iss` in lowercase, and `normaliseEntraClaims` compares them exactly, so every login on that connection fails closed.
+- **Fix:** normalise `tenantId` to lowercase at save, or refuse uppercase.
+
+**Carried forward, unchanged by `1eabb43`:**
+- S4 (the default role is not validated as a mapping);
+- S7 (`remove active`, and a scalar value with no path treated as `active`);
+- S8;
+- S9;
+- S10's customer-positive mutation, M6. The customer scope still has no rank ceiling, which is by design.
+
+The gate observations in the previous review (independence of the ordinary review, the attribution mismatch, the draft state) are not re-adjudicated here.
+
+### Verdict
+
+**CHANGES NEEDED at `61cf175df8e1c9b685d2403b201372bf1c24e728`.**
+- **Closed:** S1, S2 and S3, and the consumer-tenant guard. Their security content is sound, and I found no new authority, tenant-binding or disclosure hole in `1eabb43`.
+- **Blocking:** D1. The fix commit ships a failing test, so the required `unit + component` and `domain coverage (90%)` checks are red on this head. The fix is a one-line change to a test fixture.
+- **After the fix:** a short Opus delta confirmation on the new SHA is enough. It should verify that the diff touches only `identity.test.ts` (plus any of the D2/D3 hardening) and that the suite is green.
