@@ -6,7 +6,7 @@
 # and the `gates-declared` job below fails if they drift apart.
 #
 # Gates that cannot exist yet — check:tokens, check:deps, check:queries, check:inventory,
-# test:coverage, test:mcp, check:bundle-purity, check:bundle-size — have no job here on
+# test:mcp, check:bundle-purity, check:bundle-size — have no job here on
 # purpose. `pnpm test:all --list` prints each one with the reason and the issue that
 # unblocks it. A job that passed because it found nothing to check would look like coverage
 # and be worth less than nothing. (`check:ui` is enabled, in the `registers` job below —
@@ -227,6 +227,16 @@ jobs:
       - name: pnpm test
         run: pnpm test
 
+  coverage:
+    name: domain coverage (90%)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: pnpm test:coverage
+        run: pnpm test:coverage
+
   contract:
     name: contract - OpenAPI drift
     runs-on: ubuntu-latest
@@ -234,11 +244,10 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
-      - name: pnpm check:openapi
-        # Regenerates the document and fails when tests/api-contract/openapi.json no longer
-        # matches the API. Redocly lint and `oasdiff breaking` are the other half of
-        # `pnpm test:contract` and need two dev dependencies that are not installed yet.
-        run: pnpm check:openapi
+      - name: Fetch base for breaking-change comparison
+        run: git fetch --no-tags origin main
+      - name: pnpm test:contract
+        run: pnpm test:contract
 
   build:
     name: build

@@ -58,7 +58,7 @@ const manifest = [
     gate: "pnpm check:tokens",
     stage: "fast",
     run: null,
-    why: "packages/ui does not exist yet (#9). There is no token source to check literal colours and contrast against.",
+    why: "packages/ui and its token CSS now exist, but the check:tokens implementation is not wired yet; literal-colour and contrast enforcement remains unavailable.",
   },
   {
     gate: "pnpm check:ui",
@@ -75,7 +75,7 @@ const manifest = [
     gate: "pnpm check:deps",
     stage: "fast",
     run: null,
-    why: "the boundary matrix in docs/01-architecture/monorepo-layout.md is stated over packages/domain, packages/ui and packages/plugins-contracts, none of which exists yet. A cycle check today would assert almost nothing.",
+    why: "packages/domain and packages/ui now exist, but check:deps is not implemented. The boundary matrix also names packages/plugins-contracts, which is still absent, so a cycle check would not enforce the documented matrix.",
   },
   { gate: "pnpm check:i18n", stage: "fast", run: ["pnpm", "check:i18n"] },
   {
@@ -167,8 +167,8 @@ const manifest = [
   {
     gate: "pnpm test:coverage",
     stage: "fast",
-    run: null,
-    why: "the threshold ci-cd.md states is '90 % on packages/domain', and packages/domain does not exist yet (P2).",
+    run: ["pnpm", "test:coverage"],
+    note: "packages/domain enforces 90% statement, line, and function coverage; branch coverage is reported but is not a threshold.",
   },
   {
     gate: "pnpm test:permissions",
@@ -181,8 +181,7 @@ const manifest = [
   {
     gate: "pnpm test:contract",
     stage: "fast",
-    run: ["pnpm", "check:openapi"],
-    note: "partial. The drift half is restored (check:openapi regenerates the document and fails on an uncommitted change). Redocly lint and `oasdiff breaking` need two dev dependencies that are not installed, and adding them is a lockfile change.",
+    run: ["pnpm", "test:contract"],
   },
   {
     gate: "pnpm test:mcp",
@@ -218,26 +217,26 @@ const manifest = [
   {
     gate: "pnpm test:e2e",
     stage: "full",
-    run: null,
-    why: "there is no Playwright suite and no deployable application to point one at (#11).",
+    run: ["pnpm", "test:e2e"],
+    note: "currently a browser-level smoke for the specified logged-out protected-route redirect and return target; full agent/portal journeys still need deterministic fixtures and acceptance flows.",
   },
   {
     gate: "pnpm test:e2e --project=security",
     stage: "full",
     run: null,
-    why: "no Playwright suite yet.",
+    why: "the browser security project has no scoped acceptance flows or fixtures yet.",
   },
   {
     gate: "pnpm test:e2e --project=reduced-motion",
     stage: "full",
     run: null,
-    why: "no Playwright suite yet (G9).",
+    why: "the reduced-motion browser project still needs its acceptance flows and fixtures (G9).",
   },
   {
     gate: "pnpm test:e2e --project=mobile-320",
     stage: "full",
     run: null,
-    why: "no Playwright suite yet (H6).",
+    why: "the mobile-320 browser project still needs its acceptance flows and fixtures (H6).",
   },
   {
     gate: "pnpm test:a11y",
@@ -249,7 +248,7 @@ const manifest = [
     gate: "pnpm test:visual",
     stage: "full",
     run: null,
-    why: "no Playwright suite, and the visual-regression tool for G8 is still an open decision in docs/07-planning/status.md.",
+    why: "Playwright screenshots are selected for G8, but deterministic screen/data fixtures and snapshot acceptance scope are not yet defined.",
   },
   {
     gate: "pnpm test:perf",
@@ -320,9 +319,9 @@ function aliasSources() {
  * Until now any workflow triggered on `pull_request` could satisfy any gate. So a pull
  * request could delete `pnpm check:overrides` from `ci-fast.yml`, add it to a new
  * `sneaky.yml` of its own, and the reconciliation would be satisfied — the gate "runs on
- * pull requests", just not in the pipeline the ruleset makes required. Worse and quieter:
- * a FAST gate could be satisfied by an occurrence in `ci-full.yml`, which does not run on
- * `opened` at all, so the gate would be enforced later than it claims or not at all.
+ * pull requests", just not in the pipeline the ruleset makes required. A FAST gate could
+ * also be satisfied by an occurrence in `ci-full.yml`, which is not the fast-stage context
+ * the ruleset requires, so that gate would be enforced at the wrong stage or not at all.
  *
  * Stage membership is not invented here: `docs/04-engineering/ci-cd.md` already declares
  * which gates belong to the fast stage and which to the full stage, and this binds each
@@ -354,19 +353,17 @@ const STAGE_AUTHORITY = new Map([
     "full",
     {
       workflow: ".github/workflows/ci-full.yml",
-      // ci-cd.md: "Full — required before merge, runs on the merge queue (or on the
-      // `ready-for-review` label)". Required BEFORE MERGE, not on every push. Its
-      // `pull_request` list is deliberately narrowed to [labeled, synchronize,
-      // ready_for_review] and therefore does NOT cover `opened` — which is sound only
-      // because `merge_group` covers the boundary where the stage is actually required.
-      // That is the whole proof, and it is why `requireTriggers` names merge_group: strip
-      // it and the narrowing stops being defensible, and this check goes red.
-      requirePullRequestTypes: null,
+      // The active protect-main ruleset requires integration and browser-smoke contexts
+      // on the PR itself, as well as on merge_group. Explicit `types` replaces GitHub's
+      // defaults, so include opened/reopened/synchronize to ensure those required
+      // contexts are produced for every candidate, including a PR created with all
+      // commits already pushed. Labels and ready_for_review are additional triggers.
+      requirePullRequestTypes: DEFAULT_PULL_REQUEST_TYPES,
       requireTriggers: ["merge_group"],
       why:
-        "Full is required before merge and runs on the merge queue, so merge_group is " +
-        "the trigger that carries the obligation; the narrowed pull_request list is " +
-        "acceptable only because of it.",
+        "Full contexts are required directly on pull requests and again on the merge " +
+        "queue, so both default pull_request events and merge_group must trigger this " +
+        "workflow; a narrowed pull_request.types list leaves required contexts missing.",
     },
   ],
 ]);
@@ -555,7 +552,7 @@ async function reconcile() {
           `authorized workflow ${authority.workflow}. It is proven only in ${elsewhere}. ` +
           "A gate that runs in some other workflow runs outside the pipeline the ruleset " +
           "makes required — and an occurrence in ci-full.yml can never rescue a missing " +
-          "fast-stage one, because ci-full.yml does not run on `opened` at all. " +
+          "fast-stage one, because ci-full.yml is not the authorized workflow for fast gates. " +
           `${authority.why}`,
       );
     }
