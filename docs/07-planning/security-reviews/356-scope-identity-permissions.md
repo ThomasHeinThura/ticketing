@@ -134,3 +134,34 @@ This review cannot verify, from repository evidence, that Thomas confirmed these
 - `pnpm install --frozen-lockfile`: clean.
 - `node --test 'scripts/ci/**/*.test.mjs'`: **495 tests, 88 suites, 495 pass, 0 fail, 0 skipped.**
 - `node scripts/ci/test-all.mjs --list`: the CI-matches-`ci-cd.md` reconciliation reports no drift, and the command exits 0. Its summary line is "0 passed · 0 failed · 16 not enabled yet".
+
+## Merge-head attestation (Opus 5.5)
+
+**Reviewed head:** `f0976a295eab52e58d9b1e4d921e9cf04cc86e8a`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `776999db0eedea45110817cb8cf64c586963626e` (#355, domain coverage and Playwright e2e smoke CI jobs)
+into the previously reviewed head `58d5a9b2c1689c0f7524b526108879ae76c5b318`.
+
+- **Parents:** exactly (`58d5a9b2c1689c0f7524b526108879ae76c5b318`, `776999d`).
+- **Clean merge:** `git show --remerge-diff` is empty. `ci-cd.md` and `decision-log.md`,
+  which both overlap with #355, auto-merged.
+- **PR change unchanged:** the added and removed lines are byte-identical before and after.
+  Only blob indexes and hunk offsets differ, because #355 added lines above both hunks. `58d5a9b`
+  is note-only over the reviewed code head `f73f42a`.
+- **Interaction with main:** #355 added rows to the same fenced scope block
+  (`**/vitest.config.*`, `apps/web/playwright.config.ts`, `apps/web/e2e/**`,
+  `scripts/ci/redocly.yaml`). At `f0976a2`, `readSecurityReviewPaths()` parses both
+  sets. `packages/domain/src/identity/scim.ts`, `apps/api/src/permissions/shadow-store.ts`,
+  `apps/web/e2e/auth-redirect.spec.ts` and `packages/domain/vitest.config.ts` all match. So
+  the scope only grows, and no row from either side is lost.
+  - **Non-blocking note:** the decision log's newest-first order was already split before this
+    PR. Some entries sit above `## Format`, and this PR's 2026-09-24 entry sits below the
+    template and below 2026-09-23 entries. The merge did not create this. It is worth tidying
+    in a later control-plane change.
+- **Tests at `f0976a2`:** `pnpm test:ci-scripts` passes 502 / 502, with 0 failed.
+- **CI at `f0976a2`:** several contexts were still in progress or queued when this was written. The
+  only failure was `pull request template + security review`, which reported this file STALE
+  for want of this note. That is expected.
+
+**Verdict at `f0976a295eab52e58d9b1e4d921e9cf04cc86e8a`: CLEAR.**
