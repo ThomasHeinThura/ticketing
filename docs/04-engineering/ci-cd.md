@@ -187,8 +187,8 @@ turbo.json                           pnpm-lock.yaml
 docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
                                      .npmrc
                                      .pnpmfile.cjs
-scripts/lib/**
-**/vitest.config.*                   apps/web/playwright.config.ts
+scripts/lib/**                       tests/api-integration/global-setup.ts
+**/vitest*.config.*                  apps/web/playwright.config.ts
 apps/web/e2e/**                      scripts/ci/redocly.yaml
 scripts/ci/openapi-approved-breaks.json
 ```
