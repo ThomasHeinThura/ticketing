@@ -1593,6 +1593,21 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
+### 2026-09-24 · P0 #10 Opus re-review and parser/scope hardening
+
+PR #355's three independent ordinary review contexts cleared implementation head
+`575d363a68b841f6d486794315e252ca03a90373`. Opus 5.5 then reviewed that exact head and
+committed report `4157975`, verdict CLEAR WITH FINDINGS (S9/S10 non-blocking); all required
+checks passed on report-only PR head `41579753182451357e69c403b95a22ad04cd4b2c`. The
+follow-up now rejects duplicate Redocly reports, missing `problems`, inconsistent totals and
+ignored diagnostics, and widens security scope to the permission/integration Vitest configs
+and integration global setup. Focused tests pass 16/16; the full CI-script suite passes
+505/505; actual Redocly JSON has 16 problems matching its 5 errors and 11 warnings. The local
+`pnpm test:contract` command remains blocked before lint by this host's Bun-based Node shim
+(`Cannot find module './cjs/index.cjs'`); the earlier exact-head GitHub contract gate passed.
+These code changes require a new final Opus review after ordinary delta review; the prior
+`4157975` verdict does not cover them.
+
 ### 2026-09-23 (third pass) · 11 more PRs merged; spec gates honoured, not routed around; an outage recovered cleanly
 
 This pass shows the gates working as designed. `check:reviews` blocked #274 and #275

@@ -51,6 +51,9 @@ const MUST_REQUIRE_REVIEW = [
   "packages/mcp/vitest.config.ts",
   "packages/permissions/vitest.config.ts",
   "packages/ui/vitest.config.ts",
+  "apps/api/vitest.permissions.config.ts",
+  "apps/api/vitest.integration.config.ts",
+  "tests/api-integration/global-setup.ts",
   "apps/web/playwright.config.ts",
   "apps/web/e2e/auth-redirect.spec.ts",
   "turbo.json",
@@ -114,6 +117,7 @@ describe("security-review paths — F15 scope", () => {
 
   it("keeps every application glob the list carried before F15", async () => {
     const { globs } = await readSecurityReviewPaths();
+    assert.ok(globs.includes("**/vitest*.config.*"));
     for (const glob of [
       "apps/api/src/**/policy.ts",
       "apps/api/src/middleware/**",
