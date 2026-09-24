@@ -103,3 +103,30 @@ worth a one-line follow-up.
 - GitHub checks at this head: every required check is green except
   `pull request template + security review`, which fails on the missing checklist checkbox (F3b).
   a11y, visual regression and performance budget jobs are skipped as NOT ENABLED.
+
+## Merge-head attestation (Opus 5.5) — after #340 merged
+
+**Reviewed head:** `49d0c90206c3730bce423511407aa783d588eabb`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `9060512c887bc74006d09768c333e5312e32e53e` (#340, the create-work-item dialog) into
+the previously reviewed head `d7890ee`. `8f545c3..9060512` is that one merge.
+
+- **Parents:** exactly (`d7890ee`, `9060512`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main` since
+  `d7890ee`, and there is no non-merge code commit.
+- **PR change unchanged:** `git diff 8f545c3 d7890ee` and `git diff 9060512 49d0c90` are
+  byte-identical (same sha256). No file overlaps with #340.
+- `d7890ee` is note-only over the reviewed code head `7690763`.
+- **Interaction with #340:** #341 deletes `apps/web/src/components/ui/error-boundary.tsx`.
+  Nothing in `apps/web/src` at `49d0c90` still references `ui/error-boundary`, including
+  #340's new dialog, its fetchers, its hooks and `work.tsx`. The web and UI typechecks are
+  green.
+- **Tests at `49d0c90`** (packages built first):
+  - `@taskdesk/ui` passes 31 files / 61 tests.
+  - `@taskdesk/web` passes 67 files / 297 tests, including #340's dialog tests.
+  - `turbo typecheck` for web and UI: 6 / 6 tasks.
+- **CI at `49d0c90` when this was written:** integration and contract were still in
+  progress, and nothing had failed. Merging needs every required context green.
+
+**Verdict at `49d0c90206c3730bce423511407aa783d588eabb`: CLEAR.**
