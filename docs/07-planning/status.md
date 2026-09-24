@@ -2,7 +2,11 @@
 refreshed onto current `main` after #335 merged. Conflict resolution keeps the current-main
 decision log, #335 security-review record and status snapshot; the feature-specific component,
 stories, test and design-system change remain. The refreshed candidate still needs exact-head
-ordinary review, the mandatory Opus review and required checks. #9 is not complete.
+ordinary review, the mandatory Opus review and required checks. The refreshed-head ordinary
+review found that falsy thrown values could blank the subtree; the boundary now normalizes
+every thrown value to an `Error`, with regressions for `undefined`, `null`, `0` and `""`.
+The UI suite passes 61 tests, UI typecheck passes, and the Storybook 10.6.0 build succeeds.
+#9 is not complete.
 
 **2026-09-24 continuation (P0 #324 / #8 Slice 2b):** The #324 shadow-coverage branch now
 integrates `origin/main@f22f0100cb3d5a1ab3ff6dbc0c20b4e298fd488c`, including #323, #334,

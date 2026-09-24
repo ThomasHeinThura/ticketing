@@ -22,6 +22,25 @@ function Fallback({ error, resetError }: ErrorBoundaryFallbackProps) {
 }
 
 describe("ErrorBoundary", () => {
+  it.each([undefined, null, 0, ""])(
+    "renders the fallback when a child throws the falsy value %s",
+    (thrown) => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      function Child() {
+        throw thrown;
+      }
+
+      render(
+        <ErrorBoundary fallback={Fallback}>
+          <Child />
+        </ErrorBoundary>,
+      );
+
+      expect(screen.getByRole("alert")).toHaveTextContent(String(thrown));
+      expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    },
+  );
+
   it("renders the supplied fallback and lets it reset the boundary", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     let shouldThrow = true;

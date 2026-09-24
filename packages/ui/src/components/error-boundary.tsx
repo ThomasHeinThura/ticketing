@@ -15,6 +15,10 @@ type ErrorBoundaryState = {
   error?: Error;
 };
 
+function normalizeError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
+
 /** Catches render errors and lets callers supply their own fallback UI. */
 export class ErrorBoundary extends React.Component<
   ErrorBoundaryProps,
@@ -25,8 +29,8 @@ export class ErrorBoundary extends React.Component<
     this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
+  static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
+    return { hasError: true, error: normalizeError(error) };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
@@ -39,16 +43,13 @@ export class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      if (this.state.error) {
-        const FallbackComponent = this.props.fallback;
-        return (
-          <FallbackComponent
-            error={this.state.error}
-            resetError={this.resetError}
-          />
-        );
-      }
-      return null;
+      const FallbackComponent = this.props.fallback;
+      return (
+        <FallbackComponent
+          error={this.state.error ?? new Error("Unknown rendering error")}
+          resetError={this.resetError}
+        />
+      );
     }
     return this.props.children;
   }
