@@ -26,9 +26,11 @@ Opus remains mandatory for security-scope work.
 ### 2026-09-23 · Require coverage and full-stage smoke contexts in `protect-main` (#10)
 
 **Decision:** The active `protect-main` ruleset now requires the exact `domain coverage (90%)`,
-`integration - Postgres 18`, and `e2e - protected-route redirect` status contexts. These jobs
-already ran in CI, but failing results did not block merges while their contexts were absent
-from branch protection.
+`integration - Postgres 18`, and `e2e - protected-route redirect` status contexts.
+`integration - Postgres 18` already ran in CI without blocking merges. The other two jobs are
+**first defined by PR #355**. Until #355 merges, no PR can produce those two contexts, so the
+ruleset blocks every merge. #355 must merge first. (Corrected by the orchestrating session
+from #355's Opus review, S5.)
 
 **Why:** A quality gate is effective only when the merge control requires it. The ruleset
 was updated without removing or changing any existing required context; its live state was
@@ -69,7 +71,9 @@ report branch coverage but do not threshold it.
 **Why:** The existing CI/CD contract says 90% coverage for the domain package, and current
 coverage is above 90% for these three dimensions. Branch coverage is useful diagnostic
 information, but applying the same threshold would silently redefine the documented gate
-and make the existing measurement fail at 88.77%.
+which would change what the documented gate means. (An earlier draft of this entry cited
+88.77% branch coverage. At #355's head, branch coverage is 95.15%, so branches are reported
+but not given a threshold, deliberately and not because the branch number fails.)
 
 **Alternatives:** Apply 90% to branches too, or leave the threshold unspecified. Rejected:
 the former exceeds the existing contract without a stated reason; the latter would leave
