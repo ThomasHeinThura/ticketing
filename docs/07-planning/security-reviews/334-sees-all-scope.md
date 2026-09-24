@@ -230,3 +230,63 @@ branch during this review. Its parent is `96fc970`.
 
 **Verdict at `941bc39`: CLEAR WITH FINDINGS.** S2–S4 are non-blocking, and S5 is for #323.
 G1 and G2 remain the orchestrator's merge gates.
+
+## Delta re-check after rebase onto `main` @ `7bebaf6` (2026-09-24)
+
+**Reviewed head:** `51af10d116eebe4f9b0ccff9f752c1a69c7df326`
+
+The branch was rebased onto `origin/main` `7bebaf61c50d2a65255e459827c88c1d30230340`, which
+includes #322, #308, #336, #345, #350 and #351. `96fc970`, `941bc39`, `2bb09e9` and `e5cf435` are
+no longer in the branch history. The heads cited above are kept as a historical record only.
+The binding head is the one on the line above. I reviewed this delta in a fresh detached worktree
+at `51af10d`.
+
+### Code identity
+
+- `git range-diff dd067e2..e5cf435 7bebaf6..51af10d`:
+  - `941bc39 = 7bb4a15`, `2bb09e9 = 8eaff7e` and `e5cf435 = 51af10d`. These are identical patches.
+  - `96fc970 ! 9c1b87b` differs in exactly one hunk, in `tests/api/permissions/resolve-identity.test.ts`.
+    That is the expected #322 conflict resolution. The `sees_all` test keeps both fixture rows,
+    `ws-1` with `seesAll: true` and `ws-2` with `seesAll: false`, and each now carries
+    `isSystemRole: true`.
+- Blob-identical between `941bc39` and `51af10d`: `packages/permissions/src/{evaluator.ts,
+  identity.ts,evaluator.test.ts}` and `tests/permissions/matrix.test.ts`.
+  `resolve-identity.ts` and `rbac.md` differ only by #322's content already on `main`. The
+  PR's own hunks to both are unchanged, per range-diff.
+
+### #322 composition (probe, not committed)
+
+In the merged `resolveIdentityFromFacts`, the `isGenuineBuiltInRoleGrant(...)` `continue`
+(`resolve-identity.ts:421-430`) runs before `memberships.push` (`:432-436`). So
+`seesAllWorkspaceIds` (`:456+`) only ever sees genuine grants. A temporary pure test confirmed
+four cases, 4/4 green:
+
+- A non-genuine `manager` row with `seesAll: true` resolves `{ kind: "membership" }` and no
+  membership, so the sees_all is dropped.
+- A mix of one non-genuine and one genuine sees_all row yields `workspaceIds: ["ws-real"]` only.
+- `owner`, which is exempt from `is_system` by design, keeps its sees_all.
+- A custom role name drops its sees_all.
+
+### Gates
+
+- **G2 closed.** `**Spec:**` no longer names `webhooks-and-api-keys.md`. `check:reviews`
+  reports "no feature spec named in this change", and the required `registers` check is green
+  on run 35921098966.
+- G1 is unchanged. `## Reviewed by` still records Codex contexts, now at `941bc39`, which is not
+  an ancestor after the rebase. That is for the orchestrator to settle.
+
+### Suites at `51af10d` (private DB `pr334_opus_d_test`, dropped afterwards)
+
+| Suite | Result |
+| --- | --- |
+| `pnpm test:permissions` | 10 files / 80 tests pass |
+| `packages/permissions` `pnpm test` | 13 files / 261 tests pass |
+| `apps/api` `test:unit` | 57 files / 450 tests pass |
+| `apps/api` `test:integration` | 83 files / 1140 tests pass |
+| `turbo typecheck --force` (permissions, api) | green |
+| `node --test 'scripts/ci/**/*.test.mjs'` | 495 / 495 pass |
+
+**Verdict at `51af10d116eebe4f9b0ccff9f752c1a69c7df326`: CLEAR WITH FINDINGS.** S2–S4 remain
+non-blocking and S5 is for #323. The #322 fixture-conflict note in § 4 is resolved as
+recommended. The test that sees_all on a non-genuine row is dropped is still absent from the
+committed suite. It is non-blocking, and the probe above shows the behaviour is correct.
