@@ -74,8 +74,17 @@ export function requireWorkItemReach(idKey = "key") {
     // `getProjectWorkspaceId`, which takes a project id, not a work-item key) -- a
     // soft-deleted project's work item now 404s exactly like a nonexistent key, never
     // distinguishing the two from the outside, consistent with F2 above.
+    // Issue #8, Slice 2: `id` and `projectId` are added to this SAME select -- no new
+    // query, no new round trip -- so the shadow middleware's `RowScope` construction can
+    // see a genuine, already-loaded work-item/project scope for this route. Read only by
+    // `apps/api/src/permissions/shadow-middleware.ts`; the legacy check below still reads
+    // `workItem.workspaceId` alone, unchanged.
     const [workItem] = await db
-      .select({ workspaceId: schema.workItemTable.workspaceId })
+      .select({
+        id: schema.workItemTable.id,
+        projectId: schema.workItemTable.projectId,
+        workspaceId: schema.workItemTable.workspaceId,
+      })
       .from(schema.workItemTable)
       .innerJoin(
         schema.projectTable,
@@ -104,6 +113,9 @@ export function requireWorkItemReach(idKey = "key") {
     }
 
     c.set("workspaceId", workItem.workspaceId);
+    // Issue #8, Slice 2 only -- see the select comment above.
+    c.set("workItemId", workItem.id);
+    c.set("projectId", workItem.projectId);
 
     return next();
   };

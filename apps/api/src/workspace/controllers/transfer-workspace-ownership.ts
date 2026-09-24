@@ -92,7 +92,12 @@ async function transferWorkspaceOwnership(
     const callerRoles = await workspaceMemberRoles(tx, workspaceId, callerId);
     if (
       !isUnambiguousMembership(callerRoles) ||
-      !builtInRoleHasCapability(callerRoles[0], "workspace:transfer_ownership")
+      !(await builtInRoleHasCapability(
+        workspaceId,
+        callerRoles[0],
+        "workspace:transfer_ownership",
+        tx,
+      ))
     ) {
       throw new CallerNotOwnerError();
     }
