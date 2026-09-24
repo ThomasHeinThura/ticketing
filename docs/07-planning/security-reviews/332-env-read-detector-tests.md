@@ -176,3 +176,34 @@ This verdict covers the security surface only. The PR is **not merge-ready** unt
 - The delta since `c731c26` is two clean merges and a note. The reviewed test file is unchanged, and no detector or gate code changed.
 - D2 and D3 are merge gates outside the security surface, and they must be closed before merge.
 - This note's commit moves the head. It is a note-only commit on top of the reviewed head, which is the intended shape.
+
+## Merge-head attestation (Opus 5.5)
+
+**Reviewed head:** `44fe7fb2740692e7fe60dd3178356a30167d0c49`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `1731fe49e0c3f8305fa40c56de557b7ef7384828` into the previously attested head `934b766`.
+`934b766` is note-only over the reviewed code head `9b0842f`. Main gained only #358 since the
+old base `c4e1810`, and #358 changed only `docs/07-planning/status.md`.
+
+- **Parents:** exactly (`934b766`, `1731fe4`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution.
+- **PR change unchanged:** `git diff c4e1810 934b766` and `git diff 1731fe4 44fe7fb` are
+  byte-identical (same sha256), covering `scripts/ci/lib/env-reads.test.mjs` and this note.
+  No file overlaps with #358.
+- **Commands at `44fe7fb`:**
+  - `pnpm test:ci-scripts` passes 508 / 508, with 0 failed.
+  - `pnpm check:env` exits 0: "30 environment read(s), every one attributable to
+    configuration-reference.md".
+  - The worktree stays clean after `pnpm install --frozen-lockfile --offline`.
+- **GitGuardian** (not a required context) reports "1 secret uncovered". It is the same
+  incident as above: `charts/taskdesk/values.yaml:245` `passwordKey: postgres_uri`, attributed
+  to the earlier main-merge commit `4d33443`.
+  - The line is on `main` from #308 (`db27fd5`), and this PR does not touch `charts/`.
+  - It is the name of a key in an existing Kubernetes Secret, not a credential.
+  - It is a false positive, to be resolved in the GitGuardian dashboard, not in this PR.
+- **CI at `44fe7fb` when this was written:** the required contexts were still queued, including
+  `pull request template + security review`. Merging needs every required context green.
+
+**Verdict at `44fe7fb2740692e7fe60dd3178356a30167d0c49`: CLEAR.** The earlier E-findings carry
+over unchanged and stay non-blocking.
