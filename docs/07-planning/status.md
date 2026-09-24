@@ -1564,18 +1564,21 @@ On #324 / PR #354, three independent ordinary reviews of `c611f190` identified t
 acceptance-evidence items and a project-scope provenance defect. Fixed the evaluator to track
 the addressed project ID's provenance separately from the workspace ID, retained the
 explicitly unevaluated `reach_unavailable` result where project reach facts do not exist,
-and added a permissive shadow-policy denied-param integration probe. Focused checks on the
-updated working tree: API typecheck, 31 shadow evaluator unit tests, 15 shadow-mode
-Testcontainers integration tests, Biome, Docker image build, isolated Compose migration and
-boot, liveness/readiness probes, and `git diff --check` pass. Three fresh independent
-ordinary reviews passed the source/test remediation; a lightweight review of the final
-comment-only clarification also passed. The #324 per-router before/after deployed-traffic
-coverage report is still unavailable; no synthetic result is represented as deployed
-evidence, so that acceptance item remains open. The workflow checks have not refreshed on
-the current stacked-PR head; the previous head's CI was green apart from its pending Opus
-gate. The current GitGuardian check flags the non-secret Helm key name `migration-password`
-in the stacked DB-role change, and the GitHub Advanced Security action failed because its
-requested model is unsupported; neither has been suppressed or represented as passing.
+and added a permissive shadow-policy denied-param integration probe. On the current source,
+the full typecheck passed (9 tasks); focused tests passed (31 evaluator unit, 15 shadow-mode
+Testcontainers integration); Docker build, isolated Compose migration/boot, liveness/readiness
+probes, Biome, and `git diff --check` passed. The full unit run had one unrelated existing
+notification SSRF test timeout (API 484/485); a focused rerun passed 4/4. Three fresh
+independent ordinary reviews passed the source/test remediation; a lightweight review of the
+comment/status-only delta also passed. The #324 per-router before/after deployed-traffic
+coverage report is unavailable; no synthetic result is represented as deployed evidence, so
+that acceptance item remains open. Pull-request workflow checks have not refreshed on the
+current stacked-PR head; the last completed required fast/full checks passed apart from the
+missing Opus review. On the current candidate, GitGuardian flags the Helm
+`migration.existingSecret.passwordKey` value `postgres_uri` (a Secret key name; the adjacent
+password value is blank and that existing-secret option is disabled), not a credential.
+GitHub Advanced Security fails because its requested model is unsupported. Neither scanner
+result has been suppressed or represented as passing.
 
 On #10 / PR #355, the documented root `pnpm test:e2e` command was missing from `package.json`.
 Added the root alias and aligned CI and the `test-all` manifest to call it. The protected
