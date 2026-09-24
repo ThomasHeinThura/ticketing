@@ -15,7 +15,410 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-24 · GPT-6 Luna replaces Sonnet for ordinary reviews on active P0 lanes
+
+**Decision:** For the currently active P0 work, use fresh independent GPT-6 Luna contexts
+for Sonnet-tier implementation and ordinary reviews when the Sonnet provider is at its
+usage limit. This substitution does not change review counts, independence requirements,
+or the exact-head rule. Every security-scope candidate still requires its separate final
+Opus 5.5 review before merge.
+
+**Why:** Thomas authorized continued P0 work with the available GPT-6 Luna agent while
+Claude/Sonnet capacity is exhausted; implementation and ordinary review should keep moving
+without representing GPT-6 as Opus.
+
+**Alternatives:** Stop all P0 implementation until Sonnet capacity returns; treat GPT-6 as
+Opus or waive the Opus gate. Rejected: implementation and ordinary review may proceed, but
+Opus remains mandatory for security-scope work.
+
+**Decided by:** Thomas, 2026-09-24, in session.
+
+
+### 2026-09-24 · The security-review scope adds `packages/domain/src/identity/**` and `apps/api/src/permissions/**`
+
+**Decision:** `docs/04-engineering/ci-cd.md`'s authoritative security-review scope list gains two globs:
+- `packages/domain/src/identity/**`, the P3 identity rules: claim normalisation, SCIM validation and PATCH, role limits and customer reach;
+- `apps/api/src/permissions/**`, which holds `resolveIdentity` (#315) and the #8 shadow-mode middleware (#323).
+
+From now on, any PR touching either path needs the Opus 5.5 security review, enforced by CI.
+
+**Why:**
+- #346's Opus review (S11) found the identity rules outside the scope, although they decide who gets which roles and reach. The same review found a ReDoS and a fail-open role mapping in that code.
+- `apps/api/src/permissions/**` was also outside it. #315 and #323 were only reviewed by Opus because the orchestrating session commissioned it.
+
+This only tightens the gate. It removes nothing.
+
+**Decided by:** the orchestrating session, 2026-09-24, under Thomas's standing delegation. There was one clearly recommended option.
+
+### 2026-09-23 · Require coverage and full-stage smoke contexts in `protect-main` (#10)
+
+**Decision:** The active `protect-main` ruleset now requires the exact `domain coverage (90%)`,
+`integration - Postgres 18`, and `e2e - protected-route redirect` status contexts.
+`integration - Postgres 18` already ran in CI without blocking merges. The other two jobs are
+**first defined by PR #355**. Until #355 merges, no PR can produce those two contexts, so the
+ruleset blocks every merge. #355 must merge first. (Corrected by the orchestrating session
+from #355's Opus review, S5.)
+
+**Why:** A quality gate is effective only when the merge control requires it. The ruleset
+was updated without removing or changing any existing required context; its live state was
+verified after the update. Opus review remains required for the security/control-plane
+changes on the candidate before merge.
+
+**Alternatives:** Leave these as informational checks. Rejected because merge could proceed
+despite failed coverage, database integration, or browser-smoke gates.
+
+**Decided by:** The orchestrating session, 2026-09-23, under Thomas's instruction to continue
+P0 and take the recommended option.
+
+### 2026-09-23 · OpenAPI contract tools and inherited-lint ratchet
+
+**Decision:** Add `@redocly/cli` 2.54.2 as an exact development dependency; run Redocly's
+recommended rules and compare findings to those generated from the immutable `origin/main`
+API contract. Pin `oasdiff` 1.32.1 and verify its Linux x64 release archive with the
+published SHA-256 on every run; fail on `WARN`-level breaking changes against `origin/main`.
+
+**Why:** P0 #10 and this document already require OpenAPI lint and breaking-change detection.
+The inherited spec has five identical-path errors, six ambiguous-path warnings, four missing
+4xx-response warnings, and one missing license warning. Comparing to the base branch allows
+existing contract issues to be tracked without letting new ones enter unnoticed; the
+candidate cannot widen the baseline. The official oasdiff release publishes the binary outside npm, so
+the check pins and verifies the upstream artifact rather than adding an unverified package.
+
+**Alternatives:** Leave the contract check drift-only; disable inherited lint rules; use an
+unpinned network installer. Rejected: these either leave the documented gate incomplete,
+hide all future findings in those categories, or do not verify the downloaded tool.
+
+**Decided by:** Thomas, 2026-09-23 (selected recommended option).
+
+### 2026-09-23 · Domain coverage gate thresholds
+
+**Decision:** Enforce minimum 90% statements, lines, and functions for `packages/domain`;
+report branch coverage but do not threshold it.
+
+**Why:** The existing CI/CD contract says 90% coverage for the domain package, and current
+coverage is above 90% for these three dimensions. Branch coverage is useful diagnostic
+information, but applying the same threshold would silently redefine the documented gate
+which would change what the documented gate means. (An earlier draft of this entry cited
+88.77% branch coverage. At #355's head, branch coverage is 95.15%, so branches are reported
+but not given a threshold, deliberately and not because the branch number fails.)
+
+**Alternatives:** Apply 90% to branches too, or leave the threshold unspecified. Rejected:
+the former exceeds the existing contract without a stated reason; the latter would leave
+the documented gate unenforced.
+
+**Decided by:** Thomas, 2026-09-23 (selected recommended option).
+
+### 2026-09-23 · Current-model ordinary-review fallback when Sonnet is unavailable; Opus remains mandatory
+
+**Supersedes (narrowly):** the reviewer-provider clause in the 2026-09-23 temporary fallback (#345), only when a fresh Claude Sonnet context is unavailable.
+
+**Decision:** The orchestrating session may commission a fresh, independent context using the currently available model for ordinary review of lane work. Record the actual model, exact candidate SHA, checked evidence, verdict, and findings. This does not change reviewer independence or the review count required by risk classification. It never substitutes for the final Opus 5.5 review on security-scope work; such a candidate waits for Opus before merge.
+
+**Why:** Claude Sonnet is unavailable in the current session, while P0 work should continue. The user explicitly authorized the current model as the ordinary-review fallback and reaffirmed that Opus remains the final reviewer.
+
+**Decided by:** Thomas, 2026-09-23, in session.
+
+
+### 2026-09-23 · Provision a local staff person during post-boot password signup
+
+**Decision:** The `/sign-up/email` user-create hook ensures an internal staff `person` row exists before a local password signup completes. It does not assign a person to an OAuth callback; the identity connection must determine portal and organisation when that provisioning path is implemented.
+
+**Why:** The boot seed only covers users present at startup, so later local signups otherwise resolve to `missing_identity` (#315 S7). Treating every external callback as internal staff would invent portal and organisation authority. The route-specific local-signup hook follows the current boot-seed rule while leaving external identity provisioning to its declared connection.
+
+**Decided by:** Thomas, 2026-09-23, by approving #324's signup-or-lazy-resolution acceptance and continuing this implementation.
+
+### 2026-09-23 · Storybook 10 compatibility spike for `packages/ui`
+
+**Decision:** Pin `storybook` and `@storybook/react-vite` to `10.6.0` in
+`packages/ui`; keep `@tailwindcss/vite` available to the package's Storybook config. The
+representative Button story builds on the current stack: Node `24.20.0`, React `19.2.8`,
+Vite `8.2.1` (Rolldown), and TypeScript `7.0.2`.
+
+**Why:** `pnpm --filter @taskdesk/ui build-storybook` completed successfully. Its output
+reported Vite `8.2.1` and emitted a Rolldown runtime chunk. A TypeScript 7 no-emit check of
+the Storybook config and story passed. The dev server also started; `GET /` returned `200`
+and `/index.json` listed all three Button stories. Storybook's Vite builder needed the
+Tailwind Vite plugin declared directly in `packages/ui` because pnpm does not expose
+`apps/web`'s dependency to that workspace package. Build emitted a non-blocking warning for
+the 1.1 MB preview chunk.
+
+**Alternatives:** A separate app-level Storybook setup would not exercise the design-system
+package boundary used by primitive stories.
+
+**Decided by:** Storybook 10 is already selected by `tech-stack.md`; the pin and compatibility
+result were recorded by the implementing agent, 2026-09-23.
+
 ---
+
+### 2026-09-23 · The P3 identity gate covers all 25 named acceptance tests
+
+**Decision:** Before the P3 identity gate closes, all 25 acceptance tests named in `identity-provisioning.md` must pass against a real Microsoft Entra test tenant. The phase, release, security-evidence and issue #39 gate wording changes from 17 tests to 25.
+
+**Why:** The spec now names 25 acceptance tests. The additions include OIDC configuration, session revocation, and regressions for Entra quirks. Gating only the original 17 would leave security-relevant behaviour unproven against the provider P3 is meant to support.
+
+**Alternatives:** Keep the 17-test subset. Rejected, because it is not the complete acceptance suite.
+
+**Decided by:** Thomas, 2026-09-23. A lane agent drafted the entry. Thomas confirmed the decision to the orchestrating session in session on 2026-09-23, and the orchestrator recorded it.
+
+### 2026-09-23 · SCIM duplicate conflicts share one generic external 409
+
+**Decision:** Every SCIM identity conflict returns an identical generic `409`, with no existing-resource id and no conflict class. That covers same-connection conflicts, cross-connection conflicts, and conflicts across organisations. The provisioning event may keep the internal distinction.
+
+**Why:** If a same-connection duplicate returned the existing id and a cross-connection conflict didn't, a caller could tell whether an identity exists inside another tenant boundary. The IdP can reconcile through its own next list or filter request.
+
+**Alternatives:** Keep IP-32's existing-resource id in the detail. Rejected, because it lets the caller tell the two conflict types apart.
+
+**Decided by:** Thomas, 2026-09-23. A lane agent drafted the entry. Thomas confirmed the decision to the orchestrating session in session on 2026-09-23, and the orchestrator recorded it.
+
+### 2026-09-23 · Until the lane agents' review capacity returns (2026-09-30), a fresh Claude Sonnet context does the ordinary independent review
+
+**Supersedes (temporarily):** the 2026-09-23 entry "Three non-Claude implementation agents take the P0/P1/P2 lanes…". That entry says the lane agents review each other. The agents have reported no ordinary-review capacity until 2026-09-30T15:27Z.
+
+**Decision:** Until the agents' capacity returns, the orchestrating Claude session commissions a **fresh Claude Sonnet context** as the ordinary independent reviewer for lane-agent PRs. Claude Sonnet was the project's ordinary-review tier before 2026-09-23, so this is not a downgrade. It stays independent, because no Claude context authored these PRs. Every other rule in that entry is unchanged:
+- the reviewer's model and the exact SHA it reviewed are recorded;
+- the attestation is spot-checked against the commit authors;
+- an Opus 5.5 review is required for security scope;
+- the exact head must be green;
+- no waiver is allowed without Thomas.
+
+From 2026-09-30 the agents review each other again.
+
+**Why:** Otherwise every lane PR stalls for a week. The capacity rule forbids downgrading or fabricating a review, and this does neither.
+
+**Decided by:** the orchestrating session, 2026-09-23. Thomas expressed no preference when asked, so the recommended option applies under the standing delegation.
+
+### 2026-09-23 · Workspace audit reads are filtered by project reach (AU-10)
+
+**Decision:** A reader of the workspace audit log (`workspace:manage_settings`) sees rows that are not project-scoped, plus rows for projects they can reach under the application's normal reach rules. That includes per-workspace `sees_all` (#319/#334). They never see rows for projects outside their reach. `audit_log` gains a nullable `project_id` with no FK, which follows `workspace_id`'s precedent, and it is recorded for every project-scoped action. The implementation is tracked in #344. **It must land before the first project-scoped audit writer merges.** Until then, PR #343's unfiltered workspace read exposes nothing extra, because no rows are project-scoped yet.
+
+**Why:** PR #343's Opus review (S1) and the 2026-09-05 security review ("Logging and audit access scope") found that a manager with no project access would otherwise read those projects' `before`/`after` payloads. That is the same reach rule the rest of the application enforces.
+
+**Alternatives:**
+- Restrict audit reads to owner, admin or `sees_all`. Rejected: managers would lose audit access entirely.
+- Accept unfiltered reads as AU-10's text allowed. Rejected: that is the gap the security review flagged.
+
+**Decided by:** Thomas, 2026-09-23, in session. He chose the recommended option.
+
+### 2026-09-23 · Three non-Claude implementation agents take the P0/P1/P2 lanes; the Claude session does Opus 5.5 security review and merge only
+
+**Supersedes (in part):**
+- `CLAUDE.md`'s "Model tiers" statement that non-Claude specialist agents for coding "did not work out and are not part of this project's process";
+- the earlier entry recording that the DeepSeek/GLM-routed implementation agents were dropped (line ~1187).
+
+Neither older text is rewritten.
+
+**Decision:** From 2026-09-23, implementation and Sonnet-tier work on the P0, P1 and P2 lanes is done by three agents that Thomas runs:
+- GPT-6 Luna;
+- DeepSeek 4.1 Flash, through GitHub Copilot;
+- mimo-v2.26 Flash, through Cline.
+
+Sonnet-tier work means implementation, fix rounds and ordinary reviews. The Claude Code session's role narrows to two things:
+- the **final independent Opus 5.5 security review** of every security-scope PR (`docs/04-engineering/ci-cd.md`'s path list), run in a fresh context separate from the author;
+- **merging** fully-green candidates through the protected flow, under the 2026-09-15 delegated merge authority.
+
+**The gates are unchanged.** Every PR still needs all of the following on its exact head:
+- an **independent ordinary review**, meaning a different agent or context from the author, with its actual model identity recorded in `## Reviewed by`;
+- the Opus 5.5 security review, where the change is in security scope;
+- every required check green;
+- no waived gate.
+
+A waived gate still needs Thomas. The Claude session merges only after verifying each gate itself, never on another agent's report of green. An agent never approves its own work, whatever its vendor.
+
+**How independence is verified, stated honestly.** Independence rests on the PR's own attestation. The Claude session checks that attestation at merge; it is not a cryptographic guarantee. Before every merge, the session checks:
+- `## Implemented by` names the authoring agent and model.
+- `## Reviewed by` names a **different** agent and model, gives the exact SHA it reviewed, and has its verdict recorded on the PR.
+- The same agent or tool is never both author and ordinary reviewer, and a reviewing agent can't clear a fix round it wrote itself.
+- For security-scope PRs, the Opus 5.5 review is always a fresh Claude context commissioned by this session, never one of the three lane agents.
+- The commit authors (`git log --format='%an <%ae>' main..HEAD`) are spot-checked against `## Implemented by`.
+
+**Commit identity rule, from 2026-09-23.** Each lane agent commits under its own distinct git author identity that names the tool, as Cline already does (`Cline (…) <agent@taskdesk.local>`). No lane agent may commit as `Claude Code <noreply@anthropic.com>`, which is this session's identity. PR #336's review found that several agent-authored PRs (#326, #331–#335) were committed under that identity. Where that has already happened, the PR's `## Implemented by` must name the real authoring agent, and the mismatch is noted on the PR before merge. A PR whose attestation and commits can't be reconciled does not merge.
+
+If any of these is missing, the PR does not merge. It waits, and the PR says what is missing.
+
+**Why:** Thomas's instruction on 2026-09-23. Claude's spend limit was being reached repeatedly mid-lane, and it is better spent on the Opus-tier review that nothing else on the project can do.
+
+**Decided by:** Thomas, 2026-09-23, in session. The orchestrating Claude session recorded it. Thomas then separately confirmed that the three agents do the **ordinary independent reviews** as well as the implementation, reviewing each other's PRs. He answered that one explicit question after PR #336's first review asked for it, choosing it over keeping ordinary reviews on a fresh Claude Sonnet context. Opus 5.5 stays the security reviewer.
+
+### 2026-09-23 · Sequence #8 shadow-mode tables after #322's migration
+
+**Decision:** Preserve #322's `0068_workspace_role_is_system` migration and its snapshot
+as index 68. Move #8 Slice 2's hand-written shadow-evidence migration to
+`0069_policy_shadow_tables`, append index 69, and chain its snapshot to the new 0068
+snapshot. Keep the shadow-table Drizzle declarations outside `database/schema.ts`, as the
+original #323 decision specifies; update their migration references.
+
+**Why:** #322 merged first, so its existing migration and deployed ordering stay intact. The
+unmerged #323 candidate collided with it on both numeric prefix and journal index. Giving
+the shadow tables the next forward-only slot removes the collision without rewriting either
+migration's contents or folding the shadow tables into #308's shared schema lane.
+
+**Alternatives:** Rewrite or renumber #322's migration — rejected because it is already on
+`main`. Fold the shadow tables into the canonical database schema — rejected because that
+would change the recorded lane boundary and generate a different migration than #323's
+hand-written table contract.
+
+**Decided by:** the orchestrating session, 2026-09-23. It adopted the #323 lane's migration-sequencing fix, which #323's Opus S9 required. This is an implementation sequencing detail, not an owner decision.
+
+### 2026-09-23 · #8 Slice 2's shadow mode: an env switch, two Postgres evidence tables, read-only row-scope exposure
+
+**Decision:** The shadow-mode policy middleware (#8 Slice 2) is built from three parts.
+
+- **Switch.** `TASKDESK_POLICY_SHADOW` is `off` (the default) or `on`. When it is off, the middleware is a no-op with zero queries. UAT runs with it on. This is an interim bridge, in the same pattern as `TASKDESK_STORAGE_DRIVER`, until the `*_feature_flag` tables in `plugin-architecture.md` exist.
+- **Evidence.** Two tables, registered in `data-model.md`:
+  - `policy_shadow_tally` holds per-day counts per `(route_key, outcome, reason_code)`, agreements included. Every request that reaches a router while shadow is on is counted.
+  - `policy_shadow_event` holds non-agreeing outcomes, with the addendum's attributable fields. It stores ids only, never bodies, headers or secrets, and is capped at 50 rows per `(day, route_key, outcome, reason_code)`.
+  - Writes happen after the response and can never change it.
+  - Retention is 30 days. The writer prunes old rows itself, because no jobs runner exists yet (`apps/api/src/jobs/` is absent). The pruning moves to a job when the runner lands.
+- **Row scope.** The existing middleware (`workspace-access-middleware.ts`, `require-work-item-reach.ts`) exposes the ids it has already loaded through read-only `c.set(...)`, with no new query and no behaviour change. A route that still has no evidence is logged as `unevaluated`, with a reason code, never skipped.
+
+**Why:** The #8 addendum requires evidence that is "queryable for at least the whole soak window, not only in container stdout". `observability.md` sends application logs to stdout, kept for "whatever the collector keeps", and the deployment has no queryable log store. So a small Postgres store is the only option that meets the requirement. A per-day tally keeps coverage and summary counts cheap. A capped event list keeps the attributable detail bounded. Without read-only row-scope exposure, almost every project-scoped or work-item-scoped route would be `unevaluated`, and the 7-day soak would prove nothing.
+
+**Alternatives:**
+- Structured stdout logging only. Rejected: it fails the addendum's retention rule.
+- Reusing `audit_log`. Rejected: it has the wrong shape, being hash-chained, append-only, 12-month retention, and "who changed what".
+- Building the `*_feature_flag` tables first. Rejected for now: that is a P4 governance piece of its own, and it would block #8 on unrelated work.
+
+**Coverage in this slice:** `public`/`delegated` routes are fully evaluated. Workspace
+`capability` policies are evaluated when the legacy middleware exposes the target workspace;
+request-sourced policies use `RequestScope`, while row-sourced policies use `RowScope`. A
+denied request whose scope was not exposed is `unevaluated: row_scope_unavailable`;
+`scope_source_unavailable` is reserved for the shadow's own construction artifacts
+(`scope_mismatch`/`scope_source_mismatch`), never a fabricated disagreement. Evaluations
+dropped under saturation are recorded as `unevaluated: shadow_saturated` under the
+affected route's own router group, so a saturated router reads as not-clean. Project/work-item capability
+policies without reach facts, other scopes, `self` and `portal` policies, and requests with no
+resolved identity are also recorded as `unevaluated`, each with a specific reason code. This is
+fail-safe, because a router with any `unevaluated` requests is not clean and cannot cut over.
+Widening coverage is follow-up work (Slice 2b). Because the shadow evaluation runs after the
+response, 2b may load the missing reach facts with extra reads without adding request latency.
+
+**Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation. There was one option that meets the recorded requirement. The Slice 2 lane surfaced the gaps.
+
+### 2026-09-23 · Built-in role names are reserved; a built-in grant needs a genuine seeded row (`workspace_role.is_system`); existing data is reported, not rewritten (#318)
+
+**Decision:** Every `BUILT_IN_ROLES` key is reserved as a custom workspace role name. It is normalised the same way as the existing `owner` check and gets the same refusal. The legacy check (`require-workspace-capability.ts`) and the adapter (`resolve-identity.ts`) grant a built-in role's capabilities only to `owner`, or to a `workspace_role` row with `is_system = true`, through one shared predicate (`isGenuineBuiltInRoleGrant`). Migration `0068` adds `is_system` and **backfills `true` for every existing `viewer`/`member`/`admin` row**. `seedDefaultWorkspaceRoles()` repeats that repair on every boot. Without the backfill, every existing admin, member and viewer would have lost their built-in capabilities on deploy. PR #322's ordinary review found this; CI had missed it because it always migrates an empty database.
+
+**Existing custom rows that use a built-in name are reported, not rewritten.** This is option A. `apps/api/scripts/audit-reserved-workspace-role-names.ts` is read-only, and it is run once against UAT at the next redeploy. The runtime rule already neutralises every collision, so a report is enough. An admin-facing "rename this role" affordance (option C) belongs with #40, the P4 roles UI.
+
+**Known residual, stated plainly:** a custom row named `viewer`/`member`/`admin` can exist in live data today, and there are two ways it could have got there. Before S4, better-auth's `create-role` accepted any name. **Until #322 deploys**, the native routes on `main` also allow it: delete the seeded row while it is unassigned (`delete-workspace-role.ts`), then recreate the name as a custom role (`create-workspace-role.ts`). #322's Opus review reproduced this on `main`'s tip. #322 closes the path once it deploys. The name-based backfill marks such a row genuine. That preserves the access it already had on `main` through the bug being fixed, so it grants nothing new. After the backfill, though, the audit script can no longer tell such a row apart from a genuine seeded row. This was confirmed by #322's delta review, from `git log -p` and the installed better-auth source. No evidence of exploitation exists.
+
+**Why:** A role row's name was being trusted as proof that it is a built-in role, and that allowed escalation (#315 Opus S2). The row's provenance has to be stored somewhere. `UNIQUE (workspace_id, role)` plus seeding at creation make the name trustworthy for the three seeded names in existing data, but for nothing else.
+
+**Alternatives:**
+- A report plus a startup log line (option B). Deferred: it is not needed for safety.
+- Silently renaming or reassigning colliding roles. Rejected: #318 forbids touching anyone's role silently.
+- Backfilling nothing. Rejected, because it strips every existing admin's capabilities.
+
+**Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation. The runtime fix makes option A sufficient.
+
+### 2026-09-23 · The API connects as a non-owner, non-superuser role; append-only is enforced by grant first, trigger second (#296)
+
+**Supersedes (in part):** the 2026-09-23 entry "`audit_log` is append-only by trigger, not
+by grant — this deployment has exactly one Postgres role". Its premise, one role, stops
+being true with PR #308. The triggers from `0067` stay as a second layer. They are not
+removed.
+
+**Decision:** Every shipped deployment (`compose.yml`, `charts/taskdesk/**`, `deploy/**`)
+uses two Postgres roles:
+- **Migration/owner role.** `TASKDESK_MIGRATION_DATABASE_URL` connects as the role that
+  owns every table. It is used **only by a separate one-shot migrate process**
+  (`TASKDESK_ROLE=migrate`): a compose `migrate` service, or a `migrate` initContainer on
+  the Helm `taskdesk` Pod. Kubernetes finishes an initContainer before the Pod's own containers
+  start. That replaced a pre-install hook Job, which timed out on a fresh install because it ran
+  before the chart's ServiceAccount and bundled Postgres existed (Opus delta D2). The process runs the migrations and the grant step, then exits. **The
+  long-running API and jobs processes never receive this URL.** The API refuses to start if
+  it is present in its environment (`assertNoMigrationUrlInApiProcess`), because closing a
+  connection pool does not remove a credential from the process environment
+  (`/proc/self/environ`). This was found by PR #308's Opus review, S1.
+- **Application role.** `TASKDESK_DATABASE_URL` connects as `taskdesk_app`. It is not a
+  superuser, it owns nothing, and it has DML only. On `audit_log` and `activity` it has
+  `INSERT` and `SELECT` only, with no `UPDATE`, `DELETE` or `TRUNCATE`.
+
+Grants are applied by the migrate process (`ensureApplicationRole`), which runs as the owner right
+after `migrate()`. They are not applied by a migration file. The app role's password is sent as a
+pre-computed **SCRAM-SHA-256 verifier**, never as plaintext, and errors from that step carry no
+query text. Without this, a failed or DDL-logged `CREATE ROLE … PASSWORD` would write the password
+to the API and server logs (Opus S2). It does `REVOKE ALL`, then precise `GRANT`s,
+plus `ALTER DEFAULT PRIVILEGES`, so it is idempotent. It re-derives the grants from the
+live table list and `APPEND_ONLY_TABLES` on every migrate run. The API process then **refuses to start**
+(`assertApplicationRoleIsNotPrivileged`) if the connected application role, or any role it can reach,
+does any of the following. "Reach" means through membership or `SET ROLE`, checked transitively with
+`pg_has_role(…, 'MEMBER')`. The refusal conditions are:
+- it is a superuser;
+- it can create roles, bypass row-level security, or start replication;
+- it is a member of `pg_write_server_files`, `pg_read_server_files`,
+  `pg_execute_server_program`, `pg_signal_backend`, `pg_database_owner`,
+  `pg_write_all_data` or `pg_read_all_data`;
+- it owns anything in `pg_class`, `pg_proc`, `pg_namespace` or `pg_type`.
+
+The role create-and-grant step runs under a transaction-scoped advisory lock, so two
+replicas booting at once cannot race. Two things are deliberately **not** refused, because neither can defeat the
+append-only or no-DDL controls this check exists for (PR #308's review):
+- membership in `pg_monitor`, which can read other sessions' statistics and settings but has
+  no data or DDL rights;
+- ownership of large objects, which the app role can create for itself. Reaching the
+  filesystem from a large object needs `pg_read_server_files` or `pg_write_server_files`,
+  and those are already refused.
+
+There is **no single-URL mode for the API**. If the API is connected as the table owner, the
+privilege check refuses to boot, whatever the environment. Local development uses the same
+two steps: run `TASKDESK_ROLE=migrate` once with the owner URL, then serve against the app role.
+This is documented in `configuration-reference.md`. For a Helm external database with
+`migration.enabled: false`, one role both migrates and serves, and **the Pod fails closed** in
+one of two ways:
+- if that role can run DDL (the chart's documented setup SQL makes it the schema owner), the
+  initContainer succeeds and the `taskdesk` container then refuses to boot on its own privilege
+  check;
+- if it cannot run DDL, the initContainer itself fails.
+
+In neither case does the API serve as the owner. `charts/taskdesk/README.md` documents this.
+
+**`activity` rows are removed by cascade, and that is decided behaviour** (Opus S4). They
+disappear when their work item is hard-deleted, or when a project or workspace delete cascades
+to them through migration `0066`'s `ON DELETE CASCADE`. `taskdesk_app` still cannot `UPDATE`,
+`DELETE` or `TRUNCATE` `activity` directly. `DELETE` is deliberately **not** revoked on
+`work_item`/`project`, per the 2026-09-23 activity addendum's CASCADE decision. So a compromised
+API process can erase `activity` history only by deleting the work item, project or workspace it
+belongs to. `audit_log` has no such cascade (`workspace_id` has no foreign key), and it records
+the deletion itself.
+
+**Why:** The earlier entry recorded a residual risk. The API ran as the superuser table
+owner, so a compromised API process could `ALTER TABLE … DISABLE TRIGGER` or `TRUNCATE`
+and defeat the audit trail. This closes the first of the two items that entry said must
+land. A grant is the control Postgres actually enforces against a non-owner.
+
+The grant step runs in the migrate process rather than as a journal migration, for two reasons:
+- a journal migration runs once and can't carry a deployment-specific, rotatable password;
+- a future append-only table then gets its restriction automatically, not by someone
+  remembering to add it.
+
+**What it still does not stop:** the owner role is still the postgres image's init user,
+and so still a superuser at cluster init. Anyone holding
+`TASKDESK_MIGRATION_DATABASE_URL`'s credentials can do anything, so that credential must
+stay operator-only. The second item from the earlier entry is **still open**: a chain
+anchor outside this database, or a keyed hash. There is no `taskdesk_maint`/`audit-purge`
+role yet, because that job doesn't exist yet.
+
+**Alternatives:**
+- Grants in a Drizzle migration. Rejected: it can't carry the password, and it runs once.
+- Keep the single role and rely on triggers. Rejected: the superuser owner can disable them.
+- A dedicated non-superuser owner role separate from the image init user. Deferred: it is
+  more provisioning work for BYO Postgres, and it doesn't change what the API process can
+  do.
+- Keep migrations in the API process and narrow every claim to SQL-level compromise only.
+  Rejected: it leaves the superuser credential inside the process that serves requests, and
+  it would have needed Thomas's recorded risk acceptance.
+
+**Operational consequence:** existing deployments need the new
+`TASKDESK_APP_DB_PASSWORD` (compose) or `taskdesk.env.database.app*` values (Helm), and a
+redeploy. The redeploy now runs the migrate step before the API:
+- `scripts/deploy.sh`'s `upgrade`/`rollback` run `dc run --rm migrate` explicitly first
+  (`up --wait` on a one-shot service exits non-zero even on success, Opus delta D1);
+- Helm runs it as the initContainer on every rollout. The UAT redeploy needs Thomas's authorization. It is not implied by this entry.
+
+**Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation.
+There was one clearly recommended option, the two-role split that AU-3 and `migrations.md`
+already specified. Mechanism by PR #308's lane. Recorded before #308 merges.
 
 ### 2026-09-23 · P1's UI path: new v2 work-item screens on the new API, then retire kaneo's task stack
 

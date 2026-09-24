@@ -25,7 +25,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed:user-data": "tsx scripts/seed-user-data.ts",
-    "openapi:export": "tsx scripts/export-openapi.ts"
+    "openapi:export": "tsx scripts/export-openapi.ts",
+    "audit:reserved-role-names": "tsx scripts/audit-reserved-workspace-role-names.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1104.0",

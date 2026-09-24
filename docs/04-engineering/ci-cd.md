@@ -28,6 +28,14 @@ stages below.
 
 **Fast — required on every push, target under 15 minutes:**
 
+Every gate whose failure must block merging is also listed by its exact check context in
+the active `protect-main` ruleset. Adding a new standalone job here is not sufficient by
+itself: update the ruleset to require its context and verify the live rule after the change.
+As of 2026-09-23, `domain coverage (90%)` is required alongside the contexts listed in the
+repository's active ruleset. The full-stage `integration - Postgres 18` and
+`e2e - protected-route redirect` contexts are also required; do not infer that a workflow
+configured to run before merge is enforced unless its exact context appears in the ruleset.
+
 ```
 ┌─ Setup ──────────────────────────────────────────┐
 │ pnpm install --frozen-lockfile                   │
@@ -57,11 +65,13 @@ stages below.
 │ no-inherited-routes  removals stay removed       │
 ├─ Test ───────────────────────────────────────────┤
 │ pnpm test                unit + component        │
-│ pnpm test:coverage       90 % on packages/domain │
+│ pnpm test:coverage       90 % statements, lines,  │
+│                          functions on domain     │
 │ pnpm test:permissions    route coverage (Hono    │
 │                          router), role × route   │
 │                          matrix ×2, custom roles │
-│ pnpm test:contract       Redocly lint + oasdiff  │
+│ pnpm test:contract       OpenAPI lint, drift,    │
+│                          and breaking changes   │
 │ pnpm test:mcp            tool → route parity     │
 ├─ Build ──────────────────────────────────────────┤
 │ pnpm build               all apps and packages   │
@@ -70,6 +80,13 @@ stages below.
 │ helm lint + helm template   charts/taskdesk      │
 └──────────────────────────────────────────────────┘
 ```
+
+`pnpm test:contract` regenerates and checks the committed OpenAPI document, runs Redocly's
+recommended lint rules, then runs `oasdiff breaking --fail-on WARN` against `origin/main`.
+Redocly currently reports 16 inherited findings in the generated contract; lint findings
+are compared to the immutable `origin/main` contract, so each may be removed and any new
+finding fails. The oasdiff release is pinned and its Linux x64 archive is SHA-256 verified
+on every run. Fetch `origin/main` before running the command locally.
 
 **`pnpm test:permissions` must run before `apps/web` is built, against a router that cannot
 see a built `apps/web/dist` (#165).** The Fast stage's ordering above already guarantees this
@@ -84,8 +101,9 @@ like the Docker image's own `build-web` stage below — must keep `apps/web/dist
 router's view, or re-derive this constraint; it is not something `route-coverage.ts`'s
 declaration list can absorb without weakening its strict-count design.
 
-**Full — required before merge, runs on the merge queue (or on the `ready-for-review`
-label), target under 45 minutes, sharded four ways:**
+**Full — required before merge, runs on pull request `opened`, `reopened`, `labeled`,
+`synchronize`, and `ready_for_review` events and on the merge queue, target under 45 minutes,
+sharded four ways:**
 
 ```
 ├─ Integration ────────────────────────────────────┤
@@ -93,15 +111,23 @@ label), target under 45 minutes, sharded four ways:**
 │                          lifecycle/, migrations  │
 │                          from empty, anonymiser  │
 ├─ Browser ────────────────────────────────────────┤
-│ pnpm test:e2e            agent + portal          │
-│ pnpm test:e2e --project=security                 │
-│ pnpm test:e2e --project=reduced-motion   G9      │
-│ pnpm test:e2e --project=mobile-320       H6      │
+│ pnpm test:e2e            protected-route redirect│
+│                          browser smoke today;    │
+│ pnpm test:e2e --project=security                │
+│ pnpm test:e2e --project=reduced-motion   G9     │
+│ pnpm test:e2e --project=mobile-320       H6     │
 │ pnpm test:a11y           G4 — axe                │
 │ pnpm test:visual         G8 — snapshots          │
 │ pnpm test:perf           G11 — budgets           │
 └──────────────────────────────────────────────────┘
 ```
+
+The current Playwright suite is a real-browser smoke for the already-specified logged-out
+protected-route redirect and its preserved destination. The `security`, `reduced-motion`,
+and `mobile-320` project commands above document future suites; none are enabled yet. The
+current smoke does not yet satisfy authenticated agent/portal journeys; these still need
+deterministic application fixtures and acceptance flows. The narrow
+`e2e - protected-route redirect` smoke is a required branch-protection status check.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
@@ -120,6 +146,7 @@ apps/api/src/**/index.ts             any new route file (a new *.ts exporting a 
 apps/api/src/**/controllers/**       apps/api/drizzle/*.sql
 apps/api/src/policy-registry.ts      apps/api/src/database/**
 packages/mcp/src/auth/**             scripts/deploy.sh
+packages/domain/src/identity/**      apps/api/src/permissions/**
 
 apps/api/src/middleware/**           (path does not exist yet)
 apps/api/src/webhooks/**             (path does not exist yet, P4)
@@ -132,6 +159,8 @@ turbo.json                           pnpm-lock.yaml
 docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
                                      .npmrc
                                      .pnpmfile.cjs
+**/vitest.config.*                   apps/web/playwright.config.ts
+apps/web/e2e/**                      scripts/ci/redocly.yaml
 ```
 
 **Why the last two lines of the first block were added** (2026-09-09, from an independent

@@ -131,7 +131,7 @@ describe("workspace:transfer_ownership — the policy layer alone refuses a mana
 
 describe("the two axes stay separate", () => {
   it("gives sees_all no authority at all", () => {
-    // sees_all is resolved into reach.kind === 'all'. It must not add a capability.
+    // sees_all affects reach only. It must not add a capability.
     const viewer = identityFor("viewer");
     const seesAll = { ...viewer, reach: { kind: "all" } as const };
     expect(seesAll.authority).toEqual(viewer.authority);
