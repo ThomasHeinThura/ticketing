@@ -165,3 +165,28 @@ into the previously reviewed head `58d5a9b2c1689c0f7524b526108879ae76c5b318`.
   for want of this note. That is expected.
 
 **Verdict at `f0976a295eab52e58d9b1e4d921e9cf04cc86e8a`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #323 merged
+
+**Reviewed head:** `1eed6fa4d592c25a18c391ecaf687752e04e5fc1`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `9d5deb92a81791598140007fe8e108d1a352855c` (#323, request-path policy shadow mode and
+migration `0069`) into the previously attested head `0d7eca4344395107148b7158f0bf7eb568889369`. Main's tree at `9d5deb9` is
+identical to #323's attested tree `eb94330`. `776999d..9d5deb9` is that one merge.
+
+- **Parents:** exactly (`0d7eca4344395107148b7158f0bf7eb568889369`, `9d5deb9`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution.
+- **PR change unchanged:** every added and removed line is identical. Only the hunk offsets
+  in `decision-log.md` differ, because of #323's entries. The file auto-merged.
+- **Interaction with #323:** #356's new scope row `apps/api/src/permissions/**` now also covers
+  #323's merged `shadow-*.ts` files. That is intended, and it only grows the scope. #323 changed
+  no `ci-cd.md`, workflow, lockfile or security-paths file.
+- **Tests at `1eed6fa`:** `pnpm test:ci-scripts` passes 502 / 502.
+- **CI at the merge head:** the only failure was `pull request template + security review`,
+  which reported this file STALE for want of this note. That is expected, and this note is what
+  clears it. `integration - Postgres 18` was still in progress when this was written, and merging
+  needs it green.
+
+**Verdict at `1eed6fa4d592c25a18c391ecaf687752e04e5fc1`: CLEAR.** The ordering note above
+still stands and remains non-blocking.
