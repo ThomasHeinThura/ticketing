@@ -134,6 +134,7 @@ actually assign to. The client never filters this itself.
 | Assignee deactivated (`person.active = false`) | Assignment retained, shown as "Jane Smith (inactive)" — `AS-8`. There is no delete path to tombstone against: `work_item.assignee_id` is `ON DELETE RESTRICT` and people are never hard-deleted |
 | Bulk assign where some items are outside authority | Per-item: allowed ones succeed, others reported |
 | Assigning a work item already assigned to you | No-op, no activity entry, no notification |
+| Unassigning an item nobody holds | No-op, no activity entry, no notification -- the answer is "it is already as you asked", not a conflict |
 | Two people self-assign simultaneously | The conditional `UPDATE ... WHERE assignee_id IS NULL` lets only one write through; the second gets 409 with the winner's identity, not a version conflict — see the API section |
 | Default assignee is inactive when a work item is created | Left unassigned, and the project is flagged in settings |
 | Assigning across projects during a move | Assignment cleared if the assignee is not on the destination roster; the user is warned first |

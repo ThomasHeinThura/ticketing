@@ -113,4 +113,29 @@ export const workItemPolicies = {
       capability: "work_item:update",
     },
   },
+
+  // Clear a work item's assignment (`assignment.md` § API; `AS-2`). PRIMARY is
+  // `work_item:assign` -- clearing a colleague's work is the same authority as moving it.
+  // The alternate branch is `orOwner` on the LOADED ROW (the spec's
+  // `orSelfTarget(row.assignee_id, work_item:update)` line): a caller holding
+  // `work_item:update` may clear THEIR OWN assignment, and the predicate reads the row's
+  // CURRENT holder. The spec writes the branch as a self-target because it is
+  // "self"-shaped to a reader, but its fact comes from the row, not the body -- this is
+  // the first entry to declare `row.assignee_id`, which is why that predicate was added
+  // to `OWNER_PREDICATES` (`packages/permissions`, and `rbac.md`) in the same change:
+  // declaring it without adding it there fails registry validation, deliberately.
+  //
+  // Reach: `requireWorkItemReach()` resolves the row by key before the handler runs (the
+  // same middleware `POST .../assign` uses), and the controller's conditional write
+  // re-scopes by the row's own id.
+  "DELETE /api/work-items/{key}/assign": {
+    capability: "work_item:assign",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+    orOwner: {
+      predicate: "row.assignee_id === identity.personId",
+      capability: "work_item:update",
+    },
+  },
 } as const satisfies PolicyMap;

@@ -2697,6 +2697,32 @@
           "currentAssigneeId"
         ]
       },
+      "WorkItemUnassignment": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "assigneeId": {
+            "type": "null"
+          },
+          "previousAssigneeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "assigneeId",
+          "previousAssigneeId",
+          "version"
+        ]
+      },
       "UserAvatar": {
         "type": "object",
         "properties": {
@@ -10485,6 +10511,69 @@
           },
           "403": {
             "description": "No workspace access, missing work_item:assign, or (for self-assignment) missing work_item:update",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The assignee changed while this request was in flight",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemAssigneeConflict"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "unassignWorkItem",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Unassign work item",
+        "description": "Clear a work item's assignee (`assignment.md`, `AS-2`). Requires `work_item:assign`; a caller holding only `work_item:update` may clear their OWN assignment (the branch reads the row's current holder, not the request body). Clearing an already-unassigned item is an idempotent 200 no-op with no activity entry and no event (`AS-9`: work is never silently unassigned, so there is nothing to unwrite). A lost race returns 409 with the current assignee. Bulk unassign and the `work_item.unassigned` notification fan-out are later slices.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The assignment as cleared",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemUnassignment"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, missing work_item:assign, or (for clearing your own assignment) missing work_item:update",
             "content": {
               "text/plain": {
                 "schema": {

@@ -450,7 +450,7 @@ type Scope = 'instance' | 'workspace' | 'project' | 'work_item' | 'organisation'
 type ScopeSource = 'row' | 'request' | 'instance';
 type OwnerBranch = { predicate: OwnerPredicate; capability: Capability; withinMinutes?: number };
 type SelfTargetBranch = { predicate: BodyPredicate; capability: Capability };
-type OwnerPredicate = 'row.person_id === identity.personId' | 'row.created_by === identity.personId' | 'row.requester_id === identity.personId';
+type OwnerPredicate = 'row.person_id === identity.personId' | 'row.created_by === identity.personId' | 'row.requester_id === identity.personId' | 'row.assignee_id === identity.personId';
 type BodyPredicate = 'body.assigneeId === identity.personId';
 type PortalPredicate = 'own_request' | 'own_organisation' | 'addressed_approval' | 'own_submission' | 'self';
 ```
