@@ -748,3 +748,18 @@ findings.
 
 This note commit changes only this file. Any other change to the branch after `8fe8fdf`,
 including a `main` merge, needs this clearance re-confirmed at the new head.
+
+---
+
+## Attestation — control-plane-only delta `7b591a2`
+
+**Reviewed head:** `7b591a28c797d9e241e08ebbf43061f36cc00a5c`
+
+- **The only new commit:** `7b591a2 docs(control-plane): drop #323's status.md edits; attribute the renumber entry to the orchestrator`. Its parent is `ab8de52`, and `origin/main` is still `7bebaf6`, the merge base.
+- **`git diff ab8de52 7b591a2` touches two files, both docs:**
+  - `docs/07-planning/decision-log.md`: one "Decided by:" line, which wrapped over two lines, is replaced by one line re-attributing the renumber entry to the orchestrating session.
+  - `docs/07-planning/status.md`: 7 lines removed, which were the E1 additions.
+- **`status.md` now has no diff against `origin/main`.** Correction to the relayed note: `main`'s `status.md` doesn't contain the removed "Seventh pass" text, so those lines didn't reach `main` separately. They were simply dropped.
+- **Nothing else changed:** no code, test, migration, or other document.
+
+**Verdict:** CLEAR WITH FINDINGS stands at `7b591a28c797d9e241e08ebbf43061f36cc00a5c`. E1 is resolved; E2 and E3 remain non-blocking.
