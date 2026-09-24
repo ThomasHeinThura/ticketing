@@ -1,34 +1,24 @@
+# Status — a POINT-IN-TIME SNAPSHOT
+
 **2026-09-24 continuation (P0 #10 / #342):** Ordinary review of PR #352 head `ea8d182`
 identified two detector bypasses: JSX comment-like text could hide a later environment read,
 and rest destructuring was misattributed as named access. Both are fixed with regressions;
 the detector suite passes 31/31, the complete CI checker suite passes 533/533, and
 `pnpm check:env` scans 981 files with 29 attributable reads. The previous head's Postgres
-integration is still pending and its PR template correctly remains blocked on exact-head Opus
-review. These fixes are not yet committed or reviewed; #352 must be refreshed against current
-`main` and receive ordinary plus Opus review before merge.
+integration was still pending and its PR template remains blocked on exact-head Opus review.
+The fixes are committed in `d95debf` and need exact-head ordinary and Opus review after this
+mainline refresh. No merge or issue completion is claimed.
 
-**2026-09-24 continuation (P0 #324 / #8 Slice 2b):** The #324 shadow-coverage branch now
-integrates `origin/main@f22f0100cb3d5a1ab3ff6dbc0c20b4e298fd488c`, including #323, #334,
-#335 and #356. The conflict resolution preserves #324's explicit legacy-authorization
-markers and separate workspace/project provenance while retaining the current mainline
-permission reach model and the latest #323 review attestation. After rebuilding the
-workspace permissions package to refresh its ignored `dist` output, API typecheck passed;
-focused permission tests passed 82/82 and the Postgres shadow-mode integration suite passed
-15/15 against isolated `taskdesk_p0_324_test` on the lane Postgres service. The first
-integration attempt used the absent local `localhost:5432` fallback and failed to connect;
-the rerun used the dedicated lane database. The PR is still stacked on the old #323 branch
-and must be retargeted to `main`; fresh ordinary integration review and exact-head Opus
-security review remain pending. No enforcement or P0 completion is claimed.
 
-# Status — a POINT-IN-TIME SNAPSHOT
-
-**2026-09-24 orchestrator snapshot — `main` at `c4e1810`.** Merged today, each with every
+**2026-09-24 orchestrator snapshot — `main` at `663c0cb`.** Merged today, each with every
 required check green on the exact head and an Opus 5.5 attestation of that head:
 #355 (`776999d`, Playwright smoke + domain coverage + integration gates), #323 (`9d5deb9`,
 request-path policy shadow mode), #334 (`ecb5b63`, `sees_all` scoped to granting workspaces),
 #356 (`3a45fc5`, security scope widened to identity and API permissions), #335 (`f22f010`,
 Storybook 10.6.0), #338 (`c4e1810`, asset/websocket existence oracles masked; the #317 timing
-residue S1 stays open). `protect-main` now requires **15** checks with strict up-to-date
+residue S1 stays open), #332 (`3fde7f6`, env-read detector regression tests), #354 (`663c0cb`,
+#8 Slice 2b shadow coverage; its S1 — shadow events store an unvalidated caller `workspace_id` on
+denial — must be fixed before shadow mode runs in a shared deployment). `protect-main` now requires **15** checks with strict up-to-date
 branches, so each merge makes every other candidate BEHIND; a clean merge from `main` then needs
 a fresh Opus merge-head attestation before the review-note binding passes again. Open P0 items
 still outstanding: #8's per-router deployed-traffic coverage report, and #9 beyond the merged
@@ -1638,14 +1628,6 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
-
-### 2026-09-24 · P0 #342 environment-read detector refresh
-
-PR #352 is refreshed onto current `main` (`663c0cb`) after the #324 merge. The integration
-keeps the existing detector and the Opus review record from its previous candidate; that
-review is not an attestation of the new merge head. Re-run detector, repository-scan and
-CI-script checks and obtain a current independent ordinary delta review. Opus security
-review remains mandatory before merge; no P0 or issue #10 completion is claimed.
 
 ### 2026-09-24 · P0 continuation — reviewer substitution recorded; shadow-scope findings fixed
 
