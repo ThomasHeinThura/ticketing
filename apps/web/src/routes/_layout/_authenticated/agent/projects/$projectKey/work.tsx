@@ -1,10 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Button } from "@taskdesk/ui";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import CreateWorkItemDialog from "@/components/work-item/create-work-item-dialog";
 import WorkItemList from "@/components/work-item/work-item-list";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import {
   parseWorkItemListSearch,
   type WorkItemListSearch,
@@ -36,6 +40,14 @@ function WorkItemsRouteComponent() {
   const { projectKey } = Route.useParams();
   const { sort, dir } = Route.useSearch();
   const navigate = Route.useNavigate();
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  // Creation is gated on the same server-computed capability the app's other create UI
+  // uses (`useWorkspacePermission`, backed by `GET /api/capabilities`). The v2 canonical
+  // `work_item:create` signal for a UI does not exist yet -- that is #8's runtime wiring
+  // -- so this is the live signal, called as a helper; the server stays the authority,
+  // and a 403 from the create call is handled explicitly inside the dialog.
+  const { canCreateTasks, isCheckingPermissions } = useWorkspacePermission();
 
   const {
     data: workspace,
@@ -102,9 +114,21 @@ function WorkItemsRouteComponent() {
         }
       />
       <div className="flex h-full flex-col gap-4 overflow-y-auto p-6">
-        <h1 className="font-semibold text-lg">
-          {project ? project.name : projectKey} · {t("workItems:list.heading")}
-        </h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-semibold text-lg">
+            {project ? project.name : projectKey} ·{" "}
+            {t("workItems:list.heading")}
+          </h1>
+          {project && !isCheckingPermissions && canCreateTasks() ? (
+            <Button
+              size="sm"
+              onClick={() => setIsCreateOpen(true)}
+              data-testid="create-work-item-trigger"
+            >
+              {t("workItems:create.trigger")}
+            </Button>
+          ) : null}
+        </div>
         <WorkItemList
           workItems={sorted}
           isLoading={isLoading}
@@ -114,6 +138,14 @@ function WorkItemsRouteComponent() {
           onSortChange={handleSortChange}
           onRetry={handleRetry}
         />
+        {project ? (
+          <CreateWorkItemDialog
+            open={isCreateOpen}
+            onClose={() => setIsCreateOpen(false)}
+            projectId={project.id}
+            workspaceId={workspace?.id}
+          />
+        ) : null}
       </div>
     </>
   );
