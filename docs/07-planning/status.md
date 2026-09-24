@@ -62,6 +62,20 @@ did not exist. The explanations are corrected; `check:tokens` and `check:deps` r
 because their checkers are not implemented. Exact-head CI passed all completed required jobs;
 Postgres integration was still pending, and Opus review remains mandatory before merge.
 
+**2026-09-24 continuation (P3 identity):** Opus 5.5 reviewed PR #346's earlier head
+`a9cffc263c73c4ad6b1371fb95c93b61f0cb1e52` and recorded three blocking domain findings:
+quadratic email/path regex handling, pathless SCIM PATCH changing `externalId`, and malformed
+role mappings failing open. Commit `1eabb4392210fe05dc1523e858d9727953a6e696` replaces the
+regex paths with linear parsing/trimming, rejects oversized email claims and pathless
+`externalId` updates, adds a PUT immutability check, rejects malformed role authority, and
+refuses the Entra personal-account tenant. Regression tests cover these cases. Domain tests
+(483), domain typecheck, all 9 workspace typechecks, lint, route-policy/permission coverage
+(80), and the Docker image build pass. The full workspace unit run remains red on the unrelated
+MCP `register.test.ts` import error (`z.enum` undefined); the updated 483-test domain suite
+passes. PR #346 is still a draft. The required Opus delta review cannot run because the local
+Claude client reports `loggedIn: false`; no lower-tier review is substituted. All 25 real-Entra
+acceptance tests and the two P3 completion issues (#38 portal, #39 identity) remain open.
+
 **2026-09-23 continuation (P0 #10):** The fetch, mutable-baseline, and oasdiff-binary review
 findings were fixed on PR #355. At exact head `de70342e23fef6a8130696304908cf1e41ab800b`,
 the coverage and browser-smoke contexts passed, while Postgres integration and several fast
@@ -1499,14 +1513,14 @@ done, outside this repo/host:** DNS for these hostnames, and the CloudFront orig
 
 ### P3 identity candidate — independent review capacity and real-tenant gate
 
-The P3 identity domain candidate is in draft PR #346 from `feat/p3-identity-portal`; it is
-implemented and locally verified, but it has not received independent review. Thomas has
-authorized two fresh GPT-6 reviewer contexts to substitute for unavailable Sonnet ordinary
-reviews for this candidate. A full Opus security review is still required; that tier is
-unavailable in this session, so the candidate cannot merge. The full
-P3 identity gate also remains open until all 25 named acceptance tests pass against a real
-Microsoft Entra test tenant. A domain-only unit suite does not satisfy that provider gate.
-Thomas or a session with the required reviewer capacity unblocks the reviews; an operator
+The P3 identity domain candidate is in draft PR #346 from `feat/p3-identity-portal`. Opus 5.5
+reviewed the earlier head and found three blocking domain issues; fixes are pushed in
+`1eabb4392210fe05dc1523e858d9727953a6e696`. A fresh exact-head Opus delta review remains
+mandatory before any merge. The local Claude client is unauthenticated (`loggedIn: false`), so
+this candidate waits for Opus capacity. Ordinary GPT-6 review authorization does not replace
+that final security tier. The full P3 identity gate also remains open until all 25 named
+acceptance tests pass against a real Microsoft Entra test tenant. A domain-only unit suite does
+not satisfy that provider gate. An authenticated Opus session unblocks review; an operator
 with a real Entra test tenant unblocks the provider gate.
 
 ### Opus security reviews — capacity, not permission
@@ -1786,6 +1800,22 @@ mandatory Opus 5.5 review remains pending.
 `claude auth status` reports logged out, so Opus capacity is unavailable here. Continue
 other runnable P0 work; keep every security-scope candidate blocked from merge until its
 exact-head Opus review is recorded.
+
+### 2026-09-24 · P3 identity Opus findings remediated; final review capacity pending
+
+Remediated the three blocking findings Opus 5.5 reported on the prior PR #346 head: removed
+the backtracking email regex and quadratic SCIM path trim, blocked pathless PATCH changes to
+`externalId` and added a PUT immutability guard, and made malformed rank/authority mappings
+fail closed. Also refused the known Microsoft consumer tenant. Added regression cases. The
+domain suite passes 483 tests, package typecheck passes, all 9 workspace typechecks pass, lint
+passes, route-policy/permission coverage passes 80 tests, and `docker build` succeeds. The full
+workspace unit suite fails only at the existing MCP `register.test.ts` import (`z.enum` is
+undefined); all domain tests pass. PR #346 remains draft, and its current-head CI is running;
+GitGuardian continues to report the previously identified key-name finding on merge commit
+`82bfaf2`. Opus exact-head delta review is still required and cannot be run in this shell because
+Claude is logged out. No merge is allowed until that final review and all required checks pass.
+The real-Entra 25-test gate, identity persistence/routes/God Mode, portal UI, browser evidence,
+and issues #38/#39 remain unfinished.
 
 ### 2026-09-23 · P3 identity lane opened; 25-test real-Entra gate made explicit
 
