@@ -190,3 +190,100 @@ Both surface as a generic `500 Internal Server Error`. There is no information l
   - S4 is a note.
 
 **Not merge-ready, independent of the above.** The PR-template gate fails, and no independent ordinary review is recorded. Attribution does not reconcile with `## Implemented by` (the section is absent) or with the project's model-tier rule. Any new commit, including a body-only change that re-binds the reviewed head, needs this clearance re-confirmed at the new SHA.
+
+---
+
+## Delta review (Opus 5.5)
+
+**Reviewer:** Opus 5.5, fresh independent context. I did not author, direct or remediate this change, and I did not write the first review above.
+**Reviewed head:** `c0ae25aa2a666828e928ee32aee3220966e1e0f1`
+**Previous Opus head:** `2d89f6ac432b72ebe83f49b19418e1842d889fcf`
+**Base:** `origin/main` at `8f545c3c1ae8ee3d5ac9b22d830ff52ab1fce918`. The merge base equals it.
+**Date:** 2026-09-24
+
+### What changed since `2d89f6a`
+
+- The branch gained two commits:
+  - `773cfe5` is the first review note. It is docs only.
+  - `c0ae25a` merges `main` at `8f545c3` into the branch.
+- **No PR-owned code changed.** `git diff 2d89f6a c0ae25a` over the PR's own files touches only three:
+  - `apps/api/src/database/index.ts`, which gained the migration pool from #308;
+  - `apps/api/src/index.ts`, which gained changes from #308, #323, #338 and #354;
+  - this note.
+- In both code files, every hunk is `main`'s own text. `apps/api/src/audit/**`, `policy-registry.ts`, the audit tests, the matrix fixture and `openapi.json` are unchanged.
+- **The merge was clean.** `git show --remerge-diff c0ae25a` is empty: there were no conflicts and no hand-edits in the merge.
+
+### Checked against `main`'s new semantics
+
+1. **Project reach, #334, and `sees_all` across workspaces.** This holds.
+   - Neither audit route consults `Reach` or `resolveIdentity`. The workspace route is gated by three checks:
+     - `workspaceAccess.fromParam` then `validateWorkspaceAccess`, which requires membership in the path workspace;
+     - `requireWorkspaceMembership`;
+     - `requireWorkspaceCapability("workspace:manage_settings")`, which reads the caller's role **in the path workspace**.
+   - The handler then filters on `eq(workspace_id, <path id>)` without condition.
+   - So a `sees_all` grant, or any role, in workspace A cannot open workspace B's rows. `membership_with_workspaces` is never read on this path. Also, `resolve-identity.ts:662` still hard-codes `seesAll: false`.
+   - **Probe:** I tested a user with a high role in A and a low role in B, for owner/member, admin/viewer and manager/lead. B returned 403. A returned only A's rows under `""`, a smuggled `?workspaceId=<B>`, `limit=500` and `action=role.`. The instance route returned 403 for all three.
+   - **Project-reach filtering (AU-10, #345):** the route is still unfiltered. That is exactly the state #345 accepts "until the first project-scoped audit writer merges". There is still no project-scoped writer on `main`: `appendAuditLog`'s only production caller is this PR's `audit.read`, and `audit_log` has no `project_id`.
+   - **Tripwire:** #364 (event-key registration so domain mutations can append audit rows) is the unlock. #364 itself adds no writer. But the first PR that writes a project-scoped row must not merge before #344 (the `project_id` column and the reach filter). See D1.
+2. **`and()`/`or()` grouping (#320 D0) and cursor leaks.** Both hold.
+   - There is one `and(...)` in `combineFilters`, and Drizzle parenthesises it. There is no `or()` anywhere in `apps/api/src/audit/**`.
+   - There is still no cursor, so there is no keyset `OR` and no cross-tenant cursor. The tenant predicate is a sibling inside the same `and()`, never an `or()` branch.
+   - **Mutation check:** I neutralised `eq(auditLogTable.workspaceId, workspaceId)`. Both the PR's isolation test and my probe went red (2 failed / 8 passed). I then restored the line.
+3. **Existence oracle (#338).** This holds.
+   - A foreign workspace id and a nonexistent one return a **byte-identical 403** `You don't have access to this workspace`, with the same headers once `date` is excluded.
+   - That is the answer every `fromParam` workspace route gives. #338 changed the asset and websocket routes to 404/401. It did not change the workspace-param family, so this route matches its siblings.
+   - The API-key-invalid 403 has a different message, but it depends on the key, not the workspace, so it is no oracle.
+4. **Secrets and PII.** This is unchanged from the first review.
+   - Returned fields are exactly the 13 listed above. `actor_ip`, `user_agent`, `trace_id`, `api_key_id` and the hashes are not returned.
+   - The AU-2 writer backstop is unchanged on `main`. #364 (open) edits `audit-writer.ts` and `actions.ts`, and it must keep that backstop intact. That is #364's review, not this one.
+5. **Policies, rbac.md, matrix and coverage.** These hold.
+   - The policies match `audit-trail.md` § API and rbac.md: `instance:read_audit` (rbac.md:38), and `workspace:manage_settings`. The list is not elevated; only `/export` is.
+   - `test:permissions` passes 81/81.
+   - **Shadow mode (#323/#354):** I ran the PR's tests and my probes with `TASKDESK_POLICY_SHADOW=on` and with it off. The results were identical (10/10 each way). Shadow mode observes and never alters the response.
+6. **Merges.** The merge was clean (see above). `#308`'s app role holds `SELECT`/`INSERT` on `audit_log`, which is what this route needs.
+
+### Suites at `c0ae25a` (private DB `o343_test`, td-lane-pg, Postgres 18)
+
+| Suite | Result |
+| --- | --- |
+| Integration (full) | **86 files, 1170 tests, all passed** |
+| `audit-read.test.ts` | 6/6 (and 6/6 with shadow on) |
+| `test:permissions` | **11 files, 81 tests** |
+| Unit (`apps/api`) | **58 files, 488 tests** |
+| `check:openapi` | matches (108 operations) |
+
+I ran the probes from a throwaway `zz-opus-probe-343-delta.test.ts` (4 tests). I deleted it without committing it, and `git status` was clean afterwards.
+
+### Findings
+
+**D1 — NON-BLOCKING for this head, and a sequencing tripwire.** Workspace audit reads are still not reach-filtered.
+- **Failure scenario:** a PR lands that makes a domain mutation write `project.*` or `work_item.*` audit rows, which #364's key registration enables. Once it merges before #344, a `manager` with no reach into project P reads P's `before`/`after` payloads through `GET /api/workspaces/{id}/audit`.
+- **Why it does not block now:** #345 explicitly accepts this state until then, and nothing on `main` writes such a row.
+- **Required:** #344 lands first, or the first project-scoped writer's own PR carries the filter. Its Opus review must check this.
+
+**S2 and S3 from the first review are still open. They are unchanged and still non-blocking.**
+- **S2:** I re-probed at this head. `action=%00` and `since=0000-01-01T00:00:00Z` still return 500.
+- **S3:** `audit.read` still hard-codes `actorType: "person"`, with no `apiKeyId`, IP or user agent.
+- **S4:** the global chain lock on every read is also unchanged. It remains a note.
+
+**Nothing new is BLOCKING.**
+
+### Gates at this head (not a security finding, recorded for the orchestrator)
+
+- **CI:** every required check is green **except** `pull request template + security review`, which is **FAILURE**.
+  - `check-pr-template.mjs --body` on the live body still exits 1.
+  - Every fixed section is missing: `## Implemented by`, `## Reviewed by`, `## Security review`, `## Screens opened`, `## Checklists`, `## Design review H1–H6` and `## Not done`.
+- **GitGuardian: FAILURE.** It is not a required check. It is incident **37541345**, "Generic Password", at `charts/taskdesk/values.yaml:245`, which is the key name `passwordKey: postgres_uri`.
+  - This is a false positive, and the same incident id #308 raised.
+  - It arrives only through the `main` merge commit. This PR's own commits add nothing to the chart.
+- **Ordinary review:** there is still no independent ordinary review recorded on the PR.
+
+### Verdict
+
+**CLEAR WITH FINDINGS at `c0ae25aa2a666828e928ee32aee3220966e1e0f1`. I found no blocking security defect.**
+
+- This head keeps everything the first review cleared: authorisation, tenant isolation, oracle parity, field minimisation, and AU-13/AU-14.
+- It stays correct under #323/#354 shadow mode, #334's workspace-scoped `sees_all` and #338's oracle work.
+- D1 is a merge-ordering constraint on future writers.
+
+**Not merge-ready**, for the gate reasons above. Any new commit to this branch, including a body-only change that moves the reviewed head, needs this clearance re-confirmed at the new SHA.
