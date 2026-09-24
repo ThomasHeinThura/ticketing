@@ -5,6 +5,24 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-24 · GPT-6 Luna replaces Sonnet for ordinary reviews on active P0 lanes
+
+**Decision:** For the currently active P0 work, use fresh independent GPT-6 Luna contexts
+for Sonnet-tier implementation and ordinary reviews when the Sonnet provider is at its
+usage limit. This substitution does not change review counts, independence requirements,
+or the exact-head rule. Every security-scope candidate still requires its separate final
+Opus 5.5 review before merge.
+
+**Why:** Thomas authorized continued P0 work with the available GPT-6 Luna agent while
+Claude/Sonnet capacity is exhausted; implementation and ordinary review should keep moving
+without representing GPT-6 as Opus.
+
+**Alternatives:** Stop all P0 implementation until Sonnet capacity returns; treat GPT-6 as
+Opus or waive the Opus gate. Rejected: implementation and ordinary review may proceed, but
+Opus remains mandatory for security-scope work.
+
+**Decided by:** Thomas, 2026-09-24, in session.
+
 ### 2026-09-23 · Require coverage and full-stage smoke contexts in `protect-main` (#10)
 
 **Decision:** The active `protect-main` ruleset now requires the exact `domain coverage (90%)`,
