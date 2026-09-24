@@ -1570,8 +1570,7 @@ docs now mark deep health, Sentry, RUM/performance gates, Grafana dashboards and
 planned where no implementation exists. Thomas authorized fresh independent GPT-6 contexts
 for P0 ordinary reviews while Sonnet is unavailable; that substitution is recorded in the
 decision log and does not replace Opus.
-Opus 5.5 review, live release signing, rollback verification, and the PR's author-attribution
-reconciliation remain open.
+At exact code head `bd62c4d6b86c82bd784c0b304a358bda42e57f4e`, a new `scripts/lib/local-certificate.sh` validates DNS labels before OpenSSL use, creates a CA:FALSE leaf with server-auth key usage, renews on missing SAN coverage or under 30 days of validity, and preserves old material in a private backup directory. Its three focused tests pass, all 498 CI-script tests pass, and `docker build -t taskdesk-p0-331:local .` succeeds. A fresh full local stack boot was not repeated because this shared Docker host runs many unrelated stacks and already reserves ports 80/443; the earlier isolated boot predates this helper, so exact-head boot evidence remains outstanding. One independent ordinary reviewer has cleared this commit; two more are in progress. Fresh exact-head Opus review, live release signing, rollback verification, and PR author-attribution reconciliation remain open.
 
 ### 2026-09-23 (follow-up) · P0 history refreshes and ordinary review deltas
 
