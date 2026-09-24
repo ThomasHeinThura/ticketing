@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { inArray } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { getDatabasePool, schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -281,6 +282,113 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     expect(missingLookups).toHaveLength(1);
     expect(queryText(foreignQuery)).toContain('"workspace_member"');
     expect(queryText(foreignQuery)).toContain("EXISTS");
+  });
+
+  it("P0 S4: lookup reach predicates stay grouped when caller-owned rows exist", async () => {
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const ownLabel = requireRow(
+      await db
+        .insert(schema.labelTable)
+        .values({
+          name: "Caller workspace label",
+          color: "#123456",
+          workspaceId: caller.workspace.id,
+        })
+        .returning(),
+      "caller label",
+    );
+    const foreignLabel = requireRow(
+      await db
+        .insert(schema.labelTable)
+        .values({
+          name: "Foreign workspace label",
+          color: "#654321",
+          workspaceId: owner.workspace.id,
+        })
+        .returning(),
+      "foreign label",
+    );
+    const { project: ownProject, columns: ownColumns } =
+      await createProjectFixture({ workspaceId: caller.workspace.id });
+    const ownTask = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: ownProject.id,
+          title: "Caller workspace task",
+          status: "to-do",
+          columnId: ownColumns.todo.id,
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "caller task",
+    );
+    const { project: foreignProject, columns: foreignColumns } =
+      await createProjectFixture({ workspaceId: owner.workspace.id });
+    const foreignTask = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: foreignProject.id,
+          title: "Foreign workspace task",
+          status: "to-do",
+          columnId: foreignColumns.todo.id,
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "foreign task",
+    );
+
+    mockAuthenticatedSession(caller.user);
+    const { app } = createApp();
+
+    // Direct lookup (`label`) and joined lookup (`task` -> `project`) both
+    // need the resource id AND the grouped reach predicate to match one row.
+    expect((await app.request(`/api/label/${ownLabel.id}`)).status).toBe(200);
+    const foreignLabelResponse = await app.request(
+      `/api/label/${foreignLabel.id}`,
+    );
+    const missingLabelResponse = await app.request(
+      "/api/label/missing-caller-owned-predicate",
+    );
+    await compareResponses(foreignLabelResponse, missingLabelResponse);
+    expect(foreignLabelResponse.status).toBe(404);
+
+    expect((await app.request(`/api/task/${ownTask.id}`)).status).toBe(200);
+    const foreignTaskResponse = await app.request(
+      `/api/task/${foreignTask.id}`,
+    );
+    const missingTaskResponse = await app.request(
+      "/api/task/missing-caller-owned-predicate",
+    );
+    await compareResponses(foreignTaskResponse, missingTaskResponse);
+    expect(foreignTaskResponse.status).toBe(404);
+
+    // `lookupMany` uses the same `inArray AND reach` shape. A mixed bulk write
+    // may update the caller's row, but must never mutate the foreign row.
+    const bulk = await app.request("/api/task/bulk", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        taskIds: [ownTask.id, foreignTask.id],
+        operation: "updatePriority",
+        value: "high",
+      }),
+    });
+    expect(bulk.status).toBe(200);
+    const persistedTasks = await db
+      .select({ id: schema.taskTable.id, priority: schema.taskTable.priority })
+      .from(schema.taskTable)
+      .where(inArray(schema.taskTable.id, [ownTask.id, foreignTask.id]));
+    expect(
+      persistedTasks.find((task) => task.id === ownTask.id)?.priority,
+    ).toBe("high");
+    expect(
+      persistedTasks.find((task) => task.id === foreignTask.id)?.priority,
+    ).toBe("low");
   });
 
   it("websocket: an authenticated caller receives the unknown-project response for a foreign project", async () => {
