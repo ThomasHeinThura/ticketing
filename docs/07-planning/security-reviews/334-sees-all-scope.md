@@ -316,3 +316,45 @@ into the previously reviewed head `bc138e237f2fa641c9b1e7327afff1799ec4613a`.
 
 **Verdict at `60a79fbedadae8b5ebe1c62c96d7d80cef0fbbfd`: CLEAR.** S2–S4 remain as recorded
 above and non-blocking. Merging still needs the in-progress integration check to finish green.
+
+## Merge-head attestation (Opus 5.5) — after #323 merged
+
+**Reviewed head:** `3a91082dfe0f0dbf089330598e0fcb93c08a4949`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `9d5deb92a81791598140007fe8e108d1a352855c` (#323, request-path policy shadow mode and
+migration `0069`) into the previously attested head `543acf271c2b3f8123e585fe92dea2ae69cf8b50`. Main's tree at `9d5deb9` is
+identical to #323's attested tree `eb94330`. `776999d..9d5deb9` is that one merge.
+
+- **Parents:** exactly (`543acf271c2b3f8123e585fe92dea2ae69cf8b50`, `9d5deb9`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution.
+- **PR change unchanged:** `git diff 776999d 543acf2` and `git diff 9d5deb9 3a91082` are
+  byte-identical (same sha256). No file overlaps with #323.
+- **Interaction with #323:** #334 adds the `Reach` variant `membership_with_workspaces`.
+  #323's `workspaceInReach` (`apps/api/src/permissions/shadow-evaluation.ts`) branches on
+  `"all"` and `"organisation"`, and otherwise falls through to workspace membership.
+  - Every sees_all membership is built with `scope: "workspace"` and `scopeId: workspaceId`
+    (`resolve-identity.ts`), so `reach.workspaceIds` is a subset of the identity's workspace
+    memberships. The fallthrough therefore gives the correct answer for the new variant: a
+    sees_all workspace is reached, and no other workspace is. It now matches the scoped
+    semantics of #334's evaluator.
+  - Before #334, the same identity got `"all"`, so the shadow would have reported
+    over-broad reach. The loader still resolves `seesAll: false` in production, so this is
+    latent either way.
+  - No other `reach.kind` consumer exists in `apps/api/src` or `packages`. Migration `0069`
+    and the shadow tables do not interact with #334.
+  - **Non-blocking:** `workspaceInReach`'s doc comment still says `"all"` covers "an explicit
+    sees_all grant". That is now stale and should be corrected in a follow-up.
+- **Tests at `3a91082`** (packages built first; private DB `opus_attest_test`, dropped
+  afterwards):
+  - `@taskdesk/permissions`: 13 files / 261 tests pass
+  - `apps/api test:permissions`: 10 / 80 pass
+  - `apps/api test:unit`: 58 / 476 pass, including #323's `shadow-evaluation.test.ts`
+  - `turbo typecheck` for `@taskdesk/api` and `@taskdesk/permissions`: 4 / 4 tasks green
+  - `tests/api-integration/permissions-shadow-mode.test.ts`: 1 / 10 pass
+- **CI at the merge head:** the only failure was `pull request template + security review`,
+  which reported this file STALE for want of this note. That is expected, and this note is what
+  clears it. `integration - Postgres 18` was still in progress when this was written, and merging
+  needs it green.
+
+**Verdict at `3a91082dfe0f0dbf089330598e0fcb93c08a4949`: CLEAR.**
