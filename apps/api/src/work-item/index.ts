@@ -525,11 +525,16 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
     );
 
     try {
+      // `current.assigneeId` -- the SAME value the branch above decided against -- is
+      // what the controller pins its write to. Passing a fresh read instead was the
+      // ordinary review's F1: a reassignment between the two made the pin name the new
+      // holder, letting a `work_item:update` caller clear the wrong assignment.
       const cleared = await unassignWorkItem(
         key,
         workspaceId,
         actorId,
         actorType,
+        current.assigneeId,
       );
       return c.json(cleared, 200);
     } catch (error) {

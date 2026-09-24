@@ -119,10 +119,9 @@ export const workItemPolicies = {
   // The alternate branch is `orOwner` on the LOADED ROW (the spec's
   // `orSelfTarget(row.assignee_id, work_item:update)` line): a caller holding
   // `work_item:update` may clear THEIR OWN assignment, and the predicate reads the row's
-  // CURRENT holder. The spec writes the branch as a self-target because it is
-  // "self"-shaped to a reader, but its fact comes from the row, not the body -- this is
-  // the first entry to declare `row.assignee_id`, which is why that predicate was added
-  // to `OWNER_PREDICATES` (`packages/permissions`, and `rbac.md`) in the same change:
+  // CURRENT holder. The fact comes from the row, not the body -- this is the first entry
+  // to declare `row.assignee_id`, which is why that predicate was added to
+  // `OWNER_PREDICATES` (`packages/permissions`, and `rbac.md`) in the same change:
   // declaring it without adding it there fails registry validation, deliberately.
   //
   // Reach: `requireWorkItemReach()` resolves the row by key before the handler runs (the

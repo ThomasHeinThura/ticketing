@@ -58,6 +58,16 @@ export async function unassignWorkItem(
   workspaceId: string,
   actorId: string,
   actorType: ActivityActorType,
+  /**
+   * The assignee the CALLER'S AUTHORITY was decided against -- the value the handler
+   * read before `assertCallerHasCapabilityOrSelf`. Required, not defaulted, and the
+   * write below pins to THIS value, never to a fresh re-read: the ordinary review of
+   * PR #365's F1 demonstrated the alternative. Without the pin, a reassignment landing
+   * between the handler's check and this function's own load let a `work_item:update`
+   * caller clear the NEW holder's assignment (200, activity and event naming the
+   * victim) -- the decision and the write must be made against the same observed fact.
+   */
+  expectedAssigneeId: string | null,
 ): Promise<UnassignedWorkItem> {
   const item = await db.query.workItemTable.findFirst({
     where: and(
@@ -78,6 +88,13 @@ export async function unassignWorkItem(
       previousAssigneeId: null,
       version: item.version,
     };
+  }
+
+  // F1's pin, read side: the row changed holder since the authority decision was made.
+  // Clearing now would clear SOMEONE ELSE'S assignment -- exactly what the branch must
+  // never authorise -- so this is the assign family's 409, not a write.
+  if (item.assigneeId !== expectedAssigneeId) {
+    throw new WorkItemAssigneeConflictError(key, item.assigneeId);
   }
 
   const previousAssigneeId = item.assigneeId;
