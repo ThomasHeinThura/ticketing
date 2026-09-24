@@ -266,3 +266,35 @@ workspace) into the previously attested head `ce4638f8a772aeaefedb12107bd639d20e
   `pull request template + security review` re-run this note is for.
 
 **Verdict at `9464bfd777286e2a94199ea5de9fb67848529677`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #356 merged
+
+**Reviewed head:** `952869006ad1488caf4e2e022eb1ec88916e3026`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `3a45fc5d4473acccc53c6e13e01a9b05fe8abb7a` (#356, a docs-only change to the
+`ci-cd.md` scope list and the decision log) into the previously attested head `b3595a0`.
+Main's tree at `3a45fc5` is identical to #356's attested tree `78cb202`, and
+`ecb5b63..3a45fc5` is that one merge.
+
+- **Parents:** exactly (`b3595a0`, `3a45fc5`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution.
+- **PR change unchanged:** the PR's own added and removed lines are identical before and
+  after. Only the hunk offsets in `decision-log.md` differ; it is the only overlapping file
+  and auto-merged.
+- **Decision log:** the Storybook entry, 21 lines from its heading to the next entry, is
+  byte-identical at `b3595a0` and `9528690`. Taking the non-blank lines as a multiset, the
+  merged file equals main plus the PR's delta, with nothing missing and nothing extra. The
+  order is `## Format`, main's newer entries, the Storybook entry, then #356's entries.
+- **Scope:** `parseSecurityReviewPaths` on `ci-cd.md` at `ecb5b63` gives 33 globs, and at
+  `9528690` it gives 35. The two added globs are `packages/domain/src/identity/**` and
+  `apps/api/src/permissions/**`, and none was removed. Every #335 file keeps the same
+  matching globs before and after. `packages/ui/package.json` stays in scope via
+  `**/package.json`, and `pnpm-lock.yaml` stays in scope via `pnpm-lock.yaml`. The Storybook
+  config, story and decision-log files stay out of scope. No file moved into or out of scope.
+- **CI at `9528690` when this was written:** the only failure was `pull request template +
+  security review`, which reported this file STALE for want of this note. That is expected.
+  Integration, e2e, static, unit, the gate checkers and CodeQL analysis were still running.
+  Merging needs every required context green.
+
+**Verdict at `952869006ad1488caf4e2e022eb1ec88916e3026`: CLEAR.**
