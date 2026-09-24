@@ -172,6 +172,24 @@ test("environment detector fails closed on TSX, postfix division, and eval text"
   }
 });
 
+test("environment detector does not trust JSX text as tokenizer-confirmed comments", () => {
+  for (const source of [
+    "export const Docs = () => <p>See https://example.com/docs {process.env.STRIPE_SECRET_KEY}</p>;",
+    [
+      "export const Glob = () => <code>apps/*</code>;",
+      "export const key = process.env.STRIPE_SECRET_KEY;",
+      "/** end */",
+    ].join("\n"),
+  ]) {
+    assert.ok(
+      findEnvReads(source).some(
+        (read) => read.kind === "alias" && read.name === null,
+      ),
+      source,
+    );
+  }
+});
+
 test("environment detector bounds malformed quoted strings to one line", () => {
   const reads = findEnvReads(
     "const text = 'unterminated\nprocess.env.TASKDESK_PORT;",

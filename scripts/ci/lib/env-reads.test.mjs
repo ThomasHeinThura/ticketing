@@ -77,6 +77,23 @@ test("destructured environment properties are attributed individually", () => {
   );
 });
 
+test("rest destructuring from process.env is unattributable", () => {
+  const reads = findEnvReads(
+    [
+      "const { ...TASKDESK_AUTH_SECRET } = process.env;",
+      "const { DATABASE_URL, ...all } = process.env;",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    reads.map(({ kind, name, line }) => ({ kind, name, line })),
+    [
+      { kind: "alias", name: null, line: 1 },
+      { kind: "alias", name: null, line: 2 },
+    ],
+  );
+});
+
 test("Vite built-ins stay separate from application configuration names", () => {
   const reads = findEnvReads(
     "const development = import.meta.env.DEV; const api = import.meta.env.VITE_API_URL;",

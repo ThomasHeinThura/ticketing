@@ -1,3 +1,12 @@
+**2026-09-24 continuation (P0 #10 / #342):** Ordinary review of PR #352 head `ea8d182`
+identified two detector bypasses: JSX comment-like text could hide a later environment read,
+and rest destructuring was misattributed as named access. Both are fixed with regressions;
+the detector suite passes 31/31, the complete CI checker suite passes 533/533, and
+`pnpm check:env` scans 981 files with 29 attributable reads. The previous head's Postgres
+integration is still pending and its PR template correctly remains blocked on exact-head Opus
+review. These fixes are not yet committed or reviewed; #352 must be refreshed against current
+`main` and receive ordinary plus Opus review before merge.
+
 **2026-09-24 continuation (P0 #324 / #8 Slice 2b):** The #324 shadow-coverage branch now
 integrates `origin/main@f22f0100cb3d5a1ab3ff6dbc0c20b4e298fd488c`, including #323, #334,
 #335 and #356. The conflict resolution preserves #324's explicit legacy-authorization

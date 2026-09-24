@@ -632,6 +632,19 @@ export function findEnvReads(source) {
       if (equals > 0 && tokens[equals - 1]?.value === "}") {
         let open = equals - 2;
         while (open >= 0 && tokens[open].value !== "{") open -= 1;
+        const hasRest =
+          open >= 0 &&
+          tokens
+            .slice(open + 1, equals - 1)
+            .some((part) => part.value === "...");
+        if (hasRest) {
+          const id = `${token.start}:${parsed.object}:alias`;
+          if (!seen.has(id)) {
+            seen.add(id);
+            addRead(token, parsed.object, "alias");
+          }
+          continue;
+        }
         for (let key = open + 1; open >= 0 && key < equals - 1; key += 1) {
           if (tokens[key].type === "id" && tokens[key - 1]?.value !== ":") {
             const id = `${tokens[i].start}:${tokens[key].value}`;
@@ -672,7 +685,10 @@ export function findEnvReads(source) {
       commentIndex += 1;
     }
     const comment = comments[commentIndex];
-    if (comment && comment.start <= start && start < comment.end) continue;
+    if (comment && comment.start <= start && start < comment.end) {
+      const lineStart = source.lastIndexOf("\n", comment.start - 1) + 1;
+      if (!source.slice(lineStart, comment.start).trim()) continue;
+    }
 
     // `globalThis.process.env`'s token-level read begins at `globalThis`, while this
     // spelling's backstop match begins at `process`; the preceding dot prevents a
