@@ -169,3 +169,180 @@ These were run through `createApp().app.request(...)`, which is the full Hono mi
 ## Verdict
 
 **CHANGES NEEDED** at `f781fe088696cee4658b2c8e0b1538ce6e4727d0`, for S1 (the missing cross-tenant roster regression test) and S2 (the red CI probe). Neither needs a production-code change. The authority model itself — capability, self branch, reach, genuine-row, uniform 404, assignee scoping and concurrency — held under every probe. A delta review of the fix commit is needed; it should confirm that the S1 mutation goes red and that CI is green. S3–S6 do not block. The audit-row question (S4) and the gate items above belong to the orchestrator and Thomas, not to this review.
+
+---
+
+## Delta review (Opus 5.5)
+
+**Reviewer:** Opus 5.5, a fresh independent context commissioned by the orchestrating session. It did not author, direct or remediate this change.
+**Reviewed head:** `07cbc3b1a662331d831cc292b4ff785bc497d435`
+**Base at review:** `origin/main` `8f545c3c1ae8ee3d5ac9b22d830ff52ab1fce918` (includes #323, #354, #334, #338)
+**Date:** 2026-09-24
+**Verdict:** **APPROVED (security)** at `07cbc3b1a662331d831cc292b4ff785bc497d435`. No blocking security finding. Two gate items outside this review still block the merge (see "Gates").
+
+### Scope
+
+- Every commit `f781fe0..07cbc3b`:
+  - `e5edae3`, read in full;
+  - the merges `d660629`, `65dfdee` and `07cbc3b`. `git show --remerge-diff` shows no conflict-resolution content in any of them.
+- The whole PR diff against `origin/main`, re-read against main's new semantics:
+  - #323/#354: the shadow markers and the shadow evaluator;
+  - #334: `sees_all` per workspace;
+  - #338: the existence-oracle standard.
+- `gh pr view 353` reports head `07cbc3b1a662331d831cc292b4ff785bc497d435`, which matches `origin/feat/30-assign-action`.
+- I used a private worktree and a private database, `o353_test`, on td-lane-pg. Both were removed afterwards.
+
+### Suites at this head
+
+| Suite | Result |
+| --- | --- |
+| `tests/api-integration/work-item-assign.test.ts` | 16/16 |
+| `tests/api-integration/existence-oracle-317.test.ts` | 7/7 |
+| `tests/api-integration/permissions-shadow-mode.test.ts` | 15/15 |
+| API unit (`vitest.config.ts`) | 58 files, 488/488 |
+| `pnpm test:permissions` | 11 files, 81/81; 5/5 tasks |
+| `node --test 'scripts/ci/**/*.test.mjs'` | 508/508 |
+| `pnpm check:openapi` | matches (107 operations) |
+| `pnpm check:events` | 27 keys, all registered |
+
+CI (`statusCheckRollup` at this head): every required check is green except **`pull request template + security review`**. The rest of this note explains why. Three checks are `NOT ENABLED` and were skipped.
+
+### Mutations (each restored afterwards; `git status` clean)
+
+| Mutation | PR suite |
+| --- | --- |
+| Drop `eq(membershipTable.scopeId, item.projectId)` (the S1 tenant scope) | **red**: both new AS-5 cases |
+| Put eligibility before the no-op again (the old order) | **red**: the deactivated-holder test |
+| Drop the CAS clause (`isNull` / `eq(assigneeId, expected)`) | **red**: two AS-3 cases |
+| Make the handler's self predicate always `true` | **red**: AS-2 "member assigning someone else" |
+
+### Earlier findings: are they closed?
+
+- **S1: closed.** A person rostered only on another workspace's project gets a 400. That response is byte-identical (`text()` equality) to the one for a nonexistent id, and the row is left untouched. A person rostered only on a sibling project in the same workspace is also refused. The `scopeId` mutation turns both cases red.
+  - Residual: dropping `eq(scope, "project")` is still not pinned. It is harmless, because `scope_id` is a UUID keyed to this project, so a non-project row cannot collide with it without a deliberate insert.
+- **S2: closed.** The probe now pins 27, and the CI-scripts suite passes 508/508.
+- **S3: tracked, not closed** (#359, open). It is still unreachable, because nothing in `apps/api/src` writes `membership`. It remains non-blocking.
+- **S4: corrected.** The body now cites #360 and #344 and leaves the audit box unticked. See item 4 below.
+- **S5: closed.** The controller calls `planAssignment` and `evaluateAssigneeEligibility` from `@taskdesk/domain`. They are named exports; there is no star export.
+- **S6: still latent.** It now lives on `main`; see D2.
+
+### The five questions
+
+1. **An assignee outside the roster?** No. The roster join is `and(scope = 'project', scope_id = item.projectId, person_id = input)`, with `item` re-checked against the reach-resolved `workspaceId`. The two S1 tests pin it. The only caveat is S3: a directly written `membership` row is trusted.
+2. **Assigning on a foreign key?** No. `requireWorkItemReach` resolves the key and turns a reach 403 into a 404. The controller also re-checks `item.workspaceId !== workspaceId`, and 404s.
+3. **An existence oracle?** None found:
+   - foreign and missing keys both get 404;
+   - foreign and nonexistent assignees both get the same byte-identical 400, now asserted;
+   - a member naming anyone but themselves gets 403 before the roster lookup.
+
+   The capability check runs before the controller's archived-item 404. So a viewer gets 403 and a lead gets 404 for an archived item, but only inside a workspace the caller already reaches. That is not a cross-tenant signal.
+4. **`and()` / `or()` grouping?** There is no `or()` anywhere in the diff. Every `where` is a single `and(...)`. The only raw `sql` is the `version + 1` expression.
+5. **Is the CAS race-safe?** Yes, between assigns:
+   - the write is `UPDATE ... WHERE id = $id AND (assignee_id IS NULL | assignee_id = $expected)`;
+   - under READ COMMITTED, Postgres re-evaluates the predicate after acquiring the row lock, so exactly one of two concurrent writers matches;
+   - a stale `expectedCurrentAssigneeId` matches no row and gets 409, carrying the current holder;
+   - the CAS mutation goes red.
+
+   It is **not** race-safe against archive or project soft-delete. See D1.
+
+### Policy
+
+- The declaration and rbac.md agree:
+  - `work_item:assign` is primary, held by lead, manager, admin and owner;
+  - `orSelfTarget(body.assigneeId === identity.personId, work_item:update)`: a member may self-assign, and a viewer or customer may not.
+- I confirmed the capability sets against the compiled `BUILT_IN_ROLES`. `require-workspace-capability.ts` is still additions-only relative to main; the #354 markers in `requireWorkspaceCapability` are untouched.
+
+### Shadow markers (#354)
+
+**The legacy outcome is correct wherever it is known.** Tracing the marker:
+
+| Case | What happens | Result |
+| --- | --- | --- |
+| Request reaches the handler | `requireWorkItemReach` sets `allowed` | — |
+| Handler 403 | The middleware sees `allowed` together with a 403 and downgrades it to `unknown` | No false allow |
+| 200 | Recorded as allowed | Correct |
+| Controller 400 / 404 / 409 | Recorded as allowed | Correct: the capability had already passed |
+
+The one inexact case is a **body-validation 400**. Validation runs before the handler's capability check, so for a viewer it records "allowed" although that viewer's capability was never evaluated (D2).
+
+A live probe with `TASKDESK_POLICY_SHADOW=on` sent five requests:
+
+- member self-assign → 200;
+- member assigning another person → 403;
+- lead assigning another person → 200;
+- viewer with a bad body → 400;
+- lead self-assign → 200.
+
+All five filed as `unevaluated / reach_unavailable`. No person has `sees_all` today (`resolve-identity.ts` always resolves `false`), so there is no false disagreement at this head.
+
+### Activity, event and audit
+
+- The activity row is written by `recordWorkItemActivity(tx, …)` inside the same `db.transaction` as the CAS write.
+- `publishEvent("work_item.assigned")` runs after the transaction resolves.
+- The no-op path writes nothing and emits nothing.
+- The `audit_log` box is **unticked, and not claimed or waived**. It names #360 (open; PR #364 open) and #344 (open). The `## Gates` table declares no waiver.
+
+### The disclosed behaviour change
+
+A re-assign of a since-deactivated holder now returns 200. **This is safe.**
+
+- It is a pure no-op. Nothing is written or emitted, and it returns the stored version.
+- The caller has already passed reach and capability-or-self.
+- The response echoes only ids the caller supplied or can already read.
+- No new assignment is created, so AS-5's "refuse assigning a deactivated person" is not bypassed.
+
+The same no-op-first order also covers a holder who has since left the roster, and a stale `expectedCurrentAssigneeId` when the input already equals the holder. Both are safe for the same reason. The new test asserts no event but not "no activity row / version unchanged". That is a minor gap in the test, not a defect.
+
+### Findings
+
+#### D1: NON-BLOCKING (integrity race; not authority or tenant). The CAS write does not re-check the freeze invariant
+
+- **Where:** `apps/api/src/work-item/controllers/assign-work-item.ts:88-98` (the pre-read) and `:167-174` (the write).
+- **The gap:** the controller checks `archivedAt`, `deletedAt` and `item.workspaceId` on a read *outside* the transaction. Its write matches only `id` plus the assignee CAS.
+- **Failure scenario:**
+  1. A lead's assign passes the pre-read.
+  2. An admin soft-deletes the project, or the item is archived or deleted, before the `UPDATE` runs.
+  3. The `UPDATE` still matches. It writes the assignee, bumps `version`, writes an activity row and publishes `work_item.assigned` for a frozen item.
+
+  This violates #202 / #204's freeze invariant. `update-work-item.ts:121-175` guards exactly this case in-transaction (`FOR UPDATE` plus `projectNotDeleted` in the `WHERE`).
+- **Same window:** the roster/active check is outside the transaction too. A person deactivated or removed from the roster in that window can still be assigned.
+- **Impact:** no authority, tenant or disclosure effect. The window is milliseconds, and the actor was already authorized.
+- **Fix:** add `isNull(archivedAt)`, `isNull(deletedAt)` and PATCH's `projectNotDeleted` expression to the CAS `where`, and 404 on zero rows when the item is gone. Optionally re-check the roster under the transaction.
+- **Recommendation:** a follow-up issue, or fold the fix into the main-merge round this PR needs anyway. If the fix is folded in, the delta needs a fresh Opus look.
+
+#### D2: NON-BLOCKING (latent; shadow evidence quality). The handler-level decision is invisible to the shadow
+
+This carries forward the earlier S6.
+
+- **The legacy side:** the marker is the reach marker, not the capability decision.
+  - A 403 is downgraded to `unknown`. The evidence is lost, but it is not false.
+  - A body-validation 400 records `allowed` for a caller whose capability was never checked.
+- **The policy side:** `buildShadowPolicySide` supplies no `body`, so `orSelfTarget` can never hold.
+- **Failure scenario:** once reach facts load for ordinary members (`sees_all`, or a later slice), every legitimate member self-assign will file as `legacy_allow_policy_deny`, and a viewer's malformed body as a false allow. Today it is unreachable: all five probe requests filed `reach_unavailable`.
+- **Fix, in shared code:**
+  - wrap `assertCallerHasCapabilityOrSelf` in the handler with `markShadowLegacyAuthorizationUnknown` / `setShadowLegacyAuthorization`, the pattern `task/index.ts` bulk-update uses;
+  - have the shadow file `orSelfTarget` policies with no body as `unevaluated: self_target_unavailable`.
+- **Recommendation:** a follow-up issue against #8's next slice. It does not block this PR.
+
+### Gates (not security findings; each blocks the merge)
+
+- **The PR conflicts with current `main`.** `origin/main` moved to `9060512` (#340) after this review's base. `gh` reports `CONFLICTING` on `tests/api-contract/openapi.json`.
+  - #340 adds an independent `GET /api/workspace/{workspaceId}/work-item-types` route in the same `work-item/index.ts` and `policy.ts`. Those two files auto-merge; only the regenerated OpenAPI contract conflicts.
+  - Merging `main` changes the head, and this approval does not carry over to it automatically. Merging main before an Opus review is the project's rule. So the post-merge head needs a narrow Opus attestation: the merge diff limited to #340's content, plus `check:openapi` and the matrix.
+- **`pull request template + security review` is red.** At this head:
+  - the independent-review box is unticked (this note is the Opus part of it);
+  - the `audit_log` box is unticked, honestly, pending #360 / PR #364 and #344.
+
+  The second item stays a blocker until those land or Thomas decides. It is not mine to clear.
+- **Waivers:** none declared.
+
+### Verdict
+
+**APPROVED (security)** at `07cbc3b1a662331d831cc292b4ff785bc497d435`.
+
+- S1, S2 and S5 are closed, and pinned by mutation.
+- The checks on tenant scope, foreign keys, existence oracles, query grouping, the assign-vs-assign CAS, the self-assign policy and after-commit event placement all hold.
+- The disclosed deactivated-holder 200 is safe.
+- D1 and D2 are non-blocking follow-ups.
+
+The merge still needs the main-merge attestation and the audit-row gate above.
