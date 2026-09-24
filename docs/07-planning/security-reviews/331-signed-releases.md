@@ -243,3 +243,151 @@ already asked for this.
   fails.
 - **Template checker (local):** 2 problems (security-review note link; unticked Opus box).
 - **This review:** CHANGES NEEDED. S1 and S2 block.
+
+---
+
+## Delta review (Opus 5.5) at `3a0af48`
+
+**Reviewed head:** `3a0af48148ce2c5ac7600f3be83d27c8655d94b2`
+
+**Verdict (security gate): CLEAR WITH FINDINGS.** S1 and S2 are closed. S3 through S8 are
+fixed, apart from the NON-BLOCKING residuals D1–D5 below. This closes the Opus security gate
+for this head and this head only. A later commit that touches anything outside
+`docs/07-planning/security-reviews/` voids this clearance. No waiver was sought or used.
+
+This clears security only. The **merge gates listed under "Gates the orchestrator must
+check" are separate and are not satisfied at this head.** Two of them come from the
+decision log, and this review cannot satisfy them.
+
+**Reviewer independence.** This was a fresh Opus 5.5 context, working in a new detached
+worktree at the exact head. It authored, directed and remediated nothing. Its only write is
+this section.
+
+### History: what was rewritten
+
+The branch was rebased onto `origin/main` `7bebaf6`, and the merge base is the tip of
+`main`. The rebase did three things:
+
+- `5601a33` re-lands the originally reviewed `6a956b5`. `git range-diff` shows exactly one
+  difference: the unauthorised decision-log hunk (S2) was dropped. Nothing else changed.
+- `8ea2f96` carries the first Opus note. It is **byte-identical** to the one pushed at
+  `6f7403b`. `6f7403b` itself is no longer an ancestor, because the branch was
+  force-rewritten.
+- The remediation commits are `b18df44`, `1d3d0e6`, `77e116e`, `22fde47` and `3a0af48`.
+  Only `1d3d0e6` uses a distinct lane identity (`Codex (GPT-6 Luna) <agent@taskdesk.local>`).
+  The other four are authored `Claude Code <noreply@anthropic.com>`, after the 2026-09-23
+  commit-identity rule. See the gates section.
+
+Diff against `main`: `release.yml`, `scripts/deploy.sh`, `ci-cd.md`, `runbook.md`,
+`release-plan.md`, `decision-log.md` (+12), `status.md` (+46), `tech-stack.md`,
+`repository-bootstrap.md`, `CHANGELOG.md`, and two security-review files.
+
+### S1: CLOSED
+
+| Check | Result |
+| --- | --- |
+| Split authority | `build-scan` (l.29–239) holds `contents: read` and `packages: write` only. `sign-publish` (l.241–398) holds `id-token`, `attestations`, `contents: write`, `packages` and `actions: read`, and runs **only** `sigstore/cosign-installer` (SHA-pinned; installs cosign v3.0.5), `actions/attest` (SHA-pinned, first-party), `docker login`, `docker buildx imagetools`, `jq` and the `gh` CLI. It has no checkout, and no scanner, SBOM tool, QEMU or BuildKit. PASS |
+| Images pinned by digest | I resolved each pin live with `docker buildx imagetools inspect`, and each matches its tag. `tonistiigi/binfmt:qemu-v10.0.4@sha256:8f58e621…` (`cache-image: false`); `moby/buildkit:v0.25.2@sha256:0f63d66f…`; `NODE_IMAGE=node:24.20.0-bookworm-slim@sha256:ba849c60…`, passed as a build-arg to the Dockerfile's two `FROM ${NODE_IMAGE}` stages. The new `actions/upload-artifact@ea165f8d…` matches upstream `v4.6.2`. PASS |
+| `persist-credentials: false` | Set (l.58). `sign-publish` has no checkout at all. PASS |
+| `GH_TOKEN` scope | Set only on the steps that call `gh`: validate (l.69, in the read-only-contents job), publish tags (l.330), download SBOMs (l.376) and create release (l.384). There is no job-level `GH_TOKEN`. PASS |
+| trivy and syft | Still downloaded by version, not checksum. They now run **only** in `build-scan`, which has no OIDC identity and no contents write. `cache: false` is set on both trivy steps. PASS for S1's bar; see D1 for what remains. |
+| Crossing the job boundary | `sign-publish` signs `needs.build-scan.outputs.digest`. That is `steps.build.outputs.digest` from `build-push-action`, recorded before any third-party scanner step runs. It passes through `env:` only and is never shell-interpolated. The only file artifact is `release-sboms`, which is informational. It is uploaded as release assets and never executed or signed. See D1 and D4. |
+
+### S2: CLOSED (on the orchestrator's attestation of Thomas's confirmation)
+
+`decision-log.md:30–38` now sits **below** `## Format` (l.18). It has an **Alternatives**
+line and ends "**Confirmed by:** Thomas in the 2026-09-23 session response". I cannot see
+Thomas's session response, so this rests on the orchestrator's PR comment of
+2026-09-23T16:51Z.
+
+NON-BLOCKING wording gap: the orchestrator's comment says Thomas approved **signing every
+`main` push with the release identity**. The entry, however, only says "the existing
+automatic `edge` cadence remains as documented". The security-relevant half of the decision
+should be stated in the entry itself.
+
+### S3: FIXED (residual D2)
+
+- **Tag bound to signature.** `release.yml:267–280` signs once per published tag, with
+  `--annotations tag=<tag>` and `source_sha=<sha>`. `deploy.sh:255` verifies
+  `--annotations tag=${TASKDESK_IMAGE_TAG}`. Repointing `v2.0.0` at an edge digest (signed
+  `tag=edge`/`tag=sha-…`) now **fails** verification.
+- **TOCTOU closed.** `resolve_and_verify_image` (`deploy.sh:261–278`) resolves the tag to a
+  digest once, requires `^sha256:[0-9a-f]{64}$`, exports `TASKDESK_IMAGE_DIGEST`, and
+  verifies `repo@digest`. `compose.yml:35,63` then renders `repo:tag@digest` for both
+  `taskdesk` and `migrate`, so `dc pull` (l.400, 425, 480) fetches the verified bytes. The
+  exported variable wins over `.env`, which is sourced first (l.158).
+- **Rollback.** `rollback` requires the digest and its signed tag, verifies both, and
+  persists both. The upgrade hint prints a complete command only when both are known.
+
+### S4–S8
+
+| Finding | Status |
+| --- | --- |
+| **S4** rerun republishes the version tag | **Fixed.** The validate step refuses when the Git tag, the GitHub release or the image tag already exists, and it fails closed on an ambiguous lookup error (l.112–134). The publish step refuses to move a `v*`/`sha-*` tag to a different digest and is idempotent for the same one (l.339–351). Residual D3. |
+| **S5** concurrency / stale edge | **Fixed.** Concurrency groups are separate: `taskdesk-edge`, and `taskdesk-release-<version>` (l.25). `edge` moves only when `SOURCE_SHA` equals the live `main` tip (l.333–338). |
+| **S6** scanner cache | **Fixed.** `cache: false` on both trivy steps, and `cache-image: false` for binfmt. |
+| **S7** operator verification commands | **Fixed.** `runbook.md` "Verify a published image" covers `cosign verify` with exact issuer, identity and tag/source annotations, plus two `gh attestation verify` calls. Residual D5. |
+| **S8** SHA regex / pipeline table | **Fixed.** The input must be `^[0-9a-f]{40}$` and is re-normalised with `git rev-parse --verify` (l.80–95). The `ci-cd.md` table and hardening bullets now describe the single `release.yml` with split jobs. |
+
+### New NON-BLOCKING residuals
+
+- **D1: build-job outputs are trusted across the boundary.** `build-scan` still runs
+  third-party code (trivy and syft binaries fetched by version) on a runner with
+  passwordless sudo. That job's docker config also holds a `packages: write` token.
+  - A compromised scanner could push arbitrary unsigned images or tags. `deploy.sh`
+    rejects those, so the impact is limited to denying a release by squatting on a tag.
+  - In principle, a root-level compromise could also tamper with the runner worker's
+    recorded job outputs before they are uploaded.
+  - This is the accepted residual of the standard GitHub split-job pattern, which SLSA's
+    container generator shares. Hardening option: install trivy and syft by checksum
+    (`skip-setup-trivy` plus a verified binary).
+- **D2: signatures on a mutable channel never expire.** Every edge digest carries a
+  permanent `tag=edge` signature. That includes stale runs, because signing (l.267)
+  happens before the stale-edge skip (l.335).
+  - Anyone who can write the registry can repoint `edge` at an older signed edge digest,
+    and it will verify.
+  - Release tags are unaffected.
+  - Mitigations: UAT's updater could compare `source_sha` against `main`, or signing could
+    move after the stale-edge check.
+- **D3: a failed release can leave a second signed digest for the same version.** Suppose
+  a run signs `tag=vX` on digest D1 and then fails before the tag is published. A rerun
+  builds D2 and signs `tag=vX` again, so both digests verify as `vX`. D1 comes from the same
+  selected source and passed the same scans, so the impact is low.
+- **D4: SBOMs are not attested.** The release SBOMs are uploaded as plain assets. An
+  `actions/attest-sbom` or `cosign attest --type cyclonedx` step would make them
+  verifiable.
+- **D5: the runbook's attestation checks are not ref-pinned.**
+  - `runbook.md:217–224` uses `--signer-workflow` with no ref pin, so an attestation from
+    `release.yml` run on another branch would also match. Add `--source-ref
+    refs/heads/main`, or `--cert-identity` with the exact SAN.
+  - The `jq` predicate check does not compare `imageDigest`.
+  - The cosign check above it is exact, so this only weakens the secondary evidence.
+
+### Tooling at this head
+
+| Tool | Result |
+| --- | --- |
+| actionlint 1.7.7 | One SC2129 style note only. |
+| zizmor 1.16.3 `--offline` | "No findings to report" (2 suppressed). `artipacked` is gone. |
+| `pnpm test:all --list` (CI-matches-docs) | Exit 0. 0 passed, 0 failed, 16 not enabled. |
+| `node --test scripts/ci/*.test.mjs scripts/ci/lib/*.test.mjs scripts/ci/probes/*.test.mjs` | 495 of 495 pass. |
+| `bash -n scripts/deploy.sh` | OK. |
+| GitHub checks at head | All green except "pull request template + security review". One cancelled run each of "unit + component" and "gate checkers" sits beside green reruns. |
+| `check-pr-template.mjs --body` | 2 problems. (1) The body links `331-signed-releases-remediation-pending.md`, which has no `Reviewed head`. (2) The Opus box is unticked. The body should link this note, and the queue marker should be retired. |
+
+### Gates the orchestrator must check (not security findings; each blocks merge under the decision log)
+
+1. **Ordinary-review independence.**
+   - `## Implemented by` names "Codex GPT-6 Luna" for the remediation.
+   - `## Reviewed by` names "GPT-6 Luna (independent context)" as the reviewer at `3a0af48`.
+   - The 2026-09-23 lane entry says "the same agent or tool is never both author and
+     ordinary reviewer".
+   - The newer 2026-09-23 entry says that until 2026-09-30, a **fresh Claude Sonnet
+     context** does ordinary reviews, because the lane agents reported no review capacity.
+   - On the record as it stands, the ordinary review at this head does not satisfy either
+     entry.
+2. **Attribution.** Four remediation commits were made after the rule and are still
+   authored `Claude Code`. The PR body itself calls this "unreconciled … a merge blocker".
+3. **Control-plane edits.** The lane edited `docs/07-planning/status.md`, which is
+   orchestrator-owned. Those edits include entries about #323 and #334 that fall outside
+   this PR's scope. The decision-log edit is covered by the S2 confirmation.
