@@ -90,7 +90,12 @@ export type Membership = {
 export type Reach =
   | { readonly kind: "all" }
   | { readonly kind: "organisation"; readonly ids: readonly string[] }
-  | { readonly kind: "membership" };
+  | { readonly kind: "membership" }
+  | {
+      /** Ordinary membership reach plus sees_all within only these workspaces. */
+      readonly kind: "membership_with_workspaces";
+      readonly workspaceIds: readonly string[];
+    };
 
 export type ResolvedIdentity = {
   /** better-auth `user.id`. */
