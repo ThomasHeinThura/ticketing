@@ -46,6 +46,32 @@ export function unapprovedProblems(problems, baselineProblems) {
   return unexpected;
 }
 
+export function parseRedoclyReport(output) {
+  const start = output.indexOf('{\n  "totals"');
+  if (start < 0) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < output.length; index += 1) {
+    const character = output[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+      continue;
+    }
+
+    if (character === '"') inString = true;
+    else if (character === "{") depth += 1;
+    else if (character === "}") {
+      depth -= 1;
+      if (depth === 0) return JSON.parse(output.slice(start, index + 1));
+    }
+  }
+  throw new Error("Redocly JSON report is incomplete");
+}
+
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: root,
@@ -86,18 +112,18 @@ function redoclyReport(specPath, label) {
     "--format=json",
     specPath,
   ]);
-  const start = result.stdout.indexOf('{\n  "totals"');
-  if (start < 0) {
-    reportFailure(`${label} did not produce a Redocly JSON report`, result);
-    return null;
-  }
-
   try {
-    return JSON.parse(result.stdout.slice(start));
-  } catch {
-    reportFailure(`${label} produced invalid Redocly JSON`, result);
+    const report = parseRedoclyReport(result.stdout);
+    if (report) return report;
+    reportFailure(`${label} did not produce a Redocly JSON report`, result);
+  } catch (error) {
+    reportFailure(
+      `${label} produced invalid Redocly JSON: ${error.message}`,
+      result,
+    );
     return null;
   }
+  return null;
 }
 
 async function redoclyLint(baseSpec) {

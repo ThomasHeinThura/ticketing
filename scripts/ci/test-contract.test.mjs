@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { unapprovedProblems } from "./test-contract.mjs";
+import { parseRedoclyReport, unapprovedProblems } from "./test-contract.mjs";
 
 const problem = (severity, ruleId, pointer) => ({
   severity,
@@ -63,4 +63,11 @@ test("a different diagnostic at the same rule and pointer is new", () => {
   assert.deepEqual(unapprovedProblems([replacement], [inherited]), [
     replacement,
   ]);
+});
+
+test("Redocly report parsing ignores status text printed after its JSON", () => {
+  const report = { totals: { errors: 0 }, problems: [] };
+  const output = `validating spec.json...\n${JSON.stringify(report, null, 2)}\n\n✔ Validation successful.\n`;
+
+  assert.deepEqual(parseRedoclyReport(output), report);
 });

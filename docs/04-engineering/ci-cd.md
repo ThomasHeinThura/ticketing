@@ -158,7 +158,7 @@ turbo.json                           pnpm-lock.yaml
 docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
                                      .npmrc
                                      .pnpmfile.cjs
-packages/domain/vitest.config.ts    apps/web/playwright.config.ts
+**/vitest.config.*                   apps/web/playwright.config.ts
 apps/web/e2e/**                      scripts/ci/redocly.yaml
 ```
 
