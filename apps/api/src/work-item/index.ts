@@ -1,3 +1,6 @@
+import { eq } from "drizzle-orm";
+import db from "../database";
+import { personTable } from "../database/schema";
 import {
   type ApiKey,
   apiRouter,
@@ -8,18 +11,25 @@ import {
 } from "../openapi";
 import {
   assertCallerHasCapability,
+  builtInRoleHasCapability,
   requireWorkspaceCapability,
 } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import {
+  isUnambiguousMembership,
+  workspaceMemberRoles,
+} from "../utils/workspace-member-roles";
 import type { ActivityActorType } from "./activity";
 import createWorkItem from "./controllers/create-work-item";
 import getWorkItemByKey from "./controllers/get-work-item";
+import listAssignablePeople from "./controllers/list-assignable-people";
 import listWorkItems from "./controllers/list-work-items";
 import updateWorkItem, {
   WorkItemVersionConflictError,
 } from "./controllers/update-work-item";
 import { requireWorkItemReach } from "./require-work-item-reach";
 import {
+  assignablePeopleSchema,
   workItemListSchema,
   workItemSchema,
   workItemVersionConflictSchema,
@@ -236,6 +246,35 @@ const updateWorkItemRoute = createRoute({
   },
 });
 
+const listAssignablePeopleRoute = createRoute({
+  method: "get",
+  operationId: "listAssignablePeople",
+  path: "/projects/{projectId}/assignable",
+  tags: ["Work items"],
+  summary: "List assignable people",
+  description:
+    "The project roster with each person's open-work count, filtered to the people the " +
+    "caller may actually assign to (`assignment.md`): an actor holding `work_item:assign` " +
+    "sees the active roster; anyone else with reach sees only themselves; a caller with " +
+    "neither capability sees an empty list. The client never filters this itself.",
+  middleware: [
+    workspaceAccess.fromProject("projectId"),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
+  request: { params: projectIdParam },
+  responses: {
+    200: jsonResponse(
+      "The people the caller may assign to",
+      assignablePeopleSchema,
+    ),
+    400: errorResponse(
+      "Unknown project, or its workspace could not be determined",
+    ),
+    403: errorResponse("Missing work_item:read permission"),
+    404: errorResponse("Project not found"),
+  },
+});
+
 const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(createWorkItemRoute, async (c) => {
     const { projectId } = c.req.valid("param");
@@ -325,6 +364,39 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
       }
       throw error;
     }
+  })
+  .openapi(listAssignablePeopleRoute, async (c) => {
+    const { projectId } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const userId = c.get("userId");
+
+    // The caller's personal id, from the same `person.user_id` mapping the assign route
+    // resolves -- a caller with no person row can never be a candidate.
+    const [callerPerson] = await db
+      .select({ id: personTable.id })
+      .from(personTable)
+      .where(eq(personTable.userId, userId))
+      .limit(1);
+
+    // "May assign anyone" reads the caller's own role through the same
+    // `builtInRoleHasCapability` predicate every other authority check uses (#318's
+    // genuine-row rule included) -- one source, so this feed cannot disagree with
+    // `POST /assign` about what the actor may do.
+    const roles = await workspaceMemberRoles(db, workspaceId, userId);
+    const canAssignAnyone =
+      isUnambiguousMembership(roles) &&
+      (await builtInRoleHasCapability(
+        workspaceId,
+        roles[0],
+        "work_item:assign",
+      ));
+
+    const people = await listAssignablePeople({
+      projectId,
+      callerPersonId: callerPerson?.id ?? null,
+      callerCanAssignAnyone: canAssignAnyone,
+    });
+    return c.json(people, 200);
   });
 
 export default workItem;
