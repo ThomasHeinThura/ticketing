@@ -1,1 +1,10 @@
-[]
+[
+	{
+		"operation": "GET /projects/{projectId}/work-items",
+		"rule": "response-body-type-changed",
+		"fingerprint": "3bb2531394ee",
+		"pr": 320,
+		"reason": "#310 list envelope {data,page,meta}; web client already consumes it; API unversioned until 2.0.0",
+		"decision": "decision-log 2026-09-25 · Intentional pre-2.0 OpenAPI breaking changes pass only through a reviewed allowlist"
+	}
+]
