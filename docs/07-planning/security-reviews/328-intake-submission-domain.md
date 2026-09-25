@@ -396,3 +396,59 @@ Yes. None of these can be reached until the API slice exists:
 
 Before the first intake route merges, #371 and a request-body limit must land, and N4 must
 be fixed if any schema can be stored without publish validation.
+
+## Merge-head attestation (Opus 5.5) — after #330 and #370 merged
+
+**Reviewed head:** `98e4e326dc45093deed14f36c065150c6e7c96fc`
+
+This is a fresh Opus 5.5 context, 2026-09-25. It attests the `gh pr update-branch` merge of
+`main` at `23f6368de2a225fc16e98fcdce0120ed945e614d` into `a6363b6`. `a6363b6` is the Opus note
+over the reviewed code head `569066e`, and it changed only this file. Since the old base
+`96772dd`, `main` gained two changes:
+- #330 (`777b27c`): `packages/domain/src/sla/scan.ts`
+- #370 (`23f6368`): the decision log and `intake-queue.md` `IQ-15`
+
+- **Parents:** exactly (`a6363b6`, `23f6368`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main`.
+- **PR change unchanged:** the added and removed lines are identical between
+  `git diff 96772dd a6363b6` and `git diff 23f6368 98e4e32`. Only the hunk offsets in
+  `packages/domain/src/index.ts` differ; it is the one overlapping file, and it auto-merged.
+- **Interaction with #330, in the `index.ts` barrel:** at `98e4e32` the barrel re-exports
+  both #330's `./sla/scan.js` and this PR's four `./intake/*.js` modules.
+  - None of the intake modules and `sla/scan.ts` export the same name.
+    `turbo typecheck --filter=@taskdesk/domain` is green, so no `export *` is ambiguous
+    (no TS2308).
+  - After building, all 19 value exports of `intake/*` and `sla/scan` resolve on the built
+    `dist/index.js`, out of 73 runtime exports. None was silently dropped as an ambiguous
+    star export.
+- **Combined coverage gate:** `pnpm test:coverage` exits 0 against the 90%
+  statements/lines/functions gate.
+  - All files: 96.67% statements, 93.47% branches, 98.33% functions, 97.06% lines.
+  - `intake/duplicate.ts`: 98.18 / 97.14 / 100 / 100.
+  - `intake/request-type.ts`: 95.52 / 90.78 / 95.83 / 95.93.
+  - `intake/submission.ts`: 90.32 / 87.17 / 100 / 92.72.
+  - `sla/scan.ts`: 100 on all four.
+  - `intake/types.ts` is type-only, so its 0 statements do not count against the gate.
+- **Reopen versus #370's decision** (decision log, 2026-09-25, "a customer may reopen only a
+  submission the system auto-declined"): the `transitionSubmission` doc comment matches the
+  decision on substance.
+  - A customer may reopen only an auto-decline, and a staff decline is final for the
+    customer.
+  - It is not enforced yet, because `SubmissionRecord` cannot tell an auto-decline from a
+    staff decline. Enforcing it needs a new field.
+  - It must land before any reopen route ships. The decision says the same, and that no API
+    route calls intake today.
+  - The code is consistent: `reopen` is customer-only, from `declined` to `new`.
+  - **Non-blocking wording drift** (a comment-only follow-up, for example with #371):
+    1. "a staff decline is final unless staff reopen it" implies a staff reopen exists. The
+       decision says whether staff can reopen is not decided, and `IQ-6` has no such action.
+       The code has no staff reopen, so behaviour matches the decision.
+    2. "decision-log PR in flight" is stale, because #370 is merged.
+    3. "tracked on its own issue" can now name #371, which is open: "Intake: record who
+       declined a submission so reopen can be limited to auto-declines".
+- **Tests at `98e4e32`:** `pnpm --filter @taskdesk/domain test` passes 10 files / 530 tests.
+  The worktree stays clean after `pnpm install --frozen-lockfile --offline`.
+
+**Verdict at `98e4e326dc45093deed14f36c065150c6e7c96fc`: CLEAR.** The earlier findings carry
+over. The reopen enforcement gap is recorded and tracked as #371, and is blocking only for a
+future reopen route.
