@@ -170,3 +170,117 @@ claimed/unclaimed. The only successful transitions:
 `accepted`, `duplicate` and `withdrawn` accept nothing. No actor can do the other side's
 actions. An empty reason, target or work-item id is refused (a reason of only spaces is
 refused too; a target of only spaces is accepted — trivial).
+
+---
+
+## Delta re-review — fix round under #366
+
+**Reviewed head:** `66e37a61839460ec11f20d920c5a431a255fc5e3`
+
+**Reviewer:** Claude Opus 5.5, a fresh context in a fresh worktree. It did not write the
+fix. It made no code edit and no PR-body edit.
+
+**Verdict: CHANGES REQUESTED.** H1, M1 and M2 are closed as reported. But adding `neq` opens
+a new way to skip a required field (N1, MEDIUM). That is the same class as H1, and it
+blocks. Two more items must be fixed in the same round (N2, and the M3 header text). The
+rest are non-blocking follow-ups. This verdict covers the head above only.
+
+### What changed since `1d31ad0`
+
+`d05d07e` merges `main`; that brings only the #369 decision-log entry into `docs/`. `66e37a6`
+touches `intake/{request-type,types,duplicate}.ts` and `intake.test.ts`. `submission.ts` is
+unchanged. The branch is one merge behind `main` (#343). That is why the diff shows
+`343-audit-read-api.md` as removed.
+
+### Measured at this head
+
+| Check | Result |
+| --- | --- |
+| `packages/domain` tests | 9 files, **515/515** pass |
+| Coverage (gate 90 %) | 96.54 % stmts / 96.93 % lines / 98.28 % funcs. `request-type.ts` 94.28 / 94.73; `submission.ts` 90.32 / 92.72 |
+| `tsc --noEmit` | clean |
+| Mutation: a malformed condition becomes *hidden* instead of visible | 1 test red. Reverted |
+| Mutation: bring back `mapping.map[raw]` without `Object.hasOwn` | 1 test red. Reverted |
+| Mutation: the checkbox type check always passes | 2 tests red. Reverted |
+| CI at `66e37a6` | `contract - OpenAPI drift` **FAILURE**: oasdiff reports `GET /instance/audit` and `GET /workspaces/{workspaceId}/audit` as "removed". That is the branch being behind #343, not a defect here; the planned update-branch clears it. `pull request template + security review` FAILURE (reviews not yet recorded). `unit + component` and `gate checkers` were still running. The rest are green |
+
+### (1) Are H1, M1 and M2 closed?
+
+- **H1 — closed.** The spec's example, `{ field_key: "impact", op: "eq", value: "Just me" }`,
+  now publishes clean. Submitting "Just me" without the dependent field now gives
+  `required_missing`. All four operators behave as the spec says (eq, neq, in and is_set;
+  each checked for a match and a non-match). Malformed conditions — a string, an array, the
+  old `{field, equals}` shape, `op: "gt"`, `op: "__proto__"`, `in` with a non-array value, a
+  blank `field_key`, a numeric `field_key` — are rejected at publish with
+  `show_if_invalid_condition`. At submit time the field counts as visible, so its
+  `required` is still enforced.
+- **M1 — closed.** Answers `constructor`, `__proto__`, `toString` and `hasOwnProperty` now
+  pass through as the raw strings; a mapped `High` still becomes `urgent`. `mapsTo.field:
+  "__proto__"` becomes an own data property (`Object.fromEntries`), and the prototype stays
+  `Object.prototype`. A required field with key `toString` is now `required_missing`
+  against `{}`.
+- **M2 — closed.** These all give `wrong_type`: checkbox `"true"`, number `NaN` or `"5"`, an
+  object in a text field, an array on a single-value field, a nested array on a `multiple`
+  field, and an array on a single-value select. A text answer of 10,000 characters passes;
+  10,001 is rejected.
+
+### (2) New issues
+
+- **N1 (MEDIUM, blocks) — a hidden controller's value can hide a required field through
+  `neq`.** `isFieldVisible` reads the controller's submitted value whether or not the
+  controller is itself visible. Nothing validates a hidden field's value.
+  Input: `a` (checkbox), then `b` (select `y|n`, `showIf a eq true`), then `c` (text,
+  required, `showIf b neq "y"`). Honest submit `{ a: false }` → `c: required_missing`
+  (correct: `b` is hidden, so it has no value, and `c` shows). Crafted `{ a: false, b: "y" }`
+  → **`[]`**: the required `c` is skipped. `renderUnmappedIntoDescription` also prints the
+  smuggled `b: y`. Before this round only `eq` existed, and a smuggled value could only
+  *add* required fields. `neq` (and `in` with a negated intent) turns it into a skip.
+  `validateFormSchema` accepts this chained schema.
+  Fix (either one): (a) work out visibility in dependency order, treating a hidden
+  controller's value as absent, with a cycle guard; or (b) reject at publish any `showIf`
+  whose controller has its own `showIf` (data-model calls `visibility_condition`
+  "single-level"). Either way, drop or ignore hidden fields' values in validation, mapping
+  and rendering. Add the input above as a test.
+- **N2 (LOW, fix in the same round) — `showIf: null` crashes.** `validateFormSchema` and
+  `validateSubmissionData` both throw `TypeError: Cannot read properties of null (reading
+  'field_key')`. JSON `null` is a likely stored value for "no condition" (a UI clearing
+  it). Treat `null` as absent (`field.showIf != null`).
+- **N3 (LOW) — a well-formed condition pointing at a field that does not exist fails
+  *open* at runtime.** `{ field_key: "constructor", op: "is_set" }` is rejected at publish
+  (`show_if_missing_field`), but a stored schema that skipped publish hides a required
+  field (`[]` against `{}`). A condition whose `value` cannot be a FormValue
+  (`{ a: 1 }`) passes publish and hides its field forever. Both need an unvalidated or
+  malicious admin schema. Suggestion: `visibleFields` has the schema, so treat a dangling
+  `field_key` as visible, and check the `value` shape at publish.
+- **`MAX_TEXT_ANSWER_LENGTH` = 10,000 — sensible**, but it bounds one string only. A
+  `multiple` text field with 100,000 answers of 10,000 characters each (about 1 GB) passes
+  (`[]`, in 1 ms). Unknown keys have no limit either (by spec). The API slice must set a
+  request-body limit and a limit on `multiple` array length. `date` accepts any string up
+  to 10,000 characters ("not a date" passes). Check that it is an ISO date. A required
+  checkbox is satisfied by `false`. All LOW, non-blocking.
+
+### (3) Do M3 and the reopen rule block?
+
+- **M3's algorithm (bigram Dice instead of pg_trgm) — does not block.** Nothing on `main`
+  calls intake, and IQ-18 puts the real query in Postgres. As a pure helper it is harmless
+  if the API slice follows the spec. **The header text does block:** `duplicate.ts` still
+  says "IQ-18 says only 'text similarity …' … implementation details, not spec contracts".
+  That was false at this head. Merged, it tells the next implementer the spec allows this.
+  Replace it with one honest sentence (IQ-18 specifies pg_trgm `similarity(title, q) > 0.3`;
+  this helper is not the IQ-18 implementation). Open a tracked issue for the API slice.
+- **Reopen of staff declines — does not block, on conditions.** No caller exists, so no
+  customer can reach `reopen` today. But the coordinator reports that Thomas decided
+  "customers reopen ONLY auto-declines", and **that decision is not in
+  `decision-log.md` on `main`** (searched). Before this merges: (a) record it in the
+  decision log and IQ-15, since CLAUDE.md requires this before dependent code merges;
+  (b) open an issue for the `SubmissionRecord` field and data-model column, which must
+  land before any reopen route; (c) update `submission.ts`'s reopen comment, which still
+  calls "any declined" the only implementable reading, so it says the rule is decided and
+  not yet enforced. (An alternative that also clears this: make `reopen` refuse until the
+  field exists.)
+
+### What must change before this can clear
+
+N1 (with a test), N2, the corrected `duplicate.ts` header, and the reopen conditions
+(a)–(c). Then update the branch onto `main` so the OpenAPI drift check goes green, and do a
+delta review of that head.
