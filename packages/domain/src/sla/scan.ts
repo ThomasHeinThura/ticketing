@@ -13,6 +13,10 @@
  *
  * - `sla.at_risk` fires only when the computed state IS `at_risk` and the stored state
  *   was not; `sla.breached` fires only when computed IS `breached` and stored was not.
+ *   This includes a retreat: a paused, breached item can drop to `at_risk` (pauses lower
+ *   the consumed proportion) and that is a genuine transition into `at_risk`, so it fires
+ *   `sla.at_risk` — consumed time is NOT monotonic once pauses are involved (SLA-15,
+ *   clarified 2026-09-18).
  * - An `ok` → `breached` jump inside one 5-minute interval emits **`sla.breached` only**
  *   — the scan never observed `at_risk`, and SLA-15 words the rule as "on a transition
  *   INTO" the state. The literal reading is implemented; the alternative (emitting both)
@@ -20,10 +24,9 @@
  * - `sla.met`/`sla.missed` are **never** scan emissions (SLA-15a: they belong to the
  *   transition into a completed-group state). If a computed `met`/`missed` reaches here
  *   anyway (a candidate-set bug upstream), no event fires; the cache still syncs.
- * - A downward correction (`at_risk` → `ok`, only possible via manual data change —
- *   consumed time is monotonic for open items) emits nothing but re-arms the crossing:
- *   a later `ok` → `at_risk` would fire again. Acceptable residual: the correction that
- *   caused it is itself audit-logged.
+ * - A transition to `ok` (from `at_risk` or `breached`, only possible via manual data
+ *   change or a pause — `ok` is not an alert state) emits nothing but re-arms the
+ *   crossing: a later `ok` → `at_risk` would fire again.
  *
  * Event keys are the ones registered in `docs/01-architecture/events.md`.
  */
@@ -42,22 +45,6 @@ export interface ScanDecision {
   readonly cacheChanged: boolean;
 }
 
-/** Alerting rank; `none` and the terminal states never emit and never rank below. */
-function alertRank(state: SlaState): number | null {
-  switch (state) {
-    case "ok":
-      return 0;
-    case "at_risk":
-      return 1;
-    case "breached":
-      return 2;
-    default:
-      // `none` (no goal), `met`, `missed` (terminal — outside the candidate set per
-      // SLA-15a) are cache-sync values, not alert states.
-      return null;
-  }
-}
-
 /**
  * The decision for one (work item, metric) pair at one scan tick (SLA-14).
  *
@@ -69,28 +56,18 @@ export function scanDecision(
   computed: SlaState,
 ): ScanDecision {
   const emit: ScanEvent[] = [];
-  const storedRank = alertRank(stored);
-  const computedRank = alertRank(computed);
 
-  // Rising into an alerting state emits that state's event only — never a state the
-  // scan did not observe (the ok→breached note in this file's header).
+  // Any genuine transition INTO an alerting state emits that state's event — rising
+  // from `ok`/`none`, or retreating from `breached` down to `at_risk` (SLA-15,
+  // clarified 2026-09-18: "a genuine state change re-fires the edge"). A state that
+  // merely persists, or moves to a non-alerting state (`ok`, `none`, `met`, `missed`),
+  // emits nothing.
   if (
-    computedRank !== null &&
-    storedRank !== null &&
-    computedRank > storedRank
+    (computed === "at_risk" || computed === "breached") &&
+    computed !== stored
   ) {
-    emit.push(computed === "at_risk" ? "sla.at_risk" : "sla.breached");
-  } else if (
-    computedRank !== null &&
-    storedRank === null &&
-    computedRank >= 1
-  ) {
-    // `none` → alerting: a goal appeared (or appeared late) with the clock already at
-    // or past its threshold. The cache has never recorded this state, so the crossing
-    // is real from the cache's perspective — emit.
     emit.push(computed === "at_risk" ? "sla.at_risk" : "sla.breached");
   }
-  // computed `met`/`missed` with an alerting stored state: SLA-15a — not ours; no emit.
 
   return {
     emit,

@@ -37,13 +37,26 @@ describe("scanDecision (SLA-14/SLA-15/SLA-15a)", () => {
     }
   });
 
-  it("downward correction emits nothing but re-arms the crossing", () => {
+  it("downward correction to ok emits nothing but re-arms the crossing", () => {
     const down = scanDecision("at_risk", "ok");
     expect(down.emit).toEqual([]);
     expect(down.nextStoredState).toBe("ok");
     expect(down.cacheChanged).toBe(true);
     // …and a later genuine crossing fires again (documented residual).
     expect(scanDecision("ok", "at_risk").emit).toEqual(["sla.at_risk"]);
+  });
+
+  it("breached → at_risk (a pause pulling a breached item back) emits sla.at_risk exactly once", () => {
+    // Opus M1: a pause lowers the consumed proportion, so a breached item can retreat
+    // to at_risk. That is a genuine transition INTO at_risk (SLA-15), not silence.
+    const first = scanDecision("breached", "at_risk");
+    expect(first.emit).toEqual(["sla.at_risk"]);
+    expect(first.nextStoredState).toBe("at_risk");
+    expect(first.cacheChanged).toBe(true);
+    // The job persists nextStoredState; rescanning the same state emits nothing again.
+    const second = scanDecision(first.nextStoredState, "at_risk");
+    expect(second.emit).toEqual([]);
+    expect(second.cacheChanged).toBe(false);
   });
 
   it("none → at_risk/breached emits (the cache has never recorded the state)", () => {
