@@ -1060,11 +1060,20 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
      * This test reproduces that live: an attacker walks their OWN project across
      * every sort field and both directions with `limit=1` (forcing a real
      * `nextCursor` on every step), and a completely unrelated victim workspace holds
-     * rows designed to catch the specific failure shapes above -- a null-due item (the
-     * escaped null-bucket branch), a `number` that collides with one of the
-     * attacker's own items (the escaped equality-tie-break branch), plus an archived
-     * and a soft-deleted item (the escaped `archivedAt`/`deletedAt` exclusion, which
-     * sat in the SAME broken `and(...)` chain).
+     * rows designed to catch the specific failure shapes above -- a null-due item
+     * whose `number` collides with one of the attacker's own items (the escaped
+     * equality-tie-break branch, in BOTH `nonDueDateCursorCondition`'s own OR and
+     * `dueDateCursorCondition`'s null-bucket OR, since the null bucket sorts by `id`
+     * alone and that branch is `(isNullExpr = 1 and id > cursor.id)` -- unparenthesised,
+     * `and()` still lets ITS OWN leading structure escape via the outer `or`), a
+     * REAL-dated victim item dated after every attacker date (catches an `asc` walk
+     * escaping through `dueDateCursorCondition`'s real-date branch) and one dated
+     * before every attacker date (catches a `desc` walk the same way) -- #320 security
+     * review D5: a null-due victim alone never exercises `dueDateCursorCondition`'s
+     * real-date OR branch at all, so it cannot catch a regression there -- plus an
+     * archived and a soft-deleted item, THEMSELVES real-dated past/future too, so the
+     * `archivedAt`/`deletedAt` exclusion escape (the same broken `and(...)` chain) is
+     * caught through the real-date branch as well, not only the null-bucket one.
      */
     it("a normal nextCursor walk, on every sort field and direction, never crosses into another workspace's project -- including its archived and deleted rows", async () => {
       const attacker = await setupProject();
@@ -1151,6 +1160,31 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
         "VictimSecretDeleted",
         "urgent",
       );
+      // #320 security review D5: a null-due victim alone never reaches
+      // `dueDateCursorCondition`'s REAL-DATE OR branch -- which is the branch that
+      // actually escapes scope when unparenthesised -- so it gives no regression
+      // coverage for a revert of that function's own fix. `v4`/`v5` are dated
+      // strictly after/before EVERY attacker date (`a1`=2026-10-01, `a2`=2026-11-01)
+      // so an `asc` walk's `>` comparison and a `desc` walk's `<` comparison each
+      // land on one of them. `v2`/`v3` are given real dates on the same two sides
+      // too, so the archived/deleted exclusion escape is caught through the
+      // real-date branch, not only through the null-bucket one.
+      const v4 = await createItem(
+        app,
+        victim.project.id,
+        victim.type.id,
+        "VictimSecretFutureDue",
+      );
+      const v5 = await createItem(
+        app,
+        victim.project.id,
+        victim.type.id,
+        "VictimSecretPastDue",
+      );
+      await setDueDate(app, v2.key, v2.version, "2027-06-01T00:00:00.000Z");
+      await setDueDate(app, v3.key, v3.version, "1900-01-01T00:00:00.000Z");
+      await setDueDate(app, v4.key, v4.version, "2027-06-01T00:00:00.000Z");
+      await setDueDate(app, v5.key, v5.version, "1900-01-01T00:00:00.000Z");
       await db
         .update(schema.workItemTable)
         .set({ archivedAt: new Date() })
@@ -1160,11 +1194,13 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
         .set({ deletedAt: new Date() })
         .where(eq(schema.workItemTable.id, v3.id));
 
-      const victimIds = new Set([v1.id, v2.id, v3.id]);
+      const victimIds = new Set([v1.id, v2.id, v3.id, v4.id, v5.id]);
       const victimTitles = [
         "VictimSecretNullDue",
         "VictimSecretArchived",
         "VictimSecretDeleted",
+        "VictimSecretFutureDue",
+        "VictimSecretPastDue",
       ];
 
       // Back to the attacker's own session for every list/walk call below.
@@ -1230,8 +1266,12 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
       const victimOwnList = await list(app, victim.project.id, "limit=200");
       expect(victimOwnList.status).toBe(200);
       const victimBody = victimOwnList.body as ListBody;
-      expect(victimBody.data.map((i) => i.id)).toEqual([v1.id]);
-      expect(victimBody.meta.total).toBe(1);
+      // v2 (archived) and v3 (deleted) stay excluded; v1/v4/v5 are the victim's own
+      // live rows.
+      expect(new Set(victimBody.data.map((i) => i.id))).toEqual(
+        new Set([v1.id, v4.id, v5.id]),
+      );
+      expect(victimBody.meta.total).toBe(3);
     });
   });
 });
