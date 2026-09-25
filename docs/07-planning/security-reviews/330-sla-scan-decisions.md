@@ -112,3 +112,84 @@ belongs in #329's job slice; record it there as an acceptance criterion.
 Mostly. Every rising pair, steady state, `none` edges and the met/missed suppression are
 pinned, and mutations 1 and 2 go red. The retreat case (M1) and reopen-after-terminal (L1)
 are not pinned.
+
+---
+
+## Delta re-review — M1 fix (#366)
+
+**Reviewed head:** `09305f1ea5b73973e42e6b7ea1ad2c97d6a44bbe`
+
+**Reviewer:** Claude Opus 5.5, a fresh context in a fresh worktree. It did not write the
+fix. It made no code edit and no PR-body edit.
+
+**Verdict: CLEAR.** M1 is fixed. L1 and L2 are unchanged. Both are LOW and do not block the
+merge. One new trivial LOW (D1). This verdict covers the head above only.
+
+### What changed since `4c1b9d9`
+
+- `9d7e3eb` merges `origin/main`. Its only effect is the #369 decision-log entry: the
+  `decision-log.md` diff between `origin/main` and this head is empty.
+- `09305f1` changes `scan.ts` and `scan.test.ts` only. `alertRank` is gone. The rule is now
+  "emit when `computed` is `at_risk` or `breached` and `computed !== stored`". The header
+  no longer claims consumption is monotonic. There is one new test for `breached → at_risk`,
+  which also checks that a rescan emits nothing.
+
+### Measured at this head
+
+| Check | Result |
+| --- | --- |
+| `packages/domain` tests | 9 files, **481/481** pass (one more than before) |
+| Coverage | 97.63 % stmts / 97.68 % lines / 98.51 % funcs (gate 90 %); `scan.ts` 100 % lines and branches |
+| `tsc --noEmit` | clean |
+| Mutation: bring back the silent `breached → at_risk` | new test red (1). Reverted |
+| Mutation: drop `computed !== stored` | 3 tests red. Reverted |
+| CI (`gh pr view 330`) at the time of review | runs for `09305f1` still **in progress** (secret scan, helm, CodeQL, GitGuardian, Analyze are green; the rest are pending). This note's push starts a new run. The merge gate must check green CI on the final head |
+
+### (1) Double-fire or wrong fire? (throwaway probes, deleted)
+
+Each case below was scanned every 5 minutes with the cache written back after each tick.
+The setup is the same as above: a 7-day, 08:00–20:00 Europe/London calendar and a
+1440-minute resolution goal.
+
+- **Full transition table** (all 36 stored × computed pairs): emits only for
+  `{none, ok, met, missed} → at_risk|breached`, `at_risk → breached` and `breached → at_risk`,
+  one event each. Pairs where the state stays the same, or moves to `ok`/`none`/`met`/`missed`,
+  emit nothing. No pair emits two events.
+- **Flapping** `ok → at_risk → breached → at_risk → breached → breached → at_risk → at_risk`
+  emits `at_risk, breached, at_risk, breached, at_risk`. That is one event per real change,
+  and none for the repeats.
+- **DST fall-back with every tick scanned twice:** `at_risk@2026-10-25T17:00Z` and
+  `breached@2026-10-26T11:05Z`. The duplicate-tick run is identical, so there is no double fire.
+- **Pause/resume storm** (after the breach, a 10-minute pause every 20 minutes for 6 hours):
+  no extra events. A pause going forward only freezes the clock. It never lowers the
+  consumed share, so no retreat happens.
+- **Retroactive pause** (a 4-hour pause on Sunday, recorded at Mon 13:00Z): `at_risk@13:00Z`
+  and then a re-breach `breached@15:05Z`. This is exactly the retreat-and-re-breach that
+  SLA-15's 2026-09-18 note describes.
+- **`ok → breached` in one interval:** emits `sla.breached` **only**. This matches the spec.
+  SLA-15 ties each event to "a transition into" its own state. An `ok → breached`
+  transition goes into `breached`, not into `at_risk`, so emitting `at_risk` as well would
+  report a state the scan never saw. I confirm the PR's boundary reading 1.
+- **Reopen** (resolved at Tue 09:00Z while breached, reopened at 12:00Z): the cache goes
+  `breached → missed → breached`, and `sla.breached` fires again at the reopen. This is L1,
+  still as described.
+
+### (2) Does the fix match the spec's transition rule?
+
+Yes. The new condition is SLA-15 word for word: into `at_risk` → `sla.at_risk`; into
+`breached` → `sla.breached`; a real change fires again, and a state that stays put fires
+nothing. SLA-15a holds too: `met`/`missed` never emit from the scan.
+
+### (3) L1 and L2
+
+- **L1 — unchanged.** `missed → breached` and `met → at_risk` still emit (both measured).
+  This is consistent with SLA-15's re-fire reading, but there is still no test.
+  Recommendation unchanged: add one test that pins it.
+- **L2 — unchanged.** Exactly-once delivery still depends on the job writing the new state
+  in the same transaction as the emit, with `WHERE state = :stored`. This belongs to #329.
+- **N1/N2** (zero or huge `target_minutes`, `main` code outside this diff): unchanged.
+
+### D1 (LOW, trivial) — out-of-date doc comment
+
+`ScanDecision.emit` is still documented as "0, 1, or 2 items". Under both the old rule and
+the new one it holds at most **one** event. Fix it with the next change; it does not block.
