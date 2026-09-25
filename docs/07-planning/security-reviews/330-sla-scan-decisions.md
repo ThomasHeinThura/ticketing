@@ -193,3 +193,27 @@ nothing. SLA-15a holds too: `met`/`missed` never emit from the scan.
 
 `ScanDecision.emit` is still documented as "0, 1, or 2 items". Under both the old rule and
 the new one it holds at most **one** event. Fix it with the next change; it does not block.
+
+## Merge-head attestation (Opus 5.5) — after #343 merged
+
+**Reviewed head:** `800502c88d0e2d9395da88759d6c95cca4a14db3`
+
+This is a fresh Opus 5.5 context, 2026-09-25. It attests the `gh pr update-branch` merge of
+`main` at `96772ddfee5d23c47863da7c1ea18941239ebb02` (#343, the audit read routes in `apps/api`,
+the permissions fixture and `openapi.json`) into `c2a18a5`. `c2a18a5` is the Opus note over
+the reviewed code head `09305f1`, and it changed only this file. `cfd82af..96772dd` is that
+one merge.
+
+- **Parents:** exactly (`c2a18a5`, `96772dd`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main`.
+- **PR change unchanged:** `git diff cfd82af c2a18a5` and `git diff 96772dd 800502c` are
+  byte-identical (same sha256). The PR touches only `packages/domain/src/sla/**`,
+  `packages/domain/src/index.ts` and this note, so no file overlaps with #343.
+- **Interaction:** none. #343 changes nothing under `packages/domain`.
+- **Commands at `800502c`:**
+  - `pnpm --filter @taskdesk/domain test` passes 9 files / 481 tests.
+  - `pnpm test:coverage` exits 0, with the 90% gate met. All files: 97.63% statements,
+    95.22% branches, 98.51% functions, 97.68% lines. `sla/scan.ts` is at 100% on all four.
+  - The worktree stays clean after `pnpm install --frozen-lockfile --offline`.
+
+**Verdict at `800502c88d0e2d9395da88759d6c95cca4a14db3`: CLEAR.**
