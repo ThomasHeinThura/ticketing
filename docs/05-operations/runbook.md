@@ -2,20 +2,28 @@
 
 What to do when something is wrong. Symptom-first, because that is how you arrive here.
 
-**Before the metrics commands below will work:** `export METRICS_TOKEN=…`, copied from God
-Mode → Observability. It is **not** an environment variable of the container and there is no
-`TASKDESK_METRICS_TOKEN` — the token is runtime configuration like everything else
-([configuration-reference.md](configuration-reference.md)). `/metrics` is served on its own
-listener, port **9464**, which is not routed through Traefik
-([observability.md](../01-architecture/observability.md)); the health endpoints are on the
-application port as usual.
+Run the Compose commands below from the TaskDesk checkout on the host. On a production
+host, select the same base and production overlay as `scripts/deploy.sh`:
+
+```bash
+dc() { docker compose -f compose.yml -f deploy/compose.prod.yml "$@"; }
+```
+
+For local development, use `dc() { docker compose -f compose.yml -f deploy/compose.local.yml -f deploy/compose.traefik.yml "$@"; }`.
+The first-run `scripts/deploy.sh local` command sets up the local certificate and secrets.
+
+**Metrics endpoint status:** the architecture describes the intended Prometheus endpoint,
+but the current API image does not start a listener on port `9464` and does not serve
+`/metrics`. The metrics bearer-token setting is not usable yet. Use the container, database,
+and application logs below; do not export a `METRICS_TOKEN` or rely on the metrics commands
+until the endpoint is implemented and verified.
 
 ## Triage
 
 1. **Is it up?** `curl https://ticket.<domain>/api/public/health/ready`
-2. **Is it everything or one thing?** `/api/instance/health/deep` lists each dependency (an `instance:admin` session — the metrics token does not grant it)
+2. **Is it everything or one thing?** Check `dc ps`, TaskDesk logs and the database query below. The deep dependency endpoint is planned but not currently served.
 3. **What changed?** Last deploy, last configuration change (God Mode → Audit)
-4. **Who is affected?** One organisation or all — Sentry tags by organisation
+4. **Who is affected?** Compare which workspaces and users report the issue; Sentry reporting is not currently implemented.
 5. **Communicate before investigating.** A five-word status message buys an hour of quiet
 
 ---
@@ -29,7 +37,7 @@ of an instance's whole life happens.
 
 | Cause | Fix |
 | --- | --- |
-| **Setup token expired or lost** | The token is short-lived and single-use. While `setup_completed_at` is null, **every container restart prints a fresh token and invalidates the previous one** ([auth-and-identity.md](../01-architecture/auth-and-identity.md)) — so `docker compose restart taskdesk` and read the new one out of `docker compose logs taskdesk`. Nothing else is lost; no administrator exists yet |
+| **Setup token expired or lost** | The token is short-lived and single-use. While `setup_completed_at` is null, **every container restart prints a fresh token and invalidates the previous one** ([auth-and-identity.md](../01-architecture/auth-and-identity.md)) — so run `dc restart taskdesk` and read the new one out of `dc logs taskdesk`. Nothing else is lost; no administrator exists yet |
 | Setup page says setup is already complete | Someone else claimed the first administrator. Sign in as them, or use break-glass below |
 | Headless install created no administrator | `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` was unset. Set it and restart, or use the setup page |
 | Certificate not issued on the first `up` | DNS did not point here when ACME ran. Fix the record and restart Traefik; the installer's pre-flight exists to catch exactly this ([one-line-install.md](one-line-install.md)) |
@@ -37,28 +45,32 @@ of an instance's whole life happens.
 ### Site is down
 
 ```bash
-docker compose ps
-docker compose logs --tail=200 taskdesk
-curl -sf localhost:5173/api/public/health/live
+dc ps
+dc logs --tail=200 taskdesk
+curl -sf "https://ticket.${DOMAIN}/api/public/health/live"
 ```
+
+For a local stack, use `https://ticket.localhost/api/public/health/live` (the local
+self-signed certificate must be trusted by the client).
 
 | Cause | Fix |
 | --- | --- |
 | Container crash-looping | Read the logs. Usually a bad migration or a missing env var |
 | Postgres unreachable | Check the container; check `TASKDESK_DATABASE_URL` |
-| Traefik not routing | `docker compose logs traefik`; check `DOMAIN` and labels |
+| Traefik not routing | On local development, use `dc logs traefik`. In production, inspect the host proxy's own Compose project or service; TaskDesk's production overlay does not own Traefik. Check `DOMAIN` and labels |
 | Certificate expired | Check the ACME resolver; renew manually if needed |
 | Disk full | `df -h`. Usually Postgres WAL or Docker logs |
 
 ### Slow
 
 ```bash
-curl -H "Authorization: Bearer $METRICS_TOKEN" localhost:9464/metrics | grep -E 'duration|pool|eventloop'
+dc stats --no-stream taskdesk
+dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-taskdesk}" -c "select state, count(*) from pg_stat_activity where datname = current_database() group by state order by state;"
 ```
 
 | Cause | Fix |
 | --- | --- |
-| DB pool exhausted | `db_pool_waiting > 0`. Find the long-running query; consider raising the pool |
+| DB connections high | Inspect the `pg_stat_activity` query above and TaskDesk logs for pool errors; pool waiters are not currently instrumented |
 | Slow query | `pg_stat_statements`; `EXPLAIN ANALYZE`; add an index |
 | Event loop lag | A job is hogging the loop — check which is running and whether it is chunked |
 | Valkey down | Degraded, not broken. Restart it |
@@ -81,13 +93,13 @@ curl -H "Authorization: Bearer $METRICS_TOKEN" localhost:9464/metrics | grep -E 
 ### Notifications not arriving
 
 ```bash
-curl -H "Authorization: Bearer $METRICS_TOKEN" localhost:9464/metrics | grep outbox
+dc logs --since=1h taskdesk | grep -Ei 'outbox|notification' || true
+dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-taskdesk}" -c "select type, count(*) as notifications from notification where created_at > now() - interval '1 hour' group by type order by type;"
 ```
 
 | Cause | Fix |
 | --- | --- |
-| `outbox_pending` rising | Delivery failing. God Mode → Notifications → test |
-| `outbox_dead > 0` | Six attempts failed. Inspect the error, fix, redeliver |
+| No recent notification rows or logged send failures | Check the notification preferences and SMTP/ntfy settings; the current delivery path has no persistent outbox or retry queue |
 | SMTP rejecting | Test in God Mode; the real error is shown |
 | Webhook endpoint down | Delivery history shows status codes. Auto-disabled after 24 h |
 | User preference off | Not a fault |
@@ -108,8 +120,7 @@ wrong — the inputs are wrong.
 ### Jobs not running
 
 ```bash
-curl -H "Authorization: Bearer $METRICS_TOKEN" localhost:9464/metrics | grep job_last_success
-psql -c "select * from job_lease;"
+dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-taskdesk}" -c "select * from job_lease;"
 ```
 
 | Cause | Fix |
@@ -137,7 +148,7 @@ psql -c "select * from job_lease;"
 Requires database access. Every step is audited.
 
 ```bash
-docker compose exec taskdesk node dist/cli.js grant-instance-admin you@example.com
+dc exec taskdesk node dist/cli.js grant-instance-admin you@example.com
 ```
 
 The CLI is a build target of the image (`apps/api/src/cli.ts` → `dist/cli.js`,
@@ -159,24 +170,76 @@ the audit log and nobody knows why, treat it as an incident.
 ## Rolling back
 
 ```bash
-scripts/deploy.sh rollback <previous-digest>
-curl -sf localhost:5173/api/public/health/ready
+scripts/deploy.sh rollback <previous-digest> <release-tag>
+curl -sf "https://ticket.${DOMAIN}/api/public/health/ready"
 ```
 
-`deploy.sh rollback` verifies the cosign signature on the digest it is about to run, sets
-`TASKDESK_IMAGE_DIGEST` in `.env`, and brings the service back with `--wait`. **Rolling back
+`deploy.sh rollback` verifies the cosign signature on the digest using the tag annotation
+that was signed when that image was published, stores both values in `.env`, and brings
+the service back with `--wait`. For example, pass `v2.0.0` when rolling back to a digest
+published as `v2.0.0`. **Rolling back
 onto an unverified digest is still a supply-chain decision** — which is why the manual
-sequence below is the labelled fallback rather than the procedure:
+sequence below is the labelled fallback rather than the procedure. After an upgrade the
+script prints a complete rollback command using the prior running container's digest and
+configured image tag. If it cannot recover that signed tag, it says so instead of printing
+a command that cannot pass verification:
 
 ```bash
-docker compose down taskdesk         # no signature verification
+dc down taskdesk                     # no signature verification
 # edit TASKDESK_IMAGE_DIGEST in .env
-docker compose up -d --wait taskdesk
+dc up -d --wait taskdesk
 ```
 
 **Migrations do not roll back.** If the release included a destructive migration, a code
 rollback alone will not work — restore the pre-upgrade backup. This is why destructive
 migrations are two-phase, and why the pre-upgrade backup is mandatory.
+
+---
+
+## Verify a published image
+
+Resolve the release tag to a digest first, then check both the cosign signature and the
+GitHub build-provenance attestation for that immutable digest. Replace the example digest
+with the value printed by `docker buildx imagetools inspect`.
+
+```bash
+IMAGE_TAG='v2.0.0' # use edge for the UAT edge channel
+SOURCE_SHA='<40-hex-main-commit>'
+IMAGE_REF='ghcr.io/thomasheinthura/taskdesk@sha256:<64-hex-digest>'
+cosign verify \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  --certificate-identity 'https://github.com/ThomasHeinThura/ticketing/.github/workflows/release.yml@refs/heads/main' \
+  --annotations "tag=${IMAGE_TAG}" \
+  --annotations "source_sha=${SOURCE_SHA}" \
+  "$IMAGE_REF"
+gh attestation verify "oci://${IMAGE_REF}" \
+  --repo ThomasHeinThura/ticketing \
+  --signer-workflow ThomasHeinThura/ticketing/.github/workflows/release.yml \
+  --source-ref refs/heads/main \
+  --predicate-type 'https://slsa.dev/provenance/v1'
+gh attestation verify "oci://${IMAGE_REF}" \
+  --repo ThomasHeinThura/ticketing \
+  --signer-workflow ThomasHeinThura/ticketing/.github/workflows/release.yml \
+  --source-ref refs/heads/main \
+  --predicate-type 'https://github.com/ThomasHeinThura/ticketing/attestations/release-source/v1' \
+  --format json \
+  | jq -e --arg repo 'ThomasHeinThura/ticketing' \
+      --arg source "$SOURCE_SHA" \
+      --arg image 'ghcr.io/thomasheinthura/taskdesk' \
+      --arg digest "${IMAGE_REF##*@}" \
+      'any(.[]; .verificationResult.statement.predicate.sourceRepository == $repo and
+        .verificationResult.statement.predicate.sourceRef == "refs/heads/main" and
+        .verificationResult.statement.predicate.sourceCommit == $source and
+        .verificationResult.statement.predicate.image == $image and
+        .verificationResult.statement.predicate.imageDigest == $digest)'
+```
+
+All three checks (cosign signature, workflow SLSA provenance, and the selected-source
+predicate) must succeed before promoting a digest. The GitHub attestation checks also
+require GitHub CLI authentication with read access to the repository. The SLSA predicate
+identifies the workflow run that published the image; the separate signed TaskDesk
+predicate binds that image digest to the validated source SHA, including when a manual
+release selects an older commit on `main`.
 
 ---
 
@@ -291,10 +354,8 @@ order by requests_evaluated asc;
 ## Useful commands
 
 ```bash
-docker compose logs -f taskdesk
-docker compose exec postgres psql -U taskdesk
-curl -s -b "$ADMIN_SESSION_COOKIE" localhost:5173/api/instance/health/deep | jq   # instance:admin session; the metrics token does not grant this
-curl -s -H "Authorization: Bearer $METRICS_TOKEN" localhost:9464/metrics | grep taskdesk_
+dc logs -f taskdesk
+dc exec postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-taskdesk}"
 docker stats
 df -h && du -sh /var/lib/docker/volumes/*
 ```
