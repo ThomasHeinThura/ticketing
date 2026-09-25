@@ -1627,6 +1627,16 @@ defaults surviving the fork.
 
 Newest first. One entry per working session.
 
+### 2026-09-24 · P0 #11 release helper remediation
+
+PR #331 at code head `bf4031f7511e62c5d0e0cd18a478cda45ee8208f` fixes OpenSSL 3.0's
+zero-exit hostname mismatch behavior by checking certificate output and adds a regression
+test with a matching key and wrong hostname. An independent exact-delta review is CLEAR for
+that remediation; it is not Opus clearance. `main` advanced through #324 after the last
+refresh, so the release PR is being integrated onto current main; its fresh exact-head Opus
+review, required checks, attribution reconciliation, release signing and rollback evidence
+remain outstanding. No release was triggered.
+
 ### 2026-09-24 · P0 continuation — reviewer substitution recorded; shadow-scope findings fixed
 
 Thomas authorized current GPT-6 Luna contexts for Sonnet-tier implementation and ordinary
