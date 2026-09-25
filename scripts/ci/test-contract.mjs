@@ -18,7 +18,28 @@ const archiveSha256 =
   "7c8939fc49b75ee11fec66a5b83b37a2fca6aee109fed85013b1ba2ac2a1ee7f";
 const approvedBreaksPath = "scripts/ci/openapi-approved-breaks.json";
 
-const APPROVED_BREAK_KEYS = ["operation", "rule", "pr", "reason", "decision"];
+const APPROVED_BREAK_KEYS = [
+  "operation",
+  "rule",
+  "fingerprint",
+  "pr",
+  "reason",
+  "decision",
+];
+
+/**
+ * The identity of an allowlist entry, or of an oasdiff finding shaped the same way: the
+ * (operation, rule, fingerprint) triple. Binding on `fingerprint` too — not just
+ * (operation, rule) — is what lets one entry approve exactly one finding: two findings that
+ * share an operation and rule (e.g. two different required properties added to the same
+ * route in the same PR) get different fingerprints from oasdiff, so each needs its own
+ * entry (Opus review F1).
+ *
+ * @param {{ operation: string, rule: string, fingerprint: string }} record
+ */
+export function approvedBreakIdentity(record) {
+  return `${record.operation}\u0000${record.rule}\u0000${record.fingerprint}`;
+}
 
 /**
  * Validate and parse the pre-2.0 approved-breaking-change allowlist.
@@ -28,7 +49,7 @@ const APPROVED_BREAK_KEYS = ["operation", "rule", "pr", "reason", "decision"];
  * finding nobody actually reviewed. Fail closed rather than guess.
  *
  * @param {string} text raw file contents
- * @returns {{ operation: string, rule: string, pr: number, reason: string, decision: string }[]}
+ * @returns {{ operation: string, rule: string, fingerprint: string, pr: number, reason: string, decision: string }[]}
  */
 export function parseApprovedBreaks(text) {
   let parsed;
@@ -60,7 +81,13 @@ export function parseApprovedBreaks(text) {
         `${approvedBreaksPath}[${index}] has keys [${keys.join(", ")}]; expected exactly [${expected.join(", ")}].`,
       );
     }
-    for (const field of ["operation", "rule", "reason", "decision"]) {
+    for (const field of [
+      "operation",
+      "rule",
+      "fingerprint",
+      "reason",
+      "decision",
+    ]) {
       if (typeof entry[field] !== "string" || entry[field].trim() === "") {
         throw new Error(
           `${approvedBreaksPath}[${index}].${field} must be a non-empty string.`,
@@ -70,10 +97,11 @@ export function parseApprovedBreaks(text) {
     if (!Number.isInteger(entry.pr)) {
       throw new Error(`${approvedBreaksPath}[${index}].pr must be an integer.`);
     }
-    const dedupeKey = `${entry.operation}\u0000${entry.rule}`;
+    const dedupeKey = approvedBreakIdentity(entry);
     if (seen.has(dedupeKey)) {
       throw new Error(
-        `${approvedBreaksPath} has a duplicate entry for operation "${entry.operation}" and rule "${entry.rule}".`,
+        `${approvedBreaksPath} has a duplicate entry for operation "${entry.operation}", ` +
+          `rule "${entry.rule}" and fingerprint "${entry.fingerprint}".`,
       );
     }
     seen.add(dedupeKey);
@@ -86,11 +114,11 @@ export function parseApprovedBreaks(text) {
  * Parse oasdiff's `--format json` breaking-change output into normalized findings.
  *
  * Fails closed: unparseable output, a non-array result, or a finding missing the fields
- * needed to check it against the allowlist (`operation`, `path`, `id`) is an error rather
- * than a silently-empty finding list.
+ * needed to check it against the allowlist (`operation`, `path`, `id`, `fingerprint`) is an
+ * error rather than a silently-empty finding list.
  *
  * @param {string} output stdout from `oasdiff breaking --format json`
- * @returns {{ operation: string, rule: string, raw: object }[]}
+ * @returns {{ operation: string, rule: string, fingerprint: string, raw: object }[]}
  */
 export function parseOasdiffBreakingJson(output) {
   let parsed;
@@ -110,41 +138,56 @@ export function parseOasdiffBreakingJson(output) {
       typeof finding?.path !== "string" ||
       finding.path.trim() === "" ||
       typeof finding?.id !== "string" ||
-      finding.id.trim() === ""
+      finding.id.trim() === "" ||
+      typeof finding?.fingerprint !== "string" ||
+      finding.fingerprint.trim() === ""
     ) {
       throw new Error(
-        `oasdiff finding ${index} is missing an "operation", "path", or "id" field; refusing to check it against the allowlist.`,
+        `oasdiff finding ${index} is missing an "operation", "path", "id", or ` +
+          '"fingerprint" field; refusing to check it against the allowlist.',
       );
     }
     return {
       operation: `${finding.operation} ${finding.path}`,
       rule: finding.id,
+      fingerprint: finding.fingerprint,
       raw: finding,
     };
   });
 }
 
 /**
- * Split oasdiff findings into ones the allowlist exactly covers and the rest.
+ * Split oasdiff findings into ones a set of NEW allowlist entries exactly covers and the
+ * rest, and report which of those new entries matched no finding at all.
  *
- * A match requires the exact (operation, rule) pair; anything else — same operation with a
- * different rule, same rule on a different operation, or no entry at all — still fails.
+ * A match requires the exact (operation, rule, fingerprint) triple, so one entry binds to
+ * exactly one finding — a different rule, a different operation, or the same pair on a
+ * different underlying change (different fingerprint) all still fail. `approved` must
+ * already be filtered to entries that are NEW relative to origin/main (see
+ * `readBaseApprovedBreaks`): an entry already on `main` approves nothing, by construction,
+ * because it is never passed in here (Opus review F1).
  *
- * @param {{ operation: string, rule: string, raw: object }[]} findings
- * @param {{ operation: string, rule: string }[]} approved
+ * @param {{ operation: string, rule: string, fingerprint: string, raw: object }[]} findings
+ * @param {{ operation: string, rule: string, fingerprint: string }[]} approved new entries only
  */
 export function partitionApprovedBreaks(findings, approved) {
-  const approvedKeys = new Set(
-    approved.map((entry) => `${entry.operation}\u0000${entry.rule}`),
-  );
+  const approvedKeys = new Set(approved.map(approvedBreakIdentity));
+  const usedKeys = new Set();
   const matched = [];
   const unmatched = [];
   for (const finding of findings) {
-    const key = `${finding.operation}\u0000${finding.rule}`;
-    if (approvedKeys.has(key)) matched.push(finding);
-    else unmatched.push(finding);
+    const key = approvedBreakIdentity(finding);
+    if (approvedKeys.has(key)) {
+      matched.push(finding);
+      usedKeys.add(key);
+    } else {
+      unmatched.push(finding);
+    }
   }
-  return { matched, unmatched };
+  const unusedEntries = approved.filter(
+    (entry) => !usedKeys.has(approvedBreakIdentity(entry)),
+  );
+  return { matched, unmatched, unusedEntries };
 }
 
 /**
@@ -218,6 +261,97 @@ export async function stableV2ReleaseExists(runner) {
     );
   }
   return hasStableV2Tag(parseLsRemoteTags(result.stdout));
+}
+
+/**
+ * True when `stderr` from `git show <ref>:<path>` says the path does not exist at that
+ * revision, as opposed to some other failure (bad ref, no network, corrupt object). Git
+ * phrases this two ways depending on whether the path exists in the worktree: "does not
+ * exist in '<ref>'" when it is absent everywhere nearby, and "exists on disk, but not in
+ * '<ref>'" when the current checkout happens to have it (exactly the case here — this
+ * script's own worktree has the file the PR is adding). Only these two mean "no entries
+ * yet" — anything else fails closed.
+ *
+ * @param {string} stderr
+ */
+export function isMissingBaseFileError(stderr) {
+  return /does not exist in|exists on disk, but not in/i.test(stderr ?? "");
+}
+
+/**
+ * The allowlist entries `origin/main` already has — i.e. entries some earlier PR added and
+ * merged. An entry present in this list approves nothing on the current PR (Opus review
+ * F1): only entries NEW relative to this copy can approve a finding.
+ *
+ * A missing file at `origin/main` (the allowlist has never existed there — e.g. the PR that
+ * introduces it) is treated as `[]`. Any other read failure — network, an unresolvable
+ * `origin/main`, a corrupt object, or a base copy that fails the same strict validation
+ * `parseApprovedBreaks` applies — throws rather than silently treating the base as empty,
+ * because an empty base is the MOST permissive answer (every current entry looks "new") and
+ * getting it wrong on a read failure would open, not close, the gate.
+ *
+ * @param {(command: string, args: string[]) => { status: number|null, stdout: string, stderr: string }} runner
+ * @returns {Promise<{ operation: string, rule: string, fingerprint: string, pr: number, reason: string, decision: string }[]>}
+ */
+export async function readBaseApprovedBreaks(runner) {
+  let result;
+  try {
+    result = runner("git", ["show", `origin/main:${approvedBreaksPath}`]);
+  } catch (error) {
+    throw new Error(
+      `could not read origin/main's copy of ${approvedBreaksPath} to find out which ` +
+        `entries are already merged: ${error.message}`,
+    );
+  }
+
+  if (result.status === 0) {
+    try {
+      return parseApprovedBreaks(result.stdout);
+    } catch (error) {
+      throw new Error(
+        `origin/main's copy of ${approvedBreaksPath} is malformed, so which entries are ` +
+          `already merged cannot be computed: ${error.message}`,
+      );
+    }
+  }
+
+  if (isMissingBaseFileError(result.stderr)) {
+    return [];
+  }
+
+  throw new Error(
+    `could not read origin/main's copy of ${approvedBreaksPath} (git show exited ` +
+      `${result.status ?? "unknown"}); refusing to guess which entries are already ` +
+      `merged.\n${result.stderr ?? ""}`,
+  );
+}
+
+/**
+ * F2 (Opus review, low): oasdiff's exit status was no longer checked once matching moved
+ * to parsing stdout directly. Defence in depth: `breaking --fail-on WARN` should only ever
+ * exit 0 (clean) or 1 (something at or above WARN was found); anything else means the run
+ * itself is suspect and the JSON on stdout should not be trusted. Exit 1 with zero findings
+ * is the same kind of contradiction the other way — that combination should not happen, so
+ * treat it as a reason to fail closed rather than a clean run.
+ *
+ * @param {number|null} status
+ * @param {number} findingsCount
+ * @returns {string|null} an error message, or null if the exit status is unremarkable
+ */
+export function oasdiffExitError(status, findingsCount) {
+  if (status !== 0 && status !== 1) {
+    return (
+      `oasdiff breaking-change check exited ${status ?? "unknown"}; expected 0 (clean) or ` +
+      "1 (findings at or above --fail-on). Failing closed rather than trusting its stdout."
+    );
+  }
+  if (status === 1 && findingsCount === 0) {
+    return (
+      "oasdiff exited 1, as if it found something at or above --fail-on, but its JSON " +
+      "output lists zero findings. Failing closed rather than treating this as a clean run."
+    );
+  }
+  return null;
 }
 
 export function diagnosticKey(problem) {
@@ -480,6 +614,28 @@ async function main() {
     }
   }
 
+  let baseApprovedBreaks;
+  try {
+    baseApprovedBreaks = await readBaseApprovedBreaks(run);
+  } catch (error) {
+    process.stderr.write(`${error.message}\n`);
+    process.exitCode = 1;
+    return;
+  }
+  const baseIdentities = new Set(baseApprovedBreaks.map(approvedBreakIdentity));
+  const newEntries = approvedBreaks.filter(
+    (entry) => !baseIdentities.has(approvedBreakIdentity(entry)),
+  );
+  const staleEntries = approvedBreaks.filter((entry) =>
+    baseIdentities.has(approvedBreakIdentity(entry)),
+  );
+  for (const entry of staleEntries) {
+    process.stdout.write(
+      "stale allowlist entry (already on origin/main, approves nothing here — delete it): " +
+        `${entry.rule} ${entry.operation} (PR #${entry.pr})\n`,
+    );
+  }
+
   const { binary, tempDir } = await getOasdiff();
   try {
     const breaking = run(binary, [
@@ -504,9 +660,17 @@ async function main() {
       return;
     }
 
-    const { matched, unmatched } = partitionApprovedBreaks(
+    const exitError = oasdiffExitError(breaking.status, findings.length);
+    if (exitError) {
+      process.stderr.write(`${exitError}\n`);
+      if (breaking.stderr) process.stderr.write(breaking.stderr);
+      process.exitCode = 1;
+      return;
+    }
+
+    const { matched, unmatched, unusedEntries } = partitionApprovedBreaks(
       findings,
-      approvedBreaks,
+      newEntries,
     );
     for (const finding of matched) {
       process.stdout.write(
@@ -516,12 +680,26 @@ async function main() {
 
     if (unmatched.length > 0) {
       process.stderr.write(
-        `oasdiff found ${unmatched.length} breaking change(s) not covered by ` +
-          `${approvedBreaksPath}:\n`,
+        `oasdiff found ${unmatched.length} breaking change(s) not covered by a NEW entry in ` +
+          `${approvedBreaksPath} (an entry already on origin/main approves nothing):\n`,
       );
       for (const finding of unmatched) {
         process.stderr.write(
           `- ${finding.rule} ${finding.operation}: ${finding.raw.text ?? ""}\n`,
+        );
+      }
+      process.exitCode = 1;
+      return;
+    }
+
+    if (unusedEntries.length > 0) {
+      process.stderr.write(
+        `${unusedEntries.length} new entry(ies) in ${approvedBreaksPath} matched no ` +
+          "breaking finding — a stale or typo'd entry:\n",
+      );
+      for (const entry of unusedEntries) {
+        process.stderr.write(
+          `- ${entry.rule} ${entry.operation} (fingerprint ${entry.fingerprint}, PR #${entry.pr})\n`,
         );
       }
       process.exitCode = 1;

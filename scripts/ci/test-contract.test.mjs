@@ -2,11 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   hasStableV2Tag,
+  isMissingBaseFileError,
+  oasdiffExitError,
   parseApprovedBreaks,
   parseLsRemoteTags,
   parseOasdiffBreakingJson,
   parseRedoclyReport,
   partitionApprovedBreaks,
+  readBaseApprovedBreaks,
   stableV2ReleaseExists,
   unapprovedProblems,
 } from "./test-contract.mjs";
@@ -84,6 +87,7 @@ test("Redocly report parsing ignores status text printed after its JSON", () => 
 const approvedBreak = (overrides = {}) => ({
   operation: "GET /projects/{projectId}/work-items",
   rule: "response-body-type-changed",
+  fingerprint: "fp-a",
   pr: 320,
   reason: "list envelope replaces bare array",
   decision: "decision-log 2026-09-25 pre-2.0 openapi allowlist",
@@ -97,6 +101,7 @@ const oasdiffFinding = (overrides = {}) => ({
   operationId: "listWorkItems",
   level: 3,
   text: "the response's body type changed",
+  fingerprint: "fp-a",
   ...overrides,
 });
 
@@ -111,13 +116,15 @@ test("an unapproved oasdiff finding fails", () => {
   assert.equal(unmatched.length, 1);
 });
 
-test("an exact (operation, rule) match passes", () => {
+test("an exact (operation, rule, fingerprint) match passes", () => {
   const findings = parseOasdiffBreakingJson(JSON.stringify([oasdiffFinding()]));
-  const { matched, unmatched } = partitionApprovedBreaks(findings, [
-    approvedBreak(),
-  ]);
+  const { matched, unmatched, unusedEntries } = partitionApprovedBreaks(
+    findings,
+    [approvedBreak()],
+  );
   assert.equal(matched.length, 1);
   assert.equal(unmatched.length, 0);
+  assert.equal(unusedEntries.length, 0);
 });
 
 test("the same operation with a different rule is not covered", () => {
@@ -142,6 +149,32 @@ test("the same rule on a different operation is not covered", () => {
   assert.equal(unmatched.length, 1);
 });
 
+test("two findings with the same (operation, rule) and one entry: the unmatched one fails (F1)", () => {
+  const findings = parseOasdiffBreakingJson(
+    JSON.stringify([
+      oasdiffFinding({ fingerprint: "fp-a" }),
+      oasdiffFinding({ fingerprint: "fp-b" }),
+    ]),
+  );
+  const { matched, unmatched, unusedEntries } = partitionApprovedBreaks(
+    findings,
+    [approvedBreak({ fingerprint: "fp-a" })],
+  );
+  assert.equal(matched.length, 1);
+  assert.equal(unmatched.length, 1);
+  assert.equal(unusedEntries.length, 0);
+});
+
+test("a new entry matching no finding fails, as a stale or typo'd entry (F1)", () => {
+  const { matched, unmatched, unusedEntries } = partitionApprovedBreaks(
+    [],
+    [approvedBreak()],
+  );
+  assert.equal(matched.length, 0);
+  assert.equal(unmatched.length, 0);
+  assert.equal(unusedEntries.length, 1);
+});
+
 test("a malformed allowlist file fails closed", () => {
   assert.throws(() => parseApprovedBreaks("{ not an array }"));
   assert.throws(() =>
@@ -154,13 +187,16 @@ test("a malformed allowlist file fails closed", () => {
     parseApprovedBreaks(JSON.stringify([approvedBreak({ reason: "" })])),
   );
   assert.throws(() =>
+    parseApprovedBreaks(JSON.stringify([approvedBreak({ fingerprint: "" })])),
+  );
+  assert.throws(() =>
     parseApprovedBreaks(
       JSON.stringify([{ ...approvedBreak(), extra: "not allowed" }]),
     ),
   );
 });
 
-test("a duplicate (operation, rule) entry fails closed", () => {
+test("a duplicate (operation, rule, fingerprint) entry fails closed", () => {
   assert.throws(() =>
     parseApprovedBreaks(
       JSON.stringify([approvedBreak(), approvedBreak({ pr: 999 })]),
@@ -168,11 +204,24 @@ test("a duplicate (operation, rule) entry fails closed", () => {
   );
 });
 
+test("distinct fingerprints on the same (operation, rule) are two valid entries, not duplicates", () => {
+  const parsed = parseApprovedBreaks(
+    JSON.stringify([
+      approvedBreak({ fingerprint: "fp-a" }),
+      approvedBreak({ fingerprint: "fp-b" }),
+    ]),
+  );
+  assert.equal(parsed.length, 2);
+});
+
 test("valid distinct entries parse fine", () => {
   const parsed = parseApprovedBreaks(
     JSON.stringify([
       approvedBreak(),
-      approvedBreak({ rule: "response-required-property-removed" }),
+      approvedBreak({
+        rule: "response-required-property-removed",
+        fingerprint: "fp-c",
+      }),
     ]),
   );
   assert.equal(parsed.length, 2);
@@ -184,6 +233,11 @@ test("unparseable oasdiff output fails closed", () => {
     parseOasdiffBreakingJson(JSON.stringify({ not: "an array" })),
   );
   assert.throws(() => parseOasdiffBreakingJson(JSON.stringify([{ id: "x" }])));
+  assert.throws(() =>
+    parseOasdiffBreakingJson(
+      JSON.stringify([{ id: "x", operation: "GET", path: "/x" }]),
+    ),
+  );
 });
 
 test("a stable v2.0.0+ tag is detected", () => {
@@ -244,4 +298,105 @@ test("stableV2ReleaseExists fails closed when the runner itself throws", async (
     throw new Error("spawn git ENOENT");
   };
   await assert.rejects(() => stableV2ReleaseExists(runner));
+});
+
+test("isMissingBaseFileError recognizes both of git show's 'missing path' messages", () => {
+  assert.equal(
+    isMissingBaseFileError(
+      "fatal: path 'scripts/ci/openapi-approved-breaks.json' does not exist in 'origin/main'",
+    ),
+    true,
+  );
+  assert.equal(
+    isMissingBaseFileError(
+      "fatal: path 'scripts/ci/openapi-approved-breaks.json' exists on disk, but not in 'origin/main'",
+    ),
+    true,
+  );
+  assert.equal(isMissingBaseFileError("fatal: unable to access origin"), false);
+  assert.equal(isMissingBaseFileError(""), false);
+  assert.equal(isMissingBaseFileError(undefined), false);
+});
+
+test("readBaseApprovedBreaks treats a missing base file as empty (F1)", async () => {
+  const runner = () => ({
+    status: 128,
+    stdout: "",
+    stderr:
+      "fatal: path 'scripts/ci/openapi-approved-breaks.json' does not exist in 'origin/main'",
+  });
+  assert.deepEqual(await readBaseApprovedBreaks(runner), []);
+});
+
+test("readBaseApprovedBreaks fails closed on any other read error (F1)", async () => {
+  const runner = () => ({
+    status: 128,
+    stdout: "",
+    stderr:
+      "fatal: unable to access 'https://github.com/...': network unreachable",
+  });
+  await assert.rejects(() => readBaseApprovedBreaks(runner));
+});
+
+test("readBaseApprovedBreaks fails closed when the runner itself throws", async () => {
+  const runner = () => {
+    throw new Error("spawn git ENOENT");
+  };
+  await assert.rejects(() => readBaseApprovedBreaks(runner));
+});
+
+test("readBaseApprovedBreaks parses a present base file", async () => {
+  const runner = () => ({
+    status: 0,
+    stdout: JSON.stringify([approvedBreak({ fingerprint: "fp-old" })]),
+    stderr: "",
+  });
+  const base = await readBaseApprovedBreaks(runner);
+  assert.equal(base.length, 1);
+  assert.equal(base[0].fingerprint, "fp-old");
+});
+
+test("an entry already on base approves nothing, even against a new finding with the same (operation, rule) (F1)", () => {
+  // origin/main already carries the entry for fingerprint fp-old (PR A's approved break,
+  // now merged). PR B introduces a NEW finding with the same operation and rule but a
+  // different fingerprint, and does not touch the allowlist file. That finding must fail —
+  // the stale base entry must not cover it.
+  const baseEntries = [approvedBreak({ fingerprint: "fp-old" })];
+  const currentEntries = [approvedBreak({ fingerprint: "fp-old" })]; // unchanged, still on file
+  const baseIdentities = new Set(
+    baseEntries.map(
+      (e) => `${e.operation}\u0000${e.rule}\u0000${e.fingerprint}`,
+    ),
+  );
+  const newEntries = currentEntries.filter(
+    (e) =>
+      !baseIdentities.has(
+        `${e.operation}\u0000${e.rule}\u0000${e.fingerprint}`,
+      ),
+  );
+  assert.equal(newEntries.length, 0);
+
+  const findings = parseOasdiffBreakingJson(
+    JSON.stringify([oasdiffFinding({ fingerprint: "fp-new" })]),
+  );
+  const { matched, unmatched } = partitionApprovedBreaks(findings, newEntries);
+  assert.equal(matched.length, 0);
+  assert.equal(unmatched.length, 1);
+});
+
+test("oasdiffExitError passes a clean exit 0", () => {
+  assert.equal(oasdiffExitError(0, 0), null);
+});
+
+test("oasdiffExitError passes exit 1 with findings present", () => {
+  assert.equal(oasdiffExitError(1, 2), null);
+});
+
+test("oasdiffExitError fails on an unexpected exit code", () => {
+  assert.notEqual(oasdiffExitError(2, 0), null);
+  assert.notEqual(oasdiffExitError(null, 0), null);
+});
+
+test("oasdiffExitError fails when exit 1 reports zero findings", () => {
+  assert.notEqual(oasdiffExitError(1, 0), null);
 });

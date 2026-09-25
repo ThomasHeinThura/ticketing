@@ -93,9 +93,20 @@ finding fails. The oasdiff release is pinned and its Linux x64 archive is SHA-25
 on every run. Fetch `origin/main` before running the command locally.
 
 A breaking finding from `oasdiff breaking --format json` passes only when its exact
-(operation, rule) pair — HTTP method + path, and oasdiff's rule id — matches an entry in
-`scripts/ci/openapi-approved-breaks.json`; every other finding still fails, and the file
-fails closed if it or oasdiff's output cannot be parsed. This is the reviewed-allowlist
+(operation, rule, fingerprint) triple — HTTP method + path, oasdiff's rule id, and
+oasdiff's own per-finding `fingerprint` — matches an entry in
+`scripts/ci/openapi-approved-breaks.json` that is **NEW relative to `origin/main`'s copy of
+that file**; every other finding still fails, and the file fails closed if it, oasdiff's
+output, or `origin/main`'s copy of the allowlist cannot be read or parsed. Binding on
+`fingerprint` means one entry approves exactly one finding, so a PR with two similar
+breaking changes on the same route needs two entries, one per finding. Binding to NEW
+entries only means **entries approve only the break in the PR that adds them** — an entry
+already on `origin/main` (an earlier PR's approved break, now merged) approves nothing, so
+a later PR that reintroduces the same kind of break on the same route still needs its own
+new entry and its own Opus review; the gate warns (does not fail) when a merged entry is
+still in the file, as a prompt to delete it. A new entry that matches no finding also fails,
+as a stale or typo'd entry. oasdiff's exit code is also checked: anything other than `0` or
+`1`, or `1` with zero findings reported, fails closed. This is the reviewed-allowlist
 mechanism for an intentional pre-2.0 breaking change (decision log, 2026-09-25); see
 [api-design.md](../01-architecture/api-design.md#versioning). Each entry is added in the
 PR that makes the break, needs its own Opus security review there, and from the first
