@@ -12,9 +12,10 @@ keys registered for audit), #320 (`378e5e0`, work-item list sort, cursor paginat
 filters; the D0 cross-tenant cursor leak found in review is fixed and pinned by a two-workspace
 regression test), #326 (`714a653`, work-item detail page). All four lane agents stopped on
 2026-09-24; #320 and #326 were finished under #366. Blocked: #353 and #365 wait for #344
-(audit `project_id` and project-reach read filter), by Thomas's decision. #352 and #361 need
-their CI scanners rebuilt on the TypeScript parser, which is a design change for the P0 lane,
-not a small fix.
+(audit `project_id` and project-reach read filter), by Thomas's decision. #352 needs its env
+detector's comment exemption removed, only flat destructuring accepted, and the N1–N6/K1–K2
+bypasses pinned by tests; #361 needs its import scanner rebuilt on the TypeScript parser. Both
+are design changes for the P0 lane, not small fixes.
 
 **2026-09-24 orchestrator snapshot (superseded) — `main` at `663c0cb`.** Merged today, each with every
 required check green on the exact head and an Opus 5.5 attestation of that head:
