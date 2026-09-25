@@ -2705,6 +2705,149 @@
           "hasMore"
         ]
       },
+      "WorkItemDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "typeId": {
+            "type": "string"
+          },
+          "number": {
+            "type": "number",
+            "description": "Per-project sequence number. The key is `{project.slug}-{number}`."
+          },
+          "key": {
+            "type": "string",
+            "description": "e.g. PROJ-123. Permanent."
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {},
+          "stateId": {
+            "type": "string"
+          },
+          "priority": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "One of: low, medium, high, urgent."
+          },
+          "assigneeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requesterId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "position": {
+            "type": "string",
+            "description": "numeric(20,10) fractional rank, as a string."
+          },
+          "customerVisibility": {
+            "type": "string",
+            "description": "One of: private, organisation."
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "dueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "archivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stateName": {
+            "type": "string"
+          },
+          "stateCategory": {
+            "type": "string",
+            "description": "state_template.group: one of backlog, unstarted, started, completed, cancelled."
+          },
+          "assigneeName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "workspaceId",
+          "typeId",
+          "number",
+          "key",
+          "title",
+          "stateId",
+          "priority",
+          "assigneeId",
+          "requesterId",
+          "parentId",
+          "position",
+          "customerVisibility",
+          "startDate",
+          "dueDate",
+          "archivedAt",
+          "deletedAt",
+          "version",
+          "createdAt",
+          "updatedAt",
+          "stateName",
+          "stateCategory",
+          "assigneeName"
+        ]
+      },
       "WorkItemType": {
         "type": "object",
         "properties": {
@@ -10425,7 +10568,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkItem"
+                  "$ref": "#/components/schemas/WorkItemDetail"
                 }
               }
             }

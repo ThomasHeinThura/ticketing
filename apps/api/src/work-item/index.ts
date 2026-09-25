@@ -31,6 +31,7 @@ import updateWorkItem, {
 import { requireWorkItemReach } from "./require-work-item-reach";
 import {
   assignablePeopleSchema,
+  workItemDetailSchema,
   workItemListResponseSchema,
   workItemSchema,
   workItemTypeListSchema,
@@ -213,7 +214,7 @@ const getWorkItemRoute = createRoute({
   ] as const,
   request: { params: workItemKeyParam },
   responses: {
-    200: jsonResponse("The work item", workItemSchema),
+    200: jsonResponse("The work item", workItemDetailSchema),
     403: errorResponse(
       "No workspace access, or missing work_item:read permission",
     ),
