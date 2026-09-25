@@ -128,12 +128,18 @@ by the portal-boundary middleware ([auth-and-identity.md](auth-and-identity.md))
 membership came from an ancestor project, per OpenProject's model.
 
 **`workspace_role`** (`id`, `workspace_id`, `role` a name, `permission` a JSON
-`{resource: action[]}` map, `created_at`, `updated_at`, `UNIQUE (workspace_id, role)`) is the
-LEGACY, pre-`role`-table shape kaneo's inherited better-auth `organization()` plugin uses —
-inherited, transitional, and on its way out once the `organization()` retrofit (issue #6)
-reaches S10 and the plugin unmounts. The organization-plugin retrofit's S7 stage gives it its
-first native (non-plugin) route surface; the table above is the FUTURE shape this one is
-replaced by, not a variant of it.
+`{resource: action[]}` map, `is_system boolean not null default false` (issue #318,
+security — `true` only for a row `seed-default-workspace-roles.ts`'s backfill or
+`create-workspace.ts`'s creation-time seed inserted for `viewer`/`member`/`admin`; a custom
+row `create-workspace-role.ts` inserts is always `false`, including one that shares a
+`BUILT_IN_ROLES` name — distinguishes a genuine seeded built-in row from a custom row that
+merely took the name, which the legacy capability check and `resolveIdentity`'s adapter both
+require before granting that name's built-in capabilities; see rbac.md), `created_at`,
+`updated_at`, `UNIQUE (workspace_id, role)`) is the LEGACY, pre-`role`-table shape kaneo's
+inherited better-auth `organization()` plugin uses — inherited, transitional, and on its way
+out once the `organization()` retrofit (issue #6) reaches S10 and the plugin unmounts. The
+organization-plugin retrofit's S7 stage gives it its first native (non-plugin) route
+surface; the table above is the FUTURE shape this one is replaced by, not a variant of it.
 
 ### External identity — OIDC connections and SCIM provisioning
 
@@ -362,7 +368,7 @@ were logged. OpenProject's model; the alternative silently rewrites history.
 | `webhook` | `workspace_id`, `url`, `secret` (encrypted), `secret_previous`, `secret_rotated_at`, `events text[]`, `active`, `disabled_at`, `disabled_reason`, `created_by` |
 | `webhook_delivery` | `webhook_id`, `event_id`, `attempt`, `status_code`, `duration_ms`, `request_body jsonb`, `response_body` (truncated), `error`, `attempted_at` |
 | `external_link` | `entity_type`, `entity_id`, `system`, `external_id`, `url`, `title`, `project_id` null, `organisation_id` null (denormalised at insert, for the same reach-filtering reason as `custom_field_value`) — provenance for any entity, not only work items |
-| `audit_log` | `actor_id`, `actor_type`, `api_key_id` null, `impersonator_id` null, `actor_ip`, `user_agent`, `trace_id`, `workspace_id` null (no foreign key, deliberately — see below), `organisation_id` null (`ON DELETE SET NULL` — the tombstone), `action` (a dotted key from the **audit action catalogue** in [audit-trail.md](../03-features/audit-trail.md#audit-action-catalogue) — an [events.md](events.md) key where one exists, otherwise one of the audit-only keys listed there), `entity_type`, `entity_id`, `before jsonb`, `after jsonb`, `created_at`, **`prev_hash`**, **`row_hash`** — the tamper-evidence chain; the exact hash input, the writer serialisation and the purge anchor are defined in [The audit hash chain](#the-audit-hash-chain) below and nowhere else. `prev_hash` of the first row is the zero hash; verified by `audit-verify` on demand and at every restore drill. Append-only in this deployment shape via two triggers, not a grant — `audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR EACH ROW`) and `audit_log_append_only_truncate` (`BEFORE TRUNCATE ... FOR EACH STATEMENT`, since a row-level trigger never fires for `TRUNCATE` at all) — see issue #37's PR for why the grant this row used to describe is not expressible here (`compose.yml`/the Helm chart/`deploy/` provision exactly one Postgres role, which owns this table and cannot be restricted from itself by `REVOKE`). Also carries `seq` (`bigint generated always as identity`, unique, NOT part of the hash input) — an internal, never-referenced ordering column the writer uses to find the current chain head race-free under `pg_advisory_xact_lock`; `created_at` alone cannot do this (finite timestamp resolution). `prev_hash` is additionally `UNIQUE` (Opus security review of PR #291, S3) — turns a chain fork under a caller isolation level stronger than READ COMMITTED into a hard insert failure rather than a silent second branch; the first row's `ZERO_HASH` cannot collide, since after the first insert the table is never empty again. The `AU-7` carve-out only allows `organisation_id` to become `NULL` when that organisation row no longer exists (S4) — a direct `UPDATE` against a still-live organisation's rows is refused. `workspace_id` deliberately carries no foreign key: unlike `organisation_id`, no referential action for it is specified anywhere, and this table's whole purpose is to survive the deletion of what it describes, so inventing an undocumented CASCADE/SET NULL here would risk exactly the wrong default |
+| `audit_log` | `actor_id`, `actor_type`, `api_key_id` null, `impersonator_id` null, `actor_ip`, `user_agent`, `trace_id`, `workspace_id` null (no foreign key, deliberately — see below), `organisation_id` null (`ON DELETE SET NULL` — the tombstone), `action` (a dotted key from the **audit action catalogue** in [audit-trail.md](../03-features/audit-trail.md#audit-action-catalogue) — an [events.md](events.md) key where one exists, otherwise one of the audit-only keys listed there), `entity_type`, `entity_id`, `before jsonb`, `after jsonb`, `created_at`, **`prev_hash`**, **`row_hash`** — the tamper-evidence chain; the exact hash input, the writer serialisation and the purge anchor are defined in [The audit hash chain](#the-audit-hash-chain) below and nowhere else. `prev_hash` of the first row is the zero hash; verified by `audit-verify` on demand and at every restore drill. Append-only by grant first and trigger second, as in [audit-trail.md](../03-features/audit-trail.md) `AU-3` (decision log, 2026-09-23, "The API connects as a non-owner, non-superuser role", PR #308). The API's `taskdesk_app` role owns nothing and holds only `INSERT`/`SELECT` here. The migration/owner role owns the table. The two triggers `audit_log_append_only` (`BEFORE UPDATE OR DELETE ... FOR EACH ROW`) and `audit_log_append_only_truncate` (`BEFORE TRUNCATE ... FOR EACH STATEMENT`, because a row-level trigger never fires for `TRUNCATE`) remain as the second layer, and they are the only layer under the single-URL local-development fallback. Also carries `seq` (`bigint generated always as identity`, unique, NOT part of the hash input) — an internal, never-referenced ordering column the writer uses to find the current chain head race-free under `pg_advisory_xact_lock`; `created_at` alone cannot do this (finite timestamp resolution). `prev_hash` is additionally `UNIQUE` (Opus security review of PR #291, S3) — turns a chain fork under a caller isolation level stronger than READ COMMITTED into a hard insert failure rather than a silent second branch; the first row's `ZERO_HASH` cannot collide, since after the first insert the table is never empty again. The `AU-7` carve-out only allows `organisation_id` to become `NULL` when that organisation row no longer exists (S4) — a direct `UPDATE` against a still-live organisation's rows is refused. `workspace_id` deliberately carries no foreign key: unlike `organisation_id`, no referential action for it is specified anywhere, and this table's whole purpose is to survive the deletion of what it describes, so inventing an undocumented CASCADE/SET NULL here would risk exactly the wrong default |
 | `audit_chain_anchor` | `created_at`, `purged_through_at` (the `created_at` of the newest purged row), `last_purged_row_hash`, `first_purged_created_at`, `purged_count`, `next_row_hash` null (the `row_hash` of the oldest surviving row, whose `prev_hash` now points at a deleted row). Written by `audit-purge`, one row per purge run; `audit-verify` starts its walk from the newest anchor instead of the zero hash. Anchors are never purged |
 | `saved_view` | `owner_id`, `scope`, `scope_id` (the query context), `visibility` (`private`\|`team`\|`workspace`), `shared_with_team_id`, `name`, `query jsonb` (envelope `{ entity, filter, sort, groupBy, columns, aggregate }` — [api-design.md](api-design.md)), `layout` (`board`\|`list`\|`table`\|`calendar`\|`timeline`\|`chart`) |
 | `metric_snapshot` | `period_start`, `period_end`, `grain`, `metric_key`, `project_id` null, `organisation_id` null (**real columns, not `dimensions` keys** — reach filtering sums these on every dashboard load, and a jsonb extraction per row is a full scan), `dimensions jsonb` (every other dimension), `measures jsonb`, `computed_at`. Unique `(metric_key, grain, period_start, project_id, organisation_id, dimensions)` |
@@ -371,6 +377,8 @@ were logged. OpenProject's model; the alternative silently rewrites history.
 | `import_run` | `plugin_id`, `workspace_id` **not null**, `project_id` null — the import target, and what the run-level `audit_log` row copies its `workspace_id` from; `started_by`, `state`, `source_ref`, `profile_id`, `stats jsonb`, `log jsonb` |
 | `import_mapping_profile` | `plugin_id`, `source_ref`, `name`, `mapping jsonb`, `created_by` — the operator-edited field/value mapping |
 | `import_record_link` | `import_run_id`, `source_type`, `source_id`, `target_type`, `target_id` — the row-level idempotency ledger (formerly `import_mapping`) |
+| `policy_shadow_tally` | Issue #8, Slice 2's shadow-mode coverage counter. `day` (UTC date), `route_key`, `router_group`, `outcome` (`agree`\|`legacy_allow_policy_deny`\|`legacy_deny_policy_allow`\|`unevaluated`\|`evaluator_error`), `reason_code` null, `count`, `last_seen_at`. Unique `(day, route_key, outcome, reason_code)`, `NULLS NOT DISTINCT`. Upserted with `count = count + 1` on every request the shadow middleware evaluates, agreements included — this is what makes "a router with unevaluated requests is not clean" (the addendum on issue #8) checkable at all. See [Policy shadow evidence](#policy-shadow-evidence-issue-8-slice-2) below |
+| `policy_shadow_event` | One row per non-`agree` shadow outcome, capped at 50 rows per `(day, route_key, outcome, reason_code)` bucket by the writer (not a database constraint): `route_key`, `router_group`, `policy_kind` null, `policy_capability` null, `outcome` (the four non-`agree` values above), `reason_code` null, `legacy_allowed` null, `legacy_status` null, `policy_allowed` null, `policy_status` null, `policy_code` null, `diagnostic` null, `identity_kind` null, `workspace_id` null, `trace_id` null (accepted from the caller only when it matches `^[A-Za-z0-9._-]{1,128}$` — and untrusted even when it passes, per `shadow-evaluation.ts`'s own comment; otherwise generated server-side), `created_at`. Ids and decision codes only — **never** a request body, header, secret, email or name. No foreign key to `workspace`/`user`/`project`: evidence about a row must keep recording through the exact conditions it exists to catch (a stale or foreign id), and must never itself block that row's deletion |
 | `pending_action` | The server-enforced approval record for every user-initiated deletion and every destructive MCP call ([pending-actions.md](pending-actions.md)): `requested_by_person_id`, `credential_type` (`session`\|`api_key`), `credential_id` null, `origin` (`web`\|`api`\|`mcp`), `action` (`delete`\|`bulk_delete`\|`purge`\|`mcp_destructive`), `target_type`, `target_ids text[]` (**sorted**), `target_versions jsonb` null, `payload jsonb` (the canonical request this approval is bound to — `action`, `route_key`, `target_type`, the sorted `target_ids`, the scope ids, `confirmation_required`; `payload_hash` is taken over exactly this and nothing else, so two agents hash the same bytes), `route_key text` (the policy-registry key of the route that would execute — re-run at approval time, so the decision is checked against the same policy the request was), `payload_hash`, `payload_summary jsonb` (what the dialog renders), `workspace_id` null, `project_id` null, `organisation_id` null, `confirmation_required` (`click`\|`typed_name`\|`typed_count`\|`typed_name_step_up`\|`typed_count_step_up`), `confirmation_supplied jsonb` null, `state` (`pending`\|`approved`\|`denied`\|`cancelled`\|`expired`\|`invalidated`\|`executed`\|`failed`), `invalidation_reason text` null (set with `state = 'invalidated'`, one of `credential_revoked`\|`requester_deactivated`\|`reach_lost`\|`capability_removed`\|`version_changed`\|`scope_changed` — the `PA-9` causes, so the dialog can say which one), `created_at`, `expires_at` (+15 min), `decided_by_person_id` null, `decision_session_id` null, `decided_at` null, `step_up_token_id` null, `executed_at` null, `error` null, `trace_id`. Single-use by state machine; every transition writes `audit_log` |
 
 `outbox` is the reliability mechanism for webhooks and notifications: a mutation writes
@@ -453,6 +461,34 @@ somewhere the database role cannot itself rewrite (an external, periodically exp
 independently-witnessed copy — `audit_chain_anchor` narrows the *window* `audit-purge`
 can rewrite between anchors, but does not itself anchor outside the database) or a hash
 keyed with a secret the database role does not hold.
+
+### Policy shadow evidence (issue #8, Slice 2)
+
+`policy_shadow_tally` and `policy_shadow_event` (migration `apps/api/drizzle/
+0069_policy_shadow_tables.sql`) are the evidence store for issue #8's shadow-mode
+middleware — the 2026-09-23 decision log entry's "about 7 clean days on UAT" rule needs
+somewhere queryable to prove clean from, not container stdout, which rotates.
+
+Declared as a standalone Drizzle table pair in `apps/api/src/permissions/shadow-schema.ts`,
+not in this repository's central `apps/api/src/database/schema.ts` — see that file's own
+doc comment. `pnpm check:vocabulary` scans every workspace file for `pgTable(...)`, so both
+names are registered here regardless of which file declares them.
+
+**Retention: 30 days**, pruned by the writer itself (`apps/api/src/permissions/
+shadow-store.ts`), at most once per UTC day per process, in bounded batches — there is no
+background-jobs runner yet (`apps/api/src/jobs/` does not exist; [background-jobs.md]
+(background-jobs.md)'s closed list has nothing to add this to). This should move onto a
+real job the day one exists; noted here so it is not mistaken for the intended long-term
+shape.
+
+**Writes never affect the request.** Both tables are written after the response has
+already been produced, off the request's own promise chain; a failed write is caught and
+logged, never surfaced as a changed response.
+
+The per-router summary (agree/disagree/unevaluated counts, latest disagreements — what a
+cut-over PR cites as its evidence) is a documented SQL query against these two tables, not
+a new HTTP endpoint (a route needs its own policy and review, out of this slice's scope):
+see [runbook.md § Policy shadow summary](../05-operations/runbook.md#policy-shadow-summary).
 
 ## Indexing
 

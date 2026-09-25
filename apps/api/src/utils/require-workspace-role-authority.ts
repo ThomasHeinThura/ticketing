@@ -2,6 +2,10 @@ import { builtInRoles } from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
+import {
+  markShadowLegacyAuthorizationUnknown,
+  setShadowLegacyAuthorization,
+} from "../permissions/shadow-context";
 import { isInstanceAdmin } from "./is-instance-admin";
 import {
   resolveMembershipRole,
@@ -54,13 +58,22 @@ export function requireWorkspaceRoleAuthority(permissions: PermissionMap) {
     // Nobody else is affected. An ordinary caller's authority was already resolved correctly
     // (bypass or not, `isInstanceAdmin` is false for them) by `requireWorkspacePermission`,
     // which must already have run for this guard to mean anything.
-    if (!(await isInstanceAdmin(c))) {
+    let instanceAdmin: boolean;
+    try {
+      instanceAdmin = await isInstanceAdmin(c);
+    } catch (error) {
+      markShadowLegacyAuthorizationUnknown(c);
+      throw error;
+    }
+    if (!instanceAdmin) {
       return next();
     }
 
+    markShadowLegacyAuthorizationUnknown(c);
     const workspaceId = c.get("workspaceId");
     const userId = c.get("userId");
     if (!workspaceId || !userId) {
+      setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
 
@@ -81,6 +94,7 @@ export function requireWorkspaceRoleAuthority(permissions: PermissionMap) {
     // the instance-admin bypass from standing in for a workspace role it never read.
     const membership = await resolveMembershipRole(db, workspaceId, userId);
     if (!membership.ok) {
+      setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
     const role = membership.role;
@@ -91,9 +105,11 @@ export function requireWorkspaceRoleAuthority(permissions: PermissionMap) {
         : await ownRoleStatements(workspaceId, role);
 
     if (!statements || !satisfies(statements, permissions)) {
+      setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
 
+    setShadowLegacyAuthorization(c, "allowed");
     return next();
   };
 }

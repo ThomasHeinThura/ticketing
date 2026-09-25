@@ -1,4 +1,5 @@
 import {
+  type BuiltInRoleKey,
   type MembershipRoleProblem,
   membershipRoleProblem,
 } from "@taskdesk/permissions";
@@ -325,4 +326,29 @@ export async function resolveMembershipRole(
   return resolveMembershipRoleFrom(
     await workspaceMemberRoles(executor, workspaceId, userId),
   );
+}
+
+/**
+ * Issue #318 (security), Opus review of PR #315 finding S2. Is a `workspace_member.role`
+ * value that names a `BUILT_IN_ROLES` key GENUINELY that built-in, rather than a custom row
+ * that merely shares its name?
+ *
+ * Shared by `require-workspace-capability.ts`'s `builtInRoleHasCapability` (which queries
+ * `workspace_role.is_system` for `isSystem` before calling this) and `resolve-identity.ts`'s
+ * pure mapper (which already has `isSystemRole` from its own loaded facts) -- the same
+ * one-line predicate in both, so they can never independently drift out of agreement, which
+ * is exactly what the shadow-mode comparison #8's Slice 2 depends on.
+ *
+ * `"owner"` is always genuine: it is the one `BUILT_IN_ROLES` key that NEVER gets a
+ * `workspace_role` row at all (retrofit plan R5 -- `create-workspace.ts`'s own comment),
+ * and it has been reserved from custom creation since before this fix, so a
+ * `workspace_member.role` value of `"owner"` cannot come from anywhere but the compiled-in
+ * static role. Every other key is genuine only when the caller's own `is_system` read is
+ * `true`.
+ */
+export function isGenuineBuiltInRoleGrant(
+  role: BuiltInRoleKey,
+  isSystem: boolean,
+): boolean {
+  return role === "owner" || isSystem;
 }

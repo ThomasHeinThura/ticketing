@@ -1,4 +1,4 @@
-import { statement } from "@taskdesk/permissions";
+import { BUILT_IN_ROLE_KEYS, statement } from "@taskdesk/permissions";
 import { and, count, eq, sql } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { MAX_WORKSPACE_ROLES_PER_WORKSPACE } from "../../utils/workspace-role-limits";
@@ -14,6 +14,19 @@ import { WORKSPACE_ROLE_LOCK_NAMESPACE } from "./workspace-role-lock";
 
 /** Every resource key `@taskdesk/permissions`'s legacy `statement` recognizes. */
 const VALID_PERMISSION_RESOURCES = new Set(Object.keys(statement));
+
+/**
+ * Every `BUILT_IN_ROLES` key, reserved from custom role names -- issue #318 (security),
+ * Opus review of PR #315 finding S2. Before this, only `"owner"` was reserved
+ * (`normalizedRole === "owner"` below), so a custom role could be created named `manager`,
+ * `lead`, `admin`, `member`, `viewer`, `customer` or `instance_admin` -- and
+ * `require-workspace-capability.ts` / `resolve-identity.ts` granted that built-in's FULL
+ * capability set to any `workspace_member.role` string equal to a `BUILT_IN_ROLES` key,
+ * with no way (before `workspace_role.is_system` existed) to tell a genuine seeded row from
+ * a colliding custom one. Reserving every key here closes the creation side of that gap;
+ * `is_system` closes the capability-resolution side for any row that predates this fix.
+ */
+const RESERVED_ROLE_NAMES: ReadonlySet<string> = new Set(BUILT_IN_ROLE_KEYS);
 
 export type CreateWorkspaceRoleInput = {
   workspaceId: string;
@@ -71,8 +84,8 @@ async function createWorkspaceRole(
   // better-auth lower-cases a new role's name on create (`crud-access-control.mjs`) —
   // preserved so a role named "Owner" is refused the same way "owner" is.
   const normalizedRole = input.role.trim().toLowerCase();
-  if (normalizedRole === "owner") {
-    throw new RoleNameReservedError();
+  if (RESERVED_ROLE_NAMES.has(normalizedRole)) {
+    throw new RoleNameReservedError(normalizedRole);
   }
 
   const badResources = invalidResources(input.permission);

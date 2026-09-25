@@ -59,6 +59,10 @@ function readWorkflow(dir) {
   return readFileSync(path.join(dir, ".github/workflows/ci-fast.yml"), "utf8");
 }
 
+function readFullWorkflow(dir) {
+  return readFileSync(path.join(dir, ".github/workflows/ci-full.yml"), "utf8");
+}
+
 /** A scratch repo carrying the real checkers, ci-cd.md and both workflows. */
 function repoWithWorkflows(name, mutate = () => {}) {
   const dir = scratchDir(`m2-${name}`);
@@ -459,6 +463,34 @@ describe("A2 — a gate that cannot fail a pull request is not an executed gate"
       result.status,
       0,
       `both directions must be clean on the shipped tree:\n${result.output}`,
+    );
+  });
+
+  it("10. full-stage required contexts cannot lose opened/reopened pull-request runs", () => {
+    const dir = repoWithWorkflows(
+      "full-narrowed-pull-request-types",
+      (repo) => {
+        const full = readFullWorkflow(repo);
+        assert.match(
+          full,
+          /merge_group:/,
+          "the positive control must keep merge_group",
+        );
+        write(
+          repo,
+          ".github/workflows/ci-full.yml",
+          full.replace(
+            "types: [opened, reopened, labeled, synchronize, ready_for_review]",
+            "types: [labeled, synchronize, ready_for_review]",
+          ),
+        );
+      },
+    );
+    const result = runChecker(dir, "test-all.mjs", ["--list"]);
+    assert.equal(result.status, 1, result.output);
+    assert.match(
+      result.output,
+      /ci-full\.yml narrows `pull_request\.types`.*omits \[opened, reopened\]/s,
     );
   });
 });

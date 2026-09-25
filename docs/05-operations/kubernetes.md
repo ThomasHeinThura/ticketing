@@ -9,15 +9,20 @@ chart needs three Ingress hosts and a `TASKDESK_ROLE` split across two Deploymen
 
 ## Shape
 
+**Corrected, D4 (independent Opus 5.5 delta review of PR #308):** the table below now
+describes what `charts/taskdesk` actually renders today, not the target shape the intro
+paragraph above still describes (`taskdesk-web`/`taskdesk-jobs` as two Deployments, and a
+chart-rendered `Secret`) — that split is unbuilt scope, tracked separately, not part of
+issue #296.
+
 | Object | Notes |
 | --- | --- |
-| `Deployment taskdesk-web` | `TASKDESK_ROLE=web`, `replicas` ≥ 1, readiness on `/api/public/health/ready`, liveness on `/live` |
-| `Deployment taskdesk-jobs` | `TASKDESK_ROLE=jobs`, exactly 1 replica |
-| `Service taskdesk` | Port 5173, in front of `taskdesk-web` only |
+| `Deployment taskdesk` | One Deployment, `replicas` from `.Values.replicaCount` (default 1), readiness on `/api/public/health/ready`, liveness on `/api/public/health/live`. `TASKDESK_ROLE` is not templated per-replica today — every replica runs `all` unless `taskdesk.env.trustProxy`/`extraEnv` overrides it — so the `web`/`jobs` split `TASKDESK_ROLE` already supports is not yet wired into this chart's values contract |
+| `initContainer migrate` | On the `taskdesk` Deployment's own Pod (issue #296, D2 — independent Opus 5.5 delta review of PR #308): runs migrations and the database role/grant bootstrap (`TASKDESK_ROLE=migrate`) under the advisory lock, before the `taskdesk` container starts. It is the ONLY place that ever carries `TASKDESK_MIGRATION_DATABASE_URL` (the owner/superuser credential) — the `taskdesk` container never receives it, and refuses to start if it ever does. A `pre-install` hook Job was tried first and removed: it ran before the chart's own `ServiceAccount` and bundled Postgres existed, so a fresh `helm install` timed out waiting on it — an initContainer has no such ordering problem, since the kubelet guarantees it completes before the Pod's own containers start. Safe with multiple replicas: idempotent under its own advisory lock |
+| `Service taskdesk` | Port 5173, in front of the `taskdesk` Deployment |
 | `Ingress` | Agent and portal hosts, each with TLS, plus the files host **only** when the cluster serves an operator-owned S3 endpoint (`storage.bundled`); omitted on `storage.filesystem` and on a real S3 bucket |
 | `ServiceAccount` | Created by default (`serviceAccount.create: true`); RBAC with named `resourceNames`, no wildcards — an AWS Marketplace requirement too |
-| `Secret` | `existingSecret` (recommended) or generated on first install; holds the **three secret-bearing** variables — `TASKDESK_DATABASE_URL`, `TASKDESK_ENCRYPTION_KEY`, `TASKDESK_AUTH_SECRET`. The other two required variables are not secrets and are not duplicated here: `TASKDESK_AGENT_URL` and `TASKDESK_PORTAL_URL` are **templated** as `https://` + `hosts.agent` / `hosts.portal` |
-| `Job taskdesk-migrate` | Optional pre-upgrade hook; by default the entrypoint migrates under the advisory lock |
+| Secrets | **No chart-rendered `Secret` object by default** — every password (`TASKDESK_AUTH_SECRET`, `TASKDESK_ENCRYPTION_KEY`, the application role's password, the owner/migration password) is an inline value in the relevant Pod spec's `env`, the same as this chart's pre-existing convention, unless the operator sets the matching `existingSecret` value (`taskdesk.env.existingSecret`, `encryptionKeyExistingSecret`, `database.appExistingSecret`, `database.external.migration.existingSecret`, or the bundled `postgresql.auth.existingSecret`), in which case that field is read `valueFrom` the operator's own Secret instead. Since PR #296/#308, `TASKDESK_DATABASE_URL` connects as the non-owner application role (`taskdesk_app`); the owner/migration credential is set only on the `initContainer migrate` row above, never on the `taskdesk` container. See [`charts/taskdesk/README.md`](../../charts/taskdesk/README.md) for the exact values (`taskdesk.env.database.app*`, `external.migration.*`) and [configuration-reference.md](configuration-reference.md). An upgrade of an existing install must supply the application role's password. The other two required variables are not secrets and are not duplicated here: `TASKDESK_AGENT_URL` and `TASKDESK_PORTAL_URL` are **templated** as `https://` + `hosts.agent` / `hosts.portal` |
 
 ## `values.yaml` contract
 

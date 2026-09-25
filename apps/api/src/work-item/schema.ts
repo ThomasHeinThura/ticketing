@@ -1,4 +1,14 @@
 import { z } from "../openapi";
+import {
+  MAX_WORK_ITEM_INSTANT_MS,
+  MIN_WORK_ITEM_INSTANT_MS,
+} from "./date-bounds";
+import {
+  DEFAULT_WORK_ITEM_LIST_LIMIT,
+  MAX_WORK_ITEM_LIST_LIMIT,
+  WORK_ITEM_SORT_DIRECTIONS,
+  WORK_ITEM_SORT_FIELDS,
+} from "./list-query";
 
 // S4 (independent Opus security review of PR #271): Postgres `text`/`jsonb` both reject a
 // NUL byte outright (`invalid byte sequence`), which reached the database unvalidated and
@@ -75,6 +85,12 @@ export const workItemKeyParam = z.object({
     .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
 });
 
+export const workspaceIdParam = z.object({
+  workspaceId: z
+    .string()
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
+});
+
 // `PATCH /api/work-items/{key}` -- `WI-7`/`WI-8`. Every field OPTIONAL: this is a genuine
 // partial update (only the fields supplied are changed), matching this codebase's own
 // canonical-route convention for a PATCH body -- `workspace/schema.ts`'s
@@ -129,9 +145,12 @@ export const workItemKeyParam = z.object({
 const ISO_DATE_TIME_PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/;
 
-// 1900-01-01T00:00:00.000Z .. 9999-12-31T23:59:59.999Z, as millisecond instants.
-const MIN_WORK_ITEM_INSTANT_MS = Date.UTC(1900, 0, 1, 0, 0, 0, 0);
-const MAX_WORK_ITEM_INSTANT_MS = Date.UTC(9999, 11, 31, 23, 59, 59, 999);
+// `MIN_/MAX_WORK_ITEM_INSTANT_MS` now live in `./date-bounds.ts` (#320 security
+// review, S1/S2) -- both this schema's own write-side validation and
+// `list-query.ts`'s cursor-decode validation need the identical bound, and a plain
+// `schema.ts` re-export of them would create an import cycle with `list-query.ts`
+// (which this file already imports from, for `WORK_ITEM_SORT_FIELDS`/
+// `WORK_ITEM_SORT_DIRECTIONS`). See that file's own comment for the full incident.
 
 // Independent Opus security review of PR #271, delta round, "not a finding" note (also
 // closed here since it is the same class): `new Date("2026-02-31T00:00:00Z")` does not
@@ -247,3 +266,111 @@ export const ifMatchHeader = z.object({
       `If-Match must not exceed ${POSTGRES_INTEGER_MAX} (work_item.version is a Postgres integer)`,
     ),
 });
+
+// #310: `GET /api/projects/{projectId}/work-items` query. Every field optional (a
+// `RouteParameter` cannot itself be optional -- same shape as `task/schema.ts`'s
+// `listTasksQuery`), strictly validated so an unknown/malformed value is always the
+// project's standard 400, never a 500 or a silently-ignored filter.
+//
+// A NUL byte anywhere in a query string value reaches `pg` unvalidated the same way
+// S4/T4 (above) found for body/path values -- every string field below carries the
+// same `containsNulByte` refine for that reason.
+const noNulByte = (label: string) =>
+  z
+    .string()
+    .refine(
+      (value) => !containsNulByte(value),
+      `${label} ${NO_NUL_BYTE_MESSAGE}`,
+    );
+
+// `docs/01-architecture/api-design.md:107-134`: "`&limit=50 (default 50, max 200)`".
+// Query values arrive as strings; `z.coerce.number()` on an empty/non-numeric string
+// coerces to `NaN`/`0` rather than throwing, so the explicit `int().min().max()` pipe
+// below is what actually rejects a malformed value with a clean 400 (mirroring
+// `task/schema.ts`'s own `pagingNumber` helper, which guards the same class of input
+// with a regex instead -- either closes it; this one stays closer to the plain
+// `z.coerce` idiom already used for `page`).
+const limitQueryParam = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(MAX_WORK_ITEM_LIST_LIMIT)
+  .optional();
+
+// `due_before=2026-10-01`, per `api-design.md`'s own literal example -- a plain
+// calendar date (not a full timestamp; there is no time-of-day component to a "before
+// this date" filter). Validated the same way `workItemDateTime` validates a full
+// instant: real calendar digits (no February-31-style rollover), not merely
+// regex-shaped.
+const WORK_ITEM_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+function isRealCalendarDate(match: RegExpMatchArray): boolean {
+  const [, y, mo, d] = match;
+  const year = Number(y);
+  const month = Number(mo);
+  const day = Number(d);
+  const rebuilt = new Date(Date.UTC(year, month - 1, day));
+  return (
+    rebuilt.getUTCFullYear() === year &&
+    rebuilt.getUTCMonth() === month - 1 &&
+    rebuilt.getUTCDate() === day
+  );
+}
+const workItemDateOnly = z
+  .string()
+  .refine(
+    (value) => !containsNulByte(value),
+    `due_before ${NO_NUL_BYTE_MESSAGE}`,
+  )
+  .refine(
+    (value) => WORK_ITEM_DATE_PATTERN.test(value),
+    "due_before must be a calendar date, e.g. 2026-10-01",
+  )
+  .refine((value) => {
+    const match = value.match(WORK_ITEM_DATE_PATTERN);
+    return match !== null && isRealCalendarDate(match);
+  }, "due_before must be a real calendar date -- no rollover");
+
+const WORK_ITEM_PRIORITY_VALUES = ["low", "medium", "high", "urgent"] as const;
+
+// Comma-separated priority values, e.g. `priority=high,urgent` -- every value must be
+// one of the four known priorities, so a typo or an attempt to filter on anything else
+// is a 400, not a filter that silently matches nothing.
+const workItemPriorityFilter = z
+  .string()
+  .refine((value) => !containsNulByte(value), `priority ${NO_NUL_BYTE_MESSAGE}`)
+  .refine(
+    (value) =>
+      value
+        .split(",")
+        .every((entry) =>
+          (WORK_ITEM_PRIORITY_VALUES as readonly string[]).includes(entry),
+        ),
+    `priority must be a comma-separated list of: ${WORK_ITEM_PRIORITY_VALUES.join(", ")}`,
+  );
+
+export const listWorkItemsQuery = z.object({
+  cursor: noNulByte("cursor").max(2048).optional(),
+  limit: limitQueryParam,
+  // Comma-separated `work_item.state_id` values. Not cross-checked against the
+  // project's own states here (an id from a different project/workspace simply
+  // matches nothing, since `state_id` is already scoped by this route's `projectId`
+  // filter) -- narrower than a full existence check, but never widens what is
+  // returned.
+  state: noNulByte("state").optional(),
+  // `me | <personId> | none`, per `api-design.md`'s own example. `label` (also in that
+  // example) is deliberately NOT implemented here: `work_item_label` (the join table
+  // `work-items.md`'s own Data section names) does not exist in the schema yet --
+  // `index.ts`'s file comment already flags this identical gap for `WI-8`'s label
+  // editing. Filtering by a join table that cannot yet be populated would be
+  // unimplementable, not merely incomplete; deferred to whichever slice adds the
+  // table, flagged in the PR body rather than guessed at.
+  assignee: noNulByte("assignee").optional(),
+  priority: workItemPriorityFilter.optional(),
+  due_before: workItemDateOnly.optional(),
+  sort: z.enum(WORK_ITEM_SORT_FIELDS).optional(),
+  dir: z.enum(WORK_ITEM_SORT_DIRECTIONS).optional(),
+});
+
+export type ListWorkItemsQuery = z.infer<typeof listWorkItemsQuery>;
+
+export { DEFAULT_WORK_ITEM_LIST_LIMIT };

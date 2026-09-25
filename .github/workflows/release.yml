@@ -1,0 +1,398 @@
+# Builds the UAT edge image after each protected main update and creates an
+# explicitly versioned release only when a maintainer dispatches one for a
+# selected main commit. No version or changelog commit is pushed to main.
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full commit SHA already reachable from main
+        required: true
+        type: string
+      version:
+        description: SemVer release version without the leading v (for example 2.0.0-alpha.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.event_name == 'push' && 'taskdesk-edge' || format('taskdesk-release-{0}', inputs.version) }}
+  cancel-in-progress: false
+
+jobs:
+  build-scan:
+    name: build, scan and generate SBOMs
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.release.outputs.image }}
+      source_sha: ${{ steps.release.outputs.source_sha }}
+      source_date: ${{ steps.release.outputs.source_date }}
+      version: ${{ steps.release.outputs.version }}
+      build_tag: ${{ steps.release.outputs.build_tag }}
+      publish_tags: ${{ steps.release.outputs.publish_tags }}
+      is_release: ${{ steps.release.outputs.is_release }}
+      digest: ${{ steps.build.outputs.digest }}
+      amd64_digest: ${{ steps.manifest.outputs.amd64_digest }}
+      arm64_digest: ${{ steps.manifest.outputs.arm64_digest }}
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: taskdesk
+
+    steps:
+      - name: Check out the selected source commit
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ inputs.source_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Log in to GitHub Container Registry
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+          REGISTRY: ghcr.io
+        run: printf '%s' "$GHCR_TOKEN" | docker login "$REGISTRY" --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Validate source commit, release version and unused destination
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_VERSION: ${{ inputs.version }}
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          source_sha="${INPUT_SOURCE_SHA:-$GITHUB_SHA}"
+          if [[ ! "$source_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::source_sha must be exactly 40 lowercase hexadecimal characters"
+            exit 1
+          fi
+
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          git cat-file -e "${source_sha}^{commit}"
+          if ! git merge-base --is-ancestor "$source_sha" origin/main; then
+            echo "::error::source_sha must name a commit already reachable from main"
+            exit 1
+          fi
+          source_sha="$(git rev-parse --verify "${source_sha}^{commit}")"
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::source_sha did not resolve to a lowercase full SHA"
+            exit 1
+          }
+          git checkout --detach "$source_sha"
+
+          image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${IMAGE_NAME}"
+          source_date="$(git show -s --format=%cI "$source_sha")"
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            version="0.0.0-edge"
+            build_tag="candidate-${RUN_ID}-${RUN_ATTEMPT}"
+            publish_tags="edge sha-${source_sha}"
+            is_release="false"
+          else
+            version="$INPUT_VERSION"
+            if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$ ]]; then
+              echo "::error::version must be SemVer without a leading v or build metadata"
+              exit 1
+            fi
+            tag="v${version}"
+            if tag_ref="$(git ls-remote origin "refs/tags/${tag}")"; then
+              if [[ -n "$tag_ref" ]]; then
+                echo "::error::Git tag ${tag} already exists"
+                exit 1
+              fi
+            else
+              echo "::error::could not establish whether Git tag ${tag} is unused"
+              exit 1
+            fi
+            if release_error="$(gh release view "$tag" 2>&1)"; then
+              echo "::error::GitHub release ${tag} already exists"
+              exit 1
+            elif ! grep -Eqi 'HTTP 404|not found' <<< "$release_error"; then
+              echo "::error::could not establish whether GitHub release ${tag} is unused: ${release_error}"
+              exit 1
+            fi
+            if inspect_error="$(docker buildx imagetools inspect "${image}:${tag}" 2>&1)"; then
+              echo "::error::container image tag ${tag} already exists; release versions are immutable"
+              exit 1
+            elif ! grep -Eqi 'not found|manifest unknown|404' <<< "$inspect_error"; then
+              echo "::error::could not establish whether container image tag ${tag} is unused: ${inspect_error}"
+              exit 1
+            fi
+            build_tag="candidate-${RUN_ID}-${RUN_ATTEMPT}"
+            publish_tags="$tag"
+            is_release="true"
+          fi
+
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "source_date=$source_date" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build_tag=$build_tag" >> "$GITHUB_OUTPUT"
+          echo "publish_tags=$publish_tags" >> "$GITHUB_OUTPUT"
+          echo "is_release=$is_release" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU with pinned binfmt image
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+        with:
+          image: tonistiigi/binfmt:qemu-v10.0.4@sha256:8f58e6214f4cc9dc83ce8f5acad1ece508eb6b20e696a8c1e9f274481982c541
+          cache-image: false
+
+      - name: Set up Buildx with pinned BuildKit image
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        with:
+          driver-opts: image=moby/buildkit:v0.25.2@sha256:0f63d66f8d2de0bd16438284831a3e9ee6ca7cd57b6eb3ed6e38a7a456590fa7
+
+      - name: Build the multi-architecture candidate image
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.release.outputs.image }}:${{ steps.release.outputs.build_tag }}
+          build-args: |
+            VERSION=${{ steps.release.outputs.version }}
+            GIT_SHA=${{ steps.release.outputs.source_sha }}
+            BUILD_TIME=${{ steps.release.outputs.source_date }}
+            NODE_IMAGE=node:24.20.0-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e
+          provenance: mode=max
+          sbom: true
+
+      - name: Read platform digests from the image index
+        id: manifest
+        env:
+          IMAGE: ${{ steps.release.outputs.image }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -Eeuo pipefail
+          docker buildx imagetools inspect --raw "${IMAGE}@${DIGEST}" > image-index.json
+          amd64="$(jq -er '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64") | .digest' image-index.json | head -n 1)"
+          arm64="$(jq -er '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "arm64") | .digest' image-index.json | head -n 1)"
+          [[ "$amd64" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "$arm64" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "amd64_digest=$amd64" >> "$GITHUB_OUTPUT"
+          echo "arm64_digest=$arm64" >> "$GITHUB_OUTPUT"
+
+      - name: Scan amd64 image — HIGH and CRITICAL block publication
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ steps.release.outputs.image }}@${{ steps.manifest.outputs.amd64_digest }}
+          version: v0.73.0
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '1'
+          cache: false
+
+      - name: Scan arm64 image — HIGH and CRITICAL block publication
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ steps.release.outputs.image }}@${{ steps.manifest.outputs.arm64_digest }}
+          version: v0.73.0
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '1'
+          cache: false
+
+      - name: Generate CycloneDX SBOM for amd64
+        uses: anchore/sbom-action@d8a2c0130026bf585de5c176ab8f7ce62d75bf04 # v0.20.7
+        with:
+          image: ${{ steps.release.outputs.image }}@${{ steps.manifest.outputs.amd64_digest }}
+          format: cyclonedx-json
+          output-file: taskdesk-${{ steps.release.outputs.version }}-linux-amd64.cdx.json
+          artifact-name: taskdesk-${{ steps.release.outputs.version }}-linux-amd64.cdx.json
+          syft-version: v1.44.0
+          upload-release-assets: false
+
+      - name: Generate CycloneDX SBOM for arm64
+        uses: anchore/sbom-action@d8a2c0130026bf585de5c176ab8f7ce62d75bf04 # v0.20.7
+        with:
+          image: ${{ steps.release.outputs.image }}@${{ steps.manifest.outputs.arm64_digest }}
+          format: cyclonedx-json
+          output-file: taskdesk-${{ steps.release.outputs.version }}-linux-arm64.cdx.json
+          artifact-name: taskdesk-${{ steps.release.outputs.version }}-linux-arm64.cdx.json
+          syft-version: v1.44.0
+          upload-release-assets: false
+
+      - name: Upload SBOMs for the isolated publish job
+        if: steps.release.outputs.is_release == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-sboms
+          path: taskdesk-*.cdx.json
+          if-no-files-found: error
+          retention-days: 1
+
+  sign-publish:
+    name: sign and publish scanned digest
+    needs: build-scan
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      attestations: write
+      contents: write
+      id-token: write
+      packages: write
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
+        with:
+          cosign-release: v3.0.5
+
+      # Each job has a fresh Docker config. Log in here before cosign writes
+      # signatures to GHCR; build-scan's registry credentials do not carry over.
+      - name: Log in to GitHub Container Registry for signing
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+          REGISTRY: ghcr.io
+        run: printf '%s' "$GHCR_TOKEN" | docker login "$REGISTRY" --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Sign each published tag with its tag identity
+        env:
+          IMAGE: ${{ needs.build-scan.outputs.image }}
+          DIGEST: ${{ needs.build-scan.outputs.digest }}
+          SOURCE_SHA: ${{ needs.build-scan.outputs.source_sha }}
+          PUBLISH_TAGS: ${{ needs.build-scan.outputs.publish_tags }}
+        run: |
+          set -Eeuo pipefail
+          for tag in $PUBLISH_TAGS; do
+            cosign sign --yes \
+              --annotations "tag=${tag}" \
+              --annotations "source_sha=${SOURCE_SHA}" \
+              "${IMAGE}@${DIGEST}"
+          done
+
+      - name: Publish signed build provenance for the image digest
+        uses: actions/attest@c32b4b8b198b65d0bd9d63490e847ff7b53989d4 # v4.0.0
+        with:
+          subject-name: ${{ needs.build-scan.outputs.image }}
+          subject-digest: ${{ needs.build-scan.outputs.digest }}
+          push-to-registry: true
+
+      # SLSA provenance above describes this workflow run. A manual run may
+      # build an older main commit, so publish a second signed predicate that
+      # binds the image digest to the source SHA validated by build-scan.
+      - name: Write selected-source predicate
+        env:
+          SOURCE_SHA: ${{ needs.build-scan.outputs.source_sha }}
+          IMAGE: ${{ needs.build-scan.outputs.image }}
+          DIGEST: ${{ needs.build-scan.outputs.digest }}
+        run: |
+          set -Eeuo pipefail
+          jq -n \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg sourceRef "refs/heads/main" \
+            --arg sourceCommit "$SOURCE_SHA" \
+            --arg image "$IMAGE" \
+            --arg imageDigest "$DIGEST" \
+            --arg workflowRun "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{sourceRepository:$repository, sourceRef:$sourceRef, sourceCommit:$sourceCommit, image:$image, imageDigest:$imageDigest, workflowRun:$workflowRun}' \
+            > "$RUNNER_TEMP/taskdesk-release-source.json"
+
+      - name: Attest selected source commit for the image digest
+        uses: actions/attest@c32b4b8b198b65d0bd9d63490e847ff7b53989d4 # v4.0.0
+        with:
+          subject-name: ${{ needs.build-scan.outputs.image }}
+          subject-digest: ${{ needs.build-scan.outputs.digest }}
+          predicate-type: https://github.com/ThomasHeinThura/ticketing/attestations/release-source/v1
+          predicate-path: ${{ runner.temp }}/taskdesk-release-source.json
+          push-to-registry: true
+
+      - name: Log in to GitHub Container Registry for tag publication
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+          REGISTRY: ghcr.io
+        run: printf '%s' "$GHCR_TOKEN" | docker login "$REGISTRY" --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Publish version and channel tags only after scans pass
+        env:
+          IMAGE: ${{ needs.build-scan.outputs.image }}
+          DIGEST: ${{ needs.build-scan.outputs.digest }}
+          SOURCE_SHA: ${{ needs.build-scan.outputs.source_sha }}
+          PUBLISH_TAGS: ${{ needs.build-scan.outputs.publish_tags }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          current_main_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          for tag in $PUBLISH_TAGS; do
+            if [[ "$tag" == "edge" && "$SOURCE_SHA" != "$current_main_sha" ]]; then
+              echo "Skipping stale edge update for ${SOURCE_SHA}; main is now ${current_main_sha}"
+              continue
+            fi
+            if [[ "$tag" == v* || "$tag" == sha-* ]]; then
+              if inspect_output="$(docker buildx imagetools inspect "${IMAGE}:${tag}" 2>&1)"; then
+                existing_digest="$(sed -n 's/^Digest: //p' <<< "$inspect_output" | head -n 1)"
+                if [[ "$existing_digest" == "$DIGEST" ]]; then
+                  echo "${tag} already points at ${DIGEST}; leaving the immutable tag unchanged"
+                  continue
+                fi
+                echo "::error::immutable image tag ${tag} already points at ${existing_digest}, not ${DIGEST}"
+                exit 1
+              elif ! grep -Eqi 'not found|manifest unknown|404' <<< "$inspect_output"; then
+                echo "::error::could not establish whether image tag ${tag} is unused: ${inspect_output}"
+                exit 1
+              fi
+            fi
+            docker buildx imagetools create --tag "${IMAGE}:${tag}" "${IMAGE}@${DIGEST}"
+          done
+
+      - name: Verify the published digest using deploy.sh's exact identity
+        env:
+          IMAGE: ${{ needs.build-scan.outputs.image }}
+          DIGEST: ${{ needs.build-scan.outputs.digest }}
+          SOURCE_SHA: ${{ needs.build-scan.outputs.source_sha }}
+          PUBLISH_TAGS: ${{ needs.build-scan.outputs.publish_tags }}
+        run: |
+          set -Eeuo pipefail
+          for tag in $PUBLISH_TAGS; do
+            cosign verify \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              --certificate-identity https://github.com/ThomasHeinThura/ticketing/.github/workflows/release.yml@refs/heads/main \
+              --annotations "tag=${tag}" \
+              --annotations "source_sha=${SOURCE_SHA}" \
+              "${IMAGE}@${DIGEST}" >/dev/null
+          done
+
+      - name: Download SBOMs for the GitHub release
+        if: needs.build-scan.outputs.is_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: gh run download "$RUN_ID" --name release-sboms --dir sboms
+
+      - name: Create the GitHub release and attach CycloneDX SBOMs
+        if: needs.build-scan.outputs.is_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.build-scan.outputs.version }}
+          SOURCE_SHA: ${{ needs.build-scan.outputs.source_sha }}
+        run: |
+          set -Eeuo pipefail
+          tag="v${VERSION}"
+          release_args=(--target "$SOURCE_SHA" --title "TaskDesk ${tag}" --generate-notes)
+          if [[ "$VERSION" =~ - ]]; then
+            release_args+=(--prerelease)
+          fi
+          gh release create "$tag" "${release_args[@]}"
+          gh release upload "$tag" \
+            "sboms/taskdesk-${VERSION}-linux-amd64.cdx.json" \
+            "sboms/taskdesk-${VERSION}-linux-arm64.cdx.json"

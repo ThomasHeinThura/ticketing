@@ -8,11 +8,11 @@ green tests". Observability is built in from Stage 0, not retrofitted.
 | Signal | Tool | Purpose |
 | --- | --- | --- |
 | **Logs** | Pino → stdout, JSON | What happened |
-| **Metrics** | Prometheus at `/metrics` | How much, how fast, how often |
+| **Metrics** | Planned: Prometheus at `/metrics` | How much, how fast, how often |
 | **Traces** | OpenTelemetry (optional exporter) | Where the time went, across a request |
 
-All three carry the same `traceId`, so an error report from a user can be pivoted to the
-exact request, its spans and its log lines.
+When metrics are implemented, all three signals will carry the same `traceId`, so an error
+report from a user can be pivoted to the exact request, its spans and its log lines.
 
 ## Logging
 
@@ -45,16 +45,21 @@ and asserts they do not appear in output.
 Log level is configurable at runtime in God Mode, per module, so debugging production
 does not require a restart.
 
-## Metrics
+## Metrics (planned; not currently implemented)
 
-Prometheus exposition at `/metrics`, guarded by a bearer token configured in God Mode →
-Observability, compared in constant time. Business metrics carry `{project, organisation}`
-labels — a cross-tenant inventory — so the token is treated as a secret and, where the
-operator can, `/metrics` is bound to a separate **internal listener on port 9464** (fixed,
-never published, never an environment variable — the runbook's `curl` targets it) not
-exposed through Traefik. The bearer token grants `/metrics` alone — it does **not** read
-`/api/instance/health/deep`, which is `instance:admin` only (decision log 2026-09-06). Log
-redaction is an **allowlist** — the log line serialises named fields only — because a
+The intended contract is Prometheus exposition at `/metrics`, guarded by a bearer token
+configured in God Mode and compared in constant time. Business metrics carry
+`{project, organisation}` labels — a cross-tenant inventory — so the token must be treated as
+a secret. When implemented, `/metrics` will use a separate **internal listener on port 9464**
+(fixed, never published, never an environment variable) and will not be exposed through
+Traefik. The token will grant `/metrics` alone and will not read
+`/api/instance/health/deep`, which is `instance:admin` only (decision log 2026-09-06).
+
+**Current status:** the API image does not serve `/metrics`, does not start a listener on
+port 9464, and does not read a metrics bearer token. The metric names below are the target
+instrumentation contract, not live endpoints. Until implementation and verification, use
+the container, database and application logs in the [runbook](../05-operations/runbook.md).
+Log redaction is an **allowlist** — the log line serialises named fields only — because a
 denylist of secret patterns cannot catch a field nobody anticipated.
 
 **HTTP**
@@ -124,26 +129,27 @@ Sampling: 100% of errors, 100% of requests slower than 1 s, 1% of the rest.
 | --- | --- | --- |
 | `/api/public/health/live` | The process is running | Container liveness. Anonymous |
 | `/api/public/health/ready` | Database reachable, migrations applied | Load balancer readiness. Anonymous |
-| `/api/instance/health/deep` | Also checks Valkey, storage, SMTP, each plugin, backups | God Mode dashboard, monitoring. **`instance:admin` only** (the metrics token does not grant it) — it enumerates every dependency, which is reconnaissance if anonymous |
+| `/api/instance/health/deep` | Planned dependency and plugin diagnostics; not currently served |
 
 `live` never touches a dependency — a liveness probe that fails when Postgres blips will
 restart a healthy container and make an outage worse.
 
-## Errors
+## Errors (planned)
 
-Sentry, configured in God Mode rather than only by environment variable, with:
+The intended error reporting uses Sentry, configured in God Mode rather than only by
+environment variable, with:
 
 - Release tagged to the build's git SHA, so a regression points at a commit.
 - `traceId` attached, linking to logs and traces.
 - PII scrubbed before send.
 - The user's organisation as a tag, so "is this one customer or everyone?" is one click.
 
-Frontend errors are captured too, with source maps uploaded at build time and **not**
-served publicly.
+**Current status:** the application does not include Sentry reporting or frontend source-map
+upload. These are planned behaviors.
 
-## Frontend performance
+## Frontend performance (planned)
 
-Real user monitoring for Core Web Vitals, reported to the API and aggregated:
+The target is real user monitoring for Core Web Vitals, reported to the API and aggregated:
 
 | Metric | Budget |
 | --- | --- |
@@ -153,13 +159,14 @@ Real user monitoring for Core Web Vitals, reported to the API and aggregated:
 | Board render, 200 items | < 500 ms |
 | Route transition | < 300 ms |
 
-These are also asserted in CI against a seeded dataset, so a regression fails a pull
-request rather than being discovered by a user. See
+**Current status:** the app does not report these measurements, and the performance-budget
+CI job is not enabled. These target budgets are not current CI gates. See
 [UX quality gates](../02-design/ux-quality-gates.md).
 
-## Dashboards
+## Dashboards (planned)
 
-Shipped as Grafana JSON in `deploy/observability/dashboards/`:
+The following are target Grafana dashboard panels. No dashboard JSON is currently shipped;
+the panels depend on instrumentation that is also planned.
 
 1. **Service health** — request rate, error rate, latency percentiles, saturation.
 2. **Business** — open work items, SLA states, intake depth, pending approvals.
@@ -167,10 +174,11 @@ Shipped as Grafana JSON in `deploy/observability/dashboards/`:
 4. **Database** — pool, slow queries, table sizes, index hit ratio.
 5. **Frontend** — Web Vitals by route.
 
-## Alerts
+## Alerts (planned)
 
-Starting set. Every alert must be actionable; anything that fires and is routinely
-ignored gets deleted rather than muted.
+These are candidate conditions for a future monitoring setup. TaskDesk does not currently
+ship or activate these alerts. Every alert must be actionable; anything that fires and is
+routinely ignored gets deleted rather than muted.
 
 | Alert | Condition | Severity |
 | --- | --- | --- |
