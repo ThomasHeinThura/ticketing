@@ -287,3 +287,120 @@ I ran the probes from a throwaway `zz-opus-probe-343-delta.test.ts` (4 tests). I
 - D1 is a merge-ordering constraint on future writers.
 
 **Not merge-ready**, for the gate reasons above. Any new commit to this branch, including a body-only change that moves the reviewed head, needs this clearance re-confirmed at the new SHA.
+
+---
+
+## Delta review 2 (Opus 5.5), under decision-log #366 / #369
+
+**Reviewer:** Opus 5.5, fresh independent context. I did not author, direct, fill or remediate this change. I am not the #366 fixer (`75630cf`), the #369 filler, or the orchestrating session.
+**Reviewed head:** `0d35ec06926fab5d1e98422265895d8681225cd7`
+**Previous Opus head:** `c0ae25aa2a666828e928ee32aee3220966e1e0f1`
+**Base:** `origin/main` at `cfd82afbd6bc3dca1407079dd472a1bf2133948d` (#369). The merge base equals it.
+**Date:** 2026-09-25
+
+### Commits since `c0ae25a`
+
+- `562e81f` is my previous note. It is docs only.
+- `75630cf` merges `origin/main` at `328f483` (the Sonnet #366 fixer). It had one conflict, in `tests/permissions/matrix.fixture.json`.
+- `0d35ec0` merges `main` at `cfd82af` (#369). `git show --remerge-diff` is **empty**, so this merge was clean.
+- **No code in the PR's own files changed.** Since `562e81f`, `git diff` over the PR's own files touches only two:
+  - `openapi.json`, whose new operations come from main;
+  - `matrix.fixture.json`.
+- `apps/api/src/audit/**`, `policy-registry.ts`, `index.ts`'s mount and the audit tests are unchanged.
+
+### 1. The fixture resolution is a pure union
+
+`git show --remerge-diff 75630cf` shows one conflict hunk. It interleaves the two new route objects: main's `GET /api/workspace/{workspaceId}/work-item-types` (#340) and this PR's `GET /api/workspaces/{workspaceId}/audit`.
+
+I checked this semantically rather than textually. I parsed the fixture at `origin/main`, at `562e81f` and at `0d35ec0`, and compared every route.
+
+| Check | Result |
+| --- | --- |
+| Routes at head / main / PR | **121** / 119 / 119 |
+| Routes whose head expectations differ from main's | **0** |
+| Routes missing from head | **0** |
+| Routes found in neither parent | **0** |
+| Routes only in head | exactly `GET /api/instance/audit` and `GET /api/workspaces/{workspaceId}/audit`, each byte-identical to this PR's own entry (and unchanged since `2d89f6a`) |
+| `capabilities` block | identical to main's |
+| Fixture at `75630cf` vs head | identical |
+| `git diff --stat origin/main...HEAD -- matrix.fixture.json` | +68 lines, the same as at `2d89f6a` |
+
+So no route's expectations changed. `test:permissions` passes 81/81 on it.
+
+### 2. #364's event keys, #364's F4, and the D1 ordering rule
+
+- **The read route does not depend on the catalogue.** #364 only widens `validateAction` in the writer, to `AUDIT_ONLY_ACTIONS ∪ EVENT_KEYS`.
+  - The read route's `action` filter is an escaped `LIKE` prefix over stored rows. It never consults either catalogue.
+  - So once a row keyed by an event (`work_item.*`) exists, it is readable **only** through the existing tenant filter.
+- **Probe:** I seeded `work_item.created` and `work_item.assigned` in workspaces A and B.
+  - `?action=work_item.` and `?action=work_item.created` from A returned only A's `work_item.*` rows.
+  - B returned 403.
+  - The instance route with `action=work_item.` returned exactly the one row expected.
+- **Does `main` have a project-scoped writer? No.**
+  - `appendAuditLog`'s only production caller is still this PR's `writeAuditRead`.
+  - `audit_log` still has no `project_id`.
+  - #344 is OPEN.
+  - The first writer, #353 (and #365 stacked on it), is held behind #344 by decision-log #366 item 2.
+  - **D1 therefore still holds, and nothing on `main` violates it.**
+- **#364 F4 as it applies to this PR's own writer (`audit.read`):**
+  - (a) `workspaceId` comes from the path param. That param is already resolved and access-checked by `fromParam`, then `validateWorkspaceAccess`, then membership, and it equals `c.get("workspaceId")`. The actor comes from `c.get("userId")`. Nothing comes from the body. This is acceptable.
+  - (b) The write is caught and logged at error level. For reads, AU-14 *mandates* this ("a failed write never fails the read"). F4(b) targets mutations. The metric/alert is still owed with observability, as the first review noted.
+  - (c) `before` and `after` are null on the `audit.read` row.
+  - S3, the misattribution of API-key reads, stands as recorded.
+
+### 3. Cross-workspace probes, re-run at this head
+
+I ran these from a throwaway `zz-opus-probe-343-delta2.test.ts` (4 tests), with `TASKDESK_POLICY_SHADOW=off` and again with it `on`. Both runs passed 10/10 together with `audit-read.test.ts`. I then deleted the file, uncommitted, and `git status` was clean.
+
+- **A `sees_all` grant in A cannot read B.**
+  - I inserted a real `membership` row with `sees_all = true` (plus `person` and `role`) in A, for owner/member, admin/viewer and manager/lead.
+  - B returned 403 under `""`, `action=work_item.` and `limit=500`.
+  - A returned only A's rows under `""`, a smuggled `?workspaceId=<B>`, `limit=500` and both action filters.
+  - The route never reads reach. Also, `resolve-identity.ts` still hard-codes `seesAll: false` for workspace memberships, so the row is inert both ways.
+- **The instance route is admin-only.**
+  - It returned 403 for all three workspace roles.
+  - An instance admin got 200.
+  - After I demoted that user to `role: "user"`, a fresh read returned 403.
+- **Foreign vs missing workspace:** both gave 403 with a byte-identical body and identical headers once `date` is excluded, with the `sees_all` row present.
+- **Mutation check:** I neutralised `eq(auditLogTable.workspaceId, workspaceId)`. The probe and the PR's isolation test went red (2 failed / 8 passed). I restored the line.
+- **S2 re-check:** `action=%00` and `since=0000-01-01T00:00:00Z` still return 500. This is unchanged.
+
+### 4. Suites at `0d35ec0` (private DB `o343b_test`, td-lane-pg, Postgres 18)
+
+| Suite | Result |
+| --- | --- |
+| Integration (full) | **90 files, 1223 tests, all passed** |
+| `test:permissions` | **11 files, 81 tests** |
+| Unit (`apps/api`) | **59 files, 490 tests** |
+| `test:contract` | pass. Redocly: 16 findings, equal to main's baseline. oasdiff 1.32.1: no unapproved breaking changes (0 approved; the allowlist is `[]`) |
+| `check:openapi` | matches (110 operations) |
+
+### CI at `0d35ec0` (recorded for the orchestrator)
+
+- **Green:** every required check except the two below. I read the rollup at the time of review.
+- **`integration - Postgres 18`:** still IN_PROGRESS when I read the rollup. The local run is green.
+- **`pull request template + security review`: FAILURE.** The body has 6 problems:
+  - `## Reviewed by` has no Model or Session. The ordinary review at this head is pending.
+  - `## Security review` names no Opus model, and this note was stale. This delta addresses the staleness.
+  - `## Checklists` carries **two** independent-review checkboxes ("Any change" and "Backend change"). The gate requires exactly one. The #369 filler must fix this in the body.
+- **GitGuardian: FAILURE.** It is not required. It is the same incident **37541345**, a false positive on `charts/taskdesk/values.yaml` `passwordKey: postgres_uri`. It came in through the `c0ae25a` main merge, and nothing new was added.
+
+### Findings
+
+- **No new findings.**
+- **D1 still stands** as a merge-ordering constraint on future writers. It is satisfied today, and #366 item 2 enforces it for #353 and #365.
+- **S2 and S3** are still open and non-blocking. **S4** remains a note.
+
+### Verdict
+
+**CLEAR WITH FINDINGS at `0d35ec06926fab5d1e98422265895d8681225cd7`. I found no blocking security defect.**
+
+- The #366 fixture resolution is a verified pure union. The #369 merge is clean.
+- The routes' authorisation, tenant isolation and oracle parity hold against #320, #334, #338, #354 and #364 on `main`.
+
+**Not merge-ready yet, for gate reasons only:**
+- the PR-template gate fails;
+- a fresh ordinary review at the head is required by #366/#369;
+- integration CI was still running.
+
+Any new non-note commit invalidates this clearance.
