@@ -284,3 +284,115 @@ unchanged. The branch is one merge behind `main` (#343). That is why the diff sh
 N1 (with a test), N2, the corrected `duplicate.ts` header, and the reopen conditions
 (a)–(c). Then update the branch onto `main` so the OpenAPI drift check goes green, and do a
 delta review of that head.
+
+---
+
+## Delta re-review 2 — second fix round under #366
+
+**Reviewed head:** `569066e42a4d38f61d5c3fc5383718254c8bbf69`
+
+**Reviewer:** Claude Opus 5.5, a fresh context in a fresh worktree. It did not write the
+fix. It made no code edit and no PR-body edit.
+
+**Verdict: CLEAR.** N1 and N2 are closed. The M3 header is now honest. The reopen comment is
+accurate, apart from one small wording point. The only new findings are LOW. They can be
+reached only through a form schema that never passed `validateFormSchema`, and none of them
+blocks. This clearance covers the head above only.
+
+**Conditions the merge gate must check (not re-review items):**
+
+- #370 (the reopen decision entry) merges first, as planned.
+- CI is green on the final head.
+- `origin/main` has moved again: #330 is `777b27c`. `git merge-tree` against it is
+  **clean**. If the branch is updated onto `main` without conflicts, and no file outside
+  `docs/07-planning/security-reviews/` changes other than by that merge, no new code review
+  is needed. Per the merge-train rule, the orchestrator should still confirm that head
+  explicitly.
+
+### What changed since `ad0c86d`
+
+- `28ef8be` changes the intake code and tests only.
+- `569066e` merges `main` (#343). The only change under `docs/` is the #369 decision-log
+  entry already on `main`.
+
+### Measured at this head
+
+| Check | Result |
+| --- | --- |
+| `packages/domain` tests | 9 files, **519/519** pass |
+| Coverage (gate 90 %) | 96.66 % stmts / 97.04 % lines / 98.32 % funcs. `request-type.ts` 95.52 / 95.93; `duplicate.ts` 98.18 / 100 |
+| `tsc --noEmit` | clean |
+| Mutation: drop `controllerVisible &&` (read a hidden controller's value again) | 1 test red. Reverted |
+| Mutation: drop the `show_if_chained_condition` defect | 1 test red. Reverted |
+| Mutation: treat `showIf: null` as a condition | 1 test red. Reverted |
+| CI at `569066e` when checked | `contract - OpenAPI drift` is now **SUCCESS** (the #343 drift is gone); domain coverage, build, audit, secret scan, helm, CodeQL and GitGuardian are green. `pull request template + security review` FAILURE (this note is not yet recorded). unit, integration, e2e and gate checkers were still running |
+
+### (1) Is N1 closed?
+
+- **My repro:** the chained schema is rejected at publish (`show_if_chained_condition` on
+  `c`). With publish skipped, the crafted `{ a: false, b: "y" }` now gives
+  `c: required_missing`, the same as the honest submit. The description no longer prints
+  the smuggled `b`. The legitimate `{ a: true, b: "y" }` still hides `c`. **Closed.**
+- **A deeper chain in an unvalidated stored form** (`f0` checkbox, `f1…f5` each shown when
+  the previous one is set, then a required `f6` shown when `f5` is not "z"; all answers
+  smuggled): `f6: required_missing`. At publish all five links are rejected. **Closed.**
+- **A controller hidden by its own condition:** covered by both cases above. Its value is
+  treated as absent.
+- **A cycle and self-reference:** rejected at publish (two chained-condition defects, and
+  `show_if_self_reference`). At runtime they do **not** always fail closed. See N4.
+
+### (2) Is N2 closed?
+
+`showIf: null` gives no publish defect. At submit it acts as unconditional: a required field
+with `showIf: null` against `{}` gives `required_missing`. No crash. **Closed.**
+
+### (3) Are the M3 header and the reopen comment right?
+
+- **M3 header — honest.** It states IQ-18's pg_trgm `similarity(title, q) > 0.3` over the
+  GIN index, same organisation, last 90 days. It says the Dice scorer is **not** that, and
+  forbids using it as the route implementation. The tracking issue for the API slice still
+  needs opening, if it is not already open.
+- **Reopen comment — accurate.** It matches the #370 entry (auto-declines only; not
+  enforced; needs a record field, #371; no caller reaches it). One small wording point: it
+  says a staff decline is final "unless staff reopen it". #370 says staff reopen is **not
+  decided**, and IQ-6 has no such action. Fix the wording with the #371 change; it does not
+  block.
+
+### (4) New findings (all LOW, non-blocking)
+
+- **N4 — unvalidated stored forms: a cycle, self-reference or duplicate key can still skip
+  a required field, contrary to the comment.** `resolveVisibility`'s comment says "A cycle
+  … fails closed". In practice, the cycle guard gives a temporary `true` that is later
+  overwritten, and fields in the cycle are worked out from that temporary value. The result
+  depends on field order. Inputs, with publish skipped:
+  - `a` shown when `b` is "show"; `b` required, shown when `a` is not "hide". Submitting
+    `{ a: "hide" }` → `[]` (`b` skipped). The same schema in reverse field order →
+    `b: required_missing`.
+  - A self-reference, `s` required and shown when `s` is "x", against `{}` → `[]`. The
+    same with `s` shown when `s` is set → `[]`.
+  - Duplicate keys: a hidden `k` and then a required `k` share one cache entry → `[]`.
+
+  `validateFormSchema` rejects all three, and no storage path exists yet. Fix before any
+  path stores a schema without publish validation: when a cycle is found, mark every field
+  on the resolving stack visible and keep it that way; treat a self-reference as visible;
+  key the cache by field position rather than by key.
+- **N5 — a very long chain overflows the stack; `isFieldVisible` in a loop is quadratic.**
+  An unvalidated chain of 10,000 fields throws `RangeError: Maximum call stack size
+  exceeded`: a crash, not a skip. Calling `isFieldVisible(schema, f, data)` once per field
+  rebuilds the whole visibility map each time: 5,000 fields took **6.9 s**. `visibleFields`
+  itself is a single pass. Suggestion: tell callers to use `visibleFields`, or memoise;
+  limit the field count at publish.
+
+### (5) Do the earlier items stay non-blocking?
+
+Yes. None of these can be reached until the API slice exists:
+
+- M3's algorithm (the header is now honest; the API slice uses pg_trgm);
+- N3 (a dangling `field_key` or an impossible `value` fails open at runtime; this now
+  applies to unvalidated schemas only);
+- reopen enforcement (#370 records the decision, and #371 tracks the field);
+- the size limits for `multiple` answers and the whole body (the API slice sets them);
+- the `date` format check, required-checkbox-`false`, and L5.
+
+Before the first intake route merges, #371 and a request-body limit must land, and N4 must
+be fixed if any schema can be stored without publish validation.
