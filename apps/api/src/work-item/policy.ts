@@ -105,4 +105,18 @@ export const workItemPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+
+  // The person-picker feed (`assignment.md` § API). Read-only, addressed by the project
+  // container: `workspaceAccess.fromProject()` loads it (a real DB lookup), so
+  // `scopeSource: "row"`, the same shape as the sibling list route above. Capability is
+  // `work_item:read` (the spec's route table). The ACTOR-dependent filtering (roster vs
+  // self-only vs empty) is response shaping inside the handler, not a second capability:
+  // reading the roster is `work_item:read`; choosing anyone but yourself at WRITE time is
+  // `work_item:assign`, which `POST /assign` enforces.
+  "GET /api/projects/{projectId}/assignable": {
+    capability: "work_item:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
 } as const satisfies PolicyMap;

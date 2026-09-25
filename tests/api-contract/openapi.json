@@ -2765,6 +2765,32 @@
           "currentVersion"
         ]
       },
+      "AssignablePerson": {
+        "type": "object",
+        "properties": {
+          "personId": {
+            "type": "string"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "openWorkCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "personId",
+          "name",
+          "roleName",
+          "openWorkCount"
+        ]
+      },
       "UserAvatar": {
         "type": "object",
         "properties": {
@@ -10604,6 +10630,74 @@
           },
           "403": {
             "description": "No access to the workspace, or missing workspace:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/assignable": {
+      "get": {
+        "operationId": "listAssignablePeople",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "List assignable people",
+        "description": "The project roster with each person's open-work count, filtered to the people the caller may actually assign to (`assignment.md`): an actor holding `work_item:assign` sees the active roster; anyone else with reach sees only themselves; a caller with neither capability sees an empty list. The client never filters this itself.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The people the caller may assign to",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssignablePerson"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown project, or its workspace could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
             "content": {
               "text/plain": {
                 "schema": {
