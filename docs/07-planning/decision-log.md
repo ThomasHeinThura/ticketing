@@ -17,7 +17,7 @@ Newest first.
 
 ### 2026-09-25 · Intake: a customer may reopen only a submission the system auto-declined
 
-**Decision:** A customer may `reopen` a submission only if it was declined automatically: the `IQ-15` clarification-window auto-decline run by `reminder-scan`. A decline made by a staff member (`IQ-16`) is final for the customer; only staff can reopen it. Enforcing this needs the submission record to say who declined it. That is a new `SubmissionRecord` field and a data-model column, which will be its own PR; until then no API route calls intake, so nothing can be reopened.
+**Decision:** A customer may `reopen` a submission only if it was declined automatically: the `IQ-15` clarification-window auto-decline run by `reminder-scan`. A decline made by a staff member (`IQ-16`) is final for the customer. Whether staff can reopen a declined submission is not decided; `IQ-6` has no such action today. Enforcing the customer rule needs the submission record to say who declined it: a new `SubmissionRecord` field and a data-model column, tracked in #371. Until then no API route calls intake, so nothing can be reopened.
 
 **Why:** `IQ-15` grants reopen only for the auto-decline, and a staff decline carries a reason shown to the customer verbatim (`IQ-16`), so it is a deliberate outcome. PR #328 had read "any decline can be reopened", and flagged that reading openly; Opus asked for the rule to be decided.
 
