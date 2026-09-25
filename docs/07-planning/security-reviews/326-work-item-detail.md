@@ -397,3 +397,83 @@ previously attested head `b99dd6c`. `536d12a..fb134c3` is that one merge.
     oasdiff reports "no breaking API changes against origin/main".
 
 **Verdict at `4c7e38671628ab58e270e6e342701d7ed46a32c3`: CLEAR.**
+
+## Re-review after merging #320 (Opus 5.5)
+
+**Reviewed head:** `7dbee3c1009a0bc60ad2cd3aee7f0fbca88621b8`
+
+This is a fresh Opus 5.5 context, 2026-09-25, in a fresh worktree. `main` is at
+`378e5e00ff6c4027a2c498059801838b0b022e2a`, which includes #320, #364 and #367. The delta
+covers everything from the last reviewed head (`4c7e386`) to `7dbee3c`.
+
+**Commits:**
+- `67ed810`: this note only.
+- `b97281d`: merge of `main` (#367, #364, #320). The conflicts were in `index.ts`,
+  `response.ts` and `openapi.json`. I read them with `git show --remerge-diff`:
+  - `index.ts` keeps both imports, `workItemDetailSchema` and #320's
+    `workItemListResponseSchema`.
+  - `response.ts` briefly shared one `workItemWithDisplayFields` between the two schemas.
+    That flattened `WorkItemListItem`.
+- `7dbee3c`: undoes that sharing. `workItemListItemSchema` is again main's
+  `workItemSchema.extend({...}).openapi("WorkItemListItem")`, which emits as `allOf`.
+  `workItemDetailSchema` stays a flat `workItemShape.extend({...})`.
+
+**(1) #320 surfaces are byte-identical to `main`.**
+- `git diff 378e5e0 7dbee3c` is empty for all of these:
+  - `controllers/list-work-items.ts`, which holds the parenthesised cursor `OR` clauses of
+    the D0 fix;
+  - `list-query.ts`, `date-bounds.ts`, `schema.ts` and `policy.ts`;
+  - `scripts/**`, including `openapi-approved-breaks.json`;
+  - every integration test except this PR's own `work-item-detail.test.ts`.
+- Against `main`, the PR's `apps/api` diff is three things only: `get-work-item.ts`, the
+  detail route's 200 schema in `index.ts`, and the `workItemShape`/`workItemDetailSchema`
+  refactor in `response.ts`.
+- In the generated spec, every component schema and path matches `main` except the new
+  `WorkItemDetail` and the `/work-items/{key}` path. That includes `WorkItem`,
+  `WorkItemListItem` (still `allOf`), `WorkItemPage` and `WorkItemListResponse`.
+
+**(2) Detail route.**
+- `get-work-item.ts`, `require-work-item-reach.ts` and the web detail files are unchanged
+  since the `5f9155c` review. The only web change since then is main's own #320 type edit,
+  which came in through a clean merge.
+- `WorkItemDetail` is flat (no `allOf`): the 22 `WorkItem` fields plus `stateName`,
+  `stateCategory` and `assigneeName`.
+- Middleware is still `requireWorkItemReach()` then `work_item:read`. The policy is still
+  `work_item:read / work_item / row / required`.
+- `assigneeName` is still gated by workspace membership.
+- I re-ran the temporary existence-oracle probe; it was not committed. From a stranger's
+  session I requested a foreign key, `{slug}-999999` and `nosuchslug-1`. All three returned
+  an identical 404: same status, `content-type`, header-name set and body. The owner got 200
+  with `stateName` resolved. 1 / 1 passed.
+
+**(3) Contract.** `pnpm test:contract` reports: Redocly 16/16 against `origin/main`, and
+"oasdiff: no unapproved breaking API changes against origin/main (0 approved)". This PR adds
+no allowlist entry: `openapi-approved-breaks.json` is unchanged from `main`. The script also
+warns that main's own #320 entry is now stale. That is cleanup work for `main`, not for this
+PR. `pnpm check:openapi` passes with 108 operations.
+
+**(4) Tests at `7dbee3c`.** I built the packages first and used a private DB, `op326b_test`,
+which I dropped afterwards.
+
+| Suite | Result |
+| --- | --- |
+| Full integration suite | 89 files / 1217 tests pass |
+| Of which `work-item-list-sort-pagination` (includes #320's D0 regression block) | 32 / 32 pass |
+| `apps/api test:unit` | 59 / 490 pass |
+| `apps/api test:permissions` | 10 / 80 pass |
+| `@taskdesk/permissions` | 13 / 261 pass |
+| `@taskdesk/web` (whole suite) | 70 files / 327 tests pass |
+
+**CI at `7dbee3c`.**
+- Every required check is green except `pull request template + security review`. That one
+  fails for two reasons:
+  1. The note was stale because of this delta. This section clears that.
+  2. The PR body still has **two independent-review checkboxes**. This is still open, and
+     the orchestrator must fix it in the body.
+- GitGuardian (not required): the known #308 false positive.
+
+**Findings.** None new. S1–S4 carry over unchanged.
+
+**Verdict at `7dbee3c1009a0bc60ad2cd3aee7f0fbca88621b8`: CLEAR WITH FINDINGS (S1–S4,
+non-blocking).** The merge is still gated on the duplicate-checkbox PR-body item, and on any
+earlier Gates items not yet resolved. This note commits only itself.
