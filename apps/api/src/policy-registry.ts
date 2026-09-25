@@ -32,6 +32,7 @@ import {
 } from "@taskdesk/permissions";
 import { activityPolicies } from "./activity/policy";
 import { assetPolicies } from "./asset/policy";
+import { auditPolicies } from "./audit/policy";
 import { capabilitiesPolicies } from "./capabilities/policy";
 import { columnPolicies } from "./column/policy";
 import { commentPolicies } from "./comment/policy";
@@ -254,6 +255,7 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/user/policy.ts", policies: userPolicies },
   { name: "apps/api/src/oauth/policy.ts", policies: oauthPolicies },
   { name: "apps/api/src/config/policy.ts", policies: configPolicies },
+  { name: "apps/api/src/audit/policy.ts", policies: auditPolicies },
   { name: "apps/api/src/label/policy.ts", policies: labelPolicies },
   { name: "apps/api/src/asset/policy.ts", policies: assetPolicies },
 ];
