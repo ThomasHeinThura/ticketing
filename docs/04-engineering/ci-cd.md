@@ -2,22 +2,26 @@
 
 ## Pipelines
 
-Two, following v1's structure, which was sound.
+Three, with verification, image publication and production promotion kept as distinct
+pipelines.
 
 | Pipeline | Trigger | Does |
 | --- | --- | --- |
-| **Build** | Push to `main`, and every pull request | Verify, version, build, push images |
+| **Build** | Every pull request and push to `main` | CI verifies pull requests; the `release.yml` main-push run builds, scans, signs and publishes the `edge` and SHA images |
+| **Release** | Manual dispatch from `main` | The same `release.yml` builds and scans a versioned candidate for the selected `main` SHA, then signs and publishes it |
 | **Promote** | Manual | Move a tested digest from UAT to production |
 
-The build pipeline **never deploys** and **never holds production secrets**. It has Docker
-registry credentials and nothing else. This separation is deliberate: a compromised build
-pipeline should not be able to reach production.
+The build and release pipelines **never deploy** and **never hold production secrets**.
+The Release workflow separates the `build-scan` job from `sign-publish`: build and scan
+tools have no OIDC signing identity or write access to GitHub contents/releases, while only
+the publish job receives `id-token: write`, `attestations: write`, and the narrowly scoped
+permissions needed to publish scanned digests, tags, and releases. The build job can write
+only to the registry for its temporary candidate image. This separation is deliberate: a
+compromised build pipeline should not be able to sign or release an image or reach
+production.
 
-**Platform: GitHub Actions** (decided 2026-09-05 — the repository is on GitHub, keyless
-cosign and `semantic-release`'s GitHub integration both assume it; v1's Azure Pipelines are
-not carried over). Concurrency on `main` is
-`concurrency: { group: main, cancel-in-progress: false }`, so two merges cannot race a
-release.
+**Platform: GitHub Actions** (decided 2026-09-05 — the repository is on GitHub and keyless
+cosign uses its OIDC identity; v1's Azure Pipelines are not carried over).
 
 ## Pull request pipeline
 
@@ -159,6 +163,7 @@ turbo.json                           pnpm-lock.yaml
 docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
                                      .npmrc
                                      .pnpmfile.cjs
+scripts/lib/**
 **/vitest.config.*                   apps/web/playwright.config.ts
 apps/web/e2e/**                      scripts/ci/redocly.yaml
 ```
@@ -409,27 +414,27 @@ On merge:
 
 1. Everything above.
 2. Full E2E across Chrome, Firefox, Safari and Edge.
-3. Compute the next semantic version from conventional commits.
-4. Build the container image, multi-arch (amd64, arm64).
-5. Scan with Trivy — high or critical fails.
-6. Generate a CycloneDX SBOM.
-7. Push to the registry, tagged with the version, the git SHA (`sha-<gitsha>`) and
-   `edge`. **Not `latest`** — `latest` means latest *stable* and moves only at promotion;
-   see [release-plan.md](../07-planning/release-plan.md).
-8. **Sign the image** with cosign (keyless, using the CI job's OIDC identity) and publish a
-   build-provenance attestation alongside it, so anyone — a customer, the marketplace
-   scanner, our own deploy script — can verify the digest they pulled is the one this
-   pipeline built.
-9. Package and publish the Helm chart (`helm package`, pushed as an OCI artefact next to the
+3. Build the container image, multi-arch (amd64, arm64), under a run-specific candidate tag.
+4. Scan each platform image with Trivy — high or critical fails.
+5. Generate a CycloneDX SBOM for each platform image.
+6. **Sign the image** with cosign (keyless, using the CI job's OIDC identity) and publish a
+  build-provenance attestation alongside it, so anyone — a customer, the marketplace
+  scanner, our own deploy script — can verify the digest they pulled is the one this
+  pipeline built.
+7. Push the scanned, signed image to the registry as `edge` and `sha-<gitsha>`. **Not
+   `latest`** — `latest` means latest *stable* and moves only at promotion; see
+   [release-plan.md](../07-planning/release-plan.md).
+8. Package and publish the Helm chart (`helm package`, pushed as an OCI artefact next to the
    image).
-10. Publish `@taskdesk/mcp` to npm if it changed.
-11. Deploy the documentation site.
+9. Publish `@taskdesk/mcp` to npm if it changed.
+10. Deploy the documentation site.
 
-**No version-bump commit on merge.** Stable and pre-release versions are cut by a
-**manually dispatched Release workflow** — kaneo's pattern — which computes the version,
-tags, signs, publishes the GitHub release with notes, and rewrites `get.taskdesk.dev/stable.txt`
-on a stable promotion. This keeps `main` protected without a CI bypass identity and matches
-[release-plan.md](../07-planning/release-plan.md)'s pinned pre-release numbering.
+**No version-bump commit on merge or release.** The Release workflow runs after each `main`
+update to publish the signed `edge`/SHA images. A maintainer may also dispatch it from
+`main` with a selected, already-reachable `source_sha` and an explicit SemVer version; that
+run creates the `v<version>` Git tag and GitHub release at that exact SHA, and attaches the
+platform SBOMs. It does not edit `CHANGELOG.md`, package versions or chart versions. Stable
+promotion and the installer pointer remain a separate operator action after UAT verification.
 
 **UAT delivery is pull, not push.** A small updater on the UAT host polls the registry for
 the `edge` tag's digest every few minutes, verifies its cosign signature, pulls, and runs
@@ -502,14 +507,19 @@ runtime configuration in God Mode — see
 **Workflow hardening — because a compromised CI identity produces a *validly signed*
 image** ([security-model.md](../01-architecture/security-model.md#threat-model)):
 
-- Every workflow declares `permissions:` read-only at the top; `id-token: write` and
-  `packages: write` are granted to the single signing/publishing job only.
-- The Release workflow runs only on manual dispatch from `main` or `release/*`, behind
-  branch protection with no bypass actor; `pull_request` jobs never sign or publish, and
-  fork PRs run with no secrets.
+- Every workflow declares `permissions:` read-only at the top. In the Release workflow,
+  only `sign-publish` receives `id-token: write`, `packages: write`, `attestations: write`,
+  `contents: write` (for the selected source tag and GitHub release), and `actions: read`
+  (for provenance). The separate build-scan job has registry write only for its temporary
+  candidate image and cannot mint the signing identity.
+- The Release workflow publishes on protected `main` updates and allows manual release
+  dispatch only from `main`; pull requests never sign or publish, and fork PRs run with no
+  secrets. A manual release names a source SHA already reachable from `main`.
 - Third-party actions are pinned by **commit SHA**, not tag; Renovate updates them.
-- `scripts/deploy.sh` and the installer verify the cosign signature against the **exact
-  workflow identity** — repository, workflow file and ref — not just the OIDC issuer.
+- `scripts/deploy.sh` verifies both the expected tag annotation and the cosign signature
+  against the **exact workflow identity** — repository, workflow file and ref — not just
+  the OIDC issuer. It resolves a mutable tag once, verifies that immutable digest, then
+  passes that same digest to Compose.
 - gitleaks runs on every push (above); a hit fails the fast stage.
 
 ## Branching
@@ -540,23 +550,19 @@ main                    always deployable, protected
 
 ## Releases
 
-`semantic-release` from conventional commits.
-
-| Prefix | Bump |
-| --- | --- |
-| `fix:` | patch |
-| `feat:` | minor |
-| `feat!:` or `BREAKING CHANGE:` | major |
-
-The changelog is generated, not written. A release creates a git tag, a GitHub release
-with notes, and the tagged image.
+Release versions are supplied explicitly when a maintainer dispatches the Release workflow.
+The workflow validates SemVer, builds and scans the selected `main` SHA, publishes and signs
+its image, then creates the matching `v<version>` tag and GitHub release at that SHA. It does
+not make a version-bump commit or rewrite project version files. The existing semantic-release
+configuration is not invoked by the release workflow.
 
 ## Release notes
 
-`CHANGELOG.md` at the repo root is the durable record — `semantic-release` writes to it
-directly, entry per commit. That is necessary and not sufficient: a list of commit
-messages does not answer "what can I now do that I couldn't yesterday," which is the
-question a release note exists to answer.
+`CHANGELOG.md` at the repo root is maintained as a durable project record. A GitHub release
+uses generated notes for the selected source SHA; release automation does not write to the
+changelog. That is necessary and not sufficient: a list of commit messages does not answer
+"what can I now do that I couldn't yesterday," which is the question a release note exists to
+answer.
 
 **At every stage close** ([SDLC](sdlc.md) step 8 — Document), in addition to the
 generated entries:
@@ -567,8 +573,8 @@ generated entries:
    feature that reached its Definition of Done — ⬜ → 🟡 → ✅. A feature does not move to
    ✅ here until [definition-of-done.md](definition-of-done.md) is actually satisfied, not
    when it merely compiles.
-3. Add a short, human-written paragraph to that release's `CHANGELOG.md` entry, above the
-   generated commit list, summarising what a user can now do — the same discipline
+3. Add a short, human-written paragraph to the next `CHANGELOG.md` entry, summarising what a
+   user can now do — the same discipline
    [status.md](../07-planning/status.md) already applies to session logs: *describe state,
    not intent*.
 4. Cross-reference the [accelerated delivery plan](../07-planning/accelerated-delivery-plan.md)'s
