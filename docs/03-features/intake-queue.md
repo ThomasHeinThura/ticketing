@@ -103,7 +103,7 @@ and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/da
   request, which is posted as one.
 - `IQ-15` A submission in `clarifying` for longer than `instance_setting.clarification_window_days`
   (default 14 — [data-model.md](../01-architecture/data-model.md)) is auto-declined with a
-  message, and the customer may reopen it. Enforced by `reminder-scan`
+  message, and the customer may reopen it. Only this auto-decline is reopenable by the customer; a staff decline (`IQ-16`) is final for the customer (decision log, 2026-09-25). Enforced by `reminder-scan`
   ([background-jobs.md](../01-architecture/background-jobs.md)), which runs every 15
   minutes.
 

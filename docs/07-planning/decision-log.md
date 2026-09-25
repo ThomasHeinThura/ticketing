@@ -15,6 +15,16 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-25 · Intake: a customer may reopen only a submission the system auto-declined
+
+**Decision:** A customer may `reopen` a submission only if it was declined automatically: the `IQ-15` clarification-window auto-decline run by `reminder-scan`. A decline made by a staff member (`IQ-16`) is final for the customer; only staff can reopen it. Enforcing this needs the submission record to say who declined it. That is a new `SubmissionRecord` field and a data-model column, which will be its own PR; until then no API route calls intake, so nothing can be reopened.
+
+**Why:** `IQ-15` grants reopen only for the auto-decline, and a staff decline carries a reason shown to the customer verbatim (`IQ-16`), so it is a deliberate outcome. PR #328 had read "any decline can be reopened", and flagged that reading openly; Opus asked for the rule to be decided.
+
+**Alternatives:** Customers may reopen any decline. Rejected by Thomas.
+
+**Decided by:** Thomas, 2026-09-25, in session ("Auto-declines only").
+
 ### 2026-09-25 · While every lane is stopped, Claude Sonnet subagents may also complete stopped P2 PRs' records so they can be reviewed
 
 **Extends:** the 2026-09-24 entry "2026-09-24 · While the lanes are stopped, Claude Sonnet subagents may make small fixes for already-recorded review findings on stopped PRs; #353 waits for #344" (#366). Its scope, independence, re-review, attribution and end conditions apply here unchanged.
