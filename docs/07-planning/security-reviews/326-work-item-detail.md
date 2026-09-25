@@ -376,3 +376,24 @@ reviewed code head `5f9155c`, and it changed only this file.
   - `tests/api-integration/work-item-detail.test.ts` passes 1 / 4.
 
 **Verdict at `897f9cace7730bb6882d5f5918a76c787364afad`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #331 merged
+
+**Reviewed head:** `4c7e38671628ab58e270e6e342701d7ed46a32c3`
+
+This is a fresh Opus 5.5 context, 2026-09-25. It attests the `gh pr update-branch` merge of
+`main` at `fb134c3e9e26f2fd339ed0a866dab0d440250876` (#331, signed SHA-based releases) into the
+previously attested head `b99dd6c`. `536d12a..fb134c3` is that one merge.
+
+- **Parents:** exactly (`b99dd6c`, `fb134c3`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main`.
+- **PR change unchanged:** `git diff 536d12a b99dd6c` and `git diff fb134c3 4c7e386` are
+  byte-identical (same sha256), and no file overlaps.
+- **Interaction:** none. #331 changes no file under `apps/`, `packages/` or `tests/`, and
+  nothing in the API contract.
+- **Commands at `4c7e386`:**
+  - `pnpm check:openapi`: "matches the API (108 operations)".
+  - `pnpm test:contract` exits 0. Redocly reports 16 findings, the same 16 as `origin/main`.
+    oasdiff reports "no breaking API changes against origin/main".
+
+**Verdict at `4c7e38671628ab58e270e6e342701d7ed46a32c3`: CLEAR.**
