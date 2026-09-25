@@ -999,3 +999,28 @@ This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branc
 - **Tests at `e76c057`:** `pnpm test:ci-scripts` passes 513 / 513.
 
 **Verdict at `e76c05776287f75198198e5fa11f14f2d5e3cccb`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #362 and #366 merged
+
+**Reviewed head:** `c8d61737f2c837c8b095b33bc837624c0f4cd1c6`
+
+This is a fresh Opus 5.5 context, 2026-09-25, with `main` at
+`536d12a5e5c44e4ab6ed10ac51aa9b5b1f396b38`. The last attestation was at `e76c057`, recorded in
+note `0c3d642`.
+
+**Commits from `0c3d642` to `c8d6173` that are not on `main`:** both are merges, and there is
+no non-merge commit. `git show --remerge-diff` is empty for each, so neither needed a manual
+resolution.
+- `e549c0c`: merge of `main@c0bd99d` (#362)
+- `c8d6173`: merge of `main@536d12a` (#366)
+
+The parents of `c8d6173` are exactly (`e549c0c`, `536d12a`).
+
+- **PR change unchanged:** the added and removed lines are identical between
+  `git diff 3c31081 0c3d642` and `git diff 536d12a c8d6173`. Only the hunk offsets in
+  `decision-log.md` differ; #366 also edited it, and it auto-merged.
+- **Interaction:** none. #362 touches API work-item routes, `packages/domain` workflow and
+  the contract. #366 touches the decision log only.
+- **Tests at `c8d6173`:** `pnpm test:ci-scripts` passes 513 / 513.
+
+**Verdict at `c8d61737f2c837c8b095b33bc837624c0f4cd1c6`: CLEAR.**
