@@ -203,6 +203,18 @@ result were recorded by the implementing agent, 2026-09-23.
 
 **Decided by:** Thomas, 2026-09-23. A lane agent drafted the entry. Thomas confirmed the decision to the orchestrating session in session on 2026-09-23, and the orchestrator recorded it.
 
+### 2026-09-23 · Manual release tags the selected `main` SHA without version-bump commits
+
+**Decision:** A maintainer manually dispatches a release with a SemVer version and a full source SHA already reachable from protected `main`. The workflow creates the matching Git tag and GitHub release at that SHA and publishes its signed multi-architecture image. It does not create a version-bump commit or edit `CHANGELOG.md`, package version files, or chart version files. The existing automatic `edge` cadence remains as documented in `release-plan.md`.
+
+**Why:** Thomas selected “tag and release the chosen SHA” and rejected a version-bump change through a PR. The release must identify the exact tested source while preserving protected `main` and the changelog/version files.
+
+**Alternatives:** A PR that changes version files was rejected, as was automatic version-file mutation by semantic-release. Stable promotion remains a separate operator action after UAT verification.
+
+**Confirmed by:** Thomas in the 2026-09-23 session response.
+
+---
+
 ### 2026-09-23 · Until the lane agents' review capacity returns (2026-09-30), a fresh Claude Sonnet context does the ordinary independent review
 
 **Supersedes (temporarily):** the 2026-09-23 entry "Three non-Claude implementation agents take the P0/P1/P2 lanes…". That entry says the lane agents review each other. The agents have reported no ordinary-review capacity until 2026-09-30T15:27Z.
