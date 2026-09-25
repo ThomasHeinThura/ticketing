@@ -8,6 +8,25 @@ Newest first.
 ## Format
 
 ```markdown
+### 2026-09-25 · While every lane is stopped, Claude Sonnet subagents may also complete stopped P2 PRs' records so they can be reviewed
+
+**Extends:** the 2026-09-24 entry "While every lane agent is stopped, Claude Sonnet subagents may make small fixes for already-recorded review findings…" (#366). Its scope, independence, re-review, attribution and end conditions apply here unchanged.
+
+**Decision:** For the stopped P2 lane's open PRs (#327, #328, #330 and #343), the orchestrating session may commission a fresh Claude Sonnet subagent to complete each PR's record:
+- fill every missing template section, including `## Implemented by` from the commit authors;
+- cite existing reviews at the SHAs they actually covered;
+- bring the branch up to date with `main`.
+The filler states only what the commit history, review notes and PR comments show. Anything it can't verify it marks as unknown, never as done. It adds no code, except what a recorded finding requires under #366. Each PR then gets fresh reviews at its exact head:
+- a fresh ordinary reviewer, never the filler and never the orchestrating session;
+- Opus 5.5 wherever a security-scope path is touched.
+Every other gate is unchanged.
+
+**Why:** Thomas, 2026-09-25 ("yes use sonnet now"). These four PRs had code and some reviews, but PR bodies the template gate rejects, and no lane is left to finish them.
+
+**Alternatives:** Leave them until the P2 lane restarts. Rejected by Thomas.
+
+**Decided by:** Thomas, 2026-09-25, in session.
+
 ### YYYY-MM-DD · Short title
 **Decision:** what we are doing
 **Why:** the reasoning
