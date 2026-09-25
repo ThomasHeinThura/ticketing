@@ -92,6 +92,30 @@ are compared to the immutable `origin/main` contract, so each may be removed and
 finding fails. The oasdiff release is pinned and its Linux x64 archive is SHA-256 verified
 on every run. Fetch `origin/main` before running the command locally.
 
+A breaking finding from `oasdiff breaking --format json` passes only when its exact
+(operation, rule, fingerprint) triple — HTTP method + path, oasdiff's rule id, and
+oasdiff's own per-finding `fingerprint` — matches an entry in
+`scripts/ci/openapi-approved-breaks.json` that is **NEW relative to `origin/main`'s copy of
+that file**; every other finding still fails, and the file fails closed if it, oasdiff's
+output, or `origin/main`'s copy of the allowlist cannot be read or parsed. Binding on
+`fingerprint` means one entry approves exactly one finding, so a PR with two similar
+breaking changes on the same route needs two entries, one per finding. Binding to NEW
+entries only means **entries approve only the break in the PR that adds them** — an entry
+already on `origin/main` (an earlier PR's approved break, now merged) approves nothing, so
+a later PR that reintroduces the same kind of break on the same route still needs its own
+new entry and its own Opus review; the gate warns (does not fail) when a merged entry is
+still in the file, as a prompt to delete it. A new entry that matches no finding also fails,
+as a stale or typo'd entry. oasdiff's exit code is also checked: anything other than `0` or
+`1`, or `1` with zero findings reported, fails closed. This is the reviewed-allowlist
+mechanism for an intentional pre-2.0 breaking change (decision log, 2026-09-25); see
+[api-design.md](../01-architecture/api-design.md#versioning). Each entry is added in the
+PR that makes the break, needs its own Opus security review there, and from the first
+stable `v2.0.0` (or later) release tag on the file must be empty — a non-empty file fails
+the gate. "Stable" is looked up live from `git ls-remote --tags origin` (a tag matching
+`^v?(\d+)\.(\d+)\.(\d+)$` with major >= 2, no pre-release/build suffix), never from
+`package.json`'s `version` field, which tracks unrelated release history and is already
+past `2.0.0`.
+
 **`pnpm test:permissions` must run before `apps/web` is built, against a router that cannot
 see a built `apps/web/dist` (#165).** The Fast stage's ordering above already guarantees this
 — `route-policy` builds nothing and runs in its own job/runner, `Build`'s `pnpm build` is a
@@ -166,6 +190,7 @@ docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
 scripts/lib/**
 **/vitest.config.*                   apps/web/playwright.config.ts
 apps/web/e2e/**                      scripts/ci/redocly.yaml
+scripts/ci/openapi-approved-breaks.json
 ```
 
 **Why the last two lines of the first block were added** (2026-09-09, from an independent
