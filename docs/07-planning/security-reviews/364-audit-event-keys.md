@@ -182,3 +182,28 @@ This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branc
 - **Tests at `f3412ea`:** `apps/api test:unit` passes 59 files / 490 tests (packages built first).
 
 **Verdict at `f3412ea6d6db8bc72695981570ed6252f7fc9884`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #362 and #366 merged
+
+**Reviewed head:** `164c0f45ffae4bde0a79f576578050a4a745693d`
+
+This is a fresh Opus 5.5 context, 2026-09-25, with `main` at
+`536d12a5e5c44e4ab6ed10ac51aa9b5b1f396b38`. The last attestation was at `f3412ea`, recorded in
+note `d7b655f`.
+
+**Commits from `d7b655f` to `164c0f4` that are not on `main`:** both are merges, and there is
+no non-merge commit. `git show --remerge-diff` is empty for each.
+- `5ce9d07`: merge of `main@c0bd99d` (#362)
+- `164c0f4`: merge of `main@536d12a` (#366)
+
+The parents of `164c0f4` are exactly (`5ce9d07`, `536d12a`).
+
+- **PR change unchanged:** `git diff 3c31081 d7b655f` and `git diff 536d12a 164c0f4` are
+  byte-identical (same sha256), and no file overlaps.
+- **Interaction with #362:** the assignable-people feed is a read-only route. It emits no event
+  and writes no audit row, so it adds no key that could conflict with `EVENT_KEYS` or the
+  audit actions.
+- **Tests at `164c0f4`** (packages built first): `apps/api test:unit` passes 59 files / 490
+  tests.
+
+**Verdict at `164c0f45ffae4bde0a79f576578050a4a745693d`: CLEAR.**
