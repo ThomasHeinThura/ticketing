@@ -226,3 +226,23 @@ head `742a3d8`. `536d12a..fb134c3` is that one merge.
   tests.
 
 **Verdict at `e812fe3a04e649ec7d26400a50a971fc0558d4a8`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #367 merged
+
+**Reviewed head:** `a22d24676cbea4a78f186e5251055710149c7cf7`
+
+This is a fresh Opus 5.5 context, 2026-09-25. It attests the `gh pr update-branch` merge of
+`main` at `6b0d861811a2a77323e72714055394db10d2d551` (#367: `scripts/ci/test-contract.mjs`,
+`openapi-approved-breaks.json`, `ci-cd.md`, `api-design.md`, decision log) into the previously
+attested head `6aaf73f`. `fb134c3..6b0d861` is that one merge.
+
+- **Parents:** exactly (`6aaf73f`, `6b0d861`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main`.
+- **PR change unchanged:** `git diff fb134c3 6aaf73f` and `git diff 6b0d861 a22d246` are
+  byte-identical (same sha256), and no file overlaps.
+- **Interaction:** none. #367 changes the contract gate and docs. This PR changes no API
+  route or contract, and touches only `audit/`, `events/` and their tests.
+- **Tests at `a22d246`** (packages built first): `apps/api test:unit` passes 59 files / 490
+  tests.
+
+**Verdict at `a22d24676cbea4a78f186e5251055710149c7cf7`: CLEAR.**
