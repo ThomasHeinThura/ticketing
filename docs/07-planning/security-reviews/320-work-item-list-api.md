@@ -491,3 +491,36 @@ Private DB `opf320_test` on td-lane-pg, dropped afterwards. The scratch probe is
 - D1–D4 remain non-blocking follow-ups.
 - The only contract break is #310's intentional envelope. It is approved by one exact, minimal allowlist entry that masks nothing.
 - This clearance covers this head plus note-only commits. Any other commit needs a fresh delta review.
+
+## Merge-head attestation (Opus 5.5) — after #364 merged
+
+**Reviewed head:** `2dae509e907542bc1a894a87b1a1fe2c5f09c389`
+
+This is a fresh Opus 5.5 context, 2026-09-25. It attests the `gh pr update-branch` merge of
+`main` at `d6a9643ffcbcf4d2359dab5ba6e590340aeb59c5` (#364, the audit writer and the event-key
+registry in `apps/api/src/{audit,events}`) into `d545db6`. `d545db6` is the Opus note over the
+final-reviewed code head `16f75eb`, and it changed only this file. `6b0d861..d6a9643` is that
+one merge.
+
+- **Parents:** exactly (`d545db6`, `d6a9643`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main`.
+- **PR change unchanged:** `git diff 6b0d861 d545db6` and `git diff d6a9643 2dae509` are
+  byte-identical (same sha256), and no file overlaps with #364.
+- **Interaction with #364:** none. The list route is read-only: it emits no event and writes
+  no audit row.
+- **Allowlist:** `scripts/ci/openapi-approved-breaks.json` on `main@d6a9643` is still `[]`.
+  At `2dae509` it holds exactly one entry: `GET /projects/{projectId}/work-items`,
+  `response-body-type-changed`, fingerprint `3bb2531394ee`, pr 320. So it is new relative to
+  `origin/main`.
+- **Commands at `2dae509`** (packages built first; private DB `att320_test`, dropped
+  afterwards):
+  - `pnpm check:openapi`: "matches the API (108 operations)".
+  - `pnpm test:contract` exits 0. Redocly reports 16 findings, the same 16 as `origin/main`.
+    oasdiff 1.32.1 was verified and reports "approved break: response-body-type-changed GET
+    /projects/{projectId}/work-items" and "no unapproved breaking API changes against
+    origin/main (1 approved)".
+  - `apps/api test:unit` passes 59 files / 490 tests.
+  - `tests/api-integration/work-item-list-sort-pagination.test.ts` passes 1 / 32.
+
+**Verdict at `2dae509e907542bc1a894a87b1a1fe2c5f09c389`: CLEAR.** The final review's findings
+carry over unchanged.
