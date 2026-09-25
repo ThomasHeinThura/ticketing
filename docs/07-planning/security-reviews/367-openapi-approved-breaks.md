@@ -174,3 +174,122 @@ by code rather than only asserted. The entry needs no change for that.
 This review covers the head above only. **It does not clear the PR.** F1 must be fixed and
 get a fresh Opus delta review on the new head before merge. F2 is advisory. No waiver was
 sought or used.
+
+---
+
+## Delta review — fixes for F1 and F2
+
+**Reviewed head:** `02a3986bab2a1661bc0413fe49da044dcae40736`
+
+**Verdict: CLEAR.** F1 and F2 are closed. There are no HIGH or MEDIUM findings. One new LOW
+(D1) and two INFO notes, none blocking. This delta covers `44e9085..02a3986`, which is one
+commit, `fix(ci): bind allowlist entries to the new (operation, rule, fingerprint) and one PR`.
+It ran in a fresh worktree from the same independent Opus 5.5 context that wrote the review
+above, which neither authored nor directed the fix.
+
+### What changed
+
+Entries now carry oasdiff's `fingerprint` and match on (operation, rule, fingerprint).
+`readBaseApprovedBreaks` reads `origin/main:scripts/ci/openapi-approved-breaks.json`, and
+only entries that are not in that base copy can approve anything. Base entries print a
+warning. A new entry that matches no finding fails. `oasdiffExitError` fails on an exit code
+other than 0 or 1, or on exit 1 with zero findings. The docs and the decision-log entry are
+updated to match. The decision-log entry is edited in place, which is fine: it was added by
+this same unmerged PR.
+
+### Re-run of F1 with the real binary (pinned 1.32.1, SHA-256 re-verified)
+
+I built specs, ran `oasdiff breaking --fail-on WARN --format json`, and pushed the output
+through the exported functions using `main()`'s exact new-entry filter:
+
+| Case | Result |
+| --- | --- |
+| (a) base holds A (`POST /items`, `new-required-request-property`, `fdb6d8bbd87c`); PR adds `must2` on top (fingerprint `769cc1c1463a`) and keeps A | **FAIL** (1 unmatched) |
+| (a') the same finding, A offered as a new entry | **FAIL**, wrong fingerprint |
+| (b) PR adds `a` + `b`, one entry for `a` (`eaa1cea123c2`) | **FAIL** (1 unmatched, `b` = `401778391bc9`) |
+| (b') the same, two entries | PASS (matched 2) |
+| (c) new entry with the right fingerprint | **PASS** (matched 1) |
+| (c') new entry with the wrong fingerprint `000000000000` | FAIL |
+| right entry plus an extra new entry that matches nothing | **FAIL** (unused 1) |
+
+### Fingerprint
+
+- **Stable.** I checked two identical runs, a revision with reversed path order and changed
+  unrelated fields, and a base with reordered keys and edited descriptions. All four gave the
+  same `fdb6d8bbd87c`.
+- **Distinct per change.** Each property gets its own fingerprint (`a`/`b`/`must`/`must2`
+  all differ). Moving the same property change to another route changes it
+  (`POST /other` = `16e5d3593eba`).
+- **Forgery.** An entry approves only a finding that oasdiff actually emitted with that exact
+  triple, so a fingerprint in the file cannot create a match on its own. To make one entry
+  cover a *different* change, an author would need a 48-bit collision between two findings in
+  one run that share operation and rule. That is not practical, and the entry still has to
+  pass Opus review. See D1 for the one real way fingerprints collide.
+
+### Base read
+
+- It reads `origin/main`, the same ref oasdiff compares against (`origin/main:${contract}`).
+  `main()` already fails earlier if `origin/main` does not resolve.
+- It fails closed. Using a real git repo: a missing file gives `[]` for both of git's
+  messages ("does not exist in 'origin/main'" and "exists on disk, but not in 'origin/main'").
+  These all throw: a bad ref (`invalid object name`), not being in a repository, a malformed
+  base copy, a runner that throws, and other stderr. A git localised into another language
+  would fail to match the regex and throw, which is the safe direction.
+
+### Laundering an old approval
+
+The new-entry test compares identity against the base file's contents, not the PR diff.
+Deleting base entry A and re-adding it byte-for-byte leaves it inert (**FAIL**, 1 unmatched).
+Changing only `pr` or `reason` gives the same identity, so it is still inert (**FAIL**). The
+only way to get an approving entry is a new identity, and that is a textual change to a
+security-scope file. That always triggers the Opus review requirement.
+
+### F2
+
+`oasdiffExitError`: (0,0) ok, (1,1) ok, (1,0) error, (2,0) error, (102,0) error, (null,0)
+error. An unloadable spec still dies earlier on empty stdout.
+
+### New findings
+
+**D1 — LOW — one fingerprint can cover the same change in several media types.** oasdiff's
+fingerprint ignores the media type. With the real binary, making `m` required in both the
+`application/json` and `application/xml` request bodies gave two findings, both
+`33c9f6cb6753`. A response-type change in the JSON and XML bodies of status `200` gave two
+findings, both `eb636423fdad`. The `201` response's change was different (`c72abe68acb5`).
+So one entry approves the same logical change across media types. This is arguably what a
+reviewer means anyway. It does not widen to another property, status, route or rule. But the
+docs' "one entry approves exactly one finding" slightly overstates it. Either reword that in
+ci-cd.md and api-design.md, or add `text` to the identity. Not blocking.
+
+**D2 — INFO — the CI log for an approved break names no fingerprint and no text.** It prints
+only `approved break: <rule> <operation>`. An entry carries a fingerprint but not oasdiff's
+text, so the Opus reviewer of an allowlist entry has to run oasdiff themselves to map the
+fingerprint to the change. Printing `fingerprint` and `raw.text` on the matched line would
+make that mapping visible in CI. Advisory.
+
+**D3 — INFO — re-breaking the identical change after a revert needs a delete first.** While
+A is still on `main`, a new A with the same identity is not "new", so the gate fails closed.
+The fix is to delete A in its own PR first, which the docs already say to do after merge.
+This affects usability only.
+
+### Unchanged
+
+The Redocly ratchet, the pinned version, the SHA-256 and the download are untouched: no
+removed line in the delta touches them. `openapi-approved-breaks.json` is still `[]`.
+
+### Test counts at `02a3986`
+
+- `node --test scripts/ci/test-contract.test.mjs`: **36/36**.
+  `scripts/ci/lib/security-paths.test.mjs`: **7/7**.
+- `pnpm test:ci-scripts`: **543/543**, 89 suites.
+- `pnpm test:contract`: passes. Redocly 16/16, oasdiff verified, `0 approved`.
+- GitHub checks at `02a3986`: every completed required job is SUCCESS, apart from
+  `pull request template + security review`, which is FAILURE while this review is missing.
+  `integration - Postgres 18` was still pending. Cancelled rows are superseded runs.
+
+### Gate status
+
+This clears the independent Opus security review for head
+`02a3986bab2a1661bc0413fe49da044dcae40736`, and the commit that adds this note, which touches
+only this file. Any other later commit voids it. D1–D3 are advisory. No waiver was sought or
+used.
