@@ -31,7 +31,7 @@ import updateWorkItem, {
 import { requireWorkItemReach } from "./require-work-item-reach";
 import {
   assignablePeopleSchema,
-  workItemListSchema,
+  workItemListResponseSchema,
   workItemSchema,
   workItemTypeListSchema,
   workItemVersionConflictSchema,
@@ -39,6 +39,7 @@ import {
 import {
   createWorkItemBody,
   ifMatchHeader,
+  listWorkItemsQuery,
   projectIdParam,
   updateWorkItemBody,
   workItemKeyParam,
@@ -166,19 +167,30 @@ const listWorkItemsRoute = createRoute({
   tags: ["Work items"],
   summary: "List work items",
   description:
-    "List a project's work items, oldest first by number. Archived and deleted items " +
-    "are excluded. Not paginated in this first slice.",
+    "List a project's work items with server-side sort, cursor pagination and " +
+    "filters (`docs/01-architecture/api-design.md`'s collection convention; " +
+    "`sort`/`dir` match #306's own URL param names: `key | title | priority | " +
+    "dueDate`, `asc | desc`, default `key`/`asc`). Archived and deleted items are " +
+    "excluded by default. Each row also carries the resolved `stateName`, " +
+    "`stateCategory` and `assigneeName` (#310) alongside the raw ids.",
   middleware: [
     workspaceAccess.fromProject("projectId"),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
-  request: { params: projectIdParam },
+  request: { params: projectIdParam, query: listWorkItemsQuery },
   responses: {
-    200: jsonResponse("The project's work items", workItemListSchema),
+    200: jsonResponse(
+      "A page of the project's work items",
+      workItemListResponseSchema,
+    ),
     // #290: an unknown/out-of-reach project 400s via `workspaceAccess.fromProject()`
-    // before this route's own permission check runs (#202's own precedent).
+    // before this route's own permission check runs (#202's own precedent) -- folded
+    // into the same 400 alongside #310's own query-validation cases (unknown sort
+    // field, out-of-range limit, malformed cursor, NUL byte, etc.).
     400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
+      "Unknown project or its workspace could not be determined, or an invalid " +
+        "query parameter (unknown sort field, out-of-range limit, malformed cursor, " +
+        "NUL byte, etc.)",
     ),
     403: errorResponse("Missing work_item:read permission"),
     // #202 / PR #204's freeze invariant (independent Opus security review of PR #271,
@@ -332,8 +344,14 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(listWorkItemsRoute, async (c) => {
     const { projectId } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const items = await listWorkItems(projectId, workspaceId);
-    return c.json(items, 200);
+    const query = c.req.valid("query");
+    const result = await listWorkItems(
+      projectId,
+      workspaceId,
+      c.get("userId"),
+      query,
+    );
+    return c.json(result, 200);
   })
   .openapi(getWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");

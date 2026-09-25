@@ -2186,7 +2186,8 @@
 			"retry": "Retry",
 			"unassigned": "Unassigned",
 			"unavailable": "Unavailable",
-			"unavailableFieldLabel": "{{field}} unavailable"
+			"unavailableFieldLabel": "{{field}} unavailable",
+			"assigneeInactive": "(inactive)"
 		},
 		"create": {
 			"cancel": "Cancel",

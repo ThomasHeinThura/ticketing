@@ -2175,6 +2175,7 @@
 			"noDueDate": "No due date",
 			"noPriority": "No priority",
 			"unassigned": "Unassigned",
+			"assigneeInactive": "(inactive)",
 			"priority": {
 				"urgent": "Urgent",
 				"high": "High",

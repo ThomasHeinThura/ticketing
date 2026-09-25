@@ -2,16 +2,23 @@ import type { client } from "@taskdesk/libs";
 import type { InferResponseType } from "hono/client";
 
 /**
- * The wire shape of `GET /api/projects/{projectId}/work-items`
- * (`apps/api/src/work-item/response.ts`'s `workItemSchema`). Note what it does NOT carry,
- * relevant to this screen: `stateId` and `assigneeId` are raw foreign keys, not resolved
- * names -- there is no join/lookup here for a human-readable state label or assignee
- * display name. Flagged as an API gap in this pull request rather than guessed at.
+ * One row's wire shape from `GET /api/projects/{projectId}/work-items`
+ * (`apps/api/src/work-item/response.ts`'s `workItemListItemSchema`). #310 changed the
+ * route's response from a bare array to `{ data, page, meta }` (cursor pagination) and
+ * added `stateName`/`stateCategory`/`assigneeName` alongside the raw `stateId`/
+ * `assigneeId` -- this type now reads `["data"][number]`, and the two "raw foreign key,
+ * no resolved name" gaps this comment used to flag are closed: `stateName`/
+ * `stateCategory` are always present, and `assigneeName` is `null` exactly when
+ * `assigneeId` is `null` OR the assignee has no linked display name (`response.ts`'s own
+ * comment). This screen (`components/work-item/work-item-list.tsx`) does not switch its
+ * State/Assignee columns over to the resolved names in this change -- out of scope here,
+ * left for a follow-up -- it only needed this type to keep compiling against the new
+ * envelope.
  */
 export type WorkItem = InferResponseType<
   (typeof client)["projects"][":projectId"]["work-items"]["$get"],
   200
->[number];
+>["data"][number];
 
 export type WorkItemPriority = "low" | "medium" | "high" | "urgent";
 
