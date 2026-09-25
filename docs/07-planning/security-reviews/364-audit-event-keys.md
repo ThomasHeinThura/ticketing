@@ -207,3 +207,22 @@ The parents of `164c0f4` are exactly (`5ce9d07`, `536d12a`).
   tests.
 
 **Verdict at `164c0f45ffae4bde0a79f576578050a4a745693d`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #331 merged
+
+**Reviewed head:** `e812fe3a04e649ec7d26400a50a971fc0558d4a8`
+
+This is a fresh Opus 5.5 context, 2026-09-25. It attests the `gh pr update-branch` merge of
+`main` at `fb134c3e9e26f2fd339ed0a866dab0d440250876` (#331, signed SHA-based releases: the release
+workflow, `deploy.sh`, `scripts/lib`, docs and the decision log) into the previously attested
+head `742a3d8`. `536d12a..fb134c3` is that one merge.
+
+- **Parents:** exactly (`742a3d8`, `fb134c3`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main`.
+- **PR change unchanged:** `git diff 536d12a 742a3d8` and `git diff fb134c3 e812fe3` are
+  byte-identical (same sha256), and no file overlaps.
+- **Interaction:** none. #331 changes no file under `apps/`, `packages/` or `tests/`.
+- **Tests at `e812fe3`** (packages built first): `apps/api test:unit` passes 59 files / 490
+  tests.
+
+**Verdict at `e812fe3a04e649ec7d26400a50a971fc0558d4a8`: CLEAR.**
