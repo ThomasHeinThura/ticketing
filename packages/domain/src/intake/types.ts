@@ -82,8 +82,11 @@ export interface FormField {
     readonly field: string;
     readonly map?: Readonly<Record<string, string>>;
   };
-  /** RT-5 conditional visibility. */
-  readonly showIf?: VisibilityCondition;
+  /**
+   * RT-5 conditional visibility. `null` is a legal stored value for "no
+   * condition" (e.g. a UI clearing it) and is treated exactly like `undefined`.
+   */
+  readonly showIf?: VisibilityCondition | null;
 }
 
 /** The JSONB form schema shape (`request-types-and-catalogue.md` § Data). */

@@ -111,8 +111,14 @@ export function triageHasStarted(record: SubmissionRecord): boolean {
  * - `withdraw`: customer only, from `new` or `clarifying` → `withdrawn`, refused once
  *   triage has started (IQ-16a). Retained, never deleted.
  * - `reopen`: customer only, from `declined` → `new` (IQ-15: "the customer may reopen
- *   it"). The spec stores no auto-vs-staff decline distinction, so this accepts any
- *   `declined` submission — flagged in the PR body as the only implementable reading.
+ *   it"). Thomas decided (2026-09-25, decision-log PR in flight) that a customer may
+ *   reopen ONLY a submission the system auto-declined — a staff decline is final unless
+ *   staff reopen it. That is not enforced here yet: `SubmissionRecord` has no field
+ *   distinguishing an auto-decline from a staff decline (`decline`'s and `auto_decline`'s
+ *   `reason` is never persisted onto the record), so this still accepts any `declined`
+ *   submission. Enforcing the decision needs a new field on the shared `SubmissionRecord`
+ *   type plus wiring through `decline`/`auto_decline` — tracked on its own issue, since no
+ *   caller reaches `reopen` yet and it must land before any reopen route ships.
  *
  * Terminal states (`accepted`, `duplicate`, `withdrawn`) accept no actions: the
  * submission has been disposed of, and nothing in either spec reopens them.

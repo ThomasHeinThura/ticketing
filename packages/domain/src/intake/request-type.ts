@@ -30,6 +30,7 @@ export type SchemaDefect = {
     | "show_if_missing_field"
     | "show_if_self_reference"
     | "show_if_invalid_condition"
+    | "show_if_chained_condition"
     | "maps_to_empty"
     | "maps_to_missing_native_field";
 };
@@ -82,14 +83,31 @@ export function validateFormSchema(
     ) {
       defects.push({ key, problem: "select_without_options" });
     }
-    if (field.showIf !== undefined) {
-      if (!isConditionWellFormed(field.showIf)) {
+    if (field.showIf !== undefined && field.showIf !== null) {
+      const condition = field.showIf;
+      if (!isConditionWellFormed(condition)) {
         defects.push({ key, problem: "show_if_invalid_condition" });
-      } else if (field.showIf.field_key === field.key) {
+      } else if (condition.field_key === field.key) {
         defects.push({ key, problem: "show_if_self_reference" });
-      } else if (!keys.has(field.showIf.field_key)) {
+      } else if (!keys.has(condition.field_key)) {
         // The spec's own publish-reject case: the controlling field is gone.
         defects.push({ key, problem: "show_if_missing_field" });
+      } else {
+        // N1: `visibility_condition` is data-model's own "single-level" shape —
+        // a field whose controller itself has a `showIf` is a chain, which lets
+        // a hidden controller's smuggled answer hide (via `neq`/`in`) or show
+        // (via `eq`) a field it should never reach. Reject the chain at publish
+        // rather than trying to make every operator safe for it.
+        const controller = schema.fields.find(
+          (f) => f.key === condition.field_key,
+        );
+        if (
+          controller !== undefined &&
+          controller.showIf !== undefined &&
+          controller.showIf !== null
+        ) {
+          defects.push({ key, problem: "show_if_chained_condition" });
+        }
       }
     }
     if (field.mapsTo !== undefined) {
@@ -109,46 +127,6 @@ export function validateFormSchema(
   return defects;
 }
 
-/**
- * RT-5 conditional visibility: does this field show for the data submitted so far?
- * A field with no `showIf` always shows. `showIf` is the exact `custom_field.
- * visibility_condition` shape (`{ field_key, op, value }`) with all four operators
- * (`eq`/`neq`/`in`/`is_set`). A malformed condition — one `validateFormSchema` should
- * already have rejected at publish, but stored/migrated/seeded data can still carry —
- * fails **closed**: the field counts as visible, so its `required` is still enforced
- * rather than silently skipped (H1).
- */
-export function isFieldVisible(
-  field: FormField,
-  data: Readonly<Record<string, FormValue>>,
-): boolean {
-  if (field.showIf === undefined) return true;
-  const condition = field.showIf;
-  if (!isConditionWellFormed(condition)) return true;
-
-  const actual: FormValue = Object.hasOwn(data, condition.field_key)
-    ? (data[condition.field_key] ?? null)
-    : null;
-  const wanted: FormValue = condition.value ?? null;
-  switch (condition.op) {
-    case "eq":
-      return valuesEqual(actual, wanted);
-    case "neq":
-      return !valuesEqual(actual, wanted);
-    case "in":
-      return (
-        Array.isArray(condition.value) &&
-        condition.value.some((v) => valuesEqual(actual, v))
-      );
-    case "is_set":
-      return (
-        actual !== null &&
-        actual !== undefined &&
-        !(typeof actual === "string" && actual.trim() === "")
-      );
-  }
-}
-
 function valuesEqual(a: FormValue, b: FormValue): boolean {
   if (a === b) return true;
   // Arrays compare structurally for visibility purposes.
@@ -161,12 +139,100 @@ function valuesEqual(a: FormValue, b: FormValue): boolean {
   return false;
 }
 
+/**
+ * RT-5 conditional visibility for every field in the schema at once. `showIf` is the
+ * exact `custom_field.visibility_condition` shape (`{ field_key, op, value }`) with all
+ * four operators (`eq`/`neq`/`in`/`is_set`); `null`/`undefined` always shows (N2).
+ *
+ * `visibility_condition` is data-model's own "single-level" shape: `validateFormSchema`
+ * rejects a `showIf` whose controller has its own `showIf` (`show_if_chained_condition`).
+ * This resolver is the defense-in-depth half of that fix (N1) for a schema that skipped
+ * publish validation (seeded, migrated, or an older stored version, per RT-6): a hidden
+ * field's own *submitted* answer is never read to decide another field's visibility — it
+ * is treated as absent, exactly as if the customer had never answered it — so a
+ * controller a customer could never legitimately see cannot smuggle a value that hides
+ * (via `neq`/`in`) or shows (via `eq`) a field downstream. A cycle, or any condition
+ * `validateFormSchema` should already have rejected, fails **closed**: the field counts
+ * as visible, so its `required` is still enforced rather than silently skippable (H1).
+ */
+function resolveVisibility(
+  schema: FormSchema,
+  data: Readonly<Record<string, FormValue>>,
+): ReadonlyMap<string, boolean> {
+  const byKey = new Map(schema.fields.map((f) => [f.key, f]));
+  const cache = new Map<string, boolean>();
+  const resolving = new Set<string>();
+
+  function resolve(field: FormField): boolean {
+    const cached = cache.get(field.key);
+    if (cached !== undefined) return cached;
+
+    const condition = field.showIf;
+    if (condition === undefined || condition === null) {
+      cache.set(field.key, true);
+      return true;
+    }
+    if (resolving.has(field.key) || !isConditionWellFormed(condition)) {
+      cache.set(field.key, true);
+      return true;
+    }
+
+    resolving.add(field.key);
+    const controller = byKey.get(condition.field_key);
+    const controllerVisible = controller === undefined || resolve(controller);
+    resolving.delete(field.key);
+
+    // N1: a hidden controller's answer never decides another field's visibility.
+    const actual: FormValue =
+      controllerVisible && Object.hasOwn(data, condition.field_key)
+        ? (data[condition.field_key] ?? null)
+        : null;
+    const wanted: FormValue = condition.value ?? null;
+
+    let visible: boolean;
+    switch (condition.op) {
+      case "eq":
+        visible = valuesEqual(actual, wanted);
+        break;
+      case "neq":
+        visible = !valuesEqual(actual, wanted);
+        break;
+      case "in":
+        visible =
+          Array.isArray(condition.value) &&
+          condition.value.some((v) => valuesEqual(actual, v));
+        break;
+      case "is_set":
+        visible =
+          actual !== null &&
+          actual !== undefined &&
+          !(typeof actual === "string" && actual.trim() === "");
+        break;
+    }
+    cache.set(field.key, visible);
+    return visible;
+  }
+
+  for (const field of schema.fields) resolve(field);
+  return cache;
+}
+
+/** RT-5: does this one field show for the data submitted so far? */
+export function isFieldVisible(
+  schema: FormSchema,
+  field: FormField,
+  data: Readonly<Record<string, FormValue>>,
+): boolean {
+  return resolveVisibility(schema, data).get(field.key) ?? true;
+}
+
 /** The fields a customer actually sees for the data so far — required checks apply only here. */
 export function visibleFields(
   schema: FormSchema,
   data: Readonly<Record<string, FormValue>>,
 ): readonly FormField[] {
-  return schema.fields.filter((f) => isFieldVisible(f, data));
+  const visibility = resolveVisibility(schema, data);
+  return schema.fields.filter((f) => visibility.get(f.key) ?? true);
 }
 
 /** A validation failure against submitted data. */

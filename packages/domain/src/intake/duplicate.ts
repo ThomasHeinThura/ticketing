@@ -7,14 +7,17 @@
  * candidates (title + already-extracted description text) because `work_item.description`
  * is Tiptap JSON and this module deliberately knows nothing about its structure.
  *
- * IQ-18 says only "text similarity over recent work items in the same organisation.
- * Suggestions only — the decision is human." The algorithm and threshold are therefore
- * implementation details, not spec contracts: this uses the Sørensen–Dice coefficient
- * over character bigrams of lowercased, punctuation-stripped text — a deterministic
- * standard that matches on word order-insensitively and tolerates the small typos
- * customers actually make. Flagged as an implementation choice in the PR body.
+ * IQ-18 (since #304) specifies the actual query: Postgres trigram similarity
+ * (`similarity(work_item.title, :query) > 0.3`, pg_trgm's own default threshold, over a
+ * `gin (title gin_trgm_ops)` index) against work items in the same organisation from the
+ * last 90 days. `similarityScore`/`duplicateSuggestions` below are **not** that — they are
+ * a pure, in-memory Sørensen–Dice scorer over character bigrams, kept only as a
+ * placeholder/test oracle until the API slice implements the real `pg_trgm` query. Do not
+ * call this from a route as the duplicate-suggestion implementation; track that gap on
+ * the API slice's own issue.
  */
 
+import { visibleFields } from "./request-type.js";
 import type { FormSchema, FormValue } from "./types.js";
 
 /** The heading the unmapped values render under (IQ-8: "under a clear heading"). */
@@ -39,15 +42,17 @@ export interface DuplicateSuggestion {
  * description fragment the acceptance path appends under a clear heading. File fields
  * are attachments, not text (IQ-9 handles them separately) and are skipped; empty and
  * hidden-unanswered values are skipped so the heading does not appear for nothing.
- * The caller decides whether this replaces or appends to an existing description —
- * this function only produces the fragment.
+ * Only *visible* fields render (N1/L3): a hidden field's answer — including one smuggled
+ * past a controller the customer could never legitimately see — never reaches the
+ * description. The caller decides whether this replaces or appends to an existing
+ * description — this function only produces the fragment.
  */
 export function renderUnmappedIntoDescription(
   schema: FormSchema,
   data: Readonly<Record<string, FormValue>>,
 ): string {
   const lines: string[] = [];
-  for (const field of schema.fields) {
+  for (const field of visibleFields(schema, data)) {
     if (field.type === "file") continue;
     if (field.mapsTo !== undefined) continue; // RT-3: mapped fields live in their columns.
     // Own-property lookup (M1): an inherited key like `toString` must not count as an

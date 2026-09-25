@@ -435,19 +435,50 @@ describe("showIf — spec's field_key/op/value shape, verbatim (H1)", () => {
         value,
       } as FormSchema["fields"][number]["showIf"],
     });
+    const schemaFor = (
+      op: "eq" | "neq" | "in" | "is_set",
+      value?: unknown,
+    ) => ({
+      fields: [
+        { key: "x", type: "text" as const, label: "X" },
+        field(op, value),
+      ],
+    });
 
-    expect(isFieldVisible(field("eq", "a"), { x: "a" })).toBe(true);
-    expect(isFieldVisible(field("eq", "a"), { x: "b" })).toBe(false);
+    expect(
+      isFieldVisible(schemaFor("eq", "a"), field("eq", "a"), { x: "a" }),
+    ).toBe(true);
+    expect(
+      isFieldVisible(schemaFor("eq", "a"), field("eq", "a"), { x: "b" }),
+    ).toBe(false);
 
-    expect(isFieldVisible(field("neq", "a"), { x: "b" })).toBe(true);
-    expect(isFieldVisible(field("neq", "a"), { x: "a" })).toBe(false);
+    expect(
+      isFieldVisible(schemaFor("neq", "a"), field("neq", "a"), { x: "b" }),
+    ).toBe(true);
+    expect(
+      isFieldVisible(schemaFor("neq", "a"), field("neq", "a"), { x: "a" }),
+    ).toBe(false);
 
-    expect(isFieldVisible(field("in", ["a", "b"]), { x: "b" })).toBe(true);
-    expect(isFieldVisible(field("in", ["a", "b"]), { x: "c" })).toBe(false);
+    expect(
+      isFieldVisible(schemaFor("in", ["a", "b"]), field("in", ["a", "b"]), {
+        x: "b",
+      }),
+    ).toBe(true);
+    expect(
+      isFieldVisible(schemaFor("in", ["a", "b"]), field("in", ["a", "b"]), {
+        x: "c",
+      }),
+    ).toBe(false);
 
-    expect(isFieldVisible(field("is_set"), { x: "anything" })).toBe(true);
-    expect(isFieldVisible(field("is_set"), { x: "" })).toBe(false);
-    expect(isFieldVisible(field("is_set"), {})).toBe(false);
+    expect(
+      isFieldVisible(schemaFor("is_set"), field("is_set"), { x: "anything" }),
+    ).toBe(true);
+    expect(
+      isFieldVisible(schemaFor("is_set"), field("is_set"), { x: "" }),
+    ).toBe(false);
+    expect(isFieldVisible(schemaFor("is_set"), field("is_set"), {})).toBe(
+      false,
+    );
   });
 
   it("rejects a malformed condition at publish, and fails CLOSED (visible → required still enforced) at submit time", () => {
@@ -514,16 +545,112 @@ describe("showIf — spec's field_key/op/value shape, verbatim (H1)", () => {
   });
 });
 
+// --- showIf chains and null (N1/N2) ---------------------------------------------
+
+describe("showIf — single-level chains rejected at publish, a smuggled hidden answer never decides visibility (N1)", () => {
+  // Opus's exact repro: checkbox `a`; select `b` shown only when `a` is set; text `c`,
+  // required and shown when `b` is NOT "y". Honestly, `{ a: false }` hides `b`, and `c`
+  // (whose controller `b` has no value) is visible and required. A crafted
+  // `{ a: false, b: "y" }` smuggles an answer into the hidden `b`; before this fix that
+  // made `c`'s `neq` condition see `b === "y"` and hide it, skipping a required field.
+  const CHAIN_SCHEMA: FormSchema = {
+    fields: [
+      { key: "a", type: "checkbox", label: "A" },
+      {
+        key: "b",
+        type: "select",
+        label: "B",
+        options: ["y", "n"],
+        showIf: { field_key: "a", op: "eq", value: true },
+      },
+      {
+        key: "c",
+        type: "text",
+        label: "C",
+        required: true,
+        showIf: { field_key: "b", op: "neq", value: "y" },
+      },
+    ],
+  };
+
+  it("validateFormSchema rejects a showIf whose controller itself has a showIf", () => {
+    expect(validateFormSchema(CHAIN_SCHEMA)).toEqual([
+      { key: "c", problem: "show_if_chained_condition" },
+    ]);
+  });
+
+  it("a smuggled hidden-field answer can no longer hide the downstream required field, and is never rendered", () => {
+    // Honest submission: b is hidden (never answered) → c's controller has no value →
+    // neq "y" is true → c is visible and required.
+    expect(validateSubmissionData(CHAIN_SCHEMA, { a: false })).toEqual([
+      { key: "c", problem: "required_missing" },
+    ]);
+    // Crafted submission smuggling an answer into the hidden `b`. Pre-fix this returned
+    // [] — the required `c` was silently skipped.
+    expect(validateSubmissionData(CHAIN_SCHEMA, { a: false, b: "y" })).toEqual([
+      { key: "c", problem: "required_missing" },
+    ]);
+    // The smuggled `b` must not appear in the rendered description either (L3).
+    const fragment = renderUnmappedIntoDescription(CHAIN_SCHEMA, {
+      a: false,
+      b: "y",
+      c: "answer",
+    });
+    expect(fragment).not.toContain("SMUGGLED");
+    expect(fragment).not.toContain("- **B:**");
+    expect(fragment).toContain("- **C:** answer");
+  });
+
+  it("a legitimately visible controller's value still governs normally", () => {
+    // a=true → b visible; b="y" answered honestly → c (neq "y") is hidden, not required.
+    expect(validateSubmissionData(CHAIN_SCHEMA, { a: true, b: "y" })).toEqual(
+      [],
+    );
+    // a=true → b visible; b="n" → c (neq "y") is visible and required.
+    expect(validateSubmissionData(CHAIN_SCHEMA, { a: true, b: "n" })).toEqual([
+      { key: "c", problem: "required_missing" },
+    ]);
+  });
+});
+
+describe("showIf — null is treated as no condition (N2)", () => {
+  const schema: FormSchema = {
+    fields: [
+      { key: "gate", type: "text", label: "Gate" },
+      {
+        key: "always",
+        type: "text",
+        label: "Always",
+        required: true,
+        showIf: null,
+      },
+    ],
+  };
+
+  it("does not crash validateFormSchema or validateSubmissionData, and behaves as unconditional", () => {
+    expect(validateFormSchema(schema)).toEqual([]);
+    expect(validateSubmissionData(schema, {})).toEqual([
+      { key: "always", problem: "required_missing" },
+    ]);
+    expect(validateSubmissionData(schema, { always: "x" })).toEqual([]);
+    expect(isFieldVisible(schema, schema.fields[1], {})).toBe(true);
+  });
+});
+
 // --- conditional visibility (RT-5) ----------------------------------------------
 
 describe("conditional visibility evaluation", () => {
   it("shows when the controlling value matches, hides otherwise", () => {
     const field = IMPACT_SCHEMA.fields[3]; // asset_location, showIf asset=printer-3
-    expect(isFieldVisible(field, { asset: "printer-3" })).toBe(true);
-    expect(isFieldVisible(field, { asset: "laptop-1" })).toBe(false);
-    expect(isFieldVisible(field, {})).toBe(false);
+    expect(isFieldVisible(IMPACT_SCHEMA, field, { asset: "printer-3" })).toBe(
+      true,
+    );
+    expect(isFieldVisible(IMPACT_SCHEMA, field, { asset: "laptop-1" })).toBe(
+      false,
+    );
+    expect(isFieldVisible(IMPACT_SCHEMA, field, {})).toBe(false);
     const unconditional = IMPACT_SCHEMA.fields[0];
-    expect(isFieldVisible(unconditional, {})).toBe(true);
+    expect(isFieldVisible(IMPACT_SCHEMA, unconditional, {})).toBe(true);
   });
 
   it("visibleFields filters the schema accordingly", () => {
