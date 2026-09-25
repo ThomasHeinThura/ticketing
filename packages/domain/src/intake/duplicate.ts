@@ -50,7 +50,9 @@ export function renderUnmappedIntoDescription(
   for (const field of schema.fields) {
     if (field.type === "file") continue;
     if (field.mapsTo !== undefined) continue; // RT-3: mapped fields live in their columns.
-    const value = data[field.key];
+    // Own-property lookup (M1): an inherited key like `toString` must not count as an
+    // answer just because `data["toString"]` resolves via the prototype chain.
+    const value = Object.hasOwn(data, field.key) ? data[field.key] : undefined;
     if (value === undefined || value === null) continue;
     const rendered = renderValue(value);
     if (rendered === "") continue;

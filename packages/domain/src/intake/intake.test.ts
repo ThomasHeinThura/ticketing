@@ -17,6 +17,7 @@ import {
   catalogueFor,
   isFieldVisible,
   isRequestTypeVisible,
+  MAX_TEXT_ANSWER_LENGTH,
   translateMapsTo,
   validateFormSchema,
   validateSubmissionData,
@@ -70,7 +71,7 @@ const IMPACT_SCHEMA: FormSchema = {
       key: "asset_location",
       type: "text",
       label: "Where is the asset?",
-      showIf: { field: "asset", equals: "printer-3" },
+      showIf: { field_key: "asset", op: "eq", value: "printer-3" },
     },
   ],
 };
@@ -320,7 +321,7 @@ describe("validateFormSchema (publish time)", () => {
           key: "asset_location",
           type: "text",
           label: "Where?",
-          showIf: { field: "asset", equals: "x" },
+          showIf: { field_key: "asset", op: "eq", value: "x" },
         },
       ],
     };
@@ -340,7 +341,7 @@ describe("validateFormSchema (publish time)", () => {
           key: "d",
           type: "text",
           label: "D",
-          showIf: { field: "d", equals: "x" },
+          showIf: { field_key: "d", op: "eq", value: "x" },
         },
         { key: "e", type: "text", label: "E", mapsTo: { field: "nope" } },
       ],
@@ -353,6 +354,163 @@ describe("validateFormSchema (publish time)", () => {
     expect(problems).toContain("select_without_options");
     expect(problems).toContain("show_if_self_reference");
     expect(problems).toContain("maps_to_missing_native_field");
+  });
+});
+
+// --- showIf — spec shape (H1) ---------------------------------------------------
+
+describe("showIf — spec's field_key/op/value shape, verbatim (H1)", () => {
+  it("publishes and submit-validates the spec's own worked example unmodified", () => {
+    const specExample: FormSchema = {
+      fields: [
+        {
+          key: "summary",
+          type: "text",
+          label: "What's wrong?",
+          required: true,
+        },
+        {
+          key: "location",
+          type: "select",
+          label: "Where?",
+          options: ["Ward 3", "Reception", "Theatre 1"],
+          required: true,
+        },
+        {
+          key: "asset",
+          type: "text",
+          label: "Asset tag",
+          help: "On the sticker",
+        },
+        {
+          key: "impact",
+          type: "select",
+          label: "Who is affected?",
+          options: ["Just me", "My team", "Everyone"],
+          required: true,
+          mapsTo: {
+            field: "priority",
+            map: { "Just me": "low", "My team": "medium", Everyone: "high" },
+          },
+        },
+        {
+          key: "asset_details",
+          type: "text",
+          label: "Which asset?",
+          required: true,
+          showIf: { field_key: "impact", op: "eq", value: "Just me" },
+        },
+        { key: "attachments", type: "file", label: "Photos", multiple: true },
+      ],
+    };
+    // Was rejected pre-fix ({ key: "asset_details", problem: "show_if_missing_field" }
+    // — the old { field, equals } reader never saw `field_key`).
+    expect(validateFormSchema(specExample, new Set(["priority"]))).toEqual([]);
+    // impact = "Just me" → asset_details visible → its `required: true` is enforced.
+    expect(
+      validateSubmissionData(specExample, {
+        summary: "x",
+        location: "Ward 3",
+        impact: "Just me",
+      }),
+    ).toEqual([{ key: "asset_details", problem: "required_missing" }]);
+    // A different controlling value → hidden → not required.
+    expect(
+      validateSubmissionData(specExample, {
+        summary: "x",
+        location: "Ward 3",
+        impact: "Everyone",
+      }),
+    ).toEqual([]);
+  });
+
+  it("evaluates all four operators: eq, neq, in, is_set", () => {
+    const field = (op: "eq" | "neq" | "in" | "is_set", value?: unknown) => ({
+      key: "f",
+      type: "text" as const,
+      label: "F",
+      showIf: {
+        field_key: "x",
+        op,
+        value,
+      } as FormSchema["fields"][number]["showIf"],
+    });
+
+    expect(isFieldVisible(field("eq", "a"), { x: "a" })).toBe(true);
+    expect(isFieldVisible(field("eq", "a"), { x: "b" })).toBe(false);
+
+    expect(isFieldVisible(field("neq", "a"), { x: "b" })).toBe(true);
+    expect(isFieldVisible(field("neq", "a"), { x: "a" })).toBe(false);
+
+    expect(isFieldVisible(field("in", ["a", "b"]), { x: "b" })).toBe(true);
+    expect(isFieldVisible(field("in", ["a", "b"]), { x: "c" })).toBe(false);
+
+    expect(isFieldVisible(field("is_set"), { x: "anything" })).toBe(true);
+    expect(isFieldVisible(field("is_set"), { x: "" })).toBe(false);
+    expect(isFieldVisible(field("is_set"), {})).toBe(false);
+  });
+
+  it("rejects a malformed condition at publish, and fails CLOSED (visible → required still enforced) at submit time", () => {
+    const unknownOp: FormSchema = {
+      fields: [
+        { key: "gate", type: "text", label: "Gate" },
+        {
+          key: "extra",
+          type: "text",
+          label: "Extra",
+          required: true,
+          showIf: {
+            field_key: "gate",
+            op: "bogus",
+            value: "x",
+          } as unknown as FormSchema["fields"][number]["showIf"],
+        },
+      ],
+    };
+    expect(validateFormSchema(unknownOp)).toEqual([
+      { key: "extra", problem: "show_if_invalid_condition" },
+    ]);
+    expect(validateSubmissionData(unknownOp, { gate: "off" })).toEqual([
+      { key: "extra", problem: "required_missing" },
+    ]);
+
+    const missingFieldKey: FormSchema = {
+      fields: [
+        {
+          key: "extra",
+          type: "text",
+          label: "Extra",
+          required: true,
+          showIf: { field_key: "", op: "eq", value: "x" },
+        },
+      ],
+    };
+    expect(validateFormSchema(missingFieldKey)).toEqual([
+      { key: "extra", problem: "show_if_invalid_condition" },
+    ]);
+    expect(validateSubmissionData(missingFieldKey, {})).toEqual([
+      { key: "extra", problem: "required_missing" },
+    ]);
+
+    const inWithNonArrayValue: FormSchema = {
+      fields: [
+        { key: "gate", type: "text", label: "Gate" },
+        {
+          key: "extra",
+          type: "text",
+          label: "Extra",
+          required: true,
+          showIf: {
+            field_key: "gate",
+            op: "in",
+            value: "not-an-array",
+          } as unknown as FormSchema["fields"][number]["showIf"],
+        },
+      ],
+    };
+    expect(validateFormSchema(inWithNonArrayValue)).toEqual([
+      { key: "extra", problem: "show_if_invalid_condition" },
+    ]);
   });
 });
 
@@ -393,7 +551,7 @@ describe("validateSubmissionData", () => {
           type: "text",
           label: "Extra",
           required: true,
-          showIf: { field: "base", equals: "show-extra" },
+          showIf: { field_key: "base", op: "eq", value: "show-extra" },
         },
       ],
     };
@@ -425,6 +583,94 @@ describe("validateSubmissionData", () => {
         mystery_field: "kept anyway",
       }),
     ).toEqual([]);
+  });
+});
+
+// --- answer type checking (M2) ---------------------------------------------------
+
+describe("validateSubmissionData — answer type checking (M2)", () => {
+  const schema: FormSchema = {
+    fields: [
+      { key: "outage", type: "checkbox", label: "Outage?" },
+      {
+        key: "systems",
+        type: "text",
+        label: "Which systems?",
+        required: true,
+        showIf: { field_key: "outage", op: "eq", value: true },
+      },
+      { key: "count", type: "number", label: "Affected count", required: true },
+    ],
+  };
+
+  it("a wrongly typed checkbox value ('true' the string) is itself rejected, closing the hidden-required-field loophole", () => {
+    // Pre-fix this returned [] — outage was never type-checked, and "true" !== true
+    // silently hid the required `systems` field via strict equality.
+    expect(
+      validateSubmissionData(schema, {
+        outage: "true",
+        count: 3,
+        systems: "ok",
+      }),
+    ).toEqual([{ key: "outage", problem: "wrong_type" }]);
+  });
+
+  it("rejects a non-finite / non-number value for a number field", () => {
+    expect(
+      validateSubmissionData(schema, { outage: false, count: "not a number" }),
+    ).toEqual([{ key: "count", problem: "wrong_type" }]);
+    expect(
+      validateSubmissionData(schema, {
+        outage: false,
+        count: { a: 1 } as unknown as number,
+      }),
+    ).toEqual([{ key: "count", problem: "wrong_type" }]);
+    expect(
+      validateSubmissionData(schema, { outage: false, count: Number.NaN }),
+    ).toEqual([{ key: "count", problem: "wrong_type" }]);
+  });
+
+  it("rejects a checkbox value that is not a boolean", () => {
+    expect(
+      validateSubmissionData(schema, {
+        outage: 1 as unknown as boolean,
+        count: 3,
+      }),
+    ).toEqual([{ key: "outage", problem: "wrong_type" }]);
+  });
+
+  it("rejects a text answer over the documented length limit, accepts one at the limit", () => {
+    const textSchema: FormSchema = {
+      fields: [{ key: "notes", type: "textarea", label: "Notes" }],
+    };
+    const tooLong = "x".repeat(MAX_TEXT_ANSWER_LENGTH + 1);
+    expect(validateSubmissionData(textSchema, { notes: tooLong })).toEqual([
+      { key: "notes", problem: "wrong_type" },
+    ]);
+    const atLimit = "x".repeat(MAX_TEXT_ANSWER_LENGTH);
+    expect(validateSubmissionData(textSchema, { notes: atLimit })).toEqual([]);
+  });
+
+  it("checks every item of a 'multiple' select answer, and the array shape itself", () => {
+    const multiSchema: FormSchema = {
+      fields: [
+        {
+          key: "areas",
+          type: "select",
+          label: "Areas",
+          multiple: true,
+          options: ["a", "b"],
+        },
+      ],
+    };
+    expect(
+      validateSubmissionData(multiSchema, {
+        areas: "a" as unknown as string[],
+      }),
+    ).toEqual([{ key: "areas", problem: "wrong_type" }]);
+    expect(validateSubmissionData(multiSchema, { areas: ["a", "b"] })).toEqual(
+      [],
+    );
   });
 });
 
@@ -472,7 +718,7 @@ describe("translateMapsTo — the spec's impact→priority example verbatim", ()
           label: "Impact",
           options: ["Everyone"],
           mapsTo: { field: "priority" },
-          showIf: { field: "gate", equals: "on" },
+          showIf: { field_key: "gate", op: "eq", value: "on" },
         },
       ],
     };
@@ -484,6 +730,63 @@ describe("translateMapsTo — the spec's impact→priority example verbatim", ()
         priority: "Everyone",
       },
     );
+  });
+});
+
+// --- own-property lookups (M1) ---------------------------------------------------
+
+describe("translateMapsTo / validateSubmissionData — own-property lookups (M1)", () => {
+  it("a customer answer of 'constructor', '__proto__' or 'toString' never resolves to an inherited Object.prototype member", () => {
+    const schema: FormSchema = {
+      fields: [
+        {
+          key: "sev",
+          type: "text",
+          label: "Severity",
+          mapsTo: { field: "priority", map: { High: "urgent" } },
+        },
+      ],
+    };
+    for (const raw of [
+      "constructor",
+      "__proto__",
+      "toString",
+      "hasOwnProperty",
+    ]) {
+      const result = translateMapsTo(schema, { sev: raw });
+      // Pre-fix, `mapping.map[raw]` read the inherited member and returned it
+      // (typeof "function" for most of these, or Object.prototype itself for
+      // "__proto__") instead of the customer's literal answer.
+      expect(result).toEqual({ priority: raw });
+      expect(typeof result.priority).toBe("string");
+    }
+  });
+
+  it("mapsTo.field of '__proto__' does not repoint the returned patch's own prototype", () => {
+    const schema: FormSchema = {
+      fields: [
+        { key: "x", type: "text", label: "X", mapsTo: { field: "__proto__" } },
+      ],
+    };
+    const result = translateMapsTo(schema, { x: "polluted" });
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+    expect(Object.hasOwn(result, "__proto__")).toBe(true);
+    expect(Object.getOwnPropertyDescriptor(result, "__proto__")?.value).toBe(
+      "polluted",
+    );
+  });
+
+  it("a field key like 'toString' still requires an actual own-property answer", () => {
+    const schema: FormSchema = {
+      fields: [
+        { key: "toString", type: "text", label: "Weird key", required: true },
+      ],
+    };
+    // Pre-fix, `data["toString"]` resolved the inherited method and counted as answered.
+    expect(validateSubmissionData(schema, {})).toEqual([
+      { key: "toString", problem: "required_missing" },
+    ]);
+    expect(validateSubmissionData(schema, { toString: "yes" })).toEqual([]);
   });
 });
 

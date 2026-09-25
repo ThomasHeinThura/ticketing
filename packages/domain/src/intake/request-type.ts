@@ -16,6 +16,7 @@ import type {
   FormValue,
   OrganisationRequestTypeRow,
   RequestTypeCatalogueEntry,
+  VisibilityCondition,
 } from "./types.js";
 
 /** A publish-time schema defect, keyed to the field it concerns. */
@@ -28,9 +29,25 @@ export type SchemaDefect = {
     | "select_without_options"
     | "show_if_missing_field"
     | "show_if_self_reference"
+    | "show_if_invalid_condition"
     | "maps_to_empty"
     | "maps_to_missing_native_field";
 };
+
+const VISIBILITY_OPS = new Set(["eq", "neq", "in", "is_set"]);
+
+/** Whether a `showIf` condition is well-formed: known op, `field_key` set, `in`'s value an array. */
+function isConditionWellFormed(condition: VisibilityCondition): boolean {
+  if (
+    typeof condition.field_key !== "string" ||
+    condition.field_key.trim() === ""
+  ) {
+    return false;
+  }
+  if (!VISIBILITY_OPS.has(condition.op)) return false;
+  if (condition.op === "in") return Array.isArray(condition.value);
+  return true;
+}
 
 /**
  * Publish-time validation of a form schema (RT-5's own edge case: "conditional field
@@ -66,9 +83,11 @@ export function validateFormSchema(
       defects.push({ key, problem: "select_without_options" });
     }
     if (field.showIf !== undefined) {
-      if (field.showIf.field === field.key) {
+      if (!isConditionWellFormed(field.showIf)) {
+        defects.push({ key, problem: "show_if_invalid_condition" });
+      } else if (field.showIf.field_key === field.key) {
         defects.push({ key, problem: "show_if_self_reference" });
-      } else if (!keys.has(field.showIf.field)) {
+      } else if (!keys.has(field.showIf.field_key)) {
         // The spec's own publish-reject case: the controlling field is gone.
         defects.push({ key, problem: "show_if_missing_field" });
       }
@@ -92,16 +111,42 @@ export function validateFormSchema(
 
 /**
  * RT-5 conditional visibility: does this field show for the data submitted so far?
- * A field with no `showIf` always shows. The single defined condition — "that field
- * has this value" — is an equality on the controlling field's *submitted* value, with
- * absent-equals-absent so a checkbox the customer never touched behaves sanely.
+ * A field with no `showIf` always shows. `showIf` is the exact `custom_field.
+ * visibility_condition` shape (`{ field_key, op, value }`) with all four operators
+ * (`eq`/`neq`/`in`/`is_set`). A malformed condition — one `validateFormSchema` should
+ * already have rejected at publish, but stored/migrated/seeded data can still carry —
+ * fails **closed**: the field counts as visible, so its `required` is still enforced
+ * rather than silently skipped (H1).
  */
 export function isFieldVisible(
   field: FormField,
   data: Readonly<Record<string, FormValue>>,
 ): boolean {
   if (field.showIf === undefined) return true;
-  return valuesEqual(data[field.showIf.field] ?? null, field.showIf.equals);
+  const condition = field.showIf;
+  if (!isConditionWellFormed(condition)) return true;
+
+  const actual: FormValue = Object.hasOwn(data, condition.field_key)
+    ? (data[condition.field_key] ?? null)
+    : null;
+  const wanted: FormValue = condition.value ?? null;
+  switch (condition.op) {
+    case "eq":
+      return valuesEqual(actual, wanted);
+    case "neq":
+      return !valuesEqual(actual, wanted);
+    case "in":
+      return (
+        Array.isArray(condition.value) &&
+        condition.value.some((v) => valuesEqual(actual, v))
+      );
+    case "is_set":
+      return (
+        actual !== null &&
+        actual !== undefined &&
+        !(typeof actual === "string" && actual.trim() === "")
+      );
+  }
 }
 
 function valuesEqual(a: FormValue, b: FormValue): boolean {
@@ -127,14 +172,60 @@ export function visibleFields(
 /** A validation failure against submitted data. */
 export type SubmissionDataError = {
   readonly key: string;
-  readonly problem: "required_missing" | "not_an_option";
+  readonly problem: "required_missing" | "not_an_option" | "wrong_type";
 };
+
+/**
+ * Text/textarea/date answers longer than this are rejected (M2). The spec gives no
+ * character limit for `form_data` text answers, so this is a documented implementation
+ * default, not a spec contract.
+ */
+export const MAX_TEXT_ANSWER_LENGTH = 10_000;
+
+/** Whether `value` is a legal answer shape for `field.type` (M2), ignoring `multiple`. */
+function isValueOfFieldType(
+  type: FormField["type"],
+  value: FormValue,
+): boolean {
+  switch (type) {
+    case "checkbox":
+      return typeof value === "boolean";
+    case "number":
+      return typeof value === "number" && Number.isFinite(value);
+    case "text":
+    case "textarea":
+    case "date":
+      return (
+        typeof value === "string" && value.length <= MAX_TEXT_ANSWER_LENGTH
+      );
+    case "select":
+    case "combobox":
+      return typeof value === "string";
+    case "file":
+      // Attachments transfer via the `attachment` table (IQ-9), never as a `form_data`
+      // value — this module has no contract for what a file answer's shape would be.
+      return true;
+  }
+}
+
+/** Whether `value` is a legal answer for `field` (M2), honouring `multiple`. */
+function isValidAnswer(field: FormField, value: FormValue): boolean {
+  if (field.multiple === true) {
+    return (
+      Array.isArray(value) &&
+      value.every((v) => isValueOfFieldType(field.type, v))
+    );
+  }
+  return isValueOfFieldType(field.type, value);
+}
 
 /**
  * Submit-time validation (RT-5's point: a hidden field is not required — only the
  * fields *visible for this data* are checked). Unknown keys are NOT rejected: RT-3
  * stores unmapped values in `form_data`, so leniency is the spec's shape, not an
- * oversight. Select values must be within `options` when the field is visible.
+ * oversight. Every visible answer is checked against its field `type` (M2) before
+ * `options` membership, so a wrongly typed value (e.g. the string `"true"` for a
+ * checkbox) is rejected rather than silently accepted and misread downstream.
  */
 export function validateSubmissionData(
   schema: FormSchema,
@@ -142,7 +233,9 @@ export function validateSubmissionData(
 ): readonly SubmissionDataError[] {
   const errors: SubmissionDataError[] = [];
   for (const field of visibleFields(schema, data)) {
-    const value = data[field.key];
+    // Own-property lookup (M1/L4): an inherited key like `toString` must not count as
+    // an answer just because `data["toString"]` resolves via the prototype chain.
+    const value = Object.hasOwn(data, field.key) ? data[field.key] : undefined;
     const missing =
       value === undefined ||
       value === null ||
@@ -152,7 +245,12 @@ export function validateSubmissionData(
       errors.push({ key: field.key, problem: "required_missing" });
       continue;
     }
-    if (!missing && field.options !== undefined) {
+    if (missing) continue;
+    if (!isValidAnswer(field, value)) {
+      errors.push({ key: field.key, problem: "wrong_type" });
+      continue;
+    }
+    if (field.options !== undefined) {
       const values = Array.isArray(value) ? value : [value];
       if (
         !values.every(
@@ -177,22 +275,31 @@ export function translateMapsTo(
   schema: FormSchema,
   data: Readonly<Record<string, FormValue>>,
 ): Record<string, FormValue> {
-  const native: Record<string, FormValue> = {};
+  // A `Map` accumulator (M1): a customer answering "constructor" or "__proto__" must
+  // never resolve to an inherited `Object.prototype` member, and `mapsTo.field` being
+  // `"__proto__"` must never re-target the returned object's own prototype.
+  const native = new Map<string, FormValue>();
   for (const field of visibleFields(schema, data)) {
     const mapping = field.mapsTo;
     if (mapping === undefined) continue;
-    const raw = data[field.key];
+    // Own-property lookup (M1): an inherited key like `toString` must not count as an
+    // answer just because `data["toString"]` resolves via the prototype chain.
+    const raw = Object.hasOwn(data, field.key) ? data[field.key] : undefined;
     if (raw === undefined || raw === null) continue;
     if (mapping.map !== undefined && typeof raw === "string") {
-      const translated = mapping.map[raw];
+      // Own-property lookup (M1): `mapping.map[raw]` must never read an inherited
+      // `Object.prototype` member (`constructor`, `__proto__`, `toString`, …).
+      const translated = Object.hasOwn(mapping.map, raw)
+        ? mapping.map[raw]
+        : undefined;
       // An unmapped option keeps the raw value: dropping it silently would lose the
       // customer's answer at exactly the moment the schema drifted.
-      native[mapping.field] = translated ?? raw;
+      native.set(mapping.field, translated ?? raw);
     } else {
-      native[mapping.field] = raw;
+      native.set(mapping.field, raw);
     }
   }
-  return native;
+  return Object.fromEntries(native);
 }
 
 /**

@@ -46,12 +46,20 @@ export type SubmissionActor = "customer" | "triager";
 export type FormValue = string | number | boolean | null | readonly FormValue[];
 
 /**
+ * A conditional-visibility test, the exact shape `custom_field.visibility_condition`
+ * uses (`data-model.md`), reused here rather than inventing a second vocabulary for
+ * request-type forms (`request-types-and-catalogue.md` § Data): `{ field_key, op,
+ * value }`. `value` is unused for `is_set`.
+ */
+export interface VisibilityCondition {
+  readonly field_key: string;
+  readonly op: "eq" | "neq" | "in" | "is_set";
+  readonly value?: FormValue;
+}
+
+/**
  * One field of a request type's form schema
  * (`request-types-and-catalogue.md` § Data + RT-3/4/5).
- *
- * `showIf` is deliberately the ONE condition shape the spec defines — "show this field
- * only when that field has this value" (RT-5). Richer operators are not invented here;
- * they belong in the spec first (AGENTS.md do-not 17).
  */
 export interface FormField {
   readonly key: string;
@@ -75,10 +83,7 @@ export interface FormField {
     readonly map?: Readonly<Record<string, string>>;
   };
   /** RT-5 conditional visibility. */
-  readonly showIf?: {
-    readonly field: string;
-    readonly equals: FormValue;
-  };
+  readonly showIf?: VisibilityCondition;
 }
 
 /** The JSONB form schema shape (`request-types-and-catalogue.md` § Data). */
