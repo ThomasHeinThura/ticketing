@@ -101,6 +101,11 @@ export async function createWorkspaceMember(
       workspaceId: workspace.id,
       role,
       permission: JSON.stringify(defaultRolePayloads[role]),
+      // Issue #318 (security): mirrors what every real creation path now guarantees
+      // (`seed-default-workspace-roles.ts`, `create-workspace.ts`) -- a genuine row, not a
+      // custom one, so `require-workspace-capability.ts` and `resolveIdentity` grant this
+      // built-in's capabilities the same way they would for a real seeded workspace.
+      isSystem: true,
       createdAt: now,
       updatedAt: now,
     });

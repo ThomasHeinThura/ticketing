@@ -2,16 +2,23 @@ import type { client } from "@taskdesk/libs";
 import type { InferResponseType } from "hono/client";
 
 /**
- * The wire shape of `GET /api/projects/{projectId}/work-items`
- * (`apps/api/src/work-item/response.ts`'s `workItemSchema`). Note what it does NOT carry,
- * relevant to this screen: `stateId` and `assigneeId` are raw foreign keys, not resolved
- * names -- there is no join/lookup here for a human-readable state label or assignee
- * display name. Flagged as an API gap in this pull request rather than guessed at.
+ * One row's wire shape from `GET /api/projects/{projectId}/work-items`
+ * (`apps/api/src/work-item/response.ts`'s `workItemListItemSchema`). #310 changed the
+ * route's response from a bare array to `{ data, page, meta }` (cursor pagination) and
+ * added `stateName`/`stateCategory`/`assigneeName` alongside the raw `stateId`/
+ * `assigneeId` -- this type now reads `["data"][number]`, and the two "raw foreign key,
+ * no resolved name" gaps this comment used to flag are closed: `stateName`/
+ * `stateCategory` are always present, and `assigneeName` is `null` exactly when
+ * `assigneeId` is `null` OR the assignee has no linked display name (`response.ts`'s own
+ * comment). This screen (`components/work-item/work-item-list.tsx`) does not switch its
+ * State/Assignee columns over to the resolved names in this change -- out of scope here,
+ * left for a follow-up -- it only needed this type to keep compiling against the new
+ * envelope.
  */
 export type WorkItem = InferResponseType<
   (typeof client)["projects"][":projectId"]["work-items"]["$get"],
   200
->[number];
+>["data"][number];
 
 export type WorkItemPriority = "low" | "medium" | "high" | "urgent";
 
@@ -82,6 +89,15 @@ function hasValidDueDate(dueDate: unknown): dueDate is string | null {
   return typeof dueDate === "string" && !Number.isNaN(Date.parse(dueDate));
 }
 
+// `startDate` shares `dueDate`'s nullable-date shape; `createdAt`/`updatedAt` are
+// non-null. All three are rendered with `Intl.DateTimeFormat`, which throws `RangeError`
+// on an unparseable value -- so a malformed response must degrade to this screen's
+// partial state rather than crashing the whole page render (found by this PR's own
+// ordinary review).
+function hasValidTimestamp(value: unknown): value is string {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+}
+
 /**
  * Validates one raw row from `GET /api/projects/{projectId}/work-items` against the
  * fields this screen actually displays, marking any that fail as unavailable rather
@@ -110,4 +126,177 @@ export function parseWorkItemRow(raw: WorkItem): WorkItemRow {
     dueDate: validDueDate ? raw.dueDate : null,
     unavailableFields,
   };
+}
+
+/**
+ * The wire shape of `GET /api/work-items/{key}` -- the same shape as a list row plus the
+ * display fields the detail route resolves server-side
+ * (`apps/api/src/work-item/controllers/get-work-item.ts`): `stateName`, `stateCategory`
+ * and `assigneeName`. The names and null semantics mirror PR #320's list-route
+ * resolution, which was unmerged when this was written: same join, same `assigneeName`
+ * gating, and the two must stay identical on `main` once both have landed.
+ * `assigneeName` is null when the item is unassigned, when the assignee is a placeholder
+ * person with no linked user, or when the assignee's user is not a member of this work
+ * item's workspace -- in every case the raw `assigneeId` is still present, so this
+ * screen can tell "assigned, name not resolvable" apart from "unassigned".
+ */
+export type WorkItemDetail = InferResponseType<
+  (typeof client)["work-items"][":key"]["$get"],
+  200
+>;
+
+export type WorkItemDetailField =
+  | "key"
+  | "title"
+  | "priority"
+  | "dueDate"
+  | "startDate"
+  | "stateName"
+  | "createdAt"
+  | "updatedAt";
+
+export type WorkItemDetailRow = WorkItemDetail & {
+  unavailableFields: WorkItemDetailField[];
+};
+
+/**
+ * Validates one raw `GET /api/work-items/{key}` response against the fields the detail
+ * page displays, marking any that fail as unavailable rather than throwing -- the same
+ * boundary principle `parseWorkItemRow` applies to list rows (see its own comment for
+ * why this validation exists rather than trusting `InferResponseType`). `stateName`
+ * joins the list's four fields for the same reason they are checked there: the header
+ * renders it, and a blank state name would otherwise render as an indistinct empty
+ * badge rather than a visible "Unavailable". `startDate`, `createdAt` and `updatedAt`
+ * are validated because the details section renders each with `Intl.DateTimeFormat`,
+ * which throws on an unparseable value (`hasValidTimestamp`'s own comment).
+ */
+export function parseWorkItemDetailRow(raw: WorkItemDetail): WorkItemDetailRow {
+  const unavailableFields: WorkItemDetailField[] = [];
+
+  const validKey = hasValidKey(raw.key, raw.number);
+  if (!validKey) unavailableFields.push("key");
+
+  const validTitle = hasValidTitle(raw.title);
+  if (!validTitle) unavailableFields.push("title");
+
+  const validPriority = hasValidPriority(raw.priority);
+  if (!validPriority) unavailableFields.push("priority");
+
+  const validDueDate = hasValidDueDate(raw.dueDate);
+  if (!validDueDate) unavailableFields.push("dueDate");
+
+  const validStartDate = hasValidDueDate(raw.startDate);
+  if (!validStartDate) unavailableFields.push("startDate");
+
+  const validStateName =
+    typeof raw.stateName === "string" && raw.stateName.trim().length > 0;
+  if (!validStateName) unavailableFields.push("stateName");
+
+  const validCreatedAt = hasValidTimestamp(raw.createdAt);
+  if (!validCreatedAt) unavailableFields.push("createdAt");
+
+  const validUpdatedAt = hasValidTimestamp(raw.updatedAt);
+  if (!validUpdatedAt) unavailableFields.push("updatedAt");
+
+  return {
+    ...raw,
+    key: validKey ? raw.key : "",
+    title: validTitle ? raw.title : "",
+    priority: validPriority ? raw.priority : null,
+    dueDate: validDueDate ? raw.dueDate : null,
+    startDate: validStartDate ? raw.startDate : null,
+    unavailableFields,
+  };
+}
+
+/**
+ * What the detail page can render for `work_item.description`.
+ *
+ * `work_item.description` is opaque `jsonb` (`apps/api/src/work-item/schema.ts`): today
+ * that means `null`, a plain string, or a Tiptap document (the document shape the task
+ * description editor writes elsewhere in this app). Full rich-text rendering is a later
+ * slice; this extracts a document's text so the description is readable now -- with the
+ * honest `unsupported` outcome for a shape this function cannot read, rather than
+ * silently rendering "No description" for a description that exists.
+ */
+export type DescriptionContent =
+  | { kind: "none" }
+  | { kind: "text"; text: string }
+  | { kind: "unsupported" };
+
+/**
+ * Text nodes (and hard breaks) continue the current line; anything else is treated as a
+ * block, which starts a new one. Without this distinction, a paragraph containing any
+ * mark (bold, italic, a link -- ProseMirror splits those into separate `text` children)
+ * would put each inline run on its own line: `["Fix the ", "login", " bug now"]`
+ * becoming three lines. Found by this PR's own ordinary review.
+ */
+function isInlineNode(value: unknown): boolean {
+  if (value === null || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.text === "string" || record.type === "hardBreak";
+}
+
+function collectDocumentText(node: unknown, out: string[]): boolean {
+  if (node === null || node === undefined) return true;
+  if (typeof node !== "object") return false;
+
+  const record = node as Record<string, unknown>;
+  if (typeof record.text === "string") {
+    out.push(record.text);
+    return true;
+  }
+
+  if (record.type === "hardBreak") {
+    // A hard break (Shift+Enter) is a line break with no text of its own --
+    // `isInlineNode` keeps it from getting a block separator around it, so the
+    // newline has to come from here, or the two lines either side would be glued
+    // together. Found by this delta's confirming review.
+    out.push("\n");
+    return true;
+  }
+
+  const content = record.content;
+  if (content === undefined) {
+    // A structural node with no text of its own (e.g. an image, a hard break).
+    return true;
+  }
+  if (!Array.isArray(content)) return false;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const child = content[index];
+    // Block separation: a block child starts on its own line; inline runs do not.
+    if (index > 0 && !isInlineNode(child)) out.push("\n");
+    if (!collectDocumentText(child, out)) return false;
+  }
+  return true;
+}
+
+function isDocumentLike(value: Record<string, unknown>): boolean {
+  return typeof value.type === "string" || Array.isArray(value.content);
+}
+
+export function extractDescription(description: unknown): DescriptionContent {
+  if (description === null || description === undefined) {
+    return { kind: "none" };
+  }
+
+  if (typeof description === "string") {
+    return description.trim().length === 0
+      ? { kind: "none" }
+      : { kind: "text", text: description };
+  }
+
+  if (typeof description !== "object" || Array.isArray(description)) {
+    return { kind: "unsupported" };
+  }
+
+  const record = description as Record<string, unknown>;
+  if (!isDocumentLike(record)) return { kind: "unsupported" };
+
+  const parts: string[] = [];
+  if (!collectDocumentText(record, parts)) return { kind: "unsupported" };
+
+  const text = parts.join("").trim();
+  return text.length === 0 ? { kind: "none" } : { kind: "text", text };
 }

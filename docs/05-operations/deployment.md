@@ -77,7 +77,12 @@ It:
 2. Generates a self-signed certificate (local only).
 3. Starts Postgres and Valkey — plus SeaweedFS and its bucket-create step when
    `--profile s3` is in play — and waits for health.
-4. Starts the application, which applies migrations under an advisory lock.
+4. Runs the one-shot `migrate` service (`TASKDESK_ROLE=migrate`), which applies
+   migrations under an advisory lock and creates/repairs the non-superuser application
+   role and its grants — the only step that ever uses the owner/migration credential
+   (issue #296, S1). Then starts the application itself, which connects only as that
+   application role and refuses to start if it can ever reach the owner credential or
+   turns out to be privileged.
 5. Prints the one-time **setup URL** (agent origin + the token from the container log) at
    which the first administrator is created — or, for headless installs, creates it from
    `TASKDESK_BOOTSTRAP_ADMIN_EMAIL`.
@@ -271,7 +276,7 @@ is terminated differ, and both are infrastructure concerns, never application co
 | --- | --- |
 | `/api/public/health/live` | The process is up. **Touches no dependency**. Anonymous |
 | `/api/public/health/ready` | Database reachable, migrations applied. Anonymous |
-| `/api/instance/health/deep` | Every dependency and plugin checked. Needs an `instance:admin` session — the metrics bearer token does not grant it — it enumerates dependencies ([observability.md](../01-architecture/observability.md)) |
+| `/api/instance/health/deep` | Planned dependency and plugin diagnostics; not currently served ([observability.md](../01-architecture/observability.md)) |
 
 A liveness probe that fails when Postgres blips will restart a healthy container and turn a
 brief outage into a long one. Hence the separation.

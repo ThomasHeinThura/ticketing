@@ -110,3 +110,103 @@ Web component selector labels
 app.kubernetes.io/name: {{ include "taskdesk.name" . }}-web
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Env entries needed to build TASKDESK_DATABASE_URL, the APPLICATION role (issue #296) --
+never a Postgres superuser, never owns a table. Shared by the API Deployment
+(templates/deployment.yaml) and the migrate Job (templates/migrate-job.yaml): the Job
+needs this only to satisfy deploy/entrypoint.sh's unconditional presence check for all
+five required variables -- runMigrationStep() never connects with it -- but keeping one
+copy of this branching is what keeps the two from silently drifting apart.
+*/}}
+{{- define "taskdesk.applicationDatabaseUrlEnv" -}}
+{{- if and (not .Values.taskdesk.env.database.external.enabled) .Values.taskdesk.env.database.appExistingSecret.enabled }}
+- name: TASKDESK_APP_DB_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.taskdesk.env.database.appExistingSecret.name }}
+      key: {{ .Values.taskdesk.env.database.appExistingSecret.key }}
+{{- end }}
+- name: TASKDESK_DATABASE_URL
+  {{- if .Values.taskdesk.env.database.external.enabled }}
+  {{- if .Values.taskdesk.env.database.external.existingSecret.enabled }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.taskdesk.env.database.external.existingSecret.name }}
+      key: {{ .Values.taskdesk.env.database.external.existingSecret.passwordKey }}
+  {{- else }}
+  value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.username }}:{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.password }}@{{ .Values.taskdesk.env.database.external.host }}:{{ .Values.taskdesk.env.database.external.port }}/{{ .Values.taskdesk.env.database.external.database }}"
+  {{- end }}
+  {{- else }}
+  {{- if .Values.taskdesk.env.database.appExistingSecret.enabled }}
+  value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.appUsername }}:$(TASKDESK_APP_DB_PASSWORD)@{{ include "taskdesk.fullname" . }}-postgresql:{{ .Values.postgresql.service.port }}/{{ .Values.postgresql.auth.database }}"
+  {{- else }}
+  value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.appUsername }}:{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.appPassword }}@{{ include "taskdesk.fullname" . }}-postgresql:{{ .Values.postgresql.service.port }}/{{ .Values.postgresql.auth.database }}"
+  {{- end }}
+  {{- end }}
+{{- end }}
+
+{{/*
+Env entries needed to build TASKDESK_MIGRATION_DATABASE_URL, the MIGRATION/OWNER role
+(issue #296). Used ONLY by the `migrate` initContainer (templates/deployment.yaml) -- S1
+(the independent Opus 5.5 review of PR #308) requires the `taskdesk` container never
+receive this variable at all, so it must never be `include`d anywhere else.
+
+External database, `migration.enabled: false`: no separate owner credential exists, so
+this falls back to the SAME url the application role uses -- the Helm equivalent of the
+application's own single-URL fallback (configuration-reference.md). Two outcomes, per D4
+(the independent Opus 5.5 delta review of PR #308, which corrected the earlier version of
+this comment): with the chart's own documented external-database setup SQL
+(`ALTER SCHEMA public OWNER TO taskdesk_user`), that role already has DDL rights, so the
+initContainer SUCCEEDS -- and the `taskdesk` container then refuses to boot on its own
+ownership check, because the one role both migrated and is trying to serve requests. If
+that role instead lacks DDL rights, the initContainer itself fails with Postgres's own
+permission-denied error, and the Pod never reaches the `taskdesk` container at all. Either
+way this fails closed, and `kubectl describe pod`/`kubectl logs -c migrate` shows exactly
+which of the two happened -- never a silent success as the owner.
+*/}}
+{{- define "taskdesk.migrationDatabaseUrlEnv" -}}
+{{- if and (not .Values.taskdesk.env.database.external.enabled) .Values.postgresql.auth.existingSecret }}
+- name: KANEO_POSTGRES_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.postgresql.auth.existingSecret }}
+      key: {{ .Values.postgresql.auth.secretKeys.userPasswordKey }}
+{{- end }}
+{{- if and .Values.taskdesk.env.database.external.enabled .Values.taskdesk.env.database.external.migration.enabled .Values.taskdesk.env.database.external.migration.existingSecret.enabled }}
+- name: TASKDESK_EXTERNAL_MIGRATION_DB_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.taskdesk.env.database.external.migration.existingSecret.name }}
+      key: {{ .Values.taskdesk.env.database.external.migration.existingSecret.passwordKey }}
+{{- end }}
+{{- if and .Values.taskdesk.env.database.external.enabled (not .Values.taskdesk.env.database.external.migration.enabled) .Values.taskdesk.env.database.external.existingSecret.enabled }}
+- name: TASKDESK_EXTERNAL_APP_DB_PASSWORD_FOR_MIGRATE_FALLBACK
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.taskdesk.env.database.external.existingSecret.name }}
+      key: {{ .Values.taskdesk.env.database.external.existingSecret.passwordKey }}
+{{- end }}
+{{- if not .Values.taskdesk.env.database.external.enabled }}
+- name: TASKDESK_MIGRATION_DATABASE_URL
+  {{- if .Values.postgresql.auth.existingSecret }}
+  value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.postgresql.auth.username }}:$(KANEO_POSTGRES_PASSWORD)@{{ include "taskdesk.fullname" . }}-postgresql:{{ .Values.postgresql.service.port }}/{{ .Values.postgresql.auth.database }}"
+  {{- else }}
+  value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.postgresql.auth.username }}:{{ include "taskdesk.urlencodeUserinfo" .Values.postgresql.auth.password }}@{{ include "taskdesk.fullname" . }}-postgresql:{{ .Values.postgresql.service.port }}/{{ .Values.postgresql.auth.database }}"
+  {{- end }}
+{{- else if .Values.taskdesk.env.database.external.migration.enabled }}
+- name: TASKDESK_MIGRATION_DATABASE_URL
+  {{- if .Values.taskdesk.env.database.external.migration.existingSecret.enabled }}
+  value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.migration.username }}:$(TASKDESK_EXTERNAL_MIGRATION_DB_PASSWORD)@{{ .Values.taskdesk.env.database.external.migration.host }}:{{ .Values.taskdesk.env.database.external.migration.port }}/{{ .Values.taskdesk.env.database.external.migration.database }}"
+  {{- else }}
+  value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.migration.username }}:{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.migration.password }}@{{ .Values.taskdesk.env.database.external.migration.host }}:{{ .Values.taskdesk.env.database.external.migration.port }}/{{ .Values.taskdesk.env.database.external.migration.database }}"
+  {{- end }}
+{{- else }}
+- name: TASKDESK_MIGRATION_DATABASE_URL
+  {{- if .Values.taskdesk.env.database.external.existingSecret.enabled }}
+  value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.username }}:$(TASKDESK_EXTERNAL_APP_DB_PASSWORD_FOR_MIGRATE_FALLBACK)@{{ .Values.taskdesk.env.database.external.host }}:{{ .Values.taskdesk.env.database.external.port }}/{{ .Values.taskdesk.env.database.external.database }}"
+  {{- else }}
+  value: "postgresql://{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.username }}:{{ include "taskdesk.urlencodeUserinfo" .Values.taskdesk.env.database.external.password }}@{{ .Values.taskdesk.env.database.external.host }}:{{ .Values.taskdesk.env.database.external.port }}/{{ .Values.taskdesk.env.database.external.database }}"
+  {{- end }}
+{{- end }}
+{{- end }}

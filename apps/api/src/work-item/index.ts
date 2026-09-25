@@ -1,3 +1,6 @@
+import { eq } from "drizzle-orm";
+import db from "../database";
+import { personTable } from "../database/schema";
 import {
   type ApiKey,
   apiRouter,
@@ -8,28 +11,40 @@ import {
 } from "../openapi";
 import {
   assertCallerHasCapability,
+  builtInRoleHasCapability,
   requireWorkspaceCapability,
 } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import {
+  isUnambiguousMembership,
+  workspaceMemberRoles,
+} from "../utils/workspace-member-roles";
 import type { ActivityActorType } from "./activity";
 import createWorkItem from "./controllers/create-work-item";
 import getWorkItemByKey from "./controllers/get-work-item";
+import listAssignablePeople from "./controllers/list-assignable-people";
+import listWorkItemTypes from "./controllers/list-work-item-types";
 import listWorkItems from "./controllers/list-work-items";
 import updateWorkItem, {
   WorkItemVersionConflictError,
 } from "./controllers/update-work-item";
 import { requireWorkItemReach } from "./require-work-item-reach";
 import {
-  workItemListSchema,
+  assignablePeopleSchema,
+  workItemDetailSchema,
+  workItemListResponseSchema,
   workItemSchema,
+  workItemTypeListSchema,
   workItemVersionConflictSchema,
 } from "./response";
 import {
   createWorkItemBody,
   ifMatchHeader,
+  listWorkItemsQuery,
   projectIdParam,
   updateWorkItemBody,
   workItemKeyParam,
+  workspaceIdParam,
 } from "./schema";
 
 /**
@@ -153,19 +168,30 @@ const listWorkItemsRoute = createRoute({
   tags: ["Work items"],
   summary: "List work items",
   description:
-    "List a project's work items, oldest first by number. Archived and deleted items " +
-    "are excluded. Not paginated in this first slice.",
+    "List a project's work items with server-side sort, cursor pagination and " +
+    "filters (`docs/01-architecture/api-design.md`'s collection convention; " +
+    "`sort`/`dir` match #306's own URL param names: `key | title | priority | " +
+    "dueDate`, `asc | desc`, default `key`/`asc`). Archived and deleted items are " +
+    "excluded by default. Each row also carries the resolved `stateName`, " +
+    "`stateCategory` and `assigneeName` (#310) alongside the raw ids.",
   middleware: [
     workspaceAccess.fromProject("projectId"),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
-  request: { params: projectIdParam },
+  request: { params: projectIdParam, query: listWorkItemsQuery },
   responses: {
-    200: jsonResponse("The project's work items", workItemListSchema),
+    200: jsonResponse(
+      "A page of the project's work items",
+      workItemListResponseSchema,
+    ),
     // #290: an unknown/out-of-reach project 400s via `workspaceAccess.fromProject()`
-    // before this route's own permission check runs (#202's own precedent).
+    // before this route's own permission check runs (#202's own precedent) -- folded
+    // into the same 400 alongside #310's own query-validation cases (unknown sort
+    // field, out-of-range limit, malformed cursor, NUL byte, etc.).
     400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
+      "Unknown project or its workspace could not be determined, or an invalid " +
+        "query parameter (unknown sort field, out-of-range limit, malformed cursor, " +
+        "NUL byte, etc.)",
     ),
     403: errorResponse("Missing work_item:read permission"),
     // #202 / PR #204's freeze invariant (independent Opus security review of PR #271,
@@ -188,11 +214,41 @@ const getWorkItemRoute = createRoute({
   ] as const,
   request: { params: workItemKeyParam },
   responses: {
-    200: jsonResponse("The work item", workItemSchema),
+    200: jsonResponse("The work item", workItemDetailSchema),
     403: errorResponse(
       "No workspace access, or missing work_item:read permission",
     ),
     404: errorResponse("Work item not found"),
+  },
+});
+
+// The workspace's type catalogue, for the create dialog's Type picker (`WI-1`). The
+// first workspace-scoped route in this module; `workspaceAccess.fromParam` loads the
+// workspace by the path's own id and verifies membership before the capability check,
+// the same helper shape the member/invitation reads in `workspace/index.ts` use.
+const listWorkItemTypesRoute = createRoute({
+  method: "get",
+  operationId: "listWorkItemTypes",
+  path: "/workspace/{workspaceId}/work-item-types",
+  tags: ["Work items"],
+  summary: "List the workspace's work-item types",
+  description:
+    "The workspace's configured `work_item_type` rows -- what a create dialog's Type " +
+    "picker reads. Workspace-scoped: every project in a workspace shares the catalogue.",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:read"),
+  ] as const,
+  request: { params: workspaceIdParam },
+  responses: {
+    200: jsonResponse(
+      "The workspace's work-item types",
+      workItemTypeListSchema,
+    ),
+    400: errorResponse("Workspace ID could not be determined"),
+    403: errorResponse(
+      "No access to the workspace, or missing workspace:read permission",
+    ),
   },
 });
 
@@ -236,6 +292,35 @@ const updateWorkItemRoute = createRoute({
   },
 });
 
+const listAssignablePeopleRoute = createRoute({
+  method: "get",
+  operationId: "listAssignablePeople",
+  path: "/projects/{projectId}/assignable",
+  tags: ["Work items"],
+  summary: "List assignable people",
+  description:
+    "The project roster with each person's open-work count, filtered to the people the " +
+    "caller may actually assign to (`assignment.md`): an actor holding `work_item:assign` " +
+    "sees the active roster; anyone else with reach sees only themselves; a caller with " +
+    "neither capability sees an empty list. The client never filters this itself.",
+  middleware: [
+    workspaceAccess.fromProject("projectId"),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
+  request: { params: projectIdParam },
+  responses: {
+    200: jsonResponse(
+      "The people the caller may assign to",
+      assignablePeopleSchema,
+    ),
+    400: errorResponse(
+      "Unknown project, or its workspace could not be determined",
+    ),
+    403: errorResponse("Missing work_item:read permission"),
+    404: errorResponse("Project not found"),
+  },
+});
+
 const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(createWorkItemRoute, async (c) => {
     const { projectId } = c.req.valid("param");
@@ -260,14 +345,25 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(listWorkItemsRoute, async (c) => {
     const { projectId } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const items = await listWorkItems(projectId, workspaceId);
-    return c.json(items, 200);
+    const query = c.req.valid("query");
+    const result = await listWorkItems(
+      projectId,
+      workspaceId,
+      c.get("userId"),
+      query,
+    );
+    return c.json(result, 200);
   })
   .openapi(getWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
     const item = await getWorkItemByKey(key, workspaceId);
     return c.json(item, 200);
+  })
+  .openapi(listWorkItemTypesRoute, async (c) => {
+    const { workspaceId } = c.req.valid("param");
+    const types = await listWorkItemTypes(workspaceId);
+    return c.json(types, 200);
   })
   .openapi(updateWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");
@@ -325,6 +421,50 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
       }
       throw error;
     }
+  })
+  .openapi(listAssignablePeopleRoute, async (c) => {
+    const { projectId } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const userId = c.get("userId");
+
+    // The caller's personal id, from the same `person.user_id` mapping the assign route
+    // resolves -- a caller with no person row can never be a candidate.
+    const [callerPerson] = await db
+      .select({ id: personTable.id })
+      .from(personTable)
+      .where(eq(personTable.userId, userId))
+      .limit(1);
+
+    // "May assign anyone" reads the caller's own role through the same
+    // `builtInRoleHasCapability` predicate every other authority check uses (#318's
+    // genuine-row rule included) -- one source, so this feed cannot disagree with
+    // `POST /assign` about what the actor may do.
+    const roles = await workspaceMemberRoles(db, workspaceId, userId);
+    const hasUnambiguousRole = isUnambiguousMembership(roles);
+    const canAssignAnyone =
+      hasUnambiguousRole &&
+      (await builtInRoleHasCapability(
+        workspaceId,
+        roles[0],
+        "work_item:assign",
+      ));
+    // The self-only tier keys on the CAPABILITY (`work_item:update`), never on "the
+    // caller happens to have a person row" -- PR #362's F2.
+    const canSelfAssign =
+      hasUnambiguousRole &&
+      (await builtInRoleHasCapability(
+        workspaceId,
+        roles[0],
+        "work_item:update",
+      ));
+
+    const people = await listAssignablePeople({
+      projectId,
+      callerPersonId: callerPerson?.id ?? null,
+      callerCanAssignAnyone: canAssignAnyone,
+      callerCanSelfAssign: canSelfAssign,
+    });
+    return c.json(people, 200);
   });
 
 export default workItem;
