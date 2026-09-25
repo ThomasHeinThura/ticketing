@@ -15,6 +15,18 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-25 · Intentional pre-2.0 OpenAPI breaking changes pass only through a reviewed allowlist
+
+**Supersedes (narrowly):** the unconditional failure of `oasdiff breaking --fail-on WARN` added by #355, only for a finding that exactly matches a reviewed allowlist entry, and only before 2.0.0. `api-design.md`'s post-2.0.0 rule is unchanged.
+
+**Decision:** `scripts/ci/openapi-approved-breaks.json` lists each approved break by operation, oasdiff rule, oasdiff finding fingerprint, PR, reason and decision reference. The contract gate passes a breaking finding only on an exact (operation, rule, fingerprint) match against an entry that is NEW relative to `origin/main`'s copy of the file — entries approve only the break in the PR that adds them; delete them after merge, since an entry already on `main` approves nothing there and the gate only warns (does not fail) if a merged entry is left in the file. Every other finding still fails, a new entry matching no finding fails as stale/typo'd, and malformed input, an unreadable base copy, or an unexpected oasdiff exit status all fail closed. The file is in the security-review scope, so every entry is added in the PR that makes the break and needs an Opus review there. From the first stable `v2.0.0` (or later) release tag on origin, the file must be empty, and a non-empty file fails the gate.
+
+**Why:** the API is unversioned until 2.0.0 (`api-design.md`). #355's gate had no way to approve a deliberate break, so #320's list envelope, which is #310's deliverable and already consumed by the web client, could not pass.
+
+**Alternatives:** Skip the breaking check until 2.0.0, rejected because accidental breaks would go unseen. Serve #320's envelope on a new path and keep the array route, rejected because it adds code and a legacy route for an unversioned API.
+
+**Decided by:** Thomas, 2026-09-25, in session ("Reviewed allowlist file").
+
 ### 2026-09-24 · While the lanes are stopped, Claude Sonnet subagents may make small fixes for already-recorded review findings on stopped PRs; #353 waits for #344
 
 **Supersedes (temporarily, in part):** the 2026-09-23 entry "Three non-Claude implementation agents take the P0/P1/P2 lanes…" (#336), only its assignment of *fix rounds* to the lane agents and its narrowing of the Claude session to Opus review and merge. The narrowing is suspended for the recorded-finding fixes this entry allows, and applies again when this entry ends. Nothing else in #336 or #345 changes, and neither is rewritten. `CLAUDE.md`'s "Model tiers" note is read with this exception.
