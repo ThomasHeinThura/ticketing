@@ -62,6 +62,22 @@ as authored; these corrections govern.
   merged content once it lands on `main` — do not assume this blueprint's snapshot still
   matches.
 
+- **§2/§8's "only `"owner"` is reserved" — SUPERSEDED, issue #318 (security), 2026-09-23.**
+  Lines 188 and 246 below (and every other place this blueprint says
+  `RoleNameReservedError` fires only for the literal string `"owner"`) describe what S7
+  shipped, correctly, at the time — but that turned out to be a privilege-escalation gap:
+  the Opus review of PR #315 (finding S2) showed a holder of `ac:create` could mint a
+  custom role literally named `manager` (or `lead`/`admin`/`member`/`viewer`/`customer`/
+  `instance_admin`) and, once assigned, `require-workspace-capability.ts` granted that
+  built-in's FULL capability set by name alone. Pull request #322 closed it:
+  `create-workspace-role.ts` now refuses every `BUILT_IN_ROLES` key, not just `"owner"`
+  (`RESERVED_ROLE_NAMES` there), and a new `workspace_role.is_system` column lets both
+  `require-workspace-capability.ts` and `resolve-identity.ts` tell a genuine seeded row
+  from a custom one that merely shares a built-in's name — see
+  [`rbac.md`](../../01-architecture/rbac.md)'s "Every `BUILT_IN_ROLES` name is reserved"
+  section for the current, governing rule. The body below is kept as authored, describing
+  S7 as it shipped; do not implement against its "only `owner`" wording.
+
 ## A third prerequisite, found by CI rather than by reading — CLEARED 2026-09-15
 
 **S7 could not start until `roles-and-permissions-ui.md`'s open review findings were closed.**

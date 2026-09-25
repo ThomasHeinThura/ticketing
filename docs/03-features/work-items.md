@@ -129,7 +129,9 @@ whether it is an epic, and which custom fields apply.
   archive, delete — and, gated behind `feature.cycles` (P5, [agile.md](agile.md)), move to
   cycle or module.
 - `WI-25` Bulk operations are transactional per item, not per batch: 47 of 50 succeeding
-  reports 3 failures with reasons rather than rolling everything back.
+  reports 3 failures with reasons rather than rolling everything back. A failure reason
+  must not reveal whether an inaccessible work item exists: "not found" and "out of
+  reach" use the same per-item reason.
 - `WI-26` Bulk operations respect workflow legality per item — an illegal transition for
   one item does not block the other 49.
 - `WI-27` Bulk operations write one audit row per item plus one summary row.
@@ -184,6 +186,7 @@ POST   /api/work-items/{key}/watch                                      work_ite
 DELETE /api/work-items/{key}/watch                                      work_item:read  — deliberate, see Permissions
 POST   /api/work-items/bulk                                             work_item:read  (workspace) — then each item is re-checked against its own capability; failures reported per WI-25
 GET    /api/work-items/{key}/activity                                   work_item:read
+GET    /api/workspace/{workspaceId}/work-item-types                     workspace:read
 GET    /api/workspaces/{id}/work-item-templates                        workspace:read
 POST   /api/workspaces/{id}/work-item-templates                        workspace:manage_settings
 PATCH  /api/workspaces/{id}/work-item-templates/{templateId}            workspace:manage_settings

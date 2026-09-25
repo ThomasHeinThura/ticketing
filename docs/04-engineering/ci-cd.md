@@ -2,22 +2,26 @@
 
 ## Pipelines
 
-Two, following v1's structure, which was sound.
+Three, with verification, image publication and production promotion kept as distinct
+pipelines.
 
 | Pipeline | Trigger | Does |
 | --- | --- | --- |
-| **Build** | Push to `main`, and every pull request | Verify, version, build, push images |
+| **Build** | Every pull request and push to `main` | CI verifies pull requests; the `release.yml` main-push run builds, scans, signs and publishes the `edge` and SHA images |
+| **Release** | Manual dispatch from `main` | The same `release.yml` builds and scans a versioned candidate for the selected `main` SHA, then signs and publishes it |
 | **Promote** | Manual | Move a tested digest from UAT to production |
 
-The build pipeline **never deploys** and **never holds production secrets**. It has Docker
-registry credentials and nothing else. This separation is deliberate: a compromised build
-pipeline should not be able to reach production.
+The build and release pipelines **never deploy** and **never hold production secrets**.
+The Release workflow separates the `build-scan` job from `sign-publish`: build and scan
+tools have no OIDC signing identity or write access to GitHub contents/releases, while only
+the publish job receives `id-token: write`, `attestations: write`, and the narrowly scoped
+permissions needed to publish scanned digests, tags, and releases. The build job can write
+only to the registry for its temporary candidate image. This separation is deliberate: a
+compromised build pipeline should not be able to sign or release an image or reach
+production.
 
-**Platform: GitHub Actions** (decided 2026-09-05 — the repository is on GitHub, keyless
-cosign and `semantic-release`'s GitHub integration both assume it; v1's Azure Pipelines are
-not carried over). Concurrency on `main` is
-`concurrency: { group: main, cancel-in-progress: false }`, so two merges cannot race a
-release.
+**Platform: GitHub Actions** (decided 2026-09-05 — the repository is on GitHub and keyless
+cosign uses its OIDC identity; v1's Azure Pipelines are not carried over).
 
 ## Pull request pipeline
 
@@ -27,6 +31,14 @@ is the single list of CI checks**; [testing-strategy.md](testing-strategy.md) li
 stages below.
 
 **Fast — required on every push, target under 15 minutes:**
+
+Every gate whose failure must block merging is also listed by its exact check context in
+the active `protect-main` ruleset. Adding a new standalone job here is not sufficient by
+itself: update the ruleset to require its context and verify the live rule after the change.
+As of 2026-09-23, `domain coverage (90%)` is required alongside the contexts listed in the
+repository's active ruleset. The full-stage `integration - Postgres 18` and
+`e2e - protected-route redirect` contexts are also required; do not infer that a workflow
+configured to run before merge is enforced unless its exact context appears in the ruleset.
 
 ```
 ┌─ Setup ──────────────────────────────────────────┐
@@ -57,11 +69,13 @@ stages below.
 │ no-inherited-routes  removals stay removed       │
 ├─ Test ───────────────────────────────────────────┤
 │ pnpm test                unit + component        │
-│ pnpm test:coverage       90 % on packages/domain │
+│ pnpm test:coverage       90 % statements, lines,  │
+│                          functions on domain     │
 │ pnpm test:permissions    route coverage (Hono    │
 │                          router), role × route   │
 │                          matrix ×2, custom roles │
-│ pnpm test:contract       Redocly lint + oasdiff  │
+│ pnpm test:contract       OpenAPI lint, drift,    │
+│                          and breaking changes   │
 │ pnpm test:mcp            tool → route parity     │
 ├─ Build ──────────────────────────────────────────┤
 │ pnpm build               all apps and packages   │
@@ -70,6 +84,37 @@ stages below.
 │ helm lint + helm template   charts/taskdesk      │
 └──────────────────────────────────────────────────┘
 ```
+
+`pnpm test:contract` regenerates and checks the committed OpenAPI document, runs Redocly's
+recommended lint rules, then runs `oasdiff breaking --fail-on WARN` against `origin/main`.
+Redocly currently reports 16 inherited findings in the generated contract; lint findings
+are compared to the immutable `origin/main` contract, so each may be removed and any new
+finding fails. The oasdiff release is pinned and its Linux x64 archive is SHA-256 verified
+on every run. Fetch `origin/main` before running the command locally.
+
+A breaking finding from `oasdiff breaking --format json` passes only when its exact
+(operation, rule, fingerprint) triple — HTTP method + path, oasdiff's rule id, and
+oasdiff's own per-finding `fingerprint` — matches an entry in
+`scripts/ci/openapi-approved-breaks.json` that is **NEW relative to `origin/main`'s copy of
+that file**; every other finding still fails, and the file fails closed if it, oasdiff's
+output, or `origin/main`'s copy of the allowlist cannot be read or parsed. Binding on
+`fingerprint` means one entry approves exactly one finding, so a PR with two similar
+breaking changes on the same route needs two entries, one per finding. Binding to NEW
+entries only means **entries approve only the break in the PR that adds them** — an entry
+already on `origin/main` (an earlier PR's approved break, now merged) approves nothing, so
+a later PR that reintroduces the same kind of break on the same route still needs its own
+new entry and its own Opus review; the gate warns (does not fail) when a merged entry is
+still in the file, as a prompt to delete it. A new entry that matches no finding also fails,
+as a stale or typo'd entry. oasdiff's exit code is also checked: anything other than `0` or
+`1`, or `1` with zero findings reported, fails closed. This is the reviewed-allowlist
+mechanism for an intentional pre-2.0 breaking change (decision log, 2026-09-25); see
+[api-design.md](../01-architecture/api-design.md#versioning). Each entry is added in the
+PR that makes the break, needs its own Opus security review there, and from the first
+stable `v2.0.0` (or later) release tag on the file must be empty — a non-empty file fails
+the gate. "Stable" is looked up live from `git ls-remote --tags origin` (a tag matching
+`^v?(\d+)\.(\d+)\.(\d+)$` with major >= 2, no pre-release/build suffix), never from
+`package.json`'s `version` field, which tracks unrelated release history and is already
+past `2.0.0`.
 
 **`pnpm test:permissions` must run before `apps/web` is built, against a router that cannot
 see a built `apps/web/dist` (#165).** The Fast stage's ordering above already guarantees this
@@ -84,8 +129,9 @@ like the Docker image's own `build-web` stage below — must keep `apps/web/dist
 router's view, or re-derive this constraint; it is not something `route-coverage.ts`'s
 declaration list can absorb without weakening its strict-count design.
 
-**Full — required before merge, runs on the merge queue (or on the `ready-for-review`
-label), target under 45 minutes, sharded four ways:**
+**Full — required before merge, runs on pull request `opened`, `reopened`, `labeled`,
+`synchronize`, and `ready_for_review` events and on the merge queue, target under 45 minutes,
+sharded four ways:**
 
 ```
 ├─ Integration ────────────────────────────────────┤
@@ -93,15 +139,23 @@ label), target under 45 minutes, sharded four ways:**
 │                          lifecycle/, migrations  │
 │                          from empty, anonymiser  │
 ├─ Browser ────────────────────────────────────────┤
-│ pnpm test:e2e            agent + portal          │
-│ pnpm test:e2e --project=security                 │
-│ pnpm test:e2e --project=reduced-motion   G9      │
-│ pnpm test:e2e --project=mobile-320       H6      │
+│ pnpm test:e2e            protected-route redirect│
+│                          browser smoke today;    │
+│ pnpm test:e2e --project=security                │
+│ pnpm test:e2e --project=reduced-motion   G9     │
+│ pnpm test:e2e --project=mobile-320       H6     │
 │ pnpm test:a11y           G4 — axe                │
 │ pnpm test:visual         G8 — snapshots          │
 │ pnpm test:perf           G11 — budgets           │
 └──────────────────────────────────────────────────┘
 ```
+
+The current Playwright suite is a real-browser smoke for the already-specified logged-out
+protected-route redirect and its preserved destination. The `security`, `reduced-motion`,
+and `mobile-320` project commands above document future suites; none are enabled yet. The
+current smoke does not yet satisfy authenticated agent/portal journeys; these still need
+deterministic application fixtures and acceptance flows. The narrow
+`e2e - protected-route redirect` smoke is a required branch-protection status check.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
@@ -120,6 +174,7 @@ apps/api/src/**/index.ts             any new route file (a new *.ts exporting a 
 apps/api/src/**/controllers/**       apps/api/drizzle/*.sql
 apps/api/src/policy-registry.ts      apps/api/src/database/**
 packages/mcp/src/auth/**             scripts/deploy.sh
+packages/domain/src/identity/**      apps/api/src/permissions/**
 
 apps/api/src/middleware/**           (path does not exist yet)
 apps/api/src/webhooks/**             (path does not exist yet, P4)
@@ -132,6 +187,10 @@ turbo.json                           pnpm-lock.yaml
 docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
                                      .npmrc
                                      .pnpmfile.cjs
+scripts/lib/**
+**/vitest.config.*                   apps/web/playwright.config.ts
+apps/web/e2e/**                      scripts/ci/redocly.yaml
+scripts/ci/openapi-approved-breaks.json
 ```
 
 **Why the last two lines of the first block were added** (2026-09-09, from an independent
@@ -380,27 +439,27 @@ On merge:
 
 1. Everything above.
 2. Full E2E across Chrome, Firefox, Safari and Edge.
-3. Compute the next semantic version from conventional commits.
-4. Build the container image, multi-arch (amd64, arm64).
-5. Scan with Trivy — high or critical fails.
-6. Generate a CycloneDX SBOM.
-7. Push to the registry, tagged with the version, the git SHA (`sha-<gitsha>`) and
-   `edge`. **Not `latest`** — `latest` means latest *stable* and moves only at promotion;
-   see [release-plan.md](../07-planning/release-plan.md).
-8. **Sign the image** with cosign (keyless, using the CI job's OIDC identity) and publish a
-   build-provenance attestation alongside it, so anyone — a customer, the marketplace
-   scanner, our own deploy script — can verify the digest they pulled is the one this
-   pipeline built.
-9. Package and publish the Helm chart (`helm package`, pushed as an OCI artefact next to the
+3. Build the container image, multi-arch (amd64, arm64), under a run-specific candidate tag.
+4. Scan each platform image with Trivy — high or critical fails.
+5. Generate a CycloneDX SBOM for each platform image.
+6. **Sign the image** with cosign (keyless, using the CI job's OIDC identity) and publish a
+  build-provenance attestation alongside it, so anyone — a customer, the marketplace
+  scanner, our own deploy script — can verify the digest they pulled is the one this
+  pipeline built.
+7. Push the scanned, signed image to the registry as `edge` and `sha-<gitsha>`. **Not
+   `latest`** — `latest` means latest *stable* and moves only at promotion; see
+   [release-plan.md](../07-planning/release-plan.md).
+8. Package and publish the Helm chart (`helm package`, pushed as an OCI artefact next to the
    image).
-10. Publish `@taskdesk/mcp` to npm if it changed.
-11. Deploy the documentation site.
+9. Publish `@taskdesk/mcp` to npm if it changed.
+10. Deploy the documentation site.
 
-**No version-bump commit on merge.** Stable and pre-release versions are cut by a
-**manually dispatched Release workflow** — kaneo's pattern — which computes the version,
-tags, signs, publishes the GitHub release with notes, and rewrites `get.taskdesk.dev/stable.txt`
-on a stable promotion. This keeps `main` protected without a CI bypass identity and matches
-[release-plan.md](../07-planning/release-plan.md)'s pinned pre-release numbering.
+**No version-bump commit on merge or release.** The Release workflow runs after each `main`
+update to publish the signed `edge`/SHA images. A maintainer may also dispatch it from
+`main` with a selected, already-reachable `source_sha` and an explicit SemVer version; that
+run creates the `v<version>` Git tag and GitHub release at that exact SHA, and attaches the
+platform SBOMs. It does not edit `CHANGELOG.md`, package versions or chart versions. Stable
+promotion and the installer pointer remain a separate operator action after UAT verification.
 
 **UAT delivery is pull, not push.** A small updater on the UAT host polls the registry for
 the `edge` tag's digest every few minutes, verifies its cosign signature, pulls, and runs
@@ -473,14 +532,19 @@ runtime configuration in God Mode — see
 **Workflow hardening — because a compromised CI identity produces a *validly signed*
 image** ([security-model.md](../01-architecture/security-model.md#threat-model)):
 
-- Every workflow declares `permissions:` read-only at the top; `id-token: write` and
-  `packages: write` are granted to the single signing/publishing job only.
-- The Release workflow runs only on manual dispatch from `main` or `release/*`, behind
-  branch protection with no bypass actor; `pull_request` jobs never sign or publish, and
-  fork PRs run with no secrets.
+- Every workflow declares `permissions:` read-only at the top. In the Release workflow,
+  only `sign-publish` receives `id-token: write`, `packages: write`, `attestations: write`,
+  `contents: write` (for the selected source tag and GitHub release), and `actions: read`
+  (for provenance). The separate build-scan job has registry write only for its temporary
+  candidate image and cannot mint the signing identity.
+- The Release workflow publishes on protected `main` updates and allows manual release
+  dispatch only from `main`; pull requests never sign or publish, and fork PRs run with no
+  secrets. A manual release names a source SHA already reachable from `main`.
 - Third-party actions are pinned by **commit SHA**, not tag; Renovate updates them.
-- `scripts/deploy.sh` and the installer verify the cosign signature against the **exact
-  workflow identity** — repository, workflow file and ref — not just the OIDC issuer.
+- `scripts/deploy.sh` verifies both the expected tag annotation and the cosign signature
+  against the **exact workflow identity** — repository, workflow file and ref — not just
+  the OIDC issuer. It resolves a mutable tag once, verifies that immutable digest, then
+  passes that same digest to Compose.
 - gitleaks runs on every push (above); a hit fails the fast stage.
 
 ## Branching
@@ -511,23 +575,19 @@ main                    always deployable, protected
 
 ## Releases
 
-`semantic-release` from conventional commits.
-
-| Prefix | Bump |
-| --- | --- |
-| `fix:` | patch |
-| `feat:` | minor |
-| `feat!:` or `BREAKING CHANGE:` | major |
-
-The changelog is generated, not written. A release creates a git tag, a GitHub release
-with notes, and the tagged image.
+Release versions are supplied explicitly when a maintainer dispatches the Release workflow.
+The workflow validates SemVer, builds and scans the selected `main` SHA, publishes and signs
+its image, then creates the matching `v<version>` tag and GitHub release at that SHA. It does
+not make a version-bump commit or rewrite project version files. The existing semantic-release
+configuration is not invoked by the release workflow.
 
 ## Release notes
 
-`CHANGELOG.md` at the repo root is the durable record — `semantic-release` writes to it
-directly, entry per commit. That is necessary and not sufficient: a list of commit
-messages does not answer "what can I now do that I couldn't yesterday," which is the
-question a release note exists to answer.
+`CHANGELOG.md` at the repo root is maintained as a durable project record. A GitHub release
+uses generated notes for the selected source SHA; release automation does not write to the
+changelog. That is necessary and not sufficient: a list of commit messages does not answer
+"what can I now do that I couldn't yesterday," which is the question a release note exists to
+answer.
 
 **At every stage close** ([SDLC](sdlc.md) step 8 — Document), in addition to the
 generated entries:
@@ -538,8 +598,8 @@ generated entries:
    feature that reached its Definition of Done — ⬜ → 🟡 → ✅. A feature does not move to
    ✅ here until [definition-of-done.md](definition-of-done.md) is actually satisfied, not
    when it merely compiles.
-3. Add a short, human-written paragraph to that release's `CHANGELOG.md` entry, above the
-   generated commit list, summarising what a user can now do — the same discipline
+3. Add a short, human-written paragraph to the next `CHANGELOG.md` entry, summarising what a
+   user can now do — the same discipline
    [status.md](../07-planning/status.md) already applies to session logs: *describe state,
    not intent*.
 4. Cross-reference the [accelerated delivery plan](../07-planning/accelerated-delivery-plan.md)'s

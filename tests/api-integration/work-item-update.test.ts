@@ -116,6 +116,24 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     joinedAt: new Date(),
   });
 
+  // Issue #318 (security): `require-workspace-capability.ts` now grants a `BUILT_IN_ROLES`
+  // name's capabilities only to a GENUINE seeded `workspace_role` row (`is_system = true`)
+  // -- `"owner"` is the one exception, since it never gets a row at all (retrofit plan R5).
+  // Every other role this helper assigns (including the mocked
+  // `test_updater_no_set_priority` key above) needs one, or it would read as a custom row
+  // that merely shares the name and lose its capabilities.
+  if (role !== "owner") {
+    const now = new Date();
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId,
+      role,
+      permission: JSON.stringify({}),
+      isSystem: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
   return user;
 }
 

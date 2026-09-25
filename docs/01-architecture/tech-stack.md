@@ -13,7 +13,7 @@ Inherited from kaneo unless noted. Versions are the floor, not a ceiling — kee
 | Lint + format | **Biome 2** | Tabs, organised imports. Replaces ESLint + Prettier |
 | Custom lint rules | Biome plugins + bespoke node scripts | UX gates; see [UX quality gates](../02-design/ux-quality-gates.md) |
 | Commits | **commitlint** conventional + **husky** | |
-| Releases | **semantic-release** + commitlint + husky | Kept from kaneo (`release.config.js`, `commitlint.config.js`, `.husky/`) — decision log 2026-09-06 |
+| Releases | **Manually dispatched GitHub Actions workflow** | Explicit SemVer and selected `main` SHA; tag/release without version-bump commit. Conventional commitlint + husky remain separate tooling. |
 
 
 ## Backend
@@ -87,7 +87,7 @@ Detail: [Testing strategy](../04-engineering/testing-strategy.md).
 | Identity | **Microsoft Entra** — OIDC + SCIM, the one provider in core delivery ([identity-provisioning.md](../03-features/identity-provisioning.md)). Any standards-compliant OIDC issuer works through `auth.oidc`; a **Keycloak 26** preset is future scope, kept here only as a compatibility note |
 | Object storage | `storage.filesystem` by default; **SeaweedFS** (opt-in profile) or any real S3 — see below |
 | Mail (dev) | **Mailpit** |
-| CI | **GitHub Actions** — decided 2026-09-05: the repository is on GitHub, and keyless cosign signing and `semantic-release`'s GitHub integration both assume it. v1's Azure Pipelines are not carried over |
+| CI | **GitHub Actions** — decided 2026-09-05: the repository is on GitHub, and keyless cosign signing and the GitHub Releases API both use it. v1's Azure Pipelines are not carried over |
 | Registry | Docker Hub / ACR |
 
 ## Why MinIO is not the default (2026-09-05)
