@@ -15,6 +15,27 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-24 · While the lanes are stopped, Claude Sonnet subagents may make small fixes for already-recorded review findings on stopped PRs; #353 waits for #344
+
+**Supersedes (temporarily, in part):** the 2026-09-23 entry "Three non-Claude implementation agents take the P0/P1/P2 lanes…" (#336), only its assignment of *fix rounds* to the lane agents and its narrowing of the Claude session to Opus review and merge. The narrowing is suspended for the recorded-finding fixes this entry allows, and applies again when this entry ends. Nothing else in #336 or #345 changes, and neither is rewritten. `CLAUDE.md`'s "Model tiers" note is read with this exception.
+
+**Decision:**
+1. While **every** lane agent (P0, P1, P2 and P3) is stopped, the orchestrating Claude session may, on a stopped lane's PR, commission fresh Claude Sonnet subagents to make **small fixes for findings a review has already recorded**.
+   - **Scope:** no new features, and nothing beyond the recorded finding. A finding that needs a design change, a migration or a new shared contract is not a small fix; it goes back to the lane. One PR at a time. Each fix has a regression test that fails on the unfixed code.
+   - **Independence:** a fresh context other than the fixer does the ordinary review of the fix, as #345 and the current-model fallback allow. It records its model and the exact SHA it reviewed. The Opus 5.5 reviewer is a third, separate fresh context. Neither reviewer may be the fixer, and neither may be the orchestrating session.
+   - **Re-review:** the fix moves the head, so every earlier clearance on that PR is stale. The PR needs all of its required reviews again at the new head before merge. That includes Opus, even outside security scope.
+   - **Attribution:** the fix commits use the Claude Code identity. The PR's `## Implemented by` lists both the lane agent (original work) and the Claude Sonnet fixer (the fix commits, by SHA), so the commit-author check still reconciles.
+   - **Unchanged:** every required status check in `protect-main` (15 today), exact-head binding, and no waivers.
+2. PR #353 (assign a work item) is **not** merged without its audit-log row. It waits for #344 (`audit_log.project_id` and the project-reach read filter), and #365, which is stacked on it, waits too.
+
+**Why:** Thomas, 2026-09-24. All four implementation lanes stopped with review findings open, including #320's blocking cross-tenant cursor leak. Review-only work can't move those PRs. The audit-row requirement is a real gate, so Thomas kept it rather than waiving it.
+
+**Alternatives:** Keep the orchestrator review-only and leave every PR with findings until the lanes restart. Rejected for small recorded fixes. Waive #353's audit-row item and track it. Rejected by Thomas.
+
+**Scope and end:** this ends everywhere as soon as **any** lane agent restarts, or on 2026-09-30, whichever comes first, unless Thomas extends it. A fix already under review when it ends may finish its gates.
+
+**Decided by:** Thomas, 2026-09-24, in session ("Yes, small fixes only"; "Wait for #344").
+
 ### 2026-09-24 · GPT-6 Luna replaces Sonnet for ordinary reviews on active P0 lanes
 
 **Decision:** For the currently active P0 work, use fresh independent GPT-6 Luna contexts
