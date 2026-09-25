@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  isAtLeastV2,
+  hasStableV2Tag,
   parseApprovedBreaks,
+  parseLsRemoteTags,
   parseOasdiffBreakingJson,
   parseRedoclyReport,
   partitionApprovedBreaks,
+  stableV2ReleaseExists,
   unapprovedProblems,
 } from "./test-contract.mjs";
 
@@ -184,10 +186,62 @@ test("unparseable oasdiff output fails closed", () => {
   assert.throws(() => parseOasdiffBreakingJson(JSON.stringify([{ id: "x" }])));
 });
 
-test("version >= 2.0.0 is detected regardless of minor/patch", () => {
-  assert.equal(isAtLeastV2("2.0.0"), true);
-  assert.equal(isAtLeastV2("2.22.0"), true);
-  assert.equal(isAtLeastV2("10.0.0"), true);
-  assert.equal(isAtLeastV2("1.9.9"), false);
-  assert.equal(isAtLeastV2("0.4.0"), false);
+test("a stable v2.0.0+ tag is detected", () => {
+  assert.equal(hasStableV2Tag(["v2.0.0"]), true);
+  assert.equal(hasStableV2Tag(["2.1.3"]), true);
+});
+
+test("a pre-release v2 tag does not count as stable", () => {
+  assert.equal(hasStableV2Tag(["v2.0.0-alpha.1"]), false);
+  assert.equal(hasStableV2Tag(["v2.0.0-rc.2"]), false);
+});
+
+test("a stable pre-2.0 tag does not count", () => {
+  assert.equal(hasStableV2Tag(["v1.9.9"]), false);
+});
+
+test("no tags at all is not a stable v2.0.0 release", () => {
+  assert.equal(hasStableV2Tag([]), false);
+});
+
+test("garbage tag names are not mistaken for a stable release", () => {
+  assert.equal(
+    hasStableV2Tag(["latest", "v2", "release-2.0.0", "2.0", "v2.0.0.0"]),
+    false,
+  );
+});
+
+test("parseLsRemoteTags drops ^{} peeled refs and keeps the tag name", () => {
+  const output = [
+    "abc123\trefs/tags/v1.9.9",
+    "def456\trefs/tags/v2.0.0",
+    "def456\trefs/tags/v2.0.0^{}",
+    "",
+  ].join("\n");
+  assert.deepEqual(parseLsRemoteTags(output), ["v1.9.9", "v2.0.0"]);
+});
+
+test("stableV2ReleaseExists is true when a stable v2 tag is on origin", async () => {
+  const runner = () => ({
+    status: 0,
+    stdout: "sha\trefs/tags/v2.0.0\n",
+    stderr: "",
+  });
+  assert.equal(await stableV2ReleaseExists(runner), true);
+});
+
+test("stableV2ReleaseExists fails closed when the lookup exits non-zero", async () => {
+  const runner = () => ({
+    status: 128,
+    stdout: "",
+    stderr: "fatal: unable to access origin",
+  });
+  await assert.rejects(() => stableV2ReleaseExists(runner));
+});
+
+test("stableV2ReleaseExists fails closed when the runner itself throws", async () => {
+  const runner = () => {
+    throw new Error("spawn git ENOENT");
+  };
+  await assert.rejects(() => stableV2ReleaseExists(runner));
 });

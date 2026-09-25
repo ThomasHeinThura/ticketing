@@ -19,7 +19,7 @@ Newest first.
 
 **Supersedes (narrowly):** the unconditional failure of `oasdiff breaking --fail-on WARN` added by #355, only for a finding that exactly matches a reviewed allowlist entry, and only before 2.0.0. `api-design.md`'s post-2.0.0 rule is unchanged.
 
-**Decision:** `scripts/ci/openapi-approved-breaks.json` lists each approved break by operation, oasdiff rule, PR, reason and decision reference. The contract gate passes a breaking finding only on an exact (operation, rule) match; every other finding still fails, and malformed input fails closed. The file is in the security-review scope, so every entry is added in the PR that makes the break and needs an Opus review there. From 2.0.0 the file must be empty, and a non-empty file fails the gate.
+**Decision:** `scripts/ci/openapi-approved-breaks.json` lists each approved break by operation, oasdiff rule, PR, reason and decision reference. The contract gate passes a breaking finding only on an exact (operation, rule) match; every other finding still fails, and malformed input fails closed. The file is in the security-review scope, so every entry is added in the PR that makes the break and needs an Opus review there. From the first stable `v2.0.0` (or later) release tag on origin, the file must be empty, and a non-empty file fails the gate.
 
 **Why:** the API is unversioned until 2.0.0 (`api-design.md`). #355's gate had no way to approve a deliberate break, so #320's list envelope, which is #310's deliverable and already consumed by the web client, could not pass.
 

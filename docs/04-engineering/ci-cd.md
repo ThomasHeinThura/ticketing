@@ -94,8 +94,12 @@ A breaking finding from `oasdiff breaking --format json` passes only when its ex
 fails closed if it or oasdiff's output cannot be parsed. This is the reviewed-allowlist
 mechanism for an intentional pre-2.0 breaking change (decision log, 2026-09-25); see
 [api-design.md](../01-architecture/api-design.md#versioning). Each entry is added in the
-PR that makes the break, needs its own Opus security review there, and once the API's
-version is 2.0.0 or later the file must be empty — a non-empty file fails the gate.
+PR that makes the break, needs its own Opus security review there, and from the first
+stable `v2.0.0` (or later) release tag on the file must be empty — a non-empty file fails
+the gate. "Stable" is looked up live from `git ls-remote --tags origin` (a tag matching
+`^v?(\d+)\.(\d+)\.(\d+)$` with major >= 2, no pre-release/build suffix), never from
+`package.json`'s `version` field, which tracks unrelated release history and is already
+past `2.0.0`.
 
 **`pnpm test:permissions` must run before `apps/web` is built, against a router that cannot
 see a built `apps/web/dist` (#165).** The Fast stage's ordering above already guarantees this

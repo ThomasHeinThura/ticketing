@@ -17,7 +17,6 @@ const archiveName = `oasdiff_${version}_linux_amd64.tar.gz`;
 const archiveSha256 =
   "7c8939fc49b75ee11fec66a5b83b37a2fca6aee109fed85013b1ba2ac2a1ee7f";
 const approvedBreaksPath = "scripts/ci/openapi-approved-breaks.json";
-const packageJsonPath = "package.json";
 
 const APPROVED_BREAK_KEYS = ["operation", "rule", "pr", "reason", "decision"];
 
@@ -149,16 +148,76 @@ export function partitionApprovedBreaks(findings, approved) {
 }
 
 /**
- * True once the root package.json version is 2.0.0 or later — the point at which
- * api-design.md's Versioning section requires the allowlist to be empty.
+ * Extract tag names from `git ls-remote --tags origin` output, dropping the `^{}` peeled
+ * refs a tag object's dereferenced commit produces (those duplicate the tag name and are
+ * not a second, different tag).
  *
- * @param {string} versionString e.g. "2.22.0"
+ * @param {string} output stdout from `git ls-remote --tags origin`
+ * @returns {string[]}
  */
-export function isAtLeastV2(versionString) {
-  const [major] = versionString
-    .split(".")
-    .map((part) => Number.parseInt(part, 10));
-  return Number.isFinite(major) && major >= 2;
+export function parseLsRemoteTags(output) {
+  const tags = [];
+  for (const line of output.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed === "") continue;
+    const match = trimmed.match(/refs\/tags\/(.+)$/);
+    if (!match) continue;
+    const ref = match[1];
+    if (ref.endsWith("^{}")) continue;
+    tags.push(ref);
+  }
+  return tags;
+}
+
+/**
+ * True once at least one tag is a STABLE release `major.minor.patch` (no pre-release or
+ * build suffix, an optional leading `v`) with major >= 2 — "the first stable 2.0.0 (or
+ * later) release" from release-plan.md and api-design.md's Versioning section. A
+ * pre-release tag like `v2.0.0-alpha.1` or `v2.0.0-rc.2` does not count: release-plan.md's
+ * whole pre-release ladder runs under a `2.x` version before the stage that api-design.md
+ * means by "2.0.0 ships".
+ *
+ * @param {string[]} tagNames
+ */
+export function hasStableV2Tag(tagNames) {
+  return tagNames.some((name) => {
+    const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(name);
+    if (!match) return false;
+    return Number.parseInt(match[1], 10) >= 2;
+  });
+}
+
+/**
+ * Whether a stable v2.0.0+ release tag exists on `origin`, looked up live rather than from
+ * any local file — `package.json`'s version tracks `semantic-release`/kaneo history, not
+ * this milestone, and after #331 a release is a git tag the manual Release workflow
+ * creates, not a version-bump commit.
+ *
+ * Fails closed: a lookup that cannot run (no network, no `origin` remote, a non-zero exit)
+ * throws rather than being treated as "no stable v2.0.0 tag exists yet", because "the
+ * lookup failed" and "we checked and it's pre-2.0" are not the same fact.
+ *
+ * @param {(command: string, args: string[]) => { status: number|null, stdout: string, stderr: string }} runner
+ */
+export async function stableV2ReleaseExists(runner) {
+  let result;
+  try {
+    result = runner("git", ["ls-remote", "--tags", "origin"]);
+  } catch (error) {
+    throw new Error(
+      `could not run "git ls-remote --tags origin" to check for a stable v2.0.0+ release ` +
+        `tag: ${error.message}`,
+    );
+  }
+  if (result.status !== 0) {
+    throw new Error(
+      `"git ls-remote --tags origin" failed (exit ${result.status ?? "unknown"}); refusing ` +
+        "to guess whether a stable v2.0.0+ release tag exists. Check network access and " +
+        "the 'origin' remote, then retry.\n" +
+        `${result.stderr ?? ""}`,
+    );
+  }
+  return hasStableV2Tag(parseLsRemoteTags(result.stdout));
 }
 
 export function diagnosticKey(problem) {
@@ -400,26 +459,21 @@ async function main() {
   }
 
   if (approvedBreaks.length > 0) {
-    let packageVersion;
+    let stableV2Released;
     try {
-      const packageJson = JSON.parse(
-        await fs.readFile(path.join(root, packageJsonPath), "utf8"),
-      );
-      packageVersion = packageJson.version;
+      stableV2Released = await stableV2ReleaseExists(run);
     } catch (error) {
-      process.stderr.write(
-        `Could not read ${packageJsonPath} to check the API version: ${error.message}\n`,
-      );
+      process.stderr.write(`${error.message}\n`);
       process.exitCode = 1;
       return;
     }
-    if (isAtLeastV2(packageVersion)) {
+    if (stableV2Released) {
       process.stderr.write(
-        `${approvedBreaksPath} has ${approvedBreaks.length} entry(ies) but ${packageJsonPath} ` +
-          `is at version ${packageVersion} (>= 2.0.0). docs/01-architecture/api-design.md's ` +
-          "Versioning section requires a new path segment for a breaking change from 2.0.0 " +
-          "on, not an allowlist entry — empty the file and version the breaking route " +
-          "instead.\n",
+        `${approvedBreaksPath} has ${approvedBreaks.length} entry(ies) but a stable v2.0.0+ ` +
+          "release tag already exists on origin. docs/01-architecture/api-design.md's " +
+          "Versioning section requires a new path segment for a breaking change from the " +
+          "first stable v2.0.0 (or later) release tag on, not an allowlist entry — empty " +
+          "the file and version the breaking route instead.\n",
       );
       process.exitCode = 1;
       return;
