@@ -352,3 +352,27 @@ merge is still gated on the PR-body template items and on the unresolved items i
 section: the reviewer model record and the reconciliation of `## Implemented by` with the
 commit authors. This note commits only itself, so it moves the head. Any later code or `main`
 merge needs a fresh exact-head check.
+
+## Merge-head attestation (Opus 5.5) — after #366 merged
+
+**Reviewed head:** `897f9cace7730bb6882d5f5918a76c787364afad`
+
+This is a fresh Opus 5.5 context, 2026-09-25, with `main` at
+`536d12a5e5c44e4ab6ed10ac51aa9b5b1f396b38`. `d64b90b` is the Opus re-review note over the
+reviewed code head `5f9155c`, and it changed only this file.
+
+- **Commits from `d64b90b` to `897f9ca` that are not on `main`:** only `897f9ca`, a merge of
+  `main@536d12a` (#366, decision log only). Its parents are exactly (`d64b90b`, `536d12a`).
+  `git show --remerge-diff` is empty, so there was no conflict and no manual resolution.
+- **PR change unchanged:** `git diff c0bd99d d64b90b` and `git diff 536d12a 897f9ca` are
+  byte-identical (same sha256), and no file overlaps.
+- **Commands at `897f9ca`** (packages built first; private DB `att326_test`, dropped
+  afterwards):
+  - `pnpm check:openapi`: "tests/api-contract/openapi.json matches the API (108 operations)".
+  - `pnpm test:contract` exits 0. Redocly reports 16 findings, the same 16 as `origin/main`.
+    oasdiff 1.32.1 was verified and reports "no breaking API changes against origin/main",
+    so the earlier `allOf` breaking-change failure is resolved.
+  - `apps/api test:unit` passes 58 files / 488 tests.
+  - `tests/api-integration/work-item-detail.test.ts` passes 1 / 4.
+
+**Verdict at `897f9cace7730bb6882d5f5918a76c787364afad`: CLEAR.**
