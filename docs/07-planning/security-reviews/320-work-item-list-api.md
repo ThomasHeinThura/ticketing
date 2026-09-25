@@ -393,3 +393,101 @@ One private DB, `op320_test` on td-lane-pg, dropped afterwards. My scratch probe
   - the main merge, checked with `--remerge-diff`;
   - `oasdiff` against the new base;
   - a green CI run at the exact head.
+
+## Final review (Opus 5.5)
+
+**Reviewer:** Opus 5.5, a fresh, independent context, the same reviewer as the D0 re-review. I did not author, direct or remediate any of this PR's code or tests, and I am not the ordinary reviewer.
+**Reviewed head:** `16f75ebff72632b4b71d0c67d89d76a0964f96e5`
+**Date:** 2026-09-25
+
+### Head verification
+
+- `git fetch origin pull/320/head` → `16f75ebff72632b4b71d0c67d89d76a0964f96e5`. `origin/feat/310-work-item-list-api` is the same SHA.
+- `origin/main` (`6b0d861`) is an ancestor of this head.
+- First-parent chain since `2403374`:
+  - `f26c885`, my re-review note;
+  - `e7efd48`, the D5 test fix;
+  - `c0b4666`, a merge of main (#362);
+  - `1bf3865`, a merge of main (#367, #331 and others);
+  - `16f75eb`, the allowlist entry.
+- `list-query.ts`, `controllers/list-work-items.ts`, `work-item/schema.ts` and `database/schema.ts` are byte-identical to `2403374`.
+- Compared with `origin/main`, the PR's server-side footprint is:
+  - `list-query.ts`, `list-work-items.ts`, `date-bounds.ts`, `schema.ts`, `response.ts` and `index.ts`;
+  - `openapi.json` and the allowlist.
+- The list route's middleware (`workspaceAccess.fromProject` plus `requireWorkspaceCapability("work_item:read")`) is unchanged from main.
+
+### What I checked
+
+Private DB `opf320_test` on td-lane-pg, dropped afterwards. The scratch probe is not committed.
+
+**1. D5 is closed. I verified it myself.**
+- With only `dueDateCursorCondition`'s outer parentheses removed, the D0 test is **red in 3 of 3 runs** ("length of 5 but got 7").
+- With only `nonDueDateCursorCondition`'s parentheses removed, it is **red in 3 of 3 runs** (7 and 8).
+- With both restored, it is **green**.
+- `e7efd48` adds victim items dated `2027-06-01` and `1900-01-01`. It also dates the archived and deleted victim rows, and corrects the "escaped null-bucket branch" comment.
+- **Nit, non-blocking:** the new comment still says the null-bucket clause `(isNullExpr = 1 and id > cursor.id)` could escape. That clause has no `or` and was always parenthesised, so it cannot. The comment is inaccurate; the test is correct.
+
+**2. D0 is still closed. I reran the live repro and the forged cursors at this head.**
+- The data was the same as in my re-review: victim items due 2027-06-01 and 1900-01-01, a null-due item, colliding numbers, and an archived and a deleted item; plus an archived item in the attacker's own project.
+- 4 sorts × 2 directions, `limit=1`, following `nextCursor` with `limit=50`, plus full `limit=1` walks: only the attacker's 3 live rows every time, and `VICTIM` never appeared.
+- 116 forged cursors: **92 returned 200 with only the attacker's own live rows, 24 returned 400, 0 returned 500, and none leaked.**
+- With `list-query.ts` reverted to `92d8989^`, the probe goes red with `VICTIM` in the body.
+
+**3. The allowlist entry is exact and minimal.**
+- Pinned `oasdiff` 1.32.1 (SHA-256 verified), `breaking --fail-on WARN --format json origin/main:… HEAD:…`, gives exactly one finding:
+  ```
+  [{"id":"response-body-type-changed","text":"the response's body `type` changed from `array<object>` to `object` for status `200`","level":3,"operation":"GET","operationId":"listWorkItems","path":"/projects/{projectId}/work-items","section":"paths","fingerprint":"3bb2531394ee"}]
+  ```
+- The entry's `operation`, `rule` and `fingerprint` match that finding exactly: `GET /projects/{projectId}/work-items`, `response-body-type-changed`, `3bb2531394ee`.
+- `origin/main`'s allowlist is `[]`, so this is a new entry. It is the file's only entry.
+- It has exactly the six keys `parseApprovedBreaks` requires: `operation`, `rule`, `fingerprint`, `pr`, `reason`, `decision`.
+- `partitionApprovedBreaks` matches on the full (operation, rule, fingerprint) triple and fails on any unused entry. So this entry cannot cover any other finding, and it is the minimum approval.
+- `pnpm test:contract` prints `approved break: response-body-type-changed GET /projects/{projectId}/work-items` and `oasdiff: no unapproved breaking API changes against origin/main (1 approved).`, and exits 0.
+- **It masks nothing. I compared the specs directly against `origin/main`:**
+  - The old array `items` against the new `data.items`: no property was removed or changed, and no previously required property was dropped. Three required properties were added: `stateName`, `stateCategory` and `assigneeName`.
+  - Every existing query parameter was kept. The 8 new ones are all optional.
+  - The response codes (200/400/401/403/404) are unchanged.
+  - Every other path, and every other method on this path, is byte-identical. The only change in the GET's metadata is `description`.
+  - In `components`, the only change is three **added** schemas. The top-level document is otherwise identical.
+
+**4. Both merges are correct.**
+- `c0b4666`: `--remerge-diff` shows one conflict hunk, the import list in `work-item/index.ts`.
+  - The resolution keeps main's `assignablePeopleSchema` and the PR's `workItemListResponseSchema`, and drops `workItemListSchema`, which the PR had already replaced and which `index.ts` no longer uses.
+  - For `index.ts`, `response.ts` and `openapi.json`: diff(merge-base → PR parent) equals diff(main parent → merge), and diff(merge-base → main) equals diff(PR parent → merge). Nothing was dropped from either side.
+- `1bf3865`: the `--remerge-diff` is empty, so it is a clean merge with no manual edits.
+- `check:openapi` matches (108 operations).
+
+**5. D1–D4 are unchanged and still non-blocking.** The code they concern is byte-identical to `2403374`, and nothing new was added to the surface.
+
+**6. Suites at this head.** All green:
+- Integration, list files (`work-item-list-sort-pagination`, `work-item-create-read-list`, `existence-oracle-317`, `permissions-shadow-mode`): **4 files, 82 tests**.
+- Integration, full: **88 files, 1212 tests**.
+- API unit: **58 files, 488 tests**.
+- `test:permissions`: **10 files, 80 tests**.
+- `node --test 'scripts/ci/**/*.test.mjs'`: **543 tests, 89 suites, 0 fail**.
+- `check:openapi`: pass, 108 operations.
+- `test:contract`: pass, 1 approved break.
+
+**CI at `16f75eb`.**
+- The PR is `MERGEABLE`.
+- 14 of the 15 required checks passed, including:
+  - `integration - Postgres 18`;
+  - `contract - OpenAPI drift`;
+  - `route policy coverage + permission matrix`;
+  - `gate checkers + red probes`;
+  - `supply chain - secret scan`.
+- The one required check still failing is `pull request template + security review`, for two reasons:
+  - this note was stale at `2403374`, which this section fixes because a note-only commit follows the reviewed head;
+  - the PR body's "Opus security review completed" checklist box is unticked. That box belongs to the orchestrator.
+- Two checks are failing but not required:
+  - `GitGuardian Security Checks`: the same false positive as before. `charts/taskdesk/values.yaml:245` `passwordKey: postgres_uri` is a Secret key name brought in from main's #308. The PR did not introduce it.
+  - `github-advanced-security`: the Copilot autofind agent job, which also failed at `2403374`. It is not a code-scanning alert; CodeQL reports no new alerts.
+
+### Verdict
+
+**APPROVED** at `16f75ebff72632b4b71d0c67d89d76a0964f96e5`.
+- D0 is closed, and the regression test now guards both cursor functions (D5 closed).
+- S1–S3 remain closed.
+- D1–D4 remain non-blocking follow-ups.
+- The only contract break is #310's intentional envelope. It is approved by one exact, minimal allowlist entry that masks nothing.
+- This clearance covers this head plus note-only commits. Any other commit needs a fresh delta review.
