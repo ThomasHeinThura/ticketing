@@ -115,11 +115,10 @@ export const routes = {
   },
   /**
    * `docs/02-design/screen-inventory.md` "Work item — full page",
-   * `/agent/work-items/{key}` -- not built yet (P1, ⬜). This lane's list rows link here
-   * as their row-open destination, per this lane's own instructions ("that can be the
-   * future detail path, as long as it's registered"). Resolves today to a stub route
-   * (`routes/.../agent/work-items/$key.tsx`) that says the full page isn't built, not a
-   * 404 -- the URL contract will not need to change once the real page lands.
+   * `/agent/work-items/{key}` -- the read-only first slice of the detail page (the
+   * route itself has existed since #306, resolving to an honest stub; that stub is now
+   * the real page). The list's rows still link here as their row-open destination, and
+   * the URL contract did not change when the real page landed.
    */
   workItemDetail: {
     path: "/agent/work-items/$key" as const,

@@ -4,14 +4,14 @@
  * the mutation, the audit action is that event's key from `events.md` ... The keys below
  * are audit-only: security-relevant things that are not domain events."
  *
- * This module validates against the audit-only list ONLY. `events.md` has no code-level
- * event-key registry yet (checked: no `events.ts`/`EVENT_KEYS` exists anywhere in this
- * repository as of issue #37's first slice), and nothing calls `appendAuditLog` with a
- * domain-event action yet either — this slice wires no mutation to the writer at all. A
- * future caller writing a domain-event-keyed audit row needs `events.md`'s own key set
- * added to this validator's allowlist at that time; recorded here rather than silently
- * assumed, since a validator that only ever saw audit-only actions would otherwise look
- * complete while actually being half of the real check `audit-trail.md` describes.
+ * This module is one half of the audit-action check, and since #360 the other half
+ * exists: the event-key registry (`apps/api/src/events/event-keys.ts`, transcribed from
+ * `events.md`'s Catalogue) — `audit-writer.ts`'s `validateAction` accepts the union of
+ * this audit-only catalogue and that registry. When this module was written no
+ * code-level event-key set existed anywhere, so the writer could only ever validate
+ * half of the real rule `audit-trail.md` describes; both halves now close over their
+ * own authoritative doc (audit-trail.md here, events.md there), and a code-level list
+ * that drifts from its doc fails a test rather than silently mis-validating.
  *
  * `legal_hold.placed`/`legal_hold.lifted` are included in the set below (so a real
  * future caller does not fail validation) but nothing in this codebase writes them yet —

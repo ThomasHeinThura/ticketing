@@ -15,6 +15,39 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-25 · Intentional pre-2.0 OpenAPI breaking changes pass only through a reviewed allowlist
+
+**Supersedes (narrowly):** the unconditional failure of `oasdiff breaking --fail-on WARN` added by #355, only for a finding that exactly matches a reviewed allowlist entry, and only before 2.0.0. `api-design.md`'s post-2.0.0 rule is unchanged.
+
+**Decision:** `scripts/ci/openapi-approved-breaks.json` lists each approved break by operation, oasdiff rule, oasdiff finding fingerprint, PR, reason and decision reference. The contract gate passes a breaking finding only on an exact (operation, rule, fingerprint) match against an entry that is NEW relative to `origin/main`'s copy of the file — entries approve only the break in the PR that adds them; delete them after merge, since an entry already on `main` approves nothing there and the gate only warns (does not fail) if a merged entry is left in the file. Every other finding still fails, a new entry matching no finding fails as stale/typo'd, and malformed input, an unreadable base copy, or an unexpected oasdiff exit status all fail closed. The file is in the security-review scope, so every entry is added in the PR that makes the break and needs an Opus review there. From the first stable `v2.0.0` (or later) release tag on origin, the file must be empty, and a non-empty file fails the gate.
+
+**Why:** the API is unversioned until 2.0.0 (`api-design.md`). #355's gate had no way to approve a deliberate break, so #320's list envelope, which is #310's deliverable and already consumed by the web client, could not pass.
+
+**Alternatives:** Skip the breaking check until 2.0.0, rejected because accidental breaks would go unseen. Serve #320's envelope on a new path and keep the array route, rejected because it adds code and a legacy route for an unversioned API.
+
+**Decided by:** Thomas, 2026-09-25, in session ("Reviewed allowlist file").
+
+### 2026-09-24 · While the lanes are stopped, Claude Sonnet subagents may make small fixes for already-recorded review findings on stopped PRs; #353 waits for #344
+
+**Supersedes (temporarily, in part):** the 2026-09-23 entry "Three non-Claude implementation agents take the P0/P1/P2 lanes…" (#336), only its assignment of *fix rounds* to the lane agents and its narrowing of the Claude session to Opus review and merge. The narrowing is suspended for the recorded-finding fixes this entry allows, and applies again when this entry ends. Nothing else in #336 or #345 changes, and neither is rewritten. `CLAUDE.md`'s "Model tiers" note is read with this exception.
+
+**Decision:**
+1. While **every** lane agent (P0, P1, P2 and P3) is stopped, the orchestrating Claude session may, on a stopped lane's PR, commission fresh Claude Sonnet subagents to make **small fixes for findings a review has already recorded**.
+   - **Scope:** no new features, and nothing beyond the recorded finding. A finding that needs a design change, a migration or a new shared contract is not a small fix; it goes back to the lane. One PR at a time. Each fix has a regression test that fails on the unfixed code.
+   - **Independence:** a fresh context other than the fixer does the ordinary review of the fix, as #345 and the current-model fallback allow. It records its model and the exact SHA it reviewed. The Opus 5.5 reviewer is a third, separate fresh context. Neither reviewer may be the fixer, and neither may be the orchestrating session.
+   - **Re-review:** the fix moves the head, so every earlier clearance on that PR is stale. The PR needs all of its required reviews again at the new head before merge. That includes Opus, even outside security scope.
+   - **Attribution:** the fix commits use the Claude Code identity. The PR's `## Implemented by` lists both the lane agent (original work) and the Claude Sonnet fixer (the fix commits, by SHA), so the commit-author check still reconciles.
+   - **Unchanged:** every required status check in `protect-main` (15 today), exact-head binding, and no waivers.
+2. PR #353 (assign a work item) is **not** merged without its audit-log row. It waits for #344 (`audit_log.project_id` and the project-reach read filter), and #365, which is stacked on it, waits too.
+
+**Why:** Thomas, 2026-09-24. All four implementation lanes stopped with review findings open, including #320's blocking cross-tenant cursor leak. Review-only work can't move those PRs. The audit-row requirement is a real gate, so Thomas kept it rather than waiving it.
+
+**Alternatives:** Keep the orchestrator review-only and leave every PR with findings until the lanes restart. Rejected for small recorded fixes. Waive #353's audit-row item and track it. Rejected by Thomas.
+
+**Scope and end:** this ends everywhere as soon as **any** lane agent restarts, or on 2026-09-30, whichever comes first, unless Thomas extends it. A fix already under review when it ends may finish its gates.
+
+**Decided by:** Thomas, 2026-09-24, in session ("Yes, small fixes only"; "Wait for #344").
+
 ### 2026-09-24 · GPT-6 Luna replaces Sonnet for ordinary reviews on active P0 lanes
 
 **Decision:** For the currently active P0 work, use fresh independent GPT-6 Luna contexts
@@ -169,6 +202,18 @@ result were recorded by the implementing agent, 2026-09-23.
 **Alternatives:** Keep IP-32's existing-resource id in the detail. Rejected, because it lets the caller tell the two conflict types apart.
 
 **Decided by:** Thomas, 2026-09-23. A lane agent drafted the entry. Thomas confirmed the decision to the orchestrating session in session on 2026-09-23, and the orchestrator recorded it.
+
+### 2026-09-23 · Manual release tags the selected `main` SHA without version-bump commits
+
+**Decision:** A maintainer manually dispatches a release with a SemVer version and a full source SHA already reachable from protected `main`. The workflow creates the matching Git tag and GitHub release at that SHA and publishes its signed multi-architecture image. It does not create a version-bump commit or edit `CHANGELOG.md`, package version files, or chart version files. The existing automatic `edge` cadence remains as documented in `release-plan.md`.
+
+**Why:** Thomas selected “tag and release the chosen SHA” and rejected a version-bump change through a PR. The release must identify the exact tested source while preserving protected `main` and the changelog/version files.
+
+**Alternatives:** A PR that changes version files was rejected, as was automatic version-file mutation by semantic-release. Stable promotion remains a separate operator action after UAT verification.
+
+**Confirmed by:** Thomas in the 2026-09-23 session response.
+
+---
 
 ### 2026-09-23 · Until the lane agents' review capacity returns (2026-09-30), a fresh Claude Sonnet context does the ordinary independent review
 
