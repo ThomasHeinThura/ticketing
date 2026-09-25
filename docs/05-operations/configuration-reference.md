@@ -195,10 +195,10 @@ Per job: schedule · enabled · last run · manual trigger
 Sentry DSN · OTLP endpoint and headers · trace sample rate · metrics bearer token ·
 log level per module
 
-The **metrics bearer token** guards `/metrics` on the separate metrics listener and is God
-Mode → Observability configuration, never an environment variable — there is no
-`TASKDESK_METRICS_TOKEN`. The [runbook](runbook.md)'s metrics commands read it from a shell
-variable the operator exports by hand ([observability.md](../01-architecture/observability.md)).
+The metrics bearer token is a planned God Mode → Observability setting, never an
+environment variable. The current API image does not read the setting or serve `/metrics`;
+see [observability.md](../01-architecture/observability.md) for the target contract and
+[runbook.md](runbook.md) for the currently usable diagnostics.
 
 ### AI (optional, off by default)
 
