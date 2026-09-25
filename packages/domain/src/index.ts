@@ -18,6 +18,7 @@ export * from "./intake/request-type.js";
 export * from "./intake/submission.js";
 export * from "./intake/types.js";
 export * from "./sla/policy.js";
+export * from "./sla/scan.js";
 export * from "./sla/sla.js";
 export * from "./sla/types.js";
 export * from "./workflow/types.js";
