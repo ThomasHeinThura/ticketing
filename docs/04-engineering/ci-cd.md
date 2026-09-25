@@ -88,6 +88,15 @@ are compared to the immutable `origin/main` contract, so each may be removed and
 finding fails. The oasdiff release is pinned and its Linux x64 archive is SHA-256 verified
 on every run. Fetch `origin/main` before running the command locally.
 
+A breaking finding from `oasdiff breaking --format json` passes only when its exact
+(operation, rule) pair — HTTP method + path, and oasdiff's rule id — matches an entry in
+`scripts/ci/openapi-approved-breaks.json`; every other finding still fails, and the file
+fails closed if it or oasdiff's output cannot be parsed. This is the reviewed-allowlist
+mechanism for an intentional pre-2.0 breaking change (decision log, 2026-09-25); see
+[api-design.md](../01-architecture/api-design.md#versioning). Each entry is added in the
+PR that makes the break, needs its own Opus security review there, and once the API's
+version is 2.0.0 or later the file must be empty — a non-empty file fails the gate.
+
 **`pnpm test:permissions` must run before `apps/web` is built, against a router that cannot
 see a built `apps/web/dist` (#165).** The Fast stage's ordering above already guarantees this
 — `route-policy` builds nothing and runs in its own job/runner, `Build`'s `pnpm build` is a
@@ -161,6 +170,7 @@ docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
                                      .pnpmfile.cjs
 **/vitest.config.*                   apps/web/playwright.config.ts
 apps/web/e2e/**                      scripts/ci/redocly.yaml
+scripts/ci/openapi-approved-breaks.json
 ```
 
 **Why the last two lines of the first block were added** (2026-09-09, from an independent

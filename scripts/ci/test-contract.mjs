@@ -16,6 +16,150 @@ const redoclyConfig = "scripts/ci/redocly.yaml";
 const archiveName = `oasdiff_${version}_linux_amd64.tar.gz`;
 const archiveSha256 =
   "7c8939fc49b75ee11fec66a5b83b37a2fca6aee109fed85013b1ba2ac2a1ee7f";
+const approvedBreaksPath = "scripts/ci/openapi-approved-breaks.json";
+const packageJsonPath = "package.json";
+
+const APPROVED_BREAK_KEYS = ["operation", "rule", "pr", "reason", "decision"];
+
+/**
+ * Validate and parse the pre-2.0 approved-breaking-change allowlist.
+ *
+ * Strict on purpose: this file is in the security-review scope
+ * (docs/04-engineering/ci-cd.md), so a malformed entry is a gate that silently passed a
+ * finding nobody actually reviewed. Fail closed rather than guess.
+ *
+ * @param {string} text raw file contents
+ * @returns {{ operation: string, rule: string, pr: number, reason: string, decision: string }[]}
+ */
+export function parseApprovedBreaks(text) {
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    throw new Error(
+      `${approvedBreaksPath} is not valid JSON: ${error.message}`,
+    );
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error(`${approvedBreaksPath} must be a JSON array.`);
+  }
+
+  const seen = new Set();
+  parsed.forEach((entry, index) => {
+    if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new Error(
+        `${approvedBreaksPath}[${index}] must be an object with exactly the keys ${APPROVED_BREAK_KEYS.join(", ")}.`,
+      );
+    }
+    const keys = Object.keys(entry).sort();
+    const expected = [...APPROVED_BREAK_KEYS].sort();
+    if (
+      keys.length !== expected.length ||
+      keys.some((k, i) => k !== expected[i])
+    ) {
+      throw new Error(
+        `${approvedBreaksPath}[${index}] has keys [${keys.join(", ")}]; expected exactly [${expected.join(", ")}].`,
+      );
+    }
+    for (const field of ["operation", "rule", "reason", "decision"]) {
+      if (typeof entry[field] !== "string" || entry[field].trim() === "") {
+        throw new Error(
+          `${approvedBreaksPath}[${index}].${field} must be a non-empty string.`,
+        );
+      }
+    }
+    if (!Number.isInteger(entry.pr)) {
+      throw new Error(`${approvedBreaksPath}[${index}].pr must be an integer.`);
+    }
+    const dedupeKey = `${entry.operation}\u0000${entry.rule}`;
+    if (seen.has(dedupeKey)) {
+      throw new Error(
+        `${approvedBreaksPath} has a duplicate entry for operation "${entry.operation}" and rule "${entry.rule}".`,
+      );
+    }
+    seen.add(dedupeKey);
+  });
+
+  return parsed;
+}
+
+/**
+ * Parse oasdiff's `--format json` breaking-change output into normalized findings.
+ *
+ * Fails closed: unparseable output, a non-array result, or a finding missing the fields
+ * needed to check it against the allowlist (`operation`, `path`, `id`) is an error rather
+ * than a silently-empty finding list.
+ *
+ * @param {string} output stdout from `oasdiff breaking --format json`
+ * @returns {{ operation: string, rule: string, raw: object }[]}
+ */
+export function parseOasdiffBreakingJson(output) {
+  let parsed;
+  try {
+    parsed = JSON.parse(output);
+  } catch (error) {
+    throw new Error(`could not parse oasdiff JSON output: ${error.message}`);
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error("oasdiff JSON output must be an array of findings.");
+  }
+
+  return parsed.map((finding, index) => {
+    if (
+      typeof finding?.operation !== "string" ||
+      finding.operation.trim() === "" ||
+      typeof finding?.path !== "string" ||
+      finding.path.trim() === "" ||
+      typeof finding?.id !== "string" ||
+      finding.id.trim() === ""
+    ) {
+      throw new Error(
+        `oasdiff finding ${index} is missing an "operation", "path", or "id" field; refusing to check it against the allowlist.`,
+      );
+    }
+    return {
+      operation: `${finding.operation} ${finding.path}`,
+      rule: finding.id,
+      raw: finding,
+    };
+  });
+}
+
+/**
+ * Split oasdiff findings into ones the allowlist exactly covers and the rest.
+ *
+ * A match requires the exact (operation, rule) pair; anything else — same operation with a
+ * different rule, same rule on a different operation, or no entry at all — still fails.
+ *
+ * @param {{ operation: string, rule: string, raw: object }[]} findings
+ * @param {{ operation: string, rule: string }[]} approved
+ */
+export function partitionApprovedBreaks(findings, approved) {
+  const approvedKeys = new Set(
+    approved.map((entry) => `${entry.operation}\u0000${entry.rule}`),
+  );
+  const matched = [];
+  const unmatched = [];
+  for (const finding of findings) {
+    const key = `${finding.operation}\u0000${finding.rule}`;
+    if (approvedKeys.has(key)) matched.push(finding);
+    else unmatched.push(finding);
+  }
+  return { matched, unmatched };
+}
+
+/**
+ * True once the root package.json version is 2.0.0 or later — the point at which
+ * api-design.md's Versioning section requires the allowlist to be empty.
+ *
+ * @param {string} versionString e.g. "2.22.0"
+ */
+export function isAtLeastV2(versionString) {
+  const [major] = versionString
+    .split(".")
+    .map((part) => Number.parseInt(part, 10));
+  return Number.isFinite(major) && major >= 2;
+}
 
 export function diagnosticKey(problem) {
   return JSON.stringify([
@@ -242,21 +386,98 @@ async function main() {
   }
   if (!(await redoclyLint(baseSpec.stdout))) return;
 
+  let approvedBreaks;
+  try {
+    const approvedBreaksText = await fs.readFile(
+      path.join(root, approvedBreaksPath),
+      "utf8",
+    );
+    approvedBreaks = parseApprovedBreaks(approvedBreaksText);
+  } catch (error) {
+    process.stderr.write(`${error.message}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (approvedBreaks.length > 0) {
+    let packageVersion;
+    try {
+      const packageJson = JSON.parse(
+        await fs.readFile(path.join(root, packageJsonPath), "utf8"),
+      );
+      packageVersion = packageJson.version;
+    } catch (error) {
+      process.stderr.write(
+        `Could not read ${packageJsonPath} to check the API version: ${error.message}\n`,
+      );
+      process.exitCode = 1;
+      return;
+    }
+    if (isAtLeastV2(packageVersion)) {
+      process.stderr.write(
+        `${approvedBreaksPath} has ${approvedBreaks.length} entry(ies) but ${packageJsonPath} ` +
+          `is at version ${packageVersion} (>= 2.0.0). docs/01-architecture/api-design.md's ` +
+          "Versioning section requires a new path segment for a breaking change from 2.0.0 " +
+          "on, not an allowlist entry — empty the file and version the breaking route " +
+          "instead.\n",
+      );
+      process.exitCode = 1;
+      return;
+    }
+  }
+
   const { binary, tempDir } = await getOasdiff();
   try {
     const breaking = run(binary, [
       "breaking",
       "--fail-on",
       "WARN",
+      "--format",
+      "json",
       `origin/main:${contract}`,
       contract,
     ]);
-    if (breaking.status !== 0)
-      reportFailure("oasdiff breaking-change check", breaking);
-    else
-      process.stdout.write(
-        "oasdiff: no breaking API changes against origin/main.\n",
+
+    let findings;
+    try {
+      findings = parseOasdiffBreakingJson(breaking.stdout);
+    } catch (error) {
+      process.stderr.write(
+        `oasdiff breaking-change check failed closed: ${error.message}\n`,
       );
+      if (breaking.stderr) process.stderr.write(breaking.stderr);
+      process.exitCode = 1;
+      return;
+    }
+
+    const { matched, unmatched } = partitionApprovedBreaks(
+      findings,
+      approvedBreaks,
+    );
+    for (const finding of matched) {
+      process.stdout.write(
+        `approved break: ${finding.rule} ${finding.operation}\n`,
+      );
+    }
+
+    if (unmatched.length > 0) {
+      process.stderr.write(
+        `oasdiff found ${unmatched.length} breaking change(s) not covered by ` +
+          `${approvedBreaksPath}:\n`,
+      );
+      for (const finding of unmatched) {
+        process.stderr.write(
+          `- ${finding.rule} ${finding.operation}: ${finding.raw.text ?? ""}\n`,
+        );
+      }
+      process.exitCode = 1;
+      return;
+    }
+
+    process.stdout.write(
+      `oasdiff: no unapproved breaking API changes against origin/main (${matched.length} ` +
+        "approved).\n",
+    );
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
   }

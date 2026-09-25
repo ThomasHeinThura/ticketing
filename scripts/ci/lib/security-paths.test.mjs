@@ -43,6 +43,7 @@ const MUST_REQUIRE_REVIEW = [
   "scripts/ci/lib/security-paths.mjs",
   "scripts/ci/env-baseline.json",
   "scripts/ci/redocly.yaml",
+  "scripts/ci/openapi-approved-breaks.json",
   "packages/domain/vitest.config.ts",
   "apps/api/vitest.config.ts",
   "apps/web/vitest.config.ts",
