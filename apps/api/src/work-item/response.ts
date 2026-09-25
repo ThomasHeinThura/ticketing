@@ -43,12 +43,38 @@ const workItemShape = z.object({
 
 export const workItemSchema = workItemShape.openapi("WorkItem");
 
-// Both the list route (#310) and the detail route (#326) resolve the same three display
-// fields for a work item -- `stateName`, `stateCategory` and `assigneeName` -- so the UI
-// never has to ship raw ids to render a human-readable state/assignee. Shared here as one
-// extension of the unregistered `workItemShape` (not the registered `workItemSchema`, for
-// the same `allOf`-avoidance reason as `workItemShape` itself -- see its own comment)
-// rather than defined twice, since the two routes want identical fields.
+// The detail route (`GET /api/work-items/{key}`) resolves display fields for its single
+// item (`controllers/get-work-item.ts`'s own comment has the why and the PR #320 parity
+// note): `stateName`, `stateCategory` and `assigneeName`, so the detail page renders a
+// human-readable state and assignee instead of raw ids. Extends the unregistered
+// `workItemShape`, not the registered `workItemSchema` -- see that const's own comment
+// for why (the `allOf`/`oasdiff` finding this schema exists to avoid).
+//
+// NOT shared with `workItemListItemSchema` below despite having identical fields: that
+// schema is already on `main` (#320) as an `allOf` extension of `workItemSchema`, with
+// its own already-approved contract-drift allowlist entry for exactly that shape.
+// Flattening it here to share this definition would change ITS emitted schema from
+// `allOf` to a flat object relative to `main`, which `oasdiff` reports as a NEW breaking
+// change (`response-property-all-of-removed`) -- confirmed by running `test:contract`
+// with the shared version. So the two schemas stay separately defined, each matching
+// what its own route already emits, per this task's "keep both, no behaviour change to
+// either route" instruction.
+export const workItemDetailSchema = workItemShape
+  .extend({
+    stateName: z.string(),
+    stateCategory: z.string().openapi({
+      description:
+        "state_template.group: one of backlog, unstarted, started, completed, cancelled.",
+    }),
+    assigneeName: z.string().nullable(),
+  })
+  .openapi("WorkItemDetail");
+
+// #310: the list route additionally resolves state and assignee names server-side, so
+// the client never has to make a second round trip (or ship raw ids) to render a row.
+// Flat `stateName`/`stateCategory`/`assigneeName` fields alongside the existing
+// `stateId`/`assigneeId`, the same "extend with a resolved display field, keep the raw
+// id too" shape `task/response.ts`'s `taskWithAssigneeSchema` already uses for tasks.
 //
 // `stateCategory` is `state_template.group` (`data-model.md` §3: `backlog | unstarted |
 // started | completed | cancelled`) -- "category" is issue #310's own word for this
@@ -62,29 +88,22 @@ export const workItemSchema = workItemShape.openapi("WorkItem");
 // no linked `user` row (`person.is_placeholder`, `person.user_id is null`) -- there is no
 // display name to resolve in that case; the row still reports its real `assigneeId` so
 // the caller can tell "assigned, name unknown" apart from "unassigned".
-const workItemWithDisplayFields = workItemShape.extend({
-  stateName: z.string(),
-  stateCategory: z.string().openapi({
-    description:
-      "state_template.group: one of backlog, unstarted, started, completed, cancelled.",
-  }),
-  assigneeName: z.string().nullable(),
-});
-
-// The detail route (`GET /api/work-items/{key}`) resolves display fields for its single
-// item (`controllers/get-work-item.ts`'s own comment has the why and the PR #320 parity
-// note).
-export const workItemDetailSchema = workItemWithDisplayFields.openapi(
-  "WorkItemDetail",
-);
-
-// #310: the list route additionally resolves state and assignee names server-side, so
-// the client never has to make a second round trip (or ship raw ids) to render a row.
-// The same "extend with a resolved display field, keep the raw id too" shape
-// `task/response.ts`'s `taskWithAssigneeSchema` already uses for tasks.
-export const workItemListItemSchema = workItemWithDisplayFields.openapi(
-  "WorkItemListItem",
-);
+//
+// Extends `workItemSchema` (the REGISTERED schema), unlike `workItemDetailSchema` above
+// -- unchanged from `main` (#320) on purpose: `main` already emits this schema as an
+// `allOf` with an existing, already-approved allowlist entry for it. Flattening this one
+// too would change its OpenAPI shape relative to `main` and trip a NEW breaking-change
+// finding, even though nothing about its runtime behaviour would change.
+export const workItemListItemSchema = workItemSchema
+  .extend({
+    stateName: z.string(),
+    stateCategory: z.string().openapi({
+      description:
+        "state_template.group: one of backlog, unstarted, started, completed, cancelled.",
+    }),
+    assigneeName: z.string().nullable(),
+  })
+  .openapi("WorkItemListItem");
 
 export const workItemPageSchema = z
   .object({
