@@ -15,7 +15,6 @@ import {
   type WorkItemSortDirection,
   type WorkItemSortField,
 } from "@/lib/routes";
-import { sortWorkItems } from "@/lib/sort-work-items";
 
 /**
  * `docs/02-design/screen-inventory.md` "Work — list" (P1), the first v2 work-item
@@ -71,7 +70,7 @@ function WorkItemsRouteComponent() {
     isLoading: isWorkItemsLoading,
     isError: isWorkItemsError,
     refetch: refetchWorkItems,
-  } = useGetWorkItems({ projectId: project?.id });
+  } = useGetWorkItems({ projectId: project?.id, sort, dir });
   const workItems = workItemsResult?.items;
 
   const isLoading =
@@ -99,8 +98,6 @@ function WorkItemsRouteComponent() {
     refetchProjects();
     if (project) refetchWorkItems();
   }
-
-  const sorted = workItems ? sortWorkItems(workItems, sort, dir) : undefined;
 
   return (
     <>
@@ -130,7 +127,7 @@ function WorkItemsRouteComponent() {
           ) : null}
         </div>
         <WorkItemList
-          workItems={sorted}
+          workItems={workItems}
           isLoading={isLoading}
           isError={isError}
           sort={sort}
