@@ -81,34 +81,44 @@ function isWithin(parent, child) {
   );
 }
 
+// pnpm-workspace.yaml declares `packages/**` and `apps/**` — RECURSIVE globs (see
+// scripts/ci/lib/workspace-membership.mjs's own account of this exact defect in three
+// other gates: check-overrides, check-skips, check-vocabulary, check-env). Walking apps/
+// and packages/ one `readdir` deep, as this function used to, makes a package nested two
+// levels deep (a shape the glob would actually install) invisible to this gate entirely —
+// not even flagged as "unlisted", just silently unwalked. `lib/workspace-membership.mjs`
+// itself can't be reused directly here: it always reads the real repository's root and
+// `pnpm-workspace.yaml`, while this function is exercised against disposable fixture
+// trees in check-deps.test.mjs, so it walks apps/ and packages/ recursively itself,
+// against the `root` it was actually given.
 async function listWorkspaceManifests(root) {
   const manifests = [];
-  for (const top of ["apps", "packages"]) {
-    const topPath = path.join(root, top);
+  async function walk(dir) {
     let entries;
     try {
-      entries = await fs.readdir(topPath, { withFileTypes: true });
-    } catch {
-      continue;
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch (error) {
+      if (error.code === "ENOENT") return;
+      throw error;
     }
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const manifestPath = path.join(topPath, entry.name, "package.json");
+    if (entries.some((entry) => entry.isFile() && entry.name === "package.json")) {
+      const manifestPath = path.join(dir, "package.json");
       try {
         const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
         if (typeof manifest.name === "string") {
-          manifests.push({
-            name: manifest.name,
-            path: path.dirname(manifestPath),
-            manifest,
-            manifestPath,
-          });
+          manifests.push({ name: manifest.name, path: dir, manifest, manifestPath });
         }
       } catch (error) {
         if (error.code !== "ENOENT") throw error;
       }
     }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+      await walk(path.join(dir, entry.name));
+    }
   }
+  for (const top of ["apps", "packages"]) await walk(path.join(root, top));
   return manifests.sort((a, b) => a.name.localeCompare(b.name));
 }
 

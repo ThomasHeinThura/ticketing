@@ -363,6 +363,34 @@ test("unknown discovered workspaces fail closed against the positive edge matrix
   );
 });
 
+test("a workspace nested two levels deep is still discovered", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "taskdesk-deps-nested-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  async function packageAt(relative, name) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name }),
+    );
+    return directory;
+  }
+  // pnpm-workspace.yaml declares `packages/**`, which matches any depth, so a package
+  // nested under a scoping directory (packages/scope/evil) is one pnpm would actually
+  // install. `listWorkspaceManifests` used to walk one `readdir` deep and never see it —
+  // not even flagged as "unlisted", just silently unwalked.
+  await packageAt("packages/scope/evil", "@taskdesk/evil");
+  const { manifests, violations } = await analyzeDependencies(root);
+  assert.ok(
+    manifests.some((entry) => entry.name === "@taskdesk/evil"),
+    "a package nested two directories deep must be discovered",
+  );
+  assert.match(
+    violations.join("\n"),
+    /packages\/scope\/evil\/package\.json[\s\S]*no documented positive WORKSPACE_EDGES entry/,
+  );
+});
+
 test("namespace and default createRequire imports are analyzed, including MCP loader calls", async (t) => {
   const root = await mkdtemp(
     path.join(os.tmpdir(), "taskdesk-deps-create-require-aliases-"),
