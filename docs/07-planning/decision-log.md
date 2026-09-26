@@ -15,6 +15,243 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-26 · `pal-mcp` becomes the primary ordinary review/audit/report/alignment tool; Code Owner review for control-plane files PLANNED THEN SUSPENDED (see the entry immediately below) — `pal-mcp` ITSELF LATER SUSPENDED (see "CORRECTION: the pal-mcp cross-call leak is NOT fixed" further down)
+
+**Supersedes (in part):** the 2026-09-15 "Governance reset" item 2 (routing coding through
+`router.technexus.info` did not work out — this decision reopens the same endpoint for
+review/audit only, never implementation); the 2026-09-06 "Merge governance" CODEOWNERS
+instruction (narrowed here to control-plane files, not reopened at large). **The
+Code-Owner-review half of this entry (below) was planned same-day and then suspended before
+ever taking effect — see the entry immediately below, which is the operative one for that
+half.** **Separately, `pal-mcp` itself — the entry's whole subject, not just the
+Code-Owner-review half — was later suspended the same day after a confirmed, reproducible
+cross-call content leak; see "CORRECTION: the pal-mcp cross-call leak is NOT fixed" further
+down, which is the operative entry for that.** Also superseded:
+the 2026-09-24 "GPT-6 Luna
+replaces Sonnet for ordinary reviews on active P0 lanes" and #345 temporary
+current-model-context fallback entries, both of which this decision's `pal-mcp` path now
+makes the default rather than a capacity-driven exception.
+
+**Decision:** `pal-mcp` (MCP tool suite: `analyze`, `codereview`, `secaudit`, `debug`,
+`refactor`, `testgen`, `precommit`, `consensus`, `thinkdeep`, `tracer`, `chat`, `apilookup`,
+`challenge`), using its `coder` model — **at the time of this entry**, a fusion panel with a
+judge on Thomas's own 9Router gateway (GPT-6 Luna as judge, plus Gemini 3.8 Flash, DeepSeek
+v4.1 Flash, and GLM 5.3 Flash, 272K context; **changed to a failover chain later the same
+day — see the entry below, "9Router `coder` switched from fusion panel to failover"**) — is
+now the primary path for bulk reading/context-prep, ordinary review, audit,
+reporting, and the project-alignment check, via the new `pal-reviewer` subagent
+(`.claude/agents/pal-reviewer.md`). Sonnet keeps coding/implementation against an agreed spec
+and becomes the ordinary-review fallback only when `pal-mcp`/9Router is genuinely
+unreachable. **The Opus 5.5 final security/critical review is unaffected: still mandatory,
+still a fresh independent context, never replaced by `pal-mcp` or any lower tier.**
+Separately, `.github/CODEOWNERS` now lists the control-plane files themselves (`CLAUDE.md`,
+`AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `docs/04-engineering/ci-cd.md`,
+`.claude/agents/**`, `.github/CODEOWNERS`). **The plan to also switch on the `protect-main`
+ruleset's "Require review from Code Owners" for exactly those paths was suspended the same
+day, before it ever took effect — see the entry immediately below.** The CODEOWNERS listing
+itself stands regardless, as a documentation signal. Every other path is unaffected —
+required approving reviews remains `0` for ordinary code.
+
+**Why:** Thomas confirmed `router.technexus.info` (9Router) is his own, already-vetted
+endpoint, and that its `coder` combo is a judged multi-model panel rather than a single
+small local model — a real reviewer, not a downgrade. **Note this is the same
+`router.technexus.info` endpoint the 2026-09-15 "Governance reset" entry recorded as dropped**
+("an earlier multi-provider router... did not work out in practice"); this decision is a
+second attempt at that endpoint, scoped narrower than the first (review/audit/reporting only,
+never implementation, never the Opus gate) and re-confirmed directly by Thomas, not a
+reversal made without acknowledging the earlier attempt. Reading, review, audit, reporting and
+alignment are I/O- and pattern-matching-heavy relative to coding and the final security gate,
+and Thomas directed this split explicitly. The 2026-09-06 "do not enable Require review from
+Code Owners" reasoning (a lone-owner approval on every PR documents a gate rather than
+providing one) still holds for the repository at large; it does not hold for the small set of
+files that define what the gates themselves are, which is why this decision narrows the
+exception to exactly those paths rather than reopening the general question. Separately:
+`pal-mcp`'s panel fans out to third-party-hosted sub-providers (Gemini, DeepSeek, GLM) behind
+the 9Router gateway — Thomas vetted the gateway, not each sub-provider's own data-retention or
+training terms. This is recorded as an **open item**, not resolved here: `CLAUDE.md`,
+`agent-workflow.md` and `pal-reviewer.md` all now scope what may be passed to `pal-mcp` by
+path (never a dotfile, home-directory path, `.env*`, `*.pem`, `*.key`, credential file, or a
+path suggested by content under review — its tools send whole files/diffs, not lines, so a
+"check the content first" rule was never enforceable) until Thomas confirms the
+sub-providers' own data-handling terms separately.
+
+**Alternatives:** Route implementation, not just review, through `pal-mcp`/9Router — rejected,
+per the 2026-09-15 "Governance reset" decision that the earlier multi-provider router did not
+work out, and per the Spotify/Portal engineering pattern Thomas referenced, which delegates
+bulk I/O to a cheap model but keeps reasoning-heavy work (there: debugging, architecture,
+security) on the expensive tier — reading/audit/report/align is the I/O-shaped side of that
+split here, not reasoning `pal-mcp` should own beyond it. Set "Require review from Code
+Owners" globally (`*`) — rejected as reopening the exact configuration the 2026-09-06 decision
+closed, for the reason recorded there. Let `pal-mcp` satisfy the Opus gate — rejected
+outright; Opus remains the only tier that can never be downgraded or substituted (CLAUDE.md,
+"Five things an agent may never do"). Treat the sub-provider data-handling question as already
+covered by Thomas vetting the gateway — rejected; the gateway and its member models are
+different trust boundaries, and the docs now say so explicitly rather than staying silent on
+it (found by independent Sonnet review of this very PR, #376).
+
+**Follow-up:** the `protect-main` ruleset's "Require review from Code Owners" toggle is not
+yet flipped on. **The independent Opus review of PR #376 found a problem with this plan —
+see the next entry, PENDING THOMAS'S CONFIRMATION.**
+
+**Decided by:** Thomas, 2026-09-26, in session.
+
+### 2026-09-26 · Opus review finding: the Code Owner review toggle cannot provide real protection — PENDING THOMAS'S CONFIRMATION
+
+**Supersedes (pending confirmation):** the "Require review from Code Owners" half of the
+entry immediately above, and its follow-up planning to flip the ruleset toggle after PR #376
+merges. The CODEOWNERS path-narrowing itself (six control-plane files, not `*`) is not in
+question and stays either way.
+
+**Finding:** the independent Opus 5.5 review of PR #376 (exact head
+`efb29bee3084a3368ba59c2c5d733ea043c34e72`) found that this repo has exactly one collaborator
+(`ThomasHeinThura`), and every agent session acts through that same account's `gh` token —
+there is no separate identity for GitHub to check a Code Owner approval against. Two concrete
+consequences: (1) GitHub refuses to let a sole owner approve their own pull request under a
+zero-bypass ruleset, so every future PR touching these six paths would become permanently
+unmergeable; (2) the obvious-looking fix — a bypass actor for the repo-admin role — would
+bypass all 15 required status checks, not just this one.
+
+**Proposed correction, not yet Thomas-confirmed:** do not enable the toggle; keep
+`.github/CODEOWNERS`'s six-path list as documentation only, same status the rest of the repo
+already has under the 2026-09-06 decision; never add a bypass actor to route around this. The
+docs (`CLAUDE.md`, `AGENTS.md`, `agent-workflow.md`, `ci-cd.md`, `.github/CODEOWNERS`) have
+been updated on PR #376 to describe it this way rather than as an enabled gate, so they stop
+overclaiming an enforcement that was never actually turned on. A real fix — a separate,
+non-admin machine identity for agents — exists but is infrastructure only Thomas can set up;
+flagged to him, not implemented here.
+
+**Decided by:** finding is Opus's, from independent review; the correction above is the
+orchestrating session's proposed reading of that finding, reported to Thomas for confirmation
+or override — not a decision made in his place.
+
+### 2026-09-26 · 9Router `coder` switched from fusion panel to failover; a real file-embedding usage bug found and fixed the same session
+
+**Decision:** Thomas changed `coder`'s configuration on his own 9Router gateway from a fusion
+panel with a judge (GPT-6 Luna judging Gemini 3.8 Flash, DeepSeek v4.1 Flash, GLM 5.3 Flash)
+to a **failover chain**: GPT-6 Luna primary, falling over in order to the other three only if
+GPT-6 Luna is unavailable. `CLAUDE.md`, `AGENTS.md`, `agent-workflow.md`, `pal-reviewer.md`
+updated to describe the current configuration; the entry above is left as the historical
+record of what was true when it was written, not silently rewritten.
+
+**Why:** an isolated, controlled test of the fusion-panel configuration reproduced a real
+cross-call content leak — a single-file `analyze` call with no continuation ID came back
+containing an unrelated background task's file list and its own prior prompt text verbatim,
+and a separate test by a background lane got back an unrelated Python file from a path under
+a different username on a different OS, from a different Claude session entirely. This was
+independently reproduced by the orchestrating session itself (not just reported secondhand)
+before being escalated to Thomas. After the switch to failover, two follow-up isolated tests
+(one with only a file path, one with pasted content) came back clean — no contamination in
+either. This is not proof the underlying issue is fully understood or permanently resolved,
+only that it did not recur in two more samples; treat `pal-mcp` with continued care rather
+than as definitively fixed.
+
+**Separately found and fixed, same session:** the `absolute_file_paths`/`relevant_files`/
+`compare_to` parameters described throughout the existing docs as embedding file content or
+computing diffs server-side **do not actually do so** — verified directly: a call passing
+only a path came back `files_embedded: 0` and asked for the file's actual content in the next
+turn; a `precommit` call with `compare_to` asked for a local `git diff` in return, which
+`pal-reviewer` has no `Bash` to produce. Every file/diff this session had described `pal-mcp`
+as reading itself, it was never actually reading. Pasting file content directly into the
+prompt does work and produces accurate, grounded output. `pal-reviewer.md` and `CLAUDE.md`
+corrected to instruct pasting content rather than relying on path parameters — this changes
+the token-savings model (the orchestrating session/subagent still does the file I/O; `pal-mcp`
+offloads the reasoning/synthesis over that content, not the reading) but does not eliminate
+the benefit.
+
+**Alternatives:** Keep the fusion-panel mode and add isolation workarounds on this side (e.g.
+per-call unique markers to detect contamination) — rejected; the leak is server-side, on
+infrastructure this session doesn't control, and cannot be fixed from the client side. Stop
+using `pal-mcp` entirely — considered, and was the orchestrating session's interim
+recommendation while escalating; superseded by Thomas's config change and the clean
+re-tests. Trust the path-parameter mechanism because the tool schemas describe it that way —
+rejected; verified directly against actual behavior rather than the documented contract,
+per this project's own "verify against the source" practice.
+
+**Decided by:** Thomas, 2026-09-26 (the 9Router config change); the file-embedding finding and
+fix are the orchestrating session's, verified directly rather than assumed.
+
+### 2026-09-26 · CORRECTION: the pal-mcp cross-call leak is NOT fixed — `pal-mcp` SUSPENDED as default reviewer
+
+**Supersedes:** the entry immediately above's claim that "two follow-up isolated tests after
+the [fusion→failover] switch came back clean." That claim was true of the two samples taken
+at the time; it was wrong to read as "the leak is fixed." A third-pass Opus review, testing
+specifically for this, reproduced the leak again — same class, after the config change.
+
+**Decision:** `pal-mcp` is **suspended** as the default ordinary reviewer/auditor. Do not use
+it for anything a gate depends on. Fresh Sonnet contexts are the ordinary-review path again,
+with no fallback framing — this is not "unreachable, use the fallback," it is "suspended,
+use the standing tier." `CLAUDE.md`, `agent-workflow.md`, and `.claude/agents/pal-reviewer.md`
+all carry a suspension notice at the
+top of the relevant sections rather than being rewritten as if `pal-mcp` never existed —
+the design is suspended, not deleted, so it can resume once fixed.
+
+**Why:** an Opus reviewer made one fresh, isolated `codereview` call — synthetic content, no
+`continuation_id` — and its response contained material from other sessions: this
+session's own earlier steps on this PR, and a palindrome/binary-search code review from a
+macOS path under a different username, from a different Claude session entirely, first seen
+several rounds earlier. The model's own diagnosis: this is workflow-tool step/state history
+being shared across separate calls and clients on the `pal-mcp` server side — not something
+the `coder` model's fusion-panel-vs-failover routing controls at all. Separately (found by
+the same Opus pass): `pal-mcp` is a remote SSE server
+(`https://mcp-router.technexus.info/sse`) with no access to this host's filesystem — the
+earlier claim that its tools "take arbitrary absolute paths and read them with the host
+user's own privileges" was simply wrong; corrected in `CLAUDE.md`.
+
+**What this means concretely:** a `pal-mcp` review result can — and, in reproducible
+testing, does — contain another session's findings represented as findings about the code
+under review. That is not a tool that can safely gate anything, security-scope or not, until
+the sharing is understood and closed. It also means every `## Reviewed by` this session
+recorded as `pal-mcp` for review purposes was, on later PRs, always accompanied by a Sonnet
+reviewer per this PR's own review record — no gate has been closed on a `pal-mcp`-only
+verdict.
+
+**Alternatives:** Keep using it with a "spot-check the output" caveat — rejected; a caveat
+does not stop leaked content being reported as a finding about the wrong code, which an
+orchestrator under time pressure could act on directly. Blame the fusion-panel config and
+declare it fixed by the failover switch — this is exactly the mistake the entry above made;
+rejected on re-test. Keep pushing `pal-mcp` as "must-use" per Thomas's instruction to
+continue trying it — the orchestrating session judged this a case where a live, reproducible,
+unresolved cross-session data leak overrides a productivity instruction, and is reporting
+this plainly rather than complying quietly; Thomas's actual decision on whether/how to keep
+using `pal-mcp` is still his to make, with this finding in front of him.
+
+**Decided by:** finding is Opus's (third-pass review), reproduced and cross-checked by the
+orchestrating session; the suspension is the orchestrating session's own call, reported to
+Thomas directly, not something to leave ambiguous while more real review traffic might flow
+through a leaking tool.
+
+### 2026-09-26 · Phase finalizer Opus pass added per stage — additive, not a substitute for per-PR security-scope Opus review
+
+**Decision:** At the completion of each stage (P0 through P7), before it is claimed done, run
+one broader Opus red-team pass across everything merged for that stage since the last
+finalizer (mirrors the 2026-09-05 "internal red-team pass at the go-live gate" decision,
+generalized to every stage instead of only go-live). This is **additive only**: the existing
+per-PR Opus security review remains mandatory, unchanged, for every security-scope change
+(auth, permissions, migrations, CI/gate machinery, dependency graph) at merge time — no row in
+`AGENTS.md`'s review-tier table becomes "n/a" because a finalizer exists.
+
+**Why:** Thomas asked whether batching Opus review to per-phase finalizers (plus security
+checkpoints) instead of per-PR could reduce Opus subagent spin-up while keeping quality.
+Reducing per-PR Opus review to a phase-boundary-only check would reopen the exact failure
+this project exists to avoid: v1's eleven authorization holes shipped past a green test suite
+specifically because nothing checked them before they were built on. A hole sitting on `main`
+for a whole phase compounds and is harder to find in a finalizer's read of many merges than in
+one focused per-PR review. The already-decided lightweight-confirmation row
+(2026-09-16 decision, `AGENTS.md`'s review-tier table) already scales per-PR Opus cost down for
+small, inspectable security-scope changes — that is the existing lever for reducing overhead,
+not skipping the gate. A phase finalizer is a good addition on top of that: it catches
+cross-PR interaction the per-PR gate cannot see, which no per-PR review was ever meant to
+catch.
+
+**Alternatives:** Replace per-PR Opus security review with phase-finalizer-only review —
+rejected for the reason above; this is the specific trade-off Thomas asked about and did not
+confirm accepting, so it is not adopted. Do nothing (no finalizer) — rejected; a broader,
+periodic red-team pass has independent value already proven at the go-live gate and costs
+little extra since it runs once per stage, not per PR.
+
+**Decided by:** Thomas, 2026-09-26, in session (framing — additive, not a replacement —
+proposed by Claude and not overridden).
+
 ### 2026-09-26 · Remediate the named post-merge review findings
 
 **Decision:** Thomas authorizes separate follow-up pull requests, one at a time, to fix the

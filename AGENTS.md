@@ -83,7 +83,8 @@ opens parallel development, and Throttle 2 gates only the claim). A slice is not
 because an endpoint exists —
 finish its schema, policy, tests, UI, browser evidence, audit/event behaviour and
 integration seam before calling it complete. v1 died of twenty-five screens at sixty per
-cent.
+cent. A stage's completion also gets its Opus phase-finalizer pass (see "Review tiers" below)
+before it is claimed done.
 
 ---
 
@@ -227,9 +228,20 @@ else runnable, then come back to it.
 `main` is protected by the `protect-main` ruleset — a pull request is required, deletion and
 non-fast-forward pushes are blocked, stale approvals are dismissed on push, and required
 status checks (including `pull request template + security review`) have zero bypass actors.
-Required approving reviews is `0` and Code Owner review is off, deliberately —
-`CODEOWNERS` is ownership metadata, not a gate. The gates that actually stop a bad merge are
-the review tiers below and the required status checks, not an approval count.
+Required approving reviews is `0` for the repository at large, and that is still deliberate —
+`CODEOWNERS` is ownership metadata for ordinary code, not a gate. The gates that actually stop
+a bad merge in ordinary code are the review tiers below and the required status checks, not an
+approval count.
+
+**`CODEOWNERS` also lists the control-plane files themselves** (`CLAUDE.md`, `AGENTS.md`,
+`docs/04-engineering/agent-workflow.md`, `docs/04-engineering/ci-cd.md`, `.claude/agents/**`,
+`.github/CODEOWNERS`) — as documentation, not a gate. A 2026-09-26 attempt to also turn on
+"Require review from Code Owners" for exactly those paths was reversed the same day: this
+repo has one collaborator, and every agent session acts through that same account's `gh`
+token, so there is no separate identity for GitHub to check an approval against — enabling it
+would only make these paths permanently unmergeable, not protect them. See
+`.github/CODEOWNERS`'s own header and the decision log. **Do not re-attempt the toggle, and
+never add a bypass actor to work around the deadlock it would create.**
 
 Never:
 
@@ -293,6 +305,26 @@ a `*.test.mjs` file.
 A change can start in one row and prove it belongs in another — that is a normal outcome,
 not a process failure, and does not retroactively invalidate review already done at the
 row it actually turned out to be.
+
+### Phase finalizer — an additional Opus pass, never a replacement
+
+At each stage's completion (P0 through P7), before it is claimed done (rule 5), run one
+broader Opus red-team pass across everything merged for that stage since the last finalizer
+— this mirrors the existing go-live red-team decision (2026-09-05). **The finalizer must be a
+fresh, independent context that did not orchestrate or merge that stage's own PRs** — same
+freshness requirement as any other Opus review, not relaxed because it runs less often. **If
+Opus is unreachable for the finalizer, the stage is not claimed done** — the same capacity
+rule as the per-PR gate, not a lower bar. This is **additive**: it
+never substitutes for, delays, or batches the per-PR Opus security review already required at
+merge time for any security-scope change (auth, permissions, migrations, CI/gate machinery,
+dependency graph) — that gate fires per candidate, at merge, always. The review-tier table
+above has no "n/a" row for security scope on purpose, and a phase finalizer does not create
+one. The finalizer's job is different from the per-PR gate: catching an interaction between
+several individually-reviewed merges that no single PR's review could have seen — not catching
+what a per-PR review should have caught the first time. If a phase finalizer ever finds
+something a per-PR gate missed, that is a finding about the per-PR gate to fix, not a signal to
+lean on the finalizer more and the per-PR gate less (Thomas, 2026-09-26 — see the decision
+log).
 
 ### When repeated review keeps finding something: stop patching and change altitude
 
