@@ -1452,38 +1452,26 @@ releases three blocked things at once: #192's cross-tenant gap, the RLS prototyp
 project purge. It also needs a **new** `UNIQUE (workspace_id, id)` on `work_item_type`, which
 does not exist today.
 
-### PR #376 — governance change, Opus findings being remediated
+### PR #376 — governance change; `pal-mcp` SUSPENDED as a live finding, not merged yet
 
-**PR #376** (`pal-mcp` becomes the ordinary review/audit/report/alignment tool; phase
-finalizer; control-plane CODEOWNERS) cleared two independent Sonnet ordinary reviews at
-`6d7a812` (both initially returned REQUEST CHANGES; findings fixed at `0344469`) and an
-additional status-only commit at `efb29be`. The required Opus security/gate-semantics pass
-ran at `efb29be` once the weekly Claude usage window reset and returned **REQUEST CHANGES**
-with real findings, the most significant being: the plan to enable "Require review from Code
-Owners" for the six control-plane paths does not actually work — this repo has one
-collaborator, and every agent session shares that account's `gh` token, so there is no
-identity boundary for GitHub to enforce (decision log, 2026-09-26,
-"Opus review finding: the Code Owner review toggle cannot provide real protection —
-**PENDING THOMAS'S CONFIRMATION**"). Also found and fixed: a real independence gap (the
-`coder` panel can't review its own panel members' — GPT-6 Luna's, DeepSeek's — pull
-requests), an overbroad secrets/PII guardrail (rewritten as path-scoping, since `pal-mcp`'s
-tools send whole files/diffs, not lines), several remaining stale cross-references in
-`agent-workflow.md`, and process gaps in the PR record itself (wrong template, stale claims).
-All fixed at `53aefae`, including the PR template rewrite and a committed security-review
-note. **A second, fresh Opus confirmation pass at `53aefae` also returned REQUEST CHANGES**:
-most F1–F10 fixes held up, but two were only partially done (F3's path-scoping rule was
-missing from `agent-workflow.md`; F6's phase-finalizer freshness/capacity wording was missing
-from `AGENTS.md`'s own subsection, only added to `CLAUDE.md`'s table), the decision-log
-entries and `.github/CODEOWNERS`'s header read as asserting the Code-Owner-review reversal as
-settled fact rather than pending Thomas's confirmation (now reworded), and the PR body still
-failed the template check on 3 counts (Opus model-name prefix, merged checklist headings,
-missing independent-review checkbox — same class of mistake independently caught on PR #377
-at the same time). All being fixed now; a third Opus pass will be a light confirmation only,
-per this repo's own "stop patching, change altitude" guidance, not a full re-audit. **Open
-question flagged by both Opus passes, not yet resolved:** whether the two ordinary Sonnet
-reviews recorded at `6d7a812` are sufficient cover for the substantive delta since (which
-reverses the Code-Owner-review plan and adds the panel-independence rule), or whether a fresh
-ordinary review is also needed before merge — orchestrating session's call, not yet made.
+**PR #376** set out to make `pal-mcp` the primary ordinary-review/audit/report/alignment
+tool. Across two Sonnet ordinary reviews and three Opus passes, real findings were found and
+fixed each round (Code-Owner-review-toggle unenforceability, panel-independence gaps, stale
+cross-references, PR-template defects — full history in
+`docs/07-planning/security-reviews/376-pal-mcp-governance.md`'s per-pass sections and the
+decision log's 2026-09-26 entries). **The headline outcome: a third Opus pass, testing
+specifically for it, reproduced a cross-call content leak in `pal-mcp` that persisted even
+after Thomas's fusion-panel→failover config change** — this is server-side state-sharing on
+`pal-mcp` itself, not something the model-routing config controls. `pal-mcp` is now
+**SUSPENDED** as the default reviewer (`CLAUDE.md`, `agent-workflow.md`, `pal-reviewer.md` all
+carry the notice) — fresh Sonnet contexts are the standing ordinary-review path again, not a
+"fallback." A follow-up Opus confirmation found the suspension notice correct where it existed
+but incomplete: `pal-reviewer.md` had no suspension text at all, and `agent-workflow.md`'s main
+"Model tiers" section still read as pal-mcp-primary throughout (only one later subsection had
+been fixed). Both corrected. **Not yet done:** one more lightweight Opus confirmation on the
+completeness fix, then the PR body/checklist need a final pass before merge. This PR does not
+merge with `pal-mcp` "must-use" framing — it merges recording what was tried, what was found,
+and what is suspended, which is itself the useful governance outcome here.
 
 ### PR #377 — UAT deploy verified end-to-end through the real host Traefik
 

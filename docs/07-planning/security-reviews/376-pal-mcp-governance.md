@@ -139,8 +139,12 @@ the actual state by two commits.
 **Resolution:** `pal-mcp` is **suspended** as the default ordinary reviewer — not deleted,
 marked suspended in `CLAUDE.md` and `agent-workflow.md`, so the design can resume once the
 leak is actually fixed. See decision-log.md, "CORRECTION: the pal-mcp cross-call leak is NOT
-fixed — `pal-mcp` SUSPENDED as default reviewer." All B2–B5 findings fixed in commit
-`bccafe7`.
+fixed — `pal-mcp` SUSPENDED as default reviewer." **Correction to this section's own earlier
+claim:** commit `bccafe7` fixed B2–B5 only in `CLAUDE.md` and `decision-log.md` — a follow-up
+lightweight Opus confirmation (below) found `.claude/agents/pal-reviewer.md` had no
+suspension notice at all, and `agent-workflow.md`'s main "Model tiers" section still read as
+pal-mcp-primary throughout (only one later subsection had been fixed). Both, plus `status.md`
+(B5), corrected in the commit immediately following that confirmation.
 
 **What this changes about Pass 1/Pass 2's verdicts:** does not retroactively invalidate them
 — F1–F10 and N1–N7 were real findings about the governance *text*, correctly found and fixed
