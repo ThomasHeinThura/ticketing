@@ -338,6 +338,158 @@ test("detached require and createRequire forms fail closed", async (t) => {
   );
 });
 
+test("unknown discovered workspaces fail closed against the positive edge matrix", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "taskdesk-deps-unlisted-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  async function packageAt(relative, name) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name }),
+    );
+    return directory;
+  }
+  const added = await packageAt("packages/new", "@taskdesk/new");
+  await packageAt("packages/email", "@taskdesk/email");
+  await writeFile(
+    path.join(added, "src/index.ts"),
+    'import "@taskdesk/email";',
+  );
+  const { violations } = await analyzeDependencies(root);
+  assert.match(
+    violations.join("\n"),
+    /packages\/new\/package\.json[\s\S]*no documented positive WORKSPACE_EDGES entry/,
+  );
+});
+
+test("namespace and default createRequire imports are analyzed, including MCP loader calls", async (t) => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), "taskdesk-deps-create-require-aliases-"),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  async function packageAt(relative, name) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name }),
+    );
+    return directory;
+  }
+  const libs = await packageAt("packages/libs", "@taskdesk/libs");
+  const mcp = await packageAt("packages/mcp", "@taskdesk/mcp");
+  await packageAt("apps/api", "@taskdesk/api");
+  await writeFile(
+    path.join(libs, "src/namespace.ts"),
+    [
+      'import * as Module from "node:module";',
+      "const load = Module.createRequire(import.meta.url);",
+      'load("@taskdesk/api");',
+    ].join("\n"),
+  );
+  await writeFile(
+    path.join(libs, "src/default.ts"),
+    [
+      'import { default as Module } from "node:module";',
+      "const load = Module.createRequire(import.meta.url);",
+      'load("@taskdesk/api");',
+    ].join("\n"),
+  );
+  await writeFile(
+    path.join(mcp, "src/server.ts"),
+    [
+      'import { createRequire } from "node:module";',
+      "const localRequire = createRequire(import.meta.url);",
+      'localRequire("../package.json");',
+      'localRequire("@taskdesk/api");',
+    ].join("\n"),
+  );
+  const { violations } = await analyzeDependencies(root);
+  const messages = violations.join("\n");
+  assert.match(messages, /packages\/libs\/src\/namespace\.ts.*createRequire/s);
+  assert.match(messages, /packages\/libs\/src\/namespace\.ts.*from apps\/\*/s);
+  assert.match(messages, /packages\/libs\/src\/default\.ts.*createRequire/s);
+  assert.match(messages, /packages\/mcp\/src\/server\.ts.*from apps\/\*/s);
+});
+
+test("Vite aliases resolving into another workspace are boundary checked", async (t) => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), "taskdesk-deps-vite-alias-"),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  async function packageAt(relative, name) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name }),
+    );
+    await writeFile(
+      path.join(directory, "tsconfig.json"),
+      JSON.stringify({ compilerOptions: {} }),
+    );
+    return directory;
+  }
+  const web = await packageAt("apps/web", "@taskdesk/web");
+  const api = await packageAt("apps/api", "@taskdesk/api");
+  await mkdir(path.join(root, "apps/web"), { recursive: true });
+  await writeFile(
+    path.join(root, "apps/web/vite.config.ts"),
+    [
+      'import path from "node:path";',
+      'export default { resolve: { alias: { "@api": path.resolve(__dirname, "../../apps/api/src") } } };',
+    ].join("\n"),
+  );
+  await writeFile(path.join(web, "src/edge.ts"), 'import "@api/auth";');
+  await writeFile(path.join(api, "src/auth.ts"), "export {};\n");
+  const { violations } = await analyzeDependencies(root);
+  assert.match(violations.join("\n"), /apps\/web\/src\/edge\.ts.*apps\/api/s);
+});
+
+test("conflicting bundler alias definitions fail closed", async (t) => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), "taskdesk-deps-vite-alias-ambiguous-"),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  async function packageAt(relative, name) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name }),
+    );
+    await writeFile(
+      path.join(directory, "tsconfig.json"),
+      JSON.stringify({ compilerOptions: {} }),
+    );
+    return directory;
+  }
+  const web = await packageAt("apps/web", "@taskdesk/web");
+  await packageAt("apps/api", "@taskdesk/api");
+  await packageAt("packages/libs", "@taskdesk/libs");
+  await writeFile(
+    path.join(root, "apps/web/vite.config.ts"),
+    [
+      'import path from "node:path";',
+      'export default { resolve: { alias: { "@api": path.resolve(__dirname, "../../apps/api/src") } } };',
+    ].join("\n"),
+  );
+  await writeFile(
+    path.join(root, "apps/web/vitest.config.ts"),
+    [
+      'import path from "node:path";',
+      'export default { resolve: { alias: { "@api": path.resolve(__dirname, "../../packages/libs/src") } } };',
+    ].join("\n"),
+  );
+  await writeFile(path.join(web, "src/edge.ts"), 'import "@api/auth";');
+  const { violations } = await analyzeDependencies(root);
+  assert.match(
+    violations.join("\n"),
+    /ambiguous resolve\.alias mapping for "@api"/,
+  );
+});
+
 test("workspace aliases and tsconfig paths resolve to package targets and matrix edges", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "taskdesk-deps-aliases-"));
   t.after(() => rm(root, { recursive: true, force: true }));

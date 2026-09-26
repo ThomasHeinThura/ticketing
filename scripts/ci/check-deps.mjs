@@ -43,7 +43,9 @@ const SOURCE_EXTENSIONS = [
   ".cjs",
 ];
 const DYNAMIC_SPECIFIER = "<non-static module specifier>";
-const CREATE_REQUIRE_ALLOWLIST = new Set(["packages/mcp/src/server.ts"]);
+const CREATE_REQUIRE_ALLOWLIST = new Map([
+  ["packages/mcp/src/server.ts", "../package.json"],
+]);
 const WORKSPACE_EDGES = new Map([
   [
     "@taskdesk/web",
@@ -211,6 +213,67 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
       typeOnly,
       node,
     });
+  const allowedRequireSpecifier = CREATE_REQUIRE_ALLOWLIST.get(relativeFile);
+  const factoryBindings = new Set();
+  const moduleBindings = new Set();
+  const loaderBindings = new Set();
+  function isCreateRequireExpression(expr) {
+    return (
+      (tsIs.isIdentifier(expr) && factoryBindings.has(expr.text)) ||
+      (expr.kind === ts.SyntaxKind.PropertyAccessExpression &&
+        expr.name.text === "createRequire" &&
+        tsIs.isIdentifier(expr.expression) &&
+        moduleBindings.has(expr.expression.text))
+    );
+  }
+  function visitBindings(node) {
+    if (
+      node.kind === ts.SyntaxKind.ImportDeclaration &&
+      literal(node.moduleSpecifier) &&
+      ["module", "node:module"].includes(literal(node.moduleSpecifier))
+    ) {
+      const bindings = node.importClause?.namedBindings;
+      if (bindings?.kind === ts.SyntaxKind.NamespaceImport)
+        moduleBindings.add(bindings.name.text);
+      if (node.importClause?.name)
+        moduleBindings.add(node.importClause.name.text);
+      if (bindings?.kind === ts.SyntaxKind.NamedImports) {
+        for (const element of bindings.elements) {
+          const imported = (element.propertyName ?? element.name).text;
+          if (imported === "createRequire")
+            factoryBindings.add(element.name.text);
+          if (imported === "default") moduleBindings.add(element.name.text);
+        }
+      }
+    }
+    if (
+      node.kind === ts.SyntaxKind.VariableDeclaration &&
+      tsIs.isIdentifier(node.name) &&
+      node.initializer
+    ) {
+      const initializer = node.initializer;
+      if (isCreateRequireExpression(initializer))
+        factoryBindings.add(node.name.text);
+      else if (
+        initializer.kind === ts.SyntaxKind.CallExpression &&
+        isCreateRequireExpression(initializer.expression)
+      ) {
+        // A createRequire result is a loader; the call is checked separately below.
+        loaderBindings.add(node.name.text);
+      } else if (
+        tsIs.isIdentifier(initializer) &&
+        (factoryBindings.has(initializer.text) ||
+          loaderBindings.has(initializer.text))
+      ) {
+        (factoryBindings.has(initializer.text)
+          ? factoryBindings
+          : loaderBindings
+        ).add(node.name.text);
+      }
+    }
+    node.forEachChild(visitBindings);
+  }
+  visitBindings(file);
   function constantString(node) {
     if (literal(node) !== undefined) return literal(node);
     if (
@@ -268,15 +331,56 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
         (expr.kind === ts.SyntaxKind.ElementAccessExpression &&
           expr.expression.getText(file) === "globalThis" &&
           constantString(expr.argumentExpression) === "require");
+      const isCreateRequire = isCreateRequireExpression(expr);
+      const isCreatedLoader =
+        tsIs.isIdentifier(expr) && loaderBindings.has(expr.text);
+      if (isCreateRequire) {
+        const parent = node.parent;
+        const variable =
+          parent?.kind === ts.SyntaxKind.VariableDeclaration &&
+          parent.initializer === node
+            ? parent
+            : null;
+        const permitted =
+          allowedRequireSpecifier &&
+          variable &&
+          variable.name.text === "require" &&
+          node.arguments.length === 1 &&
+          node.arguments[0]?.kind === ts.SyntaxKind.PropertyAccessExpression &&
+          node.arguments[0].expression.kind === ts.SyntaxKind.MetaProperty &&
+          node.arguments[0].expression.keywordToken ===
+            ts.SyntaxKind.ImportKeyword &&
+          node.arguments[0].name.text === "url";
+        if (!permitted)
+          imports.push({
+            specifier: "<createRequire>",
+            line: lineAt(node),
+            typeOnly: false,
+            node,
+          });
+      }
       if (
         isImport ||
         isRequire ||
         isModuleRequire ||
         isRequireResolve ||
         isImportMetaResolve ||
-        isGlobalRequire
+        isGlobalRequire ||
+        isCreatedLoader
       )
         add(node.arguments[0]);
+      if (
+        isCreatedLoader &&
+        allowedRequireSpecifier &&
+        constantString(node.arguments[0]) !== allowedRequireSpecifier
+      ) {
+        imports.push({
+          specifier: DYNAMIC_SPECIFIER,
+          line: lineAt(node),
+          typeOnly: false,
+          node,
+        });
+      }
     } else if (
       kind === ts.SyntaxKind.PropertyAccessExpression ||
       kind === ts.SyntaxKind.ElementAccessExpression
@@ -295,9 +399,16 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
         ["module", "process.mainModule", "globalThis"].includes(receiver);
       const isRequireResolver =
         property === "resolve" && receiver === "require";
-      if (!isDirectCall && (isLoaderMember || isRequireResolver))
+      const isDetachedCreateRequire =
+        property === "createRequire" && moduleBindings.has(receiver);
+      if (
+        !isDirectCall &&
+        (isLoaderMember || isRequireResolver || isDetachedCreateRequire)
+      )
         imports.push({
-          specifier: DYNAMIC_SPECIFIER,
+          specifier: isDetachedCreateRequire
+            ? "<createRequire>"
+            : DYNAMIC_SPECIFIER,
           line: lineAt(node),
           typeOnly: false,
           node,
@@ -315,7 +426,7 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
         (parent?.kind === ts.SyntaxKind.MethodDeclaration &&
           parent.name === node);
       const createRequireBinding =
-        CREATE_REQUIRE_ALLOWLIST.has(relativeFile) &&
+        allowedRequireSpecifier &&
         parent?.kind === ts.SyntaxKind.VariableDeclaration &&
         parent.name === node &&
         parent.initializer?.kind === ts.SyntaxKind.CallExpression &&
@@ -327,9 +438,21 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
           typeOnly: false,
           node,
         });
+    } else if (tsIs.isIdentifier(node) && factoryBindings.has(node.text)) {
+      const parent = node.parent;
+      const importBinding = parent?.kind === ts.SyntaxKind.ImportSpecifier;
+      const directCall =
+        parent?.kind === ts.SyntaxKind.CallExpression &&
+        parent.expression === node;
+      if (!importBinding && !directCall)
+        imports.push({
+          specifier: "<createRequire>",
+          line: lineAt(node),
+          typeOnly: false,
+          node,
+        });
     }
     if (
-      !CREATE_REQUIRE_ALLOWLIST.has(relativeFile) &&
       kind === ts.SyntaxKind.ImportDeclaration &&
       node.moduleSpecifier &&
       literal(node.moduleSpecifier) &&
@@ -338,7 +461,8 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
       node.importClause.namedBindings.elements.some(
         (element) =>
           (element.propertyName ?? element.name).text === "createRequire",
-      )
+      ) &&
+      !allowedRequireSpecifier
     ) {
       imports.push({
         specifier: "<createRequire>",
@@ -428,7 +552,7 @@ function workspaceTargetForSpecifier(
     const replacement = key.endsWith("*")
       ? specifier.slice(key.slice(0, -1).length)
       : "";
-    const mapped = resolved.replace("*", replacement);
+    const mapped = resolved.replaceAll("*", replacement);
     if (seen.has(mapped)) return null;
     const resolvedTarget = workspaceTargetForSpecifier(
       mapped,
@@ -452,12 +576,156 @@ function resolveAsFile(base) {
     : null;
 }
 
+function configFilesFor(manifests) {
+  const files = [];
+  for (const { path: directory } of manifests) {
+    for (const name of [
+      "vite.config.ts",
+      "vite.config.js",
+      "vitest.config.ts",
+      "vitest.integration.config.ts",
+      "vitest.permissions.config.ts",
+    ]) {
+      const candidate = path.join(directory, name);
+      if (existsSync(candidate)) files.push(candidate);
+    }
+  }
+  return files;
+}
+
+function configuredAliases(configFiles, snapshot, root, manifests) {
+  const aliases = new Map();
+  const violations = [];
+  for (const config of configFiles) {
+    const relative = path.relative(root, config).split(path.sep).join("/");
+    const configOwner = ownerForFile(config, manifests);
+    if (!configOwner) continue;
+    const ownerAliases = aliases.get(configOwner.name) ?? new Map();
+    aliases.set(configOwner.name, ownerAliases);
+    const project = snapshot.getDefaultProjectForFile(config);
+    const file = project?.program.getSourceFile(config);
+    if (!file) continue;
+    const text = (node) =>
+      node &&
+      [
+        ts.SyntaxKind.StringLiteral,
+        ts.SyntaxKind.NoSubstitutionTemplateLiteral,
+      ].includes(node.kind)
+        ? node.text
+        : undefined;
+    const evaluatePath = (node) => {
+      const literal = text(node);
+      if (literal !== undefined)
+        return path.resolve(path.dirname(config), literal);
+      if (node?.kind === ts.SyntaxKind.Identifier && node.text === "__dirname")
+        return path.dirname(config);
+      if (
+        node?.kind === ts.SyntaxKind.PropertyAccessExpression &&
+        node.name.text === "dirname" &&
+        node.expression.kind === ts.SyntaxKind.MetaProperty
+      )
+        return path.dirname(config);
+      if (
+        node?.kind === ts.SyntaxKind.CallExpression &&
+        node.arguments.length
+      ) {
+        const fn = node.expression.getText(file);
+        if (!/(?:^|\.)resolve$/.test(fn) && !/(?:^|\.)join$/.test(fn))
+          return undefined;
+        const parts = node.arguments.map((arg) => {
+          if (text(arg) !== undefined) return text(arg);
+          if (arg.kind === ts.SyntaxKind.Identifier && arg.text === "__dirname")
+            return path.dirname(config);
+          if (
+            arg.kind === ts.SyntaxKind.PropertyAccessExpression &&
+            arg.name.text === "dirname" &&
+            arg.expression.kind === ts.SyntaxKind.MetaProperty
+          )
+            return path.dirname(config);
+          return undefined;
+        });
+        if (parts.some((part) => part === undefined)) return undefined;
+        return path.resolve(...parts);
+      }
+      return undefined;
+    };
+    function visit(node) {
+      if (
+        node.kind === ts.SyntaxKind.PropertyAssignment &&
+        node.name.getText(file) === "resolve" &&
+        node.initializer.kind !== ts.SyntaxKind.ObjectLiteralExpression
+      ) {
+        violations.push(
+          violation(
+            relative,
+            "dynamic resolve configuration cannot be proven by the package boundary gate",
+          ),
+        );
+      }
+      if (
+        node.kind === ts.SyntaxKind.PropertyAssignment &&
+        node.name.getText(file) === "alias"
+      ) {
+        if (node.initializer.kind !== ts.SyntaxKind.ObjectLiteralExpression) {
+          violations.push(
+            violation(
+              relative,
+              "dynamic resolve.alias cannot be proven by the package boundary gate",
+            ),
+          );
+          return;
+        }
+        for (const entry of node.initializer.properties) {
+          if (entry.kind !== ts.SyntaxKind.PropertyAssignment) {
+            violations.push(
+              violation(
+                relative,
+                "unsupported resolve.alias entry cannot be proven by the package boundary gate",
+              ),
+            );
+            continue;
+          }
+          const key =
+            text(entry.name) ??
+            (entry.name.kind === ts.SyntaxKind.Identifier
+              ? entry.name.text
+              : undefined);
+          const target = evaluatePath(entry.initializer);
+          if (!key || !target) {
+            violations.push(
+              violation(
+                relative,
+                "dynamic resolve.alias mapping cannot be proven by the package boundary gate",
+              ),
+            );
+            continue;
+          }
+          if (ownerAliases.has(key) && ownerAliases.get(key) !== target) {
+            violations.push(
+              violation(
+                relative,
+                `ambiguous resolve.alias mapping for "${key}"`,
+              ),
+            );
+            continue;
+          }
+          ownerAliases.set(key, target);
+        }
+      }
+      node.forEachChild(visit);
+    }
+    visit(file);
+  }
+  return { aliases, violations };
+}
+
 function resolveWorkspaceTarget(
   imported,
   file,
   owner,
   workspaceByName,
   project,
+  aliases,
 ) {
   const { specifier } = imported;
   const names = [...workspaceByName.values()];
@@ -478,6 +746,23 @@ function resolveWorkspaceTarget(
       workspace: ownerForFile(packageTarget.absolute, names),
       file: packageTarget.absolute,
     };
+  const aliasMatches = [...aliases]
+    .filter(([key]) => specifier === key || specifier.startsWith(`${key}/`))
+    .sort((a, b) => b[0].length - a[0].length);
+  if (aliasMatches.length) {
+    const [key, targetPath] = aliasMatches[0];
+    if (
+      aliasMatches.length > 1 &&
+      aliasMatches[0][0].length === aliasMatches[1][0].length
+    )
+      return { unresolvedAlias: true };
+    const resolved = path.resolve(
+      targetPath,
+      specifier === key ? "" : specifier.slice(key.length + 1),
+    );
+    const workspace = ownerForFile(resolved, names);
+    return { workspace, file: resolveAsFile(resolved) ?? resolved };
+  }
   if (imported.node) {
     const symbol = project?.checker.getSymbolAtLocation(imported.node);
     for (const declaration of symbol?.declarations ?? []) {
@@ -506,6 +791,28 @@ export async function analyzeDependencies(root = repoRoot) {
   const manifestByName = new Map(manifests.map((entry) => [entry.name, entry]));
   const graph = runtimeWorkspaceEdges(manifests);
   const violations = [];
+  const configFiles = configFilesFor(manifests);
+
+  for (const entry of manifests) {
+    if (!WORKSPACE_EDGES.has(entry.name)) {
+      violations.push(
+        violation(
+          entry.manifestPath
+            ? path.relative(root, entry.manifestPath).split(path.sep).join("/")
+            : entry.name,
+          `workspace "${entry.name}" has no documented positive WORKSPACE_EDGES entry`,
+        ),
+      );
+    }
+  }
+  if (manifestByName.size !== manifests.length) {
+    violations.push(
+      violation(
+        "workspace manifests",
+        "duplicate workspace package names make the workspace edge matrix ambiguous",
+      ),
+    );
+  }
 
   for (const cycle of findCycles(graph)) {
     violations.push(
@@ -517,17 +824,15 @@ export async function analyzeDependencies(root = repoRoot) {
   }
 
   for (const { name, manifest } of manifests) {
-    const permittedEdges = WORKSPACE_EDGES.get(name);
-    if (permittedEdges) {
-      for (const dependency of graph.get(name) ?? []) {
-        if (!permittedEdges.has(dependency))
-          violations.push(
-            violation(
-              `${name}/package.json`,
-              `runtime workspace dependency "${dependency}" is outside the documented workspace edge matrix`,
-            ),
-          );
-      }
+    const permittedEdges = WORKSPACE_EDGES.get(name) ?? new Set();
+    for (const dependency of graph.get(name) ?? []) {
+      if (!permittedEdges.has(dependency))
+        violations.push(
+          violation(
+            `${name}/package.json`,
+            `runtime workspace dependency "${dependency}" is outside the documented workspace edge matrix`,
+          ),
+        );
     }
     if (PURE_LEAF_PACKAGES.has(name)) {
       for (const dependency of graph.get(name) ?? []) {
@@ -575,8 +880,15 @@ export async function analyzeDependencies(root = repoRoot) {
       openProjects: manifests
         .map((entry) => path.join(entry.path, "tsconfig.json"))
         .filter((file) => existsSync(file)),
-      openFiles: files,
+      openFiles: [...files, ...configFiles],
     });
+    const { aliases, violations: aliasViolations } = configuredAliases(
+      configFiles,
+      snapshot,
+      root,
+      manifests,
+    );
+    violations.push(...aliasViolations);
     for (const file of files) {
       const owner = ownerForFile(file, manifests);
       if (!owner) continue;
@@ -623,7 +935,17 @@ export async function analyzeDependencies(root = repoRoot) {
           owner,
           manifestByName,
           project,
+          aliases.get(owner.name) ?? new Map(),
         );
+        if (target?.unresolvedAlias) {
+          violations.push(
+            violation(
+              relativeFile,
+              `line ${imported.line} uses an unresolved or ambiguous bundler alias "${imported.specifier}"`,
+            ),
+          );
+          continue;
+        }
         const targetWorkspace =
           target?.workspace?.name !== owner.name
             ? (target?.workspace?.name ??
