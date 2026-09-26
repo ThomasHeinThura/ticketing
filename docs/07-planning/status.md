@@ -1,5 +1,11 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+**2026-09-26 continuation (post-merge review findings):** Thomas authorized separate,
+one-at-a-time follow-up PRs for the named findings in #354, #341, #362, #367 and #371. The
+authorization and proposed order are recorded in `decision-log.md`; this documentation PR
+must land before the follow-up implementation starts. The P0 #352 and #361 candidates remain
+in progress and require their own exact-head Opus reviews.
+
 **2026-09-25 orchestrator snapshot — `main` at `714a653`.** Merged since the 2026-09-24
 snapshot, each with every required check green on the exact head, an independent ordinary
 review and an Opus 5.5 review of that head: #340 (`9060512`, create work-item dialog), #341

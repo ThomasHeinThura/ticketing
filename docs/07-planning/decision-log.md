@@ -15,6 +15,39 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-26 · Remediate the named post-merge review findings
+
+**Decision:** Thomas authorizes separate follow-up pull requests, one at a time, to fix the
+specific review findings identified in the 2026-09-26 handoff: #354 S1 (shadow-event
+workspace provenance), #341 F1 (error normalization for arbitrary thrown values), #362
+L1–L4 (assignable-people query scope and filtering), #367 D1 (documentation wording), and
+#371 (persist decline actor so customer reopen is limited to system auto-declines, using the
+existing issue's data-model entry and migration). The orchestrator's proposed order is #354,
+#341, #362, #367, then #371: address the P0 security and reliability risks first, followed
+by query correctness, wording, and the schema change. This authorizes the listed fixes only;
+it does not authorize an API route for intake or extend #372's prerequisite scope.
+
+Each follow-up must use the ordinary-review count required by the risk classification in
+`AGENTS.md`, with independent reviewer contexts, and a separate exact-head Opus 5.5 final
+review before merge. Use the available GPT-6 Luna context for implementation and ordinary
+review when Sonnet is unavailable, without representing it as Sonnet or Opus. Keep the PR's
+source finding, regression test, and review record together. Security-scope changes and the
+migration remain subject to their full review tier and normal protected-PR gates. This
+decision does not waive checks, permit self-review, or authorize direct pushes to `main`.
+
+**Why:** These findings were recorded by reviewers of already merged work. Leaving the
+workspace-provenance S1 and error-boundary robustness defect unfixed would retain known
+security and reliability gaps; the assignable-people and intake records are also explicitly
+owned by existing issues. Thomas has now authorized fixing these concrete findings through
+the repository's ordinary follow-up flow.
+
+**Alternatives:** Leave all post-merge findings as backlog; treat the pasted handoff as a
+gate waiver; or batch unrelated changes into one PR. Rejected: the listed findings are
+authorized for narrow, individually reviewed follow-up PRs, with all review and merge gates
+preserved.
+
+**Decided by:** Thomas, 2026-09-26, in session.
+
 ### 2026-09-25 · Intake: a customer may reopen only a submission the system auto-declined
 
 **Decision:** A customer may `reopen` a submission only if it was declined automatically: the `IQ-15` clarification-window auto-decline run by `reminder-scan`. A decline made by a staff member (`IQ-16`) is final for the customer. Whether staff can reopen a declined submission is not decided; `IQ-6` has no such action today. Enforcing the customer rule needs the submission record to say who declined it: a new `SubmissionRecord` field and a data-model column, tracked in #371. Until then no API route calls intake, so nothing can be reopened.
