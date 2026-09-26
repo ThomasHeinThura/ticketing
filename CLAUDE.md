@@ -110,66 +110,102 @@ A merge is not a stopping point.
 
 ## Model tiers
 
-> **Since 2026-09-23 this section is partly superseded by the decision log.** Read that first.
-> - Implementation on the P0/P1/P2 lanes is done by three non-Claude agents that Thomas runs: GPT-6 Luna, DeepSeek 4.1 Flash (through GitHub Copilot) and mimo-v2.26 Flash (through Cline). The intended ordinary-review path is for those agents to review each other: reviewer distinct from author, with model and exact reviewed SHA recorded.
-> - Until 2026-09-30, #345 temporarily assigns ordinary review to a fresh independent context. If the Claude Sonnet route is unavailable, Thomas has authorized the orchestrating session to use a fresh current-model context instead; record its actual model and exact SHA. This is an ordinary review only and does not satisfy the Opus gate.
-> - The orchestrating session commissions the final Opus 5.5 security review in a fresh independent context and handles merge only after every gate passes.
-> - **The Opus 5.5 security review is never replaced by a lower tier.** If Opus is unavailable, the PR waits.
+> **Since 2026-09-26 this section is superseded for reading/ordinary-review/audit/report/
+> alignment by the decision log.** Read that first, then this.
+> - **`pal-mcp`** (an MCP tool suite — `analyze`, `codereview`, `secaudit`, `debug`,
+>   `refactor`, `testgen`, `precommit`, `consensus`, `thinkdeep`, `tracer`, `chat`,
+>   `apilookup`, `challenge`) is now the **primary** path for bulk reading/context-prep,
+>   ordinary review, audit, reporting, and the alignment check. Its `coder` model is a
+>   **fusion panel** on Thomas's own 9Router gateway — GPT-6 Luna (judge), Gemini 3.8 Flash,
+>   DeepSeek v4.1 Flash and GLM 5.3 Flash, 272K context — not a single small local model.
+>   Thomas confirmed the endpoint is his own and vetted (2026-09-26).
+> - This supersedes the 2026-09-23/2026-09-24 "#345 temporary current-model-context" ordinary-
+>   review fallback for Claude's own subagent tier: GPT-6 Luna's review capacity is now
+>   reachable directly as a tool call from inside this session, not only through a separately
+>   Thomas-run agent.
+> - **Sonnet's role narrows to coding/implementation against an agreed spec**, spawned
+>   explicitly, and remains the fallback ordinary reviewer only when `pal-mcp`/9Router is
+>   genuinely unreachable — record the fallback and why, same as any other tier substitution.
+> - **The Opus 5.5 final security/critical review is unchanged: still mandatory, still a
+>   fresh independent context, still never replaced by any lower tier — including `pal-mcp`.**
+>   If Opus is unavailable, the PR waits.
 >
-> See the 2026-09-23 entries "Three non-Claude implementation agents take the P0/P1/P2 lanes…" (#336), "Until the lane agents' review capacity returns…" (#345), and the current-model fallback below. The text below describes the tiers **within Claude's own subagents**, and the gates are unchanged.
+> See the 2026-09-26 entry ("`pal-mcp` becomes the ordinary review/audit/report/alignment
+> tool") and the 2026-09-23 entries it partly supersedes ("Three non-Claude implementation
+> agents take the P0/P1/P2 lanes…" #336, "Until the lane agents' review capacity returns…"
+> #345). The text below describes the tiers **within Claude's own subagents**, and the merge
+> gates are unchanged.
 
-Every subagent's model is set **explicitly** at spawn time — never inherited from the
-session. Within this session's own `Agent` tool, two model families are used: **Claude Sonnet** and **Claude
-Opus**. The earlier multi-provider router, and the non-Claude coding agents routed through it, did not work out.
-The 2026-09-23 lane-agent model above is a different arrangement: the agents are run directly by Thomas, and every gate still applies.
+Every subagent's model or tool is set **explicitly** at spawn time — never inherited from the
+session. Three lanes are in play: **`pal-mcp`** (reading, ordinary review, audit, report,
+alignment), **Claude Sonnet** (coding/implementation, and ordinary-review fallback), and
+**Claude Opus** (the sole final security/critical review gate, never substituted). The earlier
+multi-provider router, and the non-Claude coding agents routed through it, did not work out
+**as an implementation router** — `pal-mcp` is narrower than that: a review/audit/reporting
+tool, never an implementation path, and it never touches the Opus gate.
 
-| Work | Model |
+| Work | Tool / model |
 | --- | --- |
+| Bulk reading, context-prep, summarization | `pal-mcp` (`coder` fusion panel) |
+| Ordinary review (bugs, tests, code quality), audit, reporting | `pal-mcp` (`coder` fusion panel); Sonnet fresh context as fallback if `pal-mcp`/9Router is unreachable |
+| Project-alignment / misalignment check — does this change match the spec, the vocabulary, the shared contracts, the five rules | `pal-mcp` (`coder` fusion panel); Sonnet fresh context as fallback |
 | Implementation against an agreed spec | Sonnet, spawned explicitly |
-| Ordinary review (bugs, tests, code quality) | Sonnet, a **fresh, independent** context |
-| Project-alignment / misalignment check — does this change match the spec, the vocabulary, the shared contracts, the five rules | Sonnet, a **fresh, independent** context |
-| **Final independent security / critical review** | **Opus**, spawned explicitly as its own subagent, on the exact candidate SHA |
+| **Final independent security / critical review** | **Opus**, spawned explicitly as its own subagent, on the exact candidate SHA — never `pal-mcp`, never a fallback tier |
+| **Phase finalizer** (P0–P7, additive — see `AGENTS.md`'s "Review tiers") | **Opus**, a broader red-team pass across a completed stage's merges, in addition to (never instead of) the per-PR security-scope gate above |
 | Orchestrating, planning, synthesizing reports | whatever model this top-level session is running as |
 
-**Basic implementation, review, checking, fixing, and the alignment check are Sonnet.**
-Spin up as many fresh Sonnet subagents as there is genuinely independent, boundable work for
-— implementation lanes, ordinary reviewers, and an alignment checker are all normal Sonnet
-subagent roles. Decide the tier and the reviewer count yourself, using `AGENTS.md`'s
-review-tier table — **by what the change actually risks, not by which directory it touches**
-(Thomas, 2026-09-16, after PR #148 spent eight-plus review rounds on a small CI-parsing fix:
-touching `scripts/ci/**` or another security-scope path is not on its own a reason for three
-Sonnet rounds — a bounded fix that changes no authority or gate-semantics invariant is one
-strong Sonnet review, then straight to the single required Opus pass; the full three-round
-tier is for migrations, API+frontend crossing the same change, concurrency, cross-package
-integration, or a change that actually redesigns an authority/gate-semantics invariant, not
-for every touch to a sensitive path). Do not ask Thomas to make that call per PR — but do
-apply the actual table, not a shortcut memory of "CI files always get three."
+**Reading, ordinary review, audit, reporting and the alignment check default to `pal-mcp`.**
+Match the tool to the job: `analyze`/`codereview`/`secaudit` for review and audit,
+`thinkdeep`/`tracer` for understanding a change before judging it, `precommit` before a
+candidate goes up, `chat`/`consensus` for a second opinion, `apilookup` for current API/SDK
+facts instead of guessing from training data. Spin up as many independent `pal-mcp` calls or
+Sonnet subagents as there is genuinely independent, boundable work for — implementation lanes
+stay Sonnet; ordinary reviewers and the alignment checker default to `pal-mcp`, falling back
+to fresh Sonnet contexts only when `pal-mcp` is genuinely unreachable. Decide the tier and the
+reviewer count yourself, using `AGENTS.md`'s review-tier table — **by what the change actually
+risks, not by which directory it touches** (Thomas, 2026-09-16, after PR #148 spent
+eight-plus review rounds on a small CI-parsing fix: touching `scripts/ci/**` or another
+security-scope path is not on its own a reason for three rounds — a bounded fix that changes no
+authority or gate-semantics invariant is one strong ordinary review, then straight to the
+single required Opus pass; the full three-round tier is for migrations, API+frontend crossing
+the same change, concurrency, cross-package integration, or a change that actually redesigns an
+authority/gate-semantics invariant, not for every touch to a sensitive path). Do not ask Thomas
+to make that call per PR — but do apply the actual table, not a shortcut memory of "CI files
+always get three."
 
 **When a mechanism has already had several review rounds finding the same recurring class of
-gap, do not keep queuing more Sonnet rounds** — see AGENTS.md's "stop patching and change
-altitude." Once the design has had its structural fix and further findings are narrower
+gap, do not keep queuing more ordinary-review rounds** — see AGENTS.md's "stop patching and
+change altitude." Once the design has had its structural fix and further findings are narrower
 instances of the same class (not a new class), one Opus pass is the closing gate, not
-another Sonnet round first. This is a rule about round *count*, not about rigor within a
+another ordinary round first. This is a rule about round *count*, not about rigor within a
 round — exact-head discipline, a real regression test per finding, and the ban on waiving a
 gate are unchanged.
 
 **Only the final independent review for genuinely security-sensitive or otherwise critical
 work is Opus, and it is always a fresh, separate context from whatever authored or
-orchestrated the change.** A context that materially authored, directed, or remediated the
-work under review cannot also clear it — spin up a distinct Opus subagent (or, if this
-session is itself Opus, hand off to a fresh top-level Opus context) for that review alone.
-Security-review scope is the path list in
+orchestrated the change — including `pal-mcp`.** A context that materially authored, directed,
+or remediated the work under review cannot also clear it — spin up a distinct Opus subagent
+(or, if this session is itself Opus, hand off to a fresh top-level Opus context) for that
+review alone. Security-review scope is the path list in
 [`ci-cd.md`](docs/04-engineering/ci-cd.md): auth, permissions, migrations, the CI/gate
 machinery itself, and the dependency graph (`package.json`, lockfiles, `pnpm-workspace.yaml`
 overrides).
 
-Three things an agent may never do:
+Five things an agent may never do:
 
 1. Approve its own review.
 2. Waive a quality gate — only Thomas, recorded in the decision log.
 3. **Downgrade an unavailable reviewer.** If Opus capacity is genuinely unreachable
    mid-review, the candidate waits, marked **SECURITY RE-REVIEW PENDING — OPUS CAPACITY** on
    the PR. Capacity exhaustion means wait, not substitute.
+4. **Treat `pal-mcp`, or any model in its `coder` panel, as satisfying the Opus gate.**
+   `pal-mcp` is an ordinary-review, audit and reporting tool. It is never the final
+   security/critical review, at any confidence level its own tools report.
+5. **Send live secrets, credentials, tokens, or real customer PII to `pal-mcp`.** Thomas
+   vetted the 9Router gateway itself; he has not separately vetted what its panel's own
+   third-party sub-providers (Gemini, DeepSeek, GLM) retain or train on. Treat that as an
+   open item, not resolved, until he says otherwise (`pal-reviewer.md` carries the same
+   rule).
 
 ---
 
@@ -191,6 +227,12 @@ been learned on this repository:
   independent implementation or review lanes are genuinely ready at once. Default useful
   concurrency is a handful of lanes — as many as there is real, non-overlapping,
   well-scoped work for, not a fixed number to hit.
+- **Ordinary review, audit, reporting and the alignment check default to the `pal-reviewer`
+  subagent** (`.claude/agents/pal-reviewer.md`), restricted to `pal-mcp` tools plus read-only
+  file access. Give it the exact candidate SHA and file list; it does the actual review via
+  `pal-mcp`'s `coder` fusion panel, batched into as few tool calls as the job allows, and
+  reports the SHA it checked plus what it did not check. Fall back to a fresh Sonnet context
+  only when `pal-mcp`/9Router is genuinely unreachable, and say so in the report.
 - **Do not reach for heavier multi-agent orchestration (the `Workflow` tool) as a standing
   default.** It requires the user's own explicit opt-in in that session and is not something
   this file can pre-authorize; ask Thomas to say so explicitly ("use a workflow") when a
@@ -226,11 +268,20 @@ picks up later.
 
 ## The control plane, and who owns it
 
-Eight surfaces are **orchestrator-owned**:
+Ten surfaces are **orchestrator-owned**:
 
 `AGENTS.md` · `CLAUDE.md` · `docs/04-engineering/agent-workflow.md` ·
 `docs/04-engineering/ci-cd.md` · `docs/07-planning/status.md` ·
-`docs/07-planning/decision-log.md` · GitHub issue status · GitHub Project board status
+`docs/07-planning/decision-log.md` · `.github/CODEOWNERS` · `.claude/agents/` ·
+GitHub issue status · GitHub Project board status
+
+**Since 2026-09-26, six of the file-based ones are also machine-enforced, not just
+conventional:** `CLAUDE.md`, `AGENTS.md`, `agent-workflow.md`, `ci-cd.md`,
+`.claude/agents/**` and `.github/CODEOWNERS` itself require Thomas's Code Owner review to
+merge — a lane or subagent editing them fails the merge, not just the convention.
+`status.md` and `decision-log.md` are deliberately left un-gated (see "Establishing current
+truth" — they are meant to change every session something durable happens), and GitHub
+issue/board status are not files this mechanism can cover at all.
 
 Lane or background agents treat all eight as **read-only** unless their task explicitly says
 they own a specific change. They may *report* — completed work, evidence, findings, a

@@ -69,21 +69,45 @@ B, tests for feature C. Do not parallelise across a shared file.
 
 ## Model tiers within Claude Code
 
-**Updated 2026-09-15 — see the [decision log](../07-planning/decision-log.md), 2026-09-15,
-"Governance reset."** When Claude Code orchestrates its own subagents — a Task, an Agent
-call — the model tier is not a free choice. It tracks who is allowed to sign off on what,
-not just who is cheaper. This repository uses exactly two model families: **Claude Sonnet**
-and **Claude Opus**, through the `Agent` tool's own explicit model selection at spawn time.
-An earlier multi-provider-router and non-Claude-specialist-agent approach was tried and
-dropped — it did not work out in practice.
+**Updated 2026-09-26 — see the [decision log](../07-planning/decision-log.md), 2026-09-26,
+"`pal-mcp` becomes the primary ordinary review/audit/report/alignment tool."** This
+supersedes the 2026-09-15 "exactly two model families" wording for three roles only:
+ordinary review, audit/reporting, and the alignment check. When Claude Code orchestrates its
+own subagents — a Task, an Agent call — the tool/model tier is not a free choice. It tracks
+who is allowed to sign off on what, not just who is cheaper.
 
-| Role | Model | Why |
+- **`pal-mcp`** (an MCP tool suite — `analyze`, `codereview`, `secaudit`, `precommit`,
+  `thinkdeep`, `tracer`, `chat`, `consensus`, `apilookup`, `challenge`) is now the primary
+  path for bulk reading/context-prep, ordinary review, audit, reporting, and the alignment
+  check, via the `pal-reviewer` subagent (`.claude/agents/pal-reviewer.md`). Its `coder`
+  model is a fusion panel — GPT-6 Luna as judge, plus Gemini 3.8 Flash, DeepSeek v4.1 Flash
+  and GLM 5.3 Flash, 272K context — on Thomas's own 9Router gateway.
+- **Claude Sonnet** keeps implementation against an agreed spec, and is the ordinary-review
+  fallback only when `pal-mcp`/9Router is genuinely unreachable — record the fallback and
+  why.
+- **Claude Opus** is unaffected: still the sole final security/critical review tier, never
+  satisfied by `pal-mcp` or any lower tier, at any confidence level `pal-mcp`'s own tools
+  report.
+
+An earlier multi-provider-router and non-Claude-specialist-agent approach **for
+implementation** was tried and dropped (decision log, 2026-09-15) — that attempt used the
+same `router.technexus.info` endpoint `pal-mcp`'s 9Router now reaches. The 2026-09-26 decision
+is a second, narrower attempt: review/audit/reporting only, never implementation, never the
+Opus gate, re-confirmed by Thomas as his own vetted gateway. `pal-mcp`'s panel also fans out
+to third-party-hosted model APIs (Gemini, DeepSeek, GLM) behind that gateway — Thomas vetted
+the gateway itself; he has not separately confirmed those providers' own data-retention or
+training terms. Until he does, never send live secrets, credentials, tokens, or real customer
+PII through `pal-mcp`; treat this as an open item, not a resolved one.
+
+| Role | Tool / Model | Why |
 | --- | --- | --- |
 | Main / orchestrating session | **Whatever model this session already is** | No longer restricted to Opus/Fable — a Sonnet session orchestrating its own subagents is normal. What matters is that the orchestrating session does not clear its own work |
 | Implementation subagents — writing code or tests to an already-agreed spec | **Sonnet, spawned explicitly** | This repository's whole premise is that the spec is detailed enough for mechanical implementation ([AGENTS.md](../../AGENTS.md), [SDLC](sdlc.md)) |
-| Ordinary review — ordinary bugs/tests/quality, architecture fit, QA pass | **Sonnet, a fresh independent context** | A different context catches what the authoring context is structurally blind to. Two independent Sonnet reviews minimum for ordinary work, three for broad/high-coupling work — see [AGENTS.md § Review tiers](../../AGENTS.md#review-tiers) |
-| Project-alignment / misalignment check | **Sonnet, a fresh independent context** | Does this change match the spec, the vocabulary, the shared contracts, the five rules — a distinct, explicitly-nameable Sonnet review role |
-| **Review — final independent security / critical review** | **Opus. Always. Not optional, not cost-negotiable.** Spawned as an explicit, separate subagent, or a fresh top-level Opus context. Default build: **Opus 5.5** (decision log, 2026-09-23) — record that version in the review | The one checkpoint this repository will not discount for budget or convenience. See below |
+| Ordinary review — ordinary bugs/tests/quality, architecture fit, QA pass | **`pal-mcp` (`pal-reviewer` subagent)**; Sonnet fresh context as fallback | A different tool/context catches what the authoring context is structurally blind to. Two independent reviewer invocations minimum for ordinary work — each a fresh `pal-reviewer` spawn, or a mix of `pal-reviewer` and Sonnet; **one internally-panelled `pal-mcp` call does not by itself satisfy a two-reviewer requirement** — three for broad/high-coupling work — see [AGENTS.md § Review tiers](../../AGENTS.md#review-tiers) |
+| Audit / reporting | **`pal-mcp` (`pal-reviewer` subagent)**; Sonnet fresh context as fallback | Same reasoning as ordinary review — I/O- and pattern-matching-heavy relative to the final security gate |
+| Project-alignment / misalignment check | **`pal-mcp` (`pal-reviewer` subagent)**; Sonnet fresh context as fallback | Does this change match the spec, the vocabulary, the shared contracts, the five rules |
+| **Review — final independent security / critical review** | **Opus. Always. Not optional, not cost-negotiable. Never `pal-mcp`.** Spawned as an explicit, separate subagent, or a fresh top-level Opus context. Default build: **Opus 5.5** (decision log, 2026-09-23) — record that version in the review | The one checkpoint this repository will not discount for budget, convenience, or tool choice. See below |
+| **Phase finalizer** (P0–P7, additive) | **Opus**, once per completed stage, across everything merged for it | Catches cross-PR interaction the per-PR gate can't see — never a substitute for the row above ([AGENTS.md § Review tiers](../../AGENTS.md#review-tiers)) |
 
 **Security review is a checkpoint, not a step inside another review.** Every pull request
 and every [stage gate](sdlc.md) that is in security scope gets an explicit, separate
@@ -316,13 +340,17 @@ Every pull request gets:
 
 `main` enforces as much of this as a machine can. The `protect-main` ruleset requires a
 pull request, blocks deletion and non-fast-forward pushes, dismisses stale approvals on
-push, and requires twelve status checks with zero bypass actors. It does **not** require an
-approving review: **required approving reviews is `0`, and Require review from Code Owners
-is off** ([ci-cd.md](ci-cd.md#branching), decision log 2026-09-06) — deliberately, because a
-required approval from a one-person team documents a gate rather than providing one.
-`CODEOWNERS` (`* @ThomasHeinThura`) is ownership metadata that says who to ask, not a merge
-gate. The control that actually stops a bad merge is steps 1–3 above plus the required
-status checks, not an approval count and not a single person holding the button.
+push, and requires its status checks with zero bypass actors. For the repository at large it
+does **not** require an approving review: **required approving reviews is `0`, and Require
+review from Code Owners is off** ([ci-cd.md](ci-cd.md#branching), decision log 2026-09-06) —
+deliberately, because a required approval from a one-person team documents a gate rather than
+providing one. `CODEOWNERS` lists only the control-plane files themselves — not `*` — so this
+holds for ordinary code exactly as before. **Since 2026-09-26, Code Owner review is on for
+exactly those control-plane paths** (`CLAUDE.md`, `AGENTS.md`, this file, `ci-cd.md`,
+`.claude/agents/**`, `.github/CODEOWNERS` itself), so a lane or subagent cannot silently
+rewrite the documents that define the gates — see the decision log. The control that
+actually stops a bad merge in ordinary code is steps 1–3 above plus the required status
+checks, not an approval count and not a single person holding the button.
 
 An agent reviewing its own work is worth very little; the same context that produced the
 mistake will not see it.

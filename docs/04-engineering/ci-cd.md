@@ -564,14 +564,18 @@ main                    always deployable, protected
   of those is genuinely satisfied on the exact candidate SHA (Thomas, 2026-09-15 — delegated;
   supersedes "only Thomas presses merge" — see the decision log, 2026-09-15). Design approval
   (H1–H6) and gate waivers remain Thomas-only, unchanged. The `protect-main` ruleset blocks
-  deletion and non-fast-forward pushes and dismisses stale approvals on push. **Required
-  approving reviews is `0` and Require review from Code Owners is off**, both deliberately —
-  a required approval from a one-person team documents a protection it does not provide
-  (decision log, 2026-09-06).
-- `CODEOWNERS` (`* @ThomasHeinThura`) is **ownership metadata**: it says who to ask, not a
-  merge gate — the ruleset and the required reviews above are what actually enforce a merge.
-  **The security review and design review requirements below are unaffected and remain
-  independent hard gates.**
+  deletion and non-fast-forward pushes and dismisses stale approvals on push. **For the
+  repository at large, required approving reviews is `0` and Require review from Code Owners
+  is off**, both deliberately — a required approval from a one-person team documents a
+  protection it does not provide (decision log, 2026-09-06).
+- `CODEOWNERS` lists only the control-plane files themselves (`CLAUDE.md`, `AGENTS.md`,
+  `agent-workflow.md`, this file, `.claude/agents/**`, `.github/CODEOWNERS` itself) — not
+  `*` — so the point above holds for every other path exactly as before. **Since 2026-09-26,
+  Require review from Code Owners is on for exactly those listed paths** (decision log,
+  2026-09-26), so those documents cannot be silently rewritten by a lane or subagent;
+  everywhere else, the ruleset and the required reviews above are what actually enforce a
+  merge. **The security review and design review requirements below are unaffected and
+  remain independent hard gates.**
 
 ## Releases
 
