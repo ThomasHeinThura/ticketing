@@ -191,7 +191,7 @@ review alone. Security-review scope is the path list in
 machinery itself, and the dependency graph (`package.json`, lockfiles, `pnpm-workspace.yaml`
 overrides).
 
-Four things an agent may never do:
+Five things an agent may never do:
 
 1. Approve its own review.
 2. Waive a quality gate — only Thomas, recorded in the decision log.
@@ -201,6 +201,11 @@ Four things an agent may never do:
 4. **Treat `pal-mcp`, or any model in its `coder` panel, as satisfying the Opus gate.**
    `pal-mcp` is an ordinary-review, audit and reporting tool. It is never the final
    security/critical review, at any confidence level its own tools report.
+5. **Send live secrets, credentials, tokens, or real customer PII to `pal-mcp`.** Thomas
+   vetted the 9Router gateway itself; he has not separately vetted what its panel's own
+   third-party sub-providers (Gemini, DeepSeek, GLM) retain or train on. Treat that as an
+   open item, not resolved, until he says otherwise (`pal-reviewer.md` carries the same
+   rule).
 
 ---
 
@@ -263,11 +268,20 @@ picks up later.
 
 ## The control plane, and who owns it
 
-Eight surfaces are **orchestrator-owned**:
+Ten surfaces are **orchestrator-owned**:
 
 `AGENTS.md` · `CLAUDE.md` · `docs/04-engineering/agent-workflow.md` ·
 `docs/04-engineering/ci-cd.md` · `docs/07-planning/status.md` ·
-`docs/07-planning/decision-log.md` · GitHub issue status · GitHub Project board status
+`docs/07-planning/decision-log.md` · `.github/CODEOWNERS` · `.claude/agents/` ·
+GitHub issue status · GitHub Project board status
+
+**Since 2026-09-26, six of the file-based ones are also machine-enforced, not just
+conventional:** `CLAUDE.md`, `AGENTS.md`, `agent-workflow.md`, `ci-cd.md`,
+`.claude/agents/**` and `.github/CODEOWNERS` itself require Thomas's Code Owner review to
+merge — a lane or subagent editing them fails the merge, not just the convention.
+`status.md` and `decision-log.md` are deliberately left un-gated (see "Establishing current
+truth" — they are meant to change every session something durable happens), and GitHub
+issue/board status are not files this mechanism can cover at all.
 
 Lane or background agents treat all eight as **read-only** unless their task explicitly says
 they own a specific change. They may *report* — completed work, evidence, findings, a

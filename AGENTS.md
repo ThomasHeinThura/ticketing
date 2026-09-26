@@ -83,7 +83,8 @@ opens parallel development, and Throttle 2 gates only the claim). A slice is not
 because an endpoint exists —
 finish its schema, policy, tests, UI, browser evidence, audit/event behaviour and
 integration seam before calling it complete. v1 died of twenty-five screens at sixty per
-cent.
+cent. A stage's completion also gets its Opus phase-finalizer pass (see "Review tiers" below)
+before it is claimed done.
 
 ---
 

@@ -36,24 +36,43 @@ approving reviews remains `0` for ordinary code.
 
 **Why:** Thomas confirmed `router.technexus.info` (9Router) is his own, already-vetted
 endpoint, and that its `coder` combo is a judged multi-model panel rather than a single
-small local model — a real reviewer, not a downgrade. Reading, review, audit, reporting and
+small local model — a real reviewer, not a downgrade. **Note this is the same
+`router.technexus.info` endpoint the 2026-09-15 "Governance reset" entry recorded as dropped**
+("an earlier multi-provider router... did not work out in practice"); this decision is a
+second attempt at that endpoint, scoped narrower than the first (review/audit/reporting only,
+never implementation, never the Opus gate) and re-confirmed directly by Thomas, not a
+reversal made without acknowledging the earlier attempt. Reading, review, audit, reporting and
 alignment are I/O- and pattern-matching-heavy relative to coding and the final security gate,
 and Thomas directed this split explicitly. The 2026-09-06 "do not enable Require review from
 Code Owners" reasoning (a lone-owner approval on every PR documents a gate rather than
 providing one) still holds for the repository at large; it does not hold for the small set of
 files that define what the gates themselves are, which is why this decision narrows the
-exception to exactly those paths rather than reopening the general question.
+exception to exactly those paths rather than reopening the general question. Separately:
+`pal-mcp`'s panel fans out to third-party-hosted sub-providers (Gemini, DeepSeek, GLM) behind
+the 9Router gateway — Thomas vetted the gateway, not each sub-provider's own data-retention or
+training terms. This is recorded as an **open item**, not resolved here: `CLAUDE.md`,
+`agent-workflow.md` and `pal-reviewer.md` all now say not to send live secrets, credentials,
+or real customer PII through `pal-mcp` until Thomas confirms those terms separately.
 
 **Alternatives:** Route implementation, not just review, through `pal-mcp`/9Router — rejected,
-per the 2026-09-23 decision that the earlier multi-provider coding router did not work out,
-and per the Spotify/Portal engineering pattern Thomas referenced, which delegates bulk I/O to
-a cheap model but keeps reasoning-heavy work (there: debugging, architecture, security) on
-the expensive tier — reading/audit/report/align is the I/O-shaped side of that split here,
-not reasoning `pal-mcp` should own beyond it. Set "Require review from Code Owners" globally
-(`*`) — rejected as reopening the exact configuration the 2026-09-06 decision closed, for the
-reason recorded there. Let `pal-mcp` satisfy the Opus gate — rejected outright; Opus remains
-the only tier that can never be downgraded or substituted (CLAUDE.md, "Four things an agent
-may never do").
+per the 2026-09-15 "Governance reset" decision that the earlier multi-provider router did not
+work out, and per the Spotify/Portal engineering pattern Thomas referenced, which delegates
+bulk I/O to a cheap model but keeps reasoning-heavy work (there: debugging, architecture,
+security) on the expensive tier — reading/audit/report/align is the I/O-shaped side of that
+split here, not reasoning `pal-mcp` should own beyond it. Set "Require review from Code
+Owners" globally (`*`) — rejected as reopening the exact configuration the 2026-09-06 decision
+closed, for the reason recorded there. Let `pal-mcp` satisfy the Opus gate — rejected
+outright; Opus remains the only tier that can never be downgraded or substituted (CLAUDE.md,
+"Five things an agent may never do"). Treat the sub-provider data-handling question as already
+covered by Thomas vetting the gateway — rejected; the gateway and its member models are
+different trust boundaries, and the docs now say so explicitly rather than staying silent on
+it (found by independent Sonnet review of this very PR, #376).
+
+**Follow-up:** the `protect-main` ruleset's "Require review from Code Owners" toggle is not
+yet flipped on (deliberately deferred, so it doesn't retroactively gate other already-open
+PRs against the pre-narrowing `* @ThomasHeinThura` CODEOWNERS). Owner: the orchestrating
+session, immediately after PR #376 merges. If this line still says "not yet flipped" more than
+a few days after #376 merges, that is stale and should be corrected or actioned.
 
 **Decided by:** Thomas, 2026-09-26, in session.
 
