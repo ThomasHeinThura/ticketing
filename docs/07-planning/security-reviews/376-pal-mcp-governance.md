@@ -104,3 +104,46 @@ fixer above.
   (reasoned from the ruleset/permissions config, not empirically triggered).
 - Neither pass changed the ruleset, the PR, or any file directly.
 - Neither pass sent anything to `pal-mcp` beyond schema/`listmodels` inspection.
+
+## Pass 3 — critical finding: the leak is not fixed
+
+**Reviewed head:** `1eca1e528b156f5e34b0979442a9337f10ae32a5`
+**Model:** Opus 5.5 (`claude-opus-5-5[1m]`), fresh independent context.
+**Verdict:** REQUEST CHANGES — a new, critical finding, distinct from and more severe than
+F1–F10/N1–N7.
+
+**B1 (CRITICAL):** made one fresh, isolated `codereview` call — synthetic content, no
+`continuation_id` — and its response contained material from other sessions: this session's
+own earlier steps on this PR, and a palindrome/binary-search code review from a macOS path
+under a different username, from a different Claude session entirely (first observed several
+rounds earlier, believed at the time to be fixed by the fusion-panel→failover switch). It is
+not. Diagnosis: `pal-mcp`'s workflow-tool step/state history is shared across separate calls
+and clients server-side — this is unrelated to which model backs `coder`, so the earlier
+"two clean tests" read (recorded in the entry above and in decision-log.md) was wrong; too
+small a sample, not a real fix.
+
+**B2 (HIGH):** `pal-mcp` is a remote SSE server (`https://mcp-router.technexus.info/sse`)
+with no access to this host's filesystem at all — confirmed via `~/.claude.json`'s config and
+directly by testing (`absolute_file_paths` returns `files_embedded: 0`; `working_directory_absolute_path`
+only resolves against the remote host's own filesystem, not this one). The path-scoping rule
+in `CLAUDE.md`/`agent-workflow.md`/`pal-reviewer.md` rested on a false premise ("reads files
+with the host user's own privileges") — corrected to a content-scoping rule (never
+`Read`-and-paste a dotfile/`.env*`/key/credential file into a prompt).
+
+**B3–B5 (MEDIUM):** cross-file inconsistencies — `agent-workflow.md` still described the
+independence rule in terms of the abandoned two-model "panel/judge" framing instead of the
+four-model failover list; the committed note (this file) blended fixer claims with reviewer
+findings under one voice, since corrected into per-pass sections; `status.md` lagged behind
+the actual state by two commits.
+
+**Resolution:** `pal-mcp` is **suspended** as the default ordinary reviewer — not deleted,
+marked suspended in `CLAUDE.md` and `agent-workflow.md`, so the design can resume once the
+leak is actually fixed. See decision-log.md, "CORRECTION: the pal-mcp cross-call leak is NOT
+fixed — `pal-mcp` SUSPENDED as default reviewer." All B2–B5 findings fixed in commit
+`bccafe7`.
+
+**What this changes about Pass 1/Pass 2's verdicts:** does not retroactively invalidate them
+— F1–F10 and N1–N7 were real findings about the governance *text*, correctly found and fixed
+independent of whether `pal-mcp` itself works. B1 is a finding about the *tool*, not the text
+describing it, and is the reason the text now describes `pal-mcp` as suspended rather than as
+primary.
