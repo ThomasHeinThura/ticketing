@@ -495,6 +495,78 @@ describe("#324 — denied param workspace scope is checked against a verified ro
     ).toBe(false);
   });
 
+  it("does not persist an unverified caller-supplied id in a denied event", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(member.user);
+    const untrustedWorkspaceId = `attacker-${"x".repeat(6_000)}`;
+    expect(untrustedWorkspaceId).toHaveLength(6_009);
+
+    const response = await fresh.app.request(
+      `/api/workspace/${untrustedWorkspaceId}`,
+    );
+    expect(response.status).toBe(403);
+
+    const event = await waitForShadowEvidence(async () => {
+      const rows = await shadowEventsFor(
+        WORKSPACE_DETAIL_ROUTE_KEY,
+        "unevaluated",
+      );
+      return rows.find(
+        (row) =>
+          row.reasonCode === "scope_source_unavailable" &&
+          row.legacyAllowed === false,
+      );
+    });
+    expect(event.workspaceId).toBeNull();
+  });
+
+  it("preserves a request-sourced workspace id when legacy authorization allowed it", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(member.user);
+
+    const registry = await import("../../apps/api/src/policy-registry");
+    const originalGet = registry.policyRegistry.get.bind(
+      registry.policyRegistry,
+    );
+    vi.spyOn(registry.policyRegistry, "get").mockImplementation((routeKey) => {
+      const entry = originalGet(routeKey);
+      if (routeKey !== LABEL_WORKSPACE_ROUTE_KEY || !entry) return entry;
+      return {
+        routeKey: entry.routeKey,
+        kind: "capability",
+        source: entry.source,
+        policy: {
+          capability: "workspace:manage_roles",
+          scope: "workspace",
+          reach: "required",
+          scopeSource: "request",
+        },
+      };
+    });
+
+    const response = await fresh.app.request(
+      `/api/label/workspace/${member.workspace.id}`,
+    );
+    expect(response.status).toBe(200);
+
+    const event = await waitForShadowEvidence(async () => {
+      const rows = await shadowEventsFor(
+        LABEL_WORKSPACE_ROUTE_KEY,
+        "legacy_allow_policy_deny",
+      );
+      return rows.at(-1);
+    });
+    expect(event.workspaceId).toBe(member.workspace.id);
+  });
+
   it("records a deliberately permissive shadow policy against a legacy-denied request", {
     timeout: 60_000,
   }, async () => {

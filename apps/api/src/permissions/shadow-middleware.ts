@@ -54,7 +54,10 @@ import db, { schema } from "../database";
 import { policyRegistry } from "../policy-registry";
 import { resolveIdentity } from "./resolve-identity";
 import { policyShadowEnabled } from "./shadow-config";
-import type { ShadowLegacyAuthorization } from "./shadow-context";
+import {
+  type ShadowLegacyAuthorization,
+  workspaceIdForShadowEvidence,
+} from "./shadow-context";
 import {
   buildShadowPolicySide,
   compareShadowOutcome,
@@ -201,6 +204,12 @@ async function runShadowEvaluation(
   const userId = (c.get("userId") as string | undefined) || undefined;
   const credential = credentialKindFor(apiKey);
   const identityKind: string | null = userId ? credential : null;
+  const evidenceWorkspaceId = () =>
+    workspaceIdForShadowEvidence(
+      workspaceId,
+      workspaceIdSource,
+      legacy.known ? legacy.allowed : null,
+    );
 
   let policySide: ReturnType<typeof buildShadowPolicySide>;
   try {
@@ -254,7 +263,7 @@ async function runShadowEvaluation(
       policy,
       legacy,
       identityKind,
-      workspaceId,
+      workspaceId: evidenceWorkspaceId(),
       traceId,
       message: error instanceof Error ? error.message : String(error),
     });
@@ -281,7 +290,7 @@ async function runShadowEvaluation(
         policy,
         legacy,
         identityKind,
-        workspaceId,
+        workspaceId: evidenceWorkspaceId(),
         traceId,
         message: error instanceof Error ? error.message : String(error),
       });
@@ -320,7 +329,7 @@ async function runShadowEvaluation(
         ? (decision.diagnostic ?? null)
         : null,
     identityKind,
-    workspaceId,
+    workspaceId: evidenceWorkspaceId(),
     traceId,
   });
 }
