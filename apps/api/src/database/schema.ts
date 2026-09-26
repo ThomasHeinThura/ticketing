@@ -2369,6 +2369,18 @@ export const auditLogTable = pgTable(
     userAgent: text("user_agent"),
     traceId: text("trace_id"),
     workspaceId: text("workspace_id"),
+    // AU-10 / #344 (Thomas, 2026-09-23): the project a project-scoped audit row belongs
+    // to, so workspace audit READS can be reach-filtered without a per-entity_type join.
+    // Nullable with no FK, following `workspace_id` directly above -- the entity the row
+    // describes may outlive its project, and audit rows must never be deleted or
+    // rewritten by a cascade. DELIBERATELY NOT PART of the row hash
+    // (`canonicalRowHash`/`data-model.md`'s "The audit hash chain"): adding a hashed
+    // column would change the recipe for NEW rows while every existing row was hashed
+    // without it, breaking `verify-audit-chain` over history -- #344's own acceptance
+    // allows this choice explicitly, and `audit-log.test.ts` pins that old rows still
+    // verify. NULL also means "not project-scoped" for the read filter, which is the
+    // same answer the filter gives a row written before this column existed.
+    projectId: text("project_id"),
     organisationId: text("organisation_id").references(
       () => organisationTable.id,
       { onDelete: "set null", onUpdate: "cascade" },

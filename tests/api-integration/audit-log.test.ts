@@ -93,6 +93,7 @@ async function readRawRow(id: string) {
     user_agent: string | null;
     trace_id: string | null;
     workspace_id: string | null;
+    project_id: string | null;
     action: string;
     entity_type: string;
     entity_id: string;
@@ -105,7 +106,7 @@ async function readRawRow(id: string) {
   }>(sql`
     SELECT
       actor_id, actor_type, api_key_id, impersonator_id, actor_ip, user_agent,
-      trace_id, workspace_id, action, entity_type, entity_id, before, after,
+      trace_id, workspace_id, project_id, action, entity_type, entity_id, before, after,
       to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at_iso,
       prev_hash, row_hash, seq
     FROM audit_log WHERE id = ${id}
@@ -204,6 +205,33 @@ describe("appendAuditLog", () => {
     await expect(
       appendAuditLog(db, baseInput({ action: "legal_hold.lifted" })),
     ).rejects.toThrow(/not wired yet/i);
+  });
+
+  it("#344: records project_id for a project-scoped action, and the chain still verifies (the column is never hashed)", async () => {
+    // One row WITHOUT a project (the pre-#344 shape) and one WITH it, on the same chain.
+    const plain = await appendAuditLog(
+      db,
+      baseInput({ action: "role.created" }),
+    );
+    const scoped = await appendAuditLog(
+      db,
+      baseInput({
+        action: "work_item.assigned",
+        entityType: "work_item",
+        projectId: "prj-audit-344",
+      }),
+    );
+
+    const rawPlain = await readRawRow(plain.id);
+    const rawScoped = await readRawRow(scoped.id);
+    expect(rawPlain.project_id).toBeNull();
+    expect(rawScoped.project_id).toBe("prj-audit-344");
+
+    // The hash recipe is unchanged: both rows verify, including the pre-#344 shape whose
+    // `project_id` did not exist when it was written.
+    const verifyResult = await verifyAuditChain(db);
+    expect(verifyResult.ok).toBe(true);
+    expect(verifyResult.rowsChecked).toBe(2);
   });
 
   it("refuses to write an obvious secret value", async () => {

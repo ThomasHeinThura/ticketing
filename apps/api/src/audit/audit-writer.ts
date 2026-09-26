@@ -39,6 +39,14 @@ export interface AppendAuditLogInput {
   userAgent?: string | null;
   traceId?: string | null;
   workspaceId?: string | null;
+  /**
+   * The project a project-scoped action belongs to (#344, AU-10). Recorded so
+   * workspace audit READS can be reach-filtered; DELIBERATELY NOT part of `row_hash`
+   * -- see `database/schema.ts`'s comment on `auditLogTable.projectId` and
+   * `data-model.md`'s hash-chain section. `null` means "not project-scoped", which is
+   * what the read filter shows every workspace reader.
+   */
+  projectId?: string | null;
   organisationId?: string | null;
   action: string;
   entityType: string;
@@ -372,6 +380,9 @@ export async function appendAuditLog(
         userAgent: input.userAgent ?? null,
         traceId: input.traceId ?? null,
         workspaceId: input.workspaceId ?? null,
+        // `projectId` is deliberately absent: it is stored, never hashed (#344's own
+        // acceptance). Adding it here would change the recipe for new rows only, and
+        // every existing row would fail `verify-audit-chain` on recomputation.
         action: input.action,
         entityType: input.entityType,
         entityId: input.entityId,
@@ -408,13 +419,14 @@ export async function appendAuditLog(
       sql`
         INSERT INTO audit_log (
           id, actor_id, actor_type, api_key_id, impersonator_id, actor_ip, user_agent,
-          trace_id, workspace_id, organisation_id, action, entity_type, entity_id,
-          before, after, created_at, prev_hash, row_hash
+          trace_id, workspace_id, project_id, organisation_id, action, entity_type,
+          entity_id, before, after, created_at, prev_hash, row_hash
         ) VALUES (
           ${id}, ${input.actorId}, ${input.actorType}, ${input.apiKeyId ?? null},
           ${input.impersonatorId ?? null}, ${input.actorIp ?? null},
           ${input.userAgent ?? null}, ${input.traceId ?? null},
-          ${input.workspaceId ?? null}, ${input.organisationId ?? null},
+          ${input.workspaceId ?? null}, ${input.projectId ?? null},
+          ${input.organisationId ?? null},
           ${input.action}, ${input.entityType}, ${input.entityId},
           ${beforeJson}::jsonb, ${afterJson}::jsonb,
           ${nowRow.now_text}::timestamptz, ${prevHash}, ${rowHash}
