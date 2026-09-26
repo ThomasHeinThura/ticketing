@@ -729,23 +729,6 @@ function resolveWorkspaceTarget(
 ) {
   const { specifier } = imported;
   const names = [...workspaceByName.values()];
-  const packageTarget = workspaceTargetForSpecifier(
-    specifier,
-    owner,
-    workspaceByName,
-  );
-  if (packageTarget?.entry) {
-    const base = path.join(packageTarget.entry.path, packageTarget.subpath);
-    return {
-      workspace: packageTarget.entry,
-      file: resolveAsFile(base) ?? packageTarget.entry.path,
-    };
-  }
-  if (packageTarget?.absolute)
-    return {
-      workspace: ownerForFile(packageTarget.absolute, names),
-      file: packageTarget.absolute,
-    };
   const aliasMatches = [...aliases]
     .filter(([key]) => specifier === key || specifier.startsWith(`${key}/`))
     .sort((a, b) => b[0].length - a[0].length);
@@ -763,6 +746,23 @@ function resolveWorkspaceTarget(
     const workspace = ownerForFile(resolved, names);
     return { workspace, file: resolveAsFile(resolved) ?? resolved };
   }
+  const packageTarget = workspaceTargetForSpecifier(
+    specifier,
+    owner,
+    workspaceByName,
+  );
+  if (packageTarget?.entry) {
+    const base = path.join(packageTarget.entry.path, packageTarget.subpath);
+    return {
+      workspace: packageTarget.entry,
+      file: resolveAsFile(base) ?? packageTarget.entry.path,
+    };
+  }
+  if (packageTarget?.absolute)
+    return {
+      workspace: ownerForFile(packageTarget.absolute, names),
+      file: packageTarget.absolute,
+    };
   if (imported.node) {
     const symbol = project?.checker.getSymbolAtLocation(imported.node);
     for (const declaration of symbol?.declarations ?? []) {

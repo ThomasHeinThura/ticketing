@@ -438,13 +438,24 @@ test("Vite aliases resolving into another workspace are boundary checked", async
     path.join(root, "apps/web/vite.config.ts"),
     [
       'import path from "node:path";',
-      'export default { resolve: { alias: { "@api": path.resolve(__dirname, "../../apps/api/src") } } };',
+      'export default { resolve: { alias: { "@api": path.resolve(__dirname, "../../apps/api/src"), "@taskdesk/domain": path.resolve(__dirname, "../../apps/api/src") } } };',
     ].join("\n"),
   );
-  await writeFile(path.join(web, "src/edge.ts"), 'import "@api/auth";');
+  await writeFile(
+    path.join(web, "src/edge.ts"),
+    'import "@api/auth"; import "@taskdesk/domain/auth";',
+  );
   await writeFile(path.join(api, "src/auth.ts"), "export {};\n");
   const { violations } = await analyzeDependencies(root);
-  assert.match(violations.join("\n"), /apps\/web\/src\/edge\.ts.*apps\/api/s);
+  assert.equal(
+    violations.filter(
+      (message) =>
+        message.includes("apps/web/src/edge.ts") &&
+        message.includes("apps/api"),
+    ).length,
+    2,
+    violations.join("\n"),
+  );
 });
 
 test("conflicting bundler alias definitions fail closed", async (t) => {
