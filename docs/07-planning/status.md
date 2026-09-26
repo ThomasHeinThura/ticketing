@@ -1,12 +1,12 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
-**2026-09-26 continuation (P0 #10 / #342):** Opus 5.5 reviewed #352 at `1f79c1e` and
-found two new blocking classes: comment spans invented in JSX can still hide raw environment
-reads, and nested/computed destructuring keys can be misattributed as approved names. The
-structural remediation is in progress: remove comment-span exemptions entirely and accept
-only flat identifier destructuring; add the N1–N6/K1–K2 regression cases. This candidate is
-being integrated with `main@e414895`; the delta Opus review is still required after fixes.
-No P0 completion or merge is claimed.
+**2026-09-26 continuation (P0 #10 / #342):** PR #352 now includes `main@e414895` and the
+structural remediation at `d69a1e5767ffdc31bbc2c504ba02314ca7446055`: no raw environment
+spelling is exempted as a comment, and `process.env` destructuring is attributed only for flat
+identifier keys. Regression tests cover Opus N1–N6/K1–K2. Local verification: focused detector
+tests 34/34, Biome with warnings as errors, `pnpm check:env` (29 attributable reads). Exact-head
+GitHub CI and a fresh ordinary review are pending; the full independent Opus delta review is
+still mandatory. No P0 completion or merge is claimed.
 
 
 **2026-09-25 orchestrator snapshot — `main` at `714a653`.** Merged since the 2026-09-24
