@@ -1,28 +1,47 @@
-# CODEOWNERS — ownership metadata. It says who to ask. It is NOT a merge gate.
+# CODEOWNERS — ownership metadata for the repository at large. It is NOT a merge gate,
+# EXCEPT for the narrow control-plane list below.
 #
 # An earlier version of this comment quoted ci-cd.md's "one approval from the code owner"
 # and called this file "the mechanism behind 'only Thomas merges'". That wording was
 # SUPERSEDED before this branch was written: decision-log.md, 2026-09-06, "Merge governance
 # — required approving reviews is zero, and that is deliberate" sets **required approving
-# reviews = 0** and **Require review from Code Owners = off**, both deliberately, and says
-# in terms that CODEOWNERS is ownership metadata rather than a mechanical gate. ci-cd.md
-# § Branching and CLAUDE.md § How work reaches `main` both already read that way; this file
-# was the last place still quoting the old sentence.
-#
-# Do NOT enable "Require review from Code Owners" to make this file mean more. The reason is
-# recorded in that decision: a required approving review from a one-person team documents a
-# gate rather than providing one, and the control that actually keeps a bad change out of
-# `main` is the required independent review(s), the required Opus security review where in
-# scope, and the required status checks — not an approval count.
+# reviews = 0** and **Require review from Code Owners = off**, both deliberately, for the
+# repository at large, and says in terms that CODEOWNERS is ownership metadata rather than a
+# mechanical gate. The reason recorded there: a required approving review from a one-person
+# team documents a gate rather than providing one — the control that actually keeps a bad
+# change out of `main` is the required independent review(s), the required Opus security
+# review where in scope, and the required status checks, not an approval count. That
+# reasoning is UNCHANGED and still governs every path not listed below.
 #
 # UPDATED 2026-09-15 (decision log, same date, "Governance reset"): merge execution is
 # delegated to the orchestrating Claude session once every one of those gates is genuinely
-# green on the exact candidate SHA. This supersedes "only Thomas merges" above and in
-# ci-cd.md/agent-workflow.md/CLAUDE.md's older wording. Lane/subagents still never merge, and
-# no bypass of any required check or review tier is authorized by this delegation.
+# green on the exact candidate SHA. Lane/subagents still never merge, and no bypass of any
+# required check or review tier is authorized by this delegation.
+#
+# UPDATED 2026-09-26 (decision log, same date, "`pal-mcp` becomes the ordinary review/audit/
+# report/alignment tool; control-plane files gated by Code Owner review"): Thomas narrowly
+# reversed the 2026-09-06 "do not enable Require review from Code Owners" instruction, for
+# ONE reason — the gate-authority documents and subagent definitions themselves must not be
+# silently rewritten by a lane, a background subagent, or a tool routed through `pal-mcp`.
+# "Require review from Code Owners" is ON in the `protect-main` ruleset, but the paths below
+# are the ONLY entries in this file — every other path has no owner and is therefore
+# unaffected: ordinary PRs still need zero required approving reviews, exactly as the
+# 2026-09-06 decision intended. Do NOT widen this list back to `*` — that is the exact
+# configuration the 2026-09-06 decision rejected, for the reason recorded there.
+#
+# `docs/07-planning/status.md` and `docs/07-planning/decision-log.md` are DELIBERATELY NOT
+# listed here even though CLAUDE.md calls them orchestrator-owned: they are meant to be kept
+# current every session that changes something durable, and gating every such update behind
+# Thomas's personal approval would recreate the staleness this project spent real time fixing.
+# Their protection is process (CLAUDE.md's "control plane" section), not a file-level gate.
 #
 # Agents produce branches, tested code and pull requests. They never self-approve
 # (AGENTS.md do-not 7) and never merge except the orchestrating session, through the normal
 # flow, once every gate above is satisfied (do-not 16).
 
-* @ThomasHeinThura
+/CLAUDE.md                              @ThomasHeinThura
+/AGENTS.md                              @ThomasHeinThura
+/docs/04-engineering/agent-workflow.md  @ThomasHeinThura
+/docs/04-engineering/ci-cd.md           @ThomasHeinThura
+/.claude/agents/                        @ThomasHeinThura
+/.github/CODEOWNERS                     @ThomasHeinThura

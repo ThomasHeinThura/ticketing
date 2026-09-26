@@ -15,6 +15,80 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-26 · `pal-mcp` becomes the primary ordinary review/audit/report/alignment tool; control-plane files gated by Code Owner review
+
+**Decision:** `pal-mcp` (MCP tool suite: `analyze`, `codereview`, `secaudit`, `debug`,
+`refactor`, `testgen`, `precommit`, `consensus`, `thinkdeep`, `tracer`, `chat`, `apilookup`,
+`challenge`), using its `coder` model — a fusion panel on Thomas's own 9Router gateway
+(GPT-6 Luna as judge, plus Gemini 3.8 Flash, DeepSeek v4.1 Flash, and GLM 5.3 Flash, 272K
+context) — is now the primary path for bulk reading/context-prep, ordinary review, audit,
+reporting, and the project-alignment check, via the new `pal-reviewer` subagent
+(`.claude/agents/pal-reviewer.md`). Sonnet keeps coding/implementation against an agreed spec
+and becomes the ordinary-review fallback only when `pal-mcp`/9Router is genuinely
+unreachable. **The Opus 5.5 final security/critical review is unaffected: still mandatory,
+still a fresh independent context, never replaced by `pal-mcp` or any lower tier.**
+Separately, `.github/CODEOWNERS` now lists the control-plane files themselves (`CLAUDE.md`,
+`AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `docs/04-engineering/ci-cd.md`,
+`.claude/agents/**`, `.github/CODEOWNERS`) and the `protect-main` ruleset's "Require review
+from Code Owners" is switched on for exactly those paths, so a lane or subagent cannot
+silently rewrite the gate-authority documents. Every other path is unaffected — required
+approving reviews remains `0` for ordinary code.
+
+**Why:** Thomas confirmed `router.technexus.info` (9Router) is his own, already-vetted
+endpoint, and that its `coder` combo is a judged multi-model panel rather than a single
+small local model — a real reviewer, not a downgrade. Reading, review, audit, reporting and
+alignment are I/O- and pattern-matching-heavy relative to coding and the final security gate,
+and Thomas directed this split explicitly. The 2026-09-06 "do not enable Require review from
+Code Owners" reasoning (a lone-owner approval on every PR documents a gate rather than
+providing one) still holds for the repository at large; it does not hold for the small set of
+files that define what the gates themselves are, which is why this decision narrows the
+exception to exactly those paths rather than reopening the general question.
+
+**Alternatives:** Route implementation, not just review, through `pal-mcp`/9Router — rejected,
+per the 2026-09-23 decision that the earlier multi-provider coding router did not work out,
+and per the Spotify/Portal engineering pattern Thomas referenced, which delegates bulk I/O to
+a cheap model but keeps reasoning-heavy work (there: debugging, architecture, security) on
+the expensive tier — reading/audit/report/align is the I/O-shaped side of that split here,
+not reasoning `pal-mcp` should own beyond it. Set "Require review from Code Owners" globally
+(`*`) — rejected as reopening the exact configuration the 2026-09-06 decision closed, for the
+reason recorded there. Let `pal-mcp` satisfy the Opus gate — rejected outright; Opus remains
+the only tier that can never be downgraded or substituted (CLAUDE.md, "Four things an agent
+may never do").
+
+**Decided by:** Thomas, 2026-09-26, in session.
+
+### 2026-09-26 · Phase finalizer Opus pass added per stage — additive, not a substitute for per-PR security-scope Opus review
+
+**Decision:** At the completion of each stage (P0 through P7), before it is claimed done, run
+one broader Opus red-team pass across everything merged for that stage since the last
+finalizer (mirrors the 2026-09-05 "internal red-team pass at the go-live gate" decision,
+generalized to every stage instead of only go-live). This is **additive only**: the existing
+per-PR Opus security review remains mandatory, unchanged, for every security-scope change
+(auth, permissions, migrations, CI/gate machinery, dependency graph) at merge time — no row in
+`AGENTS.md`'s review-tier table becomes "n/a" because a finalizer exists.
+
+**Why:** Thomas asked whether batching Opus review to per-phase finalizers (plus security
+checkpoints) instead of per-PR could reduce Opus subagent spin-up while keeping quality.
+Reducing per-PR Opus review to a phase-boundary-only check would reopen the exact failure
+this project exists to avoid: v1's eleven authorization holes shipped past a green test suite
+specifically because nothing checked them before they were built on. A hole sitting on `main`
+for a whole phase compounds and is harder to find in a finalizer's read of many merges than in
+one focused per-PR review. The already-decided lightweight-confirmation row
+(2026-09-16 decision, `AGENTS.md`'s review-tier table) already scales per-PR Opus cost down for
+small, inspectable security-scope changes — that is the existing lever for reducing overhead,
+not skipping the gate. A phase finalizer is a good addition on top of that: it catches
+cross-PR interaction the per-PR gate cannot see, which no per-PR review was ever meant to
+catch.
+
+**Alternatives:** Replace per-PR Opus security review with phase-finalizer-only review —
+rejected for the reason above; this is the specific trade-off Thomas asked about and did not
+confirm accepting, so it is not adopted. Do nothing (no finalizer) — rejected; a broader,
+periodic red-team pass has independent value already proven at the go-live gate and costs
+little extra since it runs once per stage, not per PR.
+
+**Decided by:** Thomas, 2026-09-26, in session (framing — additive, not a replacement —
+proposed by Claude and not overridden).
+
 ### 2026-09-26 · Remediate the named post-merge review findings
 
 **Decision:** Thomas authorizes separate follow-up pull requests, one at a time, to fix the
