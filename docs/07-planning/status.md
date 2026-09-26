@@ -4,9 +4,10 @@
 structural remediation at `d69a1e5767ffdc31bbc2c504ba02314ca7446055`: no raw environment
 spelling is exempted as a comment, and `process.env` destructuring is attributed only for flat
 identifier keys. Regression tests cover Opus N1–N6/K1–K2. Local verification: focused detector
-tests 34/34, Biome with warnings as errors, `pnpm check:env` (29 attributable reads). Exact-head
-GitHub CI and a fresh ordinary review are pending; the full independent Opus delta review is
-still mandatory. No P0 completion or merge is claimed.
+tests 34/34, Biome with warnings as errors, `pnpm check:env` (29 attributable reads). The
+structural-analysis lesson is recorded in `error-fix-loop.md`. Exact-head GitHub CI and a fresh
+ordinary review are pending; the full independent Opus delta review is still mandatory. No P0
+completion or merge is claimed.
 
 
 **2026-09-25 orchestrator snapshot — `main` at `714a653`.** Merged since the 2026-09-24
