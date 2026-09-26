@@ -15,6 +15,78 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-26 · Remediate the named post-merge review findings
+
+**Decision:** Thomas authorizes separate follow-up pull requests, one at a time, to fix the
+specific review findings identified in the 2026-09-26 handoff: #354 S1 (shadow-event
+workspace provenance), #341 F1 (error normalization for arbitrary thrown values), #362
+L1–L4 (assignable-people query scope and filtering), #367 D1 (documentation wording), and
+#371 (persist decline actor so customer reopen is limited to system auto-declines, using the
+existing issue's data-model entry and migration). The orchestrator's proposed order is #354,
+#341, #362, #367, then #371: address the P0 security and reliability risks first, followed
+by query correctness, wording, and the schema change. This authorizes the listed fixes only;
+it does not authorize an API route for intake or extend #372's prerequisite scope.
+
+Each follow-up must use the ordinary-review count required by the risk classification in
+`AGENTS.md`, with independent reviewer contexts, and a separate exact-head Opus 5.5 final
+review before merge. Use the available GPT-6 Luna context for implementation and ordinary
+review when Sonnet is unavailable, without representing it as Sonnet or Opus. Keep the PR's
+source finding and review record together; add regression tests for behavioral findings, and
+documentation validation for #367's wording finding. Security-scope changes and the migration
+remain subject to their full review tier and normal protected-PR gates. This decision does not
+waive checks, permit self-review, or authorize direct pushes to `main`.
+
+**Why:** These findings were recorded by reviewers of already merged work. Leaving the
+workspace-provenance S1 and error-boundary robustness defect unfixed would retain known
+security and reliability gaps; the assignable-people and intake records are also explicitly
+owned by existing issues. Thomas has now authorized fixing these concrete findings through
+the repository's ordinary follow-up flow.
+
+**Alternatives:** Leave all post-merge findings as backlog; treat the pasted handoff as a
+gate waiver; or batch unrelated changes into one PR. Rejected: the listed findings are
+authorized for narrow, individually reviewed follow-up PRs, with all review and merge gates
+preserved.
+
+**Decided by:** Thomas, 2026-09-26, in session.
+
+### 2026-09-25 · Intake: a customer may reopen only a submission the system auto-declined
+
+**Decision:** A customer may `reopen` a submission only if it was declined automatically: the `IQ-15` clarification-window auto-decline run by `reminder-scan`. A decline made by a staff member (`IQ-16`) is final for the customer. Whether staff can reopen a declined submission is not decided; `IQ-6` has no such action today. Enforcing the customer rule needs the submission record to say who declined it: a new `SubmissionRecord` field and a data-model column, tracked in #371. Until then no API route calls intake, so nothing can be reopened.
+
+**Why:** `IQ-15` grants reopen only for the auto-decline, and a staff decline carries a reason shown to the customer verbatim (`IQ-16`), so it is a deliberate outcome. PR #328 had read "any decline can be reopened", and flagged that reading openly; Opus asked for the rule to be decided.
+
+**Alternatives:** Customers may reopen any decline. Rejected by Thomas.
+
+**Decided by:** Thomas, 2026-09-25, in session ("Auto-declines only").
+
+### 2026-09-25 · While every lane is stopped, Claude Sonnet subagents may also complete stopped P2 PRs' records so they can be reviewed
+
+**Extends:** the 2026-09-24 entry "2026-09-24 · While the lanes are stopped, Claude Sonnet subagents may make small fixes for already-recorded review findings on stopped PRs; #353 waits for #344" (#366). Its scope, independence, re-review, attribution and end conditions apply here unchanged.
+
+**Decision:** For the stopped P2 lane's open PRs (#327, #328, #330 and #343), the orchestrating session may commission a fresh Claude Sonnet subagent (the "filler") to complete each PR's record:
+- fill every missing template section, including `## Implemented by` from the commit authors;
+- cite existing reviews **as history, at the SHAs they actually covered**; they never count as the review of a new head;
+- bring the branch up to date with `main`.
+
+**Rules for the filler:**
+- It states only what the commit history, review notes and PR comments show.
+- Anything it cannot verify stays **unknown and unticked, which blocks the merge**. It is never written as `n/a` or as a passed gate.
+- It adds no code.
+- **Branch updates:** a clean merge from `main`, or a conflict limited to import lists, whitespace or regenerating `tests/api-contract/openapi.json` with `pnpm openapi:write`, is allowed. Any other conflict resolution is a code change. It is either made as a #366 fix, with that fix's reviews, or returned to the lane.
+- The filler's commits use the Claude Code identity. `## Implemented by` lists them by SHA, so the commit-author check reconciles.
+
+**Reviews:** each PR then gets fresh reviews at its exact head:
+- a fresh ordinary reviewer, never the filler and never the orchestrating session;
+- Opus 5.5 wherever a security-scope path is touched. Any #366 fix made on the way needs Opus whatever its paths, as #366 requires.
+
+Every other gate is unchanged, and no gate is waived.
+
+**Why:** Thomas, 2026-09-25 ("yes use sonnet now"), answering whether a Sonnet agent may fill in these four PRs' forms from their history and existing reviews, then run the missing reviews. These PRs had code and some reviews, but PR bodies the template gate rejects, and no lane is left to finish them.
+
+**Alternatives:** Leave them until the P2 lane restarts. Rejected by Thomas.
+
+**Decided by:** Thomas, 2026-09-25, in session.
+
 ### 2026-09-25 · Intentional pre-2.0 OpenAPI breaking changes pass only through a reviewed allowlist
 
 **Supersedes (narrowly):** the unconditional failure of `oasdiff breaking --fail-on WARN` added by #355, only for a finding that exactly matches a reviewed allowlist entry, and only before 2.0.0. `api-design.md`'s post-2.0.0 rule is unchanged.

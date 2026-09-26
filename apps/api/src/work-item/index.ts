@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import db from "../database";
-import { personTable } from "../database/schema";
+import { membershipTable, personTable } from "../database/schema";
 import {
   type ApiKey,
   apiRouter,
@@ -427,12 +427,30 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
     const workspaceId = c.get("workspaceId");
     const userId = c.get("userId");
 
-    // The caller's personal id, from the same `person.user_id` mapping the assign route
-    // resolves -- a caller with no person row can never be a candidate.
+    // The caller's personal id -- resolved as the STAFF person for this user who is on
+    // THIS PROJECT'S roster, deterministically. Written this way on the PR #362
+    // review's L4 ask, with one correction the review's premise needed: the reviewer
+    // read `person_userId_idx` as a plain index and concluded an unordered `LIMIT 1`
+    // could pick the wrong row for a user with two person rows. The schema also carries
+    // `person_user_unique` (a partial UNIQUE index, migration 0053) whose own comment
+    // says "one `user_id` may back at most one `person` row anywhere" precisely so
+    // resolveIdentity cannot resolve arbitrarily -- so the multi-row tie is not
+    // reachable today. The resolution above is kept anyway, because it makes the id the
+    // self branch uses the SAME fact the roster is built from (staff, on this roster),
+    // instead of relying on a constraint defined in another file to stay deterministic.
     const [callerPerson] = await db
       .select({ id: personTable.id })
       .from(personTable)
-      .where(eq(personTable.userId, userId))
+      .innerJoin(membershipTable, eq(membershipTable.personId, personTable.id))
+      .where(
+        and(
+          eq(personTable.userId, userId),
+          eq(personTable.side, "staff"),
+          eq(membershipTable.scope, "project"),
+          eq(membershipTable.scopeId, projectId),
+        ),
+      )
+      .orderBy(personTable.createdAt)
       .limit(1);
 
     // "May assign anyone" reads the caller's own role through the same
@@ -460,6 +478,7 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const people = await listAssignablePeople({
       projectId,
+      workspaceId,
       callerPersonId: callerPerson?.id ?? null,
       callerCanAssignAnyone: canAssignAnyone,
       callerCanSelfAssign: canSelfAssign,

@@ -1,5 +1,13 @@
 import { CLOSED_STATE_GROUPS } from "@taskdesk/domain";
-import { and, count, eq, isNotNull, isNull, notInArray } from "drizzle-orm";
+import {
+  and,
+  count,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  notInArray,
+} from "drizzle-orm";
 import db from "../../database";
 import {
   membershipTable,
@@ -39,8 +47,18 @@ import {
  *
  * Open work: `AS-...` -- "Open means the assigned work item's mapped
  * `state_template.group not in ('completed', 'cancelled')`", resolved through
- * `state.state_template_id` (ADR 0011) -- never a state name. The count is the person's
- * load ACROSS projects (it answers "who is already loaded"), not scoped to this project.
+ * `state.state_template_id` (ADR 0011) -- never a state name. The count answers "who is
+ * already loaded"; it is scoped to the PROJECT'S WORKSPACE, never the whole instance --
+ * the Opus review of PR #362 (L1) measured that an unscoped count leaks activity in
+ * workspaces the caller cannot read, one number at a time. The same review's L2 ask is
+ * also applied below: the aggregate is restricted to the people actually being shown,
+ * so a picker open does not scan the instance's whole assigned backlog.
+ *
+ * The roster predicate additionally pins `person.side = 'staff'` and
+ * `is_placeholder = false` (the same review's L3): `data-model.md` says a placeholder
+ * "can never be assigned or hold a membership" and customer people hold only
+ * organisation-scoped memberships, but the database enforces neither, so the query
+ * states both rules rather than trusting that no writer has ever broken them.
  */
 export type AssignablePerson = {
   personId: string;
@@ -51,11 +69,19 @@ export type AssignablePerson = {
 
 export async function listAssignablePeople({
   projectId,
+  workspaceId,
   callerPersonId,
   callerCanAssignAnyone,
   callerCanSelfAssign,
 }: {
   projectId: string;
+  /**
+   * The project's OWN workspace, already resolved by the route middleware. The load
+   * count is bounded to it (review L1): workspaces are not the security boundary
+   * (`multi-tenancy.md`), but a count that ranges over every workspace in the instance
+   * still reports activity inside ones the caller cannot read.
+   */
+  workspaceId: string;
   callerPersonId: string | null;
   callerCanAssignAnyone: boolean;
   callerCanSelfAssign: boolean;
@@ -76,6 +102,12 @@ export async function listAssignablePeople({
         eq(membershipTable.scope, "project"),
         eq(membershipTable.scopeId, projectId),
         eq(personTable.active, true),
+        // Review L3: the two rules `data-model.md` states but no constraint enforces --
+        // a placeholder can never be assigned, and customer-side people hold only
+        // organisation-scoped memberships. Stated here so a future writer that breaks
+        // either rule cannot leak such a person into the picker.
+        eq(personTable.side, "staff"),
+        eq(personTable.isPlaceholder, false),
       ),
     );
 
@@ -117,6 +149,14 @@ export async function listAssignablePeople({
     .where(
       and(
         isNotNull(workItemTable.assigneeId),
+        // Review L2: restrict the aggregate to the people this response can actually
+        // name. Without this the query groups the instance's whole assigned backlog and
+        // discards all but a handful -- cheap load amplification for anyone who can
+        // open the picker.
+        inArray(workItemTable.assigneeId, [...allowed.keys()]),
+        // Review L1: the count is "who is already loaded" WITHIN this workspace, never
+        // across every workspace the person works in.
+        eq(workItemTable.workspaceId, workspaceId),
         isNull(workItemTable.archivedAt),
         isNull(workItemTable.deletedAt),
         // The closed-group vocabulary's single source (`isClosedGroup`'s own set): the

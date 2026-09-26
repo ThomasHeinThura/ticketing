@@ -13,6 +13,7 @@ import { compress } from "hono/compress";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import activity from "./activity";
+import audit from "./audit";
 import { auth } from "./auth";
 import capabilities from "./capabilities";
 import column from "./column";
@@ -830,6 +831,9 @@ export function createApp(options: { staticRoot?: string } = {}) {
   const commentApi = api.route("/comment", comment);
   const timeEntryApi = api.route("/time-entry", timeEntry);
   const labelApi = api.route("/label", label);
+  // Audit-read routes mount FLAT (paths carried in full) so they match audit-trail.md's
+  // API table verbatim: /api/instance/audit and /api/workspaces/{workspaceId}/audit.
+  const auditApi = api.route("/", audit);
   const notificationApi = api.route("/notification", notification);
   const notificationPreferencesApi = api.route(
     "/notification-preferences",
@@ -994,6 +998,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
     api,
     injectWebSocket,
     activityApi,
+    auditApi,
     capabilitiesApi,
     columnApi,
     commentApi,
@@ -1212,6 +1217,7 @@ const {
   app,
   injectWebSocket,
   activityApi,
+  auditApi,
   capabilitiesApi,
   columnApi,
   commentApi,
@@ -1275,6 +1281,7 @@ export type AppType =
   | typeof taskApi
   | typeof columnApi
   | typeof activityApi
+  | typeof auditApi
   | typeof commentApi
   | typeof timeEntryApi
   | typeof labelApi
