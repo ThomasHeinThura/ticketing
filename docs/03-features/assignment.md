@@ -105,7 +105,9 @@ action bar, and in the create dialog.
 
 It uses the `person-picker` primitive: avatar, name, role on this project, and current
 open work count — because the person assigning usually wants to know who is already
-loaded. "Open" means the assigned work item's mapped `state_template.group not in
+loaded. The count is scoped to the **project's workspace**: it answers "who is loaded"
+within the world the caller is working in, never across workspaces whose contents the
+caller cannot read (review of PR #362, L1). "Open" means the assigned work item's mapped `state_template.group not in
 ('completed', 'cancelled')`, resolved through `state.state_template_id`
 ([ADR 0011](../01-architecture/adr/0011-ticket-lifecycle-engine.md)) — never a state name
 and never a bare `state.group` column.
