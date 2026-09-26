@@ -31,9 +31,11 @@ makes the default rather than a capacity-driven exception.
 
 **Decision:** `pal-mcp` (MCP tool suite: `analyze`, `codereview`, `secaudit`, `debug`,
 `refactor`, `testgen`, `precommit`, `consensus`, `thinkdeep`, `tracer`, `chat`, `apilookup`,
-`challenge`), using its `coder` model — a fusion panel on Thomas's own 9Router gateway
-(GPT-6 Luna as judge, plus Gemini 3.8 Flash, DeepSeek v4.1 Flash, and GLM 5.3 Flash, 272K
-context) — is now the primary path for bulk reading/context-prep, ordinary review, audit,
+`challenge`), using its `coder` model — **at the time of this entry**, a fusion panel with a
+judge on Thomas's own 9Router gateway (GPT-6 Luna as judge, plus Gemini 3.8 Flash, DeepSeek
+v4.1 Flash, and GLM 5.3 Flash, 272K context; **changed to a failover chain later the same
+day — see the entry below, "9Router `coder` switched from fusion panel to failover"**) — is
+now the primary path for bulk reading/context-prep, ordinary review, audit,
 reporting, and the project-alignment check, via the new `pal-reviewer` subagent
 (`.claude/agents/pal-reviewer.md`). Sonnet keeps coding/implementation against an agreed spec
 and becomes the ordinary-review fallback only when `pal-mcp`/9Router is genuinely
@@ -118,6 +120,52 @@ flagged to him, not implemented here.
 **Decided by:** finding is Opus's, from independent review; the correction above is the
 orchestrating session's proposed reading of that finding, reported to Thomas for confirmation
 or override — not a decision made in his place.
+
+### 2026-09-26 · 9Router `coder` switched from fusion panel to failover; a real file-embedding usage bug found and fixed the same session
+
+**Decision:** Thomas changed `coder`'s configuration on his own 9Router gateway from a fusion
+panel with a judge (GPT-6 Luna judging Gemini 3.8 Flash, DeepSeek v4.1 Flash, GLM 5.3 Flash)
+to a **failover chain**: GPT-6 Luna primary, falling over in order to the other three only if
+GPT-6 Luna is unavailable. `CLAUDE.md`, `AGENTS.md`, `agent-workflow.md`, `pal-reviewer.md`
+updated to describe the current configuration; the entry above is left as the historical
+record of what was true when it was written, not silently rewritten.
+
+**Why:** an isolated, controlled test of the fusion-panel configuration reproduced a real
+cross-call content leak — a single-file `analyze` call with no continuation ID came back
+containing an unrelated background task's file list and its own prior prompt text verbatim,
+and a separate test by a background lane got back an unrelated Python file from a path under
+a different username on a different OS, from a different Claude session entirely. This was
+independently reproduced by the orchestrating session itself (not just reported secondhand)
+before being escalated to Thomas. After the switch to failover, two follow-up isolated tests
+(one with only a file path, one with pasted content) came back clean — no contamination in
+either. This is not proof the underlying issue is fully understood or permanently resolved,
+only that it did not recur in two more samples; treat `pal-mcp` with continued care rather
+than as definitively fixed.
+
+**Separately found and fixed, same session:** the `absolute_file_paths`/`relevant_files`/
+`compare_to` parameters described throughout the existing docs as embedding file content or
+computing diffs server-side **do not actually do so** — verified directly: a call passing
+only a path came back `files_embedded: 0` and asked for the file's actual content in the next
+turn; a `precommit` call with `compare_to` asked for a local `git diff` in return, which
+`pal-reviewer` has no `Bash` to produce. Every file/diff this session had described `pal-mcp`
+as reading itself, it was never actually reading. Pasting file content directly into the
+prompt does work and produces accurate, grounded output. `pal-reviewer.md` and `CLAUDE.md`
+corrected to instruct pasting content rather than relying on path parameters — this changes
+the token-savings model (the orchestrating session/subagent still does the file I/O; `pal-mcp`
+offloads the reasoning/synthesis over that content, not the reading) but does not eliminate
+the benefit.
+
+**Alternatives:** Keep the fusion-panel mode and add isolation workarounds on this side (e.g.
+per-call unique markers to detect contamination) — rejected; the leak is server-side, on
+infrastructure this session doesn't control, and cannot be fixed from the client side. Stop
+using `pal-mcp` entirely — considered, and was the orchestrating session's interim
+recommendation while escalating; superseded by Thomas's config change and the clean
+re-tests. Trust the path-parameter mechanism because the tool schemas describe it that way —
+rejected; verified directly against actual behavior rather than the documented contract,
+per this project's own "verify against the source" practice.
+
+**Decided by:** Thomas, 2026-09-26 (the 9Router config change); the file-embedding finding and
+fix are the orchestrating session's, verified directly rather than assumed.
 
 ### 2026-09-26 · Phase finalizer Opus pass added per stage — additive, not a substitute for per-PR security-scope Opus review
 

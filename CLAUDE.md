@@ -119,8 +119,11 @@ A merge is not a stopping point.
 >   explicitly excluded from this path, always** — it launches other CLIs (`claude`, `codex`,
 >   `gemini`) with their own full tool access, which would make `pal-mcp` an implementation
 >   path in disguise; never use it, and never count its output as any review. Its `coder` model is a
->   **fusion panel** on Thomas's own 9Router gateway — GPT-6 Luna (judge), Gemini 3.8 Flash,
->   DeepSeek v4.1 Flash and GLM 5.3 Flash, 272K context — not a single small local model.
+>   **failover chain** on Thomas's own 9Router gateway — **GPT-6 Luna primary**, falling
+>   over in order to Gemini 3.8 Flash, DeepSeek v4.1 Flash, then GLM 5.3 Flash only if GPT-6
+>   Luna is unavailable (changed 2026-09-26 from an earlier fusion-panel-with-judge mode,
+>   after that mode showed cross-call content contamination in testing — see the decision
+>   log). 272K context, not a single small local model.
 >   Thomas confirmed the endpoint is his own and vetted (2026-09-26).
 > - This supersedes the 2026-09-23/2026-09-24 "#345 temporary current-model-context" ordinary-
 >   review fallback for Claude's own subagent tier: GPT-6 Luna's review capacity is now
@@ -149,9 +152,9 @@ tool, never an implementation path, and it never touches the Opus gate.
 
 | Work | Tool / model |
 | --- | --- |
-| Bulk reading, context-prep, summarization | `pal-mcp` (`coder` fusion panel) |
-| Ordinary review (bugs, tests, code quality), audit, reporting | `pal-mcp` (`coder` fusion panel); Sonnet fresh context as fallback if `pal-mcp`/9Router is unreachable **or if the PR's author is GPT-6 Luna or DeepSeek 4.1 Flash — both are members of the `coder` panel, so it cannot review its own authors' work independently** |
-| Project-alignment / misalignment check — does this change match the spec, the vocabulary, the shared contracts, the five rules | `pal-mcp` (`coder` fusion panel); Sonnet fresh context as fallback |
+| Bulk reading, context-prep, summarization | `pal-mcp` (`coder` failover chain) |
+| Ordinary review (bugs, tests, code quality), audit, reporting | `pal-mcp` (`coder` failover chain); Sonnet fresh context as fallback if `pal-mcp`/9Router is unreachable **or if the PR's author is GPT-6 Luna, Gemini 3.8 Flash, DeepSeek 4.1 Flash, or GLM 5.3 Flash — any of these could be the model that actually answers, so `coder` cannot independently review a PR authored by any of them** |
+| Project-alignment / misalignment check — does this change match the spec, the vocabulary, the shared contracts, the five rules | `pal-mcp` (`coder` failover chain); Sonnet fresh context as fallback |
 | Implementation against an agreed spec | Sonnet, spawned explicitly |
 | **Final independent security / critical review** | **Opus**, spawned explicitly as its own subagent, on the exact candidate SHA — never `pal-mcp`, never a fallback tier |
 | **Phase finalizer** (P0–P7, additive — see `AGENTS.md`'s "Review tiers") | **Opus**, a **fresh independent context that did not orchestrate or merge that stage's own PRs**, across everything merged for the stage, in addition to (never instead of) the per-PR security-scope gate above. If Opus is unreachable for the finalizer, the stage is **not** claimed done — same capacity rule as the per-PR gate, not a lower bar because it runs less often |
@@ -239,7 +242,7 @@ been learned on this repository:
 - **Ordinary review, audit, reporting and the alignment check default to the `pal-reviewer`
   subagent** (`.claude/agents/pal-reviewer.md`), restricted to `pal-mcp` tools plus read-only
   file access. Give it the exact candidate SHA and file list; it does the actual review via
-  `pal-mcp`'s `coder` fusion panel, batched into as few tool calls as the job allows, and
+  `pal-mcp`'s `coder` failover chain, batched into as few tool calls as the job allows, and
   reports the SHA it checked plus what it did not check. Fall back to a fresh Sonnet context
   only when `pal-mcp`/9Router is genuinely unreachable, and say so in the report.
 - **Do not reach for heavier multi-agent orchestration (the `Workflow` tool) as a standing

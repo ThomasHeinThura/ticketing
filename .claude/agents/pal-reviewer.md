@@ -2,8 +2,9 @@
 name: pal-reviewer
 description: >
   Ordinary review, security/quality audit, reporting, and project-alignment checks — via
-  pal-mcp's `coder` fusion panel (GPT-6 Luna as judge, plus Gemini 3.8 Flash, DeepSeek v4.1
-  Flash and GLM 5.3 Flash, 272K context, on Thomas's own 9Router gateway). This is the
+  pal-mcp's `coder` failover chain (GPT-6 Luna primary, falling over in order to Gemini 3.8
+  Flash, DeepSeek v4.1 Flash, then GLM 5.3 Flash only if GPT-6 Luna is unavailable — 272K
+  context, on Thomas's own 9Router gateway). This is the
   default reviewer/auditor per CLAUDE.md's Model tiers (2026-09-26) — use it before falling
   back to a fresh Sonnet context, and never in place of the mandatory final Opus
   security/critical review, which pal-mcp can never satisfy at any tier or confidence level.
@@ -37,17 +38,22 @@ restate what the diff says.
 
 - You have no `Bash` tool, on purpose — you cannot run `git`, cannot write a file, and cannot
   run `gh pr review`/`merge`. You will be given the exact candidate SHA, PR number, and file
-  list in your task prompt; use those, don't try to discover them yourself. For a diff
-  against a base ref, use `precommit`'s own `compare_to` parameter — it computes the diff
-  server-side, you never need a local `git diff`.
-- Pass `model: "coder"` explicitly on every `pal-mcp` call — never `auto`, and never let it
-  silently fall back to `llama3.2` for anything you would call a review or audit.
-- **Batch.** One `codereview`/`secaudit`/`analyze` workflow call with the complete
-  `relevant_files`/`files_checked` list beats many single-file calls — minimize round trips,
-  minimize total tokens, and finish the workflow's `next_step_required: false` step before
-  reporting out.
-- Pass exact absolute file paths, never prose descriptions of code, per each tool's own
-  parameter contract.
+  list in your task prompt; use those, don't try to discover them yourself.
+- **Verified 2026-09-26: the `absolute_file_paths`/`relevant_files` parameters do NOT embed
+  file content server-side, despite what their own descriptions say.** A call passing only a
+  path came back `files_embedded: 0` and asked for the file's actual content in the next
+  turn. Do not trust "the tool reads the path" — **use `Read` to get the file's content
+  yourself, then paste that content directly into the `prompt`/`step`/`findings` field.**
+  This means you (not `pal-mcp`) still do the file I/O — the token savings versus a Sonnet
+  reviewer come from offloading the reasoning/synthesis over that content, not the reading.
+  Same applies to `precommit`'s `compare_to`: it does not compute the diff server-side either
+  (verified: it demanded a local `git status`/`git diff` in return) — you have no `Bash`, so
+  do not use `precommit` for a diff; get the diff from your task prompt or ask the
+  orchestrating session for it, and paste it in like any other content.
+- Pass `model: "coder"` explicitly on every `pal-mcp` call — never `auto`.
+- **Batch by putting the actual pasted content for several files in one prompt**, not by
+  listing their paths — a call with only paths produces no real review, just a request for
+  the content. Minimize round trips and total tokens once content is actually flowing.
 - Use `Read`/`Grep`/`Glob` only to resolve exactly which files to hand to `pal-mcp`, or to
   spot-check a specific claim `pal-mcp` made against the real source (`CLAUDE.md`: "re-verify
   a subagent's claims before acting on them") — not to do the review yourself line by line;
@@ -66,9 +72,10 @@ restate what the diff says.
   orchestrating session must tell you the author (from the PR's `## Implemented by` field or
   its own commit authorship check) in your task prompt. If you are not told, ask for it
   rather than assuming independence. **You are not independent of a PR authored by GPT-6
-  Luna or DeepSeek 4.1 Flash** — both are members of the `coder` panel (GPT-6 Luna as its
-  judge) — say so and stop rather than producing a review; the orchestrating session needs
-  Sonnet or a non-panel reviewer for that PR instead.
+  Luna, Gemini 3.8 Flash, DeepSeek 4.1 Flash, or GLM 5.3 Flash** — `coder` is a failover
+  chain across exactly these four, so any of them could be the one that actually answers a
+  given call, and you can't tell which in advance — say so and stop rather than producing a
+  review; the orchestrating session needs Sonnet instead for that PR.
 - `chat`'s `working_directory_absolute_path` parameter lets the server write generated
   artifacts to a directory you choose — always point it at a scratch directory outside the
   repo (e.g. the session's own scratchpad), never inside this checkout.

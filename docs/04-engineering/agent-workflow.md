@@ -80,8 +80,9 @@ who is allowed to sign off on what, not just who is cheaper.
   `thinkdeep`, `tracer`, `chat`, `consensus`, `apilookup`, `challenge`) is now the primary
   path for bulk reading/context-prep, ordinary review, audit, reporting, and the alignment
   check, via the `pal-reviewer` subagent (`.claude/agents/pal-reviewer.md`). Its `coder`
-  model is a fusion panel — GPT-6 Luna as judge, plus Gemini 3.8 Flash, DeepSeek v4.1 Flash
-  and GLM 5.3 Flash, 272K context — on Thomas's own 9Router gateway.
+  model is a failover chain — GPT-6 Luna primary, falling over in order to Gemini 3.8 Flash,
+  DeepSeek v4.1 Flash, then GLM 5.3 Flash only if GPT-6 Luna is unavailable, 272K context —
+  on Thomas's own 9Router gateway.
 - **Claude Sonnet** keeps implementation against an agreed spec, and is the ordinary-review
   fallback only when `pal-mcp`/9Router is genuinely unreachable — record the fallback and
   why.
