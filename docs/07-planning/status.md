@@ -1443,6 +1443,21 @@ releases three blocked things at once: #192's cross-tenant gap, the RLS prototyp
 project purge. It also needs a **new** `UNIQUE (workspace_id, id)` on `work_item_type`, which
 does not exist today.
 
+### PR #376 — governance change, Opus pass held for usage capacity (not a downgrade)
+
+**PR #376** (`pal-mcp` becomes the ordinary review/audit/report/alignment tool; phase
+finalizer; control-plane CODEOWNERS) has cleared two independent Sonnet ordinary reviews at
+`0344469` (both initially returned REQUEST CHANGES; findings fixed in that same commit — see
+the PR for both full verdicts). Its required Opus security/gate-semantics pass has
+**deliberately not been commissioned yet**: this session's Claude weekly usage window was at
+99% (resets 2026-09-28) when the ordinary reviews landed, and Thomas explicitly chose to hold
+further Claude spend rather than risk the account-wide weekly cap hitting 100% mid-review.
+This is a capacity/timing choice, not a downgrade — no lower tier has been substituted, and
+the PR will not merge before Opus reviews the exact final SHA. **Also pending, tracked in the
+decision log's Follow-up line:** flipping the `protect-main` ruleset's "Require review from
+Code Owners" toggle, deferred until after #376 merges so it doesn't retroactively gate the
+other open PRs against the pre-narrowing CODEOWNERS.
+
 ### Opus security reviews — capacity, not permission
 
 **#214 and #215 are in security-review scope and their Opus passes have not happened.**
