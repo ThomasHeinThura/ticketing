@@ -7,11 +7,12 @@ Postgres integration file (17/17); it still needs the full applicable checks, in
 and exact-head Opus 5.5 review before merge. #362 already has an open candidate (#373), which
 remains behind #354 in the recorded sequence.
 
-**P0 #10 continuation:** PR #352's detector redesign is at `c4bc691` before integrating #374's
-new `main`; the final Opus 5.5 review remains pending. PR #361's structural dependency checker
-at `4540cfd` was reviewed by three independent contexts. They found blocking fail-open cases for
-unlisted workspaces, aliased `createRequire`, and Vite aliases; a structural remediation is in
-progress. Neither candidate is merge-ready, and P0 remains open.
+**P0 #10 continuation:** PR #352's detector redesign now integrates #374's decision on `main`
+through merge-resolution commit `ac75ca2`; its final Opus 5.5 review must cover the updated
+head. PR #361's structural dependency checker at `4540cfd` was reviewed by three independent
+contexts. They found blocking fail-open cases for unlisted workspaces, aliased `createRequire`,
+and Vite aliases; a structural remediation is in progress. Neither candidate is merge-ready,
+and P0 remains open.
 
 **2026-09-25 orchestrator snapshot — `main` at `714a653`.** Merged since the 2026-09-24
 snapshot, each with every required check green on the exact head, an independent ordinary
