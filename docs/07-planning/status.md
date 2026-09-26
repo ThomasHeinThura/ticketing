@@ -6,7 +6,10 @@ spelling is exempted as a comment, and `process.env` destructuring is attributed
 identifier keys. Regression tests cover Opus N1–N6/K1–K2. Local verification: focused detector
 tests 34/34, Biome with warnings as errors, `pnpm check:env` (29 attributable reads). The
 structural-analysis lesson is recorded in `error-fix-loop.md`. Exact-head GitHub CI and a fresh
-ordinary review are pending; the full independent Opus delta review is still mandatory. No P0
+ordinary review are now clear at `f96e05605df201a4003d30cd33309422d0e74dc3`; the independent
+GPT-6 Luna reviewer found no blocking findings. At that head, all completed required jobs are
+green except the PR-template check (stale body/review binding); integration and unit/component
+checks are still running. The full independent Opus delta review remains mandatory. No P0
 completion or merge is claimed.
 
 
