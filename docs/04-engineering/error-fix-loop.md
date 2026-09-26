@@ -167,7 +167,13 @@ Add to this as things are learned. It is the institutional memory that agents do
 
 ### From v2
 
-*(Add as encountered.)*
+- **A lightweight lexer is not an authority for suppressing suspicious source text.** If a
+  CI gate cannot prove a raw environment access was already classified, it must fail
+  closed even when the text appears inside a comment or string; JSX and template syntax can
+  make a handwritten scanner misidentify those spans. Attribute destructuring only when
+  every key is a flat, static identifier; nested or computed patterns remain unattributable.
+  The guard belongs in the detector and its regression suite, not in a growing list of
+  syntax-specific exemptions.
 
 ## Related
 
