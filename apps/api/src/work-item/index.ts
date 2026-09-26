@@ -11,6 +11,7 @@ import {
 } from "../openapi";
 import {
   assertCallerHasCapability,
+  assertCallerHasCapabilityOrSelf,
   builtInRoleHasCapability,
   requireWorkspaceCapability,
 } from "../utils/require-workspace-capability";
@@ -20,6 +21,9 @@ import {
   workspaceMemberRoles,
 } from "../utils/workspace-member-roles";
 import type { ActivityActorType } from "./activity";
+import assignWorkItem, {
+  WorkItemAssigneeConflictError,
+} from "./controllers/assign-work-item";
 import createWorkItem from "./controllers/create-work-item";
 import getWorkItemByKey from "./controllers/get-work-item";
 import listAssignablePeople from "./controllers/list-assignable-people";
@@ -31,6 +35,8 @@ import updateWorkItem, {
 import { requireWorkItemReach } from "./require-work-item-reach";
 import {
   assignablePeopleSchema,
+  assignWorkItemResponseSchema,
+  workItemAssigneeConflictSchema,
   workItemDetailSchema,
   workItemListResponseSchema,
   workItemSchema,
@@ -38,6 +44,7 @@ import {
   workItemVersionConflictSchema,
 } from "./response";
 import {
+  assignWorkItemBody,
   createWorkItemBody,
   ifMatchHeader,
   listWorkItemsQuery,
@@ -321,6 +328,51 @@ const listAssignablePeopleRoute = createRoute({
   },
 });
 
+const assignWorkItemRoute = createRoute({
+  method: "post",
+  operationId: "assignWorkItem",
+  path: "/work-items/{key}/assign",
+  tags: ["Work items"],
+  summary: "Assign work item",
+  description:
+    "Assign or reassign a work item (`assignment.md`, `AS-1`/`AS-2`). Requires " +
+    "`work_item:assign`; a caller holding only `work_item:update` may assign the item to " +
+    "themselves. The target must be an active member of the project's roster (`AS-5`). " +
+    "An unconditional assign only succeeds while the item is unassigned; pass " +
+    "`expectedCurrentAssigneeId` to replace a specific holder. A lost race returns 409 " +
+    "with the current assignee. Clearing an assignment and bulk assign are later slices.",
+  // `requireWorkItemReach()` resolves the row by key and its workspace before the body
+  // has been parsed; the capability decision itself is field-dependent (`AS-2`'s
+  // self-branch reads `body.assigneeId`), so it runs in the handler -- the same placement
+  // `PATCH`'s `work_item:set_priority` check uses, for the same reason.
+  middleware: [requireWorkItemReach()] as const,
+  request: {
+    params: workItemKeyParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: assignWorkItemBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "The assignment as applied",
+      assignWorkItemResponseSchema,
+    ),
+    400: errorResponse(
+      "Invalid body, or the target is not an active member of the project's roster",
+    ),
+    403: errorResponse(
+      "No workspace access, missing work_item:assign, or (for self-assignment) missing " +
+        "work_item:update",
+    ),
+    404: errorResponse("Work item not found"),
+    409: jsonResponse(
+      "The assignee changed while this request was in flight",
+      workItemAssigneeConflictSchema,
+    ),
+  },
+});
+
 const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(createWorkItemRoute, async (c) => {
     const { projectId } = c.req.valid("param");
@@ -465,6 +517,60 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
       callerCanSelfAssign: canSelfAssign,
     });
     return c.json(people, 200);
+  })
+  .openapi(assignWorkItemRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { assigneeId, expectedCurrentAssigneeId } = c.req.valid("json");
+    const userId = c.get("userId");
+
+    // `AS-2`'s self-branch: `work_item:update` covers assigning the item to the CALLER.
+    // The predicate is the one `./policy.ts` declares
+    // (`body.assigneeId === identity.personId`), resolved from `person.user_id` -- the
+    // same mapping the identity adapter walks (#315). A caller with no person row can
+    // never BE the target, so the branch is false and only `work_item:assign` carries
+    // them.
+    const [callerPerson] = await db
+      .select({ id: personTable.id })
+      .from(personTable)
+      .where(eq(personTable.userId, userId))
+      .limit(1);
+    await assertCallerHasCapabilityOrSelf(
+      workspaceId,
+      userId,
+      "work_item:assign",
+      "work_item:update",
+      callerPerson !== undefined && callerPerson.id === assigneeId,
+    );
+
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+
+    try {
+      const assigned = await assignWorkItem(
+        key,
+        workspaceId,
+        actorId,
+        actorType,
+        callerPerson?.id ?? null,
+        { assigneeId, expectedCurrentAssigneeId },
+      );
+      return c.json(assigned, 200);
+    } catch (error) {
+      if (error instanceof WorkItemAssigneeConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            key: error.key,
+            currentAssigneeId: error.currentAssigneeId,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
   });
 
 export default workItem;

@@ -9,6 +9,12 @@
  * actually implemented, never a typed stub for a module that does not exist yet.
  */
 
+// #30's assign action consumes these two rules; named (not a star export) so a future
+// assignment/types star-export cannot make a colliding name ambiguous package-wide.
+export {
+  evaluateAssigneeEligibility,
+  planAssignment,
+} from "./assignment/assignment.js";
 export * from "./audit/audit.js";
 export * from "./audit/types.js";
 export * from "./calendar/calendar.js";
