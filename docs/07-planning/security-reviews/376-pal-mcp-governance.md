@@ -200,3 +200,25 @@ complete. Re-ran a full-diff grep for "pal-mcp"/"pal-reviewer" across the entire
 PR diff — every mention of pal-mcp as default/usable is now covered by a suspension notice,
 in every file the diff touches. **This closes the security review for PR #376.** Only the
 PR-body/checklist mechanics, and the ordinary-review-coverage question below, remain.
+
+## Pass 7 — lightweight confirmation of the main catch-up merge: CLEAR
+
+**Reviewed head:** `f53d8272fe9c45d3266af76a563ca223fa51495b`
+**Model:** Opus 5.5 (`claude-opus-5-5[1m]`), fresh independent context.
+**Verdict:** CLEAR. `f53d827` is the `gh pr update-branch` merge of `main` (`8c188f1`, #357's
+merge commit, which also contains #377's `6064f61`) into `5b14b87` (the Pass 6 note).
+`git merge-tree --write-tree 5b14b87 8c188f1` reproduces the commit's tree exactly
+(`560423836d85edc08ad43d4d708f8f65583c57d9`): a clean automatic merge with no conflicts and
+no hand-edited content. For every security-scope file the merge touches
+(`docs/04-engineering/ci-cd.md`, `scripts/ci/lib/security-paths.test.mjs`,
+`scripts/ci/test-contract.mjs`, `scripts/ci/test-contract.test.mjs`,
+`docs/07-planning/status.md`, `deploy/compose.uat.yml`), the `3fc027d..f53d827` diff has the
+same `git patch-id --stable` as `main`'s own `ecd88b0..8c188f1` change to that file. This
+branch is only catching up to content already reviewed and merged through #357 (Opus-reviewed)
+and #377 (ordinary-reviewed, not security scope). `ci-cd.md`'s scope-list change is exactly
+#357's addition of `tests/api-integration/global-setup.ts` and `**/vitest*.config.*`.
+`status.md`'s only change is #357's own 2026-09-24 session-log entry. `CLAUDE.md`,
+`AGENTS.md`, `.github/CODEOWNERS`, `.claude/agents/pal-reviewer.md` and
+`docs/07-planning/decision-log.md` are byte-identical at `3fc027d`, `5b14b87` and `f53d827`,
+so the pal-mcp suspension content cleared through Pass 6 is untouched. **The security review
+for PR #376 remains closed at this head.**
