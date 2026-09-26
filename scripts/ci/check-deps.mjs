@@ -224,11 +224,10 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
       node,
     });
   const allowedRequireSpecifier = CREATE_REQUIRE_ALLOWLIST.get(relativeFile);
-  const factoryBindings = new Set();
-  const moduleBindings = new Set();
   const loaderBindings = new Set();
-  // Strip the wrappers that stand between a binding and the expression that actually
-  // produces it, so provenance checks below see through `await`, `(...)`, `as`, and `!`.
+  // Strip the wrappers that stand between a call site and the callee expression that
+  // actually names it, so the createRequire-by-name check below sees through `await`,
+  // `(...)`, `as`, and `!` wrapped directly around the callee.
   function unwrapExpression(expr) {
     let current = expr;
     while (
@@ -243,113 +242,81 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
       current = current.expression;
     return current;
   }
-  // True when `expr` is (or resolves to) the node:module namespace — whether obtained
-  // through a tracked identifier (`moduleBindings`, populated from a static import or a
-  // prior dynamic acquisition) or written inline, e.g. `(await import("node:module"))` or
-  // `process.getBuiltinModule("node:module")`. A dynamic `import()` is never captured by
-  // `visitBindings`'s ImportDeclaration branch, and `process.getBuiltinModule` never goes
-  // through an ImportDeclaration at all, so both must be recognized structurally here
-  // rather than only via the static-import bindings map.
-  function isModuleNamespaceExpression(expr) {
-    const node = unwrapExpression(expr);
-    if (!node) return false;
-    if (tsIs.isIdentifier(node)) return moduleBindings.has(node.text);
-    if (node.kind !== ts.SyntaxKind.CallExpression) return false;
-    const specifier = literal(node.arguments?.[0]);
-    if (!["module", "node:module"].includes(specifier)) return false;
-    if (node.expression.kind === ts.SyntaxKind.ImportKeyword) return true;
-    return (
-      node.expression.kind === ts.SyntaxKind.PropertyAccessExpression &&
-      node.expression.name.text === "getBuiltinModule" &&
-      node.expression.expression.getText(file) === "process"
-    );
-  }
-  function isCreateRequireExpression(expr) {
-    return (
-      (tsIs.isIdentifier(expr) && factoryBindings.has(expr.text)) ||
-      (expr.kind === ts.SyntaxKind.PropertyAccessExpression &&
-        expr.name.text === "createRequire" &&
-        isModuleNamespaceExpression(expr.expression))
-    );
-  }
-  function visitBindings(node) {
-    if (
-      node.kind === ts.SyntaxKind.ImportDeclaration &&
-      literal(node.moduleSpecifier) &&
-      ["module", "node:module"].includes(literal(node.moduleSpecifier))
+  // True when `node`, read outward through any immediately-enclosing parens/await/as/!
+  // wrappers, is the callee of a CallExpression — i.e. the CallExpression branch below
+  // already evaluates this exact acquisition via isCreateRequireCallee (which unwraps the
+  // same way). Used only to avoid a redundant second diagnostic on the same call for
+  // `(createRequire)(x)` / `(modns.createRequire)(x)`; it does not affect whether anything
+  // is caught, only whether it is reported once.
+  function isWrappedCallCallee(node) {
+    let current = node;
+    let parent = current.parent;
+    while (
+      parent &&
+      [
+        ts.SyntaxKind.ParenthesizedExpression,
+        ts.SyntaxKind.AwaitExpression,
+        ts.SyntaxKind.AsExpression,
+        ts.SyntaxKind.NonNullExpression,
+      ].includes(parent.kind) &&
+      parent.expression === current
     ) {
-      const bindings = node.importClause?.namedBindings;
-      if (bindings?.kind === ts.SyntaxKind.NamespaceImport)
-        moduleBindings.add(bindings.name.text);
-      if (node.importClause?.name)
-        moduleBindings.add(node.importClause.name.text);
-      if (bindings?.kind === ts.SyntaxKind.NamedImports) {
-        for (const element of bindings.elements) {
-          const imported = (element.propertyName ?? element.name).text;
-          if (imported === "createRequire")
-            factoryBindings.add(element.name.text);
-          if (imported === "default") moduleBindings.add(element.name.text);
-        }
-      }
+      current = parent;
+      parent = current.parent;
     }
-    if (node.kind === ts.SyntaxKind.VariableDeclaration && node.initializer) {
-      const initializer = unwrapExpression(node.initializer);
-      if (tsIs.isIdentifier(node.name)) {
-        if (isCreateRequireExpression(initializer))
-          factoryBindings.add(node.name.text);
-        else if (
-          initializer.kind === ts.SyntaxKind.CallExpression &&
-          isCreateRequireExpression(initializer.expression)
-        ) {
-          // A createRequire result is a loader; the call is checked separately below.
-          loaderBindings.add(node.name.text);
-        } else if (
-          tsIs.isIdentifier(initializer) &&
-          (factoryBindings.has(initializer.text) ||
-            loaderBindings.has(initializer.text))
-        ) {
-          (factoryBindings.has(initializer.text)
-            ? factoryBindings
-            : loaderBindings
-          ).add(node.name.text);
-        } else if (isModuleNamespaceExpression(initializer)) {
-          // `const modns = await import("node:module")` (or the process.getBuiltinModule
-          // equivalent): modns is now provably the module namespace, same as a static
-          // `import * as modns from "node:module"`.
-          moduleBindings.add(node.name.text);
-        }
-      } else if (
-        node.name.kind === ts.SyntaxKind.ObjectBindingPattern &&
-        isModuleNamespaceExpression(initializer)
-      ) {
-        // `const { createRequire } = await import("node:module")`: destructuring straight
-        // out of a dynamically-acquired module namespace is the same acquisition the
-        // static-import branch above always flags, just via a different syntax.
-        for (const element of node.name.elements) {
-          if (
-            element.kind !== ts.SyntaxKind.BindingElement ||
-            element.dotDotDotToken ||
-            !tsIs.isIdentifier(element.name)
-          )
-            continue;
-          const imported = (element.propertyName ?? element.name).text;
-          if (imported === "createRequire") {
-            factoryBindings.add(element.name.text);
-            if (!allowedRequireSpecifier)
-              imports.push({
-                specifier: "<createRequire>",
-                line: lineAt(element),
-                typeOnly: false,
-                node: element,
-              });
-          }
-          if (imported === "default") moduleBindings.add(element.name.text);
-        }
-      }
-    }
-    node.forEachChild(visitBindings);
+    return parent?.kind === ts.SyntaxKind.CallExpression &&
+      parent.expression === current;
   }
-  visitBindings(file);
+  // Recognize a createRequire acquisition CALL by the literal name of its callee alone —
+  // never by tracing where the receiver (for `X.createRequire(...)`) came from. Round 1
+  // and round 2 of this gate both tried to prove the receiver was provably node:module's
+  // namespace object, and both rounds were beaten by one more indirection shape nobody had
+  // enumerated yet (dynamic import, destructuring, process.getBuiltinModule, a passthrough
+  // call, reassignment, an object property, a `.then()` callback, `Promise.all`
+  // destructuring — the list only grows). A linter like "no-eval" doesn't try to prove its
+  // target really is the global `eval`; it flags any call spelled `eval(...)`. This does
+  // the same: `createRequire(...)`, `X.createRequire(...)` for ANY `X`, or
+  // `X["createRequire"](...)` for ANY `X`, is flagged regardless of how `X` (or a bare
+  // `createRequire` binding) was obtained. The one accepted false-negative: renaming the
+  // binding itself (`const cr = createRequire; cr(x)`, or `import { createRequire as cr }`
+  // then calling `cr(...)`) is not caught, the same blind spot "no-eval" has for
+  // `const e = eval; e(x)` — false-closed on every shape actually seen exploited beats
+  // chasing an unbounded rename space. The callee is unwrapped through parens/await/as/!
+  // first so `(createRequire)(x)` and `(modns.createRequire)(x)` don't weaken detection.
+  function isCreateRequireCallee(expr) {
+    const callee = unwrapExpression(expr);
+    if (!callee) return false;
+    if (tsIs.isIdentifier(callee)) return callee.text === "createRequire";
+    if (callee.kind === ts.SyntaxKind.PropertyAccessExpression)
+      return callee.name.text === "createRequire";
+    if (callee.kind === ts.SyntaxKind.ElementAccessExpression)
+      return constantString(callee.argumentExpression) === "createRequire";
+    return false;
+  }
+  // Downstream-only: once a createRequire acquisition call is recognized above, its
+  // return value is itself a require-shaped loader function. If that return value is
+  // bound to a plain variable, track the variable so a later call through it (checked
+  // separately, below) is resolved as a require target the same way a direct `require(...)`
+  // call is. This does not re-decide whether the acquisition itself is a createRequire
+  // call — it only follows the one-hop "the result of a recognized call was named" step,
+  // which is bounded (a single assignment), not the unbounded provenance tracing this
+  // gate moved away from above.
+  function collectLoaderBindings(node) {
+    if (
+      node.kind === ts.SyntaxKind.VariableDeclaration &&
+      node.initializer &&
+      tsIs.isIdentifier(node.name)
+    ) {
+      const initializer = unwrapExpression(node.initializer);
+      if (
+        initializer?.kind === ts.SyntaxKind.CallExpression &&
+        isCreateRequireCallee(initializer.expression)
+      )
+        loaderBindings.add(node.name.text);
+    }
+    node.forEachChild(collectLoaderBindings);
+  }
+  collectLoaderBindings(file);
   function constantString(node) {
     if (literal(node) !== undefined) return literal(node);
     if (
@@ -407,7 +374,7 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
         (expr.kind === ts.SyntaxKind.ElementAccessExpression &&
           expr.expression.getText(file) === "globalThis" &&
           constantString(expr.argumentExpression) === "require");
-      const isCreateRequire = isCreateRequireExpression(expr);
+      const isCreateRequire = isCreateRequireCallee(expr);
       const isCreatedLoader =
         tsIs.isIdentifier(expr) && loaderBindings.has(expr.text);
       if (isCreateRequire) {
@@ -475,8 +442,12 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
         ["module", "process.mainModule", "globalThis"].includes(receiver);
       const isRequireResolver =
         property === "resolve" && receiver === "require";
+      // Any `X.createRequire` / `X["createRequire"]` reference that isn't itself the
+      // callee of a (possibly parenthesized) call — e.g. stashed in a variable to be
+      // called later — for ANY `X`, by the same by-name philosophy as isCreateRequireCallee
+      // above. The CallExpression branch already reports a directly-called one.
       const isDetachedCreateRequire =
-        property === "createRequire" && moduleBindings.has(receiver);
+        property === "createRequire" && !isWrappedCallCallee(node);
       if (
         !isDirectCall &&
         (isLoaderMember || isRequireResolver || isDetachedCreateRequire)
@@ -514,16 +485,29 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
           typeOnly: false,
           node,
         });
-    } else if (tsIs.isIdentifier(node) && factoryBindings.has(node.text)) {
+    } else if (tsIs.isIdentifier(node) && node.text === "createRequire") {
+      // Any bare reference to an identifier literally named `createRequire` that is
+      // neither the name being declared (an import specifier or destructuring binding —
+      // just entering it into scope, not using it), nor the `.name` of a property access
+      // (handled by the PropertyAccessExpression branch above), nor the callee of a direct
+      // call (handled by the CallExpression branch above, with the allowlist exemption) —
+      // e.g. `const stashed = createRequire;` to call later under a different name. This
+      // still doesn't chase the rename (see isCreateRequireCallee's comment); it flags the
+      // reference the moment the still-literally-named binding is handed off.
       const parent = node.parent;
-      const importBinding =
-        parent?.kind === ts.SyntaxKind.ImportSpecifier ||
+      const declaresThisName =
+        (parent?.kind === ts.SyntaxKind.ImportSpecifier &&
+          (parent.propertyName === node || parent.name === node)) ||
         (parent?.kind === ts.SyntaxKind.BindingElement &&
-          parent.name === node);
-      const directCall =
-        parent?.kind === ts.SyntaxKind.CallExpression &&
-        parent.expression === node;
-      if (!importBinding && !directCall)
+          (parent.propertyName === node || parent.name === node));
+      const isPropertyAccessName =
+        parent?.kind === ts.SyntaxKind.PropertyAccessExpression &&
+        parent.name === node;
+      if (
+        !declaresThisName &&
+        !isPropertyAccessName &&
+        !isWrappedCallCallee(node)
+      )
         imports.push({
           specifier: "<createRequire>",
           line: lineAt(node),
