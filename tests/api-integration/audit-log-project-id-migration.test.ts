@@ -188,11 +188,20 @@ describe("migration 0070_audit_log_project_id.sql — forward-only, over pre-exi
       // The column exists, is nullable text, and every pre-existing row reads NULL --
       // which is also, deliberately, what the read filter shows every workspace reader
       // for a "not project-scoped" row.
-      const column = await testDb.execute<{ is_nullable: string }>(
-        `SELECT is_nullable FROM information_schema.columns
+      const column = await testDb.execute<{
+        is_nullable: string;
+        data_type: string;
+        column_default: string | null;
+      }>(
+        `SELECT is_nullable, data_type, column_default FROM information_schema.columns
          WHERE table_name = 'audit_log' AND column_name = 'project_id'`,
       );
       expect(column.rows[0]?.is_nullable).toBe("YES");
+      // The DDL shape is part of the contract (ordinary review of PR #375, A-L2):
+      // `text`, no default -- an empty string or a defaulted value would change what
+      // "not project-scoped" means for the read filter.
+      expect(column.rows[0]?.data_type).toBe("text");
+      expect(column.rows[0]?.column_default).toBeNull();
 
       const existing = await testDb.execute<{ project_id: string | null }>(
         `SELECT project_id FROM audit_log WHERE id = '${existingId}'`,

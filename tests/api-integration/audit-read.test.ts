@@ -307,6 +307,29 @@ describe("GET /api/workspaces/{workspaceId}/audit — project reach (#344, AU-10
     expect(actions).toContain("plugin.tested");
   });
 
+  it("a reader WITH a person row but NO project memberships sees only non-project rows (the empty-reach branch, pinned separately)", async () => {
+    // The ordinary review of PR #375 (finding 1) proved this branch was unpinned: a
+    // mutation that dropped it left the whole file green. It is the exact shape the
+    // 2026-09-05 security review worried about -- capability held, reach empty -- and it
+    // is NOT the same test as "no person row": that one exercises a different early
+    // return, and a regression could hit either alone.
+    const reader = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: reader.workspace.id,
+    });
+    await addPersonForUser(reader.user.id);
+
+    await seedProjectScopedRow(reader.workspace.id, null, "auth.sign_out");
+    await seedProjectScopedRow(
+      reader.workspace.id,
+      project.id,
+      "plugin.changed",
+    );
+
+    const actions = await readActions(reader.user, reader.workspace.id);
+    expect(actions).toEqual(["auth.sign_out"]);
+  });
+
   it("a manager with no person row and no sees_all sees only non-project rows (fail-closed)", async () => {
     const manager = await createWorkspaceMember({ role: "admin" });
     const { project } = await createProjectFixture({

@@ -25,16 +25,30 @@ import {
  * REACH FILTER (#344, Thomas 2026-09-23 — recorded in the decision log). Holding
  * `workspace:manage_settings` is not, by itself, reach on every PROJECT in the
  * workspace: a manager sees non-project rows plus the rows of projects they can reach,
- * and never a project outside that. Reach is the SAME fact the rest of the app uses for
- * project membership (`membership` at `scope = 'project'` for the caller's person —
- * the roster rows assignment.md/`AS-5` is built on), plus the per-workspace `sees_all`
- * grant on a workspace-scoped membership row (#319/#334: `sees_all` is per workspace).
+ * and never a project outside that.
+ *
+ * WHAT "REACH" IS HERE, PRECISELY. The filter reads `membership` rows at
+ * `scope = 'project'` for the caller's person — the roster model the assignment feature
+ * is built on (`AS-5`, the assignable feed) — plus the per-workspace `sees_all` grant
+ * on a workspace-scoped `membership` row (#319/#334). The ordinary review of PR #375
+ * (finding 2) is right that this is NOT yet the same fact the app's other routes use
+ * live: those check `workspace_user` membership (`workspace-access-middleware.ts`),
+ * while `membership` at project scope currently has no production WRITER — only the
+ * seeds and tests. The consequence is deliberately one-directional and recorded rather
+ * than papered over: until a writer populates project memberships, a reader can be
+ * UNDER-exposed (a project legitimately theirs, invisible because no `membership` row
+ * exists), never over-exposed, because the filter can only ever show LESS than
+ * `workspace:manage_settings` alone would. rbac.md's reach steps beyond membership
+ * (hierarchy, owner-team) are not consulted either; these are #8's runtime-integration
+ * scope and the filter follows the same single source when that lands, rather than
+ * inventing a second reach model here.
+ *
  * The option Thomas rejected was the opposite default — "restrict reads to owner, admin
- * or `sees_all`" — so a caller with no person row and no `sees_all` reaches nothing and
- * sees only non-project rows. That is the correct fail-closed end of the spectrum: the
- * filter can only ever show LESS than `workspace:manage_settings` alone would, never
- * more, and the `project_id IS NULL` arm is what keeps non-project rows (the audit-only
- * catalogue's own actions) visible to every authorized reader.
+ * or `sees_all`" — so a caller with no reachable projects (no person row, or a person
+ * with no project memberships) sees exactly the non-project rows, never a project's.
+ * Every branch below therefore fails CLOSED, and each is pinned by its own test in
+ * `audit-read.test.ts` (the ordinary review of PR #375 found the empty-reachable-set
+ * branch unpinned; it has one now).
  */
 export async function listWorkspaceAudit(
   c: Context,
@@ -67,9 +81,11 @@ export async function listWorkspaceAudit(
  * Two reads, both keyed to facts other routes already treat as authoritative:
  *   - the caller's person (`person.user_id`, unique by `person_user_unique`);
  *   - their project memberships on rows where `sees_all` is set at workspace scope.
- * A caller with neither a person row nor `sees_all` gets `IN ()` collapsed to a filter
- * that matches only the `IS NULL` arm — fail-closed, and exactly the shape the
- * two-project test pins.
+ * A caller with neither a person row nor `sees_all` gets a filter that matches only the
+ * `IS NULL` arm — fail-closed. The two-project test pins the NON-empty branch (a
+ * reader with one project membership), and a dedicated test pins this empty one; the
+ * two are deliberately separate, because a single test cannot catch a regression that
+ * only affects the other.
  */
 async function projectReachFilter(
   c: Context,

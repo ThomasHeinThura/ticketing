@@ -381,8 +381,13 @@ export async function appendAuditLog(
         traceId: input.traceId ?? null,
         workspaceId: input.workspaceId ?? null,
         // `projectId` is deliberately absent: it is stored, never hashed (#344's own
-        // acceptance). Adding it here would change the recipe for new rows only, and
-        // every existing row would fail `verify-audit-chain` on recomputation.
+        // acceptance). It cannot even be added silently -- `canonicalRowHash`'s input
+        // is a closed field list in `packages/domain/src/audit/audit.ts`, so a stray
+        // key here is a TYPE error, not a quiet recipe change (verified by mutation in
+        // the review of PR #375, finding A-L1), and the golden-hash test in that
+        // package would catch a recipe edit regardless. The reason it must stay out:
+        // the recipe applies uniformly to every row, so a field added for new rows
+        // only would make every pre-existing row fail recomputation.
         action: input.action,
         entityType: input.entityType,
         entityId: input.entityId,
