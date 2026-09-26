@@ -44,3 +44,22 @@ this change).
 - Did not attest a security-scope change in the branch-update merge itself — confirmed via
   `gh pr diff --name-only` that the merge introduced no file outside what was already
   reviewed (only `docs/07-planning/status.md`, non-security-scope).
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-26)
+
+**Reviewed head:** e8ee753ad01c9492950337aa5d2ba86f52472009
+**Previously reviewed head:** 09cc00b9409a1aa0cd398fab211b1cdf990f4d24
+**Reviewer:** Claude Opus 5.5 (`claude-opus-5-5[1m]`), fresh independent context; did not author, direct, or remediate this PR.
+**Tier:** lightweight confirmation (AGENTS.md review-tier table): confirmed by inspection that the change alters no authority or gate pass/fail semantics.
+**Verdict:** CLEAR. The three findings above still stand, unchanged and non-blocking.
+
+This confirmation covers the branch-update merge `a4906d11a9f45c698248f07cf09b2c71e79a3725` (parents `09cc00b` and `origin/main` `6064f616210c61a28032f3510e00eba40317ebec`) and the note commit `e8ee753`.
+
+Independently verified:
+
+- `git diff 09cc00b9409a1aa0cd398fab211b1cdf990f4d24..e8ee753ad01c9492950337aa5d2ba86f52472009 -- docs/04-engineering/ci-cd.md scripts/ci/lib/security-paths.test.mjs scripts/ci/test-contract.mjs scripts/ci/test-contract.test.mjs docs/07-planning/decision-log.md` is empty (0 bytes). No security-scope file changed since the reviewed head.
+- The full `--stat` for `09cc00b..e8ee753` lists only `deploy/compose.uat.yml` (+26/−2, from PR #377 on main) and this note file (+46). Neither is a security-review-scope path.
+- The compose diff introduced by the merge is identical to #377's own diff (`ecd88b0..6064f61`). `git merge-tree --write-tree 09cc00b 6064f61` rebuilds tree `c6371acbd0b446c3e9f4e05bcb551e0e6ffdbcb9`, exactly the tree recorded in `a4906d11`. The merge was a clean automatic merge with no conflict-resolution or manual content.
+- The check-pr-template flag on `a4906d11` comes from its first-parent diff showing the PR's own already-reviewed changes against main. It is not new content. The reviewed security-scope content is byte-identical at this head.
