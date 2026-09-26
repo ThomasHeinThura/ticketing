@@ -77,3 +77,32 @@ visible as one number. There is nothing to fix now; this records the dependency.
 | `check:route-policy` | exit 0 |
 | Reviewer probes | P1 oracle: identical 400s; P2 L1 closed (count 1, not 4); P3 L3 closed (`[]`); P4 `person_user_unique` rejects a second row; P5 index-only plan for the load query |
 | GitHub CI at `34a4f23` | every required check green, except `pull request template + security review`, the gate this file feeds |
+
+## Merge-head attestation (Opus 5.5)
+
+**Reviewed head:** `a4172cf5087716474cf5af54d32cf8348dfd0124`
+
+This is a fresh Opus 5.5 context, 2026-09-26. It attests the `gh pr update-branch` merge of
+`main` at `8a51415e18b7681db5491570ac7c01f99e4fe9d9` into `672c0e7`. `672c0e7` is the Opus note
+over the reviewed code head `34a4f23`, and it changed only this file.
+
+- **Parents:** exactly (`672c0e7`, `8a51415`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main`.
+- **What `main` gained since the reviewed base `e414895`:** only #374 (`78ca997`, `eeb2397`,
+  merged by `8a51415`), which touches `decision-log.md` and `status.md`. #343, #330, #370 and
+  #328 were already in the reviewed base, so the Opus review at `34a4f23` already saw them.
+- **PR change unchanged:** `git diff e414895 672c0e7` and `git diff 8a51415 a4172cf` are
+  byte-identical (same sha256), and no file overlaps.
+- **Interaction with #343:** none. This PR touches
+  `apps/api/src/work-item/{index.ts,controllers/list-assignable-people.ts}`,
+  `assignment.md`, its integration test and this note. It does not touch #343's
+  `apps/api/src/index.ts`, `policy.ts` or `tests/permissions/matrix.fixture.json`. The matrix
+  and route-coverage suites pass at the merge head.
+- **Commands at `a4172cf`** (packages built first; private DB `att373_test`, dropped
+  afterwards):
+  - `pnpm check:openapi`: "matches the API (110 operations)".
+  - `apps/api test:unit` passes 59 files / 490 tests.
+  - `apps/api test:permissions` passes 11 files / 81 tests.
+  - `tests/api-integration/work-item-assignable.test.ts` passes 1 / 11.
+
+**Verdict at `a4172cf5087716474cf5af54d32cf8348dfd0124`: CLEAR.**
