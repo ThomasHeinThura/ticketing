@@ -217,13 +217,49 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
   const factoryBindings = new Set();
   const moduleBindings = new Set();
   const loaderBindings = new Set();
+  // Strip the wrappers that stand between a binding and the expression that actually
+  // produces it, so provenance checks below see through `await`, `(...)`, `as`, and `!`.
+  function unwrapExpression(expr) {
+    let current = expr;
+    while (
+      current &&
+      [
+        ts.SyntaxKind.ParenthesizedExpression,
+        ts.SyntaxKind.AwaitExpression,
+        ts.SyntaxKind.AsExpression,
+        ts.SyntaxKind.NonNullExpression,
+      ].includes(current.kind)
+    )
+      current = current.expression;
+    return current;
+  }
+  // True when `expr` is (or resolves to) the node:module namespace — whether obtained
+  // through a tracked identifier (`moduleBindings`, populated from a static import or a
+  // prior dynamic acquisition) or written inline, e.g. `(await import("node:module"))` or
+  // `process.getBuiltinModule("node:module")`. A dynamic `import()` is never captured by
+  // `visitBindings`'s ImportDeclaration branch, and `process.getBuiltinModule` never goes
+  // through an ImportDeclaration at all, so both must be recognized structurally here
+  // rather than only via the static-import bindings map.
+  function isModuleNamespaceExpression(expr) {
+    const node = unwrapExpression(expr);
+    if (!node) return false;
+    if (tsIs.isIdentifier(node)) return moduleBindings.has(node.text);
+    if (node.kind !== ts.SyntaxKind.CallExpression) return false;
+    const specifier = literal(node.arguments?.[0]);
+    if (!["module", "node:module"].includes(specifier)) return false;
+    if (node.expression.kind === ts.SyntaxKind.ImportKeyword) return true;
+    return (
+      node.expression.kind === ts.SyntaxKind.PropertyAccessExpression &&
+      node.expression.name.text === "getBuiltinModule" &&
+      node.expression.expression.getText(file) === "process"
+    );
+  }
   function isCreateRequireExpression(expr) {
     return (
       (tsIs.isIdentifier(expr) && factoryBindings.has(expr.text)) ||
       (expr.kind === ts.SyntaxKind.PropertyAccessExpression &&
         expr.name.text === "createRequire" &&
-        tsIs.isIdentifier(expr.expression) &&
-        moduleBindings.has(expr.expression.text))
+        isModuleNamespaceExpression(expr.expression))
     );
   }
   function visitBindings(node) {
@@ -246,29 +282,59 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
         }
       }
     }
-    if (
-      node.kind === ts.SyntaxKind.VariableDeclaration &&
-      tsIs.isIdentifier(node.name) &&
-      node.initializer
-    ) {
-      const initializer = node.initializer;
-      if (isCreateRequireExpression(initializer))
-        factoryBindings.add(node.name.text);
-      else if (
-        initializer.kind === ts.SyntaxKind.CallExpression &&
-        isCreateRequireExpression(initializer.expression)
-      ) {
-        // A createRequire result is a loader; the call is checked separately below.
-        loaderBindings.add(node.name.text);
+    if (node.kind === ts.SyntaxKind.VariableDeclaration && node.initializer) {
+      const initializer = unwrapExpression(node.initializer);
+      if (tsIs.isIdentifier(node.name)) {
+        if (isCreateRequireExpression(initializer))
+          factoryBindings.add(node.name.text);
+        else if (
+          initializer.kind === ts.SyntaxKind.CallExpression &&
+          isCreateRequireExpression(initializer.expression)
+        ) {
+          // A createRequire result is a loader; the call is checked separately below.
+          loaderBindings.add(node.name.text);
+        } else if (
+          tsIs.isIdentifier(initializer) &&
+          (factoryBindings.has(initializer.text) ||
+            loaderBindings.has(initializer.text))
+        ) {
+          (factoryBindings.has(initializer.text)
+            ? factoryBindings
+            : loaderBindings
+          ).add(node.name.text);
+        } else if (isModuleNamespaceExpression(initializer)) {
+          // `const modns = await import("node:module")` (or the process.getBuiltinModule
+          // equivalent): modns is now provably the module namespace, same as a static
+          // `import * as modns from "node:module"`.
+          moduleBindings.add(node.name.text);
+        }
       } else if (
-        tsIs.isIdentifier(initializer) &&
-        (factoryBindings.has(initializer.text) ||
-          loaderBindings.has(initializer.text))
+        node.name.kind === ts.SyntaxKind.ObjectBindingPattern &&
+        isModuleNamespaceExpression(initializer)
       ) {
-        (factoryBindings.has(initializer.text)
-          ? factoryBindings
-          : loaderBindings
-        ).add(node.name.text);
+        // `const { createRequire } = await import("node:module")`: destructuring straight
+        // out of a dynamically-acquired module namespace is the same acquisition the
+        // static-import branch above always flags, just via a different syntax.
+        for (const element of node.name.elements) {
+          if (
+            element.kind !== ts.SyntaxKind.BindingElement ||
+            element.dotDotDotToken ||
+            !tsIs.isIdentifier(element.name)
+          )
+            continue;
+          const imported = (element.propertyName ?? element.name).text;
+          if (imported === "createRequire") {
+            factoryBindings.add(element.name.text);
+            if (!allowedRequireSpecifier)
+              imports.push({
+                specifier: "<createRequire>",
+                line: lineAt(element),
+                typeOnly: false,
+                node: element,
+              });
+          }
+          if (imported === "default") moduleBindings.add(element.name.text);
+        }
       }
     }
     node.forEachChild(visitBindings);
@@ -440,7 +506,10 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
         });
     } else if (tsIs.isIdentifier(node) && factoryBindings.has(node.text)) {
       const parent = node.parent;
-      const importBinding = parent?.kind === ts.SyntaxKind.ImportSpecifier;
+      const importBinding =
+        parent?.kind === ts.SyntaxKind.ImportSpecifier ||
+        (parent?.kind === ts.SyntaxKind.BindingElement &&
+          parent.name === node);
       const directCall =
         parent?.kind === ts.SyntaxKind.CallExpression &&
         parent.expression === node;

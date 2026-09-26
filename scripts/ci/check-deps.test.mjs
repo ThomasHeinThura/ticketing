@@ -413,6 +413,78 @@ test("namespace and default createRequire imports are analyzed, including MCP lo
   assert.match(messages, /packages\/mcp\/src\/server\.ts.*from apps\/\*/s);
 });
 
+test("dynamically-acquired createRequire cannot bypass the workspace boundary gate", async (t) => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), "taskdesk-deps-dynamic-create-require-"),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  async function packageAt(relative, name) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name }),
+    );
+    return directory;
+  }
+  const libs = await packageAt("packages/libs", "@taskdesk/libs");
+  await packageAt("apps/api", "@taskdesk/api");
+  // Bypass 1: `await import(...)`, then a property access to createRequire.
+  await writeFile(
+    path.join(libs, "src/await-property.ts"),
+    [
+      'const modns = await import("node:module");',
+      "const req = modns.createRequire(import.meta.url);",
+      'req("@taskdesk/api");',
+    ].join("\n"),
+  );
+  // Bypass 2: destructuring createRequire straight out of the dynamic import.
+  await writeFile(
+    path.join(libs, "src/destructured.ts"),
+    [
+      'const { createRequire } = await import("node:module");',
+      "const req = createRequire(import.meta.url);",
+      'req("@taskdesk/api");',
+    ].join("\n"),
+  );
+  // Bypass 3: acquiring the module namespace via process.getBuiltinModule instead of
+  // import() at all.
+  await writeFile(
+    path.join(libs, "src/builtin-module.ts"),
+    [
+      'const mod = process.getBuiltinModule("node:module");',
+      "const req = mod.createRequire(import.meta.url);",
+      'req("@taskdesk/api");',
+    ].join("\n"),
+  );
+  const { violations } = await analyzeDependencies(root);
+  const messages = violations.join("\n");
+  assert.match(
+    messages,
+    /packages\/libs\/src\/await-property\.ts.*createRequire/s,
+  );
+  assert.match(
+    messages,
+    /packages\/libs\/src\/await-property\.ts.*from apps\/\*/s,
+  );
+  assert.match(
+    messages,
+    /packages\/libs\/src\/destructured\.ts.*createRequire/s,
+  );
+  assert.match(
+    messages,
+    /packages\/libs\/src\/destructured\.ts.*from apps\/\*/s,
+  );
+  assert.match(
+    messages,
+    /packages\/libs\/src\/builtin-module\.ts.*createRequire/s,
+  );
+  assert.match(
+    messages,
+    /packages\/libs\/src\/builtin-module\.ts.*from apps\/\*/s,
+  );
+});
+
 test("Vite aliases resolving into another workspace are boundary checked", async (t) => {
   const root = await mkdtemp(
     path.join(os.tmpdir(), "taskdesk-deps-vite-alias-"),
