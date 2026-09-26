@@ -161,8 +161,11 @@ exercised rather than being first tested in UAT.
 
 Add `files.localhost` too when running the `s3` profile locally.
 
-`scripts/deploy.sh local` prints this. The self-signed root certificate is generated once
-into `deploy/local/certs/` and can be trusted in the OS keychain to stop browser warnings.
+`scripts/deploy.sh local` prints this. It creates a self-signed **leaf** certificate for
+the local routes in `deploy/local/certs/`; it is not a certificate authority. Trust
+`local.crt` on the development machine to stop browser warnings. `DOMAIN` must be a valid
+DNS name. If the certificate is missing a route name or expires within 30 days, the script
+preserves the existing certificate/key in a private `replaced-*` directory before renewal.
 
 ## DNS
 

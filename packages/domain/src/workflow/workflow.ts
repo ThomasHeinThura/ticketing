@@ -51,10 +51,9 @@ import { CHANGE_RISK_LEVELS } from "./types.js";
 // — a project's concrete `state` carries no `group` column for this function to read.
 // ---------------------------------------------------------------------------
 
-const CLOSED_GROUPS: ReadonlySet<StateGroup> = new Set([
-  "completed",
-  "cancelled",
-]);
+export const CLOSED_STATE_GROUPS = ["completed", "cancelled"] as const;
+
+const CLOSED_GROUPS: ReadonlySet<StateGroup> = new Set(CLOSED_STATE_GROUPS);
 
 /**
  * `WF-15`'s own definition of "closed", as reusable code rather than restated prose each
