@@ -1,8 +1,8 @@
 /**
  * Resolves the session-signing secret, failing closed.
  *
- * kaneo validated TASKDESK_AUTH_SECRET only when it was already set and passed
- * `process.env.TASKDESK_AUTH_SECRET || ""` into better-auth. An empty string is
+ * kaneo validated the configured session secret only when it was already set and
+ * passed its value—or an empty string—into better-auth. An empty string is
  * falsy there, so better-auth fell through its own chain — `secret ->
  * BETTER_AUTH_SECRET -> AUTH_SECRET -> "better-auth-secret-1234..."` — and
  * settled on a constant published in its own source. better-auth's

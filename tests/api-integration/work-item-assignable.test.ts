@@ -411,6 +411,185 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
     expect(response.status).toBe(400);
   });
 
+  it("L1: the open-work count never includes another workspace's items", async () => {
+    const { workspace, project, type, backlog } = await setup();
+    const lead = await addWorkspaceMember(workspace.id, "lead");
+    const ada = await addNamedPersonOnRoster({
+      name: "Ada Lovelace",
+      projectId: project.id,
+    });
+
+    // Ada is loaded here: two open items in THIS workspace.
+    await assignItemTo(
+      workspace.id,
+      project.id,
+      type.id,
+      backlog.id,
+      ada.person.id,
+    );
+    await assignItemTo(
+      workspace.id,
+      project.id,
+      type.id,
+      backlog.id,
+      ada.person.id,
+    );
+
+    // ...and, as staff can be, loaded in a DIFFERENT workspace's project too. The
+    // caller (a lead of this workspace) has no reach there; the count must not report
+    // its activity (PR #362 review, L1).
+    const other = await createWorkspaceMember({ role: "admin" });
+    const { project: otherProject } = await createProjectFixture({
+      workspaceId: other.workspace.id,
+    });
+    const otherType = await makeWorkItemType(other.workspace.id);
+    const otherState = await makeState(
+      other.workspace.id,
+      otherProject.id,
+      "backlog",
+      true,
+    );
+    await assignItemTo(
+      other.workspace.id,
+      otherProject.id,
+      otherType.id,
+      otherState.id,
+      ada.person.id,
+    );
+    await assignItemTo(
+      other.workspace.id,
+      otherProject.id,
+      otherType.id,
+      otherState.id,
+      ada.person.id,
+    );
+
+    mockAuthenticatedSession(lead);
+    const { app } = createApp();
+    const people = (await (
+      await assignableRequest(app, project.id)
+    ).json()) as Array<Record<string, unknown>>;
+
+    expect(people).toHaveLength(1);
+    expect(people[0]?.openWorkCount).toBe(2);
+  });
+
+  it("L3: a customer-side or placeholder person with a membership row is not assignable and not listed", async () => {
+    const { workspace, project } = await setup();
+    const lead = await addWorkspaceMember(workspace.id, "lead");
+    await addNamedPersonOnRoster({
+      name: "Ada Lovelace",
+      projectId: project.id,
+    });
+
+    // The two shapes `data-model.md` says can never be assignable, given the membership
+    // row the database does not refuse (PR #362 review, L3).
+    const organisation = await ensureInternalOrganisation();
+    for (const shape of [
+      { side: "customer", isPlaceholder: false },
+      { side: "staff", isPlaceholder: true },
+    ]) {
+      const now = new Date();
+      const person = requireRow(
+        await db
+          .insert(schema.personTable)
+          .values({
+            organisationId: organisation.id,
+            side: shape.side,
+            isPlaceholder: shape.isPlaceholder,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning(),
+        "L3 person",
+      );
+      const role = requireRow(
+        await db
+          .insert(schema.roleTable)
+          .values({
+            scope: "project",
+            key: `role-${randomUUID()}`,
+            name: "Project Member",
+            rank: 10,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning(),
+        "L3 role",
+      );
+      await db.insert(schema.membershipTable).values({
+        personId: person.id,
+        scope: "project",
+        scopeId: project.id,
+        roleId: role.id,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    mockAuthenticatedSession(lead);
+    const { app } = createApp();
+    const people = (await (
+      await assignableRequest(app, project.id)
+    ).json()) as Array<Record<string, unknown>>;
+
+    expect(people.map((entry) => entry.name)).toEqual(["Ada Lovelace"]);
+  });
+
+  it("L4, corrected: a member whose only person row is customer-side sees NOTHING — the self branch applies the same staff/roster rules as the list", async () => {
+    const { workspace, project } = await setup();
+    const memberUser = await addWorkspaceMember(workspace.id, "member");
+
+    // The review's L4 premise (two person rows behind one user) is not reachable:
+    // `person_user_unique` (migration 0053) allows at most one row per user. The
+    // reachable shape of the same concern is this one -- a customer-side person, which
+    // no rule in the database forbids being linked to the login -- and the fixed
+    // resolution plus the L3 predicates both refuse to treat it as a candidate.
+    const organisation = await ensureInternalOrganisation();
+    const now = new Date();
+    const customerPerson = requireRow(
+      await db
+        .insert(schema.personTable)
+        .values({
+          userId: memberUser.id,
+          organisationId: organisation.id,
+          side: "customer",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning(),
+      "L4 customer person",
+    );
+    const role = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "project",
+          key: `role-${randomUUID()}`,
+          name: "Project Member",
+          rank: 10,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning(),
+      "L4 role",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId: customerPerson.id,
+      scope: "project",
+      scopeId: project.id,
+      roleId: role.id,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    mockAuthenticatedSession(memberUser);
+    const { app } = createApp();
+    const response = await assignableRequest(app, project.id);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([]);
+  });
+
   it("the count question and the roster are answered from the SAME predicate as the write", async () => {
     // A person rostered only on ANOTHER project of this workspace must not appear.
     const { workspace, project } = await setup();
