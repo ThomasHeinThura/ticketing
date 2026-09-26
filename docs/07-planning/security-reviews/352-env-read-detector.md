@@ -453,3 +453,95 @@ Stop classifying comments, and make "no weaker than `main`" hold by construction
   - **E2 (K1, K2):** a nested or computed destructuring key is attributed to an approved name.
 - **Why this is not acceptable as a tracked follow-up:** the head is not a superset of `main`.
 - **Fix:** both fixes are small and structural (items 1 and 2 above), and they end the same-class patch rounds. After the fix, a delta Opus pass on the new head is still required.
+
+# Delta Opus 5.5 review at `fa1d325` (after the E1/E2 remediation `d69a1e5`)
+
+**Reviewer:** Opus 5.5, a fresh worktree in the same independent context that wrote the closing review above. I did not author, direct or remediate the fix.
+**Reviewed head:** `fa1d325069831ecc465782d788f56add80e964fb`
+**Checked with:** `git fetch origin pull/352/head` and `gh pr view 352 --json headRefOid` before starting, and `git ls-remote` before pushing. `origin/main` was `8a51415e18b7681db5491570ac7c01f99e4fe9d9`, an ancestor of the head.
+**Date:** 2026-09-26
+
+## What changed since `1f79c1e`
+
+- **`d69a1e5` is the only detector commit.** It touches `env-reads.mjs`, both detector test files, and a comment in `apps/api/src/utils/require-auth-secret.ts`.
+- The other commits are docs (`4cb68e0`, `f96e056`, `c4bc691`, `fa1d325`) and merges from `main` (`863a97c`, `ac75ca2`).
+- `git diff origin/main HEAD` touches only seven files: the detector, its two tests, this note, `status.md`, `error-fix-loop.md` and the `require-auth-secret.ts` comment.
+
+## Did the lane apply the structural fix, or patch the heuristic again?
+
+**It applied the structural fix, as recommended.**
+
+- **Comments.** `hasOpenJsxElementBefore` is deleted, along with the whole comment-exemption block. `findEnvReads` no longer uses `comments` at all. Every raw `rawAccess` match that is not accounted for by a token-level read at the same offset is reported as `alias`. The in-code comment says so: "No raw match is exempted."
+- **Destructuring.** `flatDestructuredEnvNames` finds the **matching** `{` by brace depth. It accepts only segments of exactly `ID` or `ID : ID` and returns `null` for anything else, so the whole read becomes `alias`. That covers rest, nested, computed, string-keyed and defaulted patterns.
+- **The JSDoc false positive.** It was removed by rewording the comment in `require-auth-secret.ts`, not by an exemption. The diff is 4 comment lines and no code.
+
+## Every earlier bypass, rerun end to end through `pnpm check:env`
+
+Each input was written to `apps/web/src/zz-opus-probe.tsx`, then I ran `pnpm -s check:env` and deleted the file. A clean tree exits 0. For N1, I checked the output names the probe line as `alias`.
+
+| Input | exit at `fa1d325` |
+| --- | --- |
+| control (a bare `process.env.STRIPE_SECRET_KEY`) | 1 |
+| D1a, D1b, D1c, D1d | 1, 1, 1, 1 |
+| D2a | 1 |
+| N1, N2, N3, N4, N5, N6 | 1, 1, 1, 1, 1, 1 |
+| K1, K2 | 1, 1 |
+
+## Hostile corpus, this head vs `main`
+
+The input text for each row is as in the closing review above. `FLAG` means the gate fails; `pass` means it is green. `TASKDESK_AUTH_SECRET` is approved; `STRIPE_SECRET_KEY` is not.
+
+| Inputs | `fa1d325` | `main` |
+| --- | --- | --- |
+| D1a–d, N1–N6, C3/C4 (comment or comment-like text) | FLAG (`alias`) | FLAG (named `STRIPE_SECRET_KEY`) |
+| D2a–b, K2, K3, K7 (`{ A: { ...r } }`), K9 (`{ ["S"]: A }`) | FLAG (`alias`) | FLAG (`alias`) |
+| K1 (nested key) | FLAG (`alias`) | FLAG (named `STRIPE_SECRET_KEY`) |
+| K4 (`{ STRIPE_SECRET_KEY: A }`), K8 (comment inside the pattern) | FLAG | FLAG |
+| K5 (`{ TASKDESK_AUTH_SECRET: x }`) and C2 (a plain approved read) | pass | pass |
+| K6 (`{ TASKDESK_AUTH_SECRET = 'x' }`) | **FLAG** (`alias`) | pass |
+| A1–A7 (JSX attributes with `//`, a backtick, an apostrophe or `{`; `>` in text; nested templates) | FLAG | FLAG |
+| T1 (a backtick flip, then read-like text inside a real template), T2 (`"${"` in a string) | FLAG | FLAG |
+| R1 (a regex containing a backtick), R2 (a division misread as a regex) | FLAG | FLAG |
+| W1 (a spelling split across newlines), B1 (a bracket literal), B2 (computed), M1 (`import.meta.env`) | FLAG | FLAG |
+| W2 (`process/* */.env.X`) | **FLAG** | pass (a miss on `main`) |
+
+**No input passes on this head and fails on `main`.** The two rows where the heads differ are both stricter here: K6 is an accepted false positive, and W2 is a read that `main` misses.
+
+- **Differential fuzz.** I generated about 19 million random sequences of 3–16 hostile fragments over 90 seconds. The fragments included JSX tags, fragments, quotes, backticks, `//`, `/*`, `${`, braces, patterns, approved and unapproved reads, `import.meta.env` and `\r`. For each, I compared both detectors' gate verdicts. Result: **0 cases where this head passes and `main` fails, and 0 exceptions.**
+- **Why this holds by construction.** `rawAccess` matches every spelling `main`'s `ACCESS` matches, with the same `(?<![\w$.])` lookbehind, plus `?.env` and `global(This).`. Each match is now either reported, or accounted for by a token-level read at the same offset. Destructuring can no longer produce a named read for anything other than a flat key.
+- **Today's tree.** `check:env --report` with this head's detector and with `main`'s swapped in gives **identical output**: 29 approved reads, exit 0 on both.
+
+## Tests, mutation and CI
+
+- **Detector tests:** `env-reads-342.test.mjs` + `env-reads.test.mjs` give **34/34 pass**. They pin N1–N6, K1–K3, a defaulted pattern and the comment/string fail-closed behaviour.
+- **Mutation check:** I restored the `1f79c1e` detector and kept the new tests. **3 tests fail** (the comment/string, JSX-span and flat-destructuring tests), then pass again once I restored the file.
+- **`pnpm test:ci-scripts`:** **571 tests, 89 suites, 571 pass, 0 fail**, with `node_modules` linked for `tsc`.
+- **`pnpm check:env`:** **exit 0.** 1020 files scanned, "29 environment read(s), every one attributable", 52 baselined deviations, 1 stale baseline name.
+- **CI:** 18 checks are green. The three `NOT ENABLED` jobs are skipped. `pull request template + security review` = FAILURE, waiting for this review to be cited. The PR is `MERGEABLE`, with no GitHub reviews recorded.
+
+## Findings
+
+### G1: NON-BLOCKING. #342 does not track D3, despite the PR's claim
+
+- **What the PR says:** "D3 static `process` forms such as `(process as any).env` … remain a non-regression follow-up under issue #342."
+- **What #342 shows:**
+  - it was last updated 2026-09-23, before D3 was written up;
+  - it has no comments;
+  - its body lists only the #332 E1/E2 shapes.
+- **Overlap:** some D3 shapes are already listed there, namely `const p = process; p.env`, `Reflect.get(process, "env")` and `require("process").env`.
+- **Missing from #342:** `(process as any).env`, `(<any>process).env`, `globalThis?.process.env`, `window.process.env`, identifier unicode escapes, aliases of `globalThis`, `process?.['env']`, `with (process)`, `f(process)`, `import('node:process')`, and the `import.meta` aliases.
+- **Auto-close:** the PR does not auto-close #342 (`closingIssuesReferences` is empty), so the issue stays open after merge.
+- **Action for the orchestrator:** add the D3 list from the `e3dd45b` section to #342, or open a follow-up issue. Don't close #342 on this merge.
+
+### G2: INFORMATIONAL. Accepted false positives
+
+Defaulted flat patterns (K6) and any raw `process.env` spelling in a real comment or string are now `alias`. That is the fail-closed direction. None fires on today's tree.
+
+## Verdict
+
+**CLEAR WITH FINDINGS at `fa1d325069831ecc465782d788f56add80e964fb`.**
+
+- **E1 and E2 are closed structurally, not by another heuristic.** Every N and K input fails the gate end to end.
+- **This head is never weaker than `main`:** not on the hostile corpus, not on 19 million fuzzed inputs, and not on today's tree, where the output is identical.
+- **G1, the #342 tracking gap for D3,** is a record-keeping fix for the orchestrator and does not block the code.
+- **This clears the Opus security gate for this exact SHA only.** The other merge gates are for the orchestrator to verify: the template checker must cite this section, the ordinary review must be recorded at this SHA, and no gate may be waived.
