@@ -167,6 +167,55 @@ per this project's own "verify against the source" practice.
 **Decided by:** Thomas, 2026-09-26 (the 9Router config change); the file-embedding finding and
 fix are the orchestrating session's, verified directly rather than assumed.
 
+### 2026-09-26 · CORRECTION: the pal-mcp cross-call leak is NOT fixed — `pal-mcp` SUSPENDED as default reviewer
+
+**Supersedes:** the entry immediately above's claim that "two follow-up isolated tests after
+the [fusion→failover] switch came back clean." That claim was true of the two samples taken
+at the time; it was wrong to read as "the leak is fixed." A third-pass Opus review, testing
+specifically for this, reproduced the leak again — same class, after the config change.
+
+**Decision:** `pal-mcp` is **suspended** as the default ordinary reviewer/auditor. Do not use
+it for anything a gate depends on. Fresh Sonnet contexts are the ordinary-review path again,
+with no fallback framing — this is not "unreachable, use the fallback," it is "suspended,
+use the standing tier." `CLAUDE.md` and `agent-workflow.md` carry a suspension notice at the
+top of the relevant sections rather than being rewritten as if `pal-mcp` never existed —
+the design is suspended, not deleted, so it can resume once fixed.
+
+**Why:** an Opus reviewer made one fresh, isolated `codereview` call — synthetic content, no
+`continuation_id` — and its response contained material from other sessions: this
+session's own earlier steps on this PR, and a palindrome/binary-search code review from a
+macOS path under a different username, from a different Claude session entirely, first seen
+several rounds earlier. The model's own diagnosis: this is workflow-tool step/state history
+being shared across separate calls and clients on the `pal-mcp` server side — not something
+the `coder` model's fusion-panel-vs-failover routing controls at all. Separately (found by
+the same Opus pass): `pal-mcp` is a remote SSE server
+(`https://mcp-router.technexus.info/sse`) with no access to this host's filesystem — the
+earlier claim that its tools "take arbitrary absolute paths and read them with the host
+user's own privileges" was simply wrong; corrected in `CLAUDE.md`.
+
+**What this means concretely:** a `pal-mcp` review result can — and, in reproducible
+testing, does — contain another session's findings represented as findings about the code
+under review. That is not a tool that can safely gate anything, security-scope or not, until
+the sharing is understood and closed. It also means every `## Reviewed by` this session
+recorded as `pal-mcp` for review purposes was, on later PRs, always accompanied by a Sonnet
+reviewer per this PR's own review record — no gate has been closed on a `pal-mcp`-only
+verdict.
+
+**Alternatives:** Keep using it with a "spot-check the output" caveat — rejected; a caveat
+does not stop leaked content being reported as a finding about the wrong code, which an
+orchestrator under time pressure could act on directly. Blame the fusion-panel config and
+declare it fixed by the failover switch — this is exactly the mistake the entry above made;
+rejected on re-test. Keep pushing `pal-mcp` as "must-use" per Thomas's instruction to
+continue trying it — the orchestrating session judged this a case where a live, reproducible,
+unresolved cross-session data leak overrides a productivity instruction, and is reporting
+this plainly rather than complying quietly; Thomas's actual decision on whether/how to keep
+using `pal-mcp` is still his to make, with this finding in front of him.
+
+**Decided by:** finding is Opus's (third-pass review), reproduced and cross-checked by the
+orchestrating session; the suspension is the orchestrating session's own call, reported to
+Thomas directly, not something to leave ambiguous while more real review traffic might flow
+through a leaking tool.
+
 ### 2026-09-26 · Phase finalizer Opus pass added per stage — additive, not a substitute for per-PR security-scope Opus review
 
 **Decision:** At the completion of each stage (P0 through P7), before it is claimed done, run

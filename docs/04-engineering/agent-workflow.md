@@ -132,13 +132,15 @@ old rule existed to prevent. So:
 
 - **Implementation subagents are Sonnet, set explicitly at spawn.** Still no accidental
   inheritance, still one implementation agent per active code slice as the default scale.
-  Ordinary review, audit, reporting and the alignment check default to `pal-mcp` (see
-  "Model tiers" above, 2026-09-26), falling back to a fresh Sonnet context only when
-  `pal-mcp` is unreachable. **A `pal-mcp` `coder`-panel review does not count as independent
-  for a pull request authored by GPT-6 Luna or DeepSeek 4.1 Flash** — both are also members
-  of that panel (GPT-6 Luna as its judge), so the same rule that bans a context reviewing its
-  own work applies at one remove. For those authors, use Sonnet or the one lane agent not on
-  the panel, and have `## Reviewed by` name the actual reviewer, not just "pal-mcp".
+  **`pal-mcp` is SUSPENDED as the default ordinary reviewer as of 2026-09-26 — see "Model
+  tiers" above and the decision log.** A cross-call content leak was found, and confirmed
+  still present after a config change meant to fix it; use fresh Sonnet contexts for ordinary
+  review, audit, reporting and the alignment check until this clears. **`pal-mcp`'s `coder`
+  failover chain would not count as independent for a pull request authored by GPT-6 Luna,
+  Gemini 3.8 Flash, DeepSeek 4.1 Flash, or GLM 5.3 Flash** even once unsuspended — any of the
+  four could be the model that actually answers a given call under failover, so none of the
+  four's PRs can be treated as independently reviewed by it. For those authors, use Sonnet,
+  and have `## Reviewed by` name the actual reviewer, not just "pal-mcp".
 - **The final security/critical review may be an explicitly-spawned Opus subagent.** The
   constraint is on the *reviewing subagent's* independence, not on who is allowed to press
   spawn: any top-level session — Sonnet or Opus — may spawn it, **as long as the spawned
