@@ -6,6 +6,24 @@
  * Runtime workspace edges come from package manifests so a cycle cannot hide in an
  * import path that the source scanner missed. Source imports are inspected for documented
  * cross-package boundaries. See docs/01-architecture/monorepo-layout.md#package-boundaries.
+ *
+ * Accepted limits of this analysis (by design — a maintainer wondering "why didn't this
+ * catch X" should find the answer here, not only in a test file's header comment):
+ *  - Computed/reflective property or element access whose key isn't a string literal or a
+ *    `+`-concatenation of string literals is not resolved — a template literal with a
+ *    substitution (`` m[`create${"Require"}`] ``) or a plain variable key (`m[k]`) defeats
+ *    every by-name check below (see constantString, used throughout sourceImports).
+ *  - Cross-file re-export chasing: this gate inspects one file's AST at a time and does not
+ *    follow a re-exported binding into another module to find its original declaration.
+ *  - `new Worker(...)` and a `require(...)`/`import(...)` of a `file://` URL are not
+ *    resolved to whatever workspace package they might point at.
+ *  - The one allowlisted file (packages/mcp/src/server.ts) is exempt at the file level for
+ *    acquiring `module`/`node:module` at all, but the createRequire *call* it makes is only
+ *    exempt in its one documented shape: bound to a local variable literally named `require`,
+ *    called with exactly `import.meta.url`. A rename inside that same file (e.g.
+ *    `const localRequire = createRequire(import.meta.url)`) falls outside that exact
+ *    exemption and is flagged like anywhere else — the allowlist does not chase renames
+ *    within its own file either.
  */
 
 import { existsSync } from "node:fs";
@@ -46,6 +64,21 @@ const DYNAMIC_SPECIFIER = "<non-static module specifier>";
 const CREATE_REQUIRE_ALLOWLIST = new Map([
   ["packages/mcp/src/server.ts", "../package.json"],
 ]);
+// Messages for the fixed, by-name/by-acquisition set of module-loading escape hatches this
+// gate flags outside their marker specifier's own carve-out. See sourceImports' comments
+// above isCreateRequireCallee (createRequire), flagModuleSpecifierAcquisition
+// (module-acquisition), isGetBuiltinModuleCallee (getBuiltinModule), and isConstructorEscape
+// (module-constructor) for what each one recognizes and why.
+const FLAGGED_MESSAGES = {
+  "<createRequire>": (line) =>
+    `line ${line} imports createRequire; createRequire is outside the workspace boundary contract`,
+  "<module-acquisition>": (line) =>
+    `line ${line} acquires the "module"/"node:module" builtin; outside the allowlisted file this is outside the workspace boundary contract (it exposes non-createRequire code-loading paths such as Module._load and module.register loader hooks)`,
+  "<getBuiltinModule>": (line) =>
+    `line ${line} calls getBuiltinModule; getBuiltinModule is outside the workspace boundary contract (it can hand back the "module" builtin the same way an acquired node:module import can)`,
+  "<module-constructor>": (line) =>
+    `line ${line} reaches the CJS Module class via module.constructor or require.main.constructor; this is outside the workspace boundary contract`,
+};
 const WORKSPACE_EDGES = new Map([
   [
     "@taskdesk/web",
@@ -231,6 +264,28 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
       node,
     });
   const allowedRequireSpecifier = CREATE_REQUIRE_ALLOWLIST.get(relativeFile);
+  // F1 (PR #361 round 4): the gate previously only ever flagged the *name* createRequire,
+  // never flagged getting hold of the `module`/`node:module` builtin itself — which has
+  // other, createRequire-unrelated ways to load arbitrary code (Module._load,
+  // Module.prototype.require, `module.register` loader hooks that can redirect even a
+  // compliant static import). One level up from chasing createRequire shapes: treat the
+  // ACQUISITION of `module`/`node:module` as the flagged event — a static import, `export
+  // … from`, `import x = require(...)`, `require(...)`, or dynamic `import(...)` whose
+  // specifier is literally "module" or "node:module" — outside the one allowlisted file,
+  // which legitimately acquires it for its own documented createRequire(import.meta.url)
+  // shape. Type-only acquisitions (`import type` / `export type … from`) load nothing at
+  // runtime and are not flagged here.
+  function flagModuleSpecifierAcquisition(specifierNode) {
+    if (allowedRequireSpecifier) return;
+    const spec = literal(specifierNode);
+    if (spec !== "module" && spec !== "node:module") return;
+    imports.push({
+      specifier: "<module-acquisition>",
+      line: lineAt(specifierNode),
+      typeOnly: false,
+      node: specifierNode,
+    });
+  }
   const loaderBindings = new Set();
   // Strip the wrappers that stand between a call site and the callee expression that
   // actually names it, so the createRequire-by-name check below sees through `await`,
@@ -286,21 +341,36 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
   // target really is the global `eval`; it flags any call spelled `eval(...)`. This does
   // the same: `createRequire(...)`, `X.createRequire(...)` for ANY `X`, or
   // `X["createRequire"](...)` for ANY `X`, is flagged regardless of how `X` (or a bare
-  // `createRequire` binding) was obtained. The one accepted false-negative: renaming the
-  // binding itself (`const cr = createRequire; cr(x)`, or `import { createRequire as cr }`
-  // then calling `cr(...)`) is not caught, the same blind spot "no-eval" has for
-  // `const e = eval; e(x)` — false-closed on every shape actually seen exploited beats
-  // chasing an unbounded rename space. The callee is unwrapped through parens/await/as/!
-  // first so `(createRequire)(x)` and `(modns.createRequire)(x)` don't weaken detection.
-  function isCreateRequireCallee(expr) {
+  // `createRequire` binding) was obtained. Round 3 closed the import/destructure-time rename
+  // gap this used to accept (`import { createRequire as cr }`, or `const { createRequire: cr
+  // } = await import(...)`, then calling `cr(...)`) — see the ImportDeclaration handling
+  // above (resolves through `propertyName`) and the bare-identifier-rename check further
+  // below. What remains an accepted limit, same as a scope-based lint rule: computed/
+  // reflective property access whose key isn't a string literal or `+`-concatenation (a
+  // template substitution or a plain variable key), and cross-file re-export chasing — see
+  // this file's top comment for the full, current list. The callee is unwrapped through
+  // parens/await/as/! first so `(createRequire)(x)` and `(modns.createRequire)(x)` don't
+  // weaken detection.
+  // Generalized to any literal callee name (F1, PR #361 round 4): getBuiltinModule is
+  // flagged the same by-name way createRequire is above — `process.getBuiltinModule("module")`
+  // hands back the same "module" builtin createRequire itself comes from, with its own
+  // non-createRequire loading paths (e.g. `._load`), so the call itself is what gets
+  // flagged, regardless of what string argument it's given or how the receiver was obtained.
+  function isNamedCallee(expr, name) {
     const callee = unwrapExpression(expr);
     if (!callee) return false;
-    if (tsIs.isIdentifier(callee)) return callee.text === "createRequire";
+    if (tsIs.isIdentifier(callee)) return callee.text === name;
     if (callee.kind === ts.SyntaxKind.PropertyAccessExpression)
-      return callee.name.text === "createRequire";
+      return callee.name.text === name;
     if (callee.kind === ts.SyntaxKind.ElementAccessExpression)
-      return constantString(callee.argumentExpression) === "createRequire";
+      return constantString(callee.argumentExpression) === name;
     return false;
+  }
+  function isCreateRequireCallee(expr) {
+    return isNamedCallee(expr, "createRequire");
+  }
+  function isGetBuiltinModuleCallee(expr) {
+    return isNamedCallee(expr, "getBuiltinModule");
   }
   // Downstream-only: once a createRequire acquisition call is recognized above, its
   // return value is itself a require-shaped loader function. If that return value is
@@ -346,16 +416,30 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
       kind === ts.SyntaxKind.ImportDeclaration ||
       kind === ts.SyntaxKind.ExportDeclaration
     ) {
-      if (node.moduleSpecifier)
-        add(
-          node.moduleSpecifier,
+      if (node.moduleSpecifier) {
+        const typeOnly =
           kind === ts.SyntaxKind.ImportDeclaration
             ? Boolean(node.importClause?.isTypeOnly)
-            : Boolean(node.isTypeOnly),
-        );
+            : Boolean(node.isTypeOnly);
+        add(node.moduleSpecifier, typeOnly);
+        if (!typeOnly) flagModuleSpecifierAcquisition(node.moduleSpecifier);
+      }
     } else if (kind === ts.SyntaxKind.ImportEqualsDeclaration) {
-      if (node.moduleReference?.kind === ts.SyntaxKind.ExternalModuleReference)
+      if (
+        node.moduleReference?.kind === ts.SyntaxKind.ExternalModuleReference
+      ) {
         add(node.moduleReference.expression);
+        if (!node.isTypeOnly)
+          flagModuleSpecifierAcquisition(node.moduleReference.expression);
+      }
+    } else if (kind === ts.SyntaxKind.ImportType) {
+      // Type-position `import(...)` — `export type Y = import("@taskdesk/api").X` and the
+      // JSDoc `@typedef {import("@taskdesk/api").X}` form (in a plain .js file) both parse
+      // to this same ImportType node (F2, PR #361 round 4), so both now get scanned through
+      // the same edge-recording path `add()` as the already-working `import type { X } from
+      // "..."` form, instead of being silently skipped.
+      if (node.argument?.kind === ts.SyntaxKind.LiteralType)
+        add(node.argument.literal, true);
     } else if (kind === ts.SyntaxKind.CallExpression) {
       const expr = node.expression;
       const isImport = expr.kind === ts.SyntaxKind.ImportKeyword;
@@ -384,8 +468,17 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
           expr.expression.getText(file) === "globalThis" &&
           constantString(expr.argumentExpression) === "require");
       const isCreateRequire = isCreateRequireCallee(expr);
+      const isGetBuiltinModule = isGetBuiltinModuleCallee(expr);
       const isCreatedLoader =
         tsIs.isIdentifier(expr) && loaderBindings.has(expr.text);
+      if (isGetBuiltinModule) {
+        imports.push({
+          specifier: "<getBuiltinModule>",
+          line: lineAt(node),
+          typeOnly: false,
+          node,
+        });
+      }
       if (isCreateRequire) {
         const parent = node.parent;
         const variable =
@@ -421,6 +514,8 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
         isCreatedLoader
       )
         add(node.arguments[0]);
+      if (isImport || isRequire)
+        flagModuleSpecifierAcquisition(node.arguments[0]);
       if (
         isCreatedLoader &&
         allowedRequireSpecifier &&
@@ -457,14 +552,27 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
       // above. The CallExpression branch already reports a directly-called one.
       const isDetachedCreateRequire =
         property === "createRequire" && !isWrappedCallCallee(node);
+      // `module.constructor` / `require.main.constructor` reach the CJS Module class
+      // directly (its own `._load`, etc.) without ever calling anything literally named
+      // createRequire or getBuiltinModule (F1, PR #361 round 4) — flagged by the receiver
+      // text the moment the property is referenced, the same fixed, by-text way
+      // isLoaderMember above recognizes `module.require`.
+      const isConstructorEscape =
+        property === "constructor" &&
+        ["module", "require.main"].includes(receiver);
       if (
         !isDirectCall &&
-        (isLoaderMember || isRequireResolver || isDetachedCreateRequire)
+        (isLoaderMember ||
+          isRequireResolver ||
+          isDetachedCreateRequire ||
+          isConstructorEscape)
       )
         imports.push({
           specifier: isDetachedCreateRequire
             ? "<createRequire>"
-            : DYNAMIC_SPECIFIER,
+            : isConstructorEscape
+              ? "<module-constructor>"
+              : DYNAMIC_SPECIFIER,
           line: lineAt(node),
           typeOnly: false,
           node,
@@ -1005,14 +1113,13 @@ export async function analyzeDependencies(root = repoRoot) {
       for (const imported of imports) {
         if (
           imported.specifier === DYNAMIC_SPECIFIER ||
-          imported.specifier === "<createRequire>"
+          FLAGGED_MESSAGES[imported.specifier]
         ) {
           violations.push(
             violation(
               relativeFile,
-              imported.specifier === "<createRequire>"
-                ? `line ${imported.line} imports createRequire; createRequire is outside the workspace boundary contract`
-                : `line ${imported.line} uses a non-static module specifier; package boundaries cannot be proven`,
+              FLAGGED_MESSAGES[imported.specifier]?.(imported.line) ??
+                `line ${imported.line} uses a non-static module specifier; package boundaries cannot be proven`,
             ),
           );
           continue;

@@ -24,10 +24,16 @@
 // at all (`import { createRequire as cr } from "node:module"; cr(...)`). This is a bounded
 // alias-resolution problem (trace an identifier back to its own declaration), not the
 // unbounded data-flow-tracing problem rounds 1-2 were beaten by — so it stays in scope for
-// static, single-file AST analysis. Explicitly OUT of scope, still: computed/reflective
-// access (`globalThis["create" + "Require"]`, `eval`, `new Function(...)`) and cross-file
-// re-export chasing — those remain accepted limits of this analysis, the same way a
-// scope-based lint rule doesn't chase arbitrary reflection either.
+// static, single-file AST analysis. Explicitly OUT of scope, still: `eval`, `new
+// Function(...)`, and computed/reflective access whose key isn't a string literal or a
+// `+`-concatenation of string literals — e.g. a template literal with a substitution
+// (`` m[`create${"Require"}`] ``) or a plain variable key (`m[k]`). NOTE:
+// `globalThis["create" + "Require"]` is NOT an example of the last one — constantString
+// folds `+`-concatenated string literals (see check-deps.test.mjs's "detached require and
+// createRequire forms fail closed" test, which exercises this exact fold via
+// `globalThis["req" + "uire"](...)`), so that exact form IS caught. Also out of scope:
+// cross-file re-export chasing. These remain accepted limits of this analysis, the same way
+// a scope-based lint rule doesn't chase arbitrary reflection either.
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
