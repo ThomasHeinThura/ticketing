@@ -97,13 +97,16 @@ test("environment detector ignores nested properties named like runtime globals"
   );
 });
 
-test("environment detector ignores comments but fails closed on quoted text", () => {
+test("environment detector fails closed on raw environment spellings in comments and strings", () => {
   const reads = findEnvReads(
     '// process.env.NOPE\nconst text = "process.env.NOPE";',
   );
   assert.deepEqual(
     reads.map(({ kind, name, line }) => ({ kind, name, line })),
-    [{ kind: "alias", name: null, line: 2 }],
+    [
+      { kind: "alias", name: null, line: 1 },
+      { kind: "alias", name: null, line: 2 },
+    ],
   );
 });
 
@@ -198,6 +201,47 @@ test("environment detector does not trust line-leading slash text inside JSX", (
     reads.map(({ kind, name, line }) => ({ kind, name, line })),
     [{ kind: "alias", name: null, line: 2 }],
   );
+});
+
+test("raw-access backstop does not exempt JSX spans mistaken for comments", () => {
+  const cases = [
+    [
+      "fragment with a line-leading slash",
+      "const X = () => <>\n // docs {process.env.STRIPE_SECRET_KEY}\n</>;",
+    ],
+    [
+      "tag attribute containing a comparison",
+      "const X = () => <div hidden={a < b}>\n // docs {process.env.STRIPE_SECRET_KEY}\n</div>;",
+    ],
+    [
+      "closing tag inside an expression string",
+      'const X = () => <p>{"</p>"}\n // docs {process.env.STRIPE_SECRET_KEY}\n</p>;',
+    ],
+    [
+      "block-comment-like fragment text",
+      "const X = () => <>\n /* glob\n</>;\nconst secret = process.env.STRIPE_SECRET_KEY;\n/** end */",
+    ],
+    [
+      "backtick in JSX followed by a template comment-like line",
+      "const X = () => <p>Press ` to open</p>;\nconst text = `first\n/* $" +
+        "{process.env.STRIPE_SECRET_KEY}`;\n/** end */",
+    ],
+    [
+      "backtick text followed by a template with slash text",
+      "const X = () => <p>`</p>;\nconst text = `first\n// $" +
+        "{process.env.STRIPE_SECRET_KEY}`;",
+    ],
+  ];
+
+  for (const [label, source] of cases) {
+    const reads = findEnvReads(source);
+    assert.ok(
+      reads.some(
+        (read) => read.kind === "alias" || read.name === "STRIPE_SECRET_KEY",
+      ),
+      `expected fail-closed read for ${label}`,
+    );
+  }
 });
 
 test("environment detector bounds malformed quoted strings to one line", () => {

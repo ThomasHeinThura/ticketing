@@ -308,24 +308,49 @@ function tokenize(source) {
   return { tokens, comments };
 }
 
-// The lightweight tokenizer treats JSX text as JavaScript, so it can mistake a
-// line-leading `//` in an open JSX element for a comment. Keep the raw-access
-// backstop conservative there: only comments outside an unclosed JSX element may
-// suppress a raw environment spelling. This affects false-positive suppression
-// only; uncertain input remains visible to the fail-closed backstop.
-function hasOpenJsxElementBefore(source, position) {
-  const prefix = source.slice(0, position);
-  const tags = /<\/?([A-Za-z][\w.-]*)(?:\s[^<>]*?)?\s*(\/?)>/g;
-  const stack = [];
-  for (let match = tags.exec(prefix); match; match = tags.exec(prefix)) {
-    if (match[0].startsWith("</")) {
-      const open = stack.lastIndexOf(match[1]);
-      if (open >= 0) stack.splice(open, 1);
-    } else if (match[2] !== "/") {
-      stack.push(match[1]);
-    }
+function matchingOpenBrace(tokens, closeIndex) {
+  let depth = 0;
+  for (let index = closeIndex; index >= 0; index -= 1) {
+    if (tokens[index].value === "}") depth += 1;
+    else if (tokens[index].value === "{" && --depth === 0) return index;
   }
-  return stack.length > 0;
+  return -1;
+}
+
+/** Accept only flat, statically named process.env destructuring properties. */
+function flatDestructuredEnvNames(tokens, closeIndex) {
+  const openIndex = matchingOpenBrace(tokens, closeIndex);
+  if (openIndex < 0) return null;
+
+  const names = [];
+  let segment = [];
+  const addSegment = () => {
+    if (segment.length === 1 && segment[0].type === "id") {
+      names.push(segment[0].value);
+    } else if (
+      segment.length === 3 &&
+      segment[0].type === "id" &&
+      segment[1].value === ":" &&
+      segment[2].type === "id"
+    ) {
+      names.push(segment[0].value);
+    } else {
+      return false;
+    }
+    segment = [];
+    return true;
+  };
+
+  for (let index = openIndex + 1; index < closeIndex; index += 1) {
+    const token = tokens[index];
+    if (token.value === ",") {
+      if (segment.length > 0 && !addSegment()) return null;
+      continue;
+    }
+    segment.push(token);
+  }
+  if (segment.length > 0 && !addSegment()) return null;
+  return names;
 }
 
 function collectTokenAliases(tokens) {
@@ -585,7 +610,7 @@ function parseEnvObject(tokens, index, processAliases, envAliases) {
  * @returns {EnvRead[]}
  */
 export function findEnvReads(source) {
-  const { tokens, comments } = tokenize(source);
+  const { tokens } = tokenize(source);
   const { processAliases, envAliases, envAliasDeclarations } =
     collectTokenAliases(tokens);
   const reads = [];
@@ -642,7 +667,9 @@ export function findEnvReads(source) {
       } else kind = "computed";
     }
 
-    // Destructuring the whole process.env object resolves the requested keys individually.
+    // Only flat identifier keys can be attributed independently. Nested, computed,
+    // defaulted, string-keyed, and rest patterns copy or select dynamically, so the
+    // entire read stays unattributable.
     if (
       kind === "alias" &&
       tokens[parsed.end]?.value === "env" &&
@@ -650,14 +677,8 @@ export function findEnvReads(source) {
     ) {
       const equals = tokens[i - 1]?.value === "=" ? i - 1 : -1;
       if (equals > 0 && tokens[equals - 1]?.value === "}") {
-        let open = equals - 2;
-        while (open >= 0 && tokens[open].value !== "{") open -= 1;
-        const hasRest =
-          open >= 0 &&
-          tokens
-            .slice(open + 1, equals - 1)
-            .some((part) => part.value === "...");
-        if (hasRest) {
+        const names = flatDestructuredEnvNames(tokens, equals - 1);
+        if (!names || names.length === 0) {
           const id = `${token.start}:${parsed.object}:alias`;
           if (!seen.has(id)) {
             seen.add(id);
@@ -665,13 +686,11 @@ export function findEnvReads(source) {
           }
           continue;
         }
-        for (let key = open + 1; open >= 0 && key < equals - 1; key += 1) {
-          if (tokens[key].type === "id" && tokens[key - 1]?.value !== ":") {
-            const id = `${tokens[i].start}:${tokens[key].value}`;
-            if (!seen.has(id)) {
-              seen.add(id);
-              addRead(token, parsed.object, "named", tokens[key].value);
-            }
+        for (const name of names) {
+          const id = `${token.start}:${name}`;
+          if (!seen.has(id)) {
+            seen.add(id);
+            addRead(token, parsed.object, "named", name);
           }
         }
         continue;
@@ -687,33 +706,17 @@ export function findEnvReads(source) {
   // position it cannot prove is a comment, a raw environment-object spelling that did
   // not produce a token-level read must fail closed. This backstop also keeps strings,
   // regex literals, and JSX text from hiding a read after a lexer misclassification.
-  // Only spans the tokenizer positively identified as comments are exempt.
+  // No raw match is exempted. This deliberately includes comment-like JSX text and
+  // any other syntax the lightweight tokenizer could misclassify.
   const rawAccess =
     /(?<![\w$.])(?:(?:globalThis|global)\s*\.\s*)?process\s*(?:\.\s*env|\?\.\s*env)|(?<![\w$.])import\s*\.\s*meta\s*(?:\.\s*env|\?\.\s*env)/g;
   rawAccess.lastIndex = 0;
-  let commentIndex = 0;
   for (
     let match = rawAccess.exec(source);
     match !== null;
     match = rawAccess.exec(source)
   ) {
     const start = match.index;
-    while (
-      commentIndex < comments.length &&
-      comments[commentIndex].end <= start
-    ) {
-      commentIndex += 1;
-    }
-    const comment = comments[commentIndex];
-    if (comment && comment.start <= start && start < comment.end) {
-      const lineStart = source.lastIndexOf("\n", comment.start - 1) + 1;
-      if (
-        !source.slice(lineStart, comment.start).trim() &&
-        !hasOpenJsxElementBefore(source, comment.start)
-      )
-        continue;
-    }
-
     // `globalThis.process.env`'s token-level read begins at `globalThis`, while this
     // spelling's backstop match begins at `process`; the preceding dot prevents a
     // second raw match for that case. All other ordinary spellings begin at the same

@@ -77,6 +77,33 @@ test("destructured environment properties are attributed individually", () => {
   );
 });
 
+test("only flat identifier destructuring properties are attributed", () => {
+  const flat = findEnvReads(
+    "const { TASKDESK_AUTH_SECRET, DATABASE_URL: connection } = process.env;",
+  );
+  assert.deepEqual(
+    flat.map(({ kind, name }) => ({ kind, name })),
+    [
+      { kind: "named", name: "TASKDESK_AUTH_SECRET" },
+      { kind: "named", name: "DATABASE_URL" },
+    ],
+  );
+
+  const hostile = [
+    "export const { STRIPE_SECRET_KEY: { TASKDESK_AUTH_SECRET: x } } = process.env;",
+    'const TASKDESK_AUTH_SECRET = "STRIPE_SECRET_KEY"; const { [TASKDESK_AUTH_SECRET]: v } = process.env;',
+    'const { "STRIPE_SECRET_KEY": TASKDESK_AUTH_SECRET } = process.env;',
+    "const { STRIPE_SECRET_KEY = TASKDESK_AUTH_SECRET } = process.env;",
+  ];
+  for (const source of hostile) {
+    assert.deepEqual(
+      findEnvReads(source).map(({ kind, name }) => ({ kind, name })),
+      [{ kind: "alias", name: null }],
+      source,
+    );
+  }
+});
+
 test("rest destructuring from process.env is unattributable", () => {
   const reads = findEnvReads(
     [
