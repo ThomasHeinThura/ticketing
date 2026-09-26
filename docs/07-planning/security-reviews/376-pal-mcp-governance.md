@@ -189,3 +189,14 @@ mechanical PR-body/checklist update, and the orchestrating session's call on whe
 Sonnet ordinary reviews at `6d7a812` (which pre-date the suspension entirely) still cover the
 delta, or whether a fresh ordinary delta review is warranted given how much the PR's
 substance changed.
+
+## Pass 6 — narrow confirmation of the last completeness fix: CLEAR
+
+**Reviewed head:** `3fc027dd134eca613b738b95b49166cc7f1ff91f`
+**Model:** Opus 5.5 (`claude-opus-5-5[1m]`), fresh independent context.
+**Verdict:** CLEAR. Confirmed the `205c803..3fc027d` diff (CLAUDE.md's "Using subagents here"
+bullet, the decision-log cross-references, and the Pass 4/5 note sections) is accurate and
+complete. Re-ran a full-diff grep for "pal-mcp"/"pal-reviewer" across the entire accumulated
+PR diff — every mention of pal-mcp as default/usable is now covered by a suspension notice,
+in every file the diff touches. **This closes the security review for PR #376.** Only the
+PR-body/checklist mechanics, and the ordinary-review-coverage question below, remain.
