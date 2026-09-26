@@ -256,8 +256,12 @@ been learned on this repository:
   independent implementation or review lanes are genuinely ready at once. Default useful
   concurrency is a handful of lanes — as many as there is real, non-overlapping,
   well-scoped work for, not a fixed number to hit.
-- **Ordinary review, audit, reporting and the alignment check default to the `pal-reviewer`
-  subagent** (`.claude/agents/pal-reviewer.md`), restricted to `pal-mcp` tools plus read-only
+- **SUSPENDED 2026-09-26 — use a fresh Sonnet context, not the `pal-reviewer` subagent, for
+  ordinary review, audit, reporting and the alignment check right now.** (This bullet
+  described the intended default before `pal-mcp`'s confirmed cross-call content leak; see
+  "Model tiers" above for the full account. Left below for when this is lifted.) ~~Ordinary
+  review, audit, reporting and the alignment check default to the `pal-reviewer` subagent~~
+  (`.claude/agents/pal-reviewer.md`), restricted to `pal-mcp` tools plus read-only
   file access. Give it the exact candidate SHA and file list; it does the actual review via
   `pal-mcp`'s `coder` failover chain, batched into as few tool calls as the job allows, and
   reports the SHA it checked plus what it did not check. Fall back to a fresh Sonnet context

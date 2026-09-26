@@ -15,7 +15,7 @@ Newest first.
 **Decided by:** who
 ```
 
-### 2026-09-26 · `pal-mcp` becomes the primary ordinary review/audit/report/alignment tool; Code Owner review for control-plane files PLANNED THEN SUSPENDED (see the entry immediately below)
+### 2026-09-26 · `pal-mcp` becomes the primary ordinary review/audit/report/alignment tool; Code Owner review for control-plane files PLANNED THEN SUSPENDED (see the entry immediately below) — `pal-mcp` ITSELF LATER SUSPENDED (see "CORRECTION: the pal-mcp cross-call leak is NOT fixed" further down)
 
 **Supersedes (in part):** the 2026-09-15 "Governance reset" item 2 (routing coding through
 `router.technexus.info` did not work out — this decision reopens the same endpoint for
@@ -23,7 +23,10 @@ review/audit only, never implementation); the 2026-09-06 "Merge governance" CODE
 instruction (narrowed here to control-plane files, not reopened at large). **The
 Code-Owner-review half of this entry (below) was planned same-day and then suspended before
 ever taking effect — see the entry immediately below, which is the operative one for that
-half.** This entry's `pal-mcp` decision is unaffected by that suspension. Also superseded:
+half.** **Separately, `pal-mcp` itself — the entry's whole subject, not just the
+Code-Owner-review half — was later suspended the same day after a confirmed, reproducible
+cross-call content leak; see "CORRECTION: the pal-mcp cross-call leak is NOT fixed" further
+down, which is the operative entry for that.** Also superseded:
 the 2026-09-24 "GPT-6 Luna
 replaces Sonnet for ordinary reviews on active P0 lanes" and #345 temporary
 current-model-context fallback entries, both of which this decision's `pal-mcp` path now
@@ -177,7 +180,8 @@ specifically for this, reproduced the leak again — same class, after the confi
 **Decision:** `pal-mcp` is **suspended** as the default ordinary reviewer/auditor. Do not use
 it for anything a gate depends on. Fresh Sonnet contexts are the ordinary-review path again,
 with no fallback framing — this is not "unreachable, use the fallback," it is "suspended,
-use the standing tier." `CLAUDE.md` and `agent-workflow.md` carry a suspension notice at the
+use the standing tier." `CLAUDE.md`, `agent-workflow.md`, and `.claude/agents/pal-reviewer.md`
+all carry a suspension notice at the
 top of the relevant sections rather than being rewritten as if `pal-mcp` never existed —
 the design is suspended, not deleted, so it can resume once fixed.
 

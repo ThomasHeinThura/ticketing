@@ -151,3 +151,41 @@ pal-mcp-primary throughout (only one later subsection had been fixed). Both, plu
 independent of whether `pal-mcp` itself works. B1 is a finding about the *tool*, not the text
 describing it, and is the reason the text now describes `pal-mcp` as suspended rather than as
 primary.
+
+## Pass 4 — completeness check on the suspension notice
+
+**Reviewed head:** `9febf1062097589f0fc7ff8866dba695ac089cbb`
+**Model:** Opus 5.5 (`claude-opus-5-5[1m]`), fresh independent context.
+**Verdict:** REQUEST CHANGES.
+
+Confirmed `bccafe7`'s suspension text (CLAUDE.md, decision-log.md) was accurate as far as it
+went, but incomplete: `.claude/agents/pal-reviewer.md` — added by this PR, never touched by
+`bccafe7` — had no suspension notice at all, and `agent-workflow.md`'s main "Model tiers
+within Claude Code" section still read pal-mcp-primary throughout its header, bullets, and
+role table (only a later, easy-to-miss subsection had a notice). Also flagged: `status.md`
+still stale, and this note's own Pass 3 "Resolution" paragraph overclaiming that all of
+B2–B5 were fixed in `bccafe7`. Fixed in commit `205c803`.
+
+## Pass 5 — completeness re-confirmation, one more gap found and closed
+
+**Reviewed head:** `205c803c6f22e2543c1b4a5f588b7e2c3fb754d1`
+**Model:** Opus 5.5 (`claude-opus-5-5[1m]`), fresh independent context.
+**Verdict:** REQUEST CHANGES.
+
+Confirmed `205c803` correctly fixed `pal-reviewer.md`, `agent-workflow.md`'s main section,
+`status.md`, and this note's own Pass 3 overclaim — none of the CODEOWNERS/phase-finalizer/
+AGENTS.md/ci-cd.md content was disturbed. A repo-wide grep for "pal-mcp"/"pal-reviewer" across
+the full diff found one more instance neither this pass's targeted read nor Pass 4's had
+caught: `CLAUDE.md`'s own separate "## Using subagents here — what works" section (outside
+"## Model tiers", so outside that section's suspension notice) still told agents to default
+to `pal-reviewer` with no qualifier. Also flagged: the two decision-log entries didn't
+cross-reference each other clearly, and this note's own "a follow-up lightweight Opus
+confirmation (below)" line pointed at nothing (this Pass 4/5 gap). All fixed in the commit
+recording this Pass 5 entry — see `CLAUDE.md`'s "Using subagents here" bullet, and the two
+decision-log entries' updated cross-references.
+
+**This closes the pal-mcp-suspension completeness question.** Remaining before merge: the
+mechanical PR-body/checklist update, and the orchestrating session's call on whether the
+Sonnet ordinary reviews at `6d7a812` (which pre-date the suspension entirely) still cover the
+delta, or whether a fresh ordinary delta review is warranted given how much the PR's
+substance changed.
