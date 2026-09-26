@@ -1,6 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
+import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import { personTable } from "../database/schema";
+import { personTable, workItemTable } from "../database/schema";
 import {
   type ApiKey,
   apiRouter,
@@ -29,6 +30,7 @@ import getWorkItemByKey from "./controllers/get-work-item";
 import listAssignablePeople from "./controllers/list-assignable-people";
 import listWorkItemTypes from "./controllers/list-work-item-types";
 import listWorkItems from "./controllers/list-work-items";
+import unassignWorkItem from "./controllers/unassign-work-item";
 import updateWorkItem, {
   WorkItemVersionConflictError,
 } from "./controllers/update-work-item";
@@ -36,6 +38,7 @@ import { requireWorkItemReach } from "./require-work-item-reach";
 import {
   assignablePeopleSchema,
   assignWorkItemResponseSchema,
+  unassignWorkItemResponseSchema,
   workItemAssigneeConflictSchema,
   workItemDetailSchema,
   workItemListResponseSchema,
@@ -373,6 +376,42 @@ const assignWorkItemRoute = createRoute({
   },
 });
 
+const unassignWorkItemRoute = createRoute({
+  method: "delete",
+  operationId: "unassignWorkItem",
+  path: "/work-items/{key}/assign",
+  tags: ["Work items"],
+  summary: "Unassign work item",
+  description:
+    "Clear a work item's assignee (`assignment.md`, `AS-2`). Requires " +
+    "`work_item:assign`; a caller holding only `work_item:update` may clear their OWN " +
+    "assignment (the branch reads the row's current holder, not the request body). " +
+    "Clearing an already-unassigned item is an idempotent 200 no-op with no activity " +
+    "entry and no event (`AS-9`: work is never silently unassigned, so there is " +
+    "nothing to unwrite). A lost race returns 409 with the current assignee. Bulk " +
+    "unassign and the `work_item.unassigned` notification fan-out are later slices.",
+  // Same reasoning as the assign route directly above: reach resolves the row in
+  // middleware, while the capability decision depends on a fact (the row's CURRENT
+  // holder) that is only known in the handler.
+  middleware: [requireWorkItemReach()] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse(
+      "The assignment as cleared",
+      unassignWorkItemResponseSchema,
+    ),
+    403: errorResponse(
+      "No workspace access, missing work_item:assign, or (for clearing your own " +
+        "assignment) missing work_item:update",
+    ),
+    404: errorResponse("Work item not found"),
+    409: jsonResponse(
+      "The assignee changed while this request was in flight",
+      workItemAssigneeConflictSchema,
+    ),
+  },
+});
+
 const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(createWorkItemRoute, async (c) => {
     const { projectId } = c.req.valid("param");
@@ -558,6 +597,82 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
         { assigneeId, expectedCurrentAssigneeId },
       );
       return c.json(assigned, 200);
+    } catch (error) {
+      if (error instanceof WorkItemAssigneeConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            key: error.key,
+            currentAssigneeId: error.currentAssigneeId,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
+  })
+  .openapi(unassignWorkItemRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const userId = c.get("userId");
+
+    // `AS-2`'s row branch: `work_item:update` covers clearing the CALLER'S OWN
+    // assignment. The predicate is the one `./policy.ts` declares
+    // (`row.assignee_id === identity.personId`) and the fact lives on the LOADED ROW,
+    // so -- exactly like the assign route's body branch -- the decision runs in the
+    // handler, after the middleware's reach/404 answer and before any write. A caller
+    // with no person row can never BE the holder, so the branch is false and only
+    // `work_item:assign` carries them. The read here is the row the predicate names;
+    // the controller re-loads it (same shape as the assign route) and re-scopes its own
+    // conditional write.
+    const [current] = await db
+      .select({ assigneeId: workItemTable.assigneeId })
+      .from(workItemTable)
+      .where(
+        and(
+          eq(workItemTable.key, key),
+          eq(workItemTable.workspaceId, workspaceId),
+          isNull(workItemTable.archivedAt),
+          isNull(workItemTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (current === undefined) {
+      throw new HTTPException(404, { message: "Work item not found" });
+    }
+    const [callerPerson] = await db
+      .select({ id: personTable.id })
+      .from(personTable)
+      .where(eq(personTable.userId, userId))
+      .limit(1);
+    await assertCallerHasCapabilityOrSelf(
+      workspaceId,
+      userId,
+      "work_item:assign",
+      "work_item:update",
+      callerPerson !== undefined &&
+        current.assigneeId !== null &&
+        callerPerson.id === current.assigneeId,
+    );
+
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+
+    try {
+      // `current.assigneeId` -- the SAME value the branch above decided against -- is
+      // what the controller pins its write to. Passing a fresh read instead was the
+      // ordinary review's F1: a reassignment between the two made the pin name the new
+      // holder, letting a `work_item:update` caller clear the wrong assignment.
+      const cleared = await unassignWorkItem(
+        key,
+        workspaceId,
+        actorId,
+        actorType,
+        current.assigneeId,
+      );
+      return c.json(cleared, 200);
     } catch (error) {
       if (error instanceof WorkItemAssigneeConflictError) {
         return c.json(

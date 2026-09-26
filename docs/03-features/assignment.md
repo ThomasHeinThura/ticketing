@@ -118,7 +118,7 @@ worse than not showing them.
 
 ```
 POST   /api/work-items/{key}/assign     work_item:assign · orSelfTarget(body.assigneeId, work_item:update)   — kind 1; the body predicate is in the registry ([rbac.md](../01-architecture/rbac.md)), not the handler. An action route, not a `PATCH` — exempt from `If-Match` the same way `POST /work-items/{key}/rank` is (`WI-7`). Conflicts are caught by a conditional write instead: `UPDATE ... WHERE assignee_id IS NULL` (or, for a targeted reassign, `WHERE assignee_id = :expectedCurrentAssigneeId`); zero rows updated means someone else won, and the response is 409 with the row's current `assigneeId`
-DELETE /api/work-items/{key}/assign     work_item:assign · orSelfTarget(row.assignee_id, work_item:update)
+DELETE /api/work-items/{key}/assign     work_item:assign · orOwner(row.assignee_id === identity.personId, work_item:update)
 GET    /api/projects/{id}/assignable    work_item:read
 POST   /api/work-items/bulk/assign      work_item:assign — evaluated per item; partial results reported; above 50 items from an MCP key → 202 (`MC-7`)
 ```
@@ -134,6 +134,7 @@ actually assign to. The client never filters this itself.
 | Assignee deactivated (`person.active = false`) | Assignment retained, shown as "Jane Smith (inactive)" — `AS-8`. There is no delete path to tombstone against: `work_item.assignee_id` is `ON DELETE RESTRICT` and people are never hard-deleted |
 | Bulk assign where some items are outside authority | Per-item: allowed ones succeed, others reported |
 | Assigning a work item already assigned to you | No-op, no activity entry, no notification |
+| Unassigning an item nobody holds | No-op, no activity entry, no notification -- the answer is "it is already as you asked", not a conflict |
 | Two people self-assign simultaneously | The conditional `UPDATE ... WHERE assignee_id IS NULL` lets only one write through; the second gets 409 with the winner's identity, not a version conflict — see the API section |
 | Default assignee is inactive when a work item is created | Left unassigned, and the project is flagged in settings |
 | Assigning across projects during a move | Assignment cleared if the assignee is not on the destination roster; the user is warned first |

@@ -32,6 +32,7 @@ export const OWNER_PREDICATES = [
   "row.person_id === identity.personId",
   "row.created_by === identity.personId",
   "row.requester_id === identity.personId",
+  "row.assignee_id === identity.personId",
 ] as const;
 
 export type OwnerPredicate = (typeof OWNER_PREDICATES)[number];
