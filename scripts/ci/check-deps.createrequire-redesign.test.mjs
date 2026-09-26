@@ -18,6 +18,16 @@
 //     repository (packages/mcp/src/server.ts's package-version read) is still NOT flagged
 //     as a boundary violation, and that the same allowlisted shape still fails closed the
 //     moment it's used to reach outside its own workspace
+//
+// Round 3 closes the one gap the by-name redesign explicitly documented and accepted:
+// import-time renaming, where the call-site identifier is no longer spelled "createRequire"
+// at all (`import { createRequire as cr } from "node:module"; cr(...)`). This is a bounded
+// alias-resolution problem (trace an identifier back to its own declaration), not the
+// unbounded data-flow-tracing problem rounds 1-2 were beaten by — so it stays in scope for
+// static, single-file AST analysis. Explicitly OUT of scope, still: computed/reflective
+// access (`globalThis["create" + "Require"]`, `eval`, `new Function(...)`) and cross-file
+// re-export chasing — those remain accepted limits of this analysis, the same way a
+// scope-based lint rule doesn't chase arbitrary reflection either.
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -28,7 +38,10 @@ import { analyzeDependencies } from "./check-deps.mjs";
 async function packageAt(root, relative, name) {
   const directory = path.join(root, relative);
   await mkdir(path.join(directory, "src"), { recursive: true });
-  await writeFile(path.join(directory, "package.json"), JSON.stringify({ name }));
+  await writeFile(
+    path.join(directory, "package.json"),
+    JSON.stringify({ name }),
+  );
   return directory;
 }
 
@@ -218,7 +231,10 @@ test("the one legitimate, same-workspace createRequire use is not flagged as a b
     await packageAt(root, "apps/api", "@taskdesk/api");
     // Exactly the real packages/mcp/src/server.ts shape: createRequire(import.meta.url)
     // bound to a plain `require`, used only to read this package's own package.json.
-    await writeFile(path.join(mcp, "package.json"), JSON.stringify({ name: "@taskdesk/mcp", version: "0.0.0" }));
+    await writeFile(
+      path.join(mcp, "package.json"),
+      JSON.stringify({ name: "@taskdesk/mcp", version: "0.0.0" }),
+    );
     await writeFile(
       path.join(mcp, "src/server.ts"),
       [
@@ -259,6 +275,85 @@ test("the one legitimate, same-workspace createRequire use is not flagged as a b
       messages,
       /packages\/mcp\/src\/server\.ts.*(from apps\/\*|non-static module specifier)/s,
       "requiring anything other than the allowlisted specifier through the exempted loader must still fail closed",
+    );
+  });
+});
+
+const ALIAS_BYPASSES = {
+  // The gap round 2's redesign explicitly documented and accepted: the call-site
+  // identifier is `cr`, never spelled "createRequire" at all.
+  "round3-static-import-alias": [
+    'import { createRequire as cr } from "node:module";',
+    "const req = cr(import.meta.url);",
+    'req("@taskdesk/api");',
+  ],
+  "round3-namespace-property-alias": [
+    'import * as M from "node:module";',
+    "const cr = M.createRequire;",
+    'cr(import.meta.url)("@taskdesk/api");',
+  ],
+  // The one shape that was genuinely unhandled before this round: a destructuring rename
+  // off a DYNAMIC import, which the static-ImportDeclaration check never sees.
+  "round3-dynamic-destructure-alias": [
+    'const { createRequire: cr } = await import("node:module");',
+    'cr(import.meta.url)("@taskdesk/api");',
+  ],
+};
+
+test("round 3: import-time renaming (any alias, static or dynamic) is caught", async (t) => {
+  await withRoot("taskdesk-deps-cr-alias-", async (root) => {
+    const libs = await packageAt(root, "packages/libs", "@taskdesk/libs");
+    await packageAt(root, "apps/api", "@taskdesk/api");
+    for (const [name, lines] of Object.entries(ALIAS_BYPASSES)) {
+      await writeFile(path.join(libs, "src", `${name}.ts`), lines.join("\n"));
+    }
+    const { violations } = await analyzeDependencies(root);
+    const messages = violations.join("\n");
+    for (const name of Object.keys(ALIAS_BYPASSES)) {
+      assert.match(
+        messages,
+        new RegExp(`packages/libs/src/${name}\\.ts.*createRequire`, "s"),
+        `${name}: expected a createRequire violation despite the local alias`,
+      );
+    }
+  });
+});
+
+test("round 3: renaming an unrelated destructured binding is not mistaken for createRequire", async (t) => {
+  await withRoot("taskdesk-deps-cr-unrelated-rename-", async (root) => {
+    const libs = await packageAt(root, "packages/libs", "@taskdesk/libs");
+    await writeFile(
+      path.join(libs, "src/unrelated-rename.ts"),
+      [
+        'const { readFile: rf } = await import("node:fs/promises");',
+        'rf("./x.json");',
+      ].join("\n"),
+    );
+    const { violations } = await analyzeDependencies(root);
+    assert.doesNotMatch(
+      violations.filter((v) => v.includes("unrelated-rename")).join("\n"),
+      /createRequire/,
+      "renaming a binding that isn't createRequire must not be flagged as createRequire",
+    );
+  });
+});
+
+test("round 3: a plain (non-renaming) destructure off a dynamic import is still caught via its later call, unaffected", async (t) => {
+  await withRoot("taskdesk-deps-cr-plain-destructure-", async (root) => {
+    const libs = await packageAt(root, "packages/libs", "@taskdesk/libs");
+    await packageAt(root, "apps/api", "@taskdesk/api");
+    await writeFile(
+      path.join(libs, "src/plain-destructure.ts"),
+      [
+        'const { createRequire } = await import("node:module");',
+        "const req = createRequire(import.meta.url);",
+        'req("@taskdesk/api");',
+      ].join("\n"),
+    );
+    const { violations } = await analyzeDependencies(root);
+    assert.match(
+      violations.join("\n"),
+      /packages\/libs\/src\/plain-destructure\.ts.*createRequire/s,
     );
   });
 });

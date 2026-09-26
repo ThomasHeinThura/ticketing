@@ -101,12 +101,19 @@ async function listWorkspaceManifests(root) {
       if (error.code === "ENOENT") return;
       throw error;
     }
-    if (entries.some((entry) => entry.isFile() && entry.name === "package.json")) {
+    if (
+      entries.some((entry) => entry.isFile() && entry.name === "package.json")
+    ) {
       const manifestPath = path.join(dir, "package.json");
       try {
         const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
         if (typeof manifest.name === "string") {
-          manifests.push({ name: manifest.name, path: dir, manifest, manifestPath });
+          manifests.push({
+            name: manifest.name,
+            path: dir,
+            manifest,
+            manifestPath,
+          });
         }
       } catch (error) {
         if (error.code !== "ENOENT") throw error;
@@ -264,8 +271,10 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
       current = parent;
       parent = current.parent;
     }
-    return parent?.kind === ts.SyntaxKind.CallExpression &&
-      parent.expression === current;
+    return (
+      parent?.kind === ts.SyntaxKind.CallExpression &&
+      parent.expression === current
+    );
   }
   // Recognize a createRequire acquisition CALL by the literal name of its callee alone —
   // never by tracing where the receiver (for `X.createRequire(...)`) came from. Round 1
@@ -494,12 +503,28 @@ function sourceImports(file, diagnostics = [], relativeFile = "") {
       // e.g. `const stashed = createRequire;` to call later under a different name. This
       // still doesn't chase the rename (see isCreateRequireCallee's comment); it flags the
       // reference the moment the still-literally-named binding is handed off.
+      //
+      // Exception: a destructuring binding element that itself RENAMES createRequire to a
+      // different local name — `const { createRequire: cr } = await import("node:module")`
+      // — is not "just entering scope" the safe way `const { createRequire } = ...` is: the
+      // local name will never again read literally as createRequire, so no later call site
+      // can be caught by name. This is the destructuring counterpart of the ImportDeclaration
+      // check above, which already resolves a static `import { createRequire as cr }` back
+      // to its ORIGINAL name regardless of local alias. Flag the rename the moment it's
+      // declared, without tracing where the destructured value came from (still by name,
+      // not provenance — a plain, non-renaming `{ createRequire }` is unaffected and stays
+      // caught downstream, the same way it always was, via its later call site).
       const parent = node.parent;
+      const isRenamingBindingElement =
+        parent?.kind === ts.SyntaxKind.BindingElement &&
+        parent.propertyName === node &&
+        parent.name?.text !== node.text;
       const declaresThisName =
-        (parent?.kind === ts.SyntaxKind.ImportSpecifier &&
+        !isRenamingBindingElement &&
+        ((parent?.kind === ts.SyntaxKind.ImportSpecifier &&
           (parent.propertyName === node || parent.name === node)) ||
-        (parent?.kind === ts.SyntaxKind.BindingElement &&
-          (parent.propertyName === node || parent.name === node));
+          (parent?.kind === ts.SyntaxKind.BindingElement &&
+            (parent.propertyName === node || parent.name === node)));
       const isPropertyAccessName =
         parent?.kind === ts.SyntaxKind.PropertyAccessExpression &&
         parent.name === node;
