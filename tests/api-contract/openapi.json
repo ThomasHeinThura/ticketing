@@ -2627,6 +2627,266 @@
           "updatedAt"
         ]
       },
+      "WorkItemListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkItemListItem"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/WorkItemPage"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "total"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "page",
+          "meta"
+        ]
+      },
+      "WorkItemListItem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WorkItem"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "stateName": {
+                "type": "string"
+              },
+              "stateCategory": {
+                "type": "string",
+                "description": "state_template.group: one of backlog, unstarted, started, completed, cancelled."
+              },
+              "assigneeName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "stateName",
+              "stateCategory",
+              "assigneeName"
+            ]
+          }
+        ]
+      },
+      "WorkItemPage": {
+        "type": "object",
+        "properties": {
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "nextCursor",
+          "hasMore"
+        ]
+      },
+      "WorkItemDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "typeId": {
+            "type": "string"
+          },
+          "number": {
+            "type": "number",
+            "description": "Per-project sequence number. The key is `{project.slug}-{number}`."
+          },
+          "key": {
+            "type": "string",
+            "description": "e.g. PROJ-123. Permanent."
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {},
+          "stateId": {
+            "type": "string"
+          },
+          "priority": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "One of: low, medium, high, urgent."
+          },
+          "assigneeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requesterId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "position": {
+            "type": "string",
+            "description": "numeric(20,10) fractional rank, as a string."
+          },
+          "customerVisibility": {
+            "type": "string",
+            "description": "One of: private, organisation."
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "dueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "archivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stateName": {
+            "type": "string"
+          },
+          "stateCategory": {
+            "type": "string",
+            "description": "state_template.group: one of backlog, unstarted, started, completed, cancelled."
+          },
+          "assigneeName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "workspaceId",
+          "typeId",
+          "number",
+          "key",
+          "title",
+          "stateId",
+          "priority",
+          "assigneeId",
+          "requesterId",
+          "parentId",
+          "position",
+          "customerVisibility",
+          "startDate",
+          "dueDate",
+          "archivedAt",
+          "deletedAt",
+          "version",
+          "createdAt",
+          "updatedAt",
+          "stateName",
+          "stateCategory",
+          "assigneeName"
+        ]
+      },
+      "WorkItemType": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "description": "One of: service, delivery (work-items.md § Default types)."
+          },
+          "isEpic": {
+            "type": "boolean"
+          },
+          "isChange": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "name",
+          "icon",
+          "category",
+          "isEpic",
+          "isChange"
+        ]
+      },
       "WorkItemVersionConflict": {
         "type": "object",
         "properties": {
@@ -2646,6 +2906,32 @@
           "message",
           "assertedVersion",
           "currentVersion"
+        ]
+      },
+      "AssignablePerson": {
+        "type": "object",
+        "properties": {
+          "personId": {
+            "type": "string"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "openWorkCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "personId",
+          "name",
+          "roleName",
+          "openWorkCount"
         ]
       },
       "UserAvatar": {
@@ -7174,6 +7460,344 @@
         }
       }
     },
+    "/instance/audit": {
+      "get": {
+        "operationId": "listInstanceAudit",
+        "tags": [
+          "Audit"
+        ],
+        "summary": "List the instance-wide audit log",
+        "description": "Instance administrators see every audit row (AU-11). Reading the log is itself audited as one `audit.read` row per request (AU-13); a failed audit-read write never fails the read (AU-14). Filters: dotted-action prefix, inclusive `since`, exclusive `until`, bounded `limit`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "action",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "since",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "until",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit rows, newest first by sequence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "seq": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "actorId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "actorType": {
+                            "type": "string"
+                          },
+                          "impersonatorId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "workspaceId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "organisationId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "action": {
+                            "type": "string"
+                          },
+                          "entityType": {
+                            "type": "string"
+                          },
+                          "entityId": {
+                            "type": "string"
+                          },
+                          "before": {},
+                          "after": {}
+                        },
+                        "required": [
+                          "id",
+                          "seq",
+                          "createdAt",
+                          "actorId",
+                          "actorType",
+                          "impersonatorId",
+                          "workspaceId",
+                          "organisationId",
+                          "action",
+                          "entityType",
+                          "entityId"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "rows"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query (limit bounds, malformed datetime)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not an instance administrator",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspaceId}/audit": {
+      "get": {
+        "operationId": "listWorkspaceAudit",
+        "tags": [
+          "Audit"
+        ],
+        "summary": "List a workspace's audit log",
+        "description": "Workspace administrators (`workspace:manage_settings`) see their own workspace's rows (AU-10); customers never see the audit log (AU-12). Each read is itself audited (AU-13). The tenant filter is applied unconditionally in the handler, independent of the middleware chain.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "action",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "since",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "until",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit rows for this workspace, newest first by sequence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "seq": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "actorId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "actorType": {
+                            "type": "string"
+                          },
+                          "impersonatorId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "workspaceId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "organisationId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "action": {
+                            "type": "string"
+                          },
+                          "entityType": {
+                            "type": "string"
+                          },
+                          "entityId": {
+                            "type": "string"
+                          },
+                          "before": {},
+                          "after": {}
+                        },
+                        "required": [
+                          "id",
+                          "seq",
+                          "createdAt",
+                          "actorId",
+                          "actorType",
+                          "impersonatorId",
+                          "workspaceId",
+                          "organisationId",
+                          "action",
+                          "entityType",
+                          "entityId"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "rows"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Workspace id undetermined, NUL byte, or invalid query",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a workspace administrator",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/notification": {
       "get": {
         "operationId": "listNotifications",
@@ -10123,7 +10747,7 @@
           "Work items"
         ],
         "summary": "List work items",
-        "description": "List a project's work items, oldest first by number. Archived and deleted items are excluded. Not paginated in this first slice.",
+        "description": "List a project's work items with server-side sort, cursor pagination and filters (`docs/01-architecture/api-design.md`'s collection convention; `sort`/`dir` match #306's own URL param names: `key | title | priority | dueDate`, `asc | desc`, default `key`/`asc`). Archived and deleted items are excluded by default. Each row also carries the resolved `stateName`, `stateCategory` and `assigneeName` (#310) alongside the raw ids.",
         "parameters": [
           {
             "schema": {
@@ -10132,24 +10756,98 @@
             "required": true,
             "name": "projectId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "state",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "assignee",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "priority",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "due_before",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "key",
+                "title",
+                "priority",
+                "dueDate"
+              ]
+            },
+            "required": false,
+            "name": "sort",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            },
+            "required": false,
+            "name": "dir",
+            "in": "query"
           }
         ],
         "responses": {
           "200": {
-            "description": "The project's work items",
+            "description": "A page of the project's work items",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/WorkItem"
-                  }
+                  "$ref": "#/components/schemas/WorkItemListResponse"
                 }
               }
             }
           },
           "400": {
-            "description": "Unknown project, or its workspace could not be determined",
+            "description": "Unknown project or its workspace could not be determined, or an invalid query parameter (unknown sort field, out-of-range limit, malformed cursor, NUL byte, etc.)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10208,7 +10906,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkItem"
+                  "$ref": "#/components/schemas/WorkItemDetail"
                 }
               }
             }
@@ -10359,6 +11057,132 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WorkItemVersionConflict"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/work-item-types": {
+      "get": {
+        "operationId": "listWorkItemTypes",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "List the workspace's work-item types",
+        "description": "The workspace's configured `work_item_type` rows -- what a create dialog's Type picker reads. Workspace-scoped: every project in a workspace shares the catalogue.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The workspace's work-item types",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkItemType"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No access to the workspace, or missing workspace:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/assignable": {
+      "get": {
+        "operationId": "listAssignablePeople",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "List assignable people",
+        "description": "The project roster with each person's open-work count, filtered to the people the caller may actually assign to (`assignment.md`): an actor holding `work_item:assign` sees the active roster; anyone else with reach sees only themselves; a caller with neither capability sees an empty list. The client never filters this itself.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The people the caller may assign to",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssignablePerson"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown project, or its workspace could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }

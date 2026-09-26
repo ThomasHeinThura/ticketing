@@ -64,7 +64,7 @@ writing and the fork gets a verdict here before it travels.
 | `.gitattributes` | Copy | line endings, lockfile diff rules |
 | `.github/` | Do not copy | see the .github table below — ours are written fresh |
 | `.gitignore` | Copy | |
-| `.husky/` | Copy | commitlint + semantic-release are kept (decision log, 2026-09-06) |
+| `.husky/` | Copy | commitlint and husky hooks are kept (decision log, 2026-09-06); semantic-release is not invoked |
 | `.npmrc` | Copy | pnpm settings the lockfile assumes |
 | `.vscode/` | Do not copy | editor-local |
 | `AGENTS.md` | Do not copy | TaskDesk's is authored fresh ([phases.md](../07-planning/phases.md) P0). kaneo's may be **read once** for its architecture section; it is also internally stale (says Node 20.19 while `engines` says `>=24`) |
@@ -81,7 +81,7 @@ writing and the fork gets a verdict here before it travels.
 | `apps/` | See the apps table | |
 | `biome.json` | Copy | |
 | `charts/kaneo` | Copy → `charts/taskdesk`, rewritten | per [kubernetes.md](../05-operations/kubernetes.md) |
-| `commitlint.config.js` | Copy | semantic-release/commitlint/husky kept |
+| `commitlint.config.js` | Copy | commitlint and husky are kept; releases use the manual GitHub workflow |
 | `compose.coolify.yml` | Do not copy | |
 | `compose.local.yml` | Do not copy | our compose stack is written fresh ([deployment.md](../05-operations/deployment.md)) |
 | `compose.yml` | Do not copy | as above |
@@ -92,7 +92,7 @@ writing and the fork gets a verdict here before it travels.
 | `plans/` | Copy → `docs/02-design/motion/` | motion specs |
 | `pnpm-lock.yaml` | Copy | keeps the audited dependency graph; regenerated only after the removals |
 | `pnpm-workspace.yaml` | Copy | |
-| `release.config.js` | Copy | semantic-release kept |
+| `release.config.js` | Copied from kaneo, retained but not invoked | The manual Release workflow is authoritative; it never commits version-file changes. |
 | `scripts/i18n/` | Copy | `check/report/schema/shared.mjs` — the root `i18n:check` scripts and the CI i18n job call them |
 | `scripts/release/` | Do not copy | kaneo's release plumbing |
 | `scripts/provision-sentry-alerts.sh`, `scripts/provision-sentry-dashboards.sh` | Do not copy | Sentry is removed |

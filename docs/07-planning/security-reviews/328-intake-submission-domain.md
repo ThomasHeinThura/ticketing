@@ -1,0 +1,454 @@
+# Pre-merge security / critical review — PR #328 (intake submission state machine, form/catalogue rules)
+
+**Reviewed head:** `4b1197cdc4478ae5058a47e585900a6964699334`
+
+**Reviewer:** Claude Opus 5.5, a fresh, independent context. It did not write, direct or fix
+this change. It made no code edit and no PR-body edit. The only commit it made is this file.
+
+**Verdict: CHANGES REQUESTED.** One HIGH finding: the `showIf` shape does not match the spec,
+and it lets a required conditional field be skipped. Three MEDIUM findings. Five LOW
+findings. The state machine itself is sound: a full sweep of states, actions and actors
+reached no state the spec forbids.
+
+This review covers the head above **only**. Any later commit outside
+`docs/07-planning/security-reviews/` voids it.
+
+## Scope
+
+The diff against `origin/main`: `packages/domain/src/intake/{types,submission,request-type,duplicate}.ts`,
+`intake.test.ts` (34 tests) and four export lines in `index.ts`. Specs checked:
+`docs/03-features/intake-queue.md`, `docs/03-features/request-types-and-catalogue.md`, and the
+`submission`/`request_type`/`custom_field` rows in `docs/01-architecture/data-model.md`, all
+read at this head.
+
+## What was measured
+
+| Check | Result |
+| --- | --- |
+| `packages/domain` tests | 9 files, **504/504** pass |
+| Coverage (gate 90 % statements/lines/functions) | all files 96.51 % stmts / 96.94 % lines / 98.23 % funcs. `intake/` 93.04 % stmts / 94.44 % lines / 97.22 % funcs. `submission.ts` 90.32 % stmts, `request-type.ts` 92.75 % stmts. `types.ts` shows 0 %, but it holds only a `const` array, and the aggregate passes |
+| `tsc --noEmit -p packages/domain/tsconfig.json` | clean |
+| Purity | no I/O, no `Date.now`, no `new Date()`, no randomness in `intake/` (grep); `now` is always an argument |
+| CI (`gh pr view 328`) | every required check has a green run at this head **except** `pull request template + security review` (FAILURE). That is expected: no ordinary review is recorded yet. Some checks also show an older CANCELLED run next to a newer SUCCESS |
+| Mutation: remove the IQ-16a `triageHasStarted` guard from `withdraw` | 1 test red. Reverted |
+| Mutation: validate required on **all** fields instead of visible ones | 1 test red. Reverted |
+| Mutation: drop the IQ-16 mandatory-reason check from `decline` | 1 test red. Reverted |
+
+## Findings
+
+### H1 (HIGH) — the `showIf` shape is not the spec's. The spec's own example is rejected, and when it is not validated a required field can be skipped
+
+- **Spec:** `request-types-and-catalogue.md` § Data says `showIf` reuses
+  `custom_field.visibility_condition`'s exact shape, `{ field_key, op: eq|neq|in|is_set, value }`.
+  The spec's own example uses `"showIf": { "field_key": "impact", "op": "eq", "value": "Just me" }`.
+  `data-model.md`'s `custom_field.visibility_condition` says the same.
+- **Code:** `FormField.showIf` is `{ field, equals }`. The header and the PR body both say
+  "`field equals value`" is "the ONE condition shape the spec defines". That is wrong at this
+  head.
+- **Input 1:** the spec's example schema (impact select + `asset_details` with the spec's
+  `showIf`) goes through `validateFormSchema` → `[{ key: "asset_details", problem: "show_if_missing_field" }]`.
+  A schema written exactly as the spec says cannot be published.
+- **Input 2:** the same schema with `asset_details.required: true`, and
+  `validateSubmissionData(schema, { impact: "Just me" })` → `[]`. `data[undefined]` is
+  `null`, which never equals `undefined`, so the field is always hidden and its "required"
+  is never checked. This is the "`showIf` used to skip a required field" risk. Any stored
+  schema that skipped this validator (seeded data, migrated data, a future admin path, or
+  an older version per RT-6) fails open.
+- **Also missing:** `neq`, `in` and `is_set` are not supported.
+- **Fix:** use the spec's shape (`field_key`/`op`/`value`) with all four operators. Treat an
+  unknown `op` or a missing `field_key` as a publish defect **and** as *visible* at submit
+  time, so an unreadable condition makes the field required rather than skippable. Pin it
+  with the spec example verbatim.
+
+### M1 (MEDIUM) — a customer's answer can pull an `Object.prototype` member into the native patch
+
+- **Input:** field `{ key: "sev", type: "text", mapsTo: { field: "priority", map: { High: "urgent" } } }`
+  with `data = JSON.parse('{"sev":"constructor"}')` → `translateMapsTo` returns
+  `{ priority: [Function Object] }` (`typeof` is `"function"`). With `"__proto__"` it returns
+  `priority === Object.prototype`. `"toString"`, `"hasOwnProperty"` and similar do the same.
+- **Why:** `mapping.map[raw]` reads inherited properties, and `translated ?? raw` keeps them.
+  `validateSubmissionData` blocks this only when the field also has `options`. Nothing
+  requires a `map` to come with `options`, and `translateMapsTo` does not require
+  validation to run first.
+- **Impact:** a non-`FormValue` type goes into a native work-item field. At best that is a
+  500 at insert; at worst the value is coerced to `"function Object() { [native code] }"` or
+  `{}`.
+- **Fix:** `Object.hasOwn(mapping.map, raw) ? mapping.map[raw] : raw`, and a test using
+  `constructor`/`__proto__`.
+- **Related (admin-controlled, LOW):** `mapsTo.field: "__proto__"` makes
+  `native["__proto__"] = raw`, which swaps the returned object's prototype when `raw` is an
+  array. Only a non-empty `nativeFields` set catches it at publish, and the default is empty.
+  Build `native` with `Object.create(null)` or a `Map`, or reject `__proto__`/`constructor`/
+  `prototype` as `key` or `mapsTo.field` in `validateFormSchema`.
+
+### M2 (MEDIUM) — submitted values are not type-checked, so a wrongly typed controller value hides a required dependent
+
+- **Input:** checkbox `outage`, then required `systems` with `showIf: { field: "outage", equals: true }`,
+  then a required `number` field `count`. Submitting `{ outage: "true", count: "not a number" }`
+  → `[]`. So does `{ count: { a: 1 } }` (an object is not a `FormValue`) → `[]`.
+- **Why:** `validateSubmissionData` checks only presence and `options`. It never checks that
+  a checkbox value is a boolean, a number is a finite number, a date is a date, or a text
+  value is a string. `showIf` compares with `===`. So the string `"true"` hides `systems`,
+  while any later code that reads `form_data.outage` as truthy treats it as checked.
+- **Also missing:** no size limit on a value, and no limit on the number of keys. Unknown
+  keys are accepted by design (RT-3), so without an API-side limit `form_data` has no bound.
+- **Fix:** validate each value against its field `type` (and `multiple`) for visible fields,
+  reject non-`FormValue` shapes, and add a length limit for text (or record where the API
+  enforces one).
+
+### M3 (MEDIUM) — IQ-18 does not follow the spec, and the header misquotes the spec
+
+- **Spec at this head (IQ-18, since #304 on 2026-09-23):** "trigram similarity
+  (`similarity(work_item.title, :query) > 0.3` — pg_trgm's own default threshold, over the
+  `gin (title gin_trgm_ops)` index …) over work items created in the same organisation in
+  the last 90 days."
+- **Code:** Sørensen–Dice over character **bigrams** of title + description, threshold
+  `>= 0.35`, in JavaScript. The header and the PR body say IQ-18 "contracts only 'text
+  similarity'". That was the pre-#304 wording.
+- **Input:** `normalise()` deletes every character outside `[a-z0-9\s]`.
+  `similarityScore("เครื่องพิมพ์เสีย", "เครื่องพิมพ์เสีย ชั้น 3")` → `0`. Any title written
+  entirely in a non-Latin script never gets a suggestion. Accented Latin loses letters
+  ("Büro" becomes "b ro").
+- **Performance (you asked for timings):** the algorithm is linear, not quadratic. Doubling
+  input length: 100k → 8.8 ms, 200k → 18.9, 400k → 42.7, 800k → 70.3, 1.6M → 141.6 ms.
+  One 1 MB pair takes 108 ms; one 5M-character pair takes 814 ms. 10,000 candidates of
+  2 KB each take 2.5 s. There is no pathological case, but there is also no size limit, and
+  the spec expects this to run in Postgres over an index, not as a JS scan of every
+  candidate.
+- **Fix:** either follow the spec (pg_trgm in the query layer, and drop this function or
+  keep it only as a test oracle), or record the change in the spec first. Either way,
+  correct the header.
+
+### L1 (LOW) — an unknown action returns `undefined`, not a refusal
+
+`transitionSubmission(rec, { action: "bogus", … })` returns `undefined` for every state and
+actor. The header promises "Every result is a discriminated union, never a thrown error".
+A caller that trusts a JSON `action` then crashes on `result.ok`. Add a `default:` that
+returns `refuse("illegal_state")`, and a test.
+
+### L2 (LOW) — `reopen` accepts a staff decline, which allows a decline/reopen loop
+
+The sweep shows `declined -reopen/customer-> new`, even when the submission is claimed. IQ-15
+gives reopen for the **auto**-decline; IQ-16a says that once triage starts the submission
+"is the triage team's to dispose of". The PR flags this reading openly. It is Thomas's call
+(a spec sentence plus a column such as `declined_by_system`), not something to fix
+silently. Listed so the choice is made before the API slice.
+
+### L3 (LOW) — hidden fields' answers are stored, rendered and never checked
+
+`renderUnmappedIntoDescription` ignores visibility. With `outage: false`, the hidden
+`systems: "SMUGGLED hidden value"` still appears under "Additional details". A hidden
+select's value is never checked against its options. Pass only visible fields (or drop hidden
+values) when rendering, to match RT-5.
+
+### L4 (LOW) — a field key that matches an `Object.prototype` name satisfies "required"
+
+A required text field with key `toString`, validated against `{}` → `[]`, because
+`data["toString"]` is inherited. Keys are admin-authored, so the risk is low. Use
+`Object.hasOwn(data, key)` for presence, or reject reserved keys at publish.
+
+### L5 (LOW) — edge values are not validated
+
+- `formatSubmissionReference(1e21)` → `"SUB-1e+21"`, which `parseSubmissionReference`
+  rejects. The guard should use `Number.isSafeInteger`.
+- `isClarificationOverdue(..., NaN)` is never overdue, and `-1` is overdue at once. IQ-15's
+  `clarification_window_days` needs to be checked as a positive integer somewhere.
+- `catalogueFor` sorts groups alphabetically with a locale-dependent `localeCompare`. RT-9
+  says "Groups are ordered manually", and there is no group-position column yet. This is not
+  flagged in the PR.
+
+## State machine — what was confirmed
+
+A sweep of all 6 states × 9 actions (the 8 real ones plus one unknown) × 3 actors ×
+claimed/unclaimed. The only successful transitions:
+
+- `new`/`clarifying` → `clarifying`, `accepted`, `declined`, `duplicate` (triager only);
+- `clarifying` → `new` via `reply` (customer), and → `declined` via `auto_decline` (only when overdue);
+- `new`/`clarifying` → `withdrawn` (customer, **only while unclaimed and with no staff message**);
+- `declined` → `new` via `reopen` (customer, see L2).
+
+`accepted`, `duplicate` and `withdrawn` accept nothing. No actor can do the other side's
+actions. An empty reason, target or work-item id is refused (a reason of only spaces is
+refused too; a target of only spaces is accepted — trivial).
+
+---
+
+## Delta re-review — fix round under #366
+
+**Reviewed head:** `66e37a61839460ec11f20d920c5a431a255fc5e3`
+
+**Reviewer:** Claude Opus 5.5, a fresh context in a fresh worktree. It did not write the
+fix. It made no code edit and no PR-body edit.
+
+**Verdict: CHANGES REQUESTED.** H1, M1 and M2 are closed as reported. But adding `neq` opens
+a new way to skip a required field (N1, MEDIUM). That is the same class as H1, and it
+blocks. Two more items must be fixed in the same round (N2, and the M3 header text). The
+rest are non-blocking follow-ups. This verdict covers the head above only.
+
+### What changed since `1d31ad0`
+
+`d05d07e` merges `main`; that brings only the #369 decision-log entry into `docs/`. `66e37a6`
+touches `intake/{request-type,types,duplicate}.ts` and `intake.test.ts`. `submission.ts` is
+unchanged. The branch is one merge behind `main` (#343). That is why the diff shows
+`343-audit-read-api.md` as removed.
+
+### Measured at this head
+
+| Check | Result |
+| --- | --- |
+| `packages/domain` tests | 9 files, **515/515** pass |
+| Coverage (gate 90 %) | 96.54 % stmts / 96.93 % lines / 98.28 % funcs. `request-type.ts` 94.28 / 94.73; `submission.ts` 90.32 / 92.72 |
+| `tsc --noEmit` | clean |
+| Mutation: a malformed condition becomes *hidden* instead of visible | 1 test red. Reverted |
+| Mutation: bring back `mapping.map[raw]` without `Object.hasOwn` | 1 test red. Reverted |
+| Mutation: the checkbox type check always passes | 2 tests red. Reverted |
+| CI at `66e37a6` | `contract - OpenAPI drift` **FAILURE**: oasdiff reports `GET /instance/audit` and `GET /workspaces/{workspaceId}/audit` as "removed". That is the branch being behind #343, not a defect here; the planned update-branch clears it. `pull request template + security review` FAILURE (reviews not yet recorded). `unit + component` and `gate checkers` were still running. The rest are green |
+
+### (1) Are H1, M1 and M2 closed?
+
+- **H1 — closed.** The spec's example, `{ field_key: "impact", op: "eq", value: "Just me" }`,
+  now publishes clean. Submitting "Just me" without the dependent field now gives
+  `required_missing`. All four operators behave as the spec says (eq, neq, in and is_set;
+  each checked for a match and a non-match). Malformed conditions — a string, an array, the
+  old `{field, equals}` shape, `op: "gt"`, `op: "__proto__"`, `in` with a non-array value, a
+  blank `field_key`, a numeric `field_key` — are rejected at publish with
+  `show_if_invalid_condition`. At submit time the field counts as visible, so its
+  `required` is still enforced.
+- **M1 — closed.** Answers `constructor`, `__proto__`, `toString` and `hasOwnProperty` now
+  pass through as the raw strings; a mapped `High` still becomes `urgent`. `mapsTo.field:
+  "__proto__"` becomes an own data property (`Object.fromEntries`), and the prototype stays
+  `Object.prototype`. A required field with key `toString` is now `required_missing`
+  against `{}`.
+- **M2 — closed.** These all give `wrong_type`: checkbox `"true"`, number `NaN` or `"5"`, an
+  object in a text field, an array on a single-value field, a nested array on a `multiple`
+  field, and an array on a single-value select. A text answer of 10,000 characters passes;
+  10,001 is rejected.
+
+### (2) New issues
+
+- **N1 (MEDIUM, blocks) — a hidden controller's value can hide a required field through
+  `neq`.** `isFieldVisible` reads the controller's submitted value whether or not the
+  controller is itself visible. Nothing validates a hidden field's value.
+  Input: `a` (checkbox), then `b` (select `y|n`, `showIf a eq true`), then `c` (text,
+  required, `showIf b neq "y"`). Honest submit `{ a: false }` → `c: required_missing`
+  (correct: `b` is hidden, so it has no value, and `c` shows). Crafted `{ a: false, b: "y" }`
+  → **`[]`**: the required `c` is skipped. `renderUnmappedIntoDescription` also prints the
+  smuggled `b: y`. Before this round only `eq` existed, and a smuggled value could only
+  *add* required fields. `neq` (and `in` with a negated intent) turns it into a skip.
+  `validateFormSchema` accepts this chained schema.
+  Fix (either one): (a) work out visibility in dependency order, treating a hidden
+  controller's value as absent, with a cycle guard; or (b) reject at publish any `showIf`
+  whose controller has its own `showIf` (data-model calls `visibility_condition`
+  "single-level"). Either way, drop or ignore hidden fields' values in validation, mapping
+  and rendering. Add the input above as a test.
+- **N2 (LOW, fix in the same round) — `showIf: null` crashes.** `validateFormSchema` and
+  `validateSubmissionData` both throw `TypeError: Cannot read properties of null (reading
+  'field_key')`. JSON `null` is a likely stored value for "no condition" (a UI clearing
+  it). Treat `null` as absent (`field.showIf != null`).
+- **N3 (LOW) — a well-formed condition pointing at a field that does not exist fails
+  *open* at runtime.** `{ field_key: "constructor", op: "is_set" }` is rejected at publish
+  (`show_if_missing_field`), but a stored schema that skipped publish hides a required
+  field (`[]` against `{}`). A condition whose `value` cannot be a FormValue
+  (`{ a: 1 }`) passes publish and hides its field forever. Both need an unvalidated or
+  malicious admin schema. Suggestion: `visibleFields` has the schema, so treat a dangling
+  `field_key` as visible, and check the `value` shape at publish.
+- **`MAX_TEXT_ANSWER_LENGTH` = 10,000 — sensible**, but it bounds one string only. A
+  `multiple` text field with 100,000 answers of 10,000 characters each (about 1 GB) passes
+  (`[]`, in 1 ms). Unknown keys have no limit either (by spec). The API slice must set a
+  request-body limit and a limit on `multiple` array length. `date` accepts any string up
+  to 10,000 characters ("not a date" passes). Check that it is an ISO date. A required
+  checkbox is satisfied by `false`. All LOW, non-blocking.
+
+### (3) Do M3 and the reopen rule block?
+
+- **M3's algorithm (bigram Dice instead of pg_trgm) — does not block.** Nothing on `main`
+  calls intake, and IQ-18 puts the real query in Postgres. As a pure helper it is harmless
+  if the API slice follows the spec. **The header text does block:** `duplicate.ts` still
+  says "IQ-18 says only 'text similarity …' … implementation details, not spec contracts".
+  That was false at this head. Merged, it tells the next implementer the spec allows this.
+  Replace it with one honest sentence (IQ-18 specifies pg_trgm `similarity(title, q) > 0.3`;
+  this helper is not the IQ-18 implementation). Open a tracked issue for the API slice.
+- **Reopen of staff declines — does not block, on conditions.** No caller exists, so no
+  customer can reach `reopen` today. But the coordinator reports that Thomas decided
+  "customers reopen ONLY auto-declines", and **that decision is not in
+  `decision-log.md` on `main`** (searched). Before this merges: (a) record it in the
+  decision log and IQ-15, since CLAUDE.md requires this before dependent code merges;
+  (b) open an issue for the `SubmissionRecord` field and data-model column, which must
+  land before any reopen route; (c) update `submission.ts`'s reopen comment, which still
+  calls "any declined" the only implementable reading, so it says the rule is decided and
+  not yet enforced. (An alternative that also clears this: make `reopen` refuse until the
+  field exists.)
+
+### What must change before this can clear
+
+N1 (with a test), N2, the corrected `duplicate.ts` header, and the reopen conditions
+(a)–(c). Then update the branch onto `main` so the OpenAPI drift check goes green, and do a
+delta review of that head.
+
+---
+
+## Delta re-review 2 — second fix round under #366
+
+**Reviewed head:** `569066e42a4d38f61d5c3fc5383718254c8bbf69`
+
+**Reviewer:** Claude Opus 5.5, a fresh context in a fresh worktree. It did not write the
+fix. It made no code edit and no PR-body edit.
+
+**Verdict: CLEAR.** N1 and N2 are closed. The M3 header is now honest. The reopen comment is
+accurate, apart from one small wording point. The only new findings are LOW. They can be
+reached only through a form schema that never passed `validateFormSchema`, and none of them
+blocks. This clearance covers the head above only.
+
+**Conditions the merge gate must check (not re-review items):**
+
+- #370 (the reopen decision entry) merges first, as planned.
+- CI is green on the final head.
+- `origin/main` has moved again: #330 is `777b27c`. `git merge-tree` against it is
+  **clean**. If the branch is updated onto `main` without conflicts, and no file outside
+  `docs/07-planning/security-reviews/` changes other than by that merge, no new code review
+  is needed. Per the merge-train rule, the orchestrator should still confirm that head
+  explicitly.
+
+### What changed since `ad0c86d`
+
+- `28ef8be` changes the intake code and tests only.
+- `569066e` merges `main` (#343). The only change under `docs/` is the #369 decision-log
+  entry already on `main`.
+
+### Measured at this head
+
+| Check | Result |
+| --- | --- |
+| `packages/domain` tests | 9 files, **519/519** pass |
+| Coverage (gate 90 %) | 96.66 % stmts / 97.04 % lines / 98.32 % funcs. `request-type.ts` 95.52 / 95.93; `duplicate.ts` 98.18 / 100 |
+| `tsc --noEmit` | clean |
+| Mutation: drop `controllerVisible &&` (read a hidden controller's value again) | 1 test red. Reverted |
+| Mutation: drop the `show_if_chained_condition` defect | 1 test red. Reverted |
+| Mutation: treat `showIf: null` as a condition | 1 test red. Reverted |
+| CI at `569066e` when checked | `contract - OpenAPI drift` is now **SUCCESS** (the #343 drift is gone); domain coverage, build, audit, secret scan, helm, CodeQL and GitGuardian are green. `pull request template + security review` FAILURE (this note is not yet recorded). unit, integration, e2e and gate checkers were still running |
+
+### (1) Is N1 closed?
+
+- **My repro:** the chained schema is rejected at publish (`show_if_chained_condition` on
+  `c`). With publish skipped, the crafted `{ a: false, b: "y" }` now gives
+  `c: required_missing`, the same as the honest submit. The description no longer prints
+  the smuggled `b`. The legitimate `{ a: true, b: "y" }` still hides `c`. **Closed.**
+- **A deeper chain in an unvalidated stored form** (`f0` checkbox, `f1…f5` each shown when
+  the previous one is set, then a required `f6` shown when `f5` is not "z"; all answers
+  smuggled): `f6: required_missing`. At publish all five links are rejected. **Closed.**
+- **A controller hidden by its own condition:** covered by both cases above. Its value is
+  treated as absent.
+- **A cycle and self-reference:** rejected at publish (two chained-condition defects, and
+  `show_if_self_reference`). At runtime they do **not** always fail closed. See N4.
+
+### (2) Is N2 closed?
+
+`showIf: null` gives no publish defect. At submit it acts as unconditional: a required field
+with `showIf: null` against `{}` gives `required_missing`. No crash. **Closed.**
+
+### (3) Are the M3 header and the reopen comment right?
+
+- **M3 header — honest.** It states IQ-18's pg_trgm `similarity(title, q) > 0.3` over the
+  GIN index, same organisation, last 90 days. It says the Dice scorer is **not** that, and
+  forbids using it as the route implementation. The tracking issue for the API slice still
+  needs opening, if it is not already open.
+- **Reopen comment — accurate.** It matches the #370 entry (auto-declines only; not
+  enforced; needs a record field, #371; no caller reaches it). One small wording point: it
+  says a staff decline is final "unless staff reopen it". #370 says staff reopen is **not
+  decided**, and IQ-6 has no such action. Fix the wording with the #371 change; it does not
+  block.
+
+### (4) New findings (all LOW, non-blocking)
+
+- **N4 — unvalidated stored forms: a cycle, self-reference or duplicate key can still skip
+  a required field, contrary to the comment.** `resolveVisibility`'s comment says "A cycle
+  … fails closed". In practice, the cycle guard gives a temporary `true` that is later
+  overwritten, and fields in the cycle are worked out from that temporary value. The result
+  depends on field order. Inputs, with publish skipped:
+  - `a` shown when `b` is "show"; `b` required, shown when `a` is not "hide". Submitting
+    `{ a: "hide" }` → `[]` (`b` skipped). The same schema in reverse field order →
+    `b: required_missing`.
+  - A self-reference, `s` required and shown when `s` is "x", against `{}` → `[]`. The
+    same with `s` shown when `s` is set → `[]`.
+  - Duplicate keys: a hidden `k` and then a required `k` share one cache entry → `[]`.
+
+  `validateFormSchema` rejects all three, and no storage path exists yet. Fix before any
+  path stores a schema without publish validation: when a cycle is found, mark every field
+  on the resolving stack visible and keep it that way; treat a self-reference as visible;
+  key the cache by field position rather than by key.
+- **N5 — a very long chain overflows the stack; `isFieldVisible` in a loop is quadratic.**
+  An unvalidated chain of 10,000 fields throws `RangeError: Maximum call stack size
+  exceeded`: a crash, not a skip. Calling `isFieldVisible(schema, f, data)` once per field
+  rebuilds the whole visibility map each time: 5,000 fields took **6.9 s**. `visibleFields`
+  itself is a single pass. Suggestion: tell callers to use `visibleFields`, or memoise;
+  limit the field count at publish.
+
+### (5) Do the earlier items stay non-blocking?
+
+Yes. None of these can be reached until the API slice exists:
+
+- M3's algorithm (the header is now honest; the API slice uses pg_trgm);
+- N3 (a dangling `field_key` or an impossible `value` fails open at runtime; this now
+  applies to unvalidated schemas only);
+- reopen enforcement (#370 records the decision, and #371 tracks the field);
+- the size limits for `multiple` answers and the whole body (the API slice sets them);
+- the `date` format check, required-checkbox-`false`, and L5.
+
+Before the first intake route merges, #371 and a request-body limit must land, and N4 must
+be fixed if any schema can be stored without publish validation.
+
+## Merge-head attestation (Opus 5.5) — after #330 and #370 merged
+
+**Reviewed head:** `98e4e326dc45093deed14f36c065150c6e7c96fc`
+
+This is a fresh Opus 5.5 context, 2026-09-25. It attests the `gh pr update-branch` merge of
+`main` at `23f6368de2a225fc16e98fcdce0120ed945e614d` into `a6363b6`. `a6363b6` is the Opus note
+over the reviewed code head `569066e`, and it changed only this file. Since the old base
+`96772dd`, `main` gained two changes:
+- #330 (`777b27c`): `packages/domain/src/sla/scan.ts`
+- #370 (`23f6368`): the decision log and `intake-queue.md` `IQ-15`
+
+- **Parents:** exactly (`a6363b6`, `23f6368`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main`.
+- **PR change unchanged:** the added and removed lines are identical between
+  `git diff 96772dd a6363b6` and `git diff 23f6368 98e4e32`. Only the hunk offsets in
+  `packages/domain/src/index.ts` differ; it is the one overlapping file, and it auto-merged.
+- **Interaction with #330, in the `index.ts` barrel:** at `98e4e32` the barrel re-exports
+  both #330's `./sla/scan.js` and this PR's four `./intake/*.js` modules.
+  - None of the intake modules and `sla/scan.ts` export the same name.
+    `turbo typecheck --filter=@taskdesk/domain` is green, so no `export *` is ambiguous
+    (no TS2308).
+  - After building, all 19 value exports of `intake/*` and `sla/scan` resolve on the built
+    `dist/index.js`, out of 73 runtime exports. None was silently dropped as an ambiguous
+    star export.
+- **Combined coverage gate:** `pnpm test:coverage` exits 0 against the 90%
+  statements/lines/functions gate.
+  - All files: 96.67% statements, 93.47% branches, 98.33% functions, 97.06% lines.
+  - `intake/duplicate.ts`: 98.18 / 97.14 / 100 / 100.
+  - `intake/request-type.ts`: 95.52 / 90.78 / 95.83 / 95.93.
+  - `intake/submission.ts`: 90.32 / 87.17 / 100 / 92.72.
+  - `sla/scan.ts`: 100 on all four.
+  - `intake/types.ts` is type-only, so its 0 statements do not count against the gate.
+- **Reopen versus #370's decision** (decision log, 2026-09-25, "a customer may reopen only a
+  submission the system auto-declined"): the `transitionSubmission` doc comment matches the
+  decision on substance.
+  - A customer may reopen only an auto-decline, and a staff decline is final for the
+    customer.
+  - It is not enforced yet, because `SubmissionRecord` cannot tell an auto-decline from a
+    staff decline. Enforcing it needs a new field.
+  - It must land before any reopen route ships. The decision says the same, and that no API
+    route calls intake today.
+  - The code is consistent: `reopen` is customer-only, from `declined` to `new`.
+  - **Non-blocking wording drift** (a comment-only follow-up, for example with #371):
+    1. "a staff decline is final unless staff reopen it" implies a staff reopen exists. The
+       decision says whether staff can reopen is not decided, and `IQ-6` has no such action.
+       The code has no staff reopen, so behaviour matches the decision.
+    2. "decision-log PR in flight" is stale, because #370 is merged.
+    3. "tracked on its own issue" can now name #371, which is open: "Intake: record who
+       declined a submission so reopen can be limited to auto-declines".
+- **Tests at `98e4e32`:** `pnpm --filter @taskdesk/domain test` passes 10 files / 530 tests.
+  The worktree stays clean after `pnpm install --frozen-lockfile --offline`.
+
+**Verdict at `98e4e326dc45093deed14f36c065150c6e7c96fc`: CLEAR.** The earlier findings carry
+over. The reopen enforcement gap is recorded and tracked as #371, and is blocking only for a
+future reopen route.

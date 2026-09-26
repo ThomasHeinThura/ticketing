@@ -1,20 +1,32 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
-**2026-09-24 continuation (P0 #10 / #342):** Ordinary review of PR #352 head `ea8d182`
-identified two detector bypasses: JSX comment-like text could hide a later environment read,
-and rest destructuring was misattributed as named access. Rest handling is fixed. A follow-up
-review found that a line-leading `//` in JSX text still fooled comment suppression; the
-backstop now suppresses comment-contained reads only outside an open JSX element. The focused
-detector suite passes 32/32, the complete CI checker suite previously passed 533/533, and
-`pnpm check:env` scans 981 files with 29 attributable reads. The previous head's Postgres
-integration was still pending and its PR template remains blocked on exact-head Opus review.
-The exact-head ordinary review of `e5bd611` still finds a valid JSX-string case that can close
-the heuristic tag stack and suppress a following read. Per the review-round policy, further
-same-class patching waits for Opus assessment; the required Claude CLI is currently unauthenticated.
-The candidate remains unmergeable and no issue completion is claimed.
+**2026-09-26 continuation (P0 #10 / #342):** Opus 5.5 reviewed #352 at `1f79c1e` and
+found two new blocking classes: comment spans invented in JSX can still hide raw environment
+reads, and nested/computed destructuring keys can be misattributed as approved names. The
+structural remediation is in progress: remove comment-span exemptions entirely and accept
+only flat identifier destructuring; add the N1–N6/K1–K2 regression cases. This candidate is
+being integrated with `main@e414895`; the delta Opus review is still required after fixes.
+No P0 completion or merge is claimed.
 
 
-**2026-09-24 orchestrator snapshot — `main` at `663c0cb`.** Merged today, each with every
+**2026-09-25 orchestrator snapshot — `main` at `714a653`.** Merged since the 2026-09-24
+snapshot, each with every required check green on the exact head, an independent ordinary
+review and an Opus 5.5 review of that head: #340 (`9060512`, create work-item dialog), #341
+(`3c31081`, error-boundary primitive), #362 (`c0bd99d`, assignable-people feed), #366
+(`536d12a`, decision log: Sonnet may make small recorded-finding fixes while every lane is
+stopped; #353 waits for #344), #331 (`fb134c3`, signed SHA-based releases), #367 (`6b0d861`,
+reviewed allowlist for intentional pre-2.0 OpenAPI breaks, keyed by operation, rule and
+fingerprint; entries approve only the PR that adds them), #364 (`d6a9643`, events.md event
+keys registered for audit), #320 (`378e5e0`, work-item list sort, cursor pagination and
+filters; the D0 cross-tenant cursor leak found in review is fixed and pinned by a two-workspace
+regression test), #326 (`714a653`, work-item detail page). All four lane agents stopped on
+2026-09-24; #320 and #326 were finished under #366. Blocked: #353 and #365 wait for #344
+(audit `project_id` and project-reach read filter), by Thomas's decision. #352 needs its env
+detector's comment exemption removed, only flat destructuring accepted, and the N1–N6/K1–K2
+bypasses pinned by tests; #361 needs its import scanner rebuilt on the TypeScript parser. Both
+are design changes for the P0 lane, not small fixes.
+
+**2026-09-24 orchestrator snapshot (superseded) — `main` at `663c0cb`.** Merged today, each with every
 required check green on the exact head and an Opus 5.5 attestation of that head:
 #355 (`776999d`, Playwright smoke + domain coverage + integration gates), #323 (`9d5deb9`,
 request-path policy shadow mode), #334 (`ecb5b63`, `sees_all` scoped to granting workspaces),
@@ -1632,6 +1644,16 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-24 · P0 #11 release helper remediation
+
+PR #331 at code head `bf4031f7511e62c5d0e0cd18a478cda45ee8208f` fixes OpenSSL 3.0's
+zero-exit hostname mismatch behavior by checking certificate output and adds a regression
+test with a matching key and wrong hostname. An independent exact-delta review is CLEAR for
+that remediation; it is not Opus clearance. `main` advanced through #324 after the last
+refresh, so the release PR is being integrated onto current main; its fresh exact-head Opus
+review, required checks, attribution reconciliation, release signing and rollback evidence
+remain outstanding. No release was triggered.
 
 ### 2026-09-24 · P0 continuation — reviewer substitution recorded; shadow-scope findings fixed
 
