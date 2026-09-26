@@ -31,9 +31,10 @@ Each follow-up must use the ordinary-review count required by the risk classific
 `AGENTS.md`, with independent reviewer contexts, and a separate exact-head Opus 5.5 final
 review before merge. Use the available GPT-6 Luna context for implementation and ordinary
 review when Sonnet is unavailable, without representing it as Sonnet or Opus. Keep the PR's
-source finding, regression test, and review record together. Security-scope changes and the
-migration remain subject to their full review tier and normal protected-PR gates. This
-decision does not waive checks, permit self-review, or authorize direct pushes to `main`.
+source finding and review record together; add regression tests for behavioral findings, and
+documentation validation for #367's wording finding. Security-scope changes and the migration
+remain subject to their full review tier and normal protected-PR gates. This decision does not
+waive checks, permit self-review, or authorize direct pushes to `main`.
 
 **Why:** These findings were recorded by reviewers of already merged work. Leaving the
 workspace-provenance S1 and error-boundary robustness defect unfixed would retain known
