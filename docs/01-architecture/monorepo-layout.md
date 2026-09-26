@@ -95,7 +95,28 @@ packages/permissions   ──► (nothing — pure; kaneo's depends on better-au
                             replaced rather than extended)
 packages/plugins-contracts ──► (nothing — types only)
 packages/ui            ──► (react, Base UI, tailwind only — Radix only per KNOWN-RADIX.md)
+packages/typescript-config ──► (nothing — shared compiler configuration)
 ```
+
+| Workspace | Permitted workspace edges |
+| --- | --- |
+| `@taskdesk/web` | `@taskdesk/ui`, `@taskdesk/libs`, `@taskdesk/permissions` |
+| `@taskdesk/api` | `@taskdesk/domain`, `@taskdesk/permissions`, `@taskdesk/plugins-contracts`, `@taskdesk/email`, `@taskdesk/libs`, `@taskdesk/importers` |
+| `@taskdesk/domain` | (none) |
+| `@taskdesk/permissions` | (none) |
+| `@taskdesk/plugins-contracts` | (none) |
+| `@taskdesk/ui` | (none) |
+| `@taskdesk/libs` | (none) |
+| `@taskdesk/email` | (none) |
+| `@taskdesk/mcp` | (none) |
+| `@taskdesk/importers` | (none) |
+| `@taskdesk/typescript-config` | (none) |
+
+The arrows above are the complete permitted workspace-package edges. `check:deps` enforces
+each arrow as a positive allowlist, checks the same graph for cycles, and resolves source
+imports through TypeScript configuration, package import maps and workspace aliases before
+checking their targets. Source under each workspace `src/` is parsed and scanned in full;
+unparseable files and symbolic links fail the gate.
 
 **Rules:**
 
@@ -104,9 +125,12 @@ packages/ui            ──► (react, Base UI, tailwind only — Radix only p
 - `packages/ui` may not import from `apps/*` or from any feature package. It knows
   nothing about work items.
 - `apps/web` may not import from `apps/api` except through `packages/libs` types.
-- Nothing imports `apps/*`.
+- `packages/libs` may import from `apps/api` only through top-level `import type` or
+  `export type` declarations. Inline named `type` specifiers are treated as runtime edges
+  by the boundary checker.
+- No other package imports `apps/*`.
 
-A `turbo` task plus a dependency-cruiser check enforces this in CI.
+`pnpm check:deps` enforces this in CI.
 
 ## API feature folder convention
 

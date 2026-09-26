@@ -74,8 +74,7 @@ const manifest = [
   {
     gate: "pnpm check:deps",
     stage: "fast",
-    run: null,
-    why: "packages/domain and packages/ui now exist, but check:deps is not implemented. The boundary matrix also names packages/plugins-contracts, which is still absent, so a cycle check would not enforce the documented matrix.",
+    run: ["pnpm", "check:deps"],
   },
   { gate: "pnpm check:i18n", stage: "fast", run: ["pnpm", "check:i18n"] },
   {
