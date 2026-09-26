@@ -1,17 +1,17 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
-**2026-09-26 continuation (P0 #10 / #342):** PR #352 now includes `main@e414895` and the
-structural remediation at `d69a1e5767ffdc31bbc2c504ba02314ca7446055`: no raw environment
-spelling is exempted as a comment, and `process.env` destructuring is attributed only for flat
-identifier keys. Regression tests cover Opus N1–N6/K1–K2. Local verification: focused detector
-tests 34/34, Biome with warnings as errors, `pnpm check:env` (29 attributable reads). The
-structural-analysis lesson is recorded in `error-fix-loop.md`. Exact-head GitHub CI and a fresh
-ordinary review are now clear at `f96e05605df201a4003d30cd33309422d0e74dc3`; the independent
-GPT-6 Luna reviewer found no blocking findings. At that head, all completed required jobs are
-green except the PR-template check (stale body/review binding); integration and unit/component
-checks are still running. The full independent Opus delta review remains mandatory. No P0
-completion or merge is claimed.
+**2026-09-26 orchestrator continuation — `main` at `8a51415` (#374).** The decision
+authorizing one-at-a-time follow-up PRs for #354, #341, #362, #367 and #371 is now on `main`;
+#354 is the first implementation in progress. Its regression reproductions pass in the focused
+Postgres integration file (17/17); it still needs the full applicable checks, independent review,
+and exact-head Opus 5.5 review before merge. #362 already has an open candidate (#373), which
+remains behind #354 in the recorded sequence.
 
+**P0 #10 continuation:** PR #352's detector redesign is at `c4bc691` before integrating #374's
+new `main`; the final Opus 5.5 review remains pending. PR #361's structural dependency checker
+at `4540cfd` was reviewed by three independent contexts. They found blocking fail-open cases for
+unlisted workspaces, aliased `createRequire`, and Vite aliases; a structural remediation is in
+progress. Neither candidate is merge-ready, and P0 remains open.
 
 **2026-09-25 orchestrator snapshot — `main` at `714a653`.** Merged since the 2026-09-24
 snapshot, each with every required check green on the exact head, an independent ordinary
