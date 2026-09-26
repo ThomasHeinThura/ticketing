@@ -71,6 +71,7 @@ RUN pnpm turbo build --ui=stream --filter=@taskdesk/api --filter=@taskdesk/web
 FROM base AS proddeps
 COPY --from=build /repo/.npmrc /repo/pnpm-lock.yaml /repo/pnpm-workspace.yaml /repo/package.json ./
 COPY --from=build /repo/apps/api/package.json apps/api/
+COPY --from=build /repo/packages/domain/package.json packages/domain/
 COPY --from=build /repo/packages/email/package.json packages/email/
 COPY --from=build /repo/packages/libs/package.json packages/libs/
 COPY --from=build /repo/packages/permissions/package.json packages/permissions/
@@ -96,13 +97,14 @@ RUN apt-get update \
 WORKDIR /app
 
 # Production dependency tree (pnpm workspace layout — the API bundle imports
-# @taskdesk/email and @taskdesk/permissions as external packages).
+# @taskdesk/domain, @taskdesk/email and @taskdesk/permissions as external packages).
 COPY --from=proddeps --chown=taskdesk:taskdesk /repo/node_modules ./node_modules
 COPY --from=proddeps --chown=taskdesk:taskdesk /repo/apps/api/node_modules ./apps/api/node_modules
 COPY --from=proddeps --chown=taskdesk:taskdesk /repo/packages ./packages
 
 # Built workspace packages (dist/), overlaying the manifests copied above.
 COPY --from=build --chown=taskdesk:taskdesk /repo/packages/email/dist ./packages/email/dist
+COPY --from=build --chown=taskdesk:taskdesk /repo/packages/domain/dist ./packages/domain/dist
 COPY --from=build --chown=taskdesk:taskdesk /repo/packages/permissions/dist ./packages/permissions/dist
 
 # The API bundle and its migrations. The migrator resolves
