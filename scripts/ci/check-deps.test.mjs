@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -7,7 +14,7 @@ import {
   analyzeDependencies,
   findCycles,
   runtimeWorkspaceEdges,
-  sourceImports,
+  WORKSPACE_EDGES,
   workspaceNameForSpecifier,
 } from "./check-deps.mjs";
 
@@ -40,6 +47,23 @@ test("runtime workspace graph excludes dev-only links and reports cycles", () =>
   ]);
 });
 
+test("workspace dependency aliases participate in cycle detection", () => {
+  const graph = runtimeWorkspaceEdges([
+    {
+      name: "@taskdesk/a",
+      manifest: { dependencies: { aliasB: "workspace:@taskdesk/b@*" } },
+    },
+    {
+      name: "@taskdesk/b",
+      manifest: { dependencies: { "@taskdesk/a": "workspace:*" } },
+    },
+  ]);
+  assert.deepEqual(graph.get("@taskdesk/a"), ["@taskdesk/b"]);
+  assert.deepEqual(findCycles(graph), [
+    ["@taskdesk/a", "@taskdesk/b", "@taskdesk/a"],
+  ]);
+});
+
 test("workspace package names are read from the package segment only", () => {
   assert.equal(
     workspaceNameForSpecifier("@taskdesk/ui/components/button"),
@@ -47,49 +71,6 @@ test("workspace package names are read from the package segment only", () => {
   );
   assert.equal(workspaceNameForSpecifier("@another/ui"), null);
   assert.equal(workspaceNameForSpecifier("./local"), null);
-});
-
-test("source scanner finds module edges across JavaScript syntax", () => {
-  assert.deepEqual(
-    sourceImports(
-      [
-        'import { Button } from "@taskdesk/ui";',
-        'export type { AppType } from "@taskdesk/api";',
-        'import { type AppType } from "@taskdesk/api";',
-        'export { type AppType } from "@taskdesk/api";',
-        'import type from "@taskdesk/api";',
-        'import type AppType from "@taskdesk/api";',
-        'import type, { AppType } from "@taskdesk/api";',
-        'import { type } from "@taskdesk/api";',
-        'export { type as Type } from "@taskdesk/api";',
-        'void import("./lazy.js");',
-        'void import("./" + suffix);',
-        "void import(`node:fs`);",
-        "void import(`node:${" + "runtimeName" + "}`);",
-        'const legacy = require("./legacy.cjs");',
-        'const computedLegacy = require("./" + suffix);',
-        "const computed = require(`dns/promises`);",
-      ].join("\n"),
-    ),
-    [
-      { specifier: "@taskdesk/ui", line: 1, typeOnly: false },
-      { specifier: "@taskdesk/api", line: 2, typeOnly: true },
-      { specifier: "@taskdesk/api", line: 3, typeOnly: false },
-      { specifier: "@taskdesk/api", line: 4, typeOnly: false },
-      { specifier: "@taskdesk/api", line: 5, typeOnly: false },
-      { specifier: "@taskdesk/api", line: 6, typeOnly: true },
-      { specifier: "@taskdesk/api", line: 7, typeOnly: false },
-      { specifier: "@taskdesk/api", line: 8, typeOnly: false },
-      { specifier: "@taskdesk/api", line: 9, typeOnly: false },
-      { specifier: "./lazy.js", line: 10, typeOnly: false },
-      { specifier: "<non-static module specifier>", line: 11, typeOnly: false },
-      { specifier: "node:fs", line: 12, typeOnly: false },
-      { specifier: "<non-static module specifier>", line: 13, typeOnly: false },
-      { specifier: "./legacy.cjs", line: 14, typeOnly: false },
-      { specifier: "<non-static module specifier>", line: 15, typeOnly: false },
-      { specifier: "dns/promises", line: 16, typeOnly: false },
-    ],
-  );
 });
 
 test("workspace analyzer permits libs' type contract and rejects forbidden app imports", async (t) => {
@@ -102,6 +83,10 @@ test("workspace analyzer permits libs' type contract and rejects forbidden app i
     await writeFile(
       path.join(directory, "package.json"),
       JSON.stringify({ name, ...manifest }),
+    );
+    await writeFile(
+      path.join(directory, "tsconfig.json"),
+      JSON.stringify({ compilerOptions: { allowJs: true } }),
     );
     return directory;
   }
@@ -159,6 +144,10 @@ test("documented boundaries reject app imports, impure leaves, I/O and UI depend
     await writeFile(
       path.join(directory, "package.json"),
       JSON.stringify({ name, ...manifest }),
+    );
+    await writeFile(
+      path.join(directory, "tsconfig.json"),
+      JSON.stringify({ compilerOptions: { allowJs: true } }),
     );
     return directory;
   }
@@ -223,5 +212,216 @@ test("documented boundaries reject app imports, impure leaves, I/O and UI depend
   assert.match(
     messages,
     /packages\/ui\/src\/server\.ts.*non-static module specifier/s,
+  );
+});
+
+test("source walk includes build, out and generated route trees and rejects symlinks", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "taskdesk-deps-walk-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  async function packageAt(relative, name) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name }),
+    );
+    await writeFile(
+      path.join(directory, "tsconfig.json"),
+      JSON.stringify({ compilerOptions: { allowJs: true } }),
+    );
+    return directory;
+  }
+  const libs = await packageAt("packages/libs", "@taskdesk/libs");
+  await packageAt("apps/api", "@taskdesk/api");
+  for (const relative of ["build/edge.ts", "out/edge.ts", "routeTree.gen.ts"]) {
+    const sourceFile = path.join(libs, "src", relative);
+    await mkdir(path.dirname(sourceFile), { recursive: true });
+    await writeFile(sourceFile, 'import { x } from "@taskdesk/api";');
+  }
+  const external = path.join(root, "outside.ts");
+  await writeFile(external, "export {};\n");
+  await symlink(external, path.join(libs, "src", "linked.ts"));
+  const { files, violations } = await analyzeDependencies(root);
+  assert.ok(files.some((file) => file.endsWith("src/build/edge.ts")));
+  assert.ok(files.some((file) => file.endsWith("src/out/edge.ts")));
+  assert.ok(files.some((file) => file.endsWith("src/routeTree.gen.ts")));
+  assert.match(
+    violations.join("\n"),
+    /linked\.ts.*symbolic links under workspace src are rejected/s,
+  );
+  assert.equal(
+    [
+      ...violations
+        .join("\n")
+        .matchAll(
+          /packages\/libs\/src\/(?:build\/edge\.ts|out\/edge\.ts|routeTree\.gen\.ts)\n\s+line \d+ imports .* from apps\/\*\*/g,
+        ),
+    ].length,
+    3,
+  );
+});
+
+test("AST parsing catches regex-hidden imports, ignores JSX copy and rejects malformed source", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "taskdesk-deps-ast-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  async function packageAt(relative, name) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name }),
+    );
+    await writeFile(
+      path.join(directory, "tsconfig.json"),
+      JSON.stringify({ compilerOptions: { allowJs: true } }),
+    );
+    return directory;
+  }
+  const libs = await packageAt("packages/libs", "@taskdesk/libs");
+  await packageAt("apps/api", "@taskdesk/api");
+  await writeFile(
+    path.join(libs, "src/regex.ts"),
+    'const re = /"/; import { x } from "@taskdesk/api"; const end = /"/;',
+  );
+  await writeFile(
+    path.join(libs, "src/copy.tsx"),
+    'export const Copy = () => <p>Please import from "@taskdesk/api" later</p>;',
+  );
+  await writeFile(
+    path.join(libs, "src/bad.ts"),
+    "const = ; import x from '@taskdesk/api';",
+  );
+  const { violations } = await analyzeDependencies(root);
+  const messages = violations.join("\n");
+  assert.match(messages, /packages\/libs\/src\/regex\.ts.*from apps\/\*\*/s);
+  assert.doesNotMatch(messages, /packages\/libs\/src\/copy\.tsx/);
+  assert.match(messages, /packages\/libs\/src\/bad\.ts.*could not be parsed/s);
+});
+
+test("detached require and createRequire forms fail closed", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "taskdesk-deps-require-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  async function packageAt(relative, name) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name }),
+    );
+    return directory;
+  }
+  const libs = await packageAt("packages/libs", "@taskdesk/libs");
+  await packageAt("apps/api", "@taskdesk/api");
+  await writeFile(
+    path.join(libs, "src/edge.ts"),
+    [
+      "const r = require;",
+      'import { createRequire } from "node:module";',
+      "const localRequire = createRequire(import.meta.url);",
+      'globalThis["req" + "uire"]("@taskdesk/api");',
+      'require.resolve("@taskdesk/api");',
+      'import.meta.resolve("@taskdesk/api");',
+    ].join("\n"),
+  );
+  const { violations } = await analyzeDependencies(root);
+  assert.match(
+    violations.join("\n"),
+    /packages\/libs\/src\/edge\.ts.*non-static module specifier/s,
+  );
+  assert.match(
+    violations.join("\n"),
+    /packages\/libs\/src\/edge\.ts.*createRequire/s,
+  );
+  assert.match(
+    violations.join("\n"),
+    /packages\/libs\/src\/edge\.ts.*from apps\/\*\*/s,
+  );
+});
+
+test("workspace aliases and tsconfig paths resolve to package targets and matrix edges", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "taskdesk-deps-aliases-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  async function packageAt(relative, name, manifest = {}) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name, ...manifest }),
+    );
+    await writeFile(
+      path.join(directory, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          moduleResolution: "Bundler",
+          paths: { "~api/*": ["../../apps/api/src/*"] },
+        },
+      }),
+    );
+    return directory;
+  }
+  const api = await packageAt("apps/api", "@taskdesk/api");
+  const web = await packageAt("apps/web", "@taskdesk/web", {
+    dependencies: {
+      "@taskdesk/domain": "workspace:*",
+      "@taskdesk/email": "workspace:*",
+    },
+  });
+  const domain = await packageAt("packages/domain", "@taskdesk/domain");
+  const email = await packageAt("packages/email", "@taskdesk/email");
+  const libs = await packageAt("packages/libs", "@taskdesk/libs", {
+    dependencies: { "api-alias": "workspace:@taskdesk/api@*" },
+    imports: { "#api": "@taskdesk/api" },
+  });
+  await writeFile(
+    path.join(api, "src", "auth.ts"),
+    "export const value = 1;\n",
+  );
+  await writeFile(path.join(domain, "src", "index.ts"), "export {};\n");
+  await writeFile(path.join(email, "src", "index.ts"), "export {};\n");
+  await writeFile(
+    path.join(web, "src", "edge.ts"),
+    'import "@taskdesk/domain"; import "@taskdesk/email";',
+  );
+  await writeFile(
+    path.join(libs, "src", "edge.ts"),
+    'import "#api"; import "api-alias"; import "~api/auth";',
+  );
+  const { violations } = await analyzeDependencies(root);
+  const messages = violations.join("\n");
+  assert.match(
+    messages,
+    /@taskdesk\/web\/package\.json.*outside the documented workspace edge matrix/s,
+  );
+  assert.match(
+    messages,
+    /apps\/web\/src\/edge\.ts.*outside the documented workspace edge matrix/s,
+  );
+  assert.match(messages, /packages\/libs\/src\/edge\.ts.*from apps\/\*\*/s);
+});
+
+test("the monorepo boundary definition is pinned to the enforced edge matrix", async () => {
+  const doc = await readFile(
+    new URL("../../docs/01-architecture/monorepo-layout.md", import.meta.url),
+    "utf8",
+  );
+  assert.match(doc, /complete permitted workspace-package edges/);
+  assert.match(doc, /`pnpm check:deps` enforces this in CI/);
+  const documented = new Map(
+    [...doc.matchAll(/^\| `(@taskdesk\/[^`]+)` \| (.*?) \|$/gm)].map(
+      ([, workspace, edges]) => [
+        workspace,
+        edges === "(none)"
+          ? []
+          : edges.split(", ").map((edge) => edge.replaceAll("`", "")),
+      ],
+    ),
+  );
+  assert.deepEqual(
+    [...documented]
+      .map(([workspace, edges]) => [workspace, [...edges].sort()])
+      .sort(),
+    [...WORKSPACE_EDGES]
+      .map(([workspace, edges]) => [workspace, [...edges].sort()])
+      .sort(),
   );
 });

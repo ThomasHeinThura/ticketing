@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * check:deps — enforce the workspace dependency graph and documented package boundaries.
  *
@@ -7,15 +8,14 @@
  * cross-package boundaries. See docs/01-architecture/monorepo-layout.md#package-boundaries.
  */
 
+import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import {
-  createScanner,
-  LanguageVariant,
-  SyntaxKind,
-} from "typescript/unstable/ast";
-import { finish, repoRoot, violation, walk } from "./lib/repo.mjs";
+import * as ts from "typescript/unstable/ast";
+import * as tsIs from "typescript/unstable/ast/is";
+import { API } from "typescript/unstable/sync";
+import { finish, repoRoot, violation } from "./lib/repo.mjs";
 
 const NAME = "check:deps";
 const PURE_LEAF_PACKAGES = new Set([
@@ -43,6 +43,33 @@ const SOURCE_EXTENSIONS = [
   ".cjs",
 ];
 const DYNAMIC_SPECIFIER = "<non-static module specifier>";
+const CREATE_REQUIRE_ALLOWLIST = new Set(["packages/mcp/src/server.ts"]);
+const WORKSPACE_EDGES = new Map([
+  [
+    "@taskdesk/web",
+    new Set(["@taskdesk/ui", "@taskdesk/libs", "@taskdesk/permissions"]),
+  ],
+  [
+    "@taskdesk/api",
+    new Set([
+      "@taskdesk/domain",
+      "@taskdesk/permissions",
+      "@taskdesk/plugins-contracts",
+      "@taskdesk/email",
+      "@taskdesk/libs",
+      "@taskdesk/importers",
+    ]),
+  ],
+  ["@taskdesk/domain", new Set()],
+  ["@taskdesk/permissions", new Set()],
+  ["@taskdesk/plugins-contracts", new Set()],
+  ["@taskdesk/ui", new Set()],
+  ["@taskdesk/libs", new Set()],
+  ["@taskdesk/email", new Set()],
+  ["@taskdesk/mcp", new Set()],
+  ["@taskdesk/importers", new Set()],
+  ["@taskdesk/typescript-config", new Set()],
+]);
 
 function isWithin(parent, child) {
   const relative = path.relative(parent, child);
@@ -112,11 +139,14 @@ function runtimeWorkspaceEdges(manifests) {
         ...manifest.peerDependencies,
       };
       const edges = Object.entries(dependencies ?? {})
-        .filter(
-          ([dependency, version]) =>
-            names.has(dependency) && String(version).startsWith("workspace:"),
-        )
-        .map(([dependency]) => dependency)
+        .filter(([, version]) => String(version).startsWith("workspace:"))
+        .map(([dependency, version]) => {
+          const alias = String(version).match(
+            /^workspace:(@[^/]+\/[^@]+|[^@]+)@/,
+          );
+          return alias?.[1] ?? dependency;
+        })
+        .filter((dependency) => names.has(dependency))
         .sort();
       return [name, edges];
     }),
@@ -158,208 +188,312 @@ function findCycles(graph) {
   return cycles;
 }
 
-function sourceImports(source) {
+function sourceImports(file, diagnostics = [], relativeFile = "") {
   const imports = [];
-  const scanner = createScanner(
-    true,
-    LanguageVariant.JSX,
-    source,
-    0,
-    source.length,
-  );
-  const tokens = [];
-  const templateBraceDepths = [];
-  let previousTokenStart = -1;
-  for (let scanned = 0; scanned <= source.length + 1; scanned += 1) {
-    let kind = scanner.scan();
-    if (kind === SyntaxKind.CloseBraceToken && templateBraceDepths.length > 0) {
-      const depth = templateBraceDepths.at(-1) - 1;
-      templateBraceDepths[templateBraceDepths.length - 1] = depth;
-      if (depth === 0) {
-        kind = scanner.reScanTemplateToken(false);
-        if (kind === SyntaxKind.TemplateTail) templateBraceDepths.pop();
-        else if (kind === SyntaxKind.TemplateMiddle)
-          templateBraceDepths[templateBraceDepths.length - 1] = 1;
-      }
-    } else if (
-      kind === SyntaxKind.OpenBraceToken &&
-      templateBraceDepths.length > 0
-    ) {
-      templateBraceDepths[templateBraceDepths.length - 1] += 1;
-    } else if (
-      kind === SyntaxKind.TemplateHead ||
-      kind === SyntaxKind.TemplateMiddle
-    ) {
-      templateBraceDepths.push(1);
-    }
-    if (kind === SyntaxKind.EndOfFile) break;
-    const tokenStart = scanner.getTokenStart();
-    if (tokenStart === previousTokenStart) break;
-    previousTokenStart = tokenStart;
-    tokens.push({
-      kind,
-      value: scanner.getTokenValue(),
-      text: scanner.getTokenText(),
-      start: tokenStart,
-    });
-    if (scanned === source.length + 1) {
-      imports.push({ specifier: DYNAMIC_SPECIFIER, line: 1, typeOnly: false });
-      break;
-    }
-  }
-
-  const lineAt = (position) => source.slice(0, position).split("\n").length;
-  const addLiteral = (token, typeOnly = false) =>
+  if (diagnostics.length)
+    throw new SyntaxError(
+      `TypeScript parse failed: ${diagnostics.map((d) => d.messageText).join("; ")}`,
+    );
+  const lineAt = (node) =>
+    file.getLineAndCharacterOfPosition(node.getStart(file)).line + 1;
+  const literal = (node) =>
+    node &&
+    [
+      ts.SyntaxKind.StringLiteral,
+      ts.SyntaxKind.NoSubstitutionTemplateLiteral,
+    ].includes(node.kind)
+      ? node.text
+      : undefined;
+  const add = (node, typeOnly = false) =>
     imports.push({
-      specifier: token.value,
-      line: lineAt(token.start),
+      specifier: literal(node) ?? DYNAMIC_SPECIFIER,
+      line: lineAt(node),
       typeOnly,
+      node,
     });
-  const isString = (token) =>
-    token?.kind === SyntaxKind.StringLiteral ||
-    token?.kind === SyntaxKind.NoSubstitutionTemplateLiteral;
-  const keyword = (token, name) =>
-    token?.kind ===
-      SyntaxKind[`${name[0].toUpperCase()}${name.slice(1)}Keyword`] ||
-    (token?.kind === SyntaxKind.Identifier && token.text === name);
-  const isTypeOnlyImportDeclaration = (index) => {
-    if (!keyword(tokens[index + 1], "type")) return false;
-    return [
-      SyntaxKind.OpenBraceToken,
-      SyntaxKind.AsteriskToken,
-      SyntaxKind.Identifier,
-    ].includes(tokens[index + 2]?.kind);
-  };
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index];
-    const next = tokens[index + 1];
-    if (keyword(token, "import") || keyword(token, "require")) {
-      const call = next?.kind === SyntaxKind.OpenParenToken;
-      if (call) {
-        const argument = tokens[index + 2];
-        const afterArgument = tokens[index + 3];
-        const completeFirstArgument =
-          afterArgument?.kind === SyntaxKind.CloseParenToken ||
-          (keyword(token, "import") &&
-            afterArgument?.kind === SyntaxKind.CommaToken);
-        if (isString(argument) && completeFirstArgument) addLiteral(argument);
-        else
-          imports.push({
-            specifier: DYNAMIC_SPECIFIER,
-            line: lineAt(token.start),
-            typeOnly: false,
-          });
-        continue;
-      }
-      if (keyword(token, "require")) continue;
-      if (isString(next)) {
-        addLiteral(next);
-        continue;
-      }
-      const typeOnly = isTypeOnlyImportDeclaration(index);
-      for (let cursor = index + 1; cursor < tokens.length; cursor += 1) {
-        if (tokens[cursor].kind === SyntaxKind.SemicolonToken) break;
-        if (keyword(tokens[cursor], "from")) {
-          const specifier = tokens[cursor + 1];
-          if (isString(specifier)) addLiteral(specifier, typeOnly);
-          else
-            imports.push({
-              specifier: DYNAMIC_SPECIFIER,
-              line: lineAt(token.start),
-              typeOnly,
-            });
-          break;
-        }
-        if (
-          cursor > index + 1 &&
-          lineAt(tokens[cursor].start) > lineAt(tokens[cursor - 1].start) &&
-          [SyntaxKind.ImportKeyword, SyntaxKind.ExportKeyword].includes(
-            tokens[cursor].kind,
-          )
-        )
-          break;
-      }
-      continue;
+  function constantString(node) {
+    if (literal(node) !== undefined) return literal(node);
+    if (
+      node?.kind === ts.SyntaxKind.BinaryExpression &&
+      node.operatorToken.kind === ts.SyntaxKind.PlusToken
+    ) {
+      const left = constantString(node.left);
+      const right = constantString(node.right);
+      return left !== undefined && right !== undefined
+        ? left + right
+        : undefined;
     }
-    if (keyword(token, "export")) {
-      const typeOnly =
-        keyword(next, "type") &&
-        (tokens[index + 2]?.kind === SyntaxKind.OpenBraceToken ||
-          tokens[index + 2]?.kind === SyntaxKind.AsteriskToken);
-      const binding = typeOnly ? tokens[index + 2] : next;
-      if (
-        binding?.kind !== SyntaxKind.OpenBraceToken &&
-        binding?.kind !== SyntaxKind.AsteriskToken
-      )
-        continue;
-      for (let cursor = index + 1; cursor < tokens.length; cursor += 1) {
-        if (tokens[cursor].kind === SyntaxKind.SemicolonToken) break;
-        if (keyword(tokens[cursor], "from")) {
-          const specifier = tokens[cursor + 1];
-          if (isString(specifier)) addLiteral(specifier, typeOnly);
-          else
-            imports.push({
-              specifier: DYNAMIC_SPECIFIER,
-              line: lineAt(token.start),
-              typeOnly,
-            });
-          break;
-        }
-        if (
-          lineAt(tokens[cursor].start) > lineAt(tokens[cursor - 1].start) &&
-          [SyntaxKind.ImportKeyword, SyntaxKind.ExportKeyword].includes(
-            tokens[cursor].kind,
-          )
-        )
-          break;
-      }
-    }
+    return undefined;
   }
+  function visit(node) {
+    const kind = node.kind;
+    if (
+      kind === ts.SyntaxKind.ImportDeclaration ||
+      kind === ts.SyntaxKind.ExportDeclaration
+    ) {
+      if (node.moduleSpecifier)
+        add(
+          node.moduleSpecifier,
+          kind === ts.SyntaxKind.ImportDeclaration
+            ? Boolean(node.importClause?.isTypeOnly)
+            : Boolean(node.isTypeOnly),
+        );
+    } else if (kind === ts.SyntaxKind.ImportEqualsDeclaration) {
+      if (node.moduleReference?.kind === ts.SyntaxKind.ExternalModuleReference)
+        add(node.moduleReference.expression);
+    } else if (kind === ts.SyntaxKind.CallExpression) {
+      const expr = node.expression;
+      const isImport = expr.kind === ts.SyntaxKind.ImportKeyword;
+      const isRequire = tsIs.isIdentifier(expr) && expr.text === "require";
+      const isModuleRequire =
+        expr.kind === ts.SyntaxKind.PropertyAccessExpression &&
+        expr.name.text === "require" &&
+        ["module", "process.mainModule"].includes(
+          expr.expression.getText(file),
+        );
+      const isRequireResolve =
+        expr.kind === ts.SyntaxKind.PropertyAccessExpression &&
+        expr.name.text === "resolve" &&
+        tsIs.isIdentifier(expr.expression) &&
+        expr.expression.text === "require";
+      const isImportMetaResolve =
+        expr.kind === ts.SyntaxKind.PropertyAccessExpression &&
+        expr.name.text === "resolve" &&
+        expr.expression.kind === ts.SyntaxKind.MetaProperty &&
+        expr.expression.keywordToken === ts.SyntaxKind.ImportKeyword;
+      const isGlobalRequire =
+        (expr.kind === ts.SyntaxKind.PropertyAccessExpression &&
+          expr.name.text === "require" &&
+          expr.expression.getText(file) === "globalThis") ||
+        (expr.kind === ts.SyntaxKind.ElementAccessExpression &&
+          expr.expression.getText(file) === "globalThis" &&
+          constantString(expr.argumentExpression) === "require");
+      if (
+        isImport ||
+        isRequire ||
+        isModuleRequire ||
+        isRequireResolve ||
+        isImportMetaResolve ||
+        isGlobalRequire
+      )
+        add(node.arguments[0]);
+    } else if (
+      kind === ts.SyntaxKind.PropertyAccessExpression ||
+      kind === ts.SyntaxKind.ElementAccessExpression
+    ) {
+      const parent = node.parent;
+      const isDirectCall =
+        parent?.kind === ts.SyntaxKind.CallExpression &&
+        parent.expression === node;
+      const property =
+        kind === ts.SyntaxKind.PropertyAccessExpression
+          ? node.name.text
+          : constantString(node.argumentExpression);
+      const receiver = node.expression.getText(file);
+      const isLoaderMember =
+        property === "require" &&
+        ["module", "process.mainModule", "globalThis"].includes(receiver);
+      const isRequireResolver =
+        property === "resolve" && receiver === "require";
+      if (!isDirectCall && (isLoaderMember || isRequireResolver))
+        imports.push({
+          specifier: DYNAMIC_SPECIFIER,
+          line: lineAt(node),
+          typeOnly: false,
+          node,
+        });
+    } else if (tsIs.isIdentifier(node) && node.text === "require") {
+      const parent = node.parent;
+      const directCall =
+        parent?.kind === ts.SyntaxKind.CallExpression &&
+        parent.expression === node;
+      const propertyName =
+        (parent?.kind === ts.SyntaxKind.PropertyAccessExpression &&
+          parent.name === node) ||
+        (parent?.kind === ts.SyntaxKind.PropertyAssignment &&
+          parent.name === node) ||
+        (parent?.kind === ts.SyntaxKind.MethodDeclaration &&
+          parent.name === node);
+      const createRequireBinding =
+        CREATE_REQUIRE_ALLOWLIST.has(relativeFile) &&
+        parent?.kind === ts.SyntaxKind.VariableDeclaration &&
+        parent.name === node &&
+        parent.initializer?.kind === ts.SyntaxKind.CallExpression &&
+        parent.initializer.expression.getText(file) === "createRequire";
+      if (!directCall && !propertyName && !createRequireBinding)
+        imports.push({
+          specifier: DYNAMIC_SPECIFIER,
+          line: lineAt(node),
+          typeOnly: false,
+          node,
+        });
+    }
+    if (
+      !CREATE_REQUIRE_ALLOWLIST.has(relativeFile) &&
+      kind === ts.SyntaxKind.ImportDeclaration &&
+      node.moduleSpecifier &&
+      literal(node.moduleSpecifier) &&
+      ["module", "node:module"].includes(literal(node.moduleSpecifier)) &&
+      node.importClause?.namedBindings?.kind === ts.SyntaxKind.NamedImports &&
+      node.importClause.namedBindings.elements.some(
+        (element) =>
+          (element.propertyName ?? element.name).text === "createRequire",
+      )
+    ) {
+      imports.push({
+        specifier: "<createRequire>",
+        line: lineAt(node),
+        typeOnly: false,
+        node,
+      });
+    }
+    node.forEachChild(visit);
+  }
+  visit(file);
   return imports;
 }
 
-async function sourceFilesUnder(root) {
-  return walk(root, (file) => SOURCE_EXTENSIONS.includes(path.extname(file)));
-}
-
-async function listSourceFiles(root) {
+async function listSourceFiles(root, manifests) {
   const files = [];
-  for (const top of ["apps", "packages"]) {
-    const topPath = path.join(root, top);
+  const violations = [];
+  async function walkSource(dir) {
     let entries;
     try {
-      entries = await fs.readdir(topPath, { withFileTypes: true });
-    } catch {
-      continue;
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch (error) {
+      if (error.code === "ENOENT") return;
+      throw error;
     }
     for (const entry of entries) {
-      if (entry.isDirectory())
-        files.push(...(await sourceFilesUnder(path.join(topPath, entry.name))));
+      const absolute = path.join(dir, entry.name);
+      if (entry.isSymbolicLink()) {
+        violations.push(
+          violation(
+            path.relative(root, absolute).split(path.sep).join("/"),
+            "symbolic links under workspace src are rejected because their target cannot be proven by this gate",
+          ),
+        );
+      } else if (entry.isDirectory()) await walkSource(absolute);
+      else if (
+        entry.isFile() &&
+        SOURCE_EXTENSIONS.includes(path.extname(entry.name))
+      )
+        files.push(absolute);
     }
   }
-  return files;
+  for (const manifest of manifests)
+    await walkSource(path.join(manifest.path, "src"));
+  return { files: files.sort(), violations };
 }
 
-function resolveWorkspaceTarget(specifier, file, workspaceByName, root) {
-  const workspaceName = workspaceNameForSpecifier(specifier);
-  if (workspaceName && workspaceByName.has(workspaceName)) {
-    return workspaceByName.get(workspaceName).path;
+function workspaceTargetForSpecifier(
+  specifier,
+  owner,
+  manifests,
+  seen = new Set(),
+) {
+  const directName = workspaceNameForSpecifier(specifier);
+  if (directName && manifests.has(directName))
+    return {
+      entry: manifests.get(directName),
+      subpath: specifier.slice(directName.length).replace(/^\//, ""),
+    };
+  const dependencies = {
+    ...owner.manifest.dependencies,
+    ...owner.manifest.optionalDependencies,
+    ...owner.manifest.peerDependencies,
+  };
+  for (const [key, value] of Object.entries(dependencies)) {
+    if (specifier !== key && !specifier.startsWith(`${key}/`)) continue;
+    const alias = String(value).match(/^workspace:(@[^/]+\/[^@]+|[^@]+)@/);
+    const targetName = alias?.[1] ?? key;
+    if (manifests.has(targetName))
+      return {
+        entry: manifests.get(targetName),
+        subpath: specifier === key ? "" : specifier.slice(key.length + 1),
+      };
   }
-  if (
-    specifier.startsWith("@/") &&
-    file.includes(`${path.sep}apps${path.sep}web${path.sep}`)
-  ) {
-    const webRoot = path.join(root, "apps/web");
-    return path.resolve(webRoot, "src", specifier.slice(2));
+  const imports = owner.manifest.imports ?? {};
+  for (const [key, value] of Object.entries(imports)) {
+    if (
+      specifier !== key &&
+      !(key.endsWith("*") && specifier.startsWith(key.slice(0, -1)))
+    )
+      continue;
+    const resolved =
+      typeof value === "string"
+        ? value
+        : (value?.default ?? value?.import ?? value?.node);
+    if (typeof resolved !== "string") return null;
+    const replacement = key.endsWith("*")
+      ? specifier.slice(key.slice(0, -1).length)
+      : "";
+    const mapped = resolved.replace("*", replacement);
+    if (seen.has(mapped)) return null;
+    const resolvedTarget = workspaceTargetForSpecifier(
+      mapped,
+      owner,
+      manifests,
+      new Set([...seen, specifier]),
+    );
+    return resolvedTarget ?? { absolute: path.resolve(owner.path, mapped) };
   }
-  if (
-    specifier.startsWith("@i18n/") &&
-    file.includes(`${path.sep}apps${path.sep}web${path.sep}`)
-  ) {
-    return path.resolve(root, "i18n", specifier.slice("@i18n/".length));
+  return null;
+}
+
+function resolveAsFile(base) {
+  const candidates = [
+    base,
+    ...SOURCE_EXTENSIONS.map((ext) => `${base}${ext}`),
+    ...SOURCE_EXTENSIONS.map((ext) => path.join(base, `index${ext}`)),
+  ];
+  return candidates.find((candidate) => existsSync(candidate))
+    ? path.resolve(candidates.find((candidate) => existsSync(candidate)))
+    : null;
+}
+
+function resolveWorkspaceTarget(
+  imported,
+  file,
+  owner,
+  workspaceByName,
+  project,
+) {
+  const { specifier } = imported;
+  const names = [...workspaceByName.values()];
+  const packageTarget = workspaceTargetForSpecifier(
+    specifier,
+    owner,
+    workspaceByName,
+  );
+  if (packageTarget?.entry) {
+    const base = path.join(packageTarget.entry.path, packageTarget.subpath);
+    return {
+      workspace: packageTarget.entry,
+      file: resolveAsFile(base) ?? packageTarget.entry.path,
+    };
   }
-  if (specifier.startsWith("."))
-    return path.resolve(path.dirname(file), specifier);
+  if (packageTarget?.absolute)
+    return {
+      workspace: ownerForFile(packageTarget.absolute, names),
+      file: packageTarget.absolute,
+    };
+  if (imported.node) {
+    const symbol = project?.checker.getSymbolAtLocation(imported.node);
+    for (const declaration of symbol?.declarations ?? []) {
+      const resolvedFile = declaration.path;
+      if (typeof resolvedFile !== "string") continue;
+      const workspace = ownerForFile(resolvedFile, names);
+      if (workspace) return { workspace, file: resolvedFile };
+    }
+  }
+  if (specifier.startsWith(".")) {
+    const resolved =
+      resolveAsFile(path.resolve(path.dirname(file), specifier)) ??
+      path.resolve(path.dirname(file), specifier);
+    const workspace = ownerForFile(resolved, names);
+    return workspace ? { workspace, file: resolved } : null;
+  }
   return null;
 }
 
@@ -383,6 +517,18 @@ export async function analyzeDependencies(root = repoRoot) {
   }
 
   for (const { name, manifest } of manifests) {
+    const permittedEdges = WORKSPACE_EDGES.get(name);
+    if (permittedEdges) {
+      for (const dependency of graph.get(name) ?? []) {
+        if (!permittedEdges.has(dependency))
+          violations.push(
+            violation(
+              `${name}/package.json`,
+              `runtime workspace dependency "${dependency}" is outside the documented workspace edge matrix`,
+            ),
+          );
+      }
+    }
     if (PURE_LEAF_PACKAGES.has(name)) {
       for (const dependency of graph.get(name) ?? []) {
         violations.push(
@@ -417,129 +563,194 @@ export async function analyzeDependencies(root = repoRoot) {
     }
   }
 
-  const files = await listSourceFiles(root);
-  for (const file of files) {
-    const owner = ownerForFile(file, manifests);
-    if (!owner) continue;
-    const text = await fs.readFile(file, "utf8");
-    const imports = sourceImports(text);
-    const relativeFile = path.relative(root, file).split(path.sep).join("/");
-
-    for (const imported of imports) {
-      if (imported.specifier === DYNAMIC_SPECIFIER) {
+  const { files, violations: walkViolations } = await listSourceFiles(
+    root,
+    manifests,
+  );
+  violations.push(...walkViolations);
+  const parser = new API({ cwd: root });
+  let snapshot;
+  try {
+    snapshot = parser.updateSnapshot({
+      openProjects: manifests
+        .map((entry) => path.join(entry.path, "tsconfig.json"))
+        .filter((file) => existsSync(file)),
+      openFiles: files,
+    });
+    for (const file of files) {
+      const owner = ownerForFile(file, manifests);
+      if (!owner) continue;
+      const relativeFile = path.relative(root, file).split(path.sep).join("/");
+      let imports;
+      const project = snapshot.getDefaultProjectForFile(file);
+      const sourceFile = project?.program.getSourceFile(file);
+      try {
+        if (!project || !sourceFile)
+          throw new Error("TypeScript could not load this source file");
+        imports = sourceImports(
+          sourceFile,
+          project.program.getSyntacticDiagnostics(file),
+          relativeFile,
+        );
+      } catch (error) {
         violations.push(
           violation(
             relativeFile,
-            `line ${imported.line} uses a non-static module specifier; package boundaries cannot be proven`,
+            `source could not be parsed; package boundaries cannot be proven (${error.message})`,
           ),
         );
         continue;
       }
-      const targetPath = resolveWorkspaceTarget(
-        imported.specifier,
-        file,
-        manifestByName,
-        root,
-      );
-      const targetWorkspace = workspaceNameForSpecifier(imported.specifier);
-      const targetEntry = targetWorkspace
-        ? manifestByName.get(targetWorkspace)
-        : null;
-      const pointsToApp =
-        (targetEntry &&
-          isWithin(path.join(root, "apps"), targetEntry.path) &&
-          targetEntry.name !== owner.name) ||
-        (targetPath &&
-          isWithin(path.join(root, "apps"), targetPath) &&
-          !isWithin(owner.path, targetPath));
-      const pointsOutOfUi =
-        owner.name === "@taskdesk/ui" &&
-        targetPath &&
-        !isWithin(owner.path, targetPath);
-      const pointsOutOfDomain =
-        owner.name === "@taskdesk/domain" &&
-        targetPath &&
-        !isWithin(owner.path, targetPath);
-      const isLibsTypeContract =
-        owner.name === "@taskdesk/libs" &&
-        imported.typeOnly &&
-        targetWorkspace === "@taskdesk/api";
 
-      if (pointsToApp && !isLibsTypeContract) {
-        violations.push(
-          violation(
-            relativeFile,
-            `line ${imported.line} imports "${imported.specifier}" from apps/**; application imports are forbidden except the typed @taskdesk/libs contract (docs/01-architecture/monorepo-layout.md#package-boundaries)`,
-          ),
-        );
-      }
-      if (pointsOutOfUi) {
-        violations.push(
-          violation(
-            relativeFile,
-            `line ${imported.line} imports "${imported.specifier}" outside packages/ui; the design system must not depend on application or feature code`,
-          ),
-        );
-      }
-      if (pointsOutOfDomain) {
-        violations.push(
-          violation(
-            relativeFile,
-            `line ${imported.line} imports "${imported.specifier}" outside packages/domain; domain code must remain a pure leaf`,
-          ),
-        );
-      }
-      if (
-        owner.name === "@taskdesk/web" &&
-        targetWorkspace === "@taskdesk/api"
-      ) {
-        violations.push(
-          violation(
-            relativeFile,
-            `line ${imported.line} imports "${imported.specifier}" directly from apps/api; use the typed client boundary in packages/libs`,
-          ),
-        );
-      }
-      if (PURE_LEAF_PACKAGES.has(owner.name) && targetWorkspace) {
-        violations.push(
-          violation(
-            relativeFile,
-            `line ${imported.line} imports workspace package "${imported.specifier}"; ${owner.name} is a documented pure leaf package`,
-          ),
-        );
-      }
-      if (
-        owner.name === "@taskdesk/domain" &&
-        !isTestSource(relativeFile) &&
-        !/\.config\.[^.]+$/.test(relativeFile) &&
-        !imported.specifier.startsWith(".") &&
-        !DOMAIN_ALLOWED_NODE_BUILTINS.has(imported.specifier)
-      ) {
-        violations.push(
-          violation(
-            relativeFile,
-            `line ${imported.line} imports I/O or server module "${imported.specifier}"; packages/domain is pure and has no I/O`,
-          ),
-        );
-      }
-      if (
-        owner.name === "@taskdesk/ui" &&
-        !isTestSource(relativeFile) &&
-        !relativeFile.includes("/.storybook/") &&
-        !/\.config\.[^.]+$/.test(relativeFile) &&
-        !/\.stories\.[^.]+$/.test(relativeFile)
-      ) {
-        const importedPackage = packageNameForSpecifier(imported.specifier);
-        if (importedPackage && !UI_RUNTIME_IMPORTS.has(importedPackage)) {
+      for (const imported of imports) {
+        if (
+          imported.specifier === DYNAMIC_SPECIFIER ||
+          imported.specifier === "<createRequire>"
+        ) {
           violations.push(
             violation(
               relativeFile,
-              `line ${imported.line} imports runtime dependency "${importedPackage}" outside the documented packages/ui boundary (React, Base UI, and design-system utilities)`,
+              imported.specifier === "<createRequire>"
+                ? `line ${imported.line} imports createRequire; createRequire is outside the workspace boundary contract`
+                : `line ${imported.line} uses a non-static module specifier; package boundaries cannot be proven`,
+            ),
+          );
+          continue;
+        }
+        const target = resolveWorkspaceTarget(
+          imported,
+          file,
+          owner,
+          manifestByName,
+          project,
+        );
+        const targetWorkspace =
+          target?.workspace?.name !== owner.name
+            ? (target?.workspace?.name ??
+              workspaceNameForSpecifier(imported.specifier))
+            : workspaceNameForSpecifier(imported.specifier);
+        const targetEntry =
+          target?.workspace ??
+          (targetWorkspace ? manifestByName.get(targetWorkspace) : null);
+        const pointsToApp =
+          (targetEntry &&
+            isWithin(path.join(root, "apps"), targetEntry.path) &&
+            targetEntry.name !== owner.name) ||
+          (target?.file &&
+            isWithin(path.join(root, "apps"), target.file) &&
+            !isWithin(owner.path, target.file));
+        const pointsOutOfUi =
+          owner.name === "@taskdesk/ui" &&
+          target?.workspace &&
+          target.workspace.name !== owner.name;
+        const pointsOutOfDomain =
+          owner.name === "@taskdesk/domain" &&
+          target?.workspace &&
+          target.workspace.name !== owner.name;
+        const isLibsTypeContract =
+          owner.name === "@taskdesk/libs" &&
+          imported.typeOnly &&
+          targetWorkspace === "@taskdesk/api";
+
+        const permittedEdges = WORKSPACE_EDGES.get(owner.name);
+        if (
+          target?.workspace &&
+          target.workspace.name !== owner.name &&
+          permittedEdges &&
+          !permittedEdges.has(target.workspace.name) &&
+          !isLibsTypeContract
+        ) {
+          violations.push(
+            violation(
+              relativeFile,
+              `line ${imported.line} resolves to workspace "${target.workspace.name}", outside the documented workspace edge matrix`,
             ),
           );
         }
+
+        if (pointsToApp && !isLibsTypeContract) {
+          violations.push(
+            violation(
+              relativeFile,
+              `line ${imported.line} imports "${imported.specifier}" from apps/**; application imports are forbidden except the typed @taskdesk/libs contract (docs/01-architecture/monorepo-layout.md#package-boundaries)`,
+            ),
+          );
+        }
+        if (pointsOutOfUi) {
+          violations.push(
+            violation(
+              relativeFile,
+              `line ${imported.line} imports "${imported.specifier}" outside packages/ui; the design system must not depend on application or feature code`,
+            ),
+          );
+        }
+        if (pointsOutOfDomain) {
+          violations.push(
+            violation(
+              relativeFile,
+              `line ${imported.line} imports "${imported.specifier}" outside packages/domain; domain code must remain a pure leaf`,
+            ),
+          );
+        }
+        if (
+          owner.name === "@taskdesk/web" &&
+          targetWorkspace === "@taskdesk/api"
+        ) {
+          violations.push(
+            violation(
+              relativeFile,
+              `line ${imported.line} imports "${imported.specifier}" directly from apps/api; use the typed client boundary in packages/libs`,
+            ),
+          );
+        }
+        if (
+          PURE_LEAF_PACKAGES.has(owner.name) &&
+          targetWorkspace &&
+          targetWorkspace !== owner.name
+        ) {
+          violations.push(
+            violation(
+              relativeFile,
+              `line ${imported.line} imports workspace package "${imported.specifier}"; ${owner.name} is a documented pure leaf package`,
+            ),
+          );
+        }
+        if (
+          owner.name === "@taskdesk/domain" &&
+          !isTestSource(relativeFile) &&
+          !/\.config\.[^.]+$/.test(relativeFile) &&
+          !imported.specifier.startsWith(".") &&
+          !DOMAIN_ALLOWED_NODE_BUILTINS.has(imported.specifier)
+        ) {
+          violations.push(
+            violation(
+              relativeFile,
+              `line ${imported.line} imports I/O or server module "${imported.specifier}"; packages/domain is pure and has no I/O`,
+            ),
+          );
+        }
+        if (
+          owner.name === "@taskdesk/ui" &&
+          !isTestSource(relativeFile) &&
+          !relativeFile.includes("/.storybook/") &&
+          !/\.config\.[^.]+$/.test(relativeFile) &&
+          !/\.stories\.[^.]+$/.test(relativeFile)
+        ) {
+          const importedPackage = packageNameForSpecifier(imported.specifier);
+          if (importedPackage && !UI_RUNTIME_IMPORTS.has(importedPackage)) {
+            violations.push(
+              violation(
+                relativeFile,
+                `line ${imported.line} imports runtime dependency "${importedPackage}" outside the documented packages/ui boundary (React, Base UI, and design-system utilities)`,
+              ),
+            );
+          }
+        }
       }
     }
+  } finally {
+    snapshot?.dispose();
+    parser.close();
   }
 
   return { files, manifests, graph, cycles: findCycles(graph), violations };
@@ -561,8 +772,10 @@ const invokedDirectly =
 if (invokedDirectly) await main();
 
 export {
+  CREATE_REQUIRE_ALLOWLIST,
   findCycles,
   runtimeWorkspaceEdges,
   sourceImports,
+  WORKSPACE_EDGES,
   workspaceNameForSpecifier,
 };
