@@ -49,8 +49,8 @@ this change).
 
 ## Lightweight re-confirmation after branch update (2026-09-26)
 
-**Reviewed head:** e8ee753ad01c9492950337aa5d2ba86f52472009
-**Previously reviewed head:** 09cc00b9409a1aa0cd398fab211b1cdf990f4d24
+**Reviewed head:** `e8ee753ad01c9492950337aa5d2ba86f52472009`
+**Previously reviewed head:** `09cc00b9409a1aa0cd398fab211b1cdf990f4d24`
 **Reviewer:** Claude Opus 5.5 (`claude-opus-5-5[1m]`), fresh independent context; did not author, direct, or remediate this PR.
 **Tier:** lightweight confirmation (AGENTS.md review-tier table): confirmed by inspection that the change alters no authority or gate pass/fail semantics.
 **Verdict:** CLEAR. The three findings above still stand, unchanged and non-blocking.
