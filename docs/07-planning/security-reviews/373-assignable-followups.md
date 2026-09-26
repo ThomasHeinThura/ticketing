@@ -106,3 +106,25 @@ over the reviewed code head `34a4f23`, and it changed only this file.
   - `tests/api-integration/work-item-assignable.test.ts` passes 1 / 11.
 
 **Verdict at `a4172cf5087716474cf5af54d32cf8348dfd0124`: CLEAR.**
+
+## Merge-head attestation (Opus 5.5) — after #352 merged
+
+**Reviewed head:** `79396a861775ca245f2821ad6d5a1dae52eed661`
+
+This is a fresh Opus 5.5 context, 2026-09-26. It attests the `gh pr update-branch` merge of
+`main` at `9c490d76b2b46f92b83df9f93a1a40f34437cd1b` (#352: the env-read detector in
+`scripts/ci/lib/env-reads.mjs` and its tests, a reworded comment in `require-auth-secret.ts`,
+and docs) into the previously attested head `985bc6f`. `8a51415..9c490d7` is that one merge.
+
+- **Parents:** exactly (`985bc6f`, `9c490d7`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution. It is the only commit not on `main`.
+- **PR change unchanged:** `git diff 8a51415 985bc6f` and `git diff 9c490d7 79396a8` are
+  byte-identical (same sha256), and no file overlaps.
+- **Interaction with #352:** this PR's `apps/` changes add no `process`/`import.meta`
+  environment access. `pnpm check:env` exits 0 at `79396a8` with #352's detector: "29
+  environment read(s), every one attributable to configuration-reference.md", scanning 1020
+  files.
+- **Tests at `79396a8`** (packages built first): `apps/api test:unit` passes 59 files / 490
+  tests.
+
+**Verdict at `79396a861775ca245f2821ad6d5a1dae52eed661`: CLEAR.**
