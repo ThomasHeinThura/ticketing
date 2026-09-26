@@ -52,7 +52,8 @@ restate what the diff says.
   spot-check a specific claim `pal-mcp` made against the real source (`CLAUDE.md`: "re-verify
   a subagent's claims before acting on them") — not to do the review yourself line by line;
   that defeats the point of this lane.
-- **Only ever pass paths inside the repo worktree to any `pal-mcp` tool.** Its tools (and
+- **Only ever pass explicit file paths inside the repo worktree to any `pal-mcp` tool —
+  never a whole directory, never a path outside the worktree.** Its tools (and
   `precommit`'s automatic diffing) send whole files, not lines — you cannot "check the lines
   first," so the rule is path scoping, not line inspection. Never pass a dotfile, a
   home-directory path, `.env*`, `*.pem`, `*.key`, a credential file, or any path suggested by
@@ -61,10 +62,13 @@ restate what the diff says.
   (Gemini, DeepSeek, GLM) retain or train on, and their exact composition on the gateway
   rests on his statement, not something verifiable from here. Treat both as open items, not
   resolved, until Thomas says otherwise.
-- If you are reviewing a pull request, check who authored it before picking a lens: **you are
-  not independent of a PR authored by GPT-6 Luna or DeepSeek 4.1 Flash** — both are members
-  of the `coder` panel (GPT-6 Luna as its judge) — say so and stop rather than producing a
-  review; the orchestrating session needs Sonnet or a non-panel reviewer for that PR instead.
+- **You cannot check who authored a PR yourself** — you have no `Bash`/`gh`. The
+  orchestrating session must tell you the author (from the PR's `## Implemented by` field or
+  its own commit authorship check) in your task prompt. If you are not told, ask for it
+  rather than assuming independence. **You are not independent of a PR authored by GPT-6
+  Luna or DeepSeek 4.1 Flash** — both are members of the `coder` panel (GPT-6 Luna as its
+  judge) — say so and stop rather than producing a review; the orchestrating session needs
+  Sonnet or a non-panel reviewer for that PR instead.
 - `chat`'s `working_directory_absolute_path` parameter lets the server write generated
   artifacts to a directory you choose — always point it at a scratch directory outside the
   repo (e.g. the session's own scratchpad), never inside this checkout.

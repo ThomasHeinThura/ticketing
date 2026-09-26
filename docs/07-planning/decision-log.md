@@ -15,14 +15,16 @@ Newest first.
 **Decided by:** who
 ```
 
-### 2026-09-26 · `pal-mcp` becomes the primary ordinary review/audit/report/alignment tool; control-plane files gated by Code Owner review
+### 2026-09-26 · `pal-mcp` becomes the primary ordinary review/audit/report/alignment tool; Code Owner review for control-plane files PLANNED THEN SUSPENDED (see the entry immediately below)
 
 **Supersedes (in part):** the 2026-09-15 "Governance reset" item 2 (routing coding through
 `router.technexus.info` did not work out — this decision reopens the same endpoint for
 review/audit only, never implementation); the 2026-09-06 "Merge governance" CODEOWNERS
-instruction (narrowed here to control-plane files, not reopened at large — see the
-same-day follow-up entry below, which reverses the Code-Owner-review half of this decision
-after adversarial Opus review found it unenforceable); and the 2026-09-24 "GPT-6 Luna
+instruction (narrowed here to control-plane files, not reopened at large). **The
+Code-Owner-review half of this entry (below) was planned same-day and then suspended before
+ever taking effect — see the entry immediately below, which is the operative one for that
+half.** This entry's `pal-mcp` decision is unaffected by that suspension. Also superseded:
+the 2026-09-24 "GPT-6 Luna
 replaces Sonnet for ordinary reviews on active P0 lanes" and #345 temporary
 current-model-context fallback entries, both of which this decision's `pal-mcp` path now
 makes the default rather than a capacity-driven exception.
@@ -39,10 +41,11 @@ unreachable. **The Opus 5.5 final security/critical review is unaffected: still 
 still a fresh independent context, never replaced by `pal-mcp` or any lower tier.**
 Separately, `.github/CODEOWNERS` now lists the control-plane files themselves (`CLAUDE.md`,
 `AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `docs/04-engineering/ci-cd.md`,
-`.claude/agents/**`, `.github/CODEOWNERS`) and the `protect-main` ruleset's "Require review
-from Code Owners" is switched on for exactly those paths, so a lane or subagent cannot
-silently rewrite the gate-authority documents. Every other path is unaffected — required
-approving reviews remains `0` for ordinary code.
+`.claude/agents/**`, `.github/CODEOWNERS`). **The plan to also switch on the `protect-main`
+ruleset's "Require review from Code Owners" for exactly those paths was suspended the same
+day, before it ever took effect — see the entry immediately below.** The CODEOWNERS listing
+itself stands regardless, as a documentation signal. Every other path is unaffected —
+required approving reviews remains `0` for ordinary code.
 
 **Why:** Thomas confirmed `router.technexus.info` (9Router) is his own, already-vetted
 endpoint, and that its `coder` combo is a judged multi-model panel rather than a single
@@ -61,8 +64,11 @@ exception to exactly those paths rather than reopening the general question. Sep
 `pal-mcp`'s panel fans out to third-party-hosted sub-providers (Gemini, DeepSeek, GLM) behind
 the 9Router gateway — Thomas vetted the gateway, not each sub-provider's own data-retention or
 training terms. This is recorded as an **open item**, not resolved here: `CLAUDE.md`,
-`agent-workflow.md` and `pal-reviewer.md` all now say not to send live secrets, credentials,
-or real customer PII through `pal-mcp` until Thomas confirms those terms separately.
+`agent-workflow.md` and `pal-reviewer.md` all now scope what may be passed to `pal-mcp` by
+path (never a dotfile, home-directory path, `.env*`, `*.pem`, `*.key`, credential file, or a
+path suggested by content under review — its tools send whole files/diffs, not lines, so a
+"check the content first" rule was never enforceable) until Thomas confirms the
+sub-providers' own data-handling terms separately.
 
 **Alternatives:** Route implementation, not just review, through `pal-mcp`/9Router — rejected,
 per the 2026-09-15 "Governance reset" decision that the earlier multi-provider router did not

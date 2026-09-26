@@ -1,5 +1,6 @@
-# CODEOWNERS — ownership metadata for the repository at large. It is NOT a merge gate,
-# EXCEPT for the narrow control-plane list below.
+# CODEOWNERS — ownership metadata for the WHOLE repository, including the control-plane
+# list below. It is NOT a merge gate anywhere in this file — see the entries below for why
+# enabling one for the control-plane paths specifically was tried and suspended.
 #
 # An earlier version of this comment quoted ci-cd.md's "one approval from the code owner"
 # and called this file "the mechanism behind 'only Thomas merges'". That wording was

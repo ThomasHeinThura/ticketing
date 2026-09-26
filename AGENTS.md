@@ -310,7 +310,11 @@ row it actually turned out to be.
 
 At each stage's completion (P0 through P7), before it is claimed done (rule 5), run one
 broader Opus red-team pass across everything merged for that stage since the last finalizer
-— this mirrors the existing go-live red-team decision (2026-09-05). This is **additive**: it
+— this mirrors the existing go-live red-team decision (2026-09-05). **The finalizer must be a
+fresh, independent context that did not orchestrate or merge that stage's own PRs** — same
+freshness requirement as any other Opus review, not relaxed because it runs less often. **If
+Opus is unreachable for the finalizer, the stage is not claimed done** — the same capacity
+rule as the per-PR gate, not a lower bar. This is **additive**: it
 never substitutes for, delays, or batches the per-PR Opus security review already required at
 merge time for any security-scope change (auth, permissions, migrations, CI/gate machinery,
 dependency graph) — that gate fires per candidate, at merge, always. The review-tier table

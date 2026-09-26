@@ -1,11 +1,13 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
-**2026-09-26 orchestrator continuation — `main` at `8a51415` (#374).** The decision
-authorizing one-at-a-time follow-up PRs for #354, #341, #362, #367 and #371 is now on `main`;
-#354 is the first implementation in progress. Its regression reproductions pass in the focused
-Postgres integration file (17/17); it still needs the full applicable checks, independent review,
-and exact-head Opus 5.5 review before merge. #362 already has an open candidate (#373), which
-remains behind #354 in the recorded sequence.
+**2026-09-26 orchestrator continuation — `main` at `ecd88b0` (#373; corrected from a stale
+`8a51415`/#374 reading of this line — verified live via `git log`, not carried forward from
+memory).** The decision authorizing one-at-a-time follow-up PRs for #354, #341, #362, #367
+and #371 is now on `main`; #354 is the first implementation in progress. Its regression
+reproductions pass in the focused Postgres integration file (17/17); it still needs the full
+applicable checks, independent review, and exact-head Opus 5.5 review before merge. #362's
+candidate **#373 is merged** (`ecd88b0`) — the line previously here calling it "still open"
+was stale.
 
 **P0 #10 continuation:** PR #352 **merged** (`9c490d7`, confirmed on `main`), with an Opus
 delta review recorded (`d9d4ada`, `ba854cf`) — the line previously here claiming it still
@@ -1467,8 +1469,21 @@ identity boundary for GitHub to enforce (decision log, 2026-09-26,
 requests), an overbroad secrets/PII guardrail (rewritten as path-scoping, since `pal-mcp`'s
 tools send whole files/diffs, not lines), several remaining stale cross-references in
 `agent-workflow.md`, and process gaps in the PR record itself (wrong template, stale claims).
-All fixed on the branch; a fresh confirmation Opus pass is next, then the actual PR template
-sections and a committed security-review note, before merge.
+All fixed at `53aefae`, including the PR template rewrite and a committed security-review
+note. **A second, fresh Opus confirmation pass at `53aefae` also returned REQUEST CHANGES**:
+most F1–F10 fixes held up, but two were only partially done (F3's path-scoping rule was
+missing from `agent-workflow.md`; F6's phase-finalizer freshness/capacity wording was missing
+from `AGENTS.md`'s own subsection, only added to `CLAUDE.md`'s table), the decision-log
+entries and `.github/CODEOWNERS`'s header read as asserting the Code-Owner-review reversal as
+settled fact rather than pending Thomas's confirmation (now reworded), and the PR body still
+failed the template check on 3 counts (Opus model-name prefix, merged checklist headings,
+missing independent-review checkbox — same class of mistake independently caught on PR #377
+at the same time). All being fixed now; a third Opus pass will be a light confirmation only,
+per this repo's own "stop patching, change altitude" guidance, not a full re-audit. **Open
+question flagged by both Opus passes, not yet resolved:** whether the two ordinary Sonnet
+reviews recorded at `6d7a812` are sufficient cover for the substantive delta since (which
+reverses the Code-Owner-review plan and adds the panel-independence rule), or whether a fresh
+ordinary review is also needed before merge — orchestrating session's call, not yet made.
 
 ### PR #377 — UAT deploy verified end-to-end through the real host Traefik
 
