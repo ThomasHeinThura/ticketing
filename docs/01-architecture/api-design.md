@@ -304,6 +304,20 @@ After that:
 - The OpenAPI diff (`oasdiff`) runs in CI against `main`, and a breaking change without a
   version bump fails the build.
 
+**Before `2.0.0`, a deliberate breaking change is allowed only through the reviewed
+allowlist** (decision log, 2026-09-25): an entry in `scripts/ci/openapi-approved-breaks.json`,
+naming the exact operation, oasdiff rule and oasdiff finding fingerprint, added in the
+**same PR** that makes the break, with its own **Opus security review** on that PR (the
+file is in the security-review scope — [ci-cd.md](../04-engineering/ci-cd.md)) and a
+reference to the decision-log entry that authorized it. **Entries approve only the break in
+the PR that adds them — delete them after that PR merges.** Once an entry's PR lands, that
+entry is on `origin/main` and stops approving anything; a later PR making a similar break on
+the same route needs its own new entry and its own Opus review, never a leftover one. Any
+finding that no NEW entry in the current PR matches still fails CI, and a new entry that
+matches no finding fails too, as a stale or typo'd entry. From the first stable `v2.0.0` (or
+later) release tag on, this allowlist must be empty — a breaking change is versioned with a
+new path segment as above, never allowlisted.
+
 ## Typed client
 
 `packages/libs` exports a **Hono RPC client** typed from the server's exported `AppType`.

@@ -72,6 +72,21 @@ export const workItemPolicies = {
     reach: "required",
   },
 
+  // List the workspace's work-item types -- the create dialog's Type picker
+  // (`WI-1`; see `./controllers/list-work-item-types.ts`). A workspace-scoped READ:
+  // any member who can read the workspace can read the type catalogue the workspace
+  // itself seeded. Managing types is `workspace:manage_settings` (work-items.md §
+  // Permissions), a different action on a different route. `workspaceAccess.fromParam`
+  // loads the workspace by the path's own id and verifies membership before this
+  // capability check runs -- `scopeSource: "request"`, the same shape the create
+  // policy above uses for a resource named by the request path.
+  "GET /api/workspace/{workspaceId}/work-item-types": {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+
   // Update a work item's fields (`WI-7`/`WI-8`). Same reach shape as the read route above
   // -- `requireWorkItemReach()` resolves the row by key before the handler runs, and the
   // controller (`update-work-item.ts`) re-scopes its own write by the SAME key+workspaceId
@@ -91,6 +106,19 @@ export const workItemPolicies = {
     reach: "required",
   },
 
+  // The person-picker feed (`assignment.md` § API). Read-only, addressed by the project
+  // container: `workspaceAccess.fromProject()` loads it (a real DB lookup), so
+  // `scopeSource: "row"`, the same shape as the sibling list route above. Capability is
+  // `work_item:read` (the spec's route table). The ACTOR-dependent filtering (roster vs
+  // self-only vs empty) is response shaping inside the handler, not a second capability:
+  // reading the roster is `work_item:read`; choosing anyone but yourself at WRITE time is
+  // `work_item:assign`, which `POST /assign` enforces.
+  "GET /api/projects/{projectId}/assignable": {
+    capability: "work_item:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
   // Assign or reassign a work item (`assignment.md` § API; `AS-1`/`AS-2`). PRIMARY is
   // `work_item:assign`; the spec's own alternate branch is `orSelfTarget` on the PARSED
   // body -- a caller holding only `work_item:update` may assign the item TO THEMSELVES
