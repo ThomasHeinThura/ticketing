@@ -7,6 +7,17 @@ starts. Each follow-up PR must wait for this decision entry to reach `main` befo
 The P0 #352 and #361 candidates remain in progress and require their own exact-head Opus
 reviews.
 
+**2026-09-26 continuation (P0 deployability and #354 S1):** The authorized shadow-event
+follow-up now withholds request-supplied workspace IDs unless legacy authorization allowed
+the request or a loaded row supplied the ID; Postgres regression cases cover denied and
+legacy-allowed requests. Its first isolated image boot exposed that the runtime image omitted
+`@taskdesk/domain`, which esbuild leaves external. The image now includes that workspace
+manifest and build output; a fresh Postgres 18 migration, application-role startup, container
+health check, and liveness/readiness probes pass. This addresses the discovered #11 runtime
+packaging defect, but #11 remains open for clean-machine three-host deployment, multi-arch
+signed image verification, and runbook validation. PR #354 S1 still needs fresh ordinary and
+Opus 5.5 reviews; P0 #352 and #361 remain in their separate exact-head review paths.
+
 **2026-09-25 orchestrator snapshot — `main` at `714a653`.** Merged since the 2026-09-24
 snapshot, each with every required check green on the exact head, an independent ordinary
 review and an Opus 5.5 review of that head: #340 (`9060512`, create work-item dialog), #341
