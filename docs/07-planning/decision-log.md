@@ -17,6 +17,16 @@ Newest first.
 
 ### 2026-09-26 · `pal-mcp` becomes the primary ordinary review/audit/report/alignment tool; control-plane files gated by Code Owner review
 
+**Supersedes (in part):** the 2026-09-15 "Governance reset" item 2 (routing coding through
+`router.technexus.info` did not work out — this decision reopens the same endpoint for
+review/audit only, never implementation); the 2026-09-06 "Merge governance" CODEOWNERS
+instruction (narrowed here to control-plane files, not reopened at large — see the
+same-day follow-up entry below, which reverses the Code-Owner-review half of this decision
+after adversarial Opus review found it unenforceable); and the 2026-09-24 "GPT-6 Luna
+replaces Sonnet for ordinary reviews on active P0 lanes" and #345 temporary
+current-model-context fallback entries, both of which this decision's `pal-mcp` path now
+makes the default rather than a capacity-driven exception.
+
 **Decision:** `pal-mcp` (MCP tool suite: `analyze`, `codereview`, `secaudit`, `debug`,
 `refactor`, `testgen`, `precommit`, `consensus`, `thinkdeep`, `tracer`, `chat`, `apilookup`,
 `challenge`), using its `coder` model — a fusion panel on Thomas's own 9Router gateway
@@ -69,12 +79,39 @@ different trust boundaries, and the docs now say so explicitly rather than stayi
 it (found by independent Sonnet review of this very PR, #376).
 
 **Follow-up:** the `protect-main` ruleset's "Require review from Code Owners" toggle is not
-yet flipped on (deliberately deferred, so it doesn't retroactively gate other already-open
-PRs against the pre-narrowing `* @ThomasHeinThura` CODEOWNERS). Owner: the orchestrating
-session, immediately after PR #376 merges. If this line still says "not yet flipped" more than
-a few days after #376 merges, that is stale and should be corrected or actioned.
+yet flipped on. **The independent Opus review of PR #376 found a problem with this plan —
+see the next entry, PENDING THOMAS'S CONFIRMATION.**
 
 **Decided by:** Thomas, 2026-09-26, in session.
+
+### 2026-09-26 · Opus review finding: the Code Owner review toggle cannot provide real protection — PENDING THOMAS'S CONFIRMATION
+
+**Supersedes (pending confirmation):** the "Require review from Code Owners" half of the
+entry immediately above, and its follow-up planning to flip the ruleset toggle after PR #376
+merges. The CODEOWNERS path-narrowing itself (six control-plane files, not `*`) is not in
+question and stays either way.
+
+**Finding:** the independent Opus 5.5 review of PR #376 (exact head
+`efb29bee3084a3368ba59c2c5d733ea043c34e72`) found that this repo has exactly one collaborator
+(`ThomasHeinThura`), and every agent session acts through that same account's `gh` token —
+there is no separate identity for GitHub to check a Code Owner approval against. Two concrete
+consequences: (1) GitHub refuses to let a sole owner approve their own pull request under a
+zero-bypass ruleset, so every future PR touching these six paths would become permanently
+unmergeable; (2) the obvious-looking fix — a bypass actor for the repo-admin role — would
+bypass all 15 required status checks, not just this one.
+
+**Proposed correction, not yet Thomas-confirmed:** do not enable the toggle; keep
+`.github/CODEOWNERS`'s six-path list as documentation only, same status the rest of the repo
+already has under the 2026-09-06 decision; never add a bypass actor to route around this. The
+docs (`CLAUDE.md`, `AGENTS.md`, `agent-workflow.md`, `ci-cd.md`, `.github/CODEOWNERS`) have
+been updated on PR #376 to describe it this way rather than as an enabled gate, so they stop
+overclaiming an enforcement that was never actually turned on. A real fix — a separate,
+non-admin machine identity for agents — exists but is infrastructure only Thomas can set up;
+flagged to him, not implemented here.
+
+**Decided by:** finding is Opus's, from independent review; the correction above is the
+orchestrating session's proposed reading of that finding, reported to Thomas for confirmation
+or override — not a decision made in his place.
 
 ### 2026-09-26 · Phase finalizer Opus pass added per stage — additive, not a substitute for per-PR security-scope Opus review
 

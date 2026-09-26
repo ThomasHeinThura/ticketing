@@ -233,14 +233,15 @@ Required approving reviews is `0` for the repository at large, and that is still
 a bad merge in ordinary code are the review tiers below and the required status checks, not an
 approval count.
 
-**Since 2026-09-26, one narrow, deliberate exception:** `CODEOWNERS` also lists the
-control-plane files themselves (`CLAUDE.md`, `AGENTS.md`,
+**`CODEOWNERS` also lists the control-plane files themselves** (`CLAUDE.md`, `AGENTS.md`,
 `docs/04-engineering/agent-workflow.md`, `docs/04-engineering/ci-cd.md`, `.claude/agents/**`,
-`.github/CODEOWNERS`), and "Require review from Code Owners" is on for exactly those paths —
-so a lane or subagent cannot silently rewrite the documents that define the gates. See the
-decision log. Every other path remains ungated by approval count, exactly as the 2026-09-06
-decision intended; this is not a reopening of that decision, only a named carve-out for the
-files that describe the gates rather than pass through them.
+`.github/CODEOWNERS`) — as documentation, not a gate. A 2026-09-26 attempt to also turn on
+"Require review from Code Owners" for exactly those paths was reversed the same day: this
+repo has one collaborator, and every agent session acts through that same account's `gh`
+token, so there is no separate identity for GitHub to check an approval against — enabling it
+would only make these paths permanently unmergeable, not protect them. See
+`.github/CODEOWNERS`'s own header and the decision log. **Do not re-attempt the toggle, and
+never add a bypass actor to work around the deadlock it would create.**
 
 Never:
 

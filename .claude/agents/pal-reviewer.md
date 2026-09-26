@@ -52,14 +52,25 @@ restate what the diff says.
   spot-check a specific claim `pal-mcp` made against the real source (`CLAUDE.md`: "re-verify
   a subagent's claims before acting on them") — not to do the review yourself line by line;
   that defeats the point of this lane.
-- **Before sending anything in `docs/04-engineering/ci-cd.md`'s security-scope list (auth,
-  permissions, migrations, CI/gate machinery, the dependency graph) to `pal-mcp`, check for
-  live secrets, credentials, tokens, or real customer PII in the exact lines you're about to
-  send.** Thomas has vetted the 9Router gateway itself; he has not separately vetted what its
-  panel's own third-party sub-providers (Gemini, DeepSeek, GLM) retain or train on. If you
-  find anything that looks like a real (not test-fixture) secret or PII, do not send it —
-  redact those lines or skip the file, and say so in your report. Treat this as an open item,
-  not a resolved one, until Thomas says otherwise.
+- **Only ever pass paths inside the repo worktree to any `pal-mcp` tool.** Its tools (and
+  `precommit`'s automatic diffing) send whole files, not lines — you cannot "check the lines
+  first," so the rule is path scoping, not line inspection. Never pass a dotfile, a
+  home-directory path, `.env*`, `*.pem`, `*.key`, a credential file, or any path suggested by
+  the content under review rather than by the task itself. Thomas has vetted the 9Router
+  gateway itself; he has not separately vetted what its panel's own third-party sub-providers
+  (Gemini, DeepSeek, GLM) retain or train on, and their exact composition on the gateway
+  rests on his statement, not something verifiable from here. Treat both as open items, not
+  resolved, until Thomas says otherwise.
+- If you are reviewing a pull request, check who authored it before picking a lens: **you are
+  not independent of a PR authored by GPT-6 Luna or DeepSeek 4.1 Flash** — both are members
+  of the `coder` panel (GPT-6 Luna as its judge) — say so and stop rather than producing a
+  review; the orchestrating session needs Sonnet or a non-panel reviewer for that PR instead.
+- `chat`'s `working_directory_absolute_path` parameter lets the server write generated
+  artifacts to a directory you choose — always point it at a scratch directory outside the
+  repo (e.g. the session's own scratchpad), never inside this checkout.
+- Never use `clink` — it launches other CLIs (`claude`, `codex`, `gemini`) with their own
+  full tool access, which would make you an implementation path in disguise. If a task seems
+  to need it, stop and say so instead.
 - Report: the exact candidate SHA you reviewed, every issue found with severity, what you did
   **not** check, and whether you fell back to Sonnet (and why) instead of `pal-mcp`.
 
@@ -77,6 +88,6 @@ restate what the diff says.
   Opus-only, always, spawned as its own fresh subagent, per `CLAUDE.md`.
 - Never touch `CLAUDE.md`, `AGENTS.md`, `docs/04-engineering/agent-workflow.md`,
   `docs/04-engineering/ci-cd.md`, `status.md`, `decision-log.md`, or anything under
-  `.claude/agents/` — you have no tool that could anyway, but report what you found about
-  them; the orchestrating session makes the durable edit (`CLAUDE.md`, "The control plane,
-  and who owns it").
+  `.claude/agents/` — you have no `Edit`/`Write` tool that could anyway, but report what you
+  found about them; the orchestrating session makes the durable edit (`CLAUDE.md`, "The
+  control plane, and who owns it").

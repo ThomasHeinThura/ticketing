@@ -125,9 +125,15 @@ subagent's model **explicitly** at spawn time, and a deliberate, named, single-p
 spawn for the security/critical-review tier does not carry the accidental-fan-out risk the
 old rule existed to prevent. So:
 
-- **Every other subagent — implementation, ordinary review, alignment check — is Sonnet,
-  set explicitly at spawn.** Still no accidental inheritance, still no Opus review swarms,
-  still one implementation agent per active code slice as the default scale.
+- **Implementation subagents are Sonnet, set explicitly at spawn.** Still no accidental
+  inheritance, still one implementation agent per active code slice as the default scale.
+  Ordinary review, audit, reporting and the alignment check default to `pal-mcp` (see
+  "Model tiers" above, 2026-09-26), falling back to a fresh Sonnet context only when
+  `pal-mcp` is unreachable. **A `pal-mcp` `coder`-panel review does not count as independent
+  for a pull request authored by GPT-6 Luna or DeepSeek 4.1 Flash** — both are also members
+  of that panel (GPT-6 Luna as its judge), so the same rule that bans a context reviewing its
+  own work applies at one remove. For those authors, use Sonnet or the one lane agent not on
+  the panel, and have `## Reviewed by` name the actual reviewer, not just "pal-mcp".
 - **The final security/critical review may be an explicitly-spawned Opus subagent.** The
   constraint is on the *reviewing subagent's* independence, not on who is allowed to press
   spawn: any top-level session — Sonnet or Opus — may spawn it, **as long as the spawned
@@ -328,8 +334,9 @@ Prefer a skill over freehand work — it encodes decisions already made.
 
 Every pull request gets:
 
-1. **Independent review** — a fresh context, not the one that wrote it. Two Sonnet reviews
-   minimum for ordinary work, three for broad/high-coupling work
+1. **Independent review** — a fresh context, not the one that wrote it. Two reviewer
+   invocations minimum for ordinary work (`pal-mcp`'s `pal-reviewer`, or Sonnet as fallback —
+   see "Model tiers" above), three for broad/high-coupling work
    ([AGENTS.md § Review tiers](../../AGENTS.md#review-tiers)).
 2. **Automated gates** — everything in CI.
 3. **The required security/critical review**, Opus, when the change is in security scope.
@@ -345,12 +352,15 @@ does **not** require an approving review: **required approving reviews is `0`, a
 review from Code Owners is off** ([ci-cd.md](ci-cd.md#branching), decision log 2026-09-06) —
 deliberately, because a required approval from a one-person team documents a gate rather than
 providing one. `CODEOWNERS` lists only the control-plane files themselves — not `*` — so this
-holds for ordinary code exactly as before. **Since 2026-09-26, Code Owner review is on for
-exactly those control-plane paths** (`CLAUDE.md`, `AGENTS.md`, this file, `ci-cd.md`,
-`.claude/agents/**`, `.github/CODEOWNERS` itself), so a lane or subagent cannot silently
-rewrite the documents that define the gates — see the decision log. The control that
-actually stops a bad merge in ordinary code is steps 1–3 above plus the required status
-checks, not an approval count and not a single person holding the button.
+holds for ordinary code exactly as before. It also lists those paths (`CLAUDE.md`,
+`AGENTS.md`, this file, `ci-cd.md`, `.claude/agents/**`, `.github/CODEOWNERS` itself) as a
+documentation signal, not a gate: a 2026-09-26 attempt to enable "Require review from Code
+Owners" for them was reversed the same day, because this repo's single collaborator and
+shared agent credentials mean there is no real identity boundary for GitHub to enforce — see
+the decision log. **Do not re-attempt it, and never add a bypass actor to route around the
+deadlock it would create.** The control that actually stops a bad merge in ordinary code is
+steps 1–3 above plus the required status checks, not an approval count and not a single
+person holding the button.
 
 An agent reviewing its own work is worth very little; the same context that produced the
 mistake will not see it.

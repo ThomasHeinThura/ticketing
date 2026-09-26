@@ -7,12 +7,19 @@ Postgres integration file (17/17); it still needs the full applicable checks, in
 and exact-head Opus 5.5 review before merge. #362 already has an open candidate (#373), which
 remains behind #354 in the recorded sequence.
 
-**P0 #10 continuation:** PR #352's detector redesign now integrates #374's decision on `main`
-through merge-resolution commit `ac75ca2`; its final Opus 5.5 review must cover the updated
-head. PR #361's structural dependency checker at `4540cfd` was reviewed by three independent
-contexts. They found blocking fail-open cases for unlisted workspaces, aliased `createRequire`,
-and Vite aliases; a structural remediation is in progress. Neither candidate is merge-ready,
-and P0 remains open.
+**P0 #10 continuation:** PR #352 **merged** (`9c490d7`, confirmed on `main`), with an Opus
+delta review recorded (`d9d4ada`, `ba854cf`) — the line previously here claiming it still
+needed Opus review was stale; corrected 2026-09-26 after a background investigation checked
+`gh pr view 352` and `git merge-base --is-ancestor` directly rather than trusting this file.
+PR #361's structural dependency checker was reviewed by three independent contexts, found
+blocking fail-open cases (unlisted workspaces, aliased `createRequire`, Vite aliases), and a
+consolidated remediation at `0987c5d2` is now under a fresh exact-head review round. Issue
+#10 overall is far further along than its own unchecked scope boxes suggest: 24 of 38
+declared CI gates are enabled and green (`pnpm test:all --list`), and the 14 not-yet-enabled
+ones are each blocked on a named, unbuilt P1/P9 prerequisite (verified in
+`scripts/ci/test-all.mjs`'s own output), not neglect. `check:deps` (PR #361) is the one
+still-open implementation gap; the CODEOWNERS/branch-protection checkbox in issue #10's body
+is superseded by the 2026-09-06 and 2026-09-26 decisions, not pending.
 
 **2026-09-25 orchestrator snapshot — `main` at `714a653`.** Merged since the 2026-09-24
 snapshot, each with every required check green on the exact head, an independent ordinary
@@ -1443,20 +1450,41 @@ releases three blocked things at once: #192's cross-tenant gap, the RLS prototyp
 project purge. It also needs a **new** `UNIQUE (workspace_id, id)` on `work_item_type`, which
 does not exist today.
 
-### PR #376 — governance change, Opus pass held for usage capacity (not a downgrade)
+### PR #376 — governance change, Opus findings being remediated
 
 **PR #376** (`pal-mcp` becomes the ordinary review/audit/report/alignment tool; phase
-finalizer; control-plane CODEOWNERS) has cleared two independent Sonnet ordinary reviews at
-`0344469` (both initially returned REQUEST CHANGES; findings fixed in that same commit — see
-the PR for both full verdicts). Its required Opus security/gate-semantics pass has
-**deliberately not been commissioned yet**: this session's Claude weekly usage window was at
-99% (resets 2026-09-28) when the ordinary reviews landed, and Thomas explicitly chose to hold
-further Claude spend rather than risk the account-wide weekly cap hitting 100% mid-review.
-This is a capacity/timing choice, not a downgrade — no lower tier has been substituted, and
-the PR will not merge before Opus reviews the exact final SHA. **Also pending, tracked in the
-decision log's Follow-up line:** flipping the `protect-main` ruleset's "Require review from
-Code Owners" toggle, deferred until after #376 merges so it doesn't retroactively gate the
-other open PRs against the pre-narrowing CODEOWNERS.
+finalizer; control-plane CODEOWNERS) cleared two independent Sonnet ordinary reviews at
+`6d7a812` (both initially returned REQUEST CHANGES; findings fixed at `0344469`) and an
+additional status-only commit at `efb29be`. The required Opus security/gate-semantics pass
+ran at `efb29be` once the weekly Claude usage window reset and returned **REQUEST CHANGES**
+with real findings, the most significant being: the plan to enable "Require review from Code
+Owners" for the six control-plane paths does not actually work — this repo has one
+collaborator, and every agent session shares that account's `gh` token, so there is no
+identity boundary for GitHub to enforce (decision log, 2026-09-26,
+"Opus review finding: the Code Owner review toggle cannot provide real protection —
+**PENDING THOMAS'S CONFIRMATION**"). Also found and fixed: a real independence gap (the
+`coder` panel can't review its own panel members' — GPT-6 Luna's, DeepSeek's — pull
+requests), an overbroad secrets/PII guardrail (rewritten as path-scoping, since `pal-mcp`'s
+tools send whole files/diffs, not lines), several remaining stale cross-references in
+`agent-workflow.md`, and process gaps in the PR record itself (wrong template, stale claims).
+All fixed on the branch; a fresh confirmation Opus pass is next, then the actual PR template
+sections and a committed security-review note, before merge.
+
+### PR #377 — UAT deploy verified end-to-end through the real host Traefik
+
+Issue #11's deployment skeleton was mostly already built on `main`; verified live rather than
+trusted from its checklist. `scripts/deploy.sh local`'s core stack (Postgres, Valkey,
+migrations, app) boots healthy from scratch. `deploy/compose.uat.yml`, attached to this
+host's existing (Dokploy-managed) `dokploy-network` — the same mechanism v1's `taskdesk-uat`
+stack already uses successfully here — had a real bug: its Traefik routers referenced
+`@file` middlewares that only exist when Traefik loads this repo's own
+`deploy/traefik/dynamic/middlewares.yml`, which the shared Traefik instance does not load, so
+the router silently went `disabled`. Fixed by defining the same middleware values as
+`@docker` labels instead (matching v1's proven pattern). Verified end-to-end through the real
+Traefik: both `ticket-v2-uat.bimats.com` and `portal-v2-uat.bimats.com` return
+`{"status":"ok"}`. Ordinary review: **APPROVE**, not security-scope, no Opus needed. **Not
+done, outside this repo/host:** DNS for these hostnames, and the CloudFront origin
+`X-Forwarded-Proto` header the file's own comments already flag as an open item.
 
 ### Opus security reviews — capacity, not permission
 

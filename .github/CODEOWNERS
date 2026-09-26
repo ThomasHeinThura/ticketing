@@ -18,16 +18,28 @@
 # green on the exact candidate SHA. Lane/subagents still never merge, and no bypass of any
 # required check or review tier is authorized by this delegation.
 #
-# UPDATED 2026-09-26 (decision log, same date, "`pal-mcp` becomes the ordinary review/audit/
-# report/alignment tool; control-plane files gated by Code Owner review"): Thomas narrowly
-# reversed the 2026-09-06 "do not enable Require review from Code Owners" instruction, for
-# ONE reason — the gate-authority documents and subagent definitions themselves must not be
-# silently rewritten by a lane, a background subagent, or a tool routed through `pal-mcp`.
-# "Require review from Code Owners" is ON in the `protect-main` ruleset, but the paths below
-# are the ONLY entries in this file — every other path has no owner and is therefore
-# unaffected: ordinary PRs still need zero required approving reviews, exactly as the
-# 2026-09-06 decision intended. Do NOT widen this list back to `*` — that is the exact
-# configuration the 2026-09-06 decision rejected, for the reason recorded there.
+# ATTEMPTED then REVERSED same-day, 2026-09-26 (decision log, "`pal-mcp` becomes the ordinary
+# review/audit/report/alignment tool" and the follow-up entry the Opus review of PR #376
+# triggered): the paths below were meant to get Code Owner review as a real merge gate,
+# narrower than the 2026-09-06 decision's blanket "off". **"Require review from Code Owners"
+# was never actually enabled**, and the plan to enable it is now dropped: this repo has one
+# collaborator (`ThomasHeinThura`), and every agent session — including this one — acts
+# through THAT SAME account's `gh` token. There is no separate identity for "an agent" versus
+# "Thomas" for GitHub to check an approval against. Enabling the toggle would not stop an
+# agent from approving as Thomas; it would only make every future PR touching these paths
+# unmergeable (GitHub refuses letting a sole owner approve their own PR under a zero-bypass
+# ruleset), and the obvious-looking fix — adding a bypass actor — would blow a hole through
+# all required status checks, which is strictly worse than the status quo. **Never add a
+# bypass actor to `protect-main` to work around this; ask Thomas instead.**
+#
+# The paths below stay listed anyway, as a documentation signal of which files are
+# gate-authority documents worth Thomas's personal attention when he reviews a diff — not
+# because CODEOWNERS enforces anything for them today. A real fix exists (a separate,
+# non-admin machine identity — a bot user or GitHub App — for agents, distinct from Thomas's
+# own account) but that is infrastructure only Thomas can set up; it is not done here. Do NOT
+# widen this list back to `*` regardless — that is the exact configuration the 2026-09-06
+# decision rejected, for the reason recorded there, and narrowing it was never the part that
+# didn't work.
 #
 # `docs/07-planning/status.md` and `docs/07-planning/decision-log.md` are DELIBERATELY NOT
 # listed here even though CLAUDE.md calls them orchestrator-owned: they are meant to be kept

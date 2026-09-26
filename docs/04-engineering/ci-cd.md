@@ -570,12 +570,13 @@ main                    always deployable, protected
   protection it does not provide (decision log, 2026-09-06).
 - `CODEOWNERS` lists only the control-plane files themselves (`CLAUDE.md`, `AGENTS.md`,
   `agent-workflow.md`, this file, `.claude/agents/**`, `.github/CODEOWNERS` itself) — not
-  `*` — so the point above holds for every other path exactly as before. **Since 2026-09-26,
-  Require review from Code Owners is on for exactly those listed paths** (decision log,
-  2026-09-26), so those documents cannot be silently rewritten by a lane or subagent;
-  everywhere else, the ruleset and the required reviews above are what actually enforce a
-  merge. **The security review and design review requirements below are unaffected and
-  remain independent hard gates.**
+  `*` — so the point above holds for every other path exactly as before. A 2026-09-26
+  attempt to also enable "Require review from Code Owners" for exactly those listed paths
+  was reversed the same day: this repo's single collaborator and shared agent credentials
+  mean there is no identity boundary GitHub could actually enforce it against (decision log,
+  2026-09-26). **Do not re-attempt the toggle, and never add a bypass actor to route around
+  the deadlock it would create — ask Thomas instead.** The security review and design review
+  requirements below are unaffected and remain independent hard gates.
 
 ## Releases
 
