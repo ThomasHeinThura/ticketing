@@ -163,3 +163,15 @@ Each mutation was reverted afterwards, and `git diff --quiet HEAD` passed.
 
 - `git show --remerge-diff 8f2d109` is empty — clean automatic merge.
 - Brings in PR #381's already-reviewed changes (`shadow-context.ts`, `shadow-middleware.ts`), zero overlap with this PR's own asset/ws/invitation files.
+
+---
+
+## Lightweight re-confirmation after fourth branch update (2026-09-27)
+
+**Reviewed head:** `db8ce9bc898f3ade89dc6a7350eafac29240c7db`
+**Previously reviewed head:** `8f2d109690c36efc52dbe04b6e2f7b583d2f16e0`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR WITH FINDINGS, unchanged.
+
+- `git show --remerge-diff db8ce9b` is empty — clean automatic merge.
+- Brings in PR #382's already-reviewed changes (`scripts/ci/lib/env-reads.mjs` and its test), zero overlap with this PR's own asset/ws/invitation files.
