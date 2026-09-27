@@ -80,3 +80,53 @@ A fix for F1 (required) is being commissioned as a delta, with F2/F3 addressed i
 pass if cheap. F4/F5/F6 remain out of scope / correctly deferred, matching the reviewer's own
 recommendation. A fresh Opus pass is required on the new head — this is a code-changing fix,
 not a no-op mechanical reconfirmation.
+
+---
+
+## Security review — delta (2026-09-27)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `a88f2f71075bbc7a8`
+
+**Reviewed head:** `8a2b2b880de0812a93a0aee45f43e0d21456fea3`
+
+**Verdict: CLEAR WITH FINDINGS.** Neither finding blocks merge.
+
+**F1 confirmed closed — reproduced live.** Wrote a temporary test against a private
+`opus433d_test` database (`td-lane-pg`). After soft-deleting the project: bulk delete and
+bulk assign both return 200 with the item in `failed` ("Work item not found"), an empty
+`succeeded`, and the row genuinely unchanged (`deletedAt`, `assigneeId`, `version`,
+`updatedAt` all identical to before; no per-item audit row written). Single-item routes
+still correctly 404 — no regression. A mixed batch (one item in a live project, one in a
+deleted project) resolves each independently. Control case (project still live) still
+succeeds, confirming the failing case isn't failing by accident. Verified the fix is
+actually what makes the difference: reverted both controllers to their pre-fix state,
+confirmed the new regression tests then fail; restored the fix, confirmed they pass again.
+Test file deleted and scratch database dropped afterward.
+
+**N1 (non-blocking, new observation):** the fix's "read inside the same transaction"
+framing doesn't actually make it race-free — this codebase runs at Postgres's default
+READ COMMITTED isolation (confirmed: nothing overrides it; `delete-project.ts`'s own
+comment says so), and a project soft-delete only writes the `project` row, never
+`work_item`, so it isn't blocked by any lock the pre-check takes. In practice this is the
+same window `requireWorkItemReach()` already has for single-item routes (it also checks
+outside any transaction before the controller runs) — the fix doesn't create a new bypass
+or make anything worse than the existing single-item behavior, it just doesn't add a
+*stronger* guarantee than what already exists elsewhere. Optional hardening if ever wanted:
+`.for("share", { of: projectTable })` on delete's pre-check; assign's pre-read would need
+moving inside its transaction too. Not required now — matches existing codebase precedent.
+
+**N2 (cosmetic, non-blocking):** `assign-work-item.ts`'s new comment says "no relations are
+declared on these tables" — inaccurate (`workItemTableRelations` does declare `project`),
+but doesn't affect behavior. Fix the comment wording next time this file is touched; not
+worth a dedicated commit.
+
+**F2 confirmed accurate:** bulk-assigning an already-assigned item fails closed (goes to
+`failed`, original assignee unchanged) — correctly left as a documented design deferral, not
+a bug.
+
+**Full suites at this head:** work-item integration 18/18 files, 558/558 tests; full
+integration 98/98 files, 1302/1302 tests (1300 + 2 new); permissions 12/12 files, 82/82
+tests; API unit 60/60 files, 494/494 tests.
+
+No new blocking finding. Clear to merge once ordinary CI is green.
