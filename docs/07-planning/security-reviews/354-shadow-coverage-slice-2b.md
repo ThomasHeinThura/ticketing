@@ -353,3 +353,21 @@ Workspace packages were built first. The integration tests ran on a private data
 
 Before merge, `main` (`e311fce`, docs-only) must be merged into the branch, and the new head
 must get the usual merge-head attestation.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `db36bc8c6e1d38e5b9538151040f9ef16a01c6fb`
+**Previously reviewed head:** `bf4ba6924ebe3e0e9eed915b85048d6d518ac8b6`
+**Reviewer:** orchestrating session (mechanical verification, not a judgment-requiring re-review — see below for why this doesn't need a fresh Opus pass)
+**Tier:** lightweight confirmation (`AGENTS.md`'s review-tier table): the merge changes no authority or gate-semantics invariant.
+**Verdict:** CLEAR. The Opus findings above (R1, T1, I-a, I-b) still stand, unchanged and non-blocking.
+
+This confirms the branch-update merge `db36bc8c6e1d38e5b9538151040f9ef16a01c6fb` (parents `90b43a4b1c4a0d06f2fee1fae59f18a06877cd35` and `origin/main` `e311fce94e...`, #380).
+
+Independently verified:
+
+- `git show --remerge-diff db36bc8` is empty — a clean automatic merge with no conflict-resolution content.
+- `git diff 90b43a4b1c4a0d06f2fee1fae59f18a06877cd35..db36bc8c6e1d38e5b9538151040f9ef16a01c6fb --stat` touches exactly one file: `docs/05-operations/runbook.md` (+32, from #380, itself docs-only and outside security-review scope). No file in `apps/api/src/permissions/**` or any other security-scope path changed.
+- This matches the same pattern already used for #357's and #353's post-review branch updates.
