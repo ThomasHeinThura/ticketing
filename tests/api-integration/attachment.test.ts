@@ -418,6 +418,156 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     expect(rows).toHaveLength(0);
   });
 
+  it("a review finding (2026-09-27, B1): a declared no-signature-check MIME type unrelated to the file's extension is rejected at presign, before any bytes are uploaded", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    // Previously: text/plain (one of the four types magic-bytes.ts never sniffs, by
+    // design -- plain text has no reliable magic bytes) could be declared for a ".doc"
+    // upload, skipping the magic-byte check entirely regardless of the file's real bytes.
+    const response = await app.request(
+      `/api/work-items/${key}/attachments/presign`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filename: "malware.doc",
+          contentType: "text/plain",
+          size: 10,
+        }),
+      },
+    );
+    expect(response.status).toBe(400);
+    expect(await response.text()).toContain("not an allowed content type");
+
+    const rows = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.filename, "malware.doc"));
+    expect(rows).toHaveLength(0);
+  });
+
+  it("a review finding (2026-09-27, B2): a second PUT to the presigned upload URL after complete cannot replace the checked bytes -- the download still serves the original", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const presignResponse = await app.request(
+      `/api/work-items/${key}/attachments/presign`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filename: "photo.png",
+          contentType: "image/png",
+          size: PNG_BYTES.length,
+        }),
+      },
+    );
+    const presigned = (await presignResponse.json()) as {
+      attachmentId: string;
+      uploadUrl: string;
+      uploadHeaders: Record<string, string>;
+    };
+
+    const firstPut = await app.request(presigned.uploadUrl, {
+      method: "PUT",
+      headers: presigned.uploadHeaders,
+      body: PNG_BYTES,
+    });
+    expect(firstPut.status).toBe(204);
+
+    const completeResponse = await app.request(
+      `/api/attachments/${presigned.attachmentId}/complete`,
+      { method: "POST" },
+    );
+    expect(completeResponse.status).toBe(200);
+
+    // The object's row-stored key must have moved -- proof the finalize step actually ran,
+    // not merely that the response looked right.
+    const [readyRow] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, presigned.attachmentId));
+    expect(readyRow?.state).toBe("ready");
+    expect(readyRow?.objectKey).not.toBe(undefined);
+    expect(readyRow?.objectKey?.endsWith("/final/photo.png")).toBe(true);
+
+    // The exact replay the review used: the presigned URL (same key, same HMAC token)
+    // has not expired, so the write route itself still accepts a second PUT -- what
+    // matters is that this can no longer change what gets served.
+    const MALICIOUS_REPLACEMENT = Buffer.from(
+      "this would have silently replaced the checked bytes",
+    );
+    const secondPut = await app.request(presigned.uploadUrl, {
+      method: "PUT",
+      headers: presigned.uploadHeaders,
+      body: MALICIOUS_REPLACEMENT,
+    });
+    // The write route itself has no notion of "already completed" (it is a bare signed
+    // token, exactly like a real S3 presigned PUT) -- it succeeds, but only against the
+    // now-vacated pending key, which nothing serves from any more.
+    expect(secondPut.status).toBe(204);
+
+    const downloadResponse = await app.request(
+      `/api/attachments/${presigned.attachmentId}`,
+      { redirect: "manual" },
+    );
+    expect(downloadResponse.status).toBe(302);
+    const downloadLocation = downloadResponse.headers.get("location") ?? "";
+    const servedResponse = await app.request(downloadLocation);
+    expect(servedResponse.status).toBe(200);
+    const servedBytes = Buffer.from(await servedResponse.arrayBuffer());
+
+    // The proof: what is actually served is still the ORIGINAL bytes, not the replay.
+    expect(servedBytes.equals(PNG_BYTES)).toBe(true);
+    expect(servedBytes.equals(MALICIOUS_REPLACEMENT)).toBe(false);
+  });
+
+  it("a review finding (2026-09-27, B4): a custom role without work_item:read is refused the work item's attachment list, matching the single-attachment download route", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    // A second workspace member on a custom role holding ONLY workspace:read -- no
+    // work_item:read at all. This is the exact shape the review used to get 200 from the
+    // list route while the single-attachment download route correctly 403'd for the same
+    // identity.
+    const restrictedUser = requireRow(
+      await db
+        .insert(schema.userTable)
+        .values({
+          id: `user-${randomUUID()}`,
+          email: `restricted-${randomUUID()}@example.com`,
+          emailVerified: true,
+          name: "Attachment List Probe",
+        })
+        .returning(),
+      "restricted user",
+    );
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: workspace.id,
+      userId: restrictedUser.id,
+      role: "attachment-list-probe",
+      joinedAt: new Date(),
+    });
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: workspace.id,
+      role: "attachment-list-probe",
+      permission: JSON.stringify({ workspace: ["read"] }),
+    });
+
+    mockAuthenticatedSession(restrictedUser);
+    const listResponse = await app.request(
+      `/api/work-items/${key}/attachments`,
+    );
+    expect(listResponse.status).toBe(403);
+  });
+
   it("only the uploader may delete their own attachment (structural ownership check)", async () => {
     const { creator, workspace, project, type } = await setupProject();
     await addPersonForUser(creator.id);

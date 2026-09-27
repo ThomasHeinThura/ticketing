@@ -179,6 +179,24 @@ export function matchesKeyContext(
 }
 
 /**
+ * Issue #28 (attachments), B2 security-review fix (2026-09-27): the presigned upload URL
+ * `complete` validated stays valid (same key, same token) for the rest of its TTL, so
+ * without this a second PUT after `complete` could silently replace already-checked bytes.
+ * The fix moves the object to a key nothing presigned ever named, once `complete` accepts
+ * it -- this is the pure, driver-independent derivation of that final key from the pending
+ * one, so both drivers (and `complete-attachment.ts`) agree on the same transform without
+ * duplicating it. A stray second PUT to the old presigned URL after this runs just creates
+ * an orphaned object at the vacated pending key -- nothing ever serves from that key again,
+ * since the attachment row's own `object_key` is updated to the new one in the same
+ * transaction that marks it `ready`.
+ */
+export function toFinalAttachmentObjectKey(pendingKey: string): string {
+  const lastSlash = pendingKey.lastIndexOf("/");
+  if (lastSlash === -1) return `final/${pendingKey}`;
+  return `${pendingKey.slice(0, lastSlash)}/final${pendingKey.slice(lastSlash)}`;
+}
+
+/**
  * The pure core of upload-size validation, driver-independent. Each driver resolves its own
  * `maxBytes` (S3 from `S3_MAX_IMAGE_UPLOAD_BYTES`; filesystem from its own default, see
  * `filesystem.ts`) and calls through to this.

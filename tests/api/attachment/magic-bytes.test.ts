@@ -9,7 +9,10 @@
  * plain-text MIME types.
  */
 import { describe, expect, it } from "vitest";
-import { magicBytesMatchDeclaredMime } from "../../../apps/api/src/attachment/magic-bytes";
+import {
+  isMimeTypeAllowedForExtension,
+  magicBytesMatchDeclaredMime,
+} from "../../../apps/api/src/attachment/magic-bytes";
 
 const GARBAGE = Buffer.from("this is definitely not the right format");
 // Windows PE header ("MZ") -- the disguised-executable attack the review reproduced.
@@ -110,6 +113,43 @@ describe("magicBytesMatchDeclaredMime", () => {
     ).toBe(false);
     expect(
       magicBytesMatchDeclaredMime(GARBAGE, "application/x-totally-unknown"),
+    ).toBe(false);
+  });
+});
+
+describe("isMimeTypeAllowedForExtension (B1 security-review fix, 2026-09-27)", () => {
+  it("accepts the one declared MIME family each extension is allowed", () => {
+    expect(isMimeTypeAllowedForExtension("png", "image/png")).toBe(true);
+    expect(isMimeTypeAllowedForExtension("doc", "application/msword")).toBe(
+      true,
+    );
+    expect(isMimeTypeAllowedForExtension("txt", "text/plain")).toBe(true);
+  });
+
+  it("the exact disguised-executable bypass the review found: a no-signature-check MIME declared against an unrelated extension is now rejected at presign time", () => {
+    // Previously: text/plain (a NO_SIGNATURE_CHECK_MIME_TYPES entry, skipping the
+    // magic-byte check entirely) could be declared for a ".doc"/".tiff" upload, letting a
+    // disguised PE executable through regardless of its real bytes.
+    for (const [extension, disguisedAs] of [
+      ["doc", "text/plain"],
+      ["tiff", "text/csv"],
+      ["rtf", "application/json"],
+      ["docx", "text/markdown"],
+    ] as const) {
+      expect(isMimeTypeAllowedForExtension(extension, disguisedAs)).toBe(false);
+    }
+  });
+
+  it("is case-insensitive on both the extension and the declared MIME type", () => {
+    expect(isMimeTypeAllowedForExtension("PNG", "IMAGE/PNG")).toBe(true);
+    expect(
+      isMimeTypeAllowedForExtension("png", "image/png; charset=binary"),
+    ).toBe(true);
+  });
+
+  it("fails closed for an extension this table does not know about", () => {
+    expect(
+      isMimeTypeAllowedForExtension("exe", "application/octet-stream"),
     ).toBe(false);
   });
 });

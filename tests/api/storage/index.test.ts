@@ -7,6 +7,7 @@ import {
   deleteStorageObject,
   getPrivateObject,
   getStorageDriver,
+  toFinalAttachmentObjectKey,
   validateTaskAssetUploadInput,
 } from "../../../apps/api/src/storage/index";
 
@@ -148,5 +149,20 @@ describe("storage driver selector", () => {
     await expect(getPrivateObject(upload.key)).rejects.toThrow(
       /S3 uploads are not configured/,
     );
+  });
+});
+
+describe("toFinalAttachmentObjectKey (B2 security-review fix, 2026-09-27)", () => {
+  it("moves the final path segment under a sibling 'final' directory, leaving the rest of the key alone", () => {
+    expect(
+      toFinalAttachmentObjectKey(
+        "workspace/w1/work-item/wi1/attachment/a1/photo.png",
+      ),
+    ).toBe("workspace/w1/work-item/wi1/attachment/a1/final/photo.png");
+  });
+
+  it("never equals the pending key it was derived from", () => {
+    const pending = "workspace/w1/work-item/wi1/attachment/a1/notes.txt";
+    expect(toFinalAttachmentObjectKey(pending)).not.toBe(pending);
   });
 });

@@ -1,7 +1,9 @@
 import { Readable } from "node:stream";
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
   type S3ClientConfig,
@@ -319,6 +321,81 @@ export async function createAttachmentDownloadUrl(
   return getSignedUrl(client, command, {
     expiresIn: DEFAULT_DOWNLOAD_URL_TTL_SECONDS,
   });
+}
+
+/**
+ * Issue #28 (attachments), B3 security-review fix (2026-09-27): `HeadObjectCommand` gets
+ * the real stored size with no body transfer at all; a single ranged `GetObjectCommand`
+ * (`Range: bytes=0-N`) fetches only the bytes the magic-byte sniff actually needs. Neither
+ * call buffers the whole object -- the previous shape (`getPrivateObject` +
+ * `new Response(body).arrayBuffer()`) downloaded the entire object into memory just to
+ * check its size and look at the first 512 bytes.
+ */
+export async function getObjectSizeAndHeader(
+  key: string,
+  headerBytes: number,
+): Promise<{ contentLength: number | undefined; header: Buffer }> {
+  const config = getStorageConfig();
+  const client = getClient(config);
+
+  const head = await client.send(
+    new HeadObjectCommand({ Bucket: config.bucket, Key: key }),
+  );
+
+  if (headerBytes <= 0 || !head.ContentLength) {
+    return { contentLength: head.ContentLength, header: Buffer.alloc(0) };
+  }
+
+  const rangeEnd = Math.min(headerBytes, head.ContentLength) - 1;
+  const response = await client.send(
+    new GetObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+      Range: `bytes=0-${rangeEnd}`,
+    }),
+  );
+  if (!response.Body) {
+    throw new Error("Storage object body is missing.");
+  }
+
+  const bytes =
+    "transformToByteArray" in response.Body
+      ? await response.Body.transformToByteArray()
+      : new Uint8Array(
+          await new Response(response.Body as BodyInit).arrayBuffer(),
+        );
+
+  return { contentLength: head.ContentLength, header: Buffer.from(bytes) };
+}
+
+function encodeCopySourceKey(key: string): string {
+  return key.split("/").map(encodeURIComponent).join("/");
+}
+
+/**
+ * Issue #28 (attachments), B2 security-review fix (2026-09-27): the S3 equivalent of
+ * `filesystem.ts`'s `finalizeAttachmentObject` -- a plain presigned PUT has no way to be
+ * revoked once `complete` has validated the object, so the object is copied to a key that
+ * was never presigned and the original is deleted, rather than trusting the presigned PUT
+ * URL to stop working on its own.
+ */
+export async function finalizeAttachmentObject(
+  oldKey: string,
+  newKey: string,
+): Promise<void> {
+  const config = getStorageConfig();
+  const client = getClient(config);
+
+  await client.send(
+    new CopyObjectCommand({
+      Bucket: config.bucket,
+      CopySource: `${config.bucket}/${encodeCopySourceKey(oldKey)}`,
+      Key: newKey,
+    }),
+  );
+  await client.send(
+    new DeleteObjectCommand({ Bucket: config.bucket, Key: oldKey }),
+  );
 }
 
 export async function deleteS3Object(key: string): Promise<void> {

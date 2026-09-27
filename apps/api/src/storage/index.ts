@@ -26,6 +26,7 @@ import {
   sanitizePathSegment,
   type TaskImageUploadContext,
   type TaskImageUploadUrl,
+  toFinalAttachmentObjectKey,
 } from "./shared";
 
 export type {
@@ -46,6 +47,7 @@ export {
   parseBoolean,
   parsePositiveInt,
   sanitizePathSegment,
+  toFinalAttachmentObjectKey,
 };
 
 export type StorageDriverName = "filesystem" | "s3";
@@ -154,4 +156,35 @@ export async function createAttachmentDownloadUrl(
     filename,
     apiBaseUrl,
   );
+}
+
+/**
+ * Issue #28 (attachments), B3 security-review fix (2026-09-27) -- the object's real stored
+ * size (no body read) plus only its first `headerBytes` bytes (a bounded, ranged read),
+ * regardless of driver. See each driver's own comment for why this replaces buffering the
+ * entire object just to check a size and sniff a handful of magic bytes.
+ */
+export async function getObjectSizeAndHeader(
+  key: string,
+  headerBytes: number,
+): Promise<{ contentLength: number | undefined; header: Buffer }> {
+  if (getStorageDriver() === "s3") {
+    return s3Driver.getObjectSizeAndHeader(key, headerBytes);
+  }
+  return filesystemDriver.getObjectSizeAndHeader(key, headerBytes);
+}
+
+/**
+ * Issue #28 (attachments), B2 security-review fix (2026-09-27) -- moves a `complete`d
+ * object from its pending (presigned-writable) key to a final key nothing was ever
+ * presigned to write to, regardless of driver.
+ */
+export async function finalizeStorageObject(
+  oldKey: string,
+  newKey: string,
+): Promise<void> {
+  if (getStorageDriver() === "s3") {
+    return s3Driver.finalizeAttachmentObject(oldKey, newKey);
+  }
+  return filesystemDriver.finalizeAttachmentObject(oldKey, newKey);
 }

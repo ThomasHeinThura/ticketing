@@ -11,6 +11,7 @@ import {
 } from "../../database/schema";
 import { createAttachmentUploadUrl } from "../../storage";
 import { getFileExtension, sanitizePathSegment } from "../../storage/shared";
+import { isMimeTypeAllowedForExtension } from "../magic-bytes";
 
 export type PresignAttachmentInput = {
   workItemId: string;
@@ -129,6 +130,17 @@ export async function presignAttachment(input: PresignAttachmentInput) {
       message: extension
         ? `".${extension}" files aren't allowed.`
         : "Files with no extension aren't allowed.",
+    });
+  }
+
+  // B1 security-review fix (2026-09-27, AT-14): the declared contentType must itself be
+  // one this extension is allowed to declare -- otherwise a caller could pick one of the
+  // no-signature-check MIME types (text/plain, text/csv, text/markdown, application/json)
+  // for an unrelated extension (e.g. ".doc") and skip the magic-byte check entirely
+  // regardless of the file's real bytes.
+  if (!isMimeTypeAllowedForExtension(extension, contentType)) {
+    throw new HTTPException(400, {
+      message: `"${contentType}" is not an allowed content type for ".${extension}" files.`,
     });
   }
 

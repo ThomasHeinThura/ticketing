@@ -730,6 +730,73 @@ export async function readAttachmentDownloadObject(params: {
   return getPrivateObject(params.key);
 }
 
+/**
+ * Issue #28 (attachments), B3 security-review fix (2026-09-27): returns the object's real
+ * stored size (from `fs.stat`, no body read at all) alongside only its first `headerBytes`
+ * bytes (a bounded partial read), instead of `getPrivateObject` + buffering the entire
+ * object into memory just to check a size and sniff a handful of magic bytes -- the
+ * previous shape let one `complete` call on a multi-GB object exhaust process memory.
+ */
+export async function getObjectSizeAndHeader(
+  key: string,
+  headerBytes: number,
+): Promise<{ contentLength: number; header: Buffer }> {
+  const config = getFilesystemConfig();
+  const candidate = resolveWithinRoot(config.root, key);
+  await assertFileWithinRoot(candidate, config.root);
+
+  const stat = await fsp.stat(candidate).catch((error) => {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new StorageNotFoundError("Storage object not found.");
+    }
+    throw error;
+  });
+  if (!stat.isFile()) {
+    throw new StorageNotFoundError("Storage object not found.");
+  }
+
+  const length = Math.min(headerBytes, stat.size);
+  const header = Buffer.alloc(length);
+  if (length > 0) {
+    const fileHandle = await fsp.open(candidate, "r");
+    try {
+      await fileHandle.read(header, 0, length, 0);
+    } finally {
+      await fileHandle.close();
+    }
+  }
+
+  return { contentLength: stat.size, header };
+}
+
+/**
+ * Issue #28 (attachments), B2 security-review fix (2026-09-27): moves the object from its
+ * pending (presigned-writable) key to a final key nothing was ever presigned to write to.
+ * Same path-safety checks as every other write path in this module -- `oldKey` and `newKey`
+ * are both independently re-derived and re-verified, never trusted from a caller.
+ *
+ * ponytail: plain `fs.rename`, which requires both paths on the same filesystem/device --
+ * true for every path under one configured storage root. Add an EXDEV (cross-device)
+ * copy+unlink fallback if `TASKDESK_STORAGE_FILESYSTEM_ROOT` ever spans multiple mounts.
+ */
+export async function finalizeAttachmentObject(
+  oldKey: string,
+  newKey: string,
+): Promise<void> {
+  const config = getFilesystemConfig();
+  const oldCandidate = resolveWithinRoot(config.root, oldKey);
+  const newCandidate = resolveWithinRoot(config.root, newKey);
+
+  await assertFileWithinRoot(oldCandidate, config.root);
+
+  const newDir = path.dirname(newCandidate);
+  await assertNoSymlinkEscape(newDir, config.root);
+  await fsp.mkdir(newDir, { recursive: true });
+  await assertNoSymlinkEscape(newDir, config.root);
+
+  await fsp.rename(oldCandidate, newCandidate);
+}
+
 export async function deleteObject(key: string): Promise<void> {
   const config = getFilesystemConfig();
   const candidate = resolveWithinRoot(config.root, key);

@@ -78,6 +78,67 @@ const NO_SIGNATURE_CHECK_MIME_TYPES = new Set([
   "application/json",
 ]);
 
+/**
+ * B1 security-review fix (2026-09-27): the declared `contentType` was never checked
+ * against the file's own EXTENSION at presign time -- so declaring any of the four
+ * `NO_SIGNATURE_CHECK_MIME_TYPES` (which skip the magic-byte check entirely, by design,
+ * since plain text has no reliable magic bytes) let a caller attach that no-check MIME
+ * family to ANY allowed extension, including `.doc`/`.tiff`/etc, and have a disguised
+ * executable pass straight through regardless of the real bytes. Every extension
+ * `presign-attachment.ts`'s own `FALLBACK_ALLOWED_EXTENSIONS` names is mapped here to the
+ * one (or few) MIME type(s) that extension may legitimately declare; a declared
+ * `contentType` outside that set is rejected before a `pending` row is even created --
+ * fail closed the same way `magicBytesMatchDeclaredMime`'s own default now does.
+ */
+export const EXTENSION_MIME_TYPES: Record<string, readonly string[]> = {
+  jpg: ["image/jpeg"],
+  jpeg: ["image/jpeg"],
+  png: ["image/png"],
+  gif: ["image/gif"],
+  webp: ["image/webp"],
+  heic: ["image/heic"],
+  heif: ["image/heif"],
+  bmp: ["image/bmp"],
+  tiff: ["image/tiff"],
+  pdf: ["application/pdf"],
+  doc: ["application/msword"],
+  docx: [
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ],
+  xls: ["application/vnd.ms-excel"],
+  xlsx: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+  ppt: ["application/vnd.ms-powerpoint"],
+  pptx: [
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ],
+  odt: ["application/vnd.oasis.opendocument.text"],
+  ods: ["application/vnd.oasis.opendocument.spreadsheet"],
+  odp: ["application/vnd.oasis.opendocument.presentation"],
+  txt: ["text/plain"],
+  csv: ["text/csv"],
+  md: ["text/markdown"],
+  json: ["application/json"],
+  log: ["text/plain"],
+  rtf: ["application/rtf"],
+};
+
+/**
+ * `true` only when `declaredMimeType` is one of the MIME types this extension is actually
+ * allowed to declare. An extension with no entry here at all (reachable only if a God
+ * Mode admin adds an extension this table does not know about to `attachment_allowed_
+ * extensions`) fails closed -- `false`, not "skip the check" -- same reasoning as
+ * `magicBytesMatchDeclaredMime`'s own unregistered-signature default.
+ */
+export function isMimeTypeAllowedForExtension(
+  extension: string,
+  declaredMimeType: string,
+): boolean {
+  const mime = declaredMimeType.toLowerCase().split(";")[0]?.trim() ?? "";
+  const allowed = EXTENSION_MIME_TYPES[extension.toLowerCase()];
+  if (!allowed) return false;
+  return allowed.includes(mime);
+}
+
 function matchesSignature(buffer: Buffer, signature: Signature): boolean {
   const offset = signature.offset ?? 0;
   if (buffer.length < offset + signature.bytes.length) return false;

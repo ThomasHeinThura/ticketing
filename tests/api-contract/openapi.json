@@ -14057,6 +14057,16 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
+          "403": {
+            "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Work item not found",
             "content": {

@@ -98,10 +98,20 @@ const listWorkItemAttachmentsRoute = createRoute({
   path: "/work-items/{key}/attachments",
   tags: ["Attachments"],
   summary: "List a work item's attachments",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach(),
+    // B4 security-review fix (2026-09-27): this route only ever ran the reach check --
+    // no capability gate at all -- even though `attachment/policy.ts` declares
+    // `work_item:read` for it and the permission matrix fixture claims a caller without
+    // that capability gets 403. A custom role holding only `{"workspace":["read"]}` (no
+    // `work_item:read`) got 200 here while the single-attachment download route
+    // correctly 403'd for the same identity.
+    requireWorkspacePermission({ work_item: ["read"] }),
+  ] as const,
   request: { params: workItemKeyParam },
   responses: {
     200: jsonResponse("The work item's attachments", attachmentListSchema),
+    403: errorResponse("Missing work_item:read permission"),
     404: errorResponse("Work item not found"),
   },
 });
