@@ -523,3 +523,97 @@ S1, S2 and S5 are still closed. S3 is still tracked by #359. D1, D2 and D3 are u
 - `pull request template + security review` is failing at this head.
 - `integration - Postgres 18` was still pending when checked.
 - **Waivers:** none checked here.
+
+---
+
+## Delta review 4 (Opus 5.5): A1 fix confirmation
+
+**Reviewer:** Claude Opus 5.5 (`claude-opus-5-5[1m]`), a fresh independent context commissioned by the orchestrating session. It did not author, direct or remediate this change.
+**Reviewed head:** `c69976333c470ee0085de359ea34411d9115bc59`
+**Range reviewed:** `cbd18fc3ed1ea26f09254dc54b86565f2d7a0e1d..c69976333c470ee0085de359ea34411d9115bc59` (`cc64890` docs; `c699763` the fix, touching only `assign-work-item.ts` and `work-item-assign.test.ts`)
+**Date:** 2026-09-27
+**Verdict:** **CLEAR (security)** at `c69976333c470ee0085de359ea34411d9115bc59`. A1 is closed. One merge gate is not met: see G1 below.
+
+### The fix
+
+- `previousAssigneeId = input.expectedCurrentAssigneeId ?? null` (line 159). The pre-transaction `item.assigneeId` no longer feeds the audit `before`, the activity `oldValue`, the event or the response. `item.assigneeId` is now read only by the no-op planner and by the no-op early return.
+- This is the same value the UPDATE's WHERE clause matches (`expected === null ? IS NULL : = expected`). So whenever the UPDATE matches, it is the true prior holder.
+- **First assign:** `expectedCurrentAssigneeId` is `.nullable().optional()` with `.min(1)`, so it can only be absent, `null` or a non-empty string. Absent or `null` becomes `null`. That satisfies the response schema (`z.string().nullable()`) and is valid `JsonValue` for `canonicalRowHash`. A probe confirmed that the response carries `"previousAssigneeId": null` (the key is present) and that the audit row stores `before = {"assigneeId": null}`, with a verifying chain.
+
+### Independent reproduction (my own probe, through the HTTP route rather than the controller)
+
+- **Method:** a transaction holds `LOCK TABLE membership`. `POST /assign` is issued. I poll `pg_stat_activity` until the request is waiting on that lock, so it is parked after its pre-read (no sleep). The rival change then commits on autocommit, the lock is released, and every record is checked.
+
+| Probe | Fixed head | With the fix reverted |
+| --- | --- | --- |
+| P0: first assign, no race | `before` null, response null, chain ok | same |
+| P1: rival first→second commits; caller second→third | 200; response, audit `before`, activity `oldValue` and event all say `second`; chain ok | **red** (records `first`) |
+| P2: rival *unassigns*; caller assigns third unconditionally | 200; everything records `null` | **red** (records `first`) |
+| P3: caller's stale `expected = first` after the rival moved it to second | 409 with `currentAssigneeId = second`; no audit row, no event | same |
+| P4: rival first→second; caller asks second→second | 200, truthful but redundant: see A6 | **red** (records `first`) |
+
+### The implementer's red/green claim
+
+This is verified. With line 159 reverted to `item.assigneeId`, the new A1 test fails at `expect(result.previousAssigneeId).toBe(second.id)`, receiving `first`'s id. That is exactly the A1 symptom. With the line restored, it passes 17/17.
+
+### Mutations (each restored afterwards; `git status` clean)
+
+| Mutation | PR suite |
+| --- | --- |
+| Revert line 159 to `item.assigneeId` | **red** (the A1 test) |
+| Audit `before` alone from `item.assigneeId` | **red** (the A1 test) |
+| `projectId: null` | **red** |
+| Drop the `appendAuditLog` call | **red** (4) |
+| The targeted-reassign CAS `eq(assigneeId, expected)` → `true` | **red** |
+
+### Everything else from delta review 3
+
+The only non-docs change in the range is the one line and the new test. The earlier answers still hold:
+
+- forgery resistance: the actor comes from the session or API key, and the scope from the loaded row;
+- hash-chain compatibility;
+- the no-op case writes no audit row;
+- the advisory-lock order: row locks first, the audit lock last, inside the same transaction.
+
+### Suites at this head
+
+Run in a private worktree against a private database (`pr353a1c_test`); both were removed afterwards.
+
+| Suite | Result |
+| --- | --- |
+| `pnpm --filter @taskdesk/api typecheck` | pass (after `pnpm typecheck`, 9/9 tasks, builds the workspace packages) |
+| `pnpm lint` | 8/8 tasks, no fixes applied |
+| `work-item-assign.test.ts` alone | 17/17 |
+| API integration (full) | 92 files, **1252/1253**: AS-3 fails, see G1 (reproduced on 2 of 2 full runs) |
+
+### Findings
+
+#### A1: CLOSED
+
+#### G1: BLOCKS THE MERGE (a test defect, not a security finding; A5 is now observable). AS-3's audit assertion depends on row order
+
+- **Where:** `work-item-assign.test.ts`, the AS-3 targeted-reassign test. It reads the item's `audit_log` rows with no `orderBy` and takes `.slice(-1)`.
+- **The cause:** on PostgreSQL 18, the planner can answer `WHERE entity_id = …` with a skip scan of `audit_log_entity_type_entity_id_created_at_idx` (`created_at DESC`). `EXPLAIN` confirms that scan on this host. The last element is then the *oldest* row, the first assign with `before = null`.
+- **The result:** the assertion fails in the full suite locally, although the stored rows are correct. The same file passes alone, and CI's `integration - Postgres 18` passed at this head, so this depends on the query plan.
+- **The fix:** `.orderBy(schema.auditLogTable.seq)`, as the new A1 test already does. It is test-only.
+
+#### A6: NON-BLOCKING. Two residual stale-pre-read edges, neither leaving a false record
+
+- **A redundant write (P4):** if the holder moved to X after the pre-read and the caller sends `assigneeId = X` with `expected = X`, the no-op planner, working from the stale read, does not short-circuit. The UPDATE matches, the version bumps, and one audit row, one activity row and one event record X→X. They are truthful but redundant. Delta review 3's optional short-circuit (`expected === assigneeId`) would remove this.
+- **A misleading response:** the no-op early return still answers from the stale pre-read. It writes nothing, so no record is wrong, but its 200 response can name a holder who was already displaced.
+- **Carry this into #365 (unassign):** decide from the value the conditional write matched, never from the pre-read.
+
+### Earlier findings
+
+- **A2, A3 and A4:** unchanged; still non-blocking.
+- **A5:** superseded by G1.
+- **S1, S2 and S5:** still closed.
+- **S3:** still tracked by #359.
+- **D1, D2 and D3:** unchanged; still non-blocking.
+
+### Gates (not security findings)
+
+- **G1:** above. The fix changes the head, so the new head needs an exact-head re-attestation that its diff is only the `orderBy` line.
+- **Behind `main`:** the branch is `BEHIND` `origin/main` (`52c5aef`, six commits: #381, #382, #385, #386, #387, #388). None of them touches a PR file, and GitHub reports it `MERGEABLE`. The main-merge also changes the head, and needs the same re-attestation.
+- **Required checks:** `pull request template + security review` is failing at this head. Every other required check is green, including `integration - Postgres 18`.
+- **Waivers:** none checked here.
