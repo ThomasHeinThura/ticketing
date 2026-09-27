@@ -1,7 +1,11 @@
 import { APIError } from "better-auth/api";
 import { and, eq, inArray } from "drizzle-orm";
 import db from "../../database";
-import { workspaceTable, workspaceUserTable } from "../../database/schema";
+import {
+  workflowTable,
+  workspaceTable,
+  workspaceUserTable,
+} from "../../database/schema";
 import {
   formatBlockedWorkspacesMessage,
   hasOwnerRole,
@@ -71,9 +75,20 @@ export async function deleteAccountData(userId: string) {
   }
 
   if (plan.workspaceIdsToDelete.length > 0) {
-    await db
-      .delete(workspaceTable)
-      .where(inArray(workspaceTable.id, plan.workspaceIdsToDelete));
+    await db.transaction(async (tx) => {
+      // Same `ON DELETE RESTRICT` ordering problem `delete-workspace.ts` documents:
+      // `workflow` must go first, explicitly, so its cascade clears
+      // `workflow_version`/`workflow_transition`/`scheduled_transition` before the
+      // workspace delete cascades into the `state_template`/`role` rows those
+      // transitions restrict against.
+      await tx
+        .delete(workflowTable)
+        .where(inArray(workflowTable.workspaceId, plan.workspaceIdsToDelete));
+
+      await tx
+        .delete(workspaceTable)
+        .where(inArray(workspaceTable.id, plan.workspaceIdsToDelete));
+    });
   }
 
   if (plan.workspaceIdsToLeave.length > 0) {
