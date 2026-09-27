@@ -58,6 +58,15 @@ RUN pnpm install --frozen-lockfile
 # ---------------------------------------------------------------------------
 FROM deps AS build
 COPY . .
+# Vite inlines VITE_API_URL into the built JS at this step; it cannot be
+# changed later by a runtime env var. Empty is deliberate: this image serves
+# the API and the web bundle from the same origin (runtime stage, single
+# port), so apps/web/src/fetchers/get-api-url.ts and lib/auth-client.ts both
+# resolve an empty VITE_API_URL to a same-origin relative path. Leaving this
+# unset instead falls back to their hardcoded http://localhost:1337 dev
+# default, which every browser then tries to reach and fails.
+ARG VITE_API_URL=""
+ENV VITE_API_URL=${VITE_API_URL}
 RUN pnpm turbo build --ui=stream --filter=@taskdesk/api --filter=@taskdesk/web
 #   api: esbuild --bundle --platform=node --packages=external -> apps/api/dist/index.js
 #   web: vite build                                           -> apps/web/dist

@@ -62,7 +62,7 @@ const CUSTOM_RESOURCES = (
 
 const RESOURCE_LABELS: Record<string, string> = {
   project: "Projects",
-  task: "Tasks",
+  work_item: "Tasks",
   label: "Labels",
   workspace: "Workspace",
 };
@@ -91,23 +91,23 @@ const PERMISSION_LABELS: Record<
     label: "Share projects",
     description: "Make projects publicly accessible via share links.",
   },
-  "task:create": {
+  "work_item:create": {
     label: "Create tasks",
     description: "Create new tasks in any project.",
   },
-  "task:read": {
+  "work_item:read": {
     label: "View tasks",
     description: "View tasks across projects.",
   },
-  "task:update": {
+  "work_item:update": {
     label: "Edit tasks",
     description: "Edit task content, status, priority, due date, and labels.",
   },
-  "task:delete": {
+  "work_item:delete": {
     label: "Delete tasks",
     description: "Permanently delete tasks.",
   },
-  "task:assign": {
+  "work_item:assign": {
     label: "Assign tasks",
     description: "Assign tasks to other workspace members.",
   },

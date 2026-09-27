@@ -1140,7 +1140,7 @@
 			},
 			"resources": {
 				"project": "Proyek",
-				"task": "Tugas",
+				"work_item": "Tugas",
 				"label": "Label",
 				"workspace": "Ruang kerja"
 			},
@@ -1167,7 +1167,7 @@
 						"description": "Jadikan proyek dapat diakses publik melalui tautan berbagi."
 					}
 				},
-				"task": {
+				"work_item": {
 					"create": {
 						"label": "Buat tugas",
 						"description": "Buat tugas baru di proyek mana pun."

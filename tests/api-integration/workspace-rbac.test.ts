@@ -95,7 +95,7 @@ describe("API integration: workspace RBAC enforcement", () => {
   });
 
   describe("built-in roles", () => {
-    it("allows a member to create a task (member role grants task:create)", async () => {
+    it("allows a member to create a task (member role grants work_item:create)", async () => {
       const member = await createWorkspaceMember({ role: "member" });
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
@@ -108,7 +108,7 @@ describe("API integration: workspace RBAC enforcement", () => {
       expect(response.status).toBe(200);
     });
 
-    it("blocks a viewer from creating a task (viewer role lacks task:create)", async () => {
+    it("blocks a viewer from creating a task (viewer role lacks work_item:create)", async () => {
       const member = await createWorkspaceMember({ role: "viewer" });
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
@@ -130,7 +130,7 @@ describe("API integration: workspace RBAC enforcement", () => {
       expect(persisted).toBeUndefined();
     });
 
-    it("blocks a member from deleting a task (member role lacks task:delete)", async () => {
+    it("blocks a member from deleting a task (member role lacks work_item:delete)", async () => {
       const member = await createWorkspaceMember({ role: "member" });
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
@@ -151,7 +151,7 @@ describe("API integration: workspace RBAC enforcement", () => {
       expect(stillThere).toBeDefined();
     });
 
-    it("allows an admin to delete a task (admin role grants task:delete)", async () => {
+    it("allows an admin to delete a task (admin role grants work_item:delete)", async () => {
       const member = await createWorkspaceMember({ role: "admin" });
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
@@ -764,13 +764,13 @@ describe("API integration: workspace RBAC enforcement", () => {
   });
 
   describe("custom workspace roles", () => {
-    it("blocks a custom role that only grants task:read from creating a task", async () => {
+    it("blocks a custom role that only grants work_item:read from creating a task", async () => {
       const member = await createWorkspaceMember({ role: "readonly" });
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
       await createWorkspaceRoleRow(member.workspace.id, "readonly", {
-        task: ["read"],
+        work_item: ["read"],
         project: ["read"],
       });
 
@@ -781,13 +781,13 @@ describe("API integration: workspace RBAC enforcement", () => {
       expect(response.status).toBe(403);
     });
 
-    it("allows a custom role that grants task:create to create a task", async () => {
+    it("allows a custom role that grants work_item:create to create a task", async () => {
       const member = await createWorkspaceMember({ role: "creator" });
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
       await createWorkspaceRoleRow(member.workspace.id, "creator", {
-        task: ["create", "read"],
+        work_item: ["create", "read"],
         project: ["read"],
       });
 
@@ -799,14 +799,14 @@ describe("API integration: workspace RBAC enforcement", () => {
     });
 
     it("lets a workspace_role row override the built-in viewer permissions", async () => {
-      // viewer's compiled-in statements have no task:create. A workspace_role
-      // row for "viewer" with task:create should override and grant access.
+      // viewer's compiled-in statements have no work_item:create. A workspace_role
+      // row for "viewer" with work_item:create should override and grant access.
       const member = await createWorkspaceMember({ role: "viewer" });
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
       await createWorkspaceRoleRow(member.workspace.id, "viewer", {
-        task: ["create", "read", "update"],
+        work_item: ["create", "read", "update"],
         project: ["read"],
         workspace: ["read"],
       });
@@ -845,7 +845,7 @@ describe("API integration: workspace RBAC enforcement", () => {
         member.workspace.id,
         "partial",
         JSON.stringify({
-          task: ["create"],
+          work_item: ["create"],
           project: "not-an-array",
           weird: { nested: true },
         }),
@@ -882,7 +882,7 @@ describe("API integration: workspace RBAC enforcement", () => {
     });
   });
 
-  describe("resource coverage: task:update", () => {
+  describe("resource coverage: work_item:update", () => {
     it("allows a member to update a task", async () => {
       const member = await createWorkspaceMember({ role: "member" });
       const { project, columns } = await createProjectFixture({
@@ -1059,7 +1059,7 @@ describe("API integration: workspace RBAC enforcement", () => {
     });
   });
 
-  describe("resource coverage: task:assign", () => {
+  describe("resource coverage: work_item:assign", () => {
     it("blocks a member from assigning a task (assign is admin-tier)", async () => {
       const member = await createWorkspaceMember({ role: "member" });
       const { project, columns } = await createProjectFixture({

@@ -666,7 +666,7 @@
 			},
 			"resources": {
 				"project": "项目",
-				"task": "任务",
+				"work_item": "任务",
 				"label": "标签",
 				"workspace": "工作区"
 			},
@@ -693,7 +693,7 @@
 						"description": "可以分享项目"
 					}
 				},
-				"task": {
+				"work_item": {
 					"create": {
 						"label": "创建",
 						"description": "可以创建任务"
