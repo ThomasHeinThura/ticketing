@@ -7,9 +7,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * `scripts/ci/lib/../../..` — where the checkers live in THIS checkout. Used only as a
- * fallback (see `resolveRepoRoot` below): correct when `git rev-parse` cannot run at all
- * (no git binary, or the caller's cwd genuinely isn't inside a work tree), and relied on by
- * `scratch-repo.mjs`'s red probes for the same reason it existed before this fix.
+ * fallback (see `resolveRepoRoot` below): correct when the caller's cwd genuinely isn't
+ * inside any git work tree at all. `scratch-repo.mjs`'s red probes never exercise this path
+ * — every scratch directory is made a real git work tree first.
  */
 const scriptOwnRoot = path.resolve(here, "../../..");
 
@@ -40,8 +40,15 @@ function resolveRepoRoot() {
     if (output) return output;
   } catch (error) {
     const stderr = String(error?.stderr ?? "");
+    // Deliberately narrow: git's "cwd genuinely isn't inside any work tree" message is
+    // "not a git repository (or any of the parent directories)" (or "... up to mount
+    // point ..."). A broader `/not a git repository/i` also matches three OTHER exit-128
+    // messages — a worktree whose admin dir is gone, a `.git` file pointing at a missing
+    // directory, `GIT_DIR` set to a nonexistent path — all of which mean something is
+    // actually broken, not "there is genuinely no repo here." Matching those would
+    // silently fall back to the wrong root, the #399 bug again in a narrower disguise.
     const isNotAGitRepo =
-      error?.status === 128 && /not a git repository/i.test(stderr);
+      error?.status === 128 && /not a git repository \(or any/i.test(stderr);
     if (!isNotAGitRepo) {
       throw new Error(
         "repo.mjs: could not resolve the repository root via " +

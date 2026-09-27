@@ -35,11 +35,11 @@ after(cleanUpScratchRepos);
 const NODE = process.execPath;
 
 /** Evaluate a module snippet that imports from an ABSOLUTE path, with an independent cwd. */
-function evaluateAcross(cwd, code) {
+function evaluateAcross(cwd, code, env = {}) {
   const result = spawnSync(NODE, ["--input-type=module", "-e", code], {
     cwd,
     encoding: "utf8",
-    env: { ...process.env, GITHUB_BASE_REF: "main" },
+    env: { ...process.env, GITHUB_BASE_REF: "main", ...env },
   });
   if (result.status !== 0) {
     throw new Error(
@@ -47,6 +47,21 @@ function evaluateAcross(cwd, code) {
     );
   }
   return JSON.parse(result.stdout.trim().split("\n").pop());
+}
+
+/** Same as `evaluateAcross`, but for asserting the module load itself throws. */
+function evaluateAcrossExpectingFailure(cwd, code, env = {}) {
+  const result = spawnSync(NODE, ["--input-type=module", "-e", code], {
+    cwd,
+    encoding: "utf8",
+    env: { ...process.env, GITHUB_BASE_REF: "main", ...env },
+  });
+  if (result.status === 0) {
+    throw new Error(
+      `expected probe evaluation in ${cwd} to fail, but it exited 0:\n${result.stdout}`,
+    );
+  }
+  return result.stderr;
 }
 
 /** A scratch repo carrying a byte-for-byte copy of this branch's checker code. */
@@ -120,5 +135,40 @@ describe("repoRoot resolves against the caller's cwd, not the script's own locat
       scriptDir,
       "with no git work tree at all to resolve, the fallback must still find the checker's own checkout",
     );
+  });
+
+  it("throws, rather than silently falling back, when git itself is unrunnable (Opus review F2)", () => {
+    const scriptDir = scriptCheckout("a-script-owner-no-git-path");
+    const callerDir = scratchDir("repo-root-no-git-path-caller");
+    initRepo(callerDir);
+
+    const repoModule = path.join(scriptDir, "scripts/ci/lib/repo.mjs");
+    const stderr = evaluateAcrossExpectingFailure(
+      callerDir,
+      `import ${JSON.stringify(repoModule)};`,
+      // No `git` on PATH at all -- this must throw, not silently resolve to
+      // `scriptDir` the way "cwd genuinely isn't a work tree" correctly does.
+      { PATH: "" },
+    );
+
+    assert.match(stderr, /repo\.mjs: could not resolve the repository root/);
+  });
+
+  it("throws on a broken worktree ('not a git repository: <path>'), not just a missing one (Opus review F1)", () => {
+    const scriptDir = scriptCheckout("a-script-owner-broken-worktree");
+    const callerDir = scratchDir("repo-root-broken-worktree-caller");
+    // A `.git` FILE pointing at a gitdir that doesn't exist -- git's own message for
+    // this is "not a git repository: <path>", NOT "not a git repository (or any of the
+    // parent directories)". The old, broader `/not a git repository/i` regex matched
+    // this too and silently fell back to the wrong root; the narrowed regex must not.
+    write(callerDir, ".git", "gitdir: /nonexistent/gitdir/for/this/probe\n");
+
+    const repoModule = path.join(scriptDir, "scripts/ci/lib/repo.mjs");
+    const stderr = evaluateAcrossExpectingFailure(
+      callerDir,
+      `import ${JSON.stringify(repoModule)};`,
+    );
+
+    assert.match(stderr, /repo\.mjs: could not resolve the repository root/);
   });
 });
