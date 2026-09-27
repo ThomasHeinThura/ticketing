@@ -1,6 +1,7 @@
 import { evaluateAssigneeEligibility, planAssignment } from "@taskdesk/domain";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import {
   membershipTable,
@@ -202,6 +203,30 @@ export async function assignWorkItem(
       newValue: input.assigneeId,
     };
     await recordWorkItemActivity(tx, [activityRow]);
+
+    // Audit trail (audit-trail.md's action catalogue: "Where a domain event exists for
+    // the mutation, the audit action is that event's key" -- this route's own event,
+    // `work_item.assigned`, published below regardless of whether this was a first
+    // assign or a reassign). `projectId` is #344/AU-10's own point: a project-scoped
+    // mutation must record it so a workspace audit READ can be reach-filtered to the
+    // projects the reader can see. This is the first mutation route to call
+    // `appendAuditLog` -- #344 landing (PR #375, `audit_log.project_id`) is what
+    // unblocked it (decision log, 2026-09-23, "It must land before the first
+    // project-scoped audit writer merges"). Same transaction as the conditional UPDATE
+    // and the activity row above -- `appendAuditLog` takes its own
+    // `pg_advisory_xact_lock` internally (see `audit-writer.ts`'s doc comment), so
+    // nothing further is needed here for hash-chain serialisation.
+    await appendAuditLog(tx, {
+      actorId,
+      actorType,
+      workspaceId,
+      projectId: item.projectId,
+      action: "work_item.assigned",
+      entityType: "work_item",
+      entityId: item.id,
+      before: { assigneeId: previousAssigneeId },
+      after: { assigneeId: input.assigneeId },
+    });
 
     return {
       key: updated.key,
