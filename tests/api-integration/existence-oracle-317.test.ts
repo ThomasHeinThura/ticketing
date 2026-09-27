@@ -124,6 +124,30 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     expect(await foreign.text()).toBe("Asset not found");
   });
 
+  it("S1/S4: asset foreign and missing lookups use the same single database round trip", async () => {
+    // Before the fold, the asset row was fetched by id alone (1 query), then a
+    // separate `validateWorkspaceAccess` call ran for a foreign id only (2 more
+    // queries) -- an other-tenant id cost 3 round trips against a missing id's
+    // 1. `loadReachableAsset` (`authorize-asset-access.ts`) now folds
+    // `reachableWorkspacePredicate` into the same query as the row lookup, so
+    // both cases cost exactly one.
+    const { caller, asset } = await foreignAssetFixture();
+    mockAuthenticatedSession(caller.user);
+    const { app } = createApp();
+    const querySpy = vi.spyOn(getDatabasePool(), "query");
+
+    const foreign = await app.request(`/api/asset/${asset.id}`);
+    const foreignQueries = querySpy.mock.calls.length;
+    querySpy.mockClear();
+    const missing = await app.request("/api/asset/asset-does-not-exist");
+    const missingQueries = querySpy.mock.calls.length;
+
+    expect(foreign.status).toBe(404);
+    expect(missing.status).toBe(404);
+    expect(foreignQueries).toBe(1);
+    expect(missingQueries).toBe(foreignQueries);
+  });
+
   it("asset: unauthenticated callers retain the authentication response", async () => {
     const { asset } = await foreignAssetFixture();
     mockAnonymousSession();
@@ -447,5 +471,35 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     await compareResponses(foreign, missing);
     expect(foreign.status).toBe(401);
     expect(await foreign.text()).toBe("Unauthorized");
+  });
+
+  it("S1/S4: websocket foreign and missing lookups use the same single database round trip", async () => {
+    // Same fold as the asset route, applied to `/api/ws/:projectId`
+    // (`index.ts`): before, a foreign project ran the project lookup plus a
+    // separate `validateWorkspaceAccess` (3 queries); a missing one ran only
+    // the lookup (1). Both are now one query.
+    const { caller, project } = await foreignProjectFixture();
+    mockAuthenticatedSession(caller.user);
+    const { app } = createApp();
+    const headers = {
+      Connection: "Upgrade",
+      Upgrade: "websocket",
+      "Sec-WebSocket-Version": "13",
+      "Sec-WebSocket-Key": Buffer.from("the sample nonce").toString("base64"),
+    };
+    const querySpy = vi.spyOn(getDatabasePool(), "query");
+
+    const foreign = await app.request(`/api/ws/${project.id}`, { headers });
+    const foreignQueries = querySpy.mock.calls.length;
+    querySpy.mockClear();
+    const missing = await app.request("/api/ws/project-does-not-exist", {
+      headers,
+    });
+    const missingQueries = querySpy.mock.calls.length;
+
+    expect(foreign.status).toBe(401);
+    expect(missing.status).toBe(401);
+    expect(foreignQueries).toBe(1);
+    expect(missingQueries).toBe(foreignQueries);
   });
 });
