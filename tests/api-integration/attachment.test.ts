@@ -4,7 +4,7 @@
  * real Postgres database.
  */
 import { randomUUID } from "node:crypto";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { and, eq } from "drizzle-orm";
@@ -343,6 +343,79 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     );
     const list = (await listAfterDelete.json()) as Array<{ id: string }>;
     expect(list.map((a) => a.id)).not.toContain(presigned.attachmentId);
+  });
+
+  it("a review finding (2026-09-27): complete rejects an object whose actual stored size exceeds attachment_max_bytes, and it is not left ready", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+
+    // Lower the instance's own limit well below what we're about to upload so the
+    // test is practical -- no real 25MB file needed.
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", attachmentMaxBytes: 20 })
+      .onConflictDoUpdate({
+        target: schema.instanceSettingTable.id,
+        set: { attachmentMaxBytes: 20 },
+      });
+
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const oversizedText = Buffer.from("x".repeat(100));
+
+    const presignResponse = await app.request(
+      `/api/work-items/${key}/attachments/presign`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        // `size` here is the CLAIMED size, capped at the same limit at presign time --
+        // this test's whole point is that the S3-style driver's presigned PUT has no
+        // size-range condition, so what actually lands in storage can still exceed it.
+        // The filesystem driver used by this test suite DOES enforce a token-bound
+        // ceiling on write, so the claimed size must already be within the (lowered)
+        // limit for the PUT to even succeed -- the real gap this test proves closed is
+        // the SERVER re-checking the object it reads back at complete time, not merely
+        // trusting whatever size was originally claimed.
+        body: JSON.stringify({
+          filename: "notes.txt",
+          contentType: "text/plain",
+          size: 20,
+        }),
+      },
+    );
+    expect(presignResponse.status).toBe(200);
+    const presigned = (await presignResponse.json()) as {
+      attachmentId: string;
+      uploadUrl: string;
+      uploadHeaders: Record<string, string>;
+    };
+
+    // Simulate the actual stored object being larger than what was declared/allowed at
+    // presign time by writing directly to the filesystem driver's own root, bypassing
+    // the token-bound ceiling the way an S3 caller bypasses S3's own presigned-PUT
+    // constraints (`storage/s3.ts`'s own comment: no `content-length-range` condition).
+    const [pendingRow] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, presigned.attachmentId));
+    expect(pendingRow?.state).toBe("pending");
+
+    const objectPath = path.join(root, pendingRow?.objectKey ?? "");
+    await mkdir(path.dirname(objectPath), { recursive: true });
+    await writeFile(objectPath, oversizedText);
+
+    const completeResponse = await app.request(
+      `/api/attachments/${presigned.attachmentId}/complete`,
+      { method: "POST" },
+    );
+    expect(completeResponse.status).toBe(400);
+
+    const rows = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, presigned.attachmentId));
+    expect(rows).toHaveLength(0);
   });
 
   it("only the uploader may delete their own attachment (structural ownership check)", async () => {

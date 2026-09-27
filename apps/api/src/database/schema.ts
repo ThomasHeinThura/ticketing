@@ -2500,6 +2500,16 @@ export const attachmentTable = pgTable(
     index("attachment_pending_idx")
       .on(table.state)
       .where(sql`${table.state} = 'pending'`),
+    // `data-model.md`'s own "Indexing" section for `attachment`: a `(workspace_id,
+    // state)` composite (workspace-scoped state listing) and `(organisation_id)` partial
+    // (the per-organisation storage-quota sum).
+    index("attachment_workspaceId_state_idx").on(
+      table.workspaceId,
+      table.state,
+    ),
+    index("attachment_organisationId_idx")
+      .on(table.organisationId)
+      .where(sql`${table.organisationId} is not null`),
     check(
       "attachment_state_allowed",
       sql`${table.state} in ('pending', 'ready', 'deleted')`,

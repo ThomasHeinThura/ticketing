@@ -1,12 +1,16 @@
 import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { attachmentTable } from "../../database/schema";
+import { attachmentTable, instanceSettingTable } from "../../database/schema";
 import { deleteStorageObject, getPrivateObject } from "../../storage";
 import { recordWorkItemActivity } from "../../work-item/activity";
 import { magicBytesMatchDeclaredMime } from "../magic-bytes";
 
 const SNIFF_BYTES = 512;
+
+// Same fallback as `presign-attachment.ts`'s own `FALLBACK_MAX_BYTES` -- only used when
+// the singleton `instance_setting` row is somehow missing (never true after a real boot).
+const FALLBACK_MAX_BYTES = 25 * 1024 * 1024;
 
 export type CompleteAttachmentInput = {
   attachmentId: string;
@@ -69,6 +73,26 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
       .where(eq(attachmentTable.id, attachmentId));
     throw new HTTPException(400, {
       message: `The uploaded file's content does not match its declared type (${attachment.mimeType}).`,
+    });
+  }
+
+  // Re-check the actual stored size against `attachment_max_bytes` -- `presign`'s own
+  // check only bounds the CLAIMED size, and the S3 driver's presigned PUT has no
+  // `content-length-range` condition (`storage/s3.ts`'s own comment), so a caller could
+  // otherwise upload an arbitrarily large object and have it recorded as "ready".
+  const [settings] = await db
+    .select({ maxBytes: instanceSettingTable.attachmentMaxBytes })
+    .from(instanceSettingTable)
+    .limit(1);
+  const maxBytes = settings?.maxBytes ?? FALLBACK_MAX_BYTES;
+
+  if (buffer.length > maxBytes) {
+    await deleteStorageObject(attachment.objectKey).catch(() => {});
+    await db
+      .delete(attachmentTable)
+      .where(eq(attachmentTable.id, attachmentId));
+    throw new HTTPException(400, {
+      message: `The uploaded file is ${Math.ceil(buffer.length / (1024 * 1024))} MB; the limit is ${Math.floor(maxBytes / (1024 * 1024))} MB.`,
     });
   }
 

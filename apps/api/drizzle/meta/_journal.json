@@ -519,6 +519,13 @@
 			"when": 1790531505457,
 			"tag": "0073_attachments",
 			"breakpoints": true
+		},
+		{
+			"idx": 74,
+			"version": "7",
+			"when": 1790534760199,
+			"tag": "0074_add_attachment_indexes",
+			"breakpoints": true
 		}
 	]
 }
