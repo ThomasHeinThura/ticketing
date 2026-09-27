@@ -2344,7 +2344,13 @@
 				}
 			},
 			"compositePrimaryKeys": {},
-			"uniqueConstraints": {},
+			"uniqueConstraints": {
+				"workspace_role_workspace_id_role_unique": {
+					"name": "workspace_role_workspace_id_role_unique",
+					"nullsNotDistinct": false,
+					"columns": ["workspace_id", "role"]
+				}
+			},
 			"policies": {},
 			"checkConstraints": {},
 			"isRLSEnabled": false
