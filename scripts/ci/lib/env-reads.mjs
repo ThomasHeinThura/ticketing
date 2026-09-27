@@ -643,6 +643,22 @@ export function findEnvReadsInSourceFile(sourceFile) {
   const lines = text.split("\n");
   let reads = [];
 
+  // Top-level `export`-modified variable names, collected once so a later plain
+  // reassignment (`x = process;`) can be charged as a module-boundary escape too —
+  // `handleBindingDeclaration`'s own `exported` check only sees the declaration site.
+  const exportedNames = new Set();
+  for (const statement of sourceFile.statements) {
+    if (
+      statement.kind !== ts.SyntaxKind.VariableStatement ||
+      !hasExportModifier(statement)
+    )
+      continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (declaration.name.kind === ts.SyntaxKind.Identifier)
+        exportedNames.add(declaration.name.text);
+    }
+  }
+
   const positionOf = (node) =>
     sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
 
@@ -846,7 +862,11 @@ export function findEnvReadsInSourceFile(sourceFile) {
           node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
           node.left.kind === ts.SyntaxKind.Identifier
         ) {
-          handleBindingDeclaration(node.left, node.right, false);
+          handleBindingDeclaration(
+            node.left,
+            node.right,
+            exportedNames.has(node.left.text),
+          );
         }
         break;
       case ts.SyntaxKind.ExportDeclaration: {
