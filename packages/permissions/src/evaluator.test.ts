@@ -653,6 +653,73 @@ describe("evaluatePolicy", () => {
     ).toBe(false);
   });
 
+  it("orOwner with row.assignee_id: only the current holder clears it, and only with the branch capability (assignment.md's DELETE branch)", () => {
+    const policy: Policy = {
+      capability: "work_item:assign",
+      scope: "work_item",
+      scopeSource: "row",
+      reach: "required",
+      orOwner: {
+        predicate: "row.assignee_id === identity.personId",
+        capability: "work_item:update",
+      },
+    };
+    const holder = identity({
+      authority: [grant({ capabilities: ["work_item:update"] })],
+    });
+
+    // Holds `work_item:update` AND is the row's current assignee → allowed.
+    expect(
+      evaluatePolicy(
+        policy,
+        context({
+          identity: holder,
+          row: { assigneeId: "person-1" },
+          scope: WORK_ITEM_SCOPE,
+        }),
+      ).allowed,
+    ).toBe(true);
+
+    // Holds the branch capability but is NOT the current holder → refused. The OR
+    // branch is the row predicate; the capability alone was never the point.
+    expect(
+      evaluatePolicy(
+        policy,
+        context({
+          identity: holder,
+          row: { assigneeId: "someone-else" },
+          scope: WORK_ITEM_SCOPE,
+        }),
+      ).allowed,
+    ).toBe(false);
+
+    // The current holder WITHOUT the branch capability → refused too (a conjunction,
+    // not a bypass).
+    expect(
+      evaluatePolicy(
+        policy,
+        context({
+          identity: identity(),
+          row: { assigneeId: "person-1" },
+          scope: WORK_ITEM_SCOPE,
+        }),
+      ).allowed,
+    ).toBe(false);
+
+    // An unassigned row has no holder, so the branch is false rather than vacuously
+    // true (`row.assignee_id === identity.personId` must not match null).
+    expect(
+      evaluatePolicy(
+        policy,
+        context({
+          identity: holder,
+          row: { assigneeId: null },
+          scope: WORK_ITEM_SCOPE,
+        }),
+      ).allowed,
+    ).toBe(false);
+  });
+
   it("orSelfTarget lets a member self-assign, and does not let a viewer", () => {
     const policy: Policy = {
       capability: "work_item:assign",
