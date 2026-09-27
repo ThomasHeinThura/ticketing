@@ -187,3 +187,15 @@ Each mutation was reverted afterwards, and `git diff --quiet HEAD` passed.
 
 - `git show --remerge-diff 5ef9fec` is empty — clean automatic merge.
 - Brings in only `docs/07-planning/status.md` (#385), docs-only, outside security-review scope, zero overlap with this PR's own files.
+
+---
+
+## Lightweight re-confirmation after sixth branch update (2026-09-27)
+
+**Reviewed head:** `b5146080922bac1d61cd107b97ea81dab1d7b989`
+**Previously reviewed head:** `5ef9fec4be17ee454ad20ff564c139ba75cd545f`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR WITH FINDINGS, unchanged.
+
+- `git show --remerge-diff b514608` is empty — clean automatic merge.
+- Brings in only `docs/07-planning/decision-log.md` (#386) and this PR's own already-committed review note — docs-only, zero overlap with this PR's own asset/ws/invitation files.
