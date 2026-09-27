@@ -181,11 +181,18 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // the transaction above has committed -- matching every existing `publishEvent`
   // caller's own after-commit placement (`create-task.ts`, `create-comment.ts`) -- so a
   // subscriber (webhook delivery, an automation trigger) never observes an event for a
-  // row it cannot yet read back. `source` is hardcoded `"agent"`: this route requires
+  // row it cannot yet read back.
+  //
+  // S2 (issue #298, PR #292's Opus review): `source` is derived from the same
+  // `actorType` `resolveActor` (`work-item/index.ts`) already computed for this
+  // request, not hardcoded -- an API-key-authenticated create is `"api"`, per
+  // `events.md`'s enum (`portal | agent | api | automation | import`); every other
+  // actor this route ever sees is a cookie-session person (`resolveActor`'s own doc
+  // comment: this route only ever sees a person or an API key, never
+  // `automation`/`system`), which stays `"agent"` -- this route requires
   // `work_item:create` via workspace membership (`index.ts`'s own file comment), i.e.
   // the staff-facing create path, not a customer-portal intake flow, which does not
-  // exist yet -- flagged as a judgment call in this PR's body, since `events.md`'s
-  // `source` enum has no "this is the only creation surface today" case.
+  // exist yet.
   // `visibility: "public"` is fixed, not derived per-request: `resolveVisibility`'s
   // `PUBLIC_PAIRS` has `(created, null)` unconditionally (`activity.ts`), so a
   // `work_item.created` event -- one per row, always verb `created`, no field -- is
@@ -198,7 +205,7 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     typeId: created.typeId,
     stateId: created.stateId,
     requesterId: created.requesterId,
-    source: "agent",
+    source: actorType === "api_key" ? "api" : "agent",
     visibility: "public",
     actorId,
     actorType,
