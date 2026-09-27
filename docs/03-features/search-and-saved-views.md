@@ -132,7 +132,7 @@ GET  /api/views/{id}/count                     saved_view:read (cached 30 s)
 | Case | Behaviour |
 | --- | --- |
 | View references a deleted label or state | The chip renders "(deleted)" and can be removed. The view still runs |
-| Shared view whose owner leaves | Ownership transfers to a team lead (`team_member.is_lead`), or to the workspace if the team has none — done synchronously as part of `IP-15`'s deactivation flow ([identity-provisioning.md](identity-provisioning.md)), not a separate scheduled job |
+| Shared view whose owner leaves | Ownership transfers to a team lead (`team_member.is_lead`), or to the workspace if the team has none — this is the same deactivation behaviour [teams.md](teams.md)'s `TM-8` already states for a team's shared views ("ownership of their shared views transfers to a lead, else to the workspace"), not a separate mechanism for this spec to define |
 | View returns out-of-reach items for a different viewer | Filtered per viewer. Two people running one view legitimately see different results |
 | 50,000 matches | Cursor pagination; the count is an estimate above 10,000 and says so |
 | Search query with only stop words | Returns recent items with an explanation rather than nothing |
@@ -163,4 +163,4 @@ None.
 ## Related
 
 - [Views](views.md) · [API design](../01-architecture/api-design.md) · [Intake queue](intake-queue.md) ·
-  [Identity provisioning](identity-provisioning.md) · [Reports and dashboards](reports-and-dashboards.md)
+  [Teams](teams.md) · [Reports and dashboards](reports-and-dashboards.md)

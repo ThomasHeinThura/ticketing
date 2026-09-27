@@ -61,6 +61,10 @@
 | Low | `AT-6` "Every download writes an audit row" — with `audit_log` retained 12 months and downloads being frequent, this is a volume decision with no stated action name. | Name the action (`attachment.download`) and confirm the retention policy is intended to cover it. |
 | Low | `AT-9` "PDFs preview in a sandboxed viewer" — no CSP/sandbox requirements stated, though `security-model.md` presumably owns them. | Link to the security model's sandbox requirements. |
 
+---
+
+## 7. `search-and-saved-views.md` — P1
+
 ## 9. `agile.md` — P5
 
 **Verdict: ready-with-fixes** (P5, so the gaps are not near-term blockers, but one directly contradicts the data model)
