@@ -107,3 +107,14 @@ already-reviewed unique-violation-exact-match fix, zero overlap with this PR's o
 `apps/api/drizzle/meta/0070_snapshot.json` between the last reviewed head
 (`795eeb5515ba3aa415a5b024c2d2369602280deb`) and this one — the intervening commits bring in
 #408's already-reviewed keyboard-shortcuts fix, zero overlap with this PR's own files.
+
+---
+
+## Lightweight re-confirmation after branch update, round 6 (2026-09-27)
+
+**Reviewed head:** `604d92918b322a4d484c378b6f6de8754e18fd36`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on `apps/api/src/database/schema.ts` and
+`apps/api/drizzle/meta/0070_snapshot.json` between the last reviewed head
+(`f623253a4981eb30f79078f183225c13084b0ff6`) and this one — the intervening commits bring in
+#411's already-reviewed `pr-body.mjs` fix, zero overlap with this PR's own files.
