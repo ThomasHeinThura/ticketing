@@ -77,3 +77,14 @@ last reviewed head and this one.
 `apps/api/src/work-item/controllers/create-work-item.ts` between the last reviewed head
 (`4f7277e0c0a5f55a935b4bf2424848ff58a585c2`) and this one — the intervening commits bring in
 #405's already-reviewed schema-drift fix, zero overlap with this PR's own files.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `c89ad69305a0db22e52f80cda7e148dd36a8883b`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on `apps/api/src/work-item/activity.ts` and
+`apps/api/src/work-item/controllers/create-work-item.ts` between the last reviewed head
+(`f3896db13291e43f3c8deed0fb9f858bf0be8c3b`) and this one — the intervening commits bring in
+#413's already-reviewed check-ui fix, zero overlap with this PR's own files.
