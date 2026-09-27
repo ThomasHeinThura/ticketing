@@ -1,17 +1,6 @@
 import { expect } from "vitest";
 import { axe } from "vitest-axe";
 
-// vitest-axe@0.1.0's own type augmentation targets a global `Vi.Assertion`
-// namespace from older vitest versions, which vitest 4 no longer has (its
-// `expect.extend` extension point is `@vitest/expect`'s `Matchers<T>`
-// interface instead). Augment that directly rather than depend on the
-// upstream package's stale types.
-declare module "vitest" {
-  interface Matchers<T> {
-    toHaveNoViolations(): T;
-  }
-}
-
 /**
  * Asserts that a rendered DOM subtree has no axe-core accessibility
  * violations. Pass `baseElement` (the default from `render()`, which is
@@ -24,8 +13,17 @@ declare module "vitest" {
  * component fragment rather than a page with header/main/footer landmarks,
  * so it would otherwise fail on every single fragment for a reason unrelated
  * to the component under test.
+ *
+ * Asserts directly against axe's own `results.violations` array rather than
+ * a custom `toHaveNoViolations()` matcher. A previous version registered
+ * that matcher via a `declare module "vitest"` ambient augmentation, which
+ * `scripts/ci/check-deps.mjs`'s workspace-attribution walk picked up as a
+ * declaration belonging to `@taskdesk/ui`, misattributing every
+ * `import ... from "vitest"` elsewhere in the workspace to this package.
+ * Asserting on the plain result object needs no augmentation of a
+ * third-party module's types at all.
  */
 export async function expectNoA11yViolations(root: Element): Promise<void> {
   const results = await axe(root, { rules: { region: { enabled: false } } });
-  expect(results).toHaveNoViolations();
+  expect(results.violations).toEqual([]);
 }
