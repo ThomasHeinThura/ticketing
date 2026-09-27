@@ -736,6 +736,22 @@ response, 2b may load the missing reach facts with extra reads without adding re
 
 **Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation. There was one option that meets the recorded requirement. The Slice 2 lane surfaced the gaps.
 
+### 2026-09-23 · P3 ordinary reviews may use fresh GPT-6 contexts when Sonnet is unavailable
+
+**Decision:** For the P3 identity/portal candidate, use two fresh, independent GPT-6 reviewer
+contexts in place of Sonnet ordinary reviewers when Sonnet capacity is unavailable. Record
+the substitution in the pull request and keep the required independent Opus security review
+as a separate final gate; this decision does not authorize merge without Opus.
+
+**Why:** The implementation can be reviewed by available independent contexts without
+holding ordinary review idle, while preserving the security review's required model tier.
+
+**Alternatives:** Wait for Sonnet before ordinary review. Deferred by Thomas's explicit
+instruction for this candidate only. Treat GPT-6 as Opus or waive the security review.
+Rejected: Opus remains mandatory and cannot be replaced by this decision.
+
+**Decided by:** Thomas, 2026-09-23.
+
 ### 2026-09-23 · Built-in role names are reserved; a built-in grant needs a genuine seeded row (`workspace_role.is_system`); existing data is reported, not rewritten (#318)
 
 **Decision:** Every `BUILT_IN_ROLES` key is reserved as a custom workspace role name. It is normalised the same way as the existing `owner` check and gets the same refusal. The legacy check (`require-workspace-capability.ts`) and the adapter (`resolve-identity.ts`) grant a built-in role's capabilities only to `owner`, or to a `workspace_role` row with `is_system = true`, through one shared predicate (`isGenuineBuiltInRoleGrant`). Migration `0068` adds `is_system` and **backfills `true` for every existing `viewer`/`member`/`admin` row**. `seedDefaultWorkspaceRoles()` repeats that repair on every boot. Without the backfill, every existing admin, member and viewer would have lost their built-in capabilities on deploy. PR #322's ordinary review found this; CI had missed it because it always migrates an empty database.
