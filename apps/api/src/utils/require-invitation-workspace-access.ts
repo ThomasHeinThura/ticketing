@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
@@ -44,38 +44,54 @@ export function requireInvitationWorkspaceAccess(idParam = "id") {
       throw new HTTPException(404, { message: "Invitation not found" });
     }
 
-    c.set("workspaceId", row.workspaceId);
+    // #317 S3 (follow-up to #307's own S3 finding on this exact file): without
+    // this, an invitation whose workspace the caller can't reach falls through
+    // to `requireWorkspaceMembership`'s 403 "You don't have access to this
+    // workspace", while a nonexistent invitation id 404s above -- an existence
+    // oracle across every workspace, for whoever holds an old invitation id.
+    //
+    // Checked HERE, directly, rather than by wrapping `next()` in a
+    // try/catch and remapping whatever it throws: Hono's own `compose()`
+    // (`hono/dist/compose.js`) attaches the app's `onError` handler to
+    // EVERY middleware frame, so a 403 thrown two frames down
+    // (`requireWorkspaceMembership`) is already converted into a Response
+    // by the time `await next()` resolves here -- there is no exception left
+    // for an outer `catch` to see. Checking membership in this same frame,
+    // before calling `next()`, sidesteps that entirely.
+    //
+    // This mirrors `requireWorkspaceMembership`'s own query (a real
+    // `workspace_member` row, deliberately NO instance-admin bypass -- see
+    // that file's header comment and the 2026-09-08 decision-log entry,
+    // "the instance-admin bypass is not blessed on S4 mutation routes")
+    // rather than `reachableWorkspacePredicate` (`workspace-access-
+    // middleware.ts`), which DOES admin-bypass: folding that one in here
+    // would let a non-member instance admin's request resolve `workspaceId`
+    // via the bypass and then still 403 at `requireWorkspaceMembership` --
+    // reopening exactly this oracle for that caller. Running the identical
+    // no-bypass check here instead means a non-member (admin or not) gets
+    // the same 404 an unknown invitation id gives. `requireWorkspaceMembership`
+    // still runs after `next()`, redundantly re-confirming the same row for
+    // every caller who reaches it -- it is not removed from the route, so
+    // any future change to its own check is inherited automatically.
+    const userId = c.get("userId");
+    if (userId) {
+      const [membership] = await db
+        .select({ userId: schema.workspaceUserTable.userId })
+        .from(schema.workspaceUserTable)
+        .where(
+          and(
+            eq(schema.workspaceUserTable.userId, userId),
+            eq(schema.workspaceUserTable.workspaceId, row.workspaceId),
+          ),
+        )
+        .limit(1);
 
-    try {
-      return await next();
-    } catch (error) {
-      // #317 S3 (follow-up to #307's own S3 finding on this exact file): without
-      // this, an invitation whose workspace the caller can't reach falls through
-      // to `requireWorkspaceMembership`'s 403 "You don't have access to this
-      // workspace", while a nonexistent invitation id 404s above -- an existence
-      // oracle across every workspace, for whoever holds an old invitation id.
-      //
-      // NOT fixed by folding `reachableWorkspacePredicate` into the lookup above,
-      // unlike the asset/ws routes (`authorize-asset-access.ts`, `index.ts`'s
-      // `/ws/:projectId`): that predicate admin-bypasses, but
-      // `requireWorkspaceMembership` deliberately does NOT (see its own header
-      // comment and the decision log's 2026-09-08 entry, "the instance-admin
-      // bypass is not blessed on S4 mutation routes"). Folding it here would let
-      // an instance-admin non-member's request resolve `workspaceId` via the
-      // bypass, then still 403 at `requireWorkspaceMembership` -- reopening
-      // exactly this oracle for that caller. Remapping only this exact 403
-      // message instead preserves that no-bypass semantics for every reachable
-      // case, the same message-based remap `authorize-asset-access.ts` and
-      // `workspace-access-middleware.ts` (pre-#307) already use, and masks only
-      // the existence bit.
-      if (
-        error instanceof HTTPException &&
-        error.status === 403 &&
-        error.message === "You don't have access to this workspace"
-      ) {
+      if (!membership) {
         throw new HTTPException(404, { message: "Invitation not found" });
       }
-      throw error;
     }
+
+    c.set("workspaceId", row.workspaceId);
+    return next();
   };
 }
