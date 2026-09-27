@@ -58,6 +58,15 @@ RUN pnpm install --frozen-lockfile
 # ---------------------------------------------------------------------------
 FROM deps AS build
 COPY . .
+# Vite inlines VITE_API_URL into the built JS at this step; it cannot be
+# changed later by a runtime env var. Empty is deliberate: this image serves
+# the API and the web bundle from the same origin (runtime stage, single
+# port), so apps/web/src/fetchers/get-api-url.ts and lib/auth-client.ts both
+# resolve an empty VITE_API_URL to a same-origin relative path. Leaving this
+# unset instead falls back to their hardcoded http://localhost:1337 dev
+# default, which every browser then tries to reach and fails.
+ARG VITE_API_URL=""
+ENV VITE_API_URL=${VITE_API_URL}
 RUN pnpm turbo build --ui=stream --filter=@taskdesk/api --filter=@taskdesk/web
 #   api: esbuild --bundle --platform=node --packages=external -> apps/api/dist/index.js
 #   web: vite build                                           -> apps/web/dist
@@ -71,6 +80,7 @@ RUN pnpm turbo build --ui=stream --filter=@taskdesk/api --filter=@taskdesk/web
 FROM base AS proddeps
 COPY --from=build /repo/.npmrc /repo/pnpm-lock.yaml /repo/pnpm-workspace.yaml /repo/package.json ./
 COPY --from=build /repo/apps/api/package.json apps/api/
+COPY --from=build /repo/packages/domain/package.json packages/domain/
 COPY --from=build /repo/packages/email/package.json packages/email/
 COPY --from=build /repo/packages/libs/package.json packages/libs/
 COPY --from=build /repo/packages/permissions/package.json packages/permissions/
@@ -87,8 +97,17 @@ RUN NODE_ENV=production pnpm install --prod --frozen-lockfile --no-optional --ig
 FROM ${NODE_IMAGE} AS runtime
 
 # wget is the healthcheck client and nothing else; see the deviation note above.
+# perl-base ships in the base image but nothing in this image runs Perl (pnpm
+# installed with --ignore-scripts, no maintainer script needs it after this
+# layer) — purged so its recurring pack/unpack and Storable CVEs stop blocking
+# the release scan (Trivy, HIGH/CRITICAL, exit-code 1). It is dpkg-Essential,
+# so a plain purge is refused; --allow-remove-essential overrides that guard
+# deliberately. Verified safe by rebuilding this exact base image locally with
+# the purge applied and confirming wget and node both still work, with no
+# other installed package depending on it.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends wget \
+ && apt-get purge -y --allow-remove-essential perl-base \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 10001 taskdesk \
  && useradd --system --uid 10001 --gid taskdesk --home-dir /app --shell /usr/sbin/nologin taskdesk
@@ -96,13 +115,14 @@ RUN apt-get update \
 WORKDIR /app
 
 # Production dependency tree (pnpm workspace layout — the API bundle imports
-# @taskdesk/email and @taskdesk/permissions as external packages).
+# @taskdesk/domain, @taskdesk/email and @taskdesk/permissions as external packages).
 COPY --from=proddeps --chown=taskdesk:taskdesk /repo/node_modules ./node_modules
 COPY --from=proddeps --chown=taskdesk:taskdesk /repo/apps/api/node_modules ./apps/api/node_modules
 COPY --from=proddeps --chown=taskdesk:taskdesk /repo/packages ./packages
 
 # Built workspace packages (dist/), overlaying the manifests copied above.
 COPY --from=build --chown=taskdesk:taskdesk /repo/packages/email/dist ./packages/email/dist
+COPY --from=build --chown=taskdesk:taskdesk /repo/packages/domain/dist ./packages/domain/dist
 COPY --from=build --chown=taskdesk:taskdesk /repo/packages/permissions/dist ./packages/permissions/dist
 
 # The API bundle and its migrations. The migrator resolves
