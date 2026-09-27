@@ -38,13 +38,23 @@
  * `attributedMatchedRoute` for the raw matched entry first, so it can tell "genuinely
  * unmatched" (a real 404, nothing to check) apart from "matched, but the key computation
  * itself failed" (refuse -- the route exists and was never classified as anything).
+ *
+ * **Fresh Opus delta pass (B3, live-reproduced): a route-scoped `.use()` middleware
+ * registered ahead of the real handler was itself being treated as "the" attributed
+ * route** -- its own key is not one of the two framework-declared catch-alls, so the old
+ * single-entry lookup picked IT, and whatever registry entry existed for that middleware's
+ * key gated every unclassified route behind it instead of the real handler's own (missing)
+ * entry. Fixed by checking every entry `attributedRoutesToClassify` collects (every scoped
+ * `ALL`-method middleware met along the way, plus the terminal non-`ALL` route it stops
+ * at) -- not just the first one -- so a route hiding behind a classified ambient
+ * middleware can no longer borrow that middleware's clearance.
  */
 
 import { normaliseRouteKey } from "@taskdesk/permissions";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { policyRegistry } from "../policy-registry";
-import { attributedMatchedRoute } from "./shadow-middleware";
+import { attributedRoutesToClassify } from "./shadow-middleware";
 
 function refuseUnclassified(reason: string): never {
   console.error(
@@ -54,30 +64,30 @@ function refuseUnclassified(reason: string): never {
 }
 
 /**
- * Throws `HTTPException(500)` if the dispatched route has no entry in the policy registry,
- * or if the dispatched route's own key could not even be computed. A route Hono could not
- * match at all (no matched entry -- a genuine 404) is not refused here; it has no route to
- * check a policy against, and the guard's own coverage lives at `route-coverage.test.ts`,
- * not here.
+ * Throws `HTTPException(500)` if any matched entry the request dispatched through --
+ * every scoped `ALL`-method middleware ahead of the real route, and the terminal route
+ * itself -- has no entry in the policy registry, or if any of their keys could not even be
+ * computed. A route Hono could not match at all (no matched entry -- a genuine 404) is not
+ * refused here; it has no route to check a policy against, and the guard's own coverage
+ * lives at `route-coverage.test.ts`, not here.
  */
 export function assertRouteIsClassified(c: Context): void {
-  const matched = attributedMatchedRoute(c);
-  if (matched === null) {
-    return;
-  }
+  const routes = attributedRoutesToClassify(c);
 
-  let routeKey: string;
-  try {
-    routeKey = normaliseRouteKey(`${matched.method} ${matched.path}`);
-  } catch (error) {
-    refuseUnclassified(
-      `matched route "${matched.method} ${matched.path}" has no valid route key (${
-        error instanceof Error ? error.message : String(error)
-      })`,
-    );
-  }
+  for (const matched of routes) {
+    let routeKey: string;
+    try {
+      routeKey = normaliseRouteKey(`${matched.method} ${matched.path}`);
+    } catch (error) {
+      refuseUnclassified(
+        `matched route "${matched.method} ${matched.path}" has no valid route key (${
+          error instanceof Error ? error.message : String(error)
+        })`,
+      );
+    }
 
-  if (policyRegistry.get(routeKey) === undefined) {
-    refuseUnclassified(`no entry for ${routeKey}`);
+    if (policyRegistry.get(routeKey) === undefined) {
+      refuseUnclassified(`no entry for ${routeKey}`);
+    }
   }
 }

@@ -186,11 +186,39 @@ export type AttributedRoute = {
 };
 
 /**
- * The FIRST matched entry that is not one of the framework's own declared catch-all
- * middleware registrations (`DECLARED_CATCH_ALL_KEYS`). `null` only for a genuinely
- * unmatched request -- see `attributedRouteKey`'s own doc comment above for why this is
- * broader than "method is not ALL" and why the method comes from the matched entry, never
- * `c.req.method`.
+ * Fresh Opus delta pass on this PR (B3, live-reproduced): the previous "first matched
+ * entry that isn't a DECLARED catch-all" rule fails open for a route-scoped `.use()`
+ * middleware registered before the real handler (e.g. `app.use("/api/foo/*", next)`) --
+ * that middleware's own key is not one of the two DECLARED_CATCH_ALL_KEYS, so it was
+ * itself returned as "the" attributed route, and its own (possibly permissive) registry
+ * entry gated every unclassified route behind it instead of the real handler's.
+ *
+ * Fix, live-verified by the reviewer: walk `matchedRoutes` in order, skipping only the
+ * two DECLARED catch-alls; every OTHER `ALL`-method entry met along the way must still be
+ * classified (it could itself gate the request, same as the two declared ones), and the
+ * walk stops at -- and includes -- the first non-`ALL` entry, which is the actual
+ * terminal route Hono will dispatch to. Returns every entry the caller must check;
+ * empty only when nothing but the two declared catch-alls matched (a genuine 404).
+ */
+export function attributedRoutesToClassify(c: Context): AttributedRoute[] {
+  const result: AttributedRoute[] = [];
+  for (const r of c.req.matchedRoutes) {
+    if (DECLARED_CATCH_ALL_KEYS.has(`${r.method} ${r.path}`)) {
+      continue;
+    }
+    result.push({ method: r.method, path: r.path });
+    if (r.method !== "ALL") {
+      break;
+    }
+  }
+  return result;
+}
+
+/**
+ * The actual terminal route Hono will dispatch to -- the last entry
+ * `attributedRoutesToClassify` collects (its walk stops there precisely because it is the
+ * first non-`ALL` match), or `null` when nothing but the two declared catch-alls matched
+ * (a genuine 404, nothing dispatched).
  *
  * Exported separately from `attributedRouteKey` so a caller that needs to distinguish "no
  * route matched" (a real 404, nothing to check) from "a route matched but its key could not
@@ -198,10 +226,8 @@ export type AttributedRoute = {
  * be swallowed into the same `null` as an unmatched request) can tell them apart.
  */
 export function attributedMatchedRoute(c: Context): AttributedRoute | null {
-  const matched = c.req.matchedRoutes.find(
-    (r) => !DECLARED_CATCH_ALL_KEYS.has(`${r.method} ${r.path}`),
-  );
-  return matched ? { method: matched.method, path: matched.path } : null;
+  const routes = attributedRoutesToClassify(c);
+  return routes.length > 0 ? (routes[routes.length - 1] ?? null) : null;
 }
 
 export function attributedRouteKey(c: Context): string | null {

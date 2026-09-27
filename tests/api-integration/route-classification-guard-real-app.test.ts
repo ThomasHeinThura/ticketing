@@ -10,8 +10,9 @@
  * request gets a false 500) are about how Hono's own router attributes a dispatched route,
  * which a hand-built fixture app cannot reproduce faithfully.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createApp } from "../../apps/api/src/index";
+import { policyRegistry } from "../../apps/api/src/policy-registry";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember } from "./helpers/fixtures";
@@ -91,5 +92,47 @@ describe("assertRouteIsClassified against the real createApp()", () => {
     const response = await app.request("/api/__does_not_exist_at_all__");
 
     expect(response.status).toBe(404);
+  });
+
+  // B3, fresh Opus delta pass, live-reproduced: a route-scoped `.use()` middleware
+  // registered ahead of an unclassified handler used to be picked as "the" attributed
+  // route (its own key is not one of the two framework-declared catch-alls), so a
+  // classified registry entry for THAT middleware's key let the real, unclassified route
+  // behind it through -- borrowing the middleware's clearance instead of having none of
+  // its own. `assertRouteIsClassified` must check every entry the request dispatched
+  // through, not just the first non-catch-all one.
+  it("refuses (500) an unclassified route sitting behind a route-scoped .use() middleware that DOES have a policy entry (B3)", async () => {
+    await resetTestDatabase();
+    const member = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(member.user);
+
+    const { app } = createApp();
+    const middlewareKey = "ALL /api/__test_probe3__/*";
+    const realEntry = policyRegistry.get("get /api/project");
+    if (!realEntry) {
+      throw new Error("expected a real registry entry to reuse for the spy");
+    }
+    const originalGet = policyRegistry.get.bind(policyRegistry);
+    const getSpy = vi
+      .spyOn(policyRegistry, "get")
+      .mockImplementation((routeKey: string) =>
+        routeKey === middlewareKey ? realEntry : originalGet(routeKey),
+      );
+
+    try {
+      app.use("/api/__test_probe3__/*", async (_c, next) => {
+        await next();
+      });
+      app.get("/api/__test_probe3__/x", (c) =>
+        c.text("should never be reached"),
+      );
+
+      const response = await app.request("/api/__test_probe3__/x");
+
+      expect(response.status).toBe(500);
+      expect(await response.text()).not.toBe("should never be reached");
+    } finally {
+      getSpy.mockRestore();
+    }
   });
 });
