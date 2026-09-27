@@ -182,6 +182,44 @@ export async function assertCallerHasCapability(
 }
 
 /**
+ * `assertCallerHasCapability` with the alternate-path branch a `PolicyMap` route expresses
+ * as `orSelfTarget` -- the shape `POST /api/work-items/{key}/assign` needs, and the one
+ * `task/policy.ts`'s own comment named as not honestly declarable before that route
+ * existed. ONE predicate, shared with the strict function above: the same role read, the
+ * same `isUnambiguousMembership` fail-closed rule, the same `builtInRoleHasCapability`
+ * (#318's genuine-row check).
+ *
+ * `isSelfTarget` is the CALLER's computation of the field the declared policy's predicate
+ * names (`body.assigneeId === identity.personId`). It has to be passed in because the body
+ * is only parsed in the handler -- middleware runs before it exists (the same reason
+ * `PATCH /api/work-items/{key}` checks `work_item:set_priority` in its handler). Passing
+ * `true` unconditionally would widen authority; the route's declared policy is the
+ * contract this function implements, and the two are reviewed together.
+ */
+export async function assertCallerHasCapabilityOrSelf(
+  workspaceId: string,
+  userId: string,
+  capability: Capability,
+  selfCapability: Capability,
+  isSelfTarget: boolean,
+): Promise<void> {
+  const roles = await workspaceMemberRoles(db, workspaceId, userId);
+  if (!isUnambiguousMembership(roles)) {
+    throw new HTTPException(403, { message: "Insufficient permissions" });
+  }
+  if (await builtInRoleHasCapability(workspaceId, roles[0], capability)) {
+    return;
+  }
+  if (
+    isSelfTarget &&
+    (await builtInRoleHasCapability(workspaceId, roles[0], selfCapability))
+  ) {
+    return;
+  }
+  throw new HTTPException(403, { message: "Insufficient permissions" });
+}
+
+/**
  * Does the built-in role named `role` hold `capability`, per the compiled
  * `BUILT_IN_ROLES` capability data (`@taskdesk/permissions`) — implications expanded, exactly
  * as `capabilityGrid()` (the permission-matrix fixture generator) computes it.
