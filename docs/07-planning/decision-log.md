@@ -15,6 +15,19 @@ Newest first.
 
 **Decided by:** the orchestrating session, 2026-09-27, after independent ordinary review identified the rolling-update compatibility gap.
 
+**2026-09-27 addendum, after the Opus/ordinary delta reviews of this same commit:** retaining
+`task` fixed the direction above (old replicas reading rows a new replica already migrated)
+but, on its own, does nothing for the reverse direction — a row an *old* replica writes or
+updates *after* migration `0071` has run is still `task`-only, and a new replica reading only
+`work_item` will deny it (tracked as issue #398, "D1"; still open, non-blocking, since any
+edit through the product's own write path removes `task` — see below). Retaining `task`
+also broke a real write path: the settings UI's role editor round-trips whatever the list
+endpoint returns, and the update route rejects `task` as an unknown resource, so saving any
+already-migrated role 400'd. Fixed in the same commit series by filtering `list-workspace-
+roles.ts`'s response to known resources before it reaches the client. The future contract
+migration that deletes `task` entirely is tracked as issue #398, not left as an undated
+"may remove" — filed the same day this gap was found.
+
 ## Format
 
 ```markdown

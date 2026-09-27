@@ -24,6 +24,12 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { signUpUser } from "./helpers/organization-http";
+import {
+  listWorkspaceRolesNative,
+  updateWorkspaceRoleNative,
+} from "./helpers/workspace-role-write-http";
+import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = resolve(currentDir, "../../apps/api/drizzle");
@@ -217,5 +223,65 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
       Authorization: `Bearer ${rawKey}`,
     });
     expect(afterBackfill.status).toBe(200);
+  });
+
+  // E1 (Opus review of #392, delta pass at d61e1f5): the list-roles endpoint returned every
+  // stored permission key verbatim, including the legacy `task` key migration 0071 now keeps
+  // alongside `work_item`. The settings UI's edit form round-trips whatever the list endpoint
+  // returns on save, and `update-workspace-role.ts`'s validator rejects `task` as an unknown
+  // resource — so saving ANY migrated role from the UI, including to remove a permission,
+  // 400'd. This reproduces that exact round trip through the real HTTP routes: list, then feed
+  // the list response straight back into update, exactly as the settings UI does.
+  it("a migrated role's permissions, read back from the list endpoint and saved unchanged, does not 400 on the legacy task key", async () => {
+    const { app } = createApp();
+    const ownerSignup = await signUpUser(app);
+    const workspaceCreated = await createWorkspaceNative(
+      app,
+      ownerSignup.cookie,
+      { name: "E1 rekey round-trip" },
+    );
+    expect(workspaceCreated.status).toBe(200);
+    const workspaceId = ((await workspaceCreated.json()) as { id: string }).id;
+
+    // Step 1: seed the "member" role with the OLD pre-migration shape, then migrate it —
+    // exactly like the first test above, so this row now holds both `task` and `work_item`.
+    await seedRawWorkspaceRolePermission(
+      workspaceId,
+      "member",
+      JSON.stringify({ task: ["create", "read"] }),
+    );
+    await replayMigration0071();
+
+    // Step 2: list roles exactly as the settings UI does, and locate the migrated row.
+    const listResponse = await listWorkspaceRolesNative(
+      app,
+      ownerSignup.cookie,
+      workspaceId,
+    );
+    expect(listResponse.status).toBe(200);
+    const roles = (await listResponse.json()) as Array<{
+      id: string;
+      role: string;
+      permission: Record<string, string[]>;
+    }>;
+    const memberRole = roles.find((r) => r.role === "member");
+    expect(memberRole).toBeDefined();
+
+    // Before the fix this failed: the list response included `task`, and PROVES THE TEST HAS
+    // TEETH — reverting the `parsePermission` filter reproduces this exact failure.
+    expect(memberRole?.permission.task).toBeUndefined();
+    expect(memberRole?.permission.work_item).toEqual(["create", "read"]);
+
+    // Step 3: save the role back UNCHANGED, exactly as clicking "Save" on an untouched form
+    // would — the real regression: this used to 400 with "Unknown permission resource(s):
+    // task" because the client had round-tripped the (unfiltered) `task` key it was given.
+    const saveResponse = await updateWorkspaceRoleNative(
+      app,
+      ownerSignup.cookie,
+      workspaceId,
+      memberRole!.id,
+      { permission: memberRole!.permission },
+    );
+    expect(saveResponse.status).toBe(200);
   });
 });
