@@ -87,6 +87,45 @@ describe("API integration: project document links", () => {
     expect(listedAfterDelete).toHaveLength(0);
   });
 
+  it("404s deleting a document link that belongs to a different project", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project: projectA } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+      slug: "project-a",
+    });
+    const { project: projectB } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+      slug: "project-b",
+    });
+    mockAuthenticatedSession(member.user);
+
+    const addResponse = await addDocumentLink(projectA.id, {
+      url: "https://example.com/sow.pdf",
+      title: "Belongs to A",
+    });
+    const added = (await addResponse.json()) as { id: string };
+
+    const response = await deleteDocumentLink(projectB.id, added.id);
+
+    expect(response.status).toBe(404);
+  });
+
+  it("400s adding a link to a project belonging to another workspace", async () => {
+    const memberA = await createWorkspaceMember({ role: "admin" });
+    const memberB = await createWorkspaceMember({ role: "admin" });
+    const { project: projectB } = await createProjectFixture({
+      workspaceId: memberB.workspace.id,
+    });
+    mockAuthenticatedSession(memberA.user);
+
+    const response = await addDocumentLink(projectB.id, {
+      url: "https://example.com/sow.pdf",
+      title: "Cross-tenant",
+    });
+
+    expect(response.status).toBe(400);
+  });
+
   it("rejects adding a link from a role without project:update", async () => {
     const member = await createWorkspaceMember({ role: "viewer" });
     const { project } = await createProjectFixture({

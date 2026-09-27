@@ -3,6 +3,7 @@
  * stakeholder routes ("a person, a role, an escalation order and a wait interval" --
  * `PR-12`: stood down, never deleted).
  */
+import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -27,6 +28,37 @@ async function makeStaffPerson() {
       })
       .returning(),
     "makeStaffPerson",
+  );
+}
+
+/** A person belonging to a DIFFERENT organisation than the internal one every
+ * `createWorkspaceMember` workspace lives in -- for the cross-organisation regression
+ * test below. */
+async function makePersonInAnotherOrganisation() {
+  const now = new Date();
+  const otherOrganisation = requireRow(
+    await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `other-org-${randomUUID()}`,
+        name: "Another Organisation",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning(),
+    "makePersonInAnotherOrganisation: organisation",
+  );
+
+  return requireRow(
+    await db
+      .insert(schema.personTable)
+      .values({
+        organisationId: otherOrganisation.id,
+        side: "staff",
+        isPlaceholder: true,
+      })
+      .returning(),
+    "makePersonInAnotherOrganisation: person",
   );
 }
 
@@ -116,6 +148,44 @@ describe("API integration: project stakeholders", () => {
     }>;
     expect(stillListedBody).toHaveLength(1);
     expect(stillListedBody[0]?.active).toBe(false);
+  });
+
+  it("404s adding a stakeholder from a person in a different organisation", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const outsider = await makePersonInAnotherOrganisation();
+    mockAuthenticatedSession(member.user);
+
+    const response = await addStakeholder(project.id, {
+      personId: outsider.id,
+      role: "Escalation contact",
+      escalationOrder: 1,
+    });
+
+    expect(response.status).toBe(404);
+
+    const listResponse = await listStakeholders(project.id);
+    const listed = (await listResponse.json()) as unknown[];
+    expect(listed).toHaveLength(0);
+  });
+
+  it("404s adding a stakeholder to a project belonging to another workspace", async () => {
+    const memberA = await createWorkspaceMember({ role: "admin" });
+    const memberB = await createWorkspaceMember({ role: "admin" });
+    const { project: projectB } = await createProjectFixture({
+      workspaceId: memberB.workspace.id,
+    });
+    mockAuthenticatedSession(memberA.user);
+
+    const response = await addStakeholder(projectB.id, {
+      role: "Escalation contact",
+      escalationOrder: 1,
+      personId: "irrelevant",
+    });
+
+    expect(response.status).toBe(400);
   });
 
   it("rejects adding a stakeholder from a role without project:update", async () => {
