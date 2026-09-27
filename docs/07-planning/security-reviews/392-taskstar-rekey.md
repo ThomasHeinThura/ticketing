@@ -98,3 +98,57 @@ The original rename version of `0071` did not have this problem, because it left
 ### To clear
 
 Fix E1 as recommended, with its regression test. Then a fresh delta pass on the new head. D1 (now scoped as above), D4 and the cleanup tracking issue are non-blocking.
+
+## Delta pass, 2026-09-27, at `414c9460549de77ef21d4edbc584d9a6cc090220`: CLEAR WITH FINDINGS
+
+Same reviewer context as the passes above. Scope: the one new commit since my `d61e1f5` pass, `414c946` (`list-workspace-roles.ts`, the rekey backfill test, the decision-log addendum). The only other commit in the range is my own note, `148e692`. Issue #398 read as well.
+
+**E1 is fixed.** `parsePermission()` now drops any key that is not in `statement`. So the retained `task` key never reaches the client, and the role editor can no longer send it back.
+
+### Q1: is the filter correct and complete? Yes.
+
+- **Correct.** The filter uses the same `statement` that the create and update validators build their resource set from (`new Set(Object.keys(statement))`). A list response can now only contain keys that the write routes accept. Per-action values are not filtered. That is fine, because both validators check only resource names and caller grants.
+- **Complete.** No other route sends this JSON to a client. I checked every reader of `workspaceRoleTable` and `apikey.permissions`:
+  - The authorization readers (`require-workspace-permission`, `require-workspace-role-authority`, `require-workspace-capability`, `resolve-identity`, `verify-api-key`) look up only the keys a required permission names. They never return the JSON.
+  - `create`/`update` return only the permission the caller sent, which has already been validated.
+  - `seed-default-workspace-roles` and the member controllers never return it.
+  - API keys: better-auth's `apiKey.list` still returns the raw `permissions`, including `task`. But the web app only displays the key list and has no path that edits a key's permissions. So E1 cannot happen there. This is the same as at `83c60a3`/`d61e1f5`.
+- **The test has teeth.** It passes at this head: 3/3 in the rekey backfill file, on a private `_test` database that I deleted afterwards. With the one filter line removed it fails (`expected ['create','read'] to be undefined`), and without that assertion the save would return 400.
+- The editor's double count (`permissionCount` adding in `task`) goes away too, because the client never sees `task`.
+
+### Q2: does filtering `task` out of the list create a gap? No.
+
+The only consumer of the list endpoint is the role editor. No audit view, migration-status indicator or export reads it. The new code never enforces `task`, so hiding it shows the admin exactly what this binary enforces.
+
+A D1 row (`task` only) now shows as a role with no work-item permissions. That is true for new pods, and the admin can now grant it again, because saving works. The filter also removes any other unknown key a newer binary might write, for example during a rollback. Before this commit, such a key made the save return 400. Now it is dropped when the role is saved. That only ever reduces access, so it is no worse.
+
+### Q3: issue #398. Good enough to track both items, with two corrections (F1)
+
+The contract task is there, with the right preconditions (old pods gone, rollback window closed) and checkbox acceptance criteria. It covers both columns. D1 is described correctly: old code writes rows after `0071`, and new code silently denies them.
+
+**F1 (LOW, fix the issue text, not this PR):**
+
+- **(a) Its D1 fix recommendation is my first one, which I later replaced.** The issue recommends only the boot-time self-heal. My `d61e1f5` pass explained why that is incomplete: it misses rows old pods write after the last new pod has booted. I recommended a read-time fallback instead: use `task` only when `work_item` is absent, in `customRoleStatements()`, `ownRoleStatements()` and `verifyApiKey()`'s `parsePermissions()`, and remove the fallback in the same contract migration. The issue should name both options and the gap the boot-time one leaves.
+- **(b) The order inside the contract migration.** Its acceptance should say: re-key any `task`-only rows to `work_item` first, then drop `task`, in the same migration.
+- **(c) INFO.** "Safe" depends on each deployment. A self-hosted install that upgrades straight from before #392 to the release carrying the contract migration runs both migrations in one pass. It then loses the rolling-window protection that expand/contract exists to give. Either make the #392 release a required upgrade stop, or accept this and write it down in the issue.
+
+### Q4: the decision-log addendum is honest
+
+- It no longer claims `d61e1f5` closed D1. It says D1 is open and non-blocking, and it points at #398 for both D1 and the contract migration. It does not contradict #398.
+- One wording point: the reason it gives for D1 being non-blocking ("any edit through the product's own write path removes `task`") is not quite the reason. D1 is non-blocking because it only ever reduces access, and because an admin can now repair it by granting the role again. Not worth another commit on its own.
+- It is added inside an entry that exists only on this branch (not on `main`), so it does not break the append-only rule.
+
+### Q5: anything else in this delta
+
+- **F2 (INFO).** The regression test does not check that the stored row has no `task` after the save. My `d61e1f5` pass asked for that assertion, to catch a future write that merges instead of replacing (Q3 there). Today `update` replaces the whole JSON, so this is safe. It is a one-line assertion worth adding when the file is next touched.
+- **F3 (INFO).** `resource in statement` also matches inherited object keys (`constructor`, `toString`, and so on), while the write validator checks only the object's own keys. No write path can store such a key, and a `__proto__` key disappears when the response is serialized. So nothing is reachable. `Object.hasOwn(statement, resource)` would make the two checks the same.
+- **D4 is still open** (the "`task` wins" tie-break has no test). Unchanged, non-blocking.
+
+### Checks
+
+- Local: the rekey backfill test file, 3/3 at this head, and the mutation described above.
+- CI at `414c946`: every required job is green except two. `integration - Postgres 18` was still **pending** when I checked. `pull request template + security review` fails, as expected until the gate table names this pass. The merging session must confirm the integration job is green at the exact head before merging.
+
+### Verdict
+
+**CLEAR WITH FINDINGS** at `414c9460549de77ef21d4edbc584d9a6cc090220`. E1 is fixed. F1 is a correction to the text of #398. F2, F3 and D4 are non-blocking. This note's own commit changes only documentation, so the code I cleared is at `414c946`.
