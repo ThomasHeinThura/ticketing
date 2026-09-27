@@ -20,6 +20,7 @@ import {
   builtInRoleHasCapability,
   requireWorkspaceCapability,
 } from "../utils/require-workspace-capability";
+import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import {
   isUnambiguousMembership,
@@ -29,23 +30,32 @@ import type { ActivityActorType } from "./activity";
 import assignWorkItem, {
   WorkItemAssigneeConflictError,
 } from "./controllers/assign-work-item";
+import bulkWorkItems from "./controllers/bulk-work-items";
 import createWorkItem from "./controllers/create-work-item";
+import deleteWorkItem from "./controllers/delete-work-item";
 import detachWorkItemParent from "./controllers/detach-work-item-parent";
 import getWorkItemByKey from "./controllers/get-work-item";
 import getWorkItemTree from "./controllers/get-work-item-tree";
 import listAssignablePeople from "./controllers/list-assignable-people";
+import listWorkItemActivity from "./controllers/list-work-item-activity";
 import listWorkItemTypes from "./controllers/list-work-item-types";
 import listWorkItems from "./controllers/list-work-items";
+import rankWorkItem from "./controllers/rank-work-item";
 import setWorkItemParent from "./controllers/set-work-item-parent";
 import unassignWorkItem from "./controllers/unassign-work-item";
 import updateWorkItem, {
   WorkItemVersionConflictError,
 } from "./controllers/update-work-item";
+import { unwatchWorkItem, watchWorkItem } from "./controllers/watch-work-item";
 import { requireWorkItemReach } from "./require-work-item-reach";
 import {
   assignablePeopleSchema,
   assignWorkItemResponseSchema,
+  bulkWorkItemsResponseSchema,
+  deletedWorkItemSchema,
+  rankWorkItemResponseSchema,
   unassignWorkItemResponseSchema,
+  workItemActivityListResponseSchema,
   workItemAssigneeConflictSchema,
   workItemDetailSchema,
   workItemListResponseSchema,
@@ -53,13 +63,17 @@ import {
   workItemTreeResponseSchema,
   workItemTypeListSchema,
   workItemVersionConflictSchema,
+  workItemWatchStateSchema,
 } from "./response";
 import {
   assignWorkItemBody,
+  bulkWorkItemsBody,
   createWorkItemBody,
   ifMatchHeader,
+  listWorkItemActivityQuery,
   listWorkItemsQuery,
   projectIdParam,
+  rankWorkItemBody,
   setWorkItemParentBody,
   updateWorkItemBody,
   workItemKeyParam,
@@ -385,6 +399,66 @@ const assignWorkItemRoute = createRoute({
   },
 });
 
+const deleteWorkItemRoute = createRoute({
+  method: "delete",
+  operationId: "deleteWorkItem",
+  path: "/work-items/{key}",
+  tags: ["Work items"],
+  summary: "Delete work item",
+  description:
+    "Soft-deletes a work item (`WI-21`). KNOWN DEVIATION from `pending-actions.md`'s " +
+    "`WI-23` (this route deletes immediately rather than returning a `202` pending " +
+    "action awaiting browser approval) -- matches every OTHER existing delete route in " +
+    "this codebase today (e.g. `DELETE /api/projects/{id}`), none of which implement " +
+    "that mechanism yet. Tracked on issue #428.",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:delete"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse("The deleted work item", deletedWorkItemSchema),
+    403: errorResponse(
+      "No workspace access, or missing work_item:delete permission",
+    ),
+    404: errorResponse("Work item not found, or already deleted"),
+  },
+});
+
+const rankWorkItemRoute = createRoute({
+  method: "post",
+  operationId: "rankWorkItem",
+  path: "/work-items/{key}/rank",
+  tags: ["Work items"],
+  summary: "Re-rank work item",
+  description:
+    "Reorders a work item within its own project+state partition (`WI-11`-`WI-12`) by " +
+    "fractional position. Exempt from `If-Match`; last-write-wins (`WI-7`). At least " +
+    "one of `beforeId`/`afterId` (the two items that should end up surrounding this " +
+    "one's new slot) is required.",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:rank"),
+  ] as const,
+  request: {
+    params: workItemKeyParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: rankWorkItemBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The re-ranked work item", rankWorkItemResponseSchema),
+    400: errorResponse(
+      "Invalid body, or beforeId/afterId is not in the same project/state",
+    ),
+    403: errorResponse(
+      "No workspace access, or missing work_item:rank permission",
+    ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
 const setWorkItemParentRoute = createRoute({
   method: "post",
   operationId: "setWorkItemParent",
@@ -467,6 +541,111 @@ const getWorkItemTreeRoute = createRoute({
   request: { params: workItemKeyParam },
   responses: {
     200: jsonResponse("The hierarchy tree", workItemTreeResponseSchema),
+    403: errorResponse(
+      "No workspace access, or missing work_item:read permission",
+    ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+const watchWorkItemRoute = createRoute({
+  method: "post",
+  operationId: "watchWorkItem",
+  path: "/work-items/{key}/watch",
+  tags: ["Work items"],
+  summary: "Watch work item",
+  description:
+    "Starts (or un-mutes) watching a work item (`WI-28`/`WI-29`). Deliberately gated " +
+    "on `work_item:read`, not a dedicated watch capability -- anyone with read access " +
+    "may watch.",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse("The watch state as applied", workItemWatchStateSchema),
+    400: errorResponse("No person profile for this account"),
+    403: errorResponse("No workspace access"),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+const unwatchWorkItemRoute = createRoute({
+  method: "delete",
+  operationId: "unwatchWorkItem",
+  path: "/work-items/{key}/watch",
+  tags: ["Work items"],
+  summary: "Unwatch work item",
+  description:
+    "Stops watching a work item (`WI-28`/`WI-29`). An implicit watcher (assignee or " +
+    "requester) is muted, not deleted, so a later un-mute needs no new implicit watch " +
+    "to be recreated; an explicit watcher's row is deleted outright. Idempotent: " +
+    "unwatching something never watched is a 200 no-op.",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse("The watch state as applied", workItemWatchStateSchema),
+    400: errorResponse("No person profile for this account"),
+    403: errorResponse("No workspace access"),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+const bulkWorkItemsRoute = createRoute({
+  method: "post",
+  operationId: "bulkWorkItems",
+  path: "/work-items/bulk",
+  tags: ["Work items"],
+  summary: "Bulk work item operation",
+  description:
+    "Runs one operation (`delete` or `assign` -- see `controllers/bulk-work-items.ts` " +
+    "for why `WI-24`'s other bulk operations are deferred) over multiple work items, " +
+    "transactional PER ITEM (`WI-25`): a partial failure reports per-item reasons " +
+    "rather than rolling back the whole batch. `workspaceId` scopes the batch; every " +
+    "id is re-checked for reach the same way a single-item call would (`WI-25`: " +
+    "'not found' and 'out of reach' share one reason).",
+  middleware: [] as const,
+  request: {
+    body: {
+      required: true,
+      content: { "application/json": { schema: bulkWorkItemsBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("Per-item results", bulkWorkItemsResponseSchema),
+    400: errorResponse("Invalid body"),
+    403: errorResponse(
+      "No workspace access, or missing the operation's own capability " +
+        "(work_item:delete or work_item:assign)",
+    ),
+  },
+});
+
+const listWorkItemActivityRoute = createRoute({
+  method: "get",
+  operationId: "listWorkItemActivity",
+  path: "/work-items/{key}/activity",
+  tags: ["Work items"],
+  summary: "List work item activity",
+  description:
+    "The work item's activity journal (`WI-6`), newest first, cursor-paginated. Every " +
+    "row is returned regardless of `visibility` -- see the controller's own doc " +
+    "comment for why no caller-type filtering is applied yet.",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
+  request: { params: workItemKeyParam, query: listWorkItemActivityQuery },
+  responses: {
+    200: jsonResponse(
+      "A page of the work item's activity",
+      workItemActivityListResponseSchema,
+    ),
+    400: errorResponse("Invalid query, e.g. a malformed cursor"),
     403: errorResponse(
       "No workspace access, or missing work_item:read permission",
     ),
@@ -767,6 +946,98 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
     const workspaceId = c.get("workspaceId");
     const tree = await getWorkItemTree(key, workspaceId);
     return c.json(tree, 200);
+  })
+  .openapi(deleteWorkItemRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+    const deleted = await deleteWorkItem(key, workspaceId, actorId, actorType);
+    return c.json(deleted, 200);
+  })
+  .openapi(rankWorkItemRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { beforeId, afterId } = c.req.valid("json");
+    const ranked = await rankWorkItem(key, workspaceId, {
+      beforeId,
+      afterId,
+    });
+    return c.json(ranked, 200);
+  })
+  .openapi(watchWorkItemRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const userId = c.get("userId");
+    const state = await watchWorkItem(key, workspaceId, userId);
+    return c.json(state, 200);
+  })
+  .openapi(unwatchWorkItemRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const userId = c.get("userId");
+    const state = await unwatchWorkItem(key, workspaceId, userId);
+    return c.json(state, 200);
+  })
+  .openapi(bulkWorkItemsRoute, async (c) => {
+    // F3, Opus security review of PR #433: `workspaceId` here is read straight from
+    // the request body, which `assertCallerHasCapability`'s own contract note (see
+    // `require-workspace-capability.ts`) says never to do -- it can only check
+    // authority IN the workspace it is given, not whether that's the workspace the
+    // write actually lands in. Safe today ONLY because `deleteWorkItem`/
+    // `assignWorkItem` each independently re-filter every per-item write on this same
+    // `workspaceId` (a mismatched id just finds no row and 404s per item) -- this is
+    // a load-bearing invariant, not an incidental detail: any future change to this
+    // route or its two called controllers must keep that per-item re-filter.
+    const { workspaceId, workItemKeys, operation, assigneeId } =
+      c.req.valid("json");
+    const userId = c.get("userId");
+
+    // No path/param-scoped middleware resolved a workspace for this flat,
+    // non-project-scoped route (`policy.ts`'s own comment: `scopeSource: "request"`) --
+    // membership is checked directly here, the same `validateWorkspaceAccess` call
+    // `require-work-item-reach.ts` and every `workspaceAccess.*` helper use underneath.
+    await validateWorkspaceAccess(userId, workspaceId, c.get("apiKey")?.id);
+
+    // Per-OPERATION capability, decided from the parsed body -- see `policy.ts`'s own
+    // comment on this route for why a single declarative policy entry cannot express
+    // this (the same reason `PATCH /api/work-items/{key}`'s `work_item:set_priority`
+    // check lives here instead of a second policy entry).
+    await assertCallerHasCapability(
+      workspaceId,
+      userId,
+      operation === "delete" ? "work_item:delete" : "work_item:assign",
+    );
+
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+
+    const result = await bulkWorkItems(
+      workspaceId,
+      actorId,
+      actorType,
+      workItemKeys,
+      operation === "delete"
+        ? { operation: "delete" }
+        : // `assigneeId` is required by `bulkWorkItemsBody`'s own `.refine` whenever
+          // `operation === "assign"`, so this is never actually undefined here.
+          { operation: "assign", assigneeId: assigneeId as string },
+    );
+    return c.json(result, 200);
+  })
+  .openapi(listWorkItemActivityRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { cursor, limit } = c.req.valid("query");
+    const activity = await listWorkItemActivity(key, workspaceId, {
+      cursor,
+      limit,
+    });
+    return c.json(activity, 200);
   })
   .openapi(unassignWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");

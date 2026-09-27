@@ -199,4 +199,77 @@ export const workItemPolicies = {
       capability: "work_item:update",
     },
   },
+
+  // Delete a work item (`WI-21`-`WI-23`). See `controllers/delete-work-item.ts`'s own
+  // doc comment for the deliberate, tracked (#428) deviation from `pending-actions.md`'s
+  // `202`/approval flow -- this route matches every OTHER existing delete route's live
+  // behaviour (plain soft-delete) rather than the spec's own gate, which nothing in this
+  // codebase implements yet. `scopeSource: "row"`, same reach shape as every other
+  // `{key}`-addressed route: `requireWorkItemReach()` resolves the row before the
+  // handler runs.
+  "DELETE /api/work-items/{key}": {
+    capability: "work_item:delete",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // Re-rank a work item (`WI-11`-`WI-13`). `WI-13`'s customer-organisation-scoped
+  // restriction is NOT enforced here -- see `controllers/rank-work-item.ts`'s own doc
+  // comment for why (no live customer-portal caller identity exists anywhere in this
+  // codebase yet). Exempt from `If-Match` and last-write-wins (`WI-7`), which is a
+  // WRITE-PATH property, not a policy-declaration one -- the declared capability and
+  // reach are otherwise identical in shape to every other `{key}`-addressed route.
+  "POST /api/work-items/{key}/rank": {
+    capability: "work_item:rank",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // Watch/unwatch (`WI-28`/`WI-29`). Deliberately `work_item:read`, not a dedicated
+  // watch capability -- `work-items.md` § Permissions states this explicitly: "WI-28
+  // already lets anyone with read access watch; this is not an omission."
+  "POST /api/work-items/{key}/watch": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "DELETE /api/work-items/{key}/watch": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // Bulk operations (`WI-24`-`WI-27`). The spec's own route table: "work_item:read
+  // (workspace) -- then each item is re-checked against its own capability, failures
+  // reported per WI-25". This is genuinely a TWO-TIER check the declarative `PolicyMap`
+  // shape cannot express in one entry (a per-OPERATION capability decided from the
+  // parsed body, same reason `PATCH /api/work-items/{key}`'s `work_item:set_priority`
+  // check lives in the handler, not a second policy entry) -- so the capability
+  // declared here is the route's own baseline (`work_item:read`), and
+  // `./index.ts`'s handler additionally asserts `work_item:delete`/`work_item:assign`
+  // once the body names the operation, before calling into
+  // `controllers/bulk-work-items.ts`. `scopeSource: "request"`: there is no `{key}` row
+  // to resolve here -- the addressed resource is the WORKSPACE the body names, the same
+  // shape `POST /api/workspace/{workspaceId}/members` uses for a request-named scope.
+  "POST /api/work-items/bulk": {
+    capability: "work_item:read",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+
+  // Read a work item's activity (`WI-6`, issue #292). Same reach/capability shape as
+  // the plain `GET /api/work-items/{key}` route above -- an activity row's visibility
+  // (`CA-7`) is not filtered by this route today; see
+  // `controllers/list-work-item-activity.ts`'s own doc comment for why.
+  "GET /api/work-items/{key}/activity": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
 } as const satisfies PolicyMap;
