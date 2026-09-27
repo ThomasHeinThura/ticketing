@@ -300,3 +300,15 @@ All runs are at `ebaf071690068a3720aac1a2dcd2eb5f76d5f63a`, in a detached worktr
 ### Delta verdict
 
 **CLEAR** at `ebaf071690068a3720aac1a2dcd2eb5f76d5f63a`. H1-b and I4 are closed. I5 is still recommended, not required. W1 still binds on #353. Any further commit to this branch other than this document changes the reviewed head.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `9ca7ab042cb4fd9a220293e2f8d3d1f6731b8cd4`
+**Previously reviewed head:** `ebaf071690068a3720aac1a2dcd2eb5f76d5f63a`
+**Reviewer:** orchestrating session (mechanical verification — the merge changes no authority or gate-semantics invariant, per `AGENTS.md`'s review-tier table)
+**Verdict:** CLEAR. All findings above stand, unchanged and non-blocking.
+
+- `git show --remerge-diff 9ca7ab0` is empty — a clean automatic merge, no conflict-resolution content.
+- `git diff eb486f3..9ca7ab0 --stat` touches exactly two files: `docs/05-operations/runbook.md` (#380) and `docs/07-planning/status.md` (#384), both docs-only and outside security-review scope. No file in `apps/api/src/audit/**`, `apps/api/drizzle/**`, or any other security-scope path changed.
