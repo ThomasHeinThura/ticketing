@@ -71,6 +71,7 @@ RUN pnpm turbo build --ui=stream --filter=@taskdesk/api --filter=@taskdesk/web
 FROM base AS proddeps
 COPY --from=build /repo/.npmrc /repo/pnpm-lock.yaml /repo/pnpm-workspace.yaml /repo/package.json ./
 COPY --from=build /repo/apps/api/package.json apps/api/
+COPY --from=build /repo/packages/domain/package.json packages/domain/
 COPY --from=build /repo/packages/email/package.json packages/email/
 COPY --from=build /repo/packages/libs/package.json packages/libs/
 COPY --from=build /repo/packages/permissions/package.json packages/permissions/
@@ -87,8 +88,17 @@ RUN NODE_ENV=production pnpm install --prod --frozen-lockfile --no-optional --ig
 FROM ${NODE_IMAGE} AS runtime
 
 # wget is the healthcheck client and nothing else; see the deviation note above.
+# perl-base ships in the base image but nothing in this image runs Perl (pnpm
+# installed with --ignore-scripts, no maintainer script needs it after this
+# layer) — purged so its recurring pack/unpack and Storable CVEs stop blocking
+# the release scan (Trivy, HIGH/CRITICAL, exit-code 1). It is dpkg-Essential,
+# so a plain purge is refused; --allow-remove-essential overrides that guard
+# deliberately. Verified safe by rebuilding this exact base image locally with
+# the purge applied and confirming wget and node both still work, with no
+# other installed package depending on it.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends wget \
+ && apt-get purge -y --allow-remove-essential perl-base \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 10001 taskdesk \
  && useradd --system --uid 10001 --gid taskdesk --home-dir /app --shell /usr/sbin/nologin taskdesk
@@ -96,13 +106,14 @@ RUN apt-get update \
 WORKDIR /app
 
 # Production dependency tree (pnpm workspace layout — the API bundle imports
-# @taskdesk/email and @taskdesk/permissions as external packages).
+# @taskdesk/domain, @taskdesk/email and @taskdesk/permissions as external packages).
 COPY --from=proddeps --chown=taskdesk:taskdesk /repo/node_modules ./node_modules
 COPY --from=proddeps --chown=taskdesk:taskdesk /repo/apps/api/node_modules ./apps/api/node_modules
 COPY --from=proddeps --chown=taskdesk:taskdesk /repo/packages ./packages
 
 # Built workspace packages (dist/), overlaying the manifests copied above.
 COPY --from=build --chown=taskdesk:taskdesk /repo/packages/email/dist ./packages/email/dist
+COPY --from=build --chown=taskdesk:taskdesk /repo/packages/domain/dist ./packages/domain/dist
 COPY --from=build --chown=taskdesk:taskdesk /repo/packages/permissions/dist ./packages/permissions/dist
 
 # The API bundle and its migrations. The migrator resolves
