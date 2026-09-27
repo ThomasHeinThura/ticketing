@@ -85,13 +85,19 @@ function privateDestinationsAllowed(): boolean {
   );
 }
 
+/** The only URL schemes this codebase ever treats as a destination worth following --
+ * exported so a caller that only needs the scheme check (no DNS/SSRF resolution, e.g. a
+ * stored link that is never fetched server-side) can reuse the same allowlist rather
+ * than duplicating it. */
+export const ALLOWED_URL_PROTOCOLS = ["http:", "https:"] as const;
+
 export async function assertPublicDestination(
   destinationUrl: string,
   label: string,
 ): Promise<void> {
   const url = new URL(destinationUrl);
 
-  if (!["http:", "https:"].includes(url.protocol)) {
+  if (!(ALLOWED_URL_PROTOCOLS as readonly string[]).includes(url.protocol)) {
     throw new Error(`${label} URL must use http or https`);
   }
 

@@ -6,18 +6,22 @@ import {
   assetTable,
   columnTable,
   commentTable,
+  documentLinkTable,
   externalLinkTable,
   invitationTable,
   labelTable,
   membershipTable,
+  milestoneTable,
   notificationTable,
   organisationQuotaTable,
   organisationTable,
   personTable,
+  prerequisiteTable,
   projectSlugClaimTable,
   projectTable,
   roleTable,
   sessionTable,
+  stakeholderTable,
   stateTable,
   stateTemplateTable,
   taskActivityTable,
@@ -117,6 +121,52 @@ export const projectTableRelations = relations(
     columns: many(columnTable),
     workflowRules: many(workflowRuleTable),
     notificationWorkspaceProjects: many(userNotificationWorkspaceProjectTable),
+    milestones: many(milestoneTable),
+    prerequisites: many(prerequisiteTable),
+    stakeholders: many(stakeholderTable),
+    documentLinks: many(documentLinkTable),
+  }),
+);
+
+// Issue #25's bounded slice -- see schema.ts's own comment on these four tables.
+export const milestoneTableRelations = relations(milestoneTable, ({ one }) => ({
+  project: one(projectTable, {
+    fields: [milestoneTable.projectId],
+    references: [projectTable.id],
+  }),
+}));
+
+export const prerequisiteTableRelations = relations(
+  prerequisiteTable,
+  ({ one }) => ({
+    project: one(projectTable, {
+      fields: [prerequisiteTable.projectId],
+      references: [projectTable.id],
+    }),
+  }),
+);
+
+export const stakeholderTableRelations = relations(
+  stakeholderTable,
+  ({ one }) => ({
+    project: one(projectTable, {
+      fields: [stakeholderTable.projectId],
+      references: [projectTable.id],
+    }),
+    person: one(personTable, {
+      fields: [stakeholderTable.personId],
+      references: [personTable.id],
+    }),
+  }),
+);
+
+export const documentLinkTableRelations = relations(
+  documentLinkTable,
+  ({ one }) => ({
+    project: one(projectTable, {
+      fields: [documentLinkTable.projectId],
+      references: [projectTable.id],
+    }),
   }),
 );
 
