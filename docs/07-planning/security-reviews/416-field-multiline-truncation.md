@@ -114,3 +114,13 @@ previous run read predated the Note line, despite the live body already containi
 **Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
 reviewed head (`91a5845c5a61b0edcff3e56d73c25cfae90c36d0`) and this one — the intervening
 commit is #327's already-reviewed merge (docs-only, no overlap with this PR's own files).
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `fb7b6693d54ef25c1c64ab39e6773985b6b3f764`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
+reviewed head (`5cf9d2cb9b0c0310d684baae1c2b081a0034e9a2`) and this one — the intervening
+commit is #422's already-reviewed merge, zero overlap with this PR's own files.
