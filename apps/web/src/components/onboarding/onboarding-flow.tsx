@@ -1,7 +1,16 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Button, Input } from "@taskdesk/ui";
+import {
+  Button,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+} from "@taskdesk/ui";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -11,14 +20,6 @@ import { z } from "zod/v4";
 import { Logo } from "@/components/common/logo";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import useCreateWorkspace from "@/hooks/queries/workspace/use-create-workspace";
 import { toast } from "@/lib/toast";

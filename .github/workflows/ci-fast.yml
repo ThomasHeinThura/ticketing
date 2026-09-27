@@ -5,13 +5,15 @@
 # the document does not declare: scripts/ci/test-all.mjs reconciles the two on every run,
 # and the `gates-declared` job below fails if they drift apart.
 #
-# Gates that cannot exist yet — check:tokens, check:deps, check:queries, check:inventory,
-# test:mcp, check:bundle-purity, check:bundle-size — have no job here on
-# purpose. `pnpm test:all --list` prints each one with the reason and the issue that
-# unblocks it. A job that passed because it found nothing to check would look like coverage
-# and be worth less than nothing. (`check:ui` is enabled, in the `registers` job below —
-# #9's Radix-tracking slice, only; its "no bespoke primitives" / "no Radix/Base UI import
-# outside packages/ui" clauses still have nothing to be true of.)
+# Gates that cannot exist yet — check:queries, check:inventory, test:mcp,
+# check:bundle-purity, check:bundle-size — have no job here on purpose. `pnpm test:all
+# --list` prints each one with the reason and the issue that unblocks it. A job that passed
+# because it found nothing to check would look like coverage and be worth less than
+# nothing. (`check:ui` is enabled, in the `registers` job below — #9's Radix-tracking
+# slice, only; its "no bespoke primitives" / "no Radix/Base UI import outside packages/ui"
+# clauses still have nothing to be true of. `check:tokens` is enabled too, in the `static`
+# job below — #9's theme-parity and hard-coded-color slice of G2 only; see
+# scripts/ci/check-tokens.mjs's own header for exactly what it does not yet cover.)
 #
 # Workflow hardening (ci-cd.md § Secrets): permissions are read-only at the top, no job
 # here signs or publishes anything, and every third-party action is pinned by commit SHA.
@@ -112,8 +114,16 @@ jobs:
         run: pnpm lint:ci
       - name: pnpm typecheck
         run: pnpm typecheck
+      - name: pnpm check:tokens
+        # #9 — theme.css token parity (concrete values in both light and dark) and no
+        # hard-coded color literal outside packages/ui/src/styles/, scoped to apps/web/src
+        # and packages/ui. See scripts/ci/check-tokens.mjs's own header for what G2/G3
+        # this does not yet cover (arbitrary spacing/radius/z-index values, contrast ratio).
+        run: pnpm check:tokens
       - name: pnpm check:i18n
         run: pnpm check:i18n
+      - name: pnpm check:deps
+        run: pnpm check:deps
 
   registers:
     # DO NOT RENAME THIS JOB. The `protect-main` ruleset binds its required status checks

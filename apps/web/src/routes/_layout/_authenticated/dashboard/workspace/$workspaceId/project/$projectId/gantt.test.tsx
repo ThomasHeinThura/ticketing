@@ -41,9 +41,10 @@ vi.mock("@/hooks/queries/task/use-get-tasks", () => ({
   useGetTasks: (projectId: string) => useGetTasks(projectId),
 }));
 
-vi.mock("@/hooks/use-mobile", () => ({
-  useIsMobile: () => false,
-}));
+vi.mock("@taskdesk/ui", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@taskdesk/ui")>();
+  return { ...actual, useIsMobile: () => false };
+});
 
 vi.mock("@/store/user-preferences", () => ({
   useUserPreferencesStore: (

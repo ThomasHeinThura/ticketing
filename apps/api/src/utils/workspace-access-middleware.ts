@@ -344,8 +344,13 @@ export function workspaceAccessMiddleware(
  * Keep the existence lookup and its reach check in one database round trip.
  * Returning no row for both a missing and an unreachable resource also keeps
  * their observable timing and response path aligned.
+ *
+ * Exported for #317 S1/S4: `authorize-asset-access.ts`'s asset lookup and the
+ * `/api/ws/:projectId` upgrade handler in `index.ts` sit outside this
+ * middleware but need the identical existence-plus-reach fold, not a second,
+ * subtly different reimplementation of the same predicate.
  */
-function reachableWorkspacePredicate(
+export function reachableWorkspacePredicate(
   workspaceId: SQLWrapper,
   userId: string,
   apiKeyId?: string,

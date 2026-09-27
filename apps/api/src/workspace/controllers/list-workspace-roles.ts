@@ -1,3 +1,4 @@
+import { statement } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import db, { schema } from "../../database";
 
@@ -19,6 +20,13 @@ export type WorkspaceRoleRow = Omit<
  * how `require-workspace-permission.ts`/`require-workspace-role-authority.ts` already treat a
  * malformed row as "no statements" for authorization purposes. One bad row must not 500 the
  * whole list.
+ *
+ * Only keys present in `statement` (the current, code-level resource set) are returned. Issue
+ * #8 rekey migration 0071 keeps a legacy `task` key alongside `work_item` in already-migrated
+ * rows for the rolling-deploy window (old pods still read `task`) — but `task` is not a
+ * resource `create-workspace-role.ts`/`update-workspace-role.ts` accept. Returning it here fed
+ * it straight back into the settings UI's edit form, which round-tripped it on save and hit
+ * "Unknown permission resource(s): task" on every migrated role (E1, Opus review of #392).
  */
 function parsePermission(raw: string): Record<string, string[]> {
   try {
@@ -28,6 +36,7 @@ function parsePermission(raw: string): Record<string, string[]> {
       for (const [resource, actions] of Object.entries(
         value as Record<string, unknown>,
       )) {
+        if (!Object.hasOwn(statement, resource)) continue;
         if (Array.isArray(actions)) {
           result[resource] = actions.filter(
             (action): action is string => typeof action === "string",

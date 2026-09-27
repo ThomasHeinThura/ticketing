@@ -1680,7 +1680,7 @@
 						"label": "Zaktualizuj"
 					}
 				},
-				"task": {
+				"work_item": {
 					"assign": {
 						"description": "Może przypisywać zadania członkom",
 						"label": "Przypisz"
@@ -1724,7 +1724,7 @@
 			"resources": {
 				"label": "Etykiety",
 				"project": "Projekty",
-				"task": "Zadania",
+				"work_item": "Zadania",
 				"workspace": "Obszar roboczy"
 			},
 			"saveChanges": "Zapisz zmiany",

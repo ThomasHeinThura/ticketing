@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import {
   InputGroup,
   InputGroupAddon,
@@ -34,5 +35,18 @@ describe("InputGroup", () => {
 
     fireEvent.change(input, { target: { value: "42" } });
     expect(value).toBe("42");
+  });
+
+  it("has no accessibility violations", async () => {
+    const { baseElement } = render(
+      <InputGroup>
+        <InputGroupAddon>
+          <InputGroupText>$</InputGroupText>
+        </InputGroupAddon>
+        <InputGroupInput aria-label="Amount" />
+      </InputGroup>,
+    );
+
+    await expectNoA11yViolations(baseElement);
   });
 });

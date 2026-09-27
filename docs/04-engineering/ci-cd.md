@@ -187,8 +187,11 @@ turbo.json                           pnpm-lock.yaml
 docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
                                      .npmrc
                                      .pnpmfile.cjs
-scripts/lib/**
+trivy.yaml                           .trivyignore
+.trivyignore.yaml
+scripts/lib/**                       tests/api-integration/global-setup.ts
 **/vitest.config.*                   apps/web/playwright.config.ts
+**/vitest*.config.*
 apps/web/e2e/**                      scripts/ci/redocly.yaml
 scripts/ci/openapi-approved-breaks.json
 ```
@@ -440,7 +443,9 @@ On merge:
 1. Everything above.
 2. Full E2E across Chrome, Firefox, Safari and Edge.
 3. Build the container image, multi-arch (amd64, arm64), under a run-specific candidate tag.
-4. Scan each platform image with Trivy — high or critical fails.
+4. Scan each platform image with Trivy — high or critical **with a vendor-supplied fix
+   available** fails (`ignore-unfixed: true`, decision log 2026-09-27 — a finding with no fix
+   to apply yet is not actionable, and blocking on it indefinitely does not reduce risk).
 5. Generate a CycloneDX SBOM for each platform image.
 6. **Sign the image** with cosign (keyless, using the CI job's OIDC identity) and publish a
   build-provenance attestation alongside it, so anyone — a customer, the marketplace
@@ -564,14 +569,19 @@ main                    always deployable, protected
   of those is genuinely satisfied on the exact candidate SHA (Thomas, 2026-09-15 — delegated;
   supersedes "only Thomas presses merge" — see the decision log, 2026-09-15). Design approval
   (H1–H6) and gate waivers remain Thomas-only, unchanged. The `protect-main` ruleset blocks
-  deletion and non-fast-forward pushes and dismisses stale approvals on push. **Required
-  approving reviews is `0` and Require review from Code Owners is off**, both deliberately —
-  a required approval from a one-person team documents a protection it does not provide
-  (decision log, 2026-09-06).
-- `CODEOWNERS` (`* @ThomasHeinThura`) is **ownership metadata**: it says who to ask, not a
-  merge gate — the ruleset and the required reviews above are what actually enforce a merge.
-  **The security review and design review requirements below are unaffected and remain
-  independent hard gates.**
+  deletion and non-fast-forward pushes and dismisses stale approvals on push. **For the
+  repository at large, required approving reviews is `0` and Require review from Code Owners
+  is off**, both deliberately — a required approval from a one-person team documents a
+  protection it does not provide (decision log, 2026-09-06).
+- `CODEOWNERS` lists only the control-plane files themselves (`CLAUDE.md`, `AGENTS.md`,
+  `agent-workflow.md`, this file, `.claude/agents/**`, `.github/CODEOWNERS` itself) — not
+  `*` — so the point above holds for every other path exactly as before. A 2026-09-26
+  attempt to also enable "Require review from Code Owners" for exactly those listed paths
+  was reversed the same day: this repo's single collaborator and shared agent credentials
+  mean there is no identity boundary GitHub could actually enforce it against (decision log,
+  2026-09-26). **Do not re-attempt the toggle, and never add a bypass actor to route around
+  the deadlock it would create — ask Thomas instead.** The security review and design review
+  requirements below are unaffected and remain independent hard gates.
 
 ## Releases
 

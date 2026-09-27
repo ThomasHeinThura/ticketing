@@ -7,6 +7,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
   Input,
   Select,
   SelectContent,
@@ -21,15 +28,6 @@ import { z } from "zod";
 import useCreateApiKey from "@/hooks/mutations/api-key/use-create-api-key";
 import { toast } from "@/lib/toast";
 import type { CreateApiKeyResponse } from "@/types/api-key";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "../ui/form";
 
 const EXPIRATION_SECONDS = {
   "1d": 86400,

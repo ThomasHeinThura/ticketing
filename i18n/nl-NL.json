@@ -1019,7 +1019,7 @@
 			},
 			"resources": {
 				"project": "Projecten",
-				"task": "Taken",
+				"work_item": "Taken",
 				"label": "Labels",
 				"workspace": "Werkruimte"
 			},
@@ -1046,7 +1046,7 @@
 						"description": "Kan projecten delen"
 					}
 				},
-				"task": {
+				"work_item": {
 					"create": {
 						"label": "Aanmaken",
 						"description": "Kan taken aanmaken"

@@ -307,6 +307,17 @@ export const workspaceRoleTable = pgTable(
     // composite index already has workspace_id as the leading column, so the plain index was
     // redundant storage/maintenance cost with no query it uniquely served.
     index("workspace_role_role_idx").on(table.role),
+    // Issue #251: tracks the constraint hand-written migration `0051` (issue #118) already
+    // added to the live database (`ALTER TABLE ... ADD CONSTRAINT
+    // workspace_role_workspace_id_role_unique UNIQUE (workspace_id, role)`), and that
+    // `seedDefaultWorkspaceRoles`'s `onConflictDoNothing` target (issue #134) depends on.
+    // Declaring it here brings it under `drizzle-kit check`'s schema-drift detection; the name
+    // and columns must match `0051` exactly so `drizzle-kit generate` produces no new
+    // migration.
+    unique("workspace_role_workspace_id_role_unique").on(
+      table.workspaceId,
+      table.role,
+    ),
   ],
 );
 
@@ -2369,6 +2380,24 @@ export const auditLogTable = pgTable(
     userAgent: text("user_agent"),
     traceId: text("trace_id"),
     workspaceId: text("workspace_id"),
+    // AU-10 / #344 (Thomas, 2026-09-23): the project a project-scoped audit row belongs
+    // to, so workspace audit READS can be reach-filtered without a per-entity_type join.
+    // Nullable with no FK, following `workspace_id` directly above -- the entity the row
+    // describes may outlive its project, and audit rows must never be deleted or
+    // rewritten by a cascade. DELIBERATELY NOT PART of the row hash
+    // (`canonicalRowHash`/`data-model.md`'s "The audit hash chain") -- NOT because it can
+    // change after the row is written (migration 0070's trigger now refuses any change to
+    // it, the same as every other non-hashed column except the `organisation_id`
+    // tombstone -- corrected after the Opus security review of PR #375, H1-b, found the
+    // prior "can legitimately change" reasoning here was now inaccurate). The real reasons
+    // are: #344's own acceptance criteria allow leaving `project_id` out of the hash;
+    // `organisation_id` is the established precedent for a foreign key excluded this way;
+    // and including it would change the hash recipe `packages/domain` shares with every
+    // consumer, for a column added after that recipe was fixed. `audit-log.test.ts` pins
+    // that old rows still verify. NULL also means "not project-scoped" for the read
+    // filter, which is the same answer the filter gives a row written before this column
+    // existed.
+    projectId: text("project_id"),
     organisationId: text("organisation_id").references(
       () => organisationTable.id,
       { onDelete: "set null", onUpdate: "cascade" },

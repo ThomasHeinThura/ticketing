@@ -51,18 +51,18 @@ export async function requireBulkTaskPermission(c: Context, next: Next) {
   const operation = await bulkOperation(c);
 
   if (operation === "delete") {
-    return requireWorkspacePermission({ task: ["delete"] })(c, next);
+    return requireWorkspacePermission({ work_item: ["delete"] })(c, next);
   }
 
   if (operation === "updateAssignee") {
-    return requireWorkspacePermission({ task: ["assign"] })(c, next);
+    return requireWorkspacePermission({ work_item: ["assign"] })(c, next);
   }
 
   if (operation === "addLabel" || operation === "removeLabel") {
     return requireWorkspacePermission({ label: ["update"] })(c, next);
   }
 
-  return requireWorkspacePermission({ task: ["update"] })(c, next);
+  return requireWorkspacePermission({ work_item: ["update"] })(c, next);
 }
 
 export async function requireBulkTaskEntitlement(c: Context, next: Next) {
@@ -96,7 +96,7 @@ export async function requireTaskAssigneePermission(c: Context, next: Next) {
     .limit(1);
 
   if (existingTask && existingTask.userId !== nextAssignee) {
-    return requireWorkspacePermission({ task: ["assign"] })(c, next);
+    return requireWorkspacePermission({ work_item: ["assign"] })(c, next);
   }
 
   return next();

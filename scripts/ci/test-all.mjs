@@ -57,8 +57,13 @@ const manifest = [
   {
     gate: "pnpm check:tokens",
     stage: "fast",
-    run: null,
-    why: "packages/ui and its token CSS now exist, but the check:tokens implementation is not wired yet; literal-colour and contrast enforcement remains unavailable.",
+    run: ["pnpm", "check:tokens"],
+    note:
+      "partial (#9). Enforces theme.css token parity (concrete values in both themes) " +
+      "and bans a hard-coded color literal outside packages/ui/src/styles/, scoped to " +
+      "apps/web/src and packages/ui (see scripts/ci/check-tokens.mjs's own header for why " +
+      "that scope, not the whole repo). G2's arbitrary spacing/radius/z-index bracket-value " +
+      "half and all of G3's contrast-ratio checking are not yet enforced.",
   },
   {
     gate: "pnpm check:ui",
@@ -74,8 +79,7 @@ const manifest = [
   {
     gate: "pnpm check:deps",
     stage: "fast",
-    run: null,
-    why: "packages/domain and packages/ui now exist, but check:deps is not implemented. The boundary matrix also names packages/plugins-contracts, which is still absent, so a cycle check would not enforce the documented matrix.",
+    run: ["pnpm", "check:deps"],
   },
   { gate: "pnpm check:i18n", stage: "fast", run: ["pnpm", "check:i18n"] },
   {

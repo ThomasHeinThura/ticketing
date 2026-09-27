@@ -55,9 +55,9 @@ import useReorderProjects from "@/hooks/mutations/project/use-reorder-projects";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { cn } from "@/lib/cn";
 import { formatDateMedium } from "@/lib/format";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/",

@@ -25,9 +25,10 @@ import type { PolicyMap } from "@taskdesk/permissions";
  *    decision-log change, not an edit at the keyboard. Not done in this lane.
  * 2. **The runtime enforces no own/any split at all today.** `createTimeEntryRoute` and
  *    `updateTimeEntryRoute` (`./index.ts`) both gate on
- *    `requireWorkspacePermission({ task: ["update"] })` — the single INHERITED kaneo `task`
- *    resource permission (`packages/permissions/src/legacy-better-auth-access-control.ts`),
- *    which every seeded `member` row holds (`task: ["create", "read", "update"]`, no
+ *    `requireWorkspacePermission({ work_item: ["update"] })` — the single INHERITED kaneo
+ *    resource permission, re-keyed from `task` to `work_item`
+ *    (`packages/permissions/src/legacy-better-auth-access-control.ts`),
+ *    which every seeded `member` row holds (`work_item: ["create", "read", "update"]`, no
  *    ownership scoping). A workspace member with that permission can update or (via the two
  *    GET routes) read **any** time entry in the workspace, not only entries they logged
  *    themselves. So `_any`, not `orOwner`-qualified `_own`, is the honest capability for the
@@ -39,7 +40,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * (`packages/permissions/src/roles.ts`) gives `member` only `time_entry:create`,
  * `time_entry:update_own` and `time_entry:delete_own` — no `_any` variant — so the intended
  * target is that an ordinary member can only touch their own logged time. The actual runtime
- * permission (`task:update`, no ownership check) is wider than that target for every route
+ * permission (`work_item:update`, no ownership check) is wider than that target for every route
  * below. Re-keying `requireWorkspacePermission`'s call sites to the canonical `time_entry:*`
  * vocabulary AND adding the ownership check the target model assumes are both #7-shaped work,
  * not this lane's; flagged here, and in the PR description, for that follow-up.
@@ -102,8 +103,8 @@ export const timeEntryPolicies = {
   },
 
   // Log time against an existing task. Runtime check is
-  // `requireWorkspacePermission({ task: ["update"] })` — see file comment for why
-  // `time_entry:create` (not `task:update`) is the declared name, and for the create-still-
+  // `requireWorkspacePermission({ work_item: ["update"] })` — see file comment for why
+  // `time_entry:create` (not `work_item:update`) is the declared name, and for the create-still-
   // addresses-an-existing-resource reasoning behind `reach: "required"`.
   "POST /api/time-entry": {
     capability: "time_entry:create",
@@ -112,7 +113,7 @@ export const timeEntryPolicies = {
     reach: "required",
   },
 
-  // Replace a time entry's start/end/description. Same `requireWorkspacePermission({ task:
+  // Replace a time entry's start/end/description. Same `requireWorkspacePermission({ work_item:
   // ["update"] })` runtime gate as create; see file comment for why this is declared
   // `time_entry:update_any` rather than an `orOwner`-qualified `_own` — the runtime checks no
   // ownership predicate at all, so `_any` is the honest name, not `_own`.

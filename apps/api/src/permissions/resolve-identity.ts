@@ -79,9 +79,9 @@
  *     `api_key` extension table carrying "capability subset, IP allowlist, per-key rate
  *     limit, expiry, last-used, `is_mcp`". `apps/api/src/database/schema.ts`'s `apikeyTable`
  *     has none of that — only better-auth's own `permissions` column, a `{resource:
- *     action[]}` statements map in a completely different, disjoint vocabulary from
- *     `Capability` (`"task"` vs `work_item:*`, `"share"` vs no such action). Translating one
- *     into the other would be guessing at a mapping no document specifies, so this loader
+ *     action[]}` statements map in a completely different, disjoint SHAPE from `Capability`
+ *     (`{ work_item: ["read"] }` vs the flat string `"work_item:read"`; `"share"` vs no such
+ *     action at all). Translating one into the other would be guessing at a mapping no document specifies, so this loader
  *     does not attempt it: every key-credentialed identity gets `keyCapabilities: []` until
  *     the real extension table lands. This is the maximally fail-closed answer, not a
  *     placeholder pretending to be a real one.

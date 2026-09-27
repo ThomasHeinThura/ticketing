@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Button, Input } from "@taskdesk/ui";
+import { Button, Input, useIsMobile } from "@taskdesk/ui";
 import {
   addDays,
   eachDayOfInterval,
@@ -27,7 +27,6 @@ import { GanttTaskBar } from "@/components/gantt/gantt-task-bar";
 import PageTitle from "@/components/page-title";
 import TaskDetailsSheet from "@/components/task/task-details-sheet";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/cn";
 import { getStatusLabel } from "@/lib/i18n/domain";
 import { useUserPreferencesStore } from "@/store/user-preferences";

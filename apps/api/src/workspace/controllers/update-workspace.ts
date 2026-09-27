@@ -69,7 +69,13 @@ async function updateWorkspace(
       .returning();
     return updated ?? null;
   } catch (error) {
-    if (isUniqueViolation(error, "slug") && typeof input.slug === "string") {
+    // Exact constraint name, not a substring match on `"slug"` (issue #269) -- see
+    // `create-workspace.ts`'s own comment for why `workspace_slug_unique` is the only
+    // reachable one here.
+    if (
+      isUniqueViolation(error, "workspace_slug_unique") &&
+      typeof input.slug === "string"
+    ) {
       throw new WorkspaceSlugTakenError(input.slug);
     }
     throw error;

@@ -3,17 +3,15 @@ import {
   Collapsible,
   CollapsiblePanel,
   CollapsibleTrigger,
-} from "@taskdesk/ui";
-import { ChevronRight } from "lucide-react";
-import { useTranslation } from "react-i18next";
-import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar";
+} from "@taskdesk/ui";
+import { ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { usePendingInvitations } from "@/hooks/queries/invitation/use-pending-invitations";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 

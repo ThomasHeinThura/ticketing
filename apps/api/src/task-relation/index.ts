@@ -157,7 +157,7 @@ const createTaskRelationRoute = createRoute({
     "Link two tasks. Authorization is scoped to the source task's workspace.",
   middleware: [
     scopeToSourceTask,
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     body: {
@@ -168,7 +168,7 @@ const createTaskRelationRoute = createRoute({
   responses: {
     200: jsonResponse("The created relation", taskRelationSchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     // #290 follow-up: an unreachable source task now answers this same 404 as a
     // nonexistent one, via `scopeToSourceTask`.
     404: errorResponse("Source or target task not found"),
@@ -185,12 +185,12 @@ const deleteTaskRelationRoute = createRoute({
   description: "Remove a link between two tasks. Returns the deleted relation.",
   middleware: [
     scopeToRelation,
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: { params: taskRelationParam },
   responses: {
     200: jsonResponse("The deleted relation", taskRelationSchema),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     // #290 follow-up: an unreachable relation/source task now answers this same 404
     // as a nonexistent one, via `scopeToRelation`.
     404: errorResponse("Task relation not found, or its source task is gone"),

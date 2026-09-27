@@ -12,6 +12,31 @@ import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { type ActivityActorType, recordWorkItemActivity } from "../activity";
 import { claimWorkItemNumber } from "./claim-work-item-number";
 
+/**
+ * `work_item.created`'s `source` (`events.md` ~51: `portal|agent|api|automation|import`),
+ * derived from `resolveActor`'s `actorType`. This route only ever sees a cookie-session
+ * `person` or an `api_key` (`resolveActor`'s own doc comment) -- `automation`/`system`
+ * throw rather than silently falling back to `"agent"`, so a future caller that reuses
+ * this function for an automation/import/portal-intake path is forced to update this
+ * mapping instead of getting a wrong `source` with no signal (same discipline as #399's
+ * `repo.mjs` fix: fail loudly on an unexpected case, don't silently default).
+ */
+function eventSourceFor(actorType: ActivityActorType): "agent" | "api" {
+  switch (actorType) {
+    case "person":
+      return "agent";
+    case "api_key":
+      return "api";
+    case "automation":
+    case "system":
+      throw new Error(
+        'createWorkItem: no work_item.created "source" mapping for actorType ' +
+          `"${actorType}" -- this route's resolveActor never produces it today; if a ` +
+          "new caller changes that, add the correct events.md source value here.",
+      );
+  }
+}
+
 type CreateWorkItemInput = {
   projectId: string;
   workspaceId: string;
@@ -42,6 +67,13 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     actorId,
     actorType,
   } = input;
+
+  // Resolved BEFORE any database write (Opus review, #412 F1): if `actorType` is ever
+  // something `eventSourceFor` doesn't map, this throws here -- a clean failure before
+  // the transaction below starts -- rather than after the work item and its `created`
+  // activity row have already committed, which would 500 a client that just succeeded
+  // and risk a duplicate on retry.
+  const source = eventSourceFor(actorType);
 
   // `workspaceId` here is the one the route's own middleware already resolved (the
   // project's true workspace, from a DB lookup) -- re-checking it against the freshly
@@ -166,8 +198,16 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     // nothing in the response to act on. Mapped here to a clean, understandable 409
     // instead (`app.onError`'s handling of a >=500 `HTTPException` is a pre-existing,
     // separately-scoped gap -- its own `if` block is empty -- so this alone does not add
-    // logging; it only stops the response itself from being opaque).
-    if (isUniqueViolation(error, "key")) {
+    // logging; it only stops the response itself from being opaque). Matched by the
+    // EXACT constraint name Postgres actually raises on `work_item_key_claim`'s
+    // unnamed PRIMARY KEY on `key` -- `work_item_key_claim_pkey` (Postgres's default
+    // naming convention, confirmed live against migration 0055's schema; the trigger's
+    // own `ON CONFLICT ("key", work_item_id) DO NOTHING` already absorbs the table's
+    // OTHER unique constraint, `work_item_key_claim_key_work_item_id_unique`, so that
+    // one is never reachable here) -- not a substring match on `"key"` (issue #269):
+    // a substring would also match any future unrelated `*_key_something` constraint
+    // added near this insert.
+    if (isUniqueViolation(error, "work_item_key_claim_pkey")) {
       throw new HTTPException(409, {
         message:
           "This work item's key is already claimed by another work item; the project's key range may be poisoned by a retired slug -- contact an administrator",
@@ -181,11 +221,18 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // the transaction above has committed -- matching every existing `publishEvent`
   // caller's own after-commit placement (`create-task.ts`, `create-comment.ts`) -- so a
   // subscriber (webhook delivery, an automation trigger) never observes an event for a
-  // row it cannot yet read back. `source` is hardcoded `"agent"`: this route requires
+  // row it cannot yet read back.
+  //
+  // S2 (issue #298, PR #292's Opus review): `source` is derived from the same
+  // `actorType` `resolveActor` (`work-item/index.ts`) already computed for this
+  // request, not hardcoded -- an API-key-authenticated create is `"api"`, per
+  // `events.md`'s enum (`portal | agent | api | automation | import`); every other
+  // actor this route ever sees is a cookie-session person (`resolveActor`'s own doc
+  // comment: this route only ever sees a person or an API key, never
+  // `automation`/`system`), which stays `"agent"` -- this route requires
   // `work_item:create` via workspace membership (`index.ts`'s own file comment), i.e.
   // the staff-facing create path, not a customer-portal intake flow, which does not
-  // exist yet -- flagged as a judgment call in this PR's body, since `events.md`'s
-  // `source` enum has no "this is the only creation surface today" case.
+  // exist yet.
   // `visibility: "public"` is fixed, not derived per-request: `resolveVisibility`'s
   // `PUBLIC_PAIRS` has `(created, null)` unconditionally (`activity.ts`), so a
   // `work_item.created` event -- one per row, always verb `created`, no field -- is
@@ -198,7 +245,7 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     typeId: created.typeId,
     stateId: created.stateId,
     requesterId: created.requesterId,
-    source: "agent",
+    source,
     visibility: "public",
     actorId,
     actorType,

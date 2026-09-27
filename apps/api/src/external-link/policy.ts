@@ -15,7 +15,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * all.** `getExternalLinksByTaskRoute`'s only middleware is `workspaceAccess.fromTaskId
  * ("taskId")` — no `requireWorkspacePermission` call anywhere in this router. Same "reach
  * alone, capability declared for the target model anyway" shape as every list/read route in
- * this batch that has no distinct runtime check: every seeded role holds `task: ["read"]`
+ * this batch that has no distinct runtime check: every seeded role holds `work_item: ["read"]`
  * (the legacy key for `work_item:read`) unconditionally, so there is no role that reaches the
  * task yet lacks read authority over it.
  *

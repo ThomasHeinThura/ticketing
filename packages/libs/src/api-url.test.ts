@@ -9,6 +9,10 @@ describe("resolveApiBaseUrl", () => {
     );
   });
 
+  it("treats an explicitly empty base as relative, not as unset", () => {
+    expect(resolveApiBaseUrl("")).toBe("/api");
+  });
+
   it("returns the URL unchanged when it already ends with /api", () => {
     expect(resolveApiBaseUrl("http://localhost:1337/api")).toBe(
       "http://localhost:1337/api",

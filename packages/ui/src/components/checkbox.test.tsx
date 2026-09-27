@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import { Checkbox } from "./checkbox";
 
 afterEach(() => {
@@ -30,5 +31,12 @@ describe("Checkbox", () => {
     expect(
       screen.getByRole("checkbox", { name: "Accept terms" }),
     ).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("has no accessibility violations", async () => {
+    const { baseElement } = render(
+      <Checkbox aria-label="Accept terms" indeterminate />,
+    );
+    await expectNoA11yViolations(baseElement);
   });
 });
