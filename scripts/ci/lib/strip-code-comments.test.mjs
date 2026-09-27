@@ -276,3 +276,261 @@ describe("A3 — a skip cannot hide behind a brace inside a substitution", () =>
     assert.equal(typeof out, "string");
   });
 });
+
+/**
+ * Issue #143 — a `/` right after a KEYWORD (`return`, `typeof`, …) is a regex literal, not
+ * division, but the pre-#143 scanner only ever looked at the single previous CHARACTER.
+ * A keyword ends in a word character the same way an identifier does, and no word character
+ * was in `REGEX_ALLOWED_BEFORE`, so `return /['"]/` was read as "division, then a `'` opens
+ * a string" — which swallows the rest of the line, real code included.
+ *
+ * `oldScan` below is that exact pre-#143 heuristic (single-character lookback), kept as the
+ * non-vacuity control for the same reason `braceCounted` is above: without it these would be
+ * assertions that happen to pass, not a demonstrated regression fix.
+ */
+const OLD_REGEX_ALLOWED_BEFORE = new Set([
+  "(",
+  ",",
+  "=",
+  ":",
+  "[",
+  "!",
+  "&",
+  "|",
+  "?",
+  "{",
+  "}",
+  ";",
+  "\n",
+  "+",
+  "-",
+  "*",
+  "%",
+  "<",
+  ">",
+  "~",
+  "^",
+]);
+
+function oldPreviousMeaningful(out) {
+  for (let i = out.length - 1; i >= 0; i -= 1) {
+    const char = out[i];
+    if (char !== " " && char !== "\t" && char !== "\r") return char;
+  }
+  return "\n";
+}
+
+function preIssue143Scanner(source, options = {}) {
+  const blankStrings = options.blankStrings === true;
+  const out = [];
+  let i = 0;
+  while (i < source.length) {
+    const char = source[i];
+    const next = source[i + 1];
+    if (char === "/" && next === "/") {
+      while (i < source.length && source[i] !== "\n") i += 1;
+      out.push(" ");
+      continue;
+    }
+    if (char === "/" && next === "*") {
+      i += 2;
+      out.push(" ");
+      while (
+        i < source.length &&
+        !(source[i] === "*" && source[i + 1] === "/")
+      ) {
+        if (source[i] === "\n") out.push("\n");
+        i += 1;
+      }
+      i += 2;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      out.push(char);
+      i += 1;
+      while (i < source.length) {
+        if (source[i] === "\\") {
+          out.push(blankStrings ? "  " : `${source[i]}${source[i + 1] ?? ""}`);
+          i += 2;
+          continue;
+        }
+        const terminator = source[i] === char || source[i] === "\n";
+        out.push(terminator || !blankStrings ? source[i] : " ");
+        if (terminator) {
+          i += 1;
+          break;
+        }
+        i += 1;
+      }
+      continue;
+    }
+    if (
+      char === "/" &&
+      OLD_REGEX_ALLOWED_BEFORE.has(oldPreviousMeaningful(out))
+    ) {
+      out.push(char);
+      i += 1;
+      let inClass = false;
+      while (i < source.length) {
+        if (source[i] === "\\") {
+          out.push(source[i], source[i + 1] ?? "");
+          i += 2;
+          continue;
+        }
+        if (source[i] === "[") inClass = true;
+        else if (source[i] === "]") inClass = false;
+        out.push(source[i]);
+        if ((source[i] === "/" && !inClass) || source[i] === "\n") {
+          i += 1;
+          break;
+        }
+        i += 1;
+      }
+      continue;
+    }
+    out.push(char);
+    i += 1;
+  }
+  return out.join("");
+}
+
+const oldKeywordScan = (source) =>
+  banned.test(preIssue143Scanner(source, { blankStrings: true }));
+
+describe("issue #143 — regex after a keyword is not division", () => {
+  const cases = [
+    [
+      "return, quoted regex, real call on the same line",
+      'function f(x) { return /[\'"]/.test(x); it.skip("real", fn); }',
+    ],
+    [
+      "typeof, quoted regex, real call on the same line",
+      'x = typeof /\'/.test(y); it.skip("real", fn);',
+    ],
+    [
+      "case, quoted regex, real call on the same line",
+      'switch (x) { case /\'/.test(y): it.skip("real", fn); }',
+    ],
+  ];
+
+  for (const [name, source] of cases) {
+    it(`sees the call past ${name}`, () => {
+      // NON-VACUITY: the pre-#143 scanner (single-character lookback) must miss this call,
+      // or the case does not reproduce the issue.
+      assert.equal(
+        oldKeywordScan(source),
+        false,
+        "the pre-#143 scanner must MISS this call, or the case is not the #143 defect",
+      );
+      assert.equal(
+        scan(source),
+        true,
+        `the shipped scanner must still see the call:\n${stripCodeComments(source, { blankStrings: true })}`,
+      );
+    });
+  }
+
+  it("still tells a real division from a regex (no regression, proves something)", () => {
+    // Opus security review: a plain `assert.match(out, /a \/ b/)` proves nothing, because
+    // code inside a MISREAD regex is copied through unchanged too -- the old assertion
+    // would pass even against a version that treats every previous token as regex-
+    // permitting. The real property is that a real division doesn't get misread as
+    // opening a regex that then swallows a string containing a `/` and everything after
+    // it on the line -- so assert on the call AFTER a string containing a slash, the same
+    // shape as the `of`/property-access cases below.
+    const source = 'const n = a / b; s = "/"; it.skip("x");';
+    assert.equal(
+      scan(source),
+      true,
+      "a real division must not hide the call after it",
+    );
+  });
+
+  it("Opus security review: `of` is a legal identifier, not always a keyword -- dropped from the allow-list", () => {
+    // `let of = 5; return of / 2;` is real code with `of` as a plain variable and `/` as
+    // genuine division. Keeping `of` in REGEX_ALLOWED_KEYWORDS bought nothing (a regex
+    // object can't be looped over, so `for (x of /re/)` fails at runtime anyway) and cost
+    // a real false negative here.
+    // Note: the pre-#143 (single-character lookback) scanner already handles this
+    // particular input correctly by coincidence (`of` ends in `f`, a word character, so
+    // it never matched `REGEX_ALLOWED_BEFORE` either) -- this case isolates the `of`-as-
+    // keyword regression this PR's OWN multi-char keyword list introduced, not the
+    // original #143 defect, so there is no meaningful pre-#143 baseline to compare here.
+    const source = 'let of = 5; x = of / 2; s = "/"; it.skip("a", fn);';
+    assert.equal(scan(source), true, "must not hide the call after `of / 2`");
+  });
+
+  it("Opus security review: a reserved word used as a PROPERTY NAME is not a keyword either", () => {
+    // Every keyword in REGEX_ALLOWED_KEYWORDS is also a legal property name -- `mod.default`,
+    // `o.in`, `o.new` are all real, common patterns, and none of them puts a following `/`
+    // in regex position: `mod.default / 2` is division, the same as any other property
+    // read divided by a number.
+    for (const source of [
+      'mod.default / 2; s = "/"; it.skip("a", fn);',
+      'o.in / 2; s = "/"; it.skip("a", fn);',
+      'o.new / 2; s = "/"; it.skip("a", fn);',
+    ]) {
+      assert.equal(scan(source), true, `must not hide the call in: ${source}`);
+    }
+  });
+
+  it("Opus security review: optional chaining before a keyword-shaped property name is handled the same way", () => {
+    const source = 'o?.default / 2; s = "/"; it.skip("a", fn);';
+    assert.equal(
+      scan(source),
+      true,
+      "must not hide the call after `o?.default / 2`",
+    );
+  });
+
+  it("does not regress: a `.` earlier in the line does not suppress an unrelated keyword's own regex reading", () => {
+    // Opus security review (finding C): the previous version of this test had no `.`
+    // anywhere near `return`, so it never actually exercised the property this test
+    // claims to check. This version puts a real `.` (an unrelated property access)
+    // immediately before the line's OWN keyword+regex, proving the `.`-precedes-word
+    // check only suppresses the reading for the word directly after that specific dot,
+    // not for any keyword appearing anywhere later in the buffer.
+    const source = 'a.b; return /[\'"]/.test(x); it.skip("real", fn);';
+    assert.equal(scan(source), true);
+  });
+
+  it("Opus security review, second pass: a private class field is not a keyword either", () => {
+    // Every reserved word in REGEX_ALLOWED_KEYWORDS is also a legal PRIVATE FIELD name
+    // (`this.#default`, `this.#in`) -- the first `.`-precedes-word fix only checked for
+    // `.` immediately before the word, missing that a private field's `#` sits between
+    // the dot and the word (`this.#default`, not `this.default`).
+    for (const source of [
+      'this.#default / 2; s = "/"; it.skip("a", fn);',
+      'this.#in / 2; s = "/"; it.skip("a", fn);',
+    ]) {
+      assert.equal(scan(source), true, `must not hide the call in: ${source}`);
+    }
+  });
+
+  it("does not regress: a chained property access is still correctly division, not just a bare property", () => {
+    const source = 'a.b.default / 2; s = "/"; it.skip("a", fn);';
+    assert.equal(scan(source), true);
+  });
+});
+
+/**
+ * Disclosed residual gap (see the file's own header comment): a `)` closing an `if` /
+ * `while` / `for` / `switch` condition also puts a following `/` in regex position, but this
+ * scanner cannot tell that `)` apart from one closing an ordinary call without matching it
+ * back to its opening keyword — real paren-matching, not a previous-token lookback. This
+ * pins the CURRENT (imperfect) behaviour so a future edit does not silently change it
+ * without a reader noticing: it is accepted, not fixed, and accepting it again silently is
+ * not the same as it never having been noticed.
+ */
+describe("issue #143 — disclosed gap: `)` after a control-flow keyword", () => {
+  it("still misreads `/` as division right after a condition's `)`", () => {
+    // Pinned current behaviour, not desired behaviour: `if (x) /'/.test(y)` is valid code
+    // whose `/'/` is a real regex, but this scanner has no way to know the `)` closed an
+    // `if` rather than a call, so it still reads the `'` as a string open and blanks the
+    // rest of the line.
+    const out = stripCodeComments("if (x) /'/.test(y);", {
+      blankStrings: true,
+    });
+    assert.equal(out, "if (x) /'          ");
+  });
+});
