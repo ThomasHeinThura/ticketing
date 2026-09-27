@@ -66,3 +66,12 @@ migration and no `_journal.json` change. `schema.ts` is in `ci-cd.md`'s security
 **Reviewer:** orchestrating session (mechanical verification)
 **Verdict:** CLEAR, unchanged. `git show --remerge-diff` empty; brings in already-reviewed
 main content (#394's check:tokens gate), zero overlap with this PR's own files.
+
+---
+
+## Lightweight re-confirmation after branch update, round 2 (2026-09-27)
+
+**Reviewed head:** `dc17dc2ca187a32f1fbd4db82702b9d1a8120105`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty remerge-diff; brings in #346's already-reviewed P3
+identity domain code, zero overlap with this PR's own files.
