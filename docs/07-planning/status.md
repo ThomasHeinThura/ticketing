@@ -1,5 +1,52 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+**2026-09-27 orchestrator snapshot — `main` at `0b1bcc1` (#361, workspace-dependency boundary
+gate, merged). P0/P1/P2/P3 lanes running in parallel under Throttle 1; this session is
+continuing all of them per Thomas's "if not finished P0 then continue, and continue all."**
+
+Open PRs and their real review state (verify live with `gh pr list`/`gh pr view` before acting
+on this — it is a snapshot, not a log):
+
+- **#353** (assign a work item, #30) — ordinary + Opus both CLEAR, latest at `a890593`
+  (docs-only note commit on top of `e924f6e`). **Still blocked on #344/#375's `audit_log`
+  dependency** — not mergeable until that lands.
+- **#365** (clear a work item's assignment, #30) — ordinary + Opus both CLEAR (two low
+  test-strength findings, non-blocking), latest at `91d5389` (note commit on top of
+  `a2ccc1d`). Stacked on #353; **same `audit_log` block**.
+- **#375** (`audit_log.project_id` + reach filter, #344) — a fix lane closed the two BLOCKING
+  findings (S1: tombstone trigger didn't carve out `project_id`; T1: untested `sees_all`
+  scoping) from the first Opus pass. New head `fbba252`. Fresh ordinary + Opus delta reviews
+  dispatched, not yet returned. This is the dependency #353/#365 are waiting on.
+- **#346** (P3 identity domain foundation) — ordinary APPROVE; Opus **REQUEST CHANGES** at
+  `fafa8ec` (P1 blocking: prototype-pollution bypass of the SCIM PATCH `externalId` guard via
+  an inherited property; N1 non-blocking: a PATCH path-case bug silently drops
+  `name.familyName`/`givenName` updates). Fix dispatched, not yet returned.
+- **#380** (runbook SQL query, #324 coverage-report criterion) — two independent Sonnet
+  APPROVEs recorded; docs-only, outside security-review scope, no Opus needed. Ready to merge
+  once confirmed. **#379 (a competing script-based implementation of the same criterion) was
+  closed as superseded** — the decision log already committed to the SQL-query mechanism.
+- **#381** (#354 S1 fix: unvalidated `workspace_id` could reach shadow-mode evidence) — new
+  PR, head `bf4ba69`. Ordinary + Opus reviews dispatched, not yet returned.
+- **#382** (#342 D3: 12 more static `process`/`globalThis`/`import.meta` access shapes for the
+  `check:env` CI gate) — new PR. Security-review scope (`scripts/ci/**`). Ordinary + Opus
+  reviews dispatched, not yet returned.
+- **#383** (#317: asset/websocket query-timing oracle + invitation-cancel existence oracle) —
+  new PR, head `ab070fa`, supersedes/completes the branch whose first 3 commits were already
+  pushed earlier. Ordinary + Opus reviews dispatched, not yet returned.
+- **#327** (P2 execution ledger docs) — open, untouched this wave.
+- **#107** (S10 zero-caller tripwire) — still needs Thomas's explicit decision on whether #161
+  supersedes it.
+
+**Operational note:** the shared checkout at `/home/ubuntu/ticketing.v2` had 5 stale git
+stashes left by concurrent lanes stepping on each other's uncommitted work (all verified
+content-superseded by already-committed history before being dropped, with Thomas's
+confirmation). Every dispatched lane has been told to use its own worktree, not this shared
+directory, but several have reported the shared checkout's branch/HEAD moving under them
+mid-task anyway — worth a durable fix (e.g. dedicating this checkout to the orchestrator only,
+never handing it to a lane task) if it keeps happening.
+
+---
+
 **2026-09-26 orchestrator continuation — `main` at `ecd88b0` (#373; corrected from a stale
 `8a51415`/#374 reading of this line — verified live via `git log`, not carried forward from
 memory).** The decision authorizing one-at-a-time follow-up PRs for #354, #341, #362, #367
