@@ -152,3 +152,36 @@ own tests (8/8) pass unchanged.
 F1's fix is being commissioned as a narrow delta. Per this pass's own recommendation, the
 re-review after that fix can be short — confirm F1's four fields are covered and nothing
 else regressed — not a full fresh pass.
+
+---
+
+## Security review — narrow follow-up (2026-09-27)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `a9916acdb37d18a84`
+
+**Reviewed head:** `f5c8746c253a2e45c3e1cca282bc0774fa5ea1fc`
+
+**Scope:** narrow, per the delta pass's own recommendation — confirm F1's four fields are
+covered and nothing else regressed; not a re-litigation of B1/B2/S1-S3.
+
+**Verdict: CLEAR.** F1 is closed. All four path-param schemas confirmed using
+`nulSafeId`. Independently reproduced live against a real database across all 7 affected
+routes (milestones PATCH/DELETE, prerequisites PATCH/DELETE, stakeholders PATCH and
+stand-down, document-links DELETE): a NUL byte (embedded or alone) → 400 on all 7; a
+valid-but-nonexistent id → 404 on all 7; a real id → 200 on all 7 (happy path unaffected).
+Confirmed the regression tests are real — reverted to the pre-fix schema, confirmed all
+four new tests (and the live probe) fail with "expected 500 to be 400"; restored, confirmed
+they pass. Full suite reproduced: 97/97 files, 1299/1299 tests. `tsc --noEmit` clean.
+`check-openapi.mjs`/`test-contract.mjs` both clean; confirmed the contract regeneration was
+genuinely necessary (the old contract fails once `openapi.json` is reverted) and correctly
+scoped — adds `minLength: 1` to exactly the 7 affected route parameters, nothing else.
+Confirmed the diff from `cb11cd5` to `f5c8746` touches only the four param schemas plus a
+comment under `apps/`/`packages/` — B1/B2/S1-S3 logic untouched.
+
+One cosmetic nit (not worth a fix round): the new comment's line-number reference is off
+by five lines.
+
+**PR #438 is now fully cleared: ordinary review APPROVE (two rounds), Opus pass 1 BLOCKING
+→ fixed → delta CLEAR WITH FINDINGS (F1) → F1 fixed → narrow follow-up CLEAR. Clear to
+merge once CI is green.**
