@@ -346,3 +346,92 @@ This carries forward the earlier S6.
 - D1 and D2 are non-blocking follow-ups.
 
 The merge still needs the main-merge attestation and the audit-row gate above.
+
+---
+
+## Delta review 2 (Opus 5.5): main-merge attestation
+
+**Reviewer:** Claude Opus 5.5 (`claude-opus-5-5[1m]`), a fresh independent context commissioned by the orchestrating session. It did not author, direct or remediate this change.
+**Reviewed head:** `e924f6e71ff0bca2352a66d59b3b78c9146e7606`
+**Range reviewed:** `07cbc3b1a662331d831cc292b4ff785bc497d435..e924f6e71ff0bca2352a66d59b3b78c9146e7606` (29 commits)
+**Base at review:** `origin/main` `0b1bcc1d82f340a8d624fb053835ce3152d8b51d` (#361)
+**Date:** 2026-09-27
+**Verdict:** **CLEAR (lightweight confirmation)** at `e924f6e71ff0bca2352a66d59b3b78c9146e7606`. No blocking security finding.
+
+### What the range contains
+
+- First-parent commits:
+  - `344b187`: the previous note, docs only.
+  - `789845e8ce21aa79c27f3a322a8d19a1f08aba5b`: a main-merge with conflict resolution.
+  - `12d699d3ed9694606550f1d5880017fe3a0a08da` and `e924f6e71ff0bca2352a66d59b3b78c9146e7606`: main-merges. `git show --remerge-diff` shows no resolution content for either.
+- Everything else is main history that has already been reviewed and merged.
+- **The PR's own code is unchanged.** The PR's net diff against its merge-base (`8f545c3` → `07cbc3b`, compared with `0b1bcc1` → `e924f6e`) has identical added and removed lines in every PR file, with two exceptions:
+  - `work-item/index.ts`: the `eq`, `db` and `personTable` imports now come from main (#362), and the route description drops "the assignable roster feed" from its list of later slices;
+  - `policy.ts`: one blank line.
+- These files are byte-identical across the range: `assign-work-item.ts`, `require-workspace-capability.ts`, `work-item-assign.test.ts`, `work-item-assign-policy.test.ts`, `packages/domain/src/index.ts`, `matrix.fixture.json` and `check-events.test.mjs`.
+- **`789845e` resolves the conflict as a union.** In `index.ts`, `policy.ts`, `response.ts`, `schema.ts` and `openapi.json`, main's `GET /api/projects/{projectId}/assignable` sits beside the unchanged assign route. The handler and the middleware chain (`[requireWorkItemReach()]`) are intact, and the resolution adds no logic.
+- **Main changed none of the authority chain this route depends on:** `require-workspace-capability.ts`, `workspace-member-roles.ts`, `require-work-item-reach.ts`, `workspace-access-middleware.ts`, `packages/permissions`, `database/schema.ts`, `activity.ts` and `domain/assignment`.
+  - `apps/api/src/index.ts` only adds the audit router, mounted at `/` for `/instance/audit` and `/workspaces/{id}/audit`. It does not collide with this route.
+  - `event-keys.ts` adds the #364 allowlist.
+
+### Suites at this head
+
+Run in a private worktree against a private database (`o353e_test`); both were removed afterwards.
+
+| Suite | Result |
+| --- | --- |
+| API integration (full) | 91 files, 1242/1242 |
+| `work-item-assign.test.ts` | 16/16 |
+| `existence-oracle-317.test.ts` + `permissions-shadow-mode.test.ts` | 22/22 |
+| API unit | 59 files, 490/490 |
+| `pnpm test:permissions` | 12 files, 82/82 |
+| `pnpm test:ci-scripts` | 602/602 |
+| `pnpm typecheck` | 9/9 tasks |
+| `pnpm check:openapi` | matches (111 operations) |
+| `pnpm check:events` | 27 keys, all registered |
+| `pnpm check:route-policy`, `pnpm check:deps` | pass |
+
+### Mutations, re-run at this head
+
+Each was restored afterwards, and `git status` was clean.
+
+| Mutation | PR suite |
+| --- | --- |
+| Drop `eq(membershipTable.scopeId, item.projectId)` | **red** (2) |
+| Replace the unconditional-assign CAS `isNull(assigneeId)` with `true` | **red** |
+| Make the handler's self predicate always `true` | **red** |
+
+### Earlier findings
+
+- **S1, S2, S5:** still closed, and pinned by the mutations above.
+- **S3:** still tracked by #359. It remains unreachable, because nothing in `apps/api/src` writes `membership`.
+- **D1:** unchanged, and still non-blocking. The CAS write still matches only `id` plus the assignee. It still needs a follow-up issue.
+- **D2:** unchanged and latent. It belongs with #324's self/portal shadow coverage.
+
+### New finding
+
+#### D3: NON-BLOCKING (latent; extends S3 / #359). The picker and the write disagree after #373
+
+- **What changed:** #373 made `list-assignable-people.ts` also require `person.side = 'staff'` and `is_placeholder = false`.
+- **What did not:** `assign-work-item.ts` still checks only the project-roster `membership` row and `person.active`.
+- **The consequence:** the feed's own comment ("the SAME shape … so the picker and the write cannot disagree") no longer holds. Given a directly written roster row, the write would accept a customer-side or placeholder person that the picker hides.
+- **Reachability:** none today, for S3's reason.
+- **Fix:** give both the write and the feed the same predicate, ideally the single helper #359 already calls for.
+
+### Gates (not security findings)
+
+- `pull request template + security review` stays red until two things happen:
+  - this note is recorded;
+  - the `audit_log` box is resolved. That waits on #344 / PR #375, per the decision log of 2026-09-25 (#366). It is not mine to clear.
+- Every other required check is green at this head.
+- **Waivers:** none declared.
+
+### Verdict
+
+**CLEAR (lightweight confirmation)** at `e924f6e71ff0bca2352a66d59b3b78c9146e7606`.
+
+- The PR's code is unchanged since the approved head `07cbc3b1a662331d831cc292b4ff785bc497d435`.
+- The only conflict resolution (`789845e`) is a correct union.
+- No main-side change touches the route's authority chain.
+- The suites and the mutation checks hold at this head.
+- D1, D2 and D3 are non-blocking follow-ups.

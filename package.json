@@ -20,6 +20,7 @@
     "typecheck": "turbo typecheck",
     "prepare": "husky",
     "check:dockerfile-deps": "node ./scripts/ci/check-dockerfile-deps.mjs",
+    "check:deps": "node ./scripts/ci/check-deps.mjs",
     "check:env": "node ./scripts/ci/check-env.mjs",
     "check:events": "node ./scripts/ci/check-events.mjs",
     "check:i18n": "node ./scripts/i18n/check.mjs",

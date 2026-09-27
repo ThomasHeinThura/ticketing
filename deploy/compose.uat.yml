@@ -62,11 +62,35 @@ services:
       - traefik.http.routers.taskdesk-v2-agent.rule=Host(`ticket-v2-uat.${DOMAIN:?DOMAIN is required}`)
       - traefik.http.routers.taskdesk-v2-agent.entrypoints=web
       - traefik.http.routers.taskdesk-v2-agent.service=taskdesk
-      - traefik.http.routers.taskdesk-v2-agent.middlewares=security-headers@file,compress@file,rate-limit@file
+      - traefik.http.routers.taskdesk-v2-agent.middlewares=taskdesk-v2-uat-headers@docker,taskdesk-v2-uat-compress@docker,taskdesk-v2-uat-ratelimit@docker
       - traefik.http.routers.taskdesk-v2-portal.rule=Host(`portal-v2-uat.${DOMAIN:?DOMAIN is required}`)
       - traefik.http.routers.taskdesk-v2-portal.entrypoints=web
       - traefik.http.routers.taskdesk-v2-portal.service=taskdesk
-      - traefik.http.routers.taskdesk-v2-portal.middlewares=security-headers@file,compress@file,rate-limit@file
+      - traefik.http.routers.taskdesk-v2-portal.middlewares=taskdesk-v2-uat-headers@docker,taskdesk-v2-uat-compress@docker,taskdesk-v2-uat-ratelimit@docker
+      # `@docker`, not `@file`: this overlay attaches to the HOST'S EXISTING
+      # Dokploy-managed Traefik (dokploy-network), which loads its own dynamic
+      # file-provider config, not this repo's deploy/traefik/dynamic/middlewares.yml.
+      # An `@file` reference here silently disables the router — Traefik reports
+      # `error: middleware "X@file" does not exist` and `status: disabled` with
+      # no router-level failure surfaced anywhere else. Verified live against
+      # this host's actual Traefik on 2026-09-26. Defining the middlewares
+      # inline as `@docker` labels (same values as middlewares.yml, kept in
+      # sync by hand — there is no way to reference a file-provider middleware
+      # from a container attached to someone else's Traefik) is what v1's own
+      # taskdesk-uat stack already does, proven working on this exact host.
+      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.stsSeconds=63072000
+      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.stsIncludeSubdomains=false
+      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.stsPreload=false
+      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.frameDeny=true
+      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.referrerPolicy=strict-origin-when-cross-origin
+      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.permissionsPolicy=geolocation=(), camera=(), microphone=(), payment=()
+      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.customResponseHeaders.Cross-Origin-Opener-Policy=same-origin
+      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.customResponseHeaders.X-Powered-By=
+      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.customResponseHeaders.Server=
+      - traefik.http.middlewares.taskdesk-v2-uat-compress.compress=true
+      - traefik.http.middlewares.taskdesk-v2-uat-ratelimit.ratelimit.average=100
+      - traefik.http.middlewares.taskdesk-v2-uat-ratelimit.ratelimit.burst=200
     networks:
       - taskdesk
       - dokploy-network

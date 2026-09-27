@@ -301,6 +301,20 @@ describe("API integration: work item assignment (#30, assignment.md)", () => {
       assigneeId: target.id,
       previousAssigneeId: null,
     });
+
+    // #344/AU-10: the first project-scoped audit writer must record `project_id` so a
+    // workspace audit read can be reach-filtered.
+    const auditRows = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityId, row?.id ?? ""));
+    expect(auditRows).toHaveLength(1);
+    expect(auditRows[0]?.action).toBe("work_item.assigned");
+    expect(auditRows[0]?.entityType).toBe("work_item");
+    expect(auditRows[0]?.workspaceId).toBe(workspace.id);
+    expect(auditRows[0]?.projectId).toBe(project.id);
+    expect(auditRows[0]?.before).toEqual({ assigneeId: null });
+    expect(auditRows[0]?.after).toEqual({ assigneeId: target.id });
   });
 
   it("AS-2: a member assigns the item to THEMSELVES (work_item:update via the orSelfTarget branch)", async () => {
@@ -498,6 +512,21 @@ describe("API integration: work item assignment (#30, assignment.md)", () => {
     };
     expect(body.assigneeId).toBe(second.id);
     expect(body.previousAssigneeId).toBe(first.id);
+
+    // The reassign's audit row captures the old holder -> new holder change, not just
+    // the final state.
+    const [itemRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const reassignAuditRows = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityId, itemRow?.id ?? ""));
+    const [reassignRow] = reassignAuditRows.slice(-1);
+    expect(reassignRow?.action).toBe("work_item.assigned");
+    expect(reassignRow?.before).toEqual({ assigneeId: first.id });
+    expect(reassignRow?.after).toEqual({ assigneeId: second.id });
   });
 
   it("assigning the current holder again is an idempotent no-op: 200, no event, no activity row", async () => {
@@ -528,6 +557,12 @@ describe("API integration: work item assignment (#30, assignment.md)", () => {
     ).filter((entry) => entry.field === "assigneeId");
     expect(assignmentRows).toHaveLength(1); // only the first assignment
     expect(publishEventMock).not.toHaveBeenCalled();
+
+    const auditRows = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityId, row?.id ?? ""));
+    expect(auditRows).toHaveLength(1); // only the first (real) assignment
   });
 
   it("a caller from another workspace cannot reach the item, and an unauthenticated call is 401", async () => {
