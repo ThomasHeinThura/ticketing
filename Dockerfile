@@ -87,8 +87,17 @@ RUN NODE_ENV=production pnpm install --prod --frozen-lockfile --no-optional --ig
 FROM ${NODE_IMAGE} AS runtime
 
 # wget is the healthcheck client and nothing else; see the deviation note above.
+# perl-base ships in the base image but nothing in this image runs Perl (pnpm
+# installed with --ignore-scripts, no maintainer script needs it after this
+# layer) — purged so its recurring pack/unpack and Storable CVEs stop blocking
+# the release scan (Trivy, HIGH/CRITICAL, exit-code 1). It is dpkg-Essential,
+# so a plain purge is refused; --allow-remove-essential overrides that guard
+# deliberately. Verified safe by rebuilding this exact base image locally with
+# the purge applied and confirming wget and node both still work, with no
+# other installed package depending on it.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends wget \
+ && apt-get purge -y --allow-remove-essential perl-base \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 10001 taskdesk \
  && useradd --system --uid 10001 --gid taskdesk --home-dir /app --shell /usr/sbin/nologin taskdesk
