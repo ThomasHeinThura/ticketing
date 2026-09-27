@@ -6,6 +6,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
+import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -148,6 +149,32 @@ function detachParentRequest(
 
 function treeRequest(app: ReturnType<typeof createApp>["app"], key: string) {
   return app.request(`/api/work-items/${key}/tree`);
+}
+
+/**
+ * Polls `queryFn` (a `pg_locks` count query on a side connection) until it returns a
+ * count >= 1, or throws after `timeoutMs`. Used by the RH-7 concurrency test below to
+ * prove a specific request is genuinely BLOCKED in Postgres at a specific point --
+ * rather than assuming ordering from `Promise.all` timing, which does not actually
+ * force the interleaving (this is exactly D1 of the Opus delta security review of PR
+ * #432: the original version of this test passed even against the pre-fix code because
+ * `Promise.all` alone does not guarantee the two requests overlap where it matters).
+ */
+async function waitForLockCount(
+  sideClient: Client,
+  query: string,
+  timeoutMs = 5000,
+) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const result = await sideClient.query<{ count: string }>(query);
+    const count = Number(result.rows[0]?.count ?? "0");
+    if (count >= 1) return;
+    if (Date.now() > deadline) {
+      throw new Error(`waitForLockCount: timed out waiting on: ${query}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
 }
 
 describe("API integration: work item hierarchy (#26 third slice)", () => {
@@ -663,20 +690,62 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
     expect((await setParentRequest(app, p.key, a.key)).status).toBe(200);
     expect((await setParentRequest(app, z.key, x.key)).status).toBe(200);
 
-    // Fired together -- real, independently-authenticated concurrent HTTP requests
-    // against the same app/database, the same style `work-item-update.test.ts`'s own
-    // "WI-7: a concurrent-update race" test uses to exercise two overlapping
-    // transactions without artificial staged sleeps: each request's own transaction
-    // makes several genuinely awaited round trips to Postgres (the advisory lock, the
-    // row loads, the ancestor/descendant walks, the final UPDATE), which is real
-    // overlap for two requests fired via `Promise.all`.
-    const [t1, t2] = await Promise.all([
-      setParentRequest(app, x.key, p.key),
-      setParentRequest(app, y.key, z.key),
-    ]);
+    // Opus delta security review of PR #432 (D1): a bare `Promise.all` does NOT force
+    // the two requests to actually overlap where it matters -- opening the second
+    // connection is enough delay that both ran sequentially by accident, so the
+    // previous version of this test passed 4/4 runs even against the PRE-FIX code.
+    // Forced here with a side `pg` connection that holds an `ACCESS EXCLUSIVE` lock on
+    // `activity` (the table `set-work-item-parent.ts`'s transaction writes to, AFTER
+    // taking the advisory lock, for its activity-log insert) -- parking the first
+    // request's transaction at a known point, provably past its own advisory-lock
+    // acquisition, before the second request is even fired.
+    const connectionString = process.env.TASKDESK_DATABASE_URL;
+    if (!connectionString) {
+      throw new Error(
+        "TASKDESK_DATABASE_URL must be defined for integration tests",
+      );
+    }
+    const sideClient = new Client({ connectionString });
+    await sideClient.connect();
 
-    const statuses = [t1.status, t2.status].sort();
-    expect(statuses).toEqual([200, 422]);
+    try {
+      await sideClient.query("BEGIN");
+      await sideClient.query("LOCK TABLE activity IN ACCESS EXCLUSIVE MODE");
+
+      // Fire T1 (X -> P) but do not await yet. It will acquire the advisory lock
+      // (namespace 4012, keyed on this project) immediately, then block trying to
+      // write its activity row -- behind the side connection's table lock above.
+      const t1Promise = setParentRequest(app, x.key, p.key);
+
+      await waitForLockCount(
+        sideClient,
+        `SELECT count(*)::text AS count FROM pg_locks
+         WHERE locktype = 'relation' AND relation = 'activity'::regclass
+           AND granted = false`,
+      );
+
+      // T1 is now provably blocked mid-transaction, past its own advisory-lock
+      // acquisition. Only now fire T2 (Y -> Z) -- it must queue behind T1's still-held
+      // advisory lock, not merely happen to run after it.
+      const t2Promise = setParentRequest(app, y.key, z.key);
+
+      await waitForLockCount(
+        sideClient,
+        `SELECT count(*)::text AS count FROM pg_locks
+         WHERE locktype = 'advisory' AND classid = 4012 AND granted = false`,
+      );
+
+      // Release the table lock -- T1's transaction can now finish its activity insert
+      // and commit, releasing the advisory lock so T2 can proceed with a fresh re-read.
+      await sideClient.query("COMMIT");
+
+      const [t1, t2] = await Promise.all([t1Promise, t2Promise]);
+
+      const statuses = [t1.status, t2.status].sort();
+      expect(statuses).toEqual([200, 422]);
+    } finally {
+      await sideClient.end();
+    }
 
     // Whichever one won, the FINAL persisted hierarchy never exceeds RH-7's depth-5 cap
     // anywhere -- the actual invariant this fix protects, checked directly rather than

@@ -148,6 +148,19 @@ export async function setWorkItemParent(
       });
     }
 
+    // Opus delta security review of PR #432 (D2): defensive-only -- nothing in this
+    // codebase moves a work item between projects today (see the pre-read's own doc
+    // comment above), so `item.projectId` cannot actually differ from `pre.projectId`
+    // on any live path. Guarded anyway: a future cross-project move landing here
+    // without updating this lock's scoping would otherwise silently reopen F1's race,
+    // since the lock was taken on `pre.projectId`, not `item.projectId`.
+    if (item.projectId !== pre.projectId) {
+      throw new HTTPException(409, {
+        message:
+          "Could not set parent -- the work item's project changed concurrently; reload and retry",
+      });
+    }
+
     const chain = await ancestorChain(tx, parent.id);
     const depth = await descendantDepth(tx, item.id);
     const result = validateReparent(item.id, parent.id, chain, depth);

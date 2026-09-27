@@ -27,9 +27,12 @@ const MAX_WALK_HOPS = 1000;
  * walk (migration 0056), which takes `FOR NO KEY UPDATE` row locks because it runs
  * INSIDE the write transaction that changes `parent_id` and must be race-free against a
  * concurrent write. This walk only informs a PRE-write validation decision
- * (`@taskdesk/domain`'s `validateReparent`); the trigger remains the sole race-free
- * authority at write time -- see `set-work-item-parent.ts`'s own doc comment for how the
- * two layers compose.
+ * (`@taskdesk/domain`'s `validateReparent`); for set-parent specifically, this walk now
+ * runs under `hierarchy-lock.ts`'s per-project advisory lock, which closes the depth race
+ * (Opus security review of PR #432, finding F1) -- the DB trigger remains the sole
+ * race-free authority specifically for CYCLES, not depth (its own migration comment says
+ * so explicitly) -- see `set-work-item-parent.ts`'s own doc comment for how the two
+ * layers compose.
  */
 export async function ancestorChain(
   executor: DbOrTx,
