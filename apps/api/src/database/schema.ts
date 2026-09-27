@@ -307,6 +307,17 @@ export const workspaceRoleTable = pgTable(
     // composite index already has workspace_id as the leading column, so the plain index was
     // redundant storage/maintenance cost with no query it uniquely served.
     index("workspace_role_role_idx").on(table.role),
+    // Issue #251: tracks the constraint hand-written migration `0051` (issue #118) already
+    // added to the live database (`ALTER TABLE ... ADD CONSTRAINT
+    // workspace_role_workspace_id_role_unique UNIQUE (workspace_id, role)`), and that
+    // `seedDefaultWorkspaceRoles`'s `onConflictDoNothing` target (issue #134) depends on.
+    // Declaring it here brings it under `drizzle-kit check`'s schema-drift detection; the name
+    // and columns must match `0051` exactly so `drizzle-kit generate` produces no new
+    // migration.
+    unique("workspace_role_workspace_id_role_unique").on(
+      table.workspaceId,
+      table.role,
+    ),
   ],
 );
 
