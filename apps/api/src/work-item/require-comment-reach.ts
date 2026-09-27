@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
@@ -39,13 +39,32 @@ export function requireCommentReach(idKey = "id") {
     // full row itself, the same "middleware resolves reach, handler re-scopes its own
     // write" split `update-work-item.ts`/`assign-work-item.ts` already use, rather than
     // trusting a row read here across the gap to the handler's own transaction.
+    //
+    // #202 / PR #204's freeze invariant (same as `require-work-item-reach.ts`'s identical
+    // join): a comment belonging to a soft-deleted project's work item is frozen for that
+    // project's 30-day recovery window, so it must 404 here exactly like a nonexistent
+    // comment id -- never distinguishing the two from the outside. Joined through
+    // `workItemTable` to `projectTable` and filtered on `isNull(projectTable.deletedAt)`.
     const [comment] = await db
       .select({
         workItemId: schema.commentTable.workItemId,
         workspaceId: schema.commentTable.workspaceId,
       })
       .from(schema.commentTable)
-      .where(eq(schema.commentTable.id, id))
+      .innerJoin(
+        schema.workItemTable,
+        eq(schema.commentTable.workItemId, schema.workItemTable.id),
+      )
+      .innerJoin(
+        schema.projectTable,
+        eq(schema.workItemTable.projectId, schema.projectTable.id),
+      )
+      .where(
+        and(
+          eq(schema.commentTable.id, id),
+          isNull(schema.projectTable.deletedAt),
+        ),
+      )
       .limit(1);
 
     if (!comment) {
