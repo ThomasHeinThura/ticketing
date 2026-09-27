@@ -2374,12 +2374,18 @@ export const auditLogTable = pgTable(
     // Nullable with no FK, following `workspace_id` directly above -- the entity the row
     // describes may outlive its project, and audit rows must never be deleted or
     // rewritten by a cascade. DELIBERATELY NOT PART of the row hash
-    // (`canonicalRowHash`/`data-model.md`'s "The audit hash chain"): adding a hashed
-    // column would change the recipe for NEW rows while every existing row was hashed
-    // without it, breaking `verify-audit-chain` over history -- #344's own acceptance
-    // allows this choice explicitly, and `audit-log.test.ts` pins that old rows still
-    // verify. NULL also means "not project-scoped" for the read filter, which is the
-    // same answer the filter gives a row written before this column existed.
+    // (`canonicalRowHash`/`data-model.md`'s "The audit hash chain") -- NOT because
+    // hashing it would have broken old rows (a field hashed only when non-null would
+    // have stayed injective and every pre-migration NULL row would still recompute;
+    // corrected after the Opus security review of PR #375, H1, found that original
+    // reasoning wrong). The real reason follows `organisation_id`'s own precedent: like
+    // the tombstone, this column can legitimately change after the row is written, and a
+    // hashed column that changes would make `verify-audit-chain` report tamper on every
+    // legitimate change. It is pinned append-only by the same trigger that protects every
+    // other non-hashed column (`audit_log_reject_mutation()`, migration 0070, S1) instead.
+    // `audit-log.test.ts` pins that old rows still verify. NULL also means "not
+    // project-scoped" for the read filter, which is the same answer the filter gives a
+    // row written before this column existed.
     projectId: text("project_id"),
     organisationId: text("organisation_id").references(
       () => organisationTable.id,

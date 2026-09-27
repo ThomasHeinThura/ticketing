@@ -424,13 +424,22 @@ mutated after the fact. `organisation_id` is `ON DELETE SET NULL` — the tombst
 nulling a hashed column would make `audit-verify` report tamper on every organisation
 deletion. The tombstone stays; it just sits outside the chain.
 
-**`project_id` is excluded from the hash too** (#344, decision log 2026-09-23): it was added
-to a table whose chain already existed, and appending a new column to the recipe would make
-every pre-existing row fail `audit-verify` on recomputation — the recipe is applied uniformly,
-so a row hashed without it can never match a recomputation that includes it. Like
-`organisation_id`, the column is stored and queryable; it is simply not part of the tamper
-evidence. `audit-log-project-id-migration.test.ts` pins a pre-migration row's survival, and
-the writer's own suite pins that rows with and without it verify over one chain.
+**`project_id` is excluded from the hash too** (#344, decision log 2026-09-23) — but not
+because hashing it was impossible. A field hashed only when `project_id IS NOT NULL` would
+have stayed injective (`canonicalRowHash` joins a closed, positional field list and rejects
+its own separator inside any field, so a differing separator count keeps two recipes from
+colliding), and every pre-migration row (`NULL`) would still recompute byte-identically —
+corrected here after the Opus security review of PR #375 (H1) found the original rationale
+below this line was wrong (an independent review of the CHANGE, not of what it protects).
+The real reason follows `organisation_id`'s own precedent: like the tombstone, `project_id`
+can legitimately change after the row is written, and a hashed column that changes would make
+`audit-verify` report tamper on every legitimate change. `project_id` is stored and queryable;
+it is simply not part of the tamper evidence, and it is now pinned append-only by the same
+trigger that already protects every other non-hashed column (`audit_log_reject_mutation()`,
+0070) — see the S1 finding in
+[`docs/07-planning/security-reviews/375-audit-log-project-id-reach-filter.md`](../07-planning/security-reviews/375-audit-log-project-id-reach-filter.md).
+`audit-log-project-id-migration.test.ts` pins a pre-migration row's survival, and the
+writer's own suite pins that rows with and without it verify over one chain.
 
 **Writer serialisation.** Every `audit_log` insert takes
 `pg_advisory_xact_lock(<audit chain constant>)` first, in the same transaction as the

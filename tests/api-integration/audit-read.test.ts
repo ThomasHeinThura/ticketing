@@ -330,6 +330,40 @@ describe("GET /api/workspaces/{workspaceId}/audit — project reach (#344, AU-10
     expect(actions).toEqual(["auth.sign_out"]);
   });
 
+  it("a sees_all grant on ANOTHER workspace does not lift the filter on this one (Opus security review of PR #375, T1)", async () => {
+    // The ordinary review's own mutation (deleting
+    // `eq(membershipTable.scopeId, workspaceId)` from the sees_all lookup) left this
+    // whole file green -- nothing exercised a caller who holds sees_all on a DIFFERENT
+    // workspace. #344's acceptance names a two-workspace, two-project test; this is it.
+    const manager = await createWorkspaceMember({ role: "admin" });
+    const otherWorkspace = await createWorkspaceMember({ role: "admin" });
+    const { project: unreachable } = await createProjectFixture({
+      workspaceId: manager.workspace.id,
+    });
+
+    const personId = await addPersonForUser(manager.user.id);
+    // sees_all, but scoped to the OTHER workspace, never this one.
+    await addMembership(
+      personId,
+      "workspace",
+      otherWorkspace.workspace.id,
+      true,
+    );
+
+    await seedProjectScopedRow(manager.workspace.id, null, "auth.sign_out");
+    await seedProjectScopedRow(
+      manager.workspace.id,
+      unreachable.id,
+      "plugin.tested",
+    );
+
+    const actions = await readActions(manager.user, manager.workspace.id);
+    expect(actions).toContain("auth.sign_out");
+    // The project-scoped row stays invisible: a sees_all grant is per-workspace
+    // (#319/#334), and this caller's grant names a different workspace entirely.
+    expect(actions).not.toContain("plugin.tested");
+  });
+
   it("a manager with no person row and no sees_all sees only non-project rows (fail-closed)", async () => {
     const manager = await createWorkspaceMember({ role: "admin" });
     const { project } = await createProjectFixture({
