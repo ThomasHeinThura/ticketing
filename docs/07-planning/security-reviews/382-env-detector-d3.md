@@ -77,3 +77,15 @@ This change is strictly more fail-closed than `main` and causes no regressions, 
 
 - `git show --remerge-diff a8a7e17` is empty — a clean automatic merge, no conflict-resolution content.
 - `git diff 1c183ad..a8a7e17 --stat` touches exactly two files: `docs/05-operations/runbook.md` (#380) and `docs/07-planning/status.md` (#384), both docs-only and outside security-review scope. `scripts/ci/lib/env-reads.mjs` and its test file are unchanged since the reviewed head.
+
+---
+
+## Lightweight re-confirmation after second branch update (2026-09-27)
+
+**Reviewed head:** `ce73e9a1dc2bc9eea193649179cebef6f0a14ba6`
+**Previously reviewed head:** `a8a7e17345019aec9299c208355f60bc69e88748`
+**Reviewer:** orchestrating session (mechanical verification, per `AGENTS.md`'s review-tier table)
+**Verdict:** CLEAR WITH FINDINGS, unchanged. H1, M1-M4, L1, L2 above still stand, non-blocking.
+
+- `git show --remerge-diff ce73e9a` is empty — clean automatic merge, no conflict-resolution content.
+- This merge brings in PR #375's real changes (migration, `schema.ts`, `audit-writer.ts`, `list-workspace-audit.ts`), which already carries its own independent, complete Opus CLEAR verdict. Zero overlap with this PR's own file (`scripts/ci/lib/env-reads.mjs`, `scripts/ci/lib/env-reads-342.test.mjs`) — confirmed via `git diff a8a7e17..ce73e9a --stat`.
