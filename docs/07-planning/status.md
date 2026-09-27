@@ -1555,6 +1555,27 @@ completeness fix, then the PR body/checklist need a final pass before merge. Thi
 merge with `pal-mcp` "must-use" framing — it merges recording what was tried, what was found,
 and what is suspended, which is itself the useful governance outcome here.
 
+**Update 2026-09-27:** Thomas fixed the underlying `pal-mcp-server` bug (a shared-singleton
+tool instance in `server.py`) and redeployed it. Two independent sessions ran adversarial
+concurrency tests against the redeployed server the same day and found it clean, including on
+the exact `calling_expert_analysis` round-trip that reproduced the leak before. Thomas then
+made the call himself (asked directly, chose the middle option): **`pal-mcp` is now PARTIALLY
+UNSUSPENDED** — usable again for ordinary review/audit/report/alignment on changes that touch
+no path in `ci-cd.md`'s security-review-scope list; still suspended for anything that does.
+See the decision log's 2026-09-27 entry for the test detail and reasoning, and `CLAUDE.md`,
+`agent-workflow.md`, `pal-reviewer.md` (all updated in the same pass) for the current rule.
+This does not retroactively change PR #376's own history above — that record stands — and
+does not by itself reopen or change PR #376's merge readiness.
+
+**Further update, same day:** Thomas then lifted the remaining restriction — `pal-mcp` is now
+**FULLY UNSUSPENDED** for reading/ordinary-review/audit/analysis on any branch, any scope,
+including security-review-scope changes. The mandatory final Opus security/critical review is
+completely unaffected — still required, separately, on every security-scope PR. See the
+decision log's second 2026-09-27 entry (naming the first as what it supersedes). Also
+recorded there: a real process gap where a subagent's own `CLAUDE.md` snapshot lagged this
+session's live edits — noted in `CLAUDE.md` itself with a workaround (`Read` the decision log
+directly when a subagent flags the conflict).
+
 ### PR #377 — UAT deploy verified end-to-end through the real host Traefik
 
 Issue #11's deployment skeleton was mostly already built on `main`; verified live rather than
@@ -1789,6 +1810,60 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-27 · pal-mcp fully unsuspended; CI-tooling batch merged; real bug found on #423
+
+`main` at `01063ad` as of this entry (verify live — this session merged rapidly and `main`
+kept advancing every few minutes; do not trust this SHA past the next merge).
+
+**pal-mcp governance:** Thomas lifted the 2026-09-26 suspension in two stages, ending in a
+full unsuspension for all reading/ordinary-review/audit/analysis, any branch, any scope
+including security-scope — the confirmed cross-call content leak was fixed server-side and
+independently re-tested clean. The mandatory Opus final security/critical review is
+unaffected in every respect; pal-mcp can never satisfy it. See the decision log's two
+2026-09-27 entries and `CLAUDE.md`'s "Model tiers" for the full account.
+
+**Merged this session**, each with an independent ordinary review and (where
+`scripts/ci/**` made it security-scope) a passed Opus review at the exact merged head:
+#413 (check-ui.mjs rebuilt on the real TS parser, closing #255's import-evasion class),
+#410 (repoRoot resolves against cwd, not script location — #399), #412 (null-vs-epoch
+activity diff + event-source-before-commit ordering — #298 S1/S2), #420 (tenant-attribution
+test rigor — asserts the specific FK constraint name, not a bare `rejects.toThrow()` — #240,
+no security review required, out of `ci-cd.md`'s scope).
+
+**Merge-ready, clear at their current heads, mid the routine "main advanced, re-verify
+exact-head, remerge" cycle every fast-moving merge train hits:** #416 (`field()` multi-line
+capture, four Opus passes — #150), #418 (regex-vs-division disambiguation in
+strip-code-comments.mjs, three Opus passes — #143), #422 (check-deps.mjs ambient-module-
+augmentation misattribution — #393).
+
+**#423 (env-reads.mjs rebuilt on the real TS parser — #342) found a real, substantive bug
+via the review process working as designed, not yet merged.** Ordinary review found the
+rewrite's shadow-tracking was file-wide instead of scoped (a legitimate local shadow of
+`process` in one function silently hid an unrelated real `process.env.X` read elsewhere in
+the same file) plus a missing container-escape charge; both independently re-confirmed by
+direct source read before commissioning a fix. That fix's own Opus pass then found something
+larger: the rewrite's allow-list design (only charge contexts the tree-walk explicitly
+names) drops coverage for roughly 26 shapes the old tokenizer's blanket fail-closed default
+caught — verified empirically by running 42 probe files through both detectors. A structural
+fix (flip the default: charge unless a specific consumer narrows it, restoring the old
+fail-closed shape) is in progress. Not merged; do not build on this branch.
+
+**Also picked up mid-session:** PR #327 (P2 execution ledger, docs-only, authored by a
+non-Claude agent, sitting unreviewed since 2026-09-26) — ordinary review dispatched.
+
+**New follow-up issues filed:** #424 (three non-blocking doc-accuracy/wording findings from
+#422's Opus pass, plus a pre-existing narrow gap, all out of scope for that PR).
+
+**Known process gaps worth knowing, not yet fixed:** `check-pr-template.mjs` reads
+`$GITHUB_EVENT_PATH`, a snapshot of the PR body taken at the triggering push/edit — editing
+the body via `gh pr edit` shortly after a push (rather than before it, or via a fresh push)
+can leave a stale snapshot that fails the Note-link check even though the live body is
+correct; a branch update (or any new push) clears it by forcing a fresh event. This recurred
+several times this session on #416/#418. Also: `gh pr merge` intermittently fails with
+"15 of 15 required status checks are expected" moments after every check shows SUCCESS —
+transient GitHub check-registration timing, clears on retry a few seconds later, not a real
+gate failure.
 
 ### 2026-09-24 · P0 #10 Opus re-review and parser/scope hardening
 

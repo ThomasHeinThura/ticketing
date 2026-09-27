@@ -110,21 +110,34 @@ A merge is not a stopping point.
 
 ## Model tiers
 
-> **`pal-mcp` is SUSPENDED as of 2026-09-26 — do not use it for any review, audit, or report
-> that a gate depends on until this notice is removed.** A cross-call content leak was found
-> in its `codereview`/`analyze`/`precommit` tools (one session's file list, prompt text, and
+> **`pal-mcp` is FULLY UNSUSPENDED as of 2026-09-27 (Thomas — see the decision log's newest
+> entry) for all reading, ordinary review, audit, and analysis — on any branch, any scope,
+> including security-review-scope changes.** The one thing this never touches: the mandatory
+> final Opus security/critical review is unaffected in every respect on a security-scope PR —
+> same tier, same independence requirement, same mandatory status, never satisfied by
+> `pal-mcp` at any confidence level, regardless of how much ordinary-review/audit work
+> `pal-mcp` does on that same PR. The original finding: a cross-call content leak in its
+> `codereview`/`analyze`/`precommit` tools (one session's file list, prompt text, and
 > findings appeared in a different, unrelated session's response, with no shared
-> `continuation_id`). Thomas changed the underlying model config (fusion panel → failover);
-> a fresh adversarial re-test after that change found the **same leak still happening** — it
-> is server-side workflow-tool state being shared across calls/clients, not something the
-> model-routing config controls. See the decision log's newest entries for the full account.
-> Until this is root-caused and fixed at the server, treat `pal-mcp` as optional/exploratory
-> only — never as the reviewer of record for any PR, and never for anything in
-> `ci-cd.md`'s security-scope list. Fresh Sonnet contexts are the standing reviewer again.
+> `continuation_id`), which survived Thomas's first fix attempt (fusion panel → failover
+> config change) on 2026-09-26 — server-side workflow-tool state being shared across
+> calls/clients, not something the model-routing config controlled. Thomas fixed it at the
+> actual server/container level and redeployed; two independent sessions ran adversarial
+> concurrency tests against the redeployed server on 2026-09-27, including forcing the exact
+> `calling_expert_analysis` round-trip that reproduced the leak before, and found it clean —
+> a `pal-mcp`-based review of a real, in-flight PR then produced a substantive, correct,
+> non-blocking finding, further evidence it's doing real reviewing work, not just failing to
+> leak. See the decision log's two 2026-09-27 entries (partial, then full) for exactly what
+> was tested and Thomas's own reasoning for going the rest of the way the same day.
 >
-> The rest of this section describes the design as originally intended; it is suspended, not
-> deleted, so it can resume once the leak is fixed rather than being re-designed from
-> scratch.
+> **A live process gap, worth knowing before you spawn a subagent that uses `pal-mcp`:** a
+> subagent's own view of this file (via its system-reminder) can lag mid-session edits to the
+> live file, even though `.claude/agents/**` role-prompt content is read fresh at each spawn.
+> If a subagent reports a conflict between a task instruction and its own `CLAUDE.md`
+> snapshot, tell it to `Read` `docs/07-planning/decision-log.md` directly — a live file read,
+> not a cached snapshot — rather than trusting either side blindly. One subagent already hit
+> this and handled it correctly (treated the stale snapshot as unverified, fell back to a
+> direct Sonnet review) — see the decision log's full-unsuspension entry.
 >
 > - **`pal-mcp`** (an MCP tool suite — `analyze`, `codereview`, `secaudit`, `debug`,
 >   `refactor`, `testgen`, `precommit`, `consensus`, `thinkdeep`, `tracer`, `chat`,
@@ -166,15 +179,18 @@ tool, never an implementation path, and it never touches the Opus gate.
 
 | Work | Tool / model |
 | --- | --- |
-| Bulk reading, context-prep, summarization | `pal-mcp` (`coder` failover chain) |
-| Ordinary review (bugs, tests, code quality), audit, reporting | `pal-mcp` (`coder` failover chain); Sonnet fresh context as fallback if `pal-mcp`/9Router is unreachable **or if the PR's author is GPT-6 Luna, Gemini 3.8 Flash, DeepSeek 4.1 Flash, or GLM 5.3 Flash — any of these could be the model that actually answers, so `coder` cannot independently review a PR authored by any of them** |
-| Project-alignment / misalignment check — does this change match the spec, the vocabulary, the shared contracts, the five rules | `pal-mcp` (`coder` failover chain); Sonnet fresh context as fallback |
+| Bulk reading, context-prep, summarization | `pal-mcp` (`coder` failover chain), any scope |
+| Ordinary review (bugs, tests, code quality), audit, reporting | `pal-mcp` (`coder` failover chain), any scope including security-scope; Sonnet fresh context as fallback if `pal-mcp`/9Router is unreachable **or if the PR's author is GPT-6 Luna, Gemini 3.8 Flash, DeepSeek 4.1 Flash, or GLM 5.3 Flash — any of these could be the model that actually answers, so `coder` cannot independently review a PR authored by any of them.** A security-scope PR still requires the separate, mandatory Opus pass below in addition — `pal-mcp` reviewing it ordinarily never substitutes for that |
+| Project-alignment / misalignment check — does this change match the spec, the vocabulary, the shared contracts, the five rules | `pal-mcp` (`coder` failover chain), any scope; Sonnet fresh context as fallback |
 | Implementation against an agreed spec | Sonnet, spawned explicitly |
 | **Final independent security / critical review** | **Opus**, spawned explicitly as its own subagent, on the exact candidate SHA — never `pal-mcp`, never a fallback tier |
 | **Phase finalizer** (P0–P7, additive — see `AGENTS.md`'s "Review tiers") | **Opus**, a **fresh independent context that did not orchestrate or merge that stage's own PRs**, across everything merged for the stage, in addition to (never instead of) the per-PR security-scope gate above. If Opus is unreachable for the finalizer, the stage is **not** claimed done — same capacity rule as the per-PR gate, not a lower bar because it runs less often |
 | Orchestrating, planning, synthesizing reports | whatever model this top-level session is running as |
 
-**Reading, ordinary review, audit, reporting and the alignment check default to `pal-mcp`.**
+**Reading, ordinary review, audit, reporting and the alignment check default to `pal-mcp`,
+on any branch and any scope — including security-scope changes (decision log, 2026-09-27,
+full unsuspension).** A security-scope PR still gets its separate, mandatory Opus pass in
+addition, exactly as before; `pal-mcp` doing the ordinary review never substitutes for it.
 Match the tool to the job: `analyze`/`codereview`/`secaudit` for review and audit,
 `thinkdeep`/`tracer` for understanding a change before judging it, `precommit` before a
 candidate goes up, `chat`/`consensus` for a second opinion, `apilookup` for current API/SDK
@@ -233,8 +249,9 @@ Five things an agent may never do:
    he has not separately vetted what its panel's own third-party sub-providers (Gemini,
    DeepSeek, GLM) retain or train on, and their exact composition on the gateway rests on his
    statement — it cannot be verified from this side. Treat both as open items, not resolved,
-   until he says otherwise (`pal-reviewer.md` carries the same rule). **Separately, `pal-mcp`
-   is suspended entirely right now — see the notice at the top of "Model tiers."**
+   until he says otherwise (`pal-reviewer.md` carries the same rule). **`pal-mcp` itself is
+   fully unsuspended as of 2026-09-27 (see the notice at the top of "Model tiers") — this rule
+   about what content to send it is unaffected by that and applies at every scope.**
 
 ---
 
@@ -256,16 +273,20 @@ been learned on this repository:
   independent implementation or review lanes are genuinely ready at once. Default useful
   concurrency is a handful of lanes — as many as there is real, non-overlapping,
   well-scoped work for, not a fixed number to hit.
-- **SUSPENDED 2026-09-26 — use a fresh Sonnet context, not the `pal-reviewer` subagent, for
-  ordinary review, audit, reporting and the alignment check right now.** (This bullet
-  described the intended default before `pal-mcp`'s confirmed cross-call content leak; see
-  "Model tiers" above for the full account. Left below for when this is lifted.) ~~Ordinary
-  review, audit, reporting and the alignment check default to the `pal-reviewer` subagent~~
-  (`.claude/agents/pal-reviewer.md`), restricted to `pal-mcp` tools plus read-only
-  file access. Give it the exact candidate SHA and file list; it does the actual review via
-  `pal-mcp`'s `coder` failover chain, batched into as few tool calls as the job allows, and
-  reports the SHA it checked plus what it did not check. Fall back to a fresh Sonnet context
-  only when `pal-mcp`/9Router is genuinely unreachable, and say so in the report.
+- **FULLY UNSUSPENDED 2026-09-27 — the `pal-reviewer` subagent (`.claude/agents/pal-reviewer.md`)
+  is usable again for ordinary review, audit, reporting and the alignment check, on any
+  candidate, any scope, including security-scope.** A security-scope candidate still needs
+  the separate, mandatory Opus pass in addition — `pal-reviewer` never substitutes for it.
+  Give it the exact candidate SHA and file list, and **paste the actual diff/file content
+  directly in the task prompt** — it has no `Bash`/`git`, so a bare path or SHA reference
+  alone will not let it fetch the real content itself (a subagent hit exactly this gap on PR
+  #408 and correctly refused to fabricate a review rather than guess). It does the actual
+  review via `pal-mcp`'s `coder` failover chain, batched into as few tool calls as the job
+  allows, and reports the SHA it checked plus what it did not check. Fall back to a fresh
+  Sonnet context only when `pal-mcp`/9Router is genuinely unreachable, and say so in the
+  report. **If it reports its own `CLAUDE.md` snapshot conflicts with your task instruction,
+  tell it to `Read` `docs/07-planning/decision-log.md` directly** — see the decision log's
+  full-unsuspension entry for why this can happen.
 - **Do not reach for heavier multi-agent orchestration (the `Workflow` tool) as a standing
   default.** It requires the user's own explicit opt-in in that session and is not something
   this file can pre-authorize; ask Thomas to say so explicitly ("use a workflow") when a
