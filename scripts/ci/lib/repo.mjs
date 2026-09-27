@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +13,24 @@ const here = path.dirname(fileURLToPath(import.meta.url));
  * — every scratch directory is made a real git work tree first.
  */
 const scriptOwnRoot = path.resolve(here, "../../..");
+
+/**
+ * Repo-relative path that only exists in THIS project's checkout (it's this very file).
+ * Used by `resolveRepoRoot` (#414) to tell "a different worktree of this same project" —
+ * where the marker is present, at some other absolute location — apart from "cwd happens
+ * to be inside a completely unrelated git repository", where a resolved root can look
+ * superficially fine (a real, absolute path from a real `git rev-parse`) while containing
+ * none of this project's checkers at all.
+ */
+const CHECKOUT_MARKER = "scripts/ci/lib/repo.mjs";
+
+/**
+ * True when `candidateRoot` actually looks like this project's checkout (or a worktree of
+ * it), not merely some other git repository the caller's cwd happened to resolve into.
+ */
+function looksLikeThisCheckout(candidateRoot) {
+  return existsSync(path.join(candidateRoot, CHECKOUT_MARKER));
+}
 
 /**
  * The repository root, resolved against the CALLING process's cwd — `git rev-parse
@@ -28,16 +47,25 @@ const scriptOwnRoot = path.resolve(here, "../../..");
  * fallback there is the exact same wrong-root failure #399 describes, just re-triggered
  * by "the git call failed" instead of "invoked via absolute path from elsewhere" — see
  * `diff.mjs`'s `DiffUnavailableError` for the same discipline applied one file over.
+ *
+ * A resolved root can also be a real, unrelated git repository — running a checker via an
+ * absolute path while cwd sits inside some OTHER project resolves cleanly to THAT
+ * project's top level, which then has zero workspace packages/source files to check. Every
+ * checker built on `listWorkspaceManifests`/`walk` reports that as a vacuous, silently
+ * clean pass rather than an error (#414). So a resolved root is only accepted once it also
+ * passes `looksLikeThisCheckout` — cheap and exact, since the marker is this very file, and
+ * true for every worktree of this project (the file is checked in) and false for anything
+ * else that isn't this project.
  */
 function resolveRepoRoot() {
+  let output = null;
   try {
-    const output = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+    output = execFileSync("git", ["rev-parse", "--show-toplevel"], {
       cwd: process.cwd(),
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
       timeout: 5000,
     }).trim();
-    if (output) return output;
   } catch (error) {
     const stderr = String(error?.stderr ?? "");
     // Deliberately narrow: git's "cwd genuinely isn't inside any work tree" message is
@@ -61,6 +89,17 @@ function resolveRepoRoot() {
       );
     }
     // Genuinely not inside any git work tree — fall back below.
+  }
+  if (output) {
+    if (looksLikeThisCheckout(output)) return output;
+    throw new Error(
+      `repo.mjs: 'git rev-parse --show-toplevel' from cwd ${process.cwd()} resolved to ` +
+        `"${output}", a real git repository that does not look like this project's ` +
+        `checkout (it has no ${CHECKOUT_MARKER}). Refusing to silently treat an ` +
+        "unrelated repository as this one's root and report a vacuous, empty-but-clean " +
+        "pass (#414) -- rerun this checker with a cwd inside this project's checkout " +
+        "(or one of its worktrees) instead.",
+    );
   }
   return scriptOwnRoot;
 }
