@@ -439,7 +439,11 @@ describe("issue #143 — regex after a keyword is not division", () => {
     // it on the line -- so assert on the call AFTER a string containing a slash, the same
     // shape as the `of`/property-access cases below.
     const source = 'const n = a / b; s = "/"; it.skip("x");';
-    assert.equal(scan(source), true, "a real division must not hide the call after it");
+    assert.equal(
+      scan(source),
+      true,
+      "a real division must not hide the call after it",
+    );
   });
 
   it("Opus security review: `of` is a legal identifier, not always a keyword -- dropped from the allow-list", () => {
@@ -472,7 +476,11 @@ describe("issue #143 — regex after a keyword is not division", () => {
 
   it("Opus security review: optional chaining before a keyword-shaped property name is handled the same way", () => {
     const source = 'o?.default / 2; s = "/"; it.skip("a", fn);';
-    assert.equal(scan(source), true, "must not hide the call after `o?.default / 2`");
+    assert.equal(
+      scan(source),
+      true,
+      "must not hide the call after `o?.default / 2`",
+    );
   });
 
   it("does not regress: a `.` earlier in the line does not suppress an unrelated keyword's own regex reading", () => {
