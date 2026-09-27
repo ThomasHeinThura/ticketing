@@ -78,3 +78,12 @@ main content (#394's check:tokens gate), zero overlap with this PR's own files.
 **Reviewer:** orchestrating session (mechanical verification)
 **Verdict:** CLEAR, unchanged. Empty remerge-diff; brings in #346's already-reviewed P3
 identity domain code, zero overlap with this PR's own files.
+
+---
+
+## Lightweight re-confirmation after branch update, round 3 (2026-09-27)
+
+**Reviewed head:** `91ce0bfc9d47cbdf33ef999b2fb00d1a8e4ddd7c`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty remerge-diff; brings in #406's already-reviewed
+command-palette fix, zero overlap with this PR's own files.
