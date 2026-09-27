@@ -46,6 +46,36 @@
  * with a recursive call, which is what makes the two halves of the rule hold at once:
  * template TEXT and string CONTENTS are data and get blanked; the code inside a
  * substitution is code and does not, because a call written there executes.
+ *
+ * **Issue #143 — regex vs. division is told apart by the previous TOKEN, not just the
+ * previous character, and that still has one disclosed gap.** `previousMeaningful` used to
+ * look at a single character, so `return /['"]/` (a real regex, right after a keyword) read
+ * the same as an identifier ending in `n` followed by division — both end in a word
+ * character, and no word character was in `REGEX_ALLOWED_BEFORE`. The `/` was then read as
+ * division and the `'` right after it as a STRING OPEN, which swallows the rest of the
+ * line, including any real code sitting after it (an `it.skip(` call, in the worst case).
+ * Reproduced directly (see `strip-code-comments.test.mjs`'s "issue #143" block):
+ *
+ *   function f(x) { return /['"]/.test(x); it.skip("real", fn); }
+ *
+ * stripped to `... return /['` with the rest of the line, `it.skip(` included, gone.
+ * `previousMeaningful` now returns the whole preceding word when there is one, and
+ * `REGEX_ALLOWED_KEYWORDS` lists the keywords a real tokenizer also special-cases here
+ * (Acorn, Esprima) because each is always followed by the START of an expression, never a
+ * value a `/` could divide: `return`, `typeof`, `delete`, `void`, `throw`, `new`, `in`,
+ * `of`, `instanceof`, `case`, `yield`, `do`, `else`, `await`, `default`.
+ *
+ * **Disclosed gap this does NOT close, on purpose:** a `)` that closes an `if` / `while` /
+ * `for` / `switch` condition also puts a following `/` in regex position (`if (x) /y/.test(z)`
+ * is legal), but a `)` that closes a plain call or grouped expression puts it in division
+ * position (`f(x) /y/` divides `f(x)` by `y`, twice). Telling those apart needs to know
+ * which keyword (if any) the MATCHING `(` followed — real paren-matching, not a
+ * previous-token lookback — which is the token-context-tracking-is-disproportionate case
+ * the issue itself anticipated. This scanner still reads `)` as division (the pre-#143
+ * behaviour, unchanged), which is wrong for the `if (x) /y/` shape and right for the
+ * ordinary-call shape it is far more likely to actually meet. `strip-code-comments.test.mjs`
+ * pins this specific residual behaviour so a future change does not silently regress it
+ * further without a reader noticing.
  */
 
 /** Characters after which a `/` starts a regex literal rather than a division. */
@@ -73,12 +103,62 @@ const REGEX_ALLOWED_BEFORE = new Set([
   "^",
 ]);
 
+/**
+ * Keywords after which a `/` starts a regex literal rather than a division — issue #143.
+ * `previousMeaningful` alone only sees the single character before the `/`, so
+ * `return /['"]/.test(x)` looked the same as `n /['"]/` (an identifier ending in `n`, then
+ * division): the previous character was a word character either way, and no word character
+ * is in `REGEX_ALLOWED_BEFORE`, so the `/` was read as division and the `'` right after it
+ * was read as a STRING OPEN — which then swallows the rest of the line, including any real
+ * code sitting after it (`it.skip(` included). Reproduced directly: `function f(x) { return
+ * /['"]/.test(x); it.skip("real", fn); }` stripped to `... return /['` with everything after
+ * gone. These are the keywords a real tokenizer also special-cases for exactly this reason
+ * (Acorn, Esprima): each one is followed by the START of an expression, never a value a `/`
+ * could divide.
+ */
+const REGEX_ALLOWED_KEYWORDS = new Set([
+  "return",
+  "typeof",
+  "delete",
+  "void",
+  "throw",
+  "new",
+  "in",
+  "of",
+  "instanceof",
+  "case",
+  "yield",
+  "do",
+  "else",
+  "await",
+  "default",
+]);
+
+const WORD_CHAR = /[A-Za-z0-9_$]/;
+
+/**
+ * The previous meaningful TOKEN before the current position — a whole keyword/identifier
+ * run, not just the one character next to it, so `return` and an identifier ending in `n`
+ * (e.g. a variable called `division`) can be told apart. Returns a single character for
+ * anything that is not a word (an operator, a bracket, `\n`), unchanged from before #143.
+ */
 function previousMeaningful(out) {
-  for (let i = out.length - 1; i >= 0; i -= 1) {
-    const char = out[i];
-    if (char !== " " && char !== "\t" && char !== "\r") return char;
+  let i = out.length - 1;
+  while (i >= 0 && (out[i] === " " || out[i] === "\t" || out[i] === "\r")) {
+    i -= 1;
   }
-  return "\n";
+  if (i < 0) return "\n";
+  if (!WORD_CHAR.test(out[i])) return out[i];
+  let start = i;
+  while (start > 0 && WORD_CHAR.test(out[start - 1])) start -= 1;
+  return out.slice(start, i + 1).join("");
+}
+
+/** True if `token` (as returned by `previousMeaningful`) puts a following `/` in regex position. */
+function allowsRegex(token) {
+  return token.length === 1
+    ? REGEX_ALLOWED_BEFORE.has(token)
+    : REGEX_ALLOWED_KEYWORDS.has(token);
 }
 
 /**
@@ -188,7 +268,7 @@ export function stripCodeComments(source, options = {}) {
     }
 
     // regex literal, told from division by the previous meaningful character
-    if (char === "/" && REGEX_ALLOWED_BEFORE.has(previousMeaningful(out))) {
+    if (char === "/" && allowsRegex(previousMeaningful(out))) {
       out.push(char);
       i += 1;
       let inClass = false;

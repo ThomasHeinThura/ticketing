@@ -276,3 +276,186 @@ describe("A3 — a skip cannot hide behind a brace inside a substitution", () =>
     assert.equal(typeof out, "string");
   });
 });
+
+/**
+ * Issue #143 — a `/` right after a KEYWORD (`return`, `typeof`, …) is a regex literal, not
+ * division, but the pre-#143 scanner only ever looked at the single previous CHARACTER.
+ * A keyword ends in a word character the same way an identifier does, and no word character
+ * was in `REGEX_ALLOWED_BEFORE`, so `return /['"]/` was read as "division, then a `'` opens
+ * a string" — which swallows the rest of the line, real code included.
+ *
+ * `oldScan` below is that exact pre-#143 heuristic (single-character lookback), kept as the
+ * non-vacuity control for the same reason `braceCounted` is above: without it these would be
+ * assertions that happen to pass, not a demonstrated regression fix.
+ */
+const OLD_REGEX_ALLOWED_BEFORE = new Set([
+  "(",
+  ",",
+  "=",
+  ":",
+  "[",
+  "!",
+  "&",
+  "|",
+  "?",
+  "{",
+  "}",
+  ";",
+  "\n",
+  "+",
+  "-",
+  "*",
+  "%",
+  "<",
+  ">",
+  "~",
+  "^",
+]);
+
+function oldPreviousMeaningful(out) {
+  for (let i = out.length - 1; i >= 0; i -= 1) {
+    const char = out[i];
+    if (char !== " " && char !== "\t" && char !== "\r") return char;
+  }
+  return "\n";
+}
+
+function preIssue143Scanner(source, options = {}) {
+  const blankStrings = options.blankStrings === true;
+  const out = [];
+  let i = 0;
+  while (i < source.length) {
+    const char = source[i];
+    const next = source[i + 1];
+    if (char === "/" && next === "/") {
+      while (i < source.length && source[i] !== "\n") i += 1;
+      out.push(" ");
+      continue;
+    }
+    if (char === "/" && next === "*") {
+      i += 2;
+      out.push(" ");
+      while (
+        i < source.length &&
+        !(source[i] === "*" && source[i + 1] === "/")
+      ) {
+        if (source[i] === "\n") out.push("\n");
+        i += 1;
+      }
+      i += 2;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      out.push(char);
+      i += 1;
+      while (i < source.length) {
+        if (source[i] === "\\") {
+          out.push(blankStrings ? "  " : `${source[i]}${source[i + 1] ?? ""}`);
+          i += 2;
+          continue;
+        }
+        const terminator = source[i] === char || source[i] === "\n";
+        out.push(terminator || !blankStrings ? source[i] : " ");
+        if (terminator) {
+          i += 1;
+          break;
+        }
+        i += 1;
+      }
+      continue;
+    }
+    if (
+      char === "/" &&
+      OLD_REGEX_ALLOWED_BEFORE.has(oldPreviousMeaningful(out))
+    ) {
+      out.push(char);
+      i += 1;
+      let inClass = false;
+      while (i < source.length) {
+        if (source[i] === "\\") {
+          out.push(source[i], source[i + 1] ?? "");
+          i += 2;
+          continue;
+        }
+        if (source[i] === "[") inClass = true;
+        else if (source[i] === "]") inClass = false;
+        out.push(source[i]);
+        if ((source[i] === "/" && !inClass) || source[i] === "\n") {
+          i += 1;
+          break;
+        }
+        i += 1;
+      }
+      continue;
+    }
+    out.push(char);
+    i += 1;
+  }
+  return out.join("");
+}
+
+const oldKeywordScan = (source) =>
+  banned.test(preIssue143Scanner(source, { blankStrings: true }));
+
+describe("issue #143 — regex after a keyword is not division", () => {
+  const cases = [
+    [
+      "return, quoted regex, real call on the same line",
+      'function f(x) { return /[\'"]/.test(x); it.skip("real", fn); }',
+    ],
+    [
+      "typeof, quoted regex, real call on the same line",
+      'x = typeof /\'/.test(y); it.skip("real", fn);',
+    ],
+    [
+      "case, quoted regex, real call on the same line",
+      'switch (x) { case /\'/.test(y): it.skip("real", fn); }',
+    ],
+  ];
+
+  for (const [name, source] of cases) {
+    it(`sees the call past ${name}`, () => {
+      // NON-VACUITY: the pre-#143 scanner (single-character lookback) must miss this call,
+      // or the case does not reproduce the issue.
+      assert.equal(
+        oldKeywordScan(source),
+        false,
+        "the pre-#143 scanner must MISS this call, or the case is not the #143 defect",
+      );
+      assert.equal(
+        scan(source),
+        true,
+        `the shipped scanner must still see the call:\n${stripCodeComments(source, { blankStrings: true })}`,
+      );
+    });
+  }
+
+  it("still tells a real division from a regex (no regression)", () => {
+    const out = stripCodeComments('const n = a / b; it.skip("x");', {
+      blankStrings: true,
+    });
+    assert.match(out, /a \/ b/);
+  });
+});
+
+/**
+ * Disclosed residual gap (see the file's own header comment): a `)` closing an `if` /
+ * `while` / `for` / `switch` condition also puts a following `/` in regex position, but this
+ * scanner cannot tell that `)` apart from one closing an ordinary call without matching it
+ * back to its opening keyword — real paren-matching, not a previous-token lookback. This
+ * pins the CURRENT (imperfect) behaviour so a future edit does not silently change it
+ * without a reader noticing: it is accepted, not fixed, and accepting it again silently is
+ * not the same as it never having been noticed.
+ */
+describe("issue #143 — disclosed gap: `)` after a control-flow keyword", () => {
+  it("still misreads `/` as division right after a condition's `)`", () => {
+    // Pinned current behaviour, not desired behaviour: `if (x) /'/.test(y)` is valid code
+    // whose `/'/` is a real regex, but this scanner has no way to know the `)` closed an
+    // `if` rather than a call, so it still reads the `'` as a string open and blanks the
+    // rest of the line.
+    const out = stripCodeComments("if (x) /'/.test(y);", {
+      blankStrings: true,
+    });
+    assert.equal(out, "if (x) /'          ");
+  });
+});
