@@ -96,3 +96,14 @@ command-palette fix, zero overlap with this PR's own files.
 (`340d805c7929dd4bc3d83b2865b8e006aa3dfceb`) and this one — the intervening commits
 (`1493b0eac`, `79d0093bc`, `91ce0bfc9`, and #404's own content) bring in #404's
 already-reviewed unique-violation-exact-match fix, zero overlap with this PR's own files.
+
+---
+
+## Lightweight re-confirmation after branch update, round 5 (2026-09-27)
+
+**Reviewed head:** `f623253a4981eb30f79078f183225c13084b0ff6`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on `apps/api/src/database/schema.ts` and
+`apps/api/drizzle/meta/0070_snapshot.json` between the last reviewed head
+(`795eeb5515ba3aa415a5b024c2d2369602280deb`) and this one — the intervening commits bring in
+#408's already-reviewed keyboard-shortcuts fix, zero overlap with this PR's own files.
