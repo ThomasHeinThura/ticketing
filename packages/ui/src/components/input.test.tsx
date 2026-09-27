@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { axe } from "../test/axe";
+import { expectNoA11yViolations } from "../test/a11y";
 import { Input } from "./input";
 
 afterEach(() => {
@@ -35,6 +35,6 @@ describe("Input", () => {
       <Input aria-label="Full name" placeholder="Jane Doe" />,
     );
 
-    expect(await axe(baseElement)).toHaveNoViolations();
+    await expectNoA11yViolations(baseElement);
   });
 });

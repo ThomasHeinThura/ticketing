@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { axe } from "../test/axe";
+import { expectNoA11yViolations } from "../test/a11y";
 import {
   NumberField,
   NumberFieldDecrement,
@@ -49,6 +49,6 @@ describe("NumberField", () => {
       </NumberField>,
     );
 
-    expect(await axe(baseElement)).toHaveNoViolations();
+    await expectNoA11yViolations(baseElement);
   });
 });

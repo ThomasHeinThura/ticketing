@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { axe } from "../test/axe";
+import { expectNoA11yViolations } from "../test/a11y";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "./menu";
 
 afterEach(() => {
@@ -54,6 +54,6 @@ describe("Menu", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open" }));
     expect(screen.getByText("Item one")).toBeInTheDocument();
 
-    expect(await axe(baseElement)).toHaveNoViolations();
+    await expectNoA11yViolations(baseElement);
   });
 });
