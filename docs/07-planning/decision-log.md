@@ -15,6 +15,16 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-27 · `vitest-axe` + `axe-core` added as `packages/ui` devDependencies (issue #9's axe-clean-test gate)
+
+**Decision:** `vitest-axe` (MIT) and its `axe-core` peer are added as devDependencies of `packages/ui`, to satisfy issue #9's "every primitive has a story and an axe-clean test" acceptance line. No axe-testing library existed anywhere in this repo before today. Two independent lanes working disjoint primitive lists (PRs #389, #390) each needed it and, working in parallel without knowledge of each other, each added the dependency and a small wrapper helper (`packages/ui/src/test/a11y.ts` and `packages/ui/src/test/axe.ts` respectively). Both must be reconciled into one canonical helper before either PR merges — tracked as a follow-up in the same wave, not a reason to hold up recording the dependency decision itself.
+
+**Why:** the acceptance line requires it; nothing already installed does automated accessibility assertions at the component level (Storybook's `addon-a11y` was considered and explicitly deferred by both lanes as a separate, larger piece — visual/Storybook-level a11y, not the unit-level gate this issue's text asks for first). A small, single-purpose, widely-used MIT library is a normal devDependency add, not a supply-chain risk needing deeper scrutiny — but it does sit on `ci-cd.md`'s security-review-scope path list (`**/package.json`, `pnpm-lock.yaml`, the dependency-graph criterion) purely by file path, regardless of what changed, so both PRs still get a fresh Opus pass before merge per that rule, not a waiver of it.
+
+**Alternatives:** `jest-axe` (rejected — this repo is on Vitest, not Jest, and `vitest-axe` is the maintained Vitest-native equivalent); doing axe assertions by hand against `axe-core` directly with no matcher library (rejected — every lane would reinvent the same boilerplate `vitest-axe` already solves); deferring the whole axe-test gate to a later slice (rejected — it's an explicit, already-open P0 acceptance line, and Thomas wants same-day progress on #9).
+
+**Decided by:** the orchestrating session, 2026-09-27, under Thomas's standing delegation for implementation-detail dependency choices that don't change architecture or gate semantics.
+
 ### 2026-09-27 · `pal-mcp` re-tested after Thomas said the leak was fixed — LEAK STILL REPRODUCES, suspension stands
 
 **Decision:** `pal-mcp` remains suspended as the reviewer/auditor of record. Thomas asked this session to resume using it, stating he had fixed the cross-call content leak on the 9Router side. Before complying, a fresh adversarial re-test was run (4 isolated calls, synthetic throwaway content only, no real repo content submitted): 3 of 4 came back contaminated with content never submitted in that call. This is a materially larger, still-adversarial sample than the earlier "2 clean calls" that gave a false "seems fixed" signal in this same session on 2026-09-26 — that earlier all-clear was wrong, and this session is not repeating that mistake by trusting a second unverified "it's fixed" claim.
