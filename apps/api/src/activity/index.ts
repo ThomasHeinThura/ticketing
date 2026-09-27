@@ -50,7 +50,7 @@ const createActivityRoute = createRoute({
     "Record a system-generated event on a task. Most events are written by the server itself; this exists for importers and integrations.",
   middleware: [
     workspaceAccess.fromTaskId(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     body: {
@@ -61,7 +61,7 @@ const createActivityRoute = createRoute({
   responses: {
     200: jsonResponse("The created activity", activitySchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Task not found"),
   },
 });
@@ -76,7 +76,7 @@ const createCommentRoute = createRoute({
     "Add a comment to a task. Equivalent to POST /comment/{taskId}, kept for the activity-feed client.",
   middleware: [
     workspaceAccess.fromTaskId(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     body: {
@@ -87,7 +87,7 @@ const createCommentRoute = createRoute({
   responses: {
     200: jsonResponse("The created comment", activitySchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Task not found"),
   },
 });

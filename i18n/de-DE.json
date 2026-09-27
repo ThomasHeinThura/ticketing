@@ -1141,7 +1141,7 @@
 			},
 			"resources": {
 				"project": "Projekte",
-				"task": "Aufgaben",
+				"work_item": "Aufgaben",
 				"label": "Labels",
 				"workspace": "Workspace"
 			},
@@ -1168,7 +1168,7 @@
 						"description": "Kann Projekte teilen"
 					}
 				},
-				"task": {
+				"work_item": {
 					"create": {
 						"label": "Erstellen",
 						"description": "Kann Aufgaben erstellen"

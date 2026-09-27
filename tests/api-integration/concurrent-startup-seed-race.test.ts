@@ -107,7 +107,7 @@ describe("issue #318 (security) -- seedDefaultWorkspaceRoles self-heals is_syste
       seedDefaultRoleRow: false,
     });
     const now = new Date();
-    const customPermission = JSON.stringify({ task: ["read", "create"] });
+    const customPermission = JSON.stringify({ work_item: ["read", "create"] });
     await db.insert(schema.workspaceRoleTable).values({
       workspaceId: workspace.id,
       role: "admin",
@@ -144,7 +144,7 @@ describe("issue #318 (security) -- seedDefaultWorkspaceRoles self-heals is_syste
     await db.insert(schema.workspaceRoleTable).values({
       workspaceId: workspace.id,
       role: "acme-support-triage",
-      permission: JSON.stringify({ task: ["read"] }),
+      permission: JSON.stringify({ work_item: ["read"] }),
       isSystem: false,
       createdAt: now,
       updatedAt: now,

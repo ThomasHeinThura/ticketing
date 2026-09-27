@@ -1,5 +1,63 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+**2026-09-27 orchestrator snapshot (2) — `main` at `64ec22a` (#375, `audit_log.project_id` +
+reach filter, merged). P0/P1/P2/P3 lanes running in parallel under Throttle 1; this session
+is continuing all of them per Thomas's "if not finished P0 then continue, and continue all."**
+
+Merged since the previous snapshot (`0b1bcc1`), each with every required check green and its
+review recorded at the exact merged head: **#380** (`e311fce`, #324's coverage-report SQL
+query — closes issue #324, all 6 acceptance criteria resolved or disclosed as residual),
+**#384** (`7dbe214`, this file's own prior snapshot), **#375** (`64ec22a`, `audit_log`
+gains `project_id`; two Opus-blocking findings from its first pass, S1 and T1, were found
+and closed by a fix round, confirmed by delta review).
+
+Open PRs and their real review state (verify live with `gh pr list`/`gh pr view` before acting
+on this — it is a snapshot, not a log):
+
+- **#353** (assign a work item, #30) — ordinary + Opus both CLEAR. **Was blocked on #375's
+  `audit_log` dependency; that dependency merged, and the actual missing piece (the route
+  never called `appendAuditLog` at all — #353 is meant to be the first project-scoped audit
+  writer per the 2026-09-23 decision log) is now being implemented** by a dispatched lane, not
+  yet returned. Needs a fresh ordinary + Opus review of that addition before merge.
+- **#365** (clear a work item's assignment, #30) — ordinary + Opus both CLEAR (two low
+  test-strength findings, non-blocking). Stacked on #353; same audit-write gap, to be done as
+  a follow-up once #353's version lands (identical treatment, separate branch).
+- **#346** (P3 identity domain foundation) — ordinary APPROVE; Opus found a real
+  prototype-pollution bypass (P1, blocking) and a PATCH path-case bug (N1, non-blocking); both
+  fixed and confirmed CLEAR by a lightweight Opus delta pass. Still a **draft** — identity
+  persistence, migrations, OIDC/SCIM routes and browser evidence remain unbuilt; this closes
+  only the security gate for the domain code that exists today, not #346 itself.
+- **#381** (#354 S1 fix: unvalidated `workspace_id` could reach shadow-mode evidence) —
+  ordinary APPROVE, Opus CLEAR WITH FINDINGS (R1: an instance-admin bypass of the same class,
+  non-blocking but should be closed before shadow mode runs in a shared deployment; T1: a test
+  gap). Merge-ready pending final CI.
+- **#382** (#342 D3: 12 more static `process`/`globalThis`/`import.meta` access shapes for the
+  `check:env` CI gate) — ordinary APPROVE, Opus CLEAR WITH FINDINGS. **Does not fully close
+  #342** — the Opus review found a further real class (H1, a JSX-text-apostrophe lexer
+  desync, same class as #361's F1) plus narrower gaps (M1-M4, L1); do not use a closing
+  keyword when merging, and #342 stays open. Recommended next step, not yet queued: rebuild
+  the detector on the TypeScript compiler API instead of another lexer-patch round, same
+  fix #361 already needed for `check-deps.mjs`.
+- **#383** (#317: asset/websocket query-timing oracle + invitation-cancel existence oracle) —
+  ordinary APPROVE, Opus CLEAR WITH FINDINGS (six non-blocking findings, F1-F6 — an invitation
+  timing residue, a reach-check keyed on `project.workspace_id` instead of `asset.workspace_id`,
+  two test gaps, a shadow-evidence gap, a nit). Merge-ready pending final CI.
+- **#327** (P2 execution ledger docs) — open, untouched this wave.
+- **#107** (S10 zero-caller tripwire) — still needs Thomas's explicit decision on whether #161
+  supersedes it.
+
+**Operational note:** the shared checkout at `/home/ubuntu/ticketing.v2` had 5 stale git
+stashes left by concurrent lanes stepping on each other's uncommitted work (all verified
+content-superseded by already-committed history before being dropped, with Thomas's
+confirmation) and accumulates well over 100 stale worktrees across `/tmp`, `.taskdesk-lanes`
+and `.agent-tmp` from past sessions — harmless but real hygiene debt, not cleaned up this
+session since it isn't blocking anything. Every dispatched lane has been told to use its own
+worktree, not the shared directory, but several have reported the shared checkout's
+branch/HEAD moving under them mid-task anyway — worth a durable fix (e.g. dedicating this
+checkout to the orchestrator only, never handing it to a lane task) if it keeps happening.
+
+---
+
 **2026-09-26 orchestrator continuation — `main` at `ecd88b0` (#373; corrected from a stale
 `8a51415`/#374 reading of this line — verified live via `git log`, not carried forward from
 memory).** The decision authorizing one-at-a-time follow-up PRs for #354, #341, #362, #367

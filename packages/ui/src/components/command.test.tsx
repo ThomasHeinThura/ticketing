@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import {
   Command,
   CommandEmpty,
@@ -52,5 +53,19 @@ describe("Command", () => {
 
     fireEvent.click(screen.getByText("Banana"));
     expect(onSelectBanana).toHaveBeenCalledTimes(1);
+  });
+
+  it("has no accessibility violations", async () => {
+    const { baseElement } = render(
+      <Command items={["Apple", "Banana"]}>
+        <CommandInput aria-label="Search" />
+        <CommandList>
+          {(item: string) => <CommandItem key={item}>{item}</CommandItem>}
+        </CommandList>
+        <CommandEmpty>No results</CommandEmpty>
+      </Command>,
+    );
+
+    await expectNoA11yViolations(baseElement);
   });
 });

@@ -5,18 +5,18 @@ import {
   redirect,
   useLocation,
 } from "@tanstack/react-router";
-import { Button } from "@taskdesk/ui";
-import { Settings, Shield, Tag } from "lucide-react";
-import { useTranslation } from "react-i18next";
-import SettingsSidebar from "@/components/SettingsSidebar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
+  Button,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
-} from "@/components/ui/sidebar";
+} from "@taskdesk/ui";
+import { Settings, Shield, Tag } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import SettingsSidebar from "@/components/SettingsSidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import getWorkspaces from "@/fetchers/workspace/get-workspaces";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";

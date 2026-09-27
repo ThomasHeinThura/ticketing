@@ -667,7 +667,7 @@
 			},
 			"resources": {
 				"project": "Progetti",
-				"task": "Attività",
+				"work_item": "Attività",
 				"label": "Etichette",
 				"workspace": "Workspace"
 			},
@@ -694,7 +694,7 @@
 						"description": "Può condividere progetti"
 					}
 				},
-				"task": {
+				"work_item": {
 					"create": {
 						"label": "Creare",
 						"description": "Può creare attività"

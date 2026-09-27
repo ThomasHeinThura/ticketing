@@ -465,7 +465,7 @@ describe("API integration: work item create/read/list (#23)", () => {
   describe("issue #318 (security): a custom row sharing a built-in name grants none of that built-in's capabilities", () => {
     // The repro from the issue and the Opus review of PR #315 (S2): a holder of only
     // `ac:create` + `member:update` creates a role literally named "manager" with only
-    // `task:read` declared, self-assigns it, and used to read as a built-in manager with
+    // `work_item:read` declared, self-assigns it, and used to read as a built-in manager with
     // all 57 of that role's capabilities -- `work_item:create` among them. Reproduced here
     // at the `workspace_member.role` layer `requireWorkspaceCapability` actually reads,
     // which is what `addWorkspaceMemberWithoutGenuineRow` models: a row that names a
@@ -533,7 +533,7 @@ describe("API integration: work item create/read/list (#23)", () => {
       expect(response.status).toBe(200);
     });
 
-    it("a custom role's OWN declared legacy permission is irrelevant to this gate either way -- work_item:create is refused for a 'manager'-named row holding only task:read, genuine or not", async () => {
+    it("a custom role's OWN declared legacy permission is irrelevant to this gate either way -- work_item:create is refused for a 'manager'-named row holding only work_item:read, genuine or not", async () => {
       const { project, type } = await setupProjectWithDefaultState();
       const workspaceId = (
         await db.query.projectTable.findFirst({
@@ -546,12 +546,12 @@ describe("API integration: work item create/read/list (#23)", () => {
       );
       // The attacker's own custom row, exactly as the issue's repro describes it: a real
       // `workspace_role` row named "manager" whose DECLARED permission is only
-      // `task:read` -- but it is a CUSTOM row (`is_system` defaults to `false`), so it
+      // `work_item:read` -- but it is a CUSTOM row (`is_system` defaults to `false`), so it
       // does not make the membership row above genuine.
       await db.insert(schema.workspaceRoleTable).values({
         workspaceId,
         role: "manager",
-        permission: JSON.stringify({ task: ["read"] }),
+        permission: JSON.stringify({ work_item: ["read"] }),
         createdAt: new Date(),
         updatedAt: new Date(),
       });

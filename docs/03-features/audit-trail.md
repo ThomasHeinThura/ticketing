@@ -158,7 +158,7 @@ Borrowed from OpenProject's journal design.
 
 ## Access
 
-- `AU-10` Workspace administrators see audit rows for their workspace.
+- `AU-10` Workspace administrators see audit rows for their workspace, filtered to their project reach: rows that are not project-scoped, plus rows for projects the reader can reach — a project-scoped `membership` for their person, or the per-workspace `sees_all` grant (#319/#334). They never see rows for projects outside their reach (#344; decision log 2026-09-23).
 - `AU-11` Instance administrators see everything.
 - `AU-12` Customers never see the audit log. They see the public portion of `activity` on
   their own requests.
@@ -237,7 +237,7 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | Action | Capability |
 | --- | --- |
 | Read the instance-wide log | `instance:read_audit` (`AU-11`) |
-| Read a workspace's log | `workspace:manage_settings` (`AU-10`) |
+| Read a workspace's log | `workspace:manage_settings` (`AU-10`), reach-filtered to the reader's projects (`AU-10`, #344) |
 | Read one entity's history | that entity's own read capability, resolved by `{type}` from the policy registry (kind 1) |
 | Export the audit log | `instance:read_audit` **and** step-up re-authentication (`AU-13`, elevated) |
 | Reconstruct a work item at an instant | `work_item:read` |

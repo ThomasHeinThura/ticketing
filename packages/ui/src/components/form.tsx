@@ -1,6 +1,5 @@
 "use client";
 
-import { Label } from "@taskdesk/ui";
 import * as React from "react";
 import {
   Controller,
@@ -10,8 +9,9 @@ import {
   FormProvider,
   useFormContext,
 } from "react-hook-form";
-import { cn } from "@/lib/cn";
-import { Slot } from "@/lib/slot";
+import { cn } from "../lib/cn";
+import { Slot } from "../lib/slot";
+import { Label } from "./label";
 
 const Form = FormProvider;
 

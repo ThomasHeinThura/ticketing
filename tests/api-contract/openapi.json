@@ -2934,6 +2934,55 @@
           "openWorkCount"
         ]
       },
+      "WorkItemAssignment": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "assigneeId": {
+            "type": "string"
+          },
+          "previousAssigneeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "assigneeId",
+          "previousAssigneeId",
+          "version"
+        ]
+      },
+      "WorkItemAssigneeConflict": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "currentAssigneeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Who actually holds the item now; null when it is unassigned."
+          }
+        },
+        "required": [
+          "message",
+          "key",
+          "currentAssigneeId"
+        ]
+      },
       "UserAvatar": {
         "type": "object",
         "properties": {
@@ -3236,18 +3285,8 @@
               }
             }
           },
-          "403": {
-            "description": "No access to this asset",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
           "404": {
-            "description": "Asset not found",
+            "description": "Asset not found, or not reachable by this caller",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4273,7 +4312,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:create permission",
+            "description": "Missing work_item:create permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4445,7 +4484,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update or task:assign permission",
+            "description": "Missing work_item:update or work_item:assign permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4508,7 +4547,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:delete permission",
+            "description": "Missing work_item:delete permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4595,7 +4634,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4772,7 +4811,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:create permission",
+            "description": "Missing work_item:create permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4855,7 +4894,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4945,7 +4984,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5032,7 +5071,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:assign permission, or the assignee is not a member of this workspace",
+            "description": "Missing work_item:assign permission, or the assignee is not a member of this workspace",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5112,7 +5151,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5195,7 +5234,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5295,7 +5334,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5410,7 +5449,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5493,7 +5532,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6073,7 +6112,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6150,7 +6189,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6450,7 +6489,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6534,7 +6573,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not the author, or missing task:update permission",
+            "description": "Not the author, or missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6597,7 +6636,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not the author, or missing task:update permission",
+            "description": "Not the author, or missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6801,7 +6840,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6889,7 +6928,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7632,7 +7671,7 @@
           "Audit"
         ],
         "summary": "List a workspace's audit log",
-        "description": "Workspace administrators (`workspace:manage_settings`) see their own workspace's rows (AU-10); customers never see the audit log (AU-12). Each read is itself audited (AU-13). The tenant filter is applied unconditionally in the handler, independent of the middleware chain.",
+        "description": "Workspace administrators (`workspace:manage_settings`) see their own workspace's rows (AU-10), reach-filtered to non-project rows plus the rows of projects they can reach (#344) -- never a project outside that; customers never see the audit log (AU-12). Each read is itself audited (AU-13). The tenant filter is applied unconditionally in the handler, independent of the middleware chain.",
         "parameters": [
           {
             "schema": {
@@ -8539,7 +8578,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8604,7 +8643,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -11183,6 +11222,107 @@
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/assign": {
+      "post": {
+        "operationId": "assignWorkItem",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Assign work item",
+        "description": "Assign or reassign a work item (`assignment.md`, `AS-1`/`AS-2`). Requires `work_item:assign`; a caller holding only `work_item:update` may assign the item to themselves. The target must be an active member of the project's roster (`AS-5`). An unconditional assign only succeeds while the item is unassigned; pass `expectedCurrentAssigneeId` to replace a specific holder. A lost race returns 409 with the current assignee. Clearing an assignment and bulk assign are later slices.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "assigneeId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "expectedCurrentAssigneeId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "assigneeId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The assignment as applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemAssignment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or the target is not an active member of the project's roster",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, missing work_item:assign, or (for self-assignment) missing work_item:update",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The assignee changed while this request was in flight",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemAssigneeConflict"
                 }
               }
             }

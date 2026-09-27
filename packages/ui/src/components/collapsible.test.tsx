@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import {
   Collapsible,
   CollapsibleContent,
@@ -25,5 +26,16 @@ describe("Collapsible", () => {
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Hidden content")).toBeVisible();
+  });
+
+  it("has no accessibility violations", async () => {
+    const { baseElement } = render(
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger>Toggle</CollapsibleTrigger>
+        <CollapsibleContent>Hidden content</CollapsibleContent>
+      </Collapsible>,
+    );
+
+    await expectNoA11yViolations(baseElement);
   });
 });

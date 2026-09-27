@@ -20,7 +20,7 @@ describe("@taskdesk/permissions statement surface", () => {
       "delete",
       "share",
     ]);
-    expect(statement.task).toEqual([
+    expect(statement.work_item).toEqual([
       "create",
       "read",
       "update",
@@ -50,23 +50,23 @@ describe("@taskdesk/permissions statement surface", () => {
 describe("built-in role privileges", () => {
   it("viewer can read but cannot create or modify", () => {
     expect(viewer.statements.project).toEqual(["read"]);
-    expect(viewer.statements.task).toEqual(["read"]);
+    expect(viewer.statements.work_item).toEqual(["read"]);
     expect(viewer.statements.label).toEqual(["read"]);
     expect(viewer.statements.workspace).toEqual(["read"]);
   });
 
   it("member can create/read/update tasks but not delete or manage settings", () => {
-    expect(member.statements.task).toContain("create");
-    expect(member.statements.task).toContain("update");
-    expect(member.statements.task).not.toContain("delete");
+    expect(member.statements.work_item).toContain("create");
+    expect(member.statements.work_item).toContain("update");
+    expect(member.statements.work_item).not.toContain("delete");
     expect(member.statements.project).toContain("create");
     expect(member.statements.project).not.toContain("delete");
     expect(member.statements.workspace).toEqual(["read"]);
   });
 
   it("admin can delete tasks and manage workspace settings but cannot delete the workspace", () => {
-    expect(admin.statements.task).toContain("delete");
-    expect(admin.statements.task).toContain("assign");
+    expect(admin.statements.work_item).toContain("delete");
+    expect(admin.statements.work_item).toContain("assign");
     expect(admin.statements.project).toContain("delete");
     expect(admin.statements.project).toContain("share");
     expect(admin.statements.workspace).toContain("manage_settings");
@@ -74,7 +74,7 @@ describe("built-in role privileges", () => {
   });
 
   it("owner has every TaskDesk resource action including workspace:delete", () => {
-    expect(owner.statements.task).toEqual(
+    expect(owner.statements.work_item).toEqual(
       expect.arrayContaining(["create", "read", "update", "delete", "assign"]),
     );
     expect(owner.statements.project).toEqual(
@@ -131,10 +131,10 @@ describe("default-role seed payloads", () => {
 
   it("returns a fresh mutable array per resource so callers can edit safely", () => {
     const memberPayload = defaultRolePayloads.member;
-    memberPayload.task.push("__test_marker");
+    memberPayload.work_item.push("__test_marker");
     // Re-import-equivalent check: the in-memory payload is mutable but the
     // role object's statements are decoupled (we only mutated the copy).
-    expect(memberPayload.task).toContain("__test_marker");
-    expect(member.statements.task).not.toContain("__test_marker");
+    expect(memberPayload.work_item).toContain("__test_marker");
+    expect(member.statements.work_item).not.toContain("__test_marker");
   });
 });

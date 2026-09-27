@@ -5,6 +5,60 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-27 · Release image's Trivy scan set to `ignore-unfixed: true`
+
+**Decision:** `.github/workflows/release.yml`'s two Trivy scan steps (amd64 and arm64) change
+`ignore-unfixed` from `false` to `true`. `severity: HIGH,CRITICAL` and `exit-code: '1'` are
+unchanged — a HIGH/CRITICAL finding with a vendor-supplied fix available still blocks
+publication exactly as before.
+
+**Why:** the release pipeline had failed on every push to `main` since PR #397's investigation
+surfaced it — not only over the `perl-base` CVEs #397 already removed, but over roughly 50
+additional HIGH/CRITICAL findings across ~18 other Debian packages in the pinned
+`node:24.20.0-bookworm-slim` base image, most with **no vendor fix available at this pinned
+digest today** (confirmed via a local Trivy scan at PR #397's head, matching the numbers in
+its own Opus review's F1 finding). With `ignore-unfixed: false`, every one of those blocks
+regardless of whether anything can actually be done about it — an unfixed-upstream finding is
+not an actionable finding, and blocking release on it indefinitely does not reduce risk, it
+only prevents ever shipping a signed image again.
+
+**Alternatives considered** (all three put to Thomas directly, given this changes gate
+semantics and only he can authorize that per `AGENTS.md`/`CLAUDE.md`):
+1. **`ignore-unfixed: true`** (chosen) — skip findings with no available fix; a HIGH/CRITICAL
+   finding that DOES have a fix still blocks. Standard practice for base-image scanning.
+2. An explicit, itemized `.trivyignore` naming each specific CVE with a justification —
+   more auditable per-CVE, but more upkeep, and functionally the same outcome as (1) for
+   findings that stay unfixed indefinitely.
+3. Move to a different/leaner base image — most thorough (would likely eliminate many of
+   these packages entirely), but a larger change needing its own testing; not adopted now,
+   worth a future look.
+
+**Decided by:** Thomas, 2026-09-27, in response to the orchestrating session's three-option
+report — approved option 1 directly ("Go").
+
+### 2026-09-27 · #392 permission-key migration uses expand/contract for rolling Helm updates
+
+**Decision:** migration `0071` copies the legacy `task` permission key into `work_item` and retains `task` during the rolling deployment. A later contract migration may remove `task` only after old binaries are gone and the rollback window has closed.
+
+**Why:** Helm runs the migration in each new pod's init container while old replicas can still serve traffic. Removing `task` before old replicas drain makes those replicas deny permissions they still enforce. Keeping both keys preserves access for old and new application versions.
+
+**Alternatives:** delete `task` in `0071` (rejected because it breaks active old replicas); remove it in a later release immediately (rejected until the old-binary and rollback window has demonstrably ended).
+
+**Decided by:** the orchestrating session, 2026-09-27, after independent ordinary review identified the rolling-update compatibility gap.
+
+**2026-09-27 addendum, after the Opus/ordinary delta reviews of this same commit:** retaining
+`task` fixed the direction above (old replicas reading rows a new replica already migrated)
+but, on its own, does nothing for the reverse direction — a row an *old* replica writes or
+updates *after* migration `0071` has run is still `task`-only, and a new replica reading only
+`work_item` will deny it (tracked as issue #398, "D1"; still open, non-blocking, since any
+edit through the product's own write path removes `task` — see below). Retaining `task`
+also broke a real write path: the settings UI's role editor round-trips whatever the list
+endpoint returns, and the update route rejects `task` as an unknown resource, so saving any
+already-migrated role 400'd. Fixed in the same commit series by filtering `list-workspace-
+roles.ts`'s response to known resources before it reaches the client. The future contract
+migration that deletes `task` entirely is tracked as issue #398, not left as an undated
+"may remove" — filed the same day this gap was found.
+
 ## Format
 
 ```markdown
@@ -14,6 +68,40 @@ Newest first.
 **Alternatives:** what was rejected, briefly
 **Decided by:** who
 ```
+
+### 2026-09-27 · `input-otp`, `react-day-picker`, `react-hook-form` added to `packages/ui` dependencies (issue #9 primitive moves)
+
+**Decision:** `input-otp`, `react-day-picker` and `react-hook-form` are added to `packages/ui/package.json`'s **`dependencies`** (correction, Opus review of PR #394: not `devDependencies` — they're genuine runtime dependencies of the moved primitives, and `check:deps`'s manifest check specifically validates `manifest.dependencies`, so they have to be declared there), at the same versions `apps/web` already pins, to support moving `input-otp.tsx`, `calendar.tsx` and `form.tsx` into `packages/ui/src/components/`. `check:deps`'s `UI_RUNTIME_IMPORTS` allowlist and `docs/01-architecture/monorepo-layout.md`'s boundary diagram are updated to match — `pnpm check:deps` correctly failed until this was done, which is the gate working as intended (a new runtime dependency on a moved primitive is exactly the kind of edge it's meant to catch), not a defect to route around.
+
+**Why:** these three primitives cannot function without their respective libraries (an OTP input, a date picker, and a form-state manager), and all three are already vetted, already-lockfiled dependencies of `apps/web` — this is "the same dependency now used by a second workspace package," not a new supply-chain surface.
+
+**Alternatives:** leave the three primitives in `apps/web/src/components/ui/` rather than move them (rejected — that's the exact "apps/web/src/components/ui is empty" gate issue #9 is not yet closed on, and these are legitimate, reusable primitives, not app-specific glue like `error-display.tsx`/`error-test.tsx`, which correctly stayed behind); vendor a second identical devDependency pin instead of reusing the existing versions (rejected — needless divergence for no benefit).
+
+**Decided by:** the orchestrating session, 2026-09-27, under Thomas's standing delegation for implementation-detail dependency choices that don't change architecture or gate semantics.
+
+### 2026-09-27 · `vitest-axe` + `axe-core` added as `packages/ui` devDependencies (issue #9's axe-clean-test gate)
+
+**Decision:** `vitest-axe` (MIT, `^0.1.0` resolving to `0.1.0`) and `axe-core` (MPL-2.0, `^4.13.0` resolving to `4.13.0`) are added as devDependencies of `packages/ui`, to satisfy issue #9's "every primitive has a story and an axe-clean test" acceptance line. No axe-testing library existed anywhere in this repo before today. **Correction (Opus security review, 2026-09-27):** `axe-core` is not `vitest-axe`'s peer dependency — it's a direct dependency of `vitest-axe` already (`^4.4.2`); `vitest-axe`'s only actual peer is `vitest >=0.16.0`. The explicit `axe-core` devDependency is redundant (imported by nothing directly) but harmless, and raises the installed version above what `vitest-axe` alone would pull in. Two independent lanes working disjoint primitive lists (PRs #389, #390) each needed the library and, working in parallel without knowledge of each other, each added the dependency and a small wrapper helper (`packages/ui/src/test/a11y.ts` and `packages/ui/src/test/axe.ts` respectively). **This has since been reconciled** — #390 adopted #389's `a11y.ts` as canonical and dropped its own `axe.ts`; both PRs now carry byte-identical `package.json`/`pnpm-lock.yaml`/`a11y.ts`/`setup.ts` content, confirmed independently by two separate reviews.
+
+**Why:** the acceptance line requires it; nothing already installed does automated accessibility assertions at the component level (Storybook's `addon-a11y` was considered and explicitly deferred by both lanes as a separate, larger piece — visual/Storybook-level a11y, not the unit-level gate this issue's text asks for first). A small, single-purpose, widely-used MIT library is a normal devDependency add, not a supply-chain risk needing deeper scrutiny — but it does sit on `ci-cd.md`'s security-review-scope path list (`**/package.json`, `pnpm-lock.yaml`, the dependency-graph criterion) purely by file path, regardless of what changed, so both PRs still get a fresh Opus pass before merge per that rule, not a waiver of it. The Opus review confirmed the package integrity (sha512 hashes independently recomputed against the npm registry tarballs), no install/postinstall scripts, no new transitive dependencies beyond what was already in the lockfile, and dev-only usage that never reaches the production Docker image.
+
+**Alternatives:** `jest-axe` (rejected — this repo is on Vitest, not Jest, and `vitest-axe` is its closest Vitest-native equivalent; **correction, Opus review:** it is real and widely used [~1.7M weekly downloads] but its last stable release was October 2022 — "actively maintained" overstates it, "the available option that fits" is more accurate); doing axe assertions by hand against `axe-core` directly with no matcher library (rejected initially, then adopted anyway in a follow-up fix — see the security-review note for why the custom `vitest`-module type augmentation `vitest-axe`'s matcher needed had to be dropped in favor of asserting on `axe-core`'s own `results.violations` directly, after it caused `check:deps` false positives); deferring the whole axe-test gate to a later slice (rejected — it's an explicit, already-open P0 acceptance line, and Thomas wants same-day progress on #9).
+
+**Decided by:** the orchestrating session, 2026-09-27, under Thomas's standing delegation for implementation-detail dependency choices that don't change architecture or gate semantics.
+
+### 2026-09-27 · `pal-mcp` re-tested after Thomas said the leak was fixed — LEAK STILL REPRODUCES, suspension stands
+
+**Decision:** `pal-mcp` remains suspended as the reviewer/auditor of record. Thomas asked this session to resume using it, stating he had fixed the cross-call content leak on the 9Router side. Before complying, a fresh adversarial re-test was run (4 isolated calls, synthetic throwaway content only, no real repo content submitted): 3 of 4 came back contaminated with content never submitted in that call. This is a materially larger, still-adversarial sample than the earlier "2 clean calls" that gave a false "seems fixed" signal in this same session on 2026-09-26 — that earlier all-clear was wrong, and this session is not repeating that mistake by trusting a second unverified "it's fixed" claim.
+
+**What the re-test found, concretely:**
+- Two isolated `analyze` calls and one `codereview` call returned real file paths and fabricated review narrative this session never submitted — including nine of this repo's own governance files (`AGENTS.md`, `CLAUDE.md`, `status.md`, the decision log itself, `ci-cd.md`, `agent-workflow.md`, `.github/CODEOWNERS`, `.claude/agents/pal-reviewer.md`, the earlier `376-pal-mcp-governance.md` review note).
+- One call returned an absolute file path from a **different host, different OS convention, and a different username** than this session (`/private/tmp/claude-501/-Users-heinthura/.../scratchpad/buggy_test.py` — macOS path, user "heinthura"; this session runs on Linux under `/home/ubuntu` as a different account) — this is genuine cross-session, cross-user leakage on the shared 9Router endpoint, not merely stale state within one session. That call also returned fabricated "issues found" describing a Python function (`is_palindrome`/`binary_search`) that does not exist anywhere in this repo or in the actual submitted content.
+- A fourth call, given a fresh `continuation_id` and explicit instruction not to reuse prior context, still pulled back an earlier call's own file from within the same test run — the underlying model itself flagged the contamination as unexpected in its own output.
+- One of four calls (a plain `chat` query) came back clean.
+
+**Why this doesn't change the standing rule:** the suspension notice's own condition — "until this is root-caused and fixed at the server" — is unmet. Thomas's fix did not resolve it; the same defect class reproduced within minutes of re-enabling the tool, with new evidence (a different real user's file path) beyond what the 2026-09-26 finding showed. Per CLAUDE.md's own rule ("Downgrade an unavailable reviewer... capacity exhaustion means wait, not substitute") and the standing instruction not to trust an unverified "it's fixed" claim twice, this session is keeping the suspension in force and reporting the new evidence rather than complying with the resume request.
+
+**Decided by:** the orchestrating session, 2026-09-27, acting on the standing suspension policy and its own fresh verification — not overriding Thomas, but declining to act on an instruction that the evidence directly contradicts, and surfacing that contradiction to him plainly rather than silently complying or silently ignoring it.
 
 ### 2026-09-26 · `pal-mcp` becomes the primary ordinary review/audit/report/alignment tool; Code Owner review for control-plane files PLANNED THEN SUSPENDED (see the entry immediately below) — `pal-mcp` ITSELF LATER SUSPENDED (see "CORRECTION: the pal-mcp cross-call leak is NOT fixed" further down)
 

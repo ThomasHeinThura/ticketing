@@ -410,7 +410,8 @@ is in [data-protection.md](../05-operations/data-protection.md).
   as security changes, with a named subscription to its advisories.
 - Lockfile committed; `--frozen-lockfile` in CI.
 - SBOM (CycloneDX) generated per release.
-- Container image scanned with Trivy; high or critical fails the release.
+- Container image scanned with Trivy; high or critical **with a vendor-supplied fix
+  available** fails the release (`ignore-unfixed: true`, decision log 2026-09-27).
 - Image **and release archive** signed (cosign, keyless via the CI OIDC identity) with a
   build-provenance attestation; `scripts/deploy.sh` and the installer verify before starting
   a new digest (explicit opt-out for air-gapped mirrors).

@@ -1,8 +1,14 @@
 import { useNavigate } from "@tanstack/react-router";
 import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
   Button,
   KbdSequence,
   Separator,
+  SidebarTrigger,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -12,14 +18,6 @@ import { AlertTriangle, ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import Layout from "@/components/common/layout";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { shortcuts } from "@/constants/shortcuts";
 import { cn } from "@/lib/cn";
 
@@ -61,7 +59,10 @@ export function SettingsLayout({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <SidebarTrigger className="-ml-1 h-6 w-6" />
+                  <SidebarTrigger
+                    className="-ml-1 h-6 w-6"
+                    toggleLabel={t("common:a11y.toggleSidebar")}
+                  />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="flex items-center gap-2 text-[10px]">
@@ -80,7 +81,10 @@ export function SettingsLayout({
               orientation="vertical"
               className="mx-1.5 data-[orientation=vertical]:h-2.5"
             />
-            <Breadcrumb className="flex items-center gap-1 text-xs w-full">
+            <Breadcrumb
+              className="flex items-center gap-1 text-xs w-full"
+              label={t("common:breadcrumb.label")}
+            >
               <BreadcrumbList>
                 <BreadcrumbItem>
                   <BreadcrumbLink href="/dashboard/settings">
