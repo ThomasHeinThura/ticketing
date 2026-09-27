@@ -329,3 +329,14 @@ scoped to this PR's own files (`error-fix-loop.md`, `check-env.mjs`, every
 merge into `main` (`6403586`, confirmed an ancestor of `origin/main`) plus its own chain of
 routine branch-update merges — already fully Opus-reviewed and merged before this branch
 picked them up. No new, unreviewed logic reached this branch.
+
+---
+
+## Re-confirmation after branch update (2026-09-27, third)
+
+**Reviewed head:** `33b5f4cc6ed29a29eba9590913e363974822a446`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. `git diff 56cec5a50654a1418b3c51386dc9f3aa023f9a48..33b5f4cc6ed29a29eba9590913e363974822a446`
+scoped to this PR's own files is empty. The intervening commit is #429's own
+already-reviewed merge into `main` (docs-only, attachments spec closure) picked up via a
+routine branch update. No new, unreviewed logic reached this branch.
