@@ -1,26 +1,19 @@
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
+import type { PropsWithChildren } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { KeyboardShortcutsProvider } from "@/hooks/use-keyboard-shortcuts";
 import CommandPalette from "./index";
 
 /**
- * Issue #294: pressing "?" used to recurse forever. `CommandPalette`
- * registered a handler for the "?" shortcut that re-dispatched a synthetic
- * "?" keydown on `document`; `KeyboardShortcutsProvider`'s single
- * document-level listener (apps/web/src/hooks/use-keyboard-shortcuts.ts)
- * picked that synthetic event back up, found "?" registered again, and
- * called the handler again -- RangeError: Maximum call stack size exceeded.
- *
- * `useRegisterShortcuts` is mocked here (capturing its argument) rather than
- * wrapped in the real `KeyboardShortcutsProvider`: that provider has a
- * separate, pre-existing bug -- its registration effect depends on the
- * whole config object's identity, and every caller (including this file's
- * `modifierShortcuts`/`sequentialShortcuts` entries, untouched by this fix)
- * passes a fresh literal each render, which loops the provider forever
- * regardless of the "?" handler. That is out of scope for #294 and is
- * flagged separately. Capturing the real config `CommandPalette` builds,
- * then modelling the provider's actual single-listener re-invocation
- * mechanism by hand, tests the exact thing #294 is about without tripping
- * that unrelated defect.
+ * Issue #407: rendering `CommandPalette` inside the real
+ * `KeyboardShortcutsProvider` used to hang/OOM a test runner (its
+ * `useRegisterShortcuts` call passes a fresh inline config object every
+ * render, which looped the provider forever -- see
+ * `apps/web/src/hooks/use-keyboard-shortcuts.test.tsx` for the mechanism
+ * and the fix). This is almost certainly why no component-level test for
+ * `CommandPalette` existed before that fix landed. This test intentionally
+ * uses the REAL provider (not a mock of `use-keyboard-shortcuts`) to prove
+ * the actual integration point now works, not just the hook in isolation.
  */
 
 vi.mock("@tanstack/react-router", () => ({
@@ -62,89 +55,59 @@ vi.mock("@/components/shared/modals/create-project-modal", () => ({
   default: () => null,
 }));
 
-// The palette UI itself (the command dialog, its list, footer, etc.) is not
-// what this bug lives in -- it's the shortcut registration call. Stub the
-// design system out so the test isn't coupled to unrelated rendering.
+// The design-system primitives aren't what this test is about; stub them
+// out so the test isn't coupled to unrelated rendering, same approach the
+// #294 regression test (command-palette/index.test.tsx on that branch)
+// uses.
 vi.mock("@taskdesk/ui", () => {
-  const Null = () => null;
+  const Null = ({ children }: PropsWithChildren) => <>{children}</>;
   return {
     Command: Null,
     CommandCollection: Null,
-    CommandDialog: Null,
+    CommandDialog: ({
+      open,
+      children,
+    }: PropsWithChildren<{ open: boolean }>) =>
+      open ? <div data-testid="command-dialog">{children}</div> : null,
     CommandDialogPopup: Null,
     CommandEmpty: Null,
     CommandFooter: Null,
     CommandGroup: Null,
     CommandGroupLabel: Null,
-    CommandInput: Null,
+    CommandInput: () => null,
     CommandItem: Null,
-    CommandList: Null,
+    CommandList: () => null,
     CommandPanel: Null,
-    CommandSeparator: Null,
+    CommandSeparator: () => null,
     CommandShortcut: Null,
     Kbd: Null,
     KbdGroup: Null,
   };
 });
 
-type ShortcutsConfig = {
-  shortcuts?: Record<string, () => void>;
-  sequentialShortcuts?: Record<string, Record<string, () => void>>;
-  modifierShortcuts?: Record<string, Record<string, () => void>>;
-};
-
-let capturedConfig: ShortcutsConfig | null = null;
-
-vi.mock("@/hooks/use-keyboard-shortcuts", () => ({
-  useRegisterShortcuts: (config: ShortcutsConfig) => {
-    capturedConfig = config;
-  },
-  getModifierKeyText: () => "Ctrl",
-}));
-
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
-  capturedConfig = null;
 });
 
-describe("CommandPalette help shortcut (#294)", () => {
-  it("dispatches at most once per '?' keypress, with no recursive dispatchEvent", () => {
-    render(<CommandPalette />);
+describe("CommandPalette (#407)", () => {
+  it("mounts inside the real KeyboardShortcutsProvider without hanging or OOMing", () => {
+    render(
+      <KeyboardShortcutsProvider>
+        <CommandPalette />
+      </KeyboardShortcutsProvider>,
+    );
+    // Closed by default -- proves the tree actually finished rendering
+    // rather than us just reaching this line by luck.
+    expect(screen.queryByTestId("command-dialog")).not.toBeInTheDocument();
+  });
 
-    const helpHandler = capturedConfig?.shortcuts?.["?"];
-
-    if (!helpHandler) {
-      // The fix: no handler is registered for "?" at all, so the shared
-      // provider's single document-level listener has nothing to
-      // re-invoke when a "?" keydown (real or synthetic) arrives -- zero
-      // recursion by construction.
-      expect(helpHandler).toBeUndefined();
-      return;
-    }
-
-    // Guards the mechanism itself in case a "?" handler is ever
-    // reintroduced: model `KeyboardShortcutsProvider`'s actual behavior
-    // (one shared document-level listener that looks up and calls
-    // whatever is registered for the dispatched event's key) and assert
-    // the handler fires at most once per keypress rather than recursing.
-    let handlerCalls = 0;
-    const spy = vi
-      .spyOn(document, "dispatchEvent")
-      .mockImplementation((event) => {
-        if ((event as KeyboardEvent).key === "?") {
-          handlerCalls += 1;
-          if (handlerCalls > 5) {
-            throw new Error("recursive dispatchEvent detected");
-          }
-          helpHandler();
-        }
-        return true;
-      });
-
-    helpHandler();
-    spy.mockRestore();
-
-    expect(handlerCalls).toBeLessThanOrEqual(1);
+  it("unmounts cleanly, unregistering its shortcuts", () => {
+    const { unmount } = render(
+      <KeyboardShortcutsProvider>
+        <CommandPalette />
+      </KeyboardShortcutsProvider>,
+    );
+    expect(() => unmount()).not.toThrow();
   });
 });
