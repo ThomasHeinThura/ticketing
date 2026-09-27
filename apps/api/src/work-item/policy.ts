@@ -180,6 +180,21 @@ export const workItemPolicies = {
     reach: "required",
   },
 
+  // Issue #27, `docs/03-features/comments-and-activity.md`. `requireWorkItemReach()`
+  // resolves the target work item by key before the handler runs; the actual capability
+  // decision (`comment:create` vs `comment:create_internal`) is data-dependent (the
+  // BODY's `visibility` field, not parsed until the handler -- same reason
+  // `work_item:set_priority` is checked in `PATCH /api/work-items/{key}`'s own handler,
+  // not `middleware`), so `capability` below names the PRIMARY, public-comment path;
+  // `./controllers/create-comment.ts` checks whichever of the two the request actually
+  // needs.
+  "POST /api/work-items/{key}/comments": {
+    capability: "comment:create",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
   // Re-rank a work item (`WI-11`-`WI-13`). `WI-13`'s customer-organisation-scoped
   // restriction is NOT enforced here -- see `controllers/rank-work-item.ts`'s own doc
   // comment for why (no live customer-portal caller identity exists anywhere in this
@@ -237,5 +252,39 @@ export const workItemPolicies = {
     scope: "work_item",
     scopeSource: "row",
     reach: "required",
+  },
+
+  // `rbac.md`'s own worked example for this exact route: ownership is
+  // `row.person_id === identity.personId` (the comment's `author_id`), `orOwner` with
+  // `withinMinutes: 15` matching `CA-17`'s edit window -- `packages/permissions`'s
+  // `OwnerBranch.withinMinutes` exists specifically for this row. `requireCommentReach()`
+  // resolves the comment by id via a genuine DB lookup, so `scopeSource: "row"`. Nothing
+  // here calls the declarative evaluator at runtime (issue #8's runtime-integration work,
+  // out of this slice's scope) -- `./controllers/update-comment.ts` enforces the
+  // identical conjunction by hand, the same "declared target, `requireWorkspaceCapability`-
+  // family runtime check" split every other route in this codebase already uses.
+  "PATCH /api/comments/{id}": {
+    capability: "comment:update_any",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+    orOwner: {
+      predicate: "row.person_id === identity.personId",
+      capability: "comment:update_own",
+      withinMinutes: 15,
+    },
+  },
+
+  // Same shape as the update route above, minus the time window -- rbac.md's table names
+  // no `withinMinutes` for either delete capability.
+  "DELETE /api/comments/{id}": {
+    capability: "comment:delete_any",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+    orOwner: {
+      predicate: "row.person_id === identity.personId",
+      capability: "comment:delete_own",
+    },
   },
 } as const satisfies PolicyMap;

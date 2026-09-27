@@ -34,6 +34,7 @@ import {
 import { activityPolicies } from "./activity/policy";
 import { assetPolicies } from "./asset/policy";
 import { auditPolicies } from "./audit/policy";
+import { cannedResponsePolicies } from "./canned-response/policy";
 import { capabilitiesPolicies } from "./capabilities/policy";
 import { columnPolicies } from "./column/policy";
 import { commentPolicies } from "./comment/policy";
@@ -244,6 +245,10 @@ export const POLICY_SOURCES = [
   },
   { name: "apps/api/src/comment/policy.ts", policies: commentPolicies },
   { name: "apps/api/src/activity/policy.ts", policies: activityPolicies },
+  {
+    name: "apps/api/src/canned-response/policy.ts",
+    policies: cannedResponsePolicies,
+  },
   {
     name: "apps/api/src/notification/policy.ts",
     policies: notificationPolicies,
