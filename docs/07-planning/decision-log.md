@@ -5,6 +5,16 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-27 · #392 permission-key migration uses expand/contract for rolling Helm updates
+
+**Decision:** migration `0071` copies the legacy `task` permission key into `work_item` and retains `task` during the rolling deployment. A later contract migration may remove `task` only after old binaries are gone and the rollback window has closed.
+
+**Why:** Helm runs the migration in each new pod's init container while old replicas can still serve traffic. Removing `task` before old replicas drain makes those replicas deny permissions they still enforce. Keeping both keys preserves access for old and new application versions.
+
+**Alternatives:** delete `task` in `0071` (rejected because it breaks active old replicas); remove it in a later release immediately (rejected until the old-binary and rollback window has demonstrably ended).
+
+**Decided by:** the orchestrating session, 2026-09-27, after independent ordinary review identified the rolling-update compatibility gap.
+
 ## Format
 
 ```markdown

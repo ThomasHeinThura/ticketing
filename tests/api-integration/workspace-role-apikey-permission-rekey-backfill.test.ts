@@ -1,42 +1,14 @@
 /**
- * Issue #8 rekey follow-up (Opus review of pull request #392, BLOCKING) — proves migration
- * `0071_workspace_role_apikey_permission_task_to_work_item.sql`'s backfill actually repairs a
- * PRE-EXISTING `workspace_role.permission` row and a PRE-EXISTING `apikey.permissions` row,
- * not just data a post-rename binary would ever write.
+ * Verifies migration 0071 expands pre-existing workspace-role and API-key permissions to
+ * include `work_item` while retaining `task` for old replicas during a rolling deployment.
+ * Helm runs the migration in each new pod's init container, so old pods can still serve while
+ * new pods are starting. The tests seed the pre-upgrade JSON shapes, prove the new runtime
+ * denies them before migration, then verify both keys remain and the new runtime succeeds.
  *
- * THE DEFECT THIS COVERS. Pull request #392 renamed the legacy `task` statement key to
- * `work_item` in code (`packages/permissions/src/legacy-better-auth-access-control.ts` and
- * every `requireWorkspacePermission` call site), but did nothing about the JSON already
- * sitting in these two `text` columns. `customRoleStatements()`
- * (`apps/api/src/utils/require-workspace-permission.ts`) reads `workspace_role.permission`
- * directly, with no fall-back to the compiled default (issue #66: a missing/mismatched key is
- * DENY, not fall back) — so a row still shaped `{"task": [...]}` would silently deny every
- * `work_item:*` check for that role. The same is true for `apikey.permissions`, read by
- * `verifyApiKey()` and consulted by `hasWorkspacePermission()` as a narrowing filter on top of
- * the caller's own role. Same defect class as issue #318/PR #322 ("a migration doesn't handle
- * a pre-existing row").
- *
- * WHY THIS REPLAYS THE MIGRATION'S SQL DIRECTLY, RATHER THAN A SEPARATE TEMP DATABASE. Unlike
- * `workspace-role-is-system-backfill-migration.test.ts` (migration `0068`, which ADDED a
- * column and therefore needed a database migrated only up to the cutoff before that column
- * existed), migration `0071` is pure DML against columns (`workspace_role.permission`,
- * `apikey.permissions`) that already exist at the CURRENT schema head. So this file uses the
- * ordinary shared test database (`resetTestDatabase()`, already migrated to head — which means
- * `0071` has already run once, against an empty table, before this test's `beforeEach`), inserts
- * rows directly (bypassing the application layer, which would refuse `task` as an unknown
- * resource today), then replays `0071`'s own SQL text again. That is safe specifically because
- * `0071` is idempotent (its `WHERE ... ? 'task'` guard only ever matches a row this test itself
- * just inserted) and reads the EXACT SQL the real migration runs, not a paraphrase of it.
- *
- * MUTATION-CHECKED BY HAND, per this issue's review instruction: with `replayMigration0071()`'s
- * call removed (i.e. simulating the migration never having run against these rows), this
- * file's "confirms a member... can now actually pass" assertions go red — both the
- * workspace-role case (403, not 200, on the create-task probe) and the API-key case (403, not
- * 200) — confirmed by temporarily commenting out the `replayMigration0071()` call in both
- * `it` blocks and observing both fail before restoring it. Recorded here rather than automated
- * as a second CI variant, for the same reason `0068`'s own test gives: standing up a
- * deliberately-broken migration path inside the suite itself would ship a broken migration
- * alongside the real one.
+ * This replays the migration's exact SQL against the shared test database rather than a
+ * separate temporary database. Migration 0071 is pure, idempotent DML against columns that
+ * already exist at the current schema head. The same statements the deployment runs are
+ * therefore exercised here.
  */
 import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -125,12 +97,12 @@ async function postCreateTask(
   });
 }
 
-describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql — backfill for PRE-EXISTING rows (issue #8 rekey follow-up, Opus review of #392)", () => {
+describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql — rolling-safe expansion for PRE-EXISTING rows (issue #8 rekey follow-up)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
   });
 
-  it("rewrites a pre-existing workspace_role.permission row's task key to work_item, and a member with that role can then actually pass the renamed work_item:create check", async () => {
+  it("copies a pre-existing workspace_role.permission task key to work_item while retaining old-replica permissions", async () => {
     const member = await createWorkspaceMember({ role: "member" });
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
@@ -160,8 +132,7 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
     // Step 2: run the backfill.
     await replayMigration0071();
 
-    // Step 3: assert the JSON itself was rewritten — work_item key present with the SAME
-    // action array, task key gone.
+    // Step 3: both versions must retain the same grant during a rolling deployment.
     const [row] = await db
       .select({ permission: schema.workspaceRoleTable.permission })
       .from(schema.workspaceRoleTable)
@@ -177,7 +148,7 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
       unknown
     >;
     expect(parsed.work_item).toEqual(["create", "read"]);
-    expect(parsed.task).toBeUndefined();
+    expect(parsed.task).toEqual(["create", "read"]);
 
     // Step 4: an ACTUAL end-to-end assertion, not just a raw JSON check — a member of this
     // role can now really pass the runtime work_item:create check, through the real HTTP
@@ -186,7 +157,7 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
     expect(afterBackfill.status).toBe(200);
   });
 
-  it("rewrites a pre-existing apikey.permissions row's task key to work_item, and that API key can then actually pass the renamed work_item:create check", async () => {
+  it("copies a pre-existing apikey.permissions task key to work_item while retaining old-replica permissions", async () => {
     // Admin so the underlying membership role is never the reason for a 403 here — the ONLY
     // gate under test is the API key's own narrowing permissions.
     const member = await createWorkspaceMember({ role: "admin" });
@@ -226,7 +197,7 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
     // Step 2: run the backfill.
     await replayMigration0071();
 
-    // Step 3: assert the JSON itself was rewritten.
+    // Step 3: both versions must retain the same grant during a rolling deployment.
     const [row] = await db
       .select({ permissions: schema.apikeyTable.permissions })
       .from(schema.apikeyTable)
@@ -237,7 +208,7 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
       unknown
     >;
     expect(parsed.work_item).toEqual(["create"]);
-    expect(parsed.task).toBeUndefined();
+    expect(parsed.task).toEqual(["create"]);
 
     // Step 4: an ACTUAL end-to-end assertion — the API key can now really pass the runtime
     // work_item:create check, through the real HTTP route, real Bearer-token authentication,
