@@ -143,3 +143,47 @@ Run on real Postgres 18, in a private worktree against a private database (`pr36
 ### Base-branch dependency
 
 The base branch `feat/30-assign-action` (#353) is still CHANGES NEEDED for its own A1. Merging #353's fix into #365 changes #365's head, which invalidates this clearance, so that merge needs a delta check.
+
+---
+
+## Re-recreation onto PR #430 (2026-09-27)
+
+**Reviewed head:** `4ee59e11336cf98f46eb88d77a8ab56d09efc682` (branch
+`feat/30-unassign-action-rebase`, PR #430)
+**Reviewer:** orchestrating session (mechanical verification — byte-identical content, not
+a fresh judgment call)
+
+**Why this PR exists:** #365 never merged — it was stacked on #353's own branch and nobody
+retargeted it once #353 merged, a stale-branch problem, not a design or review problem.
+#353 has since merged, so `feat/30-assign-action`'s own "CHANGES NEEDED" dependency noted
+above is resolved. A Sonnet lane recreated #365's exact diff (`gh pr diff 365 --patch`,
+applied via `git am --3way` onto current `main`) rather than reimplementing from the spec.
+
+**Verdict: CLEAR, unchanged — verified byte-identical, not re-reviewed.** Independently
+diffed every substantive file this review covers
+(`apps/api/src/work-item/controllers/unassign-work-item.ts`,
+`apps/api/src/work-item/index.ts`, `policy.ts`, `response.ts`,
+`packages/permissions/src/evaluator.ts`, `policy.ts`) between #365's own base/head
+(`cbd18fc3ed1ea26f09254dc54b86565f2d7a0e1d`..`80bc5973c493a5ff065db8ae46ef5235523ad2d8`)
+and PR #430's base/head (`main`'s current tip..`4ee59e1`) — every file's diff is
+byte-for-byte identical, including `index.ts`, the one file that needed a manual
+`git am` conflict resolution (an unrelated import-block interleaving from other work
+merged to `main` since #365 was opened) — the FINAL diff against each PR's own respective
+base is nonetheless identical, confirming the conflict resolution introduced no drift.
+
+This is not a fresh review — it is a mechanical confirmation that PR #430 carries the exact
+same, already-independently-reviewed and Opus-CLEAR content as #365, at the same quality
+bar this project requires, with nothing new to evaluate. If any future push to this branch
+introduces real content divergence, that would require a genuine fresh reviewer, not another
+mechanical note.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `c6b0ab157c482ae9967ad2aec520c33be752eb7e`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on every substantive file this review covers
+between the last reviewed head (`4ee59e11336cf98f46eb88d77a8ab56d09efc682`) and this one —
+the intervening commits are #418's and other already-reviewed merges, zero overlap with
+this PR's own files.
