@@ -11,11 +11,12 @@
  * dishonesty `task/policy.ts`'s comment warned about for the inherited task route.
  */
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
+import { assignWorkItem } from "../../apps/api/src/work-item/controllers/assign-work-item";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -752,5 +753,88 @@ describe("API integration: work item assignment (#30, assignment.md)", () => {
     // Whatever the allowlist decides, it must be one of the two values -- never absent,
     // never a third invented state.
     expect(["public", "internal"]).toContain(assignment?.visibility);
+  });
+
+  it("A1 (Opus delta review 3): a rival reassign that commits between the pre-read and the conditional UPDATE does not stale the recorded `before`", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const first = await addPersonOnRoster({ projectId: project.id });
+    const second = await addPersonOnRoster({ projectId: project.id });
+    const third = await addPersonOnRoster({ projectId: project.id });
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    expect(
+      (await assignRequest(app, key, { assigneeId: first.id })).status,
+    ).toBe(200);
+    const [item] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+
+    // Park the controller after its pre-read of `item.assigneeId` (still "first") by
+    // locking the `membership` table, which its roster lookup (AS-5) queries right after
+    // that pre-read and right before the conditional UPDATE. While parked there, a rival
+    // caller's reassign first -> second commits for real.
+    let releaseLock!: () => void;
+    const releaseLockGate = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+    let lockHeld!: () => void;
+    const lockHeldGate = new Promise<void>((resolve) => {
+      lockHeld = resolve;
+    });
+    const rival = db.transaction(async (tx) => {
+      await tx.execute(sql`LOCK TABLE membership IN ACCESS EXCLUSIVE MODE`);
+      lockHeld();
+      await releaseLockGate;
+      await tx
+        .update(schema.workItemTable)
+        .set({ assigneeId: second.id })
+        .where(eq(schema.workItemTable.id, item?.id ?? ""));
+    });
+    await lockHeldGate;
+
+    // This caller saw `second` as the current holder (its own read happened after the
+    // rival's commit is due) and asks to move second -> third. Its pre-read is stale
+    // ("first"), but its `expectedCurrentAssigneeId` is the true prior holder.
+    const racedCall = assignWorkItem(
+      key,
+      workspace.id,
+      creator.id,
+      "person",
+      null,
+      { assigneeId: third.id, expectedCurrentAssigneeId: second.id },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    releaseLock();
+    await rival;
+    const result = await racedCall;
+
+    // The conditional UPDATE matched against the true state (`second`), not the stale
+    // pre-read (`first`) -- so the write succeeds and every recorded `before` must say
+    // `second`, never `first`.
+    expect(result.previousAssigneeId).toBe(second.id);
+
+    const auditRows = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityId, item?.id ?? ""))
+      .orderBy(schema.auditLogTable.seq);
+    const lastAudit = auditRows.at(-1);
+    expect(lastAudit?.action).toBe("work_item.assigned");
+    expect(lastAudit?.before).toEqual({ assigneeId: second.id });
+    expect(lastAudit?.after).toEqual({ assigneeId: third.id });
+
+    const activityRows = (
+      await db
+        .select()
+        .from(schema.activityTable)
+        .where(eq(schema.activityTable.workItemId, item?.id ?? ""))
+        .orderBy(schema.activityTable.seq)
+    ).filter((entry) => entry.field === "assigneeId");
+    const lastActivity = activityRows.at(-1);
+    expect(lastActivity?.oldValue).toBe(second.id);
+    expect(lastActivity?.newValue).toBe(third.id);
   });
 });

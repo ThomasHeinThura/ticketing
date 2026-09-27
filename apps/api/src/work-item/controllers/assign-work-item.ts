@@ -149,7 +149,14 @@ export async function assignWorkItem(
     });
   }
 
-  const previousAssigneeId = item.assigneeId;
+  // NOT `item.assigneeId` -- that is a pre-transaction read and can go stale under a
+  // race (Opus delta review 3, finding A1): a rival assignment can commit between this
+  // read and the conditional UPDATE below, displacing the holder this variable would
+  // otherwise name. `expectedCurrentAssigneeId` is what the UPDATE's own WHERE clause
+  // checks against, so whenever the UPDATE actually matches and succeeds, this is
+  // provably the true prior holder -- including the first-assign case, where an absent
+  // `expectedCurrentAssigneeId` correctly becomes `null` (matching `IS NULL`).
+  const previousAssigneeId = input.expectedCurrentAssigneeId ?? null;
 
   const assigned = await db.transaction(async (tx) => {
     const expected = input.expectedCurrentAssigneeId ?? null;
