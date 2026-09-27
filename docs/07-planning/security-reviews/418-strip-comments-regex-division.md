@@ -113,3 +113,16 @@ commit is #327's already-reviewed merge (docs-only, no overlap with this PR's ow
 **Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
 reviewed head (`f97d0a2c05c80eeff021ef9c9a63043744ef54d3`) and this one — the intervening
 commit is #422's already-reviewed merge, zero overlap with this PR's own files.
+
+---
+
+## Formatting fix (2026-09-27)
+
+**Reviewed head:** `94bebd878d30619b9fe5122c0bbff7513a3cf172`
+**Reviewer:** orchestrating session (mechanical verification — formatting only, no logic
+change)
+**Verdict:** CLEAR, unchanged. CI's `static` check found a genuine `biome format` violation
+in `scripts/ci/lib/strip-code-comments.test.mjs` (an unwrapped `assert.equal(...)` call) —
+confirmed real, not a flake, via a local `biome check` run with a raised diagnostic limit.
+Ran `biome format --write` on only this file, confirmed the diff is purely whitespace (no
+logic change), and confirmed the full suite still passes (39/39) after.
