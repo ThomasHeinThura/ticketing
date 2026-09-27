@@ -383,3 +383,15 @@ Independently verified:
 
 - `git show --remerge-diff 821ff18` is empty — clean automatic merge.
 - `git diff 2d3ca06..821ff18 --stat` touches exactly one file: `docs/07-planning/status.md` (#384), docs-only, outside security-review scope.
+
+---
+
+## Lightweight re-confirmation after third branch update (2026-09-27)
+
+**Reviewed head:** `c376d1190100d8a9800e8c73858591d93ca3bbd2`
+**Previously reviewed head:** `821ff18f2e499a62d8245f3554fc6707741e036b`
+**Reviewer:** orchestrating session (mechanical verification, per `AGENTS.md`'s review-tier table)
+**Verdict:** CLEAR. Unchanged.
+
+- `git show --remerge-diff c376d11` is empty — clean automatic merge, no conflict-resolution content.
+- This merge brings in PR #375's real changes (migration, `schema.ts`, `audit-writer.ts`, `list-workspace-audit.ts`), which already carries its own independent, complete Opus CLEAR verdict. Zero overlap with this PR's own files (`apps/api/src/permissions/shadow-context.ts`, `shadow-middleware.ts`) — confirmed via `git diff 821ff18..c376d11 --stat`.
