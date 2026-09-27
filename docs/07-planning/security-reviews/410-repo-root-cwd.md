@@ -7,6 +7,8 @@ consecutive calls timed out after 300s)
 **Session:** subagent `a423a9b11dd35d9fb`
 **Verdict: APPROVE (after fix)**, at head `57b96687ac31a5d13e6dead5d68aa34bc874e0f4`.
 
+**Reviewed head:** `57b96687ac31a5d13e6dead5d68aa34bc874e0f4`
+
 Found a real Medium finding: the git-failure fallback treated "not a git repo" and "any
 other git failure" identically, silently returning the wrong root for the latter — fixed
 in the same PR (commit `57b9668`). Confirmed mechanism choice against this repo's own
@@ -55,3 +57,16 @@ was a real functional code change (not an empty-diff clean merge), so it cannot 
 self-certified by the session that made it. A genuine independent delta-review is being
 commissioned separately; treat the paragraph above as "fix applied, re-test run," not as a
 review verdict.
+
+---
+
+## Independent delta-review of the F1/F2 fix (2026-09-27)
+
+**Reviewed head:** `2d411b67b3b931e4bade2888fa5b8cac7cd7223d`
+**Reviewer:** Opus 5.5, fresh independent context (subagent `a4f7999b62e8fdf58`)
+**Verdict: CLEAR.** Independently ran `git rev-parse --show-toplevel` against real git 2.53
+across 10 different broken/edge states (missing gitdir, deleted worktree admin dir, missing
+GIT_DIR, dubious ownership, bare repo, empty PATH, etc.) and confirmed the narrowed regex
+matches only git's two genuine "no repo anywhere in this path" wordings, correctly throwing
+on every broken-but-real-repo state. Confirmed both new tests fail for the right reason by
+selectively reverting each fix in turn. Full suite: 649/649 green with the real Node binary.
