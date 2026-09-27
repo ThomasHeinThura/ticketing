@@ -93,3 +93,13 @@ files.
 **Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
 reviewed head (`762a00e25b4b9767b66fc0321e33cb6d4e2aac36`) and this one — the intervening
 commit is #420's already-reviewed merge, zero overlap with this PR's own files.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `ecf46bc455a514727dcfcfabeadb8d256997363a`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
+reviewed head (`25aac39d8d0c766483433d660052600ebe9a0a2b`) and this one — the intervening
+commit is #327's already-reviewed merge (docs-only, no overlap with this PR's own files).
