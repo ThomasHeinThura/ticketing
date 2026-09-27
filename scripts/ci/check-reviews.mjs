@@ -293,7 +293,11 @@ async function main() {
       return;
     }
     const task = bodySections.get(normaliseHeading("Task"));
-    const declared = task ? field(contentOf(task.raw), "Spec") : "";
+    // multiLine: true (issue #150) -- the one field() caller where a longer captured
+    // value is never unsafe: it can only add more .md paths to check, never fewer.
+    const declared = task
+      ? field(contentOf(task.raw), "Spec", { multiLine: true })
+      : "";
     // Not a bare `/^n\/a$/i` exact match — found adversarially, while
     // shepherding PR #144: that exact-match guard only recognised a Spec
     // field that was LITERALLY the two characters "n/a", not the "n/a —
