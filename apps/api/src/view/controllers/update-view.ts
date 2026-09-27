@@ -1,7 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { savedViewTable, teamMemberTable } from "../../database/schema";
+import {
+  savedViewTable,
+  teamMemberTable,
+  teamTable,
+} from "../../database/schema";
 import { publishEvent } from "../../events";
 import type { z } from "../../openapi";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
@@ -41,13 +45,19 @@ async function updateView(
         });
       }
       rejectNulByte(nextSharedWithTeamId, "sharedWithTeamId");
+      // Same check as create-view.ts's `assertScopeBelongsToWorkspace`-adjacent team
+      // membership check: membership in the team alone is not enough -- the team must
+      // also belong to THIS view's own workspace, or a caller who is a member of some
+      // unrelated team in a foreign workspace could re-share their own view into it.
       const [membership] = await tx
         .select({ id: teamMemberTable.id })
         .from(teamMemberTable)
+        .innerJoin(teamTable, eq(teamMemberTable.teamId, teamTable.id))
         .where(
           and(
             eq(teamMemberTable.teamId, nextSharedWithTeamId),
             eq(teamMemberTable.userId, userId),
+            eq(teamTable.workspaceId, view.workspaceId),
           ),
         )
         .limit(1);

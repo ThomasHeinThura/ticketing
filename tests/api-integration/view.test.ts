@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { defaultRolePayloads } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -285,5 +287,145 @@ describe("API integration: saved views", () => {
     expect(
       (await unpinResponse.json()) as { pinnedViewIds: string[] },
     ).toMatchObject({ pinnedViewIds: [] });
+  });
+
+  // HIGH: `update-view.ts`'s `sharedWithTeamId` check only verified team membership, not
+  // that the team belongs to the VIEW's own workspace -- a view owner in workspace B who
+  // happens to be a member of a team in unrelated workspace A could re-share their own
+  // view into that foreign team, leaking it (including its stored query) to every member
+  // of A's team. Mirrors `create-view.ts`'s `assertScopeBelongsToWorkspace`-adjacent
+  // team-membership-plus-workspace check.
+  it("rejects sharing a view with a team from a different workspace, even if the caller is a member of that team", async () => {
+    const owner = await createWorkspaceMember({ workspaceName: "Workspace B" });
+    await addPerson(owner.user.id);
+
+    // An unrelated workspace A, containing the team the caller happens to belong to.
+    const foreignWorkspace = await createWorkspaceMember({
+      workspaceName: "Workspace A",
+    });
+    const foreignTeamId = `team-${randomUUID()}`;
+    await db.insert(schema.teamTable).values({
+      id: foreignTeamId,
+      name: "Foreign Team",
+      workspaceId: foreignWorkspace.workspace.id,
+      createdAt: new Date(),
+    });
+    await db.insert(schema.teamMemberTable).values({
+      id: `tm-${randomUUID()}`,
+      teamId: foreignTeamId,
+      userId: owner.user.id,
+      createdAt: new Date(),
+    });
+
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+
+    const createResponse = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: owner.workspace.id,
+        name: "My private view",
+        scope: "workspace",
+        scopeId: owner.workspace.id,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    const created = (await createResponse.json()) as { id: string };
+
+    const updateResponse = await app.request(`/api/views/${created.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        visibility: "team",
+        sharedWithTeamId: foreignTeamId,
+      }),
+    });
+    expect([400, 403]).toContain(updateResponse.status);
+
+    const persisted = await db.query.savedViewTable.findFirst({
+      where: eq(schema.savedViewTable.id, created.id),
+    });
+    expect(persisted?.sharedWithTeamId).toBeNull();
+    expect(persisted?.visibility).toBe("private");
+  });
+
+  // LOW: the `workspace:manage_settings` admin-override branch of `assertCanEditView` was
+  // reviewed and confirmed correct by hand but had no committed test exercising its
+  // success path -- an admin (holds `workspace:manage_settings` but did not create the
+  // view) editing then deleting someone else's view.
+  it("lets a caller with workspace:manage_settings edit then delete another member's view", async () => {
+    const owner = await createWorkspaceMember({ role: "member" });
+    await addPerson(owner.user.id);
+
+    const adminUserId = `user-${randomUUID()}`;
+    const admin = requireRow(
+      await db
+        .insert(schema.userTable)
+        .values({
+          id: adminUserId,
+          email: `${adminUserId}@example.com`,
+          emailVerified: true,
+          name: "Workspace Admin",
+        })
+        .returning(),
+      "admin user",
+    );
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: owner.workspace.id,
+      userId: admin.id,
+      role: "admin",
+      joinedAt: new Date(),
+    });
+    const now = new Date();
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: owner.workspace.id,
+      role: "admin",
+      permission: JSON.stringify(defaultRolePayloads.admin),
+      isSystem: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await addPerson(admin.id);
+
+    mockAuthenticatedSession(owner.user);
+    const { app: ownerApp } = createApp();
+    const createResponse = await ownerApp.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: owner.workspace.id,
+        name: "Owner's view",
+        scope: "workspace",
+        scopeId: owner.workspace.id,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    const created = (await createResponse.json()) as { id: string };
+
+    mockAuthenticatedSession(admin);
+    const { app: adminApp } = createApp();
+
+    const updateResponse = await adminApp.request(`/api/views/${created.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Renamed by admin" }),
+    });
+    expect(updateResponse.status).toBe(200);
+    expect((await updateResponse.json()) as { name: string }).toMatchObject({
+      name: "Renamed by admin",
+    });
+
+    const deleteResponse = await adminApp.request(`/api/views/${created.id}`, {
+      method: "DELETE",
+    });
+    expect(deleteResponse.status).toBe(202);
+
+    const persisted = await db.query.savedViewTable.findFirst({
+      where: eq(schema.savedViewTable.id, created.id),
+    });
+    expect(persisted).toBeUndefined();
   });
 });
