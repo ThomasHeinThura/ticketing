@@ -66,3 +66,17 @@ found a real, security-relevant gap in the mechanism that detects an unreviewed 
 self-reviewed PR — not because of unnecessary re-litigation. Each finding was closed with
 a real fix and independent re-verification before proceeding, per this project's own
 standard for a mechanism this sensitive.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `308a600cfecc9727feda6efdcd310b9ee19c83e6`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on `scripts/ci/check-pr-template.mjs`,
+`scripts/ci/check-reviews.mjs`, `scripts/ci/lib/pr-body.mjs`, and `scripts/ci/lib/pr-body.test.mjs`
+between the last reviewed head (`08cc5a9e419891b1d38ba9d778730d99d206abe0`) and this one —
+the intervening commits bring in #413's already-reviewed check-ui fix, zero overlap with
+this PR's own files. This branch update also refreshes the `pull_request` event payload that
+`check-pr-template.mjs` reads, clearing a stale-body false failure from a run that predated
+this PR body's `**Note:**` line being added.
