@@ -351,6 +351,28 @@ describe("API integration: work item unassignment (#30, assignment.md)", () => {
     expect(body.previousAssigneeId).toBe(holder.id);
 
     expect(publishEventMock.mock.calls[0]?.[0]).toBe("work_item.unassigned");
+
+    // #344/AU-10: the audit writer must record `project_id` so a workspace audit read
+    // can be reach-filtered, mirroring the assign route's own audit-write test. Two
+    // rows exist for this entity (the earlier `assignRequest` above wrote its own
+    // `work_item.assigned` row) -- the unassign call's row is the last one, same
+    // pattern as the assign suite's own reassign test.
+    const [itemRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const auditRows = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityId, itemRow?.id ?? ""));
+    expect(auditRows).toHaveLength(2);
+    const [unassignAuditRow] = auditRows.slice(-1);
+    expect(unassignAuditRow?.action).toBe("work_item.unassigned");
+    expect(unassignAuditRow?.entityType).toBe("work_item");
+    expect(unassignAuditRow?.workspaceId).toBe(workspace.id);
+    expect(unassignAuditRow?.projectId).toBe(project.id);
+    expect(unassignAuditRow?.before).toEqual({ assigneeId: holder.id });
+    expect(unassignAuditRow?.after).toEqual({ assigneeId: null });
   });
 
   it("clearing an already-unassigned item is an idempotent 200 no-op: no version bump, no activity row, no event", async () => {
@@ -379,6 +401,12 @@ describe("API integration: work item unassignment (#30, assignment.md)", () => {
     expect(row?.version).toBe(version);
     expect(await assigneeActivityRows(row?.id ?? "")).toHaveLength(0);
     expect(publishEventMock).not.toHaveBeenCalled();
+
+    const auditRows = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityId, row?.id ?? ""));
+    expect(auditRows).toHaveLength(0); // no assignment cleared, no audit row
   });
 
   it("two concurrent clears produce exactly one write: one response allowed, the other a no-op 200 or a 409 -- never a second activity row", async () => {
