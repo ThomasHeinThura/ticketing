@@ -205,4 +205,109 @@ describe("API integration: workflow persistence", () => {
     const response = await getWorkflow(workflow.id);
     expect(response.status).toBe(404);
   });
+
+  it("deletes a workspace that has a role-gated workflow transition (B1)", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    mockAuthenticatedSession(owner.user);
+    const { backlog, done } = await seedStateTemplates(owner.workspace.id);
+
+    const [role] = await db
+      .insert(schema.roleTable)
+      .values({
+        scope: "workspace",
+        workspaceId: owner.workspace.id,
+        key: "reviewer",
+        name: "Reviewer",
+        rank: 0,
+      })
+      .returning();
+    const roleId = requireRow([role], "role-gated transition: role").id;
+
+    const createResponse = await createWorkflow({
+      workspaceId: owner.workspace.id,
+      key: "default",
+      name: "Default workflow",
+    });
+    const workflow = (await createResponse.json()) as { id: string };
+
+    const versionResponse = await createWorkflowVersion(workflow.id, {
+      transitions: [
+        {
+          fromStateTemplateId: backlog.id,
+          toStateTemplateId: done.id,
+          roleId,
+          notePolicy: "none",
+          noteVisibility: "internal",
+        },
+      ],
+    });
+    expect(versionResponse.status).toBe(200);
+
+    const { app } = createApp();
+    const deleteResponse = await app.request(
+      `/api/workspace/${owner.workspace.id}`,
+      { method: "DELETE" },
+    );
+    expect(deleteResponse.status).toBe(200);
+
+    const remainingWorkflows = await db
+      .select()
+      .from(schema.workflowTable)
+      .where(eq(schema.workflowTable.id, workflow.id));
+    expect(remainingWorkflows).toHaveLength(0);
+
+    const remainingVersions = await db
+      .select()
+      .from(schema.workflowVersionTable)
+      .where(eq(schema.workflowVersionTable.workflowId, workflow.id));
+    expect(remainingVersions).toHaveLength(0);
+  });
+
+  it("rejects a transition that references another workspace's role (B2), persisting nothing", async () => {
+    const ownerA = await createWorkspaceMember({ role: "owner" });
+    const ownerB = await createWorkspaceMember({ role: "owner" });
+    const { backlog, done } = await seedStateTemplates(ownerA.workspace.id);
+
+    const [roleB] = await db
+      .insert(schema.roleTable)
+      .values({
+        scope: "workspace",
+        workspaceId: ownerB.workspace.id,
+        key: "reviewer",
+        name: "Reviewer",
+        rank: 0,
+      })
+      .returning();
+    const foreignRoleId = requireRow(
+      [roleB],
+      "cross-tenant role: workspace B's role",
+    ).id;
+
+    mockAuthenticatedSession(ownerA.user);
+    const createResponse = await createWorkflow({
+      workspaceId: ownerA.workspace.id,
+      key: "default",
+      name: "Default workflow",
+    });
+    const workflow = (await createResponse.json()) as { id: string };
+
+    const versionResponse = await createWorkflowVersion(workflow.id, {
+      transitions: [
+        {
+          fromStateTemplateId: backlog.id,
+          toStateTemplateId: done.id,
+          roleId: foreignRoleId,
+          notePolicy: "none",
+          noteVisibility: "internal",
+        },
+      ],
+    });
+    expect(versionResponse.status).toBe(400);
+
+    const rows = await db
+      .select()
+      .from(schema.workflowVersionTable)
+      .where(eq(schema.workflowVersionTable.workflowId, workflow.id));
+    expect(rows).toHaveLength(0);
+  });
 });

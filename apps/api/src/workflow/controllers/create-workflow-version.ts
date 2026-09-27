@@ -4,10 +4,11 @@ import {
   type WorkflowState,
   type WorkflowTransition,
 } from "@taskdesk/domain";
-import { eq, max } from "drizzle-orm";
+import { eq, isNull, max, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
+  roleTable,
   stateTemplateTable,
   workflowTable,
   workflowTransitionTable,
@@ -54,6 +55,44 @@ async function createWorkflowVersion(
     // `default-state-templates.ts`'s own seed data relies on elsewhere in this codebase.
     group: t.group as WorkflowState["group"],
   }));
+
+  // Cross-tenant reference check (B2/N1): `validateWorkflowVersion` only checks a
+  // transition's OWN `fromStateTemplateId`/`toStateTemplateId` against `states` above --
+  // it never sees `roleId` or a `schedule_transition` effect's `toStateTemplateId`, so
+  // without this, workspace A could save a transition naming workspace B's role or state
+  // template. Mirrors the same ownership-set pattern `states` above already uses: build
+  // the set of ids this workspace may legally reference, then reject any transition that
+  // names one outside it, before anything is persisted.
+  const stateIds = new Set(states.map((s) => s.id));
+
+  const roleRows = await db
+    .select({ id: roleTable.id })
+    .from(roleTable)
+    .where(
+      or(
+        eq(roleTable.workspaceId, workflow.workspaceId),
+        isNull(roleTable.workspaceId),
+      ),
+    );
+  const roleIds = new Set(roleRows.map((r) => r.id));
+
+  for (const t of transitions) {
+    if (t.roleId !== null && !roleIds.has(t.roleId)) {
+      throw new HTTPException(400, {
+        message: `Invalid workflow version: transition references a role not in this workspace: ${t.roleId}`,
+      });
+    }
+    for (const effect of t.effects) {
+      if (
+        effect.kind === "schedule_transition" &&
+        !stateIds.has(asStateTemplateId(effect.toStateTemplateId))
+      ) {
+        throw new HTTPException(400, {
+          message: `Invalid workflow version: schedule_transition effect names a to-state that does not exist: ${effect.toStateTemplateId}`,
+        });
+      }
+    }
+  }
 
   const domainTransitions: WorkflowTransition[] = transitions.map(
     (t, index) => ({

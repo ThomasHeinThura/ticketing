@@ -33,6 +33,18 @@ async function deleteWorkspace(workspaceId: string, sessionId: string) {
         ),
       );
 
+    // `workflow_transition`'s FKs to `state_template`/`role` are `ON DELETE RESTRICT`
+    // (it must not silently lose which state/role a transition names out from under a
+    // still-live workflow) -- which blocks Postgres's own cascade ordering when the
+    // workspace itself is deleted, because nothing else ever deletes `workflow` first.
+    // Deleting it explicitly, here, lets the `workflow` -> `workflow_version` ->
+    // `workflow_transition` / `scheduled_transition` cascade clear before the
+    // `state_template`/`role` rows it restricted against are themselves cascade-deleted
+    // by the workspace delete below.
+    await tx
+      .delete(schema.workflowTable)
+      .where(eq(schema.workflowTable.workspaceId, workspaceId));
+
     const [deleted] = await tx
       .delete(schema.workspaceTable)
       .where(eq(schema.workspaceTable.id, workspaceId))
