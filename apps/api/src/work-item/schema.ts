@@ -393,3 +393,67 @@ export const assignWorkItemBody = z.object({
     .nullable()
     .optional(),
 });
+
+// `POST /api/work-items/{key}/rank` (`WI-11`) -- see `controllers/rank-work-item.ts`'s
+// own doc comment for the full "why this shape" reasoning (a judgment call, since
+// nothing in this file declared a contract for it before this slice). At least one of
+// `beforeId`/`afterId` is required -- enforced by the `.refine` below, not merely by
+// both being optional, so an empty `{}` body is a 400 at the validation boundary rather
+// than reaching the controller's own equivalent runtime check.
+const rankNeighbourId = z
+  .string()
+  .min(1)
+  .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE);
+
+export const rankWorkItemBody = z
+  .object({
+    beforeId: rankNeighbourId.nullable().optional(),
+    afterId: rankNeighbourId.nullable().optional(),
+  })
+  .refine((body) => Boolean(body.beforeId) || Boolean(body.afterId), {
+    message: "At least one of beforeId or afterId is required",
+  });
+
+// `POST /api/work-items/bulk` -- see `controllers/bulk-work-items.ts`'s own doc comment
+// for which of `WI-24`'s operations this slice actually implements (`delete`, `assign`)
+// and why the rest are deferred. `workspaceId` scopes the whole batch to one workspace
+// (the spec's own route table: "work_item:read (workspace)") -- there is no path
+// parameter for this flat, non-project-scoped route to carry it in instead.
+const bulkWorkItemKey = z
+  .string()
+  .min(1)
+  .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE);
+
+const MAX_BULK_WORK_ITEMS = 500;
+
+export const bulkWorkItemsBody = z
+  .object({
+    workspaceId: z
+      .string()
+      .min(1)
+      .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
+    workItemKeys: z.array(bulkWorkItemKey).min(1).max(MAX_BULK_WORK_ITEMS),
+    operation: z.enum(["delete", "assign"]),
+    // Required by `.refine` below only when `operation === "assign"`.
+    assigneeId: z
+      .string()
+      .min(1)
+      .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
+      .optional(),
+  })
+  .refine(
+    (body) =>
+      body.operation !== "assign" || typeof body.assigneeId === "string",
+    { message: 'assigneeId is required when operation is "assign"' },
+  );
+
+// `GET /api/work-items/{key}/activity` -- opaque cursor pagination, the same
+// `cursor`/`limit` shape as `listWorkItemsQuery` above (`api-design.md`'s convention).
+export const listWorkItemActivityQuery = z.object({
+  cursor: z
+    .string()
+    .max(2048)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
+    .optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+});
