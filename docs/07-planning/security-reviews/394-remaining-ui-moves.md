@@ -51,8 +51,9 @@ audit job is green at this head).
 
 ---
 
-## Delta review — 2026-09-27, head `37f60a31ff57e22534e77cd083564217415ecec0`
+## Delta review — 2026-09-27
 
+**Reviewed head:** `37f60a31ff57e22534e77cd083564217415ecec0`
 **Verdict: CLEAR.** No HIGH, MEDIUM or LOW. The delta touches no security surface.
 
 **One-line summary:** `37f60a3` adds only Storybook stories and real axe tests for nine
