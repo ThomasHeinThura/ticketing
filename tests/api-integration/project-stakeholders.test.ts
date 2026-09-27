@@ -271,4 +271,19 @@ describe("API integration: project stakeholders", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("rejects a NUL byte in the stakeholderId path param (F1, delta Opus review of PR #438)", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+
+    const response = await standDownStakeholder(
+      project.id,
+      encodeURIComponent("\u0000x"),
+    );
+
+    expect(response.status).toBe(400);
+  });
 });

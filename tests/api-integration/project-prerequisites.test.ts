@@ -183,4 +183,20 @@ describe("API integration: project prerequisites", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("rejects a NUL byte in the prerequisiteId path param (F1, delta Opus review of PR #438)", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+
+    const response = await updatePrerequisite(
+      project.id,
+      encodeURIComponent("\u0000x"),
+      { completed: true },
+    );
+
+    expect(response.status).toBe(400);
+  });
 });

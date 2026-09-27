@@ -178,4 +178,20 @@ describe("API integration: project milestones", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("rejects a NUL byte in the milestoneId path param (F1, delta Opus review of PR #438)", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+
+    const response = await updateMilestone(
+      project.id,
+      encodeURIComponent("\u0000x"),
+      { reached: true },
+    );
+
+    expect(response.status).toBe(400);
+  });
 });

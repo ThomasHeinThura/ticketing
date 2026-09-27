@@ -182,6 +182,21 @@ describe("API integration: project document links", () => {
     expect(response.status).toBe(400);
   });
 
+  it("rejects a NUL byte in the documentLinkId path param (F1, delta Opus review of PR #438)", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+
+    const response = await deleteDocumentLink(
+      project.id,
+      encodeURIComponent("\u0000x"),
+    );
+
+    expect(response.status).toBe(400);
+  });
+
   it("rejects adding a link from a role without project:update", async () => {
     const member = await createWorkspaceMember({ role: "viewer" });
     const { project } = await createProjectFixture({

@@ -142,24 +142,29 @@ const projectDateTime = z
   )
   .transform((value) => new Date(value));
 
+// F1 (delta Opus review of PR #438): these four path params are read directly by their
+// controllers from `c.req.valid("param")`, never through `workspaceAccess.fromProject()`'s
+// own NUL-byte guard (which only covers the shared `id` -- the project id -- via its
+// `"project"` lookup case). `nulSafeId` closes the same gap here that `personId` (line
+// ~207) already closed for a body field.
 export const milestoneParam = z.object({
   id: z.string(),
-  milestoneId: z.string(),
+  milestoneId: nulSafeId,
 });
 
 export const prerequisiteParam = z.object({
   id: z.string(),
-  prerequisiteId: z.string(),
+  prerequisiteId: nulSafeId,
 });
 
 export const stakeholderParam = z.object({
   id: z.string(),
-  stakeholderId: z.string(),
+  stakeholderId: nulSafeId,
 });
 
 export const documentLinkParam = z.object({
   id: z.string(),
-  documentLinkId: z.string(),
+  documentLinkId: nulSafeId,
 });
 
 export const createMilestoneBody = z.object({

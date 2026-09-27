@@ -4320,7 +4320,8 @@
           },
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "required": true,
             "name": "milestoneId",
@@ -4414,7 +4415,8 @@
           },
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "required": true,
             "name": "milestoneId",
@@ -4645,7 +4647,8 @@
           },
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "required": true,
             "name": "prerequisiteId",
@@ -4753,7 +4756,8 @@
           },
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "required": true,
             "name": "prerequisiteId",
@@ -4981,7 +4985,8 @@
           },
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "required": true,
             "name": "stakeholderId",
@@ -5081,7 +5086,8 @@
           },
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "required": true,
             "name": "stakeholderId",
@@ -5301,7 +5307,8 @@
           },
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "required": true,
             "name": "documentLinkId",
