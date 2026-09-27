@@ -385,14 +385,17 @@ export async function appendAuditLog(
         // is a closed field list in `packages/domain/src/audit/audit.ts`, so a stray
         // key here is a TYPE error, not a quiet recipe change (verified by mutation in
         // the review of PR #375, finding A-L1), and the golden-hash test in that
-        // package would catch a recipe edit regardless. The reason it must stay out is
-        // NOT that hashing it would break old rows (a field hashed only when non-null
-        // would have stayed injective and old NULL rows would still recompute -- Opus
-        // security review of PR #375, H1, correcting the original rationale here). It
-        // stays out because, like `organisation_id`, it can legitimately change after
-        // the row is written (see `data-model.md`'s "The audit hash chain"), and it is
-        // pinned append-only by `audit_log_reject_mutation()` (migration 0070, S1)
-        // instead of by the hash.
+        // package would catch a recipe edit regardless. It is NOT out because it can
+        // change after the row is written -- migration 0070's trigger refuses any
+        // change to it, same as every other non-hashed column except the
+        // `organisation_id` tombstone (Opus security review of PR #375, H1-b,
+        // correcting the prior rationale here, which the S1 fix in this same PR made
+        // inaccurate). It stays out because #344's acceptance allows leaving it out,
+        // `organisation_id` is the precedent for a foreign key excluded this way, and
+        // adding it would change the hash recipe `packages/domain` shares with every
+        // consumer, for a column added after that recipe was fixed (see
+        // `data-model.md`'s "The audit hash chain"). It is pinned append-only by
+        // `audit_log_reject_mutation()` (migration 0070, S1) instead of by the hash.
         action: input.action,
         entityType: input.entityType,
         entityId: input.entityId,

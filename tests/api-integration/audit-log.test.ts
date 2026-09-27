@@ -622,8 +622,10 @@ describe("AU-7 tombstone carve-out also pins project_id (Opus security review of
     }>(
       sql`SELECT organisation_id, project_id FROM audit_log WHERE id = ${result.id}`,
     );
-    // The whole statement rolled back: the organisation stays deleted (it is not
-    // re-created), but audit_log itself is untouched -- neither column changed.
+    // The whole statement rolled back, including the organisation delete itself --
+    // the organisation still exists (corrected here after the Opus security review
+    // of PR #375, I4, found the prior comment claimed the opposite), and audit_log
+    // is untouched: neither column changed.
     expect(raw.rows[0]?.organisation_id).toBe(organisation.id);
     expect(raw.rows[0]?.project_id).toBe(projectId);
   });

@@ -428,15 +428,19 @@ deletion. The tombstone stays; it just sits outside the chain.
 because hashing it was impossible. A field hashed only when `project_id IS NOT NULL` would
 have stayed injective (`canonicalRowHash` joins a closed, positional field list and rejects
 its own separator inside any field, so a differing separator count keeps two recipes from
-colliding), and every pre-migration row (`NULL`) would still recompute byte-identically —
-corrected here after the Opus security review of PR #375 (H1) found the original rationale
-below this line was wrong (an independent review of the CHANGE, not of what it protects).
-The real reason follows `organisation_id`'s own precedent: like the tombstone, `project_id`
-can legitimately change after the row is written, and a hashed column that changes would make
-`audit-verify` report tamper on every legitimate change. `project_id` is stored and queryable;
-it is simply not part of the tamper evidence, and it is now pinned append-only by the same
-trigger that already protects every other non-hashed column (`audit_log_reject_mutation()`,
-0070) — see the S1 finding in
+colliding), and every pre-migration row (`NULL`) would still recompute byte-identically. It
+is also not because `project_id` can change after the row is written — migration 0070's
+trigger (added in the same PR) refuses any change to it, the same as every other non-hashed
+column except the `organisation_id` tombstone (corrected here after the Opus security
+review of PR #375, H1-b, found the prior version of this paragraph inaccurate on both
+points, once the S1 fix in that same PR closed the mutability it had described). The real
+reasons: #344's own acceptance criteria allow leaving `project_id` out of the hash;
+`organisation_id` is the established precedent for a foreign key excluded from the chain
+this way; and adding it would change the hash recipe `packages/domain` shares with every
+consumer, for a column added after that recipe was already fixed. `project_id` is stored and
+queryable; it is simply not part of the tamper evidence, and it is pinned append-only by the
+same trigger that already protects every other non-hashed column
+(`audit_log_reject_mutation()`, 0070) — see the S1 finding in
 [`docs/07-planning/security-reviews/375-audit-log-project-id-reach-filter.md`](../07-planning/security-reviews/375-audit-log-project-id-reach-filter.md).
 `audit-log-project-id-migration.test.ts` pins a pre-migration row's survival, and the
 writer's own suite pins that rows with and without it verify over one chain.
