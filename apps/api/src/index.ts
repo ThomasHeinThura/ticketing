@@ -6,7 +6,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { Session, User } from "better-auth/types";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Hono } from "hono";
 import { compress } from "hono/compress";
@@ -62,7 +62,7 @@ import user from "./user";
 import getAvatar from "./user/controllers/get-avatar";
 import { buildAuthRequest } from "./utils/auth-request";
 import { authenticateApiRequest } from "./utils/authenticate-api-request";
-import { authorizeAssetAccess } from "./utils/authorize-asset-access";
+import { loadReachableAsset } from "./utils/authorize-asset-access";
 import { backfillWorkspaceAndProjectDefaults } from "./utils/backfill-workspace-project-defaults";
 import { getInvitationDetails } from "./utils/check-registration-allowed";
 import { migrateApiKeyReferenceId } from "./utils/migrate-apikey-reference-id";
@@ -73,7 +73,7 @@ import { normalizeApiServerUrl } from "./utils/openapi-spec";
 import { rejectNulByte } from "./utils/reject-nul-byte";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
-import { validateWorkspaceAccess } from "./utils/validate-workspace-access";
+import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
 import workItem from "./work-item";
 import workflowRule from "./workflow-rule";
 import workspace from "./workspace";
@@ -731,13 +731,19 @@ export function createApp(options: { staticRoot?: string } = {}) {
   });
 
   // Registered below the app-wide auth guard (issue #8, H2 fix, `docs/07-planning/
-  // security-reviews/21-policy-registry.md`): `authorizeAssetAccess` requires a real
+  // security-reviews/21-policy-registry.md`): `loadReachableAsset` requires a real
   // bearer/API-key/session credential (`resolveAssetBearerOrCookie` throws 401 on none)
-  // and then checks workspace membership, so this route was never actually public --
-  // it just sat above the guard, where H2's `isWithinAuthGuardScope()` correctly refuses
-  // a `capability` policy rather than let registration position launder an unauthenticated
-  // route into a green coverage check. Moved here so the policy in
+  // and then checks workspace reach in the same query, so this route was never actually
+  // public -- it just sat above the guard, where H2's `isWithinAuthGuardScope()` correctly
+  // refuses a `capability` policy rather than let registration position launder an
+  // unauthenticated route into a green coverage check. Moved here so the policy in
   // `apps/api/src/asset/policy.ts` describes what the runtime actually enforces.
+  //
+  // #317 S3 (following #338's own S3 finding): no `403` response remains. A foreign
+  // asset used to reach a 403 that got remapped to 404; folding the reach check into
+  // the lookup query (`loadReachableAsset`) means an out-of-reach or missing asset id
+  // is now the same "no row" result, so 403 is unreachable and the OpenAPI contract no
+  // longer advertises a distinction the route doesn't make.
   api.openapi(
     createRoute({
       method: "get",
@@ -755,8 +761,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
         },
         304: { description: "Not modified" },
         401: errorResponse("No credential at all"),
-        403: errorResponse("No access to this asset"),
-        404: errorResponse("Asset not found"),
+        404: errorResponse("Asset not found, or not reachable by this caller"),
       },
     }),
     async (c) => {
@@ -764,30 +769,11 @@ export function createApp(options: { staticRoot?: string } = {}) {
       // #281 sweep: this id reaches a raw `eq(assetTable.id, ...)` query below,
       // unvalidated -- a NUL byte would otherwise 500 instead of a clean 400.
       rejectNulByte(id, "Asset id");
-      const [asset] = await db
-        .select({
-          id: schema.assetTable.id,
-          objectKey: schema.assetTable.objectKey,
-          mimeType: schema.assetTable.mimeType,
-          filename: schema.assetTable.filename,
-          workspaceId: schema.assetTable.workspaceId,
-        })
-        .from(schema.assetTable)
-        // The join selects nothing now that `is_public` is gone, but it is kept
-        // deliberately: it still requires the asset to belong to a real project,
-        // so an orphaned asset row 404s rather than being served.
-        .innerJoin(
-          schema.projectTable,
-          eq(schema.assetTable.projectId, schema.projectTable.id),
-        )
-        .where(eq(schema.assetTable.id, id))
-        .limit(1);
-
-      if (!asset) {
-        throw new HTTPException(404, { message: "Asset not found" });
-      }
-
-      await authorizeAssetAccess(c, asset);
+      // #317 S1/S4: existence and workspace reach are checked in the same
+      // query (`loadReachableAsset`), so a foreign asset and a missing one
+      // cost the same single round trip and 404 identically -- see that
+      // function's own comment.
+      const asset = await loadReachableAsset(c, id);
 
       try {
         const object = await getPrivateObject(asset.objectKey);
@@ -924,29 +910,31 @@ export function createApp(options: { staticRoot?: string } = {}) {
         // #281 sweep: this id reaches a raw `eq(projectTable.id, ...)` query below,
         // unvalidated -- a NUL byte would otherwise 500 instead of a clean 400.
         rejectNulByte(projectId, "Project id");
+        // #317 S1/S4: existence and workspace reach are folded into one
+        // query, the same `reachableWorkspacePredicate` #307/#338 use in
+        // `workspace-access-middleware.ts` -- a foreign project and an
+        // unknown one now cost the same single round trip and both answer
+        // 401 before any upgrade, rather than a second `validateWorkspaceAccess`
+        // query distinguishing "out of reach" (403, remapped) from "unknown"
+        // (401).
+        const apiKeyId = c.get("apiKey")?.id;
         const [project] = await db
           .select({ workspaceId: schema.projectTable.workspaceId })
           .from(schema.projectTable)
-          .where(eq(schema.projectTable.id, projectId))
+          .where(
+            and(
+              eq(schema.projectTable.id, projectId),
+              reachableWorkspacePredicate(
+                schema.projectTable.workspaceId,
+                userId,
+                apiKeyId,
+              ),
+            ),
+          )
           .limit(1);
 
         if (!project) {
           throw new HTTPException(401, { message: "Unauthorized" });
-        }
-
-        try {
-          await validateWorkspaceAccess(userId, project.workspaceId);
-        } catch (error) {
-          // Authenticated callers must not distinguish an out-of-reach project
-          // from an unknown project during the WebSocket upgrade request.
-          if (
-            error instanceof HTTPException &&
-            error.status === 403 &&
-            error.message === "You don't have access to this workspace"
-          ) {
-            throw new HTTPException(401, { message: "Unauthorized" });
-          }
-          throw error;
         }
       }
 

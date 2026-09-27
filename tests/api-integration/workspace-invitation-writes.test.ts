@@ -760,7 +760,14 @@ describe("S6a cancel (DELETE /api/invitation/{id})", () => {
     expect((await invitationRow(invitation.id))?.status).toBe("pending");
   });
 
-  it("a member of a DIFFERENT workspace cannot cancel this one's invitation", async () => {
+  it("#317 S3: a member of a DIFFERENT workspace gets the same answer as an unknown invitation id, not a distinguishing 403", async () => {
+    // Before the #317 fix, an existing invitation in a workspace the caller
+    // can't reach gave 403 "You don't have access to this workspace", while an
+    // unknown id gave 404 "Invitation not found" -- an existence oracle across
+    // every workspace, for whoever holds an old invitation id.
+    // `requireInvitationWorkspaceAccess` (`apps/api/src/utils/
+    // require-invitation-workspace-access.ts`) now remaps that exact 403 to the
+    // same 404, so both cases are byte-identical here.
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(
@@ -779,12 +786,29 @@ describe("S6a cancel (DELETE /api/invitation/{id})", () => {
     const otherOwner = await signUpUser(app);
     await createWorkspace(app, otherOwner.cookie, "Unrelated Workspace");
 
-    const canceled = await cancelInvitationNative(
+    const foreign = await cancelInvitationNative(
       app,
       otherOwner.cookie,
       invitation.id,
     );
-    expect(canceled.status).toBe(403);
+    const missing = await cancelInvitationNative(
+      app,
+      otherOwner.cookie,
+      "nope",
+    );
+
+    const [foreignBody, missingBody] = await Promise.all([
+      foreign.clone().text(),
+      missing.clone().text(),
+    ]);
+
+    expect(foreign.status).toBe(404);
+    expect(missing.status).toBe(404);
+    expect(foreignBody).toBe("Invitation not found");
+    expect(foreignBody).toBe(missingBody);
+    // The foreign invitation is untouched: this is a masked existence
+    // answer, not a real cancellation.
+    expect((await invitationRow(invitation.id))?.status).toBe("pending");
   });
 
   it("returns 404 for an unknown invitation id", async () => {
