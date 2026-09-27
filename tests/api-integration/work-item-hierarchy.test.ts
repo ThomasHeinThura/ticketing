@@ -9,7 +9,10 @@ import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
-import { MAX_TREE_NODES } from "../../apps/api/src/work-item/hierarchy";
+import {
+  ancestorChain,
+  MAX_TREE_NODES,
+} from "../../apps/api/src/work-item/hierarchy";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -585,5 +588,108 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
     // The root itself counts against the cap, so only `MAX_TREE_NODES - 1` of the
     // `MAX_TREE_NODES` children fit.
     expect(treeBody.root.children).toHaveLength(MAX_TREE_NODES - 1);
+  });
+
+  it("RH-7 concurrency (Opus security review of PR #432, F1, reproduced live): two concurrent reparents that would EACH individually pass the depth check, but jointly exceed it, resolve to exactly one success and one 422 -- never both succeeding", async () => {
+    // Opus's own reproduction shape: T1 moves X under P (individually valid at read
+    // time); concurrently, T2 moves Y under Z, where Z is ABOUT TO BECOME (via T1's own,
+    // not-yet-committed move) a descendant of P through X. Built here as:
+    //
+    //   Existing chain: R(1) <- A(2) <- P(3)          -- P's own depth is 3.
+    //   Existing chain: X(1) <- Z(2)                  -- Z is already X's child.
+    //   Standalone: Y (no parent, no children).
+    //
+    //   T1: set X's parent to P  -- if it runs alone: X's new depth is 4, no
+    //       descendants of its own except Z (depth 1 below X) -- resulting deepest
+    //       node (Z) lands at depth 5, exactly the cap. Individually valid.
+    //   T2: set Y's parent to Z  -- if it runs alone (before T1 commits): Z's own
+    //       chain is only [Z, X] (depth 2), so Y's new depth is 3. Individually valid.
+    //
+    // If BOTH commit as each individually validated them, the REAL final chain is
+    // R <- A <- P <- X <- Z <- Y -- Y at depth 6, past RH-7's cap. Before this PR's F1
+    // fix, `set-work-item-parent.ts`'s ancestor/depth reads were unlocked, so both
+    // concurrent requests could each read their OWN pre-commit-safe snapshot and both
+    // succeed, producing exactly that corruption. The per-project advisory lock
+    // (`hierarchy-lock.ts`) now serializes the two: whichever commits first is correctly
+    // reflected in the SECOND transaction's own re-read (taken only after it acquires the
+    // lock the first one just released), and that second transaction's own depth check
+    // then correctly rejects -- in EITHER commit order (verified above: T1-then-T2 makes
+    // Z's real depth 5, so Y under Z would be depth 6, rejected; T2-then-T1 makes X's own
+    // subtree 2 deep via Z->Y, so X under P would land Y at depth 6 the same way,
+    // rejected). So exactly one of the two must succeed and the other must be refused,
+    // in every possible interleaving -- never both.
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const r = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "R",
+      })
+    ).json()) as CreatedWorkItem;
+    const a = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "A",
+      })
+    ).json()) as CreatedWorkItem;
+    const p = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "P",
+      })
+    ).json()) as CreatedWorkItem;
+    const x = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "X",
+      })
+    ).json()) as CreatedWorkItem;
+    const z = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Z",
+      })
+    ).json()) as CreatedWorkItem;
+    const y = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Y",
+      })
+    ).json()) as CreatedWorkItem;
+
+    expect((await setParentRequest(app, a.key, r.key)).status).toBe(200);
+    expect((await setParentRequest(app, p.key, a.key)).status).toBe(200);
+    expect((await setParentRequest(app, z.key, x.key)).status).toBe(200);
+
+    // Fired together -- real, independently-authenticated concurrent HTTP requests
+    // against the same app/database, the same style `work-item-update.test.ts`'s own
+    // "WI-7: a concurrent-update race" test uses to exercise two overlapping
+    // transactions without artificial staged sleeps: each request's own transaction
+    // makes several genuinely awaited round trips to Postgres (the advisory lock, the
+    // row loads, the ancestor/descendant walks, the final UPDATE), which is real
+    // overlap for two requests fired via `Promise.all`.
+    const [t1, t2] = await Promise.all([
+      setParentRequest(app, x.key, p.key),
+      setParentRequest(app, y.key, z.key),
+    ]);
+
+    const statuses = [t1.status, t2.status].sort();
+    expect(statuses).toEqual([200, 422]);
+
+    // Whichever one won, the FINAL persisted hierarchy never exceeds RH-7's depth-5 cap
+    // anywhere -- the actual invariant this fix protects, checked directly rather than
+    // inferred from the status codes alone.
+    const allItems = [r, a, p, x, z, y];
+    for (const item of allItems) {
+      const [row] = await db
+        .select({ id: schema.workItemTable.id })
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.key, item.key));
+      if (!row) throw new Error(`missing row for ${item.key}`);
+      const chain = await ancestorChain(db, row.id);
+      expect(chain.length).toBeLessThanOrEqual(5);
+    }
   });
 });

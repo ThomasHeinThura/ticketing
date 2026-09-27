@@ -161,10 +161,16 @@ function selectHierarchyNodes(executor: DbOrTx) {
         stateTemplateTable,
         eq(stateTable.stateTemplateId, stateTemplateTable.id),
       )
-      // Deterministic order (`work_item.position`, the same fractional manual-rank column
-      // board views already order by) so which rows survive a truncation is stable and
-      // predictable across repeated requests, not whatever order Postgres happens to return.
-      .orderBy(workItemTable.position)
+      // Deterministic order (Opus security review of PR #432, finding F2): `position`
+      // alone is not a real ordering here -- nothing in this codebase writes
+      // `work_item.position` yet (`WI-11` ranking is unbuilt), so every row keeps its
+      // `NOT NULL DEFAULT '0'` value and `.orderBy(position)` alone ties on every row,
+      // making which rows survive `MAX_TREE_NODES`'s truncation arbitrary (Postgres's own
+      // tie-break, which can change after an unrelated edit elsewhere in the table). The
+      // codebase's own established rule for this -- `list-query.ts` lines 115-143's own
+      // comment -- is that every sort needs an explicit tie-break column; `id` (a cuid2,
+      // permanent and unique) is that tie-break here, the same role it plays there.
+      .orderBy(workItemTable.position, workItemTable.id)
   );
 }
 
@@ -188,15 +194,21 @@ export async function loadSubtreeRows(
   let frontier = [rootId];
 
   for (let hops = 0; hops < MAX_WALK_HOPS; hops++) {
-    const level = await selectHierarchyNodes(executor).where(
-      inArray(workItemTable.parentId, frontier),
-    );
+    const remaining = MAX_TREE_NODES - rows.length;
+    // Opus security review of PR #432, finding F3: without this `.limit`, a parent with
+    // many more children than `remaining` would still load ALL of them into memory here
+    // before the slice below ever runs -- the cap protected the RESPONSE size, not the
+    // query's own memory/row-fetch cost. `remaining + 1` (not `remaining`) so the
+    // `level.length > remaining` truncation check just below can still tell "exactly
+    // enough children exist" apart from "more exist than fit" without a second query.
+    const level = await selectHierarchyNodes(executor)
+      .where(inArray(workItemTable.parentId, frontier))
+      .limit(remaining + 1);
 
     if (level.length === 0) {
       return { rows, truncated: false };
     }
 
-    const remaining = MAX_TREE_NODES - rows.length;
     if (level.length > remaining) {
       // This level alone would push the response past the cap. Keep only the first
       // `remaining` rows (in the deterministic `position` order the query above already
