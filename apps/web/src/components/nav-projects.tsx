@@ -39,6 +39,13 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
 } from "@taskdesk/ui";
 import {
   ChevronRight,
@@ -51,15 +58,6 @@ import {
 import { type CSSProperties, type ReactNode, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import {
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
 import useReorderProjects from "@/hooks/mutations/project/use-reorder-projects";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";

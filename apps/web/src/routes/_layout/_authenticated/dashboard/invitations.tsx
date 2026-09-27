@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Separator,
+  SidebarTrigger,
   Table,
   TableBody,
   TableCell,
@@ -16,7 +17,6 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Layout from "@/components/common/layout";
 import PageTitle from "@/components/page-title";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import useAcceptInvitation from "@/hooks/mutations/workspace-user/use-accept-invitation";
 import useRejectInvitation from "@/hooks/mutations/workspace-user/use-reject-invitation";
@@ -137,7 +137,10 @@ function InvitationsPage() {
       <Layout>
         <Layout.Header>
           <div className="flex items-center gap-1 w-full">
-            <SidebarTrigger className="-ml-1 h-6 w-6" />
+            <SidebarTrigger
+              className="-ml-1 h-6 w-6"
+              toggleLabel={t("common:a11y.toggleSidebar")}
+            />
             <Separator
               orientation="vertical"
               className="mx-1.5 data-[orientation=vertical]:h-2.5"

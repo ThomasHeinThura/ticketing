@@ -4,7 +4,7 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
-import { Button, Tabs, TabsList, TabsTrigger } from "@taskdesk/ui";
+import { Button, Tabs, TabsList, TabsTrigger, useIsMobile } from "@taskdesk/ui";
 import { ChevronLeft, PanelLeftIcon } from "lucide-react";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,7 +12,6 @@ import PageTitle from "@/components/page-title";
 import { SettingsSidebarProvider } from "@/components/SettingsSidebar";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings",

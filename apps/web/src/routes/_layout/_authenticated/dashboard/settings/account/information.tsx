@@ -14,6 +14,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
   Input,
   Label,
   Separator,
@@ -26,14 +32,6 @@ import { z } from "zod";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import useDeleteAccount, {
   SESSION_TOO_OLD,
 } from "@/hooks/mutations/use-delete-account";

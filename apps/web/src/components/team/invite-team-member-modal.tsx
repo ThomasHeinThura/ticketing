@@ -9,6 +9,12 @@ import {
   DialogPanel,
   DialogPopup,
   DialogTitle,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
   Input,
 } from "@taskdesk/ui";
 import { useState } from "react";
@@ -19,14 +25,6 @@ import useInviteWorkspaceUser from "@/hooks/mutations/workspace-user/use-invite-
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "../ui/form";
 import InvitationLinkField from "./invitation-link-field";
 
 type Props = {

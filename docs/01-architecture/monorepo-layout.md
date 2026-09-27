@@ -94,7 +94,11 @@ packages/domain        ──► (nothing — pure)
 packages/permissions   ──► (nothing — pure; kaneo's depends on better-auth, which is why it is
                             replaced rather than extended)
 packages/plugins-contracts ──► (nothing — types only)
-packages/ui            ──► (react, Base UI, tailwind only — Radix only per KNOWN-RADIX.md)
+packages/ui            ──► (react, Base UI, tailwind, class-variance-authority, clsx,
+                            tailwind-merge, lucide-react only — Radix only per
+                            KNOWN-RADIX.md — plus, one primitive each: react-hook-form
+                            (form.tsx), react-day-picker (calendar.tsx), input-otp
+                            (input-otp.tsx); #9)
 packages/typescript-config ──► (nothing — shared compiler configuration)
 ```
 

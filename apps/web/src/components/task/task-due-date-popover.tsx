@@ -1,11 +1,17 @@
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@taskdesk/ui";
+import {
+  Button,
+  Calendar,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@taskdesk/ui";
 import { X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Calendar } from "@/components/ui/calendar";
 import { useUpdateTaskDueDate } from "@/hooks/mutations/task/use-update-task-due-date";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
+import { useUserPreferencesStore } from "@/store/user-preferences";
 import type Task from "@/types/task";
 
 type TaskDueDatePopoverProps = {
@@ -19,6 +25,7 @@ export default function TaskDueDatePopover({
 }: TaskDueDatePopoverProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const { mutateAsync: updateTaskDueDate } = useUpdateTaskDueDate();
   const { canUpdateTasks } = useWorkspacePermission();
   const canEdit = canUpdateTasks();
@@ -54,6 +61,7 @@ export default function TaskDueDatePopover({
             task.startDate ? { before: new Date(task.startDate) } : undefined
           }
           className="w-full bg-popover"
+          weekStartsOn={weekStartsOn}
         />
         {task.dueDate && (
           <div className="pt-2 border-t border-border">

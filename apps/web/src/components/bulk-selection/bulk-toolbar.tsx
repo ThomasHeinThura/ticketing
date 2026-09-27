@@ -1,5 +1,6 @@
 import {
   Button,
+  Calendar,
   Command,
   CommandCollection,
   CommandDialog,
@@ -37,7 +38,6 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calendar } from "@/components/ui/calendar";
 import { useBulkOperations } from "@/hooks/mutations/task/use-bulk-operations";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -51,6 +51,7 @@ import { getPriorityIcon } from "@/lib/priority";
 import { toast } from "@/lib/toast";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
+import { useUserPreferencesStore } from "@/store/user-preferences";
 
 type BulkActionItem = {
   value: string;
@@ -67,6 +68,7 @@ type BulkActionGroup = {
 
 function BulkToolbar() {
   const { t } = useTranslation();
+  const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const { selectedTaskIds, clearSelection, selectAll } =
     useBulkSelectionStore();
 
@@ -433,6 +435,7 @@ function BulkToolbar() {
                     mode="single"
                     onSelect={handleBulkDueDate}
                     className="w-full bg-popover"
+                    weekStartsOn={weekStartsOn}
                   />
                   <div className="p-0 border-t border-border">
                     <Button

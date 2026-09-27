@@ -1,6 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbSeparator,
   Button,
   Dialog,
   DialogContent,
@@ -12,12 +16,6 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import useCreateWorkspace from "@/hooks/queries/workspace/use-create-workspace";
 import { toast } from "@/lib/toast";
@@ -84,7 +82,7 @@ function CreateWorkspaceModal({ open, onClose }: CreateWorkspaceModalProps) {
       <DialogContent className="max-w-md" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle asChild>
-            <Breadcrumb>
+            <Breadcrumb label={t("common:breadcrumb.label")}>
               <BreadcrumbList>
                 <BreadcrumbItem className="text-muted-foreground font-semibold tracking-wider text-sm">
                   {t("common:modals.createWorkspace.breadcrumbTaskDesk")}

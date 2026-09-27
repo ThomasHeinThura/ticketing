@@ -1,8 +1,13 @@
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@taskdesk/ui";
+import {
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  ShortcutNumber,
+} from "@taskdesk/ui";
 import { Check } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ShortcutNumber } from "@/components/ui/shortcut-number";
 import { useUpdateTaskStatus } from "@/hooks/mutations/task/use-update-task-status";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import { useNumberedShortcuts } from "@/hooks/use-numbered-shortcuts";
