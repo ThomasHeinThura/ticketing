@@ -996,7 +996,7 @@ input:-webkit-autofill:active {
 
   .taskdesk-comment-editor-prose a,
   .taskdesk-tiptap-prose a {
-    color: color-mix(in srgb, var(--foreground) 88%, #4c9aff 12%);
+    color: color-mix(in srgb, var(--foreground) 88%, var(--info) 12%);
     cursor: pointer;
     text-decoration: underline;
     text-decoration-color: color-mix(in srgb, var(--ring) 44%, transparent);

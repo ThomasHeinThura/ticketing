@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { Timeline } from "@taskdesk/ui";
 import { ArrowUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Activity from "@/components/activity";
@@ -6,7 +7,6 @@ import CommentInput from "@/components/activity/comment-input";
 import { isCommentActivity } from "@/components/activity/utils";
 import { ExternalLinksAccordion } from "@/components/external-links/external-links-accordion";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
-import { Timeline } from "@/components/ui/timeline";
 import useGetActivitiesByTaskId from "@/hooks/queries/activity/use-get-activities-by-task-id";
 import useExternalLinks from "@/hooks/queries/external-link/use-external-links";
 import useGetProject from "@/hooks/queries/project/use-get-project";

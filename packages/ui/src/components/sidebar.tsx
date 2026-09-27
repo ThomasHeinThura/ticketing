@@ -2,27 +2,24 @@
 
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
+import { cva, type VariantProps } from "class-variance-authority";
+import { PanelLeftIcon } from "lucide-react";
+import * as React from "react";
+import { cn } from "../lib/cn";
+import { useIsMobile } from "../lib/use-mobile";
+import { Button } from "./button";
+import { Input } from "./input";
+import { ScrollArea } from "./scroll-area";
+import { Separator } from "./separator";
 import {
-  Button,
-  Input,
-  ScrollArea,
-  Separator,
   Sheet,
   SheetDescription,
   SheetHeader,
   SheetPopup,
   SheetTitle,
-  Skeleton,
-  Tooltip,
-  TooltipPopup,
-  TooltipTrigger,
-} from "@taskdesk/ui";
-import { cva, type VariantProps } from "class-variance-authority";
-import { PanelLeftIcon } from "lucide-react";
-import * as React from "react";
-import { useTranslation } from "react-i18next";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { cn } from "@/lib/cn";
+} from "./sheet";
+import { Skeleton } from "./skeleton";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "./tooltip";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -31,15 +28,17 @@ const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
-function MobileSidebarHeader() {
-  const { t } = useTranslation();
-
+function MobileSidebarHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
   return (
     <SheetHeader className="sr-only">
-      <SheetTitle>{t("common:sidebar.title")}</SheetTitle>
-      <SheetDescription>
-        {t("common:sidebar.mobileDescription")}
-      </SheetDescription>
+      <SheetTitle>{title}</SheetTitle>
+      <SheetDescription>{description}</SheetDescription>
     </SheetHeader>
   );
 }
@@ -182,13 +181,21 @@ function Sidebar({
   collapsible = "offcanvas",
   className,
   children,
+  mobileTitle,
+  mobileDescription,
+  closeLabel,
   ...props
 }: React.ComponentProps<"div"> & {
   side?: "left" | "right";
   variant?: "sidebar" | "floating" | "inset";
   collapsible?: "offcanvas" | "icon" | "none";
+  /** Sr-only heading for the mobile sheet (announced by assistive tech only). */
+  mobileTitle: string;
+  /** Sr-only description for the mobile sheet. */
+  mobileDescription: string;
+  /** Passed through to the mobile sheet's close button. */
+  closeLabel: string;
 }) {
-  const { t } = useTranslation();
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
   if (collapsible === "none") {
@@ -211,7 +218,7 @@ function Sidebar({
       <Sheet onOpenChange={setOpenMobile} open={openMobile} {...props}>
         <SheetPopup
           className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-          closeLabel={t("common:actions.close")}
+          closeLabel={closeLabel}
           data-mobile="true"
           data-sidebar="sidebar"
           data-slot="sidebar"
@@ -222,7 +229,10 @@ function Sidebar({
             } as React.CSSProperties
           }
         >
-          <MobileSidebarHeader />
+          <MobileSidebarHeader
+            description={mobileDescription}
+            title={mobileTitle}
+          />
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetPopup>
       </Sheet>
@@ -280,9 +290,9 @@ function Sidebar({
 function SidebarTrigger({
   className,
   onClick,
+  toggleLabel,
   ...props
-}: React.ComponentProps<typeof Button>) {
-  const { t } = useTranslation();
+}: React.ComponentProps<typeof Button> & { toggleLabel: string }) {
   const { toggleSidebar } = useSidebar();
 
   return (
@@ -299,18 +309,21 @@ function SidebarTrigger({
       {...props}
     >
       <PanelLeftIcon />
-      <span className="sr-only">{t("common:a11y.toggleSidebar")}</span>
+      <span className="sr-only">{toggleLabel}</span>
     </Button>
   );
 }
 
-function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
-  const { t } = useTranslation();
+function SidebarRail({
+  className,
+  toggleLabel,
+  ...props
+}: React.ComponentProps<"button"> & { toggleLabel: string }) {
   const { toggleSidebar } = useSidebar();
 
   return (
     <button
-      aria-label={t("common:a11y.toggleSidebar")}
+      aria-label={toggleLabel}
       className={cn(
         "-translate-x-1/2 group-data-[side=left]:-right-4 absolute inset-y-0 z-20 hidden w-4 transition-[left,right,translate,background-color] duration-200 ease-in-out after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=right]:left-0 sm:flex",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
@@ -324,7 +337,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
       data-slot="sidebar-rail"
       onClick={toggleSidebar}
       tabIndex={-1}
-      title={t("common:a11y.toggleSidebar")}
+      title={toggleLabel}
       type="button"
       {...props}
     />

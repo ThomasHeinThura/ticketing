@@ -5,6 +5,37 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-27 · Release image's Trivy scan set to `ignore-unfixed: true`
+
+**Decision:** `.github/workflows/release.yml`'s two Trivy scan steps (amd64 and arm64) change
+`ignore-unfixed` from `false` to `true`. `severity: HIGH,CRITICAL` and `exit-code: '1'` are
+unchanged — a HIGH/CRITICAL finding with a vendor-supplied fix available still blocks
+publication exactly as before.
+
+**Why:** the release pipeline had failed on every push to `main` since PR #397's investigation
+surfaced it — not only over the `perl-base` CVEs #397 already removed, but over roughly 50
+additional HIGH/CRITICAL findings across ~18 other Debian packages in the pinned
+`node:24.20.0-bookworm-slim` base image, most with **no vendor fix available at this pinned
+digest today** (confirmed via a local Trivy scan at PR #397's head, matching the numbers in
+its own Opus review's F1 finding). With `ignore-unfixed: false`, every one of those blocks
+regardless of whether anything can actually be done about it — an unfixed-upstream finding is
+not an actionable finding, and blocking release on it indefinitely does not reduce risk, it
+only prevents ever shipping a signed image again.
+
+**Alternatives considered** (all three put to Thomas directly, given this changes gate
+semantics and only he can authorize that per `AGENTS.md`/`CLAUDE.md`):
+1. **`ignore-unfixed: true`** (chosen) — skip findings with no available fix; a HIGH/CRITICAL
+   finding that DOES have a fix still blocks. Standard practice for base-image scanning.
+2. An explicit, itemized `.trivyignore` naming each specific CVE with a justification —
+   more auditable per-CVE, but more upkeep, and functionally the same outcome as (1) for
+   findings that stay unfixed indefinitely.
+3. Move to a different/leaner base image — most thorough (would likely eliminate many of
+   these packages entirely), but a larger change needing its own testing; not adopted now,
+   worth a future look.
+
+**Decided by:** Thomas, 2026-09-27, in response to the orchestrating session's three-option
+report — approved option 1 directly ("Go").
+
 ### 2026-09-27 · #392 permission-key migration uses expand/contract for rolling Helm updates
 
 **Decision:** migration `0071` copies the legacy `task` permission key into `work_item` and retains `task` during the rolling deployment. A later contract migration may remove `task` only after old binaries are gone and the rollback window has closed.

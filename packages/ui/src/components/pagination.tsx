@@ -2,21 +2,23 @@
 
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
-import { type Button, buttonVariants } from "@taskdesk/ui";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   MoreHorizontalIcon,
 } from "lucide-react";
 import type * as React from "react";
-import { useTranslation } from "react-i18next";
-import { cn } from "@/lib/cn";
+import { cn } from "../lib/cn";
+import { type Button, buttonVariants } from "./button";
 
-function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
-  const { t } = useTranslation();
+function Pagination({
+  label,
+  className,
+  ...props
+}: React.ComponentProps<"nav"> & { label: string }) {
   return (
     <nav
-      aria-label={t("common:pagination.label")}
+      aria-label={label}
       className={cn("mx-auto flex w-full justify-center", className)}
       data-slot="pagination"
       {...props}
@@ -77,35 +79,47 @@ function PaginationLink({
 
 function PaginationPrevious({
   className,
+  ariaLabel,
+  label,
   ...props
-}: React.ComponentProps<typeof PaginationLink>) {
-  const { t } = useTranslation();
+}: React.ComponentProps<typeof PaginationLink> & {
+  /** Announced by assistive tech, e.g. "Go to previous page". */
+  ariaLabel: string;
+  /** Visible text, hidden below `sm`, e.g. "Previous". */
+  label: string;
+}) {
   return (
     <PaginationLink
-      aria-label={t("common:pagination.previousPage")}
+      aria-label={ariaLabel}
       className={cn("max-sm:aspect-square max-sm:p-0", className)}
       size="default"
       {...props}
     >
       <ChevronLeftIcon className="sm:-ms-1" />
-      <span className="max-sm:hidden">{t("common:pagination.previous")}</span>
+      <span className="max-sm:hidden">{label}</span>
     </PaginationLink>
   );
 }
 
 function PaginationNext({
   className,
+  ariaLabel,
+  label,
   ...props
-}: React.ComponentProps<typeof PaginationLink>) {
-  const { t } = useTranslation();
+}: React.ComponentProps<typeof PaginationLink> & {
+  /** Announced by assistive tech, e.g. "Go to next page". */
+  ariaLabel: string;
+  /** Visible text, hidden below `sm`, e.g. "Next". */
+  label: string;
+}) {
   return (
     <PaginationLink
-      aria-label={t("common:pagination.nextPage")}
+      aria-label={ariaLabel}
       className={cn("max-sm:aspect-square max-sm:p-0", className)}
       size="default"
       {...props}
     >
-      <span className="max-sm:hidden">{t("common:pagination.next")}</span>
+      <span className="max-sm:hidden">{label}</span>
       <ChevronRightIcon className="sm:-me-1" />
     </PaginationLink>
   );
@@ -113,9 +127,9 @@ function PaginationNext({
 
 function PaginationEllipsis({
   className,
+  moreLabel,
   ...props
-}: React.ComponentProps<"span">) {
-  const { t } = useTranslation();
+}: React.ComponentProps<"span"> & { moreLabel: string }) {
   return (
     <span
       aria-hidden
@@ -124,7 +138,7 @@ function PaginationEllipsis({
       {...props}
     >
       <MoreHorizontalIcon className="size-5 sm:size-4" />
-      <span className="sr-only">{t("common:pagination.morePages")}</span>
+      <span className="sr-only">{moreLabel}</span>
     </span>
   );
 }
