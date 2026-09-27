@@ -1,0 +1,37 @@
+# PR #412 — null-vs-epoch activity diff and derived event source (issue #298 S1/S2)
+
+## Ordinary review
+
+**Model:** Claude Sonnet 5, fresh independent context (fell back from `pal-mcp` after two
+300s timeouts)
+**Session:** subagent `aedc6276ace8159b6`
+**Verdict: APPROVE (after fix)**, at head `3c8aadeb71f9fe841eae6744cda9214d3a383202`.
+
+## Security review
+
+**Model:** Opus 5.5
+**Session:** subagent `a24fbd3126a50e089`
+**Verdict: CLEAR WITH FINDINGS (F1 fixed in this PR)**, reviewed at head
+`3c8aadeb71f9fe841eae6744cda9214d3a383202`.
+
+Confirmed `valuesDiffer`'s null-check has one caller, fires before any earlier code can
+skip it, and changes behavior only for the date fields at exactly the epoch. Confirmed
+`resolveActor` can only return `"api_key"` or `"person"` today, and `eventSourceFor`'s
+exhaustive switch makes a future third actor type a compile error. Ran the target test
+file (17/17), full API integration suite (1264 tests), API unit suite (490 tests) — all
+green. Confirmed via mutation testing that 3 of the 4 new tests fail without the fix.
+
+**F1 (low, fixed in this PR, commit `dfaaf833daf7973857623846423c7d8e25c24663`):**
+`eventSourceFor(actorType)` originally ran after the transaction had already committed —
+so a hypothetical unmapped actorType would 500 a client whose item was already saved,
+risking a duplicate on retry. Moved before the transaction starts.
+
+**Surfaces examined:** `apps/api/src/work-item/activity.ts`'s `valuesDiffer` and
+`DIFFABLE_FIELDS`; `apps/api/src/work-item/controllers/create-work-item.ts`;
+`apps/api/src/work-item/index.ts`'s `resolveActor`; the 4 new integration tests.
+
+## Lightweight re-confirmation after F1 fix (2026-09-27)
+
+A fresh, independent delta-review of this fix is being commissioned separately (per this
+project's rule that a functional code change cannot be self-certified by the session that
+made it) — see the PR's own comments for the actual verdict once recorded.
