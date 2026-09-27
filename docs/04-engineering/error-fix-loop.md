@@ -174,6 +174,18 @@ Add to this as things are learned. It is the institutional memory that agents do
   every key is a flat, static identifier; nested or computed patterns remain unattributable.
   The guard belongs in the detector and its regression suite, not in a growing list of
   syntax-specific exemptions.
+- **A hand-written regex/lexer CI gate keeps finding new bypass classes; the fix is a real
+  parser, not another exemption.** check-deps.mjs's workspace-boundary gate (`4540cfd`,
+  #361) and check-env.mjs's raw-environment-access gate (the lesson above) each started as
+  a regex/lexer scanner and each needed a full rewrite once a new evasion shape turned up.
+  check-ui.mjs's Radix-import gate repeated the pattern a third time (#255): a Unicode
+  escape inside the quoted specifier, a comment between the `from`/`import` keyword and the
+  quoted string, and a no-substitution template-literal dynamic import all defeated its
+  regex — three more shapes a hand-written pattern cannot anticipate in advance, not three
+  more special cases to patch it for. `typescript/unstable/ast` (via
+  `typescript/unstable/sync`'s `API`) is already a repo devDependency and already used by
+  check-deps.mjs; reach for it at the *first* such finding in a gate, rather than adding a
+  regex exemption and waiting for the next evasion to arrive.
 - **A handler that re-dispatches the same event type it is registered under recurses if
   anything is still listening for that type.** #294: `command-palette/index.tsx` registered
   a shortcut for `"?"` whose handler did `document.dispatchEvent(new KeyboardEvent("keydown",

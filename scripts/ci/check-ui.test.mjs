@@ -116,6 +116,60 @@ describe("check:ui — radixImportsIn", () => {
       "@radix-ui/react-dialog",
     ]);
   });
+
+  it("ignores a legitimate packages/ui re-export, not a Radix import", () => {
+    const source = 'export { Button } from "@taskdesk/ui";\n';
+    assert.deepEqual(radixImportsIn(source), []);
+  });
+
+  // #255 — three evasions of the old regex, all real and resolvable at runtime, found by
+  // #253's round-2 Opus review. A real parser (this file's own header explains why and
+  // how) closes all three, plus the general class behind them, rather than adding a fourth
+  // special case to a regex.
+
+  it("finds a Unicode-escaped specifier (#255 finding 1)", () => {
+    // `\\u{72}` is one literal backslash-u escape sequence in the FIXTURE text (the double
+    // backslash below escapes to a single backslash in this file's own source) — it is not
+    // decoded here, only when check-ui.mjs's real parser reads the fixture file itself,
+    // exactly like a JS engine decodes it at runtime. `\u{72}` is "r":
+    // `"\u{72}adix-ui/slot"` resolves to `radix-ui/slot` and must be caught the same as the
+    // plain spelling — the old regex saw only the literal backslash-u source text and
+    // missed it.
+    const source = 'import { Slot } from "\\u{72}adix-ui/slot";\n';
+    assert.deepEqual(radixImportsIn(source), ["radix-ui/slot"]);
+  });
+
+  it("finds an import with a block comment between `from` and the specifier (#255 finding 2)", () => {
+    const source = 'import { Slot } from /*c*/ "radix-ui/slot";\n';
+    assert.deepEqual(radixImportsIn(source), ["radix-ui/slot"]);
+  });
+
+  it("finds an import with a line comment between `from` and the specifier, on its own line (#255 finding 2 variant)", () => {
+    const source = [
+      "import { Slot } from // why is this here",
+      '  "radix-ui/slot";',
+    ].join("\n");
+    assert.deepEqual(radixImportsIn(source), ["radix-ui/slot"]);
+  });
+
+  it("finds a no-substitution template-literal dynamic import (#255 finding 3)", () => {
+    const source = "const x = import(`radix-ui/slot`);\n";
+    assert.deepEqual(radixImportsIn(source), ["radix-ui/slot"]);
+  });
+
+  it("finds a no-substitution template-literal require() the same way", () => {
+    const source = "const x = require(`@radix-ui/react-dialog`);\n";
+    assert.deepEqual(radixImportsIn(source), ["@radix-ui/react-dialog"]);
+  });
+
+  it("does not resolve a dynamic import whose specifier has a template substitution (accepted limit, unchanged)", () => {
+    // A genuinely computed specifier was never resolvable by the old regex either — this
+    // is not a new gap, and must not become a false positive now that imports are found by
+    // shape (any dynamic import call) rather than by matching quoted text.
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: the ${pkg} is the FIXTURE text under test (a template substitution check-ui.mjs's parser must not resolve), not a mistaken interpolation in this file's own source.
+    const source = "const pkg = 'radix-ui/slot'; import(`${pkg}`);\n";
+    assert.deepEqual(radixImportsIn(source), []);
+  });
 });
 
 describe("check:ui — parseKnownRadixTable — the correct shape", () => {
