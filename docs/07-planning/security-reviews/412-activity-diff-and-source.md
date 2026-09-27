@@ -49,3 +49,20 @@ input destructuring, before every database read/write including the transaction.
 `actorType` is never reassigned and this route is `createWorkItem`'s only caller. Ran the
 full integration suite in a fresh worktree with a dedicated database (`pr412_delta_test` on
 `td-lane-pg`): 13 files, 520 tests, all passed. Typecheck clean.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `4f7277e0c0a5f55a935b4bf2424848ff58a585c2`
+**Reviewer:** orchestrating session (verified by direct inspection, not a clean-diff claim)
+**Verdict:** CLEAR, unchanged. The intervening merge brought in #404's own already-reviewed
+`isUniqueViolation` exact-match fix, which touches the SAME file
+(`create-work-item.ts`) as this PR — not a zero-diff situation. Read the full current
+function directly to confirm the two changes are genuinely disjoint and non-interacting:
+#404's change is confined to the transaction's `catch` block (matching the exact
+`work_item_key_claim_pkey` constraint name instead of a substring), while this PR's changes
+are the pre-transaction `eventSourceFor(actorType)` call and the post-transaction
+`publishEvent` call's `source` field — different variables, different control-flow paths,
+no shared state. `activity.ts` (this PR's other touched file) has no diff at all between the
+last reviewed head and this one.
