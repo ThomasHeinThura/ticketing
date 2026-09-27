@@ -45,24 +45,6 @@
 
 ## 6. `attachments.md` — P1
 
-**Verdict: not-ready** (one cross-spec behavioural contradiction, plus the upload state machine has no columns to run on)
-
-`AT-2` (presigned direct upload, API never proxies bytes), `AT-5` (five-minute presigned download after a policy check) and `AT-4` (an attachment on an internal comment is always internal, whatever its own flag says) are all correct and defensively worded.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| High | Edge case "Customer uploads to a resolved request → Allowed within the reopen window; **reopens the request**". This is a state transition performed by a customer, but rbac.md gives customers no `work_item:transition`, ADR 0011 says every state change goes through the workflow graph, and `WI-9`/`VW-9` say state changes are never a plain field update. Nothing says which transition is used, whether it must be legal in the workflow, what happens when no legal reopen transition exists, or how long the "reopen window" is. | Specify: the reopen is a system-actor transition to the workflow's designated reopen target; if the workflow has no such transition the upload is accepted and the item stays resolved with a flagged activity row. Define the window length and where it is configured. Cross-reference `workflows.md` and `customer-portal.md` so all three agree. |
-| High | `AT-7` "Deleting is soft; the object is removed the following night by `attachment-gc`" and the edge case "Row stays `pending`; cleaned up after an hour" both require columns the `attachment` table does not have — there is **no `status` and no `deleted_at`** in the data model, only `object_key`/`filename`/`mime_type`/`size`/`customer_visible`/`uploaded_by`. The presign→complete flow (`AT-2`, and the MIME-vs-magic-bytes rejection "at `complete`") is unimplementable without a status column. | Add `status ('pending'\|'ready'\|'deleted')` and `deleted_at` to `attachment` in the data model, and state the two GC jobs (`attachment-gc` nightly, pending-cleanup hourly) in `background-jobs.md`. |
-| High | Permissions: "Delete anyone's → `comment:delete_any`". An attachment on a *work item* (not a comment) would be deleted using a *comment* capability; rbac.md has no attachment capabilities at all. This grants attachment deletion to anyone holding comment moderation, and denies it to project admins who do not. | Add `attachment:delete_any` to rbac.md, or state that attachment deletion is governed by `work_item:update` plus ownership with `comment:delete_any` as the override — and make the API row match. |
-| Medium | `AT-1` says files attach to "a work item, to a specific comment, or to a **submission**", but the data model's `attachment` has only `work_item_id \| comment_id` — no `submission_id` — and no non-portal route exists for submission attachments. Attachments arriving with an intake submission are a core service-desk flow. | Add `submission_id` to `attachment` (nullable, with the three-way exclusive check stated) and list the route. |
-| Medium | Two routes have no policy in rbac.md's form: `POST /api/portal/requests/{ref}/attachments/presign → "(portal session)"` and the Permissions row "Upload → `work_item:update`, **or portal session on own request**". "Portal session" is an authentication fact, not an authorisation policy. | Declare the portal policy explicitly, e.g. `{ capability: 'portal:attach', scope: 'submission', requires: 'requester is the session person' }`, and add the capability to rbac.md. |
-| Medium | **No `## Open questions`, `## Data`, `## Screens` or `## Out of scope` sections.** | Add them; Data should name `attachment` and its new columns. |
-| Medium | "Defaults, all configurable in God Mode" (25 MB, 100 files) names no setting keys and no table. `instance_setting` is a singleton row with no such columns declared. | Name the keys and where they live, so the God Mode spec and this one agree. |
-| Low | `AT-6` "Every download writes an audit row" — with `audit_log` retained 12 months and downloads being frequent, this is a volume decision with no stated action name. | Name the action (`attachment.download`) and confirm the retention policy is intended to cover it. |
-| Low | `AT-9` "PDFs preview in a sandboxed viewer" — no CSP/sandbox requirements stated, though `security-model.md` presumably owns them. | Link to the security model's sandbox requirements. |
-
----
-
 ## 7. `search-and-saved-views.md` — P1
 
 **Verdict: not-ready** (the saved-view sharing model does not map onto the `saved_view` table, and half the routes carry no policy)

@@ -70,3 +70,39 @@ GIT_DIR, dubious ownership, bare repo, empty PATH, etc.) and confirmed the narro
 matches only git's two genuine "no repo anywhere in this path" wordings, correctly throwing
 on every broken-but-real-repo state. Confirmed both new tests fail for the right reason by
 selectively reverting each fix in turn. Full suite: 649/649 green with the real Node binary.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `26e7dee705f65dbc27cf0a2e9a980e879cd598b1`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on `scripts/ci/lib/repo.mjs`,
+`scripts/ci/lib/scratch-repo.mjs`, and `scripts/ci/probes/repo-root-cwd.test.mjs` between the
+last reviewed head (`2d411b67b3b931e4bade2888fa5b8cac7cd7223d`) and this one — the
+intervening commits bring in already-reviewed content from other merged PRs, zero overlap
+with this PR's own files.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `02e5b7f917f8ad1c696ded1f570bb687720ef7be`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on `scripts/ci/lib/repo.mjs`,
+`scripts/ci/lib/scratch-repo.mjs`, and `scripts/ci/probes/repo-root-cwd.test.mjs` between the
+last reviewed head (`26e7dee705f65dbc27cf0a2e9a980e879cd598b1`) and this one — the
+intervening commits bring in #405's already-reviewed schema-drift fix, zero overlap with
+this PR's own files.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `e8d98cfd016a49e78c5d9eb1736308308d48cabd`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on `scripts/ci/lib/repo.mjs`,
+`scripts/ci/lib/scratch-repo.mjs`, and `scripts/ci/probes/repo-root-cwd.test.mjs` between the
+last reviewed head (`02e5b7f917f8ad1c696ded1f570bb687720ef7be`) and this one — the
+intervening commits bring in #413's already-reviewed check-ui fix, zero overlap with this
+PR's own files.

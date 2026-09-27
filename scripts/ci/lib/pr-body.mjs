@@ -520,27 +520,66 @@ export function sections(markdown) {
 /**
  * `**Model:** Opus 5` → `Opus 5`.
  *
+ * **Two Opus security review passes on earlier versions of a multi-line capture (issue
+ * #150) each found a REOPENED variant of #409** (the exact class of bug this file exists
+ * to prevent): every attempt at enumerating "what ends a field's value" (a blank line, a
+ * heading, a thematic break, a list item, a table row, ...) kept missing another shape —
+ * an empty label followed by prose, or by a note on the very next line, or by a quote/list/
+ * code-fence line, all still read as "filled in" instead of empty, defeating the "must be
+ * filled in" check and the "reviewer must differ from author" self-review check.
+ *
+ * **The actual fix is structural, not another boundary**: only ONE real caller
+ * (`check-reviews.mjs`'s `Spec` field) needs a multi-line value at all, and for that
+ * caller over-capturing is always safe — it can only make `check-reviews.mjs` check MORE
+ * `.md` paths than `main` would, never fewer. Every other real caller
+ * (`check-pr-template.mjs`'s `Model`/`Session` under `## Implemented by` and
+ * `## Reviewed by`, and `Model` under `## Security review`) is exactly the security-
+ * sensitive comparison this bug class keeps defeating, and multi-line capture can only
+ * WEAKEN those checks — there is no way for a longer captured string to make an unfilled
+ * field look more empty, or a self-review look less self-authored.
+ *
+ * **A third Opus pass (delta-review of the structural fix itself) found one more thing
+ * worth closing: the safe mode should never be something a caller has to remember to ask
+ * for.** The original structural fix made single-line the OPT-IN (`firstLine: true`); a
+ * misspelled option name or a future security-sensitive call that simply omits the option
+ * would silently fall back to multi-line — the exact direction every prior finding in this
+ * function has been. So the default is flipped: **single-line is now the default with NO
+ * options at all**, and the one caller that actually wants multi-line capture opts in
+ * explicitly with `{ multiLine: true }`. This is a pure default flip, not a regex or
+ * boundary change — the underlying single-line and multi-line matching logic is byte-for-
+ * byte what the second Opus pass already fuzz-tested at 600,000+ and 300,000+ random
+ * inputs with zero divergence from the previously-verified behavior.
+ *
  * Issue #409: the whitespace between the label and the value used to be `\s*`, which
  * matches a newline. A label line with nothing after it (`**Model:**`), immediately
  * followed by another bold-label line with no blank line between them, let `\s*` consume
- * the newline and hand the NEXT line's text to `(.*)$` as if it were THIS label's value —
- * a non-empty, garbage string instead of `""`. Reproduced against the untouched
- * `.github/pull_request_template.md` placeholder for `## Reviewed by`
- * (`**Model:** <!-- ... -->` / `**Session:** <!-- ... -->`), which reduces to two adjacent
- * blank bold-label lines once `stripComments()` removes the HTML comments: `field(text,
- * "Model")` returned `"**Session:**"` instead of `""`, defeating every "must be filled in"
- * check in check-pr-template.mjs that relies on `field(...) === ""`.
+ * the newline and hand the NEXT line's text to the capture as if it were THIS label's
+ * value — a non-empty, garbage string instead of `""`. That fix (same-line whitespace
+ * only, `[ \t]*`, between the label and the value) applies identically in both modes below.
  *
- * Bounded to `[ \t]*` — same-line whitespace only — so the value capture can never cross
- * a newline into the next label line. A legitimately filled single-line value (`**Model:**
- * Opus 5`) is unaffected: `[ \t]*` still matches the ordinary space after the label. The
- * separate multi-line-value-truncation behaviour (issue #150, `(.*)$` stops at the first
- * newline either way) is unchanged by this fix — that is a different bug in the same
- * function and stays out of scope here.
+ * @param {string} text
+ * @param {string} label
+ * @param {{ multiLine?: boolean }} [options] Default: stops the value at the first line
+ *   break or end of input — the safe, narrowly-scoped mode every security-sensitive
+ *   caller should use, and gets with no options at all. `multiLine: true` keeps the value
+ *   running through subsequent lines up to the next bold-label line, a blank line, a
+ *   `## ` heading, or end of input (issue #150) — for the one caller
+ *   (`check-reviews.mjs`'s `Spec`) where a longer value is never unsafe. Must be
+ *   requested explicitly; there is no way to reach it by omission or typo.
  */
-export function field(text, label) {
+export function field(text, label, options = {}) {
+  const normalized = text.replace(/\r\n?/g, "\n");
+  if (options.multiLine) {
+    const pattern = new RegExp(
+      `^[ \\t]*\\*\\*${label}:\\*\\*[ \\t]*([\\s\\S]*?)` +
+        "(?=\\n[ \\t]*\\*\\*[^*\\n]+:\\*\\*|\\n[ \\t]*\\n|\\n[ \\t]*##(?!#)|(?![\\s\\S]))",
+      "im",
+    );
+    const match = pattern.exec(normalized);
+    return match ? match[1].trim() : "";
+  }
   const pattern = new RegExp(`^[ \\t]*\\*\\*${label}:\\*\\*[ \\t]*(.*)$`, "im");
-  const match = pattern.exec(text);
+  const match = pattern.exec(normalized);
   return match ? match[1].trim() : "";
 }
 

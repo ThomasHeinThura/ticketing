@@ -51,6 +51,15 @@ test("process.env aliases and typed parameter defaults are not silently ignored"
     ].join("\n"),
   );
 
+  // Both lines charge the unattributable escape of the whole bag (a parameter default is
+  // exactly as unattributable as any other bare alias of `process.env`) — matching the
+  // existing `env-baseline.json` debt for this exact shape (packages/email/src/smtp-
+  // config.ts). This design deliberately does not ALSO resolve the parameter's later
+  // narrowed use (`env.SMTP_HOST`) forward through the alias — see the comment on this
+  // branch in lib/env-reads.mjs for why: doing so is more precise but would surface eight
+  // more specific, currently-undeclared names as new debt on code this change does not
+  // otherwise touch, which is a configuration-reference/baseline decision for a separate
+  // PR, not a side effect of a detector rewrite.
   assert.deepEqual(
     reads.map(({ object, kind, name, line }) => ({
       object,

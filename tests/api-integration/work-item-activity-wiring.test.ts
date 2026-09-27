@@ -723,6 +723,173 @@ describe("API integration: work-item activity wiring (#23 third slice, WI-6)", (
     expect(startDateChange?.visibility).toBe("internal");
   });
 
+  it("S1 (#298): a dueDate PATCH from null to the epoch instant writes an activity row and fires the event", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Epoch dueDate, forward direction",
+    });
+    const createdBody = (await created.json()) as {
+      id: string;
+      key: string;
+      version: number;
+    };
+
+    // No `dueDate` was set at create, so this work item's `due_date` column starts
+    // `null` -- confirmed directly rather than assumed, since S1 is exactly about a
+    // `null`-vs-epoch comparison silently resolving "unchanged".
+    const [beforeRow] = await db
+      .select({ dueDate: schema.workItemTable.dueDate })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, createdBody.id));
+    expect(beforeRow?.dueDate).toBeNull();
+
+    const response = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { dueDate: "1970-01-01T00:00:00.000Z" },
+      createdBody.version,
+    );
+    expect(response.status).toBe(200);
+
+    const rows = await activityRowsFor(createdBody.id);
+    // The `created` row, plus one `updated`/`due_date` row for this PATCH -- before
+    // S1's fix, `valuesDiffer(null, epoch)` was `false` (both turn into `getTime() ===
+    // 0`), so this PATCH silently wrote nothing beyond the `created` row.
+    expect(rows).toHaveLength(2);
+    const dueDateRow = rows.find((row) => row.field === "due_date");
+    expect(dueDateRow).toBeDefined();
+    expect(dueDateRow?.verb).toBe("updated");
+    expect(dueDateRow?.oldValue).toBeNull();
+    expect(new Date(dueDateRow?.newValue as string).toISOString()).toBe(
+      "1970-01-01T00:00:00.000Z",
+    );
+
+    const updatedEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.updated",
+    );
+    expect(updatedEvents).toHaveLength(1);
+    const updatedData = updatedEvents[0]?.data as {
+      changes: Array<{ field: string; from: unknown; to: unknown }>;
+    };
+    const dueDateChange = updatedData.changes.find(
+      (c) => c.field === "due_date",
+    );
+    expect(dueDateChange?.from).toBeNull();
+  });
+
+  it("S1 (#298): a dueDate PATCH from the epoch instant back to null writes an activity row and fires the event", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    // `createWorkItemBody` has no `dueDate` field at all (create only takes
+    // `typeId`/`title`/`description`/`priority`), so the epoch value has to be set
+    // via a first PATCH, then read back off the response to PATCH it to `null` next --
+    // it cannot be seeded at creation time.
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Epoch dueDate, reverse direction",
+    });
+    const createdBody = (await created.json()) as {
+      id: string;
+      key: string;
+      version: number;
+    };
+
+    const toEpoch = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { dueDate: "1970-01-01T00:00:00.000Z" },
+      createdBody.version,
+    );
+    expect(toEpoch.status).toBe(200);
+    const afterEpoch = (await toEpoch.json()) as { version: number };
+
+    const response = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { dueDate: null },
+      afterEpoch.version,
+    );
+    expect(response.status).toBe(200);
+
+    const rows = await activityRowsFor(createdBody.id);
+    // `created` row + the epoch PATCH's `due_date` row + this PATCH's `due_date` row.
+    expect(rows).toHaveLength(3);
+    const dueDateRows = rows.filter((row) => row.field === "due_date");
+    expect(dueDateRows).toHaveLength(2);
+    const nullingRow = dueDateRows[1];
+    expect(nullingRow?.verb).toBe("updated");
+    expect(new Date(nullingRow?.oldValue as string).toISOString()).toBe(
+      "1970-01-01T00:00:00.000Z",
+    );
+    expect(nullingRow?.newValue).toBeNull();
+
+    const updatedEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.updated",
+    );
+    expect(updatedEvents).toHaveLength(2);
+    const updatedData = updatedEvents[1]?.data as {
+      changes: Array<{ field: string; from: unknown; to: unknown }>;
+    };
+    const dueDateChange = updatedData.changes.find(
+      (c) => c.field === "due_date",
+    );
+    expect(dueDateChange?.to).toBeNull();
+  });
+
+  it("S2 (#298): an API-key-authenticated create derives work_item.created's source as api from resolveActor", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    const rawKey = await createApiKeyFor(creator.user.id);
+    const { app } = createApp();
+
+    const response = await createWorkItemRequest(
+      app,
+      project.id,
+      { typeId: type.id, title: "Created via API key, source check" },
+      { Authorization: `Bearer ${rawKey}` },
+    );
+    expect(response.status).toBe(200);
+
+    const createdEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.created",
+    );
+    expect(createdEvents).toHaveLength(1);
+    const eventData = createdEvents[0]?.data as {
+      actorType: string;
+      source: string;
+    };
+    expect(eventData.actorType).toBe("api_key");
+    expect(eventData.source).toBe("api");
+  });
+
+  it("S2 (#298): a cookie-session (portal/staff) create still sends work_item.created's source as agent", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const response = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Created via session, source check",
+    });
+    expect(response.status).toBe(200);
+
+    const createdEvents = recordedEvents.filter(
+      (event) => event.type === "work_item.created",
+    );
+    expect(createdEvents).toHaveLength(1);
+    const eventData = createdEvents[0]?.data as {
+      actorType: string;
+      source: string;
+    };
+    expect(eventData.actorType).toBe("person");
+    expect(eventData.source).toBe("agent");
+  });
+
   it("work_item.created carries a top-level visibility of public", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);

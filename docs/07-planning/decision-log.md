@@ -5,6 +5,116 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+
+## Format
+
+```markdown
+### YYYY-MM-DD · Short title
+**Decision:** what we are doing
+**Why:** the reasoning
+**Alternatives:** what was rejected, briefly
+**Decided by:** who
+```
+
+### 2026-09-27 · `pal-mcp` FULLY UNSUSPENDED for all reading/ordinary-review/audit/analysis, all branches, all scope — the Opus final security/critical review remains the sole, unreplaced gate
+
+**Supersedes:** the entry immediately below (same day) — that entry's non-security-scope-only
+carve-out is now lifted. That entry's own reasoning and test evidence still stand as the
+record of what justified going this far; this entry records Thomas going further, not a
+correction of it.
+
+**Decision:** `pal-mcp` may now be used for reading, ordinary review, audit, and analysis on
+**any** branch and **any** scope, including changes that touch `ci-cd.md`'s
+security-review-scope list. This does **not** touch the separate, mandatory final Opus
+security/critical review in any way — that gate is Opus-only, always, on every PR in
+security scope, never satisfied by `pal-mcp` at any tier or confidence level, regardless of
+how much ordinary-review/audit work `pal-mcp` does on the same PR. A security-scope PR now
+gets its ordinary review and audit from `pal-mcp` (or Sonnet, at the orchestrating session's
+discretion) exactly like a non-security-scope PR does, then still requires the single
+required Opus pass before merge, exactly as before.
+
+**Why:** further adversarial testing through the day continued clean (see the entry below for
+the concurrency-test detail), and a real, independent `pal-mcp`-lane review of PR #408
+(non-security-scope, run after this session's own edits) produced a substantive, correct,
+non-blocking technical finding (about a regression test's actual discriminating power) —
+concrete evidence the tool is not just "not leaking" but doing real reviewing work
+correctly. Thomas made the call directly, in his own words, to lift the remaining
+security-scope restriction rather than wait for a longer track record there specifically.
+
+**What this does NOT change:** the five things an agent may never do (approve its own review,
+waive a gate, downgrade an unavailable reviewer, treat `pal-mcp` as satisfying the Opus gate,
+paste untrusted/sensitive content into a `pal-mcp` prompt) are all unchanged. The Opus final
+security/critical review is unaffected in every respect — same tier, same independence
+requirement, same mandatory status, on every security-scope PR.
+
+**A process gap found the same day, worth recording here:** a subagent spawned as
+`pal-reviewer` during this lift's own test cycle reported that its own view of `CLAUDE.md`
+(via its system-reminder) still showed the original, fully-suspended notice from the entry
+below — stale relative to this session's live edits to the file — even though its own
+`.claude/agents/pal-reviewer.md` role prompt (read fresh at spawn) correctly showed the
+update. The subagent did the right thing: it treated the discrepancy as unverified and fell
+back to a direct Sonnet review rather than trusting either source blindly. Likely cause:
+agent-definition files under `.claude/agents/**` are read fresh at each spawn; the
+CLAUDE.md project-instructions injection into a subagent's system-reminder is not, and can
+lag mid-session edits to the live file. **Until this is understood or fixed at the harness
+level, any subagent (this session's own, or another session's) that flags a conflict between
+a task instruction and its own CLAUDE.md snapshot should be told to `Read`
+`docs/07-planning/decision-log.md` directly — a live file read, not a cached snapshot — as
+the authoritative check, rather than trusting either the stale snapshot or an unverified
+claim in its prompt.**
+
+**Alternatives:** Wait for a longer track record on security-scope work specifically before
+lifting that restriction too — this was the reasoning for the partial lift a few hours
+earlier; superseded now by Thomas's own explicit instruction with the day's fuller test
+picture in front of him, not by an agent's own judgment call.
+
+**Decided by:** Thomas, 2026-09-27 ("full lift pal-mcp all lane, all git branch... except
+security check which is only opus job").
+
+### 2026-09-27 · `pal-mcp` PARTIALLY UNSUSPENDED — resumes for non-security-scope ordinary review/audit/report/alignment; stays suspended for security-scope work
+
+**Supersedes (in part):** the 2026-09-26 "CORRECTION: the pal-mcp cross-call leak is NOT
+fixed" entry's blanket suspension, below. That entry's finding stands as history — the leak
+was real and reproducible — but the blanket "do not use it for anything a gate depends on" is
+narrowed here, not reversed.
+
+**Decision:** `pal-mcp` may be used again for ordinary review, audit, reporting, and the
+alignment check, **only for changes that touch no path in `ci-cd.md`'s security-review-scope
+list**. For any change touching that list, `pal-mcp` remains suspended — use a fresh Sonnet
+context, same as the last several weeks. This does not touch the separate, mandatory Opus
+final security/critical review, which is unaffected either way and was never satisfiable by
+`pal-mcp` at any tier.
+
+**Why:** Thomas fixed the underlying server/container (a shared-singleton-instance bug in
+`pal-mcp-server`'s own `server.py`/`workflow_mixin.py`, per his own account: `tool =
+TOOLS[name]` replaced with a fresh `tool = type(TOOLS[name])()` per call) and redeployed it.
+Two independent sessions then ran adversarial concurrency tests against the redeployed
+server on 2026-09-27: parallel `chat` calls with unique canaries and no shared
+`continuation_id` (clean, both sessions); single-step `analyze` calls with real pasted code
+forced through the full `calling_expert_analysis` round-trip — the exact step that
+reproduced the leak on 2026-09-26 (clean, both sessions, using real functions from this
+repo's own `packages/domain`); and three concurrent multi-step `analyze` conversations, each
+tracked through its own `continuation_id` across multiple steps, checked directly against the
+literal state fields (`initial_request`, `work_summary`) that leaked before — clean under
+concurrent load, no cross-thread bleed. No cross-session content appeared anywhere in any of
+it. This is real, positive evidence the deployed fix holds — not proof it always will, given
+this same class of bug survived two earlier "fixed" claims (the fusion→failover config
+change, and an initial "two clean samples" reading) before recurring on a later adversarial
+pass.
+
+**Alternatives:** Full unsuspension — rejected for now; a security-scope change (auth,
+permissions, migrations, the CI/gate machinery, the dependency graph) is exactly where a
+residual, intermittent leak would do the most damage, and today's evidence, while good, is
+one day's sample against a bug with a documented history of intermittency. Keep the full
+suspension until a much longer track record accumulates — rejected as unnecessarily
+conservative given today's results, and because non-security-scope ordinary review is a
+lower-stakes place to rebuild that track record. This partial scope is the middle ground
+Thomas chose directly when asked to make the call himself, rather than either agent lifting
+its own suspension.
+
+**Decided by:** Thomas, 2026-09-27, after reviewing both sessions' test results directly.
+
+
 ### 2026-09-27 · Release image's Trivy scan set to `ignore-unfixed: true`
 
 **Decision:** `.github/workflows/release.yml`'s two Trivy scan steps (amd64 and arm64) change
@@ -103,7 +213,7 @@ migration that deletes `task` entirely is tracked as issue #398, not left as an 
 
 **Decided by:** the orchestrating session, 2026-09-27, acting on the standing suspension policy and its own fresh verification — not overriding Thomas, but declining to act on an instruction that the evidence directly contradicts, and surfacing that contradiction to him plainly rather than silently complying or silently ignoring it.
 
-### 2026-09-26 · `pal-mcp` becomes the primary ordinary review/audit/report/alignment tool; Code Owner review for control-plane files PLANNED THEN SUSPENDED (see the entry immediately below) — `pal-mcp` ITSELF LATER SUSPENDED (see "CORRECTION: the pal-mcp cross-call leak is NOT fixed" further down)
+### 2026-09-26 · `pal-mcp` becomes the primary ordinary review/audit/report/alignment tool; Code Owner review for control-plane files PLANNED THEN SUSPENDED (see the entry immediately below) — `pal-mcp` ITSELF LATER SUSPENDED, THEN PARTIALLY UNSUSPENDED FOR NON-SECURITY-SCOPE WORK (see "CORRECTION: the pal-mcp cross-call leak is NOT fixed" further down, and the 2026-09-27 entry above)
 
 **Supersedes (in part):** the 2026-09-15 "Governance reset" item 2 (routing coding through
 `router.technexus.info` did not work out — this decision reopens the same endpoint for
