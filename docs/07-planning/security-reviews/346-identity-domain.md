@@ -486,3 +486,114 @@ on head `919f59c1e3e...` (full SHA to be confirmed by the confirming reviewer).
 **CLEAR at `aa3a4dd7efc024780051bd0f3582d6023fcfbe3e`** for the security scope of this review. S2 is now fully closed through P1. The gate observations in the first review (independence of the ordinary review, the attribution mismatch, the draft state) are not re-adjudicated here.
 
 The commit that adds this section is docs-only. It moves the PR head but changes no code.
+
+---
+
+## Delta confirmation (Opus 5.5) at 08d4d1e
+
+**Reviewer:** Opus 5.5 (`claude-opus-5-5[1m]`), a fresh independent context commissioned by the orchestrating session. It did not author, direct or fix this change.
+**Reviewed head:** `08d4d1e0e9e4961259c7b390939f49a00444bc42`
+**Previous review:** `aa3a4dd7efc024780051bd0f3582d6023fcfbe3e` (CLEAR)
+**Date:** 2026-09-27
+
+**How the head was confirmed.** `git fetch origin feat/p3-identity-portal` and `gh pr view 346 --json headRefOid` both return `08d4d1e`. The review ran in a detached worktree at that SHA.
+
+**Scope.**
+- `aa3a4dd..08d4d1e` touches only this document.
+- I did not rely on that delta alone. I re-derived S1, S2 and S3 from the source at head, across the whole `origin/main...08d4d1e` diff.
+- `1eabb43` is not an ancestor of head. It was rebased as `1904445`, and `git range-diff` shows the two commits are identical.
+
+### Network-reachable surface
+
+There is none.
+- Outside `docs/`, the diff contains only `packages/domain/src/identity/{identity,identity.test,portal,types}.ts` and three barrel exports in `packages/domain/src/index.ts`.
+- There is no `apps/` file, route, schema, migration, package manifest, lockfile, workflow, chart or Dockerfile.
+- The new functions have no callers outside `identity/`.
+- `packages/domain/src/identity/**` is now in `ci-cd.md`'s security-review scope (on `main`, 2026-09-24), which resolves S11.
+
+### Suites (Node 24.20.0)
+
+- `packages/domain`: 11 files, 544/544 passed.
+- `tsc --noEmit`: clean.
+- The latest CI run at head is all green, including `pull request template + security review`, `unit + component`, `domain coverage (90%)` and `CodeQL`.
+
+### Re-derived closure
+
+Probes ran in a scratch test file that was deleted afterwards; `git status` was clean.
+
+**S1: CLOSED.**
+- Three regexes remain, and each is linear:
+  - the anchored fixed-count tenant GUID check;
+  - `/\/(common|organizations)(\/|$)/iu`;
+  - `/[_.-]/gu`.
+- The PATCH path uses `trim()`. `normaliseEmail` is a single loop with a 254-character cap.
+- Timings, all at 1 MB:
+  - whitespace-padded PATCH paths: 2 ms or less;
+  - the old worst-case email inputs on `email` and `upn`: 2 ms or less;
+  - a `/` issuer, and a repeated `/common` issuer: 1 ms or less;
+  - a 900k-character `_.-` key: 9 ms.
+
+**S2: CLOSED for every input a JSON body can produce.**
+
+| PATCH input | Result |
+| --- | --- |
+| Pathless `{externalId}` under `replace`, `add`, `remove` or `REPLACE` | `forbidden_attribute` |
+| Pathless `{EXTERNALID}` | `forbidden_attribute` |
+| Duplicate JSON keys | `forbidden_attribute` |
+| A null-prototype object | `forbidden_attribute` |
+| JSON `__proto__` | `invalid_resource` |
+| An `Object.assign`-polluted prototype | `invalid_patch` |
+| The URN-qualified key, and a nested `name.externalId` | `invalid_resource` |
+| The enterprise-extension key holding `{externalId}` | no-op |
+| The path forms (plain, case or whitespace variants, URN, `remove`) | `invalid_patch` |
+
+- `parseScimUser` with a polluted prototype returns `forbidden_attribute`.
+
+**S3: CLOSED.**
+- With agent `maxRoleRank: 50`, all of these give `[]`:
+  - rank NaN, null, undefined, `"20"`, Infinity, -1, 20.5, 51, or a boxed Number;
+  - `grantsInstanceAdmin` undefined, null, `true` or 0;
+  - `grantsSeesAll` undefined or `"false"`;
+  - `roleIsCustomer` undefined or mismatched;
+  - a wrong-scope or uppercase-scope role;
+  - a bad connection rank or scope;
+  - a valid mapping followed by a malformed one for the same group.
+- The positive customer-to-customer mapping is returned, which closes the old M6 gap.
+
+**Mutation checks** against the committed suite, restored after each:
+- **Killed:** removing the `isRecord` prototype check, the pathless `externalid` key check, the rank `isSafeInteger` check, the strict `grantsInstanceAdmin`/`grantsSeesAll` `!== false` checks, the consumer-tenant guard, and the `NAME_FIELD_BY_LOWER_PATH` lookup.
+- **Survived:**
+  - the `typeof roleIsCustomer` check. This is an equivalent mutant: the later strict `roleIsCustomer !== (scope === "customer")` check already refuses `undefined`.
+  - the regex `trim` restored. This is D2, already on record.
+
+### New findings (all non-blocking)
+
+**E1 — The S2 guard and the field reader still enumerate differently, reachable only in process.**
+- The guard lists own *enumerable* keys. `parseScimUserFields` reads by property access.
+- A non-enumerable own `externalId`, a getter, or a `Proxy` still yields `ok` with the hijacked `externalId`.
+- None of these can come out of `JSON.parse`, object spread, `structuredClone` or a Zod-parsed body, so no network input reaches it.
+- This is the same class as P1. The structural fix is to read fields only from the enumerated own entries, for example by building a null-prototype copy from `Object.entries(value)` once and reading from that.
+- Recommended when the SCIM route lands. The route must also pass a parsed JSON body, never a framework object.
+
+**E2 — `mapExternalGroupsToRoles` accepts a string in place of a group list.**
+- Passing `normaliseEntraClaims`'s `"overage"` sentinel straight through iterates its characters. A mapping keyed `"o"` then grants a role.
+- TypeScript refuses the call, and real group ids are GUIDs, so this is a foot-gun, not a hole.
+- The OIDC route must branch on `"overage"` first (IP-28). Alternatively, the function could guard with `Array.isArray`.
+
+**E3 — Docs integrity, not security. The PR duplicates two decision-log entries.**
+- At head, `decision-log.md` has "Workspace audit reads are filtered by project reach (AU-10)" and "Three non-Claude implementation agents take the P0/P1/P2 lanes…" twice each: lines 544/556 and 667/679.
+- Neither the merge base `0b1bcc1` nor current `main` has the duplicates. The second copies come from this PR's diff (the "restore main decisions" commit, kept through the rebase).
+- The decision log is append-only, but a duplicated entry is not history. Drop the PR-added copies before merge, and keep only the P3 GPT-6-substitution entry.
+
+**Carried forward, unchanged:** N2, N3, S4, S7 (including a pathless `remove` with an object value deleting `active`), S8, S9, D2 to D7.
+
+### Verdict
+
+**CLEAR WITH FINDINGS at `08d4d1e0e9e4961259c7b390939f49a00444bc42`** for the security scope of this review.
+- S1, S2 (with P1) and S3 are genuinely closed at this head.
+- No network-reachable surface has entered the PR.
+- E1, E2 and E3 are non-blocking. E3 should be fixed before merge as a docs-integrity matter.
+
+The gate observations in the first review (independence of the ordinary review, the attribution mismatch, the draft state) are not re-adjudicated here.
+
+This commit is docs-only. It moves the PR head but changes no code.
