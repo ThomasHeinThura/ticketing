@@ -86,3 +86,69 @@ permissions 12/12 files (82/82 tests), `apps/api` typecheck clean.
 B1 and B2 are required before merge. S1-S3 should be fixed in the same round. A fresh
 delta Opus confirmation is required on the new head — this is a code-changing fix, not a
 no-op reconfirmation.
+
+---
+
+## Security review — delta (2026-09-27)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `adac12aca19327996`
+
+**Reviewed head:** `cb11cd59fb7ff8c647d3ec6c2c459c1f31743ad9`
+
+**Verdict: CLEAR WITH FINDINGS.** Nothing blocks the merge. Both B1/B2 confirmed genuinely
+fixed; all three S1-S3 confirmed genuinely fixed; one new should-fix finding (F1, same
+class as S1).
+
+**B1 confirmed fixed:** `check-openapi.mjs` clean (126 operations); `test-contract.mjs`
+clean (0 unapproved breaking changes, Redocly findings unchanged at 16 vs `origin/main`);
+diffed the regenerated contract file directly — exactly the 15 new routes appear.
+
+**B2 confirmed fixed, and skipping `assertPublicDestination` confirmed correct:** read
+`assert-public-destination.ts` in full — beyond scheme, it does private-IP/localhost
+rejection and DNS resolution checks, which protect a URL the *server* fetches. Grepped
+every read site of a document-link's `url` field and confirmed the server never fetches
+it (only inserted, listed, deleted) — the only outbound-fetch code in `apps/api/src` is in
+`index.ts` and `notification-preferences/delivery.ts`, neither touching document links.
+Scheme-only restriction is therefore the right fix, not an under-fix; adding DNS/private-IP
+checks would put a needless DNS lookup on a write path and would incorrectly reject
+legitimate internal/intranet links. Live-attacked the fix with ~20 payloads (case variants,
+leading whitespace/control characters, embedded tab/newline/NUL inside the scheme,
+full-width homoglyph, `vbscript:`/`data:`/`file:`/`ftp:`/`blob:`, protocol-relative and
+relative forms) — all correctly rejected with 400, nothing stored. Confirmed `https://`,
+`http://`, mixed-case scheme, and a 2048-char URL all correctly accepted (200); a
+2049-char URL correctly rejected.
+
+**S1/S2/S3 confirmed fixed and genuinely tested:** reverted to the pre-fix schema,
+confirmed all 12 new regression tests fail (12 failed, 19 passed) at that pre-fix state,
+then confirmed they pass at the fix. Live-checked exact boundaries:
+`escalationOrder`/`escalationWaitMinutes` at 2147483647 (200) vs 2147483648 (400); `role`
+at 100 (200) vs 101 (400); `name`/`title` at 200 (200) vs 201 (400) — all limits confirmed
+to match sibling schemas' own conventions (`workspace/schema.ts`'s `role`/`logo` fields),
+not arbitrary.
+
+**F1 (should-fix, real, not blocking):** the four new sub-resource path params
+(`milestoneId`, `prerequisiteId`, `stakeholderId`, `documentLinkId`) are still bare
+`z.string()` in `project/schema.ts` (~lines 145-163) — a NUL byte in any of them returns
+500, not 400. Reproduced live on all four. Matches this codebase's own established rule
+from issue #281 (`utils/reject-nul-byte.ts`) that a raw id from the URL must be rejected
+with 400 — older routes (`/api/label/x%00y`, `/api/comment/x%00y`) and this same PR's own
+`projectId` correctly do this; these four new fields were simply missed. **Fix:** apply
+the file's own existing `nulSafeId` helper (already used for `personId` on line 207) to
+all four. No information leaks either way (masked 500 body), so this is a should-fix, not
+a security incident — matching this project's own convention that a code-defect-closing
+rule needs a test, not that every gap of this shape is independently blocking.
+
+**N1-N3 (informational, non-blocking):** URL stored exactly as typed (harmless for
+browsers, future non-browser consumers should normalize); three near-duplicate NUL-byte
+helpers now exist across `project/schema.ts`/`work-item/schema.ts`/`reject-nul-byte.ts`
+(cosmetic); one test title undersells its own coverage (checked the rest live).
+
+**Full suites at this head:** integration 97/97 files (1295/1295 tests); unit 60/60 files
+(494/494 tests); `apps/api` typecheck clean (all three tsconfigs). Confirmed
+`ALLOWED_URL_PROTOCOLS`'s export change breaks nothing — its existing callers and their
+own tests (8/8) pass unchanged.
+
+F1's fix is being commissioned as a narrow delta. Per this pass's own recommendation, the
+re-review after that fix can be short — confirm F1's four fields are covered and nothing
+else regressed — not a full fresh pass.
