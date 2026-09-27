@@ -20,17 +20,40 @@ const scriptOwnRoot = path.resolve(here, "../../..");
  * `/tmp/lane-x` while `repo.mjs`'s own file lives in `/home/ubuntu/ticketing.v2`) must
  * resolve *that worktree's* root, or every git-backed check silently operates on the
  * wrong repository state (#399).
+ *
+ * The ONLY legitimate reason to fall back to `scriptOwnRoot` is "cwd genuinely isn't
+ * inside any git work tree" — `git rev-parse --show-toplevel` exits 128 with "not a git
+ * repository" on stderr for that case. Anything else (git not on PATH — `ENOENT`, a
+ * permission error, a hang) must fail loudly instead of silently defaulting: a silent
+ * fallback there is the exact same wrong-root failure #399 describes, just re-triggered
+ * by "the git call failed" instead of "invoked via absolute path from elsewhere" — see
+ * `diff.mjs`'s `DiffUnavailableError` for the same discipline applied one file over.
  */
 function resolveRepoRoot() {
   try {
     const output = execFileSync("git", ["rev-parse", "--show-toplevel"], {
       cwd: process.cwd(),
       encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 5000,
     }).trim();
     if (output) return output;
-  } catch {
-    // Not a git work tree (or git isn't runnable) from this cwd — fall back below.
+  } catch (error) {
+    const stderr = String(error?.stderr ?? "");
+    const isNotAGitRepo =
+      error?.status === 128 && /not a git repository/i.test(stderr);
+    if (!isNotAGitRepo) {
+      throw new Error(
+        "repo.mjs: could not resolve the repository root via " +
+          `'git rev-parse --show-toplevel' from cwd ${process.cwd()}. This is not the ` +
+          `expected "cwd isn't inside a git work tree" case, so falling back to this ` +
+          `script's own location would silently resolve the WRONG repository root ` +
+          `(#399) rather than fail loudly. Original error: ${error?.message ?? error}` +
+          (stderr ? ` (stderr: ${stderr.trim()})` : ""),
+        { cause: error },
+      );
+    }
+    // Genuinely not inside any git work tree — fall back below.
   }
   return scriptOwnRoot;
 }
