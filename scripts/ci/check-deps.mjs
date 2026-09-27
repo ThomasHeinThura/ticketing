@@ -970,6 +970,23 @@ function resolveWorkspaceTarget(
   if (imported.node) {
     const symbol = project?.checker.getSymbolAtLocation(imported.node);
     for (const declaration of symbol?.declarations ?? []) {
+      // Skip ambient module augmentations (`declare module "some-package" { ... }`,
+      // ts.SyntaxKind.ModuleDeclaration with a string-literal name) when this fallback
+      // walks a bare specifier's declarations. This branch only runs for specifiers that
+      // are neither a workspace name nor a declared/aliased dependency (the checks above
+      // already handled those) — i.e. third-party packages — so a workspace-owned
+      // ModuleDeclaration found here can never be that package's real home; it only
+      // proves someone augmented it from workspace source. TypeScript's declaration
+      // merging still attaches such a block to the target module's symbol from wherever
+      // it's written, and the module's own true declaration (its resolved SourceFile) can
+      // sort after it in `symbol.declarations` — order this gate doesn't control. Trusting
+      // whichever comes first attributed every `import ... from "vitest"` in the monorepo
+      // to whichever workspace happened to declare `declare module "vitest" { ... }`
+      // (packages/ui's a11y.ts), producing 69 false "outside the workspace edge matrix"
+      // violations (#389/#390, tracked as #393). Skipping augmentations here falls through
+      // to the module's real declaration when one exists, or to "unresolved" (no violation)
+      // when it doesn't — never to a workspace that merely typed the module.
+      if (declaration.kind === ts.SyntaxKind.ModuleDeclaration) continue;
       const resolvedFile = declaration.path;
       if (typeof resolvedFile !== "string") continue;
       const workspace = ownerForFile(resolvedFile, names);
