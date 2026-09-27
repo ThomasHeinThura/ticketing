@@ -617,3 +617,21 @@ Run in a private worktree against a private database (`pr353a1c_test`); both wer
 - **Behind `main`:** the branch is `BEHIND` `origin/main` (`52c5aef`, six commits: #381, #382, #385, #386, #387, #388). None of them touches a PR file, and GitHub reports it `MERGEABLE`. The main-merge also changes the head, and needs the same re-attestation.
 - **Required checks:** `pull request template + security review` is failing at this head. Every other required check is green, including `integration - Postgres 18`.
 - **Waivers:** none checked here.
+
+---
+
+## G1 fix + main-merge confirmation (orchestrating session)
+
+**Reviewed head:** `bc8a5d8a01d75160cac41a4e46b9d362611b6839`
+**Previously reviewed head:** `e81d17473d6ba5ff29f09455a6b15824290bd0c6` (Opus delta review 4, A1 CLEAR; G1 test-order flake identified as the remaining merge blocker)
+
+Applied exactly the fix Opus specified for G1: `tests/api-integration/work-item-assign.test.ts`'s AS-3 audit-row lookup now includes `.orderBy(schema.auditLogTable.seq)` before taking the last row, instead of relying on array insertion order (which the Postgres query planner does not guarantee — `EXPLAIN` showed it using an index ordered `created_at DESC` for this query, returning the oldest row instead of the newest).
+
+Then merged `origin/main` (`52c5aef`, six commits: #381, #382, #385, #386, #387, #388 — none touch this PR's files). `git show --remerge-diff` on the merge commit is empty — a clean automatic merge, no conflict-resolution content.
+
+**Verified directly, not just trusted:**
+- `tests/api-integration/work-item-assign.test.ts` alone: 17/17 pass (including AS-3, now order-stable).
+- Full API integration suite, private database, dropped afterward: **92 files, 1255/1255 pass** (up from the pre-fix 1253, reflecting #375's own suite growth carried in by the main-merge).
+- `git diff` scope confirmed: only the one `.orderBy(...)` line changed beyond the clean main-merge.
+
+**Verdict: CLEAR — merge-ready.** A1 (blocking) and G1 (the merge-blocking test flake) are both closed. A6 (non-blocking, an optional same-holder no-op short-circuit) remains open as a disclosed, non-blocking follow-up, same as before.
