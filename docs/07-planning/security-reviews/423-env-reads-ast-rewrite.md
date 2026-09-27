@@ -110,5 +110,64 @@ tokenizer on `origin/main` (re-executed, not just read); `check-env.mjs`/`scratc
 diffs; 42 hand-built probe files run through both old and new detectors;
 `packages/email/src/smtp-config.ts` and `scripts/ci/env-baseline.json` (direct comparison).
 
-A fix implementing the structural approach change above is being commissioned. This PR is
-not merge-ready until a fresh Opus pass confirms the fix closes this class.
+A fix implementing the structural approach change above was commissioned; see pass 2 below.
+
+---
+
+## Security review — pass 2 (delta on the structural fix)
+
+**Model:** Opus 5.5, fresh independent context (did not author or review pass 1)
+**Session:** subagent `ac6bb54e95ad0d003`
+
+**Reviewed head:** `871e16de9191ca0c03b1243738d30fa9410aaba6`
+
+**Verdict: CLEAR WITH FINDINGS (all non-blocking).** Independently confirmed the structural
+default-flip works: ran the full test suite (712/712), ran `check-env.mjs --report` against
+the real repo at this head and at the merge base — byte-identical 174-line output, both
+`packages/email/src/smtp-config.ts` sites still match the baseline exactly. Constructed
+~110 of its own adversarial probe snippets (not the PR's own tests) and ran them against
+both this head and the pre-#423 tokenizer on the merge base: confirmed every pass-1 table
+row is caught, including the tagged-template case, plus roughly 70 further variants not in
+any test (`super(process.env)`, `yield*`, `for…in`, `switch`, getter returns,
+`${process.env}` inside a template, `static {}` blocks, JSX children/spread, and more) —
+direct evidence the structural fix generalizes rather than merely covering the enumerated
+list. Independently re-confirmed the shadow-scoping follow-up with its own additional
+adversarial variants beyond the four pass 1 asked for.
+
+**Findings, all low-severity, none blocking:**
+
+- **F1 (new false negative, narrow):** the resolved-wrapper-call exception in
+  `isSafeConsumingContext` exempts *every* argument of a call like `require(...)`, not just
+  the one `classify()` actually consumes — so a second/extra argument
+  (`require("process", process.env)`) is silently dropped. Only reachable with a shadowed
+  `require`, same adversarial class as other already-accepted narrow gaps. Exact fix
+  specified: replace the `includes` check with `parent.arguments[0] === effNode`.
+- **F2 (new false negative, harmless at runtime):** `isTrackedAliasDeclarationSite` treats
+  an `ArrayBindingPattern` as already-handled, but `handleBindingDeclaration` just returns
+  for an array pattern without charging anything — `const [a] = process.env` gives `[]`.
+  Neither pattern is actually iterable so it throws at runtime anyway; the comment's claim
+  is still inaccurate. Fix: remove `ArrayBindingPattern` from `bindableName`.
+- **F3 (new false positive, fails safe):** an assignment's LHS gets charged once the name
+  is a tracked alias (`let x; x = process;` charges once where `const p = process;`
+  charges zero) — over-counts, never under-counts.
+- **F4 (new false positives, fails safe, none present in the real repo):** several NAME
+  positions aren't in `DECLARATION_NAME_HOLDER_KINDS` and get charged as if they were value
+  references — `typeof process !== "undefined"` (a common guard, most likely to surface
+  later), type positions, labels, a JSX attribute name, a destructuring key, an import's
+  original name, `export { process }` shapes.
+- **F5 (doc accuracy):** the file's header/"Accepted limits" section (lines 1–58, untouched
+  by this delta) still describes the old allow-list design and lists things as limits that
+  are now actually caught (bare function arguments, non-exported-function returns,
+  `.then(cb)`); doesn't list real remaining gaps (rest-destructuring from
+  `process`/`globalThis`, `.default.env` through a dynamic/namespace import, the
+  truthiness-test exemption, `self.process`); two stale comment references
+  (`maybeChargeBareEscape` doesn't exist; a doc comment cites the wrong parameter count).
+
+**Surfaces examined:** `scripts/ci/lib/env-reads.mjs` in full at this head; ~110 hand-built
+adversarial probes run against both this head and the pre-#423 tokenizer on the merge base;
+the shadow-scoping fix with its own additional variants; the real repo via
+`check-env.mjs --report`.
+
+A narrow fix for F1/F2/F3/F4 (each exact and specified above) plus F5's doc correction is
+being commissioned as a delta, per Opus's own note that these are one-line fixes needing
+only a short delta confirmation, not a fresh full round.
