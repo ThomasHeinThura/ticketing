@@ -87,3 +87,17 @@ Any later commit on this branch that touches non-note paths needs a delta confir
 - **`076758a`, the head.** `git show --stat` shows one file only, `apps/web/src/fetchers/get-api-url.test.ts` (+10/−1): an import, `vi.unstubAllGlobals()` in `afterEach`, and one new case. The case stubs `window.location` as `https:` / `tickets.example` and expects `toWebSocketBase("/api/ws")` to be `wss://tickets.example/api/ws`. That matches the implementation, which reads only `window.location.protocol` and `window.location.host`. No source file is touched.
 
 **Tests at this head:** `apps/web` `get-api-url.test.ts` ran 1 file and 3 tests. All pass.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `1e8075abd06112b9422ab2686729035cfa42bd2d`
+**Previously reviewed head:** `076758ac28d3986b27fda40ec2cf967bfc8d611c`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged.
+
+- `git show --remerge-diff 1e8075a` is empty — clean automatic merge.
+- Brings in PR #397's already-reviewed changes (Dockerfile perl-base purge + domain package
+  fix, Opus CLEAR WITH FINDINGS). Zero overlap with this PR's own files
+  (`apps/web/src/fetchers/get-api-url.ts`, the two WebSocket hooks, `auth-client.ts`).
