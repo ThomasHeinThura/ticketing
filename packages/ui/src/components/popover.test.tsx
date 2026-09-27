@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { Popover, PopoverPopup, PopoverTrigger } from "./popover";
+import { axe } from "../test/axe";
+import { Popover, PopoverPopup, PopoverTitle, PopoverTrigger } from "./popover";
 
 afterEach(() => {
   cleanup();
@@ -29,5 +30,18 @@ describe("Popover", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Open" }));
     expect(screen.getByText("Popup content")).toBeInTheDocument();
+  });
+
+  it("has no accessibility violations when open", async () => {
+    const { baseElement } = render(
+      <Popover open>
+        <PopoverTrigger>Open</PopoverTrigger>
+        <PopoverPopup>
+          <PopoverTitle>Notifications</PopoverTitle>
+        </PopoverPopup>
+      </Popover>,
+    );
+
+    expect(await axe(baseElement)).toHaveNoViolations();
   });
 });

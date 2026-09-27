@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { axe } from "../test/axe";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "./menu";
 
 afterEach(() => {
@@ -38,5 +39,21 @@ describe("Menu", () => {
 
     fireEvent.click(item);
     expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it("has no accessibility violations when open", async () => {
+    const { baseElement } = render(
+      <Menu>
+        <MenuTrigger>Open</MenuTrigger>
+        <MenuPopup>
+          <MenuItem>Item one</MenuItem>
+        </MenuPopup>
+      </Menu>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    expect(screen.getByText("Item one")).toBeInTheDocument();
+
+    expect(await axe(baseElement)).toHaveNoViolations();
   });
 });

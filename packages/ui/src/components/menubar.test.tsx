@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { axe } from "../test/axe";
 import {
   Menubar,
   MenubarContent,
@@ -48,5 +49,23 @@ describe("Menubar", () => {
 
     fireEvent.click(item);
     expect(onNew).toHaveBeenCalledTimes(1);
+  });
+
+  it("has no accessibility violations when a menu is open", async () => {
+    const { baseElement } = render(
+      <Menubar>
+        <MenubarMenu>
+          <MenubarTrigger>File</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem>New</MenubarItem>
+          </MenubarContent>
+        </MenubarMenu>
+      </Menubar>,
+    );
+
+    fireEvent.click(screen.getByText("File"));
+    expect(screen.getByText("New")).toBeInTheDocument();
+
+    expect(await axe(baseElement)).toHaveNoViolations();
   });
 });
