@@ -65,11 +65,18 @@ function CommandPalette() {
   const isBacklogView = location.pathname.endsWith("/backlog");
 
   useRegisterShortcuts({
-    shortcuts: {
-      [shortcuts.help.key]: () => {
-        document.dispatchEvent(new KeyboardEvent("keydown", { key: "?" }));
-      },
-    },
+    // No entry for `shortcuts.help.key` ("?") here: `KeyboardShortcutsHelp`
+    // already listens for the real "?" keydown directly and opens its own
+    // dialog (apps/web/src/components/keyboard-shortcuts-help.tsx). A
+    // registered "?" handler that re-dispatched a synthetic "?" keydown used
+    // to live here, but `KeyboardShortcutsProvider`'s single document-level
+    // listener picks up that synthetic event too, finds "?" registered
+    // again, and calls the handler again -- infinite recursion
+    // (RangeError: Maximum call stack size exceeded, #294). The
+    // "keyboard-shortcuts" palette item below still dispatches a synthetic
+    // "?" on demand (needed for a mouse/Enter selection, which has no real
+    // keydown to piggyback on) -- that one-shot dispatch isn't itself
+    // listening for "?", so it doesn't recurse.
     modifierShortcuts: {
       [shortcuts.palette.prefix]: {
         [shortcuts.palette.open]: () => {
