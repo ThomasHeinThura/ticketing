@@ -82,10 +82,9 @@ const COLOR_LITERAL_SCAN_ROOTS = ["apps/web/src", "packages/ui"];
  * identifier-search test uses `"#123"` as an issue-number-shaped search query, not a color
  * at all. Both are excluded by exact path — narrowed to these two files, not a blanket
  * test-file exemption, so a real component test that hardcodes a color is still caught.
- * (This
- * checker's own file, full of hex-shaped example text in its header comment and pattern
- * definitions, needs no such exclusion: it lives under `scripts/ci/`, outside both scanned
- * roots.)
+ * (This checker's own file, full of hex-shaped example text in its header comment and
+ * pattern definitions, needs no such exclusion: it lives under `scripts/ci/`, outside both
+ * scanned roots.)
  */
 const COLOR_LITERAL_DATA_FILES = new Set([
   "apps/web/src/lib/label-color.test.ts",

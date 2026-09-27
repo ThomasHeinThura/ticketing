@@ -156,8 +156,9 @@ export function moduleSpecifiersIn(sourceFile) {
         // `module.require("x")` are both real at runtime in CommonJS. The old regex
         // caught the member-call form (`\brequire\s*\(` doesn't care what precedes it);
         // matching only a bare `Identifier` callee here was a real regression against it.
-        // `(require)("x")` and a renamed import (`createRequire(...)("x")`) stay outside
-        // the documented accepted limit, same as before this fix.
+        // `(require)("x")` and a renamed import (`createRequire(...)("x")`) stay INSIDE
+        // the documented accepted limit (i.e. still uncaught misses), same as before
+        // this fix.
         const isRequire =
           (callee.kind === ts.SyntaxKind.Identifier &&
             callee.text === "require") ||
