@@ -6,6 +6,7 @@ import { CallerNotOwnerError } from "../../../apps/api/src/workspace/controllers
 const { state } = vi.hoisted(() => ({
   state: {
     roleByUser: {} as Record<string, string | undefined>,
+    failMemberQueries: false,
     // Issue #318 (security): `"workspaceId\u0000role"` -> `is_system`. Read by
     // `isGenuineBuiltInRoleAssignment`'s `workspace_role` query. Absent from this map
     // means "no row" (not genuine), exactly like a real, empty query result.
@@ -31,6 +32,9 @@ vi.mock("../../../apps/api/src/database", async () => {
   // is `.then()` on the chain itself, not a `.limit()` call. `limit` is kept
   // as a harmless passthrough in case any other call site still chains it.
   async function rowsForBoundUser() {
+    if (state.failMemberQueries) {
+      throw new Error("injected membership query failure");
+    }
     if (!boundUserId || !(boundUserId in state.roleByUser)) return [];
     const role = state.roleByUser[boundUserId];
     return role === undefined ? [] : [{ role }];
@@ -108,6 +112,7 @@ const { requireWorkspaceCapability, builtInRoleHasCapability } = await import(
 describe("builtInRoleHasCapability", () => {
   beforeEach(() => {
     state.roleByUser = {};
+    state.failMemberQueries = false;
     state.systemRoleByWorkspaceRole = {};
   });
 
@@ -343,6 +348,7 @@ function probe(userId: string, workspaceId = "ws-1") {
 describe("requireWorkspaceCapability", () => {
   beforeEach(() => {
     state.roleByUser = {};
+    state.failMemberQueries = false;
   });
 
   it("lets the owner through", async () => {
@@ -368,6 +374,35 @@ describe("requireWorkspaceCapability", () => {
   it("refuses a caller with no workspace_member row at all", async () => {
     const res = await probe("stranger-with-no-row");
     expect(res.status).toBe(403);
+  });
+
+  it("clears an earlier authorization marker when its own authorization lookup errors", async () => {
+    state.failMemberQueries = true;
+    const app = new Hono<{
+      Variables: {
+        userId: string;
+        workspaceId: string;
+        legacyAuthorization?: string;
+      };
+    }>()
+      .use("*", async (c, next) => {
+        c.set("workspaceId", "ws-1");
+        c.set("userId", "user-1");
+        c.set("legacyAuthorization", "allowed");
+        return next();
+      })
+      .get(
+        "/probe",
+        requireWorkspaceCapability("workspace:transfer_ownership"),
+        (c) => c.json({ ok: true }),
+      )
+      .onError((_error, c) =>
+        c.json({ legacyAuthorization: c.get("legacyAuthorization") }, 500),
+      );
+
+    const response = await app.request("/probe");
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ legacyAuthorization: "unknown" });
   });
 
   /**

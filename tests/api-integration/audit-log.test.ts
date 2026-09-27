@@ -169,6 +169,34 @@ describe("appendAuditLog", () => {
     ).rejects.toThrow(/unknown audit action/i);
   });
 
+  it("accepts an events.md-keyed domain-event action (#360)", async () => {
+    // `work_item.assigned` is the exact key the assign route writes
+    // (`docs/03-features/assignment.md` via `audit-trail.md`'s "where a domain event
+    // exists for the mutation, the audit action is that event's key"). Before #360
+    // this threw "unknown audit action", which is what left #353's audit box
+    // untickable.
+    const result = await appendAuditLog(
+      db,
+      baseInput({
+        action: "work_item.assigned",
+        entityType: "work_item",
+        entityId: `wi-${randomUUID()}`,
+        before: { assigneeId: null },
+        after: { assigneeId: `person-${randomUUID()}` },
+      }),
+    );
+
+    const raw = await readRawRow(result.id);
+    expect(raw.action).toBe("work_item.assigned");
+    expect(raw.prev_hash).toBe(ZERO_HASH);
+
+    // The chain still verifies with a domain-event-keyed row on it — the allowlist
+    // change must not have created a row shape the verifier rejects.
+    const verifyResult = await verifyAuditChain(db);
+    expect(verifyResult.ok).toBe(true);
+    expect(verifyResult.rowsChecked).toBe(1);
+  });
+
   it("rejects legal_hold.placed/lifted as not yet wired", async () => {
     await expect(
       appendAuditLog(db, baseInput({ action: "legal_hold.placed" })),

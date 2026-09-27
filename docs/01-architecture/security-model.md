@@ -386,15 +386,15 @@ is in [data-protection.md](../05-operations/data-protection.md).
 
 - `/api/public/auth-providers` returns **only** what the login page needs — a button label
   and provider id — never discovery URLs, tenant ids or domain restrictions.
-- `/api/public/health/live` and `/ready` are anonymous. The dependency-enumerating deep check
-  is **not** on the public router at all: it is `GET /api/instance/health/deep`, policy kind 1
-  with `instance:admin`. The one endpoint that lists every dependency is the reconnaissance
-  surface this threat model names, so it does not live behind a per-route exception under a
-  router whose blanket kind is `public`.
-- `/metrics` is bearer-guarded with a constant-time comparison and, where the operator can,
-  bound to a separate listener not exposed by Traefik; its labels are cross-tenant
-  inventory and are treated as sensitive. The metrics bearer token is policy kind 5
-  (`delegated: 'metrics'`) and grants **`/metrics` and nothing else** — it is not an
+- `/api/public/health/live` and `/ready` are anonymous. A dependency-enumerating deep check
+  is planned at `GET /api/instance/health/deep`, policy kind 1 with `instance:admin`; the
+  current API does not serve it. If implemented, it must not live behind a per-route
+  exception under a router whose blanket kind is `public` because it enumerates dependencies.
+- `/metrics` is a planned bearer-guarded surface with a constant-time comparison and, where
+  the operator can, a separate listener not exposed by Traefik. Its labels are cross-tenant
+  inventory and must be treated as sensitive. The current API image does not serve `/metrics`
+  or read a metrics bearer token. When implemented, the token will be policy kind 5
+  (`delegated: 'metrics'`) and will grant **`/metrics` and nothing else** — never an
   alternative credential for `/api/instance/health/deep` or any other route.
 - An **anonymous rate-limit class**, keyed by IP and — for anything that sends mail — by
   target email, covers `/api/public/*`, the non-login `/auth/*` endpoints (magic link, OTP,

@@ -6,7 +6,7 @@
 ## Purpose
 
 [phases.md](phases.md) says what gets built and in what order. [ci-cd.md](../04-engineering/ci-cd.md)
-says a merge to `main` produces a versioned image via `semantic-release`. Neither says
+says a merge to `main` produces a signed edge image. Neither says
 **what a customer is allowed to install, when, and what we promise about it afterwards.**
 This document does. It exists because "we ship continuously" and "we sell a product" pull
 in different directions unless someone writes down where the seams are.
@@ -24,9 +24,10 @@ continuation of kaneo's `2.22.x`:
   ([ADR 0001](../01-architecture/adr/0001-kaneo-as-foundation.md)); the version history
   starts fresh, with kaneo credited in `THIRD-PARTY-NOTICES.md`, not in our tag list.
 
-Semantic versioning, computed by `semantic-release` from conventional commits, unchanged
-from [ci-cd.md](../04-engineering/ci-cd.md): `fix:` → patch, `feat:` → minor, `feat!:` →
-major.
+Versions follow SemVer. A maintainer supplies the version when manually dispatching the
+Release workflow for a selected commit already reachable from `main`. The workflow creates
+the `v<version>` tag and GitHub release at that exact commit; it does not create a
+version-bump commit or edit `CHANGELOG.md`, package versions or chart versions.
 
 ## Channels
 
@@ -36,8 +37,8 @@ only one long-lived branch, `main`, per [ci-cd.md](../04-engineering/ci-cd.md).
 | Channel | Image tag | Who installs it | Produced |
 | --- | --- | --- | --- |
 | **edge** | `edge`, plus `sha-<gitsha>` | Us, UAT | Every merge to `main` |
-| **pre-release** | `2.0.0-alpha.N` → `beta.N` → `rc.N` | Pilot users who accepted that it is not finished | Every merge to `main` while `main` is in pre-release mode |
-| **stable** | `2.x.y`, plus `latest` | Customers | Only after the digest has been promoted through UAT and smoke-tested |
+| **pre-release** | `2.0.0-alpha.N` → `beta.N` → `rc.N` | Pilot users who accepted that it is not finished | Manually dispatched for a selected `main` SHA |
+| **stable** | `2.x.y`, plus `latest` | Customers | Manually released, then promoted only after the digest has been verified through UAT and smoke-tested |
 
 **`latest` means latest *stable*, not latest merge.** [ci-cd.md](../04-engineering/ci-cd.md)'s
 main pipeline tags every merge `edge` + `sha-<gitsha>`; the `latest` tag moves only when a
@@ -46,18 +47,10 @@ stable release is promoted. The one-line installer's `stable.txt` pointer
 customer who runs `docker compose pull` must never receive an untested build because they
 used the default tag.
 
-**Pre-release numbering, honestly.** `semantic-release` computes versions from commits:
-with `prerelease` on `main`, the first `feat:` after `2.0.0-alpha.1` yields
-`2.1.0-alpha.1`, not `2.0.0-alpha.2` — so the stage-to-version table below cannot hold if
-versions are left to the tool. Two rules make it hold: (1) **the version is pinned at each
-stage close** with a `chore(release): 2.0.0-beta.1` commit that sets the tag explicitly,
-and `semantic-release` only ever bumps within the pinned pre-release line between closes;
-(2) this is **verified by a dry run in accelerated week 1** — a twenty-minute experiment
-that prevents a confusing release history. No `next`/`beta` branches for pre-releases,
-because a second long-lived branch is exactly the merge problem
-[ci-cd.md](../04-engineering/ci-cd.md) refuses to have. Releases are cut by a **manually
-dispatched Release workflow** (kaneo's pattern), not by a version-bump commit on every
-merge — which also means no CI identity needs a branch-protection bypass.
+**Pre-release numbering.** The maintainer selects the next stage-appropriate SemVer value
+at release time and the workflow binds it to the selected `main` SHA. There is no
+version-bump commit, automatic commit-derived version, or second long-lived release branch.
+Automatic `main` builds remain on the `edge` and `sha-<gitsha>` tags.
 
 ## Releases mapped to stages
 
@@ -121,12 +114,14 @@ The first slipped gate is a signal to move the date or narrow the scope
 
 ## Cadence
 
-- **Edge and pre-release:** every merge, automatically. No ceremony.
+- **Edge:** every merge, automatically. No ceremony.
+- **Pre-release:** manually tagged at a stage close for its selected `main` SHA.
 - **Stable:** promoted when the stage gate (or, in the 3-month window, a two-week release
   train) passes — never on a calendar alone. A stable release that is not ready waits; the
   edge channel keeps moving.
-- **Patch releases:** `fix:` commits to `main` produce a patch immediately and are promoted
-  to stable as soon as UAT smoke-tests pass — same day for a security fix.
+- **Patch releases:** a maintainer selects the intended `main` SHA and patch version, then
+  dispatches the release. It is promoted to stable as soon as UAT smoke-tests pass — same
+  day for a security fix.
 
 ## Support and upgrade policy
 

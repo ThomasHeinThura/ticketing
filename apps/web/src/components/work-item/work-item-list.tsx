@@ -62,6 +62,24 @@ function priorityLabel(t: ReturnType<typeof useTranslation>["t"]) {
   };
 }
 
+/**
+ * The Assignee column's three cases (`work-item-list.tsx`'s own file comment has the
+ * full rationale for why the middle case is "(inactive)", not the Partial mechanism's
+ * "Unavailable"):
+ * - no `assigneeId` -> Unassigned.
+ * - `assigneeId` set but no resolvable `assigneeName` -> "(inactive)"
+ *   (`work-items.md`'s own wording for "Assignee leaves").
+ * - both present -> the resolved name.
+ */
+function assigneeLabel(
+  item: Pick<WorkItemRow, "assigneeId" | "assigneeName">,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  if (!item.assigneeId) return t("workItems:list.unassigned");
+  if (!item.assigneeName) return t("workItems:list.assigneeInactive");
+  return item.assigneeName;
+}
+
 const FIELD_LABEL_KEYS: Record<WorkItemField, string> = {
   key: "workItems:list.columnKey",
   title: "workItems:list.columnTitle",
@@ -94,13 +112,18 @@ function UnavailableField({
  * The project work-item list (`docs/02-design/screen-inventory.md` "Work — list",
  * `/agent/projects/{key}/work?layout=list`). Read-only per this slice's scope.
  *
- * Two columns render a raw foreign key rather than a resolved value, both flagged as API
- * gaps in this pull request rather than guessed at:
- * - **State** shows `work_item.state_id` -- the list API
- *   (`apps/api/src/work-item/response.ts`) returns the id, not the workflow state's name
- *   or color, and there is no state-lookup endpoint this screen can join against yet.
- * - **Assignee** shows `work_item.assignee_id`, or "Unassigned" when null -- same gap,
- *   no user-lookup this screen can resolve a display name from.
+ * **State** and **Assignee** show the resolved `stateName`/`assigneeName` (#310 added
+ * both to the list API's response, closing the "raw foreign key, no resolved value" gap
+ * this comment used to flag). Three distinct cases for Assignee, per
+ * `work-items.md`'s own "Assignee leaves" edge case ("Assignment retained and shown as
+ * "(inactive)". Not silently unassigned"):
+ * - `assigneeId` null -> "Unassigned".
+ * - `assigneeId` set, `assigneeName` present -> the resolved display name.
+ * - `assigneeId` set, `assigneeName` null (the assignee has no linked login, or --
+ *   `work-items.md`'s own wording -- has since left) -> "(inactive)", NOT the Partial
+ *   mechanism's "Unavailable" badge below: a person record with no resolvable name is a
+ *   normal, well-typed API response (`response.ts`'s own comment), not malformed wire
+ *   data, so it is not one of `parseWorkItemRow`'s validated fields.
  *
  * **Partial state** (G6 / design-principles.md principle 7): a row can arrive with one
  * or more of its displayed fields failing validation at the fetcher boundary
@@ -281,11 +304,9 @@ function WorkItemList({
                 )}
               </TableCell>
               <TableCell>
-                <Badge variant="outline">{item.stateId}</Badge>
+                <Badge variant="outline">{item.stateName}</Badge>
               </TableCell>
-              <TableCell>
-                {item.assigneeId ?? t("workItems:list.unassigned")}
-              </TableCell>
+              <TableCell>{assigneeLabel(item, t)}</TableCell>
             </TableRow>
           ))}
         </TableBody>

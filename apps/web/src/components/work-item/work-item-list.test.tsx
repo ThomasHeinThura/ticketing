@@ -41,8 +41,11 @@ const workItem = {
   title: "Fix the thing",
   description: null,
   stateId: "state_1",
+  stateName: "Backlog",
+  stateCategory: "backlog",
   priority: "high",
   assigneeId: null,
+  assigneeName: null,
   requesterId: null,
   parentId: null,
   position: "1.0000000000",
@@ -119,7 +122,63 @@ describe("WorkItemList", () => {
     expect(screen.getByRole("table")).toBeInTheDocument();
     expect(screen.getAllByText("PROJ-123").length).toBeGreaterThan(0);
     expect(screen.getByText("Fix the thing")).toBeInTheDocument();
+    expect(screen.getByText("Backlog")).toBeInTheDocument();
     expect(screen.getByText("workItems:list.unassigned")).toBeInTheDocument();
+  });
+
+  it("#310: renders the resolved assignee name when present", () => {
+    const assignedItem = {
+      ...workItem,
+      assigneeId: "person_1",
+      assigneeName: "Jane Agent",
+    };
+
+    render(
+      <WorkItemList
+        {...baseProps}
+        // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
+        workItems={[assignedItem] as any}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    expect(screen.getByText("Jane Agent")).toBeInTheDocument();
+    expect(
+      screen.queryByText("workItems:list.unassigned"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("workItems:list.assigneeInactive"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("#310: renders '(inactive)' when assigneeId is set but assigneeName cannot be resolved (work-items.md's 'Assignee leaves' case) -- not the Partial mechanism", () => {
+    const inactiveAssigneeItem = {
+      ...workItem,
+      assigneeId: "person_1",
+      assigneeName: null,
+    };
+
+    render(
+      <WorkItemList
+        {...baseProps}
+        // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
+        workItems={[inactiveAssigneeItem] as any}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    expect(
+      screen.getByText("workItems:list.assigneeInactive"),
+    ).toBeInTheDocument();
+    // Not silently unassigned, and not routed through the "Unavailable" Partial badge.
+    expect(
+      screen.queryByText("workItems:list.unassigned"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("workItems:list.unavailable"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the partial state: resolved rows render, missing parts are marked, and the notice shows instead of the error state", () => {

@@ -18,6 +18,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { canonicalRowHash, type JsonValue, ZERO_HASH } from "@taskdesk/domain";
 import { sql } from "drizzle-orm";
 import type db from "../database";
+import { EVENT_KEYS } from "../events/event-keys";
 import { AUDIT_ACTIONS_NOT_YET_WIRED, AUDIT_ONLY_ACTIONS } from "./actions";
 import { AUDIT_CHAIN_LOCK_KEY } from "./lock";
 
@@ -240,11 +241,16 @@ function validateAction(action: string): void {
         "actions.ts's doc comment (tracked on #198).",
     );
   }
-  if (!AUDIT_ONLY_ACTIONS.has(action)) {
+  // Two authoritative catalogues, one check (#360): the audit-only actions
+  // (`audit-trail.md`) and the event keys (`events.md`). `audit-trail.md`'s rule is
+  // "where a domain event exists for the mutation, the audit action is that event's
+  // key", so a valid action is a member of EITHER set and of neither is a programmer
+  // error.
+  if (!AUDIT_ONLY_ACTIONS.has(action) && !EVENT_KEYS.has(action)) {
     throw new Error(
       `appendAuditLog: unknown audit action "${action}" -- not in the audit-only ` +
-        "catalogue (docs/03-features/audit-trail.md) and this writer does not yet " +
-        "validate events.md-keyed domain-event actions (see actions.ts's doc comment). " +
+        "catalogue (docs/03-features/audit-trail.md) or the event-key registry " +
+        "(docs/01-architecture/events.md, apps/api/src/events/event-keys.ts). " +
         "This is a programmer error: add the action to its authoritative catalogue " +
         "first (AGENTS.md do-not 11), never call the writer with an unregistered key.",
     );

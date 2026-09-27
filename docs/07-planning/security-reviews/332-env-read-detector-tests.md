@@ -1,0 +1,209 @@
+# Security review — regression tests for the environment-read detector (#332)
+
+**Reviewer:** Opus 5.5, a fresh, independent context commissioned by the orchestrating session. I did not author, direct or remediate this change.
+**Reviewed head:** `c731c26a8b35ccccafbd2516dcd926ba94443c8c`
+**Reviewed SHA:** `c731c26a8b35ccccafbd2516dcd926ba94443c8c` (checked with `gh pr view 332 --json headRefOid` before I started)
+**Merge base:** `dd067e21f77853b35dd79de31e99d258678b92b4`. `origin/main` was `33ce9ec8a926b3dd0dbe8d00b828c69c72861408` at review time.
+**Pull request:** #332 (`fix/10-env-read-regressions`, P0 #10)
+**Date:** 2026-09-23
+
+## Surfaces examined
+
+- `scripts/ci/lib/env-reads.test.mjs`: new file, 107 lines. This is the only file the PR changes (`gh pr diff 332 --name-only`, and `git diff --stat origin/main...HEAD` shows 1 file, +107).
+- `scripts/ci/lib/env-reads.mjs`: the detector. It is **unchanged** by this PR. I read the whole file, including the `ACCESS`, `NAMED`, `BRACKET_LITERAL` and `BRACKET_COMPUTED` regexes, `destructuredKeys`, and `readFingerprint(s)`.
+- `scripts/ci/check-env.mjs`: how `findEnvReads` results are classified. Anything whose `kind !== "named"` is treated as unattributable and ratcheted by fingerprint. Named reads are checked against the approved list or the baseline.
+- `docs/05-operations/configuration-reference.md` and AGENTS.md rule 2: every environment read must be attributable to an approved entry, and `check:env` fails the build on any other read.
+
+## What I probed
+
+1. **Is it test-only?** Yes. The detector, `check-env.mjs`, `env-baseline.json` and the workflows are all unchanged. A test-only addition can't make `check:env` pass a read it would otherwise flag. **There is no gate weakening.**
+2. **Suites at this head.** `pnpm install --frozen-lockfile` was clean.
+   - `node --test scripts/ci/lib/env-reads.test.mjs`: **6 tests, 6 pass.**
+   - `node --test 'scripts/ci/**/*.test.mjs'`: **501 tests, 88 suites, 501 pass, 0 fail.** That matches the 501 the PR body claims.
+   - `pnpm check:env`: **exit 0.** It found "25 environment read(s), every one attributable". It scanned 963 files under `apps` and `packages`, with 52 inherited deviations still baselined and 1 stale baseline name to prune (a note, not a failure).
+3. **Mutation checks** (restored each time, and `git status --porcelain` was empty afterwards):
+   - I replaced `destructuredKeys(...)` with `null`. The test "destructured environment properties are attributed individually" went **red**.
+   - I reclassified bracket-computed reads as `alias`. "computed helper and lookup-table names remain unattributable" and "unattributable read fingerprints preserve identity and occurrence" went **red**.
+   - So the tests pin real classification behaviour. They don't only check that the detector returns something.
+4. **Evasion shapes against `findEnvReads`.** I ran a scratch harness against this head's detector, not committed. "Caught" means the detector returns at least one read that `check:env` would fail or ratchet.
+
+| Shape | Caught? | Result | Covered by a test in this PR? |
+| --- | --- | --- | --- |
+| `process.env.NAME` | yes | named | yes |
+| `process.env["NAME"]` / `['NAME']` | yes | named | yes |
+| `process.env[name]` (helper) / lookup-table key | yes | computed | yes |
+| `const e = process.env` | yes | alias | yes |
+| `(env: T = process.env)` parameter default | yes | alias | yes |
+| `const { A, B } = process.env` | yes | named ×2 | yes |
+| `const { A: a } = process.env` (rename) | yes | named `A` | no |
+| `const { A = "x" } = process.env` (default) | yes | named `A` | no |
+| `const { A, ...rest } = process.env` | yes | alias (fails closed) | no |
+| `const { "A": a } = process.env` / `{ [k]: a }` | yes | alias (fails closed) | no |
+| `process.env?.NAME` / `process.env?.["NAME"]` | yes | named | no |
+| `` process.env[`NAME`] `` / `` [`A_${k}`] `` | yes | computed (fails closed) | no |
+| `f(process.env)`, `Object.entries(process.env)` | yes | alias | no |
+| `import.meta.env.X` + Vite built-ins | yes | named, built-ins skipped | yes |
+| **`{ ...process.env }` (spread)** | **no** | nothing | no |
+| **`globalThis.process.env.X` / `global.process.env.X`** | **no** | nothing | no |
+| **`process["env"]`, `` process[`env`] ``** | **no** | nothing | no |
+| **`process?.env.X`** | **no** | nothing | no |
+| **`const { env } = process` / `{ env: e } = process`** | **no** | nothing | no |
+| **`Reflect.get(process, "env")`, `Object.getOwnPropertyDescriptor(process, "env")`** | **no** | nothing | no |
+| **`const p = process; p.env.X`** | **no** | nothing | no |
+| **`import { env } from "node:process"`, `require("process").env`** | **no** | nothing | no |
+| **`import.meta["env"]`** | **no** | nothing | no |
+| **`process/**/.env.X`** (comment between tokens) | **no** | nothing | no |
+| `Bun.env` / `Deno.env` | no | nothing | no (not a runtime this repo ships) |
+| `// process.env.X`, `"process.env.X"` | flagged | named (false positive, fails closed) | no |
+
+5. **Live exposure.** I searched `apps/**` and `packages/**` (`.ts`, `.tsx`, `.js`, `.mjs`, `.cjs`, `.mts`, `.cts`, excluding `node_modules` and `dist`) for every uncaught shape above. **No instance exists today.** The only `node:process` imports are `stdin`/`stdout` in `packages/mcp/src/install/index.ts:3` and `packages/mcp/src/cli.ts:1`, and neither reads `env`. So nothing currently slips past `check:env`, and the gaps are latent.
+
+## Findings
+
+**E1 — NON-BLOCKING, not made worse by this PR. The spread and `globalThis.` prefixes are invisible.** `ACCESS` uses the lookbehind `(?<![\w$.])` (`scripts/ci/lib/env-reads.mjs:17`), which rejects any match preceded by a `.`. That excludes `foo.process.env`, but it also excludes `...process.env` and `globalThis.process.env` / `global.process.env`. Spreading the whole environment into an object (`{ ...process.env }`) is a common real-world shape, for example to build a child-process env or a config bag. It makes every later lookup by name invisible, which is the same class of hole the kaneo `env(name)` helper opened. Suggested fix: let the lookbehind accept a `...` prefix, and match `(?:globalThis|global)\s*\.\s*process\s*\.\s*env` explicitly. Classify the spread as `alias`. Add a test for each.
+
+**E2 — NON-BLOCKING, not made worse. Reaching the env object without the literal token `process.env` is invisible.** The shapes are:
+- `process["env"]`
+- `process?.env`
+- `const { env } = process`
+- `Reflect.get(process, "env")`
+- `const p = process; p.env`
+- `import { env } from "node:process"`
+- `require("process").env`
+- `import.meta["env"]`
+- a comment between the tokens
+
+The detector keys on the `process.env` / `import.meta.env` token sequence, so anything that doesn't spell it out evades it. None of these shapes exists in the scanned tree today (probe 5). The detector's own docstring presents it as "every occurrence of the environment object is classified", and these shapes contradict that claim. A fail-closed approach would treat any bare `process` reference not followed by `.env.<NAME>` / `.env["<NAME>"]` as `alias`, plus any `env` import from `node:process` / `process`. The alternative is a Biome `noRestrictedImports`/`noRestrictedGlobals` rule, with `check:env` asserting that the rule is present. That work belongs to a follow-up on #10, not to this PR.
+
+**E3 — NON-BLOCKING, test coverage.** The detector already handles these shapes correctly, but no test pins them:
+- optional chaining (`process.env?.X`, `?.["X"]`)
+- template-literal keys (classified `computed`, which fails closed)
+- destructuring with a rename, a default, a rest element, a quoted key or a computed key
+- `process.env` passed as a call argument
+
+A regression in `NAMED`/`BRACKET_*`/`destructuredKeys` could flip one of them silently. The most important to pin are the rest element and the quoted or computed key, because each must stay `alias`: if one became `named`, it would attribute a single name while the rest of the environment leaks through.
+
+**E4 — INFORMATIONAL.** Comments and string literals containing `process.env.X` are reported as reads. That is a false positive, but it fails closed, so it's acceptable for a gate. A literal key with an escape sequence (`process.env["SECRET"]`) is reported under its raw, unescaped spelling. That spelling can't match an approved name, so it also fails closed.
+
+## Gates observed at this head (for the orchestrator; not part of the verdict on the code)
+
+- **Ordinary independent review: MISSING.** The PR has no GitHub reviews (`reviews: []`), and `## Reviewed by` reads "Pending independent ordinary review". No review by a different agent, with model and SHA, is recorded anywhere.
+- **Attribution is unreconciled.** `## Implemented by` names "Codex agent; exact model variant is not exposed". The single commit `c731c26` is authored `Claude Code <noreply@anthropic.com>`. The owner's PR comment (2026-09-23T16:29:31Z) says the PR won't merge until the attestation and the commit identity are reconciled, per the 2026-09-23 decision-log entry (#336). This review context is not the author, whatever the commit identity says.
+- **Required checks.** Every check on `c731c26` is green except **`pull request template + security review`, which is FAILURE**.
+- **Template checker.** `node scripts/ci/check-pr-template.mjs --body <body>` from this worktree reports 2 problems:
+  - `## Security review` `**Note:**` doesn't link a committed note. This file resolves that once the body links it.
+  - The "Any change" item "Independent Opus security review completed and recorded" is unticked. That is a BLOCKER until this review is recorded and the box is ticked.
+- **Waivers.** The `## Gates` table cites no waived gate. Every row is `n/a`.
+- **Head change.** This note is committed on top of `c731c26`, so the PR head moves. The code under review is unchanged: the only new file is this note.
+
+## Verdict
+
+**CLEAR WITH FINDINGS at `c731c26a8b35ccccafbd2516dcd926ba94443c8c`.** There are no blocking findings.
+- **Test-only.** The change adds tests and nothing else. The detector, the checker and the baseline are untouched, so it can't weaken `check:env`.
+- **The tests are real.** They pin real classification behaviour, and two separate mutations of the detector turned them red.
+- **Suites.** The CI-script suite is green (501/501), and `check:env` is green.
+- **Pre-existing gaps.** E1 and E2 are detector gaps that predate this PR, and this PR doesn't widen them. No live instance of either exists in `apps/` or `packages/` today. They should be tracked as follow-up work on #10.
+
+This verdict covers the security surface only. The PR is **not merge-ready** until three things are done:
+- an independent ordinary review by a different agent is recorded;
+- the `## Implemented by` attribution and the commit identity are reconciled;
+- the PR body links this note and ticks the Opus item, turning the template check green on the final head.
+
+---
+
+## Delta review — `c731c26..9b0842f` (2026-09-24)
+
+**Reviewer:** Opus 5.5, fresh independent context commissioned by the orchestrating session. I did not author, direct or remediate this change, and I did not write the earlier pass above.
+**Reviewed head:** `9b0842f4c72a50892557b0e384d6cd1d5e66d90e`
+**Merge base with `origin/main`:** `c4e18107fd7ed019ef6cf00edd8fec82b1703c89` (= `origin/main` at review time). Head checked with `gh pr view 332 --json headRefOid` before starting.
+
+### What changed since the last cleared head
+
+- `058daa0`: the earlier review note. Note-only.
+- `4d33443`: merge of `origin/main` (`c4e1810`) into `c731c26`. `git show --remerge-diff` is empty, so the merge was clean and has no hand resolution.
+- `9b0842f`: merge of the remote branch (`058daa0`) into `4d33443`. `--remerge-diff` is empty, so this merge was clean too.
+- `git diff c731c26 9b0842f -- scripts/ci/lib/env-reads.test.mjs` is empty, so the test file is byte-identical to the one reviewed before.
+- `git diff --stat c4e1810 9b0842f` covers two files: `scripts/ci/lib/env-reads.test.mjs` (+107) and this note. The PR's net change is still **test-only plus this note**. `env-reads.mjs`, `check-env.mjs`, `env-baseline.json` and the workflows are not touched, so no detector or gate code needs a critical review.
+
+### Scope interaction with #356 (`3a45fc5`, arrived through the main merge)
+
+- #356 adds `packages/domain/src/identity/**` and `apps/api/src/permissions/**` to the security-review scope in `ci-cd.md`. `scripts/ci/**` was already in scope.
+- This PR's diff touches neither new path, so #356 adds no new review obligation. It also doesn't narrow any obligation this PR already had.
+
+### Tests pin real behaviour (mutation checks, all reverted and confirmed with `git status`)
+
+| Mutation to `env-reads.mjs` | Result |
+| --- | --- |
+| M1: `BRACKET_LITERAL` match disabled (`process.env["X"]` no longer named) | RED: "attributes direct and literal-bracket environment names" |
+| M2: `destructuredKeys` disabled (`const { A, B } = process.env` becomes alias) | RED: "destructured environment properties are attributed individually" |
+| M3: `BRACKET_COMPUTED` branch disabled (`process.env[key]` becomes alias) | RED: "computed helper…" and "unattributable read fingerprints…" |
+| M4: `.` dropped from the `ACCESS` lookbehind | green. Nothing pins it. This is the same gap as **E1**. See D1. |
+
+### Suites at `9b0842f` (fresh worktree, `pnpm install --frozen-lockfile --offline`)
+
+- `pnpm test:ci-scripts`: **508 tests / 88 suites, 508 pass, 0 fail**. That is 501 at `c731c26` plus the new main-side tests. The first run without `node_modules` had 3 `typecheck-coverage` failures, all from a missing `tsc` binary (ENOENT). They are environmental and went away after the install.
+- `node --test scripts/ci/lib/env-reads.test.mjs`: 6/6.
+- `pnpm check:env`: exit 0, **30 reads, every one attributable**, 980 files scanned, 52 inherited baselined deviations. It also notes one stale baseline name that `--prune` could remove.
+
+### Overlap with #352 (`fix/342-env-reads-syntax`, `e3dd45b09f629f0971f5d0a5862a77db89374204`)
+
+- #352 rewrites `scripts/ci/lib/env-reads.mjs` (+735/−101). It also adds `env-reads-342.test.mjs`, its own note and `status.md` edits. Its files and this PR's files don't overlap.
+- `git merge-tree --write-tree 9b0842f e3dd45b` is clean (exit 0). The three-argument form in the brief isn't valid `--write-tree` syntax. `e3dd45b` already contains `origin/main`, so the pairwise merge is the right check.
+- On the merged tree (#352's detector, both test files): **the 6 #332 tests and #352's tests pass, 29/29**. The full `scripts/ci` suite passes **531/531**. `check:env` is green with 29 attributable reads.
+- **Merge order: #332 first.** It is test-only, and it pins the current detector's contract. Landing it first means #352's rewrite is checked against these pins in #352's own CI, and they already pass. The reverse order also works, but then #352 lands without these baseline pins in CI.
+
+### GitGuardian (not a required check)
+
+- The finding is `charts/taskdesk/values.yaml` line 245, `passwordKey: postgres_uri`, in commit `4d33443`. That commit is the main merge. The line itself came from #308 (`db27fd5`) on `main`.
+- It is the **name of a key** inside an existing Kubernetes Secret (`existingSecret.passwordKey`). It is not a credential. The neighbouring `password: ""` is empty.
+- This PR's net diff doesn't touch the chart. **False positive.** GitGuardian's own triage will surface it against `main`/#308, not against this PR.
+
+### Findings
+
+- **D1 (non-blocking, pre-existing):** mutation M4 survives. Nothing pins the `.`-prefix exclusion or its false-negative shapes, `globalThis.process.env` and `{ ...process.env }`. This is E1 from the earlier pass, and #352 is the natural place to pin it.
+- **D2 (process, not security; merge-blocking per the owner's PR comment):**
+  - `c731c26` is still authored `Claude Code <noreply@anthropic.com>`, while `## Implemented by` says "Codex agent", and the merges are authored `Codex GPT-6`. The attribution-reconciliation condition from the earlier pass is still open.
+  - `## Reviewed by` names **GPT-6 Luna**. If "Codex agent / Codex GPT-6" is the same agent as GPT-6 Luna, the ordinary review isn't from a different agent (2026-09-23, #336). The orchestrator has to confirm these are distinct agents before merge.
+- **D3 (template):** the `pull request template + security review` check fails at `9b0842f` for two reasons:
+  - this note was stale, which this delta section fixes;
+  - the "Independent Opus security review" checklist item is unticked, and `## Security review` still says "Pending". Those are PR-body edits, and the orchestrator has to make them.
+  - The body's checklist counts (501 tests, 25 reads) are also stale. They should read 508 and 30.
+
+### Verdict
+
+**CLEAR WITH FINDINGS at `9b0842f4c72a50892557b0e384d6cd1d5e66d90e`.**
+- No security finding blocks.
+- The delta since `c731c26` is two clean merges and a note. The reviewed test file is unchanged, and no detector or gate code changed.
+- D2 and D3 are merge gates outside the security surface, and they must be closed before merge.
+- This note's commit moves the head. It is a note-only commit on top of the reviewed head, which is the intended shape.
+
+## Merge-head attestation (Opus 5.5)
+
+**Reviewed head:** `44fe7fb2740692e7fe60dd3178356a30167d0c49`
+
+This is a fresh Opus 5.5 context, 2026-09-24. It attests the `gh pr update-branch` merge of
+`main` at `1731fe49e0c3f8305fa40c56de557b7ef7384828` into the previously attested head `934b766`.
+`934b766` is note-only over the reviewed code head `9b0842f`. Main gained only #358 since the
+old base `c4e1810`, and #358 changed only `docs/07-planning/status.md`.
+
+- **Parents:** exactly (`934b766`, `1731fe4`). `git show --remerge-diff` is empty, so the
+  merge was clean with no manual resolution.
+- **PR change unchanged:** `git diff c4e1810 934b766` and `git diff 1731fe4 44fe7fb` are
+  byte-identical (same sha256), covering `scripts/ci/lib/env-reads.test.mjs` and this note.
+  No file overlaps with #358.
+- **Commands at `44fe7fb`:**
+  - `pnpm test:ci-scripts` passes 508 / 508, with 0 failed.
+  - `pnpm check:env` exits 0: "30 environment read(s), every one attributable to
+    configuration-reference.md".
+  - The worktree stays clean after `pnpm install --frozen-lockfile --offline`.
+- **GitGuardian** (not a required context) reports "1 secret uncovered". It is the same
+  incident as above: `charts/taskdesk/values.yaml:245` `passwordKey: postgres_uri`, attributed
+  to the earlier main-merge commit `4d33443`.
+  - The line is on `main` from #308 (`db27fd5`), and this PR does not touch `charts/`.
+  - It is the name of a key in an existing Kubernetes Secret, not a credential.
+  - It is a false positive, to be resolved in the GitGuardian dashboard, not in this PR.
+- **CI at `44fe7fb` when this was written:** the required contexts were still queued, including
+  `pull request template + security review`. Merging needs every required context green.
+
+**Verdict at `44fe7fb2740692e7fe60dd3178356a30167d0c49`: CLEAR.** The earlier E-findings carry
+over unchanged and stay non-blocking.

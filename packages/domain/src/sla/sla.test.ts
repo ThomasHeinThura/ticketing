@@ -496,3 +496,34 @@ describe("computeSlaState", () => {
     expect(s.consumedMinutes).toBe(540);
   });
 });
+
+// sla.md § Testing demands "12×5" alongside 8×5 and 24×7 — added with the scan slice.
+describe("12×5 calendar (Mon–Fri 08:00–20:00 Europe/London)", () => {
+  const CALENDAR_12X5: ServiceCalendar = {
+    timezone: "Europe/London",
+    windows: {
+      mon: [{ from: 480, to: 1200 }],
+      tue: [{ from: 480, to: 1200 }],
+      wed: [{ from: 480, to: 1200 }],
+      thu: [{ from: 480, to: 1200 }],
+      fri: [{ from: 480, to: 1200 }],
+    },
+    holidays: [],
+  };
+
+  it("inside the window: 90 covered minutes from 07:30Z lands at 09:00Z", () => {
+    const p = policy(CALENDAR_12X5, 120);
+    const from = new Date("2026-09-21T07:30:00Z"); // Mon, local 08:30 BST
+    expect(dueAtFor(p, from, 90, [])?.getTime()).toBe(
+      new Date("2026-09-21T09:00:00Z").getTime(),
+    );
+  });
+
+  it("weekend raise: starts at Monday's 08:00 local opening", () => {
+    const p = policy(CALENDAR_12X5, 60);
+    const from = new Date("2026-09-26T12:00:00Z"); // Saturday
+    expect(dueAtFor(p, from, 60, [])?.getTime()).toBe(
+      new Date("2026-09-28T08:00:00Z").getTime(), // Mon 07:00Z + 60 covered min
+    );
+  });
+});

@@ -416,6 +416,17 @@ describe("API integration: work item create/read/list (#23)", () => {
     expect(listResponse.status).toBe(400);
   });
 
+  it("#310: a NUL byte in a query filter (state) is a 400, not a 500", async () => {
+    const { creator, project } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/projects/${project.id}/work-items?state=${encodeURIComponent("a\u0000b")}`,
+    );
+    expect(response.status).toBe(400);
+  });
+
   it("T4 (independent Opus security review of PR #271, delta round): a NUL byte in the {key} path param is a 400, not a 500, on GET", async () => {
     const { creator } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);
@@ -715,7 +726,7 @@ describe("API integration: work item create/read/list (#23)", () => {
     expect(response.status).toBe(404);
   });
 
-  it("GET /api/projects/{projectId}/work-items: lists the project's items, oldest first", async () => {
+  it("GET /api/projects/{projectId}/work-items: lists the project's items, oldest first by default (#310: default sort is key/asc)", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);
     const { app } = createApp();
@@ -733,13 +744,50 @@ describe("API integration: work item create/read/list (#23)", () => {
       `/api/projects/${project.id}/work-items`,
     );
     expect(response.status).toBe(200);
-    const items = (await response.json()) as Array<{
-      title: string;
-      number: number;
-    }>;
-    expect(items).toHaveLength(2);
-    expect(items.map((i) => i.title)).toEqual(["First", "Second"]);
-    expect(items.map((i) => i.number)).toEqual([1, 2]);
+    const body = (await response.json()) as {
+      data: Array<{ title: string; number: number }>;
+      page: { nextCursor: string | null; hasMore: boolean };
+      meta: { total: number };
+    };
+    expect(body.data).toHaveLength(2);
+    expect(body.data.map((i) => i.title)).toEqual(["First", "Second"]);
+    expect(body.data.map((i) => i.number)).toEqual([1, 2]);
+    expect(body.page.hasMore).toBe(false);
+    expect(body.page.nextCursor).toBeNull();
+    expect(body.meta.total).toBe(2);
+  });
+
+  it("#310: each item resolves stateName/stateCategory and a null assigneeName when unassigned", async () => {
+    const { creator, project, type, state } =
+      await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Resolve me",
+    });
+
+    const stateTemplate = await db.query.stateTemplateTable.findFirst({
+      where: eq(schema.stateTemplateTable.id, state.stateTemplateId),
+    });
+
+    const response = await app.request(
+      `/api/projects/${project.id}/work-items`,
+    );
+    const body = (await response.json()) as {
+      data: Array<{
+        stateName: string;
+        stateCategory: string;
+        assigneeId: string | null;
+        assigneeName: string | null;
+      }>;
+    };
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0]?.stateName).toBe(stateTemplate?.name);
+    expect(body.data[0]?.stateCategory).toBe("backlog");
+    expect(body.data[0]?.assigneeId).toBeNull();
+    expect(body.data[0]?.assigneeName).toBeNull();
   });
 
   it("GET /api/projects/{projectId}/work-items: excludes archived and deleted items", async () => {
@@ -761,7 +809,7 @@ describe("API integration: work item create/read/list (#23)", () => {
       `/api/projects/${project.id}/work-items`,
     );
     expect(response.status).toBe(200);
-    const items = (await response.json()) as unknown[];
-    expect(items).toHaveLength(0);
+    const body = (await response.json()) as { data: unknown[] };
+    expect(body.data).toHaveLength(0);
   });
 });

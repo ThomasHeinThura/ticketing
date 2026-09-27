@@ -15,6 +15,111 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-26 · Remediate the named post-merge review findings
+
+**Decision:** Thomas authorizes separate follow-up pull requests, one at a time, to fix the
+specific review findings identified in the 2026-09-26 handoff: #354 S1 (shadow-event
+workspace provenance), #341 F1 (error normalization for arbitrary thrown values), #362
+L1–L4 (assignable-people query scope and filtering), #367 D1 (documentation wording), and
+#371 (persist decline actor so customer reopen is limited to system auto-declines, using the
+existing issue's data-model entry and migration). The orchestrator's proposed order is #354,
+#341, #362, #367, then #371: address the P0 security and reliability risks first, followed
+by query correctness, wording, and the schema change. This authorizes the listed fixes only;
+it does not authorize an API route for intake or extend #372's prerequisite scope.
+
+Each follow-up must use the ordinary-review count required by the risk classification in
+`AGENTS.md`, with independent reviewer contexts, and a separate exact-head Opus 5.5 final
+review before merge. Use the available GPT-6 Luna context for implementation and ordinary
+review when Sonnet is unavailable, without representing it as Sonnet or Opus. Keep the PR's
+source finding and review record together; add regression tests for behavioral findings, and
+documentation validation for #367's wording finding. Security-scope changes and the migration
+remain subject to their full review tier and normal protected-PR gates. This decision does not
+waive checks, permit self-review, or authorize direct pushes to `main`.
+
+**Why:** These findings were recorded by reviewers of already merged work. Leaving the
+workspace-provenance S1 and error-boundary robustness defect unfixed would retain known
+security and reliability gaps; the assignable-people and intake records are also explicitly
+owned by existing issues. Thomas has now authorized fixing these concrete findings through
+the repository's ordinary follow-up flow.
+
+**Alternatives:** Leave all post-merge findings as backlog; treat the pasted handoff as a
+gate waiver; or batch unrelated changes into one PR. Rejected: the listed findings are
+authorized for narrow, individually reviewed follow-up PRs, with all review and merge gates
+preserved.
+
+**Decided by:** Thomas, 2026-09-26, in session.
+
+### 2026-09-25 · Intake: a customer may reopen only a submission the system auto-declined
+
+**Decision:** A customer may `reopen` a submission only if it was declined automatically: the `IQ-15` clarification-window auto-decline run by `reminder-scan`. A decline made by a staff member (`IQ-16`) is final for the customer. Whether staff can reopen a declined submission is not decided; `IQ-6` has no such action today. Enforcing the customer rule needs the submission record to say who declined it: a new `SubmissionRecord` field and a data-model column, tracked in #371. Until then no API route calls intake, so nothing can be reopened.
+
+**Why:** `IQ-15` grants reopen only for the auto-decline, and a staff decline carries a reason shown to the customer verbatim (`IQ-16`), so it is a deliberate outcome. PR #328 had read "any decline can be reopened", and flagged that reading openly; Opus asked for the rule to be decided.
+
+**Alternatives:** Customers may reopen any decline. Rejected by Thomas.
+
+**Decided by:** Thomas, 2026-09-25, in session ("Auto-declines only").
+
+### 2026-09-25 · While every lane is stopped, Claude Sonnet subagents may also complete stopped P2 PRs' records so they can be reviewed
+
+**Extends:** the 2026-09-24 entry "2026-09-24 · While the lanes are stopped, Claude Sonnet subagents may make small fixes for already-recorded review findings on stopped PRs; #353 waits for #344" (#366). Its scope, independence, re-review, attribution and end conditions apply here unchanged.
+
+**Decision:** For the stopped P2 lane's open PRs (#327, #328, #330 and #343), the orchestrating session may commission a fresh Claude Sonnet subagent (the "filler") to complete each PR's record:
+- fill every missing template section, including `## Implemented by` from the commit authors;
+- cite existing reviews **as history, at the SHAs they actually covered**; they never count as the review of a new head;
+- bring the branch up to date with `main`.
+
+**Rules for the filler:**
+- It states only what the commit history, review notes and PR comments show.
+- Anything it cannot verify stays **unknown and unticked, which blocks the merge**. It is never written as `n/a` or as a passed gate.
+- It adds no code.
+- **Branch updates:** a clean merge from `main`, or a conflict limited to import lists, whitespace or regenerating `tests/api-contract/openapi.json` with `pnpm openapi:write`, is allowed. Any other conflict resolution is a code change. It is either made as a #366 fix, with that fix's reviews, or returned to the lane.
+- The filler's commits use the Claude Code identity. `## Implemented by` lists them by SHA, so the commit-author check reconciles.
+
+**Reviews:** each PR then gets fresh reviews at its exact head:
+- a fresh ordinary reviewer, never the filler and never the orchestrating session;
+- Opus 5.5 wherever a security-scope path is touched. Any #366 fix made on the way needs Opus whatever its paths, as #366 requires.
+
+Every other gate is unchanged, and no gate is waived.
+
+**Why:** Thomas, 2026-09-25 ("yes use sonnet now"), answering whether a Sonnet agent may fill in these four PRs' forms from their history and existing reviews, then run the missing reviews. These PRs had code and some reviews, but PR bodies the template gate rejects, and no lane is left to finish them.
+
+**Alternatives:** Leave them until the P2 lane restarts. Rejected by Thomas.
+
+**Decided by:** Thomas, 2026-09-25, in session.
+
+### 2026-09-25 · Intentional pre-2.0 OpenAPI breaking changes pass only through a reviewed allowlist
+
+**Supersedes (narrowly):** the unconditional failure of `oasdiff breaking --fail-on WARN` added by #355, only for a finding that exactly matches a reviewed allowlist entry, and only before 2.0.0. `api-design.md`'s post-2.0.0 rule is unchanged.
+
+**Decision:** `scripts/ci/openapi-approved-breaks.json` lists each approved break by operation, oasdiff rule, oasdiff finding fingerprint, PR, reason and decision reference. The contract gate passes a breaking finding only on an exact (operation, rule, fingerprint) match against an entry that is NEW relative to `origin/main`'s copy of the file — entries approve only the break in the PR that adds them; delete them after merge, since an entry already on `main` approves nothing there and the gate only warns (does not fail) if a merged entry is left in the file. Every other finding still fails, a new entry matching no finding fails as stale/typo'd, and malformed input, an unreadable base copy, or an unexpected oasdiff exit status all fail closed. The file is in the security-review scope, so every entry is added in the PR that makes the break and needs an Opus review there. From the first stable `v2.0.0` (or later) release tag on origin, the file must be empty, and a non-empty file fails the gate.
+
+**Why:** the API is unversioned until 2.0.0 (`api-design.md`). #355's gate had no way to approve a deliberate break, so #320's list envelope, which is #310's deliverable and already consumed by the web client, could not pass.
+
+**Alternatives:** Skip the breaking check until 2.0.0, rejected because accidental breaks would go unseen. Serve #320's envelope on a new path and keep the array route, rejected because it adds code and a legacy route for an unversioned API.
+
+**Decided by:** Thomas, 2026-09-25, in session ("Reviewed allowlist file").
+
+### 2026-09-24 · While the lanes are stopped, Claude Sonnet subagents may make small fixes for already-recorded review findings on stopped PRs; #353 waits for #344
+
+**Supersedes (temporarily, in part):** the 2026-09-23 entry "Three non-Claude implementation agents take the P0/P1/P2 lanes…" (#336), only its assignment of *fix rounds* to the lane agents and its narrowing of the Claude session to Opus review and merge. The narrowing is suspended for the recorded-finding fixes this entry allows, and applies again when this entry ends. Nothing else in #336 or #345 changes, and neither is rewritten. `CLAUDE.md`'s "Model tiers" note is read with this exception.
+
+**Decision:**
+1. While **every** lane agent (P0, P1, P2 and P3) is stopped, the orchestrating Claude session may, on a stopped lane's PR, commission fresh Claude Sonnet subagents to make **small fixes for findings a review has already recorded**.
+   - **Scope:** no new features, and nothing beyond the recorded finding. A finding that needs a design change, a migration or a new shared contract is not a small fix; it goes back to the lane. One PR at a time. Each fix has a regression test that fails on the unfixed code.
+   - **Independence:** a fresh context other than the fixer does the ordinary review of the fix, as #345 and the current-model fallback allow. It records its model and the exact SHA it reviewed. The Opus 5.5 reviewer is a third, separate fresh context. Neither reviewer may be the fixer, and neither may be the orchestrating session.
+   - **Re-review:** the fix moves the head, so every earlier clearance on that PR is stale. The PR needs all of its required reviews again at the new head before merge. That includes Opus, even outside security scope.
+   - **Attribution:** the fix commits use the Claude Code identity. The PR's `## Implemented by` lists both the lane agent (original work) and the Claude Sonnet fixer (the fix commits, by SHA), so the commit-author check still reconciles.
+   - **Unchanged:** every required status check in `protect-main` (15 today), exact-head binding, and no waivers.
+2. PR #353 (assign a work item) is **not** merged without its audit-log row. It waits for #344 (`audit_log.project_id` and the project-reach read filter), and #365, which is stacked on it, waits too.
+
+**Why:** Thomas, 2026-09-24. All four implementation lanes stopped with review findings open, including #320's blocking cross-tenant cursor leak. Review-only work can't move those PRs. The audit-row requirement is a real gate, so Thomas kept it rather than waiving it.
+
+**Alternatives:** Keep the orchestrator review-only and leave every PR with findings until the lanes restart. Rejected for small recorded fixes. Waive #353's audit-row item and track it. Rejected by Thomas.
+
+**Scope and end:** this ends everywhere as soon as **any** lane agent restarts, or on 2026-09-30, whichever comes first, unless Thomas extends it. A fix already under review when it ends may finish its gates.
+
+**Decided by:** Thomas, 2026-09-24, in session ("Yes, small fixes only"; "Wait for #344").
+
 ### 2026-09-24 · GPT-6 Luna replaces Sonnet for ordinary reviews on active P0 lanes
 
 **Decision:** For the currently active P0 work, use fresh independent GPT-6 Luna contexts
@@ -32,6 +137,23 @@ Opus or waive the Opus gate. Rejected: implementation and ordinary review may pr
 Opus remains mandatory for security-scope work.
 
 **Decided by:** Thomas, 2026-09-24, in session.
+
+
+### 2026-09-24 · The security-review scope adds `packages/domain/src/identity/**` and `apps/api/src/permissions/**`
+
+**Decision:** `docs/04-engineering/ci-cd.md`'s authoritative security-review scope list gains two globs:
+- `packages/domain/src/identity/**`, the P3 identity rules: claim normalisation, SCIM validation and PATCH, role limits and customer reach;
+- `apps/api/src/permissions/**`, which holds `resolveIdentity` (#315) and the #8 shadow-mode middleware (#323).
+
+From now on, any PR touching either path needs the Opus 5.5 security review, enforced by CI.
+
+**Why:**
+- #346's Opus review (S11) found the identity rules outside the scope, although they decide who gets which roles and reach. The same review found a ReDoS and a fail-open role mapping in that code.
+- `apps/api/src/permissions/**` was also outside it. #315 and #323 were only reviewed by Opus because the orchestrating session commissioned it.
+
+This only tightens the gate. It removes nothing.
+
+**Decided by:** the orchestrating session, 2026-09-24, under Thomas's standing delegation. There was one clearly recommended option.
 
 ### 2026-09-23 · Require coverage and full-stage smoke contexts in `protect-main` (#10)
 
@@ -101,6 +223,15 @@ the documented gate unenforced.
 
 **Decided by:** Thomas, 2026-09-23, in session.
 
+
+### 2026-09-23 · Provision a local staff person during post-boot password signup
+
+**Decision:** The `/sign-up/email` user-create hook ensures an internal staff `person` row exists before a local password signup completes. It does not assign a person to an OAuth callback; the identity connection must determine portal and organisation when that provisioning path is implemented.
+
+**Why:** The boot seed only covers users present at startup, so later local signups otherwise resolve to `missing_identity` (#315 S7). Treating every external callback as internal staff would invent portal and organisation authority. The route-specific local-signup hook follows the current boot-seed rule while leaving external identity provisioning to its declared connection.
+
+**Decided by:** Thomas, 2026-09-23, by approving #324's signup-or-lazy-resolution acceptance and continuing this implementation.
+
 ### 2026-09-23 · Storybook 10 compatibility spike for `packages/ui`
 
 **Decision:** Pin `storybook` and `@storybook/react-vite` to `10.6.0` in
@@ -124,22 +255,6 @@ result were recorded by the implementing agent, 2026-09-23.
 
 ---
 
-### 2026-09-24 · The security-review scope adds `packages/domain/src/identity/**` and `apps/api/src/permissions/**`
-
-**Decision:** `docs/04-engineering/ci-cd.md`'s authoritative security-review scope list gains two globs:
-- `packages/domain/src/identity/**`, the P3 identity rules: claim normalisation, SCIM validation and PATCH, role limits and customer reach;
-- `apps/api/src/permissions/**`, which holds `resolveIdentity` (#315) and the #8 shadow-mode middleware (#323).
-
-From now on, any PR touching either path needs the Opus 5.5 security review, enforced by CI.
-
-**Why:**
-- #346's Opus review (S11) found the identity rules outside the scope, although they decide who gets which roles and reach. The same review found a ReDoS and a fail-open role mapping in that code.
-- `apps/api/src/permissions/**` was also outside it. #315 and #323 were only reviewed by Opus because the orchestrating session commissioned it.
-
-This only tightens the gate. It removes nothing.
-
-**Decided by:** the orchestrating session, 2026-09-24, under Thomas's standing delegation. There was one clearly recommended option.
-
 ### 2026-09-23 · The P3 identity gate covers all 25 named acceptance tests
 
 **Decision:** Before the P3 identity gate closes, all 25 acceptance tests named in `identity-provisioning.md` must pass against a real Microsoft Entra test tenant. The phase, release, security-evidence and issue #39 gate wording changes from 17 tests to 25.
@@ -159,6 +274,18 @@ This only tightens the gate. It removes nothing.
 **Alternatives:** Keep IP-32's existing-resource id in the detail. Rejected, because it lets the caller tell the two conflict types apart.
 
 **Decided by:** Thomas, 2026-09-23. A lane agent drafted the entry. Thomas confirmed the decision to the orchestrating session in session on 2026-09-23, and the orchestrator recorded it.
+
+### 2026-09-23 · Manual release tags the selected `main` SHA without version-bump commits
+
+**Decision:** A maintainer manually dispatches a release with a SemVer version and a full source SHA already reachable from protected `main`. The workflow creates the matching Git tag and GitHub release at that SHA and publishes its signed multi-architecture image. It does not create a version-bump commit or edit `CHANGELOG.md`, package version files, or chart version files. The existing automatic `edge` cadence remains as documented in `release-plan.md`.
+
+**Why:** Thomas selected “tag and release the chosen SHA” and rejected a version-bump change through a PR. The release must identify the exact tested source while preserving protected `main` and the changelog/version files.
+
+**Alternatives:** A PR that changes version files was rejected, as was automatic version-file mutation by semantic-release. Stable promotion remains a separate operator action after UAT verification.
+
+**Confirmed by:** Thomas in the 2026-09-23 session response.
+
+---
 
 ### 2026-09-23 · Until the lane agents' review capacity returns (2026-09-30), a fresh Claude Sonnet context does the ordinary independent review
 

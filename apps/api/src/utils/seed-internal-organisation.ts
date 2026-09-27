@@ -110,6 +110,25 @@ export async function ensureInternalOrganisation(
   return nowExisting;
 }
 
+/** Ensure an ordinary registered user has the same internal staff identity as boot users. */
+export async function ensureStaffPersonForUser(userId: string): Promise<void> {
+  const internalOrganisation = await ensureInternalOrganisation();
+  const now = new Date();
+  await db
+    .insert(schema.personTable)
+    .values({
+      userId,
+      organisationId: internalOrganisation.id,
+      side: "staff",
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoNothing({
+      target: [schema.personTable.userId],
+      where: sql`${schema.personTable.userId} is not null`,
+    });
+}
+
 /**
  * Backfills one `person` row (side: "staff") per existing `user` row, in the internal
  * organisation — the P1 foundational identity schema (decision log 2026-09-16, "P1's

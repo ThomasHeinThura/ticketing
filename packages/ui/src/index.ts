@@ -211,6 +211,11 @@ export {
   EmptyTitle,
 } from "./components/empty";
 export {
+  ErrorBoundary,
+  type ErrorBoundaryFallbackProps,
+  type ErrorBoundaryProps,
+} from "./components/error-boundary";
+export {
   Field,
   FieldControl,
   FieldDescription,
