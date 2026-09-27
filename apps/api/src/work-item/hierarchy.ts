@@ -98,44 +98,86 @@ export type HierarchyNodeRow = {
   stateCategory: string;
 };
 
+export type SubtreeResult = {
+  rows: HierarchyNodeRow[];
+  /** `true` when this result is a prefix, not the whole subtree -- see `MAX_TREE_NODES`. */
+  truncated: boolean;
+};
+
+/**
+ * Ordinary-review finding on this PR (medium severity): `relations-and-hierarchy.md`'s
+ * own edge-cases table (line 120) says plainly "200 children on one parent -- The list
+ * paginates; roll-up is computed in SQL." `RH-7` bounds DEPTH (5 levels), but nothing
+ * bounded BREADTH -- a legitimately wide, non-cyclic subtree (many children, each with
+ * few or no grandchildren of their own) could make `GET .../tree` construct and return an
+ * arbitrarily large nested payload in one response, contradicting that edge case.
+ *
+ * Full cursor pagination (`api-design.md`'s convention, already used by `list-query.ts`)
+ * does not translate cleanly onto a NESTED tree shape -- a cursor names a position in one
+ * flat ordering, not "where you are across an arbitrary number of sibling groups at every
+ * level simultaneously." Implementing that properly (paginating each parent's own
+ * children independently, client-driven "load more children" per node) is real,
+ * separate-scope work, not a small addition to this PR -- filed as a follow-up rather than
+ * attempted here (see `get-work-item-tree.ts`'s own doc comment for the issue reference).
+ *
+ * This PR instead closes the actual gap the finding names -- an UNBOUNDED response -- with
+ * a hard total-node cap. `500` is `list-query.ts`'s own `MAX_WORK_ITEM_LIST_LIMIT` (200,
+ * the exact number the spec's own edge case names for a single parent's children) times
+ * 2.5: generous enough that a genuinely modest, `RH-7`-depth-bounded tree (a few hundred
+ * items across up to 5 levels, the normal service-desk range this spec targets) is never
+ * truncated, while still keeping the worst case a bounded, predictable response size
+ * instead of an open-ended one. `truncated: true` on the result means the caller received
+ * a PREFIX of the real tree, not the whole thing -- surfaced to the API response
+ * (`get-work-item-tree.ts`) so a client can show "showing the first N items" rather than
+ * silently rendering a partial tree as if it were complete.
+ */
+export const MAX_TREE_NODES = 500;
+
 /**
  * `GET /api/work-items/{key}/tree`'s data: every row of the SAME project reachable from
  * `rootId` downward (inclusive), each with the resolved `stateName`/`stateCategory` the
  * detail route already resolves for a single item (`get-work-item.ts`'s own join, same
  * shape). One query per level, same breadth-first shape as `descendantDepth`, bounded by
- * the same defensive `MAX_WALK_HOPS`. `RH-6` (parent and child always share a project) is
- * DB-enforced (`work_item`'s composite self-FK, `schema.ts`), so every row this returns is
- * already guaranteed to be in `rootId`'s own project -- no separate project filter is
- * needed to keep the tree from crossing a project boundary.
+ * the same defensive `MAX_WALK_HOPS`, and now also by `MAX_TREE_NODES` (see its own
+ * comment). `RH-6` (parent and child always share a project) is DB-enforced (`work_item`'s
+ * composite self-FK, `schema.ts`), so every row this returns is already guaranteed to be
+ * in `rootId`'s own project -- no separate project filter is needed to keep the tree from
+ * crossing a project boundary.
  */
 function selectHierarchyNodes(executor: DbOrTx) {
-  return executor
-    .select({
-      id: workItemTable.id,
-      key: workItemTable.key,
-      title: workItemTable.title,
-      parentId: workItemTable.parentId,
-      stateName: stateTemplateTable.name,
-      stateCategory: stateTemplateTable.group,
-    })
-    .from(workItemTable)
-    .innerJoin(stateTable, eq(workItemTable.stateId, stateTable.id))
-    .innerJoin(
-      stateTemplateTable,
-      eq(stateTable.stateTemplateId, stateTemplateTable.id),
-    );
+  return (
+    executor
+      .select({
+        id: workItemTable.id,
+        key: workItemTable.key,
+        title: workItemTable.title,
+        parentId: workItemTable.parentId,
+        stateName: stateTemplateTable.name,
+        stateCategory: stateTemplateTable.group,
+      })
+      .from(workItemTable)
+      .innerJoin(stateTable, eq(workItemTable.stateId, stateTable.id))
+      .innerJoin(
+        stateTemplateTable,
+        eq(stateTable.stateTemplateId, stateTemplateTable.id),
+      )
+      // Deterministic order (`work_item.position`, the same fractional manual-rank column
+      // board views already order by) so which rows survive a truncation is stable and
+      // predictable across repeated requests, not whatever order Postgres happens to return.
+      .orderBy(workItemTable.position)
+  );
 }
 
 export async function loadSubtreeRows(
   executor: DbOrTx,
   rootId: string,
-): Promise<HierarchyNodeRow[]> {
+): Promise<SubtreeResult> {
   const [rootRow] = await selectHierarchyNodes(executor).where(
     eq(workItemTable.id, rootId),
   );
 
   if (!rootRow) {
-    return [];
+    return { rows: [], truncated: false };
   }
 
   const rows: HierarchyNodeRow[] = [rootRow];
@@ -151,7 +193,18 @@ export async function loadSubtreeRows(
     );
 
     if (level.length === 0) {
-      return rows;
+      return { rows, truncated: false };
+    }
+
+    const remaining = MAX_TREE_NODES - rows.length;
+    if (level.length > remaining) {
+      // This level alone would push the response past the cap. Keep only the first
+      // `remaining` rows (in the deterministic `position` order the query above already
+      // applies) and stop descending -- a node whose OWN row was cut cannot sensibly
+      // carry children in the response either, so this is genuinely "return a prefix",
+      // not "drop some leaves but keep their orphaned children".
+      rows.push(...level.slice(0, remaining));
+      return { rows, truncated: true };
     }
 
     rows.push(...level);

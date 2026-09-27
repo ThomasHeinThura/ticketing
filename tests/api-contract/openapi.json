@@ -2983,6 +2983,22 @@
           "currentAssigneeId"
         ]
       },
+      "WorkItemTree": {
+        "type": "object",
+        "properties": {
+          "root": {
+            "$ref": "#/components/schemas/WorkItemTreeNode"
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the tree exceeded the server's size cap and this is a prefix, not the whole subtree. Real pagination is tracked separately (issue #434)."
+          }
+        },
+        "required": [
+          "root",
+          "truncated"
+        ]
+      },
       "WorkItemTreeNode": {
         "type": "object",
         "properties": {
@@ -11534,7 +11550,7 @@
           "Work items"
         ],
         "summary": "Get work item hierarchy tree",
-        "description": "The full hierarchy tree containing this work item -- its true root and every descendant beneath it, with the requested item's own node flagged `isCurrent`.",
+        "description": "The full hierarchy tree containing this work item -- its true root and every descendant beneath it, with the requested item's own node flagged `isCurrent`. Capped in total size (`truncated: true` when the real subtree is larger than the response returned) -- see `get-work-item-tree.ts`'s own doc comment.",
         "parameters": [
           {
             "schema": {
@@ -11551,7 +11567,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkItemTreeNode"
+                  "$ref": "#/components/schemas/WorkItemTree"
                 }
               }
             }

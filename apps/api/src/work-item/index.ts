@@ -43,7 +43,7 @@ import {
   workItemDetailSchema,
   workItemListResponseSchema,
   workItemSchema,
-  workItemTreeNodeSchema,
+  workItemTreeResponseSchema,
   workItemTypeListSchema,
   workItemVersionConflictSchema,
 } from "./response";
@@ -450,14 +450,16 @@ const getWorkItemTreeRoute = createRoute({
   summary: "Get work item hierarchy tree",
   description:
     "The full hierarchy tree containing this work item -- its true root and every " +
-    "descendant beneath it, with the requested item's own node flagged `isCurrent`.",
+    "descendant beneath it, with the requested item's own node flagged `isCurrent`. " +
+    "Capped in total size (`truncated: true` when the real subtree is larger than the " +
+    "response returned) -- see `get-work-item-tree.ts`'s own doc comment.",
   middleware: [
     requireWorkItemReach(),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam },
   responses: {
-    200: jsonResponse("The hierarchy tree", workItemTreeNodeSchema),
+    200: jsonResponse("The hierarchy tree", workItemTreeResponseSchema),
     403: errorResponse(
       "No workspace access, or missing work_item:read permission",
     ),

@@ -227,6 +227,23 @@ export const workItemTreeNodeSchema: z.ZodType<WorkItemTreeNodeResponse> =
       .openapi("WorkItemTreeNode"),
   );
 
+// The route's actual response envelope. `truncated` is the fix for an ordinary-review
+// finding on this PR (medium severity): `relations-and-hierarchy.md`'s own edge-cases
+// table requires "200 children on one parent -- The list paginates", but `RH-7` only
+// bounds depth, not breadth -- see `../hierarchy.ts`'s `MAX_TREE_NODES` and
+// `get-work-item-tree.ts`'s own doc comment for the full reasoning and the deferred-
+// pagination follow-up (issue #434).
+export const workItemTreeResponseSchema = z
+  .object({
+    root: workItemTreeNodeSchema,
+    truncated: z.boolean().openapi({
+      description:
+        "True when the tree exceeded the server's size cap and this is a prefix, not " +
+        "the whole subtree. Real pagination is tracked separately (issue #434).",
+    }),
+  })
+  .openapi("WorkItemTree");
+
 // The spec's conditional-write conflict: zero rows updated because someone else changed the
 // assignee first. Structured like `workItemVersionConflictSchema` -- there is real data for
 // the client to act on (AS-3's confirmation flow shows who actually holds it now).

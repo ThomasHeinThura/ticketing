@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { MAX_TREE_NODES } from "../../apps/api/src/work-item/hierarchy";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -185,16 +186,20 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
 
     const treeResponse = await treeRequest(app, child.key);
     expect(treeResponse.status).toBe(200);
-    const tree = (await treeResponse.json()) as {
-      key: string;
-      isCurrent: boolean;
-      children: Array<{ key: string; isCurrent: boolean }>;
+    const treeBody = (await treeResponse.json()) as {
+      truncated: boolean;
+      root: {
+        key: string;
+        isCurrent: boolean;
+        children: Array<{ key: string; isCurrent: boolean }>;
+      };
     };
-    expect(tree.key).toBe(parent.key);
-    expect(tree.isCurrent).toBe(false);
-    expect(tree.children).toHaveLength(1);
-    expect(tree.children[0]?.key).toBe(child.key);
-    expect(tree.children[0]?.isCurrent).toBe(true);
+    expect(treeBody.truncated).toBe(false);
+    expect(treeBody.root.key).toBe(parent.key);
+    expect(treeBody.root.isCurrent).toBe(false);
+    expect(treeBody.root.children).toHaveLength(1);
+    expect(treeBody.root.children[0]?.key).toBe(child.key);
+    expect(treeBody.root.children[0]?.isCurrent).toBe(true);
   });
 
   it("RH-11/RH-12: detaches a parent, and detaching an already-parentless item is idempotent", async () => {
@@ -381,20 +386,24 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
     // whole subtree, not merely the leaf's own direct ancestry.
     const response = await treeRequest(app, leafA.key);
     expect(response.status).toBe(200);
-    const tree = (await response.json()) as {
-      key: string;
-      isCurrent: boolean;
-      children: Array<{
+    const treeBody = (await response.json()) as {
+      truncated: boolean;
+      root: {
         key: string;
         isCurrent: boolean;
-        children: Array<{ key: string; isCurrent: boolean }>;
-      }>;
+        children: Array<{
+          key: string;
+          isCurrent: boolean;
+          children: Array<{ key: string; isCurrent: boolean }>;
+        }>;
+      };
     };
 
-    expect(tree.key).toBe(root.key);
-    expect(tree.isCurrent).toBe(false);
-    expect(tree.children).toHaveLength(1);
-    const midNode = tree.children[0];
+    expect(treeBody.truncated).toBe(false);
+    expect(treeBody.root.key).toBe(root.key);
+    expect(treeBody.root.isCurrent).toBe(false);
+    expect(treeBody.root.children).toHaveLength(1);
+    const midNode = treeBody.root.children[0];
     expect(midNode?.key).toBe(mid.key);
     expect(midNode?.isCurrent).toBe(false);
     expect(midNode?.children).toHaveLength(2);
@@ -520,5 +529,61 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.key, child.key));
     expect(row?.parentId).toBeNull();
+  });
+
+  it("GET tree: caps total response size and reports truncated:true for a wide subtree past MAX_TREE_NODES (spec edge case: '200 children on one parent -- the list paginates')", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const [state] = await db
+      .select()
+      .from(schema.stateTable)
+      .where(eq(schema.stateTable.projectId, project.id));
+    if (!state) throw new Error("fixture setup failed: no default state");
+
+    const parent = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Wide parent",
+      })
+    ).json()) as CreatedWorkItem;
+    const [parentRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, parent.key));
+    if (!parentRow) throw new Error("fixture setup failed: parent row missing");
+
+    // Inserted directly (not through the create-route + set-parent-route round trip,
+    // which would make this test far slower for no extra coverage) -- one more child than
+    // the cap, so the cap is the thing that trips, not a coincidental exact match.
+    const now = new Date();
+    const childCount = MAX_TREE_NODES; // + the parent itself (already counted) == cap + 1 available
+    const values = Array.from({ length: childCount }, (_, i) => ({
+      projectId: project.id,
+      workspaceId: project.workspaceId,
+      typeId: type.id,
+      number: i + 1000,
+      key: `${project.slug}-wide-${i}`,
+      title: `Wide child ${i}`,
+      stateId: state.id,
+      parentId: parentRow.id,
+      position: String(i),
+      createdAt: now,
+      updatedAt: now,
+    }));
+    await db.insert(schema.workItemTable).values(values);
+
+    const response = await treeRequest(app, parent.key);
+    expect(response.status).toBe(200);
+    const treeBody = (await response.json()) as {
+      truncated: boolean;
+      root: { key: string; children: unknown[] };
+    };
+
+    expect(treeBody.truncated).toBe(true);
+    // The root itself counts against the cap, so only `MAX_TREE_NODES - 1` of the
+    // `MAX_TREE_NODES` children fit.
+    expect(treeBody.root.children).toHaveLength(MAX_TREE_NODES - 1);
   });
 });

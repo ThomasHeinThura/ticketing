@@ -18,6 +18,20 @@ export type WorkItemTreeNode = {
   children: WorkItemTreeNode[];
 };
 
+export type WorkItemTreeResult = {
+  root: WorkItemTreeNode;
+  /**
+   * Ordinary-review finding on this PR: `relations-and-hierarchy.md`'s edge-cases table
+   * says "200 children on one parent -- The list paginates". `true` means
+   * `loadSubtreeRows` hit `MAX_TREE_NODES` (`../hierarchy.ts`) and this tree is a PREFIX,
+   * not the whole subtree -- some real descendants are missing from `root`. Real,
+   * per-node pagination is deferred (see this file's own doc comment); this flag is the
+   * interim signal a client needs to not render a partial tree as if it were complete.
+   * Follow-up: issue #434.
+   */
+  truncated: boolean;
+};
+
 /**
  * `GET /api/work-items/{key}/tree` (`work_item:read` -- `relations-and-hierarchy.md` §
  * Permissions). `require-work-item-reach.ts` has already resolved `key` to a row and
@@ -37,11 +51,24 @@ export type WorkItemTreeNode = {
  * workspace -- so the whole tree is inherently within the one project/workspace the
  * caller was already authorized against. This is what makes the route's reach check a
  * real, sufficient scoping mechanism for the entire response, not just its root node.
+ *
+ * RESPONSE SIZE (ordinary-review finding on this PR): the spec's own edge-cases table
+ * says "200 children on one parent -- The list paginates; roll-up is computed in SQL."
+ * `RH-7` bounds depth, not breadth, so a wide subtree could otherwise make this route
+ * return an unbounded payload. `loadSubtreeRows` (`../hierarchy.ts`) now caps the total
+ * row count (`MAX_TREE_NODES`, see its own comment for the exact number and why) and
+ * reports `truncated: true` when it had to cut the walk short. DEFERRED, not implemented
+ * here: real per-node pagination (independently paginating each parent's own children,
+ * the way the spec's edge case literally describes) doesn't translate cleanly onto a
+ * nested tree the way cursor pagination does onto `list-work-items.ts`'s flat list --
+ * that is real, separate-scope work, filed as issue #434 rather than attempted in this
+ * PR. The hard cap plus `truncated` flag is the interim fix: never an unbounded response,
+ * and never a silently partial one either.
  */
 export async function getWorkItemTree(
   key: string,
   workspaceId: string,
-): Promise<WorkItemTreeNode> {
+): Promise<WorkItemTreeResult> {
   const [item] = await db
     .select({ id: workItemTable.id })
     .from(workItemTable)
@@ -58,9 +85,9 @@ export async function getWorkItemTree(
   }
 
   const rootId = await findTreeRoot(db, item.id);
-  const rows = await loadSubtreeRows(db, rootId);
+  const { rows, truncated } = await loadSubtreeRows(db, rootId);
 
-  return buildTree(rows, rootId, item.id);
+  return { root: buildTree(rows, rootId, item.id), truncated };
 }
 
 /**
