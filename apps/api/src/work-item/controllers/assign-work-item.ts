@@ -6,6 +6,7 @@ import db from "../../database";
 import {
   membershipTable,
   personTable,
+  projectTable,
   workItemTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
@@ -86,13 +87,33 @@ export async function assignWorkItem(
   actorPersonId: string | null,
   input: AssignWorkItemInput,
 ): Promise<AssignedWorkItem> {
-  const item = await db.query.workItemTable.findFirst({
-    where: and(
-      eq(workItemTable.key, key),
-      isNull(workItemTable.archivedAt),
-      isNull(workItemTable.deletedAt),
-    ),
-  });
+  // Opus security review of PR #433, F1: `requireWorkItemReach()` enforces the
+  // #202/#204 soft-deleted-project freeze for single-item routes via this same
+  // join, but the bulk route calls this controller directly with `middleware: []`
+  // and never goes through that middleware. Mirrored here (join, not the relational
+  // `findFirst`, since no relations are declared on these tables) so every caller
+  // -- including bulk -- is covered regardless of which middleware chain it went
+  // through.
+  const [item] = await db
+    .select({
+      id: workItemTable.id,
+      key: workItemTable.key,
+      workspaceId: workItemTable.workspaceId,
+      projectId: workItemTable.projectId,
+      assigneeId: workItemTable.assigneeId,
+      version: workItemTable.version,
+    })
+    .from(workItemTable)
+    .innerJoin(projectTable, eq(workItemTable.projectId, projectTable.id))
+    .where(
+      and(
+        eq(workItemTable.key, key),
+        isNull(workItemTable.archivedAt),
+        isNull(workItemTable.deletedAt),
+        isNull(projectTable.deletedAt),
+      ),
+    )
+    .limit(1);
 
   if (!item || item.workspaceId !== workspaceId) {
     throw new HTTPException(404, { message: "Work item not found" });
