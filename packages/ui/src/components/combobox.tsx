@@ -59,6 +59,8 @@ type ComboboxInputOwnProps =
       size?: "sm" | "default" | "lg" | number;
       /** Accessible name for the clear button. Required whenever the clear button renders. */
       clearLabel?: string;
+      /** Accessible name for the trigger button. Defaults to "Toggle options". */
+      triggerLabel?: string;
     }
   | {
       showTrigger?: boolean;
@@ -66,6 +68,7 @@ type ComboboxInputOwnProps =
       startAddon?: React.ReactNode;
       size?: "sm" | "default" | "lg" | number;
       clearLabel: string;
+      triggerLabel?: string;
     };
 
 type ComboboxInputProps = Omit<ComboboxPrimitive.Input.Props, "size"> &
@@ -80,6 +83,7 @@ function ComboboxInput({
   startAddon,
   size,
   clearLabel,
+  triggerLabel = "Toggle options",
   ...props
 }: ComboboxInputProps) {
   const sizeValue = (size ?? "default") as "sm" | "default" | "lg" | number;
@@ -116,6 +120,7 @@ function ComboboxInput({
       />
       {showTrigger && (
         <ComboboxTrigger
+          aria-label={triggerLabel}
           className={cn(
             "-translate-y-1/2 absolute top-1/2 inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-transparent opacity-80 outline-none transition-opacity pointer-coarse:after:absolute pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11 hover:opacity-100 has-[+[data-slot=combobox-clear]]:hidden sm:size-7 [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
             sizeValue === "sm" ? "end-0" : "end-0.5",

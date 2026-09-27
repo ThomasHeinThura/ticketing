@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -42,5 +43,22 @@ describe("ContextMenu", () => {
 
     fireEvent.click(item);
     expect(onCopy).toHaveBeenCalledTimes(1);
+  });
+
+  it("has no accessibility violations when open", async () => {
+    const { baseElement } = render(
+      <ContextMenu>
+        <ContextMenuTrigger>Right-click me</ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem>Copy</ContextMenuItem>
+          <ContextMenuItem>Paste</ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>,
+    );
+
+    fireEvent.contextMenu(screen.getByText("Right-click me"));
+    expect(screen.getByText("Copy")).toBeInTheDocument();
+
+    await expectNoA11yViolations(baseElement);
   });
 });

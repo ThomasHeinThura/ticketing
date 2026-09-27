@@ -1,5 +1,6 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import { CircularProgress } from "./circular-progress";
 
 afterEach(() => {
@@ -51,5 +52,12 @@ describe("CircularProgress", () => {
       0,
       5,
     );
+  });
+
+  it("has no accessibility violations", async () => {
+    const { baseElement } = render(
+      <CircularProgress completed={2} total={4} />,
+    );
+    await expectNoA11yViolations(baseElement);
   });
 });
