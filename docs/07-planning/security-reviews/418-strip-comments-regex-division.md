@@ -126,3 +126,13 @@ in `scripts/ci/lib/strip-code-comments.test.mjs` (an unwrapped `assert.equal(...
 confirmed real, not a flake, via a local `biome check` run with a raised diagnostic limit.
 Ran `biome format --write` on only this file, confirmed the diff is purely whitespace (no
 logic change), and confirmed the full suite still passes (39/39) after.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `5c70b64a362576d7b180e4436b492659bd8aac19`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
+reviewed head (`94bebd878d30619b9fe5122c0bbff7513a3cf172`) and this one — the intervening
+commit is #426's already-reviewed merge (docs-only, no overlap).
