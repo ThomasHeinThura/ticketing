@@ -143,8 +143,8 @@ Every stable promotion, in addition to the stage gate in [sdlc.md](../04-enginee
    ([ci-cd.md § Release notes](../04-engineering/ci-cd.md#release-notes)).
 2. [Screen inventory](../02-design/screen-inventory.md) and
    [feature index](../03-features/README.md) status columns updated in the same change.
-3. Trivy scan clean at high/critical; `pnpm audit` clean; SBOM attached to the GitHub
-   release.
+3. Trivy scan clean at high/critical **with a fix available** (`ignore-unfixed: true`,
+   decision log 2026-09-27); `pnpm audit` clean; SBOM attached to the GitHub release.
 4. **Image and release archive signed and attested** — cosign signatures and a
    build-provenance attestation published alongside them ([ci-cd.md](../04-engineering/ci-cd.md)
    step 8), so a customer, the installer, or a marketplace scanner can verify what they
