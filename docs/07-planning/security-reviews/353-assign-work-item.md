@@ -647,3 +647,15 @@ Then merged `origin/main` (`52c5aef`, six commits: #381, #382, #385, #386, #387,
 
 - `git show --remerge-diff 7978700` is empty — clean automatic merge.
 - Brings in PR #383's already-reviewed changes (asset/websocket/invitation authorization, Opus CLEAR WITH FINDINGS) plus #391's decision-log entry. Zero overlap with this PR's own files (`assign-work-item.ts`, `work-item-assign.test.ts`).
+
+---
+
+## Lightweight re-confirmation after branch update, round 2 (2026-09-27)
+
+**Reviewed head:** `afffdd0a22f3d69c4cc6b596e67822903cb9b3e8`
+**Previously reviewed head:** `7978700a0d3ca801e32b62a2fa7c12cf8b20fc2e`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged.
+
+- `git show --remerge-diff afffdd0` is empty — clean automatic merge.
+- Brings in PR #389's already-reviewed changes (stories/axe-test files under `packages/ui/**`, unrelated to this PR's own `apps/api` files). Zero overlap.
