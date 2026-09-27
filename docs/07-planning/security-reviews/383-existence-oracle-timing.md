@@ -139,3 +139,15 @@ Each mutation was reverted afterwards, and `git diff --quiet HEAD` passed.
 
 - `git show --remerge-diff e486c84` is empty — a clean automatic merge, no conflict-resolution content.
 - `git diff 6242c3b..e486c84 --stat` touches exactly two files: `docs/05-operations/runbook.md` (#380) and `docs/07-planning/status.md` (#384), both docs-only and outside security-review scope. No file in `apps/api/src/utils/**`, `apps/api/src/asset/**`, or any other security-scope path changed.
+
+---
+
+## Lightweight re-confirmation after second branch update (2026-09-27)
+
+**Reviewed head:** `ffb9d9d96ac3d435080d107fc35cad66b90627ac`
+**Previously reviewed head:** `e486c84ea3b33029e7d3a1d6d8427a8a01b406d9`
+**Reviewer:** orchestrating session (mechanical verification, per `AGENTS.md`'s review-tier table)
+**Verdict:** CLEAR WITH FINDINGS, unchanged. F1-F6 above still stand, non-blocking.
+
+- `git show --remerge-diff ffb9d9d` is empty — clean automatic merge, no conflict-resolution content.
+- This merge is larger than the prior two: it brings in PR #375's real changes (`apps/api/drizzle/0070_audit_log_project_id.sql`, `apps/api/src/database/schema.ts`, `apps/api/src/audit/audit-writer.ts`, `apps/api/src/audit/controllers/list-workspace-audit.ts`), which is genuinely security-review scope. But #375 itself already carries its own complete, independent Opus CLEAR verdict (`docs/07-planning/security-reviews/375-audit-log-project-id-reach-filter.md`), and none of those files overlap with anything #383 touches (`apps/api/src/utils/authorize-asset-access.ts`, `apps/api/src/utils/require-invitation-workspace-access.ts`, `apps/api/src/asset/policy.ts`, `apps/api/src/index.ts`'s asset/ws/invitation routes). Confirmed via `git diff e486c84..ffb9d9d --stat`: zero files in common with #383's own diff against `main`.
