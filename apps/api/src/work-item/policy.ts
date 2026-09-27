@@ -119,4 +119,26 @@ export const workItemPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  // Assign or reassign a work item (`assignment.md` § API; `AS-1`/`AS-2`). PRIMARY is
+  // `work_item:assign`; the spec's own alternate branch is `orSelfTarget` on the PARSED
+  // body -- a caller holding only `work_item:update` may assign the item TO THEMSELVES
+  // (`body.assigneeId === identity.personId`, the one predicate `BODY_PREDICATES`
+  // declares). This is the route `task/policy.ts`'s own comment named as the honest home
+  // for that shape: the runtime enforces BOTH paths through ONE shared predicate
+  // (`assertCallerHasCapabilityOrSelf`, called from the handler because the body does not
+  // exist when middleware runs), so this declaration describes what actually gates the
+  // request -- unlike `PUT /api/task/{id}`, where declaring `orSelfTarget` would have
+  // been dishonest. Reach: `requireWorkItemReach()` resolves the row by key before the
+  // handler runs, and the controller re-scopes its own conditional write by the same
+  // key+workspaceId pair.
+  "POST /api/work-items/{key}/assign": {
+    capability: "work_item:assign",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+    orSelfTarget: {
+      predicate: "body.assigneeId === identity.personId",
+      capability: "work_item:update",
+    },
+  },
 } as const satisfies PolicyMap;

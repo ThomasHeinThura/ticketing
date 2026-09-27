@@ -104,6 +104,29 @@ preference: [proxy-topology-evidence.md](proxy-topology-evidence.md).
 Applied by a file-provider middleware so they are declared once and cannot drift between
 routers.
 
+**On a standalone host** (`deploy/compose.traefik.yml`, the Traefik this repo brings up
+itself for `scripts/deploy.sh local` and for a fresh production host with no proxy of its
+own), that file provider loads `deploy/traefik/dynamic/middlewares.yml` and used to watch it
+with `--providers.file.watch=true`. Verified live on a busy multi-tenant Docker host: file
+watching needs an inotify instance, inotify instances are capped **per host UID**
+(`fs.inotify.max_user_instances`, default 128) — not per container — so on a host already
+running enough other root-owned containers, Traefik's file provider fails outright
+(`error creating file watcher: too many open files`), every `@file` middleware
+(`security-headers@file`, `compress@file`, `rate-limit@file`, `files-headers@file`) goes
+missing, and **all three routers** (`ticket.`/`portal.`/`files.`) 404 with no error visible
+from `docker ps` or the application. The file is now loaded with
+`--providers.file.watch=false`, overriding Traefik's own default of `true`, which needs no
+inotify instance and cannot hit this failure mode. **Consequence:** `docker compose up -d`
+does not recreate a container just because a bind-mounted file's *content* changed with no
+service-definition change (image/command/env/volumes) — only a `scripts/deploy.sh` rerun
+forces that recreate. So after this fix, an edit to `middlewares.yml` alone needs an
+explicit Traefik restart/recreate (`docker compose up -d --force-recreate traefik` or a full
+`scripts/deploy.sh` rerun) to take effect; it will no longer pick it up live the way it did
+under `watch=true`. **On an existing shared
+Traefik** (`deploy/compose.uat.yml`, PR #377), the same class of `@file` failure has a
+different cause — that Traefik doesn't load this repo's `middlewares.yml` at all — so the
+fix there is `@docker` labels instead, not this flag.
+
 ```
 Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
 X-Content-Type-Options: nosniff

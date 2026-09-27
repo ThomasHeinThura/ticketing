@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import {
   NumberField,
   NumberFieldDecrement,
@@ -35,5 +36,19 @@ describe("NumberField", () => {
     fireEvent.click(screen.getByRole("button", { name: /decrease/i }));
     fireEvent.click(screen.getByRole("button", { name: /decrease/i }));
     expect(input).toHaveValue("4");
+  });
+
+  it("has no accessibility violations", async () => {
+    const { baseElement } = render(
+      <NumberField defaultValue={5}>
+        <NumberFieldGroup>
+          <NumberFieldDecrement />
+          <NumberFieldInput aria-label="Quantity" />
+          <NumberFieldIncrement />
+        </NumberFieldGroup>
+      </NumberField>,
+    );
+
+    await expectNoA11yViolations(baseElement);
   });
 });

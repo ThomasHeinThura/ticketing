@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import {
   PreviewCard,
   PreviewCardPopup,
@@ -35,5 +36,16 @@ describe("PreviewCard", () => {
     // the popup at `opacity: 0` until it can measure real geometry, which never
     // happens under jsdom. Presence in the document is what this test can assert.
     expect(screen.getByText("Preview details")).toBeInTheDocument();
+  });
+
+  it("has no accessibility violations when open", async () => {
+    const { baseElement } = render(
+      <PreviewCard open>
+        <PreviewCardTrigger>Hover me</PreviewCardTrigger>
+        <PreviewCardPopup>Preview details</PreviewCardPopup>
+      </PreviewCard>,
+    );
+
+    await expectNoA11yViolations(baseElement);
   });
 });
