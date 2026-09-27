@@ -198,3 +198,16 @@ already-reviewed content from #423, #417, #419 and #431 landing via routine bran
 updates — confirmed each is an ancestor of `origin/main`. No new, unreviewed logic reached
 this branch. (Verified from a worktree freshly reset via `git reset --hard
 origin/<branch>`, not merely fetched — see PR #430's own note for why this matters.)
+
+---
+
+## Re-confirmation after branch update (2026-09-27, second)
+
+**Reviewed head:** `9527af39fe438261b6ed641fade7f3992f68582f`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. `git diff 5c440f4554ed2e42d61d70d05bb61570c4bdbb7a..9527af39fe438261b6ed641fade7f3992f68582f`
+scoped to every file this PR touches (`apps/api/src/project/**` and its four test files)
+is empty. The intervening commits are already-merged, already-reviewed content from #430
+(unassign action) and its own chain — confirmed an ancestor of `origin/main`. This PR
+never touches `work-item/index.ts`/`policy.ts`, so it is unaffected by the same-file
+conflict #430 caused for #432/#433. No new, unreviewed logic reached this branch.
