@@ -20,6 +20,7 @@ import {
   projectSlugClaimTable,
   projectTable,
   roleTable,
+  savedViewTable,
   sessionTable,
   stakeholderTable,
   stateTable,
@@ -34,6 +35,7 @@ import {
   userNotificationPreferenceTable,
   userNotificationWorkspaceProjectTable,
   userNotificationWorkspaceRuleTable,
+  userPreferenceTable,
   userTable,
   verificationTable,
   watcherTable,
@@ -624,3 +626,28 @@ export const watcherTableRelations = relations(watcherTable, ({ one }) => ({
     references: [personTable.id],
   }),
 }));
+
+export const savedViewTableRelations = relations(savedViewTable, ({ one }) => ({
+  workspace: one(workspaceTable, {
+    fields: [savedViewTable.workspaceId],
+    references: [workspaceTable.id],
+  }),
+  createdByPerson: one(personTable, {
+    fields: [savedViewTable.createdBy],
+    references: [personTable.id],
+  }),
+  sharedWithTeam: one(teamTable, {
+    fields: [savedViewTable.sharedWithTeamId],
+    references: [teamTable.id],
+  }),
+}));
+
+export const userPreferenceTableRelations = relations(
+  userPreferenceTable,
+  ({ one }) => ({
+    person: one(personTable, {
+      fields: [userPreferenceTable.personId],
+      references: [personTable.id],
+    }),
+  }),
+);

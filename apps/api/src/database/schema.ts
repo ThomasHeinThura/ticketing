@@ -2608,6 +2608,143 @@ export const auditLogTable = pgTable(
   ],
 );
 
+// #24/#29 (views and layouts / search and saved views): a saved view IS a stored search
+// plus a presentation choice -- one table serves both specs (search-and-saved-views.md's
+// "Data" section, data-model.md's `saved_view` row). `workspace_id` is a denormalised
+// containment column (this codebase's established pattern -- see `labelTable`,
+// `activityTable` etc.) so `workspaceAccess.fromSavedView()` can resolve reach with a
+// single-column lookup, deliberately separate from `scope`/`scope_id`, which is the
+// QUERY's own target context (a workspace or a project) per search-and-saved-views.md's
+// SV-15: "This is a separate axis from `scope`/`scope_id`... and is unrelated to who can
+// see the view."
+//
+// `sharedWithTeamId`/team-lead editing (SV-17): `team_member` in this schema (below,
+// `teamMemberTable`) has no `is_lead` column yet -- data-model.md's own documented
+// `team_member` shape (`team_id`, `person_id`, `allocation_pct`, `is_lead`) is NOT what is
+// migrated today (`id`, `teamId`, `userId`, `createdAt` only). SV-17's "editable by...
+// team leads" therefore cannot be enforced yet; this PR's own body discloses that gap
+// rather than fake it. Team/workspace views are editable by their owner only, for now.
+//
+// `createdBy` references `person.id`, not `user.id` -- `packages/permissions`'s closed
+// `OWNER_PREDICATES` vocabulary only has `row.created_by === identity.personId`
+// (`policy.ts`), matching this table's own `orOwner(created_by, saved_view:create)` from
+// search-and-saved-views.md's API table. `person.user_id` has a global unique index, so
+// resolving the caller's own `person.id` from `c.get("userId")` is a single indexed lookup.
+export const savedViewTable = pgTable(
+  "saved_view",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    // The query's own target context -- "a workspace or a project"
+    // (search-and-saved-views.md SV-15). `scopeId` is `workspaceId` itself when
+    // `scope = 'workspace'`, or a project id (validated to belong to `workspaceId` at
+    // write time) when `scope = 'project'`.
+    scope: text("scope").notNull(),
+    scopeId: text("scope_id").notNull(),
+    visibility: text("visibility").notNull().default("private"),
+    sharedWithTeamId: text("shared_with_team_id").references(
+      () => teamTable.id,
+      { onDelete: "set null", onUpdate: "cascade" },
+    ),
+    // `{ entity, filter, sort, groupBy, columns, aggregate }` envelope (SV-14).
+    query: jsonb("query").notNull(),
+    layout: text("layout").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("saved_view_workspace_id_idx").on(table.workspaceId),
+    index("saved_view_created_by_idx").on(table.createdBy),
+    index("saved_view_shared_with_team_id_idx").on(table.sharedWithTeamId),
+    check(
+      "saved_view_scope_allowed",
+      sql`${table.scope} in ('workspace', 'project')`,
+    ),
+    check(
+      "saved_view_visibility_allowed",
+      sql`${table.visibility} in ('private', 'team', 'workspace')`,
+    ),
+    check(
+      "saved_view_layout_allowed",
+      sql`${table.layout} in ('board', 'list', 'table', 'calendar', 'timeline', 'chart')`,
+    ),
+    // A team-visibility view must name the team it's shared with, and only a
+    // team-visibility view may.
+    check(
+      "saved_view_team_visibility_consistency",
+      sql`(${table.visibility} = 'team') = (${table.sharedWithTeamId} is not null)`,
+    ),
+  ],
+);
+
+// data-model.md's `user_preference` row, keyed by `person_id` (this codebase's canonical
+// actor identity for organisation-scoped state -- `membership`, `team_member` in the
+// target schema -- as opposed to the legacy `user_id` still used by workspace-membership
+// tables mid-retrofit). "The per-user UI store: layout per project, density, chosen
+// columns, column widths, collapsed groups, pinned views, drafts." Only the pinned-views
+// use (SV-20, via `POST /api/views/{id}/pin`) is wired up in this PR; the table itself is
+// generic so a later lane can reuse it for layout/column/density persistence without a
+// second migration.
+export const userPreferenceTable = pgTable(
+  "user_preference",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    scope: text("scope").notNull(),
+    scopeId: text("scope_id"),
+    key: text("key").notNull(),
+    value: jsonb("value").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("user_preference_person_id_idx").on(table.personId),
+    check(
+      "user_preference_scope_allowed",
+      sql`${table.scope} in ('global', 'workspace', 'project')`,
+    ),
+    // `scope = 'global'` carries no `scope_id` (data-model.md: "`scope_id` null"); the
+    // other two scopes require one. Plain `UNIQUE (person_id, scope, scope_id, key)`
+    // would not actually enforce "at most one row per key" when `scope_id` is null --
+    // Postgres treats NULL as distinct from NULL in a unique constraint -- so the
+    // "at most one" rule is split across two partial unique indexes instead, one per
+    // nullability of `scope_id`.
+    uniqueIndex("user_preference_global_key_unique")
+      .on(table.personId, table.scope, table.key)
+      .where(sql`${table.scopeId} is null`),
+    uniqueIndex("user_preference_scoped_key_unique")
+      .on(table.personId, table.scope, table.scopeId, table.key)
+      .where(sql`${table.scopeId} is not null`),
+  ],
+);
+
 // Auth-schema compatible aliases in schema.ts
 export const user = userTable;
 export const session = sessionTable;

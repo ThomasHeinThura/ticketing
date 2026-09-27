@@ -51,6 +51,7 @@ import { taskPolicies } from "./task/policy";
 import { taskRelationPolicies } from "./task-relation/policy";
 import { timeEntryPolicies } from "./time-entry/policy";
 import { userPolicies } from "./user/policy";
+import { viewPolicies } from "./view/policy";
 import { workItemPolicies } from "./work-item/policy";
 import { workflowRulePolicies } from "./workflow-rule/policy";
 import { workspacePolicies } from "./workspace/policy";
@@ -259,6 +260,7 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/audit/policy.ts", policies: auditPolicies },
   { name: "apps/api/src/label/policy.ts", policies: labelPolicies },
   { name: "apps/api/src/asset/policy.ts", policies: assetPolicies },
+  { name: "apps/api/src/view/policy.ts", policies: viewPolicies },
 ];
 
 /**
