@@ -34,13 +34,17 @@ services:
       - --providers.docker.exposedbydefault=false
       - --providers.docker.network=taskdesk
       - --providers.file.directory=/etc/traefik/dynamic
-      # false (the default) deliberately: `--providers.file.watch=true` needs an
-      # inotify instance, and inotify instances are capped PER HOST UID, not per
-      # container. On a host already running enough other root-owned containers,
-      # `true` made this provider fail outright ("too many open files"), taking
-      # every @file middleware — and every router that references one — down
-      # with it. middlewares.yml only changes when scripts/deploy.sh reruns,
-      # which recreates this container anyway, so watching it buys nothing.
+      # false, overriding Traefik's own default of true, deliberately:
+      # `--providers.file.watch=true` needs an inotify instance, and inotify
+      # instances are capped PER HOST UID, not per container. On a host
+      # already running enough other root-owned containers, `true` made this
+      # provider fail outright ("too many open files"), taking every @file
+      # middleware — and every router that references one — down with it.
+      # Consequence: `docker compose up -d` does not recreate a container
+      # just because a bind-mounted file's content changed with no
+      # service-definition change, so a `middlewares.yml`-only edit now
+      # needs an explicit Traefik restart/recreate (or a scripts/deploy.sh
+      # rerun) to take effect — it no longer picks it up live.
       # Verified live; see traefik-and-domains.md § Security headers.
       - --providers.file.watch=false
       - --entrypoints.web.address=:80

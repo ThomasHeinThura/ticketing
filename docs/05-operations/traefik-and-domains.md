@@ -114,10 +114,15 @@ running enough other root-owned containers, Traefik's file provider fails outrig
 (`error creating file watcher: too many open files`), every `@file` middleware
 (`security-headers@file`, `compress@file`, `rate-limit@file`, `files-headers@file`) goes
 missing, and **all three routers** (`ticket.`/`portal.`/`files.`) 404 with no error visible
-from `docker ps` or the application. `middlewares.yml` only ever changes when
-`scripts/deploy.sh` runs, which recreates this Traefik container anyway, so live-reload of
-it buys nothing; the file is now loaded with `--providers.file.watch=false` (the default),
-which needs no inotify instance and cannot hit this failure mode. **On an existing shared
+from `docker ps` or the application. The file is now loaded with
+`--providers.file.watch=false`, overriding Traefik's own default of `true`, which needs no
+inotify instance and cannot hit this failure mode. **Consequence:** `docker compose up -d`
+does not recreate a container just because a bind-mounted file's *content* changed with no
+service-definition change (image/command/env/volumes) — only a `scripts/deploy.sh` rerun
+forces that recreate. So after this fix, an edit to `middlewares.yml` alone needs an
+explicit Traefik restart/recreate (`docker compose up -d --force-recreate traefik` or a full
+`scripts/deploy.sh` rerun) to take effect; it will no longer pick it up live the way it did
+under `watch=true`. **On an existing shared
 Traefik** (`deploy/compose.uat.yml`, PR #377), the same class of `@file` failure has a
 different cause — that Traefik doesn't load this repo's `middlewares.yml` at all — so the
 fix there is `@docker` labels instead, not this flag.
