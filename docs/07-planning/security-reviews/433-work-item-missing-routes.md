@@ -130,3 +130,17 @@ integration 98/98 files, 1302/1302 tests (1300 + 2 new); permissions 12/12 files
 tests; API unit 60/60 files, 494/494 tests.
 
 No new blocking finding. Clear to merge once ordinary CI is green.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `4061a8697b4aee93c64aed77851c674a0a8e7227`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. `git diff 8a2b2b880de0812a93a0aee45f43e0d21456fea3..4061a8697b4aee93c64aed77851c674a0a8e7227`
+scoped to every file this PR touches is empty. The intervening commits are already-merged,
+already-reviewed content from #416, #418, #423, #417, #419, #429 and #431 landing via
+routine branch updates — confirmed each is an ancestor of `origin/main`. No new,
+unreviewed logic reached this branch. (Verified from a worktree freshly reset via
+`git reset --hard origin/<branch>`, not merely fetched — see PR #430's own note for why
+this matters.)
