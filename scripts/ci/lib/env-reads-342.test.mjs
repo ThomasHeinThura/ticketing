@@ -47,6 +47,124 @@ for (const [label, source] of cases) {
   });
 }
 
+// D3: shapes Thomas found still evaded #352's detector on `main`
+// (docs/07-planning/security-reviews/352-env-read-detector.md, "Delta Opus 5.5 review at
+// `fa1d325`", finding G1) and asked to keep #342 open for. Confirmed absent from
+// `apps/` and `packages/` today (grepped for every one of these shapes before writing
+// this file), so none of them changes `check:env`'s exact-count ratchet on the real tree.
+const d3Cases = [
+  [
+    "TS non-null cast (process as any).env",
+    "const v = (process as any).env.STRIPE_SECRET_KEY;",
+  ],
+  [
+    "TS satisfies cast (process satisfies T).env",
+    "const v = (process satisfies Record<string, unknown>).env.STRIPE_SECRET_KEY;",
+  ],
+  [
+    "old-style cast (<any>process).env",
+    "const v = (<any>process).env.STRIPE_SECRET_KEY;",
+  ],
+  [
+    "optional-chained globalThis?.process.env",
+    "const v = globalThis?.process.env.STRIPE_SECRET_KEY;",
+  ],
+  [
+    "optional-chained global?.process.env",
+    "const v = global?.process.env.STRIPE_SECRET_KEY;",
+  ],
+  ["window.process.env", "const v = window.process.env.STRIPE_SECRET_KEY;"],
+  [
+    "parenthesized process alias",
+    "const p = (process); console.log(p.env.STRIPE_SECRET_KEY);",
+  ],
+  [
+    "globalThis alias, then .process",
+    "const g = globalThis; console.log(g.process.env.STRIPE_SECRET_KEY);",
+  ],
+  [
+    "global alias, then .process",
+    "const g = global; console.log(g.process.env.STRIPE_SECRET_KEY);",
+  ],
+  [
+    "globalThis['process'] stored in a variable",
+    "const p = globalThis['process']; console.log(p.env.STRIPE_SECRET_KEY);",
+  ],
+  [
+    "require('process') stored in a variable",
+    "const p = require('process'); console.log(p.env.STRIPE_SECRET_KEY);",
+  ],
+  [
+    "require('node:process') stored in a variable",
+    "const p = require('node:process'); console.log(p.env.STRIPE_SECRET_KEY);",
+  ],
+  [
+    "unicode-escaped process identifier",
+    "const v = pro\\u0063ess.env.STRIPE_SECRET_KEY;",
+  ],
+  [
+    "optional computed process?.['env']",
+    "const v = process?.['env'].STRIPE_SECRET_KEY;",
+  ],
+  [
+    "dynamic import('node:process').then(...)",
+    'import("node:process").then((m) => console.log(m.env.STRIPE_SECRET_KEY));',
+  ],
+  [
+    "dynamic import('process').then(...)",
+    'import("process").then((m) => console.log(m.env.STRIPE_SECRET_KEY));',
+  ],
+  [
+    "import.meta stored in a variable",
+    "const m = import.meta; console.log(m.env.STRIPE_SECRET_KEY);",
+  ],
+  [
+    "import.meta destructured",
+    "const { env } = import.meta; console.log(env.STRIPE_SECRET_KEY);",
+  ],
+  [
+    "with (process) statement",
+    "with (process) { console.log(env.STRIPE_SECRET_KEY); }",
+  ],
+  ["process passed as a bare call argument", "logEnvironment(process);"],
+  [
+    "process passed as a later call argument",
+    "logEnvironment(logger, process);",
+  ],
+];
+
+for (const [label, source] of d3Cases) {
+  test(`environment detector records D3 shape: ${label}`, () => {
+    const reads = findEnvReads(source);
+    assert.ok(reads.length > 0, `expected ${label} to be detected`);
+  });
+}
+
+test("environment detector does not flag a globalThis/import.meta alias used for something else", () => {
+  assert.deepEqual(findEnvReads("const g = globalThis; g.fetch();"), []);
+  assert.deepEqual(
+    findEnvReads("const m = import.meta; console.log(m.url);"),
+    [],
+  );
+  assert.deepEqual(
+    findEnvReads("const { url } = import.meta; console.log(url);"),
+    [],
+  );
+});
+
+test("environment detector still ignores safe, non-env process members", () => {
+  assert.deepEqual(findEnvReads("process.exit(1);"), []);
+  assert.deepEqual(findEnvReads("const a = process.argv;"), []);
+  assert.deepEqual(findEnvReads("const c = process.cwd();"), []);
+});
+
+test('environment detector does not double-flag Reflect.get(process, "env") because process is its first argument', () => {
+  const reads = findEnvReads(
+    'const env = Reflect.get(process, "env"); console.log(env.TASKDESK_PORT);',
+  );
+  assert.equal(reads.length, 1);
+});
+
 test("environment detector still attributes direct, computed, destructured, and Vite reads", () => {
   const reads = findEnvReads(
     [
