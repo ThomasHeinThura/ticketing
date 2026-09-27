@@ -63,3 +63,15 @@ Both PRs are behind `main` by 5 commits. None of those commits touches `packages
 
 - **#389: CLEAR** at `f6686cac5379fe44aad8536ad6d8c5a39410f61a`
 - **#390: CLEAR** at `c375136c88306b2afff6dc7792758cdc038ee699`
+
+---
+
+## Lightweight re-confirmation after branch update, #389 only (2026-09-27)
+
+**Reviewed head:** `70ae2ff40af19c7f50e47999fb5cb8f68e695aa4`
+**Previously reviewed head:** `f6686cac5379fe44aad8536ad6d8c5a39410f61a`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged.
+
+- `git show --remerge-diff 70ae2ff` is empty — clean automatic merge.
+- Brings in 9 merged PRs' worth of unrelated `main` history (#383, #388, and their own docs/decision-log entries), zero overlap with `packages/ui/**` or the dependency-graph files this review covers.
