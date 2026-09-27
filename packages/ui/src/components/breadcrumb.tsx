@@ -5,17 +5,13 @@ import { useRender } from "@base-ui/react/use-render";
 import { ChevronRight, MoreHorizontal } from "lucide-react";
 import type * as React from "react";
 
-import { cn } from "@/lib/cn";
-import { i18n } from "@/lib/i18n";
+import { cn } from "../lib/cn";
 
-function Breadcrumb({ ...props }: React.ComponentProps<"nav">) {
-  return (
-    <nav
-      aria-label={i18n.t("common:breadcrumb.label")}
-      data-slot="breadcrumb"
-      {...props}
-    />
-  );
+function Breadcrumb({
+  label,
+  ...props
+}: React.ComponentProps<"nav"> & { label: string }) {
+  return <nav aria-label={label} data-slot="breadcrumb" {...props} />;
 }
 
 function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {
@@ -92,8 +88,9 @@ function BreadcrumbSeparator({
 
 function BreadcrumbEllipsis({
   className,
+  moreLabel,
   ...props
-}: React.ComponentProps<"span">) {
+}: React.ComponentProps<"span"> & { moreLabel: string }) {
   return (
     <span
       aria-hidden="true"
@@ -103,7 +100,7 @@ function BreadcrumbEllipsis({
       {...props}
     >
       <MoreHorizontal className="size-4" />
-      <span className="sr-only">{i18n.t("common:breadcrumb.more")}</span>
+      <span className="sr-only">{moreLabel}</span>
     </span>
   );
 }

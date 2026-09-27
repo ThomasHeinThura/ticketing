@@ -55,6 +55,49 @@
 // `true`) and `ComboboxChip` takes `removeLabel` (always required — a chip always renders
 // its own remove control). `input-otp` remains blocked on the npm dependency (separate
 // issue).
+//
+// Batch 6 (issue #9): the last nine movable primitives — breadcrumb, calendar, form,
+// input-otp, pagination, shortcut-number, sidebar, timeline, toast — plus the shared
+// `Slot` helper (`apps/web/src/lib/slot.tsx` -> `./lib/slot.tsx`) and the mobile-breakpoint
+// hook (`apps/web/src/hooks/use-mobile.ts` -> `./lib/use-mobile.ts`, re-exported as
+// `useIsMobile`). `apps/web/src/components/ui` is not empty after this batch — five
+// primitives stay, for reasons read from their own source, not assumed from the batch-3/4
+// notes above:
+//
+// - `avatar.tsx` — the batch-2 blocker (`AvatarImage` -> `resolveAvatarSrc`, an app
+//   build-env URL resolver) is unchanged: still 23 call sites passing a bare `/api/...`
+//   path, still out of scope for a relocation batch to repoint.
+// - `loading-skeleton.tsx` — the batch-3 finding is unchanged: a hardcoded mock of this
+//   app's own sidebar/nav shell (literal `workspace`/`issues`/`projects`/`views`/`settings`
+//   labels), not a generic primitive. It also has zero real importers today.
+// - `error-display.tsx`, `error-fallback.tsx`, `error-test.tsx` — new to this batch's
+//   judgment call, not previously assessed. `error-display.tsx` calls this app's own
+//   `../../lib/error-handler` (`parseApiError`, CORS/network troubleshooting copy) and
+//   hardcodes `https://taskdesk.app/docs` — app-specific error-reporting glue, not a
+//   design-system primitive. `error-fallback.tsx` and `error-test.tsx` both exist only to
+//   wrap `error-display.tsx`, so the same reasoning covers them; `error-test.tsx` is also a
+//   manual test harness (a hardcoded fake API host), not a shipped UI surface.
+//
+// `breadcrumb` and `pagination` unblock the same way batch 5 did for `dialog`/`sheet`/
+// `combobox`: `i18n.t()`/`useTranslation()` reads become caller-supplied label props
+// (`Breadcrumb`'s `label`, `BreadcrumbEllipsis`'s `moreLabel`; `Pagination`'s `label`,
+// `PaginationPrevious`/`PaginationNext`'s `ariaLabel` + `label`, `PaginationEllipsis`'s
+// `moreLabel`). `pagination.tsx` has zero real importers today, so no caller needed
+// updating for it. `sidebar.tsx` had the same `react-i18next` reads (`Sidebar`'s
+// `mobileTitle`/`mobileDescription`/`closeLabel`, `SidebarTrigger`/`SidebarRail`'s
+// `toggleLabel`) plus its own `useIsMobile` import, which moves with it. `calendar.tsx`
+// read `@/store/user-preferences`'s `weekStartsOn` (a whole app-wide persisted Zustand
+// store) as an internal fallback default; the fallback is dropped and `weekStartsOn`
+// becomes purely a caller-supplied optional prop (react-day-picker's own default matches
+// the store's initial value, so an unconfigured caller sees no change), and every
+// real call site now passes its own `useUserPreferencesStore` read explicitly. `input-otp`
+// and `react-day-picker` (calendar's own picker library) and `react-hook-form` (form's)
+// are added to `packages/ui/package.json` at the same versions `apps/web` already pins —
+// the batch-3/4 notes' objection was only ever "this needs a package.json change", which
+// this batch makes. `form.tsx` and `timeline.tsx` both move onto the local `Slot` batch 3
+// already anticipated (`apps/web/src/lib/slot.tsx`, itself written for exactly this
+// purpose — see its own header comment) rather than Radix's, so `check:ui`'s
+// `KNOWN-RADIX.md` table stays at zero rows.
 
 export {
   Accordion,
@@ -104,7 +147,17 @@ export {
   useAutocompleteFilter,
 } from "./components/autocomplete";
 export { Badge, badgeVariants } from "./components/badge";
+export {
+  Breadcrumb,
+  BreadcrumbEllipsis,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "./components/breadcrumb";
 export { Button, type ButtonProps, buttonVariants } from "./components/button";
+export { Calendar } from "./components/calendar";
 export {
   Card,
   CardAction,
@@ -226,6 +279,16 @@ export {
 } from "./components/field";
 export { Fieldset, FieldsetLegend } from "./components/fieldset";
 export {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  useFormField,
+} from "./components/form";
+export {
   Frame,
   FrameDescription,
   FrameFooter,
@@ -250,6 +313,12 @@ export {
   InputGroupText,
   InputGroupTextarea,
 } from "./components/input-group";
+export {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "./components/input-otp";
 export { Kbd, KbdGroup, KbdSequence } from "./components/kbd";
 export { Label } from "./components/label";
 export {
@@ -320,6 +389,15 @@ export {
   NumberFieldScrubArea,
 } from "./components/number-field";
 export {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "./components/pagination";
+export {
   Popover,
   PopoverClose,
   PopoverCreateHandle,
@@ -379,6 +457,33 @@ export {
   SheetTitle,
   SheetTrigger,
 } from "./components/sheet";
+export { ShortcutNumber } from "./components/shortcut-number";
+export {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupAction,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInput,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+  useSidebar,
+} from "./components/sidebar";
 export { Skeleton } from "./components/skeleton";
 export { Slider, SliderValue } from "./components/slider";
 export { Spinner } from "./components/spinner";
@@ -402,6 +507,23 @@ export {
   TabsTrigger,
 } from "./components/tabs";
 export { Textarea, type TextareaProps } from "./components/textarea";
+export {
+  Timeline,
+  TimelineContent,
+  TimelineDate,
+  TimelineHeader,
+  TimelineIndicator,
+  TimelineItem,
+  TimelineSeparator,
+  TimelineTitle,
+} from "./components/timeline";
+export {
+  AnchoredToastProvider,
+  anchoredToastManager,
+  type ToastPosition,
+  ToastProvider,
+  toastManager,
+} from "./components/toast";
 export { Toggle, toggleVariants } from "./components/toggle";
 export {
   ToggleGroup,
@@ -425,3 +547,4 @@ export {
   TooltipTrigger,
 } from "./components/tooltip";
 export { cn } from "./lib/cn";
+export { useIsMobile } from "./lib/use-mobile";

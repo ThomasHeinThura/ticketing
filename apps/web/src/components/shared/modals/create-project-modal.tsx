@@ -1,6 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbSeparator,
   Button,
   Dialog,
   DialogContent,
@@ -15,12 +19,6 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import icons from "@/constants/project-icons";
 import useCreateProject from "@/hooks/mutations/project/use-create-project";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -104,7 +102,7 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
           <DialogTitle className="sr-only">
             {t("common:modals.createProject.title")}
           </DialogTitle>
-          <Breadcrumb>
+          <Breadcrumb label={t("common:breadcrumb.label")}>
             <BreadcrumbList className="gap-1 text-xs">
               <BreadcrumbItem className="text-muted-foreground font-medium tracking-wide">
                 {workspace?.name?.toUpperCase() ||

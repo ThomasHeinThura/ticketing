@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { ToastProvider } from "@taskdesk/ui";
 import { ErrorDisplay } from "@/components/ui/error-display";
-import { ToastProvider } from "@/components/ui/toast";
 import type { User } from "@/types/user";
 
 export const Route = createRootRouteWithContext<{

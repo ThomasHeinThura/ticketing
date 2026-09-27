@@ -1,4 +1,4 @@
-import { toastManager } from "@/components/ui/toast";
+import { toastManager } from "@taskdesk/ui";
 
 type ToastVariant = "success" | "error" | "info" | "warning";
 

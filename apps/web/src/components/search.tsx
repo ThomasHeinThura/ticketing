@@ -1,10 +1,10 @@
 "use client";
 
+import { SidebarGroup } from "@taskdesk/ui";
 import { SearchIcon } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import SearchCommandMenu from "@/components/search-command-menu";
-import { SidebarGroup } from "@/components/ui/sidebar";
 import { shortcuts } from "@/constants/shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 

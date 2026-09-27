@@ -1,7 +1,7 @@
 import { OTPInput, OTPInputContext } from "input-otp";
 import * as React from "react";
 
-import { cn } from "@/lib/cn";
+import { cn } from "../lib/cn";
 
 const InputOTP = React.forwardRef<
   React.ElementRef<typeof OTPInput>,
@@ -32,7 +32,15 @@ const InputOTPSlot = React.forwardRef<
   React.ComponentPropsWithoutRef<"div"> & { index: number }
 >(({ index, className, ...props }, ref) => {
   const inputOTPContext = React.useContext(OTPInputContext);
-  const { char, hasFakeCaret, isActive } = inputOTPContext.slots[index];
+  // `noUncheckedIndexedAccess` types this as possibly `undefined`; `index` always names a
+  // real slot at runtime (every `InputOTPSlot` is rendered with an index below `maxLength`,
+  // matching `inputOTPContext.slots`'s own length), so an out-of-range read here would be a
+  // caller bug worth a loud crash, not a silent empty render.
+  const slot = inputOTPContext.slots[index];
+  if (!slot) {
+    throw new Error(`InputOTPSlot: no slot at index ${index}`);
+  }
+  const { char, hasFakeCaret, isActive } = slot;
 
   return (
     <div
