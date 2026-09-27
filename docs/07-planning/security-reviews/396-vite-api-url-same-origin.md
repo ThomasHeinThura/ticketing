@@ -67,3 +67,23 @@ This is a compatibility point, not a security one.
 ## Delta rule
 
 Any later commit on this branch that touches non-note paths needs a delta confirmation and a new `**Reviewed head:**` line. That includes a `main` merge, a rebase or a conflict resolution. The attestation above covers `a8b24c6e025f5e2dba747492d2dbfa4231cdc262` only.
+
+## Delta review — 2026-09-27, head `076758a`
+
+**Reviewer:** Claude Opus 5.5 (`claude-opus-5-5[1m]`; independent context; did not author, direct or remediate this change)
+
+**Reviewed head:** `076758ac28d3986b27fda40ec2cf967bfc8d611c`
+
+**Verdict:** CLEAR. F2 is resolved. F1 and F3 stand as written above (informational, not blocking).
+
+**Delta covered:** `a8b24c6..076758a`, which is three commits.
+
+- **`57bb4d2`, the F2 fix (source change).** The first pass did not cover this commit, so it was reviewed here in full. It changes `get-api-url.ts` (new `toWebSocketBase()`), `use-project-websocket.ts` and `use-user-websocket.ts`, plus tests.
+  - Absolute base: `^https?://` is rewritten `http`→`ws`, so `https:` becomes `wss:` and `http:` becomes `ws:`. The result matches the old behaviour.
+  - Relative base: when `VITE_API_URL=""`, `getApiUrl("ws")` always returns `/api/ws`, which starts with exactly one `/`. So the result is `<ws|wss>://${window.location.host}/api/ws…`. The host is the page's own. The scheme is `wss:` whenever the page is `https:`, so the credentialed socket stays same-origin and uses TLS. A protocol-relative (`//host`) value cannot be produced from runtime input.
+  - Both `new WebSocket` call sites go through the helper: `getWsUrl` and `getUserWsUrl`. No other WebSocket construction exists in `apps/web/src`.
+  - The only input is `VITE_API_URL`, which is set at build time. A scheme-less host, or an uppercase `HTTPS://`, would give a broken URL. That fails closed and is a builder misconfiguration, not a visitor-controlled path.
+- **`3614735`, a `main` merge.** Parent 2 is an ancestor of `origin/main`. `git diff origin/main...076758a` shows only this PR's 11 files, the same set as before the merge. The `apps/api` work-item files that came in with the merge are `main`'s own and are not part of this PR.
+- **`076758a`, the head.** `git show --stat` shows one file only, `apps/web/src/fetchers/get-api-url.test.ts` (+10/−1): an import, `vi.unstubAllGlobals()` in `afterEach`, and one new case. The case stubs `window.location` as `https:` / `tickets.example` and expects `toWebSocketBase("/api/ws")` to be `wss://tickets.example/api/ws`. That matches the implementation, which reads only `window.location.protocol` and `window.location.host`. No source file is touched.
+
+**Tests at this head:** `apps/web` `get-api-url.test.ts` ran 1 file and 3 tests. All pass.
