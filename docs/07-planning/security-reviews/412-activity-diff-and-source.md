@@ -35,3 +35,15 @@ risking a duplicate on retry. Moved before the transaction starts.
 A fresh, independent delta-review of this fix is being commissioned separately (per this
 project's rule that a functional code change cannot be self-certified by the session that
 made it) — see the PR's own comments for the actual verdict once recorded.
+
+---
+
+## Independent delta-review of the F1 fix (2026-09-27)
+
+**Reviewed head:** `91159cd991f3044936c8232789832a8bc4e66fd4`
+**Reviewer:** Opus 5.5, fresh independent context (subagent `ab24662fdee77001f`)
+**Verdict: CLEAR.** Confirmed `eventSourceFor(actorType)` is now the first statement after
+input destructuring, before every database read/write including the transaction. Confirmed
+`actorType` is never reassigned and this route is `createWorkItem`'s only caller. Ran the
+full integration suite in a fresh worktree with a dedicated database (`pr412_delta_test` on
+`td-lane-pg`): 13 files, 520 tests, all passed. Typecheck clean.
