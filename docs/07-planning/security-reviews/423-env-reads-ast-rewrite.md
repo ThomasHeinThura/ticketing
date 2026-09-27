@@ -295,3 +295,13 @@ top-of-file doc comment updated to describe PR #410's already-reviewed `repoRoot
 derivation change — no code lines changed in either file. Independently re-ran the full
 test suite (747/747, up from 741 — the extra 6 are unrelated tests merged in from other
 PRs) and `check-env.mjs` against the real repo (unchanged: 29/52) after this merge.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `fdb6d37953ecf6b5a191768bcabfb5fdbf33c21a`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
+reviewed head (`2f0b28d21623ee132ac119d5ccbf8fdf81352600`) and this one — the intervening
+commit is #426's already-reviewed merge (docs-only, no overlap).
