@@ -80,3 +80,14 @@ the intervening commits bring in #413's already-reviewed check-ui fix, zero over
 this PR's own files. This branch update also refreshes the `pull_request` event payload that
 `check-pr-template.mjs` reads, clearing a stale-body false failure from a run that predated
 this PR body's `**Note:**` line being added.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `2727fb90e8a13b4d25bfa04a1b08a9854ef0cd20`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
+reviewed head (`596f3c32ba1a7f074fe7d5a9956b3ccaaaa82091`) and this one — the intervening
+commits bring in #410's and #412's already-reviewed merges, zero overlap with this PR's own
+files.
