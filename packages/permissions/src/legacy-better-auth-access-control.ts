@@ -16,13 +16,21 @@
  * continuity and are re-declared properly in `roles.ts`.
  *
  * **The `work_item` statement key was `task` until issue #8's prerequisite rename** (2026-09-23
- * decision log entry, "shadow until clean, then strict; rename `task:*` first"): every seeded
- * `workspace_role` row, the compiled built-in roles here, and every
- * `requireWorkspacePermission({ work_item: [...] })` call site across `apps/api/src` were
- * re-keyed together, in the same change, so no caller is left checking a resource name this
- * statement no longer has. This is a plain rename to match what the target `Capability` union
- * calls `work_item:*` — it does not change what any role is granted, and it is a prerequisite
- * for the `task`/work-item router's shadow-mode soak (issue #8), not that soak itself.
+ * decision log entry, "shadow until clean, then strict; rename `task:*` first"): the compiled
+ * built-in roles here and every `requireWorkspacePermission({ work_item: [...] })` call site
+ * across `apps/api/src` were re-keyed together, in the same change, so no caller is left
+ * checking a resource name this statement no longer has. This is a plain rename to match what
+ * the target `Capability` union calls `work_item:*` — it does not change what any role is
+ * granted, and it is a prerequisite for the `task`/work-item router's shadow-mode soak (issue
+ * #8), not that soak itself.
+ *
+ * **This did NOT re-key every already-seeded `workspace_role` row, or `apikey.permissions`,
+ * by itself** (Opus review of pull request #392, BLOCKING): those are persisted `text`/JSON
+ * columns, not derived from these compiled objects, and a row a pre-rename binary already
+ * wrote keeps its old `{"task": [...]}` shape until something rewrites it. Migration
+ * `0071_workspace_role_apikey_permission_task_to_work_item.sql` is the one-time backfill that
+ * does that for both columns; only freshly-seeded rows (created after this rename shipped)
+ * get the new key from these objects directly.
  */
 
 import { createAccessControl } from "better-auth/plugins/access";
