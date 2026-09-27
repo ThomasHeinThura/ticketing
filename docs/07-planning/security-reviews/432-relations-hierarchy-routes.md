@@ -84,3 +84,58 @@ migration comment, and a live-reproduced two-transaction race test.
 A fix for F1 (required) and F2/F3 (should-fix, cheap) is being commissioned as a delta. F4
 is being tracked on #434 rather than fixed inline (matches the reviewer's own suggested
 scope).
+
+---
+
+## Security review — delta (2026-09-27)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `a0dc0be34f0681759`
+
+**Reviewed head:** `7055b218705edbfec1cc22b0255be15d0658513a`
+
+**Verdict: CLEAR WITH FINDINGS, one blocking (D1).** The code fix is correct and verified
+live; the regression test meant to guard it is not.
+
+**F1 confirmed closed — reproduced live, both directions.** Ran the same interleaving
+against a pre-fix worktree (`356ad00`) and the fix (`7055b21`), on private `*_test`
+databases: pre-fix, 24-25 of 25 concurrent rounds both succeeded and broke the depth cap
+(final depth 6); at the fix, 0 of 25 rounds broke it (second request correctly waits on
+advisory lock classid 4012, gets 422 `max_depth`, final depth stays 5). Confirmed the lock
+is genuinely the transaction's first statement, confirmed namespace 4012 doesn't collide
+with any other lock site (1524/4002/4003/4004 two-argument, 2026/4010/4011 single-argument
+— separate key space), confirmed `projectId` is never written anywhere in this codebase
+(checked every write site), confirmed the unlocked pre-read's 404 path leaks nothing new
+(same filter, same message as the locked re-read), confirmed no deadlock/starvation path
+(single lock order, single-row locks elsewhere, short transaction, project-scoped only).
+
+**D1 (BLOCKING — the test, not the code):** the new "RH-7 concurrency" regression test
+passed 4/4 runs **against the pre-fix code** — it fires both requests via one `Promise.all`
+on a cold connection pool, and opening the second connection delays it enough that the two
+requests accidentally run sequentially rather than actually racing. If the advisory lock
+were ever removed, this test would stay green and catch nothing. **Required fix:** make the
+interleaving deterministic — open a side `pg` `Client`, `LOCK TABLE activity IN ACCESS
+EXCLUSIVE MODE` to park the first request's transaction, poll `pg_locks` until the first
+request is blocked on `activity`, fire the second request, assert it is waiting on the
+advisory lock (`classid = 4012`), then release and assert final state ([200, 422], depth
+≤ 5). Reviewer confirmed this exact shape fails on `356ad00` and passes on `7055b21`.
+
+**D2 (low, non-blocking):** add a fail-closed guard inside the lock —
+`if (item.projectId !== pre.projectId) throw 409` — cheap insurance against a future
+cross-project move feature silently reopening F1.
+
+**D3 (informational):** the fix depends on this codebase's existing READ COMMITTED
+default; documented as a known, already-shared assumption with every other advisory-lock
+site here, not a new risk.
+
+**D4 (doc nit, non-blocking):** `hierarchy.ts`'s doc comment on `ancestorChain` still calls
+the DB trigger "the sole race-free authority at write time" — no longer accurate for
+set-parent, which now runs under the advisory lock. Update next touch.
+
+**Test runs at `7055b218`:** work-item/relation/cycle-guard integration 15/15 files,
+534/534 tests; full integration 94/94 files, 1276/1276 tests; permissions 12/12 files,
+82/82 tests; `packages/domain` unit 12/12 files, 555/555 tests; `apps/api` typecheck clean.
+
+D1's fix is being commissioned as a delta. Per the reviewer's own recommendation, the
+re-review after that fix can be narrow — confirm the new test fails on `356ad00` and passes
+on the new head — not a full fresh pass.
