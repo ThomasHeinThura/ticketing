@@ -24,7 +24,14 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { repoRoot } from "./repo.mjs";
@@ -130,6 +137,18 @@ export function installCheckers(dir) {
   cpSync(
     path.join(repoRoot, "pnpm-lock.yaml"),
     path.join(dir, "pnpm-lock.yaml"),
+  );
+
+  // check-env.mjs parses with the real TypeScript compiler API rather than pattern-matching
+  // source text (lib/env-reads.mjs's own header explains why — the same move check-deps.mjs
+  // and check-ui.mjs already made for this class of gate). `runChecker` spawns it as its own
+  // node process rooted at `dir`, which has no `node_modules` of its own; symlinking the real
+  // one over is the same idea as the workspace/lockfile copies just above, for a dependency
+  // instead of a config file.
+  symlinkSync(
+    path.join(repoRoot, "node_modules"),
+    path.join(dir, "node_modules"),
+    "dir",
   );
 }
 
