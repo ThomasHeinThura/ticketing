@@ -100,10 +100,10 @@ describe("check:events — the shipped tree", () => {
 
     const result = runChecker(dir, "check-events.mjs");
     assert.equal(result.status, 0, result.output);
-    // 26 = the 24 keys before PR 292, plus work_item.created and work_item.updated (both
-    // declared in events.md). A non-vacuity guard: it proves the checker actually saw the
-    // shipped keys, rather than passing on an empty scan.
-    assert.match(result.output, /26 published event key/);
+    // 27 = the 24 keys before PR 292, plus work_item.created and work_item.updated, plus
+    // work_item.assigned (assignment.md AS-16; PR #353). A non-vacuity guard: it proves
+    // the checker actually saw the shipped keys, rather than passing on an empty scan.
+    assert.match(result.output, /27 published event key/);
   });
 });
 
