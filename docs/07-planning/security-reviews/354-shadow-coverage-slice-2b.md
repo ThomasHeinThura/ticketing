@@ -371,3 +371,15 @@ Independently verified:
 - `git show --remerge-diff db36bc8` is empty — a clean automatic merge with no conflict-resolution content.
 - `git diff 90b43a4b1c4a0d06f2fee1fae59f18a06877cd35..db36bc8c6e1d38e5b9538151040f9ef16a01c6fb --stat` touches exactly one file: `docs/05-operations/runbook.md` (+32, from #380, itself docs-only and outside security-review scope). No file in `apps/api/src/permissions/**` or any other security-scope path changed.
 - This matches the same pattern already used for #357's and #353's post-review branch updates.
+
+---
+
+## Lightweight re-confirmation after second branch update (2026-09-27)
+
+**Reviewed head:** `821ff18f2e499a62d8245f3554fc6707741e036b`
+**Previously reviewed head:** `db36bc8c6e1d38e5b9538151040f9ef16a01c6fb`
+**Reviewer:** orchestrating session (mechanical verification, same basis as the confirmation above)
+**Verdict:** CLEAR. Unchanged.
+
+- `git show --remerge-diff 821ff18` is empty — clean automatic merge.
+- `git diff 2d3ca06..821ff18 --stat` touches exactly one file: `docs/07-planning/status.md` (#384), docs-only, outside security-review scope.
