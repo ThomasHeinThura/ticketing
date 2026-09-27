@@ -1141,7 +1141,7 @@
 			},
 			"resources": {
 				"project": "Projeler",
-				"task": "Talepler",
+				"work_item": "Talepler",
 				"label": "Etiketler",
 				"workspace": "Çalışma alanı"
 			},
@@ -1168,7 +1168,7 @@
 						"description": "Projeleri paylaşabilir"
 					}
 				},
-				"task": {
+				"work_item": {
 					"create": {
 						"label": "Oluşturma",
 						"description": "Talep oluşturabilir"

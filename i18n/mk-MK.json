@@ -1141,7 +1141,7 @@
 			},
 			"resources": {
 				"project": "Проекти",
-				"task": "Задачи",
+				"work_item": "Задачи",
 				"label": "Ознаки",
 				"workspace": "Работен простор"
 			},
@@ -1168,7 +1168,7 @@
 						"description": "Може да споделува проекти"
 					}
 				},
-				"task": {
+				"work_item": {
 					"create": {
 						"label": "Креирање",
 						"description": "Може да креира задачи"

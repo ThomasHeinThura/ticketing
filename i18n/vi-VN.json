@@ -666,7 +666,7 @@
 			},
 			"resources": {
 				"project": "Dự án",
-				"task": "Công việc",
+				"work_item": "Công việc",
 				"label": "Nhãn",
 				"workspace": "Không gian làm việc"
 			},
@@ -693,7 +693,7 @@
 						"description": "Có thể chia sẻ dự án"
 					}
 				},
-				"task": {
+				"work_item": {
 					"create": {
 						"label": "Tạo",
 						"description": "Có thể tạo công việc"

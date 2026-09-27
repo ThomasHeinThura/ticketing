@@ -1151,7 +1151,7 @@
 			},
 			"resources": {
 				"project": "Проекты",
-				"task": "Задачи",
+				"work_item": "Задачи",
 				"label": "Метки",
 				"workspace": "Рабочая область"
 			},
@@ -1178,7 +1178,7 @@
 						"description": "Может делиться проектами"
 					}
 				},
-				"task": {
+				"work_item": {
 					"create": {
 						"label": "Создание",
 						"description": "Может создавать задачи"
