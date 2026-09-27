@@ -144,3 +144,34 @@ routine branch updates — confirmed each is an ancestor of `origin/main`. No ne
 unreviewed logic reached this branch. (Verified from a worktree freshly reset via
 `git reset --hard origin/<branch>`, not merely fetched — see PR #430's own note for why
 this matters.)
+
+---
+
+## Security review — narrow verification of CI fixes (2026-09-27)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `aa19ac272166a8a0c`
+
+**Reviewed head:** `eb0f74e29b63700591d7cba764e67280d9ec7268`
+
+**Scope:** narrow — verifying two CI-only fixes the orchestrating session made directly
+(not an implementing lane) after `main`'s advancement surfaced two real, previously-latent
+gaps in this PR's own content: a stale hardcoded event-key count and a never-regenerated
+OpenAPI contract. Application feature logic (delete/rank/watch/bulk/activity-read
+controllers) was NOT re-reviewed in this pass — untouched by this commit, already
+CLEAR WITH FINDINGS from the prior full review cycle.
+
+**Verdict: CLEAR.** Confirmed `work_item.deleted` was already documented in
+`docs/01-architecture/events.md` before this PR (no doc change in this PR's diff);
+confirmed `delete-work-item.ts` is the only new `publishEvent` call this PR adds; ran
+`check-events.mjs` directly and confirmed it genuinely reports 28 keys across 316 files
+(vs. 27/311 on `main`) and exits 0 — the file-count change proves it actually scanned the
+real tree rather than short-circuiting. Ran the updated test (34/34 pass). Confirmed the
+regenerated OpenAPI contract is derived from the real code (`check-openapi.mjs` without
+`--write` matches, 117 operations) and adds exactly the 6 expected new operations with no
+removals; `test-contract.mjs` reports 0 unapproved breaking changes, Redocly baseline
+unchanged. Spot-checked two of the new operations' request bodies (rank, bulk) against the
+real Zod schemas — both match. Confirmed the commit touches only the two intended files —
+no application logic changed. Full gate-checker suite: 788/788 tests, 102 suites.
+
+Clear to merge.
