@@ -523,7 +523,8 @@ describe("API integration: work item assignment (#30, assignment.md)", () => {
     const reassignAuditRows = await db
       .select()
       .from(schema.auditLogTable)
-      .where(eq(schema.auditLogTable.entityId, itemRow?.id ?? ""));
+      .where(eq(schema.auditLogTable.entityId, itemRow?.id ?? ""))
+      .orderBy(schema.auditLogTable.seq);
     const [reassignRow] = reassignAuditRows.slice(-1);
     expect(reassignRow?.action).toBe("work_item.assigned");
     expect(reassignRow?.before).toEqual({ assigneeId: first.id });
