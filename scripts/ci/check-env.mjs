@@ -38,9 +38,10 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
+import { API } from "typescript/unstable/sync";
 import { readConfigurationReference } from "./lib/configuration-reference.mjs";
 import {
-  findEnvReads,
+  findEnvReadsInSourceFile,
   readFingerprints,
   viteBuiltIns,
 } from "./lib/env-reads.mjs";
@@ -139,35 +140,77 @@ async function main() {
   const observedUnattributable = new Map();
   const approvedReads = [];
 
-  for (const absolute of files) {
-    const file = rel(absolute);
-    const scope = scopeOf(file);
-    const approved = scope === "mcp" ? mcpApproved : applicationApproved;
-    const reads = findEnvReads(await readText(absolute));
+  // One real TypeScript parser for the whole scan — batched like check-ui.mjs's `main()` and
+  // check-deps.mjs, not one parse per file. See lib/env-reads.mjs's own header for why this
+  // gate is AST-based rather than pattern-matching source text: a JSX text node, a comment, a
+  // string and a regex are structurally unambiguous with real syntax to a real parser in a way
+  // no hand-written lexer stayed ahead of (#342, #352, #382).
+  const api = new API({ cwd: repoRoot });
+  try {
+    const snapshot = api.updateSnapshot({ openFiles: files });
+    try {
+      for (const absolute of files) {
+        const file = rel(absolute);
+        const scope = scopeOf(file);
+        const approved = scope === "mcp" ? mcpApproved : applicationApproved;
 
-    for (const read of reads) {
-      const location = `${file}:${read.line}`;
+        const project = snapshot.getDefaultProjectForFile(absolute);
+        const sourceFile = project?.program.getSourceFile(absolute);
+        const diagnostics = sourceFile
+          ? project.program.getSyntacticDiagnostics(absolute)
+          : [];
+        // "Fail on any parse error" (#382's own review, the recommended closing move for
+        // #342) — a file this gate cannot really parse is a file it cannot prove reads
+        // nothing unattributable, so it is reported as unattributable debt rather than
+        // silently skipped.
+        const reads =
+          !sourceFile || diagnostics.length > 0
+            ? [
+                {
+                  object: "process.env",
+                  kind: "alias",
+                  name: null,
+                  line: 1,
+                  snippet:
+                    diagnostics.length > 0
+                      ? `<could not be parsed: ${diagnostics.map((d) => d.text).join("; ")}>`
+                      : "<could not be parsed>",
+                },
+              ]
+            : findEnvReadsInSourceFile(sourceFile);
 
-      if (read.kind !== "named") {
-        const list = observedUnattributable.get(file) ?? [];
-        list.push(read);
-        observedUnattributable.set(file, list);
-        continue;
+        for (const read of reads) {
+          const location = `${file}:${read.line}`;
+
+          if (read.kind !== "named") {
+            const list = observedUnattributable.get(file) ?? [];
+            list.push(read);
+            observedUnattributable.set(file, list);
+            continue;
+          }
+
+          if (
+            read.object === "import.meta.env" &&
+            viteBuiltIns.has(read.name)
+          ) {
+            continue;
+          }
+
+          if (approved.has(read.name)) {
+            approvedReads.push(`${location} ${read.name}`);
+            continue;
+          }
+
+          const list = observedNames.get(read.name) ?? [];
+          list.push(location);
+          observedNames.set(read.name, list);
+        }
       }
-
-      if (read.object === "import.meta.env" && viteBuiltIns.has(read.name)) {
-        continue;
-      }
-
-      if (approved.has(read.name)) {
-        approvedReads.push(`${location} ${read.name}`);
-        continue;
-      }
-
-      const list = observedNames.get(read.name) ?? [];
-      list.push(location);
-      observedNames.set(read.name, list);
+    } finally {
+      snapshot.dispose();
     }
+  } finally {
+    api.close();
   }
 
   if (mode === "report") {

@@ -185,7 +185,18 @@ Add to this as things are learned. It is the institutional memory that agents do
   more special cases to patch it for. `typescript/unstable/ast` (via
   `typescript/unstable/sync`'s `API`) is already a repo devDependency and already used by
   check-deps.mjs; reach for it at the *first* such finding in a gate, rather than adding a
-  regex exemption and waiting for the next evasion to arrive.
+  regex exemption and waiting for the next evasion to arrive. check-env.mjs itself
+  eventually made the same move (#342): two rounds of patching its hand-written
+  tokenizer (#352, then #382's "D3" follow-up) each closed the named shapes and each left a
+  narrower instance of the *same* class open — an unresolvable JSX-text/comment/regex
+  divergence between the tokenizer's own grammar and the real one, casts and string
+  escapes the tokenizer read as raw text instead of the parser's already-decoded value, and
+  a bare-argument heuristic that both under- and over-fired (flagging a parameter or
+  catch-clause binding merely *named* `process`, while still not tracing an exported
+  re-export of the real global to another module). The tokenizer was retired rather than
+  patched a third time; `lib/env-reads.mjs`'s own header is the detailed account of how the
+  real parser closes each of those for structural reasons, not one more special case per
+  finding.
 - **A React context Provider whose register/unregister calls go through `setState` can
   create an unbounded re-render loop with no built-in guard** (#407): registering
   something real state → Provider re-renders → its inline context `value` object gets a
