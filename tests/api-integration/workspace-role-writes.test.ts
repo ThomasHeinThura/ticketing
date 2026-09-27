@@ -90,7 +90,7 @@ describe("S7 list roles (GET /api/workspace/{id}/roles)", () => {
     const workspaceId = await createWorkspace(app, owner.cookie, "Roster");
     await createWorkspaceRoleNative(app, owner.cookie, workspaceId, {
       role: "readonly",
-      permission: { task: ["read"] },
+      permission: { work_item: ["read"] },
     });
 
     const response = await listWorkspaceRolesNative(
@@ -111,7 +111,7 @@ describe("S7 list roles (GET /api/workspace/{id}/roles)", () => {
     const workspaceB = await createWorkspace(app, owner.cookie, "B");
     await createWorkspaceRoleNative(app, owner.cookie, workspaceA, {
       role: "only-in-a",
-      permission: { task: ["read"] },
+      permission: { work_item: ["read"] },
     });
 
     const response = await listWorkspaceRolesNative(
@@ -185,7 +185,7 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
       app,
       owner.cookie,
       workspaceId,
-      { role: "readonly", permission: { task: ["read"] } },
+      { role: "readonly", permission: { work_item: ["read"] } },
     );
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
@@ -194,12 +194,12 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
       permission: Record<string, string[]>;
     };
     expect(body.role).toBe("readonly");
-    expect(body.permission).toEqual({ task: ["read"] });
+    expect(body.permission).toEqual({ work_item: ["read"] });
 
     const rows = await roleRows(workspaceId, "readonly");
     expect(rows).toHaveLength(1);
     expect(JSON.parse(rows[0]?.permission ?? "{}")).toEqual({
-      task: ["read"],
+      work_item: ["read"],
     });
   });
 
@@ -212,7 +212,7 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
       app,
       owner.cookie,
       workspaceId,
-      { role: "Owner", permission: { task: ["read"] } },
+      { role: "Owner", permission: { work_item: ["read"] } },
     );
     expect(response.status).toBe(400);
     expect(await roleRows(workspaceId, "owner")).toHaveLength(0);
@@ -249,7 +249,7 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
           app,
           owner.cookie,
           workspaceId,
-          { role: reserved, permission: { task: ["read"] } },
+          { role: reserved, permission: { work_item: ["read"] } },
         );
         expect(response.status).toBe(400);
         expect(await roleRows(workspaceId, reserved)).toHaveLength(
@@ -273,7 +273,7 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
           workspaceId,
           {
             role: `  ${reserved.toUpperCase()}  `,
-            permission: { task: ["read"] },
+            permission: { work_item: ["read"] },
           },
         );
         expect(response.status).toBe(400);
@@ -321,7 +321,7 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
       app,
       owner.cookie,
       workspaceId,
-      { role: "   ", permission: { task: ["read"] } },
+      { role: "   ", permission: { work_item: ["read"] } },
     );
     expect(response.status).toBe(400);
     expect(await roleRows(workspaceId, "")).toHaveLength(0);
@@ -333,14 +333,14 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
     const workspaceId = await createWorkspace(app, owner.cookie, "Dup");
     await createWorkspaceRoleNative(app, owner.cookie, workspaceId, {
       role: "readonly",
-      permission: { task: ["read"] },
+      permission: { work_item: ["read"] },
     });
 
     const response = await createWorkspaceRoleNative(
       app,
       owner.cookie,
       workspaceId,
-      { role: "readonly", permission: { task: ["read", "create"] } },
+      { role: "readonly", permission: { work_item: ["read", "create"] } },
     );
     expect(response.status).toBe(409);
     expect(await roleRows(workspaceId, "readonly")).toHaveLength(1);
@@ -376,7 +376,7 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
       app,
       member.cookie,
       workspaceId,
-      { role: "escalate", permission: { task: ["read"] } },
+      { role: "escalate", permission: { work_item: ["read"] } },
     );
     expect(response.status).toBe(403);
     expect(await roleRows(workspaceId, "escalate")).toHaveLength(0);
@@ -392,7 +392,7 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
         app,
         owner.cookie,
         workspaceId,
-        { role: `role-${i}`, permission: { task: ["read"] } },
+        { role: `role-${i}`, permission: { work_item: ["read"] } },
       );
       expect(created.status).toBe(200);
     }
@@ -401,7 +401,7 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
       app,
       owner.cookie,
       workspaceId,
-      { role: "one-too-many", permission: { task: ["read"] } },
+      { role: "one-too-many", permission: { work_item: ["read"] } },
     );
     expect(overLimit.status).toBe(400);
     expect(await roleRows(workspaceId, "one-too-many")).toHaveLength(0);
@@ -415,11 +415,11 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
     const [first, second] = await Promise.all([
       createWorkspaceRoleNative(app, owner.cookie, workspaceId, {
         role: "racer",
-        permission: { task: ["read"] },
+        permission: { work_item: ["read"] },
       }),
       createWorkspaceRoleNative(app, owner.cookie, workspaceId, {
         role: "racer",
-        permission: { task: ["read"] },
+        permission: { work_item: ["read"] },
       }),
     ]);
 
@@ -554,7 +554,7 @@ describe("S7 update role (PATCH /api/workspace/{id}/roles/{roleId})", () => {
       app,
       owner.cookie,
       workspaceId,
-      { role: "editor", permission: { task: ["read"] } },
+      { role: "editor", permission: { work_item: ["read"] } },
     );
     const { id: roleId } = (await created.json()) as { id: string };
 
@@ -586,7 +586,7 @@ describe("S7 update role (PATCH /api/workspace/{id}/roles/{roleId})", () => {
       app,
       owner.cookie,
       workspaceId,
-      { role: "editor", permission: { task: ["read"] } },
+      { role: "editor", permission: { work_item: ["read"] } },
     );
     const { id: roleId } = (await created.json()) as { id: string };
 
@@ -600,7 +600,9 @@ describe("S7 update role (PATCH /api/workspace/{id}/roles/{roleId})", () => {
     expect(updated.status).toBe(403);
 
     const [row] = await roleRows(workspaceId, "editor");
-    expect(JSON.parse(row?.permission ?? "{}")).toEqual({ task: ["read"] });
+    expect(JSON.parse(row?.permission ?? "{}")).toEqual({
+      work_item: ["read"],
+    });
   });
 
   it("404s on a nonexistent roleId", async () => {
@@ -613,7 +615,7 @@ describe("S7 update role (PATCH /api/workspace/{id}/roles/{roleId})", () => {
       owner.cookie,
       workspaceId,
       "does-not-exist",
-      { permission: { task: ["read"] } },
+      { permission: { work_item: ["read"] } },
     );
     expect(updated.status).toBe(404);
   });
@@ -649,7 +651,7 @@ describe("S7 delete role (DELETE /api/workspace/{id}/roles/{roleId})", () => {
       app,
       owner.cookie,
       workspaceId,
-      { role: "custom", permission: { task: ["read"] } },
+      { role: "custom", permission: { work_item: ["read"] } },
     );
     const { id: roleId } = (await created.json()) as { id: string };
     await inviteAndAcceptAsNewMemberNative(
@@ -706,7 +708,7 @@ describe("S7 delete role (DELETE /api/workspace/{id}/roles/{roleId})", () => {
       app,
       owner.cookie,
       workspaceId,
-      { role: "custom", permission: { task: ["read"] } },
+      { role: "custom", permission: { work_item: ["read"] } },
     );
     const { id: roleId } = (await created.json()) as { id: string };
     const holder = await inviteAndAcceptAsNewMemberNative(
@@ -788,7 +790,7 @@ describe("instance-admin bypass closure (mirrors S4/S5's own A2-P17 tests)", () 
       app,
       instanceAdmin.cookie,
       workspaceId,
-      { role: "shouldnotexist", permission: { task: ["read"] } },
+      { role: "shouldnotexist", permission: { work_item: ["read"] } },
     );
     expect(response.status).toBe(403);
     expect(await roleRows(workspaceId, "shouldnotexist")).toHaveLength(0);
@@ -810,7 +812,7 @@ describe("instance-admin bypass closure (mirrors S4/S5's own A2-P17 tests)", () 
       app,
       instanceAdmin.cookie,
       workspaceId,
-      { role: "reallyworks", permission: { task: ["read"] } },
+      { role: "reallyworks", permission: { work_item: ["read"] } },
     );
     expect(response.status).toBe(200);
   });

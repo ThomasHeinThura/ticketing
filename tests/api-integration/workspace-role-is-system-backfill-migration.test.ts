@@ -214,12 +214,14 @@ describe("migration 0068_workspace_role_is_system.sql — the backfill for PRE-E
         VALUES ('${workspaceId}', '${organisationId}', 'ws-${randomUUID()}', 'Test Workspace', now())
       `);
 
-      const viewerPermission = JSON.stringify({ task: ["read"] });
-      const memberPermission = JSON.stringify({ task: ["read", "create"] });
-      const adminPermission = JSON.stringify({
-        task: ["read", "create", "update", "delete"],
+      const viewerPermission = JSON.stringify({ work_item: ["read"] });
+      const memberPermission = JSON.stringify({
+        work_item: ["read", "create"],
       });
-      const customPermission = JSON.stringify({ task: ["read"] });
+      const adminPermission = JSON.stringify({
+        work_item: ["read", "create", "update", "delete"],
+      });
+      const customPermission = JSON.stringify({ work_item: ["read"] });
 
       const roleIds = {
         viewer: `role-${randomUUID()}`,

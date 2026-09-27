@@ -666,7 +666,7 @@
 			},
 			"resources": {
 				"project": "プロジェクト",
-				"task": "タスク",
+				"work_item": "タスク",
 				"label": "ラベル",
 				"workspace": "ワークスペース"
 			},
@@ -693,7 +693,7 @@
 						"description": "プロジェクトを共有できます"
 					}
 				},
-				"task": {
+				"work_item": {
 					"create": {
 						"label": "作成",
 						"description": "タスクを作成できます"

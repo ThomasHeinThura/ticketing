@@ -27,15 +27,15 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * this router does its own authoritative lookup afterward), but it is closed at the source now.
  *
  * **Target capability vocabulary is `comment:*` (`docs/01-architecture/rbac.md` § Comments,
- * scope `work_item`); the RUNTIME check is `requireWorkspacePermission({ task: ["update"] })`
- * against the INHERITED `task` resource** (`apps/api/src/utils/require-workspace-permission.ts`)
- * — the same transitional capability-vocabulary gap `workspace/policy.ts` already documents for
- * `workspace:update`/`organization:update`: re-keying the seeded `workspace_role` rows and the
- * runtime evaluator to the canonical `Capability` union is #7's capability migration, not this
- * lane's. Declaring the target string here does not change what gates the request today; it is
- * what the coverage/matrix tooling checks against, and it is what will start being enforced,
- * unchanged, the day #7's re-keying lands and the runtime-integration section of #8 wires
- * `policyRegistry` into the live request path.
+ * scope `work_item`); the RUNTIME check is `requireWorkspacePermission({ work_item: ["update"] })`
+ * against the INHERITED `work_item` resource** (`apps/api/src/utils/require-workspace-permission.ts`,
+ * re-keyed from the inherited `task` name — 2026-09-23 decision log entry, "shadow until clean,
+ * then strict; rename `task:*` first") — the same transitional capability-vocabulary gap
+ * `workspace/policy.ts` already documents for `workspace:update`/`organization:update`:
+ * `comment:*` is declared, not enforced, until #8's runtime-integration obligation wires
+ * `policyRegistry` into the live request path. Declaring the target string here does not
+ * change what gates the request today; it is what the coverage/matrix tooling checks against,
+ * and it is what will start being enforced, unchanged, once that wiring lands.
  *
  * **Ownership on update/delete is enforced structurally, not by a declared `orOwner` branch.**
  * `update-comment.ts`/`delete-comment.ts` (`apps/api/src/activity/controllers/*`, re-exported
@@ -44,7 +44,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * (who holds `comment:update_any`/`comment:delete_any` in rbac.md's target table), that can
  * reach another user's comment through this route. That is narrower than an `orOwner` fallback
  * (which models "capability X, OR capability Y plus this predicate") — here ownership is an
- * unconditional AND on top of the `task:update` gate, not a fallback path. Declaring the
+ * unconditional AND on top of the `work_item:update` gate, not a fallback path. Declaring the
  * broader `comment:update_any`/`comment:delete_any` as the primary capability here, with an
  * `orOwner` predicate, would therefore overclaim: it would say a `manager` can edit anyone's
  * comment through this route, which is false today and would stay false even once runtime
@@ -72,8 +72,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  */
 export const commentPolicies = {
   // Reads every comment on a task, oldest first. `workspaceAccess.fromTaskId()` is the only
-  // gate — any workspace member may read; no `task:*` or `comment:*` permission is additionally
-  // required. `work_item:read` is the closest target capability: rbac.md has no standalone
+  // gate — any workspace member may read; no `work_item:*` or `comment:*` permission is
+  // additionally required. `work_item:read` is the closest target capability: rbac.md has no standalone
   // "read comments" capability, and `comment:create` itself `implies: ["work_item:read"]`,
   // i.e. seeing a work item's comments is treated as part of seeing the work item.
   "GET /api/comment/{taskId}": {
@@ -83,7 +83,7 @@ export const commentPolicies = {
     reach: "required",
   },
 
-  // Adds a comment to a task. Runtime gate is `requireWorkspacePermission({ task: ["update"] })`
+  // Adds a comment to a task. Runtime gate is `requireWorkspacePermission({ work_item: ["update"] })`
   // — see the file comment for why the target capability declared here, `comment:create_internal`
   // (a staff-side comment, this route is not under `/api/portal/*`), does not match what
   // actually runs today.
@@ -95,7 +95,7 @@ export const commentPolicies = {
   },
 
   // Edits a comment. Only the author may succeed (structural `WHERE userId = caller`, see file
-  // comment), on top of the same `task:update` middleware gate as create. `comment:update_own`
+  // comment), on top of the same `work_item:update` middleware gate as create. `comment:update_own`
   // is the target capability, not `comment:update_any` — see file comment for why the "any"
   // variant would overclaim relative to what this route can actually do.
   "PUT /api/comment/{id}": {
@@ -105,7 +105,7 @@ export const commentPolicies = {
     reach: "required",
   },
 
-  // Deletes a comment. Same author-only structural restriction and `task:update` gate as
+  // Deletes a comment. Same author-only structural restriction and `work_item:update` gate as
   // update, immediately above.
   "DELETE /api/comment/{id}": {
     capability: "comment:delete_own",

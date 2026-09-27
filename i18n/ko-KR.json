@@ -1140,7 +1140,7 @@
 			},
 			"resources": {
 				"project": "프로젝트",
-				"task": "작업",
+				"work_item": "작업",
 				"label": "라벨",
 				"workspace": "워크스페이스"
 			},
@@ -1167,7 +1167,7 @@
 						"description": "프로젝트를 공유할 수 있습니다"
 					}
 				},
-				"task": {
+				"work_item": {
 					"create": {
 						"label": "만들기",
 						"description": "작업을 만들 수 있습니다"
