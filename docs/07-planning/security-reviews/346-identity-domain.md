@@ -432,3 +432,57 @@ The gate observations in the previous review (independence of the ordinary revie
 
 **Awaiting:** the lightweight Opus delta confirmation this review's own verdict called for,
 on head `919f59c1e3e...` (full SHA to be confirmed by the confirming reviewer).
+
+---
+
+## Delta confirmation (Opus 5.5) at aa3a4dd
+
+**Reviewer:** Opus 5.5 (`claude-opus-5-5[1m]`), a fresh independent context commissioned by the orchestrating session. It did not author, direct or fix this change.
+**Reviewed head:** `aa3a4dd7efc024780051bd0f3582d6023fcfbe3e`
+**Fix commit:** `919f59c998c1bab9ba81bb97240c23fc1dc693f6`
+**Previous review:** `fafa8ec09dabdc6db4186f05c7d19ad198d81a6e`
+**Date:** 2026-09-27
+
+**How the head was confirmed.** `gh pr view 346 --json headRefOid` returns `aa3a4dd`. The confirmation ran in a detached worktree at that SHA.
+
+**Scope of the delta.**
+- `git diff --stat fafa8ec 919f59c` shows only `identity.ts` (+35/-9) and `identity.test.ts` (+46).
+- `919f59c..aa3a4dd` touches only this review document.
+- The code diff contains exactly two changes: the `isRecord` prototype check, and the `NAME_FIELD_BY_LOWER_PATH` lookup used by the `remove` and `add`/`replace` name branches. The test diff adds exactly two tests, one for each change. Nothing else changed.
+
+**P1: CLOSED.**
+- `isRecord` now returns true only when `Object.getPrototypeOf(value)` is `Object.prototype` or `null`.
+- **The exact reproduction.** The value `Object.assign({}, JSON.parse('{"__proto__":{"externalId":"HIJACK","active":false},"title":"t"}'))`, sent as a pathless `replace`, now gives `{ ok: false, reason: "invalid_patch" }`. The committed regression test asserts this exact result.
+- **Probes** (a scratch file, deleted afterwards; `git status` was clean):
+
+  | Input | Result |
+  | --- | --- |
+  | The same polluted value with `add` or `Replace` | `invalid_patch` |
+  | The polluted value with `path: "active"` | `invalid_patch` |
+  | A polluted nested `name` object | `invalid_resource` |
+  | A polluted object passed to `parseScimUser` | refused |
+  | A class instance | `invalid_patch` |
+  | A null-prototype object, or a plain object | `ok`, as intended |
+
+- The polluted value with a pathless `remove` gives `ok`. It leaves `externalId` unchanged and deletes `active`. That is the S7 residual already on record (a pathless `remove` is treated as `remove active`). It is not a P1 bypass, and this delta did not introduce it.
+
+**N1: CLOSED.**
+- `replace name.familyName "X"` sets the real `familyName` key. `NAME.FAMILYNAME` does the same.
+- `remove name.givenName` clears `givenName`.
+- `add name.formatted` and `remove name.formatted` both behave correctly.
+- No lowercased key is ever written.
+- A `remove` when the user has no `name` is a no-op.
+- The input object is not mutated.
+- The lookup is reached only after the existing path allowlist, so only its three keys can be looked up.
+
+**Suites (Node 24.20.0).**
+- `pnpm --filter @taskdesk/domain test`: 11 files, **544/544** passed.
+- `pnpm typecheck` (forced, uncached) and `pnpm lint`: both exit 0.
+
+**Carried forward, unchanged:** N2, N3, S4, S7, S8, S9, D2 to D7.
+
+### Verdict
+
+**CLEAR at `aa3a4dd7efc024780051bd0f3582d6023fcfbe3e`** for the security scope of this review. S2 is now fully closed through P1. The gate observations in the first review (independence of the ordinary review, the attribution mismatch, the draft state) are not re-adjudicated here.
+
+The commit that adds this section is docs-only. It moves the PR head but changes no code.
