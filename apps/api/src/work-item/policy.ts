@@ -141,4 +141,38 @@ export const workItemPolicies = {
       capability: "work_item:update",
     },
   },
+
+  // Set a work item's parent (`relations-and-hierarchy.md` § API, `RH-5`..`RH-8`).
+  // `requireWorkItemReach()` resolves `{key}` by row before the handler runs; the
+  // controller (`set-work-item-parent.ts`) re-scopes its own write by the same
+  // key+workspaceId pair -- `scopeSource: "row"`, identical shape to `PATCH
+  // /api/work-items/{key}` above. rbac.md declares this "Required on both ends, including
+  // detach" -- see that controller's own doc comment for why this is ONE capability check
+  // under this codebase's current workspace-role-based permission model, not two.
+  "POST /api/work-items/{key}/parent": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // Detach a work item from its parent (`RH-11`/`RH-12`'s "detach"). Same reach/capability
+  // shape as set-parent above -- `detach-work-item-parent.ts`.
+  "DELETE /api/work-items/{key}/parent": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // The hierarchy tree rooted at (or containing) this work item (`relations-and-
+  // hierarchy.md` § API/Screens). Read-only, same reach shape as `GET
+  // /api/work-items/{key}` above -- see `get-work-item-tree.ts`'s own doc comment for why
+  // the whole returned tree is covered by this one row's reach check.
+  "GET /api/work-items/{key}/tree": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
 } as const satisfies PolicyMap;

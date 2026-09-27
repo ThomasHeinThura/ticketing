@@ -381,6 +381,17 @@ export { DEFAULT_WORK_ITEM_LIST_LIMIT };
 // string means "only while still held by this person". A mismatch is a 409, never a silent
 // overwrite (`AS-9`: work is never silently unassigned, and by symmetry never silently
 // reassigned). Same NUL-byte rule as every other text field in this file (S4/T4).
+// `POST /api/work-items/{key}/parent` (`relations-and-hierarchy.md` § API). The proposed
+// new parent, addressed by its own permanent key -- same identifier shape as the route's
+// own `{key}` path param, not a raw internal id (nothing else in this route family
+// accepts a raw `work_item.id` from a caller).
+export const setWorkItemParentBody = z.object({
+  parentKey: z
+    .string()
+    .min(1)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
+});
+
 export const assignWorkItemBody = z.object({
   assigneeId: z
     .string()

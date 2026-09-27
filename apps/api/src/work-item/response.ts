@@ -190,6 +190,43 @@ export const assignWorkItemResponseSchema = z
   })
   .openapi("WorkItemAssignment");
 
+// `GET /api/work-items/{key}/tree` (`relations-and-hierarchy.md` § API/Screens): "The
+// tree of parent and children renders inline, with the current item highlighted" --
+// `isCurrent` is that highlight. Recursive (`children: WorkItemTreeNode[]`), so the type
+// and schema are both declared as their own self-referencing values, the standard
+// zod-to-openapi shape for a recursive schema (the inner `z.lazy` callback is evaluated
+// once and cached, so the `.openapi("WorkItemTreeNode")` call below only ever registers
+// the component once).
+export type WorkItemTreeNodeResponse = {
+  id: string;
+  key: string;
+  title: string;
+  stateName: string;
+  stateCategory: string;
+  isCurrent: boolean;
+  children: WorkItemTreeNodeResponse[];
+};
+
+export const workItemTreeNodeSchema: z.ZodType<WorkItemTreeNodeResponse> =
+  z.lazy(() =>
+    z
+      .object({
+        id: z.string(),
+        key: z.string(),
+        title: z.string(),
+        stateName: z.string(),
+        stateCategory: z.string().openapi({
+          description:
+            "state_template.group: one of backlog, unstarted, started, completed, cancelled.",
+        }),
+        isCurrent: z.boolean().openapi({
+          description: "True for the one node matching the requested {key}.",
+        }),
+        children: z.array(workItemTreeNodeSchema),
+      })
+      .openapi("WorkItemTreeNode"),
+  );
+
 // The spec's conditional-write conflict: zero rows updated because someone else changed the
 // assignee first. Structured like `workItemVersionConflictSchema` -- there is real data for
 // the client to act on (AS-3's confirmation flow shows who actually holds it now).
