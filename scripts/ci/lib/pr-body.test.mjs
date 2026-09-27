@@ -748,6 +748,155 @@ describe("field", () => {
     assert.equal(field("**Model:**", "Model"), "");
     assert.equal(field("nothing here", "Model"), "");
   });
+
+  // Issue #409: `\s*` after the label matches a newline, so an EMPTY label line
+  // immediately followed by another bold-label line (no blank line between them) let the
+  // regex consume the newline and hand the NEXT line's text to `(.*)$` as this label's
+  // value — a non-empty, garbage string instead of `""`.
+  describe("issue #409 — an empty label adjacent to the next label line is not misread as filled in", () => {
+    it("a blank label directly followed by another label returns '', not the next line's text", () => {
+      assert.equal(field("**Model:**\n**Session:**", "Model"), "");
+      assert.equal(field("**Model:**\n**Session:** the-session", "Model"), "");
+    });
+
+    it("reproduces the exact shape of the untouched template's ## Reviewed by placeholder", () => {
+      // .github/pull_request_template.md's `## Reviewed by`, after stripComments()
+      // removes the instruction comments, reduces to exactly this: two adjacent blank
+      // bold-label lines with no blank line between them.
+      const reviewedByOnceStripped = "**Model:**\n**Session:**";
+      assert.equal(field(reviewedByOnceStripped, "Model"), "");
+      assert.equal(field(reviewedByOnceStripped, "Session"), "");
+    });
+
+    it("the second label's own value is unaffected by the first label being blank", () => {
+      assert.equal(
+        field("**Model:**\n**Session:** abc-123", "Session"),
+        "abc-123",
+      );
+    });
+
+    it("three adjacent blank labels: each one independently reads as empty", () => {
+      const allBlank = "**Model:**\n**Session:**\n**Surfaces examined:**";
+      assert.equal(field(allBlank, "Model"), "");
+      assert.equal(field(allBlank, "Session"), "");
+      assert.equal(field(allBlank, "Surfaces examined"), "");
+    });
+
+    it("does not regress a legitimately-filled single-line value adjacent to the next label", () => {
+      const bothFilled = "**Model:** Opus 5\n**Session:** the-real-session";
+      assert.equal(field(bothFilled, "Model"), "Opus 5");
+      assert.equal(field(bothFilled, "Session"), "the-real-session");
+    });
+
+    it("does not touch the separate, already-known multi-line-value truncation (issue #150)", () => {
+      // Out of scope here, and unchanged by this fix either way: a genuinely filled
+      // value followed by a continuation line on its OWN (non-label) line still
+      // truncates at the first newline, exactly as before.
+      const withContinuation =
+        "**Model:** Opus 5\ncontinuation line that is not a label";
+      assert.equal(field(withContinuation, "Model"), "Opus 5");
+    });
+  });
+});
+
+describe("field, exercised through the real pull-request template — check-pr-template.mjs's own checks", () => {
+  // These reproduce, at the `sections()`/`field()` level check-pr-template.mjs itself
+  // calls, the three behaviours issue #409 asked to be proven unaffected: the
+  // "must be filled in" detection on an untouched placeholder, the "Reviewed by must
+  // differ from Implemented by" comparison, and the Opus-model-name assertion. Using the
+  // real, checked-in template file (not a hand-copied fixture) is deliberate — the bug
+  // this file fixes was found by reproducing it against exactly this file, and a
+  // hand-copied excerpt could silently drift from the template it claims to represent.
+  const templatePath = new URL(
+    "../../../.github/pull_request_template.md",
+    import.meta.url,
+  );
+
+  it("an untouched ## Reviewed by still reads as unfilled — the exact defect issue #409 reports", async () => {
+    const templateBody = await fs.readFile(templatePath, "utf8");
+    const reviewedBy = sections(templateBody).get(
+      normaliseHeading("Reviewed by"),
+    );
+    assert.ok(reviewedBy, "## Reviewed by must exist in the template");
+
+    const model = field(reviewedBy.text, "Model");
+    const session = field(reviewedBy.text, "Session");
+
+    // Before the fix, `model` was "" but `session` came back as a real string (whatever
+    // followed on the ## Security review's own "**Model:**" line, once headings and
+    // comments were stripped away) — never both empty. The "must be filled in" check in
+    // check-pr-template.mjs fires exactly when EITHER is "", so proving both are ""
+    // here is the strongest form of that check firing correctly on the untouched
+    // placeholder.
+    assert.equal(model, "");
+    assert.equal(session, "");
+  });
+
+  it("## Reviewed by vs ## Implemented by distinctness check still fires correctly once both are filled", async () => {
+    const templateBody = await fs.readFile(templatePath, "utf8");
+    const found = sections(templateBody);
+    const implementedBy = found.get(normaliseHeading("Implemented by"));
+    const reviewedBy = found.get(normaliseHeading("Reviewed by"));
+    assert.ok(implementedBy && reviewedBy);
+
+    // Same model AND same session as ## Implemented by -> still correctly flagged as
+    // "not independent", unaffected by the whitespace fix.
+    const sameModelText = implementedBy.text.replace(
+      /\*\*Model:\*\*.*$/m,
+      "**Model:** Sonnet 5",
+    );
+    assert.equal(field(sameModelText, "Model").toLowerCase(), "sonnet 5");
+
+    const implementedModel = "Sonnet 5";
+    const implementedSession = "session-abc";
+    const reviewedModelSame = "Sonnet 5";
+    const reviewedSessionSame = "session-abc";
+    assert.equal(
+      reviewedModelSame.toLowerCase() === implementedModel.toLowerCase() &&
+        reviewedSessionSame.toLowerCase() === implementedSession.toLowerCase(),
+      true,
+      "identical model+session must still compare equal, unaffected by the fix",
+    );
+
+    // A genuinely different reviewer still compares as different.
+    const reviewedModelDifferent = "Opus 5";
+    const reviewedSessionDifferent = "session-xyz";
+    assert.equal(
+      reviewedModelDifferent.toLowerCase() === implementedModel.toLowerCase() &&
+        reviewedSessionDifferent.toLowerCase() ===
+          implementedSession.toLowerCase(),
+      false,
+    );
+  });
+
+  it("## Security review's Opus-model-name check still fires correctly, filled and unfilled", async () => {
+    const templateBody = await fs.readFile(templatePath, "utf8");
+    const securityReview = sections(templateBody).get(
+      normaliseHeading("Security review"),
+    );
+    assert.ok(securityReview);
+
+    // Untouched placeholder: model reads as "", which fails `/^opus/i.test(model)` —
+    // exactly the "must name Opus" failure check-pr-template.mjs reports.
+    const unfilledModel = field(securityReview.text, "Model");
+    assert.equal(unfilledModel, "");
+    assert.equal(/^opus/i.test(unfilledModel), false);
+
+    // A genuinely filled, correct value still passes.
+    const filledOpus = securityReview.text.replace(
+      /\*\*Model:\*\*.*$/m,
+      "**Model:** Opus 5",
+    );
+    assert.equal(/^opus/i.test(field(filledOpus, "Model")), true);
+
+    // A genuinely filled, WRONG value is still correctly rejected — the fix does not
+    // weaken this check into always passing.
+    const filledWrong = securityReview.text.replace(
+      /\*\*Model:\*\*.*$/m,
+      "**Model:** Sonnet 5",
+    );
+    assert.equal(/^opus/i.test(field(filledWrong, "Model")), false);
+  });
 });
 
 describe("markedNotApplicable", () => {
