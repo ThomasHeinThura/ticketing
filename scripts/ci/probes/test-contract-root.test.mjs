@@ -41,6 +41,7 @@ describe("test-contract.mjs resolves the approved-breaks path against the caller
 
     const callerDir = scratchDir("test-contract-root-b-caller"); // the worktree actually operated on
     initRepo(callerDir);
+    installCheckers(callerDir); // a real worktree of this project carries #414's checkout marker too
     commit(callerDir, "chore: bootstrap caller worktree");
 
     const testContractModule = path.join(
