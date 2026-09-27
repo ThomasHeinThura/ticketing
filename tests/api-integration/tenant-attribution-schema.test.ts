@@ -251,8 +251,29 @@ describe("#192 -- work_item.type_id is pinned to a work_item_type in THIS item's
   });
 });
 
+// #240 (closing #192 F1): the two composite FKs below pin each other -- a cascade
+// through either one immediately violates the other -- so a bare `.rejects.toThrow()`
+// on the UPDATE passes identically whether BOTH FKs are `ON UPDATE NO ACTION` (correct)
+// or only the OTHER one is, because the surviving FK rejects the statement for its own,
+// different reason. Proven directly against a live database (Opus security review of
+// PR #239, `docs/07-planning/security-reviews/192-work-item-tenant-attribution.md` §5
+// F1): rebuilding the TYPE fk as `ON UPDATE CASCADE` and replaying
+// `UPDATE work_item_type SET workspace_id`, the statement is still rejected -- but by
+// the PROJECT fk (`Key (workspace_id, project_id)=(...) is not present`), not by the
+// type fk's own NO ACTION check. So each test below asserts the SPECIFIC constraint
+// name Postgres reports, not merely that *some* rejection happened -- that is what
+// actually discriminates "this FK still enforces NO ACTION" from "the other FK happens
+// to catch the same attack". Names read directly out of a live `pg_constraint`, not
+// out of the migration file (the type fk's name is truncated to Postgres's 63-byte
+// NAMEDATALEN limit -- see the review's F2 -- so the migration file's own 64-byte
+// identifier is NOT what actually appears in the error).
+const TYPE_FK_NAME =
+  "work_item_workspace_id_type_id_work_item_type_workspace_id_id_f";
+const PROJECT_FK_NAME =
+  "work_item_workspace_id_project_id_project_workspace_id_id_fk";
+
 describe("#192 -- the two new composite FKs are ON UPDATE NO ACTION, never CASCADE (#191 O1's precedent applied here)", () => {
-  it("rejects UPDATE work_item_type SET workspace_id -- it must not silently re-scope a type still referenced by a work item in its OLD workspace", async () => {
+  it("rejects UPDATE work_item_type SET workspace_id via the TYPE fk's OWN NO ACTION check (#240)", async () => {
     // The exact #191 O1 shape, replayed against THIS migration's own new FK: the
     // referenced column set of `work_item(workspace_id, type_id) -> work_item_type
     // (workspace_id, id)` includes `work_item_type.workspace_id`, which is mutable (no
@@ -272,12 +293,23 @@ describe("#192 -- the two new composite FKs are ON UPDATE NO ACTION, never CASCA
     });
     const otherWorkspace = await makeWorkspace();
 
-    await expect(
-      db
+    let thrown: unknown;
+    try {
+      await db
         .update(schema.workItemTypeTable)
         .set({ workspaceId: otherWorkspace.id })
-        .where(eq(schema.workItemTypeTable.id, fixture.type.id)),
-    ).rejects.toThrow();
+        .where(eq(schema.workItemTypeTable.id, fixture.type.id));
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeDefined();
+    // drizzle-orm wraps the underlying pg driver error; the constraint name is on the
+    // wrapped cause, not the top-level message (same pattern as
+    // instance-setup-bootstrap.test.ts's F3 probe). This is the line that would fail
+    // if only this FK regressed to CASCADE: the PROJECT fk would still reject the
+    // statement (see the block comment above), but under ITS OWN name, not this one.
+    const cause = (thrown as { cause?: { message?: string } })?.cause;
+    expect(cause?.message).toMatch(TYPE_FK_NAME);
 
     // The work item's own workspace_id/type_id must be completely unchanged -- the
     // rejected UPDATE must not have partially applied anywhere.
@@ -288,7 +320,7 @@ describe("#192 -- the two new composite FKs are ON UPDATE NO ACTION, never CASCA
     expect(reloadedType?.workspaceId).toBe(fixture.workspace.id);
   });
 
-  it("rejects UPDATE project SET workspace_id -- it must not silently re-project a project still referenced by a work item in its OLD workspace", async () => {
+  it("rejects UPDATE project SET workspace_id via the PROJECT fk's OWN NO ACTION check (#240)", async () => {
     // Same shape again, this time against `work_item(workspace_id, project_id) ->
     // project(workspace_id, id)` -- the FK that anchors the denormalised `workspace_id`
     // column to the truth. `project.workspace_id` is genuinely mutable at the DB level.
@@ -303,12 +335,20 @@ describe("#192 -- the two new composite FKs are ON UPDATE NO ACTION, never CASCA
     });
     const otherWorkspace = await makeWorkspace();
 
-    await expect(
-      db
+    let thrown: unknown;
+    try {
+      await db
         .update(schema.projectTable)
         .set({ workspaceId: otherWorkspace.id })
-        .where(eq(schema.projectTable.id, fixture.project.id)),
-    ).rejects.toThrow();
+        .where(eq(schema.projectTable.id, fixture.project.id));
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeDefined();
+    // The line that would fail if only the PROJECT fk regressed to CASCADE: the TYPE
+    // fk would still reject the statement under ITS OWN name, not this one.
+    const cause = (thrown as { cause?: { message?: string } })?.cause;
+    expect(cause?.message).toMatch(PROJECT_FK_NAME);
 
     const [reloadedProject] = await db
       .select()

@@ -174,6 +174,29 @@ Add to this as things are learned. It is the institutional memory that agents do
   every key is a flat, static identifier; nested or computed patterns remain unattributable.
   The guard belongs in the detector and its regression suite, not in a growing list of
   syntax-specific exemptions.
+- **A hand-written regex/lexer CI gate keeps finding new bypass classes; the fix is a real
+  parser, not another exemption.** check-deps.mjs's workspace-boundary gate (`4540cfd`,
+  #361) and check-env.mjs's raw-environment-access gate (the lesson above) each started as
+  a regex/lexer scanner and each needed a full rewrite once a new evasion shape turned up.
+  check-ui.mjs's Radix-import gate repeated the pattern a third time (#255): a Unicode
+  escape inside the quoted specifier, a comment between the `from`/`import` keyword and the
+  quoted string, and a no-substitution template-literal dynamic import all defeated its
+  regex — three more shapes a hand-written pattern cannot anticipate in advance, not three
+  more special cases to patch it for. `typescript/unstable/ast` (via
+  `typescript/unstable/sync`'s `API`) is already a repo devDependency and already used by
+  check-deps.mjs; reach for it at the *first* such finding in a gate, rather than adding a
+  regex exemption and waiting for the next evasion to arrive. check-env.mjs itself
+  eventually made the same move (#342): two rounds of patching its hand-written
+  tokenizer (#352, then #382's "D3" follow-up) each closed the named shapes and each left a
+  narrower instance of the *same* class open — an unresolvable JSX-text/comment/regex
+  divergence between the tokenizer's own grammar and the real one, casts and string
+  escapes the tokenizer read as raw text instead of the parser's already-decoded value, and
+  a bare-argument heuristic that both under- and over-fired (flagging a parameter or
+  catch-clause binding merely *named* `process`, while still not tracing an exported
+  re-export of the real global to another module). The tokenizer was retired rather than
+  patched a third time; `lib/env-reads.mjs`'s own header is the detailed account of how the
+  real parser closes each of those for structural reasons, not one more special case per
+  finding.
 - **A React context Provider whose register/unregister calls go through `setState` can
   create an unbounded re-render loop with no built-in guard** (#407): registering
   something real state → Provider re-renders → its inline context `value` object gets a
@@ -200,6 +223,20 @@ Add to this as things are learned. It is the institutional memory that agents do
   Before adding a dispatch that re-emits the same event type a component (or a shared
   listener it feeds into) is itself listening for, trace who else is listening for that type
   and confirm the forward is actually load-bearing.
+- **A TypeScript symbol's `declarations` array is not ordered by "which one is real."**
+  #393 (following #389/#390): `check-deps.mjs`'s `resolveWorkspaceTarget` walked a bare
+  third-party import's checker symbol and returned the first declaration sitting inside
+  any workspace, trusting array order as a proxy for "where the module lives." TypeScript's
+  declaration merging attaches an ambient module augmentation (`declare module "some-pkg"
+  { ... }`) to the target module's symbol regardless of which file declares it, once that
+  file is part of the same compilation — so a workspace-owned augmentation can sort ahead
+  of the module's own real declaration, with nothing in the array marking which is which.
+  One `declare module "vitest" { ... }` in `packages/ui`'s test helpers misattributed every
+  OTHER package's `import ... from "vitest"` to `@taskdesk/ui`, 69 false violations from one
+  augmentation. The guard is structural, not per-caller: any code walking a module symbol's
+  declarations to prove ownership must skip `ts.SyntaxKind.ModuleDeclaration` entries —
+  they can never be a bare specifier's real home in that kind of fallback — rather than
+  re-excluding whichever specific module tripped it this time.
 
 ## Related
 
