@@ -89,3 +89,15 @@ This change is strictly more fail-closed than `main` and causes no regressions, 
 
 - `git show --remerge-diff ce73e9a` is empty — clean automatic merge, no conflict-resolution content.
 - This merge brings in PR #375's real changes (migration, `schema.ts`, `audit-writer.ts`, `list-workspace-audit.ts`), which already carries its own independent, complete Opus CLEAR verdict. Zero overlap with this PR's own file (`scripts/ci/lib/env-reads.mjs`, `scripts/ci/lib/env-reads-342.test.mjs`) — confirmed via `git diff a8a7e17..ce73e9a --stat`.
+
+---
+
+## Lightweight re-confirmation after third branch update (2026-09-27)
+
+**Reviewed head:** `49ee48107aabe72f65d2e8bdee96293494fd7441`
+**Previously reviewed head:** `ce73e9a1dc2bc9eea193649179cebef6f0a14ba6`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR WITH FINDINGS, unchanged.
+
+- `git show --remerge-diff 49ee481` is empty — clean automatic merge.
+- Brings in PR #381's already-reviewed changes (`shadow-context.ts`, `shadow-middleware.ts`), zero overlap with `scripts/ci/lib/env-reads.mjs`.
