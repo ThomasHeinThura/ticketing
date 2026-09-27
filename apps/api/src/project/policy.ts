@@ -163,4 +163,105 @@ export const projectPolicies = {
     scopeSource: "request",
     reach: "required",
   },
+
+  // ── Issue #25's bounded slice ──────────────────────────────────────────────────────
+  // Milestones, prerequisites, stakeholders, document links. All eleven routes below
+  // share one enforcement shape: `workspaceAccess.fromProject()` (scope: "project",
+  // scopeSource: "row", matching every other `/{id}/...` route above) plus
+  // `requireWorkspacePermission({ project: ["update"] })` on every mutation -- the
+  // legacy statement has no narrower action for any of these, and the spec's own
+  // permission table names exactly this one capability for all four resources:
+  // "Manage stakeholders, milestones, prerequisites, document links; set health |
+  // project:update" (projects-and-engagements.md). `project:update` is not
+  // AUTHORITY_GRANTING, so none of this needs `elevated`/`sessionOnly` declarations.
+  "GET /api/project/{id}/milestones": {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "POST /api/project/{id}/milestones": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "PATCH /api/project/{id}/milestones/{milestoneId}": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "DELETE /api/project/{id}/milestones/{milestoneId}": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "GET /api/project/{id}/prerequisites": {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "POST /api/project/{id}/prerequisites": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "PATCH /api/project/{id}/prerequisites/{prerequisiteId}": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "DELETE /api/project/{id}/prerequisites/{prerequisiteId}": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "GET /api/project/{id}/stakeholders": {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "POST /api/project/{id}/stakeholders": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "PATCH /api/project/{id}/stakeholders/{stakeholderId}": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "POST /api/project/{id}/stakeholders/{stakeholderId}/stand-down": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "GET /api/project/{id}/document-links": {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "POST /api/project/{id}/document-links": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "DELETE /api/project/{id}/document-links/{documentLinkId}": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
 } as const satisfies PolicyMap;
