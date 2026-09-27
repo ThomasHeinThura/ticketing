@@ -6,6 +6,8 @@
 **Session:** pal-reviewer subagent `afd736bddb1fd6653`
 **Verdict: APPROVE**, at head `5e3342ff438eb842102d3d1d03945cf97f74bfc4`.
 
+**Reviewed head:** `5e3342ff438eb842102d3d1d03945cf97f74bfc4`
+
 Independently verified the 2026-09-27 full-unsuspension decision-log entry before proceeding.
 Hand-traced the `\s*` → `[ \t]*` narrowing for both LF and CRLF field bodies — correctly
 stops the whitespace-eating at the line terminator in both cases. Confirmed the capture
@@ -25,6 +27,8 @@ construction.
 **Model:** Opus 5.5
 **Session:** subagent `a6b94ea1f493d6d04`
 **Verdict: CLEAR WITH FINDINGS**, at head `5e3342ff438eb842102d3d1d03945cf97f74bfc4`.
+
+**Reviewed head:** `5e3342ff438eb842102d3d1d03945cf97f74bfc4`
 
 Confirmed the fix closes the described gap for every field the checkers rely on — ran both
 the old and new `field()` against this PR's own real body and the real
@@ -61,3 +65,15 @@ this SHA.
 **What was not checked:** the full repo `pnpm test`/lint/typecheck; `check-pr-template.mjs`
 end to end locally (relied on the CI log at this SHA instead); `sections()`/`stripComments()`
 beyond how `field()` uses them.
+
+---
+
+## Lightweight re-confirmation after branch update, round 2 (2026-09-27)
+
+**Reviewed head:** `6cedb28be14f1e89ad33c9e48ddf6b5f0637d5cd`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on `scripts/ci/lib/pr-body.mjs` and
+`scripts/ci/lib/pr-body.test.mjs` between the last reviewed head
+(`5e3342ff438eb842102d3d1d03945cf97f74bfc4`) and this one — the intervening commits bring in
+#404's already-reviewed unique-violation fix and #408's already-reviewed keyboard-shortcuts
+fix, zero overlap with this PR's own files.
