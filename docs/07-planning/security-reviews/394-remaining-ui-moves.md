@@ -48,3 +48,46 @@ PR comment. Work was done in a detached worktree at the reviewed head; `git stat
 browser; upstream tarball contents beyond lockfile identity with `main` (unchanged
 integrity makes that pre-existing, not introduced here); `pnpm audit` (the CI supply-chain
 audit job is green at this head).
+
+---
+
+## Delta review — 2026-09-27, head `37f60a31ff57e22534e77cd083564217415ecec0`
+
+**Verdict: CLEAR.** No HIGH, MEDIUM or LOW. The delta touches no security surface.
+
+**One-line summary:** `37f60a3` adds only Storybook stories and real axe tests for nine
+primitives, and the two `main` merges in between change none of this PR's own content.
+
+**Reviewer.** Claude Opus 5.5 (`claude-opus-5-5[1m]`), the same review-only context
+role as the first pass. It authored and directed no part of the change. Checks ran in a
+detached worktree at the exact head. The only edit is this section.
+
+**What sits between the reviewed `07dbd98` and this head:**
+
+| Commit | What it is | Evidence |
+| --- | --- | --- |
+| `3d2df42` | This note (first pass) | Docs only, inside `security-reviews/` |
+| `e71fc35`, `984bc96` | Merges of `main` into the branch | `git show --remerge-diff` is empty for both, so there was no hand conflict resolution. `git diff f1819ca 984bc96` (excluding this note) matches `git diff 42b2e8b 07dbd98` byte for byte, ignoring `index` lines. So the PR's own diff against `main` is the same as the one already reviewed. (The first pass named `8c0f9cf` as the base. The real merge-base of `07dbd98` was `42b2e8b`. The reviewed diff itself was correct.) |
+| `37f60a3` | `test(ui): make primitive axe coverage reliable` | 18 files, +621/-5, every one a `packages/ui/src/components/*.stories.tsx` or `*.test.tsx`. No component source, `package.json`, lockfile, CI script or workflow changed |
+
+**What was established:**
+
+- **Test/story-only, confirmed.** `git show 37f60a3 --name-only` filtered for anything that is
+  not `*.stories.tsx` or `*.test.tsx` returns nothing.
+- **The axe tests are real.** All nine files call the shared `expectNoA11yViolations(baseElement)`
+  from `src/test/a11y.ts`. That helper runs `vitest-axe` and asserts `results.violations`
+  equals `[]`, with only the `region` rule disabled, which the first pass already reviewed.
+  Several tests also check roles, names or `aria-current` directly. Red probe: removing
+  `aria-label` from the InputOTP axe test makes it fail on the `label` rule. Reverted after.
+- **The InputOTP timer wait is safe.** `waitForInputOtpSelectionTimers()` waits for the
+  library's three deferred `input` events, then removes its listener. It only makes the tests
+  deterministic and hides no failure. The `waitFor` default timeout still fails a hang.
+- **Stories add no surface.** They import only sibling components, `@storybook/react-vite` and
+  the existing `react-hook-form` dependency. They contain no `dangerouslySetInnerHTML`, no
+  URL, no `fetch` and no storage access.
+- **Suite:** the nine touched test files pass, 9 files / 22 tests, on two runs back to back.
+  At this head every GitHub check is green except the PR-template/security-review check,
+  which is waiting for this section.
+
+**Not checked in the delta:** browser rendering of the new stories, and a full-workspace
+local re-run. CI `unit + component`, `static` and `build` are green at this exact head.
