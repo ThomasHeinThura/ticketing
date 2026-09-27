@@ -69,3 +69,12 @@ Any later change to #404's head (rebase, base merge, code or test commit) invali
 **Reviewer:** orchestrating session (mechanical verification)
 **Verdict:** CLEAR, unchanged. `git show --remerge-diff` empty; brings in already-reviewed
 main content (#394's check:tokens gate), zero overlap with this PR's own files.
+
+---
+
+## Lightweight re-confirmation after branch update, round 2 (2026-09-27)
+
+**Reviewed head:** `1a374e0fd1d32485376b4433165c2221d35a865a`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty remerge-diff; brings in #346's already-reviewed P3
+identity domain code, zero overlap with this PR's own files.
