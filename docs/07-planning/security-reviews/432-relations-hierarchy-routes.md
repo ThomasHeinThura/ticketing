@@ -182,3 +182,16 @@ pass already confirmed it green at the code-fix commit, and this pass's own scop
 narrowly the test file plus D2/D4.
 
 Clear to merge.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `cd7ee60da39ba47850664aa3ca996ecf43d01c0d`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. `git diff 9523be221d1ddc9b6923a5959c170fe81e7529c2..cd7ee60da39ba47850664aa3ca996ecf43d01c0d`
+scoped to every file this PR touches is empty. The intervening commits are already-merged,
+already-reviewed content from #423, #417, #419, #429 and #431 landing via routine branch
+updates — confirmed each is an ancestor of `origin/main`. No new, unreviewed logic reached
+this branch. (Verified from a worktree freshly reset via `git reset --hard
+origin/<branch>`, not merely fetched — see PR #430's own note for why this matters.)
