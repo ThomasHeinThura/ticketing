@@ -659,3 +659,15 @@ Then merged `origin/main` (`52c5aef`, six commits: #381, #382, #385, #386, #387,
 
 - `git show --remerge-diff afffdd0` is empty — clean automatic merge.
 - Brings in PR #389's already-reviewed changes (stories/axe-test files under `packages/ui/**`, unrelated to this PR's own `apps/api` files). Zero overlap.
+
+---
+
+## Lightweight re-confirmation after branch update, round 3 (2026-09-27)
+
+**Reviewed head:** `d1bab1126ea82bdc4178ed735141f0515dc65ff6`
+**Previously reviewed head:** `afffdd0a22f3d69c4cc6b596e67822903cb9b3e8`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged.
+
+- `git show --remerge-diff d1bab11` is empty — clean automatic merge.
+- Brings in PR #390's already-reviewed changes (stories/axe-test files under `packages/ui/**`). Zero overlap with this PR's own `apps/api` files.
