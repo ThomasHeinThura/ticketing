@@ -127,3 +127,15 @@ Each mutation was reverted afterwards, and `git diff --quiet HEAD` passed.
 - Confirmed the dropped 403 in `tests/api-contract/openapi.json`'s `getAsset` contract is legitimate (the path is genuinely unreachable now); `check:openapi` passes (110 operations matched).
 - Ran the full suite directly: typecheck clean (9/9), biome clean, `test:permissions` 11/81, unit `@taskdesk/api` 59/490 (web unaffected, 70/327), integration 90/1228 (cross-checked against the PR's own CI run on GitHub's Testcontainers Postgres 18 — same counts, no deadlock flake either run), `node --test scripts/ci/**/*.test.mjs` 491/77.
 - Two non-blocking observations, not findings: the PR body's own S-numbering doesn't quite match `338-asset-ws-oracles.md`'s established numbering (traceability nit only); the ws route now also re-checks API-key enablement/ownership where the old code never passed `apiKeyId` for this specific route — a strictly-positive incidental fix, not scope creep, worth noting so it isn't mistaken for undisclosed behavior change.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `e486c84ea3b33029e7d3a1d6d8427a8a01b406d9`
+**Previously reviewed head:** `ab070fa89732c122b01709046bbbcf7ce5d60405`
+**Reviewer:** orchestrating session (mechanical verification — the merge changes no authority or gate-semantics invariant, per `AGENTS.md`'s review-tier table)
+**Verdict:** CLEAR WITH FINDINGS, unchanged. F1-F6 above still stand, non-blocking.
+
+- `git show --remerge-diff e486c84` is empty — a clean automatic merge, no conflict-resolution content.
+- `git diff 6242c3b..e486c84 --stat` touches exactly two files: `docs/05-operations/runbook.md` (#380) and `docs/07-planning/status.md` (#384), both docs-only and outside security-review scope. No file in `apps/api/src/utils/**`, `apps/api/src/asset/**`, or any other security-scope path changed.
