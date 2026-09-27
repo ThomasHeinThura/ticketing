@@ -7,6 +7,8 @@
 **Session:** subagent `aedc6276ace8159b6`
 **Verdict: APPROVE (after fix)**, at head `3c8aadeb71f9fe841eae6744cda9214d3a383202`.
 
+**Reviewed head:** `3c8aadeb71f9fe841eae6744cda9214d3a383202`
+
 ## Security review
 
 **Model:** Opus 5.5
