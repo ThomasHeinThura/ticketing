@@ -88,3 +88,14 @@ last reviewed head and this one.
 `apps/api/src/work-item/controllers/create-work-item.ts` between the last reviewed head
 (`f3896db13291e43f3c8deed0fb9f858bf0be8c3b`) and this one — the intervening commits bring in
 #413's already-reviewed check-ui fix, zero overlap with this PR's own files.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `fd802739ea2c01c82e08219089618643308b812f`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on `apps/api/src/work-item/activity.ts` and
+`apps/api/src/work-item/controllers/create-work-item.ts` between the last reviewed head
+(`c89ad69305a0db22e52f80cda7e148dd36a8883b`) and this one — the intervening commit is #410's
+merge, zero overlap with this PR's own files.
