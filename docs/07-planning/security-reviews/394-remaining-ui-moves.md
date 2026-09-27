@@ -120,3 +120,16 @@ local re-run. CI `unit + component`, `static` and `build` are green at this exac
 - `git show --remerge-diff` on the merge commit is empty except for new files main already
   brought in (PR #396's dashboard fix, PR #397's deploy-image fix) — no conflict resolution.
 - Zero file overlap between those PRs' own files and this PR's own files.
+
+---
+
+## Lightweight re-confirmation after branch update, round 2 (2026-09-27)
+
+**Reviewed head:** `b6a112908027860b519aef4d1a890f2e5b0d671f`
+**Previously reviewed head:** `77cc9d384a3ed9e5ed531f7647fbccde5554deaa`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged.
+
+- `git show --remerge-diff` on the merge commit is empty — clean automatic merge.
+- Brings in PR #392's already-reviewed changes (permission rekey migration, Opus CLEAR).
+  Zero overlap with this PR's own files (all under `packages/ui/src/components/`).
