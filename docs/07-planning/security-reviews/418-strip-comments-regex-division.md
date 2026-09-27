@@ -83,3 +83,13 @@ being added.
 reviewed head (`70d2bcdb6a5dd59b9c15ffba1ffb74d68d95513c`) and this one — the intervening
 commits bring in #410's and #412's already-reviewed merges, zero overlap with this PR's own
 files.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `69ad4946ae17d98c2c896fe11e382ae70b6cc3b1`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
+reviewed head (`762a00e25b4b9767b66fc0321e33cb6d4e2aac36`) and this one — the intervening
+commit is #420's already-reviewed merge, zero overlap with this PR's own files.
