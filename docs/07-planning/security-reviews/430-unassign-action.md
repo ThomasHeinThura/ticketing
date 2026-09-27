@@ -202,3 +202,13 @@ unassign integration/policy tests, and the permission matrix fixture) is empty. 
 intervening commits are #416's already-reviewed merge into `main` (`6403586`, confirmed an
 ancestor of `origin/main`) plus its own chain of routine branch-update merges — already
 fully Opus-reviewed and merged before this branch picked them up.
+
+---
+
+## Re-confirmation after branch update (2026-09-27, third)
+
+**Reviewed head:** `7d3e6ae69080623f3545af9ce39876850c5f4c00`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. `git diff c3617a2a18d0e0c160f0ca4a7613b0dbc8ce4e9f..7d3e6ae69080623f3545af9ce39876850c5f4c00`
+scoped to every file this PR touches is empty. The intervening commit is #429's own
+already-reviewed docs-only merge into `main`, picked up via a routine branch update.
