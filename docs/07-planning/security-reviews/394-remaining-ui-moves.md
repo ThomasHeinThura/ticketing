@@ -92,3 +92,19 @@ detached worktree at the exact head. The only edit is this section.
 
 **Not checked in the delta:** browser rendering of the new stories, and a full-workspace
 local re-run. CI `unit + component`, `static` and `build` are green at this exact head.
+
+---
+
+## Lightweight re-confirmation after accidental-commit revert (2026-09-27)
+
+**Reviewed head:** `80715f35d1f705fc9e632e919630e807d9b3291b`
+**Previously reviewed head:** `37f60a31ff57e22534e77cd083564217415ecec0`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged.
+
+- A commit accidentally swept in unrelated, half-finished file moves from a shared review
+  worktree (staged by a different, paused agent session), breaking `apps/web` typecheck.
+  Reverted immediately in the very next commit.
+- `git diff 8f0337d 80715f3 --stat` (the properly-reviewed head, through the accident, to its
+  revert) shows exactly one file changed: this note. Zero net code difference.
+- `apps/web` typecheck confirmed clean again at the current head.
