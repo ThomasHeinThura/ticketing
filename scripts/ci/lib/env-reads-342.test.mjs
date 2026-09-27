@@ -599,3 +599,59 @@ test("environment detector does not flag D3 shape L1's false positives", () => {
   // "ignores nested properties named like runtime globals" test's own precedent.
   assert.deepEqual(findEnvReads("function f(process) { return process; }"), []);
 });
+
+// Ordinary review of #423 (this PR), Finding 1 — L1's file-wide `Set` suppressed the literal
+// spelling `process` EVERYWHERE in the file the instant it saw ANY shadow binding, so a real,
+// unrelated, top-level `process.env.X` read elsewhere in the same file was silently never
+// charged. Real JS scoping is lexical: a parameter/catch binding shadows its OWN scope only.
+test("environment detector still charges a real read elsewhere in a file that also shadows process", () => {
+  assert.deepEqual(
+    findEnvReads(
+      "function f(process) { return process.length; }\nconst secret = process.env.API_KEY;",
+    ),
+    [
+      {
+        object: "process.env",
+        kind: "named",
+        name: "API_KEY",
+        line: 2,
+        snippet: "const secret = process.env.API_KEY;",
+      },
+    ],
+  );
+  assert.deepEqual(
+    findEnvReads(
+      "try { ok(); } catch (process) { log(process); }\nconst secret = process.env.API_KEY;",
+    ),
+    [
+      {
+        object: "process.env",
+        kind: "named",
+        name: "API_KEY",
+        line: 2,
+        snippet: "const secret = process.env.API_KEY;",
+      },
+    ],
+  );
+});
+
+// Ordinary review of #423 (this PR), Finding 2 — the bag or a bare global escaping through an
+// object-literal property value, an array-literal element, a ternary branch, or an `||`/`??`
+// fallback was not charged anywhere, unlike the dedicated spread-handling case that already
+// covers `{ ...process.env }`. Matches that existing case's own charge shape (`kind: "alias"`).
+const containerEscapeCases = [
+  ["object literal property value", "const obj = { env: process.env };"],
+  ["object literal shorthand property", "const obj = { process };"],
+  ["array literal element", "const list = [process.env];"],
+  ["conditional expression branch", "const x = cond ? process.env : {};"],
+  ["logical OR fallback", "const x = maybe || process.env;"],
+  ["logical nullish-coalescing fallback", "const x = maybe ?? process.env;"],
+];
+
+for (const [label, source] of containerEscapeCases) {
+  test(`environment detector charges container escape: ${label}`, () => {
+    const reads = findEnvReads(source);
+    assert.equal(reads.length, 1, `expected ${label} to be charged once`);
+    assert.equal(reads[0].kind, "alias");
+  });
+}

@@ -154,6 +154,50 @@ function memberMatch(node, objectKind) {
   return transition.result; // unresolved computed key — assume the worst, fail closed
 }
 
+const SHADOWABLE_NAMES = new Set(["process", "globalThis", "global", "window"]);
+
+const FUNCTION_LIKE_KINDS = new Set([
+  ts.SyntaxKind.FunctionDeclaration,
+  ts.SyntaxKind.FunctionExpression,
+  ts.SyntaxKind.ArrowFunction,
+  ts.SyntaxKind.MethodDeclaration,
+  ts.SyntaxKind.Constructor,
+  ts.SyntaxKind.GetAccessor,
+  ts.SyntaxKind.SetAccessor,
+]);
+
+/**
+ * Is `name` shadowed at `node`'s lexical position — a real, per-scope answer, not a file-wide
+ * one? Walks `node`'s parent chain (the real parser sets `.parent`, so this needs no separate
+ * bookkeeping pass) looking for an enclosing function whose own parameter list binds `name`, or
+ * an enclosing `catch` clause whose binding is `name`. Either makes `name` refer to that local
+ * binding for everything lexically inside it — the real JS scoping rule this file otherwise
+ * does not model (see the `Identifier` case's own comment) — without treating a same-named
+ * binding ANYWHERE else in the file as relevant, which is what the previous, file-wide `Set`
+ * did (#403's ordinary review, Finding 1: a shadow parameter in one function was silently
+ * suppressing an unrelated, real `process.env.X` read elsewhere in the same file).
+ */
+function isShadowedAt(node, name) {
+  for (let current = node?.parent; current; current = current.parent) {
+    if (
+      FUNCTION_LIKE_KINDS.has(current.kind) &&
+      (current.parameters ?? []).some(
+        (parameter) =>
+          parameter.name?.kind === ts.SyntaxKind.Identifier &&
+          parameter.name.text === name,
+      )
+    )
+      return true;
+    if (
+      current.kind === ts.SyntaxKind.CatchClause &&
+      current.variableDeclaration?.name?.kind === ts.SyntaxKind.Identifier &&
+      current.variableDeclaration.name.text === name
+    )
+      return true;
+  }
+  return false;
+}
+
 /**
  * What does `node` *denote*, given the aliases collected so far in this file? One of
  * `"process"`, `"globalThis"`, `"importMeta"` (not yet narrowed to the environment bag), or
@@ -170,13 +214,10 @@ function classify(startNode, aliases) {
       const name = node.text;
       // #382's Opus review, "L1" — a catch-clause binding or parameter can legitimately be
       // named `process`/`globalThis`/`global`/`window`, shadowing the real global for the
-      // rest of that scope. This design does not track block scoping in general, but a
-      // shadow of one of these four specific names is syntactically rare and cheap to
-      // notice file-wide (see `markShadowed`); once noticed, that literal spelling stops
-      // being treated as the global ANYWHERE in the file — conservative in the direction of
-      // fewer false positives, matching a real reviewer's own read of `catch (process) {
-      // log(process); }` as passing a local, not the Node global.
-      if (aliases.shadowed.has(name)) return null;
+      // rest of that scope. `isShadowedAt` answers this per the identifier's own lexical
+      // position (walking its real parent chain), not file-wide — see its own comment for
+      // why file-wide was wrong (#403's Finding 1).
+      if (SHADOWABLE_NAMES.has(name) && isShadowedAt(node, name)) return null;
       if (name === "process" || aliases.process.has(name)) return "process";
       if (
         name === "globalThis" ||
@@ -330,16 +371,6 @@ export function findEnvReadsInSourceFile(sourceFile) {
     env: new Set(),
     importMeta: new Set(),
     importMetaEnv: new Set(),
-    shadowed: new Set(),
-  };
-  const SHADOWABLE_NAMES = new Set([
-    "process",
-    "globalThis",
-    "global",
-    "window",
-  ]);
-  const markShadowed = (name) => {
-    if (SHADOWABLE_NAMES.has(name)) aliases.shadowed.add(name);
   };
   const text = sourceFile.text;
   const lines = text.split("\n");
@@ -490,6 +521,29 @@ export function findEnvReadsInSourceFile(sourceFile) {
           chargeEscape(node, kind);
         break;
       }
+      // Ordinary review of #423 (this PR), Finding 2 — the bag or a bare global escaping
+      // through an object-literal property value, an array-literal element, a ternary branch,
+      // or an `||`/`??` fallback is exactly as much an escape as the spread case above (a value
+      // that used to be reachable only through a real member access is now reachable through
+      // whatever consumes this container/expression); charged the same way, via
+      // `chargeBareValueIfEscaping`, which already no-ops on anything that isn't a bare
+      // process/import.meta/env/import.meta.env value.
+      case ts.SyntaxKind.PropertyAssignment:
+        chargeBareValueIfEscaping(node.initializer);
+        break;
+      case ts.SyntaxKind.ShorthandPropertyAssignment:
+        chargeBareValueIfEscaping(node.name);
+        break;
+      case ts.SyntaxKind.ArrayLiteralExpression:
+        for (const element of node.elements) {
+          if (element.kind !== ts.SyntaxKind.SpreadElement)
+            chargeBareValueIfEscaping(element);
+        }
+        break;
+      case ts.SyntaxKind.ConditionalExpression:
+        chargeBareValueIfEscaping(node.whenTrue);
+        chargeBareValueIfEscaping(node.whenFalse);
+        break;
       case ts.SyntaxKind.CallExpression: {
         // A call classify() itself resolves (require/dynamic import/Reflect.get/
         // Object.getOwnPropertyDescriptor of process or import.meta) already has its
@@ -535,20 +589,11 @@ export function findEnvReadsInSourceFile(sourceFile) {
         break;
       }
       case ts.SyntaxKind.VariableDeclaration: {
-        if (
-          node.parent?.kind === ts.SyntaxKind.CatchClause &&
-          node.name.kind === ts.SyntaxKind.Identifier
-        ) {
-          markShadowed(node.name.text);
-        }
         const exported = hasExportModifier(node.parent?.parent);
         handleBindingDeclaration(node.name, node.initializer, exported);
         break;
       }
       case ts.SyntaxKind.Parameter:
-        if (node.name.kind === ts.SyntaxKind.Identifier) {
-          markShadowed(node.name.text);
-        }
         handleBindingDeclaration(node.name, node.initializer, false);
         break;
       case ts.SyntaxKind.BinaryExpression:
@@ -557,6 +602,12 @@ export function findEnvReadsInSourceFile(sourceFile) {
           node.left.kind === ts.SyntaxKind.Identifier
         ) {
           handleBindingDeclaration(node.left, node.right, false);
+        } else if (
+          node.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
+          node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
+        ) {
+          chargeBareValueIfEscaping(node.left);
+          chargeBareValueIfEscaping(node.right);
         }
         break;
       case ts.SyntaxKind.ExportAssignment:
@@ -621,8 +672,7 @@ export function findEnvReadsInSourceFile(sourceFile) {
       aliases.globalThis.size +
       aliases.env.size +
       aliases.importMeta.size +
-      aliases.importMetaEnv.size +
-      aliases.shadowed.size;
+      aliases.importMetaEnv.size;
     reads = [];
     visit(sourceFile);
     const after =
@@ -630,8 +680,7 @@ export function findEnvReadsInSourceFile(sourceFile) {
       aliases.globalThis.size +
       aliases.env.size +
       aliases.importMeta.size +
-      aliases.importMetaEnv.size +
-      aliases.shadowed.size;
+      aliases.importMetaEnv.size;
     if (after === before) break;
   }
   return reads;
