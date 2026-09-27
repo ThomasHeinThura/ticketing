@@ -218,3 +218,14 @@ conflict and no event-count change (#438 publishes no new keys) in a trial merge
 "unit + component" CI failure at this head was a >5s `drizzle-kit generate` timeout in an
 unrelated schema-drift test, unrelated to this PR's changes (confirmed: no schema/migration
 touched, same test passes locally) — a rerun, not a defect.
+
+---
+
+## Re-confirmation after branch update (2026-09-27, second)
+
+**Reviewed head:** `116faed0ce16743b0efa4659642e52ed489d1e7a`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on this PR's own files. Clean merge, no conflict
+(#438 never touches work-item files, matching the prior pass's own trial-merge prediction).
+The intervening commit is #438's already-reviewed merge, confirmed an ancestor of
+`origin/main`.
