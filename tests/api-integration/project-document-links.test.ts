@@ -53,6 +53,62 @@ describe("API integration: project document links", () => {
     expect(response.status).toBe(400);
   });
 
+  it.each([
+    "javascript:alert(document.cookie)",
+    "data:text/html,<script>1</script>",
+  ])(
+    "rejects a %s URL (B2, Opus review of PR #438: stored-XSS via a non-http(s) scheme)",
+    async (url) => {
+      const member = await createWorkspaceMember({ role: "admin" });
+      const { project } = await createProjectFixture({
+        workspaceId: member.workspace.id,
+      });
+      mockAuthenticatedSession(member.user);
+
+      const response = await addDocumentLink(project.id, {
+        url,
+        title: "Malicious",
+        customerVisible: true,
+      });
+
+      expect(response.status).toBe(400);
+
+      const listResponse = await listDocumentLinks(project.id);
+      const listed = (await listResponse.json()) as unknown[];
+      expect(listed).toHaveLength(0);
+    },
+  );
+
+  it("rejects a NUL byte in title", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+
+    const response = await addDocumentLink(project.id, {
+      url: "https://example.com/sow.pdf",
+      title: "Bad\u0000title",
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects a title/url exceeding the length limit", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+
+    const response = await addDocumentLink(project.id, {
+      url: `https://example.com/${"a".repeat(2048)}`,
+      title: "SOW",
+    });
+
+    expect(response.status).toBe(400);
+  });
+
   it("defaults customerVisible to false, adds, lists, and deletes a link", async () => {
     const member = await createWorkspaceMember({ role: "admin" });
     const { project } = await createProjectFixture({

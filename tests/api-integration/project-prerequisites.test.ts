@@ -153,4 +153,34 @@ describe("API integration: project prerequisites", () => {
 
     expect(response.status).toBe(404);
   });
+
+  it("rejects a NUL byte in title (S1, Opus review of PR #438)", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+
+    const response = await createPrerequisite(project.id, {
+      title: "Bad\u0000title",
+      ownerSide: "us",
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects a title exceeding the length limit (S3, Opus review of PR #438)", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+
+    const response = await createPrerequisite(project.id, {
+      title: "a".repeat(201),
+      ownerSide: "us",
+    });
+
+    expect(response.status).toBe(400);
+  });
 });

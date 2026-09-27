@@ -204,4 +204,71 @@ describe("API integration: project stakeholders", () => {
 
     expect(response.status).toBe(403);
   });
+
+  it("rejects a NUL byte in role (S1, Opus review of PR #438)", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const person = await makeStaffPerson();
+    mockAuthenticatedSession(member.user);
+
+    const response = await addStakeholder(project.id, {
+      personId: person.id,
+      role: "Bad\u0000role",
+      escalationOrder: 1,
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects a role exceeding the length limit (S3, Opus review of PR #438)", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const person = await makeStaffPerson();
+    mockAuthenticatedSession(member.user);
+
+    const response = await addStakeholder(project.id, {
+      personId: person.id,
+      role: "a".repeat(101),
+      escalationOrder: 1,
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects an escalationOrder exceeding the database's integer column (S2, Opus review of PR #438, reproduced with 3000000000)", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const person = await makeStaffPerson();
+    mockAuthenticatedSession(member.user);
+
+    const response = await addStakeholder(project.id, {
+      personId: person.id,
+      role: "Escalation contact",
+      escalationOrder: 3_000_000_000,
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects a NUL byte in personId", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+
+    const response = await addStakeholder(project.id, {
+      personId: "bad\u0000id",
+      role: "Escalation contact",
+      escalationOrder: 1,
+    });
+
+    expect(response.status).toBe(400);
+  });
 });

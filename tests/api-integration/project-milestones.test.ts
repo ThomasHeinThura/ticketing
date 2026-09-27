@@ -148,4 +148,34 @@ describe("API integration: project milestones", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("rejects a NUL byte in name (S1, Opus review of PR #438)", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+
+    const response = await createMilestone(project.id, {
+      name: "Bad\u0000name",
+      date: "2026-01-01T00:00:00.000Z",
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects a name exceeding the length limit (S3, Opus review of PR #438)", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+
+    const response = await createMilestone(project.id, {
+      name: "a".repeat(201),
+      date: "2026-01-01T00:00:00.000Z",
+    });
+
+    expect(response.status).toBe(400);
+  });
 });

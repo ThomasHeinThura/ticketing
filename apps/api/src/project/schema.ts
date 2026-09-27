@@ -1,10 +1,84 @@
 import { z } from "../openapi";
+import { ALLOWED_URL_PROTOCOLS } from "../utils/assert-public-destination";
 import {
   MAX_WORK_ITEM_INSTANT_MS,
   MIN_WORK_ITEM_INSTANT_MS,
 } from "../work-item/date-bounds";
 
 export const projectParam = z.object({ id: z.string() });
+
+// S1 (Opus security review of PR #438): same NUL-byte rejection rule PR #271's Opus
+// review set for `work-item/schema.ts` ("Postgres text/jsonb columns reject a NUL byte
+// outright, which reached the database unvalidated and came back as a masked 500
+// instead of this route's normal 400") -- mirrored here rather than imported, since
+// `work-item/schema.ts` does not export its own copy.
+function containsNulByte(value: unknown): boolean {
+  if (typeof value === "string") return value.includes("\u0000");
+  if (Array.isArray(value)) return value.some(containsNulByte);
+  if (value !== null && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>).some(
+      ([key, entry]) => key.includes("\u0000") || containsNulByte(entry),
+    );
+  }
+  return false;
+}
+
+const NO_NUL_BYTE_MESSAGE =
+  "must not contain a NUL (\\u0000) byte -- Postgres text/jsonb columns reject it";
+
+/** A required, NUL-byte-safe, length-bounded text field -- the shape every string field
+ * below needs (S1/S3, Opus review of PR #438). `max` defaults to 200, matching
+ * `workspace/schema.ts`'s own short-label convention (`name`: 100, `role`: 100) scaled up
+ * slightly for a title-like field; callers needing a different bound (a URL, a long
+ * description) pass their own. */
+function nulSafeText(max = 200) {
+  return z
+    .string()
+    .min(1)
+    .max(max)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE);
+}
+
+/** Same as `nulSafeText`, but for an id-shaped field that must not be empty-checked with
+ * `.min(1)` beyond "not blank" and needs no content length bound beyond what a cuid2 (or
+ * similar) id ever is -- matches `work-item/schema.ts`'s `projectIdParam`/`workItemKeyParam`
+ * treatment of ids (NUL-byte refine only, no arbitrary max). */
+const nulSafeId = z
+  .string()
+  .min(1)
+  .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE);
+
+// B2/S2 (Opus security review of PR #438, live-reproduced): `z.string().url()` alone
+// accepts any URL scheme -- a `javascript:`/`data:` document link stored and later
+// rendered by a client is a stored-XSS vector. Reuses `assert-public-destination.ts`'s
+// own `ALLOWED_URL_PROTOCOLS` allowlist (the exact check that module already enforces
+// for outbound webhook destinations) rather than a second, independently-typed scheme
+// list -- but NOT that module's `assertPublicDestination` itself, which also does
+// DNS/SSRF resolution appropriate for a URL this server actually FETCHES (a webhook
+// destination); a document link is stored and never fetched server-side, so only the
+// synchronous scheme check applies here.
+const documentLinkUrl = z
+  .string()
+  .max(2048)
+  .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
+  .refine(
+    (value) => {
+      try {
+        return (ALLOWED_URL_PROTOCOLS as readonly string[]).includes(
+          new URL(value).protocol,
+        );
+      } catch {
+        return false;
+      }
+    },
+    { message: "must be an http(s) URL" },
+  );
+
+// S2 (Opus security review of PR #438, live-reproduced with 3000000000): the database
+// column is a plain Postgres `integer` (max 2147483647); an out-of-range value reached
+// the insert unvalidated and 500'd instead of this route's normal 400.
+const PG_INTEGER_MAX = 2147483647;
+const boundedNonNegativeInt = z.number().int().min(0).max(PG_INTEGER_MAX);
 
 // Issue #25's bounded slice (stakeholders, milestones, prerequisites, document links).
 // Same ISO-8601 date-time hardening `work-item/schema.ts`'s `workItemDateTime` uses
@@ -89,13 +163,13 @@ export const documentLinkParam = z.object({
 });
 
 export const createMilestoneBody = z.object({
-  name: z.string().min(1),
+  name: nulSafeText(),
   date: projectDateTime,
 });
 
 export const updateMilestoneBody = z
   .object({
-    name: z.string().min(1).optional(),
+    name: nulSafeText().optional(),
     date: projectDateTime.optional(),
     // Sets or clears `reachedAt`: `true` stamps it "now"; `false` clears it back to
     // not-yet-reached. Projects-and-engagements.md: "The current milestone is derived
@@ -109,7 +183,7 @@ export const updateMilestoneBody = z
 const OWNER_SIDES = ["us", "customer", "both"] as const;
 
 export const createPrerequisiteBody = z.object({
-  title: z.string().min(1),
+  title: nulSafeText(),
   ownerSide: z.enum(OWNER_SIDES),
   dueDate: projectDateTime.nullable().optional(),
   isBlocking: z.boolean().optional(),
@@ -117,7 +191,7 @@ export const createPrerequisiteBody = z.object({
 
 export const updatePrerequisiteBody = z
   .object({
-    title: z.string().min(1).optional(),
+    title: nulSafeText().optional(),
     ownerSide: z.enum(OWNER_SIDES).optional(),
     dueDate: projectDateTime.nullable().optional(),
     isBlocking: z.boolean().optional(),
@@ -130,25 +204,25 @@ export const updatePrerequisiteBody = z
   });
 
 export const createStakeholderBody = z.object({
-  personId: z.string(),
-  role: z.string().min(1),
-  escalationOrder: z.number().int().min(0),
-  escalationWaitMinutes: z.number().int().min(0).optional(),
+  personId: nulSafeId,
+  role: nulSafeText(100),
+  escalationOrder: boundedNonNegativeInt,
+  escalationWaitMinutes: boundedNonNegativeInt.optional(),
 });
 
 export const updateStakeholderBody = z
   .object({
-    role: z.string().min(1).optional(),
-    escalationOrder: z.number().int().min(0).optional(),
-    escalationWaitMinutes: z.number().int().min(0).optional(),
+    role: nulSafeText(100).optional(),
+    escalationOrder: boundedNonNegativeInt.optional(),
+    escalationWaitMinutes: boundedNonNegativeInt.optional(),
   })
   .refine((body) => Object.keys(body).length > 0, {
     message: "at least one field must be supplied",
   });
 
 export const createDocumentLinkBody = z.object({
-  url: z.string().url(),
-  title: z.string().min(1),
+  url: documentLinkUrl,
+  title: nulSafeText(),
   customerVisible: z.boolean().optional(),
 });
 
