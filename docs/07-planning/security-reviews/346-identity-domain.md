@@ -597,3 +597,18 @@ Probes ran in a scratch test file that was deleted afterwards; `git status` was 
 The gate observations in the first review (independence of the ordinary review, the attribution mismatch, the draft state) are not re-adjudicated here.
 
 This commit is docs-only. It moves the PR head but changes no code.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `cf3e88602078f2979bdf7ab91205dfe6a7653a10`
+**Previously reviewed head:** `ab33b2cb9c0a07aecf33d2b6f347c2931fb99e04`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged.
+
+- `git show --remerge-diff` on the merge commit is empty — clean automatic merge, zero
+  conflicts, zero files touched by the merge itself.
+- Brings in main's recently merged PRs (#394 UI extraction, #401 Trivy gate, #397/#396/#392
+  deploy/permission fixes) — none overlap this PR's own files (`packages/domain/src/identity/**`,
+  `packages/domain/src/index.ts`, docs).
