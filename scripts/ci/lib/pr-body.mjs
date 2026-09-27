@@ -536,11 +536,19 @@ export function sections(markdown) {
  * `## Reviewed by`, and `Model` under `## Security review`) is exactly the security-
  * sensitive comparison this bug class keeps defeating, and multi-line capture can only
  * WEAKEN those checks — there is no way for a longer captured string to make an unfilled
- * field look more empty, or a self-review look less self-authored. So those five calls now
- * pass `{ firstLine: true }` and get back the ORIGINAL, narrowly-scoped, single-line
- * semantics (plus #409's own same-line-only label-to-value gap fix, which is unaffected
- * either way) — provably safe because it is exactly what was already in place, and
- * extensively exercised, before issue #150 was ever filed.
+ * field look more empty, or a self-review look less self-authored.
+ *
+ * **A third Opus pass (delta-review of the structural fix itself) found one more thing
+ * worth closing: the safe mode should never be something a caller has to remember to ask
+ * for.** The original structural fix made single-line the OPT-IN (`firstLine: true`); a
+ * misspelled option name or a future security-sensitive call that simply omits the option
+ * would silently fall back to multi-line — the exact direction every prior finding in this
+ * function has been. So the default is flipped: **single-line is now the default with NO
+ * options at all**, and the one caller that actually wants multi-line capture opts in
+ * explicitly with `{ multiLine: true }`. This is a pure default flip, not a regex or
+ * boundary change — the underlying single-line and multi-line matching logic is byte-for-
+ * byte what the second Opus pass already fuzz-tested at 600,000+ and 300,000+ random
+ * inputs with zero divergence from the previously-verified behavior.
  *
  * Issue #409: the whitespace between the label and the value used to be `\s*`, which
  * matches a newline. A label line with nothing after it (`**Model:**`), immediately
@@ -551,28 +559,26 @@ export function sections(markdown) {
  *
  * @param {string} text
  * @param {string} label
- * @param {{ firstLine?: boolean }} [options] `firstLine: true` stops the value at the
- *   first line break or end of input — the safe, narrowly-scoped mode every
- *   security-sensitive caller uses. Omitted/false keeps the value running through
- *   subsequent lines up to the next bold-label line, a blank line, a `## ` heading, or
- *   end of input — multi-line capture (issue #150), for the one caller
- *   (`check-reviews.mjs`'s `Spec`) where a longer value is never unsafe.
+ * @param {{ multiLine?: boolean }} [options] Default: stops the value at the first line
+ *   break or end of input — the safe, narrowly-scoped mode every security-sensitive
+ *   caller should use, and gets with no options at all. `multiLine: true` keeps the value
+ *   running through subsequent lines up to the next bold-label line, a blank line, a
+ *   `## ` heading, or end of input (issue #150) — for the one caller
+ *   (`check-reviews.mjs`'s `Spec`) where a longer value is never unsafe. Must be
+ *   requested explicitly; there is no way to reach it by omission or typo.
  */
 export function field(text, label, options = {}) {
   const normalized = text.replace(/\r\n?/g, "\n");
-  if (options.firstLine) {
+  if (options.multiLine) {
     const pattern = new RegExp(
-      `^[ \\t]*\\*\\*${label}:\\*\\*[ \\t]*(.*)$`,
+      `^[ \\t]*\\*\\*${label}:\\*\\*[ \\t]*([\\s\\S]*?)` +
+        "(?=\\n[ \\t]*\\*\\*[^*\\n]+:\\*\\*|\\n[ \\t]*\\n|\\n[ \\t]*##(?!#)|(?![\\s\\S]))",
       "im",
     );
     const match = pattern.exec(normalized);
     return match ? match[1].trim() : "";
   }
-  const pattern = new RegExp(
-    `^[ \\t]*\\*\\*${label}:\\*\\*[ \\t]*([\\s\\S]*?)` +
-      "(?=\\n[ \\t]*\\*\\*[^*\\n]+:\\*\\*|\\n[ \\t]*\\n|\\n[ \\t]*##(?!#)|(?![\\s\\S]))",
-    "im",
-  );
+  const pattern = new RegExp(`^[ \\t]*\\*\\*${label}:\\*\\*[ \\t]*(.*)$`, "im");
   const match = pattern.exec(normalized);
   return match ? match[1].trim() : "";
 }

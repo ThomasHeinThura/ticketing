@@ -788,26 +788,28 @@ describe("field", () => {
       assert.equal(field(bothFilled, "Session"), "the-real-session");
     });
 
-    it("issue #150 is fixed: a genuine continuation line is captured, not truncated", () => {
-      // This used to assert truncation at the first newline (issue #150's own bug,
-      // pre-existing and out of scope for the #409 fix). Now that #150 is fixed in this
-      // same function, a continuation line that is NOT a bold-label line is part of the
-      // value, not silently dropped.
+    it("by default (no options), a continuation line is correctly truncated -- the safe behavior every security-sensitive caller relies on", () => {
+      const withContinuation =
+        "**Model:** Opus 5\ncontinuation line that is not a label";
+      assert.equal(field(withContinuation, "Model"), "Opus 5");
+    });
+
+    it("issue #150 is fixed: with { multiLine: true }, a genuine continuation line is captured, not truncated", () => {
       const withContinuation =
         "**Model:** Opus 5\ncontinuation line that is not a label";
       assert.equal(
-        field(withContinuation, "Model"),
+        field(withContinuation, "Model", { multiLine: true }),
         "Opus 5\ncontinuation line that is not a label",
       );
     });
   });
 });
 
-describe("field, issue #150 — a genuinely multi-line value is captured in full", () => {
+describe("field, issue #150 — { multiLine: true } captures a genuinely multi-line value in full", () => {
   it("captures a value spanning several lines, up to the end of input", () => {
     const text = "**Spec:** blocked — see\nworkflows.md for the open findings";
     assert.equal(
-      field(text, "Spec"),
+      field(text, "Spec", { multiLine: true }),
       "blocked — see\nworkflows.md for the open findings",
     );
   });
@@ -818,68 +820,75 @@ describe("field, issue #150 — a genuinely multi-line value is captured in full
       "**Rules in scope:** n/a\n";
     const task = sections(body).get(normaliseHeading("Task"));
     assert.equal(
-      field(contentOf(task.raw), "Spec"),
+      field(contentOf(task.raw), "Spec", { multiLine: true }),
       "blocked — see\nworkflows.md for the open findings",
     );
   });
 
   it("a multi-line value still stops at the next bold-label line (the #409 shape) and does not leak into it", () => {
     const text = "**Spec:** line one\nline two\n**Rules in scope:** WI-3, WI-7";
-    assert.equal(field(text, "Spec"), "line one\nline two");
-    assert.equal(field(text, "Rules in scope"), "WI-3, WI-7");
+    assert.equal(field(text, "Spec", { multiLine: true }), "line one\nline two");
+    assert.equal(field(text, "Rules in scope", { multiLine: true }), "WI-3, WI-7");
   });
 
   it("a multi-line value stops at a blank line followed by the next label, not swallowing the blank line", () => {
     const text = "**Spec:** line one\nline two\n\n**Rules in scope:** n/a";
-    assert.equal(field(text, "Spec"), "line one\nline two");
+    assert.equal(field(text, "Spec", { multiLine: true }), "line one\nline two");
   });
 
   it("a multi-line value stops at the next ## heading, never crossing into the next section", () => {
     const text =
       "**Spec:** line one\nline two\n\n## Implemented by\n\n**Model:** Sonnet 5";
-    assert.equal(field(text, "Spec"), "line one\nline two");
+    assert.equal(field(text, "Spec", { multiLine: true }), "line one\nline two");
   });
 
   it("does not swallow unrelated content past the current section when there is no next label at all", () => {
     const text =
       "**Note:** see the committed review note\nsecond line of the note";
     assert.equal(
-      field(text, "Note"),
+      field(text, "Note", { multiLine: true }),
       "see the committed review note\nsecond line of the note",
     );
   });
 
-  it("the #409 fix is unaffected: empty-label-adjacent-to-next-label still reads as '' (re-run of the exact #409 cases)", () => {
-    assert.equal(field("**Model:**\n**Session:**", "Model"), "");
-    assert.equal(field("**Model:**\n**Session:** the-session", "Model"), "");
+  it("the #409 fix is unaffected: empty-label-adjacent-to-next-label still reads as '' (re-run of the exact #409 cases, multiLine mode)", () => {
+    const opts = { multiLine: true };
+    assert.equal(field("**Model:**\n**Session:**", "Model", opts), "");
+    assert.equal(field("**Model:**\n**Session:** the-session", "Model", opts), "");
     const reviewedByOnceStripped = "**Model:**\n**Session:**";
-    assert.equal(field(reviewedByOnceStripped, "Model"), "");
-    assert.equal(field(reviewedByOnceStripped, "Session"), "");
+    assert.equal(field(reviewedByOnceStripped, "Model", opts), "");
+    assert.equal(field(reviewedByOnceStripped, "Session", opts), "");
     assert.equal(
-      field("**Model:**\n**Session:** abc-123", "Session"),
+      field("**Model:**\n**Session:** abc-123", "Session", opts),
       "abc-123",
     );
     const allBlank = "**Model:**\n**Session:**\n**Surfaces examined:**";
-    assert.equal(field(allBlank, "Model"), "");
-    assert.equal(field(allBlank, "Session"), "");
-    assert.equal(field(allBlank, "Surfaces examined"), "");
+    assert.equal(field(allBlank, "Model", opts), "");
+    assert.equal(field(allBlank, "Session", opts), "");
+    assert.equal(field(allBlank, "Surfaces examined", opts), "");
     const bothFilled = "**Model:** Opus 5\n**Session:** the-real-session";
-    assert.equal(field(bothFilled, "Model"), "Opus 5");
-    assert.equal(field(bothFilled, "Session"), "the-real-session");
+    assert.equal(field(bothFilled, "Model", opts), "Opus 5");
+    assert.equal(field(bothFilled, "Session", opts), "the-real-session");
+  });
+
+  it("the #409 fix also holds by DEFAULT (no options) -- single-line mode never needed the multi-line boundary logic to begin with", () => {
+    assert.equal(field("**Model:**\n**Session:**", "Model"), "");
+    assert.equal(field("**Model:**\n**Session:** the-session", "Model"), "");
+    assert.equal(field("**Model:** Opus 5\n**Session:** x", "Model"), "Opus 5");
   });
 });
 
-describe("field, two Opus security review passes — why { firstLine: true } exists", () => {
-  // Two separate Opus passes on two separate attempts at enumerating "what ends a
-  // multi-line value" each found a REOPENED variant of #409: an empty label followed by
-  // prose, a sub-heading, bare-CR line endings (pass 1), then a trailing note on the very
-  // next line with no blank line, a blockquote, a list item, a thematic break, or a code
-  // fence (pass 2) all still read as "filled in" instead of empty. Enumerating more
-  // boundary shapes only invites the next variant -- the actual fix is structural: the
-  // five security-sensitive call sites in check-pr-template.mjs use `{ firstLine: true }`
-  // instead, which discards everything past the first line break UNCONDITIONALLY, so
-  // there is no boundary-shape enumeration left to be incomplete. Every case below is one
-  // of the two Opus passes' own reproductions, re-run against `firstLine: true`.
+describe("field, three Opus security review passes — why single-line is field()'s DEFAULT", () => {
+  // Three Opus passes total: two on enumerating "what ends a multi-line value" (an empty
+  // label followed by prose, a sub-heading, bare-CR line endings, a trailing note on the
+  // very next line, a blockquote, a list item, a thematic break, a code fence -- all
+  // still read as "filled in" instead of empty), then a THIRD on the structural fix
+  // itself: the safe single-line mode had been made opt-in (`firstLine: true`), so a
+  // misspelled option or a future call that simply omits it would silently fall back to
+  // the unsafe multi-line mode. Single-line is now the DEFAULT (no options at all);
+  // `{ multiLine: true }` is the explicit opt-in only `check-reviews.mjs`'s `Spec` field
+  // uses. Every case below is one of the Opus passes' own reproductions, re-run against
+  // the new default.
 
   const emptyLabelCases = [
     ["a blank line then prose", "**Session:**\n\nReviewer not spawned yet -- pending."],
@@ -894,8 +903,8 @@ describe("field, two Opus security review passes — why { firstLine: true } exi
   ];
 
   for (const [name, text] of emptyLabelCases) {
-    it(`an empty label followed by ${name} still reads as '' under firstLine:true`, () => {
-      assert.equal(field(text, "Session", { firstLine: true }), "");
+    it(`an empty label followed by ${name} still reads as '' by default (no options)`, () => {
+      assert.equal(field(text, "Session"), "");
     });
   }
 
@@ -903,42 +912,56 @@ describe("field, two Opus security review passes — why { firstLine: true } exi
     const text =
       "**Model:** Sonnet 5\n**Session:** lane-abc\n" +
       "Verdict: APPROVE. Long note that must not become part of the Session value.";
-    assert.equal(field(text, "Session", { firstLine: true }), "lane-abc");
+    assert.equal(field(text, "Session"), "lane-abc");
   });
 
   it("a filled value followed by a blank line and a note still captures only the first line", () => {
     const text =
       "**Session:** lane-abc\n\nVerdict: APPROVE, some prose here.";
-    assert.equal(field(text, "Session", { firstLine: true }), "lane-abc");
+    assert.equal(field(text, "Session"), "lane-abc");
   });
 
-  it("firstLine:true is what actually protects the self-review comparison, exercised end to end", () => {
-    // The exact shape that defeated the comparison in default (multi-line) mode: two
-    // Session values that are IDENTICAL up to the real session id, differing only in a
-    // trailing note with no blank line before it. Multi-line mode would capture the note
-    // as part of the value, so the two long strings would (wrongly) compare as different
-    // even though the actual sessions are the same. firstLine:true captures only
-    // "lane-abc" on both sides, so the comparison correctly sees them as equal.
+  it("the default is what actually protects the self-review comparison, exercised end to end", () => {
+    // The exact shape that defeated the comparison in multi-line mode: two Session
+    // values that are IDENTICAL up to the real session id, differing only in a trailing
+    // note with no blank line before it. Multi-line mode would capture the note as part
+    // of the value, so the two long strings would (wrongly) compare as different even
+    // though the actual sessions are the same. The default captures only "lane-abc" on
+    // both sides, so the comparison correctly sees them as equal.
     const implementedBy = "**Model:** Sonnet 5\n**Session:** lane-abc\nSome note.";
     const reviewedBy =
       "**Model:** Sonnet 5\n**Session:** lane-abc\nA different note entirely.";
-    const opts = { firstLine: true };
-    assert.equal(
-      field(reviewedBy, "Session", opts),
-      field(implementedBy, "Session", opts),
-    );
+    assert.equal(field(reviewedBy, "Session"), field(implementedBy, "Session"));
+  });
+
+  it("a misspelled or omitted multiLine option cannot reach the unsafe mode -- only the exact key does", () => {
+    const text = "**Session:**\nprose that must not be captured";
+    assert.equal(field(text, "Session", {}), "");
+    assert.equal(field(text, "Session", { multiline: true }), ""); // wrong case
+    assert.equal(field(text, "Session", { firstLine: true }), ""); // the old, now-inert key
   });
 });
 
-describe("field, default (multi-line) mode is unaffected by firstLine and still serves issue #150", () => {
+describe("field, { multiLine: true } is the explicit opt-in issue #150 needs, and only that", () => {
   it("does not regress: a genuinely multi-line value with CRLF line endings is still captured in full", () => {
     const text = "**Spec:** line one\r\nline two\r\n**Rules in scope:** n/a";
-    assert.equal(field(text, "Spec"), "line one\nline two");
+    assert.equal(
+      field(text, "Spec", { multiLine: true }),
+      "line one\nline two",
+    );
   });
 
-  it("the #409 fix (empty label adjacent to the next label) still holds in default mode", () => {
-    assert.equal(field("**Model:**\n**Session:**", "Model"), "");
-    assert.equal(field("**Model:**\n**Session:** the-session", "Model"), "");
+  it("the #409 fix (empty label adjacent to the next label) still holds in multiLine mode", () => {
+    assert.equal(field("**Model:**\n**Session:**", "Model", { multiLine: true }), "");
+    assert.equal(
+      field("**Model:**\n**Session:** the-session", "Model", { multiLine: true }),
+      "",
+    );
+  });
+
+  it("without multiLine:true, a genuinely multi-line value is truncated to its first line (the safe default's tradeoff)", () => {
+    const text = "**Spec:** line one\nline two";
+    assert.equal(field(text, "Spec"), "line one");
   });
 });
 
@@ -963,10 +986,8 @@ describe("field, exercised through the real pull-request template — check-pr-t
     );
     assert.ok(reviewedBy, "## Reviewed by must exist in the template");
 
-    const model = field(reviewedBy.text, "Model", { firstLine: true });
-    const session = field(reviewedBy.text, "Session", {
-      firstLine: true,
-    });
+    const model = field(reviewedBy.text, "Model");
+    const session = field(reviewedBy.text, "Session");
 
     // Before the fix, `model` was "" but `session` came back as a real string (whatever
     // followed on the ## Security review's own "**Model:**" line, once headings and
@@ -992,7 +1013,7 @@ describe("field, exercised through the real pull-request template — check-pr-t
       "**Model:** Sonnet 5",
     );
     assert.equal(
-      field(sameModelText, "Model", { firstLine: true }).toLowerCase(),
+      field(sameModelText, "Model").toLowerCase(),
       "sonnet 5",
     );
 
@@ -1027,9 +1048,7 @@ describe("field, exercised through the real pull-request template — check-pr-t
 
     // Untouched placeholder: model reads as "", which fails `/^opus/i.test(model)` —
     // exactly the "must name Opus" failure check-pr-template.mjs reports.
-    const unfilledModel = field(securityReview.text, "Model", {
-      firstLine: true,
-    });
+    const unfilledModel = field(securityReview.text, "Model");
     assert.equal(unfilledModel, "");
     assert.equal(/^opus/i.test(unfilledModel), false);
 
@@ -1039,7 +1058,7 @@ describe("field, exercised through the real pull-request template — check-pr-t
       "**Model:** Opus 5",
     );
     assert.equal(
-      /^opus/i.test(field(filledOpus, "Model", { firstLine: true })),
+      /^opus/i.test(field(filledOpus, "Model")),
       true,
     );
 
@@ -1050,7 +1069,7 @@ describe("field, exercised through the real pull-request template — check-pr-t
       "**Model:** Sonnet 5",
     );
     assert.equal(
-      /^opus/i.test(field(filledWrong, "Model", { firstLine: true })),
+      /^opus/i.test(field(filledWrong, "Model")),
       false,
     );
   });

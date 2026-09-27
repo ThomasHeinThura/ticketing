@@ -269,21 +269,14 @@ async function main() {
     }
   }
   if (implementedBy && reviewedBy) {
-    // firstLine: true (issue #150 delta) -- these five calls (here and the Security
-    // review Model check below) are exactly the security-sensitive comparisons the #409
-    // bug class keeps reopening variants of; multi-line capture can only weaken them, so
-    // they keep the original, narrowly-scoped, single-line semantics. See field()'s own
-    // doc comment in pr-body.mjs.
-    const implementedModel = field(implementedBy.text, "Model", {
-      firstLine: true,
-    });
-    const implementedSession = field(implementedBy.text, "Session", {
-      firstLine: true,
-    });
-    const reviewedModel = field(reviewedBy.text, "Model", { firstLine: true });
-    const reviewedSession = field(reviewedBy.text, "Session", {
-      firstLine: true,
-    });
+    // No options (issue #150 delta, round 2): single-line is field()'s own safe DEFAULT
+    // now, precisely so a security-sensitive call like these five (here and the Security
+    // review Model check below) can't silently fall back to multi-line by omission or a
+    // typo. See field()'s own doc comment in pr-body.mjs.
+    const implementedModel = field(implementedBy.text, "Model");
+    const implementedSession = field(implementedBy.text, "Session");
+    const reviewedModel = field(reviewedBy.text, "Model");
+    const reviewedSession = field(reviewedBy.text, "Session");
 
     if (reviewedModel === "" || reviewedSession === "") {
       failures.push(
@@ -377,7 +370,7 @@ async function main() {
         : `removes ${scope.removed.length} glob(s) from the security-review list ` +
           `(${scope.removed.join(", ")})`;
 
-    const model = field(securityReview.text, "Model", { firstLine: true });
+    const model = field(securityReview.text, "Model");
     if (!/^opus/i.test(model)) {
       failures.push(
         violation(
