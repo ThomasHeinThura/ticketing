@@ -8,7 +8,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Badge,
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbSeparator,
   Button,
+  Calendar,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -35,13 +40,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import TaskDescriptionEditor from "@/components/task/task-description-editor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { Calendar } from "@/components/ui/calendar";
 import useCreateLabel from "@/hooks/mutations/label/use-create-label";
 import useCreateTask from "@/hooks/mutations/task/use-create-task";
 import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
@@ -58,6 +56,7 @@ import { resolveLabelColor } from "@/lib/label-color";
 import { getPriorityIcon } from "@/lib/priority";
 import { toast } from "@/lib/toast";
 import useProjectStore from "@/store/project";
+import { useUserPreferencesStore } from "@/store/user-preferences";
 import type Task from "@/types/task";
 
 type CreateTaskModalProps = {
@@ -120,6 +119,7 @@ function CreateTaskModal({
 }: CreateTaskModalProps) {
   const { t } = useTranslation();
   const { project, setProject } = useProjectStore();
+  const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
 
   const labelColors = useMemo(
     () =>
@@ -637,7 +637,7 @@ function CreateTaskModal({
       >
         <DialogHeader className="flex-shrink-0">
           <DialogTitle asChild>
-            <Breadcrumb>
+            <Breadcrumb label={t("common:breadcrumb.label")}>
               <BreadcrumbList>
                 <BreadcrumbItem className="text-muted-foreground font-semibold tracking-wider text-sm">
                   {resolvedProject?.slug?.toUpperCase() ||
@@ -777,6 +777,7 @@ function CreateTaskModal({
                     selected={startDate}
                     onSelect={setStartDate}
                     className="w-full bg-popover"
+                    weekStartsOn={weekStartsOn}
                   />
                   {startDate && (
                     <div className="p-2 border-t border-border">
@@ -938,6 +939,7 @@ function CreateTaskModal({
                     selected={dueDate}
                     onSelect={setDueDate}
                     className="w-full bg-popover"
+                    weekStartsOn={weekStartsOn}
                   />
                   {dueDate && (
                     <div className="p-2 border-t border-border">

@@ -46,6 +46,14 @@ const UI_RUNTIME_IMPORTS = new Set([
   "@base-ui/react",
   "class-variance-authority",
   "clsx",
+  // The next three are each used by exactly one primitive (input-otp.tsx, calendar.tsx,
+  // form.tsx respectively) with no Base UI/native equivalent — #9's relocation batches
+  // 3/4 held these three primitives back specifically because moving them needed this
+  // package.json change; batch 6 makes it. See
+  // docs/01-architecture/monorepo-layout.md#package-boundaries.
+  "input-otp",
+  "react-day-picker",
+  "react-hook-form",
   "lucide-react",
   "react",
   "tailwind-merge",
