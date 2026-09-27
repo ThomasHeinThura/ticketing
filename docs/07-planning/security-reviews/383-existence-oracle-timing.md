@@ -175,3 +175,15 @@ Each mutation was reverted afterwards, and `git diff --quiet HEAD` passed.
 
 - `git show --remerge-diff db8ce9b` is empty — clean automatic merge.
 - Brings in PR #382's already-reviewed changes (`scripts/ci/lib/env-reads.mjs` and its test), zero overlap with this PR's own asset/ws/invitation files.
+
+---
+
+## Lightweight re-confirmation after fifth branch update (2026-09-27)
+
+**Reviewed head:** `5ef9fec4be17ee454ad20ff564c139ba75cd545f`
+**Previously reviewed head:** `db8ce9bc898f3ade89dc6a7350eafac29240c7db`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR WITH FINDINGS, unchanged.
+
+- `git show --remerge-diff 5ef9fec` is empty — clean automatic merge.
+- Brings in only `docs/07-planning/status.md` (#385), docs-only, outside security-review scope, zero overlap with this PR's own files.
