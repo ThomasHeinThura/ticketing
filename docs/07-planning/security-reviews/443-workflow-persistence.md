@@ -126,3 +126,69 @@ Full suites reproduced: integration 104/1351, permissions 13/83, domain 11/544 �
 
 B1, B2, B3 are all required before merge. A fresh Opus pass is required on the new head —
 this is a code-changing fix, not a no-op reconfirmation.
+
+---
+
+## Security review — Opus delta (2026-09-27)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `a43531ffbc673c074`
+
+**Reviewed head:** `9308b315908197f3cc738856639bed1752db95bf`
+
+**Verdict: CLEAR WITH FINDINGS.** Nothing blocking. B1/B2/B3/N1 all confirmed closed with
+live, independently-run tests — not just re-read.
+
+**B1 confirmed closed:** both controllers delete `workflow WHERE workspace_id = …` first,
+inside one transaction. Live-tested workspace deletion (a workspace with a role-gated
+transition plus an any-state transition, published, now deletes 200, all workflow rows
+gone) and account deletion (same). **Atomicity independently tested**: forced the
+workspace delete to fail after the workflow delete succeeded (via a RESTRICT-blocking
+membership row) — both paths rolled back completely, no partial state possible.
+
+**B2 confirmed closed, and the role-scoping rule verified correct**: "workspace's own
+roles, plus `workspace_id IS NULL`" is accurate because a null-workspace role is always a
+single global system role (`instance_admin`/`customer`, confirmed against `rbac.md` and
+`data-model.md` — the `role` table has no organisation column, so a null-workspace role
+can't belong to another tenant), and project-scoped roles always carry their own workspace
+id. Re-ran the original exploit live (another workspace's role, another workspace's project
+role, a fabricated id) — all 400, nothing persisted. Boundary-tested the accept side too
+(own workspace/project role, global instance/organisation role) — all correctly 200.
+
+**B3 confirmed closed**: `tsc --noEmit` clean on all three tsconfigs; confirmed the old
+errors return when `fixtures.ts` is reverted; confirmed the type change is real narrowing
+backed by the existing runtime check, not a cast or `any`.
+
+**N1 confirmed closed**: `schedule_transition`'s `toStateTemplateId` check runs against the
+DB-loaded workspace template set before persisting; live-tested cross-workspace and
+missing-id rejection.
+
+**Regression tests confirmed real**: independently reproduced fail-then-pass (reverted the
+three controllers, confirmed both new tests fail; restored, confirmed both pass).
+
+**F1 (non-blocking, new, reproduced live):** deleting `workflow` explicitly first
+introduces a latent bug — if `work_item_type.workflow_id` is ever set (nothing writes it
+yet), workspace/account deletion will hit that `ON DELETE RESTRICT` FK and return 500
+instead of 200. Not reachable today (confirmed no code path sets `workflow_id`), but
+becomes real the moment a future PR adds the first writer. **Tested fix, ready to apply:**
+add `UPDATE work_item_type SET workflow_id = NULL WHERE workspace_id = …` immediately
+before the workflow delete in both controllers (`delete-account-data.ts` needs the
+`inArray` form). Cheap to add now with a test, or a required condition documented for
+whoever writes the first `workflow_id` setter.
+
+**F2 (non-blocking):** no committed tests for account-deletion-with-workflow, global-role
+acceptance, or N1 — all verified live by the reviewer, but nothing guards them in CI.
+
+**F3 (informational, pre-existing, unrelated to #443):** a `membership` row on a
+workspace-scoped role also blocks workspace deletion via its own RESTRICT FK — nothing
+creates such rows in production today, not this PR's concern.
+
+Full suites reproduced: integration 104/1353, permissions 13/83 — all green.
+
+**Process note, not a code finding:** GitHub shows this PR as CONFLICTING with `main` at
+review time (only CodeQL/GitGuardian ran on `9308b31`; required CI hasn't run). Resolving
+that conflict changes the head SHA — this clearance needs re-confirming on whatever head
+comes out of the merge, per this project's own exact-head discipline.
+
+F1/F2 are optional (cheap, worth doing before merge but not required to close this review).
+Clear to merge pending the branch-update reconfirmation.
