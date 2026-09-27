@@ -11,20 +11,22 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * the guard in `index.ts` (see that file's comment at the route), so the declaration below
  * now describes what the runtime actually enforces, not an aspiration.
  *
- * **Not actually public.** `authorizeAssetAccess` (`apps/api/src/utils/
+ * **Not actually public.** `loadReachableAsset` (`apps/api/src/utils/
  * authorize-asset-access.ts`) calls `resolveAssetBearerOrCookie`, which throws 401 when the
  * caller presents no credential at all (session, personal API key, or MCP key all count),
- * then `validateWorkspaceAccess(userId, asset.workspaceId, apiKeyId)`
- * (`apps/api/src/utils/validate-workspace-access.ts`), which 403s unless the caller is
- * either a platform admin or a member of the asset's own workspace. There is no
- * project-level or work-item-level check anywhere on this path -- the query that loads the
- * asset joins `projectTable` only to refuse an orphaned asset row (see the comment at that
- * join in `index.ts`), never to check the caller's standing in that project.
+ * then folds `reachableWorkspacePredicate(asset.workspaceId, userId, apiKeyId)`
+ * (`apps/api/src/utils/workspace-access-middleware.ts`) into the same query that loads the
+ * asset row -- a 404 covers both "no such asset" and "not a platform admin or member of the
+ * asset's own workspace" (#317 S1/S4, closing the existence-and-timing oracle #307/#338 left
+ * open on this route). There is no project-level or work-item-level check anywhere on this
+ * path -- the query that loads the asset joins `projectTable` only to refuse an orphaned
+ * asset row (see the comment at that join in `index.ts`), never to check the caller's
+ * standing in that project.
  *
  * **`scope: "workspace"`, not `project` or `work_item`.** The asset table
  * (`apps/api/src/database/schema.ts`) carries `workspaceId`, `projectId` and optional
  * `taskId`/`activityId` columns, so a narrower scope was plausible before reading
- * `authorizeAssetAccess` -- but the runtime check only ever evaluates `asset.workspaceId`.
+ * `loadReachableAsset` -- but the runtime check only ever evaluates `asset.workspaceId`.
  * Declaring `project` or `work_item` here would assert an authority boundary this route does
  * not actually enforce, exactly the false-precision this registry exists to refuse.
  * `scopeSource: "row"`: the workspace id is read from the same query that loads the asset by
