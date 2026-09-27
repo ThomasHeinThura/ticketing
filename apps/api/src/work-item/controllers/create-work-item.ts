@@ -68,6 +68,13 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     actorType,
   } = input;
 
+  // Resolved BEFORE any database write (Opus review, #412 F1): if `actorType` is ever
+  // something `eventSourceFor` doesn't map, this throws here -- a clean failure before
+  // the transaction below starts -- rather than after the work item and its `created`
+  // activity row have already committed, which would 500 a client that just succeeded
+  // and risk a duplicate on retry.
+  const source = eventSourceFor(actorType);
+
   // `workspaceId` here is the one the route's own middleware already resolved (the
   // project's true workspace, from a DB lookup) -- re-checking it against the freshly
   // loaded project row below closes the same TOCTOU-adjacent class of gap
@@ -230,7 +237,7 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     typeId: created.typeId,
     stateId: created.stateId,
     requesterId: created.requesterId,
-    source: eventSourceFor(actorType),
+    source,
     visibility: "public",
     actorId,
     actorType,
