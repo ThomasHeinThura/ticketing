@@ -2,9 +2,11 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { afterEach, describe, expect, it } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -46,6 +48,7 @@ function NameForm({ triggerValidation }: { triggerValidation?: boolean }) {
             <FormControl>
               <Input {...field} />
             </FormControl>
+            <FormDescription>Used to identify your profile.</FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -73,5 +76,11 @@ describe("Form", () => {
       "aria-invalid",
       "true",
     );
+  });
+
+  it("has no accessibility violations for a labeled field", async () => {
+    const { baseElement } = render(<NameForm />);
+
+    await expectNoA11yViolations(baseElement);
   });
 });

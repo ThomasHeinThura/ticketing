@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import {
   Timeline,
   TimelineContent,
@@ -41,5 +42,25 @@ describe("Timeline", () => {
         </TimelineItem>,
       ),
     ).toThrow(/must be used within a Timeline/);
+  });
+
+  it("has no accessibility violations for a titled timeline", async () => {
+    const { baseElement } = render(
+      <section aria-labelledby="activity-title">
+        <h2 id="activity-title">Activity</h2>
+        <Timeline value={1}>
+          <TimelineItem step={1}>
+            <TimelineTitle>Request created</TimelineTitle>
+            <TimelineContent>Initial details were added.</TimelineContent>
+          </TimelineItem>
+          <TimelineItem step={2}>
+            <TimelineTitle>Assigned</TimelineTitle>
+            <TimelineContent>The support team is reviewing it.</TimelineContent>
+          </TimelineItem>
+        </Timeline>
+      </section>,
+    );
+
+    await expectNoA11yViolations(baseElement);
   });
 });

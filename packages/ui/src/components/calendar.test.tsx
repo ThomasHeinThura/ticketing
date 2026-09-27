@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import { Calendar } from "./calendar";
 
 afterEach(() => {
@@ -46,5 +47,13 @@ describe("Calendar", () => {
     const { container } = render(<Calendar mode="single" weekStartsOn={1} />);
     const weekdays = container.querySelectorAll("thead th");
     expect(weekdays[0]).toHaveTextContent(/mo/i);
+  });
+
+  it("has no accessibility violations", async () => {
+    const { baseElement } = render(
+      <Calendar defaultMonth={new Date(2026, 0, 15)} mode="single" />,
+    );
+
+    await expectNoA11yViolations(baseElement);
   });
 });

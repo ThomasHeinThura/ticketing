@@ -1,8 +1,17 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import {
   Sidebar,
   SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
@@ -64,5 +73,39 @@ describe("Sidebar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Toggle sidebar" }));
 
     expect(screen.getByTestId("state")).toHaveTextContent("collapsed");
+  });
+
+  it("has no accessibility violations with a named navigation group", async () => {
+    const { baseElement } = render(
+      <SidebarProvider>
+        <Sidebar
+          closeLabel="Close navigation"
+          collapsible="icon"
+          mobileDescription="Navigate TaskDesk sections."
+          mobileTitle="Main navigation"
+        >
+          <SidebarHeader>
+            <strong>TaskDesk</strong>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton isActive>Work items</SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+        </Sidebar>
+        <SidebarInset>
+          <h1>Work items</h1>
+        </SidebarInset>
+      </SidebarProvider>,
+    );
+
+    await expectNoA11yViolations(baseElement);
   });
 });
