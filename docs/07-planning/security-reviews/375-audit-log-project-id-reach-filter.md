@@ -259,3 +259,44 @@ All runs are at `fbba252171603a3be35faafbf3708c9d3ec8f486`, in a detached worktr
 - W1 still binds on #353, not on this PR.
 
 Any further commit to this branch (including a fix for H1-b) changes the head. That needs a fresh exact-head confirmation before merge.
+
+## Delta confirmation at ebaf071 (H1-b/I4 doc fix)
+
+**Reviewed head:** `ebaf071690068a3720aac1a2dcd2eb5f76d5f63a`
+
+- **Reviewer:** Claude Opus 5.5 (`claude-opus-5-5`), a fresh and independent context. It did not author, direct or fix this change, including the fix commit `ebaf071`.
+- **Tier:** lightweight delta over the CLEAR at `fbba252171603a3be35faafbf3708c9d3ec8f486`.
+- **Scope:** `fbba252..ebaf071`, which is two commits: `de47c9a` (this review document only) and `ebaf071`.
+
+### Diff scope: checked, no finding
+
+`ebaf071` touches four files, and only comments or prose in each:
+
+- `apps/api/src/audit/audit-writer.ts`: the `//` comment above `action:` in the hash-input object;
+- `apps/api/src/database/schema.ts`: the `//` comment above `projectId: text("project_id")`;
+- `docs/01-architecture/data-model.md`: the `project_id` paragraph under "The audit hash chain";
+- `tests/api-integration/audit-log.test.ts`: the one comment above the two `expect` lines in the AU-7 carve-out test.
+
+No code, no test assertion, no migration SQL, and no journal or snapshot changed.
+
+### H1-b: closed
+
+All three places now say `project_id` stays out of the hash because #344 permits it, `organisation_id` is the precedent, and hashing it would change the shared `packages/domain` recipe. They no longer claim it can change after the row is written. This matches 0070's `audit_log_reject_mutation()`: the carve-out's equality list includes `NEW.project_id IS DISTINCT FROM OLD.project_id`, and every other `UPDATE` hits the generic reject. So no path changes `project_id`, and every column except `organisation_id` is immutable, as the new text says. The stale "below this line" wording in `data-model.md` is gone.
+
+### I4: closed
+
+The comment now says that the whole statement rolls back, the organisation delete included, so the organisation still exists. The prior delta review observed exactly that live.
+
+### Evidence
+
+All runs are at `ebaf071690068a3720aac1a2dcd2eb5f76d5f63a`, in a detached worktree, with the offline install and `packages/*` built.
+
+| Check | Result |
+| --- | --- |
+| `pnpm --filter @taskdesk/api typecheck` | clean (exit 0) |
+| `biome check` on the four files | clean (3 checked; biome does not check `.md`) |
+| `audit-log.test.ts` on the private database `o375f_test` | 1 file, 54 tests passed |
+
+### Delta verdict
+
+**CLEAR** at `ebaf071690068a3720aac1a2dcd2eb5f76d5f63a`. H1-b and I4 are closed. I5 is still recommended, not required. W1 still binds on #353. Any further commit to this branch other than this document changes the reviewed head.
