@@ -316,3 +316,16 @@ commit is #426's already-reviewed merge (docs-only, no overlap).
 reviewed head (`fdb6d37953ecf6b5a191768bcabfb5fdbf33c21a`) and this one, despite the many
 intervening commits (12, from #418/#422's already-reviewed merges landing via a routine
 branch update) — none touch any file this PR's own review covers.
+
+---
+
+## Re-confirmation after branch update (2026-09-27, second)
+
+**Reviewed head:** `56cec5a50654a1418b3c51386dc9f3aa023f9a48`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. `git diff 49e5a4fe6421b004677eb0573a81e7a6ce44ff4f..56cec5a50654a1418b3c51386dc9f3aa023f9a48`
+scoped to this PR's own files (`error-fix-loop.md`, `check-env.mjs`, every
+`env-reads*`/`scratch-repo.mjs` file) is empty. The intervening commits are #416's own
+merge into `main` (`6403586`, confirmed an ancestor of `origin/main`) plus its own chain of
+routine branch-update merges — already fully Opus-reviewed and merged before this branch
+picked them up. No new, unreviewed logic reached this branch.
