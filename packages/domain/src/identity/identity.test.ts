@@ -192,7 +192,11 @@ describe("P3 identity core", () => {
     ).toMatchObject({ ok: false, errors: ["invalid_role_rank"] });
     expect(
       validateIdentityConnection(
-        connection({ tenantId: "9188040d-6c67-4c5b-b112-36a304b66dad" }),
+        connection({
+          tenantId: "9188040d-6c67-4c5b-b112-36a304b66dad",
+          issuer:
+            "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+        }),
       ),
     ).toMatchObject({ ok: false, errors: ["invalid_tenant_id"] });
     expect(
