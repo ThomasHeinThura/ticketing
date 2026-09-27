@@ -285,11 +285,17 @@ been learned on this repository:
 
 ## Deployment status is part of the routine, not a separate track
 
-A live UAT deployment is near-term, active priority, not a someday item. Before it can stand
-up, the application-side gaps block it — check `status.md`'s Blocked section and
-`gh issue list` for their current state (a hardcoded port, missing public health endpoints,
-no static file serving in the Node process, no `storage.filesystem` driver were the known
-gaps as of the last check; re-verify, do not assume this list is still exhaustive).
+A live UAT deployment is near-term, active priority, not a someday item. **The four
+application-side gaps this section used to name are closed as of 2026-09-27** (verified
+live against `main`, not carried forward from an earlier note): `TASKDESK_PORT` is read
+(#132), `/api/public/health/{live,ready}` exist, static serving runs in the Node process via
+`@hono/node-server/serve-static` (#144), and the `storage.filesystem` driver exists (#164,
+HMAC-signed direct-PUT with path-traversal defenses). `scripts/deploy.sh local` has itself
+been run end-to-end and both default hostnames (`ticket.`, `portal.`) verified healthy
+through a real Traefik (#377). The one remaining piece of issue #11 is the optional
+`--profile s3` third hostname (`files.<domain>`) — narrower scope than "the app can't
+deploy." Re-verify this note's own claims each session rather than assuming they stay true;
+`status.md`'s Blocked section and `gh issue list` remain the live source of truth.
 
 Once those close: `docker build`, container boot, and the health endpoints answering are
 part of "done" for any change touching what ships in the image (`AGENTS.md`, "Before you say
