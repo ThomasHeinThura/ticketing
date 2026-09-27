@@ -305,3 +305,14 @@ PRs) and `check-env.mjs` against the real repo (unchanged: 29/52) after this mer
 **Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
 reviewed head (`2f0b28d21623ee132ac119d5ccbf8fdf81352600`) and this one — the intervening
 commit is #426's already-reviewed merge (docs-only, no overlap).
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `49e5a4fe6421b004677eb0573a81e7a6ce44ff4f`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
+reviewed head (`fdb6d37953ecf6b5a191768bcabfb5fdbf33c21a`) and this one, despite the many
+intervening commits (12, from #418/#422's already-reviewed merges landing via a routine
+branch update) — none touch any file this PR's own review covers.
