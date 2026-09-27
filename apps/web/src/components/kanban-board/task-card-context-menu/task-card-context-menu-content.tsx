@@ -1,4 +1,5 @@
 import {
+  Calendar,
   ContextMenuCheckboxItem,
   ContextMenuContent,
   ContextMenuItem,
@@ -11,7 +12,6 @@ import { X } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calendar } from "@/components/ui/calendar";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import { useUpdateTaskAssignee } from "@/hooks/mutations/task/use-update-task-assignee";
 import { useUpdateTaskDescription } from "@/hooks/mutations/task/use-update-task-description";
@@ -29,6 +29,7 @@ import { getPriorityLabel } from "@/lib/i18n/domain";
 import { getPriorityIcon } from "@/lib/priority";
 import { toast } from "@/lib/toast";
 import useProjectStore from "@/store/project";
+import { useUserPreferencesStore } from "@/store/user-preferences";
 import type Task from "@/types/task";
 
 type TaskCardContext = {
@@ -48,6 +49,7 @@ export default function TaskCardContextMenuContent({
   onDeleteClick,
 }: TaskCardContextMenuContentProps) {
   const { t } = useTranslation();
+  const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const { project } = useProjectStore();
   const { data: columnsData = [] } = useGetColumns(taskCardContext.projectId);
   const columns =
@@ -221,6 +223,7 @@ export default function TaskCardContextMenuContent({
                   }
                 }}
                 className="w-full bg-popover!"
+                weekStartsOn={weekStartsOn}
               />
             </div>
             {task.dueDate && (

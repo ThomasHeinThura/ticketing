@@ -9,6 +9,7 @@ afterEach(() => {
 });
 
 vi.mock("@taskdesk/ui", () => ({
+  Calendar: (): React.JSX.Element => <div />,
   ContextMenuContent: ({
     children,
   }: {

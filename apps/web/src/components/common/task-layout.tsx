@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import {
   KbdSequence,
+  SidebarTrigger,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -10,7 +11,6 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import TaskCrumbSelect from "@/components/common/header/task-crumb-select";
 import Layout from "@/components/common/layout";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { shortcuts } from "@/constants/shortcuts";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetTask from "@/hooks/queries/task/use-get-task";
@@ -61,7 +61,10 @@ export default function TaskLayout({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <SidebarTrigger className="-ml-1 h-7 w-7 cursor-pointer text-foreground/85 hover:text-foreground" />
+                    <SidebarTrigger
+                      className="-ml-1 h-7 w-7 cursor-pointer text-foreground/85 hover:text-foreground"
+                      toggleLabel={t("common:a11y.toggleSidebar")}
+                    />
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="flex items-center gap-2 text-[10px]">
