@@ -2983,6 +2983,176 @@
           "currentAssigneeId"
         ]
       },
+      "DeletedWorkItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "workspaceId",
+          "projectId",
+          "deletedAt"
+        ]
+      },
+      "RankedWorkItem": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string",
+            "description": "numeric(20,10) fractional rank, as a string."
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "position",
+          "version"
+        ]
+      },
+      "WorkItemWatchState": {
+        "type": "object",
+        "properties": {
+          "workItemId": {
+            "type": "string"
+          },
+          "watching": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "workItemId",
+          "watching"
+        ]
+      },
+      "BulkWorkItemsResult": {
+        "type": "object",
+        "properties": {
+          "succeeded": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "failed": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "reason"
+              ]
+            }
+          }
+        },
+        "required": [
+          "succeeded",
+          "failed"
+        ]
+      },
+      "WorkItemActivityListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkItemActivityRow"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/WorkItemPage"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "WorkItemActivityRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workItemId": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actorType": {
+            "type": "string"
+          },
+          "verb": {
+            "type": "string"
+          },
+          "field": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "oldValue": {},
+          "newValue": {},
+          "payload": {},
+          "visibility": {
+            "type": "string"
+          },
+          "workflowVersionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workItemId",
+          "actorId",
+          "actorType",
+          "verb",
+          "field",
+          "visibility",
+          "workflowVersionId",
+          "createdAt"
+        ]
+      },
       "UserAvatar": {
         "type": "object",
         "properties": {
@@ -11101,6 +11271,59 @@
             }
           }
         }
+      },
+      "delete": {
+        "operationId": "deleteWorkItem",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Delete work item",
+        "description": "Soft-deletes a work item (`WI-21`). KNOWN DEVIATION from `pending-actions.md`'s `WI-23` (this route deletes immediately rather than returning a `202` pending action awaiting browser approval) -- matches every OTHER existing delete route in this codebase today (e.g. `DELETE /api/projects/{id}`), none of which implement that mechanism yet. Tracked on issue #428.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted work item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedWorkItem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:delete permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found, or already deleted",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/workspace/{workspaceId}/work-item-types": {
@@ -11323,6 +11546,395 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WorkItemAssigneeConflict"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/rank": {
+      "post": {
+        "operationId": "rankWorkItem",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Re-rank work item",
+        "description": "Reorders a work item within its own project+state partition (`WI-11`-`WI-12`) by fractional position. Exempt from `If-Match`; last-write-wins (`WI-7`). At least one of `beforeId`/`afterId` (the two items that should end up surrounding this one's new slot) is required.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "beforeId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "afterId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The re-ranked work item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankedWorkItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or beforeId/afterId is not in the same project/state",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:rank permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/watch": {
+      "post": {
+        "operationId": "watchWorkItem",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Watch work item",
+        "description": "Starts (or un-mutes) watching a work item (`WI-28`/`WI-29`). Deliberately gated on `work_item:read`, not a dedicated watch capability -- anyone with read access may watch.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The watch state as applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemWatchState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No person profile for this account",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "unwatchWorkItem",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Unwatch work item",
+        "description": "Stops watching a work item (`WI-28`/`WI-29`). An implicit watcher (assignee or requester) is muted, not deleted, so a later un-mute needs no new implicit watch to be recreated; an explicit watcher's row is deleted outright. Idempotent: unwatching something never watched is a 200 no-op.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The watch state as applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemWatchState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No person profile for this account",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/bulk": {
+      "post": {
+        "operationId": "bulkWorkItems",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Bulk work item operation",
+        "description": "Runs one operation (`delete` or `assign` -- see `controllers/bulk-work-items.ts` for why `WI-24`'s other bulk operations are deferred) over multiple work items, transactional PER ITEM (`WI-25`): a partial failure reports per-item reasons rather than rolling back the whole batch. `workspaceId` scopes the batch; every id is re-checked for reach the same way a single-item call would (`WI-25`: 'not found' and 'out of reach' share one reason).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "workItemKeys": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 1,
+                    "maxItems": 500
+                  },
+                  "operation": {
+                    "type": "string",
+                    "enum": [
+                      "delete",
+                      "assign"
+                    ]
+                  },
+                  "assigneeId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "workItemKeys",
+                  "operation"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-item results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkWorkItemsResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing the operation's own capability (work_item:delete or work_item:assign)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/activity": {
+      "get": {
+        "operationId": "listWorkItemActivity",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "List work item activity",
+        "description": "The work item's activity journal (`WI-6`), newest first, cursor-paginated. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of the work item's activity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemActivityListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query, e.g. a malformed cursor",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
