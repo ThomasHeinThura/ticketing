@@ -92,3 +92,20 @@ changes the head; this clearance needs a mechanical reconfirmation on the resolv
 (the code itself is not affected, only a generated fixture).
 
 Nothing blocking. F1-F5 are all reasonable follow-ups, none required before merge.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `31609c59dfd1e2d60bafc4141bf4ee5eb3fad3c5`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Real two-parent merge with `origin/main` (which had advanced
+with #432's hierarchy routes), resolving the conflict the Opus reviewer already flagged in
+the GENERATED `tests/permissions/matrix.fixture.json` only — regenerated via `REGEN_MATRIX=1`,
+not hand-edited. `git diff 46fff923b13d3ca2e8ca4f76e7fe8be511b24837..31609c59dfd1e2d60bafc4141bf4ee5eb3fad3c5`
+scoped to every application file this PR touches (`apps/api/src/view/**`, `data-model.md`,
+`tests/api-integration/view.test.ts`) is empty. Re-verified after the merge: full permissions
+suite 13/83, `tsc --noEmit` clean, `check-openapi.mjs` clean (142 operations, contract
+auto-merged correctly with no drift).
+
+Clear to merge.
