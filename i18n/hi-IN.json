@@ -667,7 +667,7 @@
 			},
 			"resources": {
 				"project": "प्रोजेक्ट",
-				"task": "कार्य",
+				"work_item": "कार्य",
 				"label": "लेबल",
 				"workspace": "वर्कस्पेस"
 			},
@@ -694,7 +694,7 @@
 						"description": "प्रोजेक्ट साझा कर सकते हैं"
 					}
 				},
-				"task": {
+				"work_item": {
 					"create": {
 						"label": "बनाएँ",
 						"description": "कार्य बना सकते हैं"

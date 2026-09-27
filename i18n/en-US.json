@@ -667,7 +667,7 @@
 			},
 			"resources": {
 				"project": "Projects",
-				"task": "Tasks",
+				"work_item": "Tasks",
 				"label": "Labels",
 				"workspace": "Workspace"
 			},
@@ -694,7 +694,7 @@
 						"description": "Can share projects"
 					}
 				},
-				"task": {
+				"work_item": {
 					"create": {
 						"label": "Create",
 						"description": "Can create tasks"

@@ -153,7 +153,7 @@ const createTaskRoute = createRoute({
     "Add a task to a project. It is placed in the column named by `status`.",
   middleware: [
     workspaceAccess.fromProject("projectId"),
-    requireWorkspacePermission({ task: ["create"] }),
+    requireWorkspacePermission({ work_item: ["create"] }),
   ] as const,
   request: {
     params: projectIdParam,
@@ -165,7 +165,7 @@ const createTaskRoute = createRoute({
   responses: {
     200: jsonResponse("The created task", taskSchema),
     400: errorResponse("Invalid body, or unknown/unreachable project"),
-    403: errorResponse("Missing task:create permission"),
+    403: errorResponse("Missing work_item:create permission"),
     404: errorResponse("Project not found"),
   },
 });
@@ -198,7 +198,7 @@ const moveTaskRoute = createRoute({
     "Move a task to another project, optionally into a named column. Both projects must be in the same workspace.",
   middleware: [
     workspaceAccess.fromTask(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     params: taskParam,
@@ -213,7 +213,7 @@ const moveTaskRoute = createRoute({
       moveTaskResultSchema,
     ),
     400: errorResponse("Invalid body"),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Task or destination project not found"),
   },
 });
@@ -228,7 +228,7 @@ const updateTaskRoute = createRoute({
     "Replace every field of a task. Use the single-field routes for narrower edits.",
   middleware: [
     workspaceAccess.fromTask(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
     requireTaskAssigneePermission,
   ] as const,
   request: {
@@ -241,7 +241,9 @@ const updateTaskRoute = createRoute({
   responses: {
     200: jsonResponse("The updated task", taskSchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse("Missing task:update or task:assign permission"),
+    403: errorResponse(
+      "Missing work_item:update or work_item:assign permission",
+    ),
     404: errorResponse("Task not found"),
   },
 });
@@ -277,7 +279,7 @@ const importTasksRoute = createRoute({
     "Import tasks into a project. Each task is reported individually, so a partial import still returns 200.",
   middleware: [
     workspaceAccess.fromProject("projectId"),
-    requireWorkspacePermission({ task: ["create"] }),
+    requireWorkspacePermission({ work_item: ["create"] }),
   ] as const,
   request: {
     params: projectIdParam,
@@ -289,7 +291,7 @@ const importTasksRoute = createRoute({
   responses: {
     200: jsonResponse("Per-task import outcome", taskImportResultSchema),
     400: errorResponse("Invalid body, or unknown/unreachable project"),
-    403: errorResponse("Missing task:create permission"),
+    403: errorResponse("Missing work_item:create permission"),
     404: errorResponse("Project not found"),
   },
 });
@@ -304,13 +306,13 @@ const deleteTaskRoute = createRoute({
     "Permanently delete a task and its comments, labels, and time entries.",
   middleware: [
     workspaceAccess.fromTask(),
-    requireWorkspacePermission({ task: ["delete"] }),
+    requireWorkspacePermission({ work_item: ["delete"] }),
   ] as const,
   request: { params: taskParam },
   responses: {
     200: jsonResponse("The deleted task", taskSchema),
     400: errorResponse("id must not contain a NUL (\\u0000) byte"),
-    403: errorResponse("Missing task:delete permission"),
+    403: errorResponse("Missing work_item:delete permission"),
     404: errorResponse("Task not found"),
   },
 });
@@ -324,7 +326,7 @@ const updateTaskStatusRoute = createRoute({
   description: "Move a task to another column in the same project.",
   middleware: [
     workspaceAccess.fromTask(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     params: taskParam,
@@ -336,7 +338,7 @@ const updateTaskStatusRoute = createRoute({
   responses: {
     200: jsonResponse("The updated task", taskSchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Task not found"),
   },
 });
@@ -350,7 +352,7 @@ const updateTaskPriorityRoute = createRoute({
   description: "Set a task's priority.",
   middleware: [
     workspaceAccess.fromTask(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     params: taskParam,
@@ -362,7 +364,7 @@ const updateTaskPriorityRoute = createRoute({
   responses: {
     200: jsonResponse("The updated task", taskSchema),
     400: errorResponse("Invalid priority"),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Task not found"),
   },
 });
@@ -377,7 +379,7 @@ const updateTaskAssigneeRoute = createRoute({
     "Assign a task to a workspace member, or send null to unassign it.",
   middleware: [
     workspaceAccess.fromTask(),
-    requireWorkspacePermission({ task: ["assign"] }),
+    requireWorkspacePermission({ work_item: ["assign"] }),
   ] as const,
   request: {
     params: taskParam,
@@ -390,7 +392,7 @@ const updateTaskAssigneeRoute = createRoute({
     200: jsonResponse("The updated task", taskSchema),
     400: errorResponse("Invalid body"),
     403: errorResponse(
-      "Missing task:assign permission, or the assignee is not a member of this workspace",
+      "Missing work_item:assign permission, or the assignee is not a member of this workspace",
     ),
     404: errorResponse("Task not found"),
   },
@@ -405,7 +407,7 @@ const updateTaskDueDateRoute = createRoute({
   description: "Set or clear a task's due date.",
   middleware: [
     workspaceAccess.fromTask(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     params: taskParam,
@@ -417,7 +419,7 @@ const updateTaskDueDateRoute = createRoute({
   responses: {
     200: jsonResponse("The updated task", taskSchema),
     400: errorResponse("Invalid date"),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Task not found"),
   },
 });
@@ -431,7 +433,7 @@ const updateTaskTitleRoute = createRoute({
   description: "Rename a task.",
   middleware: [
     workspaceAccess.fromTask(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     params: taskParam,
@@ -443,7 +445,7 @@ const updateTaskTitleRoute = createRoute({
   responses: {
     200: jsonResponse("The updated task", taskSchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Task not found"),
   },
 });
@@ -458,7 +460,7 @@ const createTaskImageUploadRoute = createRoute({
     "Get a presigned URL for uploading an image used in a task description or comment. PUT the bytes to it, then call the finalize route.",
   middleware: [
     workspaceAccess.fromTask(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     params: taskParam,
@@ -470,7 +472,7 @@ const createTaskImageUploadRoute = createRoute({
   responses: {
     200: jsonResponse("The presigned upload", imageUploadSchema),
     400: errorResponse("Unsupported content type, or the file is too large"),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Task not found"),
     503: errorResponse("Image uploads are not configured on this instance"),
   },
@@ -486,7 +488,7 @@ const finalizeTaskImageUploadRoute = createRoute({
     "Record an uploaded image as a private asset and return the URL to reference it by.",
   middleware: [
     workspaceAccess.fromTask(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     params: taskParam,
@@ -500,7 +502,7 @@ const finalizeTaskImageUploadRoute = createRoute({
     400: errorResponse(
       "Invalid upload, or the key does not belong to this task",
     ),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Task not found"),
   },
 });
@@ -514,7 +516,7 @@ const updateTaskDescriptionRoute = createRoute({
   description: "Replace a task's description.",
   middleware: [
     workspaceAccess.fromTask(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     params: taskParam,
@@ -526,7 +528,7 @@ const updateTaskDescriptionRoute = createRoute({
   responses: {
     200: jsonResponse("The updated task", taskSchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Task not found"),
   },
 });

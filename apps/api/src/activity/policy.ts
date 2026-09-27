@@ -19,11 +19,11 @@ import type { PolicyMap } from "@taskdesk/permissions";
  *
  * **`POST /api/activity/create` records a system-generated event**, not a comment — importers
  * and integrations, per its own description. Same `workspaceAccess.fromTaskId()` +
- * `requireWorkspacePermission({ task: ["update"] })` gate as everything below, but there is no
+ * `requireWorkspacePermission({ work_item: ["update"] })` gate as everything below, but there is no
  * `comment:*` capability that fits an arbitrary system event; `work_item:update` is the target
  * (rbac.md: "Edit title, description, dates, labels, custom fields; archive" — recording an
  * event about a work item's history is the same authority tier as editing it, and matches what
- * is actually checked, `task:update`, more closely than any `comment:*` string would).
+ * is actually checked, `work_item:update`, more closely than any `comment:*` string would).
  * `taskId` here is a **request body** field (`createActivityBody`, no path param on `/create`
  * at all) — `workspaceAccess.fromTaskId()`'s `lookup` source still does a genuine
  * `taskTable`/`projectTable` join to resolve and verify `workspaceId` before the handler runs
@@ -33,7 +33,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  *
  * **`POST /api/activity/comment` is `comment`'s create route under a different path**
  * (`createCommentRoute`'s own description: "Equivalent to `POST /comment/{taskId}`, kept for
- * the activity-feed client") — same gate (`fromTaskId` + `task:update`), same target capability
+ * the activity-feed client") — same gate (`fromTaskId` + `work_item:update`), same target capability
  * (`comment:create_internal`), same `scopeSource: "row"` reasoning as `POST /api/activity/create`
  * immediately above (`taskId` arrives in the body, but `fromTaskId` still re-verifies it via a
  * genuine join).
@@ -42,14 +42,14 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * path — but with a genuinely WEAKER gate than their `/api/comment/{id}` twins, found while
  * reading the actual middleware, not assumed from the shared controller.** Compare
  * `updateTaskCommentRoute`/`deleteTaskCommentRoute` in `apps/api/src/comment/index.ts`
- * (middleware: `[workspaceAccess.fromComment(), requireWorkspacePermission({ task: ["update"] })]`)
+ * (middleware: `[workspaceAccess.fromComment(), requireWorkspacePermission({ work_item: ["update"] })]`)
  * against `updateCommentRoute`/`deleteCommentRoute` here (middleware:
  * `[workspaceAccess.fromActivity("activityId")]` — **no `requireWorkspacePermission` at all**).
  * Both pairs call the identical `apps/api/src/activity/controllers/update-comment.ts` /
  * `delete-comment.ts`, whose `WHERE taskActivityTable.userId = caller` still restricts either path
  * to the comment's own author — so no route here lets a caller touch someone else's comment —
  * but on THIS path, any workspace member can edit or delete **their own** comment without
- * holding `task:update`, where the `/api/comment/{id}` path additionally demands it. This is a
+ * holding `work_item:update`, where the `/api/comment/{id}` path additionally demands it. This is a
  * real, inherited asymmetry between two routes that do the same thing, not a construct of this
  * policy pass — **flagged here, not silently reconciled**: fixing it (adding the missing
  * middleware, or documenting the looser gate as the deliberately-correct one) is a product/
@@ -96,7 +96,7 @@ export const activityPolicies = {
   },
 
   // `comment`'s update route under the activity-feed path — WEAKER runtime gate than
-  // `PUT /api/comment/{id}` (no `task:update` check; author-only ownership is still enforced
+  // `PUT /api/comment/{id}` (no `work_item:update` check; author-only ownership is still enforced
   // structurally by the shared controller). See file comment — flagged, not silently widened
   // or narrowed by this declaration.
   "PUT /api/activity/comment": {

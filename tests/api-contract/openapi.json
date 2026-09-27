@@ -4312,7 +4312,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:create permission",
+            "description": "Missing work_item:create permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4484,7 +4484,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update or task:assign permission",
+            "description": "Missing work_item:update or work_item:assign permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4547,7 +4547,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:delete permission",
+            "description": "Missing work_item:delete permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4634,7 +4634,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4811,7 +4811,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:create permission",
+            "description": "Missing work_item:create permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4894,7 +4894,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4984,7 +4984,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5071,7 +5071,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:assign permission, or the assignee is not a member of this workspace",
+            "description": "Missing work_item:assign permission, or the assignee is not a member of this workspace",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5151,7 +5151,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5234,7 +5234,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5334,7 +5334,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5449,7 +5449,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5532,7 +5532,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6112,7 +6112,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6189,7 +6189,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6489,7 +6489,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6573,7 +6573,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not the author, or missing task:update permission",
+            "description": "Not the author, or missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6636,7 +6636,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not the author, or missing task:update permission",
+            "description": "Not the author, or missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6840,7 +6840,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6928,7 +6928,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8578,7 +8578,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8643,7 +8643,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing task:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {

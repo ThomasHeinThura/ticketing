@@ -230,7 +230,7 @@ describe("issue #290 (S4): NUL-byte sweep on body id fields that reach a DB look
   });
 
   it("PUT /api/task/assignee/{id}: a NUL byte in the userId body field is a clean 400, not a 500 (update-task-assignee.ts)", async () => {
-    // "member" lacks task:assign; the route's own permission gate would 403 before
+    // "member" lacks work_item:assign; the route's own permission gate would 403 before
     // this test could reach the NUL check.
     const member = await createWorkspaceMember({ role: "admin" });
     const { project, columns } = await createProjectFixture({
