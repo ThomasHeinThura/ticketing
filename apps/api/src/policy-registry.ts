@@ -19,10 +19,11 @@
  * **`GET /api/asset/{id}` was moved below the auth guard** in `index.ts` as part of this
  * classification pass (issue #8), which is what H2's own text names as the fix for the
  * exact example it uses (`isWithinAuthGuardScope()`,
- * `packages/permissions/src/route-coverage.ts`) — its handler calls `authorizeAssetAccess`,
- * which requires a real bearer/API-key/session credential and then checks workspace
- * membership, so it was never actually public; it just sat above the guard. Its policy now
- * lives in `apps/api/src/asset/policy.ts`, wired below like every other feature folder.
+ * `packages/permissions/src/route-coverage.ts`) — its handler calls `loadReachableAsset`,
+ * which requires a real bearer/API-key/session credential and then checks workspace reach
+ * in the same query, so it was never actually public; it just sat above the guard. Its
+ * policy now lives in `apps/api/src/asset/policy.ts`, wired below like every other feature
+ * folder.
  */
 
 import {
