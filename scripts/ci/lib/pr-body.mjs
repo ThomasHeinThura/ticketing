@@ -518,28 +518,50 @@ export function sections(markdown) {
 }
 
 /**
- * `**Model:** Opus 5` → `Opus 5`.
+ * `**Model:** Opus 5` → `Opus 5`. Also captures a genuinely MULTI-LINE value in full
+ * (issue #150) — e.g. `**Spec:** blocked — see\nworkflows.md for the open findings` reads
+ * as one value, not just `"blocked — see"`.
+ *
+ * **Where a field's value ends.** Not "the rest of the document" (that would swallow
+ * unrelated content past the current section), and not "the first newline" (that is
+ * issue #150's bug: GitHub renders a manual line break inside a paragraph as a space, so a
+ * human reading the rendered body sees one sentence while the old regex, lacking the `s`
+ * (dotAll) flag, silently dropped everything after the first `\n`). The value runs from
+ * right after the label through the next of: another bold-label line (`**Xyz:**`, whatever
+ * it names — the shape every field in this file's callers uses), a `## ` heading line (a
+ * value can never legitimately run into the next section), or the end of the input —
+ * whichever comes first — trimmed of surrounding whitespace. This matches how both callers
+ * actually use the return value: `check-pr-template.mjs` reads `Model`/`Session` fields
+ * that sit one directly after another with no blank line required between them, and
+ * `check-reviews.mjs` reads a `Spec` field that is followed by a `Rules in scope` field in
+ * the same `## Task` section — both need the next label line to be a hard stop, not part of
+ * the value.
  *
  * Issue #409: the whitespace between the label and the value used to be `\s*`, which
  * matches a newline. A label line with nothing after it (`**Model:**`), immediately
  * followed by another bold-label line with no blank line between them, let `\s*` consume
- * the newline and hand the NEXT line's text to `(.*)$` as if it were THIS label's value —
- * a non-empty, garbage string instead of `""`. Reproduced against the untouched
+ * the newline and hand the NEXT line's text to the capture as if it were THIS label's
+ * value — a non-empty, garbage string instead of `""`. Reproduced against the untouched
  * `.github/pull_request_template.md` placeholder for `## Reviewed by`
  * (`**Model:** <!-- ... -->` / `**Session:** <!-- ... -->`), which reduces to two adjacent
  * blank bold-label lines once `stripComments()` removes the HTML comments: `field(text,
  * "Model")` returned `"**Session:**"` instead of `""`, defeating every "must be filled in"
  * check in check-pr-template.mjs that relies on `field(...) === ""`.
  *
- * Bounded to `[ \t]*` — same-line whitespace only — so the value capture can never cross
- * a newline into the next label line. A legitimately filled single-line value (`**Model:**
- * Opus 5`) is unaffected: `[ \t]*` still matches the ordinary space after the label. The
- * separate multi-line-value-truncation behaviour (issue #150, `(.*)$` stops at the first
- * newline either way) is unchanged by this fix — that is a different bug in the same
- * function and stays out of scope here.
+ * That fix (same-line whitespace only, `[ \t]*`, between the label and the value) is kept
+ * exactly as is: it still governs only the gap between the label and where the value
+ * *starts*. Where the value *ends* is the separate question this fix answers, via the
+ * lazy `[\s\S]*?` capture bounded by the next-label/next-heading/end-of-input lookahead
+ * below — so an empty label immediately followed by another label line still captures ""
+ * (the boundary fires at zero captured characters), while a genuinely filled value keeps
+ * being captured across as many lines as it actually spans.
  */
 export function field(text, label) {
-  const pattern = new RegExp(`^[ \\t]*\\*\\*${label}:\\*\\*[ \\t]*(.*)$`, "im");
+  const pattern = new RegExp(
+    `^[ \\t]*\\*\\*${label}:\\*\\*[ \\t]*([\\s\\S]*?)` +
+      "(?=\\n[ \\t]*\\*\\*[^*\\n]+:\\*\\*|\\n[ \\t]*##(?!#)|(?![\\s\\S]))",
+    "im",
+  );
   const match = pattern.exec(text);
   return match ? match[1].trim() : "";
 }

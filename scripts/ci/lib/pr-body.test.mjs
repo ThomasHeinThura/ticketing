@@ -788,14 +788,84 @@ describe("field", () => {
       assert.equal(field(bothFilled, "Session"), "the-real-session");
     });
 
-    it("does not touch the separate, already-known multi-line-value truncation (issue #150)", () => {
-      // Out of scope here, and unchanged by this fix either way: a genuinely filled
-      // value followed by a continuation line on its OWN (non-label) line still
-      // truncates at the first newline, exactly as before.
+    it("issue #150 is fixed: a genuine continuation line is captured, not truncated", () => {
+      // This used to assert truncation at the first newline (issue #150's own bug,
+      // pre-existing and out of scope for the #409 fix). Now that #150 is fixed in this
+      // same function, a continuation line that is NOT a bold-label line is part of the
+      // value, not silently dropped.
       const withContinuation =
         "**Model:** Opus 5\ncontinuation line that is not a label";
-      assert.equal(field(withContinuation, "Model"), "Opus 5");
+      assert.equal(
+        field(withContinuation, "Model"),
+        "Opus 5\ncontinuation line that is not a label",
+      );
     });
+  });
+});
+
+describe("field, issue #150 — a genuinely multi-line value is captured in full", () => {
+  it("captures a value spanning several lines, up to the end of input", () => {
+    const text = "**Spec:** blocked — see\nworkflows.md for the open findings";
+    assert.equal(
+      field(text, "Spec"),
+      "blocked — see\nworkflows.md for the open findings",
+    );
+  });
+
+  it("reproduces the issue's own repro against sections()/contentOf()", () => {
+    const body =
+      "## Task\n\n**Spec:** blocked — see\nworkflows.md for the open findings\n\n" +
+      "**Rules in scope:** n/a\n";
+    const task = sections(body).get(normaliseHeading("Task"));
+    assert.equal(
+      field(contentOf(task.raw), "Spec"),
+      "blocked — see\nworkflows.md for the open findings",
+    );
+  });
+
+  it("a multi-line value still stops at the next bold-label line (the #409 shape) and does not leak into it", () => {
+    const text = "**Spec:** line one\nline two\n**Rules in scope:** WI-3, WI-7";
+    assert.equal(field(text, "Spec"), "line one\nline two");
+    assert.equal(field(text, "Rules in scope"), "WI-3, WI-7");
+  });
+
+  it("a multi-line value stops at a blank line followed by the next label, not swallowing the blank line", () => {
+    const text = "**Spec:** line one\nline two\n\n**Rules in scope:** n/a";
+    assert.equal(field(text, "Spec"), "line one\nline two");
+  });
+
+  it("a multi-line value stops at the next ## heading, never crossing into the next section", () => {
+    const text =
+      "**Spec:** line one\nline two\n\n## Implemented by\n\n**Model:** Sonnet 5";
+    assert.equal(field(text, "Spec"), "line one\nline two");
+  });
+
+  it("does not swallow unrelated content past the current section when there is no next label at all", () => {
+    const text =
+      "**Note:** see the committed review note\nsecond line of the note";
+    assert.equal(
+      field(text, "Note"),
+      "see the committed review note\nsecond line of the note",
+    );
+  });
+
+  it("the #409 fix is unaffected: empty-label-adjacent-to-next-label still reads as '' (re-run of the exact #409 cases)", () => {
+    assert.equal(field("**Model:**\n**Session:**", "Model"), "");
+    assert.equal(field("**Model:**\n**Session:** the-session", "Model"), "");
+    const reviewedByOnceStripped = "**Model:**\n**Session:**";
+    assert.equal(field(reviewedByOnceStripped, "Model"), "");
+    assert.equal(field(reviewedByOnceStripped, "Session"), "");
+    assert.equal(
+      field("**Model:**\n**Session:** abc-123", "Session"),
+      "abc-123",
+    );
+    const allBlank = "**Model:**\n**Session:**\n**Surfaces examined:**";
+    assert.equal(field(allBlank, "Model"), "");
+    assert.equal(field(allBlank, "Session"), "");
+    assert.equal(field(allBlank, "Surfaces examined"), "");
+    const bothFilled = "**Model:** Opus 5\n**Session:** the-real-session";
+    assert.equal(field(bothFilled, "Model"), "Opus 5");
+    assert.equal(field(bothFilled, "Session"), "the-real-session");
   });
 });
 
