@@ -93,6 +93,7 @@ async function readRawRow(id: string) {
     user_agent: string | null;
     trace_id: string | null;
     workspace_id: string | null;
+    project_id: string | null;
     action: string;
     entity_type: string;
     entity_id: string;
@@ -105,7 +106,7 @@ async function readRawRow(id: string) {
   }>(sql`
     SELECT
       actor_id, actor_type, api_key_id, impersonator_id, actor_ip, user_agent,
-      trace_id, workspace_id, action, entity_type, entity_id, before, after,
+      trace_id, workspace_id, project_id, action, entity_type, entity_id, before, after,
       to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at_iso,
       prev_hash, row_hash, seq
     FROM audit_log WHERE id = ${id}
@@ -204,6 +205,33 @@ describe("appendAuditLog", () => {
     await expect(
       appendAuditLog(db, baseInput({ action: "legal_hold.lifted" })),
     ).rejects.toThrow(/not wired yet/i);
+  });
+
+  it("#344: records project_id for a project-scoped action, and the chain still verifies (the column is never hashed)", async () => {
+    // One row WITHOUT a project (the pre-#344 shape) and one WITH it, on the same chain.
+    const plain = await appendAuditLog(
+      db,
+      baseInput({ action: "role.created" }),
+    );
+    const scoped = await appendAuditLog(
+      db,
+      baseInput({
+        action: "work_item.assigned",
+        entityType: "work_item",
+        projectId: "prj-audit-344",
+      }),
+    );
+
+    const rawPlain = await readRawRow(plain.id);
+    const rawScoped = await readRawRow(scoped.id);
+    expect(rawPlain.project_id).toBeNull();
+    expect(rawScoped.project_id).toBe("prj-audit-344");
+
+    // The hash recipe is unchanged: both rows verify, including the pre-#344 shape whose
+    // `project_id` did not exist when it was written.
+    const verifyResult = await verifyAuditChain(db);
+    expect(verifyResult.ok).toBe(true);
+    expect(verifyResult.rowsChecked).toBe(2);
   });
 
   it("refuses to write an obvious secret value", async () => {
@@ -556,6 +584,96 @@ describe("AU-7 tombstone carve-out is tightened to the real FK action (S4)", () 
       sql`SELECT organisation_id FROM audit_log WHERE id = ${result.id}`,
     );
     expect(raw.rows[0]?.organisation_id).toBeNull();
+  });
+});
+
+describe("AU-7 tombstone carve-out also pins project_id (Opus security review of PR #375, S1)", () => {
+  it("refuses the AU-7 tombstone UPDATE if it also rewrites project_id, even when the organisation is actually deleted", async () => {
+    const organisation = await makeOrganisation();
+    const projectId = `prj-${randomUUID()}`;
+    const result = await appendAuditLog(
+      db,
+      baseInput({
+        action: "organisation.created",
+        organisationId: organisation.id,
+        projectId,
+      }),
+    );
+
+    // Reproduces the Opus finding exactly: the same statement that performs the FK's
+    // ON DELETE SET NULL tombstone action ALSO reassigns project_id. Before the fix in
+    // this migration, the carve-out's closed column list didn't mention project_id, so
+    // this succeeded and silently changed who could read the row through #344's reach
+    // filter -- to NULL (visible to every workspace manager) or another project.
+    await expectRejectionMatching(
+      db.execute(sql`
+        WITH d AS (
+          DELETE FROM organisation WHERE id = ${organisation.id} RETURNING id
+        )
+        UPDATE audit_log SET organisation_id = NULL, project_id = NULL
+        WHERE organisation_id IN (SELECT id FROM d)
+      `),
+      /append-only/i,
+    );
+
+    const raw = await db.execute<{
+      organisation_id: string | null;
+      project_id: string | null;
+    }>(
+      sql`SELECT organisation_id, project_id FROM audit_log WHERE id = ${result.id}`,
+    );
+    // The whole statement rolled back, including the organisation delete itself --
+    // the organisation still exists (corrected here after the Opus security review
+    // of PR #375, I4, found the prior comment claimed the opposite), and audit_log
+    // is untouched: neither column changed.
+    expect(raw.rows[0]?.organisation_id).toBe(organisation.id);
+    expect(raw.rows[0]?.project_id).toBe(projectId);
+  });
+
+  it("still tombstones organisation_id alone when project_id is not touched", async () => {
+    const organisation = await makeOrganisation();
+    const projectId = `prj-${randomUUID()}`;
+    const result = await appendAuditLog(
+      db,
+      baseInput({
+        action: "organisation.created",
+        organisationId: organisation.id,
+        projectId,
+      }),
+    );
+
+    await db
+      .delete(schema.organisationTable)
+      .where(eq(schema.organisationTable.id, organisation.id));
+
+    const raw = await db.execute<{
+      organisation_id: string | null;
+      project_id: string | null;
+    }>(
+      sql`SELECT organisation_id, project_id FROM audit_log WHERE id = ${result.id}`,
+    );
+    expect(raw.rows[0]?.organisation_id).toBeNull();
+    expect(raw.rows[0]?.project_id).toBe(projectId);
+  });
+
+  it("refuses a direct UPDATE ... SET project_id = NULL on its own", async () => {
+    const projectId = `prj-${randomUUID()}`;
+    const result = await appendAuditLog(
+      db,
+      baseInput({ action: "role.created", projectId }),
+    );
+
+    await expectRejectionMatching(
+      db.execute(
+        sql`UPDATE audit_log SET project_id = NULL WHERE id = ${result.id}`,
+      ),
+      /append-only/i,
+    );
+
+    const raw = await db.execute<{ project_id: string | null }>(
+      sql`SELECT project_id FROM audit_log WHERE id = ${result.id}`,
+    );
+    expect(raw.rows[0]?.project_id).toBe(projectId);
   });
 });
 
