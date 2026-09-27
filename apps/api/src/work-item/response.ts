@@ -278,3 +278,16 @@ export const workItemActivityListResponseSchema = z
     page: workItemPageSchema,
   })
   .openapi("WorkItemActivityListResponse");
+
+// `assignment.md` § API: `DELETE /api/work-items/{key}/assign`. The assignment as
+// cleared. `assigneeId` is null BY TYPE -- a client cannot mistake "cleared" for "field
+// missing" -- and `previousAssigneeId` still names who to notify (`AS-17`) or to show in
+// an activity feed.
+export const unassignWorkItemResponseSchema = z
+  .object({
+    key: z.string(),
+    assigneeId: z.null(),
+    previousAssigneeId: z.string().nullable(),
+    version: z.number(),
+  })
+  .openapi("WorkItemUnassignment");

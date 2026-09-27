@@ -100,11 +100,17 @@ describe("check:events — the shipped tree", () => {
 
     const result = runChecker(dir, "check-events.mjs");
     assert.equal(result.status, 0, result.output);
-    // 28 = the 27 keys before #433, plus work_item.deleted (already documented in
-    // events.md, but never actually published until #433's DELETE route landed). A
-    // non-vacuity guard: it proves the checker actually saw the shipped keys, rather than
-    // passing on an empty scan.
-    assert.match(result.output, /28 published event key/);
+    // 29 = the 24 keys before PR 292, plus work_item.created and work_item.updated, plus
+    // work_item.assigned (assignment.md AS-16; PR #353) -- that's the 27 keys before
+    // #433 and #430 each independently branched off it -- plus TWO keys that were each
+    // already documented in events.md but not yet actually published anywhere at that
+    // common ancestor: work_item.deleted (#433's DELETE route) and work_item.unassigned
+    // (#430's DELETE .../assign route). #433 bumped this assertion 27->28 on its own
+    // branch before #430 (which independently also bumped main's copy 27->28) merged
+    // in; merging both together for real is what pushes it to 29. A non-vacuity guard:
+    // it proves the checker actually saw the shipped keys, rather than passing on an
+    // empty scan.
+    assert.match(result.output, /29 published event key/);
   });
 });
 

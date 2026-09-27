@@ -810,6 +810,7 @@ export type PolicyContext = {
     readonly personId?: string | null;
     readonly createdBy?: string | null;
     readonly requesterId?: string | null;
+    readonly assigneeId?: string | null;
     readonly createdAt?: Date;
   };
   /** Facts about the parsed body, for an `orSelfTarget` branch. */
@@ -1227,6 +1228,13 @@ function ownerPredicateHolds(
     case "row.requester_id === identity.personId":
       return (
         context.row?.requesterId != null && context.row.requesterId === personId
+      );
+    case "row.assignee_id === identity.personId":
+      // `assignment.md`'s DELETE branch: the row's CURRENT holder may clear their own
+      // assignment while holding only `work_item:update`. Null assignee means nobody
+      // holds it, so the branch is false -- there is no one for it to own.
+      return (
+        context.row?.assigneeId != null && context.row.assigneeId === personId
       );
     default:
       return false;
