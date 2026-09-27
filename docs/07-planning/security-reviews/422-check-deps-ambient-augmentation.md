@@ -113,3 +113,14 @@ in issue #424.
 doc bullet inserted elsewhere in `error-fix-loop.md` by a separately merged PR (the
 "hand-written regex/lexer CI gate" lesson) — no overlap with this PR's own content, no code
 change.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `bb5ad3528a025074a52e0cb751c2cde9597abeba`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
+reviewed head (`2250ee0a63c4c992ac86c71ea8ab4bc71843ebe3`) and this one — the intervening
+commits bring in #410's and #412's already-reviewed merges, zero overlap with this PR's own
+files.
