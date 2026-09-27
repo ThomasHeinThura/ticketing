@@ -204,6 +204,81 @@ export const workItemAssigneeConflictSchema = z
   })
   .openapi("WorkItemAssigneeConflict");
 
+// `DELETE /api/work-items/{key}` -- see `controllers/delete-work-item.ts`'s own doc
+// comment for the deliberate `pending-actions.md` deviation this response shape reflects
+// (a plain, immediate soft-delete, not a `202` pending action).
+export const deletedWorkItemSchema = z
+  .object({
+    id: z.string(),
+    key: z.string(),
+    workspaceId: z.string(),
+    projectId: z.string(),
+    deletedAt: responseTimestamp,
+  })
+  .openapi("DeletedWorkItem");
+
+// `POST /api/work-items/{key}/rank` (`WI-11`) -- narrow on purpose, the same "just
+// enough for the client to know what happened" shape `assignWorkItemResponseSchema`
+// uses: the caller already has the rest of the row from its own last read.
+export const rankWorkItemResponseSchema = z
+  .object({
+    key: z.string(),
+    position: z
+      .string()
+      .openapi({ description: "numeric(20,10) fractional rank, as a string." }),
+    version: z.number(),
+  })
+  .openapi("RankedWorkItem");
+
+// `POST`/`DELETE /api/work-items/{key}/watch` (`WI-28`/`WI-29`).
+export const workItemWatchStateSchema = z
+  .object({
+    workItemId: z.string(),
+    watching: z.boolean(),
+  })
+  .openapi("WorkItemWatchState");
+
+// `POST /api/work-items/bulk` (`WI-25`: per-item results, never an all-or-nothing
+// rollback).
+export const bulkWorkItemsResponseSchema = z
+  .object({
+    succeeded: z.array(z.string()),
+    failed: z.array(
+      z.object({
+        id: z.string(),
+        reason: z.string(),
+      }),
+    ),
+  })
+  .openapi("BulkWorkItemsResult");
+
+// `GET /api/work-items/{key}/activity` -- the read side of the already-merged
+// `activity.ts` write path (`recordWorkItemActivity`). `seq` is deliberately absent,
+// same reason that module's own `.returning()` column list omits it.
+export const workItemActivityRowSchema = z
+  .object({
+    id: z.string(),
+    workItemId: z.string(),
+    actorId: z.string().nullable(),
+    actorType: z.string(),
+    verb: z.string(),
+    field: z.string().nullable(),
+    oldValue: z.unknown().nullable(),
+    newValue: z.unknown().nullable(),
+    payload: z.unknown().nullable(),
+    visibility: z.string(),
+    workflowVersionId: z.string().nullable(),
+    createdAt: responseTimestamp,
+  })
+  .openapi("WorkItemActivityRow");
+
+export const workItemActivityListResponseSchema = z
+  .object({
+    data: z.array(workItemActivityRowSchema),
+    page: workItemPageSchema,
+  })
+  .openapi("WorkItemActivityListResponse");
+
 // `assignment.md` § API: `DELETE /api/work-items/{key}/assign`. The assignment as
 // cleared. `assigneeId` is null BY TYPE -- a client cannot mistake "cleared" for "field
 // missing" -- and `previousAssigneeId` still names who to notify (`AS-17`) or to show in
