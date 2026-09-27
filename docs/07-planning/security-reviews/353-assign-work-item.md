@@ -435,3 +435,91 @@ Each was restored afterwards, and `git status` was clean.
 - No main-side change touches the route's authority chain.
 - The suites and the mutation checks hold at this head.
 - D1, D2 and D3 are non-blocking follow-ups.
+
+---
+
+## Delta review 3 (Opus 5.5): the audit_log write
+
+**Reviewer:** Claude Opus 5.5 (`claude-opus-5-5[1m]`), a fresh independent context commissioned by the orchestrating session. It did not author, direct or remediate this change.
+**Reviewed head:** `cbd18fc3ed1ea26f09254dc54b86565f2d7a0e1d`
+**Range reviewed:** `e924f6e71ff0bca2352a66d59b3b78c9146e7606..cbd18fc3ed1ea26f09254dc54b86565f2d7a0e1d` (`a890593` docs; `de46e94` main-merge bringing in #375, whose only PR-file change is `cbd18fc`'s test hunk; `cbd18fc` feature)
+**Date:** 2026-09-27
+**Verdict:** **CHANGES NEEDED**, for A1. A1 is a one-line code fix plus a regression test.
+
+### Suites at this head
+
+Run in a private worktree against a private database (`pr353audit_test`); both were removed afterwards.
+
+| Suite | Result |
+| --- | --- |
+| API integration (full) | 92 files, 1252/1252 |
+| `work-item-assign.test.ts` + `audit-log*.test.ts` + `audit-read*.test.ts` | 5 files, 93/93 |
+| `pnpm typecheck` | 9/9 tasks |
+
+### Probes
+
+- **12 concurrent assigns on 12 items:** 12 audit rows and 12 distinct `prev_hash` values. `verifyAuditChain` returns ok.
+- **Six-way race for one item:** exactly one 200 and exactly one audit row. Its `after` equals the stored holder, and its `before` is `null`. The chain verifies.
+- **An uncommitted rival change while the UPDATE runs:** 409, and no audit row. This is safe.
+- **A rival change that commits between the pre-read and the UPDATE:** 200, but the recorded `before` is stale (A1).
+
+### Mutations (each restored afterwards; `git status` clean)
+
+| Mutation | PR suite |
+| --- | --- |
+| `projectId: null` | **red** (AS-1) |
+| `after` taken from `expectedCurrentAssigneeId` | **red** (AS-1, AS-3) |
+| Drop the `appendAuditLog` call | **red** (3) |
+| `actorId: input.assigneeId` (a request-supplied value) | **green**: A2 |
+| `actorType: "system"` | **green**: A2 |
+| `previousAssigneeId = input.expectedCurrentAssigneeId ?? null` (A1's fix) | green 27/27; the A1 probe goes green |
+
+### The five questions
+
+1. **Forgery:** none. `actorId` and `actorType` come from the session or API key, `workspaceId` from the reach check, and `projectId` and `entityId` from the loaded row. `after` is the roster-validated assignee that the UPDATE wrote. Extra body fields are stripped.
+2. **Hash chain:** compatible. The writer supplies the closed field list. `projectId` is stored but not hashed, per #375's precedent. The chain verifies after concurrent writes.
+3. **Concurrency:** `after` is correct, but `before` is not (A1).
+4. **The no-op case:** it writes no audit row, which the test asserts and the drop-the-call mutation turns red. This is consistent with AU-10: no event and no state change means no audit action. A 409 also writes nothing, because the transaction rolls back.
+5. **The advisory lock:** passing `tx` opens a savepoint, and the transaction-level lock is held until the outer commit. There is no double lock. There is no deadlock, because every path takes row locks first and the audit lock last, and audit-read holds no row locks. Future writers must keep that order.
+
+### Findings
+
+#### A1 — BLOCKING (medium; audit-record integrity). `before` is the stale pre-read, not the value the UPDATE matched
+
+- **Where:** `assign-work-item.ts:152`. `previousAssigneeId = item.assigneeId` is read outside the transaction and feeds the audit row's `before`, the activity row's `oldValue`, the event and the response.
+- **Reproduction:**
+  1. The item is held by `first`.
+  2. A transaction holding `LOCK TABLE membership` parks the controller after its pre-read.
+  3. A rival change moves the holder to `second` and commits.
+  4. The controller is called with assignee `third` and expected `second`.
+  5. Result: 200. The real move is `second` → `third`, but every record says `first` → `third`.
+- **Impact:** permanent wrong content in an append-only table. The chain stays valid, and the value is not caller-chosen, but the row misstates who was displaced.
+- **Fix:** `previousAssigneeId = input.expectedCurrentAssigneeId ?? null`. The UPDATE's own predicate proves this value whenever the UPDATE matches. Optionally, short-circuit `expected === assigneeId`.
+- **Regression test:** add the probe above as an integration test.
+- **Also:** #365 (unassign) must not copy the pre-read pattern.
+
+#### A2 — NON-BLOCKING (a test gap). `actorId` and `actorType` are unpinned
+
+Add assertions on both, for a session caller and an API-key caller.
+
+#### A3 — NON-BLOCKING (AU-1; shared with `writeAuditRead`). Several AU-1 fields are not recorded
+
+The call passes no `apiKeyId` (though `c.get("apiKey").id` is available), and no `actorIp`, `userAgent` or `traceId`. Add a request-context helper, tracked in an issue.
+
+#### A4 — NON-BLOCKING (for the orchestrator or Thomas). An audit failure rolls back the assignment, contrary to AU-14
+
+This is fail-closed, which is the safer choice for security, but AU-14 says the mutation still succeeds. Record the choice, or catch the error and log it at error level, as `writeAuditRead` does.
+
+#### A5 — NIT
+
+The AS-3 audit assertion uses `.slice(-1)` without `orderBy(seq)`.
+
+### Earlier findings
+
+S1, S2 and S5 are still closed. S3 is still tracked by #359. D1, D2 and D3 are unchanged and non-blocking.
+
+### Gates (not security findings)
+
+- `pull request template + security review` is failing at this head.
+- `integration - Postgres 18` was still pending when checked.
+- **Waivers:** none checked here.
