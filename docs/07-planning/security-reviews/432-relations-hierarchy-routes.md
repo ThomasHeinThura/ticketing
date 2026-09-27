@@ -139,3 +139,46 @@ set-parent, which now runs under the advisory lock. Update next touch.
 D1's fix is being commissioned as a delta. Per the reviewer's own recommendation, the
 re-review after that fix can be narrow — confirm the new test fails on `356ad00` and passes
 on the new head — not a full fresh pass.
+
+---
+
+## Security review — narrow re-review (2026-09-27)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `a9e5ecbf728e3bc7e`
+
+**Reviewed head:** `9523be221d1ddc9b6923a5959c170fe81e7529c2`
+
+**Scope:** narrow, per the prior delta pass's own recommendation — confirm D1's rewritten
+test genuinely fails on the pre-fix commit and passes on the new head; not a re-litigation
+of F1/F2/F3, which the prior pass already confirmed closed.
+
+**Verdict: CLEAR.** D1 is closed — the rewritten test genuinely guards the fix. D2 and D4
+confirmed present and correct.
+
+Independently reproduced the fail-then-pass behavior on a separate worktree and a private
+`opus432d1_test` database: head `9523be2` passed 3/3; the pre-fix `set-work-item-parent.ts`
+(with `hierarchy-lock.ts` removed) swapped in failed 4/4, each time correctly at the
+`classid = 4012` advisory-lock probe after ~5.3s (proving the lock genuinely isn't there
+pre-fix — the test doesn't just fail for an unrelated reason). An additional adversarial
+variant (lock present but moved to after `validateReparent`) also correctly failed
+(`[200, 200]` instead of `[200, 422]`), confirming the test catches the depth-cap violation
+itself, not merely the lock's absence. D2's `item.projectId !== pre.projectId` guard is
+present, correctly placed inside the lock after the authoritative re-read, fails closed. D4's
+doc comment is accurate. Full file passed 12/12, three separate runs. `apps/api` typecheck
+clean.
+
+**One correction to the record (non-blocking):** the D1 fix commit's own message claims the
+pre-fix test fails with "both requests succeed, depth cap violated" in under a second — this
+is not what actually happens. Pre-fix, it fails by hitting the 5-second timeout while polling
+for the advisory-lock probe (since no such lock exists pre-fix), not by an instant depth-cap
+violation. This doesn't change the verdict — the test still correctly goes red pre-fix and
+green post-fix — but the mechanism recorded in the commit message is inaccurate and worth
+noting here for anyone reading the history later.
+
+F1/F2/F3 were not re-reviewed in this pass (out of scope, already confirmed in the prior
+delta). Full integration suite was not re-run in this pass (out of scope); the prior delta
+pass already confirmed it green at the code-fix commit, and this pass's own scope was
+narrowly the test file plus D2/D4.
+
+Clear to merge.
