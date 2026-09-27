@@ -1,18 +1,27 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
-**2026-09-26 orchestrator continuation — `main` at `8a51415` (#374).** The decision
-authorizing one-at-a-time follow-up PRs for #354, #341, #362, #367 and #371 is now on `main`;
-#354 is the first implementation in progress. Its regression reproductions pass in the focused
-Postgres integration file (17/17); it still needs the full applicable checks, independent review,
-and exact-head Opus 5.5 review before merge. #362 already has an open candidate (#373), which
-remains behind #354 in the recorded sequence.
+**2026-09-26 orchestrator continuation — `main` at `ecd88b0` (#373; corrected from a stale
+`8a51415`/#374 reading of this line — verified live via `git log`, not carried forward from
+memory).** The decision authorizing one-at-a-time follow-up PRs for #354, #341, #362, #367
+and #371 is now on `main`; #354 is the first implementation in progress. Its regression
+reproductions pass in the focused Postgres integration file (17/17); it still needs the full
+applicable checks, independent review, and exact-head Opus 5.5 review before merge. #362's
+candidate **#373 is merged** (`ecd88b0`) — the line previously here calling it "still open"
+was stale.
 
-**P0 #10 continuation:** PR #352's detector redesign now integrates #374's decision on `main`
-through merge-resolution commit `ac75ca2`; its final Opus 5.5 review must cover the updated
-head. PR #361's structural dependency checker at `4540cfd` was reviewed by three independent
-contexts. They found blocking fail-open cases for unlisted workspaces, aliased `createRequire`,
-and Vite aliases; a structural remediation is in progress. Neither candidate is merge-ready,
-and P0 remains open.
+**P0 #10 continuation:** PR #352 **merged** (`9c490d7`, confirmed on `main`), with an Opus
+delta review recorded (`d9d4ada`, `ba854cf`) — the line previously here claiming it still
+needed Opus review was stale; corrected 2026-09-26 after a background investigation checked
+`gh pr view 352` and `git merge-base --is-ancestor` directly rather than trusting this file.
+PR #361's structural dependency checker was reviewed by three independent contexts, found
+blocking fail-open cases (unlisted workspaces, aliased `createRequire`, Vite aliases), and a
+consolidated remediation at `0987c5d2` is now under a fresh exact-head review round. Issue
+#10 overall is far further along than its own unchecked scope boxes suggest: 24 of 38
+declared CI gates are enabled and green (`pnpm test:all --list`), and the 14 not-yet-enabled
+ones are each blocked on a named, unbuilt P1/P9 prerequisite (verified in
+`scripts/ci/test-all.mjs`'s own output), not neglect. `check:deps` (PR #361) is the one
+still-open implementation gap; the CODEOWNERS/branch-protection checkbox in issue #10's body
+is superseded by the 2026-09-06 and 2026-09-26 decisions, not pending.
 
 **2026-09-25 orchestrator snapshot — `main` at `714a653`.** Merged since the 2026-09-24
 snapshot, each with every required check green on the exact head, an independent ordinary
@@ -1443,6 +1452,43 @@ releases three blocked things at once: #192's cross-tenant gap, the RLS prototyp
 project purge. It also needs a **new** `UNIQUE (workspace_id, id)` on `work_item_type`, which
 does not exist today.
 
+### PR #376 — governance change; `pal-mcp` SUSPENDED as a live finding, not merged yet
+
+**PR #376** set out to make `pal-mcp` the primary ordinary-review/audit/report/alignment
+tool. Across two Sonnet ordinary reviews and three Opus passes, real findings were found and
+fixed each round (Code-Owner-review-toggle unenforceability, panel-independence gaps, stale
+cross-references, PR-template defects — full history in
+`docs/07-planning/security-reviews/376-pal-mcp-governance.md`'s per-pass sections and the
+decision log's 2026-09-26 entries). **The headline outcome: a third Opus pass, testing
+specifically for it, reproduced a cross-call content leak in `pal-mcp` that persisted even
+after Thomas's fusion-panel→failover config change** — this is server-side state-sharing on
+`pal-mcp` itself, not something the model-routing config controls. `pal-mcp` is now
+**SUSPENDED** as the default reviewer (`CLAUDE.md`, `agent-workflow.md`, `pal-reviewer.md` all
+carry the notice) — fresh Sonnet contexts are the standing ordinary-review path again, not a
+"fallback." A follow-up Opus confirmation found the suspension notice correct where it existed
+but incomplete: `pal-reviewer.md` had no suspension text at all, and `agent-workflow.md`'s main
+"Model tiers" section still read as pal-mcp-primary throughout (only one later subsection had
+been fixed). Both corrected. **Not yet done:** one more lightweight Opus confirmation on the
+completeness fix, then the PR body/checklist need a final pass before merge. This PR does not
+merge with `pal-mcp` "must-use" framing — it merges recording what was tried, what was found,
+and what is suspended, which is itself the useful governance outcome here.
+
+### PR #377 — UAT deploy verified end-to-end through the real host Traefik
+
+Issue #11's deployment skeleton was mostly already built on `main`; verified live rather than
+trusted from its checklist. `scripts/deploy.sh local`'s core stack (Postgres, Valkey,
+migrations, app) boots healthy from scratch. `deploy/compose.uat.yml`, attached to this
+host's existing (Dokploy-managed) `dokploy-network` — the same mechanism v1's `taskdesk-uat`
+stack already uses successfully here — had a real bug: its Traefik routers referenced
+`@file` middlewares that only exist when Traefik loads this repo's own
+`deploy/traefik/dynamic/middlewares.yml`, which the shared Traefik instance does not load, so
+the router silently went `disabled`. Fixed by defining the same middleware values as
+`@docker` labels instead (matching v1's proven pattern). Verified end-to-end through the real
+Traefik: both `ticket-v2-uat.bimats.com` and `portal-v2-uat.bimats.com` return
+`{"status":"ok"}`. Ordinary review: **APPROVE**, not security-scope, no Opus needed. **Not
+done, outside this repo/host:** DNS for these hostnames, and the CloudFront origin
+`X-Forwarded-Proto` header the file's own comments already flag as an open item.
+
 ### Opus security reviews — capacity, not permission
 
 **#214 and #215 are in security-review scope and their Opus passes have not happened.**
@@ -1649,6 +1695,21 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-24 · P0 #10 Opus re-review and parser/scope hardening
+
+PR #355's three independent ordinary review contexts cleared implementation head
+`575d363a68b841f6d486794315e252ca03a90373`. Opus 5.5 then reviewed that exact head and
+committed report `4157975`, verdict CLEAR WITH FINDINGS (S9/S10 non-blocking); all required
+checks passed on report-only PR head `41579753182451357e69c403b95a22ad04cd4b2c`. The
+follow-up now rejects duplicate Redocly reports, missing `problems`, inconsistent totals and
+ignored diagnostics, and widens security scope to the permission/integration Vitest configs
+and integration global setup. Focused tests pass 16/16; the full CI-script suite passes
+505/505; actual Redocly JSON has 16 problems matching its 5 errors and 11 warnings. The local
+`pnpm test:contract` command remains blocked before lint by this host's Bun-based Node shim
+(`Cannot find module './cjs/index.cjs'`); the earlier exact-head GitHub contract gate passed.
+These code changes require a new final Opus review after ordinary delta review; the prior
+`4157975` verdict does not cover them.
 
 ### 2026-09-24 · P0 #11 release helper remediation
 

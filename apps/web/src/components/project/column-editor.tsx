@@ -18,9 +18,9 @@ import { useReorderColumns } from "@/hooks/mutations/column/use-reorder-columns"
 import { useUpdateColumn } from "@/hooks/mutations/column/use-update-column";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { cn } from "@/lib/cn";
 import { getColumnIcon } from "@/lib/column";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
 
 type ColumnEditorProps = {
   projectId: string;

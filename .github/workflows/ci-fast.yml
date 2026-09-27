@@ -5,7 +5,7 @@
 # the document does not declare: scripts/ci/test-all.mjs reconciles the two on every run,
 # and the `gates-declared` job below fails if they drift apart.
 #
-# Gates that cannot exist yet — check:tokens, check:deps, check:queries, check:inventory,
+# Gates that cannot exist yet — check:tokens, check:queries, check:inventory,
 # test:mcp, check:bundle-purity, check:bundle-size — have no job here on
 # purpose. `pnpm test:all --list` prints each one with the reason and the issue that
 # unblocks it. A job that passed because it found nothing to check would look like coverage
@@ -114,6 +114,8 @@ jobs:
         run: pnpm typecheck
       - name: pnpm check:i18n
         run: pnpm check:i18n
+      - name: pnpm check:deps
+        run: pnpm check:deps
 
   registers:
     # DO NOT RENAME THIS JOB. The `protect-main` ruleset binds its required status checks
