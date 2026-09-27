@@ -1,5 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import { workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
@@ -39,11 +40,9 @@ import { WorkItemAssigneeConflictError } from "./assign-work-item";
  * here to clear, so the honest answer is "it is already as you asked" rather than an
  * invented conflict or a write that would fabricate history.
  *
- * WHAT THIS DOES NOT DO: the `audit_log` row (blocked on #344's `project_id` column, the
- * AU-10 sequencing every project-scoped audit writer shares -- see PR #353 and #360), the
- * notification fan-out that subscribes to `work_item.unassigned` (`AS-17`/`AS-18`: the
- * event IS emitted here; excluding the actor from their own notification is the fan-out's
- * job), and bulk unassign.
+ * WHAT THIS DOES NOT DO: the notification fan-out that subscribes to
+ * `work_item.unassigned` (`AS-17`/`AS-18`: the event IS emitted here; excluding the actor
+ * from their own notification is the fan-out's job), and bulk unassign.
  */
 
 export type UnassignedWorkItem = {
@@ -145,6 +144,27 @@ export async function unassignWorkItem(
       newValue: null,
     };
     await recordWorkItemActivity(tx, [activityRow]);
+
+    // Audit trail (audit-trail.md's action catalogue: "Where a domain event exists for
+    // the mutation, the audit action is that event's key" -- this route's own event,
+    // `work_item.unassigned`, published below). `projectId` is #344/AU-10's own point: a
+    // project-scoped mutation must record it so a workspace audit READ can be
+    // reach-filtered to the projects the reader can see. Same transaction as the
+    // conditional UPDATE and the activity row above -- `appendAuditLog` takes its own
+    // `pg_advisory_xact_lock` internally (see `audit-writer.ts`'s doc comment), so
+    // nothing further is needed here for hash-chain serialisation. Mirrors the assign
+    // route's own `appendAuditLog` call (PR #353/#344, `assign-work-item.ts`).
+    await appendAuditLog(tx, {
+      actorId,
+      actorType,
+      workspaceId,
+      projectId: item.projectId,
+      action: "work_item.unassigned",
+      entityType: "work_item",
+      entityId: item.id,
+      before: { assigneeId: previousAssigneeId },
+      after: { assigneeId: null },
+    });
 
     return {
       key: updated.key,
