@@ -12,6 +12,31 @@ import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { type ActivityActorType, recordWorkItemActivity } from "../activity";
 import { claimWorkItemNumber } from "./claim-work-item-number";
 
+/**
+ * `work_item.created`'s `source` (`events.md` ~51: `portal|agent|api|automation|import`),
+ * derived from `resolveActor`'s `actorType`. This route only ever sees a cookie-session
+ * `person` or an `api_key` (`resolveActor`'s own doc comment) -- `automation`/`system`
+ * throw rather than silently falling back to `"agent"`, so a future caller that reuses
+ * this function for an automation/import/portal-intake path is forced to update this
+ * mapping instead of getting a wrong `source` with no signal (same discipline as #399's
+ * `repo.mjs` fix: fail loudly on an unexpected case, don't silently default).
+ */
+function eventSourceFor(actorType: ActivityActorType): "agent" | "api" {
+  switch (actorType) {
+    case "person":
+      return "agent";
+    case "api_key":
+      return "api";
+    case "automation":
+    case "system":
+      throw new Error(
+        'createWorkItem: no work_item.created "source" mapping for actorType ' +
+          `"${actorType}" -- this route's resolveActor never produces it today; if a ` +
+          "new caller changes that, add the correct events.md source value here.",
+      );
+  }
+}
+
 type CreateWorkItemInput = {
   projectId: string;
   workspaceId: string;
@@ -205,7 +230,7 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     typeId: created.typeId,
     stateId: created.stateId,
     requesterId: created.requesterId,
-    source: actorType === "api_key" ? "api" : "agent",
+    source: eventSourceFor(actorType),
     visibility: "public",
     actorId,
     actorType,
