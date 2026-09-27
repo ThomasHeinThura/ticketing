@@ -1,12 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { windowId } from "@taskdesk/libs";
 import { useEffect, useRef } from "react";
-import { getApiUrl } from "@/fetchers/get-api-url";
+import { getApiUrl, toWebSocketBase } from "@/fetchers/get-api-url";
 import { authClient } from "@/lib/auth-client";
 
 export function getWsUrl(projectId: string) {
-  const base = getApiUrl("ws");
-  const wsBase = base.replace(/^http/, "ws");
+  const wsBase = toWebSocketBase(getApiUrl("ws"));
   return `${wsBase}/${encodeURIComponent(projectId)}?windowId=${encodeURIComponent(windowId)}`;
 }
 

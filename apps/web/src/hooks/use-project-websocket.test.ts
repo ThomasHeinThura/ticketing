@@ -47,4 +47,15 @@ describe("getWsUrl", () => {
       "ws://localhost:1337/api/ws/a%20b%2Fc%3Fd?windowId=test-window-id",
     );
   });
+
+  it("builds an absolute ws(s) URL from a relative (same-origin) API base, and does not throw constructing a WebSocket", () => {
+    vi.stubEnv("VITE_API_URL", "");
+    const expectedScheme =
+      window.location.protocol === "https:" ? "wss:" : "ws:";
+    const url = getWsUrl("project-123");
+    expect(url).toBe(
+      `${expectedScheme}//${window.location.host}/api/ws/project-123?windowId=test-window-id`,
+    );
+    expect(() => new WebSocket(url)).not.toThrow();
+  });
 });
