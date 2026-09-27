@@ -199,3 +199,15 @@ Each mutation was reverted afterwards, and `git diff --quiet HEAD` passed.
 
 - `git show --remerge-diff b514608` is empty — clean automatic merge.
 - Brings in only `docs/07-planning/decision-log.md` (#386) and this PR's own already-committed review note — docs-only, zero overlap with this PR's own asset/ws/invitation files.
+
+---
+
+## Lightweight re-confirmation after seventh branch update (2026-09-27)
+
+**Reviewed head:** `3a001a2a47a31cbf5cc8558004bad4f5101309bc`
+**Previously reviewed head:** `b5146080922bac1d61cd107b97ea81dab1d7b989`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR WITH FINDINGS, unchanged.
+
+- `git show --remerge-diff 3a001a2` is empty — clean automatic merge.
+- Brings in only `CLAUDE.md` (#387), docs-only, outside security-review scope, zero overlap with this PR's own files.
