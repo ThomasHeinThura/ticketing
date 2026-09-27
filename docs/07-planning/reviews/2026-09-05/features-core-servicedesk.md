@@ -61,29 +61,6 @@
 | Low | `AT-6` "Every download writes an audit row" — with `audit_log` retained 12 months and downloads being frequent, this is a volume decision with no stated action name. | Name the action (`attachment.download`) and confirm the retention policy is intended to cover it. |
 | Low | `AT-9` "PDFs preview in a sandboxed viewer" — no CSP/sandbox requirements stated, though `security-model.md` presumably owns them. | Link to the security model's sandbox requirements. |
 
----
-
-## 7. `search-and-saved-views.md` — P1
-
-**Verdict: not-ready** (the saved-view sharing model does not map onto the `saved_view` table, and half the routes carry no policy)
-
-The search half is strong: `SV-3` (scoped to reach, out-of-reach records simply absent) matches rbac.md's 404 doctrine, `SV-12` (whitelisted fields, parameterised SQL, "can never express arbitrary SQL") matches `api-design.md`, and `SV-5`'s 100 ms budget is a real, testable requirement.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| High | `SV-15` "Views have three scopes — **private, team, workspace**" does not map onto `saved_view (owner_id, scope, scope_id, name, query, shared_with_team_id, layout)`. In the data model `scope`/`scope_id` read as the *context* the view applies to (a workspace or a project), and `shared_with_team_id` handles team sharing — so "private vs team vs workspace" is a *different* axis with no column. An implementer must guess whether to overload `scope` or add a column, and guessing wrong makes private views visible. | Add `visibility ('private'\|'team'\|'workspace')` to `saved_view` in the data model and state that `scope`/`scope_id` remain the query context. Then restate `SV-15`–`SV-18` against the two axes. |
-| High | Five of the nine routes declare no capability: `GET /api/search → "(scoped to reach)"`, `GET /api/views → "(scoped)"`, `POST /api/views → "(per scope)"`, `GET /api/views/{id} → "(per scope)"`, `POST /api/views/{id}/pin → "(self)"`, and `GET /api/views/{id}/count → "(cached 30s)"` — which is a caching note, not a policy at all. rbac.md's route-coverage test fails the build on exactly this. | Give every route a `{ capability, scope }` or `{ public: true, reason }`. Introduce `saved_view:create_shared` (or reuse `workspace:manage_settings`) and a documented ownership predicate for the private ones. |
-| High | `SV-17` "editable by the owner and **team leads**" and the edge case "ownership transfers to a **team lead**, or to the workspace" — there is no team lead concept. `team_member` is `(team_id, person_id, allocation_pct)` with no role or lead flag; the only `lead_id` in the data model is on `module`. Two rules therefore depend on an entity that does not exist. | Add `team_member.is_lead boolean` (or `team.lead_id`) to the data model, and name the background job that performs ownership transfer when a person is deactivated. |
-| Medium | `SV-14` "A saved view stores: filter, sort, grouping, layout, and **chosen columns**", but `saved_view` has only `query` and `layout`, and `api-design.md` states that `saved_view.query` holds *exactly* the filter document ("the same document is what `saved_view.query` stores"). Sort, grouping and columns have nowhere to live. | Either widen `query` to a documented envelope (`{ filter, sort, groupBy, columns }`) and correct `api-design.md`, or add columns. Say which. |
-| Medium | `SV-20` "Views can be pinned to the sidebar, **per user**" — no pin table, and the same missing per-user preference store as `views.md` `VW-2`/`VW-19`/`VW-21`. `POST /api/views/{id}/pin` implies server-side persistence. | Resolve with the single `user_preference` table proposed in §2, and have both specs cite it. |
-| Medium | `SV-1` says the palette searches "work items, projects, **people**, saved views, knowledge base articles". Whether customers get the palette at all, and what "reach" means for a *people* search, is never stated — rbac.md is explicit that customers must never see other organisations and must not see staff names on internal activity. | State that the palette is agent-side only (`/api/search` is not exposed through `/api/portal/*`), or define the customer-visible subset per kind. |
-| Medium | `SV-9` "Trigram similarity as a fallback for typos" requires the `pg_trgm` extension and its own index; neither appears in the data model's indexing section, which defines only the `tsvector` GIN index. | Add the extension and the trigram index to the data model. |
-| Medium | **No `## Open questions`, `## Data`, `## Screens` or `## Out of scope` sections.** | Add them. |
-| Low | `SV-22`/`SV-23` queue counts "cached for 30 seconds" — cache location unspecified (Valkey is optional per `api-design.md`'s rate-limit note). | State the cache and the behaviour when Valkey is absent. |
-| Low | `SV-10` gates a Meilisearch plugin on Postgres being "measured to be insufficient" but names no threshold, while `SV-5` gives a hard 100 ms budget. | Tie them together: the plugin is considered when the `SV-5` budget is missed at a stated corpus size. |
-
----
-
 ## 9. `agile.md` — P5
 
 **Verdict: ready-with-fixes** (P5, so the gaps are not near-term blockers, but one directly contradicts the data model)

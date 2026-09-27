@@ -12,10 +12,18 @@ Find anything quickly, and keep the queries you run repeatedly.
 Two things that look separate but are the same underneath: a saved view **is** a stored
 search plus a presentation choice.
 
+## Data
+
+`saved_view` (`owner_id`, `scope`/`scope_id` — the query's own context, a workspace or a
+project — `visibility`, `shared_with_team_id`, `name`, `query`, `layout`), `user_preference`
+(kind 2 — pinned views, `SV-20`). See [data model](../01-architecture/data-model.md).
+
 ## Global search
 
 - `SV-1` `⌘K` opens the command palette. It searches work items, projects, people, saved
   views, knowledge base articles — and also offers navigation destinations and actions.
+  Agent-side only: the portal has no command palette, and `GET /api/search` is not exposed
+  through `/api/portal/*` ([rbac.md](../01-architecture/rbac.md)).
 - `SV-2` Results are grouped by kind, with the best match first, and are keyboard
   navigable throughout.
 - `SV-3` Search is scoped to the actor's reach. Out-of-reach records simply do not appear.
@@ -33,7 +41,9 @@ description.
 - `SV-8` Prefix matching so results update as you type.
 - `SV-9` Trigram similarity as a fallback for typos.
 - `SV-10` A `search.meilisearch` plugin exists as an option, to be enabled **only** if
-  Postgres is measured to be insufficient. Not on principle, not preemptively.
+  Postgres is measured to be insufficient. Not on principle, not preemptively — "insufficient"
+  means `SV-5`'s 100 ms budget is measured missed against the same 10,000-item seeded
+  benchmark the E2E test below uses.
 
 ## Structured search
 
@@ -54,10 +64,16 @@ project:SUP type:incident priority:>=high created:>2026-01-01
 
 ## Saved views
 
-- `SV-14` A saved view stores: filter, sort, grouping, layout, and chosen columns.
-- `SV-15` Views have three scopes — **private**, **team**, **workspace**.
+- `SV-14` A saved view stores: filter, sort, grouping, layout, and chosen columns — the
+  `{ entity, filter, sort, groupBy, columns, aggregate }` envelope in `saved_view.query`
+  ([api-design.md](../01-architecture/api-design.md), [data model](../01-architecture/data-model.md)).
+- `SV-15` Views have three **visibility** levels — **private**, **team**, **workspace**
+  (`saved_view.visibility`). This is a separate axis from `scope`/`scope_id`, which is the
+  query's own context (a workspace or a project) and is unrelated to who can see the view.
 - `SV-16` Private is the default. Sharing is a deliberate act.
-- `SV-17` A team view is visible to team members and editable by the owner and team leads.
+- `SV-17` A team view is visible to team members and editable by the owner and team leads
+  (`team_member.is_lead` — [data model](../01-architecture/data-model.md); the same team
+  membership `shared_with_team_id` points at).
 - `SV-18` A workspace view requires `workspace:manage_settings` to create and appears in
   everyone's navigation.
 - `SV-19` Every view has a URL that fully encodes it, so it can be shared with someone who
@@ -72,8 +88,9 @@ A queue is a saved view over unassigned work and submissions, owned by a team. U
 triage. See [intake queue](intake-queue.md).
 
 - `SV-22` A queue shows a live count, which appears as a badge in navigation.
-- `SV-23` Counts are cached for 30 seconds. A badge that triggers a query on every render
-  is how a list page becomes slow.
+- `SV-23` Counts are cached for 30 seconds, in Valkey when configured. When Valkey is
+  absent, the count is computed per request instead of cached — correct, just not fast
+  ([api-design.md](../01-architecture/api-design.md)'s rate-limit note makes the same call).
 
 ## Permissions
 
@@ -84,6 +101,17 @@ triage. See [intake queue](intake-queue.md).
 | Create a team view | Team membership |
 | Create a workspace view | `workspace:manage_settings` |
 | Edit a shared view | Owner, or `workspace:manage_settings` |
+
+## Screens
+
+| Screen | Purpose |
+| --- | --- |
+| Command palette | `⌘K` overlay — global search, navigation, actions (`SV-1`) |
+| Global search results | The full results list, for a query the palette alone can't hold |
+| Saved views index | Every view the actor can reach, pinned ones first |
+| Saved view | One view, rendered in its stored layout |
+
+Routes and status in the [screen inventory](../02-design/screen-inventory.md).
 
 ## API
 
@@ -104,11 +132,19 @@ GET  /api/views/{id}/count                     saved_view:read (cached 30 s)
 | Case | Behaviour |
 | --- | --- |
 | View references a deleted label or state | The chip renders "(deleted)" and can be removed. The view still runs |
-| Shared view whose owner leaves | Ownership transfers to a team lead, or to the workspace |
+| Shared view whose owner leaves | Ownership transfers to a team lead (`team_member.is_lead`), or to the workspace if the team has none — done synchronously as part of `IP-15`'s deactivation flow ([identity-provisioning.md](identity-provisioning.md)), not a separate scheduled job |
 | View returns out-of-reach items for a different viewer | Filtered per viewer. Two people running one view legitimately see different results |
 | 50,000 matches | Cursor pagination; the count is an estimate above 10,000 and says so |
 | Search query with only stop words | Returns recent items with an explanation rather than nothing |
 | Non-Latin script query | Handled by the Postgres configuration; tested with CJK and Cyrillic |
+
+## Out of scope
+
+- Grouping, aggregation and chart types over the same filter grammar → tier 2/3 reports,
+  [reports-and-dashboards.md](reports-and-dashboards.md) — a report is a `saved_view` with
+  `layout: 'table'|'chart'`, contributing no new policy
+- The `search.meilisearch` plugin's own implementation, unless and until `SV-10`'s threshold
+  is actually measured missed
 
 ## Testing
 
@@ -120,6 +156,11 @@ results; the grammar cannot express injection.
 E2E: palette opens and returns results under 100 ms against a seeded 10,000-item dataset;
 save a view, share it, open its URL as another user.
 
+## Open questions
+
+None.
+
 ## Related
 
-- [Views](views.md) · [API design](../01-architecture/api-design.md) · [Intake queue](intake-queue.md)
+- [Views](views.md) · [API design](../01-architecture/api-design.md) · [Intake queue](intake-queue.md) ·
+  [Identity provisioning](identity-provisioning.md) · [Reports and dashboards](reports-and-dashboards.md)
