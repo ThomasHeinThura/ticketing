@@ -133,3 +133,16 @@ local re-run. CI `unit + component`, `static` and `build` are green at this exac
 - `git show --remerge-diff` on the merge commit is empty — clean automatic merge.
 - Brings in PR #392's already-reviewed changes (permission rekey migration, Opus CLEAR).
   Zero overlap with this PR's own files (all under `packages/ui/src/components/`).
+
+---
+
+## Lightweight re-confirmation after branch update, round 3 (2026-09-27)
+
+**Reviewed head:** `5fb09517e74ad488a67be293c3314e38020a7615`
+**Previously reviewed head:** `77cc9d384a3ed9e5ed531f7647fbccde5554deaa` (via rounds 1-2)
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged.
+
+- `git show --remerge-diff` on the merge commit is empty — clean automatic merge.
+- Brings in PR #401's already-reviewed changes (Trivy gate fix, Dockerfile hardening).
+  Zero overlap with this PR's own files (all under `packages/ui/src/components/`).
