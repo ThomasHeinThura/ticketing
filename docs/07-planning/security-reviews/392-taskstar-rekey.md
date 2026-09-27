@@ -166,3 +166,15 @@ Different Opus instance, same review. Scope: the one new commit since `414c946` 
 **CI at `5420486`, when checked:** every required job is green except two. `integration - Postgres 18` was still **in progress**. `pull request template + security review` fails, as expected until the gate table names this pass. The merging session must confirm the integration job is green at this exact head before merging.
 
 **Verdict: CLEAR** at `54204865a2d52e74a647e6f74c51e5f8241455a2`. E1, F2 and F3 are resolved. F1 (the text of #398), D1 and D4 remain non-blocking follow-ups. This note's own commit changes only documentation, so the code cleared here is at `5420486`.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `5bd4efee08c6d8a3a5cf92fa6597a6262e9a508a`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged.
+
+- `git show --remerge-diff` on the merge commit is empty except for new files main already
+  brought in (PR #396's dashboard fix, PR #397's deploy-image fix) — no conflict resolution.
+- Zero file overlap between those PRs' own files and this PR's own files.
