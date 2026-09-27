@@ -162,3 +162,100 @@ Two items block:
 - **T1:** commit a two-workspace test that pins per-workspace `sees_all` scoping.
 
 W1 must be settled before #353 (the first project-scoped writer) merges. After the fixes, a delta Opus review on the new exact head is required.
+
+## Delta review: S1/T1 fix confirmation
+
+**Reviewed head:** `fbba252171603a3be35faafbf3708c9d3ec8f486`
+
+- **Reviewer:** Claude Opus 5.5 (`claude-opus-5-5`), a fresh and independent context. It did not author, direct or fix this change, including the fix commit `fbba252`.
+- **Tier:** delta over the review at `5284482236f9200b3825941b5c8ca4dea89e71ce`.
+- **Base:** `origin/main` at `0b1bcc1`, which is also the branch's merge-base. The PR is `MERGEABLE`.
+- **Scope:** the fix commit `fbba252`, plus a check that the two intervening `main` merges (`fc6e6b8`, `9c26ded`) brought in nothing else.
+
+_Findings are written as they are found. The verdict comes last._
+
+### Diff scope: checked, no finding
+
+- `git show --remerge-diff` is empty for both merge commits, so they carry no conflict resolution or hidden edits.
+- Measured against `main`, the PR's net diff changed in only these ways since the earlier review:
+  - the 8 files of `fbba252`: the 0070 migration, `audit-writer.ts`, `audit/index.ts`, `schema.ts`, `data-model.md`, `openapi.json`, `audit-log.test.ts` and `audit-read.test.ts`;
+  - this review document itself (`0d8ed3a`).
+- `list-workspace-audit.ts`, the journal and snapshot, `audit-trail.md` and the migration test are byte-identical to `5284482`.
+- `fbba252` adds no new migration and no new journal entry. The change sits inside 0070, which has not yet been applied anywhere outside tests.
+
+### S1: closed. Reproduced against the fix.
+
+**The trigger.** 0070 now ends with `CREATE OR REPLACE FUNCTION audit_log_reject_mutation()`. A textual diff against 0067's body shows one difference, apart from `CREATE` becoming `CREATE OR REPLACE`: the added line `OR NEW.project_id IS DISTINCT FROM OLD.project_id`. That line sits inside the closed carve-out equality list itself.
+
+**Coverage.** The list now covers every `audit_log` column except `organisation_id`: the 18 columns in 0067 plus `project_id`. No other migration adds a column to `audit_log`.
+
+**The trigger binding.** The `audit_log_append_only` trigger (`BEFORE UPDATE OR DELETE ... FOR EACH ROW`) binds the function by name, so the replacement takes effect without re-creating the trigger.
+
+**Live SQL, as the table owner (superuser), on the private `o375d_test` database:**
+
+| Statement | Result |
+| --- | --- |
+| `UPDATE audit_log SET project_id = NULL` (direct) | rejected: `append-only: UPDATE is not permitted` |
+| Original S1 exploit: CTE `DELETE organisation` plus `SET organisation_id = NULL, project_id = NULL` | **rejected** at the carve-out: `beyond the AU-7 organisation_id tombstone`. The whole statement rolled back, so both the organisation and the row are intact |
+| The same CTE, re-pointing to `project_id = 'prj-other'` | **rejected**, as above |
+| Legitimate: plain `DELETE FROM organisation` (FK `ON DELETE SET NULL`) | succeeds: `organisation_id` becomes `NULL` and `project_id` is unchanged |
+| Legitimate: the CTE tombstone that sets `organisation_id = NULL` only | succeeds: `project_id` is unchanged |
+| After the tombstone, `SET project_id = NULL` | rejected (the generic path) |
+
+The fix fails closed without breaking the legitimate AU-7 path.
+
+**Mutation.** The reviewer removed the `project_id` line from 0070 and ran `audit-log.test.ts` on a fresh database. The new test "refuses the AU-7 tombstone UPDATE if it also rewrites project_id…" went **red**, and only that test. The line was then restored.
+
+The direct-`UPDATE` test correctly stays green under that mutation, because the generic reject path catches it.
+
+### T1: closed
+
+The reviewer deleted `eq(membershipTable.scopeId, workspaceId)` from the `sees_all` lookup in `list-workspace-audit.ts`. The new test "a sees_all grant on ANOTHER workspace does not lift the filter on this one" went **red**, and it was the only failure in `audit-read.test.ts`. The line was then restored. This is the reviewer's original P1 probe, now committed.
+
+### H1 and I1: addressed, with one new inaccuracy (non-blocking)
+
+- **I1.** The OpenAPI description now mentions the reach filter. `openapi.json` is regenerated, and `check:openapi` matches (110 operations).
+- **H1.** The false claim that hashing would break old rows is gone from `schema.ts`, `audit-writer.ts` and `data-model.md`.
+
+**H1-b (Low, non-blocking, docs only).** The replacement rationale in all three places has a new problem. It says `project_id` stays out of the hash because, "like the tombstone, this column can legitimately change after the row is written". That is not true. There is no legitimate path that changes `project_id`: it has no FK and no `SET NULL`, and this very fix makes the trigger refuse every change to it.
+
+The accurate reason:
+
+- #344's acceptance permits leaving it out of the hash;
+- `organisation_id` is the precedent;
+- hashing it conditionally would be a change to the shared `packages/domain` recipe, with a golden-hash update, which belongs in its own PR.
+
+`data-model.md` also says the original rationale is "below this line", but it has been replaced. Fix this in a follow-up, or with the next commit to this branch. It does not affect behaviour.
+
+### Informational
+
+- **I4.** The comment in the S1 regression test says "the organisation stays deleted (it is not re-created)". In fact the whole statement rolls back, so the organisation still exists; the reviewer observed this live. The assertions themselves are correct.
+- **I5.** The "better still" guard from the original S1 recommendation was not added. That guard is a test asserting that every `audit_log` column except `organisation_id` appears in `pg_get_functiondef('audit_log_reject_mutation')`. Without it, the next column added to `audit_log` will silently widen the carve-out again, which is exactly how S1 arose. This is a recommended follow-up, not blocking here.
+- **I3 (carried).** At this head, `pull request template + security review` is still red on GitHub. That gate is for the orchestrator. All other required checks are green.
+
+### Evidence
+
+All runs are at `fbba252171603a3be35faafbf3708c9d3ec8f486`, in a detached worktree, with the offline install and `packages/*` built, on the private databases `o375d_test` and `o375m_test` (the latter for the S1 mutation).
+
+| Suite | Result |
+| --- | --- |
+| `pnpm --filter @taskdesk/api typecheck` | clean |
+| Integration (full, `vitest.integration.config.ts`) | 91 files, 1236 tests passed |
+| `audit-log`, `audit-read` and `audit-log-project-id-migration` | 3 files, 66 tests passed |
+| `test:permissions` | 11 files, 81 tests passed |
+| `check:openapi` | matches, 110 operations |
+| S1 live SQL (exploit and legitimate paths) | exploit rejected, legitimate tombstone succeeds |
+| S1 mutation (drop the `project_id` line) | the new S1 test goes red |
+| T1 mutation (drop the `scopeId` predicate) | the new T1 test goes red |
+
+### Delta verdict
+
+**CLEAR** at `fbba252171603a3be35faafbf3708c9d3ec8f486`.
+
+- S1 and T1 are closed. Each is verified by live reproduction and by a mutation that turns its regression test red.
+- The legitimate AU-7 tombstone path still works.
+- No out-of-scope change entered through the `main` merges.
+- H1-b, I4 and I5 are non-blocking.
+- W1 still binds on #353, not on this PR.
+
+Any further commit to this branch (including a fix for H1-b) changes the head. That needs a fresh exact-head confirmation before merge.
