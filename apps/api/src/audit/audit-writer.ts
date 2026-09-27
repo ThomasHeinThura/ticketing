@@ -39,6 +39,14 @@ export interface AppendAuditLogInput {
   userAgent?: string | null;
   traceId?: string | null;
   workspaceId?: string | null;
+  /**
+   * The project a project-scoped action belongs to (#344, AU-10). Recorded so
+   * workspace audit READS can be reach-filtered; DELIBERATELY NOT part of `row_hash`
+   * -- see `database/schema.ts`'s comment on `auditLogTable.projectId` and
+   * `data-model.md`'s hash-chain section. `null` means "not project-scoped", which is
+   * what the read filter shows every workspace reader.
+   */
+  projectId?: string | null;
   organisationId?: string | null;
   action: string;
   entityType: string;
@@ -372,6 +380,22 @@ export async function appendAuditLog(
         userAgent: input.userAgent ?? null,
         traceId: input.traceId ?? null,
         workspaceId: input.workspaceId ?? null,
+        // `projectId` is deliberately absent: it is stored, never hashed (#344's own
+        // acceptance). It cannot even be added silently -- `canonicalRowHash`'s input
+        // is a closed field list in `packages/domain/src/audit/audit.ts`, so a stray
+        // key here is a TYPE error, not a quiet recipe change (verified by mutation in
+        // the review of PR #375, finding A-L1), and the golden-hash test in that
+        // package would catch a recipe edit regardless. It is NOT out because it can
+        // change after the row is written -- migration 0070's trigger refuses any
+        // change to it, same as every other non-hashed column except the
+        // `organisation_id` tombstone (Opus security review of PR #375, H1-b,
+        // correcting the prior rationale here, which the S1 fix in this same PR made
+        // inaccurate). It stays out because #344's acceptance allows leaving it out,
+        // `organisation_id` is the precedent for a foreign key excluded this way, and
+        // adding it would change the hash recipe `packages/domain` shares with every
+        // consumer, for a column added after that recipe was fixed (see
+        // `data-model.md`'s "The audit hash chain"). It is pinned append-only by
+        // `audit_log_reject_mutation()` (migration 0070, S1) instead of by the hash.
         action: input.action,
         entityType: input.entityType,
         entityId: input.entityId,
@@ -408,13 +432,14 @@ export async function appendAuditLog(
       sql`
         INSERT INTO audit_log (
           id, actor_id, actor_type, api_key_id, impersonator_id, actor_ip, user_agent,
-          trace_id, workspace_id, organisation_id, action, entity_type, entity_id,
-          before, after, created_at, prev_hash, row_hash
+          trace_id, workspace_id, project_id, organisation_id, action, entity_type,
+          entity_id, before, after, created_at, prev_hash, row_hash
         ) VALUES (
           ${id}, ${input.actorId}, ${input.actorType}, ${input.apiKeyId ?? null},
           ${input.impersonatorId ?? null}, ${input.actorIp ?? null},
           ${input.userAgent ?? null}, ${input.traceId ?? null},
-          ${input.workspaceId ?? null}, ${input.organisationId ?? null},
+          ${input.workspaceId ?? null}, ${input.projectId ?? null},
+          ${input.organisationId ?? null},
           ${input.action}, ${input.entityType}, ${input.entityId},
           ${beforeJson}::jsonb, ${afterJson}::jsonb,
           ${nowRow.now_text}::timestamptz, ${prevHash}, ${rowHash}
