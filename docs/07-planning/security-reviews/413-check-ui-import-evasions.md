@@ -82,3 +82,15 @@ diff 49e04c1..df2c7a2 -- scripts/ci/check-ui.mjs scripts/ci/check-tokens.mjs` sh
 changed line is a `//` or `*` comment — zero executable statements touched, confirmed by
 inspection of the actual diff. Full suite re-run: 653/653, identical count to before the
 change, consistent with no behavioral difference.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `969989763194a79dbf040e8db144c0432c4d835b`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on `scripts/ci/check-ui.mjs`,
+`scripts/ci/check-ui.test.mjs`, and `scripts/ci/check-tokens.mjs` between the last reviewed
+head (`139e39d8004f159a46a6c2f65c72dcc3239bd3b8` reflected via `49e04c1`/`bd88fed`) and this
+one — the intervening commit brings in #405's already-reviewed schema-drift fix, zero
+overlap with this PR's own files.
