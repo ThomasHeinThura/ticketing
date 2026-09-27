@@ -174,8 +174,19 @@ Add to this as things are learned. It is the institutional memory that agents do
   every key is a flat, static identifier; nested or computed patterns remain unattributable.
   The guard belongs in the detector and its regression suite, not in a growing list of
   syntax-specific exemptions.
-
-## Related
+- **A handler that re-dispatches the same event type it is registered under recurses if
+  anything is still listening for that type.** #294: `command-palette/index.tsx` registered
+  a shortcut for `"?"` whose handler did `document.dispatchEvent(new KeyboardEvent("keydown",
+  { key: "?" }))` — meant, apparently, to forward the keypress somewhere. The shared
+  `KeyboardShortcutsProvider` (`apps/web/src/hooks/use-keyboard-shortcuts.ts`) has exactly one
+  document-level `keydown` listener multiplexing every registered shortcut; that listener
+  picked the synthetic event straight back up, found `"?"` registered again, and called the
+  handler again — `RangeError: Maximum call stack size exceeded`. The actual dialog this
+  handler thought it needed to trigger (`keyboard-shortcuts-help.tsx`) already listens for the
+  real keydown independently, so the registration was dead weight, not a working forward.
+  Before adding a dispatch that re-emits the same event type a component (or a shared
+  listener it feeds into) is itself listening for, trace who else is listening for that type
+  and confirm the forward is actually load-bearing.
 
 - [SDLC](sdlc.md) · [Testing strategy](testing-strategy.md)
 - [Agent workflow](agent-workflow.md)
