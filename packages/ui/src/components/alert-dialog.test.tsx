@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import {
   AlertDialog,
   AlertDialogDescription,
@@ -55,5 +56,24 @@ describe("AlertDialog", () => {
 
     fireEvent.click(screen.getByText("Confirm"));
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it("has no accessibility violations when open", async () => {
+    const { baseElement } = render(
+      <AlertDialog defaultOpen>
+        <AlertDialogPopup>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone.
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <button type="button">Cancel</button>
+            <button type="button">Confirm</button>
+          </AlertDialogFooter>
+        </AlertDialogPopup>
+      </AlertDialog>,
+    );
+
+    await expectNoA11yViolations(baseElement);
   });
 });

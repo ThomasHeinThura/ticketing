@@ -6,6 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import {
   Dialog,
   DialogDescription,
@@ -82,5 +83,18 @@ describe("Dialog", () => {
     );
 
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("has no accessibility violations when open", async () => {
+    const { baseElement } = render(
+      <Dialog defaultOpen>
+        <DialogPopup closeLabel="Close">
+          <DialogTitle>Settings</DialogTitle>
+          <DialogDescription>Manage your preferences.</DialogDescription>
+        </DialogPopup>
+      </Dialog>,
+    );
+
+    await expectNoA11yViolations(baseElement);
   });
 });

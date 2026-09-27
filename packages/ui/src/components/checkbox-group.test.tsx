@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import { Checkbox } from "./checkbox";
 import { CheckboxGroup } from "./checkbox-group";
 
@@ -25,5 +26,16 @@ describe("CheckboxGroup", () => {
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Beta" }));
     expect(values.at(-1)).toEqual(["alpha", "beta"]);
+  });
+
+  it("has no accessibility violations", async () => {
+    const { baseElement } = render(
+      <CheckboxGroup aria-label="Labels" defaultValue={["alpha"]}>
+        <Checkbox aria-label="Alpha" value="alpha" />
+        <Checkbox aria-label="Beta" value="beta" />
+      </CheckboxGroup>,
+    );
+
+    await expectNoA11yViolations(baseElement);
   });
 });
