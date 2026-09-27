@@ -226,3 +226,130 @@ Neither touches `apps/`, `packages/` or `tests/`.
 
 **Verdict at `5a24e8774292d842723c7cd059703a7b36b183b2`: CLEAR.** The earlier findings carry
 over unchanged.
+
+## Follow-up fix review: S1 (Opus 5.5)
+
+**Reviewer:** Opus 5.5 (`claude-opus-5-5`), fresh independent context, 2026-09-27. Did not
+author, direct, or remediate this change.
+**Reviewed head:** `bf4ba6924ebe3e0e9eed915b85048d6d518ac8b6`
+**Pull request:** #381 (`fix/354-shadow-workspace-id-provenance`)
+
+### Verdict
+
+**CLEAR WITH FINDINGS.** S1 is closed for every caller who is not an instance admin. One low
+residual (R1) remains for instance admins. It should be fixed before shadow mode is switched
+on in a shared deployment, the same bar S1 had. It does not block this merge: the PR is a
+strict improvement, and the residual actor is the most trusted role. No live-path change.
+
+### Head and provenance
+
+- `gh pr view 381 --json headRefOid` = `bf4ba69`. One commit, parent `0b1bcc1` (#361).
+- The cherry-pick is exact. `git patch-id --stable` is `169db1ed…` for both `ee37e72` and
+  `bf4ba69`, and the two patches diff empty. It touches 3 files, +95/−4:
+  `shadow-context.ts`, `shadow-middleware.ts`, and the integration test. Nothing else rides
+  along.
+- `origin/main` has since moved one docs-only commit, `e311fce` (#380, `runbook.md`).
+  `git merge-tree` merges it cleanly.
+
+### What the fix does
+
+`workspaceIdForShadowEvidence(id, source, legacyAllowed)` keeps the id only when
+`source === "row"` or legacy is known and allowed. All three event-write sites use it. The
+policy side still gets the raw id, as S1 asked. `compareShadowOutcome` does not persist the
+id, and no evaluator diagnostic string interpolates it. `source` is read lazily, so the
+post-response row lookup (`scopeSource: "row"` policies) still promotes a real id to `row`.
+
+### Probe results
+
+1. **Every non-`row` path for a non-admin needs a passed `validateWorkspaceAccess`.**
+   `legacyAuthorization = "allowed"` for a request-sourced id is set only after that call
+   returns (`workspace-access-middleware.ts:320`). Every other `allowed` setter runs after it
+   on the same request, or overwrites the id with a row value (`requireWorkItemReach`).
+   For a non-admin that call needs a `workspace_user` row with exactly that id, so the id is
+   real. A throw that is not a 403 leaves the marker `unknown`, and the id is nulled.
+2. **Routes with no validation step.** The only middleware that sets a request-sourced id is
+   `workspaceAccessMiddleware`. `task-relation` and `requireInvitationWorkspaceAccess` set
+   row-derived ids with no source label. With no marker, or `unknown` or `denied`, all of
+   these are nulled. Nothing treats "no validation" as allowed.
+3. **Forged, well-shaped id.** There is no format check, so the shape does not matter. A
+   non-admin's forged id is always denied and always nulled. See R1 for admins.
+4. **Allow-path usefulness.** Allowed request-sourced ids and all `row` ids are kept. The
+   losses are listed in I-a and I-b. Neither loses any `agree` or `legacy_allow_policy_deny`
+   attribution for a non-admin.
+
+### Findings
+
+#### R1 (low) — an instance admin can still persist free text as `workspace_id`
+
+`validateWorkspaceAccess` returns early for `user.role === "admin"`
+(`validate-workspace-access.ts:39`). It never checks that the workspace exists. So
+`legacyAllowed === true` means "authorized", not "verified". The premise in the PR, "legacy
+allowed means validated", does not hold for this bypass. An API key owned by an admin
+works the same way.
+
+Reproduced with an ad-hoc probe (not committed) at this head. An instance admin sent a
+6,009-character `attacker-xxxx…` id to three routes:
+
+| Route | Status | Outcome | `workspace_id` length |
+| --- | --- | --- | --- |
+| `GET /api/workspace/{workspaceId}` | 404 | `unevaluated` / `scope_source_unavailable` | 6009 |
+| `GET /api/label/workspace/{workspaceId}` | 200 | `legacy_allow_policy_deny` / `forbidden` | 6009 |
+| `GET /api/project?workspaceId=` | 200 | `legacy_allow_policy_deny` / `forbidden` | 6009 |
+
+The impact is S1's impact, narrowed to instance admins. It also adds non-existent-workspace
+noise to the `legacy_allow_policy_deny` class, which is the cut-over evidence that matters
+most.
+
+**Suggested fix:** in `runShadowEvaluation`, run the existing
+`SELECT id FROM workspace WHERE id = $1` lookup for every request-sourced id, not only for
+`scopeSource: "row"` policies. Keep a separate evidence flag, so the policy-side
+`workspaceIdSource` is unchanged. Then record the id only when that row exists. This also
+restores real ids on denied events (I-a). Add an instance-admin forged-id regression test.
+
+#### T1 (low, test gap) — two of five mutations survive
+
+Each mutation was run against the full `permissions-shadow-mode.test.ts` (17 tests), then
+reverted:
+
+| Mutation | Result |
+| --- | --- |
+| Filter removed (`return workspaceId`) | caught |
+| `legacyAllowed` always true | caught |
+| `legacyAllowed` arm removed | caught |
+| Final record site reverted to the raw id | caught |
+| `source === "row"` arm removed | **survives** — nothing pins a `row` id on a denied or unknown event |
+| `unknown` treated as allowed (`!== false`) | **survives** |
+| Both `writeErrorRecord` sites reverted | **survives** — the error paths are not tested |
+
+The regression that matters, the raw id on the final record, is caught. The surviving
+mutations fail safe or sit on rare paths. Worth pinning with R1's test.
+
+#### I-a (informational) — denied, real, request-sourced ids are now null
+
+A non-member denied on a real workspace, on a `scopeSource: "request"` policy, now records
+`NULL`. This matches #323's behaviour, so it is not a regression against #323. But it drops
+attribution from `legacy_deny_policy_allow` rows. R1's suggested fix restores it.
+
+#### I-b (informational) — row-derived ids with no source label are nulled more often
+
+`task-relation`'s `scopeTo*` never sets a legacy marker. So its events now always record
+`NULL`, even on allowed requests. The invitation cancel route records `NULL` on a denial.
+Labelling those ids `workspaceIdSource: "row"` would fix both, and it would keep their
+`scope_source_unavailable` answers honest.
+
+### Tests at this head
+
+Workspace packages were built first. The integration tests ran on a private database,
+`opus381_test`, which was dropped afterwards. The worktree was clean after
+`pnpm install --frozen-lockfile --offline`.
+
+| Suite | Files | Tests |
+| --- | --- | --- |
+| `@taskdesk/permissions` | 13 | 261 passed |
+| `apps/api test:permissions` | 11 | 81 passed |
+| `apps/api test:unit` | 59 | 490 passed |
+| `permissions-shadow-mode.test.ts` (integration) | 1 | 17 passed (15 + 2 new) |
+| `tsc --noEmit` (`apps/api`) | — | clean |
+
+Before merge, `main` (`e311fce`, docs-only) must be merged into the branch, and the new head
+must get the usual merge-head attestation.
