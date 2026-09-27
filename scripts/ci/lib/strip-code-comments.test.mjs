@@ -475,12 +475,32 @@ describe("issue #143 — regex after a keyword is not division", () => {
     assert.equal(scan(source), true, "must not hide the call after `o?.default / 2`");
   });
 
-  it("does not regress: a real keyword followed by a genuinely dotted call still sees a regex correctly", () => {
-    // Sanity check in the other direction -- the `.`-precedes-word check must only
-    // suppress the keyword reading when the DOT comes before the word that would
-    // otherwise be read as a keyword, not whenever a `.` appears anywhere nearby.
-    const source =
-      'function f(x) { return /[\'"]/.test(x); it.skip("real", fn); }';
+  it("does not regress: a `.` earlier in the line does not suppress an unrelated keyword's own regex reading", () => {
+    // Opus security review (finding C): the previous version of this test had no `.`
+    // anywhere near `return`, so it never actually exercised the property this test
+    // claims to check. This version puts a real `.` (an unrelated property access)
+    // immediately before the line's OWN keyword+regex, proving the `.`-precedes-word
+    // check only suppresses the reading for the word directly after that specific dot,
+    // not for any keyword appearing anywhere later in the buffer.
+    const source = 'a.b; return /[\'"]/.test(x); it.skip("real", fn);';
+    assert.equal(scan(source), true);
+  });
+
+  it("Opus security review, second pass: a private class field is not a keyword either", () => {
+    // Every reserved word in REGEX_ALLOWED_KEYWORDS is also a legal PRIVATE FIELD name
+    // (`this.#default`, `this.#in`) -- the first `.`-precedes-word fix only checked for
+    // `.` immediately before the word, missing that a private field's `#` sits between
+    // the dot and the word (`this.#default`, not `this.default`).
+    for (const source of [
+      'this.#default / 2; s = "/"; it.skip("a", fn);',
+      'this.#in / 2; s = "/"; it.skip("a", fn);',
+    ]) {
+      assert.equal(scan(source), true, `must not hide the call in: ${source}`);
+    }
+  });
+
+  it("does not regress: a chained property access is still correctly division, not just a bare property", () => {
+    const source = 'a.b.default / 2; s = "/"; it.skip("a", fn);';
     assert.equal(scan(source), true);
   });
 });

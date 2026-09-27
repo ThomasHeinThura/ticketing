@@ -63,7 +63,8 @@
  * `REGEX_ALLOWED_KEYWORDS` lists the keywords a real tokenizer also special-cases here
  * (Acorn, Esprima) because each is always followed by the START of an expression, never a
  * value a `/` could divide: `return`, `typeof`, `delete`, `void`, `throw`, `new`, `in`,
- * `of`, `instanceof`, `case`, `yield`, `do`, `else`, `await`, `default`.
+ * `instanceof`, `case`, `yield`, `do`, `else`, `await`, `default` (`of` was here too,
+ * briefly -- see the security-review note below on why it was dropped).
  *
  * **Disclosed gap this does NOT close, on purpose:** a `)` that closes an `if` / `while` /
  * `for` / `switch` condition also puts a following `/` in regex position (`if (x) /y/.test(z)`
@@ -152,11 +153,17 @@ const WORD_CHAR = /[A-Za-z0-9_$]/;
  * anything that is not a word (an operator, a bracket, `\n`), unchanged from before #143.
  *
  * Opus security review, same pass as the `of` removal above: every reserved word is also
- * a legal PROPERTY NAME (`mod.default`, `o.in`, `o?.new`), and a property access is never
- * itself the start of an expression the way the bare keyword is — `mod.default / 2` is
- * division, not `default` followed by a regex. So a word immediately preceded by `.` or
- * `?.` (skipping whitespace) is reported as a `.` (a character `REGEX_ALLOWED_BEFORE`
- * does NOT contain), not as the keyword text, regardless of what the word itself spells.
+ * a legal PROPERTY NAME (`mod.default`, `o.in`, `o?.new`, `this.#default`), and a property
+ * access is never itself the start of an expression the way the bare keyword is —
+ * `mod.default / 2` is division, not `default` followed by a regex. So a word immediately
+ * preceded by `.` or `#` (checked adjacently, NOT skipping whitespace — `obj. default` or
+ * `obj.\n  default` would still misread as the keyword; real code and this repo's own
+ * formatter never write a property access with whitespace between the dot and the name) is
+ * reported as a `.` (a character `REGEX_ALLOWED_BEFORE` does NOT contain), not as the
+ * keyword text, regardless of what the word itself spells. A second Opus pass (delta-
+ * review of THIS fix) found the original version only checked for `.`, missing private
+ * class fields (`this.#default`, `this.#in`) — `#` is added alongside `.` for exactly the
+ * same reason.
  */
 function previousMeaningful(out) {
   let i = out.length - 1;
@@ -167,9 +174,12 @@ function previousMeaningful(out) {
   if (!WORD_CHAR.test(out[i])) return out[i];
   let start = i;
   while (start > 0 && WORD_CHAR.test(out[start - 1])) start -= 1;
-  // `obj.default` and `obj?.default` both have `.` directly before the word start --
+  // `obj.default`/`obj?.default` (property access) and `this.#default` (a private field,
+  // itself always preceded by `.`) all have `.` or `#` directly before the word start --
   // `?.`'s `?` sits one character further back and doesn't need its own check.
-  if (start > 0 && out[start - 1] === ".") return ".";
+  if (start > 0 && (out[start - 1] === "." || out[start - 1] === "#")) {
+    return ".";
+  }
   return out.slice(start, i + 1).join("");
 }
 
