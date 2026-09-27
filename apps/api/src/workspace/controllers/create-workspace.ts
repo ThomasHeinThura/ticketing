@@ -226,7 +226,11 @@ async function createWorkspace(input: CreateWorkspaceInput) {
 
       return created.workspace;
     } catch (error) {
-      if (!isUniqueViolation(error, "slug")) {
+      // Exact constraint name, not a substring match on `"slug"` (issue #269): the
+      // only unique-violation this insert can raise is `workspace` table's own
+      // `workspace_slug_unique`, confirmed live against the schema -- there is no
+      // permanent workspace-slug-claim registry the way `project`/`work_item` have.
+      if (!isUniqueViolation(error, "workspace_slug_unique")) {
         throw error;
       }
       // A caller-supplied slug that is taken is the caller's answer to give
