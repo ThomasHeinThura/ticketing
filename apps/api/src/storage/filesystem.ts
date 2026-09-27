@@ -56,6 +56,7 @@ import {
   applyKeyPrefix,
   buildObjectKey,
   buildObjectKeyPrefix,
+  DEFAULT_DOWNLOAD_URL_TTL_SECONDS,
   DEFAULT_MAX_IMAGE_UPLOAD_BYTES,
   DEFAULT_UPLOAD_URL_TTL_SECONDS,
   getFileExtension,
@@ -501,6 +502,232 @@ export async function getPrivateObject(key: string): Promise<AssetObject> {
     etag: `"${stat.size.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}"`,
     lastModified: stat.mtime,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Issue #28 (attachments) -- generic, arbitrary-key upload/download tokens.
+//
+// `createTaskImageUploadUrl`/`writeUploadedObject` above are task-image-specific: the
+// key is minted FROM a `TaskImageUploadContext` (workspace/project/task/surface), and
+// the write route enforces a fixed `DEFAULT_MAX_IMAGE_UPLOAD_BYTES` ceiling regardless
+// of caller. An attachment's key is minted by the attachment module itself (not a task
+// image), and its size ceiling is the God Mode-configurable `attachment_max_bytes`, not
+// a fixed constant -- so the ceiling has to travel WITH the signed token, not be
+// re-read from a shared default at write time (a caller could otherwise not be held to
+// the exact limit that was actually validated when the presigned URL was minted).
+// Separate HKDF info strings from the task-image token above and from the download
+// token below, so a token minted for one purpose is not also a valid credential for a
+// different one.
+// ---------------------------------------------------------------------------
+
+const ATTACHMENT_UPLOAD_TOKEN_INFO =
+  "taskdesk:storage:attachment-upload-token:v1";
+const ATTACHMENT_DOWNLOAD_TOKEN_INFO =
+  "taskdesk:storage:attachment-download-token:v1";
+
+function deriveTokenKey(info: string): Buffer {
+  const authSecret = getAuthSecretEnv();
+  if (!authSecret) {
+    throw new Error(
+      "TASKDESK_AUTH_SECRET is required to mint filesystem storage tokens.",
+    );
+  }
+  return Buffer.from(
+    crypto.hkdfSync(
+      "sha256",
+      Buffer.from(authSecret, "utf8"),
+      Buffer.alloc(0),
+      Buffer.from(info, "utf8"),
+      32,
+    ),
+  );
+}
+
+function signAttachmentUploadToken(
+  key: string,
+  maxBytes: number,
+  expires: number,
+): string {
+  const hmac = crypto.createHmac(
+    "sha256",
+    deriveTokenKey(ATTACHMENT_UPLOAD_TOKEN_INFO),
+  );
+  hmac.update(`${key}\n${maxBytes}\n${expires}`);
+  return hmac.digest("base64url");
+}
+
+function verifyAttachmentUploadToken(
+  key: string,
+  maxBytes: number,
+  expires: number,
+  token: string,
+): boolean {
+  let expected: string;
+  try {
+    expected = signAttachmentUploadToken(key, maxBytes, expires);
+  } catch {
+    return false;
+  }
+  const expectedBuf = Buffer.from(expected, "utf8");
+  const providedBuf = Buffer.from(token, "utf8");
+  if (expectedBuf.length !== providedBuf.length) return false;
+  return crypto.timingSafeEqual(expectedBuf, providedBuf);
+}
+
+function signDownloadToken(key: string, expires: number): string {
+  const hmac = crypto.createHmac(
+    "sha256",
+    deriveTokenKey(ATTACHMENT_DOWNLOAD_TOKEN_INFO),
+  );
+  hmac.update(`${key}\n${expires}`);
+  return hmac.digest("base64url");
+}
+
+function verifyDownloadToken(
+  key: string,
+  expires: number,
+  token: string,
+): boolean {
+  let expected: string;
+  try {
+    expected = signDownloadToken(key, expires);
+  } catch {
+    return false;
+  }
+  const expectedBuf = Buffer.from(expected, "utf8");
+  const providedBuf = Buffer.from(token, "utf8");
+  if (expectedBuf.length !== providedBuf.length) return false;
+  return crypto.timingSafeEqual(expectedBuf, providedBuf);
+}
+
+/**
+ * The local equivalent of `createTaskImageUploadUrl`, for a caller-supplied `key`
+ * instead of one built from a `TaskImageUploadContext`. `maxBytes` is signed INTO the
+ * token (see the section comment above), so `writeAttachmentUploadedObject` enforces
+ * exactly the ceiling that was validated when this URL was minted, not a shared
+ * default.
+ */
+export function createAttachmentUploadUrl(
+  key: string,
+  contentType: string,
+  maxBytes: number,
+  apiBaseUrl?: string,
+): TaskImageUploadUrl {
+  const uploadUrlTtlSeconds = DEFAULT_UPLOAD_URL_TTL_SECONDS;
+  const expires = Math.floor(Date.now() / 1000) + uploadUrlTtlSeconds;
+  const token = signAttachmentUploadToken(key, maxBytes, expires);
+  const base = normalizeApiServerUrl(apiBaseUrl || "http://localhost:1337");
+
+  const query = new URLSearchParams({
+    key,
+    maxBytes: String(maxBytes),
+    expires: String(expires),
+    token,
+  });
+
+  return {
+    key,
+    uploadUrl: `${base}/storage/filesystem-attachment-upload?${query.toString()}`,
+    headers: { "Content-Type": contentType },
+  };
+}
+
+/**
+ * Writes the request body to disk at `key`, verifying the attachment upload token
+ * (which binds `key`, `maxBytes` and `expires` together) before any I/O -- same path
+ * safety guarantees as `writeUploadedObject`, generalized to a caller-chosen ceiling.
+ */
+export async function writeAttachmentUploadedObject(params: {
+  key: string;
+  maxBytes: string;
+  expires: string;
+  token: string;
+  body: ReadableStream<Uint8Array> | null;
+}): Promise<void> {
+  const maxBytesNum = Number.parseInt(params.maxBytes, 10);
+  const expiresNum = Number.parseInt(params.expires, 10);
+  if (!Number.isFinite(maxBytesNum) || maxBytesNum <= 0) {
+    throw new StoragePathError("Invalid maxBytes.");
+  }
+  if (!Number.isFinite(expiresNum)) {
+    throw new StoragePathError("Invalid or missing upload expiry.");
+  }
+  if (Math.floor(Date.now() / 1000) > expiresNum) {
+    throw new StoragePathError("Upload URL has expired.");
+  }
+  if (
+    !verifyAttachmentUploadToken(
+      params.key,
+      maxBytesNum,
+      expiresNum,
+      params.token,
+    )
+  ) {
+    throw new StoragePathError("Invalid or missing upload token.");
+  }
+  if (!params.body) {
+    throw new StoragePathError("Missing upload body.");
+  }
+
+  const config = getFilesystemConfig();
+  const candidate = resolveWithinRoot(config.root, params.key);
+  const dir = path.dirname(candidate);
+
+  await assertNoSymlinkEscape(dir, config.root);
+  await fsp.mkdir(dir, { recursive: true });
+  await assertNoSymlinkEscape(dir, config.root);
+
+  await writeStreamToFile(params.body, candidate, maxBytesNum);
+}
+
+/**
+ * The local equivalent of a presigned S3 GET (`attachments.md` AT-5): a short-lived,
+ * key-scoped download token, verified the same way the upload token is. `filename` is
+ * carried through only to name the download when it is served (`GET
+ * /storage/filesystem-download`'s handler sets `Content-Disposition` from it) -- it is
+ * NOT part of the signed payload, so it does not need to match anything at read time.
+ */
+export function createAttachmentDownloadUrl(
+  key: string,
+  filename: string,
+  apiBaseUrl?: string,
+): string {
+  const expires =
+    Math.floor(Date.now() / 1000) + DEFAULT_DOWNLOAD_URL_TTL_SECONDS;
+  const token = signDownloadToken(key, expires);
+  const base = normalizeApiServerUrl(apiBaseUrl || "http://localhost:1337");
+
+  const query = new URLSearchParams({
+    key,
+    expires: String(expires),
+    token,
+    filename,
+  });
+
+  return `${base}/storage/filesystem-download?${query.toString()}`;
+}
+
+/**
+ * Verifies the download token and streams the object -- called from `GET
+ * /storage/filesystem-download` (`index.ts`). Reuses `getPrivateObject`'s own path
+ * safety (`resolveWithinRoot`/`assertFileWithinRoot`) rather than duplicating it.
+ */
+export async function readAttachmentDownloadObject(params: {
+  key: string;
+  expires: string;
+  token: string;
+}): Promise<AssetObject> {
+  const expiresNum = Number.parseInt(params.expires, 10);
+  if (!Number.isFinite(expiresNum)) {
+    throw new StoragePathError("Invalid or missing download expiry.");
+  }
+  if (Math.floor(Date.now() / 1000) > expiresNum) {
+    throw new StoragePathError("Download URL has expired.");
+  }
+  if (!verifyDownloadToken(params.key, expiresNum, params.token)) {
+    throw new StoragePathError("Invalid or missing download token.");
+  }
+  return getPrivateObject(params.key);
 }
 
 export async function deleteObject(key: string): Promise<void> {

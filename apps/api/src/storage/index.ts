@@ -113,3 +113,45 @@ export async function deleteStorageObject(key: string): Promise<void> {
   }
   return filesystemDriver.deleteObject(key);
 }
+
+/**
+ * Issue #28 (attachments) -- presigned direct-PUT for a caller-chosen key, regardless of
+ * driver. `maxBytes` travels with the token on the filesystem driver (enforced at write
+ * time); on S3 it is currently application-level only -- see `s3.ts`'s own comment.
+ */
+export async function createAttachmentUploadUrl(
+  key: string,
+  contentType: string,
+  maxBytes: number,
+  apiBaseUrl?: string,
+): Promise<{
+  key: string;
+  uploadUrl: string;
+  headers: Record<string, string>;
+}> {
+  if (getStorageDriver() === "s3") {
+    return s3Driver.createAttachmentUploadUrl(key, contentType, maxBytes);
+  }
+  return filesystemDriver.createAttachmentUploadUrl(
+    key,
+    contentType,
+    maxBytes,
+    apiBaseUrl,
+  );
+}
+
+/** Issue #28 -- presigned download (`attachments.md` AT-5), regardless of driver. */
+export async function createAttachmentDownloadUrl(
+  key: string,
+  filename: string,
+  apiBaseUrl?: string,
+): Promise<string> {
+  if (getStorageDriver() === "s3") {
+    return s3Driver.createAttachmentDownloadUrl(key, filename);
+  }
+  return filesystemDriver.createAttachmentDownloadUrl(
+    key,
+    filename,
+    apiBaseUrl,
+  );
+}

@@ -17,6 +17,10 @@ import { createId } from "@paralleldrive/cuid2";
 
 export const DEFAULT_MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
 export const DEFAULT_UPLOAD_URL_TTL_SECONDS = 300;
+// `attachments.md` AT-5: "presigned with a five-minute lifetime". Same value as the
+// upload TTL above, named separately so the two are free to diverge later without one
+// constant secretly meaning two different things.
+export const DEFAULT_DOWNLOAD_URL_TTL_SECONDS = 300;
 
 const allowedImageMimeTypes = new Set([
   "image/apng",

@@ -13,6 +13,7 @@ import {
   applyKeyPrefix,
   buildObjectKey,
   buildObjectKeyPrefix,
+  DEFAULT_DOWNLOAD_URL_TTL_SECONDS,
   DEFAULT_MAX_IMAGE_UPLOAD_BYTES,
   DEFAULT_UPLOAD_URL_TTL_SECONDS,
   getFileExtension,
@@ -255,6 +256,69 @@ export async function getPrivateObject(key: string): Promise<AssetObject> {
     etag: response.ETag,
     lastModified: response.LastModified,
   };
+}
+
+/**
+ * Issue #28 (attachments) -- the S3 equivalent of `filesystem.ts`'s
+ * `createAttachmentUploadUrl`: a presigned PUT for a caller-supplied `key` rather than
+ * one built from a `TaskImageUploadContext`. `maxBytes` is accepted for signature parity
+ * with the filesystem driver's token-bound ceiling, but is NOT enforced by S3 itself on
+ * a plain presigned PUT (that would need a presigned POST with a
+ * `content-length-range` policy condition, not built here -- flagged in the PR body);
+ * the attachment module enforces the ceiling at the application layer instead, both
+ * before minting this URL and again on `complete` by checking the object's actual
+ * stored size.
+ */
+export async function createAttachmentUploadUrl(
+  key: string,
+  contentType: string,
+  _maxBytes: number,
+): Promise<{
+  key: string;
+  uploadUrl: string;
+  headers: Record<string, string>;
+}> {
+  const config = getStorageConfig();
+  const client = getClient(config);
+  const prefixedKey = applyKeyPrefix(config.keyPrefix, key);
+
+  const command = new PutObjectCommand({
+    Bucket: config.bucket,
+    Key: prefixedKey,
+    ContentType: contentType,
+  });
+
+  const uploadUrl = await getSignedUrl(client, command, {
+    expiresIn: config.presignTtlSeconds,
+  });
+
+  return {
+    key: prefixedKey,
+    uploadUrl,
+    headers: { "Content-Type": contentType },
+  };
+}
+
+/**
+ * `attachments.md` AT-5: a presigned GET, five-minute lifetime, `Content-Disposition:
+ * attachment` so the browser always downloads rather than navigates.
+ */
+export async function createAttachmentDownloadUrl(
+  key: string,
+  filename: string,
+): Promise<string> {
+  const config = getStorageConfig();
+  const client = getClient(config);
+
+  const command = new GetObjectCommand({
+    Bucket: config.bucket,
+    Key: key,
+    ResponseContentDisposition: `attachment; filename="${filename.replaceAll('"', "")}"`,
+  });
+
+  return getSignedUrl(client, command, {
+    expiresIn: DEFAULT_DOWNLOAD_URL_TTL_SECONDS,
+  });
 }
 
 export async function deleteS3Object(key: string): Promise<void> {

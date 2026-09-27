@@ -13,6 +13,7 @@ import { compress } from "hono/compress";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import activity from "./activity";
+import attachment from "./attachment";
 import audit from "./audit";
 import { auth } from "./auth";
 import capabilities from "./capabilities";
@@ -54,7 +55,12 @@ import project from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
 import { getPrivateObject, getStorageDriver } from "./storage";
-import { StoragePathError, writeUploadedObject } from "./storage/filesystem";
+import {
+  readAttachmentDownloadObject,
+  StoragePathError,
+  writeAttachmentUploadedObject,
+  writeUploadedObject,
+} from "./storage/filesystem";
 import task from "./task";
 import taskRelation from "./task-relation";
 import timeEntry from "./time-entry";
@@ -504,6 +510,162 @@ export function createApp(options: { staticRoot?: string } = {}) {
     },
   );
 
+  // Issue #28 (attachments): the generic, arbitrary-key sibling of the task-image
+  // upload route above -- see `storage/filesystem.ts`'s own section comment for why
+  // this is a separate route rather than a reused one (the size ceiling travels with
+  // this route's own token, not a shared fixed default).
+  api.openapi(
+    createRoute({
+      method: "put",
+      operationId: "uploadFilesystemAttachmentObject",
+      path: "/storage/filesystem-attachment-upload",
+      tags: ["Assets"],
+      summary: "Upload attachment bytes to the filesystem storage driver",
+      description:
+        "The local equivalent of a presigned S3 PUT for an attachment, minted by " +
+        "POST /api/work-items/{key}/attachments/presign when TASKDESK_STORAGE_DRIVER " +
+        "is filesystem (the default). Not authenticated by a browser session -- the " +
+        "signed token in the query string, which also binds the exact size ceiling " +
+        "that was validated at presign time, is the credential.",
+      security: [],
+      request: {
+        query: z.object({
+          key: z.string().min(1),
+          maxBytes: z.string().regex(/^\d+$/, "maxBytes must be an integer"),
+          expires: z
+            .string()
+            .regex(/^\d+$/, "expires must be a unix timestamp"),
+          token: z.string().min(1),
+        }),
+        body: {
+          required: true,
+          content: {
+            "application/octet-stream": {
+              schema: { type: "string", format: "binary" },
+            },
+          },
+        },
+      },
+      responses: {
+        204: { description: "Stored" },
+        400: errorResponse(
+          "Invalid key, expired or invalid token, or the upload exceeds the signed limit",
+        ),
+        404: errorResponse("The filesystem storage driver is not active"),
+      },
+    }),
+    async (c) => {
+      if (getStorageDriver() !== "filesystem") {
+        throw new HTTPException(404, {
+          message: "The filesystem storage driver is not active.",
+        });
+      }
+
+      const { key, maxBytes, expires, token } = c.req.valid("query");
+
+      try {
+        await writeAttachmentUploadedObject({
+          key,
+          maxBytes,
+          expires,
+          token,
+          body: c.req.raw.body,
+        });
+      } catch (error) {
+        // Same safe-message/log-detail split as the task-image upload route above.
+        if (!(error instanceof StoragePathError)) {
+          console.error(
+            "storage/filesystem-attachment-upload: unexpected write failure",
+            error,
+          );
+        }
+        throw new HTTPException(400, {
+          message:
+            error instanceof StoragePathError
+              ? error.message
+              : "Upload failed.",
+        });
+      }
+
+      return c.body(null, 204);
+    },
+  );
+
+  // Issue #28 (attachments), AT-5: the local equivalent of a presigned S3 GET. Not
+  // authenticated by a browser session -- the signed, short-lived, key-scoped token in
+  // the query string is the credential, exactly like the upload route above; the real
+  // policy check already ran in `GET /api/attachments/{id}`, which minted this URL.
+  api.openapi(
+    createRoute({
+      method: "get",
+      operationId: "downloadFilesystemAttachmentObject",
+      path: "/storage/filesystem-download",
+      tags: ["Assets"],
+      summary: "Download attachment bytes from the filesystem storage driver",
+      description:
+        "The local equivalent of a presigned S3 GET, minted by GET " +
+        "/api/attachments/{id} when TASKDESK_STORAGE_DRIVER is filesystem.",
+      security: [],
+      request: {
+        query: z.object({
+          key: z.string().min(1),
+          expires: z
+            .string()
+            .regex(/^\d+$/, "expires must be a unix timestamp"),
+          token: z.string().min(1),
+          filename: z.string().min(1),
+        }),
+      },
+      responses: {
+        200: {
+          description: "The attachment binary stream",
+          content: { "*/*": { schema: { type: "string", format: "binary" } } },
+        },
+        400: errorResponse("Invalid key, or expired or invalid token"),
+        404: errorResponse(
+          "The filesystem storage driver is not active, or the object is gone",
+        ),
+      },
+    }),
+    async (c) => {
+      if (getStorageDriver() !== "filesystem") {
+        throw new HTTPException(404, {
+          message: "The filesystem storage driver is not active.",
+        });
+      }
+
+      const { key, expires, token, filename } = c.req.valid("query");
+
+      try {
+        const object = await readAttachmentDownloadObject({
+          key,
+          expires,
+          token,
+        });
+        return new Response(object.body as BodyInit, {
+          headers: {
+            "Cache-Control": "private, max-age=0, no-store",
+            "Content-Type": object.contentType || "application/octet-stream",
+            "Content-Disposition": `attachment; filename="${filename.replaceAll('"', "")}"`,
+          },
+        });
+      } catch (error) {
+        if (!(error instanceof StoragePathError)) {
+          console.error(
+            "storage/filesystem-download: unexpected read failure",
+            error,
+          );
+        }
+        throw new HTTPException(error instanceof StoragePathError ? 400 : 404, {
+          message:
+            error instanceof StoragePathError
+              ? error.message
+              : "Attachment not found.",
+        });
+      }
+    },
+  );
+
   api.openapi(
     createRoute({
       method: "get",
@@ -836,6 +998,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
   // `/work-items/{key}`), which `workItem`'s own routes already declare in full. See
   // `work-item/index.ts`'s file comment.
   const workItemApi = api.route("/", workItem);
+  const attachmentApi = api.route("/", attachment);
   const userApi = api.route("/user", user);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
@@ -986,6 +1149,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
     api,
     injectWebSocket,
     activityApi,
+    attachmentApi,
     auditApi,
     capabilitiesApi,
     columnApi,
@@ -1205,6 +1369,7 @@ const {
   app,
   injectWebSocket,
   activityApi,
+  attachmentApi,
   auditApi,
   capabilitiesApi,
   columnApi,
@@ -1269,6 +1434,7 @@ export type AppType =
   | typeof taskApi
   | typeof columnApi
   | typeof activityApi
+  | typeof attachmentApi
   | typeof auditApi
   | typeof commentApi
   | typeof timeEntryApi
