@@ -42,8 +42,10 @@ import notification from "./notification";
 import notificationPreferences from "./notification-preferences";
 import oauth from "./oauth";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
-// Issue #8, Slice 2: shadow-mode request-path policy comparison, off by default. See the
-// call site below and that file's own header comment for the full design.
+// Issue #8: `assertRouteIsClassified` refuses a request whose route has no policy entry at
+// all (presence only, always on); `runNextWithPolicyShadow` is the shadow-mode ALLOW/DENY
+// comparison, off by default. See the call sites below and each file's own header comment.
+import { assertRouteIsClassified } from "./permissions/route-classification-guard";
 import { runNextWithPolicyShadow } from "./permissions/shadow-middleware";
 import { initializePlugins } from "./plugins";
 // Importing this constructs and validates the registry at module load, so an invalid policy
@@ -707,6 +709,11 @@ export function createApp(options: { staticRoot?: string } = {}) {
     // request through this guard succeeds unauthenticated.
     try {
       await authenticateApiRequest(c);
+      // Issue #8: refuses outright (never silently serves) a route below this guard that
+      // has no entry at all in the declarative policy registry -- see
+      // `route-classification-guard.ts`'s own doc comment for exactly what this does and
+      // does not check (presence only, never an ALLOW/DENY verdict).
+      assertRouteIsClassified(c);
       const windowId = c.req.header("X-TaskDesk-Window-Id");
       const userId = c.get("userId");
       const initiatorId = windowId ? `${userId}:${windowId}` : userId;

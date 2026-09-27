@@ -156,7 +156,7 @@ async function writeErrorRecord(args: {
  * evidence, not theory: `matchedRoutes` for these three paths all put the literal before
  * the parameter.
  */
-function attributedRouteKey(c: Context): string | null {
+export function attributedRouteKey(c: Context): string | null {
   const matched = c.req.matchedRoutes.find((r) => r.method !== "ALL");
   if (!matched) {
     return null;
