@@ -126,3 +126,21 @@ The branch is up to date with `main`.
 - Any later commit on this branch that touches non-note paths needs a delta confirmation and a new `**Reviewed head:**` line. That includes F1's doc edits, a `main` merge, a rebase or a conflict resolution.
 - For F1 alone, the delta confirmation only needs to verify two things: the new commit touches just the four named doc files, and it only qualifies the Trivy sentence.
 - This attestation covers `10cce79d19907c1572ea80242b139a5b5d6f4c38` only.
+
+---
+
+## Delta confirmation — F1/F2 fix (2026-09-27)
+
+**Reviewed head:** `2894737b43e193faea8014f5b030d62d59fc9bbb`
+**Previously reviewed head:** `10cce79d19907c1572ea80242b139a5b5d6f4c38`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged.
+
+Implements exactly Opus's own F1 and F2 findings, nothing else:
+- F1: the four named docs (`ci-cd.md`, `security-model.md`, `container-image.md`,
+  `release-plan.md`) now qualify "high or critical fails" with "with a vendor-supplied fix
+  available", citing this decision log entry. Docs only.
+- F2: `trivy.yaml`/`.trivyignore`/`.trivyignore.yaml` added to `ci-cd.md`'s
+  security-review-scope path list.
+- `git diff --stat` against the previously reviewed head confirms exactly these 4 files
+  changed, no code.
