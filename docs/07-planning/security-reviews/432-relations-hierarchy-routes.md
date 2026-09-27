@@ -228,3 +228,15 @@ across all three `apps/api` tsconfigs.
 
 **Note:** the branch is BEHIND `main` again (#438 merged after this resolution) — a further
 branch update and reconfirmation is needed before merge, tracked separately.
+
+---
+
+## Re-confirmation after branch update (2026-09-27, second)
+
+**Reviewed head:** `478f97b8c261ecc1d1afbf7cd657efed42247cc5`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. `git diff 358143dc894d01a40e863b1fa0afb5a569a9eb66..478f97b8c261ecc1d1afbf7cd657efed42247cc5`
+scoped to every file this PR touches is empty — this update-branch cycle merged cleanly with
+no conflict (unlike the prior #430 collision), since #438 (project-engagement routes) never
+touches `work-item/**`. The intervening commit is #438's own already-reviewed merge,
+confirmed an ancestor of `origin/main`. No new, unreviewed logic reached this branch.
