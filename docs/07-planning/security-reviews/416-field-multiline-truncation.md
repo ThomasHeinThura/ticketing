@@ -91,3 +91,16 @@ this PR body's `**Note:**` line being added.
 reviewed head (`596f3c32ba1a7f074fe7d5a9956b3ccaaaa82091`) and this one — the intervening
 commits bring in #410's and #412's already-reviewed merges, zero overlap with this PR's own
 files.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `e29c9fa7447dd6f7e09dcb15095a98d9befa1159`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
+reviewed head (`1aae3f6daf403dac6559570f64725f047c8e0740`) and this one — the intervening
+commit is #420's already-reviewed merge, zero overlap with this PR's own files. This branch
+update also refreshes the `pull_request` event payload, clearing a stale-body false failure
+on `check-pr-template.mjs`'s Note-link check (same class as before — the payload the
+previous run read predated the Note line, despite the live body already containing it).
