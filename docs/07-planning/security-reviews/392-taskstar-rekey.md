@@ -1,8 +1,8 @@
 # Security review — PR #392: rename legacy `task:*` capability key to `work_item:*`
 
 **Reviewer:** Claude Opus 5.5 (`claude-opus-5-5[1m]`), a fresh independent context that did not write or direct this change.
-**Reviewed head:** `d61e1f5fe4aacd6e2c7e9b0aaf2d6cdaab0df0a0` (latest delta pass, below). Earlier pass: `83c60a3377aa7dd96fe6190201239cdb0967de48`.
-**Verdict:** REQUEST CHANGES at `d61e1f5` (finding E1, below). The earlier CLEAR at `83c60a3` does not carry forward to this head.
+**Reviewed head:** `54204865a2d52e74a647e6f74c51e5f8241455a2` (latest delta pass, at the end). Earlier passes: `414c946`, `d61e1f5`, `83c60a3`, `675e12f`.
+**Verdict:** CLEAR at `5420486` (see the final section). The earlier verdicts below are kept as history.
 
 ## First pass, at `675e12faf38166e14163be900da590f64cd7e8c1`: REQUEST CHANGES
 
@@ -152,3 +152,17 @@ The contract task is there, with the right preconditions (old pods gone, rollbac
 ### Verdict
 
 **CLEAR WITH FINDINGS** at `414c9460549de77ef21d4edbc584d9a6cc090220`. E1 is fixed. F1 is a correction to the text of #398. F2, F3 and D4 are non-blocking. This note's own commit changes only documentation, so the code I cleared is at `414c946`.
+
+## Delta pass, 2026-09-27, at `54204865a2d52e74a647e6f74c51e5f8241455a2`: CLEAR
+
+Different Opus instance, same review. Scope: the one new commit since `414c946` that changes code, `5420486`. The only other commit in the range is the previous note, `ecad425`. `git show --stat 5420486` touches exactly two files: `list-workspace-roles.ts` (one line) and the rekey backfill test (+15 lines).
+
+- **F3 resolved.** `parsePermission()` now uses `Object.hasOwn(statement, resource)`. The create and update validators build their set from `Object.keys(statement)`. `statement` is a plain object literal (`legacy-better-auth-access-control.ts:44`), so its own keys and its own enumerable keys are the same set. The list filter and the write validators now accept exactly the same keys. Inherited keys such as `constructor` no longer pass.
+- **F2 resolved.** After the 200 save, the E1 test reads the row straight from `workspace_role` and checks that `permission.task` is undefined and `permission.work_item` equals `["create","read"]`. A future write that merges instead of replacing would fail this test.
+- **E1 still fixed.** The test file passes, 3/3, at this head. I ran it on a private `_test` database on `td-pr392-postgres` and deleted the database afterwards.
+- **F1 still open.** Issue #398 is OPEN, has no comments, and was last updated at 07:03Z, before the `414c946` note was committed (07:07Z). Its D1 text still recommends only the boot-time self-heal. F1 is a correction to the issue's text, not to this PR, so it does not block.
+- **D1 and D4 unchanged.** Both are non-blocking and tracked as described above.
+
+**CI at `5420486`, when checked:** every required job is green except two. `integration - Postgres 18` was still **in progress**. `pull request template + security review` fails, as expected until the gate table names this pass. The merging session must confirm the integration job is green at this exact head before merging.
+
+**Verdict: CLEAR** at `54204865a2d52e74a647e6f74c51e5f8241455a2`. E1, F2 and F3 are resolved. F1 (the text of #398), D1 and D4 remain non-blocking follow-ups. This note's own commit changes only documentation, so the code cleared here is at `5420486`.
