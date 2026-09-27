@@ -195,3 +195,36 @@ already-reviewed content from #423, #417, #419, #429 and #431 landing via routin
 updates — confirmed each is an ancestor of `origin/main`. No new, unreviewed logic reached
 this branch. (Verified from a worktree freshly reset via `git reset --hard
 origin/<branch>`, not merely fetched — see PR #430's own note for why this matters.)
+
+---
+
+## Security review — conflict-resolution verification (2026-09-27)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `a1c88d5440edb246d`
+
+**Reviewed head:** `358143dc894d01a40e863b1fa0afb5a569a9eb66`
+
+**Scope:** a real merge conflict arose against `main` after PR #430 (unassign action, already
+merged) touched the same shared `work-item/index.ts`/`policy.ts` files this PR also touches.
+An implementing lane resolved it via a genuine two-parent merge commit; this pass verifies
+the resolution preserved both sides, not either PR's own design (already cleared separately).
+
+**Verdict: CLEAR.** Confirmed a real merge (two parents: `79330d2` pre-conflict head,
+`e6a4d95` main tip), not a squash/rebase. Rebuilt the automatic merge via `git merge-tree`
+and confirmed the manual resolution differs from it only by adding the closing braces each
+side's hand-edit needed — no substantive rewrite. Diffed against both parents directly:
+zero deleted lines from `main` (this PR's 3 routes/policy entries are pure additions), and
+zero deleted lines from the pre-conflict head except two import lines correctly subsumed by
+main's own wider import (confirmed `membershipTable`/`personTable` still present) — #430's
+unassign route/handler/policy entry is byte-for-byte unchanged. Confirmed 11 `createRoute`
+definitions match 11 `.openapi()` registrations one-to-one, no duplicate registration, no
+route commented out, no leftover conflict markers anywhere. Confirmed the committed
+`openapi.json` matches what the resolved code actually generates (115 operations, no
+hand-merge drift). Full suites reproduced on a fresh database: hierarchy+unassign together
+(20/20), full integration (95 files/1284 tests), permissions (13/83), API unit (60/494),
+`packages/permissions` (13/262), `packages/domain` (12/555) — all green. Typecheck clean
+across all three `apps/api` tsconfigs.
+
+**Note:** the branch is BEHIND `main` again (#438 merged after this resolution) — a further
+branch update and reconfirmation is needed before merge, tracked separately.
